@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_laravel_backend_boilerplate/application/configurations/belluga_constants.dart';
 import 'package:flutter_laravel_backend_boilerplate/domain/repositories/auth_repository_contract.dart';
+import 'package:flutter_laravel_backend_boilerplate/domain/tenant/tenant.dart';
 import 'package:flutter_laravel_backend_boilerplate/infrastructure/services/dal/dto/user_dto.dart';
 import 'package:flutter_laravel_backend_boilerplate/infrastructure/services/laravel_backend/backend_contract.dart';
 import 'package:get_it/get_it.dart';
@@ -21,7 +22,7 @@ class LaravelBackend extends BackendContract {
       data: {
         "email": email,
         "password": password,
-        "device_name": BellugaConstants.settings.platform,
+        "device_name": GetIt.I.get<Tenant>().device,
       },
     );
 
@@ -39,6 +40,9 @@ class LaravelBackend extends BackendContract {
   Future<void> logout() async {
     await dio.post(
       BellugaConstants.api.baseUrl + _Paths.logout,
+      data: {
+        "device": GetIt.I.get<Tenant>().device
+      },
       options: Options(headers: _getHeaders()),
     );
   }

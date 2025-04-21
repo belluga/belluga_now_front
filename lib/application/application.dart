@@ -11,6 +11,7 @@ import 'package:intl/intl_standalone.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:platform_device_id_plus/platform_device_id.dart';
 
 class Application extends StatelessWidget {
   final _appRouter = AppRouter();
@@ -46,13 +47,14 @@ class Application extends StatelessWidget {
     );
 
     final packageInfo = await PackageInfo.fromPlatform();
+    final device_id = await PlatformDeviceId.getDeviceId ?? "un";
 
     GetIt.I.registerSingleton(
       Tenant(
         port: packageInfo.version,
         hostname: packageInfo.packageName,
         href: packageInfo.appName,
-        device: BellugaConstants.settings.platform,
+        device: "${BellugaConstants.settings.platform}_$device_id",
       ),
     );
 
