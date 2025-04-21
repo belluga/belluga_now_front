@@ -6,13 +6,15 @@ abstract class AuthRepositoryContract<T extends UserContract> {
 
   T get user => userStreamValue.value!;
 
+  String get userToken;
+
   bool get isUserLoggedIn;
 
   bool get isAuthorized;
 
   Future<void> init();
 
-  Future<T?> loginWithEmailPassword(String email, String password);
+  Future<void> loginWithEmailPassword(String email, String password);
 
   Future<void> signUpWithEmailPassword(String email, String password);
 

@@ -21,7 +21,7 @@ class _ApiConstants {
           "http://localhost:8000/api";
     }
   } 
-  String get login => "$baseUrl/auth/login";
+
   String get authGetUser =>
       "https://services.cloud.mongodb.com/api/client/v2.0/app/application-0-gwvgn/auth/providers/custom-token/login";
 }
