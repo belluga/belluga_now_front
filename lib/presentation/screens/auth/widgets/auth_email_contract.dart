@@ -1,0 +1,38 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_laravel_backend_boilerplate/domain/controllers/form_field_controller_contract.dart';
+import 'package:stream_value/core/stream_value_builder.dart';
+
+abstract class FormFieldBelluga extends StatelessWidget {
+  const FormFieldBelluga({
+    super.key,
+    required this.formFieldController,
+  });
+
+  final FormFieldControllerContract formFieldController;
+
+  String get label;
+  TextInputType get inputType;
+  bool get obscureText => false;
+  TextCapitalization get textCapitalization => TextCapitalization.none;
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamValueBuilder<String?>(
+      streamValue: formFieldController.errorStreamValue,
+      builder: (context, errorText) {
+        return TextFormField(
+          controller: formFieldController.textController,
+          keyboardType: inputType,
+          obscureText: obscureText,
+          textCapitalization: textCapitalization,
+          onChanged: (_) => formFieldController.cleanError(),
+          validator: formFieldController.validator,
+          decoration: InputDecoration(
+            hintText: label,
+            errorText: errorText,
+          ),
+        );
+      },
+    );
+  }
+}
