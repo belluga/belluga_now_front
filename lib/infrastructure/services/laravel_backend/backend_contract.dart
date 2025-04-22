@@ -3,4 +3,5 @@ import 'package:flutter_laravel_backend_boilerplate/infrastructure/services/dal/
 abstract class BackendContract {
   Future<(UserDTO, String)> loginWithEmailPassword(String email, String password);
   Future<void> logout();
+  Future<UserDTO> loginCheck();
 }

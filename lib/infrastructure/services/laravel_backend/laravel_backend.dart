@@ -37,6 +37,16 @@ class LaravelBackend extends BackendContract {
   }
 
   @override
+  Future<UserDTO> loginCheck() async {
+    final response = await dio.post(
+      BellugaConstants.api.baseUrl + _Paths.loginCheck,
+      options: Options(headers: _getHeaders()),
+    );
+
+    return UserDTO.fromMap(response.data["data"]["user"]);
+  }
+
+  @override
   Future<void> logout() async {
     await dio.post(
       BellugaConstants.api.baseUrl + _Paths.logout,
@@ -61,5 +71,5 @@ class LaravelBackend extends BackendContract {
 class _Paths {
   static const String login = '/auth/login';
   static const String logout = '/auth/logout';
-  static const String register = '/users';
+  static const String loginCheck = '/auth/check';
 }

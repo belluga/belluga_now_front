@@ -13,6 +13,7 @@ final class AuthRepository extends AuthRepositoryContract<UserBelluga> {
 
   BackendContract get backend => LaravelBackend();
 
+  @override
   String get userToken => _userTokenStreamValue.value!;
 
   final StreamValue<String?> _userTokenStreamValue = StreamValue<String?>();
@@ -35,6 +36,25 @@ final class AuthRepository extends AuthRepositoryContract<UserBelluga> {
   @override
   Future<void> init() async {
     await _getUserTokenFromLocalStorage();
+    await autoLogin();
+  }
+
+  @override
+  Future<void> autoLogin() async {
+
+    final token = await storage.read(key: "user_token");
+
+    if(token == null){
+      return;
+    }
+    
+    userTokenUpdate(token);
+    
+    final user = await backend.loginCheck();
+
+    userStreamValue.addValue(UserBelluga.fromDTO(user));
+
+    return Future.value();
   }
 
   @override

@@ -14,6 +14,8 @@ abstract class AuthRepositoryContract<T extends UserContract> {
 
   Future<void> init();
 
+  Future<void> autoLogin();
+
   Future<void> loginWithEmailPassword(String email, String password);
 
   Future<void> signUpWithEmailPassword(String email, String password);
