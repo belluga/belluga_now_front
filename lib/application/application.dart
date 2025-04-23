@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_laravel_backend_boilerplate/application/configurations/belluga_constants.dart';
 import 'package:flutter_laravel_backend_boilerplate/application/helpers/url_strategy/url_strategy.dart';
 import 'package:flutter_laravel_backend_boilerplate/application/router/app_router.dart';
 import 'package:flutter_laravel_backend_boilerplate/domain/repositories/auth_repository_contract.dart';
@@ -8,10 +7,8 @@ import 'package:flutter_laravel_backend_boilerplate/domain/tenant/tenant.dart';
 import 'package:flutter_laravel_backend_boilerplate/infrastructure/repositories/auth_repository.dart';
 import 'package:get_it/get_it.dart';
 import 'package:intl/intl_standalone.dart';
-import 'package:package_info_plus/package_info_plus.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:intl/date_symbol_data_local.dart';
-import 'package:platform_device_id_plus/platform_device_id.dart';
 
 class Application extends StatelessWidget {
   final _appRouter = AppRouter();
@@ -46,17 +43,9 @@ class Application extends StatelessWidget {
       () => AuthRepository(),
     );
 
-    final packageInfo = await PackageInfo.fromPlatform();
-    final device_id = await PlatformDeviceId.getDeviceId ?? "un";
-
-    GetIt.I.registerSingleton(
-      Tenant(
-        port: packageInfo.version,
-        hostname: packageInfo.packageName,
-        href: packageInfo.appName,
-        device: "${BellugaConstants.settings.platform}_$device_id",
-      ),
-    );
+    final tenant = Tenant();
+    await tenant.initialize();
+    GetIt.I.registerSingleton(tenant);
 
     // await initializeFirebase();
   }

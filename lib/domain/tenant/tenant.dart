@@ -1,10 +1,13 @@
-class Tenant {
-  final String? port;
-  final String hostname;
-  final String href;
-  final String device;
+export 'tenant_stub.dart'
+    if (dart.library.html) 'tenant_web.dart';
 
-  Tenant({required this.port, required this.hostname, required this.href, required this.device});
+// class Tenant {
+//   final String? port;
+//   final String hostname;
+//   final String href;
+//   final String device;
 
-  String get schema => href.split(hostname).first;
-}
+//   Tenant({required this.port, required this.hostname, required this.href, required this.device});
+
+//   String get schema => href.split(hostname).first;
+// }
