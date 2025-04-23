@@ -18,10 +18,14 @@ abstract class AuthLoginControllerContract extends Disposable{
 
   final _authRepository = GetIt.I.get<AuthRepositoryContract>();
 
-  final loginFormKey = GlobalKey<FormState>();
-
   StreamValue<UserBelluga> get userBelluga =>
       _authRepository.userStreamValue as StreamValue<UserBelluga>;
+  
+  final loginFormKey = GlobalKey<FormState>();
+
+  final StreamValue<bool> buttonLoadingValue = StreamValue<bool>(defaultValue: false);
+
+  final StreamValue<bool> fieldEnabled = StreamValue<bool>(defaultValue: true);
 
   bool get isAuthorized => _authRepository.isAuthorized;
 
@@ -43,6 +47,9 @@ abstract class AuthLoginControllerContract extends Disposable{
   bool validate() => loginFormKey.currentState?.validate() ?? false;
 
   Future<void> tryLoginWithEmailPassword() async {
+    buttonLoadingValue.addValue(true);
+    fieldEnabled.addValue(false);
+
     _cleanAllErrors();
 
     try {
@@ -74,9 +81,11 @@ abstract class AuthLoginControllerContract extends Disposable{
     //       "Erro desconhecido";
     //   }
     } catch (e) {
-      print(e);
-      generalErrorStreamValue.addValue("Erro desconhecido");
+      generalErrorStreamValue.addValue("Erro desconhecido");  
     }
+
+    buttonLoadingValue.addValue(false);
+    fieldEnabled.addValue(true);
   }
 
   @override
@@ -84,5 +93,6 @@ abstract class AuthLoginControllerContract extends Disposable{
     emailController.dispose();
     passwordController.dispose();
     generalErrorStreamValue.dispose();
+    buttonLoadingValue.dispose();
   }
 }

@@ -6,9 +6,11 @@ abstract class FormFieldBelluga extends StatelessWidget {
   const FormFieldBelluga({
     super.key,
     required this.formFieldController,
+    this.isEnabled = true,
   });
 
   final FormFieldControllerContract formFieldController;
+  final bool isEnabled;
 
   String get label;
   TextInputType get inputType;
@@ -22,6 +24,7 @@ abstract class FormFieldBelluga extends StatelessWidget {
       builder: (context, errorText) {
         return TextFormField(
           controller: formFieldController.textController,
+          enabled: isEnabled,
           keyboardType: inputType,
           obscureText: obscureText,
           textCapitalization: textCapitalization,

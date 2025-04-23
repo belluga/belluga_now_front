@@ -1,7 +1,7 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_laravel_backend_boilerplate/application/configurations/widget_keys.dart';
 import 'package:flutter_laravel_backend_boilerplate/domain/controllers/auth_login_controller_contract.dart';
+import 'package:flutter_laravel_backend_boilerplate/presentation/common/widgets/button_loading.dart';
 import 'package:flutter_laravel_backend_boilerplate/presentation/screens/auth/login/controller/auth_login_controller.dart';
 import 'package:flutter_laravel_backend_boilerplate/presentation/screens/auth/login/widgets/auth_login_form.dart';
 import 'package:get_it/get_it.dart';
@@ -39,10 +39,12 @@ class _AuthLoginScreenState extends State<AuthLoginScreen> {
                 const SingleChildScrollView(
                   child: AuthLoginnForm(),
                 ),
-                ElevatedButton(
-                  key: WidgetKeys.auth.loginButton,
+                
+                ButtonLoading(
                   onPressed: tryLoginWithEmailPassword,
-                  child: const Text("Entrar"),
+                  loadingStatusStreamValue: _controller.buttonLoadingValue,
+                  label: "Entrar",
+                  icon: Icons.login,
                 ),
                 // Row(
                 //   children: [

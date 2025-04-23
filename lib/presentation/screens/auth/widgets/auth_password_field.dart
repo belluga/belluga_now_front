@@ -4,6 +4,7 @@ import 'package:flutter_laravel_backend_boilerplate/presentation/screens/auth/wi
 class AuthPasswordField extends FormFieldBelluga {
   const AuthPasswordField({
     super.key,
+    super.isEnabled,
     required super.formFieldController,
   });
 
