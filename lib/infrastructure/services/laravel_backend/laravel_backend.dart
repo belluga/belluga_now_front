@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_laravel_backend_boilerplate/application/configurations/belluga_constants.dart';
+import 'package:flutter_laravel_backend_boilerplate/domain/auth/errors/belluga_auth_errors.dart';
 import 'package:flutter_laravel_backend_boilerplate/domain/repositories/auth_repository_contract.dart';
 import 'package:flutter_laravel_backend_boilerplate/domain/tenant/tenant.dart';
 import 'package:flutter_laravel_backend_boilerplate/infrastructure/services/dal/dto/user_dto.dart';
@@ -17,30 +18,44 @@ class LaravelBackend extends BackendContract {
     String email,
     String password,
   ) async {
-    final response = await dio.post(
-      BellugaConstants.api.baseUrl + _Paths.login,
-      data: {
-        "email": email,
-        "password": password,
-        "device_name": GetIt.I.get<Tenant>().device,
-      },
-    );
 
-    final userDTO = UserDTO.fromMap(response.data["data"]["user"]);
-    final token = response.data["data"]["token"];
+    try{
+      final response = await dio.post(
+        BellugaConstants.api.baseUrl + _Paths.login,
+        data: {
+          "email": email,
+          "password": password,
+          "device_name": GetIt.I.get<Tenant>().device,
+        },
+        options: Options(headers: _getHeaders()),
+      );
 
-    if (token is! String) {
-      throw Exception("Error generating access token.");
+      final userDTO = UserDTO.fromMap(response.data["data"]["user"]);
+      final String token = response.data["data"]["token"];
+
+      return (userDTO, token);
+
+    } on DioException catch (e) {
+      
+      String? errorMessage = e.response?.data["message"];
+      final Map<String, dynamic> errors = e.response?.data["errors"];
+
+      throw BellugaAuthError.fromCode(
+        errorCode: e.response?.statusCode,
+        message: errorMessage,
+        errors: errors
+      );
+
+    } catch (e) {
+      throw BellugaAuthError.fromCode();
     }
-
-    return (userDTO, token);
   }
 
   @override
   Future<UserDTO> loginCheck() async {
     final response = await dio.post(
       BellugaConstants.api.baseUrl + _Paths.loginCheck,
-      options: Options(headers: _getHeaders()),
+      options: Options(headers: _getAuthenticatedHeaders()),
     );
 
     return UserDTO.fromMap(response.data["data"]["user"]);
@@ -53,18 +68,25 @@ class LaravelBackend extends BackendContract {
       data: {
         "device": GetIt.I.get<Tenant>().device
       },
-      options: Options(headers: _getHeaders()),
+      options: Options(headers: _getAuthenticatedHeaders()),
     );
   }
 
   Map<String, dynamic> _getHeaders() {
-    final token = authRepository.userToken;
-
     return {
       Headers.contentTypeHeader: Headers.jsonContentType,
       Headers.acceptHeader: Headers.jsonContentType,
-      "Authorization": "Bearer $token",
     };
+  }
+
+  Map<String, dynamic> _getAuthenticatedHeaders() {
+    final token = authRepository.userToken;
+
+    final baseHeader = _getHeaders();
+
+    baseHeader["Authorization"] = "Bearer $token";
+
+    return baseHeader;
   }
 }
 

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_laravel_backend_boilerplate/domain/auth/errors/belluga_auth_errors.dart';
 import 'package:flutter_laravel_backend_boilerplate/domain/repositories/auth_repository_contract.dart';
 import 'package:flutter_laravel_backend_boilerplate/domain/user/user_belluga.dart';
 import 'package:flutter_laravel_backend_boilerplate/presentation/screens/auth/login/controller/form_field_controller_email.dart';
@@ -59,27 +60,18 @@ abstract class AuthLoginControllerContract extends Disposable{
           passwordController.value,
         );
       }
-    // } on BellugaAuthError catch (e) {
-    //   switch (e.runtimeType) {
-    //     case const (AuthErrorInvalidEmail):
-    //       emailController.addError("Email inválido");
-    //       break;
-    //     case const (AuthErrorUserAlreadyExists):
-    //       emailController.addError("Email já cadastrado");
-    //       break;
-    //     case const (AuthErrorPasswordWeak):
-    //       passwordController.addError("Senha fraca");
-    //       break;
-    //     case const (AuthErrorOperationNotAllowed):
-    //       generalErrorStreamValue.addValue("Operação não autorizada");
-    //       break;
-    //     case const (AuthErrorInvalidCredentials):
-    //       generalErrorStreamValue.addValue("Usuário OU senha incorretos");
-    //       break;
-    //     default:
-    //       generalErrorStreamValue.addValue("Erro desconhecido");
-    //       "Erro desconhecido";
-    //   }
+    } on BellugaAuthError catch (e) {
+      
+      switch (e.runtimeType) {
+        case const (AuthErrorEmail):
+          emailController.addError(e.message);
+          break;
+        case const (AuthErrorPassword):
+          passwordController.addError(e.message);
+          break;
+        default:
+          generalErrorStreamValue.addValue(e.message);
+      }
     } catch (e) {
       generalErrorStreamValue.addValue("Erro desconhecido");  
     }

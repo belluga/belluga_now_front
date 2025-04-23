@@ -14,9 +14,6 @@ class UserDTO {
 
   factory UserDTO.fromMap(Map<String, Object?> map) {
 
-    print("map");
-    print(map);
-
     return UserDTO(
       id: map[UserDtoLabels.id] as String,
       profile: UserProfileDTO.fromMap( map[UserDtoLabels.profile]  as Map<String, Object?>),
