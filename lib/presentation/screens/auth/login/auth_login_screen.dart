@@ -28,14 +28,23 @@ class _AuthLoginScreenState extends State<AuthLoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Column(
+      body: Stack(
         children: [
           Expanded(
             child: Column(
               mainAxisSize: MainAxisSize.min,
-              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisAlignment: MainAxisAlignment.center,              
               children: [
-                const Text("Entre em sua conta"),
+                SizedBox(
+                  width: double.infinity,
+                  height: MediaQuery.of(context).size.height * 0.6,
+                  child: Image.asset(
+                    'assets/images/tela_login.jpeg',
+                    fit: BoxFit.cover
+                  ),
+                ),
+                const SizedBox(height: 35),
+                const Text("Login"),
                 const SingleChildScrollView(
                   child: AuthLoginnForm(),
                 ),
@@ -44,7 +53,6 @@ class _AuthLoginScreenState extends State<AuthLoginScreen> {
                   onPressed: tryLoginWithEmailPassword,
                   loadingStatusStreamValue: _controller.buttonLoadingValue,
                   label: "Entrar",
-                  icon: Icons.login,
                 ),
                 // Row(
                 //   children: [
@@ -63,7 +71,22 @@ class _AuthLoginScreenState extends State<AuthLoginScreen> {
               ],
             ),
           ),
-          const Text("I agree with the Terms & Conditions"),
+          Positioned(
+            child: const Text("Esqueci minha senha. Recuperar agora"),
+          ),
+          Positioned(          
+            bottom: 0,
+            left: 0,
+            right: 0,
+            child: SizedBox(
+              width: double.infinity,
+              height: 40,
+              child: Image.asset(
+                'assets/images/rodape.jpeg',
+                fit: BoxFit.cover
+              ),
+            ),
+          ),
         ],
       ),
     );
