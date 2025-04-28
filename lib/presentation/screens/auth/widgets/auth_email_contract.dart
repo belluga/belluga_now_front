@@ -33,6 +33,20 @@ abstract class FormFieldBelluga extends StatelessWidget {
           decoration: InputDecoration(
             hintText: label,
             errorText: errorText,
+            filled: true,
+            fillColor: Colors.white,
+            contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Colors.grey),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Color(0xFF5C2D91), width: 2),
+            ),
           ),
         );
       },

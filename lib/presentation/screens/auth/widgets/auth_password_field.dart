@@ -9,7 +9,7 @@ class AuthPasswordField extends FormFieldBelluga {
   });
 
   @override
-  String get label => "Senha";
+  String get label => "Sua senha";
 
   @override
   TextInputType get inputType => TextInputType.visiblePassword;

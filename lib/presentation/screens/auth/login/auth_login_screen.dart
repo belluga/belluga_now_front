@@ -30,50 +30,55 @@ class _AuthLoginScreenState extends State<AuthLoginScreen> {
     return Scaffold(
       body: Stack(
         children: [
-          Expanded(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              mainAxisAlignment: MainAxisAlignment.center,              
+          Column(     
               children: [
                 SizedBox(
                   width: double.infinity,
-                  height: MediaQuery.of(context).size.height * 0.6,
+                  height: MediaQuery.of(context).size.height * 0.55,
                   child: Image.asset(
                     'assets/images/tela_login.jpeg',
                     fit: BoxFit.cover
                   ),
                 ),
-                const SizedBox(height: 35),
-                const Text("Login"),
-                const SingleChildScrollView(
-                  child: AuthLoginnForm(),
-                ),
-                
-                ButtonLoading(
-                  onPressed: tryLoginWithEmailPassword,
-                  loadingStatusStreamValue: _controller.buttonLoadingValue,
-                  label: "Entrar",
-                ),
-                // Row(
-                //   children: [
-                //     TextButton(
-                //       key: WidgetKeys.auth.navigateToRecoverButton,
-                //       onPressed: navigateToPasswordRecover,
-                //       child: const Text("Esqueceu sua senha?"),
-                //     ),
-                //     TextButton(
-                //       key: WidgetKeys.auth.navigateToSignupButton,
-                //       onPressed: navigateToRegister,
-                //       child: const Text("Não tem uma conta? Registre-se"),
-                //     ),
-                //   ],
-                // )
+
+                Expanded(
+                  child: SingleChildScrollView(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                      child: Column(
+                        children: [
+                          const SizedBox(height: 20),
+                          const Text(
+                            "Login",
+                            style: TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold
+                              ),
+                            ),
+                          const SizedBox(height: 20),
+                          const AuthLoginnForm(),
+                          const SizedBox(height: 20),
+                          const Text(
+                            "Esqueci minha senha. Recuperar agora",
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.bold
+                              ),
+                            ),
+                          const SizedBox(height: 20),   
+                          ButtonLoading(
+                            onPressed: tryLoginWithEmailPassword,
+                            loadingStatusStreamValue: _controller.buttonLoadingValue,
+                            label: "Entrar",
+                            ), 
+                          const SizedBox(height: 80), // Espaço pro rodapé
+                        ],
+                      )
+                    ),
+                  ),
+                )
               ],
             ),
-          ),
-          Positioned(
-            child: const Text("Esqueci minha senha. Recuperar agora"),
-          ),
           Positioned(          
             bottom: 0,
             left: 0,

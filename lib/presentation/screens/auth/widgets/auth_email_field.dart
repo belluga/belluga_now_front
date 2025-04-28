@@ -8,9 +8,10 @@ class AuthEmailField extends FormFieldBelluga {
     required super.formFieldController,
   });
 
-  @override
-  String get label => "Email";
+ @override
+  String get label => "Seu email";
 
   @override
   TextInputType get inputType => TextInputType.emailAddress;
 }
+

@@ -25,6 +25,7 @@ class AuthLoginnForm extends StatelessWidget {
                 formFieldController: _controller.emailController,
                 isEnabled: fieldEnabled,
               ),
+              const SizedBox(height: 35),
               AuthPasswordField(
                 key: WidgetKeys.auth.loginPasswordField,
                 formFieldController: _controller.passwordController,

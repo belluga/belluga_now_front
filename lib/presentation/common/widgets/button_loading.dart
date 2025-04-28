@@ -22,8 +22,8 @@ class ButtonLoading extends StatelessWidget {
       builder: (context, loadingStatus) {
         if (loadingStatus) {
           return Container(
-            width: 46,
-            height: 46,
+            width: double.infinity,
+            height: 70,
             padding: EdgeInsets.all(10),
             child: Center(
               child: CircularProgressIndicator(
@@ -39,14 +39,24 @@ class ButtonLoading extends StatelessWidget {
           style: ElevatedButton.styleFrom(
             backgroundColor: Theme.of(context).colorScheme.primary,
             foregroundColor: Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(30),
+            ),
+            elevation: 5,
           ),
           child: Row(
-            mainAxisSize: MainAxisSize.min,
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               if (icon != null) Icon(icon),
-              const SizedBox(width: 10),
-              Text(label),
+              const SizedBox(width: 8),
+              Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
             ],
           ),
         );
