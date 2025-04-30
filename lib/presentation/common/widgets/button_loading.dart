@@ -21,10 +21,9 @@ class ButtonLoading extends StatelessWidget {
       streamValue: loadingStatusStreamValue,
       builder: (context, loadingStatus) {
         if (loadingStatus) {
-          return Container(
+          return SizedBox(
             width: double.infinity,
-            height: 70,
-            padding: EdgeInsets.all(10),
+            height: 56,
             child: Center(
               child: CircularProgressIndicator(
                 color: Theme.of(context).colorScheme.primary,

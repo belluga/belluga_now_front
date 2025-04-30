@@ -4,6 +4,7 @@ import 'package:flutter_laravel_backend_boilerplate/domain/controllers/auth_logi
 import 'package:flutter_laravel_backend_boilerplate/presentation/common/widgets/button_loading.dart';
 import 'package:flutter_laravel_backend_boilerplate/presentation/screens/auth/login/controller/auth_login_controller.dart';
 import 'package:flutter_laravel_backend_boilerplate/presentation/screens/auth/login/widgets/auth_login_form.dart';
+import 'package:flutter_laravel_backend_boilerplate/presentation/screens/auth/login/widgets/remember_password.dart';
 import 'package:get_it/get_it.dart';
 import 'package:flutter_laravel_backend_boilerplate/application/router/app_router.gr.dart';
 
@@ -25,7 +26,7 @@ class _AuthLoginScreenState extends State<AuthLoginScreen> {
     _controller.generalErrorStreamValue.stream.listen(_onGeneralError);
   }
 
-  @override
+@override
   Widget build(BuildContext context) {
     return Scaffold(
       body: Stack(
@@ -34,7 +35,7 @@ class _AuthLoginScreenState extends State<AuthLoginScreen> {
               children: [
                 SizedBox(
                   width: double.infinity,
-                  height: MediaQuery.of(context).size.height * 0.55,
+                  height: MediaQuery.of(context).size.height * 0.50,
                   child: Image.asset(
                     'assets/images/tela_login.jpeg',
                     fit: BoxFit.cover
@@ -61,17 +62,21 @@ class _AuthLoginScreenState extends State<AuthLoginScreen> {
                           const Text(
                             "Esqueci minha senha. Recuperar agora",
                             style: TextStyle(
-                              fontSize: 15,
+                              fontSize: 12,
                               fontWeight: FontWeight.bold
                               ),
                             ),
+                          const SizedBox(height: 20),
+                          RememberPassword(
+                            // controller: _controller.rememberPasswordController,
+                          ),
                           const SizedBox(height: 20),   
                           ButtonLoading(
                             onPressed: tryLoginWithEmailPassword,
                             loadingStatusStreamValue: _controller.buttonLoadingValue,
                             label: "Entrar",
                             ), 
-                          const SizedBox(height: 80), // Espaço pro rodapé
+                          const SizedBox(height: 40), // Espaço pro rodapé
                         ],
                       )
                     ),
