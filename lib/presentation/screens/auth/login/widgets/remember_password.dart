@@ -21,7 +21,7 @@ class RememberPassword extends StatelessWidget {
         const Text(
           "Lembrar senha",
           style: TextStyle(
-          fontSize: 15,
+          fontSize: 17,
           fontWeight: FontWeight.bold,
           ),
         ),

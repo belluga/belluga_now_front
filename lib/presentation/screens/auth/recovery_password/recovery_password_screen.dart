@@ -1,25 +1,26 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_laravel_backend_boilerplate/application/configurations/widget_keys.dart';
 import 'package:flutter_laravel_backend_boilerplate/domain/controllers/auth_login_controller_contract.dart';
 import 'package:flutter_laravel_backend_boilerplate/presentation/common/widgets/button_loading.dart';
 import 'package:flutter_laravel_backend_boilerplate/presentation/screens/auth/login/controller/auth_login_controller.dart';
-import 'package:flutter_laravel_backend_boilerplate/presentation/screens/auth/recovery_password/recovery_password_screen.dart';
-import 'package:flutter_laravel_backend_boilerplate/presentation/screens/auth/login/widgets/auth_login_form.dart';
-import 'package:flutter_laravel_backend_boilerplate/presentation/screens/auth/login/widgets/remember_password.dart';
+import 'package:flutter_laravel_backend_boilerplate/presentation/screens/auth/widgets/auth_email_field.dart';
 import 'package:get_it/get_it.dart';
 import 'package:flutter_laravel_backend_boilerplate/application/router/app_router.gr.dart';
+import 'package:stream_value/main.dart';
+
 
 @RoutePage()
-class AuthLoginScreen extends StatefulWidget {
-  const AuthLoginScreen({super.key});
+class RecoveryPasswordScreen extends StatefulWidget {
+  const RecoveryPasswordScreen({super.key});
 
   @override
-  State<AuthLoginScreen> createState() => _AuthLoginScreenState();
+  State<RecoveryPasswordScreen> createState() => _RecoveryPasswordScreenState();
 }
 
-class _AuthLoginScreenState extends State<AuthLoginScreen> {
+class _RecoveryPasswordScreenState extends State<RecoveryPasswordScreen> {
   final _controller = GetIt.I
-      .registerSingleton<AuthLoginControllerContract>(AuthLoginController());
+      .registerSingleton<AuthLoginController>(AuthLoginController());
 
   @override
   void initState() {
@@ -27,6 +28,7 @@ class _AuthLoginScreenState extends State<AuthLoginScreen> {
     _controller.generalErrorStreamValue.stream.listen(_onGeneralError);
   }
 
+  
 @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -51,52 +53,33 @@ class _AuthLoginScreenState extends State<AuthLoginScreen> {
                         children: [
                           const SizedBox(height: 20),
                           const Text(
-                            "Login",
+                            "Recuperar Senha",
                             style: TextStyle(
                               fontSize: 22,
                               fontWeight: FontWeight.bold
                               ),
                             ),
                           const SizedBox(height: 20),
-                          const AuthLoginnForm(),
-                          const SizedBox(height: 1),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              const Text(
-                                "Esqueci minha senha.",
-                                style: TextStyle(
-                                fontSize: 12,
-                              ),
-                            ),
-                            TextButton(
-                              onPressed: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(builder: (context) => RecoveryPasswordScreen()),
-                                );
-                              },
-                              child: const Text(
-                                "Recuperar agora",
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.bold
+                          StreamValueBuilder<bool>(
+                            streamValue: _controller.fieldEnabled,
+                            builder: (context, fieldEnabled) {
+                              return Form(
+                                key: _controller.loginFormKey,
+                                child: AuthEmailField(
+                                  key: WidgetKeys.auth.loginEmailField,
+                                  formFieldController: _controller.emailController,
+                                  isEnabled: fieldEnabled,  
                                 ),
-                              ),
+                              );
+                            },
                             ),
-                            ],
-                          ),
-                          const SizedBox(height: 10),
-                          RememberPassword(
-                            // controller: _controller.rememberPasswordController,
-                          ),
-                          const SizedBox(height: 10),   
-                          ButtonLoading(
+                          const SizedBox(height: 240),
+                            ButtonLoading(
                             onPressed: tryLoginWithEmailPassword,
                             loadingStatusStreamValue: _controller.buttonLoadingValue,
-                            label: "Entrar",
+                            label: "Enviar Código",
                             ), 
-                          const SizedBox(height: 40), // Espaço pro rodapé
+                          const SizedBox(height: 30), // Espaço pro rodapé
                         ],
                       )
                     ),
@@ -122,33 +105,20 @@ class _AuthLoginScreenState extends State<AuthLoginScreen> {
     );
   }
 
+
   void _onGeneralError(String? error) {
     if (error != null) {
       ScaffoldMessenger.of(context).showSnackBar(_messageSnack);
     }
   }
+  
+  Future<void> navigateToAuthorizedPage() async =>
+      await context.router.replace(const ProtectedRoute());
 
   Future<void> tryLoginWithEmailPassword() async {
     await _controller.tryLoginWithEmailPassword();
     navigateToAuthorizedPage();
   }
-
-  // Future<void> navigateToPasswordRecover() async {
-  //   await context.router.push(
-  //     AuthPasswordRecoverRoute(
-  //       initialEmail: _controller.emailController.text,
-  //     ),
-  //   );
-  // }
-
-  // Future<void> navigateToRegister() async {
-  //   await context.router.push(AuthRegisterRoute(
-  //     initialEmail: _controller.emailController.text,
-  //   ));
-  // }
-
-  Future<void> navigateToAuthorizedPage() async =>
-      await context.router.replace(const ProtectedRoute());
 
   SnackBar get _messageSnack {
     return SnackBar(
@@ -167,5 +137,5 @@ class _AuthLoginScreenState extends State<AuthLoginScreen> {
     super.dispose();
     GetIt.I.unregister<AuthLoginControllerContract>();
   }
+  
 }
-

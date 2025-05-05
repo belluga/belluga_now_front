@@ -23,11 +23,11 @@ class ButtonLoading extends StatelessWidget {
         if (loadingStatus) {
           return SizedBox(
             width: double.infinity,
-            height: 56,
+            height: 90,
             child: Center(
               child: CircularProgressIndicator(
                 color: Theme.of(context).colorScheme.primary,
-                strokeWidth: 2.0,
+                strokeWidth: 2.5,
               ),
             ),
           );
@@ -51,7 +51,7 @@ class ButtonLoading extends StatelessWidget {
               Text(
                 label,
                 style: const TextStyle(
-                  fontSize: 18,
+                  fontSize: 20,
                   fontWeight: FontWeight.bold,
                   color: Colors.white,
                 ),
