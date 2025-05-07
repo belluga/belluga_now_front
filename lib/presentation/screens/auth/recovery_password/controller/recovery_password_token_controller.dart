@@ -16,9 +16,11 @@ class AuthRecoveryPasswordController  implements AuthRecoveryPasswordControllerC
   final loading = StreamValue<bool>(defaultValue: false);
   
   @override
-  final error =  StreamValue<String>();
+  final error =  StreamValue<String>(defaultValue: '');
 
   final _authRepository = GetIt.I<AuthRepositoryContract>();
+
+  get generalErrorStreamValue => error.stream;
 
   @override
   bool validate() => formKey.currentState?.validate() ?? false;
@@ -31,7 +33,7 @@ class AuthRecoveryPasswordController  implements AuthRecoveryPasswordControllerC
 
     try {
       if (validate()) {
-        await GetIt.I<AuthRepositoryContract>().sendTokenRecoveryPassword(emailController.value);
+        await _authRepository.sendTokenRecoveryPassword(emailController.value);
         // Simulate a successful response
       }
     } catch (e) {

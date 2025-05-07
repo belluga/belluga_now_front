@@ -117,5 +117,10 @@ final class AuthRepository extends AuthRepositoryContract<UserBelluga> {
     final token = await AuthRepository.storage.read(key: "user_token");
     _userTokenStreamValue.addValue(token);
   }
+  
+  @override
+  Future<void> sendTokenRecoveryPassword(String email) {
+    throw UnimplementedError();
+  }
 
 }

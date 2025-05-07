@@ -51,7 +51,7 @@ class _AuthLoginScreenState extends State<AuthLoginScreen> {
                         children: [
                           const SizedBox(height: 20),
                           const Text(
-                            "Login",
+                            "Entrar",
                             style: TextStyle(
                               fontSize: 22,
                               fontWeight: FontWeight.bold

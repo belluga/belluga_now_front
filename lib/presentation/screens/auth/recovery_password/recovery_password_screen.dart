@@ -1,13 +1,14 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_laravel_backend_boilerplate/application/configurations/widget_keys.dart';
 import 'package:flutter_laravel_backend_boilerplate/domain/controllers/auth_login_controller_contract.dart';
 import 'package:flutter_laravel_backend_boilerplate/presentation/common/widgets/button_loading.dart';
-import 'package:flutter_laravel_backend_boilerplate/presentation/screens/auth/login/controller/auth_login_controller.dart';
-import 'package:flutter_laravel_backend_boilerplate/presentation/screens/auth/widgets/auth_email_field.dart';
+import 'package:flutter_laravel_backend_boilerplate/presentation/screens/auth/recovery_password/controller/recovery_password_token_controller.dart';
 import 'package:get_it/get_it.dart';
 import 'package:flutter_laravel_backend_boilerplate/application/router/app_router.gr.dart';
-import 'package:stream_value/main.dart';
+import 'package:stream_value/core/stream_value_builder.dart';
+import 'widgets/recovery_password_insert_email_widget.dart';
+import 'widgets/recovery_password_token_widget.dart';
+
 
 
 @RoutePage()
@@ -19,17 +20,12 @@ class RecoveryPasswordScreen extends StatefulWidget {
 }
 
 class _RecoveryPasswordScreenState extends State<RecoveryPasswordScreen> {
-  final _controller = GetIt.I
-      .registerSingleton<AuthLoginController>(AuthLoginController());
+  final _controller = GetIt.I.registerSingleton<AuthRecoveryPasswordController>(AuthRecoveryPasswordController());
+
+  bool mostrarCodigo = false;
+  final List<TextEditingController> codigoControllers = List.generate(6, (_) => TextEditingController());
 
   @override
-  void initState() {
-    super.initState();
-    _controller.generalErrorStreamValue.stream.listen(_onGeneralError);
-  }
-
-  
-@override
   Widget build(BuildContext context) {
     return Scaffold(
       body: Stack(
@@ -60,25 +56,32 @@ class _RecoveryPasswordScreenState extends State<RecoveryPasswordScreen> {
                               ),
                             ),
                           const SizedBox(height: 20),
-                          StreamValueBuilder<bool>(
-                            streamValue: _controller.fieldEnabled,
-                            builder: (context, fieldEnabled) {
-                              return Form(
-                                key: _controller.loginFormKey,
-                                child: AuthEmailField(
-                                  key: WidgetKeys.auth.loginEmailField,
-                                  formFieldController: _controller.emailController,
-                                  isEnabled: fieldEnabled,  
-                                ),
-                              );
-                            },
-                            ),
+                          mostrarCodigo 
+                            ? RecoveryPasswordTokenWidget(
+                                controllers: codigoControllers,
+                                onSubmit: _validarCodigo
+                                ) 
+                            : RecoveryPasswordInsertEmailWidget(controller: _controller),
                           const SizedBox(height: 240),
-                            ButtonLoading(
-                            onPressed: tryLoginWithEmailPassword,
-                            loadingStatusStreamValue: _controller.buttonLoadingValue,
+                          mostrarCodigo
+                            ? const SizedBox()
+                            : StreamValueBuilder<bool>(
+                            streamValue: _controller.loading,
+                            builder: (context, isLoading) {
+                              return ButtonLoading(
+                                onPressed: isLoading
+                                ? null
+                                : () {
+                                    setState(() {
+                                      mostrarCodigo = true;
+                                    });
+                                    _controller.submit();
+                                  },
+                            loadingStatusStreamValue: _controller.loading,
                             label: "Enviar Código",
-                            ), 
+                            );
+                          }, 
+                          ),
                           const SizedBox(height: 30), // Espaço pro rodapé
                         ],
                       )
@@ -105,22 +108,27 @@ class _RecoveryPasswordScreenState extends State<RecoveryPasswordScreen> {
     );
   }
 
-
-  void _onGeneralError(String? error) {
-    if (error != null) {
-      ScaffoldMessenger.of(context).showSnackBar(_messageSnack);
-    }
+  void _validarCodigo(String codigo) {
+  if (codigo != '123456') {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("Código inválido")),
+    );
+  } else {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("Código válido!")),
+    );
   }
+}
   
   Future<void> navigateToAuthorizedPage() async =>
       await context.router.replace(const ProtectedRoute());
 
-  Future<void> tryLoginWithEmailPassword() async {
-    await _controller.tryLoginWithEmailPassword();
-    navigateToAuthorizedPage();
-  }
+ // Future<void> tryLoginWithEmailPassword() async {
+ //   await _controller.tryLoginWithEmailPassword();
+ //   navigateToAuthorizedPage();
+ // }
 
-  SnackBar get _messageSnack {
+/*  SnackBar get _messageSnack {
     return SnackBar(
       backgroundColor: Theme.of(context).colorScheme.error,
       content: SizedBox(
@@ -130,7 +138,7 @@ class _RecoveryPasswordScreenState extends State<RecoveryPasswordScreen> {
         ),
       ),
     );
-  }
+  } */
 
   @override
   void dispose() {
