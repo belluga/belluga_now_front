@@ -5,7 +5,7 @@ import 'package:get_it/get_it.dart';
 class RememberPassword extends StatelessWidget {
   final RememberPasswordContract controller = GetIt.I<RememberPasswordContract>();
 
-  RememberPassword({super.key});
+    RememberPassword({super.key});
 
   @override
   Widget build(BuildContext context) {

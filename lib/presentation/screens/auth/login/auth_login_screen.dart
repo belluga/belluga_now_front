@@ -5,7 +5,6 @@ import 'package:flutter_laravel_backend_boilerplate/presentation/common/widgets/
 import 'package:flutter_laravel_backend_boilerplate/presentation/screens/auth/login/controller/auth_login_controller.dart';
 import 'package:flutter_laravel_backend_boilerplate/presentation/screens/auth/recovery_password/recovery_password_screen.dart';
 import 'package:flutter_laravel_backend_boilerplate/presentation/screens/auth/login/widgets/auth_login_form.dart';
-import 'package:flutter_laravel_backend_boilerplate/presentation/screens/auth/login/widgets/remember_password.dart';
 import 'package:get_it/get_it.dart';
 import 'package:flutter_laravel_backend_boilerplate/application/router/app_router.gr.dart';
 
@@ -49,7 +48,7 @@ class _AuthLoginScreenState extends State<AuthLoginScreen> {
                       padding: const EdgeInsets.symmetric(horizontal: 16.0),
                       child: Column(
                         children: [
-                          const SizedBox(height: 20),
+                          const SizedBox(height: 30),
                           const Text(
                             "Entrar",
                             style: TextStyle(
@@ -59,7 +58,7 @@ class _AuthLoginScreenState extends State<AuthLoginScreen> {
                             ),
                           const SizedBox(height: 20),
                           const AuthLoginnForm(),
-                          const SizedBox(height: 1),
+                          const SizedBox(height: 20),
                           Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
@@ -86,11 +85,7 @@ class _AuthLoginScreenState extends State<AuthLoginScreen> {
                             ),
                             ],
                           ),
-                          const SizedBox(height: 10),
-                          RememberPassword(
-                            // controller: _controller.rememberPasswordController,
-                          ),
-                          const SizedBox(height: 10),   
+                          const SizedBox(height: 15),   
                           ButtonLoading(
                             onPressed: tryLoginWithEmailPassword,
                             loadingStatusStreamValue: _controller.buttonLoadingValue,

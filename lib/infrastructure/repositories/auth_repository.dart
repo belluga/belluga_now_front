@@ -119,7 +119,12 @@ final class AuthRepository extends AuthRepositoryContract<UserBelluga> {
   }
   
   @override
-  Future<void> sendTokenRecoveryPassword(String email) {
+  Future<void> sendTokenRecoveryPassword(String email, String codigoEnviado) async {
+    throw UnimplementedError();
+  }
+  
+  @override
+  Future<void> createNewPassword(String newPassword, String confirmPassword) {
     throw UnimplementedError();
   }
 

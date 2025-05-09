@@ -20,7 +20,9 @@ class AuthRecoveryPasswordController  implements AuthRecoveryPasswordControllerC
 
   final _authRepository = GetIt.I<AuthRepositoryContract>();
 
-  get generalErrorStreamValue => error.stream;
+  String? codigoEnviado;
+
+  Stream<String?> get generalErrorStreamValue => error.stream;
 
   @override
   bool validate() => formKey.currentState?.validate() ?? false;
@@ -33,7 +35,7 @@ class AuthRecoveryPasswordController  implements AuthRecoveryPasswordControllerC
 
     try {
       if (validate()) {
-        await _authRepository.sendTokenRecoveryPassword(emailController.value);
+        await _authRepository.sendTokenRecoveryPassword(emailController.value, codigoEnviado!);
         // Simulate a successful response
       }
     } catch (e) {
