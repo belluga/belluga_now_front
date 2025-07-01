@@ -1,12 +1,13 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_laravel_backend_boilerplate/domain/controllers/auth_login_controller_contract.dart';
-import 'package:flutter_laravel_backend_boilerplate/presentation/common/widgets/button_loading.dart';
-import 'package:flutter_laravel_backend_boilerplate/presentation/screens/auth/login/controller/auth_login_controller.dart';
-import 'package:flutter_laravel_backend_boilerplate/presentation/screens/auth/recovery_password/recovery_password_screen.dart';
-import 'package:flutter_laravel_backend_boilerplate/presentation/screens/auth/login/widgets/auth_login_form.dart';
-import 'package:get_it/get_it.dart';
 import 'package:flutter_laravel_backend_boilerplate/application/router/app_router.gr.dart';
+import 'package:flutter_laravel_backend_boilerplate/domain/controllers/auth_login_controller_contract.dart';
+import 'package:flutter_laravel_backend_boilerplate/presentation/common/widgets/main_logo.dart';
+import 'package:flutter_laravel_backend_boilerplate/presentation/screens/auth/login/controller/auth_login_controller.dart';
+import 'package:flutter_laravel_backend_boilerplate/presentation/screens/auth/login/widgets/auth_header_expanded_content.dart';
+import 'package:flutter_laravel_backend_boilerplate/presentation/screens/auth/login/widgets/auth_header_headline.dart';
+import 'package:flutter_laravel_backend_boilerplate/presentation/screens/auth/login/widgets/auth_login_canva_content.dart';
+import 'package:get_it/get_it.dart';
 
 @RoutePage()
 class AuthLoginScreen extends StatefulWidget {
@@ -16,99 +17,50 @@ class AuthLoginScreen extends StatefulWidget {
   State<AuthLoginScreen> createState() => _AuthLoginScreenState();
 }
 
-class _AuthLoginScreenState extends State<AuthLoginScreen> {
-  final _controller = GetIt.I
-      .registerSingleton<AuthLoginControllerContract>(AuthLoginController());
+class _AuthLoginScreenState extends State<AuthLoginScreen>
+    with WidgetsBindingObserver {
+  late AuthLoginControllerContract _controller;
 
   @override
   void initState() {
     super.initState();
+    _controller = GetIt.I.registerSingleton<AuthLoginControllerContract>(
+      AuthLoginController(),
+    );
+
     _controller.generalErrorStreamValue.stream.listen(_onGeneralError);
+    WidgetsBinding.instance.addObserver(this);
   }
 
-@override
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Stack(
-        children: [
-          Column(     
-              children: [
-                SizedBox(
-                  width: double.infinity,
-                  height: MediaQuery.of(context).size.height * 0.50,
-                  child: Image.asset(
-                    'assets/images/tela_login.jpeg',
-                    fit: BoxFit.cover
-                  ),
-                ),
-
-                Expanded(
-                  child: SingleChildScrollView(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                      child: Column(
-                        children: [
-                          const SizedBox(height: 30),
-                          const Text(
-                            "Entrar",
-                            style: TextStyle(
-                              fontSize: 22,
-                              fontWeight: FontWeight.bold
-                              ),
-                            ),
-                          const SizedBox(height: 20),
-                          const AuthLoginnForm(),
-                          const SizedBox(height: 20),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              const Text(
-                                "Esqueci minha senha.",
-                                style: TextStyle(
-                                fontSize: 12,
-                              ),
-                            ),
-                            TextButton(
-                              onPressed: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(builder: (context) => RecoveryPasswordScreen()),
-                                );
-                              },
-                              child: const Text(
-                                "Recuperar agora",
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.bold
-                                ),
-                              ),
-                            ),
-                            ],
-                          ),
-                          const SizedBox(height: 15),   
-                          ButtonLoading(
-                            onPressed: tryLoginWithEmailPassword,
-                            loadingStatusStreamValue: _controller.buttonLoadingValue,
-                            label: "Entrar",
-                            ), 
-                          const SizedBox(height: 40), // Espaço pro rodapé
-                        ],
-                      )
-                    ),
-                  ),
-                )
-              ],
+      body: CustomScrollView(
+        controller: _controller.sliverAppBarController.scrollController,
+        slivers: [
+          SliverAppBar(
+            elevation: 0,
+            automaticallyImplyLeading: true,
+            collapsedHeight:
+                _controller.sliverAppBarController.collapsedBarHeight,
+            expandedHeight:
+                _controller.sliverAppBarController.expandedBarHeight,
+            pinned: true,
+            backgroundColor: Theme.of(context).primaryColor,
+            title: MainLogo(),
+            flexibleSpace: FlexibleSpaceBar(
+              collapseMode: CollapseMode.parallax,
+              background: AuthHeaderExpandedContent(),
             ),
-          Positioned(          
-            bottom: 0,
-            left: 0,
-            right: 0,
-            child: SizedBox(
-              width: double.infinity,
-              height: 40,
-              child: Image.asset(
-                'assets/images/rodape.jpeg',
-                fit: BoxFit.cover
+          ),
+          PinnedHeaderSliver(child: AuthHeaderHeadline()),
+          PinnedHeaderSliver(
+            child: Center(
+              child: Padding(
+                padding: EdgeInsets.symmetric(horizontal: 24.0, vertical: 24),
+                child: AuthLoginCanvaContent(
+                  navigateToPasswordRecover: _navigateToPasswordRecover,
+                ),
               ),
             ),
           ),
@@ -117,33 +69,55 @@ class _AuthLoginScreenState extends State<AuthLoginScreen> {
     );
   }
 
+  @override
+  void didChangeMetrics() {
+    super.didChangeMetrics();
+
+    _listenKeyboardState();
+  }
+
+  void _listenKeyboardState() {
+    final keyboardIsOpened = View.of(context).viewInsets.bottom > 0;
+
+    _controller.sliverAppBarController.keyboardIsOpened.addValue(
+      keyboardIsOpened,
+    );
+
+    if (keyboardIsOpened) {
+      _shrinkSliverAppBar();
+    } else {
+      _expandSliverAppBar();
+    }
+  }
+
+  void _shrinkSliverAppBar() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _controller.sliverAppBarController.shrink();
+    });
+  }
+
+  void _expandSliverAppBar() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _controller.sliverAppBarController.expand();
+    });
+  }
+
   void _onGeneralError(String? error) {
     if (error != null) {
       ScaffoldMessenger.of(context).showSnackBar(_messageSnack);
     }
   }
 
-  Future<void> tryLoginWithEmailPassword() async {
-    await _controller.tryLoginWithEmailPassword();
-    navigateToAuthorizedPage();
+  Future<void> _navigateToPasswordRecover() async {
+    final emailReturned = await context.router.push<String>(
+      RecoveryPasswordRoute(initialEmmail: _controller.emailController.text),
+    );
+
+    _controller.emailController.textController.text =
+        emailReturned ?? _controller.emailController.text;
   }
-
-  // Future<void> navigateToPasswordRecover() async {
-  //   await context.router.push(
-  //     AuthPasswordRecoverRoute(
-  //       initialEmail: _controller.emailController.text,
-  //     ),
-  //   );
-  // }
-
-  // Future<void> navigateToRegister() async {
-  //   await context.router.push(AuthRegisterRoute(
-  //     initialEmail: _controller.emailController.text,
-  //   ));
-  // }
-
-  Future<void> navigateToAuthorizedPage() async =>
-      await context.router.replace(const ProtectedRoute());
 
   SnackBar get _messageSnack {
     return SnackBar(
@@ -160,7 +134,7 @@ class _AuthLoginScreenState extends State<AuthLoginScreen> {
   @override
   void dispose() {
     super.dispose();
+    WidgetsBinding.instance.removeObserver(this);
     GetIt.I.unregister<AuthLoginControllerContract>();
   }
 }
-

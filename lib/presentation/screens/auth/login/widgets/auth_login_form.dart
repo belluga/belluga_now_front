@@ -7,11 +7,13 @@ import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 
 class AuthLoginnForm extends StatelessWidget {
-  const AuthLoginnForm({super.key});
+
+  final _controller = GetIt.I.get<AuthLoginControllerContract>();
+
+  AuthLoginnForm({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final _controller = GetIt.I.get<AuthLoginControllerContract>();
 
     return Form(
       key: _controller.loginFormKey,

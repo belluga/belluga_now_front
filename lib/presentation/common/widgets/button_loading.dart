@@ -5,14 +5,12 @@ class ButtonLoading extends StatelessWidget {
   final Function()? onPressed;
   final StreamValue<bool> loadingStatusStreamValue;
   final String label;
-  final IconData? icon;
 
   const ButtonLoading({
     super.key,
     this.onPressed,
     required this.loadingStatusStreamValue,
     this.label = "Submit",
-    this.icon,
   });
 
   @override
@@ -20,19 +18,6 @@ class ButtonLoading extends StatelessWidget {
     return StreamValueBuilder(
       streamValue: loadingStatusStreamValue,
       builder: (context, loadingStatus) {
-        if (loadingStatus) {
-          return SizedBox(
-            width: double.infinity,
-            height: 90,
-            child: Center(
-              child: CircularProgressIndicator(
-                color: Theme.of(context).colorScheme.primary,
-                strokeWidth: 2.5,
-              ),
-            ),
-          );
-        }
-
         return ElevatedButton(
           onPressed: onPressed,
           style: ElevatedButton.styleFrom(
@@ -46,15 +31,31 @@ class ButtonLoading extends StatelessWidget {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              if (icon != null) Icon(icon),
-              const SizedBox(width: 8),
-              Text(
-                label,
-                style: const TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  if (loadingStatus)
+                    SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: Center(
+                        child: CircularProgressIndicator(
+                          color: Theme.of(context).colorScheme.inversePrimary,
+                          strokeWidth: 4,
+                        ),
+                      ),
+                    ),
+                  SizedBox(
+                    width: loadingStatus ? 16 : 0,
+                  ), // Space between icon and text
+                  Text(
+                    label,
+                    style: TextTheme.of(context).titleMedium?.copyWith(
+                      color: Theme.of(context).colorScheme.onPrimary,
+                    ),
+                  ),
+                  if (loadingStatus) SizedBox(width: 32, height: 32),
+                ],
               ),
             ],
           ),

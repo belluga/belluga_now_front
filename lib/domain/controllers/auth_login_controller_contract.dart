@@ -4,10 +4,11 @@ import 'package:flutter_laravel_backend_boilerplate/domain/repositories/auth_rep
 import 'package:flutter_laravel_backend_boilerplate/domain/user/user_belluga.dart';
 import 'package:flutter_laravel_backend_boilerplate/presentation/screens/auth/login/controller/form_field_controller_email.dart';
 import 'package:flutter_laravel_backend_boilerplate/presentation/screens/auth/login/controller/form_field_controller_password_login.dart';
+import 'package:flutter_laravel_backend_boilerplate/presentation/screens/auth/login/controller/sliver_app_bar_controller.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value.dart';
 
-abstract class AuthLoginControllerContract extends Disposable{
+abstract class AuthLoginControllerContract extends Object with Disposable{
   AuthLoginControllerContract({
     String? initialEmail,
     String? initialPassword,
@@ -18,6 +19,8 @@ abstract class AuthLoginControllerContract extends Disposable{
   }
 
   final _authRepository = GetIt.I.get<AuthRepositoryContract>();
+
+  final sliverAppBarController = SliverAppBarController();
 
   StreamValue<UserBelluga> get userBelluga =>
       _authRepository.userStreamValue as StreamValue<UserBelluga>;

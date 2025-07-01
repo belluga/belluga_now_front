@@ -5,18 +5,25 @@ import 'package:flutter_laravel_backend_boilerplate/presentation/screens/auth/lo
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value.dart';
 
-class AuthRecoveryPasswordController  implements AuthRecoveryPasswordControllerContract{
+class AuthRecoveryPasswordController
+    implements AuthRecoveryPasswordControllerContract {
+  AuthRecoveryPasswordController({String? initialEmail}) {
+    if (initialEmail != null) {
+      emailController.textController.text = initialEmail;
+    }
+  }
+
   @override
   final formKey = GlobalKey<FormState>();
-  
+
   @override
   final emailController = FormFieldControllerEmail();
 
   @override
   final loading = StreamValue<bool>(defaultValue: false);
-  
+
   @override
-  final error =  StreamValue<String>(defaultValue: '');
+  final error = StreamValue<String>(defaultValue: '');
 
   final _authRepository = GetIt.I<AuthRepositoryContract>();
 
@@ -35,7 +42,10 @@ class AuthRecoveryPasswordController  implements AuthRecoveryPasswordControllerC
 
     try {
       if (validate()) {
-        await _authRepository.sendTokenRecoveryPassword(emailController.value, codigoEnviado!);
+        await _authRepository.sendTokenRecoveryPassword(
+          emailController.value,
+          codigoEnviado!,
+        );
         // Simulate a successful response
       }
     } catch (e) {
