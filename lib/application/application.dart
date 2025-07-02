@@ -2,15 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_laravel_backend_boilerplate/application/helpers/url_strategy/url_strategy.dart';
 import 'package:flutter_laravel_backend_boilerplate/application/router/app_router.dart';
-import 'package:flutter_laravel_backend_boilerplate/domain/controllers/auth_login_controller_contract.dart';
-import 'package:flutter_laravel_backend_boilerplate/domain/controllers/recovery_password_token_controller_contract.dart';
 import 'package:flutter_laravel_backend_boilerplate/domain/controllers/remember_password_contract.dart';
 import 'package:flutter_laravel_backend_boilerplate/domain/repositories/auth_repository_contract.dart';
 import 'package:flutter_laravel_backend_boilerplate/domain/tenant/tenant.dart';
 import 'package:flutter_laravel_backend_boilerplate/infrastructure/repositories/auth_repository.dart';
-import 'package:flutter_laravel_backend_boilerplate/presentation/screens/auth/login/controller/auth_login_controller.dart';
+import 'package:flutter_laravel_backend_boilerplate/infrastructure/services/laravel_backend/backend_contract.dart';
+import 'package:flutter_laravel_backend_boilerplate/infrastructure/services/laravel_backend/mock_backend.dart';
 import 'package:flutter_laravel_backend_boilerplate/presentation/screens/auth/login/controller/remember_password_controller.dart';
-import 'package:flutter_laravel_backend_boilerplate/presentation/screens/auth/recovery_password_bug/controller/recovery_password_token_controller.dart';
 import 'package:get_it/get_it.dart';
 import 'package:intl/intl_standalone.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -45,6 +43,9 @@ class Application extends StatelessWidget {
   }
 
   Future<void> _initInjections() async {
+
+    GetIt.I.registerSingleton<BackendContract>(MockBackend());
+
     GetIt.I.registerLazySingleton<AuthRepositoryContract>(
       () => AuthRepository(),
     );
@@ -68,6 +69,34 @@ class Application extends StatelessWidget {
 
   ThemeData _themeData() {
     return ThemeData(
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Color(0xFF004B7C),
+          foregroundColor: Color(0xFFFFFFFF),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(100.0),
+          ),
+          padding: EdgeInsets.symmetric(vertical: 16.0, horizontal: 32.0),
+        ),
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(4.0),
+          borderSide: BorderSide(color: Color(0xFFFFFFFF)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(4.0),
+          borderSide: BorderSide(color: Color(0xFF00E6B8)),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(4.0),
+          borderSide: BorderSide(color: Color(0xFFFF0000)),
+        ),
+        labelStyle: TextStyle(
+          color: Color(0xFFFFFFFF),
+        ),
+        
+      ),
       colorScheme: ColorScheme(
         brightness: Brightness.dark,
         primary: Color(0xFF007FF9),
@@ -96,8 +125,8 @@ class Application extends StatelessWidget {
         inversePrimary: Color(0xFF004B7C),
         scrim: Color(0xFF000000),
         shadow: Color(0xFF000000),
-        )
-      );
+      ),
+    );
   }
 
   // Future<void> initializeFirebase() async {
@@ -106,9 +135,9 @@ class Application extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-
     return MaterialApp.router(
       theme: _themeData(),
-      routerConfig: _appRouter.config());
+      routerConfig: _appRouter.config(),
+    );
   }
 }

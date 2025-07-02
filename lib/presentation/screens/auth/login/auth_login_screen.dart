@@ -112,20 +112,28 @@ class _AuthLoginScreenState extends State<AuthLoginScreen>
 
   Future<void> _navigateToPasswordRecover() async {
     final emailReturned = await context.router.push<String>(
-      RecoveryPasswordRoute(initialEmmail: _controller.emailController.text),
+      RecoveryPasswordRoute(
+        initialEmmail: _controller.authEmailFieldController.text,
+      ),
     );
 
-    _controller.emailController.textController.text =
-        emailReturned ?? _controller.emailController.text;
+    _controller.authEmailFieldController.textController.text =
+        emailReturned ?? _controller.authEmailFieldController.text;
   }
 
   SnackBar get _messageSnack {
     return SnackBar(
+      closeIconColor: Theme.of(context).colorScheme.onError,
+      showCloseIcon: true,
       backgroundColor: Theme.of(context).colorScheme.error,
       content: SizedBox(
-        height: 160,
         child: Center(
-          child: Text(_controller.generalErrorStreamValue.value ?? ""),
+          child: Text(
+            _controller.generalErrorStreamValue.value ?? "",
+            style: TextTheme.of(context).bodyMedium?.copyWith(
+              color: Theme.of(context).colorScheme.onError,
+            ),
+          ),
         ),
       ),
     );

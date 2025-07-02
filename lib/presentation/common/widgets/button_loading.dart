@@ -20,14 +20,6 @@ class ButtonLoading extends StatelessWidget {
       builder: (context, loadingStatus) {
         return ElevatedButton(
           onPressed: onPressed,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Theme.of(context).colorScheme.primary,
-            foregroundColor: Colors.white,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(30),
-            ),
-            elevation: 5,
-          ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -40,13 +32,13 @@ class ButtonLoading extends StatelessWidget {
                       height: 16,
                       child: Center(
                         child: CircularProgressIndicator(
-                          color: Theme.of(context).colorScheme.inversePrimary,
+                          color: Theme.of(context).colorScheme.secondary,
                           strokeWidth: 4,
                         ),
                       ),
                     ),
                   SizedBox(
-                    width: loadingStatus ? 16 : 0,
+                    width: loadingStatus ? 24 : 0,
                   ), // Space between icon and text
                   Text(
                     label,

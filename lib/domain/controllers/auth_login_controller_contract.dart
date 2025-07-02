@@ -13,7 +13,8 @@ abstract class AuthLoginControllerContract extends Object with Disposable{
     String? initialEmail,
     String? initialPassword,
   }) {
-    emailController = FormFieldControllerEmail(initialValue: initialEmail);
+    authEmailFieldController = FormFieldControllerEmail(initialValue: initialEmail);
+
     passwordController =
         FormFieldControllerPasswordLogin(initialValue: initialPassword);
   }
@@ -33,13 +34,13 @@ abstract class AuthLoginControllerContract extends Object with Disposable{
 
   bool get isAuthorized => _authRepository.isAuthorized;
 
-  late FormFieldControllerEmail emailController;
+  late FormFieldControllerEmail authEmailFieldController;
 
   late FormFieldControllerPasswordLogin passwordController;
 
   final generalErrorStreamValue = StreamValue<String?>();
 
-  void cleanEmailError(_) => emailController.cleanError();
+  void cleanEmailError(_) => authEmailFieldController.cleanError();
   void cleanPasswordError(_) => passwordController.cleanError();
 
   void _cleanAllErrors() {
@@ -51,6 +52,7 @@ abstract class AuthLoginControllerContract extends Object with Disposable{
   bool validate() => loginFormKey.currentState?.validate() ?? false;
 
   Future<void> tryLoginWithEmailPassword() async {
+    
     buttonLoadingValue.addValue(true);
     fieldEnabled.addValue(false);
 
@@ -59,15 +61,14 @@ abstract class AuthLoginControllerContract extends Object with Disposable{
     try {
       if (validate()) {
         await _authRepository.loginWithEmailPassword(
-          emailController.value,
+          authEmailFieldController.value,
           passwordController.value,
         );
       }
-    } on BellugaAuthError catch (e) {
-      
+    } on BellugaAuthError catch (e) {      
       switch (e.runtimeType) {
         case const (AuthErrorEmail):
-          emailController.addError(e.message);
+          authEmailFieldController.addError(e.message);
           break;
         case const (AuthErrorPassword):
           passwordController.addError(e.message);
@@ -85,7 +86,7 @@ abstract class AuthLoginControllerContract extends Object with Disposable{
 
   @override
   void onDispose() {
-    emailController.dispose();
+    authEmailFieldController.dispose();
     passwordController.dispose();
     generalErrorStreamValue.dispose();
     buttonLoadingValue.dispose();

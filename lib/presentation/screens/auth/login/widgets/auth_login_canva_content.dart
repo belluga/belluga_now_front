@@ -38,8 +38,6 @@ class _AuthLoginCanvaContentState extends State<AuthLoginCanvaContent>
         StreamValueBuilder(
           streamValue: _controller.sliverAppBarController.keyboardIsOpened,
           builder: (context, isOpened) {
-            print('isOpened');
-            print(isOpened);
 
             if (isOpened) {
               return const SizedBox.shrink();

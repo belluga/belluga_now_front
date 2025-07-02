@@ -24,7 +24,7 @@ class AuthLoginnForm extends StatelessWidget {
             children: [
               AuthEmailField(
                 key: WidgetKeys.auth.loginEmailField,
-                formFieldController: _controller.emailController,
+                formFieldController: _controller.authEmailFieldController,
                 isEnabled: fieldEnabled,
               ),
               const SizedBox(height: 30),
