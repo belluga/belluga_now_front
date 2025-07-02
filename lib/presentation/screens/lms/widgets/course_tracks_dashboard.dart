@@ -26,6 +26,7 @@ class _CourseTracksDashboardState extends State<CourseTracksDashboard> {
             padding: const EdgeInsets.symmetric(horizontal: 16),
             sliver: SliverGrid.builder(
               gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                childAspectRatio: 0.9,
                 crossAxisCount: 3,
               ),
               itemBuilder: _itemsBuilder,
@@ -44,7 +45,7 @@ class _CourseTracksDashboardState extends State<CourseTracksDashboard> {
     return Card.filled(
       color: Theme.of(context).colorScheme.surfaceDim,
       child: SizedBox(
-        height: 120,
+        height: 200,
         child: Center(child: Text("Item ${index + 1}")),
       ),
     );
