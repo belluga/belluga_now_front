@@ -22,7 +22,7 @@ class HomeScreen extends StatelessWidget {
             Text(BellugaConstants.settings.platform),
             ElevatedButton(
               key: WidgetKeys.auth.navigateToProtectedButton,
-              onPressed: () => context.router.push(const ProtectedRoute()),
+              onPressed: () => context.router.push(const DashboardRoute()),
               child: const Text("goto Protected"),
             ),
           ],

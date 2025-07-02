@@ -9,8 +9,8 @@ class AppRouter extends RootStackRouter {
     AutoRoute(path: "/init", page: InitRoute.page, initial: true),
     AutoRoute(path: "/", page: HomeRoute.page),
     AutoRoute(
-      path: "/protected-page",
-      page: ProtectedRoute.page,
+      path: "/dashboard",
+      page: DashboardRoute.page,
       guards: [AuthGuard()],
     ),
     AutoRoute(path: "/login", page: AuthLoginRoute.page),

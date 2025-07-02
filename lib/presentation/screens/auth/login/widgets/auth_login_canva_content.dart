@@ -93,7 +93,7 @@ class _AuthLoginCanvaContentState extends State<AuthLoginCanvaContent>
   }
 
   Future<void> _navigateToAuthorizedPage() async =>
-      await context.router.replace(const ProtectedRoute());
+      await context.router.replace(const DashboardRoute());
 
   @override
   void dispose() {

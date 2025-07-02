@@ -86,8 +86,8 @@ class _AuthCreateNewPasswordScreenState extends State<AuthCreateNewPasswordScree
     }
   }
 
-  Future<void> navigateToAuthorizedPage() async =>
-      await context.router.replace(const ProtectedRoute());
+  Future<void> navigateToDashboard() async =>
+      await context.router.replace(const DashboardRoute());
 
   SnackBar get _messageSnack {
     return SnackBar(
