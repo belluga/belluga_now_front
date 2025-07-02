@@ -36,7 +36,7 @@ class LaravelBackend extends BackendContract {
       return (userDTO, token);
 
     } on DioException catch (e) {
-      
+
       String? errorMessage = e.response?.data["message"];
       final Map<String, dynamic> errors = e.response?.data["errors"];
 

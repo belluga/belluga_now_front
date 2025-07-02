@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_laravel_backend_boilerplate/presentation/screens/auth/widgets/auth_email_contract.dart';
+import 'package:flutter_laravel_backend_boilerplate/presentation/screens/auth/widgets/form_field_belluga.dart';
 
 class AuthPasswordField extends FormFieldBelluga {
   const AuthPasswordField({
@@ -10,6 +10,9 @@ class AuthPasswordField extends FormFieldBelluga {
 
   @override
   String get label => "Senha";
+
+  @override
+  String get hint => "Sua senha";
 
   @override
   TextInputType get inputType => TextInputType.visiblePassword;

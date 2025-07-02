@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_laravel_backend_boilerplate/presentation/screens/auth/widgets/auth_email_contract.dart';
+import 'package:flutter_laravel_backend_boilerplate/presentation/screens/auth/widgets/form_field_belluga.dart';
 
 class AuthEmailField extends FormFieldBelluga {
   const AuthEmailField({
@@ -8,9 +8,13 @@ class AuthEmailField extends FormFieldBelluga {
     required super.formFieldController,
   });
 
-  @override
+ @override
   String get label => "Email";
+
+  @override
+  String get hint => "Seu email";
 
   @override
   TextInputType get inputType => TextInputType.emailAddress;
 }
+

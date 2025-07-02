@@ -4,6 +4,7 @@ import 'package:value_objects/domain/exceptions/value_exceptions.dart';
 import 'package:value_objects/value_object.dart';
 
 abstract class FormFieldControllerContract<T> {
+  
   FormFieldControllerContract({String? initialValue}) {
     textController = TextEditingController(text: initialValue);
   }
@@ -11,7 +12,10 @@ abstract class FormFieldControllerContract<T> {
   ValueObject<T> get valueObject;
 
   late TextEditingController textController;
+
   final errorStreamValue = StreamValue<String?>();
+
+  bool alreadyTriedValidation = false;
 
   String get text => textController.text;
 
@@ -22,8 +26,11 @@ abstract class FormFieldControllerContract<T> {
   String? validator(String? valueText) {
     late String? _errorMessage;
 
+    alreadyTriedValidation = true;
+
     try {
       valueObject.parse(valueText);
+      errorStreamValue.addValue(null);
       return null;
     } on ValueException catch (e) {
       _errorMessage = errorToString(e);
@@ -35,6 +42,12 @@ abstract class FormFieldControllerContract<T> {
     return _errorMessage;
   }
 
+  void onChange(String value){
+    if(alreadyTriedValidation){
+      validator(value);
+    }
+  }
+
   void addValue(String value) {
     textController.text = value;
     valueObject.tryParse(text);
@@ -42,7 +55,9 @@ abstract class FormFieldControllerContract<T> {
 
   void addError(String errror) => errorStreamValue.addValue(errror);
 
-  void cleanError() => errorStreamValue.addValue(null);
+  void cleanError() {
+    errorStreamValue.addValue(null);
+  }
 
   void dispose() {
     textController.dispose();

@@ -4,20 +4,24 @@ import 'package:flutter_laravel_backend_boilerplate/domain/repositories/auth_rep
 import 'package:flutter_laravel_backend_boilerplate/domain/user/user_belluga.dart';
 import 'package:flutter_laravel_backend_boilerplate/presentation/screens/auth/login/controller/form_field_controller_email.dart';
 import 'package:flutter_laravel_backend_boilerplate/presentation/screens/auth/login/controller/form_field_controller_password_login.dart';
+import 'package:flutter_laravel_backend_boilerplate/presentation/screens/auth/login/controller/sliver_app_bar_controller.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value.dart';
 
-abstract class AuthLoginControllerContract extends Disposable{
+abstract class AuthLoginControllerContract extends Object with Disposable{
   AuthLoginControllerContract({
     String? initialEmail,
     String? initialPassword,
   }) {
-    emailController = FormFieldControllerEmail(initialValue: initialEmail);
+    authEmailFieldController = FormFieldControllerEmail(initialValue: initialEmail);
+
     passwordController =
         FormFieldControllerPasswordLogin(initialValue: initialPassword);
   }
 
   final _authRepository = GetIt.I.get<AuthRepositoryContract>();
+
+  final sliverAppBarController = SliverAppBarController();
 
   StreamValue<UserBelluga> get userBelluga =>
       _authRepository.userStreamValue as StreamValue<UserBelluga>;
@@ -30,13 +34,13 @@ abstract class AuthLoginControllerContract extends Disposable{
 
   bool get isAuthorized => _authRepository.isAuthorized;
 
-  late FormFieldControllerEmail emailController;
+  late FormFieldControllerEmail authEmailFieldController;
 
   late FormFieldControllerPasswordLogin passwordController;
 
   final generalErrorStreamValue = StreamValue<String?>();
 
-  void cleanEmailError(_) => emailController.cleanError();
+  void cleanEmailError(_) => authEmailFieldController.cleanError();
   void cleanPasswordError(_) => passwordController.cleanError();
 
   void _cleanAllErrors() {
@@ -48,6 +52,7 @@ abstract class AuthLoginControllerContract extends Disposable{
   bool validate() => loginFormKey.currentState?.validate() ?? false;
 
   Future<void> tryLoginWithEmailPassword() async {
+    
     buttonLoadingValue.addValue(true);
     fieldEnabled.addValue(false);
 
@@ -56,15 +61,14 @@ abstract class AuthLoginControllerContract extends Disposable{
     try {
       if (validate()) {
         await _authRepository.loginWithEmailPassword(
-          emailController.value,
+          authEmailFieldController.value,
           passwordController.value,
         );
       }
-    } on BellugaAuthError catch (e) {
-      
+    } on BellugaAuthError catch (e) {      
       switch (e.runtimeType) {
         case const (AuthErrorEmail):
-          emailController.addError(e.message);
+          authEmailFieldController.addError(e.message);
           break;
         case const (AuthErrorPassword):
           passwordController.addError(e.message);
@@ -82,7 +86,7 @@ abstract class AuthLoginControllerContract extends Disposable{
 
   @override
   void onDispose() {
-    emailController.dispose();
+    authEmailFieldController.dispose();
     passwordController.dispose();
     generalErrorStreamValue.dispose();
     buttonLoadingValue.dispose();

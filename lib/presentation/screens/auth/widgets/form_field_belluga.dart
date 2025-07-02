@@ -13,6 +13,7 @@ abstract class FormFieldBelluga extends StatelessWidget {
   final bool isEnabled;
 
   String get label;
+  String get hint;
   TextInputType get inputType;
   bool get obscureText => false;
   TextCapitalization get textCapitalization => TextCapitalization.none;
@@ -28,11 +29,19 @@ abstract class FormFieldBelluga extends StatelessWidget {
           keyboardType: inputType,
           obscureText: obscureText,
           textCapitalization: textCapitalization,
-          onChanged: (_) => formFieldController.cleanError(),
+          onEditingComplete:
+              () => formFieldController.validator(
+                formFieldController.textController.text,
+              ),
+          onChanged: formFieldController.onChange,
           validator: formFieldController.validator,
           decoration: InputDecoration(
-            hintText: label,
+            suffixIcon: errorText != null ? Icon(Icons.error_outline) : null,
             errorText: errorText,
+            filled: true,
+            labelText: label,
+            hintText: hint,
+            floatingLabelBehavior: FloatingLabelBehavior.always,
           ),
         );
       },

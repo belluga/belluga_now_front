@@ -12,13 +12,13 @@ class BellugaConstants {
 class _ApiConstants {
   String get baseUrl {
     if (kIsWeb) {
-      return 'http://localhost:8000/api';
+      return 'http://unifast.localhost:8000/api';
     }else if(Platform.isAndroid){
-      return dotenv.env["API_URL_ANDROID"] ??
-          "http://10.0.2.2:8000/api";
+      return dotenv.env["API_BASE_URL_ANDROID"] ??
+          "http://10.0.2.2:5000/admin/api";
     }else{
-      return dotenv.env["API_URL_DEFAULT"] ??
-          "http://localhost:8000/api";
+      return dotenv.env["API_BASE_URL_DEFAULT"] ??
+          "http://localhost:8000/admin/api";
     }
   } 
 

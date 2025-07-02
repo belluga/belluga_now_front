@@ -7,11 +7,13 @@ import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 
 class AuthLoginnForm extends StatelessWidget {
-  const AuthLoginnForm({super.key});
+
+  final _controller = GetIt.I.get<AuthLoginControllerContract>();
+
+  AuthLoginnForm({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final _controller = GetIt.I.get<AuthLoginControllerContract>();
 
     return Form(
       key: _controller.loginFormKey,
@@ -22,9 +24,10 @@ class AuthLoginnForm extends StatelessWidget {
             children: [
               AuthEmailField(
                 key: WidgetKeys.auth.loginEmailField,
-                formFieldController: _controller.emailController,
+                formFieldController: _controller.authEmailFieldController,
                 isEnabled: fieldEnabled,
               ),
+              const SizedBox(height: 30),
               AuthPasswordField(
                 key: WidgetKeys.auth.loginPasswordField,
                 formFieldController: _controller.passwordController,

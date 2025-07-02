@@ -18,6 +18,9 @@ class _WidgetKeysAuth {
   Key get signupPasswordField => const Key("signup_password_field");
   Key get signupButton => const Key("signup_button");
   Key get recoverButton => const Key("recover_button");
+  Key get recoverEmailField => const Key("recover_email_field");
+  Key get newPasswordField => const Key("new_password_field");
+  Key get newPasswordConfirmField => const Key("new_password_confirm_field");
 }
 
 class _WidgetKeysSplash {
