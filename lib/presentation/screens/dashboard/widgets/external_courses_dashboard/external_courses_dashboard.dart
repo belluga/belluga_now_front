@@ -40,7 +40,6 @@ class _ExternalCoursesDashboardState extends State<ExternalCoursesDashboard> {
         return DashboardItemsSummary(
           title: "Cursos Externos",
           itemsPerRow: 1.1,
-          showAllLabel: "Ver todos",
           itemsBuilder: _itemsBuilder,
         );
       },
