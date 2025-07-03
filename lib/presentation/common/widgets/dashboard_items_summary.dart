@@ -6,13 +6,13 @@ class DashboardItemsSummary extends StatefulWidget {
   final String? showAllLabel;
   final Function()? onShowAllPressed;
   final double itemsPerRow;
-  final Widget? Function(BuildContext, int)? itemBuilder;
+  final Widget? Function(BuildContext, int)? itemsBuilder;
   final double itemHeight;
 
   const DashboardItemsSummary({
     super.key,
     required this.title,
-    this.itemBuilder,
+    this.itemsBuilder,
     this.showAllLabel,
     this.onShowAllPressed,
     this.itemsPerRow = 2.3,
@@ -46,7 +46,7 @@ class _DashboardItemsSummaryState extends State<DashboardItemsSummary> {
                         padding: const EdgeInsets.only(left: 16.0, right: 16),
                         scrollDirection: Axis.horizontal,
                         itemExtent: _itemExtentCalculation(),
-                        itemBuilder: widget.itemBuilder ?? _mockItemBuilder,
+                        itemBuilder: widget.itemsBuilder ?? _mockItemBuilder,
                       ),
                     ),
                   ),
