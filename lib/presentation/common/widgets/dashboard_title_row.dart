@@ -19,32 +19,35 @@ class DashboardTitleRow extends StatefulWidget {
 class _DashboardTitleRowState extends State<DashboardTitleRow> {
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(left: 24.0, top: 8.0, right: 8),
-      child: Row(
-        children: [
-          Expanded(
-            child: SizedBox(
-              child: Text(
-                widget.title,
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-            ),
-          ),
-          if (widget.showAllLabel != null)
-            ElevatedButton(
-              onPressed: widget.onShowAllPressed ?? () {},
-              style: Theme.of(context).elevatedButtonTheme.style?.copyWith(
-                padding: WidgetStateProperty.all<EdgeInsetsGeometry>(
-                  EdgeInsets.symmetric(horizontal: 24, vertical: 4),
+    return ConstrainedBox(
+      constraints: BoxConstraints(minHeight: 56.0),
+      child: Padding(
+        padding: const EdgeInsets.only(left: 24.0, top: 8.0, right: 8),
+        child: Row(
+          children: [
+            Expanded(
+              child: SizedBox(
+                child: Text(
+                  widget.title,
+                  style: Theme.of(context).textTheme.titleMedium,
                 ),
               ),
-              child: Text(
-                widget.showAllLabel ?? "",
-                style: TextTheme.of(context).labelSmall,
-              ),
             ),
-        ],
+            if (widget.showAllLabel != null)
+              ElevatedButton(
+                onPressed: widget.onShowAllPressed ?? () {},
+                style: Theme.of(context).elevatedButtonTheme.style?.copyWith(
+                  padding: WidgetStateProperty.all<EdgeInsetsGeometry>(
+                    EdgeInsets.symmetric(horizontal: 24, vertical: 4),
+                  ),
+                ),
+                child: Text(
+                  widget.showAllLabel ?? "",
+                  style: TextTheme.of(context).labelSmall,
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }

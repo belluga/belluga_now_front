@@ -59,6 +59,7 @@ class MockBackend extends BackendContract {
     ),
   );
 
+  //TODO: Retrieve partner name and logo to place on the Course.
   Map<String, dynamic> get _externalCoursesGetDashboardSummaryResponse => {
     "total": 2,
     "data": [
