@@ -4,8 +4,10 @@ import 'package:flutter_laravel_backend_boilerplate/application/helpers/url_stra
 import 'package:flutter_laravel_backend_boilerplate/application/router/app_router.dart';
 import 'package:flutter_laravel_backend_boilerplate/domain/controllers/remember_password_contract.dart';
 import 'package:flutter_laravel_backend_boilerplate/domain/repositories/auth_repository_contract.dart';
+import 'package:flutter_laravel_backend_boilerplate/domain/repositories/external_courses_repository_contract.dart';
 import 'package:flutter_laravel_backend_boilerplate/domain/tenant/tenant.dart';
 import 'package:flutter_laravel_backend_boilerplate/infrastructure/repositories/auth_repository.dart';
+import 'package:flutter_laravel_backend_boilerplate/infrastructure/repositories/external_courses_repository.dart';
 import 'package:flutter_laravel_backend_boilerplate/infrastructure/services/laravel_backend/backend_contract.dart';
 import 'package:flutter_laravel_backend_boilerplate/infrastructure/services/laravel_backend/mock_backend.dart';
 import 'package:flutter_laravel_backend_boilerplate/presentation/screens/auth/login/controller/remember_password_controller.dart';
@@ -43,11 +45,14 @@ class Application extends StatelessWidget {
   }
 
   Future<void> _initInjections() async {
-
     GetIt.I.registerSingleton<BackendContract>(MockBackend());
 
     GetIt.I.registerLazySingleton<AuthRepositoryContract>(
       () => AuthRepository(),
+    );
+
+    GetIt.I.registerLazySingleton<ExternalCoursesRepositoryContract>(
+      () => ExternalCoursesRepository(),
     );
 
     GetIt.I.registerLazySingleton<RememberPasswordContract>(
@@ -69,6 +74,10 @@ class Application extends StatelessWidget {
 
   ThemeData _themeData() {
     return ThemeData(
+      progressIndicatorTheme: ProgressIndicatorThemeData(
+        color: Color(0xFF00E6B8),
+        strokeWidth: 4,
+      ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           backgroundColor: Color(0xFF004B7C),
@@ -92,10 +101,7 @@ class Application extends StatelessWidget {
           borderRadius: BorderRadius.circular(4.0),
           borderSide: BorderSide(color: Color(0xFFFF0000)),
         ),
-        labelStyle: TextStyle(
-          color: Color(0xFFFFFFFF),
-        ),
-        
+        labelStyle: TextStyle(color: Color(0xFFFFFFFF)),
       ),
       colorScheme: ColorScheme(
         brightness: Brightness.dark,

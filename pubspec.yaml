@@ -19,7 +19,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 version: 1.0.0+1
 
 environment:
-  sdk: ^3.7.2
+  sdk: ^3.8.1
 
 # Dependencies specify other packages that your package needs in order to work.
 # To automatically upgrade your package dependencies to the latest versions
@@ -43,15 +43,16 @@ dependencies:
   package_info_plus: ^8.3.0
   platform_device_id_plus: ^1.0.7
   sentry_flutter: ^9.1.0
+  url_launcher: ^6.3.1
 
   stream_value:
-    path: ../packages/stream_value
+    path: ../../../flutter/packages/stream_value
     # git:
     #   url: https://github.com/belluga/stream_value.git
     #   ref: v0.0.4
 
   value_objects:
-    path: ../packages/value_objects
+    path: ../../../flutter/packages/value_objects
     # git:
     #   url: https://github.com/belluga/value_objects.git
     #   ref: v0.0.4
