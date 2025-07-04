@@ -4,7 +4,7 @@ import 'package:flutter_laravel_backend_boilerplate/presentation/common/widgets/
 import 'package:flutter_laravel_backend_boilerplate/presentation/common/widgets/profile_action_button/profile_action_button.dart';
 import 'package:flutter_laravel_backend_boilerplate/presentation/screens/events/widgets/next_events_dashboard.dart';
 import 'package:flutter_laravel_backend_boilerplate/presentation/screens/dashboard/widgets/external_courses_dashboard/external_courses_dashboard.dart';
-import 'package:flutter_laravel_backend_boilerplate/presentation/screens/lms/widgets/current_courses_dashboard.dart';
+import 'package:flutter_laravel_backend_boilerplate/presentation/screens/dashboard/widgets/my_courses_dashboard/my_courses_dashboard.dart';
 import 'package:flutter_laravel_backend_boilerplate/presentation/screens/lms/widgets/course_tracks_dashboard.dart';
 
 @RoutePage()
@@ -46,7 +46,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.only(top: 16.0),
-              child: CurrentCoursesDashboard(),
+              child: MyCoursesDashboard(),
             ),
           ),
           SliverToBoxAdapter(

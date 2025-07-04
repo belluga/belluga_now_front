@@ -1,9 +1,9 @@
-import 'package:flutter_laravel_backend_boilerplate/domain/external_course/external_course.dart';
+import 'package:flutter_laravel_backend_boilerplate/domain/external_course/external_course_dashboard.dart';
 import 'package:flutter_laravel_backend_boilerplate/infrastructure/services/dal/dto/external_courses_summary_dto.dart';
 
 class ExternalCoursesSummary {
   final int total;
-  final List<ExternalCourse> items;
+  final List<ExternalCourseDashboard> items;
 
   ExternalCoursesSummary({
     required this.total,
@@ -15,7 +15,7 @@ class ExternalCoursesSummary {
   ) {
     final _total = externalCourseSummary.total;
     final _items = externalCourseSummary.items
-        .map((item) => ExternalCourse.fromDTO(item))
+        .map((item) => ExternalCourseDashboard.fromDTO(item))
         .toList();
 
     return ExternalCoursesSummary(total: _total, items: _items);

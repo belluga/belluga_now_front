@@ -4,6 +4,7 @@ import 'package:flutter_laravel_backend_boilerplate/domain/auth/errors/belluga_a
 import 'package:flutter_laravel_backend_boilerplate/domain/repositories/auth_repository_contract.dart';
 import 'package:flutter_laravel_backend_boilerplate/domain/tenant/tenant.dart';
 import 'package:flutter_laravel_backend_boilerplate/infrastructure/services/dal/dto/external_courses_summary_dto.dart';
+import 'package:flutter_laravel_backend_boilerplate/infrastructure/services/dal/dto/my_courses_summary_dto.dart';
 import 'package:flutter_laravel_backend_boilerplate/infrastructure/services/dal/dto/user_dto.dart';
 import 'package:flutter_laravel_backend_boilerplate/infrastructure/services/laravel_backend/backend_contract.dart';
 import 'package:get_it/get_it.dart';
@@ -93,6 +94,16 @@ class LaravelBackend extends BackendContract {
     );
 
     return ExternalCoursesSummaryDTO.fromMap(response.data);
+  }
+
+  Future<MyCoursesSummaryDTO> myCoursesGetDashboardSummary() async {
+    //TODO: Implement this method to fetch the external courses summary.
+    final response = await dio.post(
+      BellugaConstants.api.baseUrl + _Paths.loginCheck,
+      options: Options(headers: _getAuthenticatedHeaders()),
+    );
+
+    return MyCoursesSummaryDTO.fromMap(response.data);
   }
 }
 

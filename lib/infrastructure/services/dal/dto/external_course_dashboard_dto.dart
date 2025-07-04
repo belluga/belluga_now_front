@@ -1,4 +1,4 @@
-class ExternalCourseDTO {
+class ExternalCourseDashboardDTO {
   final String id;
   final String thumUrl;
   final String title;
@@ -6,7 +6,7 @@ class ExternalCourseDTO {
   final String platformUrl;
   final String? initialPassword;
 
-  ExternalCourseDTO({
+  ExternalCourseDashboardDTO({
     required this.id,
     required this.thumUrl,
     required this.title,
@@ -15,7 +15,7 @@ class ExternalCourseDTO {
     this.initialPassword,
   });
 
-  factory ExternalCourseDTO.fromMap(Map<String, Object?> map) {
+  factory ExternalCourseDashboardDTO.fromMap(Map<String, Object?> map) {
     final _id = map['id'] as String;
     final _thumb = map['thumb_url'] as String;
     final _title = map['title'] as String;
@@ -23,7 +23,7 @@ class ExternalCourseDTO {
     final _platformUrl = map['platform_url'] as String;
     final _initialPassword = map['initial_password'] as String?;
 
-    return ExternalCourseDTO(
+    return ExternalCourseDashboardDTO(
       id: _id,
       description: _description,
       platformUrl: _platformUrl,

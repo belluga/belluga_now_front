@@ -5,8 +5,10 @@ import 'package:flutter_laravel_backend_boilerplate/application/router/app_route
 import 'package:flutter_laravel_backend_boilerplate/domain/controllers/remember_password_contract.dart';
 import 'package:flutter_laravel_backend_boilerplate/domain/repositories/auth_repository_contract.dart';
 import 'package:flutter_laravel_backend_boilerplate/domain/repositories/external_courses_repository_contract.dart';
+import 'package:flutter_laravel_backend_boilerplate/domain/repositories/my_courses_repository_contract.dart';
 import 'package:flutter_laravel_backend_boilerplate/domain/tenant/tenant.dart';
 import 'package:flutter_laravel_backend_boilerplate/infrastructure/repositories/auth_repository.dart';
+import 'package:flutter_laravel_backend_boilerplate/infrastructure/repositories/external_courses_repository%20copy.dart';
 import 'package:flutter_laravel_backend_boilerplate/infrastructure/repositories/external_courses_repository.dart';
 import 'package:flutter_laravel_backend_boilerplate/infrastructure/services/laravel_backend/backend_contract.dart';
 import 'package:flutter_laravel_backend_boilerplate/infrastructure/services/laravel_backend/mock_backend.dart';
@@ -53,6 +55,10 @@ class Application extends StatelessWidget {
 
     GetIt.I.registerLazySingleton<ExternalCoursesRepositoryContract>(
       () => ExternalCoursesRepository(),
+    );
+
+    GetIt.I.registerLazySingleton<MyCoursesRepositoryContract>(
+      () => MyCoursesRepository(),
     );
 
     GetIt.I.registerLazySingleton<RememberPasswordContract>(

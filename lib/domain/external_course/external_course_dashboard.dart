@@ -3,16 +3,16 @@ import 'package:flutter_laravel_backend_boilerplate/domain/external_course/value
 import 'package:flutter_laravel_backend_boilerplate/domain/external_course/value_objects/external_course_platform_uri_value.dart';
 import 'package:flutter_laravel_backend_boilerplate/domain/external_course/value_objects/external_course_thumb_uri_value.dart';
 import 'package:flutter_laravel_backend_boilerplate/domain/external_course/value_objects/external_course_title_value.dart';
-import 'package:flutter_laravel_backend_boilerplate/infrastructure/services/dal/dto/external_course_dto.dart';
+import 'package:flutter_laravel_backend_boilerplate/infrastructure/services/dal/dto/external_course_dashboard_dto.dart';
 
-class ExternalCourse {
+class ExternalCourseDashboard {
   final ExternalCourseThumbUriValue thumbUrl;
   final ExternalCourseTitleValue title;
   final ExternalCourseDescriptionValue description;
   final ExternalCoursePlatformUriValue platformUrl;
   final ExternalCourseInitialPasswordValue initialPassword;
 
-  ExternalCourse({
+  ExternalCourseDashboard({
     required this.title,
     required this.description,
     required this.platformUrl,
@@ -20,7 +20,7 @@ class ExternalCourse {
     required this.initialPassword,
   });
 
-  factory ExternalCourse.fromDTO(ExternalCourseDTO externalCourse) {
+  factory ExternalCourseDashboard.fromDTO(ExternalCourseDashboardDTO externalCourse) {
     final _thumbValue = ExternalCourseThumbUriValue(defaultValue: Uri.parse("https://www.istockphoto.com/br/vetor/sem-imagem-dispon%C3%ADvel-espa%C3%A7o-de-vis%C3%A3o-design-de-ilustra%C3%A7%C3%A3o-do-%C3%ADcone-da-miniatura-gm1409329028-459910308"))
       ..tryParse(externalCourse.thumUrl);
 
@@ -36,7 +36,7 @@ class ExternalCourse {
     final _initialPassword = ExternalCourseInitialPasswordValue()
       ..tryParse(externalCourse.initialPassword);
 
-    return ExternalCourse(
+    return ExternalCourseDashboard(
       thumbUrl: _thumbValue,
       title: _titleValue,
       description: _description,
