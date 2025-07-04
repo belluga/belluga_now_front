@@ -18,5 +18,6 @@ class AppRouter extends RootStackRouter {
     // AutoRoute(page: AuthPasswordRecoverRoute.page),
     // AutoRoute(page: AuthPasswordRecoverConfirmationRoute.page),
     AutoRoute(path: "/profile", page: ProfileRoute.page),
+    AutoRoute(page: CourseRoute.page),
   ];
 }

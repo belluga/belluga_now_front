@@ -6,7 +6,7 @@ class MyCourseDashboardLessonDto {
 
   MyCourseDashboardLessonDto({required this.id,required this.title, required this.description,required this.thumbUrl});
 
-  factory MyCourseDashboardLessonDto.fromMap(Map<String, Object?> map) {
+  factory MyCourseDashboardLessonDto.fromJson(Map<String, Object?> map) {
     final _id = map['id'] as String;
     final _thumb = map['thumb_url'] as String;
     final _title = map['title'] as String;

@@ -19,7 +19,7 @@ class UserProfileDTO {
     required this.pictureUrl,
   });
 
-  factory UserProfileDTO.fromMap(Map<String, Object?> map) {
+  factory UserProfileDTO.fromJson(Map<String, Object?> map) {
     return UserProfileDTO(
       birthday: map[UserDtoLabels.profileLabels.birthday] as String?,
       email: map[UserDtoLabels.profileLabels.email] as String?,

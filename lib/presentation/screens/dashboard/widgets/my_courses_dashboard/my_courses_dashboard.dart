@@ -18,10 +18,9 @@ class _MyCoursesDashboardState extends State<MyCoursesDashboard> {
   @override
   void initState() {
     super.initState();
-    GetIt.I.registerSingleton<MyCoursesDashboardController>(
+    _controller = GetIt.I.registerSingleton<MyCoursesDashboardController>(
       MyCoursesDashboardController(),
     );
-    _controller = GetIt.I.get<MyCoursesDashboardController>();
     _controller.init();
   }
 
@@ -32,7 +31,7 @@ class _MyCoursesDashboardState extends State<MyCoursesDashboard> {
       onNullWidget: SizedBox.shrink(),
       builder: (context, asyncSnapshot) {
         return DashboardItemsSummary(
-          title: "Estou Cursando",
+          title: "Meus Cursos",
           itemHeight: 150,
           itemsPerRow: 1.2,
           showAllLabel: "Ver todos",

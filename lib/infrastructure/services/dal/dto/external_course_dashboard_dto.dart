@@ -15,7 +15,7 @@ class ExternalCourseDashboardDTO {
     this.initialPassword,
   });
 
-  factory ExternalCourseDashboardDTO.fromMap(Map<String, Object?> map) {
+  factory ExternalCourseDashboardDTO.fromJson(Map<String, Object?> map) {
     final _id = map['id'] as String;
     final _thumb = map['thumb_url'] as String;
     final _title = map['title'] as String;

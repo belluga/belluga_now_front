@@ -7,10 +7,10 @@ class MyCoursesSummaryDTO {
 
   MyCoursesSummaryDTO({required this.items, required this.total});
 
-  factory MyCoursesSummaryDTO.fromMap(Map<String, Object?> map) {
+  factory MyCoursesSummaryDTO.fromJson(Map<String, Object?> map) {
     final _total = map['total'] as int;
     final _items = (map['data'] as List<Object?>)
-        .map((item) => MyCourseDashboardDTO.fromMap(item as Map<String, Object?>))
+        .map((item) => MyCourseDashboardDTO.fromJson(item as Map<String, Object?>))
         .toList();
 
     return MyCoursesSummaryDTO(items: _items, total: _total);

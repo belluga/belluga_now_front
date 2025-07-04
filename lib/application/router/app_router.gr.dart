@@ -9,32 +9,35 @@
 // coverage:ignore-file
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
-import 'package:auto_route/auto_route.dart' as _i8;
-import 'package:flutter/material.dart' as _i9;
+import 'package:auto_route/auto_route.dart' as _i9;
+import 'package:flutter/material.dart' as _i10;
 import 'package:flutter_laravel_backend_boilerplate/presentation/init/init_screen.dart'
-    as _i5;
+    as _i6;
 import 'package:flutter_laravel_backend_boilerplate/presentation/screens/auth/create_new_password/auth_create_new_password.dart'
     as _i1;
 import 'package:flutter_laravel_backend_boilerplate/presentation/screens/auth/login/auth_login_screen.dart'
     as _i2;
 import 'package:flutter_laravel_backend_boilerplate/presentation/screens/auth/recovery_password_bug/recovery_password_screen.dart'
-    as _i7;
+    as _i8;
 import 'package:flutter_laravel_backend_boilerplate/presentation/screens/dashboard/dashboard_screen.dart'
-    as _i3;
-import 'package:flutter_laravel_backend_boilerplate/presentation/screens/home/home_screen.dart'
     as _i4;
+import 'package:flutter_laravel_backend_boilerplate/presentation/screens/home/home_screen.dart'
+    as _i5;
+import 'package:flutter_laravel_backend_boilerplate/presentation/screens/my_courses/course_screen.dart'
+    as _i3;
 import 'package:flutter_laravel_backend_boilerplate/presentation/screens/profile/profile_screen.dart'
-    as _i6;
+    as _i7;
+import 'package:value_objects/domain/value_objects/mongo_id_value.dart' as _i11;
 
 /// generated route for
 /// [_i1.AuthCreateNewPasswordScreen]
-class AuthCreateNewPasswordRoute extends _i8.PageRouteInfo<void> {
-  const AuthCreateNewPasswordRoute({List<_i8.PageRouteInfo>? children})
+class AuthCreateNewPasswordRoute extends _i9.PageRouteInfo<void> {
+  const AuthCreateNewPasswordRoute({List<_i9.PageRouteInfo>? children})
     : super(AuthCreateNewPasswordRoute.name, initialChildren: children);
 
   static const String name = 'AuthCreateNewPasswordRoute';
 
-  static _i8.PageInfo page = _i8.PageInfo(
+  static _i9.PageInfo page = _i9.PageInfo(
     name,
     builder: (data) {
       return const _i1.AuthCreateNewPasswordScreen();
@@ -44,13 +47,13 @@ class AuthCreateNewPasswordRoute extends _i8.PageRouteInfo<void> {
 
 /// generated route for
 /// [_i2.AuthLoginScreen]
-class AuthLoginRoute extends _i8.PageRouteInfo<void> {
-  const AuthLoginRoute({List<_i8.PageRouteInfo>? children})
+class AuthLoginRoute extends _i9.PageRouteInfo<void> {
+  const AuthLoginRoute({List<_i9.PageRouteInfo>? children})
     : super(AuthLoginRoute.name, initialChildren: children);
 
   static const String name = 'AuthLoginRoute';
 
-  static _i8.PageInfo page = _i8.PageInfo(
+  static _i9.PageInfo page = _i9.PageInfo(
     name,
     builder: (data) {
       return const _i2.AuthLoginScreen();
@@ -59,77 +62,124 @@ class AuthLoginRoute extends _i8.PageRouteInfo<void> {
 }
 
 /// generated route for
-/// [_i3.DashboardScreen]
-class DashboardRoute extends _i8.PageRouteInfo<void> {
-  const DashboardRoute({List<_i8.PageRouteInfo>? children})
+/// [_i3.CourseScreen]
+class CourseRoute extends _i9.PageRouteInfo<CourseRouteArgs> {
+  CourseRoute({
+    _i10.Key? key,
+    required _i11.MongoIDValue courseId,
+    List<_i9.PageRouteInfo>? children,
+  }) : super(
+         CourseRoute.name,
+         args: CourseRouteArgs(key: key, courseId: courseId),
+         initialChildren: children,
+       );
+
+  static const String name = 'CourseRoute';
+
+  static _i9.PageInfo page = _i9.PageInfo(
+    name,
+    builder: (data) {
+      final args = data.argsAs<CourseRouteArgs>();
+      return _i3.CourseScreen(key: args.key, courseId: args.courseId);
+    },
+  );
+}
+
+class CourseRouteArgs {
+  const CourseRouteArgs({this.key, required this.courseId});
+
+  final _i10.Key? key;
+
+  final _i11.MongoIDValue courseId;
+
+  @override
+  String toString() {
+    return 'CourseRouteArgs{key: $key, courseId: $courseId}';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    if (other is! CourseRouteArgs) return false;
+    return key == other.key && courseId == other.courseId;
+  }
+
+  @override
+  int get hashCode => key.hashCode ^ courseId.hashCode;
+}
+
+/// generated route for
+/// [_i4.DashboardScreen]
+class DashboardRoute extends _i9.PageRouteInfo<void> {
+  const DashboardRoute({List<_i9.PageRouteInfo>? children})
     : super(DashboardRoute.name, initialChildren: children);
 
   static const String name = 'DashboardRoute';
 
-  static _i8.PageInfo page = _i8.PageInfo(
+  static _i9.PageInfo page = _i9.PageInfo(
     name,
     builder: (data) {
-      return const _i3.DashboardScreen();
+      return const _i4.DashboardScreen();
     },
   );
 }
 
 /// generated route for
-/// [_i4.HomeScreen]
-class HomeRoute extends _i8.PageRouteInfo<void> {
-  const HomeRoute({List<_i8.PageRouteInfo>? children})
+/// [_i5.HomeScreen]
+class HomeRoute extends _i9.PageRouteInfo<void> {
+  const HomeRoute({List<_i9.PageRouteInfo>? children})
     : super(HomeRoute.name, initialChildren: children);
 
   static const String name = 'HomeRoute';
 
-  static _i8.PageInfo page = _i8.PageInfo(
+  static _i9.PageInfo page = _i9.PageInfo(
     name,
     builder: (data) {
-      return const _i4.HomeScreen();
+      return const _i5.HomeScreen();
     },
   );
 }
 
 /// generated route for
-/// [_i5.InitScreen]
-class InitRoute extends _i8.PageRouteInfo<void> {
-  const InitRoute({List<_i8.PageRouteInfo>? children})
+/// [_i6.InitScreen]
+class InitRoute extends _i9.PageRouteInfo<void> {
+  const InitRoute({List<_i9.PageRouteInfo>? children})
     : super(InitRoute.name, initialChildren: children);
 
   static const String name = 'InitRoute';
 
-  static _i8.PageInfo page = _i8.PageInfo(
+  static _i9.PageInfo page = _i9.PageInfo(
     name,
     builder: (data) {
-      return const _i5.InitScreen();
+      return const _i6.InitScreen();
     },
   );
 }
 
 /// generated route for
-/// [_i6.ProfileScreen]
-class ProfileRoute extends _i8.PageRouteInfo<void> {
-  const ProfileRoute({List<_i8.PageRouteInfo>? children})
+/// [_i7.ProfileScreen]
+class ProfileRoute extends _i9.PageRouteInfo<void> {
+  const ProfileRoute({List<_i9.PageRouteInfo>? children})
     : super(ProfileRoute.name, initialChildren: children);
 
   static const String name = 'ProfileRoute';
 
-  static _i8.PageInfo page = _i8.PageInfo(
+  static _i9.PageInfo page = _i9.PageInfo(
     name,
     builder: (data) {
-      return const _i6.ProfileScreen();
+      return const _i7.ProfileScreen();
     },
   );
 }
 
 /// generated route for
-/// [_i7.RecoveryPasswordScreen]
+/// [_i8.RecoveryPasswordScreen]
 class RecoveryPasswordRoute
-    extends _i8.PageRouteInfo<RecoveryPasswordRouteArgs> {
+    extends _i9.PageRouteInfo<RecoveryPasswordRouteArgs> {
   RecoveryPasswordRoute({
-    _i9.Key? key,
+    _i10.Key? key,
     String? initialEmmail,
-    List<_i8.PageRouteInfo>? children,
+    List<_i9.PageRouteInfo>? children,
   }) : super(
          RecoveryPasswordRoute.name,
          args: RecoveryPasswordRouteArgs(
@@ -141,13 +191,13 @@ class RecoveryPasswordRoute
 
   static const String name = 'RecoveryPasswordRoute';
 
-  static _i8.PageInfo page = _i8.PageInfo(
+  static _i9.PageInfo page = _i9.PageInfo(
     name,
     builder: (data) {
       final args = data.argsAs<RecoveryPasswordRouteArgs>(
         orElse: () => const RecoveryPasswordRouteArgs(),
       );
-      return _i7.RecoveryPasswordScreen(
+      return _i8.RecoveryPasswordScreen(
         key: args.key,
         initialEmmail: args.initialEmmail,
       );
@@ -158,7 +208,7 @@ class RecoveryPasswordRoute
 class RecoveryPasswordRouteArgs {
   const RecoveryPasswordRouteArgs({this.key, this.initialEmmail});
 
-  final _i9.Key? key;
+  final _i10.Key? key;
 
   final String? initialEmmail;
 

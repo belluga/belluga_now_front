@@ -1,6 +1,6 @@
 import 'package:flutter_laravel_backend_boilerplate/domain/my_courses/value_objects/my_course_expert_avatar_value.dart';
 import 'package:flutter_laravel_backend_boilerplate/domain/my_courses/value_objects/my_course_expert_name_value.dart';
-import 'package:flutter_laravel_backend_boilerplate/infrastructure/services/dal/dto/my_course_dashboard_expert.dart';
+import 'package:flutter_laravel_backend_boilerplate/infrastructure/services/dal/dto/course/expert_dto.dart';
 
 class MyCourseDashboardExpert {
   final MyCourseExpertNameValue name;

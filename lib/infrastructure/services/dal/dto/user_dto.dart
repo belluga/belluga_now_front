@@ -12,11 +12,11 @@ class UserDTO {
     this.customData,
   });
 
-  factory UserDTO.fromMap(Map<String, Object?> map) {
+  factory UserDTO.fromJson(Map<String, Object?> map) {
 
     return UserDTO(
       id: map[UserDtoLabels.id] as String,
-      profile: UserProfileDTO.fromMap( map[UserDtoLabels.profile]  as Map<String, Object?>),
+      profile: UserProfileDTO.fromJson( map[UserDtoLabels.profile]  as Map<String, Object?>),
       customData: map[UserDtoLabels.customData] as Map<String, Object?>?,
     );
   }

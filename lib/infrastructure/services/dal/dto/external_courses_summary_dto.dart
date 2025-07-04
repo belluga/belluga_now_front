@@ -6,10 +6,10 @@ class ExternalCoursesSummaryDTO {
 
   ExternalCoursesSummaryDTO({required this.items, required this.total});
 
-  factory ExternalCoursesSummaryDTO.fromMap(Map<String, Object?> map) {
+  factory ExternalCoursesSummaryDTO.fromJson(Map<String, Object?> map) {
     final _total = map['total'] as int;
     final _items = (map['data'] as List<Object?>)
-        .map((item) => ExternalCourseDashboardDTO.fromMap(item as Map<String, Object?>))
+        .map((item) => ExternalCourseDashboardDTO.fromJson(item as Map<String, Object?>))
         .toList();
 
     return ExternalCoursesSummaryDTO(items: _items, total: _total);
