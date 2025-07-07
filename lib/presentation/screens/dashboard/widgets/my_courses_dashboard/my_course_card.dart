@@ -5,7 +5,7 @@ import 'package:flutter_laravel_backend_boilerplate/domain/courses/course_dashbo
 import 'package:flutter_laravel_backend_boilerplate/presentation/common/widgets/image_with_progress_indicator.dart';
 
 class MyCourseCard extends StatefulWidget {
-  final MyCourseDashboard course;
+  final CourseDashboardModel course;
 
   const MyCourseCard({super.key, required this.course});
 
@@ -21,7 +21,7 @@ class _MyCourseCardState extends State<MyCourseCard> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          ImageWithProgressIndicator(thumbUrl: widget.course.thumbUrl.value),
+          ImageWithProgressIndicator(thumb: widget.course.thumb),
           Expanded(
             child: Padding(
               padding: EdgeInsetsGeometry.all(16),

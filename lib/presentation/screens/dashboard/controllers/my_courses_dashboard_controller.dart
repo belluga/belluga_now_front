@@ -6,9 +6,9 @@ import 'package:stream_value/core/stream_value.dart';
 class MyCoursesDashboardController {
   
   final _myCoursesRepository = GetIt.I
-      .get<MyCoursesRepositoryContract>();
+      .get<CoursesRepositoryContract>();
 
-  StreamValue<MyCoursesSummary?> get myCoursesSummaryStreamValue {
+  StreamValue<CoursesSummary?> get myCoursesSummaryStreamValue {
     return _myCoursesRepository.summarySteamValue;
   }
 

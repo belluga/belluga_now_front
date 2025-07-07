@@ -86,11 +86,7 @@ class MockBackend extends BackendContract {
     {
       "id": "6864808e5a115a9591257e2c",
       "title": "MBA em Ciências da Mente e Liderança Humanizada",
-      "type": {
-        "id": "6864808e5a115a9591257e2d",
-        "name": "MBA",
-        "slug": "mba"
-      },
+      "type": {"id": "6864808e5a115a9591257e2d", "name": "MBA", "slug": "mba"},
       "description":
           "Curso de MBA em Ciências da Mente e Liderança Humanizada.",
       "thumb": {
@@ -98,9 +94,9 @@ class MockBackend extends BackendContract {
         "data": {"url": "https://picsum.photos/id/30/200/300"},
       },
       "categories": [
-        {"id": "6864808e5a115a9591257e2c", "name": "Ciências da Mente"},
-        {"id": "6864808e5a115a9591257e2d", "name": "Liderança"},
-        {"id": "6864808e5a115a9591257e2d", "name": "Negócios"},
+        {"id": "6864808e5a115a9591257e2c", "name": "Ciências da Mente", "slug" : "ciencias_da_mente"},
+        {"id": "6864808e5a115a9591257e2d", "name": "Liderança", "slug" : "lideranca"},
+        {"id": "6864808e5a115a9591257e2d", "name": "Negócios", "slug" : "negocios"},
       ],
       "expert": {
         "id": "6864808e5a115a9591257e2c",
@@ -260,11 +256,7 @@ class MockBackend extends BackendContract {
     {
       "id": "6864808e5a115a9591257e2c",
       "title": "MBA em Ciências da Mente e Liderança Humanizada",
-      "type": {
-        "id": "6864808e5a115a9591257e2d",
-        "name": "MBA",
-        "slug": "mba"
-      },
+      "type": {"id": "6864808e5a115a9591257e2d", "name": "MBA", "slug": "mba"},
       "description":
           "Curso de MBA em Ciências da Mente e Liderança Humanizada.",
       "thumb": {
@@ -272,9 +264,9 @@ class MockBackend extends BackendContract {
         "data": {"url": "https://picsum.photos/id/30/200/300"},
       },
       "categories": [
-        {"id": "6864808e5a115a9591257e2c", "name": "Ciências da Mente"},
-        {"id": "6864808e5a115a9591257e2d", "name": "Liderança"},
-        {"id": "6864808e5a115a9591257e2d", "name": "Negócios"},
+        {"id": "6864808e5a115a9591257e2c", "name": "Ciências da Mente", "slug" : "ciencias_da_mente"},
+        {"id": "6864808e5a115a9591257e2d", "name": "Liderança", "slug" : "lideranca"},
+        {"id": "6864808e5a115a9591257e2d", "name": "Negócios", "slug" : "negocios"},
       ],
       "expert": {
         "id": "6864808e5a115a9591257e2c",
@@ -437,7 +429,7 @@ class MockBackend extends BackendContract {
       "type": {
         "id": "6864808e5a115a9591257e2d",
         "name": "Pós Graduação",
-        "slug": "pos"
+        "slug": "pos",
       },
       "description":
           "Curso de MBA em Ciências da Mente e Liderança Humanizada.",
@@ -446,9 +438,9 @@ class MockBackend extends BackendContract {
         "data": {"url": "https://picsum.photos/id/30/200/300"},
       },
       "categories": [
-        {"id": "6864808e5a115a9591257e2c", "name": "Ciências da Mente"},
-        {"id": "6864808e5a115a9591257e2d", "name": "Liderança"},
-        {"id": "6864808e5a115a9591257e2d", "name": "Negócios"},
+        {"id": "6864808e5a115a9591257e2c", "name": "Ciências da Mente", "slug" : "ciencias_da_mente"},
+        {"id": "6864808e5a115a9591257e2d", "name": "Liderança", "slug" : "lideranca"},
+        {"id": "6864808e5a115a9591257e2d", "name": "Negócios", "slug" : "negocios"},
       ],
       "expert": {
         "id": "6864808e5a115a9591257e2c",
@@ -654,6 +646,7 @@ class MockBackend extends BackendContract {
           "data": {"url": "https://picsum.photos/id/30/200/300"},
         },
         "expert": {
+          "id": "6864808e5a115a9591257e2c",
           "name": "Roberto Shinyashiki",
           "avatar_url": "https://picsum.photos/id/40/200/300",
         },
@@ -682,8 +675,9 @@ class MockBackend extends BackendContract {
           "data": {"url": "https://picsum.photos/id/30/200/300"},
         },
         "expert": {
-          "name": "Michel Vitor",
-          "avatar_url": "https://picsum.photos/id/90/200/300",
+          "id": "6864808e5a115a9591257e2c",
+          "name": "Roberto Shinyashiki",
+          "avatar_url": "https://picsum.photos/id/40/200/300",
         },
         "next_lesson": {
           "id": "6864808e5a115a9591257e2c",
@@ -710,8 +704,9 @@ class MockBackend extends BackendContract {
           "data": {"url": "https://picsum.photos/id/30/200/300"},
         },
         "expert": {
-          "name": "Lucas Paifer",
-          "avatar_url": "https://picsum.photos/id/120/200/300",
+          "id": "6864808e5a115a9591257e2c",
+          "name": "Roberto Shinyashiki",
+          "avatar_url": "https://picsum.photos/id/40/200/300",
         },
         "next_lesson": {
           "id": "6864808e5a115a9591257e2c",

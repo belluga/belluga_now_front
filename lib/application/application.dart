@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_laravel_backend_boilerplate/application/configurations/custom_scroll_behavior.dart';
 import 'package:flutter_laravel_backend_boilerplate/application/helpers/url_strategy/url_strategy.dart';
 import 'package:flutter_laravel_backend_boilerplate/application/router/app_router.dart';
 import 'package:flutter_laravel_backend_boilerplate/domain/controllers/remember_password_contract.dart';
@@ -149,6 +150,7 @@ class Application extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp.router(
       theme: _themeData(),
+      scrollBehavior: CustomScrollBehavior(),
       routerConfig: _appRouter.config(),
     );
   }

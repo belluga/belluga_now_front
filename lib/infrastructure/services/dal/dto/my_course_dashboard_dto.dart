@@ -1,13 +1,14 @@
 import 'package:flutter_laravel_backend_boilerplate/infrastructure/services/dal/dto/course/course_type_dto.dart';
 import 'package:flutter_laravel_backend_boilerplate/infrastructure/services/dal/dto/my_course_dashboard_lesson_dto.dart';
 import 'package:flutter_laravel_backend_boilerplate/infrastructure/services/dal/dto/course/expert_dto.dart';
+import 'package:flutter_laravel_backend_boilerplate/infrastructure/services/dal/dto/thumb_dto.dart';
 
 class MyCourseDashboardDTO {
   final String id;
   final String title;
   final CourseTypeDTO type;
   final String description;
-  final String thumbUrl;
+  final ThumbDTO thumb;
   final ExpertDTO expert;
   final MyCourseDashboardLessonDto nextLesson;
 
@@ -16,7 +17,7 @@ class MyCourseDashboardDTO {
     required this.title,
     required this.type,
     required this.description,
-    required this.thumbUrl,
+    required this.thumb,
     required this.expert,
     required this.nextLesson,
   });
@@ -27,7 +28,7 @@ class MyCourseDashboardDTO {
     final _expert = ExpertDTO.fromJson(map['expert'] as Map<String, dynamic>);
     final _type = CourseTypeDTO.fromJson(map['type'] as Map<String, dynamic>);
     final _description = map['description'] as String;
-    final _thumb = map['thumb_url'] as String;
+    final _thumb = ThumbDTO.fromJson(map['thumb'] as Map<String, dynamic>);
     final _nextLesson = MyCourseDashboardLessonDto.fromJson(
       map['next_lesson'] as Map<String, dynamic>,
     );
@@ -37,7 +38,7 @@ class MyCourseDashboardDTO {
       title: _title,
       type: _type,
       description: _description,
-      thumbUrl: _thumb,
+      thumb: _thumb,
       expert: _expert,
       nextLesson: _nextLesson,
     );

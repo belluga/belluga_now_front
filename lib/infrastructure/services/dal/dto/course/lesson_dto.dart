@@ -7,7 +7,6 @@ class LessonDTO {
   String title;
   String description;
   ThumbDTO thumb;
-  int durationInSeconds;
   List<FilesDTO> files;
   LessonContentDTO content;
 
@@ -16,7 +15,6 @@ class LessonDTO {
     required this.title,
     required this.description,
     required this.thumb,
-    required this.durationInSeconds,
     required this.files,
     required this.content,
   });
@@ -27,7 +25,6 @@ class LessonDTO {
       title: json['title'] as String,
       description: json['description'] as String,
       thumb: ThumbDTO.fromJson(json['thumb'] as Map<String, dynamic>),
-      durationInSeconds: json['duration_in_seconds'] as int,
       files: (json['files'] as List)
           .map((e) => FilesDTO.fromJson(e as Map<String, dynamic>))
           .toList(),

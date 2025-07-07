@@ -26,7 +26,7 @@ class DisciplineDTO {
       description: json['description'] as String,
       thumb: ThumbDTO.fromJson(json['thumb'] as Map<String, dynamic>),
       lessonsSummary: CourseItemsSummaryDTO.fromJson(
-        json['lesspns']["summary"] as Map<String, dynamic>,
+        json['lessons']["summary"] as Map<String, dynamic>,
       ),
       lessons: (json['lessons']['items'] as List)
           .map((item) => LessonDTO.fromJson(item))

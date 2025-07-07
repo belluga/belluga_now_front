@@ -28,7 +28,7 @@ class _ExternalCourseCardState extends State<ExternalCourseCard> {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            ImageWithProgressIndicator(thumbUrl: widget.course.thumbUrl.value),
+            ImageWithProgressIndicator(thumb: widget.course.thumb),
             Expanded(
               child: Padding(
                 padding: EdgeInsetsGeometry.all(16),
@@ -103,10 +103,10 @@ class _ExternalCourseCardState extends State<ExternalCourseCard> {
   }
 
   Future<void> _launchURL() async {
-    if (await canLaunchUrl(widget.course.thumbUrl.value)) {
-      await launchUrl(widget.course.thumbUrl.value);
+    if (await canLaunchUrl(widget.course.platformUrl.value)) {
+      await launchUrl(widget.course.platformUrl.value);
     } else {
-      _showSnackBar(widget.course.thumbUrl.value.toString());
+      _showSnackBar(widget.course.platformUrl.value.toString());
     }
   }
 

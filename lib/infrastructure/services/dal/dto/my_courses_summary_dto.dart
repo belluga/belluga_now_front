@@ -9,9 +9,9 @@ class MyCoursesSummaryDTO {
 
   factory MyCoursesSummaryDTO.fromJson(Map<String, Object?> map) {
     final _total = map['total'] as int;
-    final _items = (map['data'] as List<Object?>)
-        .map((item) => MyCourseDashboardDTO.fromJson(item as Map<String, Object?>))
-        .toList();
+    final _items = (map['data'] as List<Map<String,dynamic>>?)
+        ?.map((item) => MyCourseDashboardDTO.fromJson(item))
+        .toList() ?? [];
 
     return MyCoursesSummaryDTO(items: _items, total: _total);
   }

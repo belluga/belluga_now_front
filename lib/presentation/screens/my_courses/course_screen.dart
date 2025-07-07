@@ -1,7 +1,9 @@
 import 'package:auto_route/annotations.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_laravel_backend_boilerplate/domain/courses/course_model.dart';
 import 'package:flutter_laravel_backend_boilerplate/presentation/screens/my_courses/controllers/course_screen_controller.dart';
 import 'package:get_it/get_it.dart';
+import 'package:stream_value/core/stream_value_builder.dart';
 import 'package:value_objects/domain/value_objects/mongo_id_value.dart';
 
 @RoutePage()
@@ -30,7 +32,13 @@ class _CourseScreenState extends State<CourseScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Curso'),
+        title: StreamValueBuilder<CourseModel>(
+          streamValue: _controller.courseStreamValue,
+          onNullWidget: SizedBox.shrink(),
+          builder: (context, course) {
+            return Text(course.title.value);
+          },
+        ),
         automaticallyImplyLeading: true,
       ),
       body: Center(

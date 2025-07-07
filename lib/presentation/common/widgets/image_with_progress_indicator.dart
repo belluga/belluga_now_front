@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_laravel_backend_boilerplate/domain/courses/thumb_model.dart';
 
 class ImageWithProgressIndicator extends StatelessWidget {
-  final Uri thumbUrl;
+  final ThumbModel thumb;
   final double? width;
   final double? height;
 
   const ImageWithProgressIndicator({
     super.key,
-    required this.thumbUrl,
+    required this.thumb,
     this.width = 80,
     this.height = 80,
   });
@@ -30,7 +31,7 @@ class ImageWithProgressIndicator extends StatelessWidget {
             decoration: BoxDecoration(
               borderRadius: BorderRadius.horizontal(left: Radius.circular(8)),
               image: DecorationImage(
-                image: Image.network(thumbUrl.toString()).image,
+                image: Image.network(thumb.thumbUri.toString()).image,
                 fit: BoxFit.cover,
               ),
             ),
