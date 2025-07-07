@@ -250,6 +250,150 @@ class MockBackend extends BackendContract {
               ],
             },
           },
+          {
+            "id": "6864808e5a115a9591257e2c",
+            "title": "Introdução à Liderança Humanizada",
+            "description": "Aprenda os fundamentos da liderança humanizada.",
+            "thumb": {
+              "type": "image",
+              "data": {"url": "https://picsum.photos/id/30/200/300"},
+            },
+            "lessons": {
+              "summary": {"total": 2},
+              "items": [
+                {
+                  "id": "6864808e5a115a9591257e2c",
+                  "title": "O que é Liderança Humanizada?",
+                  "description": "Entenda o conceito de liderança humanizada.",
+                  "thumb": {
+                    "type": "image",
+                    "data": {"url": "https://picsum.photos/id/30/200/300"},
+                  },
+                  "content": {
+                    "video": {
+                      "url": "https://example.com/video.mp4",
+                      "thumb": {
+                        "type": "image",
+                        "data": {"url": "https://picsum.photos/id/30/200/300"},
+                      },
+                    },
+                    "html": {"content": "<p>Conteúdo em HTML</p>"},
+                  },
+                  "files": [
+                    {
+                      "url": "https://example.com/file.pdf",
+                      "name": "Manual do Aluno",
+                      "thumb": {
+                        "type": "image",
+                        "data": {"url": "https://picsum.photos/id/30/200/300"},
+                      },
+                    },
+                  ],
+                },
+                {
+                  "id": "6864808e5a115a9591257e2d",
+                  "title": "Princípios da Liderança Humanizada",
+                  "description": "Explore os princípios fundamentais.",
+                  "thumb": {
+                    "type": "image",
+                    "data": {"url": "https://picsum.photos/id/30/200/300"},
+                  },
+                  "content": {
+                    "video": {
+                      "url": "https://example.com/video.mp4",
+                      "thumb": {
+                        "type": "image",
+                        "data": {"url": "https://picsum.photos/id/30/200/300"},
+                      },
+                    },
+                    "html": {"content": "<p>Conteúdo em HTML</p>"},
+                  },
+                  "files": [
+                    {
+                      "url": "https://example.com/file.pdf",
+                      "name": "Manual do Aluno",
+                      "thumb": {
+                        "type": "image",
+                        "data": {"url": "https://picsum.photos/id/30/200/300"},
+                      },
+                    },
+                  ],
+                },
+              ],
+            },
+          },
+          {
+            "id": "6864808e5a115a9591257e2c",
+            "title": "Introdução à Liderança Humanizada",
+            "description": "Aprenda os fundamentos da liderança humanizada.",
+            "thumb": {
+              "type": "image",
+              "data": {"url": "https://picsum.photos/id/30/200/300"},
+            },
+            "lessons": {
+              "summary": {"total": 2},
+              "items": [
+                {
+                  "id": "6864808e5a115a9591257e2c",
+                  "title": "O que é Liderança Humanizada?",
+                  "description": "Entenda o conceito de liderança humanizada.",
+                  "thumb": {
+                    "type": "image",
+                    "data": {"url": "https://picsum.photos/id/30/200/300"},
+                  },
+                  "content": {
+                    "video": {
+                      "url": "https://example.com/video.mp4",
+                      "thumb": {
+                        "type": "image",
+                        "data": {"url": "https://picsum.photos/id/30/200/300"},
+                      },
+                    },
+                    "html": {"content": "<p>Conteúdo em HTML</p>"},
+                  },
+                  "files": [
+                    {
+                      "url": "https://example.com/file.pdf",
+                      "name": "Manual do Aluno",
+                      "thumb": {
+                        "type": "image",
+                        "data": {"url": "https://picsum.photos/id/30/200/300"},
+                      },
+                    },
+                  ],
+                },
+                {
+                  "id": "6864808e5a115a9591257e2d",
+                  "title": "Princípios da Liderança Humanizada",
+                  "description": "Explore os princípios fundamentais.",
+                  "thumb": {
+                    "type": "image",
+                    "data": {"url": "https://picsum.photos/id/30/200/300"},
+                  },
+                  "content": {
+                    "video": {
+                      "url": "https://example.com/video.mp4",
+                      "thumb": {
+                        "type": "image",
+                        "data": {"url": "https://picsum.photos/id/30/200/300"},
+                      },
+                    },
+                    "html": {"content": "<p>Conteúdo em HTML</p>"},
+                  },
+                  "files": [
+                    {
+                      "url": "https://example.com/file.pdf",
+                      "name": "Manual do Aluno",
+                      "thumb": {
+                        "type": "image",
+                        "data": {"url": "https://picsum.photos/id/30/200/300"},
+                      },
+                    },
+                  ],
+                },
+              ],
+            },
+          },
         ],
       },
     },
