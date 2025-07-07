@@ -1,10 +1,11 @@
+import 'package:flutter_laravel_backend_boilerplate/infrastructure/services/dal/dto/course/course_type_dto.dart';
 import 'package:flutter_laravel_backend_boilerplate/infrastructure/services/dal/dto/my_course_dashboard_lesson_dto.dart';
 import 'package:flutter_laravel_backend_boilerplate/infrastructure/services/dal/dto/course/expert_dto.dart';
 
 class MyCourseDashboardDTO {
   final String id;
   final String title;
-  final String type;
+  final CourseTypeDTO type;
   final String description;
   final String thumbUrl;
   final ExpertDTO expert;
@@ -23,10 +24,8 @@ class MyCourseDashboardDTO {
   factory MyCourseDashboardDTO.fromJson(Map<String, Object?> map) {
     final _id = map['id'] as String;
     final _title = map['title'] as String;
-    final _expert = ExpertDTO.fromJson(
-      map['expert'] as Map<String, dynamic>,
-    );
-    final _type = map['type'] as String;
+    final _expert = ExpertDTO.fromJson(map['expert'] as Map<String, dynamic>);
+    final _type = CourseTypeDTO.fromJson(map['type'] as Map<String, dynamic>);
     final _description = map['description'] as String;
     final _thumb = map['thumb_url'] as String;
     final _nextLesson = MyCourseDashboardLessonDto.fromJson(

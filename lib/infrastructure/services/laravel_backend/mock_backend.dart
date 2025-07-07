@@ -86,7 +86,11 @@ class MockBackend extends BackendContract {
     {
       "id": "6864808e5a115a9591257e2c",
       "title": "MBA em Ciências da Mente e Liderança Humanizada",
-      "type": "MBA",
+      "type": {
+        "id": "6864808e5a115a9591257e2d",
+        "name": "MBA",
+        "slug": "mba"
+      },
       "description":
           "Curso de MBA em Ciências da Mente e Liderança Humanizada.",
       "thumb": {
@@ -256,7 +260,11 @@ class MockBackend extends BackendContract {
     {
       "id": "6864808e5a115a9591257e2c",
       "title": "MBA em Ciências da Mente e Liderança Humanizada",
-      "type": "MBA",
+      "type": {
+        "id": "6864808e5a115a9591257e2d",
+        "name": "MBA",
+        "slug": "mba"
+      },
       "description":
           "Curso de MBA em Ciências da Mente e Liderança Humanizada.",
       "thumb": {
@@ -426,7 +434,11 @@ class MockBackend extends BackendContract {
     {
       "id": "6864808e5a115a9591257e2c",
       "title": "MBA em Ciências da Mente e Liderança Humanizada",
-      "type": "MBA",
+      "type": {
+        "id": "6864808e5a115a9591257e2d",
+        "name": "Pós Graduação",
+        "slug": "pos"
+      },
       "description":
           "Curso de MBA em Ciências da Mente e Liderança Humanizada.",
       "thumb": {
@@ -630,7 +642,11 @@ class MockBackend extends BackendContract {
       {
         "id": "6864808e5a115a9591257e2c",
         "title": "MBA em Ciências da Mente e Liderança Humanizada",
-        "type": "MBA",
+        "type": {
+          "id": "6864808e5a115a9591257e2c",
+          "name": "MBA",
+          "slug": "mba",
+        },
         "description":
             "Curso de MBA em Ciências da Mente e Liderança Humanizada.",
         "thumb": {
@@ -654,7 +670,11 @@ class MockBackend extends BackendContract {
       {
         "id": "6864f4415a115a9591257e2d",
         "title": "Trilha Standup Comedy com Welber Rodrigues",
-        "type": "Trilha Unifast",
+        "type": {
+          "id": "6864808e5a115a9591257e2c",
+          "name": "Trilhas Unifast",
+          "slug": "unifast-tracks",
+        },
         "description":
             "Michel Vitor compartilha sua experiência e técnicas de Standup Comedy, ajudando você a desenvolver suas habilidades humorísticas e demonstrando como criar uma persona alternativa e viver duas vidas paralelas.",
         "thumb": {
@@ -678,7 +698,11 @@ class MockBackend extends BackendContract {
       {
         "id": "6864f4415a115a9591257e2d",
         "title": "De Jovem Aprendiz a Estagiário de Sucesso",
-        "type": "Trilha Unifast",
+        "type": {
+          "id": "6864808e5a115a9591257e2c",
+          "name": "Trilhas Unifast",
+          "slug": "unifast-tracks",
+        },
         "description":
             "Aprenda com a incrível trajetória de Lucas e encontrará dicas valiosas para se destacar no mercado de trabalho.",
         "thumb": {

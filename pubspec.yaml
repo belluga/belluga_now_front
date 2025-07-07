@@ -43,6 +43,7 @@ dependencies:
   package_info_plus: ^8.3.0
   platform_device_id_plus: ^1.0.7
   sentry_flutter: ^9.1.0
+  slugify: ^2.0.0
   url_launcher: ^6.3.1
 
   stream_value:
