@@ -1,8 +1,9 @@
 import 'package:auto_route/annotations.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_laravel_backend_boilerplate/domain/courses/course_model.dart';
+import 'package:flutter_laravel_backend_boilerplate/domain/courses/course_item_model.dart';
 import 'package:flutter_laravel_backend_boilerplate/presentation/screens/my_courses/controllers/course_screen_controller.dart';
-import 'package:flutter_laravel_backend_boilerplate/presentation/screens/my_courses/tabs/disciplines_list.dart';
+import 'package:flutter_laravel_backend_boilerplate/presentation/screens/my_courses/tabs/files_list.dart';
+import 'package:flutter_laravel_backend_boilerplate/presentation/screens/my_courses/tabs/lessons_list.dart';
 import 'package:flutter_laravel_backend_boilerplate/presentation/screens/my_courses/widgets/lesson_tile.dart';
 import 'package:flutter_laravel_backend_boilerplate/presentation/screens/my_courses/widgets/video_player.dart';
 import 'package:get_it/get_it.dart';
@@ -10,24 +11,24 @@ import 'package:stream_value/core/stream_value_builder.dart';
 import 'package:value_objects/domain/value_objects/mongo_id_value.dart';
 
 @RoutePage()
-class CourseScreen extends StatefulWidget {
-  final MongoIDValue courseId;
+class LessonScreen extends StatefulWidget {
+  final MongoIDValue lessonId;
 
-  const CourseScreen({super.key, required this.courseId});
+  const LessonScreen({super.key, required this.lessonId});
 
   @override
-  State<CourseScreen> createState() => _CourseScreenState();
+  State<LessonScreen> createState() => _CourseScreenState();
 }
 
-class _CourseScreenState extends State<CourseScreen>
+class _CourseScreenState extends State<LessonScreen>
     with TickerProviderStateMixin {
-  late CourseScreenController _controller;
+  late LessonScreenController _controller;
 
   @override
   void initState() {
     super.initState();
-    _controller = GetIt.I.registerSingleton<CourseScreenController>(
-      CourseScreenController(courseId: widget.courseId),
+    _controller = GetIt.I.registerSingleton<LessonScreenController>(
+      LessonScreenController(courseId: widget.lessonId),
     );
     _controller.init(tabLength: 3, vsync: this);
   }
@@ -36,7 +37,7 @@ class _CourseScreenState extends State<CourseScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: StreamValueBuilder<CourseModel>(
+        title: StreamValueBuilder<CourseItemModel>(
           streamValue: _controller.courseStreamValue,
           onNullWidget: SizedBox.shrink(),
           builder: (context, course) {
@@ -77,11 +78,8 @@ class _CourseScreenState extends State<CourseScreen>
               child: TabBarView(
                 controller: _controller.tabController,
                 children: [
-                  // Tab 1: Aulas (Scrollable List)
-                  DisciplinesList(),
-                  // const Center(child: Text('Nenhum arquivo encontrado.')),
-                  // Tab 2: Arquivos (Placeholder)
-                  const Center(child: Text('Nenhum arquivo encontrado.')),
+                  LessonsList(),
+                  FilesList(),
                   // Tab 3: Anotações (Placeholder)
                   const Center(child: Text('Nenhuma anotação encontrada.')),
                 ],
@@ -97,6 +95,6 @@ class _CourseScreenState extends State<CourseScreen>
   void dispose() {
     // TODO: implement dispose
     super.dispose();
-    GetIt.I.unregister<CourseScreenController>();
+    GetIt.I.unregister<LessonScreenController>();
   }
 }

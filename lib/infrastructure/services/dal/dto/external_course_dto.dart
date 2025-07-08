@@ -1,6 +1,6 @@
 import 'package:flutter_laravel_backend_boilerplate/infrastructure/services/dal/dto/thumb_dto.dart';
 
-class ExternalCourseDashboardDTO {
+class ExternalCourseDTO {
   final String id;
   final ThumbDTO thumb;
   final String title;
@@ -8,7 +8,7 @@ class ExternalCourseDashboardDTO {
   final String platformUrl;
   final String? initialPassword;
 
-  ExternalCourseDashboardDTO({
+  ExternalCourseDTO({
     required this.id,
     required this.thumb,
     required this.title,
@@ -17,7 +17,7 @@ class ExternalCourseDashboardDTO {
     this.initialPassword,
   });
 
-  factory ExternalCourseDashboardDTO.fromJson(Map<String, Object?> map) {
+  factory ExternalCourseDTO.fromJson(Map<String, Object?> map) {
     final _id = map['id'] as String;
     final _thumb = ThumbDTO.fromJson(map['thumb'] as Map<String, dynamic>);
     final _title = map['title'] as String;
@@ -25,7 +25,7 @@ class ExternalCourseDashboardDTO {
     final _platformUrl = map['platform_url'] as String;
     final _initialPassword = map['initial_password'] as String?;
 
-    return ExternalCourseDashboardDTO(
+    return ExternalCourseDTO(
       id: _id,
       description: _description,
       platformUrl: _platformUrl,

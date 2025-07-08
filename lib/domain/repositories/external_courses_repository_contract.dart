@@ -1,12 +1,16 @@
-import 'package:flutter_laravel_backend_boilerplate/domain/external_course/external_courses_summary.dart';
-import 'package:flutter_laravel_backend_boilerplate/infrastructure/services/dal/dto/external_courses_summary_dto.dart';
+import 'package:flutter_laravel_backend_boilerplate/domain/external_course/external_course_model.dart';
+import 'package:flutter_laravel_backend_boilerplate/infrastructure/services/dal/dto/external_course_dto.dart';
 import 'package:flutter_laravel_backend_boilerplate/infrastructure/services/laravel_backend/backend_contract.dart';
+import 'package:flutter_laravel_backend_boilerplate/presentation/screens/dashboard/view_models/external_courses_summary.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value.dart';
 
 abstract class ExternalCoursesRepositoryContract {
   BackendContract get backend => GetIt.I.get<BackendContract>();
 
+  final externalCoursesSteamValue = StreamValue<List<ExternalCourseModel>?>(
+    defaultValue: null,
+  );
   final summarySteamValue = StreamValue<ExternalCoursesSummary?>(
     defaultValue: null,
   );
@@ -23,10 +27,22 @@ abstract class ExternalCoursesRepositoryContract {
   }
 
   Future<void> _refreshDashboardSummary() async {
-    final ExternalCoursesSummaryDTO _dashboardSummary = await backend
-        .externalCoursesGetDashboardSummary();
+    final List<ExternalCourseDTO> _dashboardSummary = await backend
+        .getExternalCourses();
+
+    final _externalCourses = _dashboardSummary
+        .map(
+          (externalCourseDto) => ExternalCourseModel.fromDTO(externalCourseDto),
+        )
+        .toList();
+
+    externalCoursesSteamValue.addValue(_externalCourses);
+
     summarySteamValue.addValue(
-      ExternalCoursesSummary.fromDTO(_dashboardSummary),
+      ExternalCoursesSummary(
+        items: _externalCourses,
+        total: _externalCourses.length,
+      ),
     );
   }
 }

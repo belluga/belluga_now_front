@@ -4,8 +4,8 @@ import 'package:flutter_laravel_backend_boilerplate/domain/auth/errors/belluga_a
 import 'package:flutter_laravel_backend_boilerplate/domain/repositories/auth_repository_contract.dart';
 import 'package:flutter_laravel_backend_boilerplate/domain/tenant/tenant.dart';
 import 'package:flutter_laravel_backend_boilerplate/infrastructure/services/dal/dto/course/course_dto.dart';
-import 'package:flutter_laravel_backend_boilerplate/infrastructure/services/dal/dto/external_courses_summary_dto.dart';
-import 'package:flutter_laravel_backend_boilerplate/infrastructure/services/dal/dto/my_courses_summary_dto.dart';
+import 'package:flutter_laravel_backend_boilerplate/infrastructure/services/dal/dto/course/course_item_dto.dart';
+import 'package:flutter_laravel_backend_boilerplate/infrastructure/services/dal/dto/external_course_dto.dart';
 import 'package:flutter_laravel_backend_boilerplate/infrastructure/services/dal/dto/user_dto.dart';
 import 'package:flutter_laravel_backend_boilerplate/infrastructure/services/laravel_backend/backend_contract.dart';
 import 'package:get_it/get_it.dart';
@@ -87,37 +87,44 @@ class LaravelBackend extends BackendContract {
   }
 
   @override
-  Future<ExternalCoursesSummaryDTO> externalCoursesGetDashboardSummary() async {
+  Future<List<ExternalCourseDTO>> getExternalCourses() async {
     //TODO: Implement this method to fetch the external courses summary.
     final response = await dio.post(
       BellugaConstants.api.baseUrl + _Paths.loginCheck,
       options: Options(headers: _getAuthenticatedHeaders()),
     );
 
-    return ExternalCoursesSummaryDTO.fromJson(response.data);
+    final _externalCourses = (response.data as List<Map<String, dynamic>>)
+        .map((item) => ExternalCourseDTO.fromJson(item))
+        .toList();
+
+    return Future.value(_externalCourses);
   }
 
   @override
-  Future<MyCoursesSummaryDTO> myCoursesGetDashboardSummary() async {
+  Future<List<CourseDTO>> getMyCourses() async {
     //TODO: Implement this method to fetch courses summary.
     final response = await dio.post(
       BellugaConstants.api.baseUrl + _Paths.loginCheck,
       options: Options(headers: _getAuthenticatedHeaders()),
     );
 
-    return MyCoursesSummaryDTO.fromJson(response.data);
+    final _courses = response.data
+        .map((item) => CourseDTO.fromJson(item))
+        .toList();
+
+    return Future.value(_courses);
   }
 
   //TODO: Implement this method to fetch course.
   @override
-  Future<CourseDTO> courseGetDetails(String courseId) async {
+  Future<CourseItemDTO> courseGetDetails(String courseId) async {
     final response = await dio.get(
       '${BellugaConstants.api.baseUrl}/courses/$courseId',
       options: Options(headers: _getAuthenticatedHeaders()),
     );
 
-    return CourseDTO.fromJson(response.data);
-    
+    return CourseItemDTO.fromJson(response.data);
   }
 }
 

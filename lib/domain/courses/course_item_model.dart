@@ -1,36 +1,29 @@
-import 'package:flutter_laravel_backend_boilerplate/domain/courses/course_category_model.dart';
 import 'package:flutter_laravel_backend_boilerplate/domain/courses/course_content_model.dart';
-import 'package:flutter_laravel_backend_boilerplate/domain/courses/course_item_model.dart';
 import 'package:flutter_laravel_backend_boilerplate/domain/courses/course_items_summary.dart';
-import 'package:flutter_laravel_backend_boilerplate/domain/courses/course_type_model.dart';
 import 'package:flutter_laravel_backend_boilerplate/domain/courses/file_model.dart';
 import 'package:flutter_laravel_backend_boilerplate/domain/courses/teacher_model.dart';
 import 'package:flutter_laravel_backend_boilerplate/domain/courses/thumb_model.dart';
 import 'package:flutter_laravel_backend_boilerplate/domain/value_objects/description_value.dart';
 import 'package:flutter_laravel_backend_boilerplate/domain/value_objects/title_value.dart';
-import 'package:flutter_laravel_backend_boilerplate/infrastructure/services/dal/dto/course/course_dto.dart';
+import 'package:flutter_laravel_backend_boilerplate/infrastructure/services/dal/dto/course/course_item_dto.dart';
 import 'package:value_objects/domain/value_objects/mongo_id_value.dart';
 
-class CourseModel {
+class CourseItemModel {
   final MongoIDValue id;
   final TitleValue title;
-  final CourseTypeModel type;
   final DescriptionValue description;
   final ThumbModel thumb;
-  final List<CourseCategoryModel> categories;
   final List<TeacherModel> teachers;
   final CourseChildrensSummary childrensSummary;
   final List<CourseItemModel> childrens;
   final List<FileModel> files;
   final CourseContentModel? content;
 
-  CourseModel({
+  CourseItemModel({
     required this.id,
     required this.title,
-    required this.type,
     required this.description,
     required this.thumb,
-    required this.categories,
     required this.teachers,
     required this.childrensSummary,
     required this.childrens,
@@ -38,15 +31,11 @@ class CourseModel {
     required this.content,
   });
 
-  factory CourseModel.fromDto(CourseDTO dto) {
+  factory CourseItemModel.fromDto(CourseItemDTO dto) {
     final _id = MongoIDValue()..parse(dto.id);
     final _title = TitleValue()..parse(dto.title);
-    final _type = CourseTypeModel.fromDto(dto.type);
     final _description = DescriptionValue()..parse(dto.description);
     final _thumb = ThumbModel.fromDTO(dto.thumb);
-    final _categories = dto.categories
-        .map((item) => CourseCategoryModel.fromDto(item))
-        .toList();
 
     final _teachers = dto.teachers
         .map((item) => TeacherModel.fromDTO((item)))
@@ -67,13 +56,11 @@ class CourseModel {
         ? CourseContentModel.fromDTO(_contentDto)
         : null;
 
-    return CourseModel(
+    return CourseItemModel(
       id: _id,
       title: _title,
-      type: _type,
       description: _description,
       thumb: _thumb,
-      categories: _categories,
       teachers: _teachers,
       childrensSummary: _childrensSummary,
       childrens: _childrens,

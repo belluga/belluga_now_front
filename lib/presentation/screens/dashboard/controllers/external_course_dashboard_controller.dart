@@ -1,5 +1,5 @@
-import 'package:flutter_laravel_backend_boilerplate/domain/external_course/external_courses_summary.dart';
 import 'package:flutter_laravel_backend_boilerplate/domain/repositories/external_courses_repository_contract.dart';
+import 'package:flutter_laravel_backend_boilerplate/presentation/screens/dashboard/view_models/external_courses_summary.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value.dart';

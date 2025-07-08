@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_laravel_backend_boilerplate/domain/external_course/external_course_dashboard.dart';
+import 'package:flutter_laravel_backend_boilerplate/domain/external_course/external_course_model.dart';
 import 'package:flutter_laravel_backend_boilerplate/presentation/common/widgets/image_with_progress_indicator.dart';
 import 'package:flutter_laravel_backend_boilerplate/presentation/screens/dashboard/controllers/external_course_dashboard_controller.dart';
 import 'package:flutter_laravel_backend_boilerplate/presentation/screens/dashboard/widgets/external_courses_dashboard/external_course_details_bottom_sheet_content.dart';
@@ -8,7 +8,7 @@ import 'package:get_it/get_it.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class ExternalCourseCard extends StatefulWidget {
-  final ExternalCourseDashboard course;
+  final ExternalCourseModel course;
 
   const ExternalCourseCard({super.key, required this.course});
 

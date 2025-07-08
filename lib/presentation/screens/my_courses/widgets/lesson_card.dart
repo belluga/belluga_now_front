@@ -1,22 +1,18 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_laravel_backend_boilerplate/domain/courses/discipline_model.dart';
+import 'package:flutter_laravel_backend_boilerplate/domain/courses/course_item_model.dart';
 import 'package:flutter_laravel_backend_boilerplate/presentation/common/widgets/image_with_progress_indicator.dart';
 
-class DisciplineCard extends StatefulWidget {
-  final DisciplineModel disciplineModel;
+class LessonCard extends StatefulWidget {
+  final CourseItemModel courseModel;
   final int index;
 
-  const DisciplineCard({
-    super.key,
-    required this.disciplineModel,
-    required this.index,
-  });
+  const LessonCard({super.key, required this.courseModel, required this.index});
 
   @override
-  State<DisciplineCard> createState() => _DisciplineCardState();
+  State<LessonCard> createState() => _DisciplineCardState();
 }
 
-class _DisciplineCardState extends State<DisciplineCard> {
+class _DisciplineCardState extends State<LessonCard> {
   @override
   Widget build(BuildContext context) {
     final _index = widget.index + 1;
@@ -28,7 +24,7 @@ class _DisciplineCardState extends State<DisciplineCard> {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            ImageWithProgressIndicator(thumb: widget.disciplineModel.thumb),
+            ImageWithProgressIndicator(thumb: widget.courseModel.thumb),
             Expanded(
               child: Padding(
                 padding: EdgeInsetsGeometry.symmetric(horizontal: 16),
@@ -37,7 +33,7 @@ class _DisciplineCardState extends State<DisciplineCard> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      "$_index. ${widget.disciplineModel.title.valueFormated}",
+                      "$_index. ${widget.courseModel.title.valueFormated}",
                       maxLines: 2,
                       style: TextTheme.of(context).labelMedium,
                     ),
@@ -45,11 +41,11 @@ class _DisciplineCardState extends State<DisciplineCard> {
                     LinearProgressIndicator(value: 0.55),
                     SizedBox(height: 8),
                     Text(
-                      widget.disciplineModel.description.valueFormated,
+                      widget.courseModel.description.valueFormated,
                       maxLines: 3,
-                      style: TextTheme.of(context).bodySmall?.copyWith(
-                        fontWeight: FontWeight.w300
-                      ),
+                      style: TextTheme.of(
+                        context,
+                      ).bodySmall?.copyWith(fontWeight: FontWeight.w300),
                     ),
                   ],
                 ),

@@ -1,14 +1,17 @@
 import 'package:flutter_laravel_backend_boilerplate/domain/courses/value_objects/items_total_value.dart';
-import 'package:flutter_laravel_backend_boilerplate/infrastructure/services/dal/dto/course/course_items_summary_dto.dart';
+import 'package:flutter_laravel_backend_boilerplate/domain/value_objects/title_value.dart';
+import 'package:flutter_laravel_backend_boilerplate/infrastructure/services/dal/dto/course/course_childrens_summary_dto.dart';
 
-class CourseItemsSummary {
-  ItemsTotalValue total;
+class CourseChildrensSummary {
+  final ItemsTotalValue total;
+  final TitleValue label;
 
-  CourseItemsSummary({required this.total});
+  CourseChildrensSummary({required this.total, required this.label});
 
-  factory CourseItemsSummary.fromDTO(CourseItemsSummaryDTO summaryDTO) {
+  factory CourseChildrensSummary.fromDTO(CourseChildrensSummaryDTO summaryDTO) {
     final _total = ItemsTotalValue()..parse(summaryDTO.total.toString());
+    final _label = TitleValue()..parse(summaryDTO.label);
 
-    return CourseItemsSummary(total: _total);
+    return CourseChildrensSummary(total: _total, label: _label);
   }
 }

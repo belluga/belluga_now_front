@@ -1,8 +1,10 @@
+import 'package:flutter_laravel_backend_boilerplate/domain/courses/course_item_model.dart';
 import 'package:flutter_laravel_backend_boilerplate/domain/courses/course_model.dart';
-import 'package:flutter_laravel_backend_boilerplate/domain/courses/courses_summary.dart';
 import 'package:flutter_laravel_backend_boilerplate/infrastructure/services/dal/dto/course/course_dto.dart';
-import 'package:flutter_laravel_backend_boilerplate/infrastructure/services/dal/dto/my_courses_summary_dto.dart';
+import 'package:flutter_laravel_backend_boilerplate/infrastructure/services/dal/dto/course/course_item_dto.dart';
+
 import 'package:flutter_laravel_backend_boilerplate/infrastructure/services/laravel_backend/backend_contract.dart';
+import 'package:flutter_laravel_backend_boilerplate/presentation/screens/dashboard/view_models/courses_summary.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value.dart';
 
@@ -10,7 +12,8 @@ abstract class CoursesRepositoryContract {
   BackendContract get backend => GetIt.I.get<BackendContract>();
 
   final summarySteamValue = StreamValue<CoursesSummary?>(defaultValue: null);
-  final currentCourseStreamValue = StreamValue<CourseModel?>();
+  final coursesSteamValue = StreamValue<List<CourseModel>?>(defaultValue: null);
+  final currentCourseItemStreamValue = StreamValue<CourseItemModel?>();
 
   Future<void> init() async {
     await getDashboardSummary();
@@ -24,14 +27,20 @@ abstract class CoursesRepositoryContract {
   }
 
   Future<void> _refreshDashboardSummary() async {
-    final MyCoursesSummaryDTO _dashboardSummary = await backend
-        .myCoursesGetDashboardSummary();
-    summarySteamValue.addValue(CoursesSummary.fromDTO(_dashboardSummary));
+    final List<CourseDTO> _dashboardSummary = await backend.getMyCourses();
+
+    final _courses = _dashboardSummary
+        .map((courseDto) => CourseModel.fromDto(courseDto))
+        .toList();
+
+    coursesSteamValue.addValue(_courses);
+    summarySteamValue.addValue(
+      CoursesSummary(items: _courses, total: _courses.length),
+    );
   }
 
   Future<void> getCourseDetails(String courseId) async {
-    final CourseDTO _courseDTO = await backend.courseGetDetails(courseId);
-    currentCourseStreamValue.addValue(CourseModel.fromDto(_courseDTO));
-
+    final CourseItemDTO _courseDTO = await backend.courseGetDetails(courseId);
+    currentCourseItemStreamValue.addValue(CourseItemModel.fromDto(_courseDTO));
   }
 }

@@ -1,5 +1,5 @@
-import 'package:flutter_laravel_backend_boilerplate/domain/courses/courses_summary.dart';
 import 'package:flutter_laravel_backend_boilerplate/domain/repositories/courses_repository_contract.dart';
+import 'package:flutter_laravel_backend_boilerplate/presentation/screens/dashboard/view_models/courses_summary.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value.dart';
 

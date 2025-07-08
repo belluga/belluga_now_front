@@ -3,16 +3,16 @@ import 'package:flutter_laravel_backend_boilerplate/domain/external_course/value
 import 'package:flutter_laravel_backend_boilerplate/domain/external_course/value_objects/external_course_initial_password_value.dart';
 import 'package:flutter_laravel_backend_boilerplate/domain/external_course/value_objects/external_course_platform_uri_value.dart';
 import 'package:flutter_laravel_backend_boilerplate/domain/external_course/value_objects/external_course_title_value.dart';
-import 'package:flutter_laravel_backend_boilerplate/infrastructure/services/dal/dto/external_course_dashboard_dto.dart';
+import 'package:flutter_laravel_backend_boilerplate/infrastructure/services/dal/dto/external_course_dto.dart';
 
-class ExternalCourseDashboard {
+class ExternalCourseModel {
   final ThumbModel thumb;
   final ExternalCourseTitleValue title;
   final ExternalCourseDescriptionValue description;
   final ExternalCoursePlatformUriValue platformUrl;
   final ExternalCourseInitialPasswordValue initialPassword;
 
-  ExternalCourseDashboard({
+  ExternalCourseModel({
     required this.title,
     required this.description,
     required this.platformUrl,
@@ -20,7 +20,7 @@ class ExternalCourseDashboard {
     required this.initialPassword,
   });
 
-  factory ExternalCourseDashboard.fromDTO(ExternalCourseDashboardDTO externalCourse) {
+  factory ExternalCourseModel.fromDTO(ExternalCourseDTO externalCourse) {
     final _thumbValue = ThumbModel.fromDTO(externalCourse.thumb);
 
     final _titleValue = ExternalCourseTitleValue()
@@ -35,7 +35,7 @@ class ExternalCourseDashboard {
     final _initialPassword = ExternalCourseInitialPasswordValue()
       ..tryParse(externalCourse.initialPassword);
 
-    return ExternalCourseDashboard(
+    return ExternalCourseModel(
       thumb: _thumbValue,
       title: _titleValue,
       description: _description,

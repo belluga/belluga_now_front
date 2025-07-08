@@ -1,11 +1,11 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_laravel_backend_boilerplate/application/router/app_router.gr.dart';
-import 'package:flutter_laravel_backend_boilerplate/domain/courses/course_dashboard_model.dart';
+import 'package:flutter_laravel_backend_boilerplate/domain/courses/course_model.dart';
 import 'package:flutter_laravel_backend_boilerplate/presentation/common/widgets/image_with_progress_indicator.dart';
 
 class MyCourseCard extends StatefulWidget {
-  final CourseDashboardModel course;
+  final CourseModel course;
 
   const MyCourseCard({super.key, required this.course});
 
@@ -41,7 +41,7 @@ class _MyCourseCardState extends State<MyCourseCard> {
                         style: Theme.of(context).textTheme.bodyMedium,
                       ),
                       Text(
-                        widget.course.expert.name.valueFormated,
+                        widget.course.teachers.first.name.valueFormated,
                         overflow: TextOverflow.ellipsis,
                         style: Theme.of(context).textTheme.bodySmall,
                       ),
@@ -92,6 +92,8 @@ class _MyCourseCardState extends State<MyCourseCard> {
   }
 
   Future<void> _navigateToCourse() async {
-    context.router.push(CourseRoute(courseId: widget.course.id));
+    context.router.push(
+      LessonRoute(lessonId: widget.course.childrens.first.id),
+    );
   }
 }
