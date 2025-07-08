@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_laravel_backend_boilerplate/domain/courses/course_content_model.dart';
 import 'package:flutter_laravel_backend_boilerplate/presentation/screens/lms/controllers/course_screen_controller.dart';
 import 'package:flutter_laravel_backend_boilerplate/presentation/screens/lms/widgets/course_header_builder/course_header_banner.dart';
 import 'package:flutter_laravel_backend_boilerplate/presentation/screens/lms/widgets/course_header_builder/course_header_html.dart';
@@ -18,14 +19,15 @@ class _CourseHeaderBuilderState extends State<CourseHeaderBuilder> {
 
   @override
   Widget build(BuildContext context) {
-    return StreamValueBuilder(
-      streamValue: _controller.currentCourseItemStreamValue,
-      builder: (context, courseItem) {
-        if (courseItem.hasVideoContent) {
+    return StreamValueBuilder<CourseContentModel>(
+      streamValue: _controller.currentContentStreamValue,
+      onNullWidget: CourseHeaderBanner(),
+      builder: (context, contentModel) {
+        if (contentModel.video != null) {
           return CourseHeaderVideo();
         }
 
-        if (courseItem.hasHtmlContent) {
+        if (contentModel.html != null) {
           return CourseHeaderHtml();
         }
 

@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_laravel_backend_boilerplate/domain/courses/course_content_model.dart';
 import 'package:flutter_laravel_backend_boilerplate/domain/courses/course_item_model.dart';
 import 'package:flutter_laravel_backend_boilerplate/domain/repositories/courses_repository_contract.dart';
 import 'package:get_it/get_it.dart';
@@ -11,6 +12,9 @@ class CourseScreenController implements Disposable {
     currentCourseItemStreamValue = StreamValue<CourseItemModel>(
       defaultValue: courseItemModel,
     );
+    currentContentStreamValue = StreamValue<CourseContentModel?>(
+      defaultValue: courseItemModel.content,
+    );
   }
 
   late TickerProviderStateMixin _vsync;
@@ -18,6 +22,8 @@ class CourseScreenController implements Disposable {
   final _coursesRepository = GetIt.I.get<CoursesRepositoryContract>();
 
   late StreamValue<CourseItemModel> currentCourseItemStreamValue;
+  late StreamValue<CourseContentModel?> currentContentStreamValue;
+  final currentSelectedItem = StreamValue<int?>();
 
   TabController get tabController {
     final bool _courseAlreadyHaveTabController = _tabControllersList.keys
@@ -34,8 +40,15 @@ class CourseScreenController implements Disposable {
 
   final tabIndexStreamValue = StreamValue<int>(defaultValue: 0);
 
-  void changeCurrentCourseItem(CourseItemModel courseItem) {
-    currentCourseItemStreamValue.addValue(courseItem);
+  void changeSelectedItem(int? index) {
+    currentSelectedItem.addValue(index);
+    if (index != null) {
+      currentContentStreamValue.addValue(
+        currentCourseItemStreamValue.value.childrens[index].content,
+      );
+    } else {
+      currentContentStreamValue.addValue(null);
+    }
   }
 
   void _tabControllerInit() {
@@ -68,6 +81,8 @@ class CourseScreenController implements Disposable {
   FutureOr onDispose() {
     tabIndexStreamValue.dispose();
     currentCourseItemStreamValue.dispose();
+    currentContentStreamValue.dispose();
+    currentSelectedItem.dispose();
     tabController.dispose();
   }
 }
