@@ -172,7 +172,7 @@ class MockBackend extends BackendContract {
                   },
                   "content": {
                     "video": {
-                      "url": "https://example.com/video.mp4",
+                      "url": "https://b-vz-df032af7-1d1.tv.pandavideo.com.br/1cea11b0-fa15-4c9b-ac2d-099fac53d54a/playlist.m3u8",
                       "thumb": {
                         "type": "image",
                         "data": {"url": "https://picsum.photos/id/30/200/300"},
@@ -210,7 +210,7 @@ class MockBackend extends BackendContract {
                   },
                   "content": {
                     "video": {
-                      "url": "https://example.com/video.mp4",
+                      "url": "https://player2.safevideo.com/3f7a5d49-b8db-454b-adef-c8d45210b14c",
                       "thumb": {
                         "type": "image",
                         "data": {"url": "https://picsum.photos/id/30/200/300"},
