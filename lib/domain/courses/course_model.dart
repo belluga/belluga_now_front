@@ -11,31 +11,22 @@ import 'package:flutter_laravel_backend_boilerplate/domain/value_objects/title_v
 import 'package:flutter_laravel_backend_boilerplate/infrastructure/services/dal/dto/course/course_dto.dart';
 import 'package:value_objects/domain/value_objects/mongo_id_value.dart';
 
-class CourseModel {
-  final MongoIDValue id;
-  final TitleValue title;
+class CourseModel extends CourseItemModel {
   final CourseTypeModel type;
-  final DescriptionValue description;
-  final ThumbModel thumb;
   final List<CourseCategoryModel> categories;
-  final List<TeacherModel> teachers;
-  final CourseChildrensSummary childrensSummary;
-  final List<CourseItemModel> childrens;
-  final List<FileModel> files;
-  final CourseContentModel? content;
 
   CourseModel({
-    required this.id,
-    required this.title,
+    required super.id,
+    required super.title,
     required this.type,
-    required this.description,
-    required this.thumb,
+    required super.description,
+    required super.thumb,
     required this.categories,
-    required this.teachers,
-    required this.childrensSummary,
-    required this.childrens,
-    required this.files,
-    required this.content,
+    required super.teachers,
+    required super.childrensSummary,
+    required super.childrens,
+    required super.files,
+    required super.content,
   });
 
   factory CourseModel.fromDto(CourseDTO dto) {

@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:dio/dio.dart';
 import 'package:flutter_laravel_backend_boilerplate/domain/auth/errors/belluga_auth_errors.dart';
 import 'package:flutter_laravel_backend_boilerplate/domain/repositories/auth_repository_contract.dart';
@@ -58,7 +60,7 @@ class MockBackend extends BackendContract {
 
   @override
   Future<CourseItemDTO> courseGetDetails(String courseId) async {
-    if (courseId == "6864808e5a115a9591257e2c") {
+    if (courseId == fakeMongoId) {
       return CourseItemDTO.fromJson(_myCourses[0]);
     } else if (courseId == "6864f4415a115a9591257e2d") {
       return CourseItemDTO.fromJson(_myCourses[1]);
@@ -70,10 +72,18 @@ class MockBackend extends BackendContract {
     }
   }
 
+  String get fakeMongoId {
+    const chars = 'abcdef0123456789';
+    final rnd = Random();
+    return String.fromCharCodes(
+      Iterable.generate(24, (_) => chars.codeUnitAt(rnd.nextInt(chars.length))),
+    );
+  }
+
   String get _fakePassword => "765432e1";
 
   UserDTO get _mockUser => UserDTO(
-    id: "6862af23bb2123c0d506289d",
+    id: fakeMongoId,
     profile: UserProfileDTO(
       firstName: "John",
       lastName: "Doe",
@@ -87,9 +97,9 @@ class MockBackend extends BackendContract {
 
   List<Map<String, dynamic>> get _myCourses => [
     {
-      "id": "6864808e5a115a9591257e2c",
+      "id": fakeMongoId,
       "title": "MBA em Ciências da Mente e Liderança Humanizada",
-      "type": {"id": "6864808e5a115a9591257e2d", "name": "MBA", "slug": "mba"},
+      "type": {"id": fakeMongoId, "name": "MBA", "slug": "mba"},
       "description":
           "Curso de MBA em Ciências da Mente e Liderança Humanizada.",
       "thumb": {
@@ -98,24 +108,24 @@ class MockBackend extends BackendContract {
       },
       "categories": [
         {
-          "id": "6864808e5a115a9591257e2c",
+          "id": fakeMongoId,
           "name": "Ciências da Mente",
           "slug": "ciencias_da_mente",
         },
         {
-          "id": "6864808e5a115a9591257e2d",
+          "id": fakeMongoId,
           "name": "Liderança",
           "slug": "lideranca",
         },
         {
-          "id": "6864808e5a115a9591257e2d",
+          "id": fakeMongoId,
           "name": "Negócios",
           "slug": "negocios",
         },
       ],
       "teachers": [
         {
-          "id": "6864808e5a115a9591257e2c",
+          "id": fakeMongoId,
           "name": "Roberto Shinyashiki",
           "avatar_url": "https://picsum.photos/id/40/200/300",
           "highlight": true,
@@ -125,12 +135,12 @@ class MockBackend extends BackendContract {
         "meta": {"label": "Disciplinas", "total": 10},
         "items": [
           {
-            "id": "6864808e5a115a9591257e2c",
+            "id": fakeMongoId,
             "title": "Introdução à Liderança Humanizada",
             "description": "Aprenda os fundamentos da liderança humanizada.",
             "teachers": [
               {
-                "id": "6864808e5a115a9591257e2c",
+                "id": fakeMongoId,
                 "name": "Roberto Shinyashiki",
                 "avatar_url": "https://picsum.photos/id/40/200/300",
                 "highlight": true,
@@ -144,13 +154,13 @@ class MockBackend extends BackendContract {
               "meta": {"label": "Aulas", "total": 10},
               "items": [
                 {
-                  "id": "6864808e5a115a9591257e2c",
+                  "id": fakeMongoId,
                   "label": "Aula",
                   "title": "O que é Liderança Humanizada?",
                   "description": "Entenda o conceito de liderança humanizada.",
                   "teachers": [
                     {
-                      "id": "6864808e5a115a9591257e2c",
+                      "id": fakeMongoId,
                       "name": "Roberto Shinyashiki",
                       "avatar_url": "https://picsum.photos/id/40/200/300",
                       "highlight": true,
@@ -173,7 +183,8 @@ class MockBackend extends BackendContract {
                   "files": [
                     {
                       "url": "https://example.com/file.pdf",
-                      "name": "Manual do Aluno",
+                      "title": "Manual do Aluno",
+                      "description": "Aqui você encontra tudo que precisa",
                       "thumb": {
                         "type": "image",
                         "data": {"url": "https://picsum.photos/id/30/200/300"},
@@ -182,12 +193,12 @@ class MockBackend extends BackendContract {
                   ],
                 },
                 {
-                  "id": "6864808e5a115a9591257e2d",
+                  "id": fakeMongoId,
                   "title": "Princípios da Liderança Humanizada",
                   "description": "Explore os princípios fundamentais.",
                   "teachers": [
                     {
-                      "id": "6864808e5a115a9591257e2c",
+                      "id": fakeMongoId,
                       "name": "Roberto Shinyashiki",
                       "avatar_url": "https://picsum.photos/id/40/200/300",
                       "highlight": true,
@@ -210,7 +221,7 @@ class MockBackend extends BackendContract {
                   "files": [
                     {
                       "url": "https://example.com/file.pdf",
-                      "name": "Manual do Aluno",
+                      "title": "Manual do Aluno",
                       "thumb": {
                         "type": "image",
                         "data": {"url": "https://picsum.photos/id/30/200/300"},
@@ -222,12 +233,12 @@ class MockBackend extends BackendContract {
             },
           },
           {
-            "id": "6864808e5a115a9591257e2c",
+            "id": fakeMongoId,
             "title": "Introdução à Liderança Humanizada",
             "description": "Aprenda os fundamentos da liderança humanizada.",
             "teachers": [
               {
-                "id": "6864808e5a115a9591257e2c",
+                "id": fakeMongoId,
                 "name": "Roberto Shinyashiki",
                 "avatar_url": "https://picsum.photos/id/40/200/300",
                 "highlight": true,
@@ -237,16 +248,16 @@ class MockBackend extends BackendContract {
               "type": "image",
               "data": {"url": "https://picsum.photos/id/30/200/300"},
             },
-            "lessons": {
-              "summary": {"total": 2},
+            "childrens": {
+              "meta": {"label": "Aulas", "total": 10},
               "items": [
                 {
-                  "id": "6864808e5a115a9591257e2c",
+                  "id": fakeMongoId,
                   "title": "O que é Liderança Humanizada?",
                   "description": "Entenda o conceito de liderança humanizada.",
                   "teachers": [
                     {
-                      "id": "6864808e5a115a9591257e2c",
+                      "id": fakeMongoId,
                       "name": "Roberto Shinyashiki",
                       "avatar_url": "https://picsum.photos/id/40/200/300",
                       "highlight": true,
@@ -269,7 +280,7 @@ class MockBackend extends BackendContract {
                   "files": [
                     {
                       "url": "https://example.com/file.pdf",
-                      "name": "Manual do Aluno",
+                      "title": "Manual do Aluno",
                       "thumb": {
                         "type": "image",
                         "data": {"url": "https://picsum.photos/id/30/200/300"},
@@ -278,12 +289,12 @@ class MockBackend extends BackendContract {
                   ],
                 },
                 {
-                  "id": "6864808e5a115a9591257e2d",
+                  "id": fakeMongoId,
                   "title": "Princípios da Liderança Humanizada",
                   "description": "Explore os princípios fundamentais.",
                   "teachers": [
                     {
-                      "id": "6864808e5a115a9591257e2c",
+                      "id": fakeMongoId,
                       "name": "Roberto Shinyashiki",
                       "avatar_url": "https://picsum.photos/id/40/200/300",
                       "highlight": true,
@@ -306,7 +317,7 @@ class MockBackend extends BackendContract {
                   "files": [
                     {
                       "url": "https://example.com/file.pdf",
-                      "name": "Manual do Aluno",
+                      "title": "Manual do Aluno",
                       "thumb": {
                         "type": "image",
                         "data": {"url": "https://picsum.photos/id/30/200/300"},
@@ -318,12 +329,12 @@ class MockBackend extends BackendContract {
             },
           },
           {
-            "id": "6864808e5a115a9591257e2c",
+            "id": fakeMongoId,
             "title": "Introdução à Liderança Humanizada",
             "description": "Aprenda os fundamentos da liderança humanizada.",
             "teachers": [
               {
-                "id": "6864808e5a115a9591257e2c",
+                "id": fakeMongoId,
                 "name": "Roberto Shinyashiki",
                 "avatar_url": "https://picsum.photos/id/40/200/300",
                 "highlight": true,
@@ -333,16 +344,16 @@ class MockBackend extends BackendContract {
               "type": "image",
               "data": {"url": "https://picsum.photos/id/30/200/300"},
             },
-            "lessons": {
-              "summary": {"total": 2},
+            "childrens": {
+              "meta": {"label": "Aulas", "total": 10},
               "items": [
                 {
-                  "id": "6864808e5a115a9591257e2c",
+                  "id": fakeMongoId,
                   "title": "O que é Liderança Humanizada?",
                   "description": "Entenda o conceito de liderança humanizada.",
                   "teachers": [
                     {
-                      "id": "6864808e5a115a9591257e2c",
+                      "id": fakeMongoId,
                       "name": "Roberto Shinyashiki",
                       "avatar_url": "https://picsum.photos/id/40/200/300",
                       "highlight": true,
@@ -365,7 +376,8 @@ class MockBackend extends BackendContract {
                   "files": [
                     {
                       "url": "https://example.com/file.pdf",
-                      "name": "Manual do Aluno",
+                      "title": "Manual do Aluno",
+                      "description": "Aqui você encontra tudo que precisa",
                       "thumb": {
                         "type": "image",
                         "data": {"url": "https://picsum.photos/id/30/200/300"},
@@ -374,12 +386,12 @@ class MockBackend extends BackendContract {
                   ],
                 },
                 {
-                  "id": "6864808e5a115a9591257e2d",
+                  "id": fakeMongoId,
                   "title": "Princípios da Liderança Humanizada",
                   "description": "Explore os princípios fundamentais.",
                   "teachers": [
                     {
-                      "id": "6864808e5a115a9591257e2c",
+                      "id": fakeMongoId,
                       "name": "Roberto Shinyashiki",
                       "avatar_url": "https://picsum.photos/id/40/200/300",
                       "highlight": true,
@@ -402,7 +414,7 @@ class MockBackend extends BackendContract {
                   "files": [
                     {
                       "url": "https://example.com/file.pdf",
-                      "name": "Manual do Aluno",
+                      "title": "Manual do Aluno",
                       "thumb": {
                         "type": "image",
                         "data": {"url": "https://picsum.photos/id/30/200/300"},
@@ -414,12 +426,12 @@ class MockBackend extends BackendContract {
             },
           },
           {
-            "id": "6864808e5a115a9591257e2c",
+            "id": fakeMongoId,
             "title": "Introdução à Liderança Humanizada",
             "description": "Aprenda os fundamentos da liderança humanizada.",
             "teachers": [
               {
-                "id": "6864808e5a115a9591257e2c",
+                "id": fakeMongoId,
                 "name": "Roberto Shinyashiki",
                 "avatar_url": "https://picsum.photos/id/40/200/300",
                 "highlight": true,
@@ -429,16 +441,16 @@ class MockBackend extends BackendContract {
               "type": "image",
               "data": {"url": "https://picsum.photos/id/30/200/300"},
             },
-            "lessons": {
-              "summary": {"total": 2},
+            "childrens": {
+              "meta": {"label": "Aulas", "total": 10},
               "items": [
                 {
-                  "id": "6864808e5a115a9591257e2c",
+                  "id": fakeMongoId,
                   "title": "O que é Liderança Humanizada?",
                   "description": "Entenda o conceito de liderança humanizada.",
                   "teachers": [
                     {
-                      "id": "6864808e5a115a9591257e2c",
+                      "id": fakeMongoId,
                       "name": "Roberto Shinyashiki",
                       "avatar_url": "https://picsum.photos/id/40/200/300",
                       "highlight": true,
@@ -461,7 +473,7 @@ class MockBackend extends BackendContract {
                   "files": [
                     {
                       "url": "https://example.com/file.pdf",
-                      "name": "Manual do Aluno",
+                      "title": "Manual do Aluno",
                       "thumb": {
                         "type": "image",
                         "data": {"url": "https://picsum.photos/id/30/200/300"},
@@ -470,12 +482,12 @@ class MockBackend extends BackendContract {
                   ],
                 },
                 {
-                  "id": "6864808e5a115a9591257e2d",
+                  "id": fakeMongoId,
                   "title": "Princípios da Liderança Humanizada",
                   "description": "Explore os princípios fundamentais.",
                   "teachers": [
                     {
-                      "id": "6864808e5a115a9591257e2c",
+                      "id": fakeMongoId,
                       "name": "Roberto Shinyashiki",
                       "avatar_url": "https://picsum.photos/id/40/200/300",
                       "highlight": true,
@@ -498,7 +510,8 @@ class MockBackend extends BackendContract {
                   "files": [
                     {
                       "url": "https://example.com/file.pdf",
-                      "name": "Manual do Aluno",
+                      "title": "Manual do Aluno",
+                      "description": "Aqui você encontra tudo que precisa",
                       "thumb": {
                         "type": "image",
                         "data": {"url": "https://picsum.photos/id/30/200/300"},
@@ -506,7 +519,7 @@ class MockBackend extends BackendContract {
                     },
                     {
                       "url": "https://example.com/file.pdf",
-                      "name": "Manual do Aluno",
+                      "title": "Manual do Aluno",
                       "thumb": {
                         "type": "image",
                         "data": {"url": "https://picsum.photos/id/30/200/300"},
@@ -514,7 +527,1351 @@ class MockBackend extends BackendContract {
                     },
                     {
                       "url": "https://example.com/file.pdf",
-                      "name": "Manual do Aluno",
+                      "title": "Manual do Aluno",
+                      "thumb": {
+                        "type": "image",
+                        "data": {"url": "https://picsum.photos/id/30/200/300"},
+                      },
+                    },
+                  ],
+                },
+              ],
+            },
+          },
+        ],
+      },
+    },
+    {
+      "id": fakeMongoId,
+      "title": "MBA em Ciências da Mente e Liderança Humanizada",
+      "type": {"id": fakeMongoId, "name": "MBA", "slug": "mba"},
+      "description":
+          "Curso de MBA em Ciências da Mente e Liderança Humanizada.",
+      "thumb": {
+        "type": "image",
+        "data": {"url": "https://picsum.photos/id/30/200/300"},
+      },
+      "categories": [
+        {
+          "id": fakeMongoId,
+          "name": "Ciências da Mente",
+          "slug": "ciencias_da_mente",
+        },
+        {
+          "id": fakeMongoId,
+          "name": "Liderança",
+          "slug": "lideranca",
+        },
+        {
+          "id": fakeMongoId,
+          "name": "Negócios",
+          "slug": "negocios",
+        },
+      ],
+      "teachers": [
+        {
+          "id": fakeMongoId,
+          "name": "Roberto Shinyashiki",
+          "avatar_url": "https://picsum.photos/id/40/200/300",
+          "highlight": true,
+        },
+      ],
+      "childrens": {
+        "meta": {"label": "Disciplinas", "total": 10},
+        "items": [
+          {
+            "id": fakeMongoId,
+            "title": "Introdução à Liderança Humanizada",
+            "description": "Aprenda os fundamentos da liderança humanizada.",
+            "teachers": [
+              {
+                "id": fakeMongoId,
+                "name": "Roberto Shinyashiki",
+                "avatar_url": "https://picsum.photos/id/40/200/300",
+                "highlight": true,
+              },
+            ],
+            "thumb": {
+              "type": "image",
+              "data": {"url": "https://picsum.photos/id/30/200/300"},
+            },
+            "childrens": {
+              "meta": {"label": "Aulas", "total": 10},
+              "items": [
+                {
+                  "id": fakeMongoId,
+                  "label": "Aula",
+                  "title": "O que é Liderança Humanizada?",
+                  "description": "Entenda o conceito de liderança humanizada.",
+                  "teachers": [
+                    {
+                      "id": fakeMongoId,
+                      "name": "Roberto Shinyashiki",
+                      "avatar_url": "https://picsum.photos/id/40/200/300",
+                      "highlight": true,
+                    },
+                  ],
+                  "thumb": {
+                    "type": "image",
+                    "data": {"url": "https://picsum.photos/id/30/200/300"},
+                  },
+                  "content": {
+                    "video": {
+                      "url": "https://example.com/video.mp4",
+                      "thumb": {
+                        "type": "image",
+                        "data": {"url": "https://picsum.photos/id/30/200/300"},
+                      },
+                    },
+                    "html": {"content": "<p>Conteúdo em HTML</p>"},
+                  },
+                  "files": [
+                    {
+                      "url": "https://example.com/file.pdf",
+                      "title": "Manual do Aluno",
+                      "description": "Aqui você encontra tudo que precisa",
+                      "thumb": {
+                        "type": "image",
+                        "data": {"url": "https://picsum.photos/id/30/200/300"},
+                      },
+                    },
+                  ],
+                },
+                {
+                  "id": fakeMongoId,
+                  "title": "Princípios da Liderança Humanizada",
+                  "description": "Explore os princípios fundamentais.",
+                  "teachers": [
+                    {
+                      "id": fakeMongoId,
+                      "name": "Roberto Shinyashiki",
+                      "avatar_url": "https://picsum.photos/id/40/200/300",
+                      "highlight": true,
+                    },
+                  ],
+                  "thumb": {
+                    "type": "image",
+                    "data": {"url": "https://picsum.photos/id/30/200/300"},
+                  },
+                  "content": {
+                    "video": {
+                      "url": "https://example.com/video.mp4",
+                      "thumb": {
+                        "type": "image",
+                        "data": {"url": "https://picsum.photos/id/30/200/300"},
+                      },
+                    },
+                    "html": {"content": "<p>Conteúdo em HTML</p>"},
+                  },
+                  "files": [
+                    {
+                      "url": "https://example.com/file.pdf",
+                      "title": "Manual do Aluno",
+                      "thumb": {
+                        "type": "image",
+                        "data": {"url": "https://picsum.photos/id/30/200/300"},
+                      },
+                    },
+                  ],
+                },
+              ],
+            },
+          },
+          {
+            "id": fakeMongoId,
+            "title": "Introdução à Liderança Humanizada",
+            "description": "Aprenda os fundamentos da liderança humanizada.",
+            "teachers": [
+              {
+                "id": fakeMongoId,
+                "name": "Roberto Shinyashiki",
+                "avatar_url": "https://picsum.photos/id/40/200/300",
+                "highlight": true,
+              },
+            ],
+            "thumb": {
+              "type": "image",
+              "data": {"url": "https://picsum.photos/id/30/200/300"},
+            },
+            "childrens": {
+              "meta": {"label": "Aulas", "total": 10},
+              "items": [
+                {
+                  "id": fakeMongoId,
+                  "title": "O que é Liderança Humanizada?",
+                  "description": "Entenda o conceito de liderança humanizada.",
+                  "teachers": [
+                    {
+                      "id": fakeMongoId,
+                      "name": "Roberto Shinyashiki",
+                      "avatar_url": "https://picsum.photos/id/40/200/300",
+                      "highlight": true,
+                    },
+                  ],
+                  "thumb": {
+                    "type": "image",
+                    "data": {"url": "https://picsum.photos/id/30/200/300"},
+                  },
+                  "content": {
+                    "video": {
+                      "url": "https://example.com/video.mp4",
+                      "thumb": {
+                        "type": "image",
+                        "data": {"url": "https://picsum.photos/id/30/200/300"},
+                      },
+                    },
+                    "html": {"content": "<p>Conteúdo em HTML</p>"},
+                  },
+                  "files": [
+                    {
+                      "url": "https://example.com/file.pdf",
+                      "title": "Manual do Aluno",
+                      "description": "Aqui você encontra tudo que precisa",
+                      "thumb": {
+                        "type": "image",
+                        "data": {"url": "https://picsum.photos/id/30/200/300"},
+                      },
+                    },
+                  ],
+                },
+                {
+                  "id": fakeMongoId,
+                  "title": "Princípios da Liderança Humanizada",
+                  "description": "Explore os princípios fundamentais.",
+                  "teachers": [
+                    {
+                      "id": fakeMongoId,
+                      "name": "Roberto Shinyashiki",
+                      "avatar_url": "https://picsum.photos/id/40/200/300",
+                      "highlight": true,
+                    },
+                  ],
+                  "thumb": {
+                    "type": "image",
+                    "data": {"url": "https://picsum.photos/id/30/200/300"},
+                  },
+                  "content": {
+                    "video": {
+                      "url": "https://example.com/video.mp4",
+                      "thumb": {
+                        "type": "image",
+                        "data": {"url": "https://picsum.photos/id/30/200/300"},
+                      },
+                    },
+                    "html": {"content": "<p>Conteúdo em HTML</p>"},
+                  },
+                  "files": [
+                    {
+                      "url": "https://example.com/file.pdf",
+                      "title": "Manual do Aluno",
+                      "thumb": {
+                        "type": "image",
+                        "data": {"url": "https://picsum.photos/id/30/200/300"},
+                      },
+                    },
+                  ],
+                },
+              ],
+            },
+          },
+          {
+            "id": fakeMongoId,
+            "title": "Introdução à Liderança Humanizada",
+            "description": "Aprenda os fundamentos da liderança humanizada.",
+            "teachers": [
+              {
+                "id": fakeMongoId,
+                "name": "Roberto Shinyashiki",
+                "avatar_url": "https://picsum.photos/id/40/200/300",
+                "highlight": true,
+              },
+            ],
+            "thumb": {
+              "type": "image",
+              "data": {"url": "https://picsum.photos/id/30/200/300"},
+            },
+            "childrens": {
+              "meta": {"label": "Aulas", "total": 10},
+              "items": [
+                {
+                  "id": fakeMongoId,
+                  "title": "O que é Liderança Humanizada?",
+                  "description": "Entenda o conceito de liderança humanizada.",
+                  "teachers": [
+                    {
+                      "id": fakeMongoId,
+                      "name": "Roberto Shinyashiki",
+                      "avatar_url": "https://picsum.photos/id/40/200/300",
+                      "highlight": true,
+                    },
+                  ],
+                  "thumb": {
+                    "type": "image",
+                    "data": {"url": "https://picsum.photos/id/30/200/300"},
+                  },
+                  "content": {
+                    "video": {
+                      "url": "https://example.com/video.mp4",
+                      "thumb": {
+                        "type": "image",
+                        "data": {"url": "https://picsum.photos/id/30/200/300"},
+                      },
+                    },
+                    "html": {"content": "<p>Conteúdo em HTML</p>"},
+                  },
+                  "files": [
+                    {
+                      "url": "https://example.com/file.pdf",
+                      "title": "Manual do Aluno",
+                      "description": "Aqui você encontra tudo que precisa",
+                      "thumb": {
+                        "type": "image",
+                        "data": {"url": "https://picsum.photos/id/30/200/300"},
+                      },
+                    },
+                  ],
+                },
+                {
+                  "id": fakeMongoId,
+                  "title": "Princípios da Liderança Humanizada",
+                  "description": "Explore os princípios fundamentais.",
+                  "teachers": [
+                    {
+                      "id": fakeMongoId,
+                      "name": "Roberto Shinyashiki",
+                      "avatar_url": "https://picsum.photos/id/40/200/300",
+                      "highlight": true,
+                    },
+                  ],
+                  "thumb": {
+                    "type": "image",
+                    "data": {"url": "https://picsum.photos/id/30/200/300"},
+                  },
+                  "content": {
+                    "video": {
+                      "url": "https://example.com/video.mp4",
+                      "thumb": {
+                        "type": "image",
+                        "data": {"url": "https://picsum.photos/id/30/200/300"},
+                      },
+                    },
+                    "html": {"content": "<p>Conteúdo em HTML</p>"},
+                  },
+                  "files": [
+                    {
+                      "url": "https://example.com/file.pdf",
+                      "title": "Manual do Aluno",
+                      "thumb": {
+                        "type": "image",
+                        "data": {"url": "https://picsum.photos/id/30/200/300"},
+                      },
+                    },
+                  ],
+                },
+              ],
+            },
+          },
+          {
+            "id": fakeMongoId,
+            "title": "Introdução à Liderança Humanizada",
+            "description": "Aprenda os fundamentos da liderança humanizada.",
+            "teachers": [
+              {
+                "id": fakeMongoId,
+                "name": "Roberto Shinyashiki",
+                "avatar_url": "https://picsum.photos/id/40/200/300",
+                "highlight": true,
+              },
+            ],
+            "thumb": {
+              "type": "image",
+              "data": {"url": "https://picsum.photos/id/30/200/300"},
+            },
+            "childrens": {
+              "meta": {"label": "Aulas", "total": 10},
+              "items": [
+                {
+                  "id": fakeMongoId,
+                  "title": "O que é Liderança Humanizada?",
+                  "description": "Entenda o conceito de liderança humanizada.",
+                  "teachers": [
+                    {
+                      "id": fakeMongoId,
+                      "name": "Roberto Shinyashiki",
+                      "avatar_url": "https://picsum.photos/id/40/200/300",
+                      "highlight": true,
+                    },
+                  ],
+                  "thumb": {
+                    "type": "image",
+                    "data": {"url": "https://picsum.photos/id/30/200/300"},
+                  },
+                  "content": {
+                    "video": {
+                      "url": "https://example.com/video.mp4",
+                      "thumb": {
+                        "type": "image",
+                        "data": {"url": "https://picsum.photos/id/30/200/300"},
+                      },
+                    },
+                    "html": {"content": "<p>Conteúdo em HTML</p>"},
+                  },
+                  "files": [
+                    {
+                      "url": "https://example.com/file.pdf",
+                      "title": "Manual do Aluno",
+                      "thumb": {
+                        "type": "image",
+                        "data": {"url": "https://picsum.photos/id/30/200/300"},
+                      },
+                    },
+                  ],
+                },
+                {
+                  "id": fakeMongoId,
+                  "title": "Princípios da Liderança Humanizada",
+                  "description": "Explore os princípios fundamentais.",
+                  "teachers": [
+                    {
+                      "id": fakeMongoId,
+                      "name": "Roberto Shinyashiki",
+                      "avatar_url": "https://picsum.photos/id/40/200/300",
+                      "highlight": true,
+                    },
+                  ],
+                  "thumb": {
+                    "type": "image",
+                    "data": {"url": "https://picsum.photos/id/30/200/300"},
+                  },
+                  "content": {
+                    "video": {
+                      "url": "https://example.com/video.mp4",
+                      "thumb": {
+                        "type": "image",
+                        "data": {"url": "https://picsum.photos/id/30/200/300"},
+                      },
+                    },
+                    "html": {"content": "<p>Conteúdo em HTML</p>"},
+                  },
+                  "files": [
+                    {
+                      "url": "https://example.com/file.pdf",
+                      "title": "Manual do Aluno",
+                      "description": "Aqui você encontra tudo que precisa",
+                      "thumb": {
+                        "type": "image",
+                        "data": {"url": "https://picsum.photos/id/30/200/300"},
+                      },
+                    },
+                    {
+                      "url": "https://example.com/file.pdf",
+                      "title": "Manual do Aluno",
+                      "thumb": {
+                        "type": "image",
+                        "data": {"url": "https://picsum.photos/id/30/200/300"},
+                      },
+                    },
+                    {
+                      "url": "https://example.com/file.pdf",
+                      "title": "Manual do Aluno",
+                      "thumb": {
+                        "type": "image",
+                        "data": {"url": "https://picsum.photos/id/30/200/300"},
+                      },
+                    },
+                  ],
+                },
+              ],
+            },
+          },
+        ],
+      },
+    },
+    {
+      "id": fakeMongoId,
+      "title": "MBA em Ciências da Mente e Liderança Humanizada",
+      "type": {"id": fakeMongoId, "name": "MBA", "slug": "mba"},
+      "description":
+          "Curso de MBA em Ciências da Mente e Liderança Humanizada.",
+      "thumb": {
+        "type": "image",
+        "data": {"url": "https://picsum.photos/id/30/200/300"},
+      },
+      "categories": [
+        {
+          "id": fakeMongoId,
+          "name": "Ciências da Mente",
+          "slug": "ciencias_da_mente",
+        },
+        {
+          "id": fakeMongoId,
+          "name": "Liderança",
+          "slug": "lideranca",
+        },
+        {
+          "id": fakeMongoId,
+          "name": "Negócios",
+          "slug": "negocios",
+        },
+      ],
+      "teachers": [
+        {
+          "id": fakeMongoId,
+          "name": "Roberto Shinyashiki",
+          "avatar_url": "https://picsum.photos/id/40/200/300",
+          "highlight": true,
+        },
+      ],
+      "childrens": {
+        "meta": {"label": "Disciplinas", "total": 10},
+        "items": [
+          {
+            "id": fakeMongoId,
+            "title": "Introdução à Liderança Humanizada",
+            "description": "Aprenda os fundamentos da liderança humanizada.",
+            "teachers": [
+              {
+                "id": fakeMongoId,
+                "name": "Roberto Shinyashiki",
+                "avatar_url": "https://picsum.photos/id/40/200/300",
+                "highlight": true,
+              },
+            ],
+            "thumb": {
+              "type": "image",
+              "data": {"url": "https://picsum.photos/id/30/200/300"},
+            },
+            "childrens": {
+              "meta": {"label": "Aulas", "total": 10},
+              "items": [
+                {
+                  "id": fakeMongoId,
+                  "label": "Aula",
+                  "title": "O que é Liderança Humanizada?",
+                  "description": "Entenda o conceito de liderança humanizada.",
+                  "teachers": [
+                    {
+                      "id": fakeMongoId,
+                      "name": "Roberto Shinyashiki",
+                      "avatar_url": "https://picsum.photos/id/40/200/300",
+                      "highlight": true,
+                    },
+                  ],
+                  "thumb": {
+                    "type": "image",
+                    "data": {"url": "https://picsum.photos/id/30/200/300"},
+                  },
+                  "content": {
+                    "video": {
+                      "url": "https://example.com/video.mp4",
+                      "thumb": {
+                        "type": "image",
+                        "data": {"url": "https://picsum.photos/id/30/200/300"},
+                      },
+                    },
+                    "html": {"content": "<p>Conteúdo em HTML</p>"},
+                  },
+                  "files": [
+                    {
+                      "url": "https://example.com/file.pdf",
+                      "title": "Manual do Aluno",
+                      "description": "Aqui você encontra tudo que precisa",
+                      "thumb": {
+                        "type": "image",
+                        "data": {"url": "https://picsum.photos/id/30/200/300"},
+                      },
+                    },
+                  ],
+                },
+                {
+                  "id": fakeMongoId,
+                  "title": "Princípios da Liderança Humanizada",
+                  "description": "Explore os princípios fundamentais.",
+                  "teachers": [
+                    {
+                      "id": fakeMongoId,
+                      "name": "Roberto Shinyashiki",
+                      "avatar_url": "https://picsum.photos/id/40/200/300",
+                      "highlight": true,
+                    },
+                  ],
+                  "thumb": {
+                    "type": "image",
+                    "data": {"url": "https://picsum.photos/id/30/200/300"},
+                  },
+                  "content": {
+                    "video": {
+                      "url": "https://example.com/video.mp4",
+                      "thumb": {
+                        "type": "image",
+                        "data": {"url": "https://picsum.photos/id/30/200/300"},
+                      },
+                    },
+                    "html": {"content": "<p>Conteúdo em HTML</p>"},
+                  },
+                  "files": [
+                    {
+                      "url": "https://example.com/file.pdf",
+                      "title": "Manual do Aluno",
+                      "thumb": {
+                        "type": "image",
+                        "data": {"url": "https://picsum.photos/id/30/200/300"},
+                      },
+                    },
+                  ],
+                },
+              ],
+            },
+          },
+          {
+            "id": fakeMongoId,
+            "title": "Introdução à Liderança Humanizada",
+            "description": "Aprenda os fundamentos da liderança humanizada.",
+            "teachers": [
+              {
+                "id": fakeMongoId,
+                "name": "Roberto Shinyashiki",
+                "avatar_url": "https://picsum.photos/id/40/200/300",
+                "highlight": true,
+              },
+            ],
+            "thumb": {
+              "type": "image",
+              "data": {"url": "https://picsum.photos/id/30/200/300"},
+            },
+            "childrens": {
+              "meta": {"label": "Aulas", "total": 10},
+              "items": [
+                {
+                  "id": fakeMongoId,
+                  "title": "O que é Liderança Humanizada?",
+                  "description": "Entenda o conceito de liderança humanizada.",
+                  "teachers": [
+                    {
+                      "id": fakeMongoId,
+                      "name": "Roberto Shinyashiki",
+                      "avatar_url": "https://picsum.photos/id/40/200/300",
+                      "highlight": true,
+                    },
+                  ],
+                  "thumb": {
+                    "type": "image",
+                    "data": {"url": "https://picsum.photos/id/30/200/300"},
+                  },
+                  "content": {
+                    "video": {
+                      "url": "https://example.com/video.mp4",
+                      "thumb": {
+                        "type": "image",
+                        "data": {"url": "https://picsum.photos/id/30/200/300"},
+                      },
+                    },
+                    "html": {"content": "<p>Conteúdo em HTML</p>"},
+                  },
+                  "files": [
+                    {
+                      "url": "https://example.com/file.pdf",
+                      "title": "Manual do Aluno",
+                      "thumb": {
+                        "type": "image",
+                        "data": {"url": "https://picsum.photos/id/30/200/300"},
+                      },
+                    },
+                  ],
+                },
+                {
+                  "id": fakeMongoId,
+                  "title": "Princípios da Liderança Humanizada",
+                  "description": "Explore os princípios fundamentais.",
+                  "teachers": [
+                    {
+                      "id": fakeMongoId,
+                      "name": "Roberto Shinyashiki",
+                      "avatar_url": "https://picsum.photos/id/40/200/300",
+                      "highlight": true,
+                    },
+                  ],
+                  "thumb": {
+                    "type": "image",
+                    "data": {"url": "https://picsum.photos/id/30/200/300"},
+                  },
+                  "content": {
+                    "video": {
+                      "url": "https://example.com/video.mp4",
+                      "thumb": {
+                        "type": "image",
+                        "data": {"url": "https://picsum.photos/id/30/200/300"},
+                      },
+                    },
+                    "html": {"content": "<p>Conteúdo em HTML</p>"},
+                  },
+                  "files": [
+                    {
+                      "url": "https://example.com/file.pdf",
+                      "title": "Manual do Aluno",
+                      "description": "Aqui você encontra tudo que precisa",
+                      "thumb": {
+                        "type": "image",
+                        "data": {"url": "https://picsum.photos/id/30/200/300"},
+                      },
+                    },
+                  ],
+                },
+              ],
+            },
+          },
+          {
+            "id": fakeMongoId,
+            "title": "Introdução à Liderança Humanizada",
+            "description": "Aprenda os fundamentos da liderança humanizada.",
+            "teachers": [
+              {
+                "id": fakeMongoId,
+                "name": "Roberto Shinyashiki",
+                "avatar_url": "https://picsum.photos/id/40/200/300",
+                "highlight": true,
+              },
+            ],
+            "thumb": {
+              "type": "image",
+              "data": {"url": "https://picsum.photos/id/30/200/300"},
+            },
+            "childrens": {
+              "meta": {"label": "Aulas", "total": 10},
+              "items": [
+                {
+                  "id": fakeMongoId,
+                  "title": "O que é Liderança Humanizada?",
+                  "description": "Entenda o conceito de liderança humanizada.",
+                  "teachers": [
+                    {
+                      "id": fakeMongoId,
+                      "name": "Roberto Shinyashiki",
+                      "avatar_url": "https://picsum.photos/id/40/200/300",
+                      "highlight": true,
+                    },
+                  ],
+                  "thumb": {
+                    "type": "image",
+                    "data": {"url": "https://picsum.photos/id/30/200/300"},
+                  },
+                  "content": {
+                    "video": {
+                      "url": "https://example.com/video.mp4",
+                      "thumb": {
+                        "type": "image",
+                        "data": {"url": "https://picsum.photos/id/30/200/300"},
+                      },
+                    },
+                    "html": {"content": "<p>Conteúdo em HTML</p>"},
+                  },
+                  "files": [
+                    {
+                      "url": "https://example.com/file.pdf",
+                      "title": "Manual do Aluno",
+                      "description": "Aqui você encontra tudo que precisa",
+                      "thumb": {
+                        "type": "image",
+                        "data": {"url": "https://picsum.photos/id/30/200/300"},
+                      },
+                    },
+                  ],
+                },
+                {
+                  "id": fakeMongoId,
+                  "title": "Princípios da Liderança Humanizada",
+                  "description": "Explore os princípios fundamentais.",
+                  "teachers": [
+                    {
+                      "id": fakeMongoId,
+                      "name": "Roberto Shinyashiki",
+                      "avatar_url": "https://picsum.photos/id/40/200/300",
+                      "highlight": true,
+                    },
+                  ],
+                  "thumb": {
+                    "type": "image",
+                    "data": {"url": "https://picsum.photos/id/30/200/300"},
+                  },
+                  "content": {
+                    "video": {
+                      "url": "https://example.com/video.mp4",
+                      "thumb": {
+                        "type": "image",
+                        "data": {"url": "https://picsum.photos/id/30/200/300"},
+                      },
+                    },
+                    "html": {"content": "<p>Conteúdo em HTML</p>"},
+                  },
+                  "files": [
+                    {
+                      "url": "https://example.com/file.pdf",
+                      "title": "Manual do Aluno",
+                      "description": "Aqui você encontra tudo que precisa",
+                      "thumb": {
+                        "type": "image",
+                        "data": {"url": "https://picsum.photos/id/30/200/300"},
+                      },
+                    },
+                  ],
+                },
+              ],
+            },
+          },
+          {
+            "id": fakeMongoId,
+            "title": "Introdução à Liderança Humanizada",
+            "description": "Aprenda os fundamentos da liderança humanizada.",
+            "teachers": [
+              {
+                "id": fakeMongoId,
+                "name": "Roberto Shinyashiki",
+                "avatar_url": "https://picsum.photos/id/40/200/300",
+                "highlight": true,
+              },
+            ],
+            "thumb": {
+              "type": "image",
+              "data": {"url": "https://picsum.photos/id/30/200/300"},
+            },
+            "childrens": {
+              "meta": {"label": "Aulas", "total": 10},
+              "items": [
+                {
+                  "id": fakeMongoId,
+                  "title": "O que é Liderança Humanizada?",
+                  "description": "Entenda o conceito de liderança humanizada.",
+                  "teachers": [
+                    {
+                      "id": fakeMongoId,
+                      "name": "Roberto Shinyashiki",
+                      "avatar_url": "https://picsum.photos/id/40/200/300",
+                      "highlight": true,
+                    },
+                  ],
+                  "thumb": {
+                    "type": "image",
+                    "data": {"url": "https://picsum.photos/id/30/200/300"},
+                  },
+                  "content": {
+                    "video": {
+                      "url": "https://example.com/video.mp4",
+                      "thumb": {
+                        "type": "image",
+                        "data": {"url": "https://picsum.photos/id/30/200/300"},
+                      },
+                    },
+                    "html": {"content": "<p>Conteúdo em HTML</p>"},
+                  },
+                  "files": [
+                    {
+                      "url": "https://example.com/file.pdf",
+                      "title": "Manual do Aluno",
+                      "description": "Aqui você encontra tudo que precisa",
+                      "thumb": {
+                        "type": "image",
+                        "data": {"url": "https://picsum.photos/id/30/200/300"},
+                      },
+                    },
+                  ],
+                },
+                {
+                  "id": fakeMongoId,
+                  "title": "Princípios da Liderança Humanizada",
+                  "description": "Explore os princípios fundamentais.",
+                  "teachers": [
+                    {
+                      "id": fakeMongoId,
+                      "name": "Roberto Shinyashiki",
+                      "avatar_url": "https://picsum.photos/id/40/200/300",
+                      "highlight": true,
+                    },
+                  ],
+                  "thumb": {
+                    "type": "image",
+                    "data": {"url": "https://picsum.photos/id/30/200/300"},
+                  },
+                  "content": {
+                    "video": {
+                      "url": "https://example.com/video.mp4",
+                      "thumb": {
+                        "type": "image",
+                        "data": {"url": "https://picsum.photos/id/30/200/300"},
+                      },
+                    },
+                    "html": {"content": "<p>Conteúdo em HTML</p>"},
+                  },
+                  "files": [
+                    {
+                      "url": "https://example.com/file.pdf",
+                      "title": "Manual do Aluno",
+                      "description": "Aqui você encontra tudo que precisa",
+                      "thumb": {
+                        "type": "image",
+                        "data": {"url": "https://picsum.photos/id/30/200/300"},
+                      },
+                    },
+                    {
+                      "url": "https://example.com/file.pdf",
+                      "title": "Manual do Aluno",
+                      "thumb": {
+                        "type": "image",
+                        "data": {"url": "https://picsum.photos/id/30/200/300"},
+                      },
+                    },
+                    {
+                      "url": "https://example.com/file.pdf",
+                      "title": "Manual do Aluno",
+                      "thumb": {
+                        "type": "image",
+                        "data": {"url": "https://picsum.photos/id/30/200/300"},
+                      },
+                    },
+                  ],
+                },
+              ],
+            },
+          },
+        ],
+      },
+    },
+    {
+      "id": fakeMongoId,
+      "title": "MBA em Ciências da Mente e Liderança Humanizada",
+      "type": {"id": fakeMongoId, "name": "MBA", "slug": "mba"},
+      "description":
+          "Curso de MBA em Ciências da Mente e Liderança Humanizada.",
+      "thumb": {
+        "type": "image",
+        "data": {"url": "https://picsum.photos/id/30/200/300"},
+      },
+      "categories": [
+        {
+          "id": fakeMongoId,
+          "name": "Ciências da Mente",
+          "slug": "ciencias_da_mente",
+        },
+        {
+          "id": fakeMongoId,
+          "name": "Liderança",
+          "slug": "lideranca",
+        },
+        {
+          "id": fakeMongoId,
+          "name": "Negócios",
+          "slug": "negocios",
+        },
+      ],
+      "teachers": [
+        {
+          "id": fakeMongoId,
+          "name": "Roberto Shinyashiki",
+          "avatar_url": "https://picsum.photos/id/40/200/300",
+          "highlight": true,
+        },
+      ],
+      "childrens": {
+        "meta": {"label": "Disciplinas", "total": 10},
+        "items": [
+          {
+            "id": fakeMongoId,
+            "title": "Introdução à Liderança Humanizada",
+            "description": "Aprenda os fundamentos da liderança humanizada.",
+            "teachers": [
+              {
+                "id": fakeMongoId,
+                "name": "Roberto Shinyashiki",
+                "avatar_url": "https://picsum.photos/id/40/200/300",
+                "highlight": true,
+              },
+            ],
+            "thumb": {
+              "type": "image",
+              "data": {"url": "https://picsum.photos/id/30/200/300"},
+            },
+            "childrens": {
+              "meta": {"label": "Aulas", "total": 10},
+              "items": [
+                {
+                  "id": fakeMongoId,
+                  "label": "Aula",
+                  "title": "O que é Liderança Humanizada?",
+                  "description": "Entenda o conceito de liderança humanizada.",
+                  "teachers": [
+                    {
+                      "id": fakeMongoId,
+                      "name": "Roberto Shinyashiki",
+                      "avatar_url": "https://picsum.photos/id/40/200/300",
+                      "highlight": true,
+                    },
+                  ],
+                  "thumb": {
+                    "type": "image",
+                    "data": {"url": "https://picsum.photos/id/30/200/300"},
+                  },
+                  "content": {
+                    "video": {
+                      "url": "https://example.com/video.mp4",
+                      "thumb": {
+                        "type": "image",
+                        "data": {"url": "https://picsum.photos/id/30/200/300"},
+                      },
+                    },
+                    "html": {"content": "<p>Conteúdo em HTML</p>"},
+                  },
+                  "files": [
+                    {
+                      "url": "https://example.com/file.pdf",
+                      "title": "Manual do Aluno",
+                      "description": "Aqui você encontra tudo que precisa",
+                      "thumb": {
+                        "type": "image",
+                        "data": {"url": "https://picsum.photos/id/30/200/300"},
+                      },
+                    },
+                  ],
+                },
+                {
+                  "id": fakeMongoId,
+                  "title": "Princípios da Liderança Humanizada",
+                  "description": "Explore os princípios fundamentais.",
+                  "teachers": [
+                    {
+                      "id": fakeMongoId,
+                      "name": "Roberto Shinyashiki",
+                      "avatar_url": "https://picsum.photos/id/40/200/300",
+                      "highlight": true,
+                    },
+                  ],
+                  "thumb": {
+                    "type": "image",
+                    "data": {"url": "https://picsum.photos/id/30/200/300"},
+                  },
+                  "content": {
+                    "video": {
+                      "url": "https://example.com/video.mp4",
+                      "thumb": {
+                        "type": "image",
+                        "data": {"url": "https://picsum.photos/id/30/200/300"},
+                      },
+                    },
+                    "html": {"content": "<p>Conteúdo em HTML</p>"},
+                  },
+                  "files": [
+                    {
+                      "url": "https://example.com/file.pdf",
+                      "title": "Manual do Aluno",
+                      "description": "Aqui você encontra tudo que precisa",
+                      "thumb": {
+                        "type": "image",
+                        "data": {"url": "https://picsum.photos/id/30/200/300"},
+                      },
+                    },
+                  ],
+                },
+              ],
+            },
+          },
+          {
+            "id": fakeMongoId,
+            "title": "Introdução à Liderança Humanizada",
+            "description": "Aprenda os fundamentos da liderança humanizada.",
+            "teachers": [
+              {
+                "id": fakeMongoId,
+                "name": "Roberto Shinyashiki",
+                "avatar_url": "https://picsum.photos/id/40/200/300",
+                "highlight": true,
+              },
+            ],
+            "thumb": {
+              "type": "image",
+              "data": {"url": "https://picsum.photos/id/30/200/300"},
+            },
+            "childrens": {
+              "meta": {"label": "Aulas", "total": 10},
+              "items": [
+                {
+                  "id": fakeMongoId,
+                  "title": "O que é Liderança Humanizada?",
+                  "description": "Entenda o conceito de liderança humanizada.",
+                  "teachers": [
+                    {
+                      "id": fakeMongoId,
+                      "name": "Roberto Shinyashiki",
+                      "avatar_url": "https://picsum.photos/id/40/200/300",
+                      "highlight": true,
+                    },
+                  ],
+                  "thumb": {
+                    "type": "image",
+                    "data": {"url": "https://picsum.photos/id/30/200/300"},
+                  },
+                  "content": {
+                    "video": {
+                      "url": "https://example.com/video.mp4",
+                      "thumb": {
+                        "type": "image",
+                        "data": {"url": "https://picsum.photos/id/30/200/300"},
+                      },
+                    },
+                    "html": {"content": "<p>Conteúdo em HTML</p>"},
+                  },
+                  "files": [
+                    {
+                      "url": "https://example.com/file.pdf",
+                      "title": "Manual do Aluno",
+                      "description": "Aqui você encontra tudo que precisa",
+                      "thumb": {
+                        "type": "image",
+                        "data": {"url": "https://picsum.photos/id/30/200/300"},
+                      },
+                    },
+                  ],
+                },
+                {
+                  "id": fakeMongoId,
+                  "title": "Princípios da Liderança Humanizada",
+                  "description": "Explore os princípios fundamentais.",
+                  "teachers": [
+                    {
+                      "id": fakeMongoId,
+                      "name": "Roberto Shinyashiki",
+                      "avatar_url": "https://picsum.photos/id/40/200/300",
+                      "highlight": true,
+                    },
+                  ],
+                  "thumb": {
+                    "type": "image",
+                    "data": {"url": "https://picsum.photos/id/30/200/300"},
+                  },
+                  "content": {
+                    "video": {
+                      "url": "https://example.com/video.mp4",
+                      "thumb": {
+                        "type": "image",
+                        "data": {"url": "https://picsum.photos/id/30/200/300"},
+                      },
+                    },
+                    "html": {"content": "<p>Conteúdo em HTML</p>"},
+                  },
+                  "files": [
+                    {
+                      "url": "https://example.com/file.pdf",
+                      "title": "Manual do Aluno",
+                      "description": "Aqui você encontra tudo que precisa",
+                      "thumb": {
+                        "type": "image",
+                        "data": {"url": "https://picsum.photos/id/30/200/300"},
+                      },
+                    },
+                  ],
+                },
+              ],
+            },
+          },
+          {
+            "id": fakeMongoId,
+            "title": "Introdução à Liderança Humanizada",
+            "description": "Aprenda os fundamentos da liderança humanizada.",
+            "teachers": [
+              {
+                "id": fakeMongoId,
+                "name": "Roberto Shinyashiki",
+                "avatar_url": "https://picsum.photos/id/40/200/300",
+                "highlight": true,
+              },
+            ],
+            "thumb": {
+              "type": "image",
+              "data": {"url": "https://picsum.photos/id/30/200/300"},
+            },
+            "childrens": {
+              "meta": {"label": "Aulas", "total": 10},
+              "items": [
+                {
+                  "id": fakeMongoId,
+                  "title": "O que é Liderança Humanizada?",
+                  "description": "Entenda o conceito de liderança humanizada.",
+                  "teachers": [
+                    {
+                      "id": fakeMongoId,
+                      "name": "Roberto Shinyashiki",
+                      "avatar_url": "https://picsum.photos/id/40/200/300",
+                      "highlight": true,
+                    },
+                  ],
+                  "thumb": {
+                    "type": "image",
+                    "data": {"url": "https://picsum.photos/id/30/200/300"},
+                  },
+                  "content": {
+                    "video": {
+                      "url": "https://example.com/video.mp4",
+                      "thumb": {
+                        "type": "image",
+                        "data": {"url": "https://picsum.photos/id/30/200/300"},
+                      },
+                    },
+                    "html": {"content": "<p>Conteúdo em HTML</p>"},
+                  },
+                  "files": [
+                    {
+                      "url": "https://example.com/file.pdf",
+                      "title": "Manual do Aluno",
+                      "description": "Aqui você encontra tudo que precisa",
+                      "thumb": {
+                        "type": "image",
+                        "data": {"url": "https://picsum.photos/id/30/200/300"},
+                      },
+                    },
+                  ],
+                },
+                {
+                  "id": fakeMongoId,
+                  "title": "Princípios da Liderança Humanizada",
+                  "description": "Explore os princípios fundamentais.",
+                  "teachers": [
+                    {
+                      "id": fakeMongoId,
+                      "name": "Roberto Shinyashiki",
+                      "avatar_url": "https://picsum.photos/id/40/200/300",
+                      "highlight": true,
+                    },
+                  ],
+                  "thumb": {
+                    "type": "image",
+                    "data": {"url": "https://picsum.photos/id/30/200/300"},
+                  },
+                  "content": {
+                    "video": {
+                      "url": "https://example.com/video.mp4",
+                      "thumb": {
+                        "type": "image",
+                        "data": {"url": "https://picsum.photos/id/30/200/300"},
+                      },
+                    },
+                    "html": {"content": "<p>Conteúdo em HTML</p>"},
+                  },
+                  "files": [
+                    {
+                      "url": "https://example.com/file.pdf",
+                      "title": "Manual do Aluno",
+                      "description": "Aqui você encontra tudo que precisa",
+                      "thumb": {
+                        "type": "image",
+                        "data": {"url": "https://picsum.photos/id/30/200/300"},
+                      },
+                    },
+                  ],
+                },
+              ],
+            },
+          },
+          {
+            "id": fakeMongoId,
+            "title": "Introdução à Liderança Humanizada",
+            "description": "Aprenda os fundamentos da liderança humanizada.",
+            "teachers": [
+              {
+                "id": fakeMongoId,
+                "name": "Roberto Shinyashiki",
+                "avatar_url": "https://picsum.photos/id/40/200/300",
+                "highlight": true,
+              },
+            ],
+            "thumb": {
+              "type": "image",
+              "data": {"url": "https://picsum.photos/id/30/200/300"},
+            },
+            "childrens": {
+              "meta": {"label": "Aulas", "total": 10},
+              "items": [
+                {
+                  "id": fakeMongoId,
+                  "title": "O que é Liderança Humanizada?",
+                  "description": "Entenda o conceito de liderança humanizada.",
+                  "teachers": [
+                    {
+                      "id": fakeMongoId,
+                      "name": "Roberto Shinyashiki",
+                      "avatar_url": "https://picsum.photos/id/40/200/300",
+                      "highlight": true,
+                    },
+                  ],
+                  "thumb": {
+                    "type": "image",
+                    "data": {"url": "https://picsum.photos/id/30/200/300"},
+                  },
+                  "content": {
+                    "video": {
+                      "url": "https://example.com/video.mp4",
+                      "thumb": {
+                        "type": "image",
+                        "data": {"url": "https://picsum.photos/id/30/200/300"},
+                      },
+                    },
+                    "html": {"content": "<p>Conteúdo em HTML</p>"},
+                  },
+                  "files": [
+                    {
+                      "url": "https://example.com/file.pdf",
+                      "title": "Manual do Aluno",
+                      "description": "Aqui você encontra tudo que precisa",
+                      "thumb": {
+                        "type": "image",
+                        "data": {"url": "https://picsum.photos/id/30/200/300"},
+                      },
+                    },
+                  ],
+                },
+                {
+                  "id": fakeMongoId,
+                  "title": "Princípios da Liderança Humanizada",
+                  "description": "Explore os princípios fundamentais.",
+                  "teachers": [
+                    {
+                      "id": fakeMongoId,
+                      "name": "Roberto Shinyashiki",
+                      "avatar_url": "https://picsum.photos/id/40/200/300",
+                      "highlight": true,
+                    },
+                  ],
+                  "thumb": {
+                    "type": "image",
+                    "data": {"url": "https://picsum.photos/id/30/200/300"},
+                  },
+                  "content": {
+                    "video": {
+                      "url": "https://example.com/video.mp4",
+                      "thumb": {
+                        "type": "image",
+                        "data": {"url": "https://picsum.photos/id/30/200/300"},
+                      },
+                    },
+                    "html": {"content": "<p>Conteúdo em HTML</p>"},
+                  },
+                  "files": [
+                    {
+                      "url": "https://example.com/file.pdf",
+                      "title": "Manual do Aluno",
+                      "description": "Aqui você encontra tudo que precisa",
+                      "thumb": {
+                        "type": "image",
+                        "data": {"url": "https://picsum.photos/id/30/200/300"},
+                      },
+                    },
+                    {
+                      "url": "https://example.com/file.pdf",
+                      "title": "Manual do Aluno",
+                      "thumb": {
+                        "type": "image",
+                        "data": {"url": "https://picsum.photos/id/30/200/300"},
+                      },
+                    },
+                    {
+                      "url": "https://example.com/file.pdf",
+                      "title": "Manual do Aluno",
                       "thumb": {
                         "type": "image",
                         "data": {"url": "https://picsum.photos/id/30/200/300"},
@@ -535,7 +1892,7 @@ class MockBackend extends BackendContract {
     "total": 2,
     "data": [
       {
-        "id": "6864808e5a115a9591257e2c",
+        "id": fakeMongoId,
         "title": "Graduação em Matemática",
         "description": "Curso de graduação em matemática.",
         "thumb": {

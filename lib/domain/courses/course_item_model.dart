@@ -31,6 +31,10 @@ class CourseItemModel {
     required this.content,
   });
 
+  bool get hasContent => content != null;
+  bool get hasVideoContent => content?.video != null;
+  bool get hasHtmlContent => content?.html != null;
+
   factory CourseItemModel.fromDto(CourseItemDTO dto) {
     final _id = MongoIDValue()..parse(dto.id);
     final _title = TitleValue()..parse(dto.title);

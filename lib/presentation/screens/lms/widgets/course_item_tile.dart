@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 
-class LessonTile extends StatefulWidget {
-  const LessonTile({super.key});
+class CourseItemTile extends StatefulWidget {
+  const CourseItemTile({super.key});
 
   @override
-  State<LessonTile> createState() => _LessonTileState();
+  State<CourseItemTile> createState() => _CourseItemTileState();
 }
 
-class _LessonTileState extends State<LessonTile> {
+class _CourseItemTileState extends State<CourseItemTile> {
   @override
   Widget build(BuildContext context) {
     return Padding(

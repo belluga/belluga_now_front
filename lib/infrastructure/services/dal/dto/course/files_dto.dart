@@ -2,20 +2,22 @@ import 'package:flutter_laravel_backend_boilerplate/infrastructure/services/dal/
 
 class FileDTO {
   final String url;
-  final String name;
+  final String title;
+  final String? description;
   final ThumbDTO thumb;
 
-  FileDTO({required this.url, required this.name, required this.thumb});
+  FileDTO({required this.url, required this.title, required this.description, required this.thumb});
 
   factory FileDTO.fromJson(Map<String, dynamic> json) {
     return FileDTO(
       url: json['url'] as String,
-      name: json['name'] as String,
+      title: json['title'] as String,
+      description: json['description'] as String?,
       thumb: ThumbDTO.fromJson(json['thumb'] as Map<String, dynamic>),
     );
   }
 
   Map<String, dynamic> toJson() {
-    return {'url': url, 'name': name, 'thumb': thumb};
+    return {'url': url, 'title': title, 'description': description, 'thumb': thumb};
   }
 }

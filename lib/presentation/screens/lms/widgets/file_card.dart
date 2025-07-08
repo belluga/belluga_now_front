@@ -1,18 +1,18 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_laravel_backend_boilerplate/domain/courses/course_item_model.dart';
+import 'package:flutter_laravel_backend_boilerplate/domain/courses/file_model.dart';
 import 'package:flutter_laravel_backend_boilerplate/presentation/common/widgets/image_with_progress_indicator.dart';
 
-class LessonCard extends StatefulWidget {
-  final CourseItemModel courseModel;
+class FileCard extends StatefulWidget {
+  final FileModel fileModel;
   final int index;
 
-  const LessonCard({super.key, required this.courseModel, required this.index});
+  const FileCard({super.key, required this.fileModel, required this.index});
 
   @override
-  State<LessonCard> createState() => _DisciplineCardState();
+  State<FileCard> createState() => _DisciplineCardState();
 }
 
-class _DisciplineCardState extends State<LessonCard> {
+class _DisciplineCardState extends State<FileCard> {
   @override
   Widget build(BuildContext context) {
     final _index = widget.index + 1;
@@ -24,7 +24,7 @@ class _DisciplineCardState extends State<LessonCard> {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            ImageWithProgressIndicator(thumb: widget.courseModel.thumb),
+            ImageWithProgressIndicator(thumb: widget.fileModel.thumb),
             Expanded(
               child: Padding(
                 padding: EdgeInsetsGeometry.symmetric(horizontal: 16),
@@ -33,7 +33,7 @@ class _DisciplineCardState extends State<LessonCard> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      "$_index. ${widget.courseModel.title.valueFormated}",
+                      "$_index. ${widget.fileModel.title.valueFormated}",
                       maxLines: 2,
                       style: TextTheme.of(context).labelMedium,
                     ),
@@ -41,7 +41,7 @@ class _DisciplineCardState extends State<LessonCard> {
                     LinearProgressIndicator(value: 0.55),
                     SizedBox(height: 8),
                     Text(
-                      widget.courseModel.description.valueFormated,
+                      widget.fileModel.description.valueFormated,
                       maxLines: 3,
                       style: TextTheme.of(
                         context,
