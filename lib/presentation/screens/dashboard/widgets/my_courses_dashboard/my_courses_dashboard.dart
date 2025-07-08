@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_laravel_backend_boilerplate/presentation/common/widgets/dashboard_items_summary.dart';
 import 'package:flutter_laravel_backend_boilerplate/presentation/screens/dashboard/controllers/my_courses_dashboard_controller.dart';
+import 'package:flutter_laravel_backend_boilerplate/presentation/screens/dashboard/view_models/courses_summary.dart';
 import 'package:flutter_laravel_backend_boilerplate/presentation/screens/dashboard/widgets/my_courses_dashboard/my_course_card.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 import 'package:get_it/get_it.dart';
@@ -26,14 +27,16 @@ class _MyCoursesDashboardState extends State<MyCoursesDashboard> {
 
   @override
   Widget build(BuildContext context) {
-    return StreamValueBuilder(
+    return StreamValueBuilder<CoursesSummary>(
       streamValue: _controller.myCoursesSummaryStreamValue,
       onNullWidget: SizedBox.shrink(),
-      builder: (context, asyncSnapshot) {
+      builder: (context, myCourseSuummary) {
+        final _showInScreen = myCourseSuummary.total == 1 ? 1.1 : 1.3;
+
         return DashboardItemsSummary(
           title: "Meus Cursos",
           itemHeight: 150,
-          itemsPerRow: 1.2,
+          itemsPerRow: _showInScreen,
           showAllLabel: "Ver todos",
           itemsBuilder: _itemsBuilder,
         );
