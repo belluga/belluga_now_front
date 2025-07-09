@@ -149,6 +149,26 @@ class MockBackend extends BackendContract {
           "highlight": true,
         },
       ],
+      "files": [
+        {
+          "url": "https://www.orimi.com/pdf-test.pdf",
+          "title": "Manual do Aluno",
+          "description": "Aqui você encontra tudo que precisa",
+          "thumb": {
+            "type": "image",
+            "data": {"url": "https://picsum.photos/id/30/200/300"},
+          },
+        },
+        {
+          "url": "https://www.orimi.com/pdf-test.pdf",
+          "title": "Manual do Aluno",
+          "description": "Aqui você encontra tudo que precisa",
+          "thumb": {
+            "type": "image",
+            "data": {"url": "https://picsum.photos/id/30/200/300"},
+          },
+        },
+      ],
       "childrens": {
         "meta": {"label": "Disciplinas", "total": 10},
         "items": [
@@ -168,6 +188,26 @@ class MockBackend extends BackendContract {
               "type": "image",
               "data": {"url": "https://picsum.photos/id/30/200/300"},
             },
+            "files": [
+              {
+                "url": "https://www.orimi.com/pdf-test.pdf",
+                "title": "Manual do Aluno",
+                "description": "Aqui você encontra tudo que precisa",
+                "thumb": {
+                  "type": "image",
+                  "data": {"url": "https://picsum.photos/id/30/200/300"},
+                },
+              },
+              {
+                "url": "https://www.orimi.com/pdf-test.pdf",
+                "title": "Manual do Aluno",
+                "description": "Aqui você encontra tudo que precisa",
+                "thumb": {
+                  "type": "image",
+                  "data": {"url": "https://picsum.photos/id/30/200/300"},
+                },
+              },
+            ],
             "childrens": {
               "meta": {"label": "Aulas", "total": 10},
               "items": [
@@ -201,7 +241,7 @@ class MockBackend extends BackendContract {
                   },
                   "files": [
                     {
-                      "url": "https://example.com/file.pdf",
+                      "url": "https://www.orimi.com/pdf-test.pdf",
                       "title": "Manual do Aluno",
                       "description": "Aqui você encontra tudo que precisa",
                       "thumb": {
@@ -240,7 +280,7 @@ class MockBackend extends BackendContract {
                   },
                   "files": [
                     {
-                      "url": "https://example.com/file.pdf",
+                      "url": "https://www.orimi.com/pdf-test.pdf",
                       "title": "Manual do Aluno",
                       "thumb": {
                         "type": "image",
@@ -299,7 +339,7 @@ class MockBackend extends BackendContract {
                   },
                   "files": [
                     {
-                      "url": "https://example.com/file.pdf",
+                      "url": "https://www.orimi.com/pdf-test.pdf",
                       "title": "Manual do Aluno",
                       "thumb": {
                         "type": "image",

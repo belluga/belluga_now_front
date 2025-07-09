@@ -20,7 +20,7 @@ class _DisciplinesListState extends State<FilesList> {
     return StreamValueBuilder(
       streamValue: _controller.currentCourseItemStreamValue,
       builder: (context, courseItem) {
-        if (courseItem.files.isNotEmpty) {
+        if (courseItem.files.isEmpty) {
           return EmptyListMessage();
         }
 
