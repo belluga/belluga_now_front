@@ -1,9 +1,9 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_laravel_backend_boilerplate/domain/courses/course_content_model.dart';
-import 'package:flutter_laravel_backend_boilerplate/domain/courses/course_item_model.dart';
-import 'package:flutter_laravel_backend_boilerplate/domain/repositories/courses_repository_contract.dart';
+import 'package:unifast_portal/domain/courses/course_content_model.dart';
+import 'package:unifast_portal/domain/courses/course_item_model.dart';
+import 'package:unifast_portal/domain/repositories/courses_repository_contract.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value.dart';
 
@@ -23,7 +23,7 @@ class CourseScreenController implements Disposable {
   final _coursesRepository = GetIt.I.get<CoursesRepositoryContract>();
 
   final childrenSelectedItemStreamValue = StreamValue<CourseItemModel?>();
-  
+
   late StreamValue<CourseItemModel> currentCourseItemStreamValue;
 
   final currentContentStreamValue = StreamValue<CourseContentModel?>();

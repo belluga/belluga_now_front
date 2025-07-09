@@ -1,4 +1,4 @@
-import 'package:flutter_laravel_backend_boilerplate/domain/external_course/external_course_model.dart';
+import 'package:unifast_portal/domain/external_course/external_course_model.dart';
 
 class ExternalCoursesSummary {
   final int total;

@@ -1,10 +1,10 @@
-import 'package:flutter_laravel_backend_boilerplate/domain/courses/course_item_model.dart';
-import 'package:flutter_laravel_backend_boilerplate/domain/courses/course_model.dart';
-import 'package:flutter_laravel_backend_boilerplate/infrastructure/services/dal/dto/course/course_dto.dart';
-import 'package:flutter_laravel_backend_boilerplate/infrastructure/services/dal/dto/course/course_item_dto.dart';
+import 'package:unifast_portal/domain/courses/course_item_model.dart';
+import 'package:unifast_portal/domain/courses/course_model.dart';
+import 'package:unifast_portal/infrastructure/services/dal/dto/course/course_dto.dart';
+import 'package:unifast_portal/infrastructure/services/dal/dto/course/course_item_dto.dart';
 
-import 'package:flutter_laravel_backend_boilerplate/infrastructure/services/laravel_backend/backend_contract.dart';
-import 'package:flutter_laravel_backend_boilerplate/presentation/screens/dashboard/view_models/courses_summary.dart';
+import 'package:unifast_portal/infrastructure/services/laravel_backend/backend_contract.dart';
+import 'package:unifast_portal/presentation/screens/dashboard/view_models/courses_summary.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value.dart';
 

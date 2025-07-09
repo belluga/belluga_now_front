@@ -1,7 +1,7 @@
 import 'package:chewie/chewie.dart';
-import 'package:flutter_laravel_backend_boilerplate/domain/courses/course_item_model.dart';
-import 'package:flutter_laravel_backend_boilerplate/presentation/common/widgets/image_with_progress_indicator.dart';
-import 'package:flutter_laravel_backend_boilerplate/presentation/screens/lms/widgets/video_player/controller/lesson_video_player_controller.dart';
+import 'package:unifast_portal/domain/courses/course_item_model.dart';
+import 'package:unifast_portal/presentation/common/widgets/image_with_progress_indicator.dart';
+import 'package:unifast_portal/presentation/screens/lms/widgets/video_player/controller/lesson_video_player_controller.dart';
 import 'package:flutter/material.dart';
 
 class LessonVideoPlayer extends StatefulWidget {
@@ -59,9 +59,7 @@ class _LessonVideoPlayerState extends State<LessonVideoPlayer> {
     _controller.initializePlayer();
     _controller.chewieController = ChewieController(
       overlay: SizedBox.expand(
-        child: ImageWithProgressIndicator(
-          thumb: widget.courseItemModel.thumb,
-        ),
+        child: ImageWithProgressIndicator(thumb: widget.courseItemModel.thumb),
       ),
 
       videoPlayerController: _controller.videoPlayerController,

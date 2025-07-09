@@ -1,9 +1,9 @@
-import 'package:flutter_laravel_backend_boilerplate/domain/courses/thumb_model.dart';
-import 'package:flutter_laravel_backend_boilerplate/domain/external_course/value_objects/external_course_description_value.dart';
-import 'package:flutter_laravel_backend_boilerplate/domain/external_course/value_objects/external_course_initial_password_value.dart';
-import 'package:flutter_laravel_backend_boilerplate/domain/external_course/value_objects/external_course_platform_uri_value.dart';
-import 'package:flutter_laravel_backend_boilerplate/domain/external_course/value_objects/external_course_title_value.dart';
-import 'package:flutter_laravel_backend_boilerplate/infrastructure/services/dal/dto/external_course_dto.dart';
+import 'package:unifast_portal/domain/courses/thumb_model.dart';
+import 'package:unifast_portal/domain/external_course/value_objects/external_course_description_value.dart';
+import 'package:unifast_portal/domain/external_course/value_objects/external_course_initial_password_value.dart';
+import 'package:unifast_portal/domain/external_course/value_objects/external_course_platform_uri_value.dart';
+import 'package:unifast_portal/domain/external_course/value_objects/external_course_title_value.dart';
+import 'package:unifast_portal/infrastructure/services/dal/dto/external_course_dto.dart';
 
 class ExternalCourseModel {
   final ThumbModel thumb;
@@ -29,8 +29,11 @@ class ExternalCourseModel {
     final _description = ExternalCourseDescriptionValue()
       ..tryParse(externalCourse.description);
 
-    final _platformUrl = ExternalCoursePlatformUriValue(defaultValue: Uri.parse("https://media.istockphoto.com/id/1128826884/pt/vetorial/no-image-vector-symbol-missing-available-icon-no-gallery-for-this-moment.jpg?s=1024x1024&w=is&k=20&c=9vW4OtrgvQA6hfnIvdk-tQK0CPvlKyWTPh10p064u9k="))
-      ..tryParse(externalCourse.platformUrl);
+    final _platformUrl = ExternalCoursePlatformUriValue(
+      defaultValue: Uri.parse(
+        "https://media.istockphoto.com/id/1128826884/pt/vetorial/no-image-vector-symbol-missing-available-icon-no-gallery-for-this-moment.jpg?s=1024x1024&w=is&k=20&c=9vW4OtrgvQA6hfnIvdk-tQK0CPvlKyWTPh10p064u9k=",
+      ),
+    )..tryParse(externalCourse.platformUrl);
 
     final _initialPassword = ExternalCourseInitialPasswordValue()
       ..tryParse(externalCourse.initialPassword);

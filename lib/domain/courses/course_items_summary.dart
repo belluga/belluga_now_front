@@ -1,6 +1,6 @@
-import 'package:flutter_laravel_backend_boilerplate/domain/courses/value_objects/items_total_value.dart';
-import 'package:flutter_laravel_backend_boilerplate/domain/value_objects/title_value.dart';
-import 'package:flutter_laravel_backend_boilerplate/infrastructure/services/dal/dto/course/course_childrens_summary_dto.dart';
+import 'package:unifast_portal/domain/courses/value_objects/items_total_value.dart';
+import 'package:unifast_portal/domain/value_objects/title_value.dart';
+import 'package:unifast_portal/infrastructure/services/dal/dto/course/course_childrens_summary_dto.dart';
 
 class CourseChildrensSummary {
   final ItemsTotalValue total;

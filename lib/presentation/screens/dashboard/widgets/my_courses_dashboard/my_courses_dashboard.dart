@@ -1,10 +1,10 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_laravel_backend_boilerplate/application/router/app_router.gr.dart';
-import 'package:flutter_laravel_backend_boilerplate/presentation/common/widgets/dashboard_items_summary.dart';
-import 'package:flutter_laravel_backend_boilerplate/presentation/screens/dashboard/controllers/my_courses_dashboard_controller.dart';
-import 'package:flutter_laravel_backend_boilerplate/presentation/screens/dashboard/view_models/courses_summary.dart';
-import 'package:flutter_laravel_backend_boilerplate/presentation/screens/dashboard/widgets/my_courses_dashboard/my_course_card.dart';
+import 'package:unifast_portal/application/router/app_router.gr.dart';
+import 'package:unifast_portal/presentation/common/widgets/dashboard_items_summary.dart';
+import 'package:unifast_portal/presentation/screens/dashboard/controllers/my_courses_dashboard_controller.dart';
+import 'package:unifast_portal/presentation/screens/dashboard/view_models/courses_summary.dart';
+import 'package:unifast_portal/presentation/screens/dashboard/widgets/my_courses_dashboard/my_course_card.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 import 'package:get_it/get_it.dart';
 

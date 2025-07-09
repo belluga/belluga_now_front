@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_laravel_backend_boilerplate/domain/courses/file_model.dart';
-import 'package:flutter_laravel_backend_boilerplate/presentation/common/widgets/image_with_progress_indicator.dart';
+import 'package:unifast_portal/domain/courses/file_model.dart';
+import 'package:unifast_portal/presentation/common/widgets/image_with_progress_indicator.dart';
 
 class FileCard extends StatefulWidget {
   final FileModel fileModel;

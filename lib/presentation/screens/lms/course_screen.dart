@@ -1,10 +1,10 @@
 import 'package:auto_route/annotations.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_laravel_backend_boilerplate/domain/courses/course_item_model.dart';
-import 'package:flutter_laravel_backend_boilerplate/presentation/screens/lms/controllers/course_screen_controller.dart';
-import 'package:flutter_laravel_backend_boilerplate/presentation/screens/lms/widgets/course_header_builder/course_header_builder.dart';
-import 'package:flutter_laravel_backend_boilerplate/presentation/screens/lms/widgets/tabs/childrens_list.dart';
-import 'package:flutter_laravel_backend_boilerplate/presentation/screens/lms/widgets/tabs/files_list.dart';
+import 'package:unifast_portal/domain/courses/course_item_model.dart';
+import 'package:unifast_portal/presentation/screens/lms/controllers/course_screen_controller.dart';
+import 'package:unifast_portal/presentation/screens/lms/widgets/course_header_builder/course_header_builder.dart';
+import 'package:unifast_portal/presentation/screens/lms/widgets/tabs/childrens_list.dart';
+import 'package:unifast_portal/presentation/screens/lms/widgets/tabs/files_list.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 

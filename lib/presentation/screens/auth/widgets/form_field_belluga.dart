@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_laravel_backend_boilerplate/domain/controllers/form_field_controller_contract.dart';
+import 'package:unifast_portal/domain/controllers/form_field_controller_contract.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 
 abstract class FormFieldBelluga extends StatelessWidget {
@@ -29,10 +29,9 @@ abstract class FormFieldBelluga extends StatelessWidget {
           keyboardType: inputType,
           obscureText: obscureText,
           textCapitalization: textCapitalization,
-          onEditingComplete:
-              () => formFieldController.validator(
-                formFieldController.textController.text,
-              ),
+          onEditingComplete: () => formFieldController.validator(
+            formFieldController.textController.text,
+          ),
           onChanged: formFieldController.onChange,
           validator: formFieldController.validator,
           decoration: InputDecoration(

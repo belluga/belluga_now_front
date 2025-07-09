@@ -1,11 +1,9 @@
 import 'package:chewie/chewie.dart';
-import 'package:flutter_laravel_backend_boilerplate/domain/courses/course_item_model.dart';
+import 'package:unifast_portal/domain/courses/course_item_model.dart';
 import 'package:video_player/video_player.dart';
 
 class LessonVideoPlayerController {
-  LessonVideoPlayerController({
-    required this.selectedItemModel,
-  });
+  LessonVideoPlayerController({required this.selectedItemModel});
 
   final CourseItemModel selectedItemModel;
 

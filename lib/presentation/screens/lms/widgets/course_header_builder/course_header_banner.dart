@@ -1,8 +1,8 @@
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_laravel_backend_boilerplate/domain/courses/course_item_model.dart';
-import 'package:flutter_laravel_backend_boilerplate/presentation/screens/lms/controllers/course_screen_controller.dart';
+import 'package:unifast_portal/domain/courses/course_item_model.dart';
+import 'package:unifast_portal/presentation/screens/lms/controllers/course_screen_controller.dart';
 import 'package:get_it/get_it.dart';
 
 class CourseHeaderBanner extends StatefulWidget {

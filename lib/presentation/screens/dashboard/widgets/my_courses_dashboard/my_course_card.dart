@@ -1,8 +1,8 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_laravel_backend_boilerplate/application/router/app_router.gr.dart';
-import 'package:flutter_laravel_backend_boilerplate/domain/courses/course_model.dart';
-import 'package:flutter_laravel_backend_boilerplate/presentation/common/widgets/image_with_progress_indicator.dart';
+import 'package:unifast_portal/application/router/app_router.gr.dart';
+import 'package:unifast_portal/domain/courses/course_model.dart';
+import 'package:unifast_portal/presentation/common/widgets/image_with_progress_indicator.dart';
 
 class MyCourseCard extends StatefulWidget {
   final CourseModel course;

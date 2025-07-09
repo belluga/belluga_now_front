@@ -1,14 +1,14 @@
 import 'dart:math';
 
 import 'package:dio/dio.dart';
-import 'package:flutter_laravel_backend_boilerplate/domain/auth/errors/belluga_auth_errors.dart';
-import 'package:flutter_laravel_backend_boilerplate/domain/repositories/auth_repository_contract.dart';
-import 'package:flutter_laravel_backend_boilerplate/infrastructure/services/dal/dto/course/course_dto.dart';
-import 'package:flutter_laravel_backend_boilerplate/infrastructure/services/dal/dto/course/course_item_dto.dart';
-import 'package:flutter_laravel_backend_boilerplate/infrastructure/services/dal/dto/external_course_dto.dart';
-import 'package:flutter_laravel_backend_boilerplate/infrastructure/services/dal/dto/user_dto.dart';
-import 'package:flutter_laravel_backend_boilerplate/infrastructure/services/dal/dto/user_profile_dto.dart';
-import 'package:flutter_laravel_backend_boilerplate/infrastructure/services/laravel_backend/backend_contract.dart';
+import 'package:unifast_portal/domain/auth/errors/belluga_auth_errors.dart';
+import 'package:unifast_portal/domain/repositories/auth_repository_contract.dart';
+import 'package:unifast_portal/infrastructure/services/dal/dto/course/course_dto.dart';
+import 'package:unifast_portal/infrastructure/services/dal/dto/course/course_item_dto.dart';
+import 'package:unifast_portal/infrastructure/services/dal/dto/external_course_dto.dart';
+import 'package:unifast_portal/infrastructure/services/dal/dto/user_dto.dart';
+import 'package:unifast_portal/infrastructure/services/dal/dto/user_profile_dto.dart';
+import 'package:unifast_portal/infrastructure/services/laravel_backend/backend_contract.dart';
 import 'package:get_it/get_it.dart';
 
 class MockBackend extends BackendContract {
@@ -112,16 +112,8 @@ class MockBackend extends BackendContract {
           "name": "Ciências da Mente",
           "slug": "ciencias_da_mente",
         },
-        {
-          "id": fakeMongoId,
-          "name": "Liderança",
-          "slug": "lideranca",
-        },
-        {
-          "id": fakeMongoId,
-          "name": "Negócios",
-          "slug": "negocios",
-        },
+        {"id": fakeMongoId, "name": "Liderança", "slug": "lideranca"},
+        {"id": fakeMongoId, "name": "Negócios", "slug": "negocios"},
       ],
       "teachers": [
         {
@@ -172,7 +164,8 @@ class MockBackend extends BackendContract {
                   },
                   "content": {
                     "video": {
-                      "url": "https://b-vz-df032af7-1d1.tv.pandavideo.com.br/1cea11b0-fa15-4c9b-ac2d-099fac53d54a/playlist.m3u8",
+                      "url":
+                          "https://b-vz-df032af7-1d1.tv.pandavideo.com.br/1cea11b0-fa15-4c9b-ac2d-099fac53d54a/playlist.m3u8",
                       "thumb": {
                         "type": "image",
                         "data": {"url": "https://picsum.photos/id/30/200/300"},
@@ -210,7 +203,8 @@ class MockBackend extends BackendContract {
                   },
                   "content": {
                     "video": {
-                      "url": "https://b-vz-df032af7-1d1.tv.pandavideo.com.br/1cea11b0-fa15-4c9b-ac2d-099fac53d54a/playlist.m3u8",
+                      "url":
+                          "https://b-vz-df032af7-1d1.tv.pandavideo.com.br/1cea11b0-fa15-4c9b-ac2d-099fac53d54a/playlist.m3u8",
                       "thumb": {
                         "type": "image",
                         "data": {"url": "https://picsum.photos/id/30/200/300"},
@@ -557,16 +551,8 @@ class MockBackend extends BackendContract {
           "name": "Ciências da Mente",
           "slug": "ciencias_da_mente",
         },
-        {
-          "id": fakeMongoId,
-          "name": "Liderança",
-          "slug": "lideranca",
-        },
-        {
-          "id": fakeMongoId,
-          "name": "Negócios",
-          "slug": "negocios",
-        },
+        {"id": fakeMongoId, "name": "Liderança", "slug": "lideranca"},
+        {"id": fakeMongoId, "name": "Negócios", "slug": "negocios"},
       ],
       "teachers": [
         {
@@ -1003,16 +989,8 @@ class MockBackend extends BackendContract {
           "name": "Ciências da Mente",
           "slug": "ciencias_da_mente",
         },
-        {
-          "id": fakeMongoId,
-          "name": "Liderança",
-          "slug": "lideranca",
-        },
-        {
-          "id": fakeMongoId,
-          "name": "Negócios",
-          "slug": "negocios",
-        },
+        {"id": fakeMongoId, "name": "Liderança", "slug": "lideranca"},
+        {"id": fakeMongoId, "name": "Negócios", "slug": "negocios"},
       ],
       "teachers": [
         {
@@ -1451,16 +1429,8 @@ class MockBackend extends BackendContract {
           "name": "Ciências da Mente",
           "slug": "ciencias_da_mente",
         },
-        {
-          "id": fakeMongoId,
-          "name": "Liderança",
-          "slug": "lideranca",
-        },
-        {
-          "id": fakeMongoId,
-          "name": "Negócios",
-          "slug": "negocios",
-        },
+        {"id": fakeMongoId, "name": "Liderança", "slug": "lideranca"},
+        {"id": fakeMongoId, "name": "Negócios", "slug": "negocios"},
       ],
       "teachers": [
         {

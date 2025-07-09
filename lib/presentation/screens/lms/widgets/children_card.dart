@@ -1,9 +1,9 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_laravel_backend_boilerplate/application/router/app_router.gr.dart';
-import 'package:flutter_laravel_backend_boilerplate/domain/courses/course_item_model.dart';
-import 'package:flutter_laravel_backend_boilerplate/presentation/common/widgets/image_with_progress_indicator.dart';
-import 'package:flutter_laravel_backend_boilerplate/presentation/screens/lms/controllers/course_screen_controller.dart';
+import 'package:unifast_portal/application/router/app_router.gr.dart';
+import 'package:unifast_portal/domain/courses/course_item_model.dart';
+import 'package:unifast_portal/presentation/common/widgets/image_with_progress_indicator.dart';
+import 'package:unifast_portal/presentation/screens/lms/controllers/course_screen_controller.dart';
 import 'package:get_it/get_it.dart';
 
 class ChildrenCard extends StatefulWidget {
@@ -25,7 +25,6 @@ class _ChildrenCardState extends State<ChildrenCard> {
 
   @override
   Widget build(BuildContext context) {
-
     final _index = widget.index + 1;
 
     return Card(
@@ -98,7 +97,8 @@ class _ChildrenCardState extends State<ChildrenCard> {
     context.router.replace(
       CourseRoute(
         key: ValueKey(widget.courseItemModel.id.toString()),
-        courseItemModel: widget.courseItemModel),
+        courseItemModel: widget.courseItemModel,
+      ),
     );
   }
 }

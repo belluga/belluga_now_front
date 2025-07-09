@@ -1,4 +1,4 @@
-import 'package:flutter_laravel_backend_boilerplate/infrastructure/services/dal/dto/thumb_dto.dart';
+import 'package:unifast_portal/infrastructure/services/dal/dto/thumb_dto.dart';
 
 class VideoDTO {
   final String url;

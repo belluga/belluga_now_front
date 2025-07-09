@@ -1,4 +1,4 @@
-import 'package:flutter_laravel_backend_boilerplate/domain/controllers/remember_password_contract.dart';
+import 'package:unifast_portal/domain/controllers/remember_password_contract.dart';
 import 'dart:async';
 
 class RememberPasswordController implements RememberPasswordContract {
@@ -15,7 +15,7 @@ class RememberPasswordController implements RememberPasswordContract {
   void set(bool newValue) {
     _value = newValue;
     _controller.sink.add(_value);
-  } 
+  }
 
   @override
   void toggle() {
@@ -27,5 +27,4 @@ class RememberPasswordController implements RememberPasswordContract {
   void dispose() {
     _controller.close();
   }
-}   
-
+}

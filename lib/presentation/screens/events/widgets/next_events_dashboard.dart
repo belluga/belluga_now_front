@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_laravel_backend_boilerplate/presentation/common/widgets/calendar_box.dart';
-import 'package:flutter_laravel_backend_boilerplate/presentation/common/widgets/dashboard_items_summary.dart';
+import 'package:unifast_portal/presentation/common/widgets/calendar_box.dart';
+import 'package:unifast_portal/presentation/common/widgets/dashboard_items_summary.dart';
 
 class NextEventsDashboard extends StatefulWidget {
   const NextEventsDashboard({super.key});

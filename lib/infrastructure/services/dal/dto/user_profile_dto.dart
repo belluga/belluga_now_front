@@ -1,4 +1,4 @@
-import 'package:flutter_laravel_backend_boilerplate/application/configurations/user_dto_labels.dart';
+import 'package:unifast_portal/application/configurations/user_dto_labels.dart';
 
 class UserProfileDTO {
   final String? birthday;

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_laravel_backend_boilerplate/domain/courses/thumb_model.dart';
+import 'package:unifast_portal/domain/courses/thumb_model.dart';
 
 class ImageWithProgressIndicator extends StatelessWidget {
   final ThumbModel thumb;

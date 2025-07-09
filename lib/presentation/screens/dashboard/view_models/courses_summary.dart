@@ -1,4 +1,4 @@
-import 'package:flutter_laravel_backend_boilerplate/domain/courses/course_model.dart';
+import 'package:unifast_portal/domain/courses/course_model.dart';
 
 class CoursesSummary {
   final int total;

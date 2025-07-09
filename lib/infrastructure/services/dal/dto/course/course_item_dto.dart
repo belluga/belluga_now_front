@@ -1,8 +1,8 @@
-import 'package:flutter_laravel_backend_boilerplate/infrastructure/services/dal/dto/course/course_childrens_summary_dto.dart';
-import 'package:flutter_laravel_backend_boilerplate/infrastructure/services/dal/dto/course/course_content_dto.dart';
-import 'package:flutter_laravel_backend_boilerplate/infrastructure/services/dal/dto/course/teacher_dto.dart';
-import 'package:flutter_laravel_backend_boilerplate/infrastructure/services/dal/dto/course/files_dto.dart';
-import 'package:flutter_laravel_backend_boilerplate/infrastructure/services/dal/dto/thumb_dto.dart';
+import 'package:unifast_portal/infrastructure/services/dal/dto/course/course_childrens_summary_dto.dart';
+import 'package:unifast_portal/infrastructure/services/dal/dto/course/course_content_dto.dart';
+import 'package:unifast_portal/infrastructure/services/dal/dto/course/teacher_dto.dart';
+import 'package:unifast_portal/infrastructure/services/dal/dto/course/files_dto.dart';
+import 'package:unifast_portal/infrastructure/services/dal/dto/thumb_dto.dart';
 
 class CourseItemDTO {
   String id;

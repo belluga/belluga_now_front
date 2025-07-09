@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_laravel_backend_boilerplate/domain/courses/value_objects/category_name.dart';
-import 'package:flutter_laravel_backend_boilerplate/domain/courses/value_objects/color_value.dart';
-import 'package:flutter_laravel_backend_boilerplate/domain/courses/value_objects/slug_value.dart';
-import 'package:flutter_laravel_backend_boilerplate/infrastructure/services/dal/dto/course/category_dto.dart';
+import 'package:unifast_portal/domain/courses/value_objects/category_name.dart';
+import 'package:unifast_portal/domain/courses/value_objects/color_value.dart';
+import 'package:unifast_portal/domain/courses/value_objects/slug_value.dart';
+import 'package:unifast_portal/infrastructure/services/dal/dto/course/category_dto.dart';
 import 'package:value_object_pattern/domain/value_objects/mongo_id_value.dart';
 
 class CourseCategoryModel {

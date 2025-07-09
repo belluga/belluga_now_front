@@ -1,4 +1,4 @@
-import 'package:flutter_laravel_backend_boilerplate/infrastructure/services/dal/dto/thumb_dto.dart';
+import 'package:unifast_portal/infrastructure/services/dal/dto/thumb_dto.dart';
 
 class FileDTO {
   final String url;
@@ -6,7 +6,12 @@ class FileDTO {
   final String? description;
   final ThumbDTO thumb;
 
-  FileDTO({required this.url, required this.title, required this.description, required this.thumb});
+  FileDTO({
+    required this.url,
+    required this.title,
+    required this.description,
+    required this.thumb,
+  });
 
   factory FileDTO.fromJson(Map<String, dynamic> json) {
     return FileDTO(
@@ -18,6 +23,11 @@ class FileDTO {
   }
 
   Map<String, dynamic> toJson() {
-    return {'url': url, 'title': title, 'description': description, 'thumb': thumb};
+    return {
+      'url': url,
+      'title': title,
+      'description': description,
+      'thumb': thumb,
+    };
   }
 }

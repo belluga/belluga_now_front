@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_laravel_backend_boilerplate/application/application.dart';
-import 'package:flutter_laravel_backend_boilerplate/application/configurations/belluga_constants.dart';
+import 'package:unifast_portal/application/application.dart';
+import 'package:unifast_portal/application/configurations/belluga_constants.dart';
 import 'package:get_it/get_it.dart';
 import 'dart:async';
 
@@ -16,14 +16,14 @@ Future<void> main() async {
       options.tracesSampleRate = BellugaConstants.sentry.tracesSampleRate;
     },
     appRunner: () async {
-      try{
+      try {
         await GetIt.I.get<Application>().init();
         runApp(GetIt.I.get<Application>());
-      }catch(error, stackTrace){
+      } catch (error, stackTrace) {
         await Sentry.captureException(error, stackTrace: stackTrace);
         rethrow;
       }
-    }
+    },
   );
 
   // final _pushHandler =

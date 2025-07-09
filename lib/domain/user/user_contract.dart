@@ -1,4 +1,4 @@
-import 'package:flutter_laravel_backend_boilerplate/domain/user/user_profile_contract.dart';
+import 'package:unifast_portal/domain/user/user_profile_contract.dart';
 import 'package:value_object_pattern/domain/value_objects/mongo_id_value.dart';
 
 abstract class UserContract {

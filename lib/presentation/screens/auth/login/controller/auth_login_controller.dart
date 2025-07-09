@@ -1,8 +1,5 @@
-import 'package:flutter_laravel_backend_boilerplate/domain/controllers/auth_login_controller_contract.dart';
+import 'package:unifast_portal/domain/controllers/auth_login_controller_contract.dart';
 
 class AuthLoginController extends AuthLoginControllerContract {
-  AuthLoginController({
-    super.initialEmail,
-    super.initialPassword,
-  });
+  AuthLoginController({super.initialEmail, super.initialPassword});
 }

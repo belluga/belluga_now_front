@@ -1,9 +1,9 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_laravel_backend_boilerplate/application/configurations/belluga_constants.dart';
-import 'package:flutter_laravel_backend_boilerplate/application/configurations/widget_keys.dart';
-import 'package:flutter_laravel_backend_boilerplate/domain/tenant/tenant.dart';
-import 'package:flutter_laravel_backend_boilerplate/application/router/app_router.gr.dart';
+import 'package:unifast_portal/application/configurations/belluga_constants.dart';
+import 'package:unifast_portal/application/configurations/widget_keys.dart';
+import 'package:unifast_portal/domain/tenant/tenant.dart';
+import 'package:unifast_portal/application/router/app_router.gr.dart';
 import 'package:get_it/get_it.dart';
 
 @RoutePage()

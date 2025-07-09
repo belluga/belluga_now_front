@@ -1,14 +1,14 @@
-import 'package:flutter_laravel_backend_boilerplate/domain/courses/course_category_model.dart';
-import 'package:flutter_laravel_backend_boilerplate/domain/courses/course_content_model.dart';
-import 'package:flutter_laravel_backend_boilerplate/domain/courses/course_item_model.dart';
-import 'package:flutter_laravel_backend_boilerplate/domain/courses/course_items_summary.dart';
-import 'package:flutter_laravel_backend_boilerplate/domain/courses/course_type_model.dart';
-import 'package:flutter_laravel_backend_boilerplate/domain/courses/file_model.dart';
-import 'package:flutter_laravel_backend_boilerplate/domain/courses/teacher_model.dart';
-import 'package:flutter_laravel_backend_boilerplate/domain/courses/thumb_model.dart';
-import 'package:flutter_laravel_backend_boilerplate/domain/value_objects/description_value.dart';
-import 'package:flutter_laravel_backend_boilerplate/domain/value_objects/title_value.dart';
-import 'package:flutter_laravel_backend_boilerplate/infrastructure/services/dal/dto/course/course_dto.dart';
+import 'package:unifast_portal/domain/courses/course_category_model.dart';
+import 'package:unifast_portal/domain/courses/course_content_model.dart';
+import 'package:unifast_portal/domain/courses/course_item_model.dart';
+import 'package:unifast_portal/domain/courses/course_items_summary.dart';
+import 'package:unifast_portal/domain/courses/course_type_model.dart';
+import 'package:unifast_portal/domain/courses/file_model.dart';
+import 'package:unifast_portal/domain/courses/teacher_model.dart';
+import 'package:unifast_portal/domain/courses/thumb_model.dart';
+import 'package:unifast_portal/domain/value_objects/description_value.dart';
+import 'package:unifast_portal/domain/value_objects/title_value.dart';
+import 'package:unifast_portal/infrastructure/services/dal/dto/course/course_dto.dart';
 import 'package:value_object_pattern/domain/value_objects/mongo_id_value.dart';
 
 class CourseModel extends CourseItemModel {
