@@ -18,6 +18,6 @@ class LessonVideoPlayerController {
   void dispose() {
     print("dispose controller");
     chewieController.dispose();
-    // videoPlayerController.dispose();
+    videoPlayerController.dispose();
   }
 }

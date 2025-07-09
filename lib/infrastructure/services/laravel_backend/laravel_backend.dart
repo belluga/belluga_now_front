@@ -118,7 +118,7 @@ class LaravelBackend extends BackendContract {
 
   //TODO: Implement this method to fetch course.
   @override
-  Future<CourseItemDTO> courseGetDetails(String courseId) async {
+  Future<CourseItemDTO> courseItemGetDetails(String courseId) async {
     final response = await dio.get(
       '${BellugaConstants.api.baseUrl}/courses/$courseId',
       options: Options(headers: _getAuthenticatedHeaders()),

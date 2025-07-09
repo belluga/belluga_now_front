@@ -10,9 +10,9 @@ import 'package:stream_value/core/stream_value_builder.dart';
 
 @RoutePage()
 class CourseScreen extends StatefulWidget {
-  final CourseItemModel courseItemModel;
+  final String courseItemId;
 
-  const CourseScreen({super.key, required this.courseItemModel});
+  const CourseScreen({super.key, required this.courseItemId});
 
   @override
   State<CourseScreen> createState() => _CourseScreenState();
@@ -31,87 +31,68 @@ class _CourseScreenState extends State<CourseScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Column(
-        children: [
-          // CourseHeaderBuilder(
-          //   courseItemModel: widget.courseItemModel
-          // ),
-          SizedBox(height: 16),
-          Padding(
-            padding: EdgeInsets.symmetric(horizontal: 16),
-            child: Container(
-              color: Theme.of(context).colorScheme.surfaceDim,
-              child: StreamValueBuilder<CourseItemModel>(
-                streamValue: _controller.currentCourseItemStreamValue,
-                builder: (context, courseItem) {
-                  return TabBar(
+      body: StreamValueBuilder<CourseItemModel>(
+        streamValue: _controller.currentCourseItemStreamValue,
+        onNullWidget: Center(child: CircularProgressIndicator()),
+        builder: (context, courseModel) {
+          return Column(
+            children: [
+              CourseHeaderBuilder(
+                courseItemModel: courseModel,
+              ),
+              SizedBox(height: 16),
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: 16),
+                child: Container(
+                  color: Theme.of(context).colorScheme.surfaceDim,
+                  child: TabBar(
                     controller: _controller.tabController,
                     dividerColor: Colors.transparent,
                     indicatorSize: TabBarIndicatorSize.label,
                     labelColor: Theme.of(context).colorScheme.onPrimary,
                     tabs: [
-                      if (courseItem.childrens.isNotEmpty)
+                      if (courseModel.childrens.isNotEmpty)
                         Tab(
-                          text: courseItem.childrensSummary.label.valueFormated,
+                          text:
+                              courseModel.childrensSummary.label.valueFormated,
                         ),
-                      if (courseItem.files.isNotEmpty) Tab(text: 'Arquivos'),
+                      if (courseModel.files.isNotEmpty) Tab(text: 'Arquivos'),
                       // Tab(text: 'Anotações'),
                     ],
-                  );
-                },
+                  ),
+                ),
               ),
-            ),
-          ),
-          Expanded(
-            child: Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16),
-              child: StreamValueBuilder<CourseItemModel>(
-                streamValue: _controller.currentCourseItemStreamValue,
-                builder: (context, courseItem) {
-                  return TabBarView(
+              Expanded(
+                child: Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 16),
+                  child: TabBarView(
                     controller: _controller.tabController,
                     children: [
-                      if (courseItem.childrens.isNotEmpty) ChildrensList(),
-                      if (courseItem.files.isNotEmpty) FilesList(),
+                      if (courseModel.childrens.isNotEmpty) ChildrensList(),
+                      if (courseModel.files.isNotEmpty) FilesList(),
                       // Tab 3: Anotações (Placeholder)
                       // const Center(child: Text('Nenhuma anotação encontrada.')),
                     ],
-                  );
-                },
+                  ),
+                ),
               ),
-            ),
-          ),
-        ],
+            ],
+          );
+        },
       ),
     );
   }
 
   void _initializeController() {
-    print(GetIt.I.currentScopeName);
-    final bool isRegistered = GetIt.I.isRegistered<CourseScreenController>(
-      instance: GetIt.I.get<CourseScreenController>(),
+    _controller = GetIt.I.registerSingleton<CourseScreenController>(
+      CourseScreenController(courseItemId: widget.courseItemId, vsync: this),
     );
-
-    if (!isRegistered) {
-      _controller = GetIt.I.registerSingleton<CourseScreenController>(
-        CourseScreenController(courseItemModel: widget.courseItemModel),
-      );
-    } else {
-      _controller = GetIt.I.get<CourseScreenController>();
-    }
-
-    _controller.init(vsync: this);
   }
 
   @override
   void dispose() {
     super.dispose();
     GetIt.I.unregister<CourseScreenController>();
-    bool _hasScopeForThisItem = GetIt.I.hasScope(
-      widget.courseItemModel.id.toString(),
-    );
-    if (_hasScopeForThisItem) {
-      GetIt.I.popScope();
-    }
+    GetIt.I.popScope();
   }
 }

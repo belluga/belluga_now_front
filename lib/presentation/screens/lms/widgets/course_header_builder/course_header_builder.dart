@@ -6,7 +6,7 @@ import 'package:unifast_portal/presentation/screens/lms/widgets/course_header_bu
 import 'package:unifast_portal/presentation/screens/lms/widgets/course_header_builder/course_header_video.dart';
 
 class CourseHeaderBuilder extends StatefulWidget {
-  final CourseItemModel? courseItemModel;
+  final CourseItemModel courseItemModel;
 
   const CourseHeaderBuilder({super.key, required this.courseItemModel});
 
@@ -19,18 +19,17 @@ class _CourseHeaderBuilderState extends State<CourseHeaderBuilder> {
   Widget build(BuildContext context) {
     return Builder(
       builder: (context) {
-        final CourseItemModel? _item = widget.courseItemModel;
-        final CourseContentModel? _content = _item?.content;
+        final CourseContentModel? _content = widget.courseItemModel.content;
 
-        if (_content?.video != null && _item != null) {
-          return CourseHeaderVideo(courseItemModel: _item);
+        if (_content?.video != null) {
+          return CourseHeaderVideo(courseItemModel: widget.courseItemModel);
         }
 
         if (_content?.html != null) {
           return CourseHeaderHtml();
         }
 
-        return CourseHeaderBanner();
+        return CourseHeaderBanner(courseItemModel: widget.courseItemModel);
       },
     );
   }

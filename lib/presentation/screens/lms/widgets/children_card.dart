@@ -33,7 +33,9 @@ class _ChildrenCardState extends State<ChildrenCard> {
         child: Container(
           decoration: BoxDecoration(
             color: Theme.of(context).colorScheme.surfaceDim,
-            border: _controller.childrenSelectedId == widget.index
+            border:
+                _controller.childrenSelectedItemIDStreamValue.value ==
+                    widget.index
                 ? BoxBorder.all(
                     color: Theme.of(context).colorScheme.secondary,
                     width: 1,
@@ -80,25 +82,27 @@ class _ChildrenCardState extends State<ChildrenCard> {
   }
 
   void _navigateToItem() {
-    if (widget.courseItemModel.childrens.isNotEmpty) {
+    // if (widget.courseItemModel.childrens.isNotEmpty) {
       _navigateToChildren();
-    } else {
-      _navigateToSibling();
-    }
+    // } else {
+    //   _navigateToSibling();
+    // }
   }
 
   void _navigateToChildren() {
     GetIt.I.pushNewScope(scopeName: widget.courseItemModel.id.toString());
-    context.router.push(CourseRoute(courseItemModel: widget.courseItemModel));
-  }
-
-  void _navigateToSibling() {
-    _controller.changeSelectedChildren(widget.index);
-    context.router.replace(
-      CourseRoute(
-        key: ValueKey(widget.courseItemModel.id.toString()),
-        courseItemModel: widget.courseItemModel,
-      ),
+    context.router.push(
+      CourseRoute(courseItemId: widget.courseItemModel.id.toString()),
     );
   }
+
+  // void _navigateToSibling() {
+  //   _controller.changeSelectedChildren(widget.index);
+  //   context.router.replace(
+  //     CourseRoute(
+  //       key: ValueKey(widget.courseItemModel.id.toString()),
+  //       courseItemId: widget.courseItemModel.id.toString(),
+  //     ),
+  //   );
+  // }
 }

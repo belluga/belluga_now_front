@@ -107,6 +107,6 @@ class _MyCourseCardOnListState extends State<MyCourseCardOnList> {
   }
 
   Future<void> _navigateToCourse() async {
-    context.router.push(CourseRoute(courseItemModel: widget.course));
+    context.router.push(CourseRoute(courseItemId: widget.course.id.toString()));
   }
 }

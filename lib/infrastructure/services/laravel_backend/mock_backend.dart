@@ -59,17 +59,43 @@ class MockBackend extends BackendContract {
   }
 
   @override
-  Future<CourseItemDTO> courseGetDetails(String courseId) async {
-    if (courseId == fakeMongoId) {
-      return CourseItemDTO.fromJson(_myCourses[0]);
-    } else if (courseId == "6864f4415a115a9591257e2d") {
-      return CourseItemDTO.fromJson(_myCourses[1]);
-    } else {
-      throw DioException(
-        requestOptions: RequestOptions(path: ""),
-        error: "Curso não encontrado",
-      );
+  Future<CourseItemDTO> courseItemGetDetails(String courseId) async {
+    final courseItemDTO = _findCourseById(
+      needle: courseId,
+      haystack: _myCourses,
+    );
+
+    if (courseItemDTO != null) {
+      return courseItemDTO;
     }
+
+    throw DioException(
+      requestOptions: RequestOptions(path: ""),
+      error: "Curso não encontrado",
+    );
+  }
+
+  CourseItemDTO? _findCourseById({
+    required String needle,
+    required List<Map<String, dynamic>> haystack,
+  }) {
+    for (var course in haystack) {
+      if (course['id'] == needle) {
+        return CourseItemDTO.fromJson(course);
+      }
+
+      if (course.containsKey('childrens') && course['childrens'] is Map) {
+        final childrens = course['childrens']['items'] as List<dynamic>;
+        final result = _findCourseById(
+          needle: needle,
+          haystack: childrens.cast<Map<String, dynamic>>(),
+        );
+        if (result != null) {
+          return result;
+        }
+      }
+    }
+    return null;
   }
 
   String get fakeMongoId {
@@ -95,7 +121,7 @@ class MockBackend extends BackendContract {
     ),
   );
 
-  List<Map<String, dynamic>> get _myCourses => [
+  late final List<Map<String, dynamic>> _myCourses = [
     {
       "id": fakeMongoId,
       "title": "MBA em Ciências da Mente e Liderança Humanizada",

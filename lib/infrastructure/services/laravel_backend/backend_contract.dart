@@ -12,5 +12,5 @@ abstract class BackendContract {
   Future<UserDTO> loginCheck();
   Future<List<ExternalCourseDTO>> getExternalCourses();
   Future<List<CourseDTO>> getMyCourses();
-  Future<CourseItemDTO> courseGetDetails(String courseId);
+  Future<CourseItemDTO> courseItemGetDetails(String courseId);
 }

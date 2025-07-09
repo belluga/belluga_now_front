@@ -39,8 +39,8 @@ abstract class CoursesRepositoryContract {
     );
   }
 
-  Future<void> getCourseDetails(String courseId) async {
-    final CourseItemDTO _courseDTO = await backend.courseGetDetails(courseId);
-    currentCourseItemStreamValue.addValue(CourseItemModel.fromDto(_courseDTO));
+  Future<CourseItemModel> courseItemGetDetails(String courseId) async {
+    final CourseItemDTO _courseDTO = await backend.courseItemGetDetails(courseId);
+    return Future.value(CourseItemModel.fromDto(_courseDTO));
   }
 }

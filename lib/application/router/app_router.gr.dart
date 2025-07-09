@@ -11,7 +11,6 @@
 // ignore_for_file: no_leading_underscores_for_library_prefixes
 import 'package:auto_route/auto_route.dart' as _i10;
 import 'package:flutter/material.dart' as _i11;
-import 'package:unifast_portal/domain/courses/course_item_model.dart' as _i12;
 import 'package:unifast_portal/presentation/init/init_screen.dart' as _i7;
 import 'package:unifast_portal/presentation/screens/auth/create_new_password/auth_create_new_password.dart'
     as _i1;
@@ -67,11 +66,11 @@ class AuthLoginRoute extends _i10.PageRouteInfo<void> {
 class CourseRoute extends _i10.PageRouteInfo<CourseRouteArgs> {
   CourseRoute({
     _i11.Key? key,
-    required _i12.CourseItemModel courseItemModel,
+    required String courseItemId,
     List<_i10.PageRouteInfo>? children,
   }) : super(
          CourseRoute.name,
-         args: CourseRouteArgs(key: key, courseItemModel: courseItemModel),
+         args: CourseRouteArgs(key: key, courseItemId: courseItemId),
          initialChildren: children,
        );
 
@@ -81,35 +80,32 @@ class CourseRoute extends _i10.PageRouteInfo<CourseRouteArgs> {
     name,
     builder: (data) {
       final args = data.argsAs<CourseRouteArgs>();
-      return _i3.CourseScreen(
-        key: args.key,
-        courseItemModel: args.courseItemModel,
-      );
+      return _i3.CourseScreen(key: args.key, courseItemId: args.courseItemId);
     },
   );
 }
 
 class CourseRouteArgs {
-  const CourseRouteArgs({this.key, required this.courseItemModel});
+  const CourseRouteArgs({this.key, required this.courseItemId});
 
   final _i11.Key? key;
 
-  final _i12.CourseItemModel courseItemModel;
+  final String courseItemId;
 
   @override
   String toString() {
-    return 'CourseRouteArgs{key: $key, courseItemModel: $courseItemModel}';
+    return 'CourseRouteArgs{key: $key, courseItemId: $courseItemId}';
   }
 
   @override
   bool operator ==(Object other) {
     if (identical(this, other)) return true;
     if (other is! CourseRouteArgs) return false;
-    return key == other.key && courseItemModel == other.courseItemModel;
+    return key == other.key && courseItemId == other.courseItemId;
   }
 
   @override
-  int get hashCode => key.hashCode ^ courseItemModel.hashCode;
+  int get hashCode => key.hashCode ^ courseItemId.hashCode;
 }
 
 /// generated route for

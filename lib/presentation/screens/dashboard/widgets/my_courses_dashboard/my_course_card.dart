@@ -1,5 +1,6 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
+import 'package:get_it/get_it.dart';
 import 'package:unifast_portal/application/router/app_router.gr.dart';
 import 'package:unifast_portal/domain/courses/course_model.dart';
 import 'package:unifast_portal/presentation/common/widgets/image_with_progress_indicator.dart';
@@ -95,6 +96,7 @@ class _MyCourseCardState extends State<MyCourseCard> {
   }
 
   Future<void> _navigateToCourse() async {
-    context.router.push(CourseRoute(courseItemModel: widget.course));
+    GetIt.I.pushNewScope(scopeName: widget.course.id.toString());
+    context.router.push(CourseRoute(courseItemId: widget.course.id.toString()));
   }
 }

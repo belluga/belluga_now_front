@@ -2,24 +2,21 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:unifast_portal/domain/courses/course_item_model.dart';
-import 'package:unifast_portal/presentation/screens/lms/controllers/course_screen_controller.dart';
-import 'package:get_it/get_it.dart';
 
 class CourseHeaderBanner extends StatefulWidget {
-  const CourseHeaderBanner({super.key});
+
+  final CourseItemModel courseItemModel;
+
+  const CourseHeaderBanner({super.key, required this.courseItemModel});
 
   @override
   State<CourseHeaderBanner> createState() => _CourseHeaderBannerState();
 }
 
 class _CourseHeaderBannerState extends State<CourseHeaderBanner> {
-  final _controller = GetIt.I.get<CourseScreenController>();
 
   @override
   Widget build(BuildContext context) {
-    final CourseItemModel _courseModel =
-        _controller.currentCourseItemStreamValue.value;
-
     return SizedBox(
       height: 300,
       child: Stack(
@@ -34,7 +31,7 @@ class _CourseHeaderBannerState extends State<CourseHeaderBanner> {
                     image: DecorationImage(
                       fit: BoxFit.cover,
                       image: NetworkImage(
-                        _courseModel.thumb.thumbUri.toString(),
+                        widget.courseItemModel.thumb.thumbUri.toString(),
                       ),
                     ),
                   ),
@@ -63,7 +60,7 @@ class _CourseHeaderBannerState extends State<CourseHeaderBanner> {
                   children: [
                     Expanded(
                       child: Text(
-                        _courseModel.title.value,
+                        widget.courseItemModel.title.value,
                         maxLines: 2,
                         style: TextTheme.of(context).titleLarge,
                       ),

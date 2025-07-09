@@ -18,6 +18,7 @@ import 'package:get_it/get_it.dart';
 import 'package:intl/intl_standalone.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:unifast_portal/presentation/screens/lms/controllers/course_screen_controller.dart';
 
 class Application extends StatelessWidget {
   final _appRouter = AppRouter();
