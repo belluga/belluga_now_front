@@ -8,22 +8,25 @@ import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value.dart';
 
 class CourseScreenController implements Disposable {
-  CourseScreenController({required CourseItemModel courseItemModel}) {
+  CourseScreenController({
+    required CourseItemModel? courseItemModel,
+    this.childrenSelectedId,
+  }) {
     currentCourseItemStreamValue = StreamValue<CourseItemModel>(
       defaultValue: courseItemModel,
-    );
-    currentContentStreamValue = StreamValue<CourseContentModel?>(
-      defaultValue: courseItemModel.content,
     );
   }
 
   late TickerProviderStateMixin _vsync;
+  int? childrenSelectedId;
 
   final _coursesRepository = GetIt.I.get<CoursesRepositoryContract>();
 
+  final childrenSelectedItemStreamValue = StreamValue<CourseItemModel?>();
+  
   late StreamValue<CourseItemModel> currentCourseItemStreamValue;
-  late StreamValue<CourseContentModel?> currentContentStreamValue;
-  final currentSelectedItem = StreamValue<int?>();
+
+  final currentContentStreamValue = StreamValue<CourseContentModel?>();
 
   TabController get tabController {
     final bool _courseAlreadyHaveTabController = _tabControllersList.keys
@@ -40,9 +43,12 @@ class CourseScreenController implements Disposable {
 
   final tabIndexStreamValue = StreamValue<int>(defaultValue: 0);
 
-  void changeSelectedItem(int? index) {
-    currentSelectedItem.addValue(index);
+  void changeSelectedChildren(int? index) {
+    childrenSelectedId = index;
     if (index != null) {
+      childrenSelectedItemStreamValue.addValue(
+        currentCourseItemStreamValue.value.childrens[index],
+      );
       currentContentStreamValue.addValue(
         currentCourseItemStreamValue.value.childrens[index].content,
       );
@@ -82,7 +88,7 @@ class CourseScreenController implements Disposable {
     tabIndexStreamValue.dispose();
     currentCourseItemStreamValue.dispose();
     currentContentStreamValue.dispose();
-    currentSelectedItem.dispose();
+    // currentSelectedItem.dispose();
     tabController.dispose();
   }
 }

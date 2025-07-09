@@ -1,4 +1,4 @@
-import 'package:value_objects/value_object.dart';
+import 'package:value_object_pattern/value_object.dart';
 
 class TeacherIsHighlight extends ValueObject<bool> {
   TeacherIsHighlight({super.defaultValue = false, super.isRequired = true});

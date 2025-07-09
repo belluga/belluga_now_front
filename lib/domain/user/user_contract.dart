@@ -1,5 +1,5 @@
 import 'package:flutter_laravel_backend_boilerplate/domain/user/user_profile_contract.dart';
-import 'package:value_objects/domain/value_objects/mongo_id_value.dart';
+import 'package:value_object_pattern/domain/value_objects/mongo_id_value.dart';
 
 abstract class UserContract {
   final MongoIDValue uuidValue;

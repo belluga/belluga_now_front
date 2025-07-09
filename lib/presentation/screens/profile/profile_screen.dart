@@ -7,7 +7,7 @@ import 'package:flutter_laravel_backend_boilerplate/presentation/widgets/attribu
 import 'package:flutter_laravel_backend_boilerplate/presentation/widgets/back_button_belluga.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
-import 'package:value_objects/domain/value_objects/full_name_value.dart';
+import 'package:value_object_pattern/domain/value_objects/full_name_value.dart';
 // import 'package:lottie/lottie.dart';
 
 @RoutePage()

@@ -6,7 +6,7 @@ import 'package:flutter_laravel_backend_boilerplate/domain/courses/thumb_model.d
 import 'package:flutter_laravel_backend_boilerplate/domain/value_objects/description_value.dart';
 import 'package:flutter_laravel_backend_boilerplate/domain/value_objects/title_value.dart';
 import 'package:flutter_laravel_backend_boilerplate/infrastructure/services/dal/dto/course/course_item_dto.dart';
-import 'package:value_objects/domain/value_objects/mongo_id_value.dart';
+import 'package:value_object_pattern/domain/value_objects/mongo_id_value.dart';
 
 class CourseItemModel {
   final MongoIDValue id;

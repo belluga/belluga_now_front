@@ -25,10 +25,7 @@ class _CourseScreenState extends State<CourseScreen>
   @override
   void initState() {
     super.initState();
-    _controller = GetIt.I.registerSingleton<CourseScreenController>(
-      CourseScreenController(courseItemModel: widget.courseItemModel),
-    );
-    _controller.init(vsync: this);
+    _initializeController();
   }
 
   @override
@@ -36,7 +33,9 @@ class _CourseScreenState extends State<CourseScreen>
     return Scaffold(
       body: Column(
         children: [
-          CourseHeaderBuilder(),
+          // CourseHeaderBuilder(
+          //   courseItemModel: widget.courseItemModel
+          // ),
           SizedBox(height: 16),
           Padding(
             padding: EdgeInsets.symmetric(horizontal: 16),
@@ -85,6 +84,23 @@ class _CourseScreenState extends State<CourseScreen>
         ],
       ),
     );
+  }
+
+  void _initializeController() {
+    print(GetIt.I.currentScopeName);
+    final bool isRegistered = GetIt.I.isRegistered<CourseScreenController>(
+      instance: GetIt.I.get<CourseScreenController>(),
+    );
+
+    if (!isRegistered) {
+      _controller = GetIt.I.registerSingleton<CourseScreenController>(
+        CourseScreenController(courseItemModel: widget.courseItemModel),
+      );
+    } else {
+      _controller = GetIt.I.get<CourseScreenController>();
+    }
+
+    _controller.init(vsync: this);
   }
 
   @override

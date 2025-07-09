@@ -1,33 +1,32 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_laravel_backend_boilerplate/domain/courses/course_content_model.dart';
-import 'package:flutter_laravel_backend_boilerplate/presentation/screens/lms/controllers/course_screen_controller.dart';
+import 'package:flutter_laravel_backend_boilerplate/domain/courses/course_item_model.dart';
 import 'package:flutter_laravel_backend_boilerplate/presentation/screens/lms/widgets/course_header_builder/course_header_banner.dart';
 import 'package:flutter_laravel_backend_boilerplate/presentation/screens/lms/widgets/course_header_builder/course_header_html.dart';
 import 'package:flutter_laravel_backend_boilerplate/presentation/screens/lms/widgets/course_header_builder/course_header_video.dart';
-import 'package:get_it/get_it.dart';
-import 'package:stream_value/main.dart';
 
 class CourseHeaderBuilder extends StatefulWidget {
-  const CourseHeaderBuilder({super.key});
+  final CourseItemModel? courseItemModel;
+
+  const CourseHeaderBuilder({super.key, required this.courseItemModel});
 
   @override
   State<CourseHeaderBuilder> createState() => _CourseHeaderBuilderState();
 }
 
 class _CourseHeaderBuilderState extends State<CourseHeaderBuilder> {
-  final _controller = GetIt.I.get<CourseScreenController>();
-
   @override
   Widget build(BuildContext context) {
-    return StreamValueBuilder<CourseContentModel>(
-      streamValue: _controller.currentContentStreamValue,
-      onNullWidget: CourseHeaderBanner(),
-      builder: (context, contentModel) {
-        if (contentModel.video != null) {
-          return CourseHeaderVideo();
+    return Builder(
+      builder: (context) {
+        final CourseItemModel? _item = widget.courseItemModel;
+        final CourseContentModel? _content = _item?.content;
+
+        if (_content?.video != null && _item != null) {
+          return CourseHeaderVideo(courseItemModel: _item);
         }
 
-        if (contentModel.html != null) {
+        if (_content?.html != null) {
           return CourseHeaderHtml();
         }
 

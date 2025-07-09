@@ -1,6 +1,6 @@
 import 'package:flutter_laravel_backend_boilerplate/domain/controllers/form_field_controller_contract.dart';
 import 'package:flutter_laravel_backend_boilerplate/presentation/screens/auth/value_objects/auth_login_password_value.dart';
-import 'package:value_objects/domain/exceptions/value_exceptions.dart';
+import 'package:value_object_pattern/domain/exceptions/value_exceptions.dart';
 
 class FormFieldControllerPasswordLogin extends FormFieldControllerContract<String> {
   FormFieldControllerPasswordLogin({super.initialValue});
