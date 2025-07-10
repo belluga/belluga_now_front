@@ -47,7 +47,7 @@ class _CourseTracksDashboardState extends State<CourseTracksDashboard> {
                 return SliverGrid.builder(
                   gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                     childAspectRatio: 0.9,
-                    crossAxisCount: 3,
+                    crossAxisCount: 2,
                   ),
                   itemBuilder: (BuildContext context, int index) {
                     if (index >= coursesSummary.items.length) {
