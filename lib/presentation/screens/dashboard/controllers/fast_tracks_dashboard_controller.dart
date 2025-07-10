@@ -3,11 +3,11 @@ import 'package:unifast_portal/presentation/screens/dashboard/view_models/course
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value.dart';
 
-class MyCoursesDashboardController {
+class FastTracksDashboardController {
   final _myCoursesRepository = GetIt.I.get<CoursesRepositoryContract>();
 
   StreamValue<CoursesSummary?> get myCoursesSummaryStreamValue {
-    return _myCoursesRepository.myCoursesSummarySteamValue;
+    return _myCoursesRepository.fastTracksSummarySteamValue;
   }
 
   final navigationPreferenceStreamValue = StreamValue<bool>(
@@ -15,9 +15,9 @@ class MyCoursesDashboardController {
   );
 
   Future<void> init() async {
-    await _getMyCoursesSummary();
+    await _getSummary();
   }
 
-  Future<void> _getMyCoursesSummary() async =>
-      await _myCoursesRepository.getMyCoursesDashboardSummary();
+  Future<void> _getSummary() async =>
+      await _myCoursesRepository.getFastTracksDashboardSummary();
 }

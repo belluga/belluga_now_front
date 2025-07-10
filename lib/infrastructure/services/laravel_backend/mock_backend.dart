@@ -59,10 +59,21 @@ class MockBackend extends BackendContract {
   }
 
   @override
+  Future<List<CourseDTO>> getUnifastTracks() {
+    final _courses = _unifastTracks
+        .map((item) => CourseDTO.fromJson(item))
+        .toList();
+
+    return Future.value(_courses);
+  }
+
+  @override
   Future<CourseItemDTO> courseItemGetDetails(String courseId) async {
+    final _allCourses = _myCourses;
+    _allCourses.addAll(_unifastTracks);
     final courseItemDTO = _findCourseById(
       needle: courseId,
-      haystack: _myCourses,
+      haystack: _allCourses,
     );
 
     if (courseItemDTO != null) {
@@ -120,6 +131,150 @@ class MockBackend extends BackendContract {
       pictureUrl: "https://example.com/avatar.png",
     ),
   );
+
+  late final List<Map<String, dynamic>> _unifastTracks = [
+    {
+      "id": fakeMongoId,
+      "title": "MBA em Ciências da Mente e Liderança Humanizada",
+      "type": {"id": fakeMongoId, "name": "MBA", "slug": "mba"},
+      "description":
+          "Curso de MBA em Ciências da Mente e Liderança Humanizada.",
+      "thumb": {
+        "type": "image",
+        "data": {"url": "https://picsum.photos/id/30/200/300"},
+      },
+      "categories": [
+        {
+          "id": fakeMongoId,
+          "name": "Ciências da Mente",
+          "slug": "ciencias_da_mente",
+        },
+        {"id": fakeMongoId, "name": "Liderança", "slug": "lideranca"},
+        {"id": fakeMongoId, "name": "Negócios", "slug": "negocios"},
+      ],
+      "teachers": [
+        {
+          "id": fakeMongoId,
+          "name": "Roberto Shinyashiki",
+          "avatar_url": "https://picsum.photos/id/40/200/300",
+          "highlight": true,
+        },
+      ],
+      "files": [
+        {
+          "url": "https://www.orimi.com/pdf-test.pdf",
+          "title": "Manual do Aluno",
+          "description": "Aqui você encontra tudo que precisa",
+          "thumb": {
+            "type": "image",
+            "data": {"url": "https://picsum.photos/id/30/200/300"},
+          },
+        },
+        {
+          "url": "https://www.orimi.com/pdf-test.pdf",
+          "title": "Manual do Aluno",
+          "description": "Aqui você encontra tudo que precisa",
+          "thumb": {
+            "type": "image",
+            "data": {"url": "https://picsum.photos/id/30/200/300"},
+          },
+        },
+      ],
+      "childrens": {
+        "meta": {"label": "Aulas", "total": 10},
+        "items": [
+          {
+            "id": fakeMongoId,
+            "title": "Introdução à Liderança Humanizada",
+            "description": "Aprenda os fundamentos da liderança humanizada.",
+            "teachers": [
+              {
+                "id": fakeMongoId,
+                "name": "Roberto Shinyashiki",
+                "avatar_url": "https://picsum.photos/id/40/200/300",
+                "highlight": true,
+              },
+            ],
+            "thumb": {
+              "type": "image",
+              "data": {"url": "https://picsum.photos/id/30/200/300"},
+            },
+            "files": [
+              {
+                "url": "https://www.orimi.com/pdf-test.pdf",
+                "title": "Manual do Aluno",
+                "description": "Aqui você encontra tudo que precisa",
+                "thumb": {
+                  "type": "image",
+                  "data": {"url": "https://picsum.photos/id/30/200/300"},
+                },
+              },
+              {
+                "url": "https://www.orimi.com/pdf-test.pdf",
+                "title": "Manual do Aluno",
+                "description": "Aqui você encontra tudo que precisa",
+                "thumb": {
+                  "type": "image",
+                  "data": {"url": "https://picsum.photos/id/30/200/300"},
+                },
+              },
+            ],
+          },
+          {
+            "id": fakeMongoId,
+            "title": "Introdução à Liderança Humanizada",
+            "description": "Aprenda os fundamentos da liderança humanizada.",
+            "teachers": [
+              {
+                "id": fakeMongoId,
+                "name": "Roberto Shinyashiki",
+                "avatar_url": "https://picsum.photos/id/40/200/300",
+                "highlight": true,
+              },
+            ],
+            "thumb": {
+              "type": "image",
+              "data": {"url": "https://picsum.photos/id/30/200/300"},
+            },
+          },
+          {
+            "id": fakeMongoId,
+            "title": "Introdução à Liderança Humanizada",
+            "description": "Aprenda os fundamentos da liderança humanizada.",
+            "teachers": [
+              {
+                "id": fakeMongoId,
+                "name": "Roberto Shinyashiki",
+                "avatar_url": "https://picsum.photos/id/40/200/300",
+                "highlight": true,
+              },
+            ],
+            "thumb": {
+              "type": "image",
+              "data": {"url": "https://picsum.photos/id/30/200/300"},
+            },
+          },
+          {
+            "id": fakeMongoId,
+            "title": "Introdução à Liderança Humanizada",
+            "description": "Aprenda os fundamentos da liderança humanizada.",
+            "teachers": [
+              {
+                "id": fakeMongoId,
+                "name": "Roberto Shinyashiki",
+                "avatar_url": "https://picsum.photos/id/40/200/300",
+                "highlight": true,
+              },
+            ],
+            "thumb": {
+              "type": "image",
+              "data": {"url": "https://picsum.photos/id/30/200/300"},
+            },
+          },
+        ],
+      },
+    },
+  ];
 
   late final List<Map<String, dynamic>> _myCourses = [
     {

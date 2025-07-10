@@ -11,30 +11,48 @@ import 'package:stream_value/core/stream_value.dart';
 abstract class CoursesRepositoryContract {
   BackendContract get backend => GetIt.I.get<BackendContract>();
 
-  final summarySteamValue = StreamValue<CoursesSummary?>(defaultValue: null);
-  final coursesSteamValue = StreamValue<List<CourseModel>?>(defaultValue: null);
+  final myCoursesSummarySteamValue = StreamValue<CoursesSummary?>(defaultValue: null);
+  final fastTracksSummarySteamValue = StreamValue<CoursesSummary?>(defaultValue: null);
+  final myCoursesListSteamValue = StreamValue<List<CourseModel>?>(defaultValue: null);
+  final fastTracksListSteamValue = StreamValue<List<CourseModel>?>(defaultValue: null);
   final currentCourseItemStreamValue = StreamValue<CourseItemModel?>();
 
-  Future<void> init() async {
-    await getDashboardSummary();
-  }
-
-  Future<void> getDashboardSummary() async {
-    if (summarySteamValue.value != null) {
+  Future<void> getMyCoursesDashboardSummary() async {
+    if (myCoursesSummarySteamValue.value != null) {
       return Future.value();
     }
-    await _refreshDashboardSummary();
+    await _refreshMyCoursesDashboardSummary();
   }
 
-  Future<void> _refreshDashboardSummary() async {
+  Future<void> _refreshMyCoursesDashboardSummary() async {
     final List<CourseDTO> _dashboardSummary = await backend.getMyCourses();
 
     final _courses = _dashboardSummary
         .map((courseDto) => CourseModel.fromDto(courseDto))
         .toList();
 
-    coursesSteamValue.addValue(_courses);
-    summarySteamValue.addValue(
+    myCoursesListSteamValue.addValue(_courses);
+    myCoursesSummarySteamValue.addValue(
+      CoursesSummary(items: _courses, total: _courses.length),
+    );
+  }
+
+  Future<void> getFastTracksDashboardSummary() async {
+    if (fastTracksSummarySteamValue.value != null) {
+      return Future.value();
+    }
+    await _refreshFastTracksDashboardSummary();
+  }
+
+  Future<void> _refreshFastTracksDashboardSummary() async {
+    final List<CourseDTO> _dashboardSummary = await backend.getUnifastTracks();
+
+    final _courses = _dashboardSummary
+        .map((courseDto) => CourseModel.fromDto(courseDto))
+        .toList();
+
+    fastTracksListSteamValue.addValue(_courses);
+    fastTracksSummarySteamValue.addValue(
       CoursesSummary(items: _courses, total: _courses.length),
     );
   }

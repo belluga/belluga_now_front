@@ -5,7 +5,7 @@ import 'package:unifast_portal/presentation/common/widgets/profile_action_button
 import 'package:unifast_portal/presentation/screens/events/widgets/next_events_dashboard.dart';
 import 'package:unifast_portal/presentation/screens/dashboard/widgets/external_courses_dashboard/external_courses_dashboard.dart';
 import 'package:unifast_portal/presentation/screens/dashboard/widgets/my_courses_dashboard/my_courses_dashboard.dart';
-import 'package:unifast_portal/presentation/screens/lms/widgets/course_tracks_dashboard.dart';
+import 'package:unifast_portal/presentation/screens/dashboard/widgets/fast_track_dashboard.dart/course_tracks_dashboard.dart';
 
 @RoutePage()
 class DashboardScreen extends StatefulWidget {

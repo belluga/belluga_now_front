@@ -116,6 +116,21 @@ class LaravelBackend extends BackendContract {
     return Future.value(_courses);
   }
 
+  @override
+  Future<List<CourseDTO>> getUnifastTracks() async {
+    //TODO: Implement this method to fetch Unifast Tracks.
+    final response = await dio.post(
+      BellugaConstants.api.baseUrl + _Paths.loginCheck,
+      options: Options(headers: _getAuthenticatedHeaders()),
+    );
+
+    final _courses = response.data
+        .map((item) => CourseDTO.fromJson(item))
+        .toList();
+
+    return Future.value(_courses);
+  }
+
   //TODO: Implement this method to fetch course.
   @override
   Future<CourseItemDTO> courseItemGetDetails(String courseId) async {
