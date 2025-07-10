@@ -59,7 +59,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
           streamValue: _controller.userStreamValue,
           onNullWidget: const SizedBox.shrink(),
           builder: (context, user) {
-            print(user.customData);
             return Column(
               mainAxisAlignment: MainAxisAlignment.start,
               crossAxisAlignment: CrossAxisAlignment.start,

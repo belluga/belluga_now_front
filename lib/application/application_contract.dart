@@ -29,6 +29,7 @@ abstract class ApplicationContract extends StatelessWidget {
   Future<void> init() async {
     await initialSettings();
     await _initInjections();
+    await initialSettingsPlatform();
   }
 
   @protected

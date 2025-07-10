@@ -3,5 +3,6 @@ import 'package:unifast_portal/infrastructure/services/laravel_backend/backend_c
 import 'package:get_it/get_it.dart';
 
 final class CoursesRepository extends CoursesRepositoryContract {
+  @override
   BackendContract get backend => GetIt.I.get<BackendContract>();
 }

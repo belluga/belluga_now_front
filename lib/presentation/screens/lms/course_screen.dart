@@ -85,7 +85,6 @@ class _CourseScreenState extends State<CourseScreen>
   }
 
   void _initializeController() {
-    print("initialize Controller with ID: ${widget.courseItemId}");
     _controller = GetIt.I.registerSingleton<CourseScreenController>(
       CourseScreenController(courseItemId: widget.courseItemId, vsync: this),
     );
