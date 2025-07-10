@@ -34,17 +34,12 @@ class _LessonVideoPlayerState extends State<LessonVideoPlayer> {
           StreamValueBuilder<bool>(
             streamValue: _controller.isInitializedStreamValue,
             builder: (context, isInitialized) {
-              print("isInitialized: $isInitialized");
               if (!isInitialized) {
-                print("circular");
                 return Center(child: CircularProgressIndicator());
               }
-              // return Center(child: CircularProgressIndicator());
-
               return Chewie(controller: _controller.chewieController);
             },
           ),
-          // Chewie(controller: _controller.chewieController),
           StreamValueBuilder(
             streamValue: _controller.isPlayingStreamValue,
             builder: (context, isPlaying) {

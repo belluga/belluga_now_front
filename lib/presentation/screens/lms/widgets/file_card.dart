@@ -16,8 +16,6 @@ class FileCard extends StatefulWidget {
 class _DisciplineCardState extends State<FileCard> {
   @override
   Widget build(BuildContext context) {
-    final _index = widget.index + 1;
-
     return Card(
       child: InkWell(
         onTap: _openFileExternal,
