@@ -12,7 +12,10 @@ import 'package:stream_value/core/stream_value_builder.dart';
 class CourseScreen extends StatefulWidget {
   final String courseItemId;
 
-  const CourseScreen({super.key, required this.courseItemId});
+  const CourseScreen({
+    super.key,
+    @PathParam('courseItemId') required this.courseItemId,
+  });
 
   @override
   State<CourseScreen> createState() => _CourseScreenState();
@@ -37,9 +40,7 @@ class _CourseScreenState extends State<CourseScreen>
         builder: (context, courseModel) {
           return Column(
             children: [
-              CourseHeaderBuilder(
-                courseItemModel: courseModel,
-              ),
+              CourseHeaderBuilder(courseItemModel: courseModel),
               SizedBox(height: 16),
               Padding(
                 padding: EdgeInsets.symmetric(horizontal: 16),
@@ -84,6 +85,7 @@ class _CourseScreenState extends State<CourseScreen>
   }
 
   void _initializeController() {
+    print("initialize Controller with ID: ${widget.courseItemId}");
     _controller = GetIt.I.registerSingleton<CourseScreenController>(
       CourseScreenController(courseItemId: widget.courseItemId, vsync: this),
     );

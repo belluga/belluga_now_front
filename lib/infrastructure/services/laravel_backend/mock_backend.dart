@@ -123,7 +123,7 @@ class MockBackend extends BackendContract {
 
   late final List<Map<String, dynamic>> _myCourses = [
     {
-      "id": fakeMongoId,
+      "id": "9e2b36b89315617e5b6d891f",
       "title": "MBA em Ciências da Mente e Liderança Humanizada",
       "type": {"id": fakeMongoId, "name": "MBA", "slug": "mba"},
       "description":

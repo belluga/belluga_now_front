@@ -71,6 +71,7 @@ class CourseRoute extends _i10.PageRouteInfo<CourseRouteArgs> {
   }) : super(
          CourseRoute.name,
          args: CourseRouteArgs(key: key, courseItemId: courseItemId),
+         rawPathParams: {'courseItemId': courseItemId},
          initialChildren: children,
        );
 
@@ -79,7 +80,11 @@ class CourseRoute extends _i10.PageRouteInfo<CourseRouteArgs> {
   static _i10.PageInfo page = _i10.PageInfo(
     name,
     builder: (data) {
-      final args = data.argsAs<CourseRouteArgs>();
+      final pathParams = data.inheritedPathParams;
+      final args = data.argsAs<CourseRouteArgs>(
+        orElse: () =>
+            CourseRouteArgs(courseItemId: pathParams.getString('courseItemId')),
+      );
       return _i3.CourseScreen(key: args.key, courseItemId: args.courseItemId);
     },
   );
