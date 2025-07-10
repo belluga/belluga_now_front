@@ -1,9 +1,3 @@
-import 'package:value_objects/domain/value_objects/generic_string_value.dart';
+import 'package:unifast_portal/domain/value_objects/title_value.dart';
 
-class ExternalCourseTitleValue extends GenericStringValue {
-  ExternalCourseTitleValue({
-    super.defaultValue = "",
-    super.isRequired = false,
-    super.minLenght = 5,
-  });
-}
+class ExternalCourseTitleValue extends TitleValue {}

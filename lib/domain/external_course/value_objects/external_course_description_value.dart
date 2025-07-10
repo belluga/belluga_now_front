@@ -1,9 +1,3 @@
-import 'package:value_objects/domain/value_objects/generic_string_value.dart';
+import 'package:unifast_portal/domain/value_objects/description_value.dart';
 
-class ExternalCourseDescriptionValue extends GenericStringValue {
-  ExternalCourseDescriptionValue({
-    super.defaultValue = "",
-    super.isRequired = false,
-    super.minLenght = 10,
-  });
-}
+class ExternalCourseDescriptionValue extends DescriptionValue {}

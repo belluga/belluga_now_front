@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_laravel_backend_boilerplate/domain/external_course/external_course.dart';
-import 'package:flutter_laravel_backend_boilerplate/presentation/common/widgets/image_with_progress_indicator.dart';
-import 'package:flutter_laravel_backend_boilerplate/presentation/screens/dashboard/controllers/external_course_dashboard_controller.dart';
-import 'package:flutter_laravel_backend_boilerplate/presentation/screens/dashboard/widgets/external_courses_dashboard/external_course_details_bottom_sheet_content.dart';
-import 'package:flutter_laravel_backend_boilerplate/presentation/screens/dashboard/widgets/external_courses_dashboard/external_course_url_dialog.dart';
+import 'package:unifast_portal/domain/external_course/external_course_model.dart';
+import 'package:unifast_portal/presentation/common/widgets/image_with_progress_indicator.dart';
+import 'package:unifast_portal/presentation/screens/dashboard/controllers/external_course_dashboard_controller.dart';
+import 'package:unifast_portal/presentation/screens/dashboard/widgets/external_courses_dashboard/external_course_details_bottom_sheet_content.dart';
+import 'package:unifast_portal/presentation/screens/dashboard/widgets/external_courses_dashboard/external_course_url_dialog.dart';
 import 'package:get_it/get_it.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class ExternalCourseCard extends StatefulWidget {
-  final ExternalCourse course;
+  final ExternalCourseModel course;
 
   const ExternalCourseCard({super.key, required this.course});
 
@@ -28,7 +28,7 @@ class _ExternalCourseCardState extends State<ExternalCourseCard> {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            ImageWithProgressIndicator(thumbUrl: widget.course.thumbUrl.value),
+            ImageWithProgressIndicator(thumb: widget.course.thumb),
             Expanded(
               child: Padding(
                 padding: EdgeInsetsGeometry.all(16),
@@ -46,7 +46,7 @@ class _ExternalCourseCardState extends State<ExternalCourseCard> {
                     Text(
                       widget.course.description.value,
                       overflow: TextOverflow.ellipsis,
-                      maxLines: 3,
+                      maxLines: 1,
                       style: Theme.of(context).textTheme.bodySmall,
                     ),
                   ],
@@ -103,10 +103,10 @@ class _ExternalCourseCardState extends State<ExternalCourseCard> {
   }
 
   Future<void> _launchURL() async {
-    if (await canLaunchUrl(widget.course.thumbUrl.value)) {
-      await launchUrl(widget.course.thumbUrl.value);
+    if (await canLaunchUrl(widget.course.platformUrl.value)) {
+      await launchUrl(widget.course.platformUrl.value);
     } else {
-      _showSnackBar(widget.course.thumbUrl.value.toString());
+      _showSnackBar(widget.course.platformUrl.value.toString());
     }
   }
 

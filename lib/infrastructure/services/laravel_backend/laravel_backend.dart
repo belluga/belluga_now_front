@@ -1,11 +1,13 @@
 import 'package:dio/dio.dart';
-import 'package:flutter_laravel_backend_boilerplate/application/configurations/belluga_constants.dart';
-import 'package:flutter_laravel_backend_boilerplate/domain/auth/errors/belluga_auth_errors.dart';
-import 'package:flutter_laravel_backend_boilerplate/domain/repositories/auth_repository_contract.dart';
-import 'package:flutter_laravel_backend_boilerplate/domain/tenant/tenant.dart';
-import 'package:flutter_laravel_backend_boilerplate/infrastructure/services/dal/dto/external_courses_summary_dto.dart';
-import 'package:flutter_laravel_backend_boilerplate/infrastructure/services/dal/dto/user_dto.dart';
-import 'package:flutter_laravel_backend_boilerplate/infrastructure/services/laravel_backend/backend_contract.dart';
+import 'package:unifast_portal/application/configurations/belluga_constants.dart';
+import 'package:unifast_portal/domain/auth/errors/belluga_auth_errors.dart';
+import 'package:unifast_portal/domain/repositories/auth_repository_contract.dart';
+import 'package:unifast_portal/domain/tenant/tenant.dart';
+import 'package:unifast_portal/infrastructure/services/dal/dto/course/course_dto.dart';
+import 'package:unifast_portal/infrastructure/services/dal/dto/course/course_item_dto.dart';
+import 'package:unifast_portal/infrastructure/services/dal/dto/external_course_dto.dart';
+import 'package:unifast_portal/infrastructure/services/dal/dto/user_dto.dart';
+import 'package:unifast_portal/infrastructure/services/laravel_backend/backend_contract.dart';
 import 'package:get_it/get_it.dart';
 
 class LaravelBackend extends BackendContract {
@@ -30,7 +32,7 @@ class LaravelBackend extends BackendContract {
         options: Options(headers: _getHeaders()),
       );
 
-      final userDTO = UserDTO.fromMap(response.data["data"]["user"]);
+      final userDTO = UserDTO.fromJson(response.data["data"]["user"]);
       final String token = response.data["data"]["token"];
 
       return (userDTO, token);
@@ -55,7 +57,7 @@ class LaravelBackend extends BackendContract {
       options: Options(headers: _getAuthenticatedHeaders()),
     );
 
-    return UserDTO.fromMap(response.data["data"]["user"]);
+    return UserDTO.fromJson(response.data["data"]["user"]);
   }
 
   @override
@@ -85,14 +87,44 @@ class LaravelBackend extends BackendContract {
   }
 
   @override
-  Future<ExternalCoursesSummaryDTO> externalCoursesGetDashboardSummary() async {
+  Future<List<ExternalCourseDTO>> getExternalCourses() async {
     //TODO: Implement this method to fetch the external courses summary.
     final response = await dio.post(
       BellugaConstants.api.baseUrl + _Paths.loginCheck,
       options: Options(headers: _getAuthenticatedHeaders()),
     );
 
-    return ExternalCoursesSummaryDTO.fromMap(response.data);
+    final _externalCourses = (response.data as List<Map<String, dynamic>>)
+        .map((item) => ExternalCourseDTO.fromJson(item))
+        .toList();
+
+    return Future.value(_externalCourses);
+  }
+
+  @override
+  Future<List<CourseDTO>> getMyCourses() async {
+    //TODO: Implement this method to fetch courses summary.
+    final response = await dio.post(
+      BellugaConstants.api.baseUrl + _Paths.loginCheck,
+      options: Options(headers: _getAuthenticatedHeaders()),
+    );
+
+    final _courses = response.data
+        .map((item) => CourseDTO.fromJson(item))
+        .toList();
+
+    return Future.value(_courses);
+  }
+
+  //TODO: Implement this method to fetch course.
+  @override
+  Future<CourseItemDTO> courseItemGetDetails(String courseId) async {
+    final response = await dio.get(
+      '${BellugaConstants.api.baseUrl}/courses/$courseId',
+      options: Options(headers: _getAuthenticatedHeaders()),
+    );
+
+    return CourseItemDTO.fromJson(response.data);
   }
 }
 

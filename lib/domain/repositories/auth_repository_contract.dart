@@ -1,4 +1,4 @@
-import 'package:flutter_laravel_backend_boilerplate/domain/user/user_contract.dart';
+import 'package:unifast_portal/domain/user/user_contract.dart';
 import 'package:stream_value/core/stream_value.dart';
 
 abstract class AuthRepositoryContract<T extends UserContract> {
@@ -29,5 +29,4 @@ abstract class AuthRepositoryContract<T extends UserContract> {
   Future<void> sendPasswordResetEmail(String email);
 
   Future<void> updateUser(Map<String, Object?> data);
-
 }

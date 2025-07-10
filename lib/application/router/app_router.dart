@@ -1,6 +1,6 @@
 import 'package:auto_route/auto_route.dart';
-import 'package:flutter_laravel_backend_boilerplate/application/router/app_router.gr.dart';
-import 'package:flutter_laravel_backend_boilerplate/application/router/guards/route_guard_auth.dart';
+import 'package:unifast_portal/application/router/app_router.gr.dart';
+import 'package:unifast_portal/application/router/guards/route_guard_auth.dart';
 
 @AutoRouterConfig()
 class AppRouter extends RootStackRouter {
@@ -18,5 +18,7 @@ class AppRouter extends RootStackRouter {
     // AutoRoute(page: AuthPasswordRecoverRoute.page),
     // AutoRoute(page: AuthPasswordRecoverConfirmationRoute.page),
     AutoRoute(path: "/profile", page: ProfileRoute.page),
+    AutoRoute(path: "/meus-cursos", page: CoursesListRoute.page),
+    AutoRoute(path: "/conteudo/:courseItemId", page: CourseRoute.page),
   ];
 }

@@ -1,5 +1,8 @@
-import 'package:flutter_laravel_backend_boilerplate/domain/value_objects/url_required_value.dart';
+import 'package:unifast_portal/domain/value_objects/thumb_uri_value.dart';
 
-class ExternalCourseThumbUriValue extends URIRequiredValue {
-  ExternalCourseThumbUriValue({required super.defaultValue, super.isRequired = true});
+class ExternalCourseThumbUriValue extends ThumbUriValue {
+  ExternalCourseThumbUriValue({
+    required super.defaultValue,
+    super.isRequired = true,
+  });
 }

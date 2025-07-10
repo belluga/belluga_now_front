@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_laravel_backend_boilerplate/domain/external_course/external_course.dart';
-import 'package:flutter_laravel_backend_boilerplate/presentation/common/widgets/image_with_progress_indicator.dart';
+import 'package:unifast_portal/domain/external_course/external_course_model.dart';
+import 'package:unifast_portal/presentation/common/widgets/image_with_progress_indicator.dart';
 
 class ExternalCourseDetailsBottomSheetContent extends StatelessWidget {
-  final ExternalCourse course;
+  final ExternalCourseModel course;
   final Function() onExternalLinkClick;
 
   const ExternalCourseDetailsBottomSheetContent({
@@ -33,7 +33,7 @@ class ExternalCourseDetailsBottomSheetContent extends StatelessWidget {
               ),
             ),
           ),
-          ImageWithProgressIndicator(thumbUrl: course.thumbUrl.value),
+          ImageWithProgressIndicator(thumb: course.thumb),
           Padding(
             padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
             child: Column(
@@ -46,6 +46,8 @@ class ExternalCourseDetailsBottomSheetContent extends StatelessWidget {
                 const SizedBox(height: 12),
                 Text(
                   course.description.value,
+                  maxLines: 10,
+                  overflow: TextOverflow.ellipsis,
                   style: Theme.of(context).textTheme.bodyLarge,
                 ),
                 const SizedBox(height: 24),

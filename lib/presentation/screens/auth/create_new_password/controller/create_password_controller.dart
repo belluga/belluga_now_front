@@ -1,10 +1,7 @@
-import 'package:flutter_laravel_backend_boilerplate/domain/controllers/create_password_controller_contract.dart';
+import 'package:unifast_portal/domain/controllers/create_password_controller_contract.dart';
 
-class CreatePasswordController extends CreatePasswordControllerContract{
-  CreatePasswordController({
-    super.newPassword,
-    super.confirmPassword,
-  });
+class CreatePasswordController extends CreatePasswordControllerContract {
+  CreatePasswordController({super.newPassword, super.confirmPassword});
 
   @override
   void onDispose() {
