@@ -10,7 +10,11 @@ class Application extends ApplicationWebContract {
   Application({super.key});
 
   @override
-  AuthRepositoryContract<UserBelluga> initAuthRepository() => AuthRepository();
+  AuthRepositoryContract<UserBelluga> initAuthRepository() {
+    final _respository = AuthRepository();
+    _respository.init();
+    return _respository;
+  }
 
   @override
   BackendContract initBackendRepository() => MockBackend();
