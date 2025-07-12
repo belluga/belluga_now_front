@@ -1,6 +1,7 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
+import 'package:unifast_portal/domain/courses/course_category_model.dart';
 import 'package:unifast_portal/domain/courses/course_model.dart';
 import 'package:unifast_portal/presentation/screens/lms/screens/fast_tracks_list_screen/controllers/fast_tracks_list_screen_controller.dart';
 import 'package:unifast_portal/presentation/screens/lms/screens/fast_tracks_list_screen/widgets/fast_tracks_categories_list.dart';
@@ -23,7 +24,7 @@ class _FastTrackListScreenState extends State<FastTrackListScreen> {
   void initState() {
     super.initState();
     _controller = GetIt.I.registerSingleton(FastTracksListScreenController());
-    _controller.getFastTracksCategories();
+    _controller.init();
   }
 
   @override
@@ -36,16 +37,62 @@ class _FastTrackListScreenState extends State<FastTrackListScreen> {
           style: TextTheme.of(context).titleMedium,
         ),
         automaticallyImplyLeading: true,
+        actions: [
+          StreamValueBuilder<List<CourseCategoryModel>>(
+            streamValue: _controller.selectedCategoriesStreamValue,
+            onNullWidget: IconButton(
+              icon: Icon(Icons.filter_list_alt),
+              onPressed: _controller.scrollToTop,
+            ),
+            builder: (context, selectedCategories) {
+              if (selectedCategories.isEmpty) {
+                return IconButton(
+                  icon: Icon(Icons.filter_list_alt),
+                  onPressed: _controller.scrollToTop,
+                );
+              }
+
+              return Stack(
+                children: [
+                  IconButton(
+                    icon: Icon(Icons.filter_list_alt),
+                    onPressed: _controller.scrollToTop,
+                  ),
+                  CircleAvatar(
+                    radius: 12,
+                    backgroundColor: Theme.of(context).colorScheme.secondary,
+                    child: Text(
+                      selectedCategories.length.toString(),
+                      style: TextTheme.of(context).bodySmall?.copyWith(
+                        color: Theme.of(context).colorScheme.onSecondary,
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
+        ],
       ),
       body: CustomScrollView(
+        controller: _controller.scrollController,
         slivers: [
           FastTracksCategoriesList(),
-          FastTracksLastRow(),
+          StreamValueBuilder<List<CourseCategoryModel>>(
+            streamValue: _controller.selectedCategoriesStreamValue,
+            onNullWidget: FastTracksLastRow(),
+            builder: (context, selectedCategories) {
+              if (selectedCategories.isEmpty) {
+                return FastTracksLastRow();
+              }
+              return SliverToBoxAdapter(child: SizedBox.shrink());
+            },
+          ),
           SliverPadding(
             padding: EdgeInsets.only(top: 16),
             sliver: StreamValueBuilder<List<CourseModel>>(
               onNullWidget: SliverToBoxAdapter(child: SizedBox.shrink()),
-              streamValue: _controller.lastCreatedFastTracksStreamValue,
+              streamValue: _controller.filteredCoursesStreamValue,
               builder: (context, fastTracks) {
                 return CourseTracksSliver(fastTracks: fastTracks);
               },

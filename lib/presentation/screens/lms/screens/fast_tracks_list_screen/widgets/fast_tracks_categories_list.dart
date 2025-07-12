@@ -19,42 +19,55 @@ class _FastTracksCategoriesListState extends State<FastTracksCategoriesList> {
 
   @override
   Widget build(BuildContext context) {
-    return SliverPadding(
-      padding: const EdgeInsets.all(8),
-      sliver: SliverMainAxisGroup(
-        slivers: [
-          SliverToBoxAdapter(
-            child: DashboardTitleRow(
-              title: "Categorias",
-              showAllLabel: "Ver todas",
-              onShowAllPressed: () {},
-            ),
+    return SliverMainAxisGroup(
+      slivers: [
+        SliverToBoxAdapter(
+          child: DashboardTitleRow(
+            title: "Categorias",
+            showAllLabel: "Ver todas",
+            onShowAllPressed: () {},
           ),
-          StreamValueBuilder<List<CourseCategoryModel>>(
+        ),
+        SliverPadding(
+          padding: const EdgeInsets.symmetric(horizontal: 8),
+          sliver: StreamValueBuilder<List<CourseCategoryModel>>(
             streamValue: _controller.categoriesStreamValue,
             onNullWidget: SliverToBoxAdapter(
               child: const Center(child: CircularProgressIndicator()),
             ),
             builder: (context, categories) {
-              return SliverGrid.builder(
-                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                  childAspectRatio: 3.5,
-                  crossAxisCount: 2,
-                ),
-                itemBuilder: (BuildContext context, int index) {
-                  if (index >= categories.length) {
-                    return null;
-                  }
-          
-                  final _category = categories[index];
-          
-                  return CategoryCard(categoryModel: _category,);
+              return StreamBuilder(
+                stream: _controller.selectedCategoriesStreamValue.stream,
+                builder: (context, selectedCategories) {
+                  return SliverGrid.builder(
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      childAspectRatio: 3.5,
+                      crossAxisCount: 2,
+                    ),
+                    itemBuilder: (BuildContext context, int index) {
+                      if (index >= categories.length) {
+                        return null;
+                      }
+
+                      final _category = categories[index];
+
+                      final bool _isSelected =
+                          selectedCategories.hasData &&
+                          selectedCategories.data!.contains(_category);
+
+                      return CategoryCard(
+                        isSelected: _isSelected,
+                        onTap: () => _controller.filterByCategory(_category),
+                        categoryModel: _category,
+                      );
+                    },
+                  );
                 },
               );
             },
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }

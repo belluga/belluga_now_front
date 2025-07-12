@@ -17,12 +17,6 @@ class _FastTracksLastRowState extends State<FastTracksLastRow> {
   final _controller = GetIt.I.get<FastTracksListScreenController>();
 
   @override
-  void initState() {
-    super.initState();
-    _controller.getlastCreatedFastTracks();
-  }
-
-  @override
   Widget build(BuildContext context) {
     return SliverToBoxAdapter(
       child: StreamValueBuilder<List<CourseModel>>(

@@ -13,28 +13,28 @@ import 'package:stream_value/core/stream_value.dart';
 abstract class CoursesRepositoryContract {
   BackendContract get backend => GetIt.I.get<BackendContract>();
 
-  final myCoursesSummarySteamValue = StreamValue<CoursesSummary?>(
+  final myCoursesSummaryStreamValue = StreamValue<CoursesSummary?>(
     defaultValue: null,
   );
-  final fastTracksSummarySteamValue = StreamValue<CoursesSummary?>(
+  final fastTracksSummaryStreamValue = StreamValue<CoursesSummary?>(
     defaultValue: null,
   );
-  final myCoursesListSteamValue = StreamValue<List<CourseModel>?>(
+  final myCoursesListStreamValue = StreamValue<List<CourseModel>?>(
     defaultValue: null,
   );
-  final fastTracksListSteamValue = StreamValue<List<CourseModel>?>(
+  final fastTracksListStreamValue = StreamValue<List<CourseModel>?>(
     defaultValue: null,
   );
-  final lastCreatedfastTracksSteamValue = StreamValue<List<CourseModel>?>(
+  final lastCreatedfastTracksStreamValue = StreamValue<List<CourseModel>?>(
     defaultValue: null,
   );
   final currentCourseItemStreamValue = StreamValue<CourseItemModel?>();
 
-  final fastTracksCategoriesListSteamValue =
+  final fastTracksCategoriesListStreamValue =
       StreamValue<List<CourseCategoryModel>?>(defaultValue: null);
 
   Future<void> getMyCoursesDashboardSummary() async {
-    if (myCoursesSummarySteamValue.value != null) {
+    if (myCoursesSummaryStreamValue.value != null) {
       return Future.value();
     }
     await _refreshMyCoursesDashboardSummary();
@@ -47,14 +47,14 @@ abstract class CoursesRepositoryContract {
         .map((courseDto) => CourseModel.fromDto(courseDto))
         .toList();
 
-    myCoursesListSteamValue.addValue(_courses);
-    myCoursesSummarySteamValue.addValue(
+    myCoursesListStreamValue.addValue(_courses);
+    myCoursesSummaryStreamValue.addValue(
       CoursesSummary(items: _courses, total: _courses.length),
     );
   }
 
   Future<void> getFastTracksList() async {
-    if (fastTracksListSteamValue.value != null) {
+    if (fastTracksListStreamValue.value != null) {
       return Future.value();
     }
     await _refreshFastTracksList();
@@ -68,11 +68,11 @@ abstract class CoursesRepositoryContract {
         .map((courseDto) => CourseModel.fromDto(courseDto))
         .toList();
 
-    fastTracksListSteamValue.addValue(_courses);
+    fastTracksListStreamValue.addValue(_courses);
   }
 
   Future<void> getFastTracksLastCreatedList() async {
-    if (lastCreatedfastTracksSteamValue.value != null) {
+    if (lastCreatedfastTracksStreamValue.value != null) {
       return Future.value();
     }
     await _refreshFastTracksLastCreatedList();
@@ -88,7 +88,7 @@ abstract class CoursesRepositoryContract {
         .map((courseDto) => CourseModel.fromDto(courseDto))
         .toList();
 
-    lastCreatedfastTracksSteamValue.addValue(_courses);
+    lastCreatedfastTracksStreamValue.addValue(_courses);
   }
 
   Future<CourseItemModel> courseItemGetDetails(String courseId) async {
@@ -99,8 +99,8 @@ abstract class CoursesRepositoryContract {
   }
 
   Future<List<CourseCategoryModel>> getFastTracksCategories() async {
-    if (fastTracksCategoriesListSteamValue.value != null) {
-      return Future.value(fastTracksCategoriesListSteamValue.value);
+    if (fastTracksCategoriesListStreamValue.value != null) {
+      return Future.value(fastTracksCategoriesListStreamValue.value);
     }
     final List<CategoryDTO> _categoriesDTO = await backend
         .getFastTracksCategories();
@@ -109,7 +109,7 @@ abstract class CoursesRepositoryContract {
         .map((category) => CourseCategoryModel.fromDto(category))
         .toList();
 
-    fastTracksCategoriesListSteamValue.addValue(_categoriesModel);
+    fastTracksCategoriesListStreamValue.addValue(_categoriesModel);
     return Future.value(_categoriesModel);
   }
 }

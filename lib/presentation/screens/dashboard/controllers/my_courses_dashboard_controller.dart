@@ -8,11 +8,11 @@ class MyCoursesDashboardController {
   final _myCoursesRepository = GetIt.I.get<CoursesRepositoryContract>();
 
   StreamValue<CoursesSummary?> get myCoursesSummaryStreamValue {
-    return _myCoursesRepository.myCoursesSummarySteamValue;
+    return _myCoursesRepository.myCoursesSummaryStreamValue;
   }
 
   StreamValue<List<CourseModel>?> get fastTracksItemsStreamValue {
-    return _myCoursesRepository.fastTracksListSteamValue;
+    return _myCoursesRepository.fastTracksListStreamValue;
   }
 
   final navigationPreferenceStreamValue = StreamValue<bool>(

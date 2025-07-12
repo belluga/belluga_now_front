@@ -18,6 +18,18 @@ class CourseCategoryModel {
     required this.color,
   });
 
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) {
+      return true;
+    }
+
+    return other is CourseCategoryModel && other.id == id;
+  }
+
+  @override
+  int get hashCode => id.hashCode;
+
   factory CourseCategoryModel.fromDto(CategoryDTO dto) {
     final _id = MongoIDValue()..parse(dto.id);
     final _name = CategoryNameValue()..parse(dto.name);

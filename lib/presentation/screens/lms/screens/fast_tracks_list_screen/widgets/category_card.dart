@@ -1,28 +1,35 @@
 import 'package:flutter/material.dart';
-import 'package:get_it/get_it.dart';
 import 'package:unifast_portal/domain/courses/course_category_model.dart';
-import 'package:unifast_portal/presentation/screens/lms/screens/fast_tracks_list_screen/controllers/fast_tracks_list_screen_controller.dart';
 
-class CategoryCard extends StatefulWidget {
+class CategoryCard extends StatelessWidget {
   final CourseCategoryModel categoryModel;
+  final void Function()? onTap;
+  final bool isSelected;
 
-  const CategoryCard({super.key, required this.categoryModel});
-
-  @override
-  State<CategoryCard> createState() => _CategoryCardState();
-}
-
-class _CategoryCardState extends State<CategoryCard> {
-  final _controller = GetIt.I.get<FastTracksListScreenController>();
+  const CategoryCard({
+    super.key,
+    required this.categoryModel,
+    this.onTap,
+    this.isSelected = false,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Card(
       color: Theme.of(context).colorScheme.surfaceDim,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      shape: RoundedRectangleBorder(
+        side: BorderSide(
+          color: isSelected
+              ? Theme.of(context).colorScheme.secondary
+              : Colors.transparent,
+          width: isSelected ? 2 : 0,
+        ),
+        borderRadius: BorderRadius.circular(8),
+      ),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
-        onTap: _filterByCategory,
+        mouseCursor: SystemMouseCursors.click,
+        onTap: onTap ?? () {},
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -33,7 +40,7 @@ class _CategoryCardState extends State<CategoryCard> {
                   borderRadius: BorderRadius.horizontal(
                     left: Radius.circular(8),
                   ),
-                  color: widget.categoryModel.color.value,
+                  color: categoryModel.color.value,
                 ),
                 child: Icon(Icons.category),
               ),
@@ -51,7 +58,7 @@ class _CategoryCardState extends State<CategoryCard> {
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
-                        widget.categoryModel.name.valueFormated,
+                        categoryModel.name.valueFormated,
                         style: Theme.of(context).textTheme.labelMedium,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
@@ -68,7 +75,4 @@ class _CategoryCardState extends State<CategoryCard> {
       ),
     );
   }
-
-  void _filterByCategory() =>
-      _controller.filterByCategory(widget.categoryModel);
 }
