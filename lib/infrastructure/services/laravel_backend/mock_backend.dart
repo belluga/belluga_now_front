@@ -157,37 +157,37 @@ class MockBackend extends BackendContract {
       "id": "668ed5a2c589a1b2c3d4e5f3",
       "name": "Soft Skills",
       "slug": "soft-skills",
-      "color_hex": "007FF9",
+      "color_hex": "4A90E2",
     },
     {
       "id": "668ed5a2c589a1b2c3d4e5f4",
       "name": "Liderança",
       "slug": "lideranca",
-      "color_hex": "#FF0000",
+      "color_hex": "#50E3C2",
     },
     {
       "id": "668ed5a2c589a1b2c3d4e5f5",
       "name": "Inteligência Emocional",
       "slug": "inteligencia-emocional",
-      "color_hex": "#FF0000",
+      "color_hex": "#F5A623",
     },
     {
       "id": "668ed5a2c589a1b2c3d4e5f6",
       "name": "Experiência do Cliente",
       "slug": "experiencia-do-cliente",
-      "color_hex": "#FF0000",
+      "color_hex": "#D0021B",
     },
     {
       "id": "668ed5a2c589a1b2c3d4e5f7",
       "name": "Inteligência Artificial",
       "slug": "inteligencia-artificial",
-      "color_hex": "#FF0000",
+      "color_hex": "#9013FE",
     },
     {
       "id": "668ed5a2c589a1b2c3d4e5f8",
       "name": "Gestão Financeira",
       "slug": "gestao-financeira",
-      "color_hex": "#FF0000",
+      "color_hex": "#4A4A4A",
     },
   ];
 
@@ -209,15 +209,15 @@ class MockBackend extends BackendContract {
       "categories": [
         {
           "id": "668ed5a2c589a1b2c3d4e5f3",
-          "name": "Liderança",
-          "slug": "lideranca",
-          "color_hex": "007FF9",
+          "name": "Soft Skills",
+          "slug": "soft-skills",
+          "color_hex": "4A90E2",
         },
         {
           "id": "668ed5a2c589a1b2c3d4e5f4",
-          "name": "Inovação",
-          "slug": "inovacao",
-          "color_hex": "#FF0000",
+          "name": "Liderança",
+          "slug": "lideranca",
+          "color_hex": "#50E3C2",
         },
       ],
       "teachers": [
@@ -307,14 +307,10 @@ class MockBackend extends BackendContract {
       },
       "categories": [
         {
-          "id": "668ed5a2c589a1b2c3d4e5fa",
-          "name": "Finanças",
-          "slug": "financas",
-        },
-        {
-          "id": "668ed5a2c589a1b2c3d4e5fb",
-          "name": "Negócios",
-          "slug": "negocios",
+          "id": "668ed5a2c589a1b2c3d4e5f8",
+          "name": "Gestão Financeira",
+          "slug": "gestao-financeira",
+          "color_hex": "#4A4A4A",
         },
       ],
       "teachers": [
@@ -409,30 +405,10 @@ class MockBackend extends BackendContract {
       },
       "categories": [
         {
-          "id": "668ed5a2c589a1b2c3d4e602",
-          "name": "Comunicação",
-          "slug": "comunicacao",
-        },
-        {
-          "id": "668ed5a2c589a1b2c3d4e5f3",
-          "name": "Liderança",
-          "slug": "lideranca",
-        },
-        {
-          "id": "668ed5a2c589a1b2c3d4e603",
-          "name": "Autoconhecimento",
-          "slug": "autoconhecimento",
-        },
-        {"id": "668ed5a2c589a1b2c3d4e603", "name": "Outra", "slug": "other"},
-        {
-          "id": "668ed5a2c589a1b2c3d4e603",
-          "name": "Mais uma",
-          "slug": "mais-uma",
-        },
-        {
-          "id": "668ed5a2c589a1b2c3d4e603",
-          "name": "Eramos Seis",
-          "slug": "eramos-seis",
+          "id": "668ed5a2c589a1b2c3d4e5f7",
+          "name": "Inteligência Artificial",
+          "slug": "inteligencia-artificial",
+          "color_hex": "#9013FE",
         },
       ],
       "teachers": [
@@ -485,14 +461,10 @@ class MockBackend extends BackendContract {
       },
       "categories": [
         {
-          "id": "668ed5a2c589a1b2c3d4e608",
-          "name": "Marketing",
-          "slug": "marketing",
-        },
-        {
-          "id": "668ed5a2c589a1b2c3d4e5fb",
-          "name": "Negócios",
-          "slug": "negocios",
+          "id": "668ed5a2c589a1b2c3d4e5f6",
+          "name": "Experiência do Cliente",
+          "slug": "experiencia-do-cliente",
+          "color_hex": "#D0021B",
         },
       ],
       "teachers": [
@@ -535,14 +507,10 @@ class MockBackend extends BackendContract {
       },
       "categories": [
         {
-          "id": "668ed5a2c589a1b2c3d4e5f3",
-          "name": "Liderança",
-          "slug": "lideranca",
-        },
-        {
-          "id": "668ed5a2c589a1b2c3d4e602",
-          "name": "Comunicação",
-          "slug": "comunicacao",
+          "id": "668ed5a2c589a1b2c3d4e5f5",
+          "name": "Inteligência Emocional",
+          "slug": "inteligencia-emocional",
+          "color_hex": "#F5A623",
         },
       ],
       "teachers": [
@@ -591,18 +559,9 @@ class MockBackend extends BackendContract {
       "categories": [
         {
           "id": "668ed5a2c589a1b2c3d4e5f4",
-          "name": "Inovação",
-          "slug": "inovacao",
-        },
-        {
-          "id": "668ed5a2c589a1b2c3d4e5fb",
-          "name": "Negócios",
-          "slug": "negocios",
-        },
-        {
-          "id": "668ed5a2c589a1b2c3d4e614",
-          "name": "Produtividade",
-          "slug": "produtividade",
+          "name": "Liderança",
+          "slug": "lideranca",
+          "color_hex": "#50E3C2",
         },
       ],
       "teachers": [
@@ -641,14 +600,10 @@ class MockBackend extends BackendContract {
       },
       "categories": [
         {
-          "id": "668ed5a2c589a1b2c3d4e603",
-          "name": "Autoconhecimento",
-          "slug": "autoconhecimento",
-        },
-        {
           "id": "668ed5a2c589a1b2c3d4e5f3",
-          "name": "Liderança",
-          "slug": "lideranca",
+          "name": "Soft Skills",
+          "slug": "soft-skills",
+          "color_hex": "4A90E2",
         },
       ],
       "teachers": [
@@ -701,14 +656,16 @@ class MockBackend extends BackendContract {
       },
       "categories": [
         {
-          "id": "668ed5a2c589a1b2c3d4e602",
-          "name": "Comunicação",
-          "slug": "comunicacao",
+          "id": "668ed5a2c589a1b2c3d4e5f7",
+          "name": "Inteligência Artificial",
+          "slug": "inteligencia-artificial",
+          "color_hex": "#9013FE",
         },
         {
-          "id": "668ed5a2c589a1b2c3d4e5fb",
-          "name": "Negócios",
-          "slug": "negocios",
+          "id": "668ed5a2c589a1b2c3d4e5f8",
+          "name": "Gestão Financeira",
+          "slug": "gestao-financeira",
+          "color_hex": "#4A4A4A",
         },
       ],
       "teachers": [
@@ -741,14 +698,16 @@ class MockBackend extends BackendContract {
       },
       "categories": [
         {
-          "id": "668ed5a2c589a1b2c3d4e608",
-          "name": "Marketing",
-          "slug": "marketing",
+          "id": "668ed5a2c589a1b2c3d4e5f6",
+          "name": "Experiência do Cliente",
+          "slug": "experiencia-do-cliente",
+          "color_hex": "#D0021B",
         },
         {
-          "id": "668ed5a2c589a1b2c3d4e5f4",
-          "name": "Inovação",
-          "slug": "inovacao",
+          "id": "668ed5a2c589a1b2c3d4e5f7",
+          "name": "Inteligência Artificial",
+          "slug": "inteligencia-artificial",
+          "color_hex": "#9013FE",
         },
       ],
       "teachers": [
@@ -781,14 +740,16 @@ class MockBackend extends BackendContract {
       },
       "categories": [
         {
-          "id": "668ed5a2c589a1b2c3d4e614",
-          "name": "Produtividade",
-          "slug": "produtividade",
+          "id": "668ed5a2c589a1b2c3d4e5f5",
+          "name": "Inteligência Emocional",
+          "slug": "inteligencia-emocional",
+          "color_hex": "#F5A623",
         },
         {
-          "id": "668ed5a2c589a1b2c3d4e603",
-          "name": "Autoconhecimento",
-          "slug": "autoconhecimento",
+          "id": "668ed5a2c589a1b2c3d4e5f6",
+          "name": "Experiência do Cliente",
+          "slug": "experiencia-do-cliente",
+          "color_hex": "#D0021B",
         },
       ],
       "teachers": [
@@ -822,13 +783,15 @@ class MockBackend extends BackendContract {
       "categories": [
         {
           "id": "668ed5a2c589a1b2c3d4e5f4",
-          "name": "Inovação",
-          "slug": "inovacao",
+          "name": "Liderança",
+          "slug": "lideranca",
+          "color_hex": "#50E3C2",
         },
         {
-          "id": "668ed5a2c589a1b2c3d4e5fb",
-          "name": "Negócios",
-          "slug": "negocios",
+          "id": "668ed5a2c589a1b2c3d4e5f5",
+          "name": "Inteligência Emocional",
+          "slug": "inteligencia-emocional",
+          "color_hex": "#F5A623",
         },
       ],
       "teachers": [
@@ -872,13 +835,21 @@ class MockBackend extends BackendContract {
       "categories": [
         {
           "id": "668ed5a2c589a1b2c3d4e5f3",
-          "name": "Liderança",
-          "slug": "lideranca",
+          "name": "Soft Skills",
+          "slug": "soft-skills",
+          "color_hex": "4A90E2",
         },
         {
-          "id": "668ed5a2c589a1b2c3d4e602",
-          "name": "Comunicação",
-          "slug": "comunicacao",
+          "id": "668ed5a2c589a1b2c3d4e5f4",
+          "name": "Liderança",
+          "slug": "lideranca",
+          "color_hex": "#50E3C2",
+        },
+        {
+          "id": "668ed5a2c589a1b2c3d4e5f5",
+          "name": "Inteligência Emocional",
+          "slug": "inteligencia-emocional",
+          "color_hex": "#F5A623",
         },
       ],
       "teachers": [
@@ -907,19 +878,22 @@ class MockBackend extends BackendContract {
       },
       "categories": [
         {
-          "id": "668ed5a2c589a1b2c3d4e5fb",
-          "name": "Negócios",
-          "slug": "negocios",
-        },
-        {
-          "id": "668ed5a2c589a1b2c3d4e608",
-          "name": "Marketing",
-          "slug": "marketing",
-        },
-        {
           "id": "668ed5a2c589a1b2c3d4e5f4",
-          "name": "Inovação",
-          "slug": "inovacao",
+          "name": "Liderança",
+          "slug": "lideranca",
+          "color_hex": "#50E3C2",
+        },
+        {
+          "id": "668ed5a2c589a1b2c3d4e5f5",
+          "name": "Inteligência Emocional",
+          "slug": "inteligencia-emocional",
+          "color_hex": "#F5A623",
+        },
+        {
+          "id": "668ed5a2c589a1b2c3d4e5f6",
+          "name": "Experiência do Cliente",
+          "slug": "experiencia-do-cliente",
+          "color_hex": "#D0021B",
         },
       ],
       "teachers": [
@@ -952,14 +926,22 @@ class MockBackend extends BackendContract {
       },
       "categories": [
         {
-          "id": "668ed5a2c589a1b2c3d4e608",
-          "name": "Marketing",
-          "slug": "marketing",
+          "id": "668ed5a2c589a1b2c3d4e5f5",
+          "name": "Inteligência Emocional",
+          "slug": "inteligencia-emocional",
+          "color_hex": "#F5A623",
         },
         {
-          "id": "668ed5a2c589a1b2c3d4e602",
-          "name": "Comunicação",
-          "slug": "comunicacao",
+          "id": "668ed5a2c589a1b2c3d4e5f6",
+          "name": "Experiência do Cliente",
+          "slug": "experiencia-do-cliente",
+          "color_hex": "#D0021B",
+        },
+        {
+          "id": "668ed5a2c589a1b2c3d4e5f7",
+          "name": "Inteligência Artificial",
+          "slug": "inteligencia-artificial",
+          "color_hex": "#9013FE",
         },
       ],
       "teachers": [
@@ -992,14 +974,22 @@ class MockBackend extends BackendContract {
       },
       "categories": [
         {
-          "id": "668ed5a2c589a1b2c3d4e5f3",
+          "id": "668ed5a2c589a1b2c3d4e5f4",
           "name": "Liderança",
           "slug": "lideranca",
+          "color_hex": "#50E3C2",
         },
         {
-          "id": "668ed5a2c589a1b2c3d4e603",
-          "name": "Autoconhecimento",
-          "slug": "autoconhecimento",
+          "id": "668ed5a2c589a1b2c3d4e5f5",
+          "name": "Inteligência Emocional",
+          "slug": "inteligencia-emocional",
+          "color_hex": "#F5A623",
+        },
+        {
+          "id": "668ed5a2c589a1b2c3d4e5f6",
+          "name": "Experiência do Cliente",
+          "slug": "experiencia-do-cliente",
+          "color_hex": "#D0021B",
         },
       ],
       "teachers": [

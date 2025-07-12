@@ -24,8 +24,6 @@ class _FastTracksCategoriesListState extends State<FastTracksCategoriesList> {
         SliverToBoxAdapter(
           child: DashboardTitleRow(
             title: "Categorias",
-            showAllLabel: "Ver todas",
-            onShowAllPressed: () {},
           ),
         ),
         SliverPadding(

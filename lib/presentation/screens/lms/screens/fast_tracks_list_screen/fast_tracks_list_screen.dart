@@ -6,6 +6,7 @@ import 'package:unifast_portal/domain/courses/course_model.dart';
 import 'package:unifast_portal/presentation/screens/lms/screens/fast_tracks_list_screen/controllers/fast_tracks_list_screen_controller.dart';
 import 'package:unifast_portal/presentation/screens/lms/screens/fast_tracks_list_screen/widgets/fast_tracks_categories_list.dart';
 import 'package:get_it/get_it.dart';
+import 'package:unifast_portal/presentation/screens/lms/screens/fast_tracks_list_screen/widgets/fast_tracks_category_icon_counter.dart';
 import 'package:unifast_portal/presentation/screens/lms/screens/fast_tracks_list_screen/widgets/fast_tracks_last_row.dart';
 import 'package:unifast_portal/presentation/widgets/course_tracks_sliver.dart';
 
@@ -37,42 +38,7 @@ class _FastTrackListScreenState extends State<FastTrackListScreen> {
           style: TextTheme.of(context).titleMedium,
         ),
         automaticallyImplyLeading: true,
-        actions: [
-          StreamValueBuilder<List<CourseCategoryModel>>(
-            streamValue: _controller.selectedCategoriesStreamValue,
-            onNullWidget: IconButton(
-              icon: Icon(Icons.filter_list_alt),
-              onPressed: _controller.scrollToTop,
-            ),
-            builder: (context, selectedCategories) {
-              if (selectedCategories.isEmpty) {
-                return IconButton(
-                  icon: Icon(Icons.filter_list_alt),
-                  onPressed: _controller.scrollToTop,
-                );
-              }
-
-              return Stack(
-                children: [
-                  IconButton(
-                    icon: Icon(Icons.filter_list_alt),
-                    onPressed: _controller.scrollToTop,
-                  ),
-                  CircleAvatar(
-                    radius: 12,
-                    backgroundColor: Theme.of(context).colorScheme.secondary,
-                    child: Text(
-                      selectedCategories.length.toString(),
-                      style: TextTheme.of(context).bodySmall?.copyWith(
-                        color: Theme.of(context).colorScheme.onSecondary,
-                      ),
-                    ),
-                  ),
-                ],
-              );
-            },
-          ),
-        ],
+        actions: [FastTracksCategoryFiltersIconCounter()],
       ),
       body: CustomScrollView(
         controller: _controller.scrollController,
