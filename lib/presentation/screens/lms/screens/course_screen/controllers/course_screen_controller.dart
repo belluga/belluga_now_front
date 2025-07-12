@@ -27,7 +27,7 @@ class CourseScreenController implements Disposable {
   final tabIndexStreamValue = StreamValue<int>(defaultValue: 0);
 
   Future<void> _init() async {
-    await _coursesRepository.init();
+    await _coursesRepository.getMyCoursesDashboardSummary();
     await _courseItemInit();
     _tabControllerInit();
   }

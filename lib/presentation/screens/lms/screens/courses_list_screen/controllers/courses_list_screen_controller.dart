@@ -9,7 +9,7 @@ class CoursesListScreenController implements Disposable {
   final _coursesRepository = GetIt.I.get<CoursesRepositoryContract>();
 
   StreamValue<List<CourseModel>?> get courseStreamValue =>
-      _coursesRepository.coursesSteamValue;
+      _coursesRepository.myCoursesListStreamValue;
 
   @override
   FutureOr onDispose() {

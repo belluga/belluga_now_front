@@ -6,13 +6,15 @@ import 'package:unifast_portal/infrastructure/services/laravel_backend/backend_c
 import 'package:unifast_portal/infrastructure/services/laravel_backend/mock_backend.dart';
 
 class Application extends ApplicationMobileContract {
-
   Application({super.key});
 
   @override
-  AuthRepositoryContract<UserBelluga> initAuthRepository() => AuthRepository();
+  AuthRepositoryContract<UserBelluga> initAuthRepository() {
+    final _respository = AuthRepository();
+    _respository.init();
+    return _respository;
+  }
 
   @override
   BackendContract initBackendRepository() => MockBackend();
-  
 }

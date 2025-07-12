@@ -1,8 +1,8 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:unifast_portal/domain/courses/course_model.dart';
-import 'package:unifast_portal/presentation/screens/lms/controllers/courses_list_screen_controller.dart';
-import 'package:unifast_portal/presentation/screens/lms/widgets/my_course_card_on_list.dart';
+import 'package:unifast_portal/presentation/screens/lms/screens/courses_list_screen/controllers/courses_list_screen_controller.dart';
+import 'package:unifast_portal/presentation/screens/lms/screens/courses_list_screen/widgets/my_course_card_on_list.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 

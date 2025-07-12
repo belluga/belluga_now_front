@@ -1,10 +1,11 @@
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
+import 'package:unifast_portal/domain/courses/course_category_model.dart';
 import 'package:unifast_portal/domain/courses/course_item_model.dart';
+import 'package:unifast_portal/presentation/screens/lms/widgets/category_chip.dart';
 
 class CourseHeaderBanner extends StatefulWidget {
-
   final CourseItemModel courseItemModel;
 
   const CourseHeaderBanner({super.key, required this.courseItemModel});
@@ -14,7 +15,6 @@ class CourseHeaderBanner extends StatefulWidget {
 }
 
 class _CourseHeaderBannerState extends State<CourseHeaderBanner> {
-
   @override
   Widget build(BuildContext context) {
     return SizedBox(
@@ -59,10 +59,41 @@ class _CourseHeaderBannerState extends State<CourseHeaderBanner> {
                 Row(
                   children: [
                     Expanded(
-                      child: Text(
-                        widget.courseItemModel.title.value,
-                        maxLines: 2,
-                        style: TextTheme.of(context).titleLarge,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Text(
+                            widget.courseItemModel.title.value,
+                            maxLines: 2,
+                            style: TextTheme.of(context).headlineSmall,
+                          ),
+                          Builder(
+                            builder: (context) {
+                              final List<CourseCategoryModel>? _categories =
+                                  widget.courseItemModel.categories;
+
+                              if (_categories == null || _categories.isEmpty) {
+                                return SizedBox.shrink();
+                              }
+
+                              return Wrap(
+                                spacing: 8.0,
+                                alignment: WrapAlignment.end,
+                                children: _categories
+                                    .map(
+                                      (category) =>
+                                          CategoryChip(category: category),
+                                    )
+                                    .toList(),
+                              );
+                            },
+                          ),
+                          Text(
+                            widget.courseItemModel.description.value,
+                            maxLines: 2,
+                            style: TextTheme.of(context).bodyMedium,
+                          ),
+                        ],
                       ),
                     ),
                   ],

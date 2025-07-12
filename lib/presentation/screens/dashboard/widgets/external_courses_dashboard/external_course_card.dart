@@ -28,7 +28,10 @@ class _ExternalCourseCardState extends State<ExternalCourseCard> {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            ImageWithProgressIndicator(thumb: widget.course.thumb),
+            ImageWithProgressIndicator(
+              borderRadius: BorderRadius.horizontal(left: Radius.circular(8)),
+              thumb: widget.course.thumb,
+            ),
             Expanded(
               child: Padding(
                 padding: EdgeInsetsGeometry.all(16),

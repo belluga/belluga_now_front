@@ -1,4 +1,4 @@
-package com.flutter_laravel_backend_boilerplate
+package com.unifast_portal
 
 import io.flutter.embedding.android.FlutterActivity
 

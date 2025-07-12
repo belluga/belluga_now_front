@@ -5,12 +5,14 @@ class ImageWithProgressIndicator extends StatelessWidget {
   final ThumbModel thumb;
   final double? width;
   final double? height;
+  final BorderRadius? borderRadius;
 
   const ImageWithProgressIndicator({
     super.key,
     required this.thumb,
     this.width = 80,
     this.height = 80,
+    this.borderRadius,
   });
 
   @override
@@ -29,7 +31,7 @@ class ImageWithProgressIndicator extends StatelessWidget {
           ),
           Container(
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.horizontal(left: Radius.circular(8)),
+              borderRadius: borderRadius ?? BorderRadius.circular(8),
               image: DecorationImage(
                 image: Image.network(thumb.thumbUri.toString()).image,
                 fit: BoxFit.cover,

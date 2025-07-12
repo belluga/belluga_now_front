@@ -1,3 +1,4 @@
+import 'package:unifast_portal/domain/courses/course_category_model.dart';
 import 'package:unifast_portal/domain/courses/course_content_model.dart';
 import 'package:unifast_portal/domain/courses/course_items_summary.dart';
 import 'package:unifast_portal/domain/courses/file_model.dart';
@@ -17,6 +18,7 @@ class CourseItemModel {
   final CourseChildrensSummary childrensSummary;
   final List<CourseItemModel> childrens;
   final List<FileModel> files;
+  final List<CourseCategoryModel>? categories;
   final CourseContentModel? content;
 
   CourseItemModel({
@@ -25,6 +27,7 @@ class CourseItemModel {
     required this.description,
     required this.thumb,
     required this.teachers,
+    required this.categories,
     required this.childrensSummary,
     required this.childrens,
     required this.files,
@@ -55,6 +58,10 @@ class CourseItemModel {
 
     final _files = dto.files.map((item) => FileModel.fromDTO((item))).toList();
 
+    final _categories = dto.categories
+        ?.map((item) => CourseCategoryModel.fromDto(item))
+        .toList();
+
     final _contentDto = dto.content;
     final _content = _contentDto != null
         ? CourseContentModel.fromDTO(_contentDto)
@@ -66,6 +73,7 @@ class CourseItemModel {
       description: _description,
       thumb: _thumb,
       teachers: _teachers,
+      categories: _categories,
       childrensSummary: _childrensSummary,
       childrens: _childrens,
       files: _files,

@@ -13,7 +13,6 @@ import 'package:value_object_pattern/domain/value_objects/mongo_id_value.dart';
 
 class CourseModel extends CourseItemModel {
   final CourseTypeModel type;
-  final List<CourseCategoryModel> categories;
 
   CourseModel({
     required super.id,
@@ -21,7 +20,7 @@ class CourseModel extends CourseItemModel {
     required this.type,
     required super.description,
     required super.thumb,
-    required this.categories,
+    required super.categories,
     required super.teachers,
     required super.childrensSummary,
     required super.childrens,
@@ -36,7 +35,7 @@ class CourseModel extends CourseItemModel {
     final _description = DescriptionValue()..parse(dto.description);
     final _thumb = ThumbModel.fromDTO(dto.thumb);
     final _categories = dto.categories
-        .map((item) => CourseCategoryModel.fromDto(item))
+        ?.map((item) => CourseCategoryModel.fromDto(item))
         .toList();
 
     final _teachers = dto.teachers
