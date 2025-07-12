@@ -3,7 +3,7 @@ import 'package:unifast_portal/domain/courses/course_model.dart';
 import 'package:unifast_portal/presentation/common/widgets/dashboard_items_summary.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 import 'package:get_it/get_it.dart';
-import 'package:unifast_portal/presentation/screens/dashboard/widgets/fast_track_dashboard.dart/fast_track_card.dart';
+import 'package:unifast_portal/presentation/widgets/fast_track_card.dart';
 import 'package:unifast_portal/presentation/screens/lms/screens/fast_tracks_list_screen/controllers/fast_tracks_list_screen_controller.dart';
 
 class FastTracksLastRow extends StatefulWidget {

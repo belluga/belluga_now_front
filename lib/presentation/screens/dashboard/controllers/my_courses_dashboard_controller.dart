@@ -1,3 +1,4 @@
+import 'package:unifast_portal/domain/courses/course_model.dart';
 import 'package:unifast_portal/domain/repositories/courses_repository_contract.dart';
 import 'package:unifast_portal/presentation/screens/dashboard/view_models/courses_summary.dart';
 import 'package:get_it/get_it.dart';
@@ -10,14 +11,22 @@ class MyCoursesDashboardController {
     return _myCoursesRepository.myCoursesSummarySteamValue;
   }
 
+  StreamValue<List<CourseModel>?> get fastTracksItemsStreamValue {
+    return _myCoursesRepository.fastTracksListSteamValue;
+  }
+
   final navigationPreferenceStreamValue = StreamValue<bool>(
     defaultValue: false,
   );
 
   Future<void> init() async {
-    await _getMyCoursesSummary();
+    _getMyCoursesSummary();
+    _getFastTracksItems();
   }
 
   Future<void> _getMyCoursesSummary() async =>
       await _myCoursesRepository.getMyCoursesDashboardSummary();
+
+  Future<void> _getFastTracksItems() async =>
+      await _myCoursesRepository.getFastTracksList();
 }

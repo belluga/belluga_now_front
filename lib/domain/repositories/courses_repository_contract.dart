@@ -53,6 +53,24 @@ abstract class CoursesRepositoryContract {
     );
   }
 
+  Future<void> getFastTracksList() async {
+    if (fastTracksListSteamValue.value != null) {
+      return Future.value();
+    }
+    await _refreshFastTracksList();
+  }
+
+  Future<void> _refreshFastTracksList() async {
+    final List<CourseDTO> _dashboardSummary = await backend
+        .getLastFastTrackCourses();
+
+    final _courses = _dashboardSummary
+        .map((courseDto) => CourseModel.fromDto(courseDto))
+        .toList();
+
+    fastTracksListSteamValue.addValue(_courses);
+  }
+
   Future<void> getFastTracksLastCreatedList() async {
     if (lastCreatedfastTracksSteamValue.value != null) {
       return Future.value();
@@ -61,33 +79,16 @@ abstract class CoursesRepositoryContract {
   }
 
   Future<void> _refreshFastTracksLastCreatedList() async {
-    final List<CourseDTO> _dashboardSummary = await backend.getLastFastTrackCourses();
+    final List<CourseDTO> _coursesDtos = await backend
+        .getLastFastTrackCourses();
 
-    final _courses = _dashboardSummary
+    _coursesDtos.sublist(0, 4);
+
+    final _courses = _coursesDtos
         .map((courseDto) => CourseModel.fromDto(courseDto))
         .toList();
 
     lastCreatedfastTracksSteamValue.addValue(_courses);
-  }
-
-  Future<void> getFastTracksDashboardSummary() async {
-    if (fastTracksSummarySteamValue.value != null) {
-      return Future.value();
-    }
-    await _refreshFastTracksDashboardSummary();
-  }
-
-  Future<void> _refreshFastTracksDashboardSummary() async {
-    final List<CourseDTO> _dashboardSummary = await backend.getUnifastTracks();
-
-    final _courses = _dashboardSummary
-        .map((courseDto) => CourseModel.fromDto(courseDto))
-        .toList();
-
-    fastTracksListSteamValue.addValue(_courses);
-    fastTracksSummarySteamValue.addValue(
-      CoursesSummary(items: _courses, total: _courses.length),
-    );
   }
 
   Future<CourseItemModel> courseItemGetDetails(String courseId) async {

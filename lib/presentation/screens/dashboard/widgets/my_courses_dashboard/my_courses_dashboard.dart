@@ -16,16 +16,7 @@ class MyCoursesDashboard extends StatefulWidget {
 }
 
 class _MyCoursesDashboardState extends State<MyCoursesDashboard> {
-  late MyCoursesDashboardController _controller;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = GetIt.I.registerSingleton<MyCoursesDashboardController>(
-      MyCoursesDashboardController(),
-    );
-    _controller.init();
-  }
+  final _controller = GetIt.I.get<MyCoursesDashboardController>();
 
   @override
   Widget build(BuildContext context) {
