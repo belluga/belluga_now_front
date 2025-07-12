@@ -1,6 +1,8 @@
+import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
+import 'package:unifast_portal/application/router/app_router.gr.dart';
 import 'package:unifast_portal/presentation/common/widgets/dashboard_title_row.dart';
 import 'package:unifast_portal/presentation/screens/dashboard/controllers/fast_tracks_dashboard_controller.dart';
 import 'package:unifast_portal/presentation/screens/dashboard/view_models/courses_summary.dart';
@@ -33,7 +35,7 @@ class _CourseTracksDashboardState extends State<CourseTracksDashboard> {
             child: DashboardTitleRow(
               title: "Trilhas Unifast",
               showAllLabel: "Ver todas",
-              onShowAllPressed: () {},
+              onShowAllPressed: () => context.router.push(FastTrackListRoute()),
             ),
           ),
           SliverPadding(

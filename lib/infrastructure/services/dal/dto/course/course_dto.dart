@@ -7,31 +7,21 @@ import 'package:unifast_portal/infrastructure/services/dal/dto/course/teacher_dt
 import 'package:unifast_portal/infrastructure/services/dal/dto/course/files_dto.dart';
 import 'package:unifast_portal/infrastructure/services/dal/dto/thumb_dto.dart';
 
-class CourseDTO {
-  String id;
-  String title;
+class CourseDTO extends CourseItemDTO {
   CourseTypeDTO type;
-  String description;
-  ThumbDTO thumb;
-  List<CategoryDTO> categories;
-  List<TeacherDTO> teachers;
-  CourseChildrensSummaryDTO childrensSummary;
-  List<CourseItemDTO> childrens;
-  List<FileDTO> files;
-  CourseContentDTO? content;
 
   CourseDTO({
-    required this.id,
-    required this.title,
+    required super.id,
+    required super.title,
     required this.type,
-    required this.description,
-    required this.thumb,
-    required this.categories,
-    required this.teachers,
-    required this.childrensSummary,
-    required this.childrens,
-    required this.files,
-    required this.content,
+    required super.description,
+    required super.thumb,
+    required super.categories,
+    required super.teachers,
+    required super.childrensSummary,
+    required super.childrens,
+    required super.files,
+    required super.content,
   });
 
   factory CourseDTO.fromJson(Map<String, dynamic> json) {
@@ -41,8 +31,8 @@ class CourseDTO {
       type: CourseTypeDTO.fromJson(json['type'] as Map<String, dynamic>),
       description: json['description'] as String,
       thumb: ThumbDTO.fromJson(json['thumb'] as Map<String, dynamic>),
-      categories: (json['categories'] as List)
-          .map((e) => CategoryDTO.fromJson(e as Map<String, dynamic>))
+      categories: (json['categories'] as List?)
+          ?.map((e) => CategoryDTO.fromJson(e as Map<String, dynamic>))
           .toList(),
       teachers: (json['teachers'] as List)
           .map((e) => TeacherDTO.fromJson(e as Map<String, dynamic>))

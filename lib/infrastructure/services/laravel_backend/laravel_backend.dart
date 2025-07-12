@@ -3,6 +3,7 @@ import 'package:unifast_portal/application/configurations/belluga_constants.dart
 import 'package:unifast_portal/domain/auth/errors/belluga_auth_errors.dart';
 import 'package:unifast_portal/domain/repositories/auth_repository_contract.dart';
 import 'package:unifast_portal/domain/tenant/tenant.dart';
+import 'package:unifast_portal/infrastructure/services/dal/dto/course/category_dto.dart';
 import 'package:unifast_portal/infrastructure/services/dal/dto/course/course_dto.dart';
 import 'package:unifast_portal/infrastructure/services/dal/dto/course/course_item_dto.dart';
 import 'package:unifast_portal/infrastructure/services/dal/dto/external_course_dto.dart';
@@ -129,6 +130,34 @@ class LaravelBackend extends BackendContract {
         .toList();
 
     return Future.value(_courses);
+  }
+
+  @override
+  Future<List<CourseDTO>> getLastFastTrackCourses() async {
+    final response = await dio.post(
+      BellugaConstants.api.baseUrl + _Paths.loginCheck,
+      options: Options(headers: _getAuthenticatedHeaders()),
+    );
+
+    final _courses = response.data
+        .map((item) => CourseDTO.fromJson(item))
+        .toList();
+
+    return Future.value(_courses);
+  }
+
+  @override
+  Future<List<CategoryDTO>> getFastTracksCategories() async {
+    final response = await dio.post(
+      BellugaConstants.api.baseUrl + _Paths.loginCheck,
+      options: Options(headers: _getAuthenticatedHeaders()),
+    );
+
+    final _categories = response.data
+        .map((item) => CategoryDTO.fromJson(item))
+        .toList();
+
+    return Future.value(_categories);
   }
 
   //TODO: Implement this method to fetch course.

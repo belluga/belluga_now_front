@@ -1,3 +1,4 @@
+import 'package:unifast_portal/infrastructure/services/dal/dto/course/category_dto.dart';
 import 'package:unifast_portal/infrastructure/services/dal/dto/course/course_childrens_summary_dto.dart';
 import 'package:unifast_portal/infrastructure/services/dal/dto/course/course_content_dto.dart';
 import 'package:unifast_portal/infrastructure/services/dal/dto/course/teacher_dto.dart';
@@ -11,6 +12,7 @@ class CourseItemDTO {
   ThumbDTO thumb;
   List<TeacherDTO> teachers;
   CourseChildrensSummaryDTO childrensSummary;
+  List<CategoryDTO>? categories;
   List<CourseItemDTO> childrens;
   List<FileDTO> files;
   CourseContentDTO? content;
@@ -20,6 +22,7 @@ class CourseItemDTO {
     required this.title,
     required this.description,
     required this.thumb,
+    required this.categories,
     required this.teachers,
     required this.childrensSummary,
     required this.childrens,
@@ -33,6 +36,9 @@ class CourseItemDTO {
       title: json['title'] as String,
       description: json['description'] as String,
       thumb: ThumbDTO.fromJson(json['thumb'] as Map<String, dynamic>),
+      categories: (json['categories'] as List?)?.
+          map((e) => CategoryDTO.fromJson(e as Map<String, dynamic>))
+          .toList(),
       teachers: (json['teachers'] as List)
           .map((e) => TeacherDTO.fromJson(e as Map<String, dynamic>))
           .toList(),

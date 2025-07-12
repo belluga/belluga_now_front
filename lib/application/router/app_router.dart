@@ -24,6 +24,11 @@ class AppRouter extends RootStackRouter {
       guards: [AuthGuard()],
     ),
     AutoRoute(
+      path: "/fast-tracks",
+      page: FastTrackListRoute.page,
+      guards: [AuthGuard()],
+    ),
+    AutoRoute(
       path: "/conteudo/:courseItemId",
       page: CourseRoute.page,
       guards: [AuthGuard()],

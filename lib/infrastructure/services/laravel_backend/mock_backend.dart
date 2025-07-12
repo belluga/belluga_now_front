@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:dio/dio.dart';
 import 'package:unifast_portal/domain/auth/errors/belluga_auth_errors.dart';
 import 'package:unifast_portal/domain/repositories/auth_repository_contract.dart';
+import 'package:unifast_portal/infrastructure/services/dal/dto/course/category_dto.dart';
 import 'package:unifast_portal/infrastructure/services/dal/dto/course/course_dto.dart';
 import 'package:unifast_portal/infrastructure/services/dal/dto/course/course_item_dto.dart';
 import 'package:unifast_portal/infrastructure/services/dal/dto/external_course_dto.dart';
@@ -68,6 +69,16 @@ class MockBackend extends BackendContract {
   }
 
   @override
+  Future<List<CourseDTO>> getLastFastTrackCourses() {
+    _unifastTracks.sublist(0, 3);
+    final _courses = _unifastTracks
+        .map((item) => CourseDTO.fromJson(item))
+        .toList();
+
+    return Future.value(_courses);
+  }
+
+  @override
   Future<CourseItemDTO> courseItemGetDetails(String courseId) async {
     final _allCourses = _myCourses;
     _allCourses.addAll(_unifastTracks);
@@ -84,6 +95,15 @@ class MockBackend extends BackendContract {
       requestOptions: RequestOptions(path: ""),
       error: "Curso não encontrado",
     );
+  }
+
+  @override
+  Future<List<CategoryDTO>> getFastTracksCategories() {
+    final _courses = _fastTracksCategories
+        .map((item) => CategoryDTO.fromJson(item))
+        .toList();
+
+    return Future.value(_courses);
   }
 
   CourseItemDTO? _findCourseById({
@@ -132,6 +152,45 @@ class MockBackend extends BackendContract {
     ),
   );
 
+  final List<Map<String, dynamic>> _fastTracksCategories = [
+    {
+      "id": "668ed5a2c589a1b2c3d4e5f3",
+      "name": "Soft Skills",
+      "slug": "soft-skills",
+      "color_hex": "007FF9",
+    },
+    {
+      "id": "668ed5a2c589a1b2c3d4e5f4",
+      "name": "Liderança",
+      "slug": "lideranca",
+      "color_hex": "#FF0000",
+    },
+    {
+      "id": "668ed5a2c589a1b2c3d4e5f4",
+      "name": "Inteligência Emocional",
+      "slug": "inteligencia-emocional",
+      "color_hex": "#FF0000",
+    },
+    {
+      "id": "668ed5a2c589a1b2c3d4e5f4",
+      "name": "Experiência do Cliente",
+      "slug": "experiencia-do-cliente",
+      "color_hex": "#FF0000",
+    },
+    {
+      "id": "668ed5a2c589a1b2c3d4e5f4",
+      "name": "Inteligência Artificial",
+      "slug": "inteligencia-artificial",
+      "color_hex": "#FF0000",
+    },
+    {
+      "id": "668ed5a2c589a1b2c3d4e5f4",
+      "name": "Gestão Financeira",
+      "slug": "gestao-financeira",
+      "color_hex": "#FF0000",
+    },
+  ];
+
   late final List<Map<String, dynamic>> _unifastTracks = [
     {
       "id": "668ed5a2c589a1b2c3d4e5f1",
@@ -152,11 +211,13 @@ class MockBackend extends BackendContract {
           "id": "668ed5a2c589a1b2c3d4e5f3",
           "name": "Liderança",
           "slug": "lideranca",
+          "color_hex": "007FF9",
         },
         {
           "id": "668ed5a2c589a1b2c3d4e5f4",
           "name": "Inovação",
           "slug": "inovacao",
+          "color_hex": "#FF0000",
         },
       ],
       "teachers": [
@@ -361,6 +422,17 @@ class MockBackend extends BackendContract {
           "id": "668ed5a2c589a1b2c3d4e603",
           "name": "Autoconhecimento",
           "slug": "autoconhecimento",
+        },
+        {"id": "668ed5a2c589a1b2c3d4e603", "name": "Outra", "slug": "other"},
+        {
+          "id": "668ed5a2c589a1b2c3d4e603",
+          "name": "Mais uma",
+          "slug": "mais-uma",
+        },
+        {
+          "id": "668ed5a2c589a1b2c3d4e603",
+          "name": "Eramos Seis",
+          "slug": "eramos-seis",
         },
       ],
       "teachers": [

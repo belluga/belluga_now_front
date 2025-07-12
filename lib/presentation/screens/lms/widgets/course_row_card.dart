@@ -5,16 +5,16 @@ import 'package:unifast_portal/application/router/app_router.gr.dart';
 import 'package:unifast_portal/domain/courses/course_model.dart';
 import 'package:unifast_portal/presentation/common/widgets/image_with_progress_indicator.dart';
 
-class MyCourseCard extends StatefulWidget {
+class CourseRowCard extends StatefulWidget {
   final CourseModel course;
 
-  const MyCourseCard({super.key, required this.course});
+  const CourseRowCard({super.key, required this.course});
 
   @override
-  State<MyCourseCard> createState() => _MyCourseCardState();
+  State<CourseRowCard> createState() => _CourseRowCardState();
 }
 
-class _MyCourseCardState extends State<MyCourseCard> {
+class _CourseRowCardState extends State<CourseRowCard> {
   @override
   Widget build(BuildContext context) {
     return Card.filled(
@@ -27,7 +27,7 @@ class _MyCourseCardState extends State<MyCourseCard> {
             ImageWithProgressIndicator(
               borderRadius: BorderRadius.horizontal(left: Radius.circular(8)),
               thumb: widget.course.thumb,
-              ),
+            ),
             Expanded(
               child: Padding(
                 padding: EdgeInsetsGeometry.all(16),
