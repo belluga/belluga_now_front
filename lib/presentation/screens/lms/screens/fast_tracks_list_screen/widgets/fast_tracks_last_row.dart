@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:unifast_portal/domain/courses/course_model.dart';
+import 'package:unifast_portal/domain/courses/course_base_model.dart';
 import 'package:unifast_portal/presentation/common/widgets/dashboard_items_summary.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 import 'package:get_it/get_it.dart';
@@ -19,7 +19,7 @@ class _FastTracksLastRowState extends State<FastTracksLastRow> {
   @override
   Widget build(BuildContext context) {
     return SliverToBoxAdapter(
-      child: StreamValueBuilder<List<CourseModel>>(
+      child: StreamValueBuilder<List<CourseBaseModel>>(
         streamValue: _controller.lastCreatedFastTracksStreamValue,
         onNullWidget: SizedBox.shrink(),
         builder: (context, myCourseSuummary) {
@@ -37,12 +37,12 @@ class _FastTracksLastRowState extends State<FastTracksLastRow> {
   Widget? _itemsBuilder(BuildContext context, int index) {
     final _fastTracks = _controller.lastCreatedFastTracksStreamValue.value!;
 
-    if(index >= _fastTracks.length) {
+    if (index >= _fastTracks.length) {
       return null;
     }
 
     final _course = _fastTracks[index];
 
-    return FastTrackCard( courseModel: _course);
+    return FastTrackCard(courseModel: _course);
   }
 }

@@ -4,7 +4,7 @@ import 'package:unifast_portal/domain/auth/errors/belluga_auth_errors.dart';
 import 'package:unifast_portal/domain/repositories/auth_repository_contract.dart';
 import 'package:unifast_portal/domain/tenant/tenant.dart';
 import 'package:unifast_portal/infrastructure/services/dal/dto/course/category_dto.dart';
-import 'package:unifast_portal/infrastructure/services/dal/dto/course/course_dto.dart';
+import 'package:unifast_portal/infrastructure/services/dal/dto/course/course_item_summary_dto.dart';
 import 'package:unifast_portal/infrastructure/services/dal/dto/course/course_item_dto.dart';
 import 'package:unifast_portal/infrastructure/services/dal/dto/external_course_dto.dart';
 import 'package:unifast_portal/infrastructure/services/dal/dto/user_dto.dart';
@@ -103,7 +103,7 @@ class LaravelBackend extends BackendContract {
   }
 
   @override
-  Future<List<CourseDTO>> getMyCourses() async {
+  Future<List<CourseItemSummaryDTO>> getMyCourses() async {
     //TODO: Implement this method to fetch courses summary.
     final response = await dio.post(
       BellugaConstants.api.baseUrl + _Paths.loginCheck,
@@ -111,14 +111,14 @@ class LaravelBackend extends BackendContract {
     );
 
     final _courses = response.data
-        .map((item) => CourseDTO.fromJson(item))
+        .map((item) => CourseItemSummaryDTO.fromJson(item))
         .toList();
 
     return Future.value(_courses);
   }
 
   @override
-  Future<List<CourseDTO>> getUnifastTracks() async {
+  Future<List<CourseItemSummaryDTO>> getUnifastTracks() async {
     //TODO: Implement this method to fetch Unifast Tracks.
     final response = await dio.post(
       BellugaConstants.api.baseUrl + _Paths.loginCheck,
@@ -126,21 +126,21 @@ class LaravelBackend extends BackendContract {
     );
 
     final _courses = response.data
-        .map((item) => CourseDTO.fromJson(item))
+        .map((item) => CourseItemSummaryDTO.fromJson(item))
         .toList();
 
     return Future.value(_courses);
   }
 
   @override
-  Future<List<CourseDTO>> getLastFastTrackCourses() async {
+  Future<List<CourseItemSummaryDTO>> getLastFastTrackCourses() async {
     final response = await dio.post(
       BellugaConstants.api.baseUrl + _Paths.loginCheck,
       options: Options(headers: _getAuthenticatedHeaders()),
     );
 
     final _courses = response.data
-        .map((item) => CourseDTO.fromJson(item))
+        .map((item) => CourseItemSummaryDTO.fromJson(item))
         .toList();
 
     return Future.value(_courses);
@@ -162,13 +162,13 @@ class LaravelBackend extends BackendContract {
 
   //TODO: Implement this method to fetch course.
   @override
-  Future<CourseItemDTO> courseItemGetDetails(String courseId) async {
+  Future<CourseItemDetailsDTO> courseItemGetDetails(String courseId) async {
     final response = await dio.get(
       '${BellugaConstants.api.baseUrl}/courses/$courseId',
       options: Options(headers: _getAuthenticatedHeaders()),
     );
 
-    return CourseItemDTO.fromJson(response.data);
+    return CourseItemDetailsDTO.fromJson(response.data);
   }
 }
 

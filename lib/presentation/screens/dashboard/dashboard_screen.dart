@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 import 'package:unifast_portal/application/router/app_router.gr.dart';
-import 'package:unifast_portal/domain/courses/course_model.dart';
+import 'package:unifast_portal/domain/courses/course_base_model.dart';
 import 'package:unifast_portal/presentation/common/widgets/main_logo.dart';
 import 'package:unifast_portal/presentation/common/widgets/profile_action_button/profile_action_button.dart';
 import 'package:unifast_portal/presentation/screens/dashboard/controllers/my_courses_dashboard_controller.dart';
@@ -72,14 +72,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
           SliverPadding(
             padding: EdgeInsets.only(top: 16),
-            sliver: StreamValueBuilder<List<CourseModel>>(
+            sliver: StreamValueBuilder<List<CourseBaseModel>>(
               onNullWidget: SliverToBoxAdapter(child: SizedBox.shrink()),
               streamValue: _controller.fastTracksItemsStreamValue,
               builder: (context, fastTracks) {
                 return CourseTracksSliver(
                   showAllLabel: "Ver Todas",
-                  onShowAllPressed: () => context.router.push(FastTrackListRoute()),
-                  fastTracks: fastTracks);
+                  onShowAllPressed: () =>
+                      context.router.push(FastTrackListRoute()),
+                  fastTracks: fastTracks,
+                );
               },
             ),
           ),

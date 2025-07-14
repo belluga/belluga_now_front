@@ -1,6 +1,6 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
-import 'package:unifast_portal/domain/courses/course_model.dart';
+import 'package:unifast_portal/domain/courses/course_base_model.dart';
 import 'package:unifast_portal/presentation/screens/lms/screens/courses_list_screen/controllers/courses_list_screen_controller.dart';
 import 'package:unifast_portal/presentation/screens/lms/screens/courses_list_screen/widgets/my_course_card_on_list.dart';
 import 'package:get_it/get_it.dart';
@@ -34,7 +34,7 @@ class _CoursesListScreenState extends State<CoursesListScreen> {
         ),
         automaticallyImplyLeading: true,
       ),
-      body: StreamValueBuilder<List<CourseModel>>(
+      body: StreamValueBuilder<List<CourseBaseModel>>(
         streamValue: _controller.courseStreamValue,
         onNullWidget: SizedBox.shrink(),
         builder: (context, courses) {

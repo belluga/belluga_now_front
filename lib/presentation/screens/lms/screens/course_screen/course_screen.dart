@@ -52,10 +52,10 @@ class _CourseScreenState extends State<CourseScreen>
                     indicatorSize: TabBarIndicatorSize.label,
                     labelColor: Theme.of(context).colorScheme.onPrimary,
                     tabs: [
-                      if (courseModel.childrens.isNotEmpty)
+                      if (courseModel.childrensSummary != null)
                         Tab(
                           text:
-                              courseModel.childrensSummary.label.valueFormated,
+                              courseModel.childrensSummary!.label.valueFormated,
                         ),
                       if (courseModel.files.isNotEmpty) Tab(text: 'Arquivos'),
                       // Tab(text: 'Anotações'),

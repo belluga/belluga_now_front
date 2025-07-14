@@ -16,9 +16,9 @@ class CourseScreenController implements Disposable {
 
   final _coursesRepository = GetIt.I.get<CoursesRepositoryContract>();
 
-  final childrenSelectedItemIDStreamValue = StreamValue<int?>();
+  // final childrenSelectedItemIDStreamValue = StreamValue<int?>();
 
-  final childrenSelectedItemStreamValue = StreamValue<CourseItemModel?>();
+  // final childrenSelectedItemStreamValue = StreamValue<CourseItemModel?>();
 
   final currentCourseItemStreamValue = StreamValue<CourseItemModel?>();
 
@@ -46,19 +46,13 @@ class CourseScreenController implements Disposable {
   }
 
 
-  void changeSelectedChildren(int? index) {
-    if (index == null) {
-      childrenSelectedItemIDStreamValue.addValue(null);
-      childrenSelectedItemStreamValue.addValue(null);
-      return;
-    }
-
-    childrenSelectedItemIDStreamValue.addValue(index);
-
-    childrenSelectedItemStreamValue.addValue(
-      currentCourseItemStreamValue.value!.childrens[index],
-    );
-  }
+  // void changeSelectedChildren(int? index) {
+  //   if (index == null) {
+  //     childrenSelectedItemIDStreamValue.addValue(null);
+  //     // childrenSelectedItemStreamValue.addValue(null);
+  //     return;
+  //   }
+  // }
 
   void _onChangeTab() => tabIndexStreamValue.addValue(tabController.index);
 

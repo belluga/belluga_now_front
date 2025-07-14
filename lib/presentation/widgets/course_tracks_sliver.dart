@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:unifast_portal/domain/courses/course_model.dart';
+import 'package:unifast_portal/domain/courses/course_base_model.dart';
 import 'package:unifast_portal/presentation/common/widgets/dashboard_title_row.dart';
 import 'package:unifast_portal/presentation/widgets/fast_track_card.dart';
 
@@ -7,7 +7,7 @@ class CourseTracksSliver extends StatelessWidget {
   final String? showAllLabel;
   final void Function()? onShowAllPressed;
 
-  final List<CourseModel> fastTracks;
+  final List<CourseBaseModel> fastTracks;
 
   const CourseTracksSliver({
     super.key,

@@ -1,4 +1,4 @@
-import 'package:unifast_portal/domain/courses/course_model.dart';
+import 'package:unifast_portal/domain/courses/course_base_model.dart';
 import 'package:unifast_portal/domain/repositories/courses_repository_contract.dart';
 import 'package:unifast_portal/presentation/screens/dashboard/view_models/courses_summary.dart';
 import 'package:get_it/get_it.dart';
@@ -11,7 +11,7 @@ class MyCoursesDashboardController {
     return _myCoursesRepository.myCoursesSummaryStreamValue;
   }
 
-  StreamValue<List<CourseModel>?> get fastTracksItemsStreamValue {
+  StreamValue<List<CourseBaseModel>?> get fastTracksItemsStreamValue {
     return _myCoursesRepository.fastTracksListStreamValue;
   }
 

@@ -2,14 +2,14 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:unifast_portal/domain/courses/course_category_model.dart';
-import 'package:unifast_portal/domain/courses/course_model.dart';
+import 'package:unifast_portal/domain/courses/course_base_model.dart';
 import 'package:unifast_portal/domain/repositories/courses_repository_contract.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value.dart';
 
 class FastTracksListScreenController implements Disposable {
   FastTracksListScreenController() {
-    filteredCoursesStreamValue = StreamValue<List<CourseModel>?>(
+    filteredCoursesStreamValue = StreamValue<List<CourseBaseModel>?>(
       defaultValue: _courseStreamValue.value,
     );
 
@@ -27,16 +27,16 @@ class FastTracksListScreenController implements Disposable {
 
   final scrollController = ScrollController();
 
-  StreamValue<List<CourseModel>?> get _courseStreamValue =>
+  StreamValue<List<CourseBaseModel>?> get _courseStreamValue =>
       _coursesRepository.fastTracksListStreamValue;
 
   StreamValue<List<CourseCategoryModel>?> get categoriesStreamValue =>
       _coursesRepository.fastTracksCategoriesListStreamValue;
 
-  StreamValue<List<CourseModel>?> get lastCreatedFastTracksStreamValue =>
+  StreamValue<List<CourseBaseModel>?> get lastCreatedFastTracksStreamValue =>
       _coursesRepository.lastCreatedfastTracksStreamValue;
 
-  late StreamValue<List<CourseModel>?> filteredCoursesStreamValue;
+  late StreamValue<List<CourseBaseModel>?> filteredCoursesStreamValue;
 
   final selectedCategoriesStreamValue =
       StreamValue<List<CourseCategoryModel>?>();
@@ -88,7 +88,7 @@ class FastTracksListScreenController implements Disposable {
     filteredCoursesStreamValue.addValue(filtered);
   }
 
-  void listenCoursesList(List<CourseModel>? courses) {
+  void listenCoursesList(List<CourseBaseModel>? courses) {
     filteredCoursesStreamValue.addValue(courses);
   }
 

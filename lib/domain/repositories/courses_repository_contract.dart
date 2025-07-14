@@ -1,8 +1,8 @@
 import 'package:unifast_portal/domain/courses/course_category_model.dart';
 import 'package:unifast_portal/domain/courses/course_item_model.dart';
-import 'package:unifast_portal/domain/courses/course_model.dart';
+import 'package:unifast_portal/domain/courses/course_base_model.dart';
 import 'package:unifast_portal/infrastructure/services/dal/dto/course/category_dto.dart';
-import 'package:unifast_portal/infrastructure/services/dal/dto/course/course_dto.dart';
+import 'package:unifast_portal/infrastructure/services/dal/dto/course/course_item_summary_dto.dart';
 import 'package:unifast_portal/infrastructure/services/dal/dto/course/course_item_dto.dart';
 
 import 'package:unifast_portal/infrastructure/services/laravel_backend/backend_contract.dart';
@@ -19,13 +19,13 @@ abstract class CoursesRepositoryContract {
   final fastTracksSummaryStreamValue = StreamValue<CoursesSummary?>(
     defaultValue: null,
   );
-  final myCoursesListStreamValue = StreamValue<List<CourseModel>?>(
+  final myCoursesListStreamValue = StreamValue<List<CourseBaseModel>?>(
     defaultValue: null,
   );
-  final fastTracksListStreamValue = StreamValue<List<CourseModel>?>(
+  final fastTracksListStreamValue = StreamValue<List<CourseBaseModel>?>(
     defaultValue: null,
   );
-  final lastCreatedfastTracksStreamValue = StreamValue<List<CourseModel>?>(
+  final lastCreatedfastTracksStreamValue = StreamValue<List<CourseBaseModel>?>(
     defaultValue: null,
   );
   final currentCourseItemStreamValue = StreamValue<CourseItemModel?>();
@@ -41,10 +41,11 @@ abstract class CoursesRepositoryContract {
   }
 
   Future<void> _refreshMyCoursesDashboardSummary() async {
-    final List<CourseDTO> _dashboardSummary = await backend.getMyCourses();
+    final List<CourseItemSummaryDTO> _dashboardSummary = await backend
+        .getMyCourses();
 
     final _courses = _dashboardSummary
-        .map((courseDto) => CourseModel.fromDto(courseDto))
+        .map((courseDto) => CourseBaseModel.fromDto(courseDto))
         .toList();
 
     myCoursesListStreamValue.addValue(_courses);
@@ -61,11 +62,11 @@ abstract class CoursesRepositoryContract {
   }
 
   Future<void> _refreshFastTracksList() async {
-    final List<CourseDTO> _dashboardSummary = await backend
+    final List<CourseItemSummaryDTO> _dashboardSummary = await backend
         .getLastFastTrackCourses();
 
     final _courses = _dashboardSummary
-        .map((courseDto) => CourseModel.fromDto(courseDto))
+        .map((courseDto) => CourseBaseModel.fromDto(courseDto))
         .toList();
 
     fastTracksListStreamValue.addValue(_courses);
@@ -79,20 +80,20 @@ abstract class CoursesRepositoryContract {
   }
 
   Future<void> _refreshFastTracksLastCreatedList() async {
-    final List<CourseDTO> _coursesDtos = await backend
+    final List<CourseItemSummaryDTO> _coursesDtos = await backend
         .getLastFastTrackCourses();
 
     _coursesDtos.sublist(0, 4);
 
     final _courses = _coursesDtos
-        .map((courseDto) => CourseModel.fromDto(courseDto))
+        .map((courseDto) => CourseBaseModel.fromDto(courseDto))
         .toList();
 
     lastCreatedfastTracksStreamValue.addValue(_courses);
   }
 
   Future<CourseItemModel> courseItemGetDetails(String courseId) async {
-    final CourseItemDTO _courseDTO = await backend.courseItemGetDetails(
+    final CourseItemDetailsDTO _courseDTO = await backend.courseItemGetDetails(
       courseId,
     );
     return Future.value(CourseItemModel.fromDto(_courseDTO));
