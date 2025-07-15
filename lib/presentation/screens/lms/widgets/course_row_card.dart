@@ -1,14 +1,12 @@
-import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
-import 'package:get_it/get_it.dart';
-import 'package:unifast_portal/application/router/app_router.gr.dart';
 import 'package:unifast_portal/domain/courses/course_base_model.dart';
 import 'package:unifast_portal/presentation/common/widgets/image_with_progress_indicator.dart';
 
 class CourseRowCard extends StatefulWidget {
   final CourseBaseModel course;
+  final void Function() onNavigateToCourse;
 
-  const CourseRowCard({super.key, required this.course});
+  const CourseRowCard({super.key, required this.course, required this.onNavigateToCourse});
 
   @override
   State<CourseRowCard> createState() => _CourseRowCardState();
@@ -20,7 +18,7 @@ class _CourseRowCardState extends State<CourseRowCard> {
     return Card.filled(
       color: Theme.of(context).colorScheme.surfaceDim,
       child: InkWell(
-        onTap: _navigateToCourse,
+        onTap: widget.onNavigateToCourse,
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -57,7 +55,7 @@ class _CourseRowCardState extends State<CourseRowCard> {
                       children: [
                         Expanded(
                           child: ElevatedButton(
-                            onPressed: _navigateToCourse,
+                            onPressed: widget.onNavigateToCourse,
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Theme.of(
                                 context,
@@ -96,10 +94,5 @@ class _CourseRowCardState extends State<CourseRowCard> {
         ),
       ),
     );
-  }
-
-  Future<void> _navigateToCourse() async {
-    GetIt.I.pushNewScope(scopeName: widget.course.id.toString());
-    context.router.push(CourseRoute(courseItemId: widget.course.id.toString()));
   }
 }

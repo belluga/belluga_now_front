@@ -13,6 +13,8 @@ class CourseItemDetailsDTO {
   ThumbDTO thumb;
   List<TeacherDTO> teachers;
   List<CategoryDTO>? categories;
+  CourseItemSummaryDTO? previous;
+  CourseItemSummaryDTO? next;
   CourseChildrensSummaryDTO? childrensSummary;
   List<CourseItemSummaryDTO> childrens;
   List<FileDTO> files;
@@ -28,6 +30,8 @@ class CourseItemDetailsDTO {
     required this.childrensSummary,
     required this.childrens,
     required this.files,
+    this.previous,
+    this.next,
     this.content,
   }) : assert(
          content != null || (childrens.isNotEmpty),
@@ -73,6 +77,14 @@ class CourseItemDetailsDTO {
         ? CourseContentDTO.fromJson(json['content'] as Map<String, dynamic>)
         : null;
 
+    final _next = json['next'] != null
+        ? CourseItemSummaryDTO.fromJson(json['next'] as Map<String, dynamic>)
+        : null;
+
+    final _previous = json['previous'] != null
+        ? CourseItemSummaryDTO.fromJson(json['previous'] as Map<String, dynamic>)
+        : null;
+
     return CourseItemDetailsDTO(
       id: _id,
       title: _title,
@@ -83,6 +95,8 @@ class CourseItemDetailsDTO {
       childrensSummary: _childrensSummary,
       childrens: _childrens,
       files: _files,
+      next: _next,
+      previous: _previous,
       content: _content,
     );
   }

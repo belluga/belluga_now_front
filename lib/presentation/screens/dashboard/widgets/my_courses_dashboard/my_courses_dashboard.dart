@@ -51,6 +51,11 @@ class _MyCoursesDashboardState extends State<MyCoursesDashboard> {
 
     final _course = _myCoursesSummary.items[index];
 
-    return CourseRowCard(course: _course);
+    return CourseRowCard(
+      onNavigateToCourse: () {
+        context.router.push(CourseRoute(courseItemId: _course.id.value));
+      },
+      course: _course,
+    );
   }
 }

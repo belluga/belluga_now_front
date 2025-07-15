@@ -17,6 +17,8 @@ class CourseItemModel {
   final DescriptionValue description;
   final ThumbModel thumb;
   final List<TeacherModel> teachers;
+  final CourseBaseModel? next;
+  final CourseBaseModel? previous;
   final CourseChildrensSummary? childrensSummary;
   final List<CourseBaseModel> childrens;
   final List<FileModel> files;
@@ -34,6 +36,8 @@ class CourseItemModel {
     required this.childrens,
     required this.files,
     required this.content,
+    this.next,
+    this.previous,
   });
 
   bool get hasContent => content != null;
@@ -71,6 +75,14 @@ class CourseItemModel {
         ? CourseContentModel.fromDTO(_contentDto)
         : null;
 
+    final _next = dto.next != null
+        ? CourseBaseModel.fromDto(dto.next!)
+        : null;
+
+    final _previous = dto.previous != null
+        ? CourseBaseModel.fromDto(dto.previous!)
+        : null;
+
     return CourseItemModel(
       id: _id,
       title: _title,
@@ -82,6 +94,8 @@ class CourseItemModel {
       childrens: _childrens,
       files: _files,
       content: _content,
+      next: _next,
+      previous: _previous,
     );
   }
 }
