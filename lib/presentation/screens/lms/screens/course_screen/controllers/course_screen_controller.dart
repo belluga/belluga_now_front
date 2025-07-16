@@ -5,20 +5,16 @@ import 'package:unifast_portal/domain/courses/course_item_model.dart';
 import 'package:unifast_portal/domain/repositories/courses_repository_contract.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value.dart';
+import 'package:unifast_portal/presentation/screens/lms/screens/course_screen/widgets/content_video_player/controller/content_video_player_controller.dart';
 
 class CourseScreenController implements Disposable {
-  final String courseItemId;
   final TickerProviderStateMixin vsync;
 
-  CourseScreenController({required this.courseItemId, required this.vsync}) {
-    _init();
-  }
+  CourseScreenController({required this.vsync});
+
+  final contentVideoPlayerController = ContentVideoPlayerController();
 
   final _coursesRepository = GetIt.I.get<CoursesRepositoryContract>();
-
-  // final childrenSelectedItemIDStreamValue = StreamValue<int?>();
-
-  // final childrenSelectedItemStreamValue = StreamValue<CourseItemModel?>();
 
   final currentCourseItemStreamValue = StreamValue<CourseItemModel?>();
 
@@ -26,15 +22,15 @@ class CourseScreenController implements Disposable {
 
   final tabIndexStreamValue = StreamValue<int>(defaultValue: 0);
 
-  Future<void> _init() async {
+  Future<void> setCourse(String courseItemId) async {
     await _coursesRepository.getMyCoursesDashboardSummary();
-    await _courseItemInit();
+    await _courseItemInit(courseItemId);
     _tabControllerInit();
   }
 
-  Future<void> _courseItemInit() async {
+  Future<void> _courseItemInit(String courseId) async {
     final _courseItemModel = await _coursesRepository.courseItemGetDetails(
-      courseItemId,
+      courseId,
     );
     currentCourseItemStreamValue.addValue(_courseItemModel);
   }
@@ -45,14 +41,17 @@ class CourseScreenController implements Disposable {
     tabController.addListener(_onChangeTab);
   }
 
+  Future<void> changeCurrentCourseItem(String courseItemId) async {
+    await cleanCurrentCourseItem();
+    await setCourse(courseItemId);
+    _tabControllerInit();
+  }
 
-  // void changeSelectedChildren(int? index) {
-  //   if (index == null) {
-  //     childrenSelectedItemIDStreamValue.addValue(null);
-  //     // childrenSelectedItemStreamValue.addValue(null);
-  //     return;
-  //   }
-  // }
+  Future<void> cleanCurrentCourseItem() async {
+    currentCourseItemStreamValue.addValue(null);
+    tabController.dispose();
+    contentVideoPlayerController.clearLesson();
+  }
 
   void _onChangeTab() => tabIndexStreamValue.addValue(tabController.index);
 
@@ -69,10 +68,18 @@ class CourseScreenController implements Disposable {
     return _intTabCaount;
   }
 
+  Future<void> initializePlayer() async {
+    await contentVideoPlayerController.changeLesson(
+      currentCourseItemStreamValue.value!,
+    );
+    await contentVideoPlayerController.initializePlayer();
+  }
+
   @override
   FutureOr onDispose() {
     tabIndexStreamValue.dispose();
     currentCourseItemStreamValue.dispose();
     tabController.dispose();
+    contentVideoPlayerController.onDispose();
   }
 }

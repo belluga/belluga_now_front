@@ -1,9 +1,8 @@
-import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
-import 'package:unifast_portal/application/router/app_router.gr.dart';
 import 'package:unifast_portal/domain/courses/course_base_model.dart';
 import 'package:unifast_portal/presentation/common/widgets/image_with_progress_indicator.dart';
 import 'package:get_it/get_it.dart';
+import 'package:unifast_portal/presentation/screens/lms/screens/course_screen/controllers/course_screen_controller.dart';
 
 class ChildrenCard extends StatefulWidget {
   final CourseBaseModel courseItemModel;
@@ -20,6 +19,7 @@ class ChildrenCard extends StatefulWidget {
 }
 
 class _ChildrenCardState extends State<ChildrenCard> {
+  final _controller = GetIt.I.get<CourseScreenController>();
 
   @override
   Widget build(BuildContext context) {
@@ -80,10 +80,7 @@ class _ChildrenCardState extends State<ChildrenCard> {
   }
 
   void _navigateToChildren() {
-    GetIt.I.pushNewScope(scopeName: widget.courseItemModel.id.toString());
-    context.router.push(
-      CourseRoute(courseItemId: widget.courseItemModel.id.toString()),
-    );
+    _controller.changeCurrentCourseItem(widget.courseItemModel.id.value);
   }
 
   // void _navigateToSibling() {

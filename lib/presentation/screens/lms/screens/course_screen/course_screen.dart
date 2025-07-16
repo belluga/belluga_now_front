@@ -86,14 +86,14 @@ class _CourseScreenState extends State<CourseScreen>
 
   void _initializeController() {
     _controller = GetIt.I.registerSingleton<CourseScreenController>(
-      CourseScreenController(courseItemId: widget.courseItemId, vsync: this),
+      CourseScreenController(vsync: this),
     );
+    _controller.setCourse(widget.courseItemId);
   }
 
   @override
   void dispose() {
     super.dispose();
     GetIt.I.unregister<CourseScreenController>();
-    GetIt.I.popScope();
   }
 }

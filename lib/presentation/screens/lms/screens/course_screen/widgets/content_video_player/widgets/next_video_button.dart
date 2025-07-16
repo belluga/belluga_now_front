@@ -1,10 +1,7 @@
-import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
-import 'package:unifast_portal/application/router/app_router.gr.dart';
 import 'package:unifast_portal/domain/courses/course_base_model.dart';
-import 'package:unifast_portal/presentation/common/widgets/image_with_progress_indicator.dart';
-import 'package:unifast_portal/presentation/screens/lms/screens/course_screen/widgets/content_video_player/controller/next_video_button_controller.dart';
+import 'package:unifast_portal/presentation/screens/lms/screens/course_screen/controllers/course_screen_controller.dart';
 
 class NextVideoButton extends StatefulWidget {
   final CourseBaseModel courseItem;
@@ -21,13 +18,13 @@ class NextVideoButton extends StatefulWidget {
 }
 
 class _NextVideoButtonState extends State<NextVideoButton> {
-  final _controller = NextVideoButtonController();
+  final _controller = GetIt.I.get<CourseScreenController>();
 
   @override
   Widget build(BuildContext context) {
     return Builder(
       builder: (context) {
-        final _buttonOpacity = _controller.getButtonOpacity(
+        final _buttonOpacity = _controller.contentVideoPlayerController.nextVideoController.getButtonOpacity(
           widget.videoPercentage,
         );
 
@@ -103,9 +100,6 @@ class _NextVideoButtonState extends State<NextVideoButton> {
   }
 
   void _navigateToNext() {
-    GetIt.I.pushNewScope(scopeName: widget.courseItem.id.value);
-    context.router.pop();
-    context.router.push(CourseRoute(
-      courseItemId: widget.courseItem.id.value));
+    _controller.changeCurrentCourseItem(widget.courseItem.id.value);
   }
 }

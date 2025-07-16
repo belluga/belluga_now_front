@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
-import 'package:unifast_portal/presentation/screens/lms/screens/course_screen/widgets/content_video_player/controller/content_video_player_controller.dart';
+import 'package:unifast_portal/presentation/screens/lms/screens/course_screen/controllers/course_screen_controller.dart';
 import 'package:unifast_portal/presentation/screens/lms/screens/course_screen/widgets/content_video_player/enums/video_playing_status.dart';
 
 class PlayButton extends StatefulWidget {
@@ -19,12 +19,12 @@ class PlayButton extends StatefulWidget {
 }
 
 class _PlayButtonState extends State<PlayButton> {
-  final _controller = GetIt.I.get<ContentVideoPlayerController>();
+  final _controller = GetIt.I.get<CourseScreenController>();
 
   @override
   Widget build(BuildContext context) {
     return StreamValueBuilder<VideoPlayingStatus>(
-      streamValue: _controller.playingStatusStreamValue,
+      streamValue: _controller.contentVideoPlayerController.playingStatusStreamValue,
       builder: (context, playingStatus) {
         final IconData _icon = _getIconData();
         return IconButton(
@@ -38,7 +38,7 @@ class _PlayButtonState extends State<PlayButton> {
 
   IconData _getIconData() {
     final VideoPlayingStatus playingStatus =
-        _controller.playingStatusStreamValue.value;
+        _controller.contentVideoPlayerController.playingStatusStreamValue.value;
 
     switch (playingStatus) {
       case VideoPlayingStatus.playing:

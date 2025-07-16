@@ -80,6 +80,9 @@ class MockBackend extends BackendContract {
 
   @override
   Future<CourseItemDetailsDTO> courseItemGetDetails(String courseId) async {
+
+    await Future.delayed(Duration(seconds: 3));
+
     final _allCourses = _myCourses;
     _allCourses.addAll(_unifastTracks);
     final courseItemDTO = _findCourseById(

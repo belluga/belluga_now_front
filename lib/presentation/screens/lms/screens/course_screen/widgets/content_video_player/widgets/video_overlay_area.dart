@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 import 'package:unifast_portal/domain/courses/course_item_model.dart';
-import 'package:unifast_portal/presentation/screens/lms/screens/course_screen/widgets/content_video_player/controller/content_video_player_controller.dart';
+import 'package:unifast_portal/presentation/screens/lms/screens/course_screen/controllers/course_screen_controller.dart';
 import 'package:unifast_portal/presentation/screens/lms/screens/course_screen/widgets/content_video_player/enums/video_playing_status.dart';
 import 'package:unifast_portal/presentation/screens/lms/screens/course_screen/widgets/content_video_player/widgets/next_video_button.dart';
 import 'package:unifast_portal/presentation/screens/lms/screens/course_screen/widgets/content_video_player/widgets/play_bar.dart';
@@ -18,12 +18,12 @@ class VideoOverlayArea extends StatefulWidget {
 }
 
 class _VideoOverlayAreaState extends State<VideoOverlayArea> {
-  final _controller = GetIt.I.get<ContentVideoPlayerController>();
+  final _controller = GetIt.I.get<CourseScreenController>();
 
   @override
   Widget build(BuildContext context) {
     return StreamValueBuilder(
-      streamValue: _controller.showOverlayArea,
+      streamValue: _controller.contentVideoPlayerController.showOverlayArea,
       builder: (context, showOverlay) {
         if (!showOverlay) {
           return GestureDetector(
@@ -39,7 +39,7 @@ class _VideoOverlayAreaState extends State<VideoOverlayArea> {
                       children: [
                         if (widget.courseItemModel.next != null)
                           StreamValueBuilder<double?>(
-                            streamValue: _controller.videoWatchPercentage,
+                            streamValue: _controller.contentVideoPlayerController.videoWatchPercentage,
                             builder: (context, percentage) {
                               return Padding(
                                 padding: EdgeInsetsGeometry.only(right: 16),
@@ -68,10 +68,10 @@ class _VideoOverlayAreaState extends State<VideoOverlayArea> {
           onTap: _overlayAction,
           child: Container(
             decoration: BoxDecoration(
-              color: _controller.alreadyStarted
+              color: _controller.contentVideoPlayerController.alreadyStarted
                   ? Colors.black54
                   : Colors.transparent,
-              image: !_controller.alreadyStarted
+              image: !_controller.contentVideoPlayerController.alreadyStarted
                   ? DecorationImage(
                       image: NetworkImage(
                         widget.courseItemModel.thumb.thumbUri.toString(),
@@ -141,7 +141,7 @@ class _VideoOverlayAreaState extends State<VideoOverlayArea> {
                                   if (widget.courseItemModel.next != null)
                                     StreamValueBuilder<double?>(
                                       streamValue:
-                                          _controller.videoWatchPercentage,
+                                          _controller.contentVideoPlayerController.videoWatchPercentage,
                                       builder: (context, percentage) {
                                         return Padding(
                                           padding: EdgeInsetsGeometry.only(
@@ -198,7 +198,7 @@ class _VideoOverlayAreaState extends State<VideoOverlayArea> {
 
   void _action() {
     final VideoPlayingStatus playingStatus =
-        _controller.playingStatusStreamValue.value;
+        _controller.contentVideoPlayerController.playingStatusStreamValue.value;
 
     switch (playingStatus) {
       case VideoPlayingStatus.playing:
@@ -212,31 +212,23 @@ class _VideoOverlayAreaState extends State<VideoOverlayArea> {
   }
 
   void _overlayAction() {
-    if (_controller.showOverlayArea.value) {
+    if (_controller.contentVideoPlayerController.showOverlayArea.value) {
       _action();
     } else {
-      _controller.showOverlay();
+      _controller.contentVideoPlayerController.showOverlay();
     }
   }
 
-  void _replay10Seconds() {
-    _controller.videoPlayerController.seekTo(Duration(seconds: -10));
-  }
-
-  void _forward10Seconds() {
-    _controller.videoPlayerController.seekTo(Duration(seconds: 10));
-  }
-
   void _pause() {
-    _controller.videoPlayerController.pause();
+    _controller.contentVideoPlayerController.videoPlayerController.pause();
   }
 
   void _play() {
-    _controller.videoPlayerController.play();
+    _controller.contentVideoPlayerController.videoPlayerController.play();
   }
 
   void _rewindAndPlay() {
-    _controller.videoPlayerController.seekTo(Duration.zero);
-    _controller.videoPlayerController.play();
+    _controller.contentVideoPlayerController.videoPlayerController.seekTo(Duration.zero);
+    _controller.contentVideoPlayerController.videoPlayerController.play();
   }
 }

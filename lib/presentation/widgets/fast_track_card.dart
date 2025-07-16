@@ -1,6 +1,5 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
-import 'package:get_it/get_it.dart';
 import 'package:unifast_portal/application/router/app_router.gr.dart';
 import 'package:unifast_portal/domain/courses/course_category_model.dart';
 import 'package:unifast_portal/domain/courses/course_base_model.dart';
@@ -109,7 +108,6 @@ class _FastTrackCardState extends State<FastTrackCard> {
   }
 
   Future<void> _navigateToCourse() async {
-    GetIt.I.pushNewScope(scopeName: widget.courseModel.id.toString());
     context.router.push(
       CourseRoute(courseItemId: widget.courseModel.id.toString()),
     );
