@@ -18,7 +18,7 @@ class CourseItemModel {
   final ThumbModel thumb;
   final List<TeacherModel> teachers;
   final CourseBaseModel? next;
-  final CourseBaseModel? previous;
+  final CourseBaseModel? parent;
   final CourseChildrensSummary? childrensSummary;
   final List<CourseBaseModel> childrens;
   final List<FileModel> files;
@@ -37,7 +37,7 @@ class CourseItemModel {
     required this.files,
     required this.content,
     this.next,
-    this.previous,
+    this.parent,
   });
 
   bool get hasContent => content != null;
@@ -79,8 +79,8 @@ class CourseItemModel {
         ? CourseBaseModel.fromDto(dto.next!)
         : null;
 
-    final _previous = dto.previous != null
-        ? CourseBaseModel.fromDto(dto.previous!)
+    final _parent = dto.parent != null
+        ? CourseBaseModel.fromDto(dto.parent!)
         : null;
 
     return CourseItemModel(
@@ -95,7 +95,7 @@ class CourseItemModel {
       files: _files,
       content: _content,
       next: _next,
-      previous: _previous,
+      parent: _parent,
     );
   }
 }

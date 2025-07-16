@@ -1,3 +1,4 @@
+import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
@@ -99,7 +100,9 @@ class _VideoOverlayAreaState extends State<VideoOverlayArea> {
                   children: [
                     Row(
                       children: [
-                        BackButton(),
+                        BackButton(
+                          onPressed: _backNavigation,
+                        ),
                         SizedBox(width: 16),
                         Expanded(
                           child: Text(
@@ -249,4 +252,16 @@ class _VideoOverlayAreaState extends State<VideoOverlayArea> {
     );
     _controller.contentVideoPlayerController.videoPlayerController.play();
   }
+
+  void _backNavigation() {
+    if (_controller.parentExists) {
+      return _navigateToParent();
+    }
+
+    return _pop();
+  }
+
+  void _navigateToParent() => _controller.backToParent();
+
+  void _pop() => context.router.pop();
 }

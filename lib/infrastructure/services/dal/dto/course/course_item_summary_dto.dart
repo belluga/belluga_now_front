@@ -28,7 +28,7 @@ class CourseItemSummaryDTO {
       categories: (json['categories'] as List?)
           ?.map((e) => CategoryDTO.fromJson(e as Map<String, dynamic>))
           .toList(),
-      teachers: (json['teachers'] as List)
+      teachers: ((json['teachers'] as List?) ?? [])
           .map((e) => TeacherDTO.fromJson(e as Map<String, dynamic>))
           .toList(),
     );

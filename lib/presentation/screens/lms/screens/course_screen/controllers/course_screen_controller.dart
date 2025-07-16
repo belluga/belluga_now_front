@@ -22,6 +22,20 @@ class CourseScreenController implements Disposable {
 
   final tabIndexStreamValue = StreamValue<int>(defaultValue: 0);
 
+  bool get parentExists =>
+      currentCourseItemStreamValue.value?.parent != null;
+
+  Future<void> backToParent() async {
+    final String? _courseId =
+        currentCourseItemStreamValue.value?.parent?.id.value;
+    
+    if(_courseId == null) {
+      throw Exception('Parent course ID is null');
+    }
+    
+    changeCurrentCourseItem(_courseId);
+  }
+
   Future<void> setCourse(String courseItemId) async {
     await _coursesRepository.getMyCoursesDashboardSummary();
     await _courseItemInit(courseItemId);

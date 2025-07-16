@@ -80,8 +80,7 @@ class MockBackend extends BackendContract {
 
   @override
   Future<CourseItemDetailsDTO> courseItemGetDetails(String courseId) async {
-
-    await Future.delayed(Duration(seconds: 3));
+    await Future.delayed(Duration(seconds: 1));
 
     final _allCourses = _myCourses;
     _allCourses.addAll(_unifastTracks);
@@ -113,9 +112,11 @@ class MockBackend extends BackendContract {
     required String needle,
     required List<Map<String, dynamic>> haystack,
   }) {
-    final Map<String, dynamic>? _courseItemDetailsRaw = haystack.firstWhere((item) => item['id'] == needle);
+    final Map<String, dynamic>? _courseItemDetailsRaw = haystack.firstWhere(
+      (item) => item['id'] == needle,
+    );
 
-    if(_courseItemDetailsRaw == null){
+    if (_courseItemDetailsRaw == null) {
       return null;
     }
 
@@ -392,6 +393,21 @@ class MockBackend extends BackendContract {
       "thumb": {
         "type": "image",
         "data": {"url": "https://picsum.photos/id/104/200/300"},
+      },
+      "parent": {
+        "id": "668ed5a2c589a1b2c3d4e5f1",
+        "title": "Masterclass em Liderança Exponencial",
+        "type": {
+          "id": "668ed5a2c589a1b2c3d4e5f2",
+          "name": "Masterclass",
+          "slug": "masterclass",
+        },
+        "description":
+            "Aprenda a liderar na nova economia com estratégias de alto impacto e crescimento acelerado.",
+        "thumb": {
+          "type": "image",
+          "data": {"url": "https://picsum.photos/id/101/200/300"},
+        },
       },
       "next": {
         "id": "668ed5a2c589a1b2c3d4e5f7",
