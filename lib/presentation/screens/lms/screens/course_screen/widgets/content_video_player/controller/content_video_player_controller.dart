@@ -51,6 +51,8 @@ class ContentVideoPlayerController extends Disposable {
     if (videoPlayerController.value.isPlaying) {
       resetOverlayTimer();
     }
+
+    alreadyStarted = false;
   }
 
   void showOverlay() {
