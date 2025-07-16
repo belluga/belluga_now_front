@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:unifast_portal/domain/courses/course_item_model.dart';
 import 'package:unifast_portal/presentation/screens/lms/screens/course_screen/controllers/course_screen_controller.dart';
 import 'package:unifast_portal/presentation/screens/lms/screens/course_screen/children_card.dart';
 import 'package:get_it/get_it.dart';
@@ -18,7 +19,7 @@ class _ChildrensListState extends State<ChildrensList> {
   Widget build(BuildContext context) {
     return SingleChildScrollView(
       padding: EdgeInsets.only(top: 8),
-      child: StreamValueBuilder(
+      child: StreamValueBuilder<CourseItemModel>(
         streamValue: _controller.currentCourseItemStreamValue,
         builder: (context, courseItem) {
           return Column(

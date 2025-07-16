@@ -1,8 +1,11 @@
 import 'dart:ui';
 
+import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
+import 'package:get_it/get_it.dart';
 import 'package:unifast_portal/domain/courses/course_category_model.dart';
 import 'package:unifast_portal/domain/courses/course_item_model.dart';
+import 'package:unifast_portal/presentation/screens/lms/screens/course_screen/controllers/course_screen_controller.dart';
 import 'package:unifast_portal/presentation/screens/lms/widgets/category_chip.dart';
 
 class CourseHeaderBanner extends StatefulWidget {
@@ -15,14 +18,15 @@ class CourseHeaderBanner extends StatefulWidget {
 }
 
 class _CourseHeaderBannerState extends State<CourseHeaderBanner> {
+  final _controller = GetIt.I.get<CourseScreenController>();
+
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      height: 300,
+    return SizedBox.expand(
       child: Stack(
         children: [
           ClipRRect(
-            borderRadius: BorderRadius.circular(12.0),
+            // borderRadius: BorderRadius.circular(12.0),
             child: Stack(
               fit: StackFit.expand,
               children: [
@@ -55,7 +59,12 @@ class _CourseHeaderBannerState extends State<CourseHeaderBanner> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                SafeArea(child: Row(children: [BackButton()])),
+                SafeArea(
+                  bottom: false,
+                  child: Row(
+                    children: [BackButton(onPressed: _backNavigation)],
+                  ),
+                ),
                 Row(
                   children: [
                     Expanded(
@@ -88,11 +97,6 @@ class _CourseHeaderBannerState extends State<CourseHeaderBanner> {
                               );
                             },
                           ),
-                          Text(
-                            widget.courseItemModel.description.value,
-                            maxLines: 2,
-                            style: TextTheme.of(context).bodyMedium,
-                          ),
                         ],
                       ),
                     ),
@@ -105,4 +109,16 @@ class _CourseHeaderBannerState extends State<CourseHeaderBanner> {
       ),
     );
   }
+
+  void _backNavigation() {
+    if (_controller.parentExists) {
+      return _navigateToParent();
+    }
+
+    return _pop();
+  }
+
+  void _navigateToParent() => _controller.backToParent();
+
+  void _pop() => context.router.pop();
 }

@@ -1,13 +1,11 @@
-import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
-import 'package:unifast_portal/application/router/app_router.gr.dart';
-import 'package:unifast_portal/domain/courses/course_item_model.dart';
+import 'package:unifast_portal/domain/courses/course_base_model.dart';
 import 'package:unifast_portal/presentation/common/widgets/image_with_progress_indicator.dart';
-import 'package:unifast_portal/presentation/screens/lms/screens/course_screen/controllers/course_screen_controller.dart';
 import 'package:get_it/get_it.dart';
+import 'package:unifast_portal/presentation/screens/lms/screens/course_screen/controllers/course_screen_controller.dart';
 
 class ChildrenCard extends StatefulWidget {
-  final CourseItemModel courseItemModel;
+  final CourseBaseModel courseItemModel;
   final int index;
 
   const ChildrenCard({
@@ -33,14 +31,6 @@ class _ChildrenCardState extends State<ChildrenCard> {
         child: Container(
           decoration: BoxDecoration(
             color: Theme.of(context).colorScheme.surfaceDim,
-            border:
-                _controller.childrenSelectedItemIDStreamValue.value ==
-                    widget.index
-                ? BoxBorder.all(
-                    color: Theme.of(context).colorScheme.secondary,
-                    width: 1,
-                  )
-                : null,
           ),
           padding: EdgeInsets.all(16),
           child: Row(
@@ -83,17 +73,14 @@ class _ChildrenCardState extends State<ChildrenCard> {
 
   void _navigateToItem() {
     // if (widget.courseItemModel.childrens.isNotEmpty) {
-      _navigateToChildren();
+    _navigateToChildren();
     // } else {
     //   _navigateToSibling();
     // }
   }
 
   void _navigateToChildren() {
-    GetIt.I.pushNewScope(scopeName: widget.courseItemModel.id.toString());
-    context.router.push(
-      CourseRoute(courseItemId: widget.courseItemModel.id.toString()),
-    );
+    _controller.changeCurrentCourseItem(widget.courseItemModel.id.value);
   }
 
   // void _navigateToSibling() {

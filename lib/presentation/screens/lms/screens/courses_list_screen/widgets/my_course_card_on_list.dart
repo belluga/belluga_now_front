@@ -1,11 +1,11 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:unifast_portal/application/router/app_router.gr.dart';
-import 'package:unifast_portal/domain/courses/course_model.dart';
+import 'package:unifast_portal/domain/courses/course_base_model.dart';
 import 'package:unifast_portal/presentation/common/widgets/image_with_progress_indicator.dart';
 
 class MyCourseCardOnList extends StatefulWidget {
-  final CourseModel course;
+  final CourseBaseModel course;
 
   const MyCourseCardOnList({super.key, required this.course});
 

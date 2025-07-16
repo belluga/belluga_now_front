@@ -40,7 +40,10 @@ class _CourseScreenState extends State<CourseScreen>
         builder: (context, courseModel) {
           return Column(
             children: [
-              CourseHeaderBuilder(courseItemModel: courseModel),
+              Expanded(
+                flex: 1,
+                child: CourseHeaderBuilder(courseItemModel: courseModel),
+              ),
               SizedBox(height: 16),
               Padding(
                 padding: EdgeInsets.symmetric(horizontal: 16),
@@ -52,10 +55,10 @@ class _CourseScreenState extends State<CourseScreen>
                     indicatorSize: TabBarIndicatorSize.label,
                     labelColor: Theme.of(context).colorScheme.onPrimary,
                     tabs: [
-                      if (courseModel.childrens.isNotEmpty)
+                      if (courseModel.childrensSummary != null)
                         Tab(
                           text:
-                              courseModel.childrensSummary.label.valueFormated,
+                              courseModel.childrensSummary!.label.valueFormated,
                         ),
                       if (courseModel.files.isNotEmpty) Tab(text: 'Arquivos'),
                       // Tab(text: 'Anotações'),
@@ -64,6 +67,7 @@ class _CourseScreenState extends State<CourseScreen>
                 ),
               ),
               Expanded(
+                flex: 2,
                 child: Padding(
                   padding: EdgeInsets.symmetric(horizontal: 16),
                   child: TabBarView(
@@ -86,14 +90,14 @@ class _CourseScreenState extends State<CourseScreen>
 
   void _initializeController() {
     _controller = GetIt.I.registerSingleton<CourseScreenController>(
-      CourseScreenController(courseItemId: widget.courseItemId, vsync: this),
+      CourseScreenController(vsync: this),
     );
+    _controller.setCourse(widget.courseItemId);
   }
 
   @override
   void dispose() {
     super.dispose();
     GetIt.I.unregister<CourseScreenController>();
-    GetIt.I.popScope();
   }
 }
