@@ -29,6 +29,7 @@ class _PlayBarState extends State<PlayBar> {
             SizedBox(width: 8),
             Expanded(
               child: VideoProgressIndicator(
+                padding: EdgeInsets.symmetric(vertical: 16),
                 _controller.contentVideoPlayerController.videoPlayerController,
                 
                 allowScrubbing: true,
