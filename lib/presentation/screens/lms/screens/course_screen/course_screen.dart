@@ -40,7 +40,10 @@ class _CourseScreenState extends State<CourseScreen>
         builder: (context, courseModel) {
           return Column(
             children: [
-              CourseHeaderBuilder(courseItemModel: courseModel),
+              Expanded(
+                flex: 1,
+                child: CourseHeaderBuilder(courseItemModel: courseModel),
+              ),
               SizedBox(height: 16),
               Padding(
                 padding: EdgeInsets.symmetric(horizontal: 16),
@@ -64,6 +67,7 @@ class _CourseScreenState extends State<CourseScreen>
                 ),
               ),
               Expanded(
+                flex: 2,
                 child: Padding(
                   padding: EdgeInsets.symmetric(horizontal: 16),
                   child: TabBarView(

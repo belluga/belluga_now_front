@@ -17,12 +17,11 @@ class CourseHeaderBanner extends StatefulWidget {
 class _CourseHeaderBannerState extends State<CourseHeaderBanner> {
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      height: 300,
+    return SizedBox.expand(
       child: Stack(
         children: [
           ClipRRect(
-            borderRadius: BorderRadius.circular(12.0),
+            // borderRadius: BorderRadius.circular(12.0),
             child: Stack(
               fit: StackFit.expand,
               children: [
@@ -55,7 +54,9 @@ class _CourseHeaderBannerState extends State<CourseHeaderBanner> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                SafeArea(child: Row(children: [BackButton()])),
+                SafeArea(
+                  bottom: false,
+                  child: Row(children: [BackButton()])),
                 Row(
                   children: [
                     Expanded(
@@ -87,11 +88,6 @@ class _CourseHeaderBannerState extends State<CourseHeaderBanner> {
                                     .toList(),
                               );
                             },
-                          ),
-                          Text(
-                            widget.courseItemModel.description.value,
-                            maxLines: 2,
-                            style: TextTheme.of(context).bodyMedium,
                           ),
                         ],
                       ),

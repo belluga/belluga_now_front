@@ -39,7 +39,9 @@ class _VideoOverlayAreaState extends State<VideoOverlayArea> {
                       children: [
                         if (widget.courseItemModel.next != null)
                           StreamValueBuilder<double?>(
-                            streamValue: _controller.contentVideoPlayerController.videoWatchPercentage,
+                            streamValue: _controller
+                                .contentVideoPlayerController
+                                .videoWatchPercentage,
                             builder: (context, percentage) {
                               return Padding(
                                 padding: EdgeInsetsGeometry.only(right: 16),
@@ -66,130 +68,144 @@ class _VideoOverlayAreaState extends State<VideoOverlayArea> {
 
         return GestureDetector(
           onTap: _overlayAction,
-          child: Container(
-            decoration: BoxDecoration(
-              color: _controller.contentVideoPlayerController.alreadyStarted
-                  ? Colors.black54
-                  : Colors.transparent,
-              image: !_controller.contentVideoPlayerController.alreadyStarted
-                  ? DecorationImage(
-                      image: NetworkImage(
-                        widget.courseItemModel.thumb.thumbUri.toString(),
-                      ),
-                      fit: BoxFit.cover,
-                      colorFilter: ColorFilter.mode(
-                        Colors.black.withAlpha(150),
-                        BlendMode.darken,
-                      ),
-                    )
-                  : null,
-            ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
-                  children: [
-                    BackButton(),
-                    SizedBox(width: 16),
-                    Expanded(
-                      child: Text(
-                        widget.courseItemModel.title.valueFormated,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextTheme.of(context).titleMedium,
-                      ),
-                    ),
-                    // IconButton(onPressed: () {}, icon: Icon(Icons.more_vert)),
-                  ],
+          child: Stack(
+            children: [
+              Container(
+                decoration: BoxDecoration(
+                  image:
+                      !_controller
+                          .contentVideoPlayerController
+                          .alreadyStarted
+                      ? DecorationImage(
+                          image: NetworkImage(
+                            widget.courseItemModel.thumb.thumbUri
+                                .toString(),
+                          ),
+                          fit: BoxFit.cover,
+                          colorFilter: ColorFilter.mode(
+                            Colors.black.withAlpha(150),
+                            BlendMode.darken,
+                          ),
+                        )
+                      : null,
                 ),
-                Row(
+              ),
+              Container(
+                color: _controller.contentVideoPlayerController.alreadyStarted
+                    ? Colors.black54
+                    : Colors.transparent,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Expanded(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Stack(
-                            alignment: Alignment.center,
+                    Row(
+                      children: [
+                        BackButton(),
+                        SizedBox(width: 16),
+                        Expanded(
+                          child: Text(
+                            widget.courseItemModel.title.valueFormated,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextTheme.of(context).titleMedium,
+                          ),
+                        ),
+                        // IconButton(onPressed: () {}, icon: Icon(Icons.more_vert)),
+                      ],
+                    ),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
                             children: [
-                              Padding(
-                                padding: EdgeInsets.symmetric(horizontal: 16),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Row(
+                              Stack(
+                                alignment: Alignment.center,
+                                children: [
+                                  Padding(
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: 16,
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
                                       mainAxisAlignment:
                                           MainAxisAlignment.center,
                                       children: [
-                                        // IconButton(
-                                        //   onPressed: _replay10Seconds,
-                                        //   iconSize: 32,
-                                        //   icon: Icon(Icons.replay_10),
-                                        // ),
-                                        // SizedBox(width: 4),
-                                        PlayButton(onPressed: _action),
-                                        // SizedBox(width: 4),
-                                        // SizedBox.shrink()
+                                        Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                          children: [
+                                            // IconButton(
+                                            //   onPressed: _replay10Seconds,
+                                            //   iconSize: 32,
+                                            //   icon: Icon(Icons.replay_10),
+                                            // ),
+                                            // SizedBox(width: 4),
+                                            PlayButton(onPressed: _action),
+                                            // SizedBox(width: 4),
+                                            // SizedBox.shrink()
+                                          ],
+                                        ),
                                       ],
                                     ),
-                                  ],
-                                ),
-                              ),
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.end,
-                                children: [
-                                  if (widget.courseItemModel.next != null)
-                                    StreamValueBuilder<double?>(
-                                      streamValue:
-                                          _controller.contentVideoPlayerController.videoWatchPercentage,
-                                      builder: (context, percentage) {
-                                        return Padding(
-                                          padding: EdgeInsetsGeometry.only(
-                                            right: 16,
-                                          ),
-                                          child: Row(
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.end,
-                                            children: [
-                                              NextVideoButton(
-                                                videoPercentage:
-                                                    percentage ?? 0.0,
-                                                courseItem: widget
-                                                    .courseItemModel
-                                                    .next!,
+                                  ),
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.end,
+                                    children: [
+                                      if (widget.courseItemModel.next != null)
+                                        StreamValueBuilder<double?>(
+                                          streamValue: _controller
+                                              .contentVideoPlayerController
+                                              .videoWatchPercentage,
+                                          builder: (context, percentage) {
+                                            return Padding(
+                                              padding: EdgeInsetsGeometry.only(
+                                                right: 16,
                                               ),
-                                            ],
-                                          ),
-                                        );
-                                      },
-                                    ),
+                                              child: Row(
+                                                mainAxisAlignment:
+                                                    MainAxisAlignment.end,
+                                                children: [
+                                                  NextVideoButton(
+                                                    videoPercentage:
+                                                        percentage ?? 0.0,
+                                                    courseItem: widget
+                                                        .courseItemModel
+                                                        .next!,
+                                                  ),
+                                                ],
+                                              ),
+                                            );
+                                          },
+                                        ),
+                                    ],
+                                  ),
                                 ],
                               ),
                             ],
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    PlayButton(size: 32, onPressed: _action),
-                    Expanded(child: PlayBar()),
                     Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        IconButton(
-                          onPressed: () {},
-                          icon: Icon(Icons.fullscreen),
+                        PlayButton(size: 32, onPressed: _action),
+                        Expanded(child: PlayBar()),
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              onPressed: () {},
+                              icon: Icon(Icons.fullscreen),
+                            ),
+                          ],
                         ),
                       ],
                     ),
                   ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         );
       },
@@ -228,7 +244,9 @@ class _VideoOverlayAreaState extends State<VideoOverlayArea> {
   }
 
   void _rewindAndPlay() {
-    _controller.contentVideoPlayerController.videoPlayerController.seekTo(Duration.zero);
+    _controller.contentVideoPlayerController.videoPlayerController.seekTo(
+      Duration.zero,
+    );
     _controller.contentVideoPlayerController.videoPlayerController.play();
   }
 }
