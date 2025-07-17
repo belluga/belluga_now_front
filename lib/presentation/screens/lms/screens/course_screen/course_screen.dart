@@ -2,11 +2,13 @@ import 'package:auto_route/annotations.dart';
 import 'package:flutter/material.dart';
 import 'package:unifast_portal/domain/courses/course_item_model.dart';
 import 'package:unifast_portal/presentation/screens/lms/screens/course_screen/controllers/course_screen_controller.dart';
+import 'package:unifast_portal/presentation/screens/lms/screens/course_screen/widgets/content_video_player/enums/tab_content_type.dart';
 import 'package:unifast_portal/presentation/screens/lms/screens/course_screen/widgets/course_header_builder/course_header_builder.dart';
 import 'package:unifast_portal/presentation/screens/lms/screens/course_screen/widgets/tabs/childrens_list.dart';
 import 'package:unifast_portal/presentation/screens/lms/screens/course_screen/widgets/tabs/files_list.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
+import 'package:unifast_portal/presentation/screens/notes/widgets/add_note/add_note_bottom_modal.dart';
 
 @RoutePage()
 class CourseScreen extends StatefulWidget {
@@ -34,6 +36,7 @@ class _CourseScreenState extends State<CourseScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      resizeToAvoidBottomInset: false,
       body: StreamValueBuilder<CourseItemModel>(
         streamValue: _controller.currentCourseItemStreamValue,
         onNullWidget: Center(child: CircularProgressIndicator()),
@@ -61,7 +64,7 @@ class _CourseScreenState extends State<CourseScreen>
                               courseModel.childrensSummary!.label.valueFormated,
                         ),
                       if (courseModel.files.isNotEmpty) Tab(text: 'Arquivos'),
-                      // Tab(text: 'Anotações'),
+                      Tab(text: 'Anotações'),
                     ],
                   ),
                 ),
@@ -75,13 +78,37 @@ class _CourseScreenState extends State<CourseScreen>
                     children: [
                       if (courseModel.childrens.isNotEmpty) ChildrensList(),
                       if (courseModel.files.isNotEmpty) FilesList(),
-                      // Tab 3: Anotações (Placeholder)
-                      // const Center(child: Text('Nenhuma anotação encontrada.')),
+                      const Center(child: Text('Nenhuma anotação encontrada.')),
                     ],
                   ),
                 ),
               ),
             ],
+          );
+        },
+      ),
+      floatingActionButton: StreamValueBuilder<TabContentType>(
+        streamValue: _controller.tabContentTypeStreamValue,
+        onNullWidget: SizedBox.shrink(),
+        builder: (context, tabContentType) {
+          if (tabContentType != TabContentType.notes){
+            return SizedBox.shrink();
+          }
+
+          return FloatingActionButton(
+            onPressed: () {
+              showModalBottomSheet(
+                context: context,
+                isScrollControlled: true,
+                backgroundColor: Colors.transparent,
+                builder: (context) => AddNoteBottomModal(
+                  courseItemModel: _controller.currentCourseItemStreamValue.value!,
+                  currentVideoPosition: _controller.contentVideoPlayerController.videoPlayerController.value.position,
+                ),
+              );
+            },
+            backgroundColor: Theme.of(context).colorScheme.secondary,
+            child: Icon(Icons.add_comment, color: Theme.of(context).colorScheme.onSecondary,),
           );
         },
       ),

@@ -6,6 +6,7 @@ import 'package:unifast_portal/domain/repositories/courses_repository_contract.d
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value.dart';
 import 'package:unifast_portal/presentation/screens/lms/screens/course_screen/widgets/content_video_player/controller/content_video_player_controller.dart';
+import 'package:unifast_portal/presentation/screens/lms/screens/course_screen/widgets/content_video_player/enums/tab_content_type.dart';
 
 class CourseScreenController implements Disposable {
   final TickerProviderStateMixin vsync;
@@ -18,21 +19,23 @@ class CourseScreenController implements Disposable {
 
   final currentCourseItemStreamValue = StreamValue<CourseItemModel?>();
 
+  final notesStreamValue = StreamValue<List<CourseItemModel>>(defaultValue: []);
+
   late TabController tabController;
 
   final tabIndexStreamValue = StreamValue<int>(defaultValue: 0);
+  final tabContentTypeStreamValue = StreamValue<TabContentType?>();
 
-  bool get parentExists =>
-      currentCourseItemStreamValue.value?.parent != null;
+  bool get parentExists => currentCourseItemStreamValue.value?.parent != null;
 
   Future<void> backToParent() async {
     final String? _courseId =
         currentCourseItemStreamValue.value?.parent?.id.value;
-    
-    if(_courseId == null) {
+
+    if (_courseId == null) {
       throw Exception('Parent course ID is null');
     }
-    
+
     changeCurrentCourseItem(_courseId);
   }
 
@@ -50,7 +53,6 @@ class CourseScreenController implements Disposable {
   }
 
   void _tabControllerInit() {
-    TabController(length: _getTabCount(), vsync: vsync);
     tabController = TabController(length: _getTabCount(), vsync: vsync);
     tabController.addListener(_onChangeTab);
   }
@@ -67,19 +69,35 @@ class CourseScreenController implements Disposable {
     contentVideoPlayerController.clearLesson();
   }
 
-  void _onChangeTab() => tabIndexStreamValue.addValue(tabController.index);
+  void _onChangeTab() {
+    if (tabController.indexIsChanging) return;
+
+    tabIndexStreamValue.addValue(tabController.index);
+
+    if (tabController.index <= _tabContentTypes.length) {
+      tabContentTypeStreamValue.addValue(_tabContentTypes[tabController.index]);
+    }
+  }
+
+  final List<TabContentType> _tabContentTypes = [];
+
+  int get getTabContentIndex =>
+      _tabContentTypes.indexOf(tabContentTypeStreamValue.value!);
 
   int _getTabCount() {
-    int _intTabCaount = 0;
-    _intTabCaount = currentCourseItemStreamValue.value!.childrens.isNotEmpty
-        ? _intTabCaount + 1
-        : _intTabCaount;
+    _tabContentTypes.clear();
+    
+    if (currentCourseItemStreamValue.value!.childrens.isNotEmpty) {
+      _tabContentTypes.add(TabContentType.childrens);
+    }
 
-    _intTabCaount = currentCourseItemStreamValue.value!.files.isNotEmpty
-        ? _intTabCaount + 1
-        : _intTabCaount;
+    if (currentCourseItemStreamValue.value!.files.isNotEmpty) {
+      _tabContentTypes.add(TabContentType.files);
+    }
 
-    return _intTabCaount;
+    _tabContentTypes.add(TabContentType.notes);
+
+    return _tabContentTypes.length;
   }
 
   Future<void> initializePlayer() async {
