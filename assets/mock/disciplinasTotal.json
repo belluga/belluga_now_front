@@ -78,7 +78,7 @@
       },
       "items": [
         {
-          "id": "668f00a1d9f29b1c2a1g3d01",
+          "id": "668f00a1b9f33b1c2a1a3d01",
           "title": "Introdução",
           "description": "Nucleo de Introdução à Psicologia do Líder Poderoso",
           "teachers": [
@@ -232,7 +232,7 @@
       },
       "items": [
         {
-          "id": "668f00a1d9f29b1c2a1g3d01",
+          "id": "668f00a1b9f33b1c2a1a3d01",
           "title": "Master Power",
           "description": "Master Power desenvolve o poder pessoal e a autoconfiança do líder, por meio de técnicas de mindset, comunicação de impacto e inteligência emocional, para alcançar alta performance e influência positiva.",
           "teachers": [
@@ -369,7 +369,7 @@
       }
     },
     "next": {
-            "id": "668f00a1d9f30g4c2a1b3d01",
+            "id": "668f00a1d9e41b4c2a1b3d01",
             "title": "Gestão e Cultura Evolutiva",
             "description": "Explore como a cultura organizacional pode impulsionar a evolução empresarial.",
             "teachers": [
@@ -400,7 +400,7 @@
       },
       "items": [
         {
-          "id": "668f00a1d9f29b1c2a1g3d01",
+          "id": "668f00a1b9f33b1c2a1a3d01",
           "title": "Conhecendo a Disciplina Fundamentos Empresariais",
           "description": "Visão geral das principais áreas que compõem uma empresa, como marketing, finanças, gestão e operações",
           "teachers": [
@@ -419,7 +419,7 @@
           }
         },
         {
-          "id": "668f01b3g8c31c2a2b4c4e01",
+          "id": "668f01b328c31c2a2b4c4e01",
           "title": "Comece Pelo Porquê",
           "description": "Comece Pelo Porquê é uma aula que explora a importância de entender o propósito por trás das ações empresariais.",
           "teachers": [
@@ -438,7 +438,7 @@
           }
         },
         {
-          "id": "668f01b3d8c29u4t3b4c4e02",
+          "id": "6a8a01b3d8c29a4a3b4c4e02",
           "title": "Foco No Negócio",
           "description": "Foco No Negócio é uma aula que enfatiza a importância de manter o foco nas atividades essenciais para o sucesso empresarial.",
           "teachers": [
@@ -460,7 +460,7 @@
     }    
   },
   {
-    "id": "668f00a1d9f30g4c2a1b3d01",
+    "id": "668f00a1d9e41b4c2a1b3d01",
     "title": "Gestão e Cultura Evolutiva",
     "description": "Explore como a cultura organizacional pode impulsionar a evolução empresarial.",
     "teachers": [
@@ -543,7 +543,7 @@
       }      
     },
     "next": {
-      "id": "668f00a1r3j8g4c2a1b3d01",
+      "id": "668f00a1aaaaa4c2a1b3d01a",
       "title": "Inteligência Afetiva",
       "description": "Desenvolva habilidades emocionais para uma liderança eficaz.",
       "teachers": [
@@ -568,7 +568,7 @@
       },
       "items": [
         {
-          "id": "668f00a1d9f29b1c2a1g3d01",
+          "id": "668f00a1d9f29b1b2a1e4e41",
           "title": "Introdução à Cultura e Gestão Evolutiva",
           "description": "Nucleo de Introdução à Cultura e Gestão Evolutiva",
           "teachers": [
@@ -606,7 +606,7 @@
           }
         },
         {
-          "id": "668f01b3d8c29c2a2g5n5e02",
+          "id": "668f41b3a8c29c2a2a005e02",
           "title": "O que Interfere na Cultura (Parte 1)",
           "description": "O que Interfere na Cultura (Parte 1) é uma aula que analisa os fatores que influenciam a cultura organizacional e como isso impacta a evolução empresarial.",
           "teachers": [
@@ -628,7 +628,7 @@
     }
   },
   {
-    "id": "668f00a1r3j8g4c2a1b3d01",
+    "id": "668f00a1aaaaa4c2a1b3d01a",
     "title": "Inteligência Afetiva",
     "description": "Desenvolva habilidades emocionais para uma liderança eficaz.",
     "teachers": [
@@ -670,7 +670,7 @@
       }
     ],
     "previous": {
-      "id": "668f00a1d9f30g4c2a1b3d01",
+      "id": "668f00a1d9e41b4c2a1b3d01",
       "title": "Gestão e Cultura Evolutiva",
       "description": "Explore como a cultura organizacional pode impulsionar a evolução empresarial.",
       "teachers": [
@@ -712,7 +712,7 @@
       },
       "items": [
         {
-          "id": "665lpa1d9f29b1c2a1g3d01",
+          "id": "665aaa1d9a29b1c2a1a3d01a",
           "title": "O Segredo do Líder Amado",
           "description": "O Segredo do Líder Amado é uma aula que explora as características que fazem um líder ser admirado e respeitado.",
           "teachers": [
@@ -731,7 +731,7 @@
           }
         },
         {
-          "id": "668jo1b3d8c29c2a2b4c4e10",
+          "id": "668bb1b3d8c29c2a2b4c4e10",
           "title": "O Segredo da Inteligência Afetiva",
           "description": "O Segredo da Inteligência Afetiva é uma aula que ensina como desenvolver habilidades emocionais essenciais para a liderança.",
           "teachers": [
@@ -750,7 +750,7 @@
           }
         },
         {
-          "id": "668f01b3d8c29c2a2b4p4r20",
+          "id": "668f01b3d8c29c2a2b4ccc20",
           "title": "Um mundo de Escassez de Afeto",
           "description": "Um mundo de Escassez de Afeto é uma aula que aborda a importância do afeto nas relações interpessoais e como isso afeta a liderança.",
           "teachers": [
