@@ -20,6 +20,29 @@ abstract class NotesRepositoryContract {
         .map((noteDto) => NoteModel.fromDTO(noteDto))
         .toList();
 
+    _notes.sort((a, b) {
+      if (a.position.value == null && b.position.value == null) {
+        return 0;
+      }
+
+      final Duration? _a = a.position.value;
+      final Duration? _b = b.position.value;
+
+      if (_a == null && _b == null) {
+        return 0;
+      }
+
+      if (_a == null) {
+        return 1;
+      }
+
+      if (_b == null) {
+        return -1;
+      }
+
+      return _a.compareTo(_b);
+    });
+
     notesSteamValue.addValue(_notes);
   }
 
