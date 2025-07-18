@@ -10,10 +10,10 @@ class FileCard extends StatefulWidget {
   const FileCard({super.key, required this.fileModel, required this.index});
 
   @override
-  State<FileCard> createState() => _DisciplineCardState();
+  State<FileCard> createState() => _FileCardState();
 }
 
-class _DisciplineCardState extends State<FileCard> {
+class _FileCardState extends State<FileCard> {
   @override
   Widget build(BuildContext context) {
     return Card(

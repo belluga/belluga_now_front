@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/rendering.dart';
 import 'package:unifast_portal/application/configurations/belluga_constants.dart';
 import 'package:unifast_portal/domain/auth/errors/belluga_auth_errors.dart';
 import 'package:unifast_portal/domain/repositories/auth_repository_contract.dart';
@@ -7,6 +8,7 @@ import 'package:unifast_portal/infrastructure/services/dal/dto/course/category_d
 import 'package:unifast_portal/infrastructure/services/dal/dto/course/course_item_summary_dto.dart';
 import 'package:unifast_portal/infrastructure/services/dal/dto/course/course_item_dto.dart';
 import 'package:unifast_portal/infrastructure/services/dal/dto/external_course_dto.dart';
+import 'package:unifast_portal/infrastructure/services/dal/dto/notes/note_dto.dart';
 import 'package:unifast_portal/infrastructure/services/dal/dto/user_dto.dart';
 import 'package:unifast_portal/infrastructure/services/laravel_backend/backend_contract.dart';
 import 'package:get_it/get_it.dart';
@@ -169,6 +171,58 @@ class LaravelBackend extends BackendContract {
     );
 
     return CourseItemDetailsDTO.fromJson(response.data);
+  }
+
+  @override
+  Future<List<NoteDTO>> getNotes(String courseItemId) {
+    return Future.delayed(Duration(seconds: 1), () {
+      return [];
+    });
+  }
+
+  @override
+  Future<void> createNote({
+    required String courseItemId,
+    required String content,
+    Duration? position,
+    required Color color,
+  }) {
+    // Simulate saving a note
+    return Future.delayed(Duration(seconds: 1), () {
+      print("Note CREATED successfully (MOCK).");
+      print(content);
+    });
+  }
+
+  @override
+  Future<void> updateNote({
+    required String id,
+    required String courseItemId,
+    required String content,
+    Duration? position,
+    required Color color,
+  }) {
+    return Future.delayed(Duration(seconds: 1), () {
+      print("Note UPDTED successfully (MOCK).");
+      print(id);
+    });
+  }
+
+  @override
+  Future<void> deleteNote(String id) {
+    return Future.delayed(Duration(seconds: 1), () {
+      print("Note DELETED successfully (MOCK).");
+      print(id);
+    });
+  }
+
+  @override
+  Future<NoteDTO?> getNote({required String courseId, required String noteId}) {
+    return Future.delayed(Duration(seconds: 1), () {
+      print("Note DELETED successfully (MOCK).");
+      print(courseId);
+      return null;
+    });
   }
 }
 

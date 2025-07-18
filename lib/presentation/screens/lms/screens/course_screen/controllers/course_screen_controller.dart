@@ -2,37 +2,44 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:unifast_portal/domain/courses/course_item_model.dart';
+import 'package:unifast_portal/domain/notes/note_model.dart';
 import 'package:unifast_portal/domain/repositories/courses_repository_contract.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value.dart';
+import 'package:unifast_portal/domain/repositories/notes_repository_contract.dart';
 import 'package:unifast_portal/presentation/screens/lms/screens/course_screen/widgets/content_video_player/controller/content_video_player_controller.dart';
+import 'package:unifast_portal/presentation/screens/lms/screens/course_screen/widgets/content_video_player/enums/tab_content_type.dart';
 
 class CourseScreenController implements Disposable {
   final TickerProviderStateMixin vsync;
 
   CourseScreenController({required this.vsync});
 
+  final _coursesRepository = GetIt.I.get<CoursesRepositoryContract>();
+  final _notesRepository = GetIt.I.get<NotesRepositoryContract>();
+
   final contentVideoPlayerController = ContentVideoPlayerController();
 
-  final _coursesRepository = GetIt.I.get<CoursesRepositoryContract>();
-
   final currentCourseItemStreamValue = StreamValue<CourseItemModel?>();
+
+  late StreamValue<List<NoteModel>?> notesStreamValue =
+      _notesRepository.notesSteamValue;
 
   late TabController tabController;
 
   final tabIndexStreamValue = StreamValue<int>(defaultValue: 0);
+  final tabContentTypeStreamValue = StreamValue<TabContentType?>();
 
-  bool get parentExists =>
-      currentCourseItemStreamValue.value?.parent != null;
+  bool get parentExists => currentCourseItemStreamValue.value?.parent != null;
 
   Future<void> backToParent() async {
     final String? _courseId =
         currentCourseItemStreamValue.value?.parent?.id.value;
-    
-    if(_courseId == null) {
+
+    if (_courseId == null) {
       throw Exception('Parent course ID is null');
     }
-    
+
     changeCurrentCourseItem(_courseId);
   }
 
@@ -40,6 +47,16 @@ class CourseScreenController implements Disposable {
     await _coursesRepository.getMyCoursesDashboardSummary();
     await _courseItemInit(courseItemId);
     _tabControllerInit();
+  }
+
+  Future<void> getNotes() async {
+    final courseItemId = currentCourseItemStreamValue.value?.id.value;
+
+    if (courseItemId == null) {
+      throw Exception('Course item ID is null');
+    }
+
+    await _notesRepository.getNotes(courseItemId);
   }
 
   Future<void> _courseItemInit(String courseId) async {
@@ -50,7 +67,6 @@ class CourseScreenController implements Disposable {
   }
 
   void _tabControllerInit() {
-    TabController(length: _getTabCount(), vsync: vsync);
     tabController = TabController(length: _getTabCount(), vsync: vsync);
     tabController.addListener(_onChangeTab);
   }
@@ -67,19 +83,39 @@ class CourseScreenController implements Disposable {
     contentVideoPlayerController.clearLesson();
   }
 
-  void _onChangeTab() => tabIndexStreamValue.addValue(tabController.index);
+  void _onChangeTab() {
+    if (tabController.indexIsChanging) return;
+
+    tabIndexStreamValue.addValue(tabController.index);
+
+    if (tabController.index <= tabContentTypes.length) {
+      tabContentTypeStreamValue.addValue(tabContentTypes[tabController.index]);
+    }
+  }
+
+  final List<TabContentType> tabContentTypes = [];
+
+  int get getTabContentIndex =>
+      tabContentTypes.indexOf(tabContentTypeStreamValue.value!);
 
   int _getTabCount() {
-    int _intTabCaount = 0;
-    _intTabCaount = currentCourseItemStreamValue.value!.childrens.isNotEmpty
-        ? _intTabCaount + 1
-        : _intTabCaount;
+    tabContentTypes.clear();
 
-    _intTabCaount = currentCourseItemStreamValue.value!.files.isNotEmpty
-        ? _intTabCaount + 1
-        : _intTabCaount;
+    if (currentCourseItemStreamValue.value!.childrens.isNotEmpty) {
+      tabContentTypes.add(TabContentType.childrens);
+    }
 
-    return _intTabCaount;
+    if (currentCourseItemStreamValue.value!.files.isNotEmpty) {
+      tabContentTypes.add(TabContentType.files);
+    }
+
+    if(currentCourseItemStreamValue.value!.hasVideoContent) {
+      tabContentTypes.add(TabContentType.notes);
+    }
+
+    tabContentTypeStreamValue.addValue(tabContentTypes.first);
+
+    return tabContentTypes.length;
   }
 
   Future<void> initializePlayer() async {
