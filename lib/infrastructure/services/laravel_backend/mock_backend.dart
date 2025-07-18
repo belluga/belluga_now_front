@@ -174,13 +174,27 @@ class MockBackend extends BackendContract {
   @override
   Future<void> deleteNote(String id) {
     return Future.delayed(Duration(seconds: 1), () {
+      print(_notes);
       _notes.forEach((courseItemId, notesList) {
         final index = notesList.indexWhere((n) => n.id == id);
         if (index != -1) {
           notesList.removeAt(index);
         }
       });
+      print(_notes);
       print("Note DELETED successfully (MOCK).");
+    });
+  }
+
+  @override
+  Future<NoteDTO?> getNote({required String courseId, required String noteId}) async {
+    print(_notes);
+    return Future.delayed(Duration(seconds: 1), () {
+      final List<NoteDTO>? notesList = _notes[courseId];
+      if(notesList == null){
+        return null;
+      }
+      return notesList.firstWhere((n) => n.id == noteId);
     });
   }
 

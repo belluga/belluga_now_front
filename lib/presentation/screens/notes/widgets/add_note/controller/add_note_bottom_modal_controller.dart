@@ -14,7 +14,7 @@ class AddNoteBottomModalController {
     required this.courseItemModel,
     this.currentVideoPosition,
     this.noteModel,
-  }){
+  }) {
     if (noteModel != null) {
       noteContentTextController.text = noteModel!.content.value;
       colorSelectedStreamValue.addValue(noteModel!.color.value);
@@ -30,8 +30,22 @@ class AddNoteBottomModalController {
   );
 
   final savingNoteStreamValue = StreamValue<bool>(defaultValue: false);
+  final deletingNoteStreamValue = StreamValue<bool>(defaultValue: false);
 
   void changeColor(Color color) => colorSelectedStreamValue.addValue(color);
+
+  Future<void> deleteNote() async {
+    if (noteModel == null || noteModel!.id == null) {
+      return;
+    }
+
+    deletingNoteStreamValue.addValue(true);
+    await notesRepository.deleteNote(
+      courseId: noteModel!.courseItemId.value,
+      noteId: noteModel!.id!.value,
+    );
+    deletingNoteStreamValue.addValue(false);
+  }
 
   Future<void> saveNote() async {
     if (noteModel == null) {
@@ -44,7 +58,7 @@ class AddNoteBottomModalController {
   Future<void> _updateNote() async {}
 
   Future<void> _createNote() async {
-    savingNoteStreamValue.addValue(true);   
+    savingNoteStreamValue.addValue(true);
     await notesRepository.createNote(
       courseItemId: courseItemModel.id.value,
       content: noteContentTextController.text,

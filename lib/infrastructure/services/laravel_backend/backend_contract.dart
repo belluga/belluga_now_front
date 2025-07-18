@@ -35,4 +35,5 @@ abstract class BackendContract {
     required Color color,
   });
   Future<void> deleteNote(String noteId);
+  Future<NoteDTO?> getNote({required String courseId, required String noteId});
 }

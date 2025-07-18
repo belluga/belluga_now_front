@@ -14,8 +14,6 @@ abstract class NotesRepositoryContract {
     notesSteamValue.addValue(null);
     final List<NoteDTO> _notesRaw = await backend.getNotes(courseItemId);
 
-    print(_notesRaw);
-
     final _notes = _notesRaw
         .map((noteDto) => NoteModel.fromDTO(noteDto))
         .toList();
@@ -78,8 +76,25 @@ abstract class NotesRepositoryContract {
     await getNotes(courseItemId);
   }
 
-  Future<void> deleteNote(String id) async {
-    await backend.deleteNote(id);
-    await getNotes(id);
+  Future<NoteModel?> getNote({required String courseId, required String noteId}) async {
+    final NoteDTO? _noteRaw = await backend.getNote(
+      courseId: courseId,
+      noteId: noteId
+    );
+    if (_noteRaw == null) {
+      return null;
+    }
+    return NoteModel.fromDTO(_noteRaw);
+  }
+
+  Future<void> deleteNote({required String courseId, required String noteId}) async {
+    final NoteModel? _note = await getNote(
+      courseId: courseId,
+      noteId: noteId,
+    );
+    if (_note != null) {
+      await backend.deleteNote(noteId);
+      await getNotes(_note.courseItemId.value);
+    }
   }
 }

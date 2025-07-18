@@ -92,22 +92,6 @@ class _AddNoteBottomModalState extends State<AddNoteBottomModal> {
                         );
                       },
                     ),
-                    SizedBox(width: 32),
-                    Expanded(
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Expanded(
-                            child: ButtonLoading(
-                              onPressed: _saveNote,
-                              loadingStatusStreamValue:
-                                  _controller.savingNoteStreamValue,
-                              label: 'Salvar',
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
                   ],
                 ),
                 const SizedBox(height: 16),
@@ -144,12 +128,44 @@ class _AddNoteBottomModalState extends State<AddNoteBottomModal> {
                     );
                   },
                 ),
+                const SizedBox(height: 16),
+
+                Row(
+                  children: [
+                    if (widget.noteModel != null)
+                      ButtonLoading(
+                        onPressed: _delete,
+                        loadingStatusStreamValue:
+                            _controller.savingNoteStreamValue,
+                        label: 'Excluir nota',
+                        style: ButtonStyle(
+                          backgroundColor: WidgetStateProperty.all(
+                            Theme.of(context).colorScheme.errorContainer,
+                          ),
+                          foregroundColor: WidgetStateProperty.all(
+                            Theme.of(context).colorScheme.onErrorContainer,
+                          ),
+                        ),
+                      ),
+                    ButtonLoading(
+                      onPressed: _saveNote,
+                      loadingStatusStreamValue:
+                          _controller.savingNoteStreamValue,
+                      label: 'Salvar',
+                    ),
+                  ],
+                ),
               ],
             ),
           ),
         ],
       ),
     );
+  }
+
+  Future<void> _delete() async {
+    await _controller.deleteNote();
+    _pop();
   }
 
   Future<void> _saveNote() async {

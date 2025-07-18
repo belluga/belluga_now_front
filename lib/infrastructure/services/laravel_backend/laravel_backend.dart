@@ -215,6 +215,15 @@ class LaravelBackend extends BackendContract {
       print(id);
     });
   }
+
+  @override
+  Future<NoteDTO?> getNote({required String courseId, required String noteId}) {
+    return Future.delayed(Duration(seconds: 1), () {
+      print("Note DELETED successfully (MOCK).");
+      print(courseId);
+      return null;
+    });
+  }
 }
 
 class _Paths {
