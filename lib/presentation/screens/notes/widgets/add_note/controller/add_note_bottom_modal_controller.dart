@@ -55,7 +55,21 @@ class AddNoteBottomModalController {
     }
   }
 
-  Future<void> _updateNote() async {}
+  Future<void> _updateNote() async {
+    if (noteModel == null || noteModel!.id == null) {
+      return;
+    }
+
+    savingNoteStreamValue.addValue(true);
+    await notesRepository.updateNote(
+      id: noteModel!.id!.value,
+      courseItemId: courseItemModel.id.value,
+      content: noteContentTextController.text,
+      color: colorSelectedStreamValue.value,
+      position: noteModel?.position.value,
+    );
+    savingNoteStreamValue.addValue(false);
+  }
 
   Future<void> _createNote() async {
     savingNoteStreamValue.addValue(true);
