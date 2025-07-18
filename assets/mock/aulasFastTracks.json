@@ -1,0 +1,870 @@
+[{
+    "id": "668ed5a2c589a1b2c3d4e5f6",
+    "title": "Introdução",
+    "description": "Entenda os fundamentos da produtividade.",
+    "teachers": [
+    {
+        "id": "668ef5e3c789f2a1b3c9d1a4",
+        "name": "Roberto Shinyashiki",
+        "avatar_url": "https://classic.exame.com/wp-content/uploads/2016/10/size_960_16_9_roberto-shinyashiki.jpg",
+        "highlight": true
+    }
+    ],
+    "thumb": {
+    "type": "image",
+        "data": {
+            "url": "https://viacarreira.com/wp-content/uploads/2020/04/introducao-de-tcc.png"
+    }
+    },
+    "content": {
+      "video": {
+        "url": "https://www.youtube.com/watch?v=Rg8tm1oX0t4",
+        "thumb": {
+          "type": "image",
+          "data": {"url": "https://cdn.expoempreendedor.com.br/palestrantes/roberto-shinyashiki.jpg"}
+        }
+      },
+      "html": {"content": "<p>Conteúdo em HTML</p>"}
+    },  
+    "files": [
+    {
+        "url": "https://www.thecampusqdl.com/uploads/files/pdf_sample_2.pdf",
+        "title": "Plano de Aulas Completo",
+        "description": "Cronograma detalhado da masterclass.",
+        "thumb": {
+        "type": "image",
+        "data": {"url": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a6/Vers%C3%A3o_em_portugues_-_Exemplo_de_programa.pdf/page1-1200px-Vers%C3%A3o_em_portugues_-_Exemplo_de_programa.pdf.jpg"}
+        }
+    }
+    ],
+    "previous": null,
+    "parent": {
+        "id": "668ed5a2c589a1b2c3d4e5f1",
+        "title": "O código da Produtividade",
+        "type": {
+            "id": "668ed5a2c589a1b2c3d4e5f2",
+            "name": "Masterclass",
+            "slug": "masterclass"
+        },
+        "description":
+            "Nesta masterclass, você aprenderá a otimizar seu tempo e aumentar sua produtividade com técnicas comprovadas.",
+        "thumb": {
+            "type": "image",
+            "data": {"url": "https://images.educamaisbrasil.com.br/content/banco_de_imagens/eb/d/lideranca.jpeg"}
+      }   
+    },
+    "next": {
+        "id": "668ed5a2c589a1b2c3d4e5f7",
+        "title": "Integridade",
+        "description": "A importância da ética na produtividade.",
+        "teachers": [
+        {
+            "id": "668ef5e3c789f2a1b3c9d1a4",
+            "name": "Roberto Shinyashiki",
+            "avatar_url": "https://classic.exame.com/wp-content/uploads/2016/10/size_960_16_9_roberto-shinyashiki.jpg",
+            "highlight": true
+        }
+        ],
+        "thumb": {
+            "type": "image",
+            "data": {"url": "https://napratica.org.br/wp-content/uploads/2018/06/cultura_de_integridade.jpg"}
+        }        
+    }
+},
+{
+    "id": "668ed5a2c589a1b2c3d4e5f7",
+    "title": "Integridade",
+    "description": "A importância da ética na produtividade.",
+    "teachers": [
+    {
+        "id": "668ef5e3c789f2a1b3c9d1a4",
+        "name": "Roberto Shinyashiki",
+        "avatar_url": "https://classic.exame.com/wp-content/uploads/2016/10/size_960_16_9_roberto-shinyashiki.jpg",
+        "highlight": true
+    }
+    ],
+    "thumb": {
+        "type": "image",
+        "data": {"url": "https://napratica.org.br/wp-content/uploads/2018/06/cultura_de_integridade.jpg"}
+    },
+    "content": {
+      "video": {
+        "url": "https://www.youtube.com/watch?v=T1La9B3Olgk",
+        "thumb": {
+          "type": "image",
+          "data": {"url": "https://cdn.expoempreendedor.com.br/palestrantes/roberto-shinyashiki.jpg"}
+        }
+      },
+      "html": {"content": "<p>Conteúdo em HTML</p>"}
+    },  
+    "files": [
+    {
+        "url": "https://www.thecampusqdl.com/uploads/files/pdf_sample_2.pdf",
+        "title": "Plano de Aulas Completo",
+        "description": "Cronograma detalhado da masterclass.",
+        "thumb": {
+        "type": "image",
+        "data": {"url": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a6/Vers%C3%A3o_em_portugues_-_Exemplo_de_programa.pdf/page1-1200px-Vers%C3%A3o_em_portugues_-_Exemplo_de_programa.pdf.jpg"}
+        }
+    }
+    ],
+    "previous": {
+        "id": "668ed5a2c589a1b2c3d4e5f6",
+        "title": "Introdução",
+        "description": "Entenda os fundamentos da produtividade.",
+        "teachers": [
+        {
+            "id": "668ef5e3c789f2a1b3c9d1a4",
+            "name": "Roberto Shinyashiki",
+            "avatar_url": "https://classic.exame.com/wp-content/uploads/2016/10/size_960_16_9_roberto-shinyashiki.jpg",
+            "highlight": true
+        }
+        ],
+        "thumb": {
+            "type": "image",
+            "data": {"url": "https://viacarreira.com/wp-content/uploads/2020/04/introducao-de-tcc.png"}
+        }
+    },
+    "parent": {
+      "id": "668ed5a2c589a1b2c3d4e5f1",
+      "title": "O código da Produtividade",
+      "type": {
+        "id": "668ed5a2c589a1b2c3d4e5f2",
+        "name": "Masterclass",
+        "slug": "masterclass"
+      },
+      "description":
+          "Nesta masterclass, você aprenderá a otimizar seu tempo e aumentar sua produtividade com técnicas comprovadas.",
+      "thumb": {
+        "type": "image",
+        "data": {"url": "https://images.educamaisbrasil.com.br/content/banco_de_imagens/eb/d/lideranca.jpeg"}
+      }
+    },
+    "next": {
+        "id": "6698a60d5cbe8ad4b934f1a2",
+        "title": "Roteiro de Vida",
+        "description": "Como planejar sua trajetória profissional.",
+        "teachers": [
+        {
+            "id": "668ef5e3c789f2a1b3c9d1a4",
+            "name": "Roberto Shinyashiki",
+            "avatar_url": "https://classic.exame.com/wp-content/uploads/2016/10/size_960_16_9_roberto-shinyashiki.jpg",
+            "highlight": true
+        }
+        ],
+        "thumb": {
+            "type": "image",
+            "data": {"url": "https://i.pinimg.com/originals/76/8f/af/768faf43b4a2404753f09e12fffe5aac.png"}
+        }        
+    }
+},
+{
+    "id": "6698a60d5cbe8ad4b934f1a2",
+    "title": "Roteiro de Vida",
+    "description": "Como planejar sua trajetória profissional.",
+    "teachers": [
+    {
+        "id": "668ef5e3c789f2a1b3c9d1a4",
+        "name": "Roberto Shinyashiki",
+        "avatar_url": "https://classic.exame.com/wp-content/uploads/2016/10/size_960_16_9_roberto-shinyashiki.jpg",
+        "highlight": true
+    }
+    ],
+    "thumb": {
+        "type": "image",
+        "data": {"url": "https://i.pinimg.com/originals/76/8f/af/768faf43b4a2404753f09e12fffe5aac.png"}
+    },        
+    "content": {
+      "video": {
+        "url": "https://www.youtube.com/watch?v=T5W7S6QWpBA",
+        "thumb": {
+          "type": "image",
+          "data": {"url": "https://cdn.expoempreendedor.com.br/palestrantes/roberto-shinyashiki.jpg"}
+        }
+      },
+      "html": {"content": "<p>Conteúdo em HTML</p>"}
+    },  
+    "files": [
+    {
+        "url": "https://www.thecampusqdl.com/uploads/files/pdf_sample_2.pdf",
+        "title": "Plano de Aulas Completo",
+        "description": "Cronograma detalhado da masterclass.",
+        "thumb": {
+        "type": "image",
+        "data": {"url": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a6/Vers%C3%A3o_em_portugues_-_Exemplo_de_programa.pdf/page1-1200px-Vers%C3%A3o_em_portugues_-_Exemplo_de_programa.pdf.jpg"}
+        }
+    }
+    ],
+    "previous": {
+        "id": "668ed5a2c589a1b2c3d4e5f7",
+        "title": "Integridade",
+        "description": "A importância da ética na produtividade.",
+        "teachers": [
+        {
+            "id": "668ef5e3c789f2a1b3c9d1a4",
+            "name": "Roberto Shinyashiki",
+            "avatar_url": "https://classic.exame.com/wp-content/uploads/2016/10/size_960_16_9_roberto-shinyashiki.jpg",
+            "highlight": true
+        }
+        ],
+        "thumb": {
+            "type": "image",
+            "data": {"url": "https://napratica.org.br/wp-content/uploads/2018/06/cultura_de_integridade.jpg"}
+        }
+    },   
+    "parent": {
+      "id": "668ed5a2c589a1b2c3d4e5f1",
+      "title": "O código da Produtividade",
+      "type": {
+        "id": "668ed5a2c589a1b2c3d4e5f2",
+        "name": "Masterclass",
+        "slug": "masterclass"
+      },
+      "description":
+          "Nesta masterclass, você aprenderá a otimizar seu tempo e aumentar sua produtividade com técnicas comprovadas.",
+      "thumb": {
+        "type": "image",
+        "data": {"url": "https://images.educamaisbrasil.com.br/content/banco_de_imagens/eb/d/lideranca.jpeg"}
+      }
+    },
+    "next": {
+        "id": "6698a60d5cbe8ad4b934f1a3",
+        "title": "Produtividade",
+        "description": "Técnicas para aumentar sua eficiência.",
+        "teachers": [
+        {
+            "id": "668ef5e3c789f2a1b3c9d1a4",
+            "name": "Roberto Shinyashiki",
+            "avatar_url": "https://classic.exame.com/wp-content/uploads/2016/10/size_960_16_9_roberto-shinyashiki.jpg",
+            "highlight": true
+        }
+        ],
+        "thumb": {
+            "type": "image",
+            "data": {"url": "https://blog.phonetrack.com.br/wp-content/uploads/2019/03/artigo-23.png"}
+        }          
+    }     
+},
+{
+    "id": "6698a60d5cbe8ad4b934f1a3",
+    "title": "Produtividade",
+    "description": "Técnicas para aumentar sua eficiência.",
+    "teachers": [
+    {
+        "id": "668ef5e3c789f2a1b3c9d1a4",
+        "name": "Roberto Shinyashiki",
+        "avatar_url": "https://classic.exame.com/wp-content/uploads/2016/10/size_960_16_9_roberto-shinyashiki.jpg",
+        "highlight": true
+    }
+    ],
+    "thumb": {
+        "type": "image",
+        "data": {"url": "https://blog.phonetrack.com.br/wp-content/uploads/2019/03/artigo-23.png"}
+    },
+    "content": {
+      "video": {
+        "url": "https://www.youtube.com/watch?v=nStaRayamlM",
+        "thumb": {
+          "type": "image",
+          "data": {"url": "https://cdn.expoempreendedor.com.br/palestrantes/roberto-shinyashiki.jpg"}
+        }
+      },
+      "html": {"content": "<p>Conteúdo em HTML</p>"}
+    },  
+    "files": [
+    {
+        "url": "https://www.thecampusqdl.com/uploads/files/pdf_sample_2.pdf",
+        "title": "Plano de Aulas Completo",
+        "description": "Cronograma detalhado da masterclass.",
+        "thumb": {
+        "type": "image",
+        "data": {"url": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a6/Vers%C3%A3o_em_portugues_-_Exemplo_de_programa.pdf/page1-1200px-Vers%C3%A3o_em_portugues_-_Exemplo_de_programa.pdf.jpg"}
+        }
+    }
+    ],
+    "previous": {
+        "id": "6698a60d5cbe8ad4b934f1a2",
+        "title": "Roteiro de Vida",
+        "description": "Como planejar sua trajetória profissional.",
+        "teachers": [
+        {
+            "id": "668ef5e3c789f2a1b3c9d1a4",
+            "name": "Roberto Shinyashiki",
+            "avatar_url": "https://classic.exame.com/wp-content/uploads/2016/10/size_960_16_9_roberto-shinyashiki.jpg",
+            "highlight": true
+        }
+        ],
+        "thumb": {
+            "type": "image",
+            "data": {"url": "https://i.pinimg.com/originals/76/8f/af/768faf43b4a2404753f09e12fffe5aac.png"}
+        }
+    },
+    "parent": {
+        "id": "668ed5a2c589a1b2c3d4e5f1",
+        "title": "O código da Produtividade",
+        "type": {
+            "id": "668ed5a2c589a1b2c3d4e5f2",
+            "name": "Masterclass",
+            "slug": "masterclass"
+        },
+        "description":
+            "Nesta masterclass, você aprenderá a otimizar seu tempo e aumentar sua produtividade com técnicas comprovadas.",
+        "thumb": {
+            "type": "image",
+            "data": {"url": "https://images.educamaisbrasil.com.br/content/banco_de_imagens/eb/d/lideranca.jpeg"}
+        }
+    },
+    "next": {
+        "id": "6698a60d5cbe8ad4b934f1a4",
+        "title": "Produtividade como Estilo de Vida",
+        "description": "Produtividade como um hábito diário.",
+        "teachers": [
+        {
+            "id": "668ef5e3c789f2a1b3c9d1a4",
+            "name": "Roberto Shinyashiki",
+            "avatar_url": "https://classic.exame.com/wp-content/uploads/2016/10/size_960_16_9_roberto-shinyashiki.jpg",
+            "highlight": true
+        }
+        ],
+        "thumb": {
+            "type": "image",
+            "data": {"url": "https://e7.pngegg.com/pngimages/131/980/png-clipart-computer-icons-efficiency-productivity-man-icon-auto-part-rim.png"}
+            }         
+    }
+},
+{
+    "id": "6698a60d5cbe8ad4b934f1a4",
+    "title": "Produtividade como Estilo de Vida",
+    "description": "Produtividade como um hábito diário.",
+    "teachers": [
+    {
+        "id": "668ef5e3c789f2a1b3c9d1a4",
+        "name": "Roberto Shinyashiki",
+        "avatar_url": "https://classic.exame.com/wp-content/uploads/2016/10/size_960_16_9_roberto-shinyashiki.jpg",
+        "highlight": true
+    }
+    ],
+    "thumb": {
+        "type": "image",
+        "data": {"url": "https://e7.pngegg.com/pngimages/131/980/png-clipart-computer-icons-efficiency-productivity-man-icon-auto-part-rim.png"}
+    },
+    "content": {
+      "video": {
+        "url": "https://www.youtube.com/watch?v=BngI4fYv0jk",
+        "thumb": {
+          "type": "image",
+          "data": {"url": "https://cdn.expoempreendedor.com.br/palestrantes/roberto-shinyashiki.jpg"}
+        }
+      },
+      "html": {"content": "<p>Conteúdo em HTML</p>"}
+    },  
+    "files": [
+    {
+        "url": "https://www.thecampusqdl.com/uploads/files/pdf_sample_2.pdf",
+        "title": "Plano de Aulas Completo",
+        "description": "Cronograma detalhado da masterclass.",
+        "thumb": {
+        "type": "image",
+        "data": {"url": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a6/Vers%C3%A3o_em_portugues_-_Exemplo_de_programa.pdf/page1-1200px-Vers%C3%A3o_em_portugues_-_Exemplo_de_programa.pdf.jpg"}
+        }
+    }
+    ],
+    "previous": {
+        "id": "6698a60d5cbe8ad4b934f1a3",
+        "title": "Produtividade",
+        "description": "Técnicas para aumentar sua eficiência.",
+        "teachers": [
+        {
+            "id": "668ef5e3c789f2a1b3c9d1a4",
+            "name": "Roberto Shinyashiki",
+            "avatar_url": "https://classic.exame.com/wp-content/uploads/2016/10/size_960_16_9_roberto-shinyashiki.jpg",
+            "highlight": true
+        }
+        ],
+        "thumb": {
+            "type": "image",
+            "data": {"url": "https://blog.phonetrack.com.br/wp-content/uploads/2019/03/artigo-23.png"}
+        }
+    },
+    "parent": {
+      "id": "668ed5a2c589a1b2c3d4e5f1",
+      "title": "O código da Produtividade",
+      "type": {
+        "id": "668ed5a2c589a1b2c3d4e5f2",
+        "name": "Masterclass",
+        "slug": "masterclass"
+      },
+      "description":
+          "Nesta masterclass, você aprenderá a otimizar seu tempo e aumentar sua produtividade com técnicas comprovadas.",
+      "thumb": {
+        "type": "image",
+        "data": {"url": "https://images.educamaisbrasil.com.br/content/banco_de_imagens/eb/d/lideranca.jpeg"}
+      }        
+    },
+    "next": {}      
+},
+{
+    "id": "6698a60d5cbe8ad4b934f1a5",
+    "title": "O Processo da Pós",
+    "description": "Entenda o processo de pós-graduação e sua importância.",
+    "teachers": [
+    {
+        "id": "668ef5e3c789f2a1b3c9f1u4",
+        "name": "Tadashi Kadomoto",
+        "avatar_url": "https://infonet.com.br/wp-content/uploads/2023/07/tadashikadomoto.jpg",
+        "highlight": true
+    }
+    ],
+    "thumb": {
+    "type": "image",
+        "data": {
+            "url": "https://www.dialethoseventos.com.br/assets-custom/img/palestrantes/harry-tadashi-kadomoto-p-04122020-164628.jpg"
+    }
+    },
+    "content": {
+      "video": {
+        "url": "https://www.youtube.com/watch?v=lcDwQpVAeN8",
+        "thumb": {
+          "type": "image",
+          "data": {"url": "https://infonet.com.br/wp-content/uploads/2023/07/tadashi_divulgacao_250723.jpg"}
+        }
+      },
+      "html": {"content": "<p>Conteúdo em HTML</p>"}
+    },
+    "files": [
+        {
+          "url": "https://campus.unifast.com.br/wp-content/uploads/2024/07/disciplina-01.pdf",
+          "title": "Apostila",
+          "description": "Material complementar com exercícios de autoanálise.",
+          "thumb": {
+            "type": "image",
+            "data": {"url": "https://m.media-amazon.com/images/I/61qwrCr9qtL._UF1000,1000_QL80_.jpg"}
+          }
+        },
+        {
+          "url": "https://campus.unifast.com.br/wp-content/uploads/2024/07/dcp1-tadashi-a-importancia-da-autoanalise-e-do-autoconhecimento-3.pdf",
+          "title": "Infográficos – A importância da autoanálise e do autoconhecimento",
+          "description": "Visualize os principais conceitos do curso.",
+          "thumb": {
+            "type": "image",
+            "data": {"url": "https://m.media-amazon.com/images/I/711fUm9p35S._UF1000,1000_QL80_.jpg"}
+          }
+        }
+      ],
+    "previous": null,
+    "parent": {
+      "id": "6698a60d5cbe8ad4b934f1a1",
+      "title": "A importância da autoanálise e do autoconhecimento",
+      "type": {
+        "id": "668ed5a2c589a1b2c3d4g7j8",
+        "name": "Curso Livre",
+        "slug": "curso-livre"
+      },
+      "description":
+          "Neste curso, você aprenderá a importância da autoanálise e do autoconhecimento para o desenvolvimento pessoal e profissional.",
+      "thumb": {
+        "type": "image",
+        "data": {"url": "https://campus.unifast.com.br/wp-content/uploads/2024/07/Disciplina-1-A-importancia-da-autoanalise-e-do-autoconhecimento.png"}
+      }
+    },
+    "next": {
+        "id": "6698a60d5cbe8ad4b934f1a6",
+        "title": "Níveis de Aprendinzado - Parte 1",
+        "description": "Como identificar os diferentes níveis de aprendizado.",
+        "teachers": [
+        {
+            "id": "668ef5e3c789f2a1b3c9f1u4",
+            "name": "Tadashi Kadomoto",
+            "avatar_url": "https://infonet.com.br/wp-content/uploads/2023/07/tadashikadomoto.jpg",
+            "highlight": true
+        }
+        ],
+        "thumb": {
+        "type": "image",
+            "data": {
+                "url": "https://www.dialethoseventos.com.br/assets-custom/img/palestrantes/harry-tadashi-kadomoto-p-04122020-164628.jpg"
+        }
+        }        
+    }
+},
+{
+    "id": "6698a60d5cbe8ad4b934f1a6",
+    "title": "Níveis de Aprendinzado - Parte 1",
+    "description": "Como identificar os diferentes níveis de aprendizado.",
+    "teachers": [
+    {
+        "id": "668ef5e3c789f2a1b3c9f1u4",
+        "name": "Tadashi Kadomoto",
+        "avatar_url": "https://infonet.com.br/wp-content/uploads/2023/07/tadashikadomoto.jpg",
+        "highlight": true
+    }
+    ],
+    "thumb": {
+    "type": "image",
+        "data": {
+            "url": "https://www.dialethoseventos.com.br/assets-custom/img/palestrantes/harry-tadashi-kadomoto-p-04122020-164628.jpg"
+        }
+    },
+    "content": {
+      "video": {
+        "url": "https://www.youtube.com/watch?v=JCE13eYv8lI",
+        "thumb": {
+          "type": "image",
+          "data": {"url": "https://infonet.com.br/wp-content/uploads/2023/07/tadashi_divulgacao_250723.jpg"}
+        }
+      },
+      "html": {"content": "<p>Conteúdo em HTML</p>"}
+    },
+    "files": [
+        {
+          "url": "https://campus.unifast.com.br/wp-content/uploads/2024/07/disciplina-01.pdf",
+          "title": "Apostila",
+          "description": "Material complementar com exercícios de autoanálise.",
+          "thumb": {
+            "type": "image",
+            "data": {"url": "https://m.media-amazon.com/images/I/61qwrCr9qtL._UF1000,1000_QL80_.jpg"}
+          }
+        },
+        {
+          "url": "https://campus.unifast.com.br/wp-content/uploads/2024/07/dcp1-tadashi-a-importancia-da-autoanalise-e-do-autoconhecimento-3.pdf",
+          "title": "Infográficos – A importância da autoanálise e do autoconhecimento",
+          "description": "Visualize os principais conceitos do curso.",
+          "thumb": {
+            "type": "image",
+            "data": {"url": "https://m.media-amazon.com/images/I/711fUm9p35S._UF1000,1000_QL80_.jpg"}
+          }
+        }
+      ],
+    "previous": {
+        "id": "6698a60d5cbe8ad4b934f1a5",
+        "title": "O Processo da Pós",
+        "description": "Entenda o processo de pós-graduação e sua importância.",
+        "teachers": [
+        {
+            "id": "668ef5e3c789f2a1b3c9f1u4",
+            "name": "Tadashi Kadomoto",
+            "avatar_url": "https://infonet.com.br/wp-content/uploads/2023/07/tadashikadomoto.jpg",
+            "highlight": true
+        }
+        ],
+        "thumb": {
+            "type": "image",
+            "data": {"url": "https://www.dialethoseventos.com.br/assets-custom/img/palestrantes/harry-tadashi-kadomoto-p-04122020-164628.jpg"}
+        }
+    },
+    "parent": {
+        "id": "6698a60d5cbe8ad4b934f1a1",
+        "title": "A importância da autoanálise e do autoconhecimento",
+        "type": {
+        "id": "668ed5a2c589a1b2c3d4g7j8",
+        "name": "Curso Livre",
+        "slug": "curso-livre"
+        },
+        "description":
+            "Neste curso, você aprenderá a importância da autoanálise e do autoconhecimento para o desenvolvimento pessoal e profissional.",
+        "thumb": {
+        "type": "image",
+        "data": {"url": "https://campus.unifast.com.br/wp-content/uploads/2024/07/Disciplina-1-A-importancia-da-autoanalise-e-do-autoconhecimento.png"}
+        } 
+    },
+    "next": {
+        "id": "6698a60d5cbe8ad4b934f1a7",
+        "title": "Níveis de Aprendizado - Parte 2",
+        "description": "Continuação sobre os níveis de aprendizado.",
+        "teachers": [
+        {
+            "id": "668ef5e3c789f2a1b3c9f1u4",
+            "name": "Tadashi Kadomoto",
+            "avatar_url": "https://infonet.com.br/wp-content/uploads/2023/07/tadashikadomoto.jpg",
+            "highlight": true
+        }
+        ],
+        "thumb": {
+        "type": "image",
+            "data": {
+                "url": "https://www.dialethoseventos.com.br/assets-custom/img/palestrantes/harry-tadashi-kadomoto-p-04122020-164628.jpg"
+            }
+        }        
+    }                      
+},
+{
+    "id": "6698a60d5cbe8ad4b934f1a7",
+    "title": "Níveis de Aprendizado - Parte 2",
+    "description": "Continuação sobre os níveis de aprendizado.",
+    "teachers": [
+    {
+        "id": "668ef5e3c789f2a1b3c9f1u4",
+        "name": "Tadashi Kadomoto",
+        "avatar_url": "https://infonet.com.br/wp-content/uploads/2023/07/tadashikadomoto.jpg",
+        "highlight": true
+    }
+    ],
+    "thumb": {
+    "type": "image",
+        "data": {
+            "url": "https://www.dialethoseventos.com.br/assets-custom/img/palestrantes/harry-tadashi-kadomoto-p-04122020-164628.jpg"
+        }
+    },
+    "content": {
+      "video": {
+        "url": "https://www.youtube.com/watch?v=mZFlbpCp7NA",
+        "thumb": {
+          "type": "image",
+          "data": {"url": "https://infonet.com.br/wp-content/uploads/2023/07/tadashi_divulgacao_250723.jpg"}
+        }
+      },
+      "html": {"content": "<p>Conteúdo em HTML</p>"}
+    },
+    "files": [
+        {
+          "url": "https://campus.unifast.com.br/wp-content/uploads/2024/07/disciplina-01.pdf",
+          "title": "Apostila",
+          "description": "Material complementar com exercícios de autoanálise.",
+          "thumb": {
+            "type": "image",
+            "data": {"url": "https://m.media-amazon.com/images/I/61qwrCr9qtL._UF1000,1000_QL80_.jpg"}
+          }
+        },
+        {
+          "url": "https://campus.unifast.com.br/wp-content/uploads/2024/07/dcp1-tadashi-a-importancia-da-autoanalise-e-do-autoconhecimento-3.pdf",
+          "title": "Infográficos – A importância da autoanálise e do autoconhecimento",
+          "description": "Visualize os principais conceitos do curso.",
+          "thumb": {
+            "type": "image",
+            "data": {"url": "https://m.media-amazon.com/images/I/711fUm9p35S._UF1000,1000_QL80_.jpg"}
+          }
+        }
+    ],
+    "previous": {
+        "id": "6698a60d5cbe8ad4b934f1a6",
+        "title": "Níveis de Aprendinzado - Parte 1",
+        "description": "Como identificar os diferentes níveis de aprendizado.",
+        "teachers": [
+        {
+            "id": "668ef5e3c789f2a1b3c9f1u4",
+            "name": "Tadashi Kadomoto",
+            "avatar_url": "https://infonet.com.br/wp-content/uploads/2023/07/tadashikadomoto.jpg",
+            "highlight": true
+        }
+        ],
+        "thumb": {
+            "type": "image",
+            "data": {"url": "https://www.dialethoseventos.com.br/assets-custom/img/palestrantes/harry-tadashi-kadomoto-p-04122020-164628.jpg"}
+        }
+    },
+    "parent": {
+      "id": "6698a60d5cbe8ad4b934f1a1",
+      "title": "A importância da autoanálise e do autoconhecimento",
+      "type": {
+        "id": "668ed5a2c589a1b2c3d4g7j8",
+        "name": "Curso Livre",
+        "slug": "curso-livre"
+      },
+      "description":
+          "Neste curso, você aprenderá a importância da autoanálise e do autoconhecimento para o desenvolvimento pessoal e profissional.",
+      "thumb": {
+        "type": "image",
+        "data": {"url": "https://campus.unifast.com.br/wp-content/uploads/2024/07/Disciplina-1-A-importancia-da-autoanalise-e-do-autoconhecimento.png"}
+      }
+    },
+    "next": {
+        "id": "6698a60d5cbe8ad4b934f1a8",
+        "title": "Inconsiente Competente",
+        "description": "Entenda o conceito de inconsciente competente.",
+        "teachers": [
+        {
+            "id": "668ef5e3c789f2a1b3c9f1u4",
+            "name": "Tadashi Kadomoto",
+            "avatar_url": "https://infonet.com.br/wp-content/uploads/2023/07/tadashikadomoto.jpg",
+            "highlight": true
+        }
+        ],
+        "thumb": {
+        "type": "image",
+            "data": {
+                "url": "https://www.dialethoseventos.com.br/assets-custom/img/palestrantes/harry-tadashi-kadomoto-p-04122020-164628.jpg"
+        }
+        }         
+    }
+},
+{
+    "id": "6698a60d5cbe8ad4b934f1a8",
+    "title": "Inconsiente Competente",
+    "description": "Entenda o conceito de inconsciente competente.",
+    "teachers": [
+    {
+        "id": "668ef5e3c789f2a1b3c9f1u4",
+        "name": "Tadashi Kadomoto",
+        "avatar_url": "https://infonet.com.br/wp-content/uploads/2023/07/tadashikadomoto.jpg",
+        "highlight": true
+    }
+    ],
+    "thumb": {
+    "type": "image",
+        "data": {
+            "url": "https://www.dialethoseventos.com.br/assets-custom/img/palestrantes/harry-tadashi-kadomoto-p-04122020-164628.jpg"
+    }
+    },
+    "content": {
+      "video": {
+        "url": "https://www.youtube.com/watch?v=tbWB2aFpQdA",
+        "thumb": {
+          "type": "image",
+          "data": {"url": "https://infonet.com.br/wp-content/uploads/2023/07/tadashi_divulgacao_250723.jpg"}
+        }
+      },
+      "html": {"content": "<p>Conteúdo em HTML</p>"}
+    },
+    "files": [
+        {
+          "url": "https://campus.unifast.com.br/wp-content/uploads/2024/07/disciplina-01.pdf",
+          "title": "Apostila",
+          "description": "Material complementar com exercícios de autoanálise.",
+          "thumb": {
+            "type": "image",
+            "data": {"url": "https://m.media-amazon.com/images/I/61qwrCr9qtL._UF1000,1000_QL80_.jpg"}
+          }
+        },
+        {
+          "url": "https://campus.unifast.com.br/wp-content/uploads/2024/07/dcp1-tadashi-a-importancia-da-autoanalise-e-do-autoconhecimento-3.pdf",
+          "title": "Infográficos – A importância da autoanálise e do autoconhecimento",
+          "description": "Visualize os principais conceitos do curso.",
+          "thumb": {
+            "type": "image",
+            "data": {"url": "https://m.media-amazon.com/images/I/711fUm9p35S._UF1000,1000_QL80_.jpg"}
+          }
+        }
+    ],
+    "previous": {
+        "id": "6698a60d5cbe8ad4b934f1a7",
+        "title": "Níveis de Aprendizado - Parte 2",
+        "description": "Continuação sobre os níveis de aprendizado.",
+        "teachers": [
+        {
+            "id": "668ef5e3c789f2a1b3c9f1u4",
+            "name": "Tadashi Kadomoto",
+            "avatar_url": "https://infonet.com.br/wp-content/uploads/2023/07/tadashikadomoto.jpg",
+            "highlight": true
+        }
+        ],
+        "thumb": {
+            "type": "image",
+            "data": {"url": "https://www.dialethoseventos.com.br/assets-custom/img/palestrantes/harry-tadashi-kadomoto-p-04122020-164628.jpg"}
+        }
+    },
+    "parent": {
+        "id": "6698a60d5cbe8ad4b934f1a1",
+        "title": "A importância da autoanálise e do autoconhecimento",
+        "type": {
+            "id": "668ed5a2c589a1b2c3d4g7j8",
+            "name": "Curso Livre",
+            "slug": "curso-livre"
+        },
+        "description":
+            "Neste curso, você aprenderá a importância da autoanálise e do autoconhecimento para o desenvolvimento pessoal e profissional.",
+        "thumb": {
+            "type": "image",
+            "data": {"url": "https://campus.unifast.com.br/wp-content/uploads/2024/07/Disciplina-1-A-importancia-da-autoanalise-e-do-autoconhecimento.png"}
+        }
+    },
+    "next": {
+        "id": "6698a60d5cbe8ad4b934f1a9",
+        "title": "OS NÍVEIS DE APRENDIZADO NA SUA VIDA",
+        "description": "Como aplicar os níveis de aprendizado no seu dia a dia.",
+        "teachers": [
+        {
+            "id": "668ef5e3c789f2a1b3c9f1u4",
+            "name": "Tadashi Kadomoto",
+            "avatar_url": "https://infonet.com.br/wp-content/uploads/2023/07/tadashikadomoto.jpg",
+            "highlight": true
+        }
+        ],
+        "thumb": {
+        "type": "image",
+            "data": {
+                "url": "https://www.dialethoseventos.com.br/assets-custom/img/palestrantes/harry-tadashi-kadomoto-p-04122020-164628.jpg"
+            }
+        } 
+    }
+},
+{
+    "id": "6698a60d5cbe8ad4b934f1a9",
+    "title": "OS NÍVEIS DE APRENDIZADO NA SUA VIDA",
+    "description": "Como aplicar os níveis de aprendizado no seu dia a dia.",
+    "teachers": [
+    {
+        "id": "668ef5e3c789f2a1b3c9f1u4",
+        "name": "Tadashi Kadomoto",
+        "avatar_url": "https://infonet.com.br/wp-content/uploads/2023/07/tadashikadomoto.jpg",
+        "highlight": true
+    }
+    ],
+    "thumb": {
+    "type": "image",
+        "data": {
+            "url": "https://www.dialethoseventos.com.br/assets-custom/img/palestrantes/harry-tadashi-kadomoto-p-04122020-164628.jpg"
+        }
+    },
+    "content": {
+      "video": {
+        "url": "https://www.youtube.com/watch?v=52iuBq2WrL0",
+        "thumb": {
+          "type": "image",
+          "data": {"url": "https://infonet.com.br/wp-content/uploads/2023/07/tadashi_divulgacao_250723.jpg"}
+        }
+      },
+      "html": {"content": "<p>Conteúdo em HTML</p>"}
+    },
+    "files": [
+        {
+          "url": "https://campus.unifast.com.br/wp-content/uploads/2024/07/disciplina-01.pdf",
+          "title": "Apostila",
+          "description": "Material complementar com exercícios de autoanálise.",
+          "thumb": {
+            "type": "image",
+            "data": {"url": "https://m.media-amazon.com/images/I/61qwrCr9qtL._UF1000,1000_QL80_.jpg"}
+          }
+        },
+        {
+          "url": "https://campus.unifast.com.br/wp-content/uploads/2024/07/dcp1-tadashi-a-importancia-da-autoanalise-e-do-autoconhecimento-3.pdf",
+          "title": "Infográficos – A importância da autoanálise e do autoconhecimento",
+          "description": "Visualize os principais conceitos do curso.",
+          "thumb": {
+            "type": "image",
+            "data": {"url": "https://m.media-amazon.com/images/I/711fUm9p35S._UF1000,1000_QL80_.jpg"}
+          }
+        }
+    ],
+    "previous": {
+        "id": "6698a60d5cbe8ad4b934f1a8",
+        "title": "Inconsiente Competente",
+        "description": "Entenda o conceito de inconsciente competente.",
+        "teachers": [
+        {
+            "id": "668ef5e3c789f2a1b3c9f1u4",
+            "name": "Tadashi Kadomoto",
+            "avatar_url": "https://infonet.com.br/wp-content/uploads/2023/07/tadashikadomoto.jpg",
+            "highlight": true
+        }
+        ],
+        "thumb": {
+            "type": "image",
+            "data": {"url": "https://www.dialethoseventos.com.br/assets-custom/img/palestrantes/harry-tadashi-kadomoto-p-04122020-164628.jpg"}
+        }
+    },
+    "parent": {
+      "id": "6698a60d5cbe8ad4b934f1a1",
+      "title": "A importância da autoanálise e do autoconhecimento",
+      "type": {
+        "id": "668ed5a2c589a1b2c3d4g7j8",
+        "name": "Curso Livre",
+        "slug": "curso-livre"
+      },
+      "description":
+          "Neste curso, você aprenderá a importância da autoanálise e do autoconhecimento para o desenvolvimento pessoal e profissional.",
+      "thumb": {
+        "type": "image",
+        "data": {"url": "https://campus.unifast.com.br/wp-content/uploads/2024/07/Disciplina-1-A-importancia-da-autoanalise-e-do-autoconhecimento.png"}
+      }        
+    } 
+}]

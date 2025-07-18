@@ -1,0 +1,773 @@
+[
+  {
+    "id": "668f00a1d9f29b1c2a1b3d01",
+    "title": "Psicologia do Líder Poderoso",
+    "description": "Psicologia do Líder Poderoso é uma disciplina que mergulha nos princípios psicológicos que moldam líderes de alta performance.",
+    "teachers": [
+      {
+        "id": "668ef5e3c789f2a1b3c9d1a4",
+        "name": "Roberto Shinyashiki",
+        "avatar_url": "https://agazetadoacre.com/wp-content/uploads/2021/10/rshinyashiki_20201117_p_2444667468612763367_1_2444667468612763367.jpg",
+        "highlight": true
+      }
+    ],
+    "thumb": {
+      "type": "image",
+      "data": {
+        "url": "https://campus.unifast.com.br/wp-content/uploads/2024/04/9.png"
+      }
+    },
+    "files": [
+      {
+        "url": "https://campus.unifast.com.br/wp-content/uploads/2024/07/mba-infograficos.pdf",
+        "title": "Infográficos do MBA",
+        "description": "Infográficos – Psicologia do Líder Poderoso",
+        "thumb": {
+          "type": "image",
+          "data": {
+            "url": "https://highsales.digital/images/blog/infografico-com-linha-do-tempo.jpg"
+          }
+        }
+      },
+      {
+        "url": "https://campus.unifast.com.br/wp-content/uploads/2024/07/disciplina-01-psicologia-do-lider-poderoso-apostila.pdf",
+        "title": "Apostila",
+        "description": "disciplina-01-psicologia-do-lider-poderoso-apostila",
+        "thumb": {
+          "type": "image",
+          "data": {
+            "url": "https://rgprint.com.br/site/catalogo/5/apostila_min.jpg"
+          }
+        }
+      }
+    ],
+    "previous": {},
+    "parent": {
+      "id": "9e2b36b89315617e5b6d891f",
+      "title": "MBA em Ciências da Mente e Liderança Humanizada",
+      "description":
+          "MBA Ciência da Mente e Liderança Humanizada: Curso EAD que tem por objetivo líderes mais eficazes. O MBA é reconhecido pelo MEC, tem como carga horária 360 horas sendo elas subdivididas em 18 módulos.  Destinado a Líderes de equipe, Coordenadores, Gestores e Diretores, C-Levels, Empreendedores, Palestrantes, Coaches e Terapeutas.",
+      "thumb": {
+        "type": "image",
+        "data": {"url": "https://agazetadoacre.com/wp-content/uploads/2021/10/rshinyashiki_20201117_p_2444667468612763367_1_2444667468612763367.jpg"}
+      }
+    },
+    "next": {
+      "id": "668f00a1d9f29b1c2a1b3d02",
+      "title": "Metódo Master Power",
+      "description": "Metódo Master Power é uma abordagem inovadora que combina técnicas de liderança e desenvolvimento pessoal.",
+      "teachers": [
+      {
+          "id": "668ef5e3c789f2a1b3c9d1a4",
+          "name": "Roberto Shinyashiki",
+          "avatar_url": "https://agazetadoacre.com/wp-content/uploads/2021/10/rshinyashiki_20201117_p_2444667468612763367_1_2444667468612763367.jpg",
+          "highlight": true
+      }
+      ],
+      "thumb": {
+      "type": "image",
+        "data": {
+          "url": "https://campus.unifast.com.br/wp-content/uploads/2024/07/8.png"
+              }
+          }
+      },
+    "childrens": {
+      "meta": {
+        "label": "Aulas",
+        "total": 3
+      },
+      "items": [
+        {
+          "id": "668f00a1d9f29b1c2a1g3d01",
+          "title": "Introdução",
+          "description": "Nucleo de Introdução à Psicologia do Líder Poderoso",
+          "teachers": [
+            {
+              "id": "668ef5e3c789f2a1b3c9d1a4",
+              "name": "Roberto Shinyashiki",
+              "avatar_url": "https://classic.exame.com/wp-content/uploads/2016/10/size_960_16_9_roberto-shinyashiki.jpg",
+              "highlight": true
+            }
+          ],
+          "thumb": {
+            "type": "image",
+            "data": {
+              "url": "https://unifast.com.br/wp-content/uploads/2022/05/2.jpg"
+            }
+          }
+        },
+        {
+          "id": "668f01b3d8c29c2a2b4c4e01",
+          "title": "Como Aproveitar o MBA",
+          "description": "Dicas para aproveitar ao máximo o MBA.",
+          "teachers": [
+            {
+              "id": "668ef5e3c789f2a1b3c9d1a4",
+              "name": "Roberto Shinyashiki",
+              "avatar_url": "https://classic.exame.com/wp-content/uploads/2016/10/size_960_16_9_roberto-shinyashiki.jpg",
+              "highlight": true
+            }
+          ],
+          "thumb": {
+            "type": "image",
+            "data": {
+              "url": "https://unifast.com.br/wp-content/uploads/2022/05/2.jpg"
+            }
+          }
+        },
+        {
+          "id": "668f01b3d8c29c2a2b4c4e02",
+          "title": "Origem das Teorias dos Estados",
+          "description": "Exploração das origens das teorias dos estados psicológicos.",
+          "teachers": [
+            {
+              "id": "668ef5e3c789f2a1b3c9d1a4",
+              "name": "Roberto Shinyashiki",
+              "avatar_url": "https://classic.exame.com/wp-content/uploads/2016/10/size_960_16_9_roberto-shinyashiki.jpg",
+              "highlight": true
+            }
+          ],
+          "thumb": {
+            "type": "image",
+            "data": {
+              "url": "https://unifast.com.br/wp-content/uploads/2022/05/2.jpg"
+            }
+          }
+        }
+      ]
+    }
+  },
+  {
+    "id": "668f00a1d9f29b1c2a1b3d02",
+    "title": "Metódo Master Power",
+    "description": "Metódo Master Power é uma abordagem inovadora que combina técnicas de liderança e desenvolvimento pessoal.",
+    "teachers": [
+    {
+        "id": "668ef5e3c789f2a1b3c9d1a4",
+        "name": "Roberto Shinyashiki",
+        "avatar_url": "https://agazetadoacre.com/wp-content/uploads/2021/10/rshinyashiki_20201117_p_2444667468612763367_1_2444667468612763367.jpg",
+        "highlight": true
+    }
+    ],
+    "thumb": {
+    "type": "image",
+    "data": {
+        "url": "https://campus.unifast.com.br/wp-content/uploads/2024/07/8.png"
+            }
+        },
+    "files": [
+      {
+        "url": "https://campus.unifast.com.br/wp-content/uploads/2024/07/infograficos-disciplina-2.pdf",
+        "title": "Infográficos do MBA",
+        "description": "Infográficos - Metódo Master Power",
+        "thumb": {
+          "type": "image",
+          "data": {
+            "url": "https://highsales.digital/images/blog/infografico-com-linha-do-tempo.jpg"
+          }
+        }
+      },
+      {
+        "url": "https://campus.unifast.com.br/wp-content/uploads/2024/07/apostila-02-metodo-master-power-2.pdf",
+        "title": "Apostila",
+        "description": "apostila-02-metodo-master-power-2",
+        "thumb": {
+          "type": "image",
+          "data": {
+            "url": "https://rgprint.com.br/site/catalogo/5/apostila_min.jpg"
+          }
+        }
+      }
+    ],
+    "previous": {
+        "id": "668f00a1d9f29b1c2a1b3d01",
+        "title": "Psicologia do Líder Poderoso",
+        "description": "Psicologia do Líder Poderoso é uma disciplina que mergulha nos princípios psicológicos que moldam líderes de alta performance.",
+        "thumb": {
+          "type": "image",
+            "data": {
+              "url": "https://campus.unifast.com.br/wp-content/uploads/2024/04/9.png"
+          }
+        }
+    },
+    "parent": {
+      "id": "9e2b36b89315617e5b6d891f",
+      "title": "MBA em Ciências da Mente e Liderança Humanizada",
+      "description":
+          "MBA Ciência da Mente e Liderança Humanizada: Curso EAD que tem por objetivo líderes mais eficazes. O MBA é reconhecido pelo MEC, tem como carga horária 360 horas sendo elas subdivididas em 18 módulos.  Destinado a Líderes de equipe, Coordenadores, Gestores e Diretores, C-Levels, Empreendedores, Palestrantes, Coaches e Terapeutas.",
+      "thumb": {
+        "type": "image",
+        "data": {"url": "https://agazetadoacre.com/wp-content/uploads/2021/10/rshinyashiki_20201117_p_2444667468612763367_1_2444667468612763367.jpg"}
+      }
+    },
+    "next": {
+      "id": "6698b1d0cfd7c52b6f1a1011",
+      "title": "Fundamentos Empresariais",
+      "description": "Entenda os princípios básicos de gestão empresarial.",
+      "teachers": [
+        {
+            "id": "668ef5e3c789f2a1b3c9d1a4",
+            "name": "Roberto Shinyashiki",
+            "avatar_url": "https://agazetadoacre.com/wp-content/uploads/2021/10/rshinyashiki_20201117_p_2444667468612763367_1_2444667468612763367.jpg",
+            "highlight": true
+        },
+        {
+            "id": "668f5e43c789f2a1b3c9d5a4",
+            "name": "Patrícia Muritiba",
+            "avatar_url": "https://www.patriciamuritiba.com.br/wp-content/uploads/2023/04/Design-sem-nome-1.png",
+            "highlight": false
+        }
+      ],
+      "thumb": {
+      "type": "image",
+        "data": {
+          "url": "https://campus.unifast.com.br/wp-content/uploads/2024/07/10.png"
+              }
+          }
+      },
+    "childrens": {
+      "meta": {
+        "label": "Aulas",
+        "total": 3
+      },
+      "items": [
+        {
+          "id": "668f00a1d9f29b1c2a1g3d01",
+          "title": "Master Power",
+          "description": "Master Power desenvolve o poder pessoal e a autoconfiança do líder, por meio de técnicas de mindset, comunicação de impacto e inteligência emocional, para alcançar alta performance e influência positiva.",
+          "teachers": [
+            {
+              "id": "668ef5e3c789f2a1b3c9d1a4",
+              "name": "Roberto Shinyashiki",
+              "avatar_url": "https://classic.exame.com/wp-content/uploads/2016/10/size_960_16_9_roberto-shinyashiki.jpg",
+              "highlight": true
+            }
+          ],
+          "thumb": {
+            "type": "image",
+            "data": {
+              "url": "https://unifast.com.br/wp-content/uploads/2022/05/2.jpg"
+            }
+          }
+        },
+        {
+          "id": "668f01b3d8c29c2a2b4c4e01",
+          "title": "Foco nos Estados de Poder",
+          "description": "Foco nos Estados de Poder é uma aula que ensina como manter o foco nos estados mentais e emocionais que impulsionam a liderança eficaz.",
+          "teachers": [
+            {
+              "id": "668ef5e3c789f2a1b3c9d1a4",
+              "name": "Roberto Shinyashiki",
+              "avatar_url": "https://classic.exame.com/wp-content/uploads/2016/10/size_960_16_9_roberto-shinyashiki.jpg",
+              "highlight": true
+            }
+          ],  
+          "thumb": {
+            "type": "image",
+            "data": {
+              "url": "https://unifast.com.br/wp-content/uploads/2022/05/2.jpg"
+            }
+          }
+        },
+        {
+          "id": "668f01b3d8c29c2a2b4c4e02",
+          "title": "Transação Universal",
+          "description": "Transação Universal é uma aula que explora como as interações humanas podem ser transformadas em oportunidades de liderança e crescimento pessoal.",
+          "teachers": [
+            {
+              "id": "668ef5e3c789f2a1b3c9d1a4",
+              "name": "Roberto Shinyashiki",
+              "avatar_url": "https://classic.exame.com/wp-content/uploads/2016/10/size_960_16_9_roberto-shinyashiki.jpg",
+              "highlight": true
+            }
+          ],
+          "thumb": {
+            "type": "image",
+            "data": {
+              "url": "https://unifast.com.br/wp-content/uploads/2022/05/2.jpg"
+            }
+          }
+        }
+      ]
+    }    
+  },
+{
+    "id": "6698b1d0cfd7c52b6f1a1011",
+    "title": "Fundamentos Empresariais",
+    "description": "Entenda os princípios básicos de gestão empresarial.",
+    "teachers": [
+    {
+        "id": "668ef5e3c789f2a1b3c9d1a4",
+        "name": "Roberto Shinyashiki",
+        "avatar_url": "https://agazetadoacre.com/wp-content/uploads/2021/10/rshinyashiki_20201117_p_2444667468612763367_1_2444667468612763367.jpg",
+        "highlight": true
+    },
+    {
+        "id": "668f5e43c789f2a1b3c9d5a4",
+        "name": "Patrícia Muritiba",
+        "avatar_url": "https://www.patriciamuritiba.com.br/wp-content/uploads/2023/04/Design-sem-nome-1.png",
+        "highlight": true
+    }
+    ],
+    "thumb": {
+    "type": "image",
+    "data": {
+        "url": "https://campus.unifast.com.br/wp-content/uploads/2024/07/10.png"
+            }
+        },
+    "files": [
+      {
+        "url": "https://campus.unifast.com.br/wp-content/uploads/2024/07/infograficos-disciplina-interativo.pdf",
+        "title": "Infográficos do MBA",
+        "description": "Infográficos - Fundamentos Empresariais",
+        "thumb": {
+          "type": "image",
+          "data": {
+            "url": "https://highsales.digital/images/blog/infografico-com-linha-do-tempo.jpg"
+          }
+        }
+      },
+      {
+        "url": "https://campus.unifast.com.br/wp-content/uploads/2024/07/apostila-3-fundamentos-empresariais.pdf",
+        "title": "Apostila",
+        "description": "apostila-3-fundamentos-empresariais",
+        "thumb": {
+          "type": "image",
+          "data": {
+            "url": "https://rgprint.com.br/site/catalogo/5/apostila_min.jpg"
+          }
+        }
+      }
+    ],
+    "previous": {
+      "id": "668f00a1d9f29b1c2a1b3d02",
+      "title": "Metódo Master Power",
+      "description": "Metódo Master Power é uma abordagem inovadora que combina técnicas de liderança e desenvolvimento pessoal.",
+      "teachers": [
+      {
+          "id": "668ef5e3c789f2a1b3c9d1a4",
+          "name": "Roberto Shinyashiki",
+          "avatar_url": "https://agazetadoacre.com/wp-content/uploads/2021/10/rshinyashiki_20201117_p_2444667468612763367_1_2444667468612763367.jpg",
+          "highlight": true
+      }
+      ],
+      "thumb": {
+      "type": "image",
+        "data": {
+          "url": "https://campus.unifast.com.br/wp-content/uploads/2024/07/8.png"
+              }
+          }
+    },
+    "parent": {
+      "id": "9e2b36b89315617e5b6d891f",
+      "title": "MBA em Ciências da Mente e Liderança Humanizada",
+      "description":
+          "MBA Ciência da Mente e Liderança Humanizada: Curso EAD que tem por objetivo líderes mais eficazes. O MBA é reconhecido pelo MEC, tem como carga horária 360 horas sendo elas subdivididas em 18 módulos.  Destinado a Líderes de equipe, Coordenadores, Gestores e Diretores, C-Levels, Empreendedores, Palestrantes, Coaches e Terapeutas.",
+      "thumb": {
+        "type": "image",
+        "data": {"url": "https://agazetadoacre.com/wp-content/uploads/2021/10/rshinyashiki_20201117_p_2444667468612763367_1_2444667468612763367.jpg"}
+      }
+    },
+    "next": {
+            "id": "668f00a1d9f30g4c2a1b3d01",
+            "title": "Gestão e Cultura Evolutiva",
+            "description": "Explore como a cultura organizacional pode impulsionar a evolução empresarial.",
+            "teachers": [
+            {
+                "id": "668ef5e3c789f2a1b3c9d1a4",
+                "name": "Roberto Shinyashiki",
+                "avatar_url": "https://agazetadoacre.com/wp-content/uploads/2021/10/rshinyashiki_20201117_p_2444667468612763367_1_2444667468612763367.jpg",
+                "highlight": true
+            },
+            {
+                "id": "668ef5e3c789f2a1b3c9e1n4",
+                "name": "Eugenio Pachelle",
+                "avatar_url": "https://unifast.com.br/wp-content/uploads/2022/09/Eugenio-Pachele.png",
+                "highlight": false
+            }
+            ],
+            "thumb": {
+            "type": "image",
+              "data": {
+                "url": "https://campus.unifast.com.br/wp-content/uploads/2024/07/11.png"
+                    }
+                }                    
+    },
+    "childrens": {
+      "meta": {
+        "label": "Aulas",
+        "total": 3
+      },
+      "items": [
+        {
+          "id": "668f00a1d9f29b1c2a1g3d01",
+          "title": "Conhecendo a Disciplina Fundamentos Empresariais",
+          "description": "Visão geral das principais áreas que compõem uma empresa, como marketing, finanças, gestão e operações",
+          "teachers": [
+            {
+              "id": "668f5e43c789f2a1b3c9d5a4",
+              "name": "Patrícia Muritiba",
+              "avatar_url": "https://www.patriciamuritiba.com.br/wp-content/uploads/2023/04/Design-sem-nome-1.png",
+              "highlight": true
+            }
+          ],
+          "thumb": {
+            "type": "image",
+            "data": {
+              "url": "https://abtd.com.br/cache/user-avatar-medium/uploads/users/2161/patricia-morilha-muritiba-1652307475.jpeg"
+            }
+          }
+        },
+        {
+          "id": "668f01b3g8c31c2a2b4c4e01",
+          "title": "Comece Pelo Porquê",
+          "description": "Comece Pelo Porquê é uma aula que explora a importância de entender o propósito por trás das ações empresariais.",
+          "teachers": [
+            {
+              "id": "668f5e43c789f2a1b3c9d5a4",
+              "name": "Patrícia Muritiba",
+              "avatar_url": "https://www.patriciamuritiba.com.br/wp-content/uploads/2023/04/Design-sem-nome-1.png",
+              "highlight": true
+            }
+          ],
+          "thumb": {
+            "type": "image",
+            "data": {
+              "url": "https://abtd.com.br/cache/user-avatar-medium/uploads/users/2161/patricia-morilha-muritiba-1652307475.jpeg"
+            }
+          }
+        },
+        {
+          "id": "668f01b3d8c29u4t3b4c4e02",
+          "title": "Foco No Negócio",
+          "description": "Foco No Negócio é uma aula que enfatiza a importância de manter o foco nas atividades essenciais para o sucesso empresarial.",
+          "teachers": [
+            {
+              "id": "668f5e43c789f2a1b3c9d5a4",
+              "name": "Patrícia Muritiba",
+              "avatar_url": "https://www.patriciamuritiba.com.br/wp-content/uploads/2023/04/Design-sem-nome-1.png",
+              "highlight": true
+            }
+          ],
+          "thumb": {
+            "type": "image",
+            "data": {
+              "url": "https://abtd.com.br/cache/user-avatar-medium/uploads/users/2161/patricia-morilha-muritiba-1652307475.jpeg"
+            }
+          }
+        }
+      ]
+    }    
+  },
+  {
+    "id": "668f00a1d9f30g4c2a1b3d01",
+    "title": "Gestão e Cultura Evolutiva",
+    "description": "Explore como a cultura organizacional pode impulsionar a evolução empresarial.",
+    "teachers": [
+      {
+        "id": "668ef5e3c789f2a1b3c9d1a4",
+        "name": "Roberto Shinyashiki",
+        "avatar_url": "https://agazetadoacre.com/wp-content/uploads/2021/10/rshinyashiki_20201117_p_2444667468612763367_1_2444667468612763367.jpg",
+        "highlight": true
+      },
+      {
+        "id": "668ef5e3c789f2a1b3c9e1n4",
+        "name": "Eugenio Pachelle",
+        "avatar_url": "https://unifast.com.br/wp-content/uploads/2022/09/Eugenio-Pachele.png",
+        "highlight": false
+      }
+    ],
+    "thumb": {
+      "type": "image",
+      "data": {
+        "url": "https://campus.unifast.com.br/wp-content/uploads/2024/07/11.png"
+      }
+    },
+    "files": [
+      {
+        "url": "https://campus.unifast.com.br/wp-content/uploads/2024/07/infograficos-disciplina-4-gestao-e-cultura-evolutiva.pdf",
+        "title": "Infográficos do MBA",
+        "description": "infograficos-disciplina-4-gestao-e-cultura-evolutiva",
+        "thumb": {
+          "type": "image",
+          "data": {
+            "url": "https://highsales.digital/images/blog/infografico-com-linha-do-tempo.jpg"
+          }
+        }
+      },
+      {
+        "url": "https://campus.unifast.com.br/wp-content/uploads/2024/07/apostila-4-1-gestao-e-cultura-evolutiva.pdf",
+        "title": "Apostila",
+        "description": "apostila-4-1-gestao-e-cultura-evolutiva",
+        "thumb": {
+          "type": "image",
+          "data": {
+            "url": "https://rgprint.com.br/site/catalogo/5/apostila_min.jpg"
+          }
+        }
+      }
+    ],
+    "previous": {
+      "id": "6698b1d0cfd7c52b6f1a1011",
+      "title": "Fundamentos Empresariais",
+      "description": "Entenda os princípios básicos de gestão empresarial.",
+      "teachers": [
+      {
+          "id": "668ef5e3c789f2a1b3c9d1a4",
+          "name": "Roberto Shinyashiki",
+          "avatar_url": "https://agazetadoacre.com/wp-content/uploads/2021/10/rshinyashiki_20201117_p_2444667468612763367_1_2444667468612763367.jpg",
+          "highlight": true
+      },
+      {
+          "id": "668f5e43c789f2a1b3c9d5a4",
+          "name": "Patrícia Muritiba",
+          "avatar_url": "https://www.patriciamuritiba.com.br/wp-content/uploads/2023/04/Design-sem-nome-1.png",
+          "highlight": false
+      }
+      ],
+      "thumb": {
+      "type": "image",
+        "data": {
+          "url": "https://campus.unifast.com.br/wp-content/uploads/2024/07/10.png"
+              }
+          }
+    },
+    "parent": {
+      "id": "9e2b36b89315617e5b6d891f",
+      "title": "MBA em Ciências da Mente e Liderança Humanizada",
+      "description":
+          "MBA Ciência da Mente e Liderança Humanizada: Curso EAD que tem por objetivo líderes mais eficazes. O MBA é reconhecido pelo MEC, tem como carga horária 360 horas sendo elas subdivididas em 18 módulos.  Destinado a Líderes de equipe, Coordenadores, Gestores e Diretores, C-Levels, Empreendedores, Palestrantes, Coaches e Terapeutas.",
+      "thumb": {
+        "type": "image",
+        "data": {"url": "https://agazetadoacre.com/wp-content/uploads/2021/10/rshinyashiki_20201117_p_2444667468612763367_1_2444667468612763367.jpg"}
+      }      
+    },
+    "next": {
+      "id": "668f00a1r3j8g4c2a1b3d01",
+      "title": "Inteligência Afetiva",
+      "description": "Desenvolva habilidades emocionais para uma liderança eficaz.",
+      "teachers": [
+      {
+          "id": "668ef5e3c789f2a1b3c9d1a4",
+          "name": "Roberto Shinyashiki",
+          "avatar_url": "https://agazetadoacre.com/wp-content/uploads/2021/10/rshinyashiki_20201117_p_2444667468612763367_1_2444667468612763367.jpg",
+          "highlight": true
+      }
+      ],
+      "thumb": {
+      "type": "image",
+        "data": {
+          "url": "https://campus.unifast.com.br/wp-content/uploads/2024/07/14.png"
+              }
+          }  
+    },
+    "childrens": {
+      "meta": {
+        "label": "Aulas",
+        "total": 3
+      },
+      "items": [
+        {
+          "id": "668f00a1d9f29b1c2a1g3d01",
+          "title": "Introdução à Cultura e Gestão Evolutiva",
+          "description": "Nucleo de Introdução à Cultura e Gestão Evolutiva",
+          "teachers": [
+            {
+              "id": "668ef5e3c789f2a1b3c9e1n4",
+              "name": "Eugenio Pachelle",
+              "avatar_url": "https://unifast.com.br/wp-content/uploads/2022/09/Eugenio-Pachele.png",
+              "highlight": true
+            }
+          ],
+          "thumb": {
+            "type": "image",
+            "data": {
+              "url": "https://cdn.prod.website-files.com/592830b84abbcb2c52c54ad2/5b1eea2e97c6a83b10d171de_profile_eugenio_pachelle.jpg"
+            }
+          }
+        },
+        {
+          "id": "668f01b3d8c29c3a3b4c4e01",
+          "title": "Influência da Cultura na Empresa",
+          "description": "A influência da cultura na empresa é uma aula que explora como a cultura organizacional afeta o desempenho e a evolução dos negócios.",
+          "teachers": [
+            {
+              "id": "668ef5e3c789f2a1b3c9e1n4",
+              "name": "Eugenio Pachelle",
+              "avatar_url": "https://unifast.com.br/wp-content/uploads/2022/09/Eugenio-Pachele.png",
+              "highlight": true
+            }
+          ],
+          "thumb": {
+            "type": "image",
+            "data": {
+              "url": "https://cdn.prod.website-files.com/592830b84abbcb2c52c54ad2/5b1eea2e97c6a83b10d171de_profile_eugenio_pachelle.jpg"
+            }
+          }
+        },
+        {
+          "id": "668f01b3d8c29c2a2g5n5e02",
+          "title": "O que Interfere na Cultura (Parte 1)",
+          "description": "O que Interfere na Cultura (Parte 1) é uma aula que analisa os fatores que influenciam a cultura organizacional e como isso impacta a evolução empresarial.",
+          "teachers": [
+            {
+              "id": "668ef5e3c789f2a1b3c9e1n4",
+              "name": "Eugenio Pachelle",
+              "avatar_url": "https://unifast.com.br/wp-content/uploads/2022/09/Eugenio-Pachele.png",
+              "highlight": true
+            }
+          ],
+          "thumb": {
+            "type": "image",
+            "data": {
+              "url": "https://cdn.prod.website-files.com/592830b84abbcb2c52c54ad2/5b1eea2e97c6a83b10d171de_profile_eugenio_pachelle.jpg"
+            }
+          }
+        }
+      ]
+    }
+  },
+  {
+    "id": "668f00a1r3j8g4c2a1b3d01",
+    "title": "Inteligência Afetiva",
+    "description": "Desenvolva habilidades emocionais para uma liderança eficaz.",
+    "teachers": [
+      {
+        "id": "668ef5e3c789f2a1b3c9d1a4",
+        "name": "Roberto Shinyashiki",
+        "avatar_url": "https://agazetadoacre.com/wp-content/uploads/2021/10/rshinyashiki_20201117_p_2444667468612763367_1_2444667468612763367.jpg",
+        "highlight": true
+      }
+    ],
+    "thumb": {
+      "type": "image",
+      "data": {
+        "url": "https://campus.unifast.com.br/wp-content/uploads/2024/07/14.png"
+      }
+    },
+    "files": [
+      {
+        "url": "https://campus.unifast.com.br/wp-content/uploads/2024/07/infografico-disciplina-5.pdf",
+        "title": "Infográficos do MBA",
+        "description": "infografico-disciplina-5",
+        "thumb": {
+          "type": "image",
+          "data": {
+            "url": "https://highsales.digital/images/blog/infografico-com-linha-do-tempo.jpg"
+          }
+        }
+      },
+      {
+        "url": "https://campus.unifast.com.br/wp-content/uploads/2024/07/apostila-5-inteligencia-afetiva.pdf",
+        "title": "Apostila",
+        "description": "apostila-5-inteligencia-afetiva",
+        "thumb": {
+          "type": "image",
+          "data": {
+            "url": "https://rgprint.com.br/site/catalogo/5/apostila_min.jpg"
+          }
+        }
+      }
+    ],
+    "previous": {
+      "id": "668f00a1d9f30g4c2a1b3d01",
+      "title": "Gestão e Cultura Evolutiva",
+      "description": "Explore como a cultura organizacional pode impulsionar a evolução empresarial.",
+      "teachers": [
+      {
+        "id": "668ef5e3c789f2a1b3c9d1a4",
+        "name": "Roberto Shinyashiki",
+        "avatar_url": "https://agazetadoacre.com/wp-content/uploads/2021/10/rshinyashiki_20201117_p_2444667468612763367_1_2444667468612763367.jpg",
+        "highlight": true
+      },
+      {
+        "id": "668ef5e3c789f2a1b3c9e1n4",
+        "name": "Eugenio Pachelle",
+        "avatar_url": "https://unifast.com.br/wp-content/uploads/2022/09/Eugenio-Pachele.png",
+        "highlight": false
+      }
+      ],
+      "thumb": {
+      "type": "image",
+        "data": {
+          "url": "https://campus.unifast.com.br/wp-content/uploads/2024/07/11.png"
+              }
+          }
+  },
+    "parent":{
+      "id": "9e2b36b89315617e5b6d891f",
+      "title": "MBA em Ciências da Mente e Liderança Humanizada",
+      "description":
+          "MBA Ciência da Mente e Liderança Humanizada: Curso EAD que tem por objetivo líderes mais eficazes. O MBA é reconhecido pelo MEC, tem como carga horária 360 horas sendo elas subdivididas em 18 módulos.  Destinado a Líderes de equipe, Coordenadores, Gestores e Diretores, C-Levels, Empreendedores, Palestrantes, Coaches e Terapeutas.",
+      "thumb": {
+        "type": "image",
+        "data": {"url": "https://agazetadoacre.com/wp-content/uploads/2021/10/rshinyashiki_20201117_p_2444667468612763367_1_2444667468612763367.jpg"}
+      }
+    },
+    "next": null,
+    "childrens": {
+      "meta": {
+        "label": "Aulas",
+        "total": 3
+      },
+      "items": [
+        {
+          "id": "665lpa1d9f29b1c2a1g3d01",
+          "title": "O Segredo do Líder Amado",
+          "description": "O Segredo do Líder Amado é uma aula que explora as características que fazem um líder ser admirado e respeitado.",
+          "teachers": [
+            {
+              "id": "668ef5e3c789f2a1b3c9d1a4",
+              "name": "Roberto Shinyashiki",
+              "avatar_url": "https://classic.exame.com/wp-content/uploads/2016/10/size_960_16_9_roberto-shinyashiki.jpg",
+              "highlight": true
+            }
+          ],
+          "thumb": {
+            "type": "image",
+            "data": {
+              "url": "https://unifast.com.br/wp-content/uploads/2022/05/2.jpg"
+            }
+          }
+        },
+        {
+          "id": "668jo1b3d8c29c2a2b4c4e10",
+          "title": "O Segredo da Inteligência Afetiva",
+          "description": "O Segredo da Inteligência Afetiva é uma aula que ensina como desenvolver habilidades emocionais essenciais para a liderança.",
+          "teachers": [
+            {
+              "id": "668ef5e3c789f2a1b3c9d1a4",
+              "name": "Roberto Shinyashiki",
+              "avatar_url": "https://classic.exame.com/wp-content/uploads/2016/10/size_960_16_9_roberto-shinyashiki.jpg",
+              "highlight": true
+            }
+          ],
+          "thumb": {
+            "type": "image",
+            "data": {
+              "url": "https://unifast.com.br/wp-content/uploads/2022/05/2.jpg"
+            }
+          }
+        },
+        {
+          "id": "668f01b3d8c29c2a2b4p4r20",
+          "title": "Um mundo de Escassez de Afeto",
+          "description": "Um mundo de Escassez de Afeto é uma aula que aborda a importância do afeto nas relações interpessoais e como isso afeta a liderança.",
+          "teachers": [
+            {
+              "id": "668ef5e3c789f2a1b3c9d1a4",
+              "name": "Roberto Shinyashiki",
+              "avatar_url": "https://classic.exame.com/wp-content/uploads/2016/10/size_960_16_9_roberto-shinyashiki.jpg",
+              "highlight": true
+            }
+          ],
+          "thumb": {
+            "type": "image",
+            "data": {
+              "url": "https://unifast.com.br/wp-content/uploads/2022/05/2.jpg"
+            }
+          }
+        }
+      ]
+    }
+}]
