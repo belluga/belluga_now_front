@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
+import 'package:unifast_portal/domain/notes/note_model.dart';
 import 'package:unifast_portal/presentation/screens/lms/screens/course_screen/controllers/course_screen_controller.dart';
 import 'package:unifast_portal/presentation/screens/lms/screens/course_screen/widgets/content_video_player/enums/tab_content_type.dart';
 
 class CourseFloatingActionButtons extends StatefulWidget {
 
-  final void Function() onPressed;
+  final void Function({NoteModel? noteModel}) onPressed;
 
   const CourseFloatingActionButtons({super.key, required this.onPressed});
 

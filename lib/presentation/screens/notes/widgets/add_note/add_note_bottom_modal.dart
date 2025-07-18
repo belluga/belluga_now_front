@@ -69,8 +69,8 @@ class _AddNoteBottomModalState extends State<AddNoteBottomModal> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const Text(
-                  'Adicionar nota',
+                Text(
+                  widget.noteModel == null ? 'Adicionar nota' : "Editar nota",
                   style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 16),
@@ -80,9 +80,6 @@ class _AddNoteBottomModalState extends State<AddNoteBottomModal> {
                     StreamValueBuilder(
                       streamValue: _controller.colorSelectedStreamValue,
                       builder: (context, colorSelected) {
-                        print(("onStream"));
-                        print(colorSelected);
-
                         return ColorSelector(
                           colorOptions: [
                             Colors.yellow.shade200,
@@ -125,6 +122,7 @@ class _AddNoteBottomModalState extends State<AddNoteBottomModal> {
                       child: TextField(
                         controller: _controller.noteContentTextController,
                         maxLines: 5,
+                        autofocus: widget.noteModel == null,
                         textCapitalization: TextCapitalization.sentences,
                         style: const TextStyle(
                           color: Colors.black, // Ensures the font color is dark

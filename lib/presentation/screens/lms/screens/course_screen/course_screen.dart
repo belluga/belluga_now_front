@@ -1,6 +1,7 @@
 import 'package:auto_route/annotations.dart';
 import 'package:flutter/material.dart';
 import 'package:unifast_portal/domain/courses/course_item_model.dart';
+import 'package:unifast_portal/domain/notes/note_model.dart';
 import 'package:unifast_portal/presentation/screens/lms/screens/course_screen/controllers/course_screen_controller.dart';
 import 'package:unifast_portal/presentation/screens/lms/screens/course_screen/widgets/content_video_player/enums/tab_content_type.dart';
 import 'package:unifast_portal/presentation/screens/lms/screens/course_screen/widgets/course_floating_action_buttons.dart';
@@ -100,7 +101,9 @@ class _CourseScreenState extends State<CourseScreen>
                           case TabContentType.files:
                             return FilesList();
                           case TabContentType.notes:
-                            return NotesList();
+                            return NotesList(
+                              onCardTap: _showNotesAddBottomSheet,
+                            );
                         }
                       },
                     ),
@@ -124,13 +127,14 @@ class _CourseScreenState extends State<CourseScreen>
     _controller.setCourse(widget.courseItemId);
   }
 
-  void _showNotesAddBottomSheet() {
+  void _showNotesAddBottomSheet({NoteModel? noteModel}) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) => AddNoteBottomModal(
         courseItemModel: _controller.currentCourseItemStreamValue.value!,
+        noteModel: noteModel,
         currentVideoPosition:
             _controller.contentVideoPlayerController.positionStreamValue.value,
       ),

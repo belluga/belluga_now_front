@@ -5,9 +5,15 @@ import 'package:unifast_portal/presentation/screens/lms/screens/course_screen/co
 
 class NoteCard extends StatefulWidget {
   final NoteModel noteModel;
+  final void Function({NoteModel? noteModel}) onCardTap;
   final int index;
 
-  const NoteCard({super.key, required this.noteModel, required this.index});
+  const NoteCard({
+    super.key,
+    required this.noteModel,
+    required this.onCardTap,
+    required this.index,
+  });
 
   @override
   State<NoteCard> createState() => _NoteCardState();
@@ -20,6 +26,7 @@ class _NoteCardState extends State<NoteCard> {
   Widget build(BuildContext context) {
     return Card(
       child: InkWell(
+        onTap: () => widget.onCardTap(noteModel: widget.noteModel),
         child: IntrinsicHeight(
           child: Container(
             color: Theme.of(context).colorScheme.surfaceDim,

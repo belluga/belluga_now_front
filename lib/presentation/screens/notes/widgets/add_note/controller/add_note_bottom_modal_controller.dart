@@ -14,7 +14,12 @@ class AddNoteBottomModalController {
     required this.courseItemModel,
     this.currentVideoPosition,
     this.noteModel,
-  });
+  }){
+    if (noteModel != null) {
+      noteContentTextController.text = noteModel!.content.value;
+      colorSelectedStreamValue.addValue(noteModel!.color.value);
+    }
+  }
 
   final notesRepository = GetIt.I.get<NotesRepositoryContract>();
 
