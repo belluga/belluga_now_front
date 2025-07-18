@@ -3,12 +3,13 @@ import 'package:flutter/material.dart';
 import 'package:unifast_portal/domain/courses/course_item_model.dart';
 import 'package:unifast_portal/presentation/screens/lms/screens/course_screen/controllers/course_screen_controller.dart';
 import 'package:unifast_portal/presentation/screens/lms/screens/course_screen/widgets/content_video_player/enums/tab_content_type.dart';
+import 'package:unifast_portal/presentation/screens/lms/screens/course_screen/widgets/course_floating_action_buttons.dart';
 import 'package:unifast_portal/presentation/screens/lms/screens/course_screen/widgets/course_header_builder/course_header_builder.dart';
 import 'package:unifast_portal/presentation/screens/lms/screens/course_screen/widgets/tabs/childrens_list.dart';
 import 'package:unifast_portal/presentation/screens/lms/screens/course_screen/widgets/tabs/files_list.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
-import 'package:unifast_portal/presentation/screens/notes/widgets/add_note/add_note_bottom_modal.dart';
+import 'package:unifast_portal/presentation/screens/lms/screens/course_screen/widgets/tabs/notes_list.dart';
 
 @RoutePage()
 class CourseScreen extends StatefulWidget {
@@ -57,15 +58,26 @@ class _CourseScreenState extends State<CourseScreen>
                     dividerColor: Colors.transparent,
                     indicatorSize: TabBarIndicatorSize.label,
                     labelColor: Theme.of(context).colorScheme.onPrimary,
-                    tabs: [
-                      if (courseModel.childrensSummary != null)
-                        Tab(
-                          text:
-                              courseModel.childrensSummary!.label.valueFormated,
-                        ),
-                      if (courseModel.files.isNotEmpty) Tab(text: 'Arquivos'),
-                      Tab(text: 'Anotações'),
-                    ],
+                    tabs: List.generate(_controller.tabContentTypes.length, (
+                      index,
+                    ) {
+                      final TabContentType contentType =
+                          _controller.tabContentTypes[index];
+
+                      switch (contentType) {
+                        case TabContentType.childrens:
+                          return Tab(
+                            text: courseModel
+                                .childrensSummary
+                                ?.label
+                                .valueFormated,
+                          );
+                        case TabContentType.files:
+                          return Tab(text: 'Arquivos');
+                        case TabContentType.notes:
+                          return Tab(text: 'Anotações');
+                      }
+                    }),
                   ),
                 ),
               ),
@@ -75,11 +87,22 @@ class _CourseScreenState extends State<CourseScreen>
                   padding: EdgeInsets.symmetric(horizontal: 16),
                   child: TabBarView(
                     controller: _controller.tabController,
-                    children: [
-                      if (courseModel.childrens.isNotEmpty) ChildrensList(),
-                      if (courseModel.files.isNotEmpty) FilesList(),
-                      const Center(child: Text('Nenhuma anotação encontrada.')),
-                    ],
+                    children: List.generate(
+                      _controller.tabContentTypes.length,
+                      (index) {
+                        final TabContentType contentType =
+                            _controller.tabContentTypes[index];
+
+                        switch (contentType) {
+                          case TabContentType.childrens:
+                            return ChildrensList();
+                          case TabContentType.files:
+                            return FilesList();
+                          case TabContentType.notes:
+                            return NotesList();
+                        }
+                      },
+                    ),
                   ),
                 ),
               ),
@@ -87,31 +110,7 @@ class _CourseScreenState extends State<CourseScreen>
           );
         },
       ),
-      floatingActionButton: StreamValueBuilder<TabContentType>(
-        streamValue: _controller.tabContentTypeStreamValue,
-        onNullWidget: SizedBox.shrink(),
-        builder: (context, tabContentType) {
-          if (tabContentType != TabContentType.notes){
-            return SizedBox.shrink();
-          }
-
-          return FloatingActionButton(
-            onPressed: () {
-              showModalBottomSheet(
-                context: context,
-                isScrollControlled: true,
-                backgroundColor: Colors.transparent,
-                builder: (context) => AddNoteBottomModal(
-                  courseItemModel: _controller.currentCourseItemStreamValue.value!,
-                  currentVideoPosition: _controller.contentVideoPlayerController.videoPlayerController.value.position,
-                ),
-              );
-            },
-            backgroundColor: Theme.of(context).colorScheme.secondary,
-            child: Icon(Icons.add_comment, color: Theme.of(context).colorScheme.onSecondary,),
-          );
-        },
-      ),
+      floatingActionButton: CourseFloatingActionButtons(),
     );
   }
 

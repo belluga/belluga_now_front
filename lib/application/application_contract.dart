@@ -5,15 +5,17 @@ import 'package:unifast_portal/application/router/app_router.dart';
 import 'package:unifast_portal/domain/repositories/auth_repository_contract.dart';
 import 'package:unifast_portal/domain/repositories/external_courses_repository_contract.dart';
 import 'package:unifast_portal/domain/repositories/courses_repository_contract.dart';
+import 'package:unifast_portal/domain/repositories/notes_repository_contract.dart';
 import 'package:unifast_portal/domain/tenant/tenant.dart';
 import 'package:unifast_portal/infrastructure/repositories/courses_repository.dart';
 import 'package:unifast_portal/infrastructure/repositories/external_courses_repository.dart';
+import 'package:unifast_portal/infrastructure/repositories/notes_repository.dart';
 import 'package:unifast_portal/infrastructure/services/laravel_backend/backend_contract.dart';
 import 'package:get_it/get_it.dart';
 import 'package:intl/intl_standalone.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:intl/date_symbol_data_local.dart';
-import 'package:unifast_portal/application/platform_app_data/platform_app_data.dart'; 
+import 'package:unifast_portal/application/platform_app_data/platform_app_data.dart';
 
 abstract class ApplicationContract extends StatelessWidget {
   final _appRouter = AppRouter();
@@ -56,6 +58,10 @@ abstract class ApplicationContract extends StatelessWidget {
 
     GetIt.I.registerLazySingleton<CoursesRepositoryContract>(
       () => CoursesRepository(),
+    );
+
+    GetIt.I.registerLazySingleton<NotesRepositoryContract>(
+      () => NotesRepository(),
     );
 
     final tenant = Tenant();

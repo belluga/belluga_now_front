@@ -3,13 +3,14 @@ import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 import 'package:unifast_portal/domain/courses/course_item_model.dart';
 import 'package:unifast_portal/domain/notes/note_model.dart';
+import 'package:unifast_portal/presentation/common/widgets/button_loading.dart';
 import 'package:unifast_portal/presentation/screens/notes/widgets/add_note/color_selector.dart';
 import 'package:unifast_portal/presentation/screens/notes/widgets/add_note/controller/add_note_bottom_modal_controller.dart';
 
 class AddNoteBottomModal extends StatefulWidget {
   final CourseItemModel courseItemModel;
   final Duration? currentVideoPosition;
-  final NoteModel? noteModel; 
+  final NoteModel? noteModel;
 
   const AddNoteBottomModal({
     super.key,
@@ -66,6 +67,7 @@ class _AddNoteBottomModalState extends State<AddNoteBottomModal> {
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 const Text(
                   'Adicionar nota',
@@ -78,6 +80,9 @@ class _AddNoteBottomModalState extends State<AddNoteBottomModal> {
                     StreamValueBuilder(
                       streamValue: _controller.colorSelectedStreamValue,
                       builder: (context, colorSelected) {
+                        print(("onStream"));
+                        print(colorSelected);
+
                         return ColorSelector(
                           colorOptions: [
                             Colors.yellow.shade200,
@@ -86,12 +91,25 @@ class _AddNoteBottomModalState extends State<AddNoteBottomModal> {
                             Colors.blue.shade100,
                           ],
                           selectedColor: colorSelected,
+                          onColorSelected: _controller.changeColor,
                         );
                       },
                     ),
-                    ElevatedButton(
-                      onPressed: _controller.saveNote,
-                      child: const Text('Salvar'),
+                    SizedBox(width: 32),
+                    Expanded(
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Expanded(
+                            child: ButtonLoading(
+                              onPressed: _saveNote,
+                              loadingStatusStreamValue:
+                                  _controller.savingNoteStreamValue,
+                              label: 'Salvar',
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ),
@@ -105,6 +123,7 @@ class _AddNoteBottomModalState extends State<AddNoteBottomModal> {
                         borderRadius: BorderRadius.circular(8.0),
                       ),
                       child: TextField(
+                        controller: _controller.noteContentTextController,
                         maxLines: 5,
                         textCapitalization: TextCapitalization.sentences,
                         style: const TextStyle(
@@ -133,6 +152,15 @@ class _AddNoteBottomModalState extends State<AddNoteBottomModal> {
         ],
       ),
     );
+  }
+
+  Future<void> _saveNote() async {
+    await _controller.saveNote();
+    _pop();
+  }
+
+  void _pop() {
+    Navigator.pop(context);
   }
 
   @override

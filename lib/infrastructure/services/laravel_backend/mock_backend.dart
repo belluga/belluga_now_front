@@ -1,22 +1,20 @@
 import 'dart:math';
 
 import 'package:dio/dio.dart';
+import 'package:flutter/rendering.dart';
+import 'package:unifast_portal/application/extensions/color_to_hex.dart';
 import 'package:unifast_portal/domain/auth/errors/belluga_auth_errors.dart';
-import 'package:unifast_portal/domain/repositories/auth_repository_contract.dart';
 import 'package:unifast_portal/infrastructure/services/dal/dto/course/category_dto.dart';
 import 'package:unifast_portal/infrastructure/services/dal/dto/course/course_item_summary_dto.dart';
 import 'package:unifast_portal/infrastructure/services/dal/dto/course/course_item_dto.dart';
 import 'package:unifast_portal/infrastructure/services/dal/dto/external_course_dto.dart';
+import 'package:unifast_portal/infrastructure/services/dal/dto/notes/note_dto.dart';
 import 'package:unifast_portal/infrastructure/services/dal/dto/user_dto.dart';
 import 'package:unifast_portal/infrastructure/services/dal/dto/user_profile_dto.dart';
 import 'package:unifast_portal/infrastructure/services/laravel_backend/backend_contract.dart';
-import 'package:get_it/get_it.dart';
 
 class MockBackend extends BackendContract {
   final dio = Dio();
-
-  AuthRepositoryContract get authRepository =>
-      GetIt.I.get<AuthRepositoryContract>();
 
   @override
   Future<(UserDTO, String)> loginWithEmailPassword(
@@ -112,16 +110,81 @@ class MockBackend extends BackendContract {
     required String needle,
     required List<Map<String, dynamic>> haystack,
   }) {
-    final Map<String, dynamic>? _courseItemDetailsRaw = haystack.firstWhere(
+    final Map<String, dynamic> _courseItemDetailsRaw = haystack.firstWhere(
       (item) => item['id'] == needle,
     );
 
-    if (_courseItemDetailsRaw == null) {
-      return null;
-    }
-
     return CourseItemDetailsDTO.fromJson(_courseItemDetailsRaw);
   }
+
+  @override
+  Future<List<NoteDTO>> getNotes(String courseItemId) {
+    // Simulate fetching notes for a course item
+    return Future.delayed(Duration(seconds: 1), () {
+      if (!_notes.containsKey(courseItemId)) {
+        return [];
+      }
+      return _notes[courseItemId]!;
+    });
+  }
+
+  @override
+  Future<void> createNote({
+    required String courseItemId,
+    required String content,
+    Duration? position,
+    required Color color,
+  }) {
+    // Simulate saving a note
+    return Future.delayed(Duration(seconds: 1), () {
+      final NoteDTO _note = NoteDTO(
+        id: fakeMongoId,
+        courseItemId: courseItemId,
+        content: content,
+        colorHex: color.toHex(),
+        position: position?.toString(),
+      );
+      _notes.putIfAbsent(courseItemId, () => []).add(_note);
+    });
+  }
+
+  @override
+  Future<void> updateNote({
+    required String id,
+    required String courseItemId,
+    required String content,
+    Duration? position,
+    required Color color,
+  }) {
+    return Future.delayed(Duration(seconds: 1), () {
+      if (!_notes.containsKey(courseItemId)) {
+        throw Exception("Note not found for course item: $courseItemId");
+      }
+      final notesList = _notes[courseItemId]!;
+      final index = notesList.indexWhere((n) => n.id == id);
+      if (index == -1) {
+        throw Exception("Note not found with id: $id");
+      }
+      notesList[index].colorHex = color.toHex();
+      notesList[index].content = content;
+      notesList[index].position = position?.toString();
+    });
+  }
+
+  @override
+  Future<void> deleteNote(String id) {
+    return Future.delayed(Duration(seconds: 1), () {
+      _notes.forEach((courseItemId, notesList) {
+        final index = notesList.indexWhere((n) => n.id == id);
+        if (index != -1) {
+          notesList.removeAt(index);
+        }
+      });
+      print("Note DELETED successfully (MOCK).");
+    });
+  }
+
+  final Map<String, List<NoteDTO>> _notes = {};
 
   String get fakeMongoId {
     const chars = 'abcdef0123456789';

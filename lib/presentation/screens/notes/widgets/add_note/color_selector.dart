@@ -4,11 +4,13 @@ import 'package:unifast_portal/presentation/screens/notes/widgets/color_choice.d
 class ColorSelector extends StatelessWidget {
   final Color? selectedColor;
   final List<Color> colorOptions;
+  final void Function(Color) onColorSelected;
 
   const ColorSelector({
     super.key,
     required this.colorOptions,
     this.selectedColor,
+    required this.onColorSelected,
   });
 
   @override
@@ -21,9 +23,7 @@ class ColorSelector extends StatelessWidget {
         return ColorChoice(
           color: color,
           isSelected: selectedColor == color,
-          onTap: () {
-            // Handle color selection
-          },
+          onTap: () => onColorSelected(color),
         );
       }),
     );

@@ -2,9 +2,11 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:unifast_portal/domain/courses/course_item_model.dart';
+import 'package:unifast_portal/domain/notes/note_model.dart';
 import 'package:unifast_portal/domain/repositories/courses_repository_contract.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value.dart';
+import 'package:unifast_portal/domain/repositories/notes_repository_contract.dart';
 import 'package:unifast_portal/presentation/screens/lms/screens/course_screen/widgets/content_video_player/controller/content_video_player_controller.dart';
 import 'package:unifast_portal/presentation/screens/lms/screens/course_screen/widgets/content_video_player/enums/tab_content_type.dart';
 
@@ -13,13 +15,15 @@ class CourseScreenController implements Disposable {
 
   CourseScreenController({required this.vsync});
 
-  final contentVideoPlayerController = ContentVideoPlayerController();
-
   final _coursesRepository = GetIt.I.get<CoursesRepositoryContract>();
+  final _notesRepository = GetIt.I.get<NotesRepositoryContract>();
+
+  final contentVideoPlayerController = ContentVideoPlayerController();
 
   final currentCourseItemStreamValue = StreamValue<CourseItemModel?>();
 
-  final notesStreamValue = StreamValue<List<CourseItemModel>>(defaultValue: []);
+  late StreamValue<List<NoteModel>?> notesStreamValue =
+      _notesRepository.notesSteamValue;
 
   late TabController tabController;
 
@@ -43,6 +47,16 @@ class CourseScreenController implements Disposable {
     await _coursesRepository.getMyCoursesDashboardSummary();
     await _courseItemInit(courseItemId);
     _tabControllerInit();
+  }
+
+  Future<void> getNotes() async {
+    final courseItemId = currentCourseItemStreamValue.value?.id.value;
+
+    if (courseItemId == null) {
+      throw Exception('Course item ID is null');
+    }
+
+    await _notesRepository.getNotes(courseItemId);
   }
 
   Future<void> _courseItemInit(String courseId) async {
@@ -74,30 +88,34 @@ class CourseScreenController implements Disposable {
 
     tabIndexStreamValue.addValue(tabController.index);
 
-    if (tabController.index <= _tabContentTypes.length) {
-      tabContentTypeStreamValue.addValue(_tabContentTypes[tabController.index]);
+    if (tabController.index <= tabContentTypes.length) {
+      tabContentTypeStreamValue.addValue(tabContentTypes[tabController.index]);
     }
   }
 
-  final List<TabContentType> _tabContentTypes = [];
+  final List<TabContentType> tabContentTypes = [];
 
   int get getTabContentIndex =>
-      _tabContentTypes.indexOf(tabContentTypeStreamValue.value!);
+      tabContentTypes.indexOf(tabContentTypeStreamValue.value!);
 
   int _getTabCount() {
-    _tabContentTypes.clear();
-    
+    tabContentTypes.clear();
+
     if (currentCourseItemStreamValue.value!.childrens.isNotEmpty) {
-      _tabContentTypes.add(TabContentType.childrens);
+      tabContentTypes.add(TabContentType.childrens);
     }
 
     if (currentCourseItemStreamValue.value!.files.isNotEmpty) {
-      _tabContentTypes.add(TabContentType.files);
+      tabContentTypes.add(TabContentType.files);
     }
 
-    _tabContentTypes.add(TabContentType.notes);
+    if(currentCourseItemStreamValue.value!.hasVideoContent) {
+      tabContentTypes.add(TabContentType.notes);
+    }
 
-    return _tabContentTypes.length;
+    tabContentTypeStreamValue.addValue(tabContentTypes.first);
+
+    return tabContentTypes.length;
   }
 
   Future<void> initializePlayer() async {
