@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:get_it/get_it.dart';
 import 'package:unifast_portal/domain/notes/note_model.dart';
+import 'package:unifast_portal/presentation/screens/lms/screens/course_screen/controllers/course_screen_controller.dart';
 
 class NoteCard extends StatefulWidget {
   final NoteModel noteModel;
@@ -12,6 +14,8 @@ class NoteCard extends StatefulWidget {
 }
 
 class _NoteCardState extends State<NoteCard> {
+  final _controller = GetIt.I.get<CourseScreenController>();
+
   @override
   Widget build(BuildContext context) {
     return Card(
@@ -50,9 +54,19 @@ class _NoteCardState extends State<NoteCard> {
                             ],
                           ),
                         ),
-                        const SizedBox(width: 8),
+                        const SizedBox(width: 24),
                         if (widget.noteModel.position.value != null)
-                          Text(widget.noteModel.position.valueFormated),
+                          InkWell(
+                            onTap: _navigateToVideoPosition,
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: .0,
+                              ),
+                              child: Text(
+                                widget.noteModel.position.valueFormated,
+                              ),
+                            ),
+                          ),
                       ],
                     ),
                   ),
@@ -63,5 +77,17 @@ class _NoteCardState extends State<NoteCard> {
         ),
       ),
     );
+  }
+
+  void _navigateToVideoPosition() {
+    final Duration? _position = widget.noteModel.position.value;
+
+    if (_position != null) {
+      final Duration _seekTo = _position - Duration(seconds: 5);
+      _controller.contentVideoPlayerController.videoPlayerController.seekTo(
+        _seekTo,
+      );
+      _controller.contentVideoPlayerController.videoPlayerController.play();
+    }
   }
 }

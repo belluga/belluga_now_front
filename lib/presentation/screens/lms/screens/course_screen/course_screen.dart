@@ -10,6 +10,7 @@ import 'package:unifast_portal/presentation/screens/lms/screens/course_screen/wi
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 import 'package:unifast_portal/presentation/screens/lms/screens/course_screen/widgets/tabs/notes_list.dart';
+import 'package:unifast_portal/presentation/screens/notes/widgets/add_note/add_note_bottom_modal.dart';
 
 @RoutePage()
 class CourseScreen extends StatefulWidget {
@@ -110,7 +111,9 @@ class _CourseScreenState extends State<CourseScreen>
           );
         },
       ),
-      floatingActionButton: CourseFloatingActionButtons(),
+      floatingActionButton: CourseFloatingActionButtons(
+        onPressed: _showNotesAddBottomSheet,
+      ),
     );
   }
 
@@ -119,6 +122,19 @@ class _CourseScreenState extends State<CourseScreen>
       CourseScreenController(vsync: this),
     );
     _controller.setCourse(widget.courseItemId);
+  }
+
+  void _showNotesAddBottomSheet() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => AddNoteBottomModal(
+        courseItemModel: _controller.currentCourseItemStreamValue.value!,
+        currentVideoPosition:
+            _controller.contentVideoPlayerController.positionStreamValue.value,
+      ),
+    );
   }
 
   @override

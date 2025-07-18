@@ -3,10 +3,12 @@ import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 import 'package:unifast_portal/presentation/screens/lms/screens/course_screen/controllers/course_screen_controller.dart';
 import 'package:unifast_portal/presentation/screens/lms/screens/course_screen/widgets/content_video_player/enums/tab_content_type.dart';
-import 'package:unifast_portal/presentation/screens/notes/widgets/add_note/add_note_bottom_modal.dart';
 
 class CourseFloatingActionButtons extends StatefulWidget {
-  const CourseFloatingActionButtons({super.key});
+
+  final void Function() onPressed;
+
+  const CourseFloatingActionButtons({super.key, required this.onPressed});
 
   @override
   State<CourseFloatingActionButtons> createState() => _CourseFloatingActionButtonsState();
@@ -26,7 +28,7 @@ class _CourseFloatingActionButtonsState extends State<CourseFloatingActionButton
         }
 
         return FloatingActionButton(
-          onPressed: _showNotesAddBottomSheet,
+          onPressed: widget.onPressed,
           backgroundColor: Theme.of(context).colorScheme.secondary,
           child: Icon(
             Icons.add_comment,
@@ -34,19 +36,6 @@ class _CourseFloatingActionButtonsState extends State<CourseFloatingActionButton
           ),
         );
       },
-    );
-  }
-
-  void _showNotesAddBottomSheet() {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => AddNoteBottomModal(
-        courseItemModel: _controller.currentCourseItemStreamValue.value!,
-        currentVideoPosition:
-            _controller.contentVideoPlayerController.positionStreamValue.value,
-      ),
     );
   }
 }
