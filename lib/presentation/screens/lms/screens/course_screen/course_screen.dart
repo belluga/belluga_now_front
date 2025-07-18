@@ -44,73 +44,76 @@ class _CourseScreenState extends State<CourseScreen>
         streamValue: _controller.currentCourseItemStreamValue,
         onNullWidget: Center(child: CircularProgressIndicator()),
         builder: (context, courseModel) {
-          return Column(
-            children: [
-              Expanded(
-                flex: 1,
-                child: CourseHeaderBuilder(courseItemModel: courseModel),
-              ),
-              SizedBox(height: 16),
-              Padding(
-                padding: EdgeInsets.symmetric(horizontal: 16),
-                child: Container(
-                  color: Theme.of(context).colorScheme.surfaceDim,
-                  child: TabBar(
-                    controller: _controller.tabController,
-                    dividerColor: Colors.transparent,
-                    indicatorSize: TabBarIndicatorSize.label,
-                    labelColor: Theme.of(context).colorScheme.onPrimary,
-                    tabs: List.generate(_controller.tabContentTypes.length, (
-                      index,
-                    ) {
-                      final TabContentType contentType =
-                          _controller.tabContentTypes[index];
-
-                      switch (contentType) {
-                        case TabContentType.childrens:
-                          return Tab(
-                            text: courseModel
-                                .childrensSummary
-                                ?.label
-                                .valueFormated,
-                          );
-                        case TabContentType.files:
-                          return Tab(text: 'Arquivos');
-                        case TabContentType.notes:
-                          return Tab(text: 'Anotações');
-                      }
-                    }),
-                  ),
+          return SafeArea(
+            top: false,
+            child: Column(
+              children: [
+                Expanded(
+                  flex: 1,
+                  child: CourseHeaderBuilder(courseItemModel: courseModel),
                 ),
-              ),
-              Expanded(
-                flex: 2,
-                child: Padding(
+                SizedBox(height: 16),
+                Padding(
                   padding: EdgeInsets.symmetric(horizontal: 16),
-                  child: TabBarView(
-                    controller: _controller.tabController,
-                    children: List.generate(
-                      _controller.tabContentTypes.length,
-                      (index) {
+                  child: Container(
+                    color: Theme.of(context).colorScheme.surfaceDim,
+                    child: TabBar(
+                      controller: _controller.tabController,
+                      dividerColor: Colors.transparent,
+                      indicatorSize: TabBarIndicatorSize.label,
+                      labelColor: Theme.of(context).colorScheme.onPrimary,
+                      tabs: List.generate(_controller.tabContentTypes.length, (
+                        index,
+                      ) {
                         final TabContentType contentType =
                             _controller.tabContentTypes[index];
-
+            
                         switch (contentType) {
                           case TabContentType.childrens:
-                            return ChildrensList();
-                          case TabContentType.files:
-                            return FilesList();
-                          case TabContentType.notes:
-                            return NotesList(
-                              onCardTap: _showNotesAddBottomSheet,
+                            return Tab(
+                              text: courseModel
+                                  .childrensSummary
+                                  ?.label
+                                  .valueFormated,
                             );
+                          case TabContentType.files:
+                            return Tab(text: 'Arquivos');
+                          case TabContentType.notes:
+                            return Tab(text: 'Anotações');
                         }
-                      },
+                      }),
                     ),
                   ),
                 ),
-              ),
-            ],
+                Expanded(
+                  flex: 2,
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 16),
+                    child: TabBarView(
+                      controller: _controller.tabController,
+                      children: List.generate(
+                        _controller.tabContentTypes.length,
+                        (index) {
+                          final TabContentType contentType =
+                              _controller.tabContentTypes[index];
+            
+                          switch (contentType) {
+                            case TabContentType.childrens:
+                              return ChildrensList();
+                            case TabContentType.files:
+                              return FilesList();
+                            case TabContentType.notes:
+                              return NotesList(
+                                onCardTap: _showNotesAddBottomSheet,
+                              );
+                          }
+                        },
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           );
         },
       ),
