@@ -23,7 +23,7 @@ dependencies:
   platform_device_id_plus: ^1.0.7
   sentry_flutter: ^9.1.0
   slugify: ^2.0.0
-  stream_value: ^0.0.5
+  stream_value: ^0.0.6
   url_launcher: ^6.3.1
   value_object_pattern: ^0.0.5
   video_player: ^2.10.0

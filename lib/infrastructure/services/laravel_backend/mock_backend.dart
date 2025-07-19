@@ -264,7 +264,7 @@ class MockBackend extends BackendContract {
   ];
 
   Future<List<Map<String, dynamic>>> _courseItemListDetails() async {
-    if (kDebugMode) {
+    // if (kDebugMode) {
       final lessonsJson = await rootBundle.loadString('assets/mock/aulasTotal.json');
       final List<dynamic> lessonsJsonList = json.decode(lessonsJson);
       final lessons = lessonsJsonList.cast<Map<String, dynamic>>();
@@ -290,33 +290,33 @@ class MockBackend extends BackendContract {
       _courseItems.addAll(fastTracklessons);
       _courseItems.addAll(disciplines);
       return _courseItems;
-    } else {
-      return [];
-    }
+    // } else {
+    //   return [];
+    // }
   }
 
   Future<List<Map<String, dynamic>>> _unifastTracks() async {
-    if (kDebugMode) {
+    // if (kDebugMode) {
       final fastTracksJson = await rootBundle.loadString('assets/mock/fastTrack.json');
       final List<dynamic> fastTrackJsonList = json.decode(fastTracksJson);
       final fastTracks = fastTrackJsonList.cast<Map<String, dynamic>>();
 
       return fastTracks;
-    } else {
-      return [];
-    }
+    // } else {
+    //   return [];
+    // }
   }
 
   Future<List<Map<String, dynamic>>> _myCourses() async {
-    if (kDebugMode) {
+    // if (kDebugMode) {
       final myCoursesJson = await rootBundle.loadString('assets/mock/myCourses.json');
       final List<dynamic> myCoursesJsonList = json.decode(myCoursesJson);
       final myCoursesTracks = myCoursesJsonList.cast<Map<String, dynamic>>();
 
       return myCoursesTracks;
-    } else {
-      return [];
-    }
+    // } else {
+    //   return [];
+    // }
   }
 
   //TODO: Retrieve partner name and logo to place on the Course.

@@ -952,10 +952,10 @@ packages:
     dependency: "direct main"
     description:
       name: stream_value
-      sha256: "015180be28b851a95bb37186bf8fb7b5d604b7b98289623d56388bcb816b2b19"
+      sha256: "3fb6840979ad9491a0ae6396b4259ff0170dd9fd92ae79d8fb1706a3f569cbd8"
       url: "https://pub.dev"
     source: hosted
-    version: "0.0.5"
+    version: "0.0.6"
   string_scanner:
     dependency: transitive
     description:
