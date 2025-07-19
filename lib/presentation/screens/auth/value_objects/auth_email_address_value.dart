@@ -1,4 +1,4 @@
-import 'package:value_objects/domain/value_objects/email_address_value.dart';
+import 'package:value_object_pattern/domain/value_objects/email_address_value.dart';
 
 class AuthEmailAddressValue extends EmailAddressValue {
   AuthEmailAddressValue({

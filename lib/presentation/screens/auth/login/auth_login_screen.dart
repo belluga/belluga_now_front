@@ -1,12 +1,12 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_laravel_backend_boilerplate/application/router/app_router.gr.dart';
-import 'package:flutter_laravel_backend_boilerplate/domain/controllers/auth_login_controller_contract.dart';
-import 'package:flutter_laravel_backend_boilerplate/presentation/common/widgets/main_logo.dart';
-import 'package:flutter_laravel_backend_boilerplate/presentation/screens/auth/login/controller/auth_login_controller.dart';
-import 'package:flutter_laravel_backend_boilerplate/presentation/screens/auth/login/widgets/auth_header_expanded_content.dart';
-import 'package:flutter_laravel_backend_boilerplate/presentation/screens/auth/login/widgets/auth_header_headline.dart';
-import 'package:flutter_laravel_backend_boilerplate/presentation/screens/auth/login/widgets/auth_login_canva_content.dart';
+import 'package:unifast_portal/application/router/app_router.gr.dart';
+import 'package:unifast_portal/domain/controllers/auth_login_controller_contract.dart';
+import 'package:unifast_portal/presentation/common/widgets/main_logo.dart';
+import 'package:unifast_portal/presentation/screens/auth/login/controller/auth_login_controller.dart';
+import 'package:unifast_portal/presentation/screens/auth/login/widgets/auth_header_expanded_content.dart';
+import 'package:unifast_portal/presentation/screens/auth/login/widgets/auth_header_headline.dart';
+import 'package:unifast_portal/presentation/screens/auth/login/widgets/auth_login_canva_content.dart';
 import 'package:get_it/get_it.dart';
 
 @RoutePage()
