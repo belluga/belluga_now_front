@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_laravel_backend_boilerplate/domain/controllers/recovery_password_token_controller_contract.dart';
-import 'package:flutter_laravel_backend_boilerplate/domain/repositories/auth_repository_contract.dart';
-import 'package:flutter_laravel_backend_boilerplate/presentation/screens/auth/login/controller/form_field_controller_email.dart';
+import 'package:unifast_portal/domain/controllers/recovery_password_token_controller_contract.dart';
+import 'package:unifast_portal/domain/repositories/auth_repository_contract.dart';
+import 'package:unifast_portal/presentation/screens/auth/login/controller/form_field_controller_email.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value.dart';
 

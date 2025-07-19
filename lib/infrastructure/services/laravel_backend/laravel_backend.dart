@@ -1,10 +1,16 @@
 import 'package:dio/dio.dart';
-import 'package:flutter_laravel_backend_boilerplate/application/configurations/belluga_constants.dart';
-import 'package:flutter_laravel_backend_boilerplate/domain/auth/errors/belluga_auth_errors.dart';
-import 'package:flutter_laravel_backend_boilerplate/domain/repositories/auth_repository_contract.dart';
-import 'package:flutter_laravel_backend_boilerplate/domain/tenant/tenant.dart';
-import 'package:flutter_laravel_backend_boilerplate/infrastructure/services/dal/dto/user_dto.dart';
-import 'package:flutter_laravel_backend_boilerplate/infrastructure/services/laravel_backend/backend_contract.dart';
+import 'package:flutter/rendering.dart';
+import 'package:unifast_portal/application/configurations/belluga_constants.dart';
+import 'package:unifast_portal/domain/auth/errors/belluga_auth_errors.dart';
+import 'package:unifast_portal/domain/repositories/auth_repository_contract.dart';
+import 'package:unifast_portal/domain/tenant/tenant.dart';
+import 'package:unifast_portal/infrastructure/services/dal/dto/course/category_dto.dart';
+import 'package:unifast_portal/infrastructure/services/dal/dto/course/course_item_summary_dto.dart';
+import 'package:unifast_portal/infrastructure/services/dal/dto/course/course_item_dto.dart';
+import 'package:unifast_portal/infrastructure/services/dal/dto/external_course_dto.dart';
+import 'package:unifast_portal/infrastructure/services/dal/dto/notes/note_dto.dart';
+import 'package:unifast_portal/infrastructure/services/dal/dto/user_dto.dart';
+import 'package:unifast_portal/infrastructure/services/laravel_backend/backend_contract.dart';
 import 'package:get_it/get_it.dart';
 
 class LaravelBackend extends BackendContract {
@@ -18,8 +24,7 @@ class LaravelBackend extends BackendContract {
     String email,
     String password,
   ) async {
-
-    try{
+    try {
       final response = await dio.post(
         BellugaConstants.api.baseUrl + _Paths.login,
         data: {
@@ -30,22 +35,19 @@ class LaravelBackend extends BackendContract {
         options: Options(headers: _getHeaders()),
       );
 
-      final userDTO = UserDTO.fromMap(response.data["data"]["user"]);
+      final userDTO = UserDTO.fromJson(response.data["data"]["user"]);
       final String token = response.data["data"]["token"];
 
       return (userDTO, token);
-
     } on DioException catch (e) {
-
       String? errorMessage = e.response?.data["message"];
       final Map<String, dynamic> errors = e.response?.data["errors"];
 
       throw BellugaAuthError.fromCode(
         errorCode: e.response?.statusCode,
         message: errorMessage,
-        errors: errors
+        errors: errors,
       );
-
     } catch (e) {
       throw BellugaAuthError.fromCode();
     }
@@ -58,16 +60,14 @@ class LaravelBackend extends BackendContract {
       options: Options(headers: _getAuthenticatedHeaders()),
     );
 
-    return UserDTO.fromMap(response.data["data"]["user"]);
+    return UserDTO.fromJson(response.data["data"]["user"]);
   }
 
   @override
   Future<void> logout() async {
     await dio.post(
       BellugaConstants.api.baseUrl + _Paths.logout,
-      data: {
-        "device": GetIt.I.get<Tenant>().device
-      },
+      data: {"device": GetIt.I.get<Tenant>().device},
       options: Options(headers: _getAuthenticatedHeaders()),
     );
   }
@@ -87,6 +87,142 @@ class LaravelBackend extends BackendContract {
     baseHeader["Authorization"] = "Bearer $token";
 
     return baseHeader;
+  }
+
+  @override
+  Future<List<ExternalCourseDTO>> getExternalCourses() async {
+    //TODO: Implement this method to fetch the external courses summary.
+    final response = await dio.post(
+      BellugaConstants.api.baseUrl + _Paths.loginCheck,
+      options: Options(headers: _getAuthenticatedHeaders()),
+    );
+
+    final _externalCourses = (response.data as List<Map<String, dynamic>>)
+        .map((item) => ExternalCourseDTO.fromJson(item))
+        .toList();
+
+    return Future.value(_externalCourses);
+  }
+
+  @override
+  Future<List<CourseItemSummaryDTO>> getMyCourses() async {
+    //TODO: Implement this method to fetch courses summary.
+    final response = await dio.post(
+      BellugaConstants.api.baseUrl + _Paths.loginCheck,
+      options: Options(headers: _getAuthenticatedHeaders()),
+    );
+
+    final _courses = response.data
+        .map((item) => CourseItemSummaryDTO.fromJson(item))
+        .toList();
+
+    return Future.value(_courses);
+  }
+
+  @override
+  Future<List<CourseItemSummaryDTO>> getUnifastTracks() async {
+    //TODO: Implement this method to fetch Unifast Tracks.
+    final response = await dio.post(
+      BellugaConstants.api.baseUrl + _Paths.loginCheck,
+      options: Options(headers: _getAuthenticatedHeaders()),
+    );
+
+    final _courses = response.data
+        .map((item) => CourseItemSummaryDTO.fromJson(item))
+        .toList();
+
+    return Future.value(_courses);
+  }
+
+  @override
+  Future<List<CourseItemSummaryDTO>> getLastFastTrackCourses() async {
+    final response = await dio.post(
+      BellugaConstants.api.baseUrl + _Paths.loginCheck,
+      options: Options(headers: _getAuthenticatedHeaders()),
+    );
+
+    final _courses = response.data
+        .map((item) => CourseItemSummaryDTO.fromJson(item))
+        .toList();
+
+    return Future.value(_courses);
+  }
+
+  @override
+  Future<List<CategoryDTO>> getFastTracksCategories() async {
+    final response = await dio.post(
+      BellugaConstants.api.baseUrl + _Paths.loginCheck,
+      options: Options(headers: _getAuthenticatedHeaders()),
+    );
+
+    final _categories = response.data
+        .map((item) => CategoryDTO.fromJson(item))
+        .toList();
+
+    return Future.value(_categories);
+  }
+
+  //TODO: Implement this method to fetch course.
+  @override
+  Future<CourseItemDetailsDTO> courseItemGetDetails(String courseId) async {
+    final response = await dio.get(
+      '${BellugaConstants.api.baseUrl}/courses/$courseId',
+      options: Options(headers: _getAuthenticatedHeaders()),
+    );
+
+    return CourseItemDetailsDTO.fromJson(response.data);
+  }
+
+  @override
+  Future<List<NoteDTO>> getNotes(String courseItemId) {
+    return Future.delayed(Duration(seconds: 1), () {
+      return [];
+    });
+  }
+
+  @override
+  Future<void> createNote({
+    required String courseItemId,
+    required String content,
+    Duration? position,
+    required Color color,
+  }) {
+    // Simulate saving a note
+    return Future.delayed(Duration(seconds: 1), () {
+      print("Note CREATED successfully (MOCK).");
+      print(content);
+    });
+  }
+
+  @override
+  Future<void> updateNote({
+    required String id,
+    required String courseItemId,
+    required String content,
+    Duration? position,
+    required Color color,
+  }) {
+    return Future.delayed(Duration(seconds: 1), () {
+      print("Note UPDTED successfully (MOCK).");
+      print(id);
+    });
+  }
+
+  @override
+  Future<void> deleteNote(String id) {
+    return Future.delayed(Duration(seconds: 1), () {
+      print("Note DELETED successfully (MOCK).");
+      print(id);
+    });
+  }
+
+  @override
+  Future<NoteDTO?> getNote({required String courseId, required String noteId}) {
+    return Future.delayed(Duration(seconds: 1), () {
+      print("Note DELETED successfully (MOCK).");
+      print(courseId);
+      return null;
+    });
   }
 }
 

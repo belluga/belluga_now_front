@@ -5,12 +5,14 @@ class ButtonLoading extends StatelessWidget {
   final Function()? onPressed;
   final StreamValue<bool> loadingStatusStreamValue;
   final String label;
+  final ButtonStyle? style;
 
   const ButtonLoading({
     super.key,
     this.onPressed,
     required this.loadingStatusStreamValue,
     this.label = "Submit",
+    this.style,
   });
 
   @override
@@ -20,6 +22,7 @@ class ButtonLoading extends StatelessWidget {
       builder: (context, loadingStatus) {
         return ElevatedButton(
           onPressed: onPressed,
+          style: style,
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -28,8 +31,8 @@ class ButtonLoading extends StatelessWidget {
                 children: [
                   if (loadingStatus)
                     SizedBox(
-                      width: 16,
-                      height: 16,
+                      width: 14,
+                      height: 14,
                       child: Center(
                         child: CircularProgressIndicator(
                           color: Theme.of(context).colorScheme.secondary,

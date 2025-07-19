@@ -1,0 +1,29 @@
+[{
+      "id": "9e2b36b89315617e5b6d891f",
+      "title": "MBA em Ciências da Mente e Liderança Humanizada",
+      "type": {"id": "6698b1d0cfd7c52b6f1a1010", "name": "MBA", "slug": "mba"},
+      "description":
+          "MBA Ciência da Mente e Liderança Humanizada: Curso EAD que tem por objetivo líderes mais eficazes. O MBA é reconhecido pelo MEC, tem como carga horária 360 horas sendo elas subdivididas em 18 módulos.  Destinado a Líderes de equipe, Coordenadores, Gestores e Diretores, C-Levels, Empreendedores, Palestrantes, Coaches e Terapeutas.",
+      "thumb": {
+        "type": "image",
+        "data": {"url": "https://agazetadoacre.com/wp-content/uploads/2021/10/rshinyashiki_20201117_p_2444667468612763367_1_2444667468612763367.jpg"}
+      },
+      "categories": [
+        {
+          "id": "668f00a1d9f29b1c2a1b3d0d",
+          "name": "Ciências da Mente",
+          "slug": "ciencias_da_mente"
+        },
+        {"id": "668ed5a2c589a1b2c3d4e5f4", "name": "Liderança", "slug": "lideranca"},
+        {"id": "668ed5a2c589a1b2c3d4e5f3", "name": "Soft Skills", "slug": "soft-skills"}
+      ],
+      "teachers": [
+        {
+          "id": "668ef5e3c789f2a1b3c9d1a4",
+          "name": "Roberto Shinyashiki",
+          "avatar_url": "https://classic.exame.com/wp-content/uploads/2016/10/size_960_16_9_roberto-shinyashiki.jpg",
+          "highlight": true
+        }
+      ]
+}]
+    

@@ -1,6 +1,6 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_laravel_backend_boilerplate/domain/controllers/recovery_password_token_controller_contract.dart';
+import 'package:unifast_portal/domain/controllers/recovery_password_token_controller_contract.dart';
 import 'package:get_it/get_it.dart';
 
 @RoutePage()
@@ -30,39 +30,38 @@ class _RecoveryPasswordScreenState extends State<RecoveryPasswordScreen> {
       body: Stack(
         children: [
           Column(
-              children: [
-                SizedBox(
-                  width: double.infinity,
-                  height: MediaQuery.of(context).size.height * 0.50,
-                  child: Image.asset(
-                    'assets/images/tela_login.jpeg',
-                    fit: BoxFit.cover
-                  ),
+            children: [
+              SizedBox(
+                width: double.infinity,
+                height: MediaQuery.of(context).size.height * 0.50,
+                child: Image.asset(
+                  'assets/images/tela_login.jpeg',
+                  fit: BoxFit.cover,
                 ),
+              ),
 
-                Expanded(
-                  child: SingleChildScrollView(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                      child: Column(
-                        children: [
-                          const SizedBox(height: 20),
-                          const Text(
-                            "Recuperar Senha",
-                            style: TextStyle(
-                              fontSize: 22,
-                              fontWeight: FontWeight.bold
-                              ),
-                            ),
-                          const SizedBox(height: 20),
-
-                        ],
-                      )
+              Expanded(
+                child: SingleChildScrollView(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                    child: Column(
+                      children: [
+                        const SizedBox(height: 20),
+                        const Text(
+                          "Recuperar Senha",
+                          style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                      ],
                     ),
                   ),
-                )
-              ],
-            ),
+                ),
+              ),
+            ],
+          ),
           Positioned(
             bottom: 0,
             left: 0,
@@ -72,7 +71,7 @@ class _RecoveryPasswordScreenState extends State<RecoveryPasswordScreen> {
               height: 40,
               child: Image.asset(
                 'assets/images/rodape.jpeg',
-                fit: BoxFit.cover
+                fit: BoxFit.cover,
               ),
             ),
           ),

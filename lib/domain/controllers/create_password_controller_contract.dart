@@ -1,25 +1,31 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_laravel_backend_boilerplate/domain/auth/errors/belluga_auth_errors.dart';
-import 'package:flutter_laravel_backend_boilerplate/domain/repositories/auth_repository_contract.dart';
-import 'package:flutter_laravel_backend_boilerplate/presentation/screens/auth/login/controller/form_field_controller_password_login.dart';
+import 'package:unifast_portal/domain/auth/errors/belluga_auth_errors.dart';
+import 'package:unifast_portal/domain/repositories/auth_repository_contract.dart';
+import 'package:unifast_portal/presentation/screens/auth/login/controller/form_field_controller_password_login.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value.dart';
 
-abstract class CreatePasswordControllerContract extends Disposable{
+abstract class CreatePasswordControllerContract extends Disposable {
   CreatePasswordControllerContract({
     String? newPassword,
     String? confirmPassword,
-  }){
-    newPasswordController = FormFieldControllerPasswordLogin(initialValue: newPassword);
-    confirmPasswordController = FormFieldControllerPasswordLogin(initialValue: confirmPassword);  
+  }) {
+    newPasswordController = FormFieldControllerPasswordLogin(
+      initialValue: newPassword,
+    );
+    confirmPasswordController = FormFieldControllerPasswordLogin(
+      initialValue: confirmPassword,
+    );
   }
 
   final _authRepository = GetIt.I.get<AuthRepositoryContract>();
 
   final newPasswordFormKey = GlobalKey<FormState>();
-  
-  final StreamValue<bool> buttonLoadingValue = StreamValue<bool>(defaultValue: false);
-  
+
+  final StreamValue<bool> buttonLoadingValue = StreamValue<bool>(
+    defaultValue: false,
+  );
+
   final StreamValue<bool> fieldEnabled = StreamValue<bool>(defaultValue: true);
 
   final generalErrorStreamValue = StreamValue<String?>();
@@ -38,7 +44,7 @@ abstract class CreatePasswordControllerContract extends Disposable{
 
   bool validate() => newPasswordFormKey.currentState?.validate() ?? false;
 
-  Future<void> createPassword() async{
+  Future<void> createPassword() async {
     buttonLoadingValue.addValue(true);
     fieldEnabled.addValue(false);
 
@@ -46,10 +52,13 @@ abstract class CreatePasswordControllerContract extends Disposable{
 
     try {
       if (validate()) {
-        if(newPasswordController.value != confirmPasswordController.value){
+        if (newPasswordController.value != confirmPasswordController.value) {
           generalErrorStreamValue.addValue("As senhas não são iguais.");
-        } else{
-          await _authRepository.createNewPassword(newPasswordController.value, confirmPasswordController.value);
+        } else {
+          await _authRepository.createNewPassword(
+            newPasswordController.value,
+            confirmPasswordController.value,
+          );
         }
       }
     } on BellugaAuthError catch (e) {
@@ -60,6 +69,5 @@ abstract class CreatePasswordControllerContract extends Disposable{
 
     buttonLoadingValue.addValue(false);
     fieldEnabled.addValue(true);
-
-    }
+  }
 }

@@ -1,5 +1,8 @@
 class AssetsConstants {
   static final login = _LoginAssets();
+
+  static final String placeholderGeneric =
+      "assets/images/placeholder.jpg";
 }
 
 class _LoginAssets {

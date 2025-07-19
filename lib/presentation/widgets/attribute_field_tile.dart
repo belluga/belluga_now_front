@@ -1,13 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_laravel_backend_boilerplate/domain/attribute/attribute_model.dart';
+import 'package:unifast_portal/domain/attribute/attribute_model.dart';
 
 class AttributeFieldTile<T> extends StatelessWidget {
   final AttributeModel<T> attribute;
 
-  const AttributeFieldTile({
-    super.key,
-    required this.attribute,
-  });
+  const AttributeFieldTile({super.key, required this.attribute});
 
   @override
   Widget build(BuildContext context) {
@@ -39,9 +36,7 @@ class AttributeFieldTile<T> extends StatelessWidget {
         contentPadding: const EdgeInsets.all(0),
         selected: false,
         selectedTileColor: const Color(0x42000000),
-        shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.zero,
-        ),
+        shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
         leading: Icon(attribute.icons),
         trailing: attribute.isEditable
             ? const Icon(Icons.edit, color: Color(0xff79797c), size: 22)

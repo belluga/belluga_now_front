@@ -1,4 +1,4 @@
-import 'package:flutter_laravel_backend_boilerplate/application/configurations/user_dto_labels.dart';
+import 'package:unifast_portal/application/configurations/user_dto_labels.dart';
 
 class UserProfileDTO {
   final String? birthday;
@@ -19,7 +19,7 @@ class UserProfileDTO {
     required this.pictureUrl,
   });
 
-  factory UserProfileDTO.fromMap(Map<String, Object?> map) {
+  factory UserProfileDTO.fromJson(Map<String, Object?> map) {
     return UserProfileDTO(
       birthday: map[UserDtoLabels.profileLabels.birthday] as String?,
       email: map[UserDtoLabels.profileLabels.email] as String?,
