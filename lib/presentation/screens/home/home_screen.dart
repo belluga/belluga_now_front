@@ -17,7 +17,7 @@ class HomeScreen extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text("This is HOME"),
+            const Text("This is HOME (Belluga NOW)"),
             Text(GetIt.I.get<Tenant>().hostname),
             Text(BellugaConstants.settings.platform),
             ElevatedButton(
