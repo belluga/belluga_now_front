@@ -1,8 +1,8 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_laravel_backend_boilerplate/application/configurations/widget_keys.dart';
-import 'package:flutter_laravel_backend_boilerplate/domain/controllers/belluga_init_screen_controller_contract.dart';
-import 'package:flutter_laravel_backend_boilerplate/presentation/init/controller/init_screen_controller.dart';
+import 'package:unifast_portal/application/configurations/widget_keys.dart';
+import 'package:unifast_portal/domain/controllers/belluga_init_screen_controller_contract.dart';
+import 'package:unifast_portal/presentation/init/controller/init_screen_controller.dart';
 import 'package:get_it/get_it.dart';
 
 @RoutePage()
@@ -26,14 +26,15 @@ class _InitScreenState extends State<InitScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       key: WidgetKeys.splash.scaffold,
-      body: const Center(
-        child: Text("SPLASH"),
-      ),
+      body: const Center(child: Text("SPLASH")),
     );
   }
 
   Future<void> _init() async {
-    _controller = GetIt.I.registerSingleton<BellugaInitScreenControllerContract>(InitScreenController());
+    _controller = GetIt.I
+        .registerSingleton<BellugaInitScreenControllerContract>(
+          InitScreenController(),
+        );
     await _controller.initialize();
 
     await Future.delayed(const Duration(milliseconds: 2000));

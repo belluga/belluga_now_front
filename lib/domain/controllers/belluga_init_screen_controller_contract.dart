@@ -1,11 +1,11 @@
 import 'dart:async';
 
 import 'package:auto_route/auto_route.dart';
-import 'package:flutter_laravel_backend_boilerplate/domain/repositories/auth_repository_contract.dart';
+import 'package:unifast_portal/domain/repositories/auth_repository_contract.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value.dart';
 
-abstract base class BellugaInitScreenControllerContract implements Disposable{
+abstract base class BellugaInitScreenControllerContract implements Disposable {
   AuthRepositoryContract get _authRepository;
 
   StreamValue<String> get loadingStatusStreamValue;

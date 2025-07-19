@@ -1,10 +1,10 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_laravel_backend_boilerplate/domain/controllers/auth_login_controller_contract.dart';
-import 'package:flutter_laravel_backend_boilerplate/presentation/common/widgets/button_loading.dart';
-import 'package:flutter_laravel_backend_boilerplate/presentation/screens/auth/login/widgets/auth_login_form.dart';
+import 'package:unifast_portal/domain/controllers/auth_login_controller_contract.dart';
+import 'package:unifast_portal/presentation/common/widgets/button_loading.dart';
+import 'package:unifast_portal/presentation/screens/auth/login/widgets/auth_login_form.dart';
 import 'package:get_it/get_it.dart';
-import 'package:flutter_laravel_backend_boilerplate/application/router/app_router.gr.dart';
+import 'package:unifast_portal/application/router/app_router.gr.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 
 class AuthLoginCanvaContent extends StatefulWidget {
@@ -38,7 +38,6 @@ class _AuthLoginCanvaContentState extends State<AuthLoginCanvaContent>
         StreamValueBuilder(
           streamValue: _controller.sliverAppBarController.keyboardIsOpened,
           builder: (context, isOpened) {
-
             if (isOpened) {
               return const SizedBox.shrink();
             }

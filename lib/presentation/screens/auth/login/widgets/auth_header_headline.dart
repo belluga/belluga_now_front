@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_laravel_backend_boilerplate/application/configurations/assets_constants.dart';
+import 'package:unifast_portal/application/configurations/assets_constants.dart';
 
 class AuthHeaderHeadline extends StatelessWidget {
   const AuthHeaderHeadline({super.key});

@@ -1,12 +1,13 @@
 import 'package:auto_route/auto_route.dart';
-import 'package:flutter_laravel_backend_boilerplate/application/router/app_router.gr.dart';
-import 'package:flutter_laravel_backend_boilerplate/domain/controllers/belluga_init_screen_controller_contract.dart';
+import 'package:unifast_portal/application/router/app_router.gr.dart';
+import 'package:unifast_portal/domain/controllers/belluga_init_screen_controller_contract.dart';
 import 'package:stream_value/core/stream_value.dart';
 
 final class InitScreenController extends BellugaInitScreenControllerContract {
   @override
-  final loadingStatusStreamValue =
-      StreamValue<String>(defaultValue: "Carregando");
+  final loadingStatusStreamValue = StreamValue<String>(
+    defaultValue: "Carregando",
+  );
 
   @override
   PageRouteInfo get initialRoute => _getInitialRoute();

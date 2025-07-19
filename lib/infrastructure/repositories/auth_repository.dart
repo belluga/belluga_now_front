@@ -1,13 +1,12 @@
-import 'package:flutter_laravel_backend_boilerplate/domain/repositories/auth_repository_contract.dart';
-import 'package:flutter_laravel_backend_boilerplate/domain/user/user_belluga.dart';
-import 'package:flutter_laravel_backend_boilerplate/infrastructure/services/dal/dto/user_dto.dart';
-import 'package:flutter_laravel_backend_boilerplate/infrastructure/services/laravel_backend/backend_contract.dart';
+import 'package:unifast_portal/domain/repositories/auth_repository_contract.dart';
+import 'package:unifast_portal/domain/user/user_belluga.dart';
+import 'package:unifast_portal/infrastructure/services/dal/dto/user_dto.dart';
+import 'package:unifast_portal/infrastructure/services/laravel_backend/backend_contract.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/main.dart';
 
 final class AuthRepository extends AuthRepositoryContract<UserBelluga> {
-
   AuthRepository() {
     _userTokenStreamValue.stream.listen(_onUpdateUserTokenOnLocalStorage);
   }
@@ -23,7 +22,7 @@ final class AuthRepository extends AuthRepositoryContract<UserBelluga> {
 
   void userTokenUpdate(String token) => _userTokenStreamValue.addValue(token);
   void userTokenDelete() => _userTokenStreamValue.addValue(null);
-  
+
   @override
   bool get isUserLoggedIn {
     return userStreamValue.value != null;
@@ -42,15 +41,14 @@ final class AuthRepository extends AuthRepositoryContract<UserBelluga> {
 
   @override
   Future<void> autoLogin() async {
-
     final token = await storage.read(key: "user_token");
 
-    if(token == null){
+    if (token == null) {
       return;
     }
-    
+
     userTokenUpdate(token);
-    
+
     final user = await backend.loginCheck();
 
     userStreamValue.addValue(UserBelluga.fromDTO(user));
@@ -59,9 +57,11 @@ final class AuthRepository extends AuthRepositoryContract<UserBelluga> {
   }
 
   @override
-  Future<void> loginWithEmailPassword(String email, String password) async{
-
-    var(UserDTO _user, String _token) = await backend.loginWithEmailPassword(email, password);
+  Future<void> loginWithEmailPassword(String email, String password) async {
+    var (UserDTO _user, String _token) = await backend.loginWithEmailPassword(
+      email,
+      password,
+    );
 
     _userTokenStreamValue.addValue(_token);
     userStreamValue.addValue(UserBelluga.fromDTO(_user));
@@ -80,22 +80,22 @@ final class AuthRepository extends AuthRepositoryContract<UserBelluga> {
   }
 
   @override
-  Future<void> signUpWithEmailPassword(String email, String password){
+  Future<void> signUpWithEmailPassword(String email, String password) {
     throw UnimplementedError();
   }
 
   @override
-  Future<void> sendPasswordResetEmail(String email){
+  Future<void> sendPasswordResetEmail(String email) {
     throw UnimplementedError();
   }
 
   @override
-  Future<void> updateUser(Map<String, Object?> data){
+  Future<void> updateUser(Map<String, Object?> data) {
     throw UnimplementedError();
   }
 
   Future<void> _onUpdateUserTokenOnLocalStorage(String? token) async {
-    if(token == null) {
+    if (token == null) {
       await _deleteUserTokenOnLocalStorage();
       return;
     }
@@ -108,25 +108,24 @@ final class AuthRepository extends AuthRepositoryContract<UserBelluga> {
   }
 
   Future<void> _saveUserTokenOnLocalStorage(String token) async {
-    await AuthRepository.storage.write(
-      key: "user_token",
-      value: token
-    );
+    await AuthRepository.storage.write(key: "user_token", value: token);
   }
 
   Future<void> _getUserTokenFromLocalStorage() async {
     final token = await AuthRepository.storage.read(key: "user_token");
     _userTokenStreamValue.addValue(token);
   }
-  
+
   @override
-  Future<void> sendTokenRecoveryPassword(String email, String codigoEnviado) async {
+  Future<void> sendTokenRecoveryPassword(
+    String email,
+    String codigoEnviado,
+  ) async {
     throw UnimplementedError();
   }
-  
+
   @override
   Future<void> createNewPassword(String newPassword, String confirmPassword) {
     throw UnimplementedError();
   }
-
 }
