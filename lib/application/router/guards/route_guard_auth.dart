@@ -1,6 +1,6 @@
 import 'package:auto_route/auto_route.dart';
-import 'package:unifast_portal/application/router/app_router.gr.dart';
-import 'package:unifast_portal/domain/repositories/auth_repository_contract.dart';
+import 'package:belluga_now/application/router/app_router.gr.dart';
+import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:get_it/get_it.dart';
 
 class AuthGuard extends AutoRouteGuard {

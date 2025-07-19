@@ -1,9 +1,9 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
-import 'package:unifast_portal/application/router/app_router.gr.dart';
-import 'package:unifast_portal/domain/controllers/create_password_controller_contract.dart';
-import 'package:unifast_portal/presentation/screens/auth/create_new_password/controller/create_password_controller.dart';
-import 'package:unifast_portal/presentation/screens/auth/create_new_password/widgets/create_new_password_widget.dart';
+import 'package:belluga_now/application/router/app_router.gr.dart';
+import 'package:belluga_now/domain/controllers/create_password_controller_contract.dart';
+import 'package:belluga_now/presentation/screens/auth/create_new_password/controller/create_password_controller.dart';
+import 'package:belluga_now/presentation/screens/auth/create_new_password/widgets/create_new_password_widget.dart';
 import 'package:get_it/get_it.dart';
 
 @RoutePage()
@@ -17,10 +17,10 @@ class AuthCreateNewPasswordScreen extends StatefulWidget {
 
 class _AuthCreateNewPasswordScreenState
     extends State<AuthCreateNewPasswordScreen> {
-  final _controller = GetIt.I
-      .registerSingleton<CreatePasswordControllerContract>(
-        CreatePasswordController(),
-      );
+  final _controller =
+      GetIt.I.registerSingleton<CreatePasswordControllerContract>(
+    CreatePasswordController(),
+  );
 
   @override
   void initState() {
@@ -43,7 +43,6 @@ class _AuthCreateNewPasswordScreenState
                   fit: BoxFit.cover,
                 ),
               ),
-
               Expanded(
                 child: SingleChildScrollView(
                   child: Padding(

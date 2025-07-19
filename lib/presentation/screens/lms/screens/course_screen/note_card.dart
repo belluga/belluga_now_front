@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
-import 'package:unifast_portal/domain/notes/note_model.dart';
-import 'package:unifast_portal/presentation/screens/lms/screens/course_screen/controllers/course_screen_controller.dart';
+import 'package:belluga_now/domain/notes/note_model.dart';
+import 'package:belluga_now/presentation/screens/lms/screens/course_screen/controllers/course_screen_controller.dart';
 
 class NoteCard extends StatefulWidget {
   final NoteModel noteModel;

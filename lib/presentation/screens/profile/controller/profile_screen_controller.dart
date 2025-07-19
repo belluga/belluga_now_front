@@ -1,5 +1,5 @@
-import 'package:unifast_portal/domain/repositories/auth_repository_contract.dart';
-import 'package:unifast_portal/domain/user/user_contract.dart';
+import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
+import 'package:belluga_now/domain/user/user_contract.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value.dart';
 

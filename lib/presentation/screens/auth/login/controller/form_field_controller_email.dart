@@ -1,5 +1,5 @@
-import 'package:unifast_portal/domain/controllers/form_field_controller_contract.dart';
-import 'package:unifast_portal/presentation/screens/auth/value_objects/auth_email_address_value.dart';
+import 'package:belluga_now/domain/controllers/form_field_controller_contract.dart';
+import 'package:belluga_now/presentation/screens/auth/value_objects/auth_email_address_value.dart';
 import 'package:value_object_pattern/domain/exceptions/value_exceptions.dart';
 
 class FormFieldControllerEmail extends FormFieldControllerContract<String> {

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:unifast_portal/domain/external_course/external_course_model.dart';
-import 'package:unifast_portal/presentation/common/widgets/image_with_progress_indicator.dart';
+import 'package:belluga_now/domain/external_course/external_course_model.dart';
+import 'package:belluga_now/presentation/common/widgets/image_with_progress_indicator.dart';
 
 class ExternalCourseDetailsBottomSheetContent extends StatelessWidget {
   final ExternalCourseModel course;

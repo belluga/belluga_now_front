@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
-import 'package:unifast_portal/presentation/screens/lms/screens/course_screen/controllers/course_screen_controller.dart';
+import 'package:belluga_now/presentation/screens/lms/screens/course_screen/controllers/course_screen_controller.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 import 'package:video_player/video_player.dart';
 
@@ -31,7 +31,6 @@ class _PlayBarState extends State<PlayBar> {
               child: VideoProgressIndicator(
                 padding: EdgeInsets.symmetric(vertical: 16),
                 _controller.contentVideoPlayerController.videoPlayerController,
-                
                 allowScrubbing: true,
               ),
             ),

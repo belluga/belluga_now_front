@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:unifast_portal/domain/auth/errors/belluga_auth_errors.dart';
-import 'package:unifast_portal/domain/repositories/auth_repository_contract.dart';
-import 'package:unifast_portal/presentation/screens/auth/login/controller/form_field_controller_password_login.dart';
+import 'package:belluga_now/domain/auth/errors/belluga_auth_errors.dart';
+import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
+import 'package:belluga_now/presentation/screens/auth/login/controller/form_field_controller_password_login.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value.dart';
 

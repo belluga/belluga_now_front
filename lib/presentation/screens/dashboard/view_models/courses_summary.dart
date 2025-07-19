@@ -1,4 +1,4 @@
-import 'package:unifast_portal/domain/courses/course_base_model.dart';
+import 'package:belluga_now/domain/courses/course_base_model.dart';
 
 class CoursesSummary {
   final int total;

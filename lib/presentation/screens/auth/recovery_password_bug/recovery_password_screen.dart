@@ -1,6 +1,6 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
-import 'package:unifast_portal/domain/controllers/recovery_password_token_controller_contract.dart';
+import 'package:belluga_now/domain/controllers/recovery_password_token_controller_contract.dart';
 import 'package:get_it/get_it.dart';
 
 @RoutePage()
@@ -39,7 +39,6 @@ class _RecoveryPasswordScreenState extends State<RecoveryPasswordScreen> {
                   fit: BoxFit.cover,
                 ),
               ),
-
               Expanded(
                 child: SingleChildScrollView(
                   child: Padding(

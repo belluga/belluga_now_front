@@ -1,12 +1,12 @@
-import 'package:unifast_portal/domain/courses/course_category_model.dart';
-import 'package:unifast_portal/domain/courses/course_item_model.dart';
-import 'package:unifast_portal/domain/courses/course_base_model.dart';
-import 'package:unifast_portal/infrastructure/services/dal/dto/course/category_dto.dart';
-import 'package:unifast_portal/infrastructure/services/dal/dto/course/course_item_summary_dto.dart';
-import 'package:unifast_portal/infrastructure/services/dal/dto/course/course_item_dto.dart';
+import 'package:belluga_now/domain/courses/course_category_model.dart';
+import 'package:belluga_now/domain/courses/course_item_model.dart';
+import 'package:belluga_now/domain/courses/course_base_model.dart';
+import 'package:belluga_now/infrastructure/services/dal/dto/course/category_dto.dart';
+import 'package:belluga_now/infrastructure/services/dal/dto/course/course_item_summary_dto.dart';
+import 'package:belluga_now/infrastructure/services/dal/dto/course/course_item_dto.dart';
 
-import 'package:unifast_portal/infrastructure/services/laravel_backend/backend_contract.dart';
-import 'package:unifast_portal/presentation/screens/dashboard/view_models/courses_summary.dart';
+import 'package:belluga_now/infrastructure/services/laravel_backend/backend_contract.dart';
+import 'package:belluga_now/presentation/screens/dashboard/view_models/courses_summary.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value.dart';
 
@@ -41,8 +41,8 @@ abstract class CoursesRepositoryContract {
   }
 
   Future<void> _refreshMyCoursesDashboardSummary() async {
-    final List<CourseItemSummaryDTO> _dashboardSummary = await backend
-        .getMyCourses();
+    final List<CourseItemSummaryDTO> _dashboardSummary =
+        await backend.getMyCourses();
 
     final _courses = _dashboardSummary
         .map((courseDto) => CourseBaseModel.fromDto(courseDto))
@@ -62,8 +62,8 @@ abstract class CoursesRepositoryContract {
   }
 
   Future<void> _refreshFastTracksList() async {
-    final List<CourseItemSummaryDTO> _dashboardSummary = await backend
-        .getLastFastTrackCourses();
+    final List<CourseItemSummaryDTO> _dashboardSummary =
+        await backend.getLastFastTrackCourses();
 
     final _courses = _dashboardSummary
         .map((courseDto) => CourseBaseModel.fromDto(courseDto))
@@ -80,8 +80,8 @@ abstract class CoursesRepositoryContract {
   }
 
   Future<void> _refreshFastTracksLastCreatedList() async {
-    final List<CourseItemSummaryDTO> _coursesDtos = await backend
-        .getLastFastTrackCourses();
+    final List<CourseItemSummaryDTO> _coursesDtos =
+        await backend.getLastFastTrackCourses();
 
     _coursesDtos.sublist(0, 4);
 
@@ -103,8 +103,8 @@ abstract class CoursesRepositoryContract {
     if (fastTracksCategoriesListStreamValue.value != null) {
       return Future.value(fastTracksCategoriesListStreamValue.value);
     }
-    final List<CategoryDTO> _categoriesDTO = await backend
-        .getFastTracksCategories();
+    final List<CategoryDTO> _categoriesDTO =
+        await backend.getFastTracksCategories();
 
     final _categoriesModel = _categoriesDTO
         .map((category) => CourseCategoryModel.fromDto(category))

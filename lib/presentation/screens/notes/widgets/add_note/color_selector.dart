@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:unifast_portal/presentation/screens/notes/widgets/color_choice.dart';
+import 'package:belluga_now/presentation/screens/notes/widgets/color_choice.dart';
 
 class ColorSelector extends StatelessWidget {
   final Color? selectedColor;

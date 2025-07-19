@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
-import 'package:unifast_portal/domain/courses/course_base_model.dart';
-import 'package:unifast_portal/presentation/screens/lms/screens/course_screen/controllers/course_screen_controller.dart';
+import 'package:belluga_now/domain/courses/course_base_model.dart';
+import 'package:belluga_now/presentation/screens/lms/screens/course_screen/controllers/course_screen_controller.dart';
 
 class NextVideoButton extends StatefulWidget {
   final CourseBaseModel courseItem;
@@ -24,7 +24,9 @@ class _NextVideoButtonState extends State<NextVideoButton> {
   Widget build(BuildContext context) {
     return Builder(
       builder: (context) {
-        final _buttonOpacity = _controller.contentVideoPlayerController.nextVideoController.getButtonOpacity(
+        final _buttonOpacity = _controller
+            .contentVideoPlayerController.nextVideoController
+            .getButtonOpacity(
           widget.videoPercentage,
         );
 
@@ -58,14 +60,16 @@ class _NextVideoButtonState extends State<NextVideoButton> {
                                       decoration: BoxDecoration(
                                         borderRadius: BorderRadius.circular(8),
                                         image: DecorationImage(
-                                          image: NetworkImage(widget.courseItem.thumb.thumbUri.toString(),
+                                          image: NetworkImage(
+                                            widget.courseItem.thumb.thumbUri
+                                                .toString(),
                                           ),
                                           colorFilter: ColorFilter.mode(
                                             Colors.black.withAlpha(150),
                                             BlendMode.darken,
                                           ),
                                           fit: BoxFit.cover,
-                                        ),  
+                                        ),
                                       ),
                                     ),
                                   ),

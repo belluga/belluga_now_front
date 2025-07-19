@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:unifast_portal/application/configurations/assets_constants.dart';
+import 'package:belluga_now/application/configurations/assets_constants.dart';
 
 class AuthHeaderHeadline extends StatelessWidget {
   const AuthHeaderHeadline({super.key});
@@ -28,8 +28,8 @@ class AuthHeaderHeadline extends StatelessWidget {
             child: Text(
               "Bem vindo à educação do Futuro",
               style: TextTheme.of(context).titleMedium?.copyWith(
-                color: Theme.of(context).colorScheme.secondary,
-              ),
+                    color: Theme.of(context).colorScheme.secondary,
+                  ),
             ),
           ),
         ],

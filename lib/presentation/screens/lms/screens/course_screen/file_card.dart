@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:unifast_portal/domain/courses/file_model.dart';
-import 'package:unifast_portal/presentation/common/widgets/image_with_progress_indicator.dart';
+import 'package:belluga_now/domain/courses/file_model.dart';
+import 'package:belluga_now/presentation/common/widgets/image_with_progress_indicator.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class FileCard extends StatefulWidget {
@@ -28,7 +28,8 @@ class _FileCardState extends State<FileCard> {
               SizedBox(
                 height: 56,
                 width: 56,
-                child: ImageWithProgressIndicator(thumb: widget.fileModel.thumb),
+                child:
+                    ImageWithProgressIndicator(thumb: widget.fileModel.thumb),
               ),
               Expanded(
                 child: Padding(
@@ -78,8 +79,8 @@ class _FileCardState extends State<FileCard> {
         content: Text(
           'O arquivo ${widget.fileModel.title.valueFormated} não pôde ser baixado. Tente mais tarde.',
           style: TextTheme.of(context).bodyMedium?.copyWith(
-            color: Theme.of(context).colorScheme.onErrorContainer,
-          ),
+                color: Theme.of(context).colorScheme.onErrorContainer,
+              ),
         ),
       ),
     );

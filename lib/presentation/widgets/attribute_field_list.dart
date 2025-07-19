@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:unifast_portal/domain/attribute/attribute_model.dart';
-import 'package:unifast_portal/presentation/widgets/attribute_field_tile.dart';
+import 'package:belluga_now/domain/attribute/attribute_model.dart';
+import 'package:belluga_now/presentation/widgets/attribute_field_tile.dart';
 
 class AttributeFieldList extends StatelessWidget {
   final List<AttributeModel> list;

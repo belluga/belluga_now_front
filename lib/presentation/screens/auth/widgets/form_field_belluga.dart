@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:unifast_portal/domain/controllers/form_field_controller_contract.dart';
+import 'package:belluga_now/domain/controllers/form_field_controller_contract.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 
 abstract class FormFieldBelluga extends StatelessWidget {

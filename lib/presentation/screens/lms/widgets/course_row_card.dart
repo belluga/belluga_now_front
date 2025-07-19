@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:unifast_portal/domain/courses/course_base_model.dart';
-import 'package:unifast_portal/presentation/common/widgets/image_with_progress_indicator.dart';
+import 'package:belluga_now/domain/courses/course_base_model.dart';
+import 'package:belluga_now/presentation/common/widgets/image_with_progress_indicator.dart';
 
 class CourseRowCard extends StatefulWidget {
   final CourseBaseModel course;
   final void Function() onNavigateToCourse;
 
-  const CourseRowCard({super.key, required this.course, required this.onNavigateToCourse});
+  const CourseRowCard(
+      {super.key, required this.course, required this.onNavigateToCourse});
 
   @override
   State<CourseRowCard> createState() => _CourseRowCardState();

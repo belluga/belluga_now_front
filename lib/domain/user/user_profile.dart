@@ -1,5 +1,5 @@
-import 'package:unifast_portal/domain/user/user_profile_contract.dart';
-import 'package:unifast_portal/infrastructure/services/dal/dto/user_profile_dto.dart';
+import 'package:belluga_now/domain/user/user_profile_contract.dart';
+import 'package:belluga_now/infrastructure/services/dal/dto/user_profile_dto.dart';
 import 'package:value_object_pattern/domain/value_objects/date_time_value.dart';
 import 'package:value_object_pattern/domain/value_objects/email_address_value.dart';
 import 'package:value_object_pattern/domain/value_objects/full_name_value.dart';

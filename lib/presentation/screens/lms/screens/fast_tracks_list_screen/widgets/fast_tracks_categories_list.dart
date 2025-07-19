@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/main.dart';
-import 'package:unifast_portal/domain/courses/course_category_model.dart';
-import 'package:unifast_portal/presentation/common/widgets/dashboard_title_row.dart';
-import 'package:unifast_portal/presentation/screens/lms/screens/fast_tracks_list_screen/controllers/fast_tracks_list_screen_controller.dart';
-import 'package:unifast_portal/presentation/screens/lms/screens/fast_tracks_list_screen/widgets/category_card.dart';
+import 'package:belluga_now/domain/courses/course_category_model.dart';
+import 'package:belluga_now/presentation/common/widgets/dashboard_title_row.dart';
+import 'package:belluga_now/presentation/screens/lms/screens/fast_tracks_list_screen/controllers/fast_tracks_list_screen_controller.dart';
+import 'package:belluga_now/presentation/screens/lms/screens/fast_tracks_list_screen/widgets/category_card.dart';
 
 class FastTracksCategoriesList extends StatefulWidget {
   const FastTracksCategoriesList({super.key});
@@ -49,8 +49,7 @@ class _FastTracksCategoriesListState extends State<FastTracksCategoriesList> {
 
                       final _category = categories[index];
 
-                      final bool _isSelected =
-                          selectedCategories.hasData &&
+                      final bool _isSelected = selectedCategories.hasData &&
                           selectedCategories.data!.contains(_category);
 
                       return CategoryCard(

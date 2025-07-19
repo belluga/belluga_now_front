@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:unifast_portal/presentation/common/widgets/dashboard_items_summary.dart';
-import 'package:unifast_portal/presentation/screens/dashboard/controllers/external_course_dashboard_controller.dart';
-import 'package:unifast_portal/presentation/screens/dashboard/view_models/external_courses_summary.dart';
-import 'package:unifast_portal/presentation/screens/dashboard/widgets/external_courses_dashboard/external_course_card.dart';
+import 'package:belluga_now/presentation/common/widgets/dashboard_items_summary.dart';
+import 'package:belluga_now/presentation/screens/dashboard/controllers/external_course_dashboard_controller.dart';
+import 'package:belluga_now/presentation/screens/dashboard/view_models/external_courses_summary.dart';
+import 'package:belluga_now/presentation/screens/dashboard/widgets/external_courses_dashboard/external_course_card.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 

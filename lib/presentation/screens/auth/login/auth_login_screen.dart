@@ -1,12 +1,12 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
-import 'package:unifast_portal/application/router/app_router.gr.dart';
-import 'package:unifast_portal/domain/controllers/auth_login_controller_contract.dart';
-import 'package:unifast_portal/presentation/common/widgets/main_logo.dart';
-import 'package:unifast_portal/presentation/screens/auth/login/controller/auth_login_controller.dart';
-import 'package:unifast_portal/presentation/screens/auth/login/widgets/auth_header_expanded_content.dart';
-import 'package:unifast_portal/presentation/screens/auth/login/widgets/auth_header_headline.dart';
-import 'package:unifast_portal/presentation/screens/auth/login/widgets/auth_login_canva_content.dart';
+import 'package:belluga_now/application/router/app_router.gr.dart';
+import 'package:belluga_now/domain/controllers/auth_login_controller_contract.dart';
+import 'package:belluga_now/presentation/common/widgets/main_logo.dart';
+import 'package:belluga_now/presentation/screens/auth/login/controller/auth_login_controller.dart';
+import 'package:belluga_now/presentation/screens/auth/login/widgets/auth_header_expanded_content.dart';
+import 'package:belluga_now/presentation/screens/auth/login/widgets/auth_header_headline.dart';
+import 'package:belluga_now/presentation/screens/auth/login/widgets/auth_login_canva_content.dart';
 import 'package:get_it/get_it.dart';
 
 @RoutePage()
@@ -131,8 +131,8 @@ class _AuthLoginScreenState extends State<AuthLoginScreen>
           child: Text(
             _controller.generalErrorStreamValue.value ?? "",
             style: TextTheme.of(context).bodyMedium?.copyWith(
-              color: Theme.of(context).colorScheme.onError,
-            ),
+                  color: Theme.of(context).colorScheme.onError,
+                ),
           ),
         ),
       ),

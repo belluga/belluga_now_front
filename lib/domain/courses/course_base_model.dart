@@ -1,9 +1,9 @@
-import 'package:unifast_portal/domain/courses/course_category_model.dart';
-import 'package:unifast_portal/domain/courses/teacher_model.dart';
-import 'package:unifast_portal/domain/courses/thumb_model.dart';
-import 'package:unifast_portal/domain/value_objects/description_value.dart';
-import 'package:unifast_portal/domain/value_objects/title_value.dart';
-import 'package:unifast_portal/infrastructure/services/dal/dto/course/course_item_summary_dto.dart';
+import 'package:belluga_now/domain/courses/course_category_model.dart';
+import 'package:belluga_now/domain/courses/teacher_model.dart';
+import 'package:belluga_now/domain/courses/thumb_model.dart';
+import 'package:belluga_now/domain/value_objects/description_value.dart';
+import 'package:belluga_now/domain/value_objects/title_value.dart';
+import 'package:belluga_now/infrastructure/services/dal/dto/course/course_item_summary_dto.dart';
 import 'package:value_object_pattern/domain/value_objects/mongo_id_value.dart';
 
 class CourseBaseModel {
@@ -32,9 +32,8 @@ class CourseBaseModel {
         ?.map((item) => CourseCategoryModel.fromDto(item))
         .toList();
 
-    final _teachers = dto.teachers
-        .map((item) => TeacherModel.fromDTO((item)))
-        .toList();
+    final _teachers =
+        dto.teachers.map((item) => TeacherModel.fromDTO((item))).toList();
 
     return CourseBaseModel(
       id: _id,

@@ -1,10 +1,10 @@
-import 'package:unifast_portal/infrastructure/services/dal/dto/course/category_dto.dart';
-import 'package:unifast_portal/infrastructure/services/dal/dto/course/course_childrens_summary_dto.dart';
-import 'package:unifast_portal/infrastructure/services/dal/dto/course/course_content_dto.dart';
-import 'package:unifast_portal/infrastructure/services/dal/dto/course/course_item_summary_dto.dart';
-import 'package:unifast_portal/infrastructure/services/dal/dto/course/teacher_dto.dart';
-import 'package:unifast_portal/infrastructure/services/dal/dto/course/files_dto.dart';
-import 'package:unifast_portal/infrastructure/services/dal/dto/thumb_dto.dart';
+import 'package:belluga_now/infrastructure/services/dal/dto/course/category_dto.dart';
+import 'package:belluga_now/infrastructure/services/dal/dto/course/course_childrens_summary_dto.dart';
+import 'package:belluga_now/infrastructure/services/dal/dto/course/course_content_dto.dart';
+import 'package:belluga_now/infrastructure/services/dal/dto/course/course_item_summary_dto.dart';
+import 'package:belluga_now/infrastructure/services/dal/dto/course/teacher_dto.dart';
+import 'package:belluga_now/infrastructure/services/dal/dto/course/files_dto.dart';
+import 'package:belluga_now/infrastructure/services/dal/dto/thumb_dto.dart';
 
 class CourseItemDetailsDTO {
   String id;
@@ -34,9 +34,9 @@ class CourseItemDetailsDTO {
     this.next,
     this.content,
   }) : assert(
-         content != null || (childrens.isNotEmpty),
-         "CourseItemDetails should have content or at least one child.",
-       );
+          content != null || (childrens.isNotEmpty),
+          "CourseItemDetails should have content or at least one child.",
+        );
 
   factory CourseItemDetailsDTO.fromJson(Map<String, dynamic> json) {
     final _id = json['id'] as String;
@@ -50,8 +50,7 @@ class CourseItemDetailsDTO {
         ?.map((e) => CategoryDTO.fromJson(e as Map<String, dynamic>))
         .toList();
 
-    final _files =
-        (json['files'] as List?)
+    final _files = (json['files'] as List?)
             ?.map((e) => FileDTO.fromJson(e as Map<String, dynamic>))
             .toList() ??
         [];
@@ -67,10 +66,10 @@ class CourseItemDetailsDTO {
 
     final _childrens = json['childrens'] != null
         ? (json['childrens']['items'] as List)
-              .map(
-                (e) => CourseItemSummaryDTO.fromJson(e as Map<String, dynamic>),
-              )
-              .toList()
+            .map(
+              (e) => CourseItemSummaryDTO.fromJson(e as Map<String, dynamic>),
+            )
+            .toList()
         : <CourseItemSummaryDTO>[];
 
     final _content = json['content'] != null

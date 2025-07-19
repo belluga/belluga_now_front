@@ -1,4 +1,4 @@
-import 'package:unifast_portal/application/extensions/duration_to_format.dart';
+import 'package:belluga_now/application/extensions/duration_to_format.dart';
 import 'package:value_object_pattern/value_object.dart';
 
 class NotePositionValue extends ValueObject<Duration?> {
@@ -21,9 +21,8 @@ class NotePositionValue extends ValueObject<Duration?> {
       // Handle full format from Duration.toString(): "H:MM:SS.mmmmmm"
       if (parts.length == 3) {
         final bool isNegative = parseValue.startsWith('-');
-        final String absoluteValue = isNegative
-            ? parseValue.substring(1)
-            : parseValue;
+        final String absoluteValue =
+            isNegative ? parseValue.substring(1) : parseValue;
         final List<String> hmsParts = absoluteValue.split(':');
 
         final int hours = int.parse(hmsParts[0]);

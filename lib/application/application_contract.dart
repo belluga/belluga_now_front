@@ -1,21 +1,21 @@
 import 'package:flutter/material.dart';
-import 'package:unifast_portal/application/app_data.dart';
-import 'package:unifast_portal/application/configurations/custom_scroll_behavior.dart';
-import 'package:unifast_portal/application/router/app_router.dart';
-import 'package:unifast_portal/domain/repositories/auth_repository_contract.dart';
-import 'package:unifast_portal/domain/repositories/external_courses_repository_contract.dart';
-import 'package:unifast_portal/domain/repositories/courses_repository_contract.dart';
-import 'package:unifast_portal/domain/repositories/notes_repository_contract.dart';
-import 'package:unifast_portal/domain/tenant/tenant.dart';
-import 'package:unifast_portal/infrastructure/repositories/courses_repository.dart';
-import 'package:unifast_portal/infrastructure/repositories/external_courses_repository.dart';
-import 'package:unifast_portal/infrastructure/repositories/notes_repository.dart';
-import 'package:unifast_portal/infrastructure/services/laravel_backend/backend_contract.dart';
+import 'package:belluga_now/application/app_data.dart';
+import 'package:belluga_now/application/configurations/custom_scroll_behavior.dart';
+import 'package:belluga_now/application/router/app_router.dart';
+import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/external_courses_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/courses_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/notes_repository_contract.dart';
+import 'package:belluga_now/domain/tenant/tenant.dart';
+import 'package:belluga_now/infrastructure/repositories/courses_repository.dart';
+import 'package:belluga_now/infrastructure/repositories/external_courses_repository.dart';
+import 'package:belluga_now/infrastructure/repositories/notes_repository.dart';
+import 'package:belluga_now/infrastructure/services/laravel_backend/backend_contract.dart';
 import 'package:get_it/get_it.dart';
 import 'package:intl/intl_standalone.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:intl/date_symbol_data_local.dart';
-import 'package:unifast_portal/application/platform_app_data/platform_app_data.dart';
+import 'package:belluga_now/application/platform_app_data/platform_app_data.dart';
 
 abstract class ApplicationContract extends StatelessWidget {
   final _appRouter = AppRouter();

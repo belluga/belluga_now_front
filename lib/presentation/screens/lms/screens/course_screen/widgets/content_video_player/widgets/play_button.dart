@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
-import 'package:unifast_portal/presentation/screens/lms/screens/course_screen/controllers/course_screen_controller.dart';
-import 'package:unifast_portal/presentation/screens/lms/screens/course_screen/widgets/content_video_player/enums/video_playing_status.dart';
+import 'package:belluga_now/presentation/screens/lms/screens/course_screen/controllers/course_screen_controller.dart';
+import 'package:belluga_now/presentation/screens/lms/screens/course_screen/widgets/content_video_player/enums/video_playing_status.dart';
 
 class PlayButton extends StatefulWidget {
   final double size;
@@ -24,7 +24,8 @@ class _PlayButtonState extends State<PlayButton> {
   @override
   Widget build(BuildContext context) {
     return StreamValueBuilder<VideoPlayingStatus>(
-      streamValue: _controller.contentVideoPlayerController.playingStatusStreamValue,
+      streamValue:
+          _controller.contentVideoPlayerController.playingStatusStreamValue,
       builder: (context, playingStatus) {
         final IconData _icon = _getIconData();
         return IconButton(

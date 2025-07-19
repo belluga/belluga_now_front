@@ -1,6 +1,6 @@
-import 'package:unifast_portal/domain/courses/value_objects/expert_name_value.dart';
-import 'package:unifast_portal/domain/courses/value_objects/teacher_is_highlight.dart';
-import 'package:unifast_portal/infrastructure/services/dal/dto/course/teacher_dto.dart';
+import 'package:belluga_now/domain/courses/value_objects/expert_name_value.dart';
+import 'package:belluga_now/domain/courses/value_objects/teacher_is_highlight.dart';
+import 'package:belluga_now/infrastructure/services/dal/dto/course/teacher_dto.dart';
 import 'package:value_object_pattern/domain/value_objects/uri_value.dart';
 
 class TeacherModel {

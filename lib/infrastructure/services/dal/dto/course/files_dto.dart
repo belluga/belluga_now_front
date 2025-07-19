@@ -1,4 +1,4 @@
-import 'package:unifast_portal/infrastructure/services/dal/dto/thumb_dto.dart';
+import 'package:belluga_now/infrastructure/services/dal/dto/thumb_dto.dart';
 
 class FileDTO {
   final String url;

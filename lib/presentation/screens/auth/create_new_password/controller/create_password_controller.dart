@@ -1,4 +1,4 @@
-import 'package:unifast_portal/domain/controllers/create_password_controller_contract.dart';
+import 'package:belluga_now/domain/controllers/create_password_controller_contract.dart';
 
 class CreatePasswordController extends CreatePasswordControllerContract {
   CreatePasswordController({super.newPassword, super.confirmPassword});

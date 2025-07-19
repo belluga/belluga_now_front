@@ -1,16 +1,16 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/rendering.dart';
-import 'package:unifast_portal/application/configurations/belluga_constants.dart';
-import 'package:unifast_portal/domain/auth/errors/belluga_auth_errors.dart';
-import 'package:unifast_portal/domain/repositories/auth_repository_contract.dart';
-import 'package:unifast_portal/domain/tenant/tenant.dart';
-import 'package:unifast_portal/infrastructure/services/dal/dto/course/category_dto.dart';
-import 'package:unifast_portal/infrastructure/services/dal/dto/course/course_item_summary_dto.dart';
-import 'package:unifast_portal/infrastructure/services/dal/dto/course/course_item_dto.dart';
-import 'package:unifast_portal/infrastructure/services/dal/dto/external_course_dto.dart';
-import 'package:unifast_portal/infrastructure/services/dal/dto/notes/note_dto.dart';
-import 'package:unifast_portal/infrastructure/services/dal/dto/user_dto.dart';
-import 'package:unifast_portal/infrastructure/services/laravel_backend/backend_contract.dart';
+import 'package:belluga_now/application/configurations/belluga_constants.dart';
+import 'package:belluga_now/domain/auth/errors/belluga_auth_errors.dart';
+import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
+import 'package:belluga_now/domain/tenant/tenant.dart';
+import 'package:belluga_now/infrastructure/services/dal/dto/course/category_dto.dart';
+import 'package:belluga_now/infrastructure/services/dal/dto/course/course_item_summary_dto.dart';
+import 'package:belluga_now/infrastructure/services/dal/dto/course/course_item_dto.dart';
+import 'package:belluga_now/infrastructure/services/dal/dto/external_course_dto.dart';
+import 'package:belluga_now/infrastructure/services/dal/dto/notes/note_dto.dart';
+import 'package:belluga_now/infrastructure/services/dal/dto/user_dto.dart';
+import 'package:belluga_now/infrastructure/services/laravel_backend/backend_contract.dart';
 import 'package:get_it/get_it.dart';
 
 class LaravelBackend extends BackendContract {
@@ -155,9 +155,8 @@ class LaravelBackend extends BackendContract {
       options: Options(headers: _getAuthenticatedHeaders()),
     );
 
-    final _categories = response.data
-        .map((item) => CategoryDTO.fromJson(item))
-        .toList();
+    final _categories =
+        response.data.map((item) => CategoryDTO.fromJson(item)).toList();
 
     return Future.value(_categories);
   }

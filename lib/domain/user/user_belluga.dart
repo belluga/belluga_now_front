@@ -1,6 +1,6 @@
-import 'package:unifast_portal/domain/user/user_contract.dart';
-import 'package:unifast_portal/domain/user/user_profile.dart';
-import 'package:unifast_portal/infrastructure/services/dal/dto/user_dto.dart';
+import 'package:belluga_now/domain/user/user_contract.dart';
+import 'package:belluga_now/domain/user/user_profile.dart';
+import 'package:belluga_now/infrastructure/services/dal/dto/user_dto.dart';
 import 'package:value_object_pattern/domain/value_objects/mongo_id_value.dart';
 
 class UserBelluga extends UserContract {

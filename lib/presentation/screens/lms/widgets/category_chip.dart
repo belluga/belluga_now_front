@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:unifast_portal/domain/courses/course_category_model.dart';
+import 'package:belluga_now/domain/courses/course_category_model.dart';
 
 class CategoryChip extends StatelessWidget {
   final CourseCategoryModel category;
@@ -8,9 +8,6 @@ class CategoryChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-
-    
-
     return Chip(
       avatar: Icon(
         Icons.category_outlined,
@@ -23,10 +20,10 @@ class CategoryChip extends StatelessWidget {
       label: Text(
         category.name.value,
         style: TextTheme.of(context).labelSmall?.copyWith(
-          color: category.color.value.computeLuminance() > 0.5
-              ? Theme.of(context).colorScheme.primaryContainer
-              : Theme.of(context).colorScheme.onPrimaryContainer,
-        ),
+              color: category.color.value.computeLuminance() > 0.5
+                  ? Theme.of(context).colorScheme.primaryContainer
+                  : Theme.of(context).colorScheme.onPrimaryContainer,
+            ),
       ),
       backgroundColor: category.color.value,
     );
