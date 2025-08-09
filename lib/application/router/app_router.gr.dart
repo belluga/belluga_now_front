@@ -20,8 +20,7 @@ import 'package:belluga_now/presentation/screens/auth/recovery_password_bug/reco
     as _i10;
 import 'package:belluga_now/presentation/screens/dashboard/dashboard_screen.dart'
     as _i5;
-import 'package:belluga_now/presentation/screens/home/home_screen.dart'
-    as _i7;
+import 'package:belluga_now/presentation/screens/home/home_screen.dart' as _i7;
 import 'package:belluga_now/presentation/screens/lms/screens/course_screen/course_screen.dart'
     as _i3;
 import 'package:belluga_now/presentation/screens/lms/screens/courses_list_screen/courses_list_screen.dart'
@@ -30,6 +29,7 @@ import 'package:belluga_now/presentation/screens/lms/screens/fast_tracks_list_sc
     as _i6;
 import 'package:belluga_now/presentation/screens/profile/profile_screen.dart'
     as _i9;
+import 'package:flutter/material.dart' as _i12;
 
 /// generated route for
 /// [_i1.AuthCreateNewPasswordScreen]
