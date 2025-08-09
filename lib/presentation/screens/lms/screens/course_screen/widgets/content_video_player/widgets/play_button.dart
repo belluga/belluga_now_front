@@ -24,7 +24,8 @@ class _PlayButtonState extends State<PlayButton> {
   @override
   Widget build(BuildContext context) {
     return StreamValueBuilder<VideoPlayingStatus>(
-      streamValue: _controller.contentVideoPlayerController.playingStatusStreamValue,
+      streamValue:
+          _controller.contentVideoPlayerController.playingStatusStreamValue,
       builder: (context, playingStatus) {
         final IconData _icon = _getIconData();
         return IconButton(

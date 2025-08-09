@@ -73,14 +73,11 @@ class _VideoOverlayAreaState extends State<VideoOverlayArea> {
             children: [
               Container(
                 decoration: BoxDecoration(
-                  image:
-                      !_controller
-                          .contentVideoPlayerController
-                          .alreadyStarted
+                  image: !_controller
+                          .contentVideoPlayerController.alreadyStarted
                       ? DecorationImage(
                           image: NetworkImage(
-                            widget.courseItemModel.thumb.thumbUri
-                                .toString(),
+                            widget.courseItemModel.thumb.thumbUri.toString(),
                           ),
                           fit: BoxFit.cover,
                           colorFilter: ColorFilter.mode(
@@ -172,8 +169,7 @@ class _VideoOverlayAreaState extends State<VideoOverlayArea> {
                                                     videoPercentage:
                                                         percentage ?? 0.0,
                                                     courseItem: widget
-                                                        .courseItemModel
-                                                        .next!,
+                                                        .courseItemModel.next!,
                                                   ),
                                                 ],
                                               ),

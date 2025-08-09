@@ -27,8 +27,8 @@ abstract class ExternalCoursesRepositoryContract {
   }
 
   Future<void> _refreshDashboardSummary() async {
-    final List<ExternalCourseDTO> _dashboardSummary = await backend
-        .getExternalCourses();
+    final List<ExternalCourseDTO> _dashboardSummary =
+        await backend.getExternalCourses();
 
     final _externalCourses = _dashboardSummary
         .map(

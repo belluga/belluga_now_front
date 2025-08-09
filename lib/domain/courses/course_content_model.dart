@@ -8,10 +8,10 @@ class CourseContentModel {
   final GenericStringValue? html;
 
   CourseContentModel({required this.video, required this.html})
-    : assert(
-        video != null || html != null,
-        "Either video or html should not be null",
-      );
+      : assert(
+          video != null || html != null,
+          "Either video or html should not be null",
+        );
 
   factory CourseContentModel.fromDTO(CourseContentDTO lesson) {
     final VideoDTO? _videoDTO = lesson.video;

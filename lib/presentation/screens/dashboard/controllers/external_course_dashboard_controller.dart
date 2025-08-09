@@ -8,8 +8,8 @@ class ExternalCourseDashboardController {
   final String storagePreferenceUrlNavigationKey =
       "external_course_url_navigation_preference";
 
-  final _externalCoursesRepository = GetIt.I
-      .get<ExternalCoursesRepositoryContract>();
+  final _externalCoursesRepository =
+      GetIt.I.get<ExternalCoursesRepositoryContract>();
 
   static FlutterSecureStorage get storage => FlutterSecureStorage();
 

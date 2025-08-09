@@ -131,8 +131,8 @@ class _AuthLoginScreenState extends State<AuthLoginScreen>
           child: Text(
             _controller.generalErrorStreamValue.value ?? "",
             style: TextTheme.of(context).bodyMedium?.copyWith(
-              color: Theme.of(context).colorScheme.onError,
-            ),
+                  color: Theme.of(context).colorScheme.onError,
+                ),
           ),
         ),
       ),

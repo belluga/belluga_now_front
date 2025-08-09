@@ -155,9 +155,8 @@ class LaravelBackend extends BackendContract {
       options: Options(headers: _getAuthenticatedHeaders()),
     );
 
-    final _categories = response.data
-        .map((item) => CategoryDTO.fromJson(item))
-        .toList();
+    final _categories =
+        response.data.map((item) => CategoryDTO.fromJson(item)).toList();
 
     return Future.value(_categories);
   }

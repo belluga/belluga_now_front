@@ -41,8 +41,8 @@ abstract class CoursesRepositoryContract {
   }
 
   Future<void> _refreshMyCoursesDashboardSummary() async {
-    final List<CourseItemSummaryDTO> _dashboardSummary = await backend
-        .getMyCourses();
+    final List<CourseItemSummaryDTO> _dashboardSummary =
+        await backend.getMyCourses();
 
     final _courses = _dashboardSummary
         .map((courseDto) => CourseBaseModel.fromDto(courseDto))
@@ -62,8 +62,8 @@ abstract class CoursesRepositoryContract {
   }
 
   Future<void> _refreshFastTracksList() async {
-    final List<CourseItemSummaryDTO> _dashboardSummary = await backend
-        .getLastFastTrackCourses();
+    final List<CourseItemSummaryDTO> _dashboardSummary =
+        await backend.getLastFastTrackCourses();
 
     final _courses = _dashboardSummary
         .map((courseDto) => CourseBaseModel.fromDto(courseDto))
@@ -80,8 +80,8 @@ abstract class CoursesRepositoryContract {
   }
 
   Future<void> _refreshFastTracksLastCreatedList() async {
-    final List<CourseItemSummaryDTO> _coursesDtos = await backend
-        .getLastFastTrackCourses();
+    final List<CourseItemSummaryDTO> _coursesDtos =
+        await backend.getLastFastTrackCourses();
 
     _coursesDtos.sublist(0, 4);
 
@@ -103,8 +103,8 @@ abstract class CoursesRepositoryContract {
     if (fastTracksCategoriesListStreamValue.value != null) {
       return Future.value(fastTracksCategoriesListStreamValue.value);
     }
-    final List<CategoryDTO> _categoriesDTO = await backend
-        .getFastTracksCategories();
+    final List<CategoryDTO> _categoriesDTO =
+        await backend.getFastTracksCategories();
 
     final _categoriesModel = _categoriesDTO
         .map((category) => CourseCategoryModel.fromDto(category))

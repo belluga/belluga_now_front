@@ -88,11 +88,13 @@ class MockBackend extends BackendContract {
 
     final _myCoursesList = await _courseItemListDetails();
 
-     final  _courseItemDetailsRaw = _myCoursesList.firstWhere((item) => item['id'] == courseId);
+    final _courseItemDetailsRaw =
+        _myCoursesList.firstWhere((item) => item['id'] == courseId);
 
-     final CourseItemDetailsDTO _courseItemDetails = CourseItemDetailsDTO.fromJson(_courseItemDetailsRaw);
+    final CourseItemDetailsDTO _courseItemDetails =
+        CourseItemDetailsDTO.fromJson(_courseItemDetailsRaw);
 
-     return _courseItemDetails;
+    return _courseItemDetails;
   }
 
   @override
@@ -212,17 +214,17 @@ class MockBackend extends BackendContract {
   String get _fakePassword => "765432e1";
 
   UserDTO get _mockUser => UserDTO(
-    id: fakeMongoId,
-    profile: UserProfileDTO(
-      firstName: "John",
-      lastName: "Doe",
-      name: "John Doe",
-      email: "email@mock.com",
-      gender: "Masculino",
-      birthday: "",
-      pictureUrl: "https://example.com/avatar.png",
-    ),
-  );
+        id: fakeMongoId,
+        profile: UserProfileDTO(
+          firstName: "John",
+          lastName: "Doe",
+          name: "John Doe",
+          email: "email@mock.com",
+          gender: "Masculino",
+          birthday: "",
+          pictureUrl: "https://example.com/avatar.png",
+        ),
+      );
 
   final List<Map<String, dynamic>> _fastTracksCategories = [
     {
@@ -265,31 +267,32 @@ class MockBackend extends BackendContract {
 
   Future<List<Map<String, dynamic>>> _courseItemListDetails() async {
     // if (kDebugMode) {
-      final lessonsJson = await rootBundle.loadString('assets/mock/aulasTotal.json');
-      final List<dynamic> lessonsJsonList = json.decode(lessonsJson);
-      final lessons = lessonsJsonList.cast<Map<String, dynamic>>();
+    final lessonsJson =
+        await rootBundle.loadString('assets/mock/aulasTotal.json');
+    final List<dynamic> lessonsJsonList = json.decode(lessonsJson);
+    final lessons = lessonsJsonList.cast<Map<String, dynamic>>();
 
-      final fastTrackLessonsJson = await rootBundle.loadString(
-        'assets/mock/aulasFastTracks.json',
-      );
-      final List<dynamic> fastTrackLessonsJsonList = json.decode(
-        fastTrackLessonsJson,
-      );
-      final fastTracklessons = fastTrackLessonsJsonList
-          .cast<Map<String, dynamic>>();
+    final fastTrackLessonsJson = await rootBundle.loadString(
+      'assets/mock/aulasFastTracks.json',
+    );
+    final List<dynamic> fastTrackLessonsJsonList = json.decode(
+      fastTrackLessonsJson,
+    );
+    final fastTracklessons =
+        fastTrackLessonsJsonList.cast<Map<String, dynamic>>();
 
-      final disciplinesJson = await rootBundle.loadString(
-        'assets/mock/disciplinasTotal.json',
-      );
-      final List<dynamic> disciplinesJsonList = json.decode(disciplinesJson);
-      final disciplines = disciplinesJsonList.cast<Map<String, dynamic>>();
+    final disciplinesJson = await rootBundle.loadString(
+      'assets/mock/disciplinasTotal.json',
+    );
+    final List<dynamic> disciplinesJsonList = json.decode(disciplinesJson);
+    final disciplines = disciplinesJsonList.cast<Map<String, dynamic>>();
 
-      final List<Map<String, dynamic>> _courseItems = [];
+    final List<Map<String, dynamic>> _courseItems = [];
 
-      _courseItems.addAll(lessons);
-      _courseItems.addAll(fastTracklessons);
-      _courseItems.addAll(disciplines);
-      return _courseItems;
+    _courseItems.addAll(lessons);
+    _courseItems.addAll(fastTracklessons);
+    _courseItems.addAll(disciplines);
+    return _courseItems;
     // } else {
     //   return [];
     // }
@@ -297,11 +300,12 @@ class MockBackend extends BackendContract {
 
   Future<List<Map<String, dynamic>>> _unifastTracks() async {
     // if (kDebugMode) {
-      final fastTracksJson = await rootBundle.loadString('assets/mock/fastTrack.json');
-      final List<dynamic> fastTrackJsonList = json.decode(fastTracksJson);
-      final fastTracks = fastTrackJsonList.cast<Map<String, dynamic>>();
+    final fastTracksJson =
+        await rootBundle.loadString('assets/mock/fastTrack.json');
+    final List<dynamic> fastTrackJsonList = json.decode(fastTracksJson);
+    final fastTracks = fastTrackJsonList.cast<Map<String, dynamic>>();
 
-      return fastTracks;
+    return fastTracks;
     // } else {
     //   return [];
     // }
@@ -309,11 +313,12 @@ class MockBackend extends BackendContract {
 
   Future<List<Map<String, dynamic>>> _myCourses() async {
     // if (kDebugMode) {
-      final myCoursesJson = await rootBundle.loadString('assets/mock/myCourses.json');
-      final List<dynamic> myCoursesJsonList = json.decode(myCoursesJson);
-      final myCoursesTracks = myCoursesJsonList.cast<Map<String, dynamic>>();
+    final myCoursesJson =
+        await rootBundle.loadString('assets/mock/myCourses.json');
+    final List<dynamic> myCoursesJsonList = json.decode(myCoursesJson);
+    final myCoursesTracks = myCoursesJsonList.cast<Map<String, dynamic>>();
 
-      return myCoursesTracks;
+    return myCoursesTracks;
     // } else {
     //   return [];
     // }
@@ -321,30 +326,30 @@ class MockBackend extends BackendContract {
 
   //TODO: Retrieve partner name and logo to place on the Course.
   Map<String, dynamic> get _externalCoursesResponse => {
-    "total": 2,
-    "data": [
-      {
-        "id": fakeMongoId,
-        "title": "Graduação em Matemática",
-        "description": "Curso de graduação em matemática.",
-        "thumb": {
-          "type": "image",
-          "data": {"url": "https://picsum.photos/id/30/200/300"},
-        },
-        "platform_url": "https://example.com/course1.png",
-        "initial_password": "765432e1",
-      },
-      {
-        "id": "6864f4415a115a9591257e2d",
-        "title": "Graduação em Belas Artes",
-        "description": "Curso de graduação em Belas Artes.",
-        "thumb": {
-          "type": "image",
-          "data": {"url": "https://picsum.photos/id/30/200/300"},
-        },
-        "platform_url": "https://example.com/course1.png",
-        "initial_password": "765432e1",
-      },
-    ],
-  };
+        "total": 2,
+        "data": [
+          {
+            "id": fakeMongoId,
+            "title": "Graduação em Matemática",
+            "description": "Curso de graduação em matemática.",
+            "thumb": {
+              "type": "image",
+              "data": {"url": "https://picsum.photos/id/30/200/300"},
+            },
+            "platform_url": "https://example.com/course1.png",
+            "initial_password": "765432e1",
+          },
+          {
+            "id": "6864f4415a115a9591257e2d",
+            "title": "Graduação em Belas Artes",
+            "description": "Curso de graduação em Belas Artes.",
+            "thumb": {
+              "type": "image",
+              "data": {"url": "https://picsum.photos/id/30/200/300"},
+            },
+            "platform_url": "https://example.com/course1.png",
+            "initial_password": "765432e1",
+          },
+        ],
+      };
 }

@@ -6,16 +6,17 @@ import 'package:belluga_now/presentation/screens/lms/screens/course_screen/contr
 import 'package:belluga_now/presentation/screens/lms/screens/course_screen/widgets/content_video_player/enums/tab_content_type.dart';
 
 class CourseFloatingActionButtons extends StatefulWidget {
-
   final void Function({NoteModel? noteModel}) onPressed;
 
   const CourseFloatingActionButtons({super.key, required this.onPressed});
 
   @override
-  State<CourseFloatingActionButtons> createState() => _CourseFloatingActionButtonsState();
+  State<CourseFloatingActionButtons> createState() =>
+      _CourseFloatingActionButtonsState();
 }
 
-class _CourseFloatingActionButtonsState extends State<CourseFloatingActionButtons> {
+class _CourseFloatingActionButtonsState
+    extends State<CourseFloatingActionButtons> {
   final _controller = GetIt.I.get<CourseScreenController>();
 
   @override

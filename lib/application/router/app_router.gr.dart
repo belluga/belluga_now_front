@@ -35,7 +35,7 @@ import 'package:belluga_now/presentation/screens/profile/profile_screen.dart'
 /// [_i1.AuthCreateNewPasswordScreen]
 class AuthCreateNewPasswordRoute extends _i11.PageRouteInfo<void> {
   const AuthCreateNewPasswordRoute({List<_i11.PageRouteInfo>? children})
-    : super(AuthCreateNewPasswordRoute.name, initialChildren: children);
+      : super(AuthCreateNewPasswordRoute.name, initialChildren: children);
 
   static const String name = 'AuthCreateNewPasswordRoute';
 
@@ -51,7 +51,7 @@ class AuthCreateNewPasswordRoute extends _i11.PageRouteInfo<void> {
 /// [_i2.AuthLoginScreen]
 class AuthLoginRoute extends _i11.PageRouteInfo<void> {
   const AuthLoginRoute({List<_i11.PageRouteInfo>? children})
-    : super(AuthLoginRoute.name, initialChildren: children);
+      : super(AuthLoginRoute.name, initialChildren: children);
 
   static const String name = 'AuthLoginRoute';
 
@@ -71,11 +71,11 @@ class CourseRoute extends _i11.PageRouteInfo<CourseRouteArgs> {
     required String courseItemId,
     List<_i11.PageRouteInfo>? children,
   }) : super(
-         CourseRoute.name,
-         args: CourseRouteArgs(key: key, courseItemId: courseItemId),
-         rawPathParams: {'courseItemId': courseItemId},
-         initialChildren: children,
-       );
+          CourseRoute.name,
+          args: CourseRouteArgs(key: key, courseItemId: courseItemId),
+          rawPathParams: {'courseItemId': courseItemId},
+          initialChildren: children,
+        );
 
   static const String name = 'CourseRoute';
 
@@ -119,7 +119,7 @@ class CourseRouteArgs {
 /// [_i4.CoursesListScreen]
 class CoursesListRoute extends _i11.PageRouteInfo<void> {
   const CoursesListRoute({List<_i11.PageRouteInfo>? children})
-    : super(CoursesListRoute.name, initialChildren: children);
+      : super(CoursesListRoute.name, initialChildren: children);
 
   static const String name = 'CoursesListRoute';
 
@@ -135,7 +135,7 @@ class CoursesListRoute extends _i11.PageRouteInfo<void> {
 /// [_i5.DashboardScreen]
 class DashboardRoute extends _i11.PageRouteInfo<void> {
   const DashboardRoute({List<_i11.PageRouteInfo>? children})
-    : super(DashboardRoute.name, initialChildren: children);
+      : super(DashboardRoute.name, initialChildren: children);
 
   static const String name = 'DashboardRoute';
 
@@ -151,7 +151,7 @@ class DashboardRoute extends _i11.PageRouteInfo<void> {
 /// [_i6.FastTrackListScreen]
 class FastTrackListRoute extends _i11.PageRouteInfo<void> {
   const FastTrackListRoute({List<_i11.PageRouteInfo>? children})
-    : super(FastTrackListRoute.name, initialChildren: children);
+      : super(FastTrackListRoute.name, initialChildren: children);
 
   static const String name = 'FastTrackListRoute';
 
@@ -167,7 +167,7 @@ class FastTrackListRoute extends _i11.PageRouteInfo<void> {
 /// [_i7.HomeScreen]
 class HomeRoute extends _i11.PageRouteInfo<void> {
   const HomeRoute({List<_i11.PageRouteInfo>? children})
-    : super(HomeRoute.name, initialChildren: children);
+      : super(HomeRoute.name, initialChildren: children);
 
   static const String name = 'HomeRoute';
 
@@ -183,7 +183,7 @@ class HomeRoute extends _i11.PageRouteInfo<void> {
 /// [_i8.InitScreen]
 class InitRoute extends _i11.PageRouteInfo<void> {
   const InitRoute({List<_i11.PageRouteInfo>? children})
-    : super(InitRoute.name, initialChildren: children);
+      : super(InitRoute.name, initialChildren: children);
 
   static const String name = 'InitRoute';
 
@@ -199,7 +199,7 @@ class InitRoute extends _i11.PageRouteInfo<void> {
 /// [_i9.ProfileScreen]
 class ProfileRoute extends _i11.PageRouteInfo<void> {
   const ProfileRoute({List<_i11.PageRouteInfo>? children})
-    : super(ProfileRoute.name, initialChildren: children);
+      : super(ProfileRoute.name, initialChildren: children);
 
   static const String name = 'ProfileRoute';
 
@@ -220,13 +220,13 @@ class RecoveryPasswordRoute
     String? initialEmmail,
     List<_i11.PageRouteInfo>? children,
   }) : super(
-         RecoveryPasswordRoute.name,
-         args: RecoveryPasswordRouteArgs(
-           key: key,
-           initialEmmail: initialEmmail,
-         ),
-         initialChildren: children,
-       );
+          RecoveryPasswordRoute.name,
+          args: RecoveryPasswordRouteArgs(
+            key: key,
+            initialEmmail: initialEmmail,
+          ),
+          initialChildren: children,
+        );
 
   static const String name = 'RecoveryPasswordRoute';
 

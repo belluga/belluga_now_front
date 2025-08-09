@@ -28,8 +28,8 @@ class AuthHeaderHeadline extends StatelessWidget {
             child: Text(
               "Bem vindo à educação do Futuro",
               style: TextTheme.of(context).titleMedium?.copyWith(
-                color: Theme.of(context).colorScheme.secondary,
-              ),
+                    color: Theme.of(context).colorScheme.secondary,
+                  ),
             ),
           ),
         ],

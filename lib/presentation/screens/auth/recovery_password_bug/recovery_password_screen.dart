@@ -39,7 +39,6 @@ class _RecoveryPasswordScreenState extends State<RecoveryPasswordScreen> {
                   fit: BoxFit.cover,
                 ),
               ),
-
               Expanded(
                 child: SingleChildScrollView(
                   child: Padding(

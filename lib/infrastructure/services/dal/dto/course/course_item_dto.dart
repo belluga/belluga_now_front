@@ -34,9 +34,9 @@ class CourseItemDetailsDTO {
     this.next,
     this.content,
   }) : assert(
-         content != null || (childrens.isNotEmpty),
-         "CourseItemDetails should have content or at least one child.",
-       );
+          content != null || (childrens.isNotEmpty),
+          "CourseItemDetails should have content or at least one child.",
+        );
 
   factory CourseItemDetailsDTO.fromJson(Map<String, dynamic> json) {
     final _id = json['id'] as String;
@@ -50,8 +50,7 @@ class CourseItemDetailsDTO {
         ?.map((e) => CategoryDTO.fromJson(e as Map<String, dynamic>))
         .toList();
 
-    final _files =
-        (json['files'] as List?)
+    final _files = (json['files'] as List?)
             ?.map((e) => FileDTO.fromJson(e as Map<String, dynamic>))
             .toList() ??
         [];
@@ -67,10 +66,10 @@ class CourseItemDetailsDTO {
 
     final _childrens = json['childrens'] != null
         ? (json['childrens']['items'] as List)
-              .map(
-                (e) => CourseItemSummaryDTO.fromJson(e as Map<String, dynamic>),
-              )
-              .toList()
+            .map(
+              (e) => CourseItemSummaryDTO.fromJson(e as Map<String, dynamic>),
+            )
+            .toList()
         : <CourseItemSummaryDTO>[];
 
     final _content = json['content'] != null

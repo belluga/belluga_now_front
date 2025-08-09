@@ -6,32 +6,33 @@ import 'package:belluga_now/application/router/guards/route_guard_auth.dart';
 class AppRouter extends RootStackRouter {
   @override
   List<AutoRoute> get routes => [
-    AutoRoute(path: "/init", page: InitRoute.page, initial: true),
-    AutoRoute(path: "/", page: HomeRoute.page),
-    AutoRoute(
-      path: "/dashboard",
-      page: DashboardRoute.page,
-      guards: [AuthGuard()],
-    ),
-    AutoRoute(path: "/login", page: AuthLoginRoute.page),
-    AutoRoute(path: "/recover_password", page: RecoveryPasswordRoute.page),
-    // AutoRoute(page: AuthPasswordRecoverRoute.page),
-    // AutoRoute(page: AuthPasswordRecoverConfirmationRoute.page),
-    AutoRoute(path: "/profile", page: ProfileRoute.page, guards: [AuthGuard()]),
-    AutoRoute(
-      path: "/meus-cursos",
-      page: CoursesListRoute.page,
-      guards: [AuthGuard()],
-    ),
-    AutoRoute(
-      path: "/fast-tracks",
-      page: FastTrackListRoute.page,
-      guards: [AuthGuard()],
-    ),
-    AutoRoute(
-      path: "/conteudo/:courseItemId",
-      page: CourseRoute.page,
-      guards: [AuthGuard()],
-    ),
-  ];
+        AutoRoute(path: "/init", page: InitRoute.page, initial: true),
+        AutoRoute(path: "/", page: HomeRoute.page),
+        AutoRoute(
+          path: "/dashboard",
+          page: DashboardRoute.page,
+          guards: [AuthGuard()],
+        ),
+        AutoRoute(path: "/login", page: AuthLoginRoute.page),
+        AutoRoute(path: "/recover_password", page: RecoveryPasswordRoute.page),
+        // AutoRoute(page: AuthPasswordRecoverRoute.page),
+        // AutoRoute(page: AuthPasswordRecoverConfirmationRoute.page),
+        AutoRoute(
+            path: "/profile", page: ProfileRoute.page, guards: [AuthGuard()]),
+        AutoRoute(
+          path: "/meus-cursos",
+          page: CoursesListRoute.page,
+          guards: [AuthGuard()],
+        ),
+        AutoRoute(
+          path: "/fast-tracks",
+          page: FastTrackListRoute.page,
+          guards: [AuthGuard()],
+        ),
+        AutoRoute(
+          path: "/conteudo/:courseItemId",
+          page: CourseRoute.page,
+          guards: [AuthGuard()],
+        ),
+      ];
 }

@@ -6,7 +6,6 @@ import 'package:belluga_now/infrastructure/services/laravel_backend/backend_cont
 import 'package:belluga_now/infrastructure/services/laravel_backend/mock_backend.dart';
 
 class Application extends ApplicationWebContract {
-
   Application({super.key});
 
   @override
@@ -18,5 +17,4 @@ class Application extends ApplicationWebContract {
 
   @override
   BackendContract initBackendRepository() => MockBackend();
-  
 }

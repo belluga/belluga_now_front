@@ -32,9 +32,8 @@ class CourseBaseModel {
         ?.map((item) => CourseCategoryModel.fromDto(item))
         .toList();
 
-    final _teachers = dto.teachers
-        .map((item) => TeacherModel.fromDTO((item)))
-        .toList();
+    final _teachers =
+        dto.teachers.map((item) => TeacherModel.fromDTO((item))).toList();
 
     return CourseBaseModel(
       id: _id,

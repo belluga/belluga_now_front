@@ -17,10 +17,10 @@ class AuthCreateNewPasswordScreen extends StatefulWidget {
 
 class _AuthCreateNewPasswordScreenState
     extends State<AuthCreateNewPasswordScreen> {
-  final _controller = GetIt.I
-      .registerSingleton<CreatePasswordControllerContract>(
-        CreatePasswordController(),
-      );
+  final _controller =
+      GetIt.I.registerSingleton<CreatePasswordControllerContract>(
+    CreatePasswordController(),
+  );
 
   @override
   void initState() {
@@ -43,7 +43,6 @@ class _AuthCreateNewPasswordScreenState
                   fit: BoxFit.cover,
                 ),
               ),
-
               Expanded(
                 child: SingleChildScrollView(
                   child: Padding(

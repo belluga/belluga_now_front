@@ -67,14 +67,12 @@ class _CourseScreenState extends State<CourseScreen>
                       ) {
                         final TabContentType contentType =
                             _controller.tabContentTypes[index];
-            
+
                         switch (contentType) {
                           case TabContentType.childrens:
                             return Tab(
                               text: courseModel
-                                  .childrensSummary
-                                  ?.label
-                                  .valueFormated,
+                                  .childrensSummary?.label.valueFormated,
                             );
                           case TabContentType.files:
                             return Tab(text: 'Arquivos');
@@ -96,7 +94,7 @@ class _CourseScreenState extends State<CourseScreen>
                         (index) {
                           final TabContentType contentType =
                               _controller.tabContentTypes[index];
-            
+
                           switch (contentType) {
                             case TabContentType.childrens:
                               return ChildrensList();

@@ -6,7 +6,8 @@ class CourseRowCard extends StatefulWidget {
   final CourseBaseModel course;
   final void Function() onNavigateToCourse;
 
-  const CourseRowCard({super.key, required this.course, required this.onNavigateToCourse});
+  const CourseRowCard(
+      {super.key, required this.course, required this.onNavigateToCourse});
 
   @override
   State<CourseRowCard> createState() => _CourseRowCardState();

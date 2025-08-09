@@ -7,7 +7,6 @@ import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 
 class NotesList extends StatefulWidget {
-
   final void Function({NoteModel? noteModel}) onCardTap;
 
   const NotesList({super.key, required this.onCardTap});
@@ -42,8 +41,9 @@ class _NotesListState extends State<NotesList> {
             children: List.generate(
               notesList.length,
               (index) => NoteCard(
-                onCardTap: widget.onCardTap,
-                noteModel: notesList[index], index: index),
+                  onCardTap: widget.onCardTap,
+                  noteModel: notesList[index],
+                  index: index),
             ),
           ),
         );

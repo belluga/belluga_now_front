@@ -147,7 +147,7 @@ class ContentVideoPlayerController extends Disposable {
   @override
   void onDispose() {
     _overlayHideTimer?.cancel();
-    
+
     if (isInitialized) {
       videoPlayerController.removeListener(_listenVideoController);
       videoPlayerController.dispose();

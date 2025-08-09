@@ -32,17 +32,15 @@ class _FastTracksCategoryFiltersIconCounterState
           child: Stack(
             children: [
               SizedBox(
-                width: 48,
-                height: 48,
-                child: Icon(Icons.filter_list_alt)),
+                  width: 48, height: 48, child: Icon(Icons.filter_list_alt)),
               CircleAvatar(
                 radius: 12,
                 backgroundColor: Theme.of(context).colorScheme.secondary,
                 child: Text(
                   selectedCategories.length.toString(),
                   style: TextTheme.of(context).bodySmall?.copyWith(
-                    color: Theme.of(context).colorScheme.onSecondary,
-                  ),
+                        color: Theme.of(context).colorScheme.onSecondary,
+                      ),
                 ),
               ),
             ],

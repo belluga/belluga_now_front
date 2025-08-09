@@ -31,12 +31,14 @@ class _ContentVideoPlayerState extends State<ContentVideoPlayer> {
       child: Stack(
         children: [
           StreamValueBuilder<bool>(
-            streamValue: _controller.contentVideoPlayerController.isInitializedStreamValue,
+            streamValue: _controller
+                .contentVideoPlayerController.isInitializedStreamValue,
             onNullWidget: Center(child: CircularProgressIndicator()),
             builder: (context, isInitialized) {
               return Stack(
                 children: [
-                  VideoPlayer(_controller.contentVideoPlayerController.videoPlayerController),
+                  VideoPlayer(_controller
+                      .contentVideoPlayerController.videoPlayerController),
                   SizedBox.expand(
                     child: VideoOverlayArea(
                       courseItemModel: widget.courseItemModel,

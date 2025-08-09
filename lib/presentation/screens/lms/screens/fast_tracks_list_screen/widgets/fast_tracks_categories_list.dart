@@ -49,8 +49,7 @@ class _FastTracksCategoriesListState extends State<FastTracksCategoriesList> {
 
                       final _category = categories[index];
 
-                      final bool _isSelected =
-                          selectedCategories.hasData &&
+                      final bool _isSelected = selectedCategories.hasData &&
                           selectedCategories.data!.contains(_category);
 
                       return CategoryCard(

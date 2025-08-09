@@ -31,10 +31,10 @@ class _InitScreenState extends State<InitScreen> {
   }
 
   Future<void> _init() async {
-    _controller = GetIt.I
-        .registerSingleton<BellugaInitScreenControllerContract>(
-          InitScreenController(),
-        );
+    _controller =
+        GetIt.I.registerSingleton<BellugaInitScreenControllerContract>(
+      InitScreenController(),
+    );
     await _controller.initialize();
 
     await Future.delayed(const Duration(milliseconds: 2000));

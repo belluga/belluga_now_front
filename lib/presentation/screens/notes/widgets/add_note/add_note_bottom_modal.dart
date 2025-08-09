@@ -129,7 +129,6 @@ class _AddNoteBottomModalState extends State<AddNoteBottomModal> {
                   },
                 ),
                 const SizedBox(height: 16),
-
                 Row(
                   children: [
                     if (widget.noteModel != null)

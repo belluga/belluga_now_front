@@ -109,7 +109,7 @@ class CourseScreenController implements Disposable {
       tabContentTypes.add(TabContentType.files);
     }
 
-    if(currentCourseItemStreamValue.value!.hasVideoContent) {
+    if (currentCourseItemStreamValue.value!.hasVideoContent) {
       tabContentTypes.add(TabContentType.notes);
     }
 
