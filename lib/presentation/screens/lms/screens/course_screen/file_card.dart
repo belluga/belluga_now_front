@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:unifast_portal/domain/courses/file_model.dart';
-import 'package:unifast_portal/presentation/common/widgets/image_with_progress_indicator.dart';
+import 'package:belluga_now/domain/courses/file_model.dart';
+import 'package:belluga_now/presentation/common/widgets/image_with_progress_indicator.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class FileCard extends StatefulWidget {

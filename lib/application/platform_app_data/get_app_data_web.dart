@@ -1,5 +1,5 @@
 import 'dart:js_interop';
-import 'package:unifast_portal/application/app_data.dart';
+import 'package:belluga_now/application/app_data.dart';
 
 // Your JS interop definitions remain the same
 @JS()

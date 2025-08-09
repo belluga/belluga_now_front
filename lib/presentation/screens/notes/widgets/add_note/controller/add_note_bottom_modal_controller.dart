@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value.dart';
-import 'package:unifast_portal/domain/courses/course_item_model.dart';
-import 'package:unifast_portal/domain/notes/note_model.dart';
-import 'package:unifast_portal/domain/repositories/notes_repository_contract.dart';
+import 'package:belluga_now/domain/courses/course_item_model.dart';
+import 'package:belluga_now/domain/notes/note_model.dart';
+import 'package:belluga_now/domain/repositories/notes_repository_contract.dart';
 
 class AddNoteBottomModalController {
   final CourseItemModel courseItemModel;

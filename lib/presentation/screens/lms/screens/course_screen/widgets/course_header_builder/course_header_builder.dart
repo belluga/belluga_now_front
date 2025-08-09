@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:unifast_portal/domain/courses/course_content_model.dart';
-import 'package:unifast_portal/domain/courses/course_item_model.dart';
-import 'package:unifast_portal/presentation/screens/lms/screens/course_screen/widgets/course_header_builder/course_header_banner.dart';
-import 'package:unifast_portal/presentation/screens/lms/screens/course_screen/widgets/course_header_builder/course_header_html.dart';
-import 'package:unifast_portal/presentation/screens/lms/screens/course_screen/widgets/course_header_builder/course_header_video.dart';
+import 'package:belluga_now/domain/courses/course_content_model.dart';
+import 'package:belluga_now/domain/courses/course_item_model.dart';
+import 'package:belluga_now/presentation/screens/lms/screens/course_screen/widgets/course_header_builder/course_header_banner.dart';
+import 'package:belluga_now/presentation/screens/lms/screens/course_screen/widgets/course_header_builder/course_header_html.dart';
+import 'package:belluga_now/presentation/screens/lms/screens/course_screen/widgets/course_header_builder/course_header_video.dart';
 
 class CourseHeaderBuilder extends StatefulWidget {
   final CourseItemModel courseItemModel;

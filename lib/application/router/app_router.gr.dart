@@ -11,24 +11,24 @@
 // ignore_for_file: no_leading_underscores_for_library_prefixes
 import 'package:auto_route/auto_route.dart' as _i11;
 import 'package:flutter/material.dart' as _i12;
-import 'package:unifast_portal/presentation/init/init_screen.dart' as _i8;
-import 'package:unifast_portal/presentation/screens/auth/create_new_password/auth_create_new_password.dart'
+import 'package:belluga_now/presentation/init/init_screen.dart' as _i8;
+import 'package:belluga_now/presentation/screens/auth/create_new_password/auth_create_new_password.dart'
     as _i1;
-import 'package:unifast_portal/presentation/screens/auth/login/auth_login_screen.dart'
+import 'package:belluga_now/presentation/screens/auth/login/auth_login_screen.dart'
     as _i2;
-import 'package:unifast_portal/presentation/screens/auth/recovery_password_bug/recovery_password_screen.dart'
+import 'package:belluga_now/presentation/screens/auth/recovery_password_bug/recovery_password_screen.dart'
     as _i10;
-import 'package:unifast_portal/presentation/screens/dashboard/dashboard_screen.dart'
+import 'package:belluga_now/presentation/screens/dashboard/dashboard_screen.dart'
     as _i5;
-import 'package:unifast_portal/presentation/screens/home/home_screen.dart'
+import 'package:belluga_now/presentation/screens/home/home_screen.dart'
     as _i7;
-import 'package:unifast_portal/presentation/screens/lms/screens/course_screen/course_screen.dart'
+import 'package:belluga_now/presentation/screens/lms/screens/course_screen/course_screen.dart'
     as _i3;
-import 'package:unifast_portal/presentation/screens/lms/screens/courses_list_screen/courses_list_screen.dart'
+import 'package:belluga_now/presentation/screens/lms/screens/courses_list_screen/courses_list_screen.dart'
     as _i4;
-import 'package:unifast_portal/presentation/screens/lms/screens/fast_tracks_list_screen/fast_tracks_list_screen.dart'
+import 'package:belluga_now/presentation/screens/lms/screens/fast_tracks_list_screen/fast_tracks_list_screen.dart'
     as _i6;
-import 'package:unifast_portal/presentation/screens/profile/profile_screen.dart'
+import 'package:belluga_now/presentation/screens/profile/profile_screen.dart'
     as _i9;
 
 /// generated route for

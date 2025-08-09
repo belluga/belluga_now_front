@@ -1,10 +1,10 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
-import 'package:unifast_portal/domain/attribute/attribute_model.dart';
-import 'package:unifast_portal/domain/user/user_contract.dart';
-import 'package:unifast_portal/presentation/screens/profile/controller/profile_screen_controller.dart';
-import 'package:unifast_portal/presentation/widgets/attribute_field_list.dart';
-import 'package:unifast_portal/presentation/widgets/back_button_belluga.dart';
+import 'package:belluga_now/domain/attribute/attribute_model.dart';
+import 'package:belluga_now/domain/user/user_contract.dart';
+import 'package:belluga_now/presentation/screens/profile/controller/profile_screen_controller.dart';
+import 'package:belluga_now/presentation/widgets/attribute_field_list.dart';
+import 'package:belluga_now/presentation/widgets/back_button_belluga.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 import 'package:value_object_pattern/domain/value_objects/full_name_value.dart';

@@ -1,5 +1,5 @@
 import 'package:flutter/services.dart';
-import 'package:unifast_portal/application/application_contract.dart';
+import 'package:belluga_now/application/application_contract.dart';
 
 abstract class ApplicationMobileContract extends ApplicationContract {
   ApplicationMobileContract({super.key});

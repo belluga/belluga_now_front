@@ -1,9 +1,9 @@
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
-import 'package:unifast_portal/domain/courses/course_item_model.dart';
-import 'package:unifast_portal/presentation/screens/lms/screens/course_screen/controllers/course_screen_controller.dart';
+import 'package:belluga_now/domain/courses/course_item_model.dart';
+import 'package:belluga_now/presentation/screens/lms/screens/course_screen/controllers/course_screen_controller.dart';
 import 'package:flutter/material.dart';
-import 'package:unifast_portal/presentation/screens/lms/screens/course_screen/widgets/content_video_player/widgets/video_overlay_area.dart';
+import 'package:belluga_now/presentation/screens/lms/screens/course_screen/widgets/content_video_player/widgets/video_overlay_area.dart';
 import 'package:video_player/video_player.dart';
 
 class ContentVideoPlayer extends StatefulWidget {

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:unifast_portal/domain/notes/value_objects/note_content_value.dart';
-import 'package:unifast_portal/domain/notes/value_objects/note_position_value.dart';
-import 'package:unifast_portal/domain/value_objects/color_value.dart';
-import 'package:unifast_portal/infrastructure/services/dal/dto/notes/note_dto.dart';
+import 'package:belluga_now/domain/notes/value_objects/note_content_value.dart';
+import 'package:belluga_now/domain/notes/value_objects/note_position_value.dart';
+import 'package:belluga_now/domain/value_objects/color_value.dart';
+import 'package:belluga_now/infrastructure/services/dal/dto/notes/note_dto.dart';
 import 'package:value_object_pattern/domain/value_objects/mongo_id_value.dart';
 
 class NoteModel {

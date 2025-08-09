@@ -1,14 +1,14 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:unifast_portal/domain/courses/course_item_model.dart';
-import 'package:unifast_portal/domain/notes/note_model.dart';
-import 'package:unifast_portal/domain/repositories/courses_repository_contract.dart';
+import 'package:belluga_now/domain/courses/course_item_model.dart';
+import 'package:belluga_now/domain/notes/note_model.dart';
+import 'package:belluga_now/domain/repositories/courses_repository_contract.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value.dart';
-import 'package:unifast_portal/domain/repositories/notes_repository_contract.dart';
-import 'package:unifast_portal/presentation/screens/lms/screens/course_screen/widgets/content_video_player/controller/content_video_player_controller.dart';
-import 'package:unifast_portal/presentation/screens/lms/screens/course_screen/widgets/content_video_player/enums/tab_content_type.dart';
+import 'package:belluga_now/domain/repositories/notes_repository_contract.dart';
+import 'package:belluga_now/presentation/screens/lms/screens/course_screen/widgets/content_video_player/controller/content_video_player_controller.dart';
+import 'package:belluga_now/presentation/screens/lms/screens/course_screen/widgets/content_video_player/enums/tab_content_type.dart';
 
 class CourseScreenController implements Disposable {
   final TickerProviderStateMixin vsync;

@@ -1,4 +1,4 @@
-import 'package:unifast_portal/infrastructure/services/dal/dto/course/video_dto.dart';
+import 'package:belluga_now/infrastructure/services/dal/dto/course/video_dto.dart';
 
 class CourseContentDTO {
   final VideoDTO? video;

@@ -1,4 +1,4 @@
-import 'package:unifast_portal/domain/repositories/auth_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:get_it/get_it.dart';
 
 class ProfileActionButtonController {

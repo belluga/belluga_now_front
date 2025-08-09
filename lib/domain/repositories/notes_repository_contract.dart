@@ -1,7 +1,7 @@
 import 'package:flutter/rendering.dart';
-import 'package:unifast_portal/domain/notes/note_model.dart';
-import 'package:unifast_portal/infrastructure/services/dal/dto/notes/note_dto.dart';
-import 'package:unifast_portal/infrastructure/services/laravel_backend/backend_contract.dart';
+import 'package:belluga_now/domain/notes/note_model.dart';
+import 'package:belluga_now/infrastructure/services/dal/dto/notes/note_dto.dart';
+import 'package:belluga_now/infrastructure/services/laravel_backend/backend_contract.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value.dart';
 

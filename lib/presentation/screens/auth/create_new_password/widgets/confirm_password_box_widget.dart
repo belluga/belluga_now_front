@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:unifast_portal/presentation/screens/auth/widgets/form_field_belluga.dart';
+import 'package:belluga_now/presentation/screens/auth/widgets/form_field_belluga.dart';
 
 class ConfirmPasswordBoxWidget extends FormFieldBelluga {
   const ConfirmPasswordBoxWidget({

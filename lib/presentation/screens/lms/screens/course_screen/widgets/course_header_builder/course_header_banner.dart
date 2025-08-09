@@ -3,10 +3,10 @@ import 'dart:ui';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
-import 'package:unifast_portal/domain/courses/course_category_model.dart';
-import 'package:unifast_portal/domain/courses/course_item_model.dart';
-import 'package:unifast_portal/presentation/screens/lms/screens/course_screen/controllers/course_screen_controller.dart';
-import 'package:unifast_portal/presentation/screens/lms/widgets/category_chip.dart';
+import 'package:belluga_now/domain/courses/course_category_model.dart';
+import 'package:belluga_now/domain/courses/course_item_model.dart';
+import 'package:belluga_now/presentation/screens/lms/screens/course_screen/controllers/course_screen_controller.dart';
+import 'package:belluga_now/presentation/screens/lms/widgets/category_chip.dart';
 
 class CourseHeaderBanner extends StatefulWidget {
   final CourseItemModel courseItemModel;

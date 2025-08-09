@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:unifast_portal/presentation/common/widgets/dashboard_title_row.dart';
+import 'package:belluga_now/presentation/common/widgets/dashboard_title_row.dart';
 
 class DashboardItemsSummary extends StatefulWidget {
   final String title;

@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
-import 'package:unifast_portal/domain/courses/course_item_model.dart';
-import 'package:unifast_portal/domain/notes/note_model.dart';
-import 'package:unifast_portal/presentation/common/widgets/button_loading.dart';
-import 'package:unifast_portal/presentation/screens/notes/widgets/add_note/color_selector.dart';
-import 'package:unifast_portal/presentation/screens/notes/widgets/add_note/controller/add_note_bottom_modal_controller.dart';
+import 'package:belluga_now/domain/courses/course_item_model.dart';
+import 'package:belluga_now/domain/notes/note_model.dart';
+import 'package:belluga_now/presentation/common/widgets/button_loading.dart';
+import 'package:belluga_now/presentation/screens/notes/widgets/add_note/color_selector.dart';
+import 'package:belluga_now/presentation/screens/notes/widgets/add_note/controller/add_note_bottom_modal_controller.dart';
 
 class AddNoteBottomModal extends StatefulWidget {
   final CourseItemModel courseItemModel;

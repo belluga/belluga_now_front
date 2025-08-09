@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:unifast_portal/domain/courses/course_category_model.dart';
+import 'package:belluga_now/domain/courses/course_category_model.dart';
 
 class CategoryChip extends StatelessWidget {
   final CourseCategoryModel category;

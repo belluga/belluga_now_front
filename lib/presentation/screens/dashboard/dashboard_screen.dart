@@ -2,15 +2,15 @@ import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
-import 'package:unifast_portal/application/router/app_router.gr.dart';
-import 'package:unifast_portal/domain/courses/course_base_model.dart';
-import 'package:unifast_portal/presentation/common/widgets/main_logo.dart';
-import 'package:unifast_portal/presentation/common/widgets/profile_action_button/profile_action_button.dart';
-import 'package:unifast_portal/presentation/screens/dashboard/controllers/my_courses_dashboard_controller.dart';
-import 'package:unifast_portal/presentation/screens/events/widgets/next_events_dashboard.dart';
-import 'package:unifast_portal/presentation/screens/dashboard/widgets/external_courses_dashboard/external_courses_dashboard.dart';
-import 'package:unifast_portal/presentation/screens/dashboard/widgets/my_courses_dashboard/my_courses_dashboard.dart';
-import 'package:unifast_portal/presentation/widgets/course_tracks_sliver.dart';
+import 'package:belluga_now/application/router/app_router.gr.dart';
+import 'package:belluga_now/domain/courses/course_base_model.dart';
+import 'package:belluga_now/presentation/common/widgets/main_logo.dart';
+import 'package:belluga_now/presentation/common/widgets/profile_action_button/profile_action_button.dart';
+import 'package:belluga_now/presentation/screens/dashboard/controllers/my_courses_dashboard_controller.dart';
+import 'package:belluga_now/presentation/screens/events/widgets/next_events_dashboard.dart';
+import 'package:belluga_now/presentation/screens/dashboard/widgets/external_courses_dashboard/external_courses_dashboard.dart';
+import 'package:belluga_now/presentation/screens/dashboard/widgets/my_courses_dashboard/my_courses_dashboard.dart';
+import 'package:belluga_now/presentation/widgets/course_tracks_sliver.dart';
 
 @RoutePage()
 class DashboardScreen extends StatefulWidget {

@@ -1,6 +1,6 @@
-import 'package:unifast_portal/domain/courses/video_model.dart';
-import 'package:unifast_portal/infrastructure/services/dal/dto/course/course_content_dto.dart';
-import 'package:unifast_portal/infrastructure/services/dal/dto/course/video_dto.dart';
+import 'package:belluga_now/domain/courses/video_model.dart';
+import 'package:belluga_now/infrastructure/services/dal/dto/course/course_content_dto.dart';
+import 'package:belluga_now/infrastructure/services/dal/dto/course/video_dto.dart';
 import 'package:value_object_pattern/domain/value_objects/generic_string_value.dart';
 
 class CourseContentModel {

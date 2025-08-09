@@ -1,4 +1,4 @@
-import 'package:unifast_portal/domain/controllers/remember_password_contract.dart';
+import 'package:belluga_now/domain/controllers/remember_password_contract.dart';
 import 'dart:async';
 
 class RememberPasswordController implements RememberPasswordContract {

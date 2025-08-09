@@ -1,10 +1,10 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
-import 'package:unifast_portal/application/router/app_router.gr.dart';
-import 'package:unifast_portal/domain/courses/course_category_model.dart';
-import 'package:unifast_portal/domain/courses/course_base_model.dart';
-import 'package:unifast_portal/presentation/common/widgets/image_with_progress_indicator.dart';
-import 'package:unifast_portal/presentation/screens/lms/widgets/category_badge.dart';
+import 'package:belluga_now/application/router/app_router.gr.dart';
+import 'package:belluga_now/domain/courses/course_category_model.dart';
+import 'package:belluga_now/domain/courses/course_base_model.dart';
+import 'package:belluga_now/presentation/common/widgets/image_with_progress_indicator.dart';
+import 'package:belluga_now/presentation/screens/lms/widgets/category_badge.dart';
 
 class FastTrackCard extends StatefulWidget {
   final CourseBaseModel courseModel;

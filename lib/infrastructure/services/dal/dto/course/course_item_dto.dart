@@ -1,10 +1,10 @@
-import 'package:unifast_portal/infrastructure/services/dal/dto/course/category_dto.dart';
-import 'package:unifast_portal/infrastructure/services/dal/dto/course/course_childrens_summary_dto.dart';
-import 'package:unifast_portal/infrastructure/services/dal/dto/course/course_content_dto.dart';
-import 'package:unifast_portal/infrastructure/services/dal/dto/course/course_item_summary_dto.dart';
-import 'package:unifast_portal/infrastructure/services/dal/dto/course/teacher_dto.dart';
-import 'package:unifast_portal/infrastructure/services/dal/dto/course/files_dto.dart';
-import 'package:unifast_portal/infrastructure/services/dal/dto/thumb_dto.dart';
+import 'package:belluga_now/infrastructure/services/dal/dto/course/category_dto.dart';
+import 'package:belluga_now/infrastructure/services/dal/dto/course/course_childrens_summary_dto.dart';
+import 'package:belluga_now/infrastructure/services/dal/dto/course/course_content_dto.dart';
+import 'package:belluga_now/infrastructure/services/dal/dto/course/course_item_summary_dto.dart';
+import 'package:belluga_now/infrastructure/services/dal/dto/course/teacher_dto.dart';
+import 'package:belluga_now/infrastructure/services/dal/dto/course/files_dto.dart';
+import 'package:belluga_now/infrastructure/services/dal/dto/thumb_dto.dart';
 
 class CourseItemDetailsDTO {
   String id;

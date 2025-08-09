@@ -1,12 +1,12 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
-import 'package:unifast_portal/application/router/app_router.gr.dart';
-import 'package:unifast_portal/presentation/common/widgets/dashboard_items_summary.dart';
-import 'package:unifast_portal/presentation/screens/dashboard/controllers/my_courses_dashboard_controller.dart';
-import 'package:unifast_portal/presentation/screens/dashboard/view_models/courses_summary.dart';
+import 'package:belluga_now/application/router/app_router.gr.dart';
+import 'package:belluga_now/presentation/common/widgets/dashboard_items_summary.dart';
+import 'package:belluga_now/presentation/screens/dashboard/controllers/my_courses_dashboard_controller.dart';
+import 'package:belluga_now/presentation/screens/dashboard/view_models/courses_summary.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 import 'package:get_it/get_it.dart';
-import 'package:unifast_portal/presentation/screens/lms/widgets/course_row_card.dart';
+import 'package:belluga_now/presentation/screens/lms/widgets/course_row_card.dart';
 
 class MyCoursesDashboard extends StatefulWidget {
   const MyCoursesDashboard({super.key});

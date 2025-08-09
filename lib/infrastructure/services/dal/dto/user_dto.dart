@@ -1,5 +1,5 @@
-import 'package:unifast_portal/application/configurations/user_dto_labels.dart';
-import 'package:unifast_portal/infrastructure/services/dal/dto/user_profile_dto.dart';
+import 'package:belluga_now/application/configurations/user_dto_labels.dart';
+import 'package:belluga_now/infrastructure/services/dal/dto/user_profile_dto.dart';
 
 class UserDTO {
   final String id;

@@ -2,12 +2,12 @@ import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
-import 'package:unifast_portal/domain/courses/course_item_model.dart';
-import 'package:unifast_portal/presentation/screens/lms/screens/course_screen/controllers/course_screen_controller.dart';
-import 'package:unifast_portal/presentation/screens/lms/screens/course_screen/widgets/content_video_player/enums/video_playing_status.dart';
-import 'package:unifast_portal/presentation/screens/lms/screens/course_screen/widgets/content_video_player/widgets/next_video_button.dart';
-import 'package:unifast_portal/presentation/screens/lms/screens/course_screen/widgets/content_video_player/widgets/play_bar.dart';
-import 'package:unifast_portal/presentation/screens/lms/screens/course_screen/widgets/content_video_player/widgets/play_button.dart';
+import 'package:belluga_now/domain/courses/course_item_model.dart';
+import 'package:belluga_now/presentation/screens/lms/screens/course_screen/controllers/course_screen_controller.dart';
+import 'package:belluga_now/presentation/screens/lms/screens/course_screen/widgets/content_video_player/enums/video_playing_status.dart';
+import 'package:belluga_now/presentation/screens/lms/screens/course_screen/widgets/content_video_player/widgets/next_video_button.dart';
+import 'package:belluga_now/presentation/screens/lms/screens/course_screen/widgets/content_video_player/widgets/play_bar.dart';
+import 'package:belluga_now/presentation/screens/lms/screens/course_screen/widgets/content_video_player/widgets/play_button.dart';
 
 class VideoOverlayArea extends StatefulWidget {
   final CourseItemModel courseItemModel;

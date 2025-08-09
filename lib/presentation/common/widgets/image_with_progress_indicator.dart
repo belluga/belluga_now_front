@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:unifast_portal/domain/courses/thumb_model.dart';
+import 'package:belluga_now/domain/courses/thumb_model.dart';
 
 class ImageWithProgressIndicator extends StatelessWidget {
   final ThumbModel thumb;

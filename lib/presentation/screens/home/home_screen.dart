@@ -1,9 +1,9 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
-import 'package:unifast_portal/application/configurations/belluga_constants.dart';
-import 'package:unifast_portal/application/configurations/widget_keys.dart';
-import 'package:unifast_portal/domain/tenant/tenant.dart';
-import 'package:unifast_portal/application/router/app_router.gr.dart';
+import 'package:belluga_now/application/configurations/belluga_constants.dart';
+import 'package:belluga_now/application/configurations/widget_keys.dart';
+import 'package:belluga_now/domain/tenant/tenant.dart';
+import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:get_it/get_it.dart';
 
 @RoutePage()
