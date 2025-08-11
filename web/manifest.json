@@ -1,6 +1,6 @@
 {
-    "name": "unifast_portal",
-    "short_name": "unifast_portal",
+    "name": "belluga_now",
+    "short_name": "belluga_now",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

@@ -16,10 +16,10 @@ class RecoveryPasswordInsertEmailWidget extends StatefulWidget {
 
 class _RecoveryPasswordInsertEmailWidgetState
     extends State<RecoveryPasswordInsertEmailWidget> {
-  final _controller = GetIt.I
-      .registerSingleton<AuthRecoveryPasswordControllerContract>(
-        AuthRecoveryPasswordController(),
-      );
+  final _controller =
+      GetIt.I.registerSingleton<AuthRecoveryPasswordControllerContract>(
+    AuthRecoveryPasswordController(),
+  );
 
   @override
   Widget build(BuildContext context) {

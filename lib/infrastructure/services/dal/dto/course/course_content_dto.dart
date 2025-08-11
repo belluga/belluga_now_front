@@ -5,10 +5,10 @@ class CourseContentDTO {
   final String? htmlContent;
 
   CourseContentDTO({required this.video, this.htmlContent})
-    : assert(
-        video != null || htmlContent != null,
-        "video or htmlContent should not be null",
-      );
+      : assert(
+          video != null || htmlContent != null,
+          "video or htmlContent should not be null",
+        );
 
   factory CourseContentDTO.fromJson(Map<String, dynamic> json) {
     final _video = VideoDTO.fromJson(json['video'] as Map<String, dynamic>);

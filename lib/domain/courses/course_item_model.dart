@@ -50,9 +50,8 @@ class CourseItemModel {
     final _description = DescriptionValue()..parse(dto.description);
     final _thumb = ThumbModel.fromDTO(dto.thumb);
 
-    final _teachers = dto.teachers
-        .map((item) => TeacherModel.fromDTO((item)))
-        .toList();
+    final _teachers =
+        dto.teachers.map((item) => TeacherModel.fromDTO((item))).toList();
 
     final CourseChildrensSummaryDTO? _childrensSummaryDto =
         dto.childrensSummary;
@@ -60,9 +59,8 @@ class CourseItemModel {
         ? CourseChildrensSummary.fromDTO(_childrensSummaryDto)
         : null;
 
-    final _childrens = dto.childrens
-        .map((item) => CourseBaseModel.fromDto((item)))
-        .toList();
+    final _childrens =
+        dto.childrens.map((item) => CourseBaseModel.fromDto((item))).toList();
 
     final _files = dto.files.map((item) => FileModel.fromDTO((item))).toList();
 
@@ -71,17 +69,13 @@ class CourseItemModel {
         .toList();
 
     final _contentDto = dto.content;
-    final _content = _contentDto != null
-        ? CourseContentModel.fromDTO(_contentDto)
-        : null;
+    final _content =
+        _contentDto != null ? CourseContentModel.fromDTO(_contentDto) : null;
 
-    final _next = dto.next != null
-        ? CourseBaseModel.fromDto(dto.next!)
-        : null;
+    final _next = dto.next != null ? CourseBaseModel.fromDto(dto.next!) : null;
 
-    final _parent = dto.parent != null
-        ? CourseBaseModel.fromDto(dto.parent!)
-        : null;
+    final _parent =
+        dto.parent != null ? CourseBaseModel.fromDto(dto.parent!) : null;
 
     return CourseItemModel(
       id: _id,

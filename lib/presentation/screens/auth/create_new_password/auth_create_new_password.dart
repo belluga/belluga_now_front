@@ -17,10 +17,10 @@ class AuthCreateNewPasswordScreen extends StatefulWidget {
 
 class _AuthCreateNewPasswordScreenState
     extends State<AuthCreateNewPasswordScreen> {
-  final _controller = GetIt.I
-      .registerSingleton<CreatePasswordControllerContract>(
-        CreatePasswordController(),
-      );
+  final _controller =
+      GetIt.I.registerSingleton<CreatePasswordControllerContract>(
+    CreatePasswordController(),
+  );
 
   @override
   void initState() {
@@ -43,7 +43,6 @@ class _AuthCreateNewPasswordScreenState
                   fit: BoxFit.cover,
                 ),
               ),
-
               Expanded(
                 child: SingleChildScrollView(
                   child: Padding(
@@ -91,7 +90,7 @@ class _AuthCreateNewPasswordScreenState
   }
 
   Future<void> navigateToDashboard() async =>
-      await context.router.replace(const DashboardRoute());
+      await context.router.replace(const TenantHomeRoute());
 
   SnackBar get _messageSnack {
     return SnackBar(
