@@ -90,7 +90,7 @@ class _AuthCreateNewPasswordScreenState
   }
 
   Future<void> navigateToDashboard() async =>
-      await context.router.replace(const DashboardRoute());
+      await context.router.replace(const TenantHomeRoute());
 
   SnackBar get _messageSnack {
     return SnackBar(

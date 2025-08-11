@@ -27,5 +27,5 @@ final class InitScreenController extends BellugaInitScreenControllerContract {
   //   _behaviorController.saveEvent(type: EventTrackingTypes.openApp);
   // }
 
-  PageRouteInfo _getInitialRoute() => const HomeRoute();
+  PageRouteInfo _getInitialRoute() => const TenantHomeRoute();
 }
