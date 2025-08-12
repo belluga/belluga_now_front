@@ -1,5 +1,7 @@
 import 'dart:js_interop';
 
+import 'package:belluga_now/domain/app_data/app_type.dart';
+
 @JS()
 @staticInterop
 @anonymous
@@ -16,6 +18,7 @@ extension AppDataExtension on AppDataJS {
 external AppDataJS get appDataJS;
 
 class AppData {
+  final AppType appType = AppType.web;
   late String? port;
   late String hostname;
   late String href;

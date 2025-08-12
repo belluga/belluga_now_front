@@ -1,8 +1,10 @@
 import 'package:belluga_now/application/configurations/belluga_constants.dart';
+import 'package:belluga_now/domain/app_data/app_type.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:platform_device_id_plus/platform_device_id.dart';
 
 class AppData {
+  final AppType appType = AppType.mobile;
   late String? port;
   late String hostname;
   late String href;

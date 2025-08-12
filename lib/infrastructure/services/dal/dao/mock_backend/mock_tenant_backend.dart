@@ -1,4 +1,5 @@
 import 'package:belluga_now/domain/tenant/tenant.dart';
+import 'package:belluga_now/domain/tenant/value_objects/app_domain_value.dart';
 import 'package:belluga_now/domain/tenant/value_objects/domain_value.dart';
 import 'package:belluga_now/domain/tenant/value_objects/main_logo_url_value.dart';
 import 'package:belluga_now/domain/tenant/value_objects/subdomain_value.dart';
@@ -15,6 +16,9 @@ class MockTenantBackend extends TenantBackendContract {
       domains: [
         DomainValue()..parse("https://guarappari.com.br"),
       ],
+      appDomains: [
+        AppDomainValue()..parse("com.belluga_now"),
+      ]
     );
   }
 }
