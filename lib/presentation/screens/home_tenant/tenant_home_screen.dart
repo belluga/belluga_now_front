@@ -1,4 +1,5 @@
 import 'package:auto_route/auto_route.dart';
+import 'package:belluga_now/application/configurations/custom_scroll_behavior.dart';
 import 'package:belluga_now/presentation/screens/home_tenant/controllers/tenant_home_screen_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:belluga_now/application/configurations/belluga_constants.dart';
@@ -27,20 +28,30 @@ class _TenantHomeScreenState extends State<TenantHomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text("This is Tenant HOME (Belluga NOW)"),
-            Text(_controller.tenant.toString()),
-            Text(BellugaConstants.settings.platform),
-            // ElevatedButton(
-            //   key: WidgetKeys.auth.navigateToProtectedButton,
-            //   onPressed: () => context.router.push(const DashboardRoute()),
-            //   child: const Text("goto Protected"),
-            // ),
-          ],
-        ),
+      body: CustomScrollView(
+        physics: const BouncingScrollPhysics(),
+        scrollBehavior: CustomScrollBehavior(),
+        slivers: [
+          SliverAppBar(
+            title: Text(_controller.tenant.name.value),
+            centerTitle: true,
+            floating: true,
+            snap: true,
+          ),
+          SliverList(
+            delegate: SliverChildBuilderDelegate(
+              (context, index) {
+                return ListTile(
+                  title: Text('Item $index'),
+                  onTap: () {
+                    // Handle item tap
+                  },
+                );
+              },
+              childCount: 20, // Example item count
+            ),
+          ),
+        ],
       ),
     );
   }
