@@ -30,6 +30,19 @@ android {
         versionName = flutter.versionName
     }
 
+    flavorDimensions.add("tenant")
+
+    productFlavors {
+        create("guarappari") {
+            dimension = "tenant"
+            applicationId = "com.guarappari.app"
+        }
+        create("belluga") {
+            dimension = "tenant"
+            applicationId = "com.belluga_now.app" 
+        }
+    }
+
     buildTypes {
         release {
             // TODO: Add your own signing config for the release build.
