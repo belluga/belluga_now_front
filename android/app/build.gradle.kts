@@ -1,9 +1,14 @@
+// CÓDIGO FINAL E CORRIGIDO - 13 de Agosto, 2025
+
 plugins {
     id("com.android.application")
     id("kotlin-android")
-    // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
 }
+
+// Imports essenciais para as classes Java
+import java.util.Properties
+import java.io.FileInputStream
 
 android {
     namespace = "com.belluga_now"
@@ -16,25 +21,51 @@ android {
     }
 
     kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_11.toString()
+        jvmTarget = "11"
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
         applicationId = "com.belluga_now"
-        // You can update the following values to match your application needs.
-        // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }
 
+    signingConfigs {
+        // Bloco vazio, as configs são criadas dinamicamente
+    }
+
     buildTypes {
-        release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+        getByName("release") {
+            // A configuração de assinatura será definida pelo flavor
+        }
+    }
+    
+    flavorDimensions.add("tenant")
+
+    productFlavors {
+        val keystoresDir = rootProject.file("keystores")
+
+        if (keystoresDir.exists() && keystoresDir.isDirectory()) {
+            keystoresDir.listFiles { _, name -> name.endsWith(".properties") }?.forEach { propertiesFile ->
+                val flavorName = propertiesFile.nameWithoutExtension
+                val flavorProperties = Properties()
+                flavorProperties.load(FileInputStream(propertiesFile))
+
+                signingConfigs.create(flavorName) {
+                    keyAlias = flavorProperties["keyAlias"] as String
+                    keyPassword = flavorProperties["keyPassword"] as String
+                    storePassword = flavorProperties["storePassword"] as String
+                    storeFile = rootProject.file("keystores/${flavorProperties["storeFile"]}")
+                }
+                
+                create(flavorName) {
+                    dimension = "tenant"
+                    applicationId = flavorProperties["applicationId"] as String
+                    signingConfig = signingConfigs.getByName(flavorName)
+                }
+            }
         }
     }
 }

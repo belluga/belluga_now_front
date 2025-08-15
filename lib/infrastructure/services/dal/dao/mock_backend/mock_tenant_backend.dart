@@ -17,7 +17,7 @@ class MockTenantBackend extends TenantBackendContract {
         DomainValue()..parse("https://guarappari.com.br"),
       ],
       appDomains: [
-        AppDomainValue()..parse("com.belluga_now"),
+        AppDomainValue()..parse("com.guarappari.app"),
       ]
     );
   }
