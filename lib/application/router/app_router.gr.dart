@@ -17,11 +17,11 @@ import 'package:belluga_now/presentation/screens/auth/login/auth_login_screen.da
     as _i2;
 import 'package:belluga_now/presentation/screens/auth/recovery_password_bug/recovery_password_screen.dart'
     as _i6;
-import 'package:belluga_now/presentation/screens/home_landlord/landlord_home_screen.dart'
+import 'package:belluga_now/presentation/landlord/screens/home/landlord_home_screen.dart'
     as _i4;
-import 'package:belluga_now/presentation/screens/home_tenant/tenant_home_screen.dart'
+import 'package:belluga_now/presentation/tenant/screens/home/tenant_home_screen.dart'
     as _i7;
-import 'package:belluga_now/presentation/screens/profile/profile_screen.dart'
+import 'package:belluga_now/presentation/tenant/screens/profile/profile_screen.dart'
     as _i5;
 import 'package:flutter/material.dart' as _i9;
 

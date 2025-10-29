@@ -2,7 +2,7 @@ import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:belluga_now/domain/attribute/attribute_model.dart';
 import 'package:belluga_now/domain/user/user_contract.dart';
-import 'package:belluga_now/presentation/screens/profile/controller/profile_screen_controller.dart';
+import 'package:belluga_now/presentation/tenant/screens/profile/controller/profile_screen_controller.dart';
 import 'package:belluga_now/presentation/widgets/attribute_field_list.dart';
 import 'package:belluga_now/presentation/widgets/back_button_belluga.dart';
 import 'package:get_it/get_it.dart';

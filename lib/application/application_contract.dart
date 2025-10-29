@@ -8,7 +8,6 @@ import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/infrastructure/services/dal/dao/backend_contract.dart';
 import 'package:get_it/get_it.dart';
 import 'package:intl/intl_standalone.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:intl/date_symbol_data_local.dart';
 
 abstract class ApplicationContract extends StatelessWidget {
@@ -23,19 +22,14 @@ abstract class ApplicationContract extends StatelessWidget {
   Future<void> initialSettingsPlatform();
 
   Future<void> init() async {
-    debugPrint("init");
-    debugPrint("initialSettings");
     await initialSettings();
-    debugPrint("_initInjections");
     await _initInjections();
-    debugPrint("initialSettingsPlatform");
     await initialSettingsPlatform();
   }
 
   @protected
   Future<void> initialSettings() async {
     WidgetsFlutterBinding.ensureInitialized();
-    await dotenv.load(fileName: ".env");
     await initializeDateFormatting();
     await findSystemLocale();
     await _initAppData();

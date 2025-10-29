@@ -1,7 +1,7 @@
+import 'package:belluga_now/application/configurations/belluga_constants.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/tenant/tenant.dart';
 import 'package:belluga_now/infrastructure/services/dal/dao/backend_contract.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 abstract class TenantRepositoryContract {
   BackendContract get backend;
@@ -9,7 +9,7 @@ abstract class TenantRepositoryContract {
 
   Tenant? tenant;
 
-  String get landlordDomain => dotenv.env["LANDLORD_DOMAIN"]!;
+  String get landlordDomain => BellugaConstants.landlordDomain;
 
   Future<void> init() async {
     final _tenant = await _getTenant();

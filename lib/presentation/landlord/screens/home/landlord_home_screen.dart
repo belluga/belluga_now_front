@@ -1,5 +1,5 @@
 import 'package:auto_route/auto_route.dart';
-import 'package:belluga_now/presentation/screens/home_landlord/controllers/landlord_home_screen_controller.dart';
+import 'package:belluga_now/presentation/landlord/screens/home/controllers/landlord_home_screen_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:belluga_now/application/configurations/belluga_constants.dart';
 import 'package:get_it/get_it.dart';
