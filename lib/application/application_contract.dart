@@ -60,37 +60,14 @@ abstract class ApplicationContract extends StatelessWidget {
   }
 
   ThemeData getThemeData() {
+
+    final _colorScheme = ColorScheme.fromSeed(seedColor: Color(0xFF00E6B8));
+
     return ThemeData(
-      progressIndicatorTheme: ProgressIndicatorThemeData(
-        color: Color(0xFF00E6B8),
-        strokeWidth: 4,
-      ),
-      elevatedButtonTheme: ElevatedButtonThemeData(
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Color(0xFF004B7C),
-          foregroundColor: Color(0xFFFFFFFF),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(100.0),
-          ),
-          padding: EdgeInsets.symmetric(vertical: 16.0, horizontal: 32.0),
-        ),
-      ),
-      inputDecorationTheme: InputDecorationTheme(
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(4.0),
-          borderSide: BorderSide(color: Color(0xFFFFFFFF)),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(4.0),
-          borderSide: BorderSide(color: Color(0xFF00E6B8)),
-        ),
-        errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(4.0),
-          borderSide: BorderSide(color: Color(0xFFFF0000)),
-        ),
-        labelStyle: TextStyle(color: Color(0xFFFFFFFF)),
-      ),
       colorScheme: ColorScheme.fromSeed(seedColor: Color(0xFF00E6B8)),
+      bottomAppBarTheme: BottomAppBarThemeData(
+        color: _colorScheme.primaryContainer,
+      ),
     );
   }
 

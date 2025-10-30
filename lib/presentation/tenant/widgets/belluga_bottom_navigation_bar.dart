@@ -5,14 +5,11 @@ class BellugaBottomNavigationBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+
     return BottomNavigationBar(
-      backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-      unselectedItemColor: Theme.of(context).colorScheme.primaryContainer,
-      selectedItemColor: Theme.of(context).colorScheme.onPrimaryContainer,
       currentIndex: 0,
       items: [
         BottomNavigationBarItem(
-          // backgroundColor: Theme.of(context).colorScheme.onPrimaryContainer,
           icon: Icon(Icons.add),
           label: "Início",
         ),

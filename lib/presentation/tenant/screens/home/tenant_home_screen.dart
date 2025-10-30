@@ -138,9 +138,9 @@ class TenantHomeScreen extends StatelessWidget {
               ),
               SizedBox(
                 height: 180, // Height of the carousel
-                child: CarouselView.weighted(
-                  flexWeights: const [1, 5, 1], // Hero layout
-                  // itemSnapping: true,
+                child: CarouselView(
+                  itemExtent: MediaQuery.of(context).size.width * 0.8,
+
                   children: _carouselEvents
                       .map((event) => CarouselEventCard(data: event))
                       .toList(),
