@@ -5,29 +5,28 @@ class BellugaBottomNavigationBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-
     return BottomNavigationBar(
       currentIndex: 0,
-      items: [
+      items: const [
         BottomNavigationBarItem(
           icon: Icon(Icons.add),
-          label: "Início",
+          label: 'Inicio',
         ),
         BottomNavigationBarItem(
           icon: Icon(Icons.calendar_month),
-          label: "Agenda",
+          label: 'Agenda',
         ),
         BottomNavigationBarItem(
           icon: Icon(Icons.shopping_basket_outlined),
-          label: "Mercado",
+          label: 'Mercado',
         ),
         BottomNavigationBarItem(
           icon: Icon(Icons.travel_explore),
-          label: "Experiências",
+          label: 'Experiencias',
         ),
         BottomNavigationBarItem(
           icon: Icon(Icons.menu),
-          label: "Menu",
+          label: 'Menu',
         ),
       ],
     );

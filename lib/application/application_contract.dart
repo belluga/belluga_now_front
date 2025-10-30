@@ -60,13 +60,34 @@ abstract class ApplicationContract extends StatelessWidget {
   }
 
   ThemeData getThemeData() {
-
-    final _colorScheme = ColorScheme.fromSeed(seedColor: Color(0xFF00E6B8));
+    final colorScheme = ColorScheme.fromSeed(seedColor: const Color(0xFF00E6B8));
 
     return ThemeData(
-      colorScheme: ColorScheme.fromSeed(seedColor: Color(0xFF00E6B8)),
+      colorScheme: colorScheme,
       bottomAppBarTheme: BottomAppBarThemeData(
-        color: _colorScheme.primaryContainer,
+        color: colorScheme.primaryContainer,
+      ),
+      bottomNavigationBarTheme: BottomNavigationBarThemeData(
+        backgroundColor: colorScheme.surface,
+        selectedItemColor: colorScheme.primary,
+        unselectedItemColor: colorScheme.onSurfaceVariant,
+        selectedLabelStyle: TextStyle(
+          color: colorScheme.primary,
+          fontWeight: FontWeight.w600,
+        ),
+        unselectedLabelStyle: TextStyle(
+          color: colorScheme.onSurfaceVariant,
+          fontWeight: FontWeight.w500,
+        ),
+        selectedIconTheme: IconThemeData(
+          color: colorScheme.primary,
+          size: 28,
+        ),
+        unselectedIconTheme: IconThemeData(
+          color: colorScheme.onSurfaceVariant,
+          size: 24,
+        ),
+        type: BottomNavigationBarType.fixed,
       ),
     );
   }
