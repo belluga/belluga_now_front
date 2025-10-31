@@ -1,4 +1,3 @@
-import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/domain/home/home_event.dart';
 import 'package:belluga_now/domain/home/home_favorite.dart';
 import 'package:belluga_now/domain/home/home_overview.dart';
@@ -16,7 +15,6 @@ import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 
-@RoutePage()
 class TenantHomeScreen extends StatefulWidget {
   const TenantHomeScreen({super.key});
 
@@ -25,27 +23,18 @@ class TenantHomeScreen extends StatefulWidget {
 }
 
 class _TenantHomeScreenState extends State<TenantHomeScreen> {
-  late final TenantHomeController _controller;
+  late final TenantHomeController _controller =
+      GetIt.I.get<TenantHomeController>();
 
   @override
   void initState() {
     super.initState();
-    if (!GetIt.I.isRegistered<TenantHomeController>()) {
-      GetIt.I.registerSingleton<TenantHomeController>(
-        TenantHomeController(),
-      );
-    }
-    _controller = GetIt.I.get<TenantHomeController>();
     _controller.init();
   }
 
   @override
   void dispose() {
-    if (GetIt.I.isRegistered<TenantHomeController>()) {
-      final controller = GetIt.I.get<TenantHomeController>();
-      controller.onDispose();
-      GetIt.I.unregister<TenantHomeController>();
-    }
+    _controller.onDispose();
     super.dispose();
   }
 

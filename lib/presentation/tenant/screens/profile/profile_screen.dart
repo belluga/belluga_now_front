@@ -1,16 +1,15 @@
 import 'package:auto_route/auto_route.dart';
-import 'package:flutter/material.dart';
 import 'package:belluga_now/domain/attribute/attribute_model.dart';
 import 'package:belluga_now/domain/user/user_contract.dart';
 import 'package:belluga_now/presentation/tenant/screens/profile/controller/profile_screen_controller.dart';
 import 'package:belluga_now/presentation/tenant/widgets/attribute_field_list.dart';
 import 'package:belluga_now/presentation/tenant/widgets/back_button_belluga.dart';
+import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 import 'package:value_object_pattern/domain/value_objects/full_name_value.dart';
 // import 'package:lottie/lottie.dart';
 
-@RoutePage()
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
 
@@ -19,14 +18,12 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  late final ProfileScreenController _controller;
+  late final ProfileScreenController _controller =
+      GetIt.I.get<ProfileScreenController>();
 
   @override
   void initState() {
     super.initState();
-    _controller = GetIt.I.registerSingleton<ProfileScreenController>(
-      ProfileScreenController(),
-    );
   }
 
   @override
@@ -166,6 +163,5 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   void dispose() {
     super.dispose();
-    GetIt.I.unregister<ProfileScreenController>();
   }
 }

@@ -11,17 +11,17 @@
 // ignore_for_file: no_leading_underscores_for_library_prefixes
 import 'package:auto_route/auto_route.dart' as _i10;
 import 'package:belluga_now/presentation/init/init_screen.dart' as _i4;
-import 'package:belluga_now/presentation/landlord/screens/home/landlord_home_screen.dart'
+import 'package:belluga_now/presentation/landlord/screens/home/landlord_home_route.dart'
     as _i5;
-import 'package:belluga_now/presentation/screens/auth/create_new_password/auth_create_new_password.dart'
+import 'package:belluga_now/presentation/screens/auth/create_new_password/auth_create_new_password_route.dart'
     as _i1;
-import 'package:belluga_now/presentation/screens/auth/login/auth_login_screen.dart'
+import 'package:belluga_now/presentation/screens/auth/login/auth_login_route.dart'
     as _i2;
-import 'package:belluga_now/presentation/screens/auth/recovery_password_bug/recovery_password_screen.dart'
+import 'package:belluga_now/presentation/screens/auth/recovery_password_bug/recovery_password_route.dart'
     as _i7;
-import 'package:belluga_now/presentation/tenant/screens/home/tenant_home_screen.dart'
+import 'package:belluga_now/presentation/tenant/screens/home/tenant_home_route.dart'
     as _i9;
-import 'package:belluga_now/presentation/tenant/screens/profile/profile_screen.dart'
+import 'package:belluga_now/presentation/tenant/screens/profile/profile_route.dart'
     as _i6;
 import 'package:belluga_now/presentation/tenant/screens/schedule/event_search_route.dart'
     as _i3;
@@ -30,7 +30,7 @@ import 'package:belluga_now/presentation/tenant/screens/schedule/schedule_route.
 import 'package:flutter/material.dart' as _i11;
 
 /// generated route for
-/// [_i1.AuthCreateNewPasswordScreen]
+/// [_i1.AuthCreateNewPasswordRoutePage]
 class AuthCreateNewPasswordRoute extends _i10.PageRouteInfo<void> {
   const AuthCreateNewPasswordRoute({List<_i10.PageRouteInfo>? children})
       : super(AuthCreateNewPasswordRoute.name, initialChildren: children);
@@ -40,13 +40,13 @@ class AuthCreateNewPasswordRoute extends _i10.PageRouteInfo<void> {
   static _i10.PageInfo page = _i10.PageInfo(
     name,
     builder: (data) {
-      return const _i1.AuthCreateNewPasswordScreen();
+      return const _i1.AuthCreateNewPasswordRoutePage();
     },
   );
 }
 
 /// generated route for
-/// [_i2.AuthLoginScreen]
+/// [_i2.AuthLoginRoutePage]
 class AuthLoginRoute extends _i10.PageRouteInfo<void> {
   const AuthLoginRoute({List<_i10.PageRouteInfo>? children})
       : super(AuthLoginRoute.name, initialChildren: children);
@@ -56,7 +56,7 @@ class AuthLoginRoute extends _i10.PageRouteInfo<void> {
   static _i10.PageInfo page = _i10.PageInfo(
     name,
     builder: (data) {
-      return const _i2.AuthLoginScreen();
+      return const _i2.AuthLoginRoutePage();
     },
   );
 }
@@ -94,7 +94,7 @@ class InitRoute extends _i10.PageRouteInfo<void> {
 }
 
 /// generated route for
-/// [_i5.LandlordHomeScreen]
+/// [_i5.LandlordHomeRoutePage]
 class LandlordHomeRoute extends _i10.PageRouteInfo<void> {
   const LandlordHomeRoute({List<_i10.PageRouteInfo>? children})
       : super(LandlordHomeRoute.name, initialChildren: children);
@@ -104,13 +104,13 @@ class LandlordHomeRoute extends _i10.PageRouteInfo<void> {
   static _i10.PageInfo page = _i10.PageInfo(
     name,
     builder: (data) {
-      return const _i5.LandlordHomeScreen();
+      return const _i5.LandlordHomeRoutePage();
     },
   );
 }
 
 /// generated route for
-/// [_i6.ProfileScreen]
+/// [_i6.ProfileRoutePage]
 class ProfileRoute extends _i10.PageRouteInfo<void> {
   const ProfileRoute({List<_i10.PageRouteInfo>? children})
       : super(ProfileRoute.name, initialChildren: children);
@@ -120,13 +120,13 @@ class ProfileRoute extends _i10.PageRouteInfo<void> {
   static _i10.PageInfo page = _i10.PageInfo(
     name,
     builder: (data) {
-      return const _i6.ProfileScreen();
+      return const _i6.ProfileRoutePage();
     },
   );
 }
 
 /// generated route for
-/// [_i7.RecoveryPasswordScreen]
+/// [_i7.RecoveryPasswordRoutePage]
 class RecoveryPasswordRoute
     extends _i10.PageRouteInfo<RecoveryPasswordRouteArgs> {
   RecoveryPasswordRoute({
@@ -150,7 +150,7 @@ class RecoveryPasswordRoute
       final args = data.argsAs<RecoveryPasswordRouteArgs>(
         orElse: () => const RecoveryPasswordRouteArgs(),
       );
-      return _i7.RecoveryPasswordScreen(
+      return _i7.RecoveryPasswordRoutePage(
         key: args.key,
         initialEmmail: args.initialEmmail,
       );
@@ -198,7 +198,7 @@ class ScheduleRoute extends _i10.PageRouteInfo<void> {
 }
 
 /// generated route for
-/// [_i9.TenantHomeScreen]
+/// [_i9.TenantHomeRoutePage]
 class TenantHomeRoute extends _i10.PageRouteInfo<void> {
   const TenantHomeRoute({List<_i10.PageRouteInfo>? children})
       : super(TenantHomeRoute.name, initialChildren: children);
@@ -208,7 +208,7 @@ class TenantHomeRoute extends _i10.PageRouteInfo<void> {
   static _i10.PageInfo page = _i10.PageInfo(
     name,
     builder: (data) {
-      return const _i9.TenantHomeScreen();
+      return const _i9.TenantHomeRoutePage();
     },
   );
 }
