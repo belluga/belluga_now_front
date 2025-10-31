@@ -55,15 +55,14 @@ class _DateRowState extends State<DateRow> {
                         StreamValueBuilder<DateTime>(
                             streamValue: _controller.firsVisibleDateStreamValue,
                             builder: (context, firstDate) {
-                              final bool _isFirstMonth = firstDate.month <=
-                                  _controller.firstDayRange.month;
+                              final minDate = _controller.firstDayRange;
+                              final bool canGoBack = firstDate.isAfter(minDate);
 
                               return IconButton(
-                                  onPressed: _isFirstMonth
-                                      ? null
-                                      : _navigateToPreviousMonth,
+                                  onPressed:
+                                      canGoBack ? _navigateToPreviousMonth : null,
                                   iconSize: 16,
-                                  icon: Icon(Icons.arrow_back_ios));
+                                  icon: const Icon(Icons.arrow_back_ios));
                             }),
                         Flexible(
                           child: StreamValueBuilder<DateTime>(
@@ -89,15 +88,15 @@ class _DateRowState extends State<DateRow> {
                         StreamValueBuilder<DateTime>(
                             streamValue: _controller.firsVisibleDateStreamValue,
                             builder: (context, firstDate) {
-                              bool _isLastMonth = firstDate.month >=
-                                  _controller.lastDayRange.month;
+                              final maxDate = _controller.lastDayRange;
+                              final bool canGoForward = firstDate.isBefore(maxDate);
 
                               return IconButton(
-                                  onPressed: _isLastMonth
-                                      ? null
-                                      : _navigateToNextMonth,
+                                  onPressed: canGoForward
+                                      ? _navigateToNextMonth
+                                      : null,
                                   iconSize: 16,
-                                  icon: Icon(Icons.arrow_forward_ios));
+                                  icon: const Icon(Icons.arrow_forward_ios));
                             }),
                       ],
                     ),
@@ -210,35 +209,39 @@ class _DateRowState extends State<DateRow> {
     final _scrollTo =
         (_controller.initialIndex * _totalItemWidth) - _centerOffset;
     _controller.scrollController.animateTo(_scrollTo,
-        duration: Duration(milliseconds: 300), curve: Curves.bounceIn);
+        duration: const Duration(milliseconds: 300), curve: Curves.bounceIn);
 
     _controller.selectDate(Today.today);
   }
 
   void _navigateToPreviousMonth() {
     final referenceDate = _controller.firsVisibleDateStreamValue.value;
-    final firstDayOfPrevioustMonth =
+    final tentativeTarget =
         DateTime(referenceDate.year, referenceDate.month - 1, 1);
+    final minDate = _controller.firstDayRange;
+    final target = tentativeTarget.isBefore(minDate) ? minDate : tentativeTarget;
 
-    final int _indexToGo = _controller.getIndexByDate(firstDayOfPrevioustMonth);
-    final double _offset = _indexToGo * _DateRowState._totalItemWidth;
-
-    _controller.scrollController.animateTo(_offset,
-        duration: Duration(milliseconds: 300), curve: Curves.bounceIn);
-
-    _controller.selectDate(firstDayOfPrevioustMonth);
+    _animateToDate(target);
   }
 
   void _navigateToNextMonth() {
     final referenceDate = _controller.firsVisibleDateStreamValue.value;
-    final firstDayOfNextMonth =
+    final tentativeTarget =
         DateTime(referenceDate.year, referenceDate.month + 1, 1);
-    final int _indexToGo = _controller.getIndexByDate(firstDayOfNextMonth);
-    final double _offset = _indexToGo * _DateRowState._totalItemWidth;
+    final maxDate = _controller.lastDayRange;
+    final target = tentativeTarget.isAfter(maxDate) ? maxDate : tentativeTarget;
 
-    _controller.scrollController.animateTo(_offset,
-        duration: Duration(milliseconds: 300), curve: Curves.bounceIn);
+    _animateToDate(target);
+  }
 
-    _controller.selectDate(firstDayOfNextMonth);
+  void _animateToDate(DateTime date) {
+    final normalized = DateTime(date.year, date.month, date.day);
+    final int index = _controller.getIndexByDate(normalized);
+    final double offset = index * _totalItemWidth;
+
+    _controller.scrollController.animateTo(offset,
+        duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
+
+    _controller.selectDate(normalized);
   }
 }

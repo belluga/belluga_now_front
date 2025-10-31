@@ -8,6 +8,9 @@ class ScheduleSummaryModel {
     required this.items,
   });
 
+  static const int _daysBackwardLimit = 15;
+  static const int _monthsForwardLimit = 3;
+
   DateTime get today =>
       DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day);
 
@@ -21,17 +24,14 @@ class ScheduleSummaryModel {
   }
 
   DateTime get lastDayRange {
-    items.sort((a, b) => a.dateTimeStart.compareTo(b.dateTimeStart));
-
-    return DateTime(
-        items.last.dateTimeStart.year, items.last.dateTimeStart.month, 1);
+    final future =
+        DateTime(today.year, today.month + _monthsForwardLimit, today.day);
+    return DateTime(future.year, future.month, future.day);
   }
 
   DateTime get firstDayRange {
-    items.sort((a, b) => a.dateTimeStart.compareTo(b.dateTimeStart));
-
-    return DateTime(
-        items.first.dateTimeStart.year, items.first.dateTimeStart.month, 1);
+    final start = today.subtract(Duration(days: _daysBackwardLimit));
+    return DateTime(start.year, start.month, start.day);
   }
 
   factory ScheduleSummaryModel.fromDTO(EventSummaryDTO dto) {
