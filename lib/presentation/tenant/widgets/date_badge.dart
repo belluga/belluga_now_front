@@ -18,7 +18,7 @@ class DateBadge extends StatelessWidget {
       width: 56,
       padding: const EdgeInsets.symmetric(vertical: 8),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainer,
+        color: Theme.of(context).colorScheme.onSurface,
         borderRadius: BorderRadius.circular(16),
       ),
       child: Column(
@@ -28,21 +28,21 @@ class DateBadge extends StatelessWidget {
             date.monthLabel,
             style: Theme.of(context).textTheme.labelSmall?.copyWith(
               fontWeight: FontWeight.w600,
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
+              color: Theme.of(context).colorScheme.surface,
             ),
           ),
           Text(
             date.dayLabel,
             style: Theme.of(context).textTheme.headlineSmall?.copyWith(
               fontWeight: FontWeight.bold,
-              color: Theme.of(context).colorScheme.onSurface,
+              color: Theme.of(context).colorScheme.surface,
             ),
           ),
           Text(
             date.timeLabel,
             style: Theme.of(context).textTheme.labelMedium?.copyWith(
               fontWeight: FontWeight.w600,
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
+              color: Theme.of(context).colorScheme.surface,
             ),
           ),
         ],

@@ -137,7 +137,7 @@ class TenantHomeScreen extends StatelessWidget {
                 onPressed: () {},
               ),
               SizedBox(
-                height: 350, // Height of the carousel to accommodate details
+                height: MediaQuery.of(context).size.width * 0.8 * 9 / 16,
                 child: CarouselView(
                   itemExtent: MediaQuery.of(context).size.width * 0.8,
                   itemSnapping: true,
@@ -172,4 +172,3 @@ class TenantHomeScreen extends StatelessWidget {
     );
   }
 }
-

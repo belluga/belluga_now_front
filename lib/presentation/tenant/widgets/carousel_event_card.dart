@@ -1,4 +1,3 @@
-import 'package:belluga_now/presentation/tenant/widgets/date_badge.dart';
 import 'package:belluga_now/presentation/tenant/widgets/event_details.dart';
 import 'package:belluga_now/presentation/view_models/event_card_data.dart';
 import 'package:flutter/material.dart';
@@ -19,73 +18,74 @@ class CarouselEventCard extends StatelessWidget {
 
         return SizedBox(
           width: constraints.maxWidth,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              AspectRatio(
-                aspectRatio: 16 / 9,
-                child: Card(
-                  elevation: 3,
-                  clipBehavior: Clip.antiAlias,
-                  color: theme.colorScheme.surface,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(20),
+          child: AspectRatio(
+            aspectRatio: 16 / 11,
+            child: Card(
+              elevation: 3,
+              clipBehavior: Clip.antiAlias,
+              color: theme.colorScheme.surface,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  Image.network(
+                    data.imageUrl,
+                    fit: BoxFit.cover,
+                    loadingBuilder: (context, child, loadingProgress) {
+                      if (loadingProgress == null) return child;
+                      return const Center(
+                        child: CircularProgressIndicator(),
+                      );
+                    },
+                    errorBuilder: (context, error, stackTrace) {
+                      return const Center(
+                        child: Icon(Icons.broken_image, size: 48),
+                      );
+                    },
                   ),
-                  child: Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      Image.network(
-                        data.imageUrl,
-                        fit: BoxFit.cover,
-                        loadingBuilder: (context, child, loadingProgress) {
-                          if (loadingProgress == null) return child;
-                          return const Center(
-                            child: CircularProgressIndicator(),
-                          );
-                        },
-                        errorBuilder: (context, error, stackTrace) {
-                          return const Center(
-                            child: Icon(Icons.broken_image, size: 48),
-                          );
-                        },
+                  DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          Theme.of(context).colorScheme.onSurface,
+                          Theme.of(context).colorScheme.onSurface.withOpacity(0.45),
+                          Colors.transparent,
+                        ],
+                        stops: const [0.0, 0.55, 1.0],
+                        begin: Alignment.bottomCenter,
+                        end: Alignment.topCenter,
                       ),
-                      DecoratedBox(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [
-                              Colors.black.withOpacity(0.75),
-                              Colors.black.withOpacity(0.1),
-                            ],
-                            begin: Alignment.bottomCenter,
-                            end: Alignment.center,
-                          ),
+                    ),
+                  ),
+                  Positioned(
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    child: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 250),
+                      switchInCurve: Curves.easeOut,
+                      switchOutCurve: Curves.easeIn,
+                      transitionBuilder: (child, animation) => FadeTransition(
+                        opacity: animation,
+                        child: SizeTransition(
+                          sizeFactor: animation,
+                          axisAlignment: -1,
+                          child: child,
                         ),
                       ),
-                    ],
+                      child: isFullSize
+                          ? EventDetails(eventCardData: data)
+                          : const SizedBox(
+                              key: ValueKey('empty'),
+                              height: 0,
+                            ),
+                    ),
                   ),
-                ),
+                ],
               ),
-              AnimatedSwitcher(
-                duration: const Duration(milliseconds: 250),
-                switchInCurve: Curves.easeOut,
-                switchOutCurve: Curves.easeIn,
-                transitionBuilder: (child, animation) => FadeTransition(
-                  opacity: animation,
-                  child: SizeTransition(
-                    sizeFactor: animation,
-                    axisAlignment: -1,
-                    child: child,
-                  ),
-                ),
-                child: isFullSize
-                    ? EventDetails(eventCardData: data)
-                    : const SizedBox(
-                        key: ValueKey('empty'),
-                        height: 0,
-                      ),
-              ),
-            ],
+            ),
           ),
         );
       },

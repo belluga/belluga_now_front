@@ -6,15 +6,16 @@ class EventInfoRow extends StatelessWidget {
     super.key,
     required this.icon,
     required this.label,
+    this.color,
   });
 
   final IconData icon;
   final String label;
+  final Color? color;
 
   @override
   Widget build(BuildContext context) {
-
-    final _textColor = Theme.of(context).colorScheme.onSurface;
+    final resolvedColor = color ?? Theme.of(context).colorScheme.onSurface;
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
@@ -22,7 +23,7 @@ class EventInfoRow extends StatelessWidget {
         Icon(
           icon,
           size: 18,
-          color: _textColor.withOpacity(0.9),
+          color: resolvedColor.withOpacity(0.9),
         ),
         const SizedBox(width: 8),
         Expanded(
@@ -31,7 +32,7 @@ class EventInfoRow extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: _textColor,
+              color: resolvedColor,
               fontWeight: FontWeight.w500,
             ),
           ),
