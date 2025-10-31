@@ -4,7 +4,7 @@ import 'package:belluga_now/presentation/view_models/event_card_data.dart';
 import 'package:belluga_now/presentation/view_models/favorite_item_data.dart';
 import 'package:belluga_now/presentation/tenant/widgets/upcoming_event_item.dart';
 import 'package:belluga_now/presentation/tenant/widgets/carousel_event_card.dart';
-import 'package:belluga_now/presentation/tenant/widgets/favorite_chip.dart';
+import 'package:belluga_now/presentation/tenant/widgets/favorites_strip.dart';
 import 'package:belluga_now/presentation/tenant/widgets/belluga_bottom_navigation_bar.dart';
 import 'package:belluga_now/presentation/tenant/widgets/invites_banner.dart';
 import 'package:belluga_now/presentation/tenant/widgets/section_header.dart';
@@ -21,18 +21,27 @@ class TenantHomeScreen extends StatelessWidget {
     FavoriteItemData(icon: Icons.child_friendly),
   ];
 
-  static const List<EventCardData> _carouselEvents = [
+  List<EventCardData> get _carouselEvents => [
     EventCardData(
       title: 'Festival de Verão',
-      subtitle: 'Praia do Morro - Hoje, 20h',
+      imageUrl: 'https://images.unsplash.com/photo-1524368535928-5b5e00ddc76b?w=800',
+      startDateTime: DateTime(2024, 1, 7, 20, 0),
+      location: 'Praia do Morro',
+      artist: 'DJ Mare Alta',
     ),
     EventCardData(
       title: 'Luau Exclusivo',
-      subtitle: 'Areia Preta - Amanhã, 22h',
+      imageUrl: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=800',
+      startDateTime: DateTime(2024, 1, 8, 22, 0),
+      location: 'Areia Preta',
+      artist: 'Banda Eclipse',
     ),
     EventCardData(
       title: 'Sunset Experience',
-      subtitle: 'Parque da Areia - Domingo, 18h',
+      imageUrl: 'https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?w=800',
+      startDateTime: DateTime(2024, 1, 9, 18, 0),
+      location: 'Parque da Areia',
+      artist: 'DJ Horizonte',
     ),
   ];
 
@@ -104,7 +113,7 @@ class TenantHomeScreen extends StatelessWidget {
       bottomNavigationBar: BellugaBottomNavigationBar(),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
+          padding: const EdgeInsets.fromLTRB(16,0,16,150),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -112,18 +121,9 @@ class TenantHomeScreen extends StatelessWidget {
                 title: 'Seus Favoritos',
                 onPressed: () {},
               ),
-              SizedBox(
-                height: 90, // Adjusted height to fit new radius
-                child: ListView.separated(
-                  scrollDirection: Axis.horizontal,
-                  itemCount: _favorites.length,
-                  clipBehavior: Clip.none, // Allow shadows to render
-                  separatorBuilder: (_, __) => const SizedBox(width: 12),
-                  itemBuilder: (context, index) {
-                    final item = _favorites[index];
-                    return FavoriteChip(item: item);
-                  },
-                ),
+              FavoritesStrip(
+                items: _favorites,
+                pinFirst: true,
               ),
               const SizedBox(height: 8),
 
@@ -137,10 +137,10 @@ class TenantHomeScreen extends StatelessWidget {
                 onPressed: () {},
               ),
               SizedBox(
-                height: 180, // Height of the carousel
+                height: 350, // Height of the carousel to accommodate details
                 child: CarouselView(
                   itemExtent: MediaQuery.of(context).size.width * 0.8,
-
+                  itemSnapping: true,
                   children: _carouselEvents
                       .map((event) => CarouselEventCard(data: event))
                       .toList(),
@@ -165,7 +165,6 @@ class TenantHomeScreen extends StatelessWidget {
                   return UpcomingEventItem(data: event);
                 },
               ),
-              const SizedBox(height: 150), // Space for bottom nav
             ],
           ),
         ),
@@ -173,3 +172,4 @@ class TenantHomeScreen extends StatelessWidget {
     );
   }
 }
+
