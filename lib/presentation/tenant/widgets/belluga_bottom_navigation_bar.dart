@@ -10,33 +10,65 @@ class BellugaBottomNavigationBar extends StatelessWidget {
 
   final int currentIndex;
 
+  static const double _navHeight = 64;
+
   @override
   Widget build(BuildContext context) {
-    return BottomNavigationBar(
-      currentIndex: currentIndex,
-      onTap: (index) => _onItemTapped(context, index),
-      items: const [
-        BottomNavigationBarItem(
-          icon: Icon(Icons.home_outlined),
-          label: 'Inicio',
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+
+    return NavigationBarTheme(
+      data: NavigationBarThemeData(
+        height: _navHeight,
+        backgroundColor: scheme.surface,
+        elevation: 0,
+        indicatorColor: scheme.primaryContainer.withOpacity(0.8),
+        labelTextStyle: WidgetStateProperty.resolveWith(
+          (states) => theme.textTheme.labelSmall?.copyWith(
+            fontWeight:
+                states.contains(WidgetState.selected) ? FontWeight.w700 : FontWeight.w500,
+          ),
         ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.calendar_month),
-          label: 'Agenda',
+        iconTheme: WidgetStateProperty.resolveWith(
+          (states) => IconThemeData(
+            color: states.contains(WidgetState.selected)
+                ? scheme.onPrimaryContainer
+                : scheme.onSurfaceVariant,
+          ),
         ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.shopping_basket_outlined),
-          label: 'Mercado',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.travel_explore),
-          label: 'Experiencias',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.menu),
-          label: 'Menu',
-        ),
-      ],
+      ),
+      child: NavigationBar(
+        selectedIndex: currentIndex,
+        onDestinationSelected: (index) => _onItemTapped(context, index),
+        animationDuration: Duration.zero,
+        destinations: const [
+          NavigationDestination(
+            icon: Icon(Icons.home_outlined),
+            selectedIcon: Icon(Icons.home),
+            label: 'Inicio',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.calendar_month_outlined),
+            selectedIcon: Icon(Icons.calendar_month),
+            label: 'Agenda',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.shopping_basket_outlined),
+            selectedIcon: Icon(Icons.shopping_basket),
+            label: 'Mercado',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.travel_explore_outlined),
+            selectedIcon: Icon(Icons.travel_explore),
+            label: 'Experiencias',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.menu_outlined),
+            selectedIcon: Icon(Icons.menu),
+            label: 'Menu',
+          ),
+        ],
+      ),
     );
   }
 
