@@ -150,8 +150,13 @@ class _TenantHomeScreenState extends State<TenantHomeScreen> {
       title: event.title,
       imageUrl: event.imageUri.toString(),
       startDateTime: event.startDateTime,
-      location: event.location,
-      artist: event.artist,
+      venue: event.location,
+      participants: [
+        if (event.artist.isNotEmpty)
+          EventParticipantData(
+            name: event.artist,
+          ),
+      ],
     );
   }
 }

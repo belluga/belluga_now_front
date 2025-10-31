@@ -1,4 +1,4 @@
-import 'package:belluga_now/infrastructure/services/dal/dto/course/teacher_dto.dart';
+import 'package:belluga_now/infrastructure/services/dal/dto/schedule/event_artist_dto.dart';
 import 'package:belluga_now/infrastructure/services/dal/dto/schedule/event_actions_dto.dart';
 import 'package:belluga_now/infrastructure/services/dal/dto/schedule/event_type_dto.dart';
 import 'package:belluga_now/infrastructure/services/dal/dto/thumb_dto.dart';
@@ -9,9 +9,10 @@ class EventDTO {
     required this.type,
     required this.title,
     required this.content,
+    required this.location,
     this.thumb,
     required this.dateTimeStart,
-    required this.teachers,
+    required this.artists,
     required this.actions,
   });
 
@@ -19,8 +20,9 @@ class EventDTO {
   final EventTypeDTO type;
   final String title;
   final String? content;
+  final String location;
   final ThumbDTO? thumb;
   final String dateTimeStart;
-  final List<TeacherDTO> teachers;
+  final List<EventArtistDTO> artists;
   final List<EventActionsDTO> actions;
 }

@@ -3,13 +3,40 @@ class EventCardData {
     required this.title,
     required this.imageUrl,
     required this.startDateTime,
-    required this.location,
-    required this.artist,
+    required this.venue,
+    required this.participants,
   });
 
   final String title;
   final String imageUrl;
   final DateTime startDateTime;
-  final String location;
-  final String artist;
+  final String venue;
+  final List<EventParticipantData> participants;
+
+  bool get hasParticipants => participants.isNotEmpty;
+
+  String get participantsLabel =>
+      hasParticipants ? participants.map((p) => p.name).join(', ') : '';
+
+  String get participantsLabelWithHighlight {
+    if (!hasParticipants) {
+      return '';
+    }
+
+    return participants
+        .map(
+          (p) => p.isHighlight ? '${p.name} ★' : p.name,
+        )
+        .join(', ');
+  }
+}
+
+class EventParticipantData {
+  const EventParticipantData({
+    required this.name,
+    this.isHighlight = false,
+  });
+
+  final String name;
+  final bool isHighlight;
 }

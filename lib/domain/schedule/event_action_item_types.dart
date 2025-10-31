@@ -1,1 +1,0 @@
-enum EventActionItemTypes { courseItem }

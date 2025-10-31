@@ -4,8 +4,9 @@ import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/presentation/common/widgets/main_logo.dart';
 import 'package:belluga_now/presentation/tenant/screens/schedule/controller/schedule_screen_controller.dart';
 import 'package:belluga_now/presentation/tenant/screens/schedule/widgets/dates_row.dart';
-import 'package:belluga_now/presentation/tenant/screens/schedule/widgets/event_card.dart';
 import 'package:belluga_now/presentation/tenant/widgets/belluga_bottom_navigation_bar.dart';
+import 'package:belluga_now/presentation/tenant/widgets/upcoming_event_card.dart';
+import 'package:belluga_now/presentation/view_models/event_card_data.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
@@ -82,9 +83,14 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                     return SingleChildScrollView(
                       padding: const EdgeInsets.only(top: 16),
                       child: Column(
-                        children: data
-                            .map((event) => EventCard(event: event))
-                            .toList(),
+                        children: [
+                          for (final event in data) ...[
+                            UpcomingEventCard(
+                              data: _mapToViewModel(event),
+                            ),
+                            const SizedBox(height: 24),
+                          ],
+                        ],
                       ),
                     );
                   }),
@@ -92,6 +98,29 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
           )),
         ],
       ),
+    );
+  }
+
+  EventCardData _mapToViewModel(EventModel event) {
+    final imageUrl = event.thumb?.thumbUri.value.toString() ??
+        'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?w=800';
+    final location = event.location.value;
+    final participants = event.artists
+        .map(
+          (artist) => EventParticipantData(
+            name: artist.name.value,
+            isHighlight: artist.isHighlight.value,
+          ),
+        )
+        .toList();
+    final startDate = event.dateTimeStart.value ?? DateTime.now();
+
+    return EventCardData(
+      title: event.title.value,
+      imageUrl: imageUrl,
+      startDateTime: startDate,
+      venue: location,
+      participants: participants,
     );
   }
 

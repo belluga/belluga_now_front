@@ -1,4 +1,4 @@
-import 'package:belluga_now/infrastructure/services/dal/dto/course/teacher_dto.dart';
+import 'package:belluga_now/infrastructure/services/dal/dto/schedule/event_artist_dto.dart';
 import 'package:belluga_now/infrastructure/services/dal/dto/schedule/event_actions_dto.dart';
 import 'package:belluga_now/infrastructure/services/dal/dto/schedule/event_dto.dart';
 import 'package:belluga_now/infrastructure/services/dal/dto/schedule/event_summary_dto.dart';
@@ -27,7 +27,16 @@ class MockScheduleBackend implements ScheduleBackendContract {
 
   @override
   Future<List<EventDTO>> fetchEvents() async {
-    return _events;
+    final events = _eventSeeds.map((seed) => seed.toDto(_today)).toList()
+      ..sort((a, b) => DateTime.parse(a.dateTimeStart)
+          .compareTo(DateTime.parse(b.dateTimeStart)));
+
+    return events;
+  }
+
+  static DateTime get _today {
+    final now = DateTime.now();
+    return DateTime(now.year, now.month, now.day);
   }
 
   static final _concertType = EventTypeDTO(
@@ -36,7 +45,7 @@ class MockScheduleBackend implements ScheduleBackendContract {
     slug: 'show',
     description: 'Apresentacoes ao vivo',
     icon: 'music',
-    color: '#FFE80D5D',
+    color: '#FF4FA0E3',
   );
 
   static final _workshopType = EventTypeDTO(
@@ -45,106 +54,279 @@ class MockScheduleBackend implements ScheduleBackendContract {
     slug: 'oficina',
     description: 'Atividades guiadas com especialistas',
     icon: 'workshop',
-    color: '#FF4FA0E3',
+    color: '#FFE80D5D',
   );
 
-  static final List<EventDTO> _events = [
-    EventDTO(
-      id: 'event-1',
+  static final List<_MockEventSeed> _eventSeeds = [
+    _MockEventSeed(
+      id: 'event-yesterday-acoustic',
       type: _concertType,
-      title: 'Sunset Experience',
+      title: 'Acoustic Evening at the Garden',
       content:
-          'Uma experiencia musical inesquecivel com artistas locais e DJs convidados.',
-      thumb: ThumbDTO(
-        type: 'image',
-        data: {
-          'url':
-              'https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?w=800',
-        },
-      ),
-      dateTimeStart:
-          DateTime.now().add(const Duration(days: 2)).toIso8601String(),
-      teachers: [
-        TeacherDTO(
-          id: 'teacher-a',
+          'Encontro intimista com classicos reinterpretados em formato acustico.',
+      location: 'Garden Stage Centro',
+      thumbUrl:
+          'https://images.unsplash.com/photo-1489515217757-5fd1be406fef?w=800',
+      offsetDays: -1,
+      startHour: 20,
+      artists: const [
+        _MockArtistSeed(
+          id: 'artist-acoustic',
+          name: 'Duo Horizonte',
+          avatarUrl:
+              'https://images.unsplash.com/photo-1549068146-79fa64ac84c2?w=200',
+        ),
+      ],
+      actionLabel: 'Assistir reprise',
+      actionUrl: 'https://example.com/acoustic-evening',
+      actionColor: '#FF4FA0E3',
+    ),
+    _MockEventSeed(
+      id: 'event-today-yoga',
+      type: _workshopType,
+      title: 'Sunrise Yoga Flow',
+      content:
+          'Sessao matinal ao ar livre focada em respiracao e alongamentos.',
+      location: 'Deck Praia do Morro',
+      thumbUrl:
+          'https://images.unsplash.com/photo-1506126613408-eca07ce68773?w=800',
+      offsetDays: 0,
+      startHour: 9,
+      artists: const [
+        _MockArtistSeed(
+          id: 'artist-yoga',
+          name: 'Instrutora Marina Luz',
+          avatarUrl:
+              'https://images.unsplash.com/photo-1544723795-3fb6469f5b39?w=200',
+          highlight: true,
+        ),
+      ],
+      actionLabel: 'Reservar vaga',
+      actionUrl: 'https://example.com/sunrise-yoga',
+      actionColor: '#FFE80D5D',
+    ),
+    _MockEventSeed(
+      id: 'event-today-party',
+      type: _concertType,
+      title: 'Electro Sunset Party',
+      content: 'Line-up de DJs com sets ao vivo e visual do por do sol.',
+      location: 'Orla Central',
+      thumbUrl:
+          'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?w=800',
+      offsetDays: 0,
+      startHour: 19,
+      artists: const [
+        _MockArtistSeed(
+          id: 'artist-dj-horizonte',
           name: 'DJ Horizonte',
           avatarUrl:
               'https://images.unsplash.com/photo-1549213820-0fedc82f3817?w=200',
           highlight: true,
         ),
-      ],
-      actions: const [
-        EventActionsDTO(
-          label: 'Comprar ingresso',
-          openIn: 'external',
-          externalUrl: 'https://example.com/sunset-experience',
-          color: '#FF4FA0E3',
+        _MockArtistSeed(
+          id: 'artist-dj-verde',
+          name: 'DJ Verde Mar',
+          avatarUrl:
+              'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=200',
         ),
       ],
+      actionLabel: 'Comprar ingresso',
+      actionUrl: 'https://example.com/electro-sunset',
+      actionColor: '#FF4FA0E3',
     ),
-    EventDTO(
-      id: 'event-2',
+    _MockEventSeed(
+      id: 'event-tomorrow-food',
       type: _workshopType,
-      title: 'Gastronomia Regional com Chef Paula',
-      content: 'Aprenda receitas exclusivas inspiradas na culinaria capixaba.',
-      thumb: ThumbDTO(
-        type: 'image',
-        data: {
-          'url':
-              'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=800',
-        },
-      ),
-      dateTimeStart:
-          DateTime.now().add(const Duration(days: 5)).toIso8601String(),
-      teachers: [
-        TeacherDTO(
-          id: 'teacher-b',
+      title: 'Street Food Tour',
+      content:
+          'Caminhada guiada degustando petiscos autorais pelos quiosques locais.',
+      location: 'Centro Historico',
+      thumbUrl:
+          'https://images.unsplash.com/photo-1466978913421-dad2ebd01d17?w=800',
+      offsetDays: 1,
+      startHour: 12,
+      artists: const [
+        _MockArtistSeed(
+          id: 'artist-chef-paula',
           name: 'Chef Paula Figueiredo',
           avatarUrl:
               'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=200',
-          highlight: false,
         ),
       ],
-      actions: const [
-        EventActionsDTO(
-          label: 'Detalhes',
-          openIn: 'external',
-          externalUrl: 'https://example.com/oficina-gastronomia',
-          color: '#FFE80D5D',
-        ),
-      ],
+      actionLabel: 'Garantir lugar',
+      actionUrl: 'https://example.com/street-food-tour',
+      actionColor: '#FFE80D5D',
     ),
-    EventDTO(
-      id: 'event-3',
-      type: _concertType,
-      title: 'Noite da Bossa Nova',
-      content: 'Espaco intimista com interpretacoes de clasicos da Bossa Nova.',
-      thumb: ThumbDTO(
-        type: 'image',
-        data: {
-          'url':
-              'https://images.unsplash.com/photo-1527866959252-deab85ef7d1b?w=800',
-        },
-      ),
-      dateTimeStart:
-          DateTime.now().subtract(const Duration(days: 1)).toIso8601String(),
-      teachers: [
-        TeacherDTO(
-          id: 'teacher-c',
-          name: 'Quarteto Mar Azul',
+    _MockEventSeed(
+      id: 'event-two-days-mixology',
+      type: _workshopType,
+      title: 'Tropical Mixology Lab',
+      content: 'Sessao pratica de coqueteis com ingredientes regionais.',
+      location: 'Espaco Mixology Lab',
+      thumbUrl:
+          'https://images.unsplash.com/photo-1497534446932-c925b458314e?w=800',
+      offsetDays: 2,
+      startHour: 18,
+      artists: const [
+        _MockArtistSeed(
+          id: 'artist-mixology',
+          name: 'Mixologista Lara Silva',
           avatarUrl:
-              'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=200',
-          highlight: false,
+              'https://images.unsplash.com/photo-1521579971123-1192931a1452?w=200',
         ),
       ],
-      actions: const [
-        EventActionsDTO(
-          label: 'Assistir Gravacao',
-          openIn: 'external',
-          externalUrl: 'https://example.com/bossa-nova',
-          color: '#FF4FA0E3',
+      actionLabel: 'Reservar',
+      actionUrl: 'https://example.com/mixology-lab',
+      actionColor: '#FFE80D5D',
+    ),
+    _MockEventSeed(
+      id: 'event-two-days-jazz',
+      type: _concertType,
+      title: 'Jazz Under the Stars',
+      content: 'Concerto instrumental com participacao de solistas convidados.',
+      location: 'Mirante Alto da Serra',
+      thumbUrl:
+          'https://images.unsplash.com/photo-1526925539332-aa3b66e35444?w=800',
+      offsetDays: 2,
+      startHour: 21,
+      artists: const [
+        _MockArtistSeed(
+          id: 'artist-quartet-azul',
+          name: 'Quarteto Horizonte Azul',
+          avatarUrl:
+              'https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?w=200',
+          highlight: true,
         ),
       ],
+      actionLabel: 'Comprar ingresso',
+      actionUrl: 'https://example.com/jazz-under-stars',
+      actionColor: '#FF4FA0E3',
+    ),
+    _MockEventSeed(
+      id: 'event-three-days-sketch',
+      type: _workshopType,
+      title: 'Urban Sketching Walk',
+      content:
+          'Workshop itinerante registrando cenas urbanas com tecnicas rapidas.',
+      location: 'Praca Central',
+      thumbUrl:
+          'https://images.unsplash.com/photo-1473862170182-43c138187c39?w=800',
+      offsetDays: 3,
+      startHour: 10,
+      artists: const [
+        _MockArtistSeed(
+          id: 'artist-arte-leo',
+          name: 'Artista Leo Ramos',
+          avatarUrl:
+              'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=200',
+        ),
+      ],
+      actionLabel: 'Participar',
+      actionUrl: 'https://example.com/urban-sketch',
+      actionColor: '#FFE80D5D',
+    ),
+    _MockEventSeed(
+      id: 'event-five-days-market',
+      type: _concertType,
+      title: 'Night Market Beats',
+      content:
+          'Programacao musical acompanhando a feira noturna de empreendedores.',
+      location: 'Boulevard Belluga',
+      thumbUrl:
+          'https://images.unsplash.com/photo-1497032628192-86f99bcd76bc?w=800',
+      offsetDays: 5,
+      startHour: 17,
+      artists: const [],
+      actionLabel: 'Ver agenda',
+      actionUrl: 'https://example.com/night-market-beats',
+      actionColor: '#FF4FA0E3',
     ),
   ];
+}
+
+class _MockEventSeed {
+  const _MockEventSeed({
+    required this.id,
+    required this.type,
+    required this.title,
+    required this.content,
+    required this.location,
+    required this.thumbUrl,
+    required this.offsetDays,
+    required this.startHour,
+    this.startMinute = 0,
+    required this.artists,
+    required this.actionLabel,
+    required this.actionUrl,
+    required this.actionColor,
+  });
+
+  final String id;
+  final EventTypeDTO type;
+  final String title;
+  final String content;
+  final String location;
+  final String thumbUrl;
+  final int offsetDays;
+  final int startHour;
+  final int startMinute;
+  final List<_MockArtistSeed> artists;
+  final String actionLabel;
+  final String actionUrl;
+  final String actionColor;
+
+  EventDTO toDto(DateTime baseDate) {
+    final date = baseDate.add(
+      Duration(
+        days: offsetDays,
+        hours: startHour,
+        minutes: startMinute,
+      ),
+    );
+
+    return EventDTO(
+      id: id,
+      type: type,
+      title: title,
+      content: content,
+      location: location,
+      thumb: ThumbDTO(
+        type: 'image',
+        data: {'url': thumbUrl},
+      ),
+      dateTimeStart: date.toIso8601String(),
+      artists: artists.map((artist) => artist.toDto()).toList(),
+      actions: [
+        EventActionsDTO(
+          label: actionLabel,
+          openIn: 'external',
+          externalUrl: actionUrl,
+          color: actionColor,
+        ),
+      ],
+    );
+  }
+}
+
+class _MockArtistSeed {
+  const _MockArtistSeed({
+    required this.id,
+    required this.name,
+    required this.avatarUrl,
+    this.highlight = false,
+  });
+
+  final String id;
+  final String name;
+  final String avatarUrl;
+  final bool highlight;
+
+  EventArtistDTO toDto() {
+    return EventArtistDTO(
+      id: id,
+      name: name,
+      avatarUrl: avatarUrl,
+      highlight: highlight,
+    );
+  }
 }

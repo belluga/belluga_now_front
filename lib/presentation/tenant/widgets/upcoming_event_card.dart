@@ -39,13 +39,10 @@ class UpcomingEventCard extends StatelessWidget {
               const SizedBox(height: 6),
               EventInfoRow(
                 icon: Icons.place_outlined,
-                label: data.location,
+                label: data.venue,
               ),
               const SizedBox(height: 6),
-              EventInfoRow(
-                icon: Icons.music_note_outlined,
-                label: data.artist,
-              ),
+              _ParticipantsSection(data: data),
             ],
           ),
         ),
@@ -58,6 +55,29 @@ class UpcomingEventCard extends StatelessWidget {
           tooltip: 'Favoritar',
         ),
       ],
+    );
+  }
+}
+
+class _ParticipantsSection extends StatelessWidget {
+  const _ParticipantsSection({required this.data});
+
+  final EventCardData data;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!data.hasParticipants) {
+      return EventInfoRow(
+        icon: Icons.groups_outlined,
+        label: 'Curadoria em definição',
+      );
+    }
+
+    final label = data.participantsLabelWithHighlight;
+
+    return EventInfoRow(
+      icon: Icons.music_note_outlined,
+      label: label,
     );
   }
 }

@@ -1,8 +1,6 @@
-import 'package:belluga_now/domain/schedule/event_action_item_types.dart';
 import 'package:belluga_now/domain/schedule/event_action_model/event_action_external_navigation.dart';
-import 'package:belluga_now/domain/schedule/event_action_model/event_action_course_navigation.dart';
+import 'package:belluga_now/domain/schedule/event_action_model/event_action_unsupported_navigation.dart';
 import 'package:belluga_now/domain/schedule/event_action_types.dart';
-import 'package:belluga_now/domain/schedule/value_objects/event_action_item_type_value.dart';
 import 'package:belluga_now/domain/value_objects/color_value.dart';
 import 'package:belluga_now/domain/value_objects/title_value.dart';
 import 'package:belluga_now/infrastructure/services/dal/dto/schedule/event_actions_dto.dart';
@@ -33,6 +31,15 @@ abstract class EventActionModel {
 
     switch (_openIn) {
       case EventActionTypes.external:
+        if (dto.externalUrl == null || dto.externalUrl!.isEmpty) {
+          return EventActionUnsupportedNavigation(
+            id: _id,
+            label: _label,
+            color: colorValue,
+            message:
+                'Link externo indisponível no momento. Tente novamente mais tarde.',
+          );
+        }
         return EventActionExternalNavigation(
           id: _id,
           label: _label,
@@ -40,16 +47,13 @@ abstract class EventActionModel {
           externalUrl: URIValue()..tryParse(dto.externalUrl),
         );
       case EventActionTypes.inApp:
-        final _itemType = EventActionItemTypes.values.byName(dto.itemType!);
-        return switch (_itemType) {
-          EventActionItemTypes.courseItem => EventActionCourseNavigation(
-              id: _id,
-              label: _label,
-              color: colorValue,
-              itemType: EventActionItemTypeValue()..parse(dto.itemType),
-              itemId: MongoIDValue()..tryParse(dto.itemId),
-            )
-        };
+        return EventActionUnsupportedNavigation(
+          id: _id,
+          label: _label,
+          color: colorValue,
+          message:
+              'Esta ação será habilitada quando a navegação in-app estiver disponível.',
+        );
     }
   }
 

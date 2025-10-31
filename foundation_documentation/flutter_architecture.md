@@ -6,6 +6,21 @@
 
 ---
 
+## Layered Structure Snapshot
+
+- **Application layer** wires theming (`application_contract.dart`), global initialisation, and module bootstrap. Keep business logic out of this layer.
+- **Domain layer** expresses rules through models that wrap primitives with `ValueObject`s (`MongoIDValue`, `TitleValue`, `DateTimeValue`, etc.).
+- **Infrastructure layer** talks to backends (real or mock) and exposes DTOs that mirror external payloads.
+- **Presentation layer** focuses on widgets, controllers, and view models. Widgets consume primitives via view models such as `EventCardData`, never DTOs or raw value objects.
+
+## Data Flow Contracts
+
+- DTOs live under `lib/infrastructure/services/dal/dto/**` and stay close to the transport format (nullable fields, primitive types).
+- Domain models expose `fromDTO` constructors. DTOs never “know” the domain (`toDomain` is avoided).
+- Repositories convert DTOs into domain objects and expose domain-centric APIs. They are the only layer that depends on both DTOs and domain entities.
+- Controllers compose repositories and publish results through `StreamValue<T>`. Widgets observe them with `StreamValueBuilder`, enabling atomic updates (i.e. only the affected section rerenders).
+- View models shape the data widgets need (formatting, fallbacks, asset URLs) so presentation stays decoupled from domain intricacies.
+
 ## Project Structure & Modularity
 
 - **`lib/application`**  
@@ -59,6 +74,7 @@
   - Widgets use `StreamValueBuilder` to rebuild sections of UI.
   - Pattern encourages atomic streams (e.g. schedule screen has separate
     streams for events, visible dates, etc.).
+- `StreamValue` keeps the “bloc-like” intent while allowing targeted updates (fetch more events without touching other widgets). Controllers should dispose every `StreamValue` they own.
 
 - Example patterns:
   - `TenantHomeController` → `StreamValue<HomeOverview?>`.
@@ -86,6 +102,13 @@
   - Additional mock backends for schedule, notes, etc. under
     `lib/infrastructure/services/dal/dao/mock_backend`.
 
+## Example Feature: Schedule
+
+- `ScheduleScreenController` requests data from `ScheduleRepository`, pushes results into `eventsStreamValue`, and keeps additional `StreamValue`s for date selectors and visibility flags.
+- `ScheduleRepository` delegates to `ScheduleBackendContract` (mocked via `MockScheduleBackend`) and converts DTOs to domain models (`EventModel.fromDTO`).
+- `ScheduleScreen` maps each `EventModel` into `EventCardData`, reusing the shared `UpcomingEventCard` for visual consistency with the home tab.
+- Mock data now covers several calendar days and multiple events per day, so navigating the date row demonstrates distinct cards per selection.
+
 ## UI Layer Patterns
 
 - **Bottom Navigation**
@@ -107,6 +130,11 @@
 - **Auth Flow**
   - Controllers manage validation, errors, and navigation to subsequent pages.
   - Route wrappers ensure controllers are registered before screen build.
+
+## Styling & Theming Notes
+
+- `ApplicationContract` centralises colour definitions (primary `#4fa0e3`, secondary `#e80d5d`). Derive any additional swatches from these seeds.
+- Shared branding elements (like `MainLogo`) should be reused in every top-level screen to avoid divergent asset handling.
 
 ## Value Object Notes
 
@@ -130,6 +158,17 @@
   scroll controllers, etc., inside `onDispose()` implementations.
 - AutoRoute refresh: run `flutter pub run build_runner build
   --delete-conflicting-outputs` after modifying routes or annotations.
+
+## Workflows & Tooling
+
+- After changing routing/modules or generated files, run
+  `flutter pub run build_runner build` to sync AutoRoute outputs.
+- Run `flutter analyze` regularly. Existing warnings (missing type annotations,
+  `withOpacity` deprecations) are known, but new code should not introduce
+  regressions.
+- Prefer the established GetIt + `StreamValue` pattern for new features; align
+  controller lifecycles with `ScheduleScreenController` and `TenantHomeController`.
+- Document new architectural insights here to keep future sessions aligned.
 
 ---
 
