@@ -1,8 +1,8 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/domain/controllers/auth_login_controller_contract.dart';
-import 'package:flutter/material.dart';
 import 'package:belluga_now/presentation/common/widgets/main_logo.dart';
+import 'package:flutter/material.dart';
 import 'package:belluga_now/presentation/screens/auth/login/widgets/auth_header_expanded_content.dart';
 import 'package:belluga_now/presentation/screens/auth/login/widgets/auth_header_headline.dart';
 import 'package:belluga_now/presentation/screens/auth/login/widgets/auth_login_canva_content.dart';

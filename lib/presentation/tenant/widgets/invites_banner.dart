@@ -31,7 +31,9 @@ class InvitesBanner extends StatelessWidget {
                     Theme.of(context).colorScheme.secondaryContainer,
                 shape: const StadiumBorder(),
               ),
-              child: const Text('Bora?'),
+              child: Text(
+                'Bora?', 
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(color: Theme.of(context).colorScheme.onSecondaryContainer),),
             ),
           ],
         ),

@@ -2,6 +2,7 @@ import 'package:belluga_now/domain/home/home_event.dart';
 import 'package:belluga_now/domain/home/home_favorite.dart';
 import 'package:belluga_now/domain/home/home_overview.dart';
 import 'package:belluga_now/presentation/tenant/screens/home/controller/tenant_home_controller.dart';
+import 'package:belluga_now/presentation/common/widgets/main_logo.dart';
 import 'package:belluga_now/presentation/tenant/widgets/belluga_bottom_navigation_bar.dart';
 import 'package:belluga_now/presentation/tenant/widgets/carousel_event_card.dart';
 import 'package:belluga_now/presentation/tenant/widgets/favorites_strip.dart';
@@ -43,13 +44,7 @@ class _TenantHomeScreenState extends State<TenantHomeScreen> {
     return Scaffold(
       appBar: AppBar(
         titleSpacing: 16,
-        title: SizedBox(
-          height: 32,
-          child: Image.asset(
-            'assets/images/logo_horizontal.png',
-            fit: BoxFit.contain,
-          ),
-        ),
+        title: const MainLogo(),
         actions: [
           IconButton(
             icon: const Icon(Icons.search),
@@ -65,7 +60,7 @@ class _TenantHomeScreenState extends State<TenantHomeScreen> {
         ],
       ),
       floatingActionButton: const FloatingActionButtonCustom(),
-      bottomNavigationBar: const BellugaBottomNavigationBar(),
+      bottomNavigationBar: const BellugaBottomNavigationBar(currentIndex: 0),
       body: SafeArea(
         child: StreamValueBuilder<HomeOverview?>(
           streamValue: _controller.overviewStreamValue,

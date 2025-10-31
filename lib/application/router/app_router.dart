@@ -46,18 +46,10 @@ class AppRouter extends AppRouterContract {
         AutoRoute(
           path: '/agenda',
           page: ScheduleRoute.page,
-          guards: [
-            AuthRouteGuard(),
-            TenantRouteGuard(),
-          ],
         ),
         AutoRoute(
           path: '/agenda/procurar',
           page: EventSearchRoute.page,
-          guards: [
-            AuthRouteGuard(),
-            TenantRouteGuard(),
-          ],
         ),
         ...childModules.expand((module) => module.routes),
       ];

@@ -24,7 +24,7 @@ class EventTypeModel {
   factory EventTypeModel.fromDTO(EventTypeDTO dto) {
     return EventTypeModel(
       id: MongoIDValue()..tryParse(dto.id),
-      name: TitleValue()..parse(dto.name),
+      name: TitleValue(minLenght: 1)..parse(dto.name),
       slug: SlugValue()..parse(dto.slug),
       description: DescriptionValue()..parse(dto.description),
       icon: SlugValue()..tryParse(dto.icon),
