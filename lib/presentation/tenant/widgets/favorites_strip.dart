@@ -26,6 +26,7 @@ class FavoritesStrip extends StatelessWidget {
     return SizedBox(
       height: height,
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (pinned != null)
             Padding(
