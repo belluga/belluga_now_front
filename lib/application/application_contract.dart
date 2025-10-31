@@ -60,7 +60,31 @@ abstract class ApplicationContract extends StatelessWidget {
   }
 
   ThemeData getThemeData() {
-    final colorScheme = ColorScheme.fromSeed(seedColor: const Color(0xFF00E6B8));
+    const primarySeed = Color(0xFF4FA0E3);
+    const secondarySeed = Color(0xFFE80D5D);
+
+    final primaryScheme = ColorScheme.fromSeed(
+      seedColor: primarySeed,
+    );
+    final secondaryScheme = ColorScheme.fromSeed(
+      seedColor: secondarySeed,
+      brightness: primaryScheme.brightness,
+    );
+
+    final colorScheme = primaryScheme.copyWith(
+      primary: primarySeed,
+      onPrimary: primaryScheme.onPrimary,
+      primaryContainer: primaryScheme.primaryContainer,
+      onPrimaryContainer: primaryScheme.onPrimaryContainer,
+      secondary: secondaryScheme.primary,
+      onSecondary: secondaryScheme.onPrimary,
+      secondaryContainer: secondaryScheme.primaryContainer,
+      onSecondaryContainer: secondaryScheme.onPrimaryContainer,
+      tertiary: secondaryScheme.secondary,
+      onTertiary: secondaryScheme.onSecondary,
+      tertiaryContainer: secondaryScheme.secondaryContainer,
+      onTertiaryContainer: secondaryScheme.onSecondaryContainer,
+    );
 
     return ThemeData(
       colorScheme: colorScheme,
