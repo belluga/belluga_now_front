@@ -141,8 +141,9 @@ class _DateRowState extends State<DateRow> {
                   ],
                 ),
               ),
-              SizedBox(
+              Container(
                 height: 120,
+                color: Theme.of(context).colorScheme.surfaceContainer,
                 child: Row(
                   children: [
                     Expanded(
