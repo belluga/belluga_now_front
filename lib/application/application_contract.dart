@@ -1,11 +1,13 @@
-import 'package:belluga_now/domain/repositories/tenant_repository_contract.dart';
-import 'package:belluga_now/infrastructure/repositories/tenant_repository.dart';
-import 'package:flutter/material.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/application/configurations/custom_scroll_behavior.dart';
 import 'package:belluga_now/application/router/app_router.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/home_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/tenant_repository_contract.dart';
+import 'package:belluga_now/infrastructure/repositories/home_repository.dart';
+import 'package:belluga_now/infrastructure/repositories/tenant_repository.dart';
 import 'package:belluga_now/infrastructure/services/dal/dao/backend_contract.dart';
+import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:intl/intl_standalone.dart';
 import 'package:intl/date_symbol_data_local.dart';
@@ -56,6 +58,9 @@ abstract class ApplicationContract extends StatelessWidget {
   Future<void> _initInjections() async {
     GetIt.I.registerLazySingleton<AuthRepositoryContract>(
       () => initAuthRepository(),
+    );
+    GetIt.I.registerLazySingleton<HomeRepositoryContract>(
+      () => HomeRepository(),
     );
   }
 
