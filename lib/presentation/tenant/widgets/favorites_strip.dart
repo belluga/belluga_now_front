@@ -8,7 +8,7 @@ class FavoritesStrip extends StatelessWidget {
     super.key,
     required this.items,
     this.pinFirst = false,
-    this.height = 90,
+    this.height = 118,
     this.spacing = 12,
   });
 

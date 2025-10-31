@@ -13,11 +13,43 @@ class TenantHomeScreen extends StatelessWidget {
 
   // --- MOCK DATA ---
   static const List<FavoriteItemData> _favorites = [
-    FavoriteItemData(icon: Icons.location_pin, isPrimary: true),
-    FavoriteItemData(icon: Icons.restaurant_menu),
-    FavoriteItemData(icon: Icons.event),
-    FavoriteItemData(icon: Icons.local_offer),
-    FavoriteItemData(icon: Icons.child_friendly),
+    FavoriteItemData(
+      title: 'Guarapari',
+      imageUrl:
+          'https://images.unsplash.com/photo-1505761671935-60b3a7427bad?w=400',
+      badgeIcon: Icons.location_pin,
+      isPrimary: true,
+    ),
+    FavoriteItemData(
+      title: 'La Brise',
+      imageUrl:
+          'https://images.unsplash.com/photo-1555993539-1732b0258235?w=400',
+      badgeIcon: Icons.restaurant,
+    ),
+    FavoriteItemData(
+      title: 'Sunset Club',
+      imageUrl:
+          'https://images.unsplash.com/photo-1519677100203-a0e668c92439?w=400',
+      badgeIcon: Icons.local_activity,
+    ),
+    FavoriteItemData(
+      title: 'DJ Horizonte',
+      imageUrl:
+          'https://images.unsplash.com/photo-1464375117522-1311d6a5b81f?w=400',
+      badgeIcon: Icons.music_note,
+    ),
+    FavoriteItemData(
+      title: 'Banda Eclipse',
+      imageUrl:
+          'https://images.unsplash.com/photo-1489515217757-5fd1be406fef?w=400',
+      badgeIcon: Icons.queue_music,
+    ),
+    FavoriteItemData(
+      title: 'Chef Paula',
+      imageUrl:
+          'https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?w=400',
+      badgeIcon: Icons.restaurant_menu,
+    ),
   ];
 
   List<EventCardData> get _carouselEvents => [
