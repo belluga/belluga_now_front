@@ -64,9 +64,6 @@ abstract class ApplicationContract extends StatelessWidget {
 
     return ThemeData(
       colorScheme: colorScheme,
-      bottomAppBarTheme: BottomAppBarThemeData(
-        color: colorScheme.primaryContainer,
-      ),
       bottomNavigationBarTheme: BottomNavigationBarThemeData(
         backgroundColor: colorScheme.surface,
         selectedItemColor: colorScheme.primary,

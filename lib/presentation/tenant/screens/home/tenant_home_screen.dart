@@ -1,3 +1,4 @@
+import 'package:belluga_now/presentation/tenant/widgets/floating_action_button_custom.dart';
 import 'package:flutter/material.dart';
 import 'package:belluga_now/presentation/view_models/event_card_data.dart';
 import 'package:belluga_now/presentation/view_models/favorite_item_data.dart';
@@ -140,10 +141,7 @@ class TenantHomeScreen extends StatelessWidget {
           const SizedBox(width: 8),
         ],
       ),
-      floatingActionButton: FloatingActionButton.large(
-        onPressed: () {},
-        child: const Icon(Icons.location_pin),
-      ),
+      floatingActionButton: FloatingActionButtonCustom(),
       bottomNavigationBar: BellugaBottomNavigationBar(),
       body: SafeArea(
         child: SingleChildScrollView(

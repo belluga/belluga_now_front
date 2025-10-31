@@ -1,5 +1,3 @@
-import 'package:intl/intl.dart';
-
 class EventCardData {
   const EventCardData({
     required this.title,
