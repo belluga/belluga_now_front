@@ -59,7 +59,8 @@ final class AuthRepository extends AuthRepositoryContract<UserBelluga> {
 
   @override
   Future<void> loginWithEmailPassword(String email, String password) async {
-    var (UserDTO _user, String _token) = await backend.auth.loginWithEmailPassword(
+    var (UserDTO _user, String _token) =
+        await backend.auth.loginWithEmailPassword(
       email,
       password,
     );

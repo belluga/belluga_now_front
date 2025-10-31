@@ -8,7 +8,7 @@ class HomeRepository extends HomeRepositoryContract {
   @override
   Future<HomeOverview> fetchOverview() async {
     final HomeOverviewDTO dto = await backend.home.fetchOverview();
-    return dto.toDomain();
+    return HomeOverview.fromDTO(dto);
   }
 
   @override

@@ -10,9 +10,7 @@ class Application extends ApplicationWebContract {
 
   @override
   AuthRepositoryContract<UserBelluga> initAuthRepository() {
-    final _respository = AuthRepository();
-    _respository.init();
-    return _respository;
+    return AuthRepository();
   }
 
   @override

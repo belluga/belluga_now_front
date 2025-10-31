@@ -1,5 +1,3 @@
-import 'package:belluga_now/domain/home/home_event.dart';
-
 class HomeEventDTO {
   const HomeEventDTO({
     required this.title,
@@ -14,14 +12,4 @@ class HomeEventDTO {
   final DateTime startDateTime;
   final String location;
   final String artist;
-
-  HomeEvent toDomain() {
-    return HomeEvent(
-      title: title,
-      imageUrl: imageUrl,
-      startDateTime: startDateTime,
-      location: location,
-      artist: artist,
-    );
-  }
 }

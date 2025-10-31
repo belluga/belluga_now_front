@@ -41,8 +41,8 @@ class _CalendarBoxState extends State<CalendarBox> {
               widget.day.toString(),
               textAlign: TextAlign.center,
               style: TextTheme.of(context).titleLarge?.copyWith(
-                color: Theme.of(context).colorScheme.onTertiary,
-              ),
+                    color: Theme.of(context).colorScheme.onTertiary,
+                  ),
             ),
           ),
         ],

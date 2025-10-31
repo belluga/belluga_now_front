@@ -46,8 +46,8 @@ class ButtonLoading extends StatelessWidget {
                   Text(
                     label,
                     style: TextTheme.of(context).titleMedium?.copyWith(
-                      color: Theme.of(context).colorScheme.onPrimary,
-                    ),
+                          color: Theme.of(context).colorScheme.onPrimary,
+                        ),
                   ),
                   if (loadingStatus) SizedBox(width: 32, height: 32),
                 ],

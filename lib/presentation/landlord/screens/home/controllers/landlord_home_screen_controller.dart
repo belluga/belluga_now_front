@@ -1,10 +1,5 @@
 class LandlordHomeScreenController {
-  
   LandlordHomeScreenController();
 
-  
-
-  Future<void> init() async {
-    
-  }
+  Future<void> init() async {}
 }

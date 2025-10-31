@@ -4,11 +4,9 @@ import 'package:belluga_now/infrastructure/services/dal/dao/backend_contract.dar
 import 'package:get_it/get_it.dart';
 
 class TenantRepository extends TenantRepositoryContract {
-
   @override
   BackendContract get backend => GetIt.I.get<BackendContract>();
 
   @override
   AppData get appData => GetIt.I.get<AppData>();
-
 }

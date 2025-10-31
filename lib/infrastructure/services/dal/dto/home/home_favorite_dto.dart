@@ -1,4 +1,3 @@
-import 'package:belluga_now/domain/home/home_favorite.dart';
 import 'package:flutter/material.dart';
 
 class HomeFavoriteDTO {
@@ -37,20 +36,4 @@ class HomeFavoriteDTO {
   final String? badgeFontFamily;
   final String? badgeFontPackage;
   final bool isPrimary;
-
-  HomeFavorite toDomain() {
-    return HomeFavorite(
-      title: title,
-      imageUrl: imageUrl,
-      assetPath: assetPath,
-      badgeIcon: badgeIconCodePoint != null
-          ? IconData(
-              badgeIconCodePoint!,
-              fontFamily: badgeFontFamily,
-              fontPackage: badgeFontPackage,
-            )
-          : null,
-      isPrimary: isPrimary,
-    );
-  }
 }

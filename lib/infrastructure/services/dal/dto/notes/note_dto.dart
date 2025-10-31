@@ -5,7 +5,12 @@ class NoteDTO {
   String? position;
   String? colorHex;
 
-  NoteDTO({required this.id, required this.courseItemId, required this.content, this.position, this.colorHex});
+  NoteDTO(
+      {required this.id,
+      required this.courseItemId,
+      required this.content,
+      this.position,
+      this.colorHex});
 
   factory NoteDTO.fromJson(Map<String, dynamic> json) {
     return NoteDTO(

@@ -13,7 +13,6 @@ class DateBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-
     return Container(
       width: 56,
       padding: const EdgeInsets.symmetric(vertical: 8),
@@ -27,23 +26,23 @@ class DateBadge extends StatelessWidget {
           Text(
             date.monthLabel,
             style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              fontWeight: FontWeight.w600,
-              color: Theme.of(context).colorScheme.surface,
-            ),
+                  fontWeight: FontWeight.w600,
+                  color: Theme.of(context).colorScheme.surface,
+                ),
           ),
           Text(
             date.dayLabel,
             style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-              fontWeight: FontWeight.bold,
-              color: Theme.of(context).colorScheme.surface,
-            ),
+                  fontWeight: FontWeight.bold,
+                  color: Theme.of(context).colorScheme.surface,
+                ),
           ),
           Text(
             date.timeLabel,
             style: Theme.of(context).textTheme.labelMedium?.copyWith(
-              fontWeight: FontWeight.w600,
-              color: Theme.of(context).colorScheme.surface,
-            ),
+                  fontWeight: FontWeight.w600,
+                  color: Theme.of(context).colorScheme.surface,
+                ),
           ),
         ],
       ),

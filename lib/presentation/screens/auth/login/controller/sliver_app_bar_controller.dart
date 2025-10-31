@@ -27,7 +27,7 @@ class SliverAppBarController {
     );
   }
 
-  void expand(){
+  void expand() {
     scrollController.animateTo(
       0,
       duration: Duration(milliseconds: 300),

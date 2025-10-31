@@ -1,76 +1,52 @@
-import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/application/configurations/custom_scroll_behavior.dart';
 import 'package:belluga_now/application/router/app_router.dart';
+import 'package:belluga_now/application/router/modular_app/module_settings.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
-import 'package:belluga_now/domain/repositories/home_repository_contract.dart';
-import 'package:belluga_now/domain/repositories/tenant_repository_contract.dart';
-import 'package:belluga_now/infrastructure/repositories/home_repository.dart';
-import 'package:belluga_now/infrastructure/repositories/tenant_repository.dart';
 import 'package:belluga_now/infrastructure/services/dal/dao/backend_contract.dart';
 import 'package:flutter/material.dart';
-import 'package:get_it/get_it.dart';
-import 'package:intl/intl_standalone.dart';
+import 'package:get_it_modular_with_auto_route/get_it_modular_with_auto_route.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:intl/intl_standalone.dart';
 
-abstract class ApplicationContract extends StatelessWidget {
-  final _appRouter = AppRouter();
+abstract class ApplicationContract extends ModularAppContract {
+  ApplicationContract({super.key}) : _appRouter = AppRouter() {
+    _moduleSettings = ModuleSettings(
+      backendBuilder: initBackendRepository,
+      authRepositoryBuilder: initAuthRepository,
+    );
+  }
 
-  ApplicationContract({super.key});
-
-  final navigatorKey = GlobalKey<NavigatorState>();
+  final AppRouter _appRouter;
+  late final ModuleSettings _moduleSettings;
 
   BackendContract initBackendRepository();
   AuthRepositoryContract initAuthRepository();
   Future<void> initialSettingsPlatform();
 
-  Future<void> init() async {
-    await initialSettings();
-    await _initInjections();
-    await initialSettingsPlatform();
-  }
+  @override
+  AppRouter get appRouter => _appRouter;
 
-  @protected
+  @override
+  ModuleSettings get moduleSettings => _moduleSettings;
+
   Future<void> initialSettings() async {
     WidgetsFlutterBinding.ensureInitialized();
     await initializeDateFormatting();
     await findSystemLocale();
-    await _initAppData();
-    await _initBackend();
-    await _initTenant();
   }
 
-  Future<void> _initAppData() async {
-    final appData = AppData();
-    await appData.initialize();
-    GetIt.I.registerSingleton<AppData>(appData);
-  }
-
-  Future<void> _initBackend() async {
-    GetIt.I.registerSingleton<BackendContract>(initBackendRepository());
-  }
-
-  Future<void> _initTenant() async {
-    final _tenant = TenantRepository();
-    await _tenant.init();
-    GetIt.I.registerSingleton<TenantRepositoryContract>(_tenant);
-  }
-
-  Future<void> _initInjections() async {
-    GetIt.I.registerLazySingleton<AuthRepositoryContract>(
-      () => initAuthRepository(),
-    );
-    GetIt.I.registerLazySingleton<HomeRepositoryContract>(
-      () => HomeRepository(),
-    );
+  @override
+  Future<void> init() async {
+    await initialSettings();
+    await initialSettingsPlatform();
+    await super.init();
   }
 
   ThemeData getThemeData() {
     const primarySeed = Color(0xFF4FA0E3);
     const secondarySeed = Color(0xFFE80D5D);
 
-    final primaryScheme = ColorScheme.fromSeed(
-      seedColor: primarySeed,
-    );
+    final primaryScheme = ColorScheme.fromSeed(seedColor: primarySeed);
     final secondaryScheme = ColorScheme.fromSeed(
       seedColor: secondarySeed,
       brightness: primaryScheme.brightness,
@@ -119,11 +95,16 @@ abstract class ApplicationContract extends StatelessWidget {
   }
 
   @override
+  State<ApplicationContract> createState() => _ApplicationContractState();
+}
+
+class _ApplicationContractState extends State<ApplicationContract> {
+  @override
   Widget build(BuildContext context) {
     return MaterialApp.router(
-      theme: getThemeData(),
+      theme: widget.getThemeData(),
       scrollBehavior: CustomScrollBehavior(),
-      routerConfig: _appRouter.config(),
+      routerConfig: widget.appRouter.config(),
     );
   }
 }

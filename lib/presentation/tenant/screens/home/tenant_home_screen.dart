@@ -1,7 +1,8 @@
+import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/domain/home/home_event.dart';
 import 'package:belluga_now/domain/home/home_favorite.dart';
 import 'package:belluga_now/domain/home/home_overview.dart';
-import 'package:belluga_now/domain/repositories/home_repository_contract.dart';
+import 'package:belluga_now/presentation/tenant/screens/home/controller/tenant_home_controller.dart';
 import 'package:belluga_now/presentation/tenant/widgets/belluga_bottom_navigation_bar.dart';
 import 'package:belluga_now/presentation/tenant/widgets/carousel_event_card.dart';
 import 'package:belluga_now/presentation/tenant/widgets/favorites_strip.dart';
@@ -13,7 +14,9 @@ import 'package:belluga_now/presentation/view_models/event_card_data.dart';
 import 'package:belluga_now/presentation/view_models/favorite_item_data.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
+import 'package:stream_value/core/stream_value_builder.dart';
 
+@RoutePage()
 class TenantHomeScreen extends StatefulWidget {
   const TenantHomeScreen({super.key});
 
@@ -22,72 +25,74 @@ class TenantHomeScreen extends StatefulWidget {
 }
 
 class _TenantHomeScreenState extends State<TenantHomeScreen> {
-  late final Future<HomeOverview> _overviewFuture;
+  late final TenantHomeController _controller;
 
   @override
   void initState() {
     super.initState();
-    final repository = GetIt.I<HomeRepositoryContract>();
-    _overviewFuture = repository.fetchOverview();
+    if (!GetIt.I.isRegistered<TenantHomeController>()) {
+      GetIt.I.registerSingleton<TenantHomeController>(
+        TenantHomeController(),
+      );
+    }
+    _controller = GetIt.I.get<TenantHomeController>();
+    _controller.init();
+  }
+
+  @override
+  void dispose() {
+    if (GetIt.I.isRegistered<TenantHomeController>()) {
+      final controller = GetIt.I.get<TenantHomeController>();
+      controller.onDispose();
+      GetIt.I.unregister<TenantHomeController>();
+    }
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<HomeOverview>(
-      future: _overviewFuture,
-      builder: (context, snapshot) {
-        return Scaffold(
-          appBar: AppBar(
-            titleSpacing: 16,
-            title: SizedBox(
-              height: 32,
-              child: Image.asset(
-                'assets/images/logo_horizontal.png',
-                fit: BoxFit.contain,
-              ),
-            ),
-            actions: [
-              IconButton(
-                icon: const Icon(Icons.search),
-                onPressed: () {},
-                tooltip: 'Buscar',
-              ),
-              IconButton(
-                icon: const Icon(Icons.notifications_none),
-                onPressed: () {},
-                tooltip: 'Notificacoes',
-              ),
-              const SizedBox(width: 8),
-            ],
+    return Scaffold(
+      appBar: AppBar(
+        titleSpacing: 16,
+        title: SizedBox(
+          height: 32,
+          child: Image.asset(
+            'assets/images/logo_horizontal.png',
+            fit: BoxFit.contain,
           ),
-          floatingActionButton: FloatingActionButtonCustom(),
-          bottomNavigationBar: BellugaBottomNavigationBar(),
-          body: SafeArea(
-            child: _buildBody(context, snapshot),
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.search),
+            onPressed: () {},
+            tooltip: 'Buscar',
           ),
-        );
-      },
+          IconButton(
+            icon: const Icon(Icons.notifications_none),
+            onPressed: () {},
+            tooltip: 'Notificacoes',
+          ),
+          const SizedBox(width: 8),
+        ],
+      ),
+      floatingActionButton: const FloatingActionButtonCustom(),
+      bottomNavigationBar: const BellugaBottomNavigationBar(),
+      body: SafeArea(
+        child: StreamValueBuilder<HomeOverview?>(
+          streamValue: _controller.overviewStreamValue,
+          onNullWidget: const Center(child: CircularProgressIndicator()),
+          builder: (context, overview) {
+            if (overview == null) {
+              return const SizedBox.shrink();
+            }
+            return _buildContent(context, overview);
+          },
+        ),
+      ),
     );
   }
 
-  Widget _buildBody(
-    BuildContext context,
-    AsyncSnapshot<HomeOverview> snapshot,
-  ) {
-    if (snapshot.connectionState != ConnectionState.done) {
-      return const Center(child: CircularProgressIndicator());
-    }
-
-    if (snapshot.hasError || !snapshot.hasData) {
-      return Center(
-        child: Text(
-          'Nao foi possivel carregar os dados.',
-          style: Theme.of(context).textTheme.bodyMedium,
-        ),
-      );
-    }
-
-    final overview = snapshot.requireData;
+  Widget _buildContent(BuildContext context, HomeOverview overview) {
     final favorites =
         overview.favorites.map(_mapFavorite).toList(growable: false);
     final featuredEvents =
@@ -149,7 +154,7 @@ class _TenantHomeScreenState extends State<TenantHomeScreen> {
   FavoriteItemData _mapFavorite(HomeFavorite favorite) {
     return FavoriteItemData(
       title: favorite.title,
-      imageUrl: favorite.imageUrl,
+      imageUrl: favorite.imageUri?.toString(),
       assetPath: favorite.assetPath,
       badgeIcon: favorite.badgeIcon,
       isPrimary: favorite.isPrimary,
@@ -159,7 +164,7 @@ class _TenantHomeScreenState extends State<TenantHomeScreen> {
   EventCardData _mapEvent(HomeEvent event) {
     return EventCardData(
       title: event.title,
-      imageUrl: event.imageUrl,
+      imageUrl: event.imageUri.toString(),
       startDateTime: event.startDateTime,
       location: event.location,
       artist: event.artist,

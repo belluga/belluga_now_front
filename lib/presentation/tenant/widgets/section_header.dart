@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 
 class SectionHeader extends StatelessWidget {
-  const SectionHeader({super.key, required this.title, required this.onPressed});
+  const SectionHeader(
+      {super.key, required this.title, required this.onPressed});
 
   final String title;
   final VoidCallback onPressed;

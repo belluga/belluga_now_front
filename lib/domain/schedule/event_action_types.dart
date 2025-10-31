@@ -1,0 +1,4 @@
+enum EventActionTypes {
+  external,
+  inApp,
+}

@@ -4,7 +4,6 @@ import 'package:value_object_pattern/domain/exceptions/value_exceptions.dart';
 import 'package:value_object_pattern/value_object.dart';
 
 abstract class FormFieldControllerContract<T> {
-  
   FormFieldControllerContract({String? initialValue}) {
     textController = TextEditingController(text: initialValue);
   }
@@ -42,8 +41,8 @@ abstract class FormFieldControllerContract<T> {
     return _errorMessage;
   }
 
-  void onChange(String value){
-    if(alreadyTriedValidation){
+  void onChange(String value) {
+    if (alreadyTriedValidation) {
       validator(value);
     }
   }

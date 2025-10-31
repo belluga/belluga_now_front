@@ -8,7 +8,8 @@ class FloatingActionButtonCustom extends StatelessWidget {
     return FloatingActionButton.large(
       onPressed: () {},
       backgroundColor: Theme.of(context).colorScheme.secondary,
-      child: Icon(Icons.location_pin, color: Theme.of(context).colorScheme.onSecondary),
+      child: Icon(Icons.location_pin,
+          color: Theme.of(context).colorScheme.onSecondary),
     );
   }
 }

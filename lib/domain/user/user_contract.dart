@@ -13,12 +13,13 @@ abstract class UserContract {
     required this.uuidValue,
     required this.profile,
     this.customData,
-  }){
+  }) {
     _setDeviceId();
   }
 
   Future<void> _setDeviceId() async {
-    currentDeviceId = "${BellugaConstants.settings.platform}_${PlatformDeviceId.getDeviceId}";
+    currentDeviceId =
+        "${BellugaConstants.settings.platform}_${PlatformDeviceId.getDeviceId}";
   }
 
   Future<void> updateCustomData(Map<String, Object?> newCustomData) {

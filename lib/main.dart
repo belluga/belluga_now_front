@@ -32,12 +32,12 @@ Future<void> main() async {
 }
 
 // void _initApp() {
-  
+
 //   runApp(
 //     Application(
-        // pushHandler: _pushHandler,
-        // authRepository: _authRepository,
-        // bellugaApp: _bellugaApp,
+// pushHandler: _pushHandler,
+// authRepository: _authRepository,
+// bellugaApp: _bellugaApp,
 //         ),
 //   );
 // }

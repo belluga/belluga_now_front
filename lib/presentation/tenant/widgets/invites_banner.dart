@@ -27,7 +27,8 @@ class InvitesBanner extends StatelessWidget {
             TextButton(
               onPressed: onPressed,
               style: TextButton.styleFrom(
-                backgroundColor: Theme.of(context).colorScheme.secondaryContainer,
+                backgroundColor:
+                    Theme.of(context).colorScheme.secondaryContainer,
                 shape: const StadiumBorder(),
               ),
               child: const Text('Bora?'),

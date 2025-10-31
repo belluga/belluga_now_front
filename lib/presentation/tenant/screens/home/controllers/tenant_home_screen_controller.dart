@@ -4,7 +4,7 @@ import 'package:get_it/get_it.dart';
 
 class TenantHomeScreenController {
   final tenantRepository = GetIt.I.get<TenantRepositoryContract>();
-  
+
   Tenant get tenant => tenantRepository.tenant!;
 
   TenantHomeScreenController();

@@ -19,7 +19,6 @@ abstract class TenantRepositoryContract {
   bool get isLandlordRequest => landlordDomain == appData.hostname;
 
   bool get isProperTenantRegistered {
-
     final Tenant? _tenant = tenant;
 
     if (_tenant == null) {

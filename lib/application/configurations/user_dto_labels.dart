@@ -1,5 +1,4 @@
 class UserDtoLabels {
-
   const UserDtoLabels();
 
   static const String id = "id";
@@ -9,7 +8,6 @@ class UserDtoLabels {
 }
 
 class _UserDtoLabelsProfile {
-
   const _UserDtoLabelsProfile();
 
   String get email => "email";
