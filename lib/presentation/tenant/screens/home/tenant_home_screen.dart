@@ -16,8 +16,7 @@ class TenantHomeScreen extends StatelessWidget {
   static const List<FavoriteItemData> _favorites = [
     FavoriteItemData(
       title: 'Guarapari',
-      imageUrl:
-          'https://images.unsplash.com/photo-1505761671935-60b3a7427bad?w=400',
+      assetPath: 'assets/images/logo_profile.png',
       badgeIcon: Icons.location_pin,
       isPrimary: true,
     ),
@@ -110,22 +109,15 @@ class TenantHomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
     return Scaffold(
       appBar: AppBar(
         titleSpacing: 16, // Adjusted padding
-        title: Row(
-          children: [
-            Icon(Icons.location_pin, color: theme.colorScheme.primary),
-            const SizedBox(width: 8),
-            Text(
-              'Guarappari',
-              style: theme.textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ],
+        title: SizedBox(
+          height: 32,
+          child: Image.asset(
+            'assets/images/logo_horizontal.png',
+            fit: BoxFit.contain,
+          ),
         ),
         actions: [
           IconButton(

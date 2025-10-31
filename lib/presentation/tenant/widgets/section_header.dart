@@ -12,12 +12,10 @@ class SectionHeader extends StatelessWidget {
 
     return Row(
       children: [
-        Expanded(
-          child: Text(
-            title,
-            // Adjusted style to match design's hierarchy
-            style: theme.textTheme.titleLarge,
-          ),
+        Text(
+          title,
+          // Adjusted style to match design's hierarchy
+          style: theme.textTheme.titleLarge,
         ),
         IconButton(
           onPressed: onPressed,
