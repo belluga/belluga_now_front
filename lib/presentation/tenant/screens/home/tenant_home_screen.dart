@@ -1,13 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:belluga_now/presentation/view_models/upcoming_event_data.dart';
 import 'package:belluga_now/presentation/view_models/event_card_data.dart';
 import 'package:belluga_now/presentation/view_models/favorite_item_data.dart';
-import 'package:belluga_now/presentation/tenant/widgets/upcoming_event_item.dart';
 import 'package:belluga_now/presentation/tenant/widgets/carousel_event_card.dart';
 import 'package:belluga_now/presentation/tenant/widgets/favorites_strip.dart';
 import 'package:belluga_now/presentation/tenant/widgets/belluga_bottom_navigation_bar.dart';
 import 'package:belluga_now/presentation/tenant/widgets/invites_banner.dart';
 import 'package:belluga_now/presentation/tenant/widgets/section_header.dart';
+import 'package:belluga_now/presentation/tenant/widgets/upcoming_event_card.dart';
 
 class TenantHomeScreen extends StatelessWidget {
   const TenantHomeScreen({super.key});
@@ -22,55 +21,58 @@ class TenantHomeScreen extends StatelessWidget {
   ];
 
   List<EventCardData> get _carouselEvents => [
-    EventCardData(
-      title: 'Festival de Verão',
-      imageUrl: 'https://images.unsplash.com/photo-1524368535928-5b5e00ddc76b?w=800',
-      startDateTime: DateTime(2024, 1, 7, 20, 0),
-      location: 'Praia do Morro',
-      artist: 'DJ Mare Alta',
-    ),
-    EventCardData(
-      title: 'Luau Exclusivo',
-      imageUrl: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=800',
-      startDateTime: DateTime(2024, 1, 8, 22, 0),
-      location: 'Areia Preta',
-      artist: 'Banda Eclipse',
-    ),
-    EventCardData(
-      title: 'Sunset Experience',
-      imageUrl: 'https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?w=800',
-      startDateTime: DateTime(2024, 1, 9, 18, 0),
-      location: 'Parque da Areia',
-      artist: 'DJ Horizonte',
-    ),
-  ];
+        EventCardData(
+          title: 'Festival de Verão',
+          imageUrl:
+              'https://images.unsplash.com/photo-1524368535928-5b5e00ddc76b?w=800',
+          startDateTime: DateTime(2024, 1, 7, 20, 0),
+          location: 'Praia do Morro',
+          artist: 'DJ Mare Alta',
+        ),
+        EventCardData(
+          title: 'Luau Exclusivo',
+          imageUrl:
+              'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=800',
+          startDateTime: DateTime(2024, 1, 8, 22, 0),
+          location: 'Areia Preta',
+          artist: 'Banda Eclipse',
+        ),
+        EventCardData(
+          title: 'Sunset Experience',
+          imageUrl:
+              'https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?w=800',
+          startDateTime: DateTime(2024, 1, 9, 18, 0),
+          location: 'Parque da Areia',
+          artist: 'DJ Horizonte',
+        ),
+      ];
 
-  static const List<UpcomingEventData> _upcomingEvents = [
-    UpcomingEventData(
-      title: 'Circuito Gastronômico',
-      category: 'Chef Table',
-      price: '\$\$',
-      distance: '1,2 km',
-      rating: 5,
-      description: 'Sabores autorais servidos em sequencia exclusiva.',
-    ),
-    UpcomingEventData(
-      title: 'Passeio de Escuna',
-      category: 'Experiência',
-      price: '\$\$',
-      distance: '800 m',
-      rating: 4,
-      description: 'Três paradas para mergulho com guia local.',
-    ),
-    UpcomingEventData(
-      title: 'Tour Histórico a Pé',
-      category: 'Cultura',
-      price: '\$',
-      distance: '2 km',
-      rating: 4,
-      description: 'Descubra os segredos e histórias do centro.',
-    ),
-  ];
+  List<EventCardData> get _upcomingEvents => [
+        EventCardData(
+          title: 'Circuito Gastronomico',
+          imageUrl:
+              'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=800',
+          startDateTime: DateTime(2024, 1, 12, 19, 30),
+          location: 'Bistro da Orla',
+          artist: 'Chef Paula Figueiredo',
+        ),
+        EventCardData(
+          title: 'Passeio de Escuna',
+          imageUrl:
+              'https://images.unsplash.com/photo-1493558103817-58b2924bce98?w=800',
+          startDateTime: DateTime(2024, 1, 13, 9, 0),
+          location: 'Porto da Barra',
+          artist: 'Guia Clara Nunes',
+        ),
+        EventCardData(
+          title: 'Tour Historico a Pe',
+          imageUrl:
+              'https://images.unsplash.com/photo-1534447677768-be436bb09401?w=800',
+          startDateTime: DateTime(2024, 1, 14, 15, 0),
+          location: 'Centro Historico',
+          artist: 'Historiador Joao Mendes',
+        ),
+      ];
   // --- END MOCK DATA ---
 
   @override
@@ -113,7 +115,7 @@ class TenantHomeScreen extends StatelessWidget {
       bottomNavigationBar: BellugaBottomNavigationBar(),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(16,0,16,150),
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 150),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -159,10 +161,10 @@ class TenantHomeScreen extends StatelessWidget {
                 physics: const NeverScrollableScrollPhysics(),
                 itemCount: _upcomingEvents.length,
                 // Using a taller separator to match the design
-                separatorBuilder: (_, __) => const SizedBox(height: 24),
+                separatorBuilder: (_, __) => const Divider(height: 32),
                 itemBuilder: (context, index) {
                   final event = _upcomingEvents[index];
-                  return UpcomingEventItem(data: event);
+                  return UpcomingEventCard(data: event);
                 },
               ),
             ],

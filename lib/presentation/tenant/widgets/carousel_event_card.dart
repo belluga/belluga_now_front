@@ -49,8 +49,8 @@ class CarouselEventCard extends StatelessWidget {
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         colors: [
-                          Theme.of(context).colorScheme.onSurface,
-                          Theme.of(context).colorScheme.onSurface.withOpacity(0.45),
+                          theme.colorScheme.onSurface,
+                          theme.colorScheme.onSurface.withOpacity(0.45),
                           Colors.transparent,
                         ],
                         stops: const [0.0, 0.55, 1.0],

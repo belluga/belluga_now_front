@@ -9,7 +9,7 @@ class BellugaBottomNavigationBar extends StatelessWidget {
       currentIndex: 0,
       items: const [
         BottomNavigationBarItem(
-          icon: Icon(Icons.add),
+          icon: Icon(Icons.home_outlined),
           label: 'Inicio',
         ),
         BottomNavigationBarItem(

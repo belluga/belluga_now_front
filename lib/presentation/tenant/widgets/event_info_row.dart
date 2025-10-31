@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 
 class EventInfoRow extends StatelessWidget {
@@ -32,9 +31,9 @@ class EventInfoRow extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: resolvedColor,
-              fontWeight: FontWeight.w500,
-            ),
+                  color: resolvedColor,
+                  fontWeight: FontWeight.w500,
+                ),
           ),
         ),
       ],
