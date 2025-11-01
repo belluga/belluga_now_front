@@ -6,6 +6,7 @@ import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/presentation/tenant/screens/map/controller/city_map_controller.dart';
 import 'package:belluga_now/presentation/tenant/screens/map/widgets/event_info_card.dart';
 import 'package:belluga_now/presentation/tenant/screens/map/widgets/event_marker.dart';
+import 'package:belluga_now/presentation/tenant/screens/map/widgets/event_temporal_state.dart';
 import 'package:belluga_now/presentation/tenant/screens/map/widgets/location_status_banner.dart';
 import 'package:belluga_now/presentation/tenant/screens/map/widgets/poi_info_card.dart';
 import 'package:belluga_now/presentation/tenant/screens/map/widgets/poi_marker.dart';
@@ -377,6 +378,7 @@ class _CityMapView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final selectedEventId = selectedEvent?.id.value;
+    final now = DateTime.now();
     final markers = <Marker>[
       if (userPosition != null)
         Marker(
@@ -405,21 +407,27 @@ class _CityMapView extends StatelessWidget {
       ...events
           .where((event) => event.coordinate != null)
           .map(
-            (event) => Marker(
-              point: LatLng(
-                event.coordinate!.latitude,
-                event.coordinate!.longitude,
-              ),
-              width: 96,
-              height: 96,
-              child: GestureDetector(
-                onTap: () => onSelectEvent(event),
-                child: EventMarker(
-                  event: event,
-                  isSelected: selectedEventId == event.id.value,
+            (event) {
+              final temporalState =
+                  resolveEventTemporalState(event, reference: now);
+              final markerSize =
+                  temporalState == CityEventTemporalState.now ? 96.0 : 68.0;
+              return Marker(
+                point: LatLng(
+                  event.coordinate!.latitude,
+                  event.coordinate!.longitude,
                 ),
-              ),
-            ),
+                width: markerSize,
+                height: markerSize,
+                child: GestureDetector(
+                  onTap: () => onSelectEvent(event),
+                  child: EventMarker(
+                    event: event,
+                    isSelected: selectedEventId == event.id.value,
+                  ),
+                ),
+              );
+            },
           ),
     ];
 
