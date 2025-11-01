@@ -23,14 +23,16 @@ class CityMapController implements Disposable {
 
   Timer? _movingPoiTimer;
 
-  Future<void> loadPoints(CityCoordinate origin) async {
+  Future<bool> loadPoints(CityCoordinate origin) async {
     poisStreamValue.addValue(null);
     try {
       final points = await _repository.fetchPointsOfInterest(origin);
       poisStreamValue.addValue(points);
       _startDynamicPoiUpdates(points);
+      return true;
     } catch (_) {
       poisStreamValue.addValue(const []);
+      return false;
     }
   }
 

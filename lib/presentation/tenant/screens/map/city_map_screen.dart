@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:belluga_now/domain/map/city_poi_model.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
+import 'package:belluga_now/presentation/common/widgets/main_logo.dart';
 import 'package:belluga_now/presentation/tenant/screens/map/controller/city_map_controller.dart';
 import 'package:belluga_now/presentation/tenant/screens/map/widgets/location_status_banner.dart';
 import 'package:belluga_now/presentation/tenant/screens/map/widgets/poi_info_card.dart';
@@ -15,7 +16,6 @@ import 'package:geolocator/geolocator.dart';
 import 'package:get_it/get_it.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 class CityMapScreen extends StatefulWidget {
   const CityMapScreen({super.key});
@@ -29,10 +29,10 @@ class _CityMapScreenState extends State<CityMapScreen> {
   final _controller = GetIt.I.get<CityMapController>();
 
   LatLng? _userPosition;
-  String? _errorMessage;
-  bool _isLoadingPosition = true;
-  bool _hasRequestedPois = false;
   CityCoordinate? _userOrigin;
+  bool _hasRequestedPois = false;
+  _MapStatus _status = _MapStatus.locating;
+  String? _statusMessage = 'Localizando você...';
 
   @override
   void initState() {
@@ -49,17 +49,32 @@ class _CityMapScreenState extends State<CityMapScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final defaultCenter = _controller.defaultCenter;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Mapa de Guarapari'),
+        title: const MainLogo(),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh_outlined),
             tooltip: 'Recarregar pontos',
             onPressed: _userOrigin == null
                 ? null
-                : () => _controller.loadPoints(_userOrigin!),
+                : () async {
+                    setState(() {
+                      _status = _MapStatus.fetching;
+                      _statusMessage = 'Buscando pontos próximos...';
+                    });
+                    final success =
+                        await _controller.loadPoints(_userOrigin!);
+                    if (!mounted) return;
+                    setState(() {
+                      _status = success ? _MapStatus.ready : _MapStatus.error;
+                      _statusMessage = success
+                          ? null
+                          : 'Não foi possível carregar os pontos próximos.';
+                    });
+                  },
           ),
           IconButton(
             icon: const Icon(Icons.my_location_outlined),
@@ -70,7 +85,6 @@ class _CityMapScreenState extends State<CityMapScreen> {
       ),
       body: StreamValueBuilder<List<CityPoiModel>?>(
         streamValue: _controller.poisStreamValue,
-        onNullWidget: const Center(child: CircularProgressIndicator()),
         builder: (context, pois) {
           final poiList = pois ?? const <CityPoiModel>[];
           return StreamValueBuilder<CityPoiModel?>(
@@ -85,8 +99,8 @@ class _CityMapScreenState extends State<CityMapScreen> {
                     onSelectPoi: _controller.selectPoi,
                     userPosition: _userPosition,
                     defaultCenter: LatLng(
-                      _controller.defaultCenter.latitude,
-                      _controller.defaultCenter.longitude,
+                      defaultCenter.latitude,
+                      defaultCenter.longitude,
                     ),
                   ),
                   Positioned(
@@ -100,10 +114,11 @@ class _CityMapScreenState extends State<CityMapScreen> {
                       alignment: Alignment.bottomCenter,
                       child: Padding(
                         padding: const EdgeInsets.fromLTRB(24, 0, 24, 32),
-                        child: PoiInfoCard(
-                          poi: selectedPoi,
-                          onDismiss: () => _controller.selectPoi(null),
-                          onRoute: () => _showRouteOptions(selectedPoi),
+                        child: SafeArea(
+                          child: PoiInfoCard(
+                            poi: selectedPoi,
+                            onDismiss: () => _controller.selectPoi(null),
+                          ),
                         ),
                       ),
                     ),
@@ -117,40 +132,65 @@ class _CityMapScreenState extends State<CityMapScreen> {
   }
 
   Widget _buildStatusBanner(ThemeData theme) {
-    if (_isLoadingPosition) {
-      return LocationStatusBanner(
-        icon: Icons.hourglass_bottom,
-        label: 'Localizando você... ',
-        backgroundColor: theme.colorScheme.surfaceContainerHigh,
-        textColor: theme.colorScheme.onSurfaceVariant,
-      );
+    if (_statusMessage == null) {
+      return const SizedBox.shrink();
     }
 
-    if (_errorMessage != null) {
-      return LocationStatusBanner(
-        icon: Icons.warning_amber_rounded,
-        label: _errorMessage!,
-        backgroundColor: theme.colorScheme.errorContainer,
-        textColor: theme.colorScheme.onErrorContainer,
-      );
+    late final Color background;
+    late final Color textColor;
+    late final IconData icon;
+
+    switch (_status) {
+      case _MapStatus.locating:
+        background = theme.colorScheme.surfaceContainerHigh;
+        textColor = theme.colorScheme.onSurfaceVariant;
+        icon = Icons.hourglass_bottom;
+        break;
+      case _MapStatus.fetching:
+        background = theme.colorScheme.secondaryContainer;
+        textColor = theme.colorScheme.onSecondaryContainer;
+        icon = Icons.explore_outlined;
+        break;
+      case _MapStatus.fallback:
+        background = theme.colorScheme.surfaceContainerHighest;
+        textColor = theme.colorScheme.onSurfaceVariant;
+        icon = Icons.location_off_outlined;
+        break;
+      case _MapStatus.error:
+        background = theme.colorScheme.errorContainer;
+        textColor = theme.colorScheme.onErrorContainer;
+        icon = Icons.warning_amber_rounded;
+        break;
+      case _MapStatus.ready:
+        background = theme.colorScheme.surfaceContainerHighest;
+        textColor = theme.colorScheme.onSurfaceVariant;
+        icon = Icons.info_outline;
+        break;
     }
 
-    return const SizedBox.shrink();
+    return LocationStatusBanner(
+      icon: icon,
+      label: _statusMessage!,
+      backgroundColor: background,
+      textColor: textColor,
+    );
   }
 
   Future<void> _resolveUserLocation() async {
     setState(() {
-      _isLoadingPosition = true;
-      _errorMessage = null;
+      _status = _MapStatus.locating;
+      _statusMessage = 'Localizando você...';
     });
 
     try {
       final serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
         setState(() {
-          _errorMessage = 'Ative os serviços de localização para ver sua posição.';
-          _isLoadingPosition = false;
+          _status = _MapStatus.error;
+          _statusMessage =
+              'Ative os serviços de localização para ver sua posição. Exibindo pontos padrão da cidade.';
         });
+        _fallbackLoadPois();
         return;
       }
 
@@ -162,10 +202,11 @@ class _CityMapScreenState extends State<CityMapScreen> {
       if (permission == LocationPermission.deniedForever ||
           permission == LocationPermission.denied) {
         setState(() {
-          _errorMessage =
-              'Permita o acesso à localização para localizar pontos próximos.';
-          _isLoadingPosition = false;
+          _status = _MapStatus.error;
+          _statusMessage =
+              'Permita o acesso à localização para localizar pontos próximos. Exibindo pontos padrão da cidade.';
         });
+        _fallbackLoadPois();
         return;
       }
 
@@ -173,37 +214,46 @@ class _CityMapScreenState extends State<CityMapScreen> {
         desiredAccuracy: LocationAccuracy.best,
       );
 
-      final userLatLng = LatLng(position.latitude, position.longitude);
       final origin = CityCoordinate(
         latitude: position.latitude,
         longitude: position.longitude,
       );
+      final userLatLng = LatLng(position.latitude, position.longitude);
+
       setState(() {
-        _userPosition = userLatLng;
         _userOrigin = origin;
-        _isLoadingPosition = false;
+        _userPosition = userLatLng;
+        _status = _MapStatus.fetching;
+        _statusMessage = 'Buscando pontos próximos...';
       });
 
-      if (!_hasRequestedPois) {
-        _hasRequestedPois = true;
-        unawaited(_controller.loadPoints(origin));
+      final success = await _controller.loadPoints(origin);
+      if (mounted) {
+        setState(() {
+          _status = success ? _MapStatus.ready : _MapStatus.error;
+          _statusMessage = success
+              ? null
+              : 'Não foi possível carregar os pontos próximos.';
+        });
       }
 
-      unawaited(Future<void>.delayed(const Duration(milliseconds: 300), () {
-        if (mounted) {
-          _mapController.move(userLatLng, 15);
-        }
-      }));
+      _hasRequestedPois = true;
+
+      if (mounted) {
+        _mapController.move(userLatLng, 15);
+      }
     } on PlatformException catch (error) {
       setState(() {
-        _errorMessage = 'Não foi possível obter a localização (${error.code}).';
-        _isLoadingPosition = false;
+        _status = _MapStatus.error;
+        _statusMessage =
+            'Não foi possível obter a localização (${error.code}). Exibindo pontos padrão da cidade.';
       });
       _fallbackLoadPois();
     } catch (_) {
       setState(() {
-        _errorMessage = 'Não foi possível obter a localização.';
-        _isLoadingPosition = false;
+        _status = _MapStatus.error;
+        _statusMessage =
+            'Não foi possível obter a localização. Exibindo pontos padrão da cidade.';
       });
       _fallbackLoadPois();
     }
@@ -216,98 +266,27 @@ class _CityMapScreenState extends State<CityMapScreen> {
     _controller.selectPoi(null);
   }
 
-  Future<void> _showRouteOptions(CityPoiModel poi) async {
-    final destination = '${poi.coordinate.latitude},${poi.coordinate.longitude}';
-    final options = [
-      _RouteOption(
-        label: 'Google Maps',
-        icon: Icons.map_outlined,
-        uri: Uri.parse('https://www.google.com/maps/dir/?api=1&destination=$destination'),
-      ),
-      _RouteOption(
-        label: 'Waze',
-        icon: Icons.directions_car_filled_outlined,
-        uri: Uri.parse('https://waze.com/ul?ll=$destination&navigate=yes'),
-      ),
-      _RouteOption(
-        label: 'Uber',
-        icon: Icons.local_taxi_outlined,
-        uri: Uri.parse('uber://?action=setPickup&dropoff[latitude]=${poi.coordinate.latitude}&dropoff[longitude]=${poi.coordinate.longitude}&dropoff[nickname]=${Uri.encodeComponent(poi.name)}'),
-        fallback: Uri.parse('https://m.uber.com/ul/?action=setPickup&dropoff[latitude]=${poi.coordinate.latitude}&dropoff[longitude]=${poi.coordinate.longitude}&dropoff[nickname]=${Uri.encodeComponent(poi.name)}'),
-      ),
-    ];
-
-    if (!mounted) return;
-
-    await showModalBottomSheet<void>(
-      context: context,
-      builder: (context) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              child: Text(
-                'Abrir rota',
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-            ),
-            for (final option in options)
-              ListTile(
-                leading: Icon(option.icon),
-                title: Text(option.label),
-                onTap: () async {
-                  Navigator.of(context).pop();
-                  await _launchUri(option.uri, fallback: option.fallback);
-                },
-              ),
-            const SizedBox(height: 12),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Future<void> _launchUri(Uri uri, {Uri? fallback}) async {
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-      return;
-    }
-
-    if (fallback != null && await canLaunchUrl(fallback)) {
-      await launchUrl(fallback, mode: LaunchMode.externalApplication);
-      return;
-    }
-
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Não foi possível abrir o aplicativo de rotas.'),
-      ),
-    );
-  }
-
   void _fallbackLoadPois() {
     if (_hasRequestedPois) return;
     _hasRequestedPois = true;
     final center = _controller.defaultCenter;
-    _controller.loadPoints(center);
+    setState(() {
+      _status = _MapStatus.fallback;
+      _statusMessage = 'Exibindo pontos padrão da cidade.';
+    });
+    unawaited(_controller.loadPoints(center).then((success) {
+      if (!mounted) return;
+      setState(() {
+        _status = success ? _MapStatus.ready : _MapStatus.error;
+        _statusMessage = success
+            ? null
+            : 'Não foi possível carregar os pontos padrão.';
+      });
+    }));
   }
 }
 
-class _RouteOption {
-  const _RouteOption({
-    required this.label,
-    required this.icon,
-    required this.uri,
-    this.fallback,
-  });
-
-  final String label;
-  final IconData icon;
-  final Uri uri;
-  final Uri? fallback;
-}
+enum _MapStatus { locating, fetching, ready, error, fallback }
 
 class _CityMapView extends StatelessWidget {
   const _CityMapView({

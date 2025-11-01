@@ -7,12 +7,10 @@ class PoiInfoCard extends StatelessWidget {
     super.key,
     required this.poi,
     required this.onDismiss,
-    required this.onRoute,
   });
 
   final CityPoiModel poi;
   final VoidCallback onDismiss;
-  final VoidCallback onRoute;
 
   @override
   Widget build(BuildContext context) {
@@ -32,14 +30,7 @@ class PoiInfoCard extends StatelessWidget {
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: themeData.color.withOpacity(0.12),
-                  ),
-                  padding: const EdgeInsets.all(12),
-                  child: Icon(themeData.icon, color: themeData.color),
-                ),
+                _PoiAvatar(poi: poi, themeData: themeData),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
@@ -87,18 +78,83 @@ class PoiInfoCard extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 16),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: onRoute,
-                icon: const Icon(Icons.directions_outlined),
-                label: const Text('Ver rotas'),
-              ),
-            ),
           ],
         ),
       ),
+    );
+  }
+}
+
+class _PoiAvatar extends StatelessWidget {
+  const _PoiAvatar({required this.poi, required this.themeData});
+
+  final CityPoiModel poi;
+  final CityPoiCategoryThemeData themeData;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
+    if (poi.assetPath != null) {
+      final isDynamicSponsor = poi.isDynamic;
+      final size = isDynamicSponsor ? 48.0 : 64.0;
+      final badgeIcon = isDynamicSponsor
+          ? Icons.shopping_bag_outlined
+          : Icons.storefront;
+
+      return Stack(
+        clipBehavior: Clip.none,
+        alignment: Alignment.bottomRight,
+        children: [
+          Container(
+            width: size,
+            height: size,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.25),
+                  blurRadius: 8,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: Image.asset(
+              poi.assetPath!,
+              fit: BoxFit.cover,
+            ),
+          ),
+          Positioned(
+            right: -4,
+            bottom: -4,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: themeData.color,
+                border: Border.all(color: scheme.surface, width: 2),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(4),
+                child: Icon(
+                  badgeIcon,
+                  size: 14,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+
+    return Container(
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: themeData.color.withOpacity(0.12),
+      ),
+      padding: const EdgeInsets.all(12),
+      child: Icon(themeData.icon, color: themeData.color),
     );
   }
 }
