@@ -13,6 +13,7 @@ class CityPoiModel {
     this.assetPath,
     this.isDynamic = false,
     this.movementRadiusMeters,
+    this.tags = const [],
   });
 
   final String id;
@@ -24,6 +25,7 @@ class CityPoiModel {
   final String? assetPath;
   final bool isDynamic;
   final double? movementRadiusMeters;
+  final List<String> tags;
 
   factory CityPoiModel.fromDTO(CityPoiDTO dto) {
     return CityPoiModel(
@@ -39,6 +41,7 @@ class CityPoiModel {
       assetPath: dto.assetPath,
       isDynamic: dto.isDynamic,
       movementRadiusMeters: dto.movementRadiusMeters,
+      tags: dto.tags,
     );
   }
 }

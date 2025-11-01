@@ -1,11 +1,12 @@
 import 'package:belluga_now/domain/map/city_poi_category.dart';
+import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
+import 'package:belluga_now/infrastructure/services/dal/datasources/poi_query.dart';
 import 'package:belluga_now/infrastructure/services/dal/dto/map/city_poi_dto.dart';
 
-class CityPoiDataSource {
-  const CityPoiDataSource();
+class MockPoiDatabase {
+  const MockPoiDatabase();
 
-  List<CityPoiDTO> fetchPoints({required double latitude, required double longitude}) {
-    return const [
+  static final List<CityPoiDTO> _pois = List.unmodifiable(<CityPoiDTO>[
       CityPoiDTO(
         id: 'poi-restaurant-american-grill',
         name: 'American Grill',
@@ -14,6 +15,7 @@ class CityPoiDataSource {
         category: CityPoiCategory.restaurant,
         latitude: -20.6600241,
         longitude: -40.502093,
+        tags: ['steakhouse', 'grill'],
       ),
       CityPoiDTO(
         id: 'poi-restaurant-acaizeiro',
@@ -23,8 +25,9 @@ class CityPoiDataSource {
         category: CityPoiCategory.restaurant,
         latitude: -20.651817,
         longitude: -40.4793957,
+        tags: ['açai', 'sobremesa'],
       ),
-      CityPoiDTO(
+      const CityPoiDTO(
         id: 'poi-restaurant-barraca-do-marcelo',
         name: 'Barraca do Marcelo',
         description: 'Regional, Petiscos, Bolinho De Aipim De Meaípe, Seafood, Fish, Brazilian, Fries',
@@ -32,6 +35,7 @@ class CityPoiDataSource {
         category: CityPoiCategory.restaurant,
         latitude: -20.7381371,
         longitude: -40.5430268,
+        tags: ['seafood', 'moqueca', 'petiscos'],
       ),
       CityPoiDTO(
         id: 'poi-restaurant-bella-grill',
@@ -41,6 +45,7 @@ class CityPoiDataSource {
         category: CityPoiCategory.restaurant,
         latitude: -20.6593588,
         longitude: -40.4976746,
+        tags: ['churrasco'],
       ),
       CityPoiDTO(
         id: 'poi-restaurant-benfica',
@@ -50,6 +55,7 @@ class CityPoiDataSource {
         category: CityPoiCategory.restaurant,
         latitude: -20.6708241,
         longitude: -40.496421,
+        tags: ['capixaba', 'regional'],
       ),
       CityPoiDTO(
         id: 'poi-restaurant-bistro-pousada-orchidas',
@@ -824,6 +830,7 @@ class CityPoiDataSource {
         category: CityPoiCategory.nature,
         latitude: -20.6054019,
         longitude: -40.5330378,
+        tags: ['trilha', 'mirante'],
       ),
       CityPoiDTO(
         id: 'poi-nature-pedra-do-cruzeiro',
@@ -833,6 +840,7 @@ class CityPoiDataSource {
         category: CityPoiCategory.nature,
         latitude: -20.5927876,
         longitude: -40.5298941,
+        tags: ['mirante'],
       ),
       CityPoiDTO(
         id: 'poi-nature-morro-da-serra-grande',
@@ -842,6 +850,7 @@ class CityPoiDataSource {
         category: CityPoiCategory.nature,
         latitude: -20.60157,
         longitude: -40.5277992,
+        tags: ['trilha', 'mirante'],
       ),
       CityPoiDTO(
         id: 'poi-beach-praia-boca-da-baleia',
@@ -1356,6 +1365,26 @@ class CityPoiDataSource {
         latitude: -20.6634695,
         longitude: -40.500169,
       ),
-    ];
+    ]);
+
+  List<CityPoiDTO> findPois({PoiQuery query = const PoiQuery()}) {
+    return _pois.where((poi) {
+      if (!query.matchesCategory(poi.category)) {
+        return false;
+      }
+      if (!query.matchesTags(poi.tags)) {
+        return false;
+      }
+      if (query.hasBounds) {
+        final coordinate = CityCoordinate(
+          latitude: poi.latitude,
+          longitude: poi.longitude,
+        );
+        if (!query.containsCoordinate(coordinate)) {
+          return false;
+        }
+      }
+      return true;
+    }).toList(growable: false);
   }
 }

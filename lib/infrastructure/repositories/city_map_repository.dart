@@ -1,21 +1,18 @@
 import 'package:belluga_now/domain/map/city_poi_model.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/domain/repositories/city_map_repository_contract.dart';
-import 'package:belluga_now/infrastructure/services/dal/datasources/city_poi_data_source.dart';
+import 'package:belluga_now/infrastructure/services/dal/datasources/mock_poi_database.dart';
 
 class CityMapRepository extends CityMapRepositoryContract {
   CityMapRepository({
-    CityPoiDataSource? dataSource,
-  }) : _dataSource = dataSource ?? const CityPoiDataSource();
+    MockPoiDatabase? database,
+  }) : _database = database ?? const MockPoiDatabase();
 
-  final CityPoiDataSource _dataSource;
+  final MockPoiDatabase _database;
 
   @override
   Future<List<CityPoiModel>> fetchPointsOfInterest(CityCoordinate origin) async {
-    final dtos = _dataSource.fetchPoints(
-      latitude: origin.latitude,
-      longitude: origin.longitude,
-    );
+    final dtos = _database.findPois();
     return dtos.map(CityPoiModel.fromDTO).toList(growable: false);
   }
 
