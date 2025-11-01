@@ -1,5 +1,5 @@
-import 'package:belluga_now/infrastructure/services/dal/dto/schedule/event_artist_dto.dart';
 import 'package:belluga_now/infrastructure/services/dal/dto/schedule/event_actions_dto.dart';
+import 'package:belluga_now/infrastructure/services/dal/dto/schedule/event_artist_dto.dart';
 import 'package:belluga_now/infrastructure/services/dal/dto/schedule/event_dto.dart';
 import 'package:belluga_now/infrastructure/services/dal/dto/schedule/event_summary_dto.dart';
 import 'package:belluga_now/infrastructure/services/dal/dto/schedule/event_summary_item_dto.dart';
@@ -58,47 +58,24 @@ class MockScheduleBackend implements ScheduleBackendContract {
   );
 
   static final List<_MockEventSeed> _eventSeeds = [
+    // Day 0
     _MockEventSeed(
-      id: 'event-yesterday-acoustic',
-      type: _concertType,
-      title: 'Acoustic Evening at the Garden',
-      content:
-          'Encontro intimista com classicos reinterpretados em formato acustico.',
-      location: 'Garden Stage Centro',
-      latitude: -20.6714,
-      longitude: -40.5042,
-      thumbUrl:
-          'https://images.unsplash.com/photo-1489515217757-5fd1be406fef?w=800',
-      offsetDays: -1,
-      startHour: 20,
-      artists: const [
-        _MockArtistSeed(
-          id: 'artist-acoustic',
-          name: 'Duo Horizonte',
-          avatarUrl:
-              'https://images.unsplash.com/photo-1549068146-79fa64ac84c2?w=200',
-        ),
-      ],
-      actionLabel: 'Assistir reprise',
-      actionUrl: 'https://example.com/acoustic-evening',
-      actionColor: '#FF4FA0E3',
-    ),
-    _MockEventSeed(
-      id: 'event-today-yoga',
+      id: 'event-day0-morning-flow',
       type: _workshopType,
-      title: 'Sunrise Yoga Flow',
+      title: 'Morning Flow Yoga',
       content:
-          'Sessao matinal ao ar livre focada em respiracao e alongamentos.',
+          'Sessao matinal a beira-mar focada em respiracao e alongamentos para comecar o dia.',
       location: 'Deck Praia do Morro',
       latitude: -20.6634,
       longitude: -40.4976,
       thumbUrl:
           'https://images.unsplash.com/photo-1506126613408-eca07ce68773?w=800',
       offsetDays: 0,
-      startHour: 9,
+      startHour: 8,
+      durationMinutes: 75,
       artists: const [
         _MockArtistSeed(
-          id: 'artist-yoga',
+          id: 'artist-marina-luz',
           name: 'Instrutora Marina Luz',
           avatarUrl:
               'https://images.unsplash.com/photo-1544723795-3fb6469f5b39?w=200',
@@ -106,21 +83,108 @@ class MockScheduleBackend implements ScheduleBackendContract {
         ),
       ],
       actionLabel: 'Reservar vaga',
-      actionUrl: 'https://example.com/sunrise-yoga',
+      actionUrl: 'https://example.com/morning-flow',
       actionColor: '#FFE80D5D',
     ),
     _MockEventSeed(
-      id: 'event-today-party',
+      id: 'event-day0-street-art',
+      type: _workshopType,
+      title: 'Street Art Jam',
+      content:
+          'Sessao colaborativa de arte urbana com orientacao de artistas locais.',
+      location: 'Beco Criativo',
+      latitude: -20.6708,
+      longitude: -40.5013,
+      thumbUrl:
+          'https://images.unsplash.com/photo-1526481280695-3c46917ed726?w=800',
+      offsetDays: 0,
+      startHour: 11,
+      durationMinutes: 120,
+      artists: const [
+        _MockArtistSeed(
+          id: 'artist-nina-ruas',
+          name: 'Nina Ruas',
+          avatarUrl:
+              'https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91?w=200',
+        ),
+        _MockArtistSeed(
+          id: 'artist-tarsila-urb',
+          name: 'Coletivo Tarsila',
+          avatarUrl:
+              'https://images.unsplash.com/photo-1473830394358-91588751b241?w=200',
+        ),
+      ],
+      actionLabel: 'Garantir tinta',
+      actionUrl: 'https://example.com/street-art-jam',
+      actionColor: '#FFE80D5D',
+    ),
+    _MockEventSeed(
+      id: 'event-day0-lunch-beats',
+      type: _concertType,
+      title: 'Lunch Beats',
+      content:
+          'DJ set groove acompanhando food trucks com pratos autorais para o almoco.',
+      location: 'Boulevard Belluga',
+      latitude: -20.6685,
+      longitude: -40.4954,
+      thumbUrl:
+          'https://images.unsplash.com/photo-1497032205916-ac775f0649ae?w=800',
+      offsetDays: 0,
+      startHour: 13,
+      durationMinutes: 90,
+      artists: const [
+        _MockArtistSeed(
+          id: 'artist-dj-savana',
+          name: 'DJ Savana',
+          avatarUrl:
+              'https://images.unsplash.com/photo-1549213820-0fedc82f3817?w=200',
+          highlight: true,
+        ),
+      ],
+      actionLabel: 'Ouvir set',
+      actionUrl: 'https://example.com/lunch-beats',
+      actionColor: '#FF4FA0E3',
+    ),
+    _MockEventSeed(
+      id: 'event-day0-sunset-acoustic',
+      type: _concertType,
+      title: 'Sunset Acoustic Session',
+      content:
+          'Classicos da MPB em versao acustica com o por do sol da Praia da Areia Preta.',
+      location: 'Praia da Areia Preta',
+      latitude: -20.6649,
+      longitude: -40.5011,
+      thumbUrl:
+          'https://images.unsplash.com/photo-1489515217757-5fd1be406fef?w=800',
+      offsetDays: 0,
+      startHour: 17,
+      durationMinutes: 110,
+      artists: const [
+        _MockArtistSeed(
+          id: 'artist-voz-aurora',
+          name: 'Aurora Ribeiro',
+          avatarUrl:
+              'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=200',
+          highlight: true,
+        ),
+      ],
+      actionLabel: 'Comprar ingresso',
+      actionUrl: 'https://example.com/sunset-acoustic',
+      actionColor: '#FF4FA0E3',
+    ),
+    _MockEventSeed(
+      id: 'event-day0-electro-sunset',
       type: _concertType,
       title: 'Electro Sunset Party',
-      content: 'Line-up de DJs com sets ao vivo e visual do por do sol.',
+      content: 'Line-up de DJs com projecoes visuais e pistas silent-disco.',
       location: 'Orla Central',
       latitude: -20.6678,
       longitude: -40.5029,
       thumbUrl:
           'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?w=800',
       offsetDays: 0,
-      startHour: 19,
+      startHour: 20,
+      durationMinutes: 150,
       artists: const [
         _MockArtistSeed(
           id: 'artist-dj-horizonte',
@@ -140,10 +204,189 @@ class MockScheduleBackend implements ScheduleBackendContract {
       actionUrl: 'https://example.com/electro-sunset',
       actionColor: '#FF4FA0E3',
     ),
+    // Day 1
     _MockEventSeed(
-      id: 'event-tomorrow-food',
+      id: 'event-day1-coastal-run',
       type: _workshopType,
-      title: 'Street Food Tour',
+      title: 'Coastal Run Warm-up',
+      content:
+          'Alongamentos guiados e dicas de respiracao para a corrida costeira.',
+      location: 'Pier do Centro',
+      latitude: -20.6722,
+      longitude: -40.5034,
+      thumbUrl:
+          'https://images.unsplash.com/photo-1452626038306-9aae5e071dd3?w=800',
+      offsetDays: 1,
+      startHour: 7,
+      durationMinutes: 60,
+      artists: const [
+        _MockArtistSeed(
+          id: 'artist-coach-marcio',
+          name: 'Coach Marcio Reis',
+          avatarUrl:
+              'https://images.unsplash.com/photo-1531788612988-9f29f66fcd99?w=200',
+        ),
+      ],
+      actionLabel: 'Inscrever-se',
+      actionUrl: 'https://example.com/coastal-run',
+      actionColor: '#FFE80D5D',
+    ),
+    _MockEventSeed(
+      id: 'event-day1-coffee-lab',
+      type: _workshopType,
+      title: 'Coffee Roasting Lab',
+      content:
+          'Laboratorio sensorial com mestres cafeicultores e torras especiais.',
+      location: 'Casa dos Cafes',
+      latitude: -20.6754,
+      longitude: -40.5001,
+      thumbUrl:
+          'https://images.unsplash.com/photo-1447933601403-0c6688de566e?w=800',
+      offsetDays: 1,
+      startHour: 10,
+      durationMinutes: 120,
+      artists: const [
+        _MockArtistSeed(
+          id: 'artist-barista-joana',
+          name: 'Barista Joana Ramos',
+          avatarUrl:
+              'https://images.unsplash.com/photo-1511910849309-0f35d0e0b33b?w=200',
+          highlight: true,
+        ),
+      ],
+      actionLabel: 'Garantir vaga',
+      actionUrl: 'https://example.com/coffee-roasting',
+      actionColor: '#FFE80D5D',
+    ),
+    _MockEventSeed(
+      id: 'event-day1-artisan-stage',
+      type: _concertType,
+      title: 'Artisan Fair Stage',
+      content:
+          'Pocket shows durante a feira de artesaos no centro historico.',
+      location: 'Praca Philomeno Pereira',
+      latitude: -20.6726,
+      longitude: -40.5009,
+      thumbUrl:
+          'https://images.unsplash.com/photo-1469474968028-56623f02e42e?w=800',
+      offsetDays: 1,
+      startHour: 14,
+      durationMinutes: 150,
+      artists: const [
+        _MockArtistSeed(
+          id: 'artist-trio-cascata',
+          name: 'Trio Cascata',
+          avatarUrl:
+              'https://images.unsplash.com/photo-1454922915609-78549ad709bb?w=200',
+        ),
+      ],
+      actionLabel: 'Ver programacao',
+      actionUrl: 'https://example.com/artisan-stage',
+      actionColor: '#FF4FA0E3',
+    ),
+    _MockEventSeed(
+      id: 'event-day1-samba-square',
+      type: _concertType,
+      title: 'Samba na Praca',
+      content:
+          'Roda de samba com participacoes especiais e repertorio autoral capixaba.',
+      location: 'Praca da Matriz',
+      latitude: -20.6739,
+      longitude: -40.5054,
+      thumbUrl:
+          'https://images.unsplash.com/photo-1518544889280-0f4e3b8ac60c?w=800',
+      offsetDays: 1,
+      startHour: 17,
+      durationMinutes: 180,
+      artists: const [
+        _MockArtistSeed(
+          id: 'artist-samba-coral',
+          name: 'Grupo Coral da Barra',
+          avatarUrl:
+              'https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?w=200',
+          highlight: true,
+        ),
+      ],
+      actionLabel: 'Confirmar presenca',
+      actionUrl: 'https://example.com/samba-praca',
+      actionColor: '#FF4FA0E3',
+    ),
+    _MockEventSeed(
+      id: 'event-day1-starlight-cinema',
+      type: _workshopType,
+      title: 'Starlight Cinema',
+      content:
+          'Sessao de cinema ao ar livre com curta-metragens de cineastas locais.',
+      location: 'Mirante Alto da Serra',
+      latitude: -20.6582,
+      longitude: -40.5110,
+      thumbUrl:
+          'https://images.unsplash.com/photo-1524985069026-dd778a71c7b4?w=800',
+      offsetDays: 1,
+      startHour: 20,
+      durationMinutes: 120,
+      artists: const [],
+      actionLabel: 'Retirar ingresso',
+      actionUrl: 'https://example.com/starlight-cinema',
+      actionColor: '#FFE80D5D',
+    ),
+    // Day 2
+    _MockEventSeed(
+      id: 'event-day2-beach-pilates',
+      type: _workshopType,
+      title: 'Beach Pilates',
+      content:
+          'Aula de pilates no areal com foco em fortalecimento e equilibrio.',
+      location: 'Praia do Morro Posto 1',
+      latitude: -20.6654,
+      longitude: -40.4948,
+      thumbUrl:
+          'https://images.unsplash.com/photo-1452626038306-9aae5e071dd3?w=800',
+      offsetDays: 2,
+      startHour: 8,
+      durationMinutes: 70,
+      artists: const [
+        _MockArtistSeed(
+          id: 'artist-ana-oliveira',
+          name: 'Ana Oliveira',
+          avatarUrl:
+              'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=200',
+        ),
+      ],
+      actionLabel: 'Reservar colchonete',
+      actionUrl: 'https://example.com/beach-pilates',
+      actionColor: '#FFE80D5D',
+    ),
+    _MockEventSeed(
+      id: 'event-day2-ceramic-lab',
+      type: _workshopType,
+      title: 'Ceramica Contemporanea',
+      content:
+          'Laboratorio de ceramica com queima raku e tecnicas de texturizacao.',
+      location: 'Atelie Terra e Mar',
+      latitude: -20.6761,
+      longitude: -40.4974,
+      thumbUrl:
+          'https://images.unsplash.com/photo-1503602642458-232111445657?w=800',
+      offsetDays: 2,
+      startHour: 10,
+      durationMinutes: 150,
+      artists: const [
+        _MockArtistSeed(
+          id: 'artist-luiza-ceram',
+          name: 'Luiza Ceramistas',
+          avatarUrl:
+              'https://images.unsplash.com/photo-1514844646970-96a3809b8f08?w=200',
+        ),
+      ],
+      actionLabel: 'Participar',
+      actionUrl: 'https://example.com/ceramica-contemporanea',
+      actionColor: '#FFE80D5D',
+    ),
+    _MockEventSeed(
+      id: 'event-day2-food-trail',
+      type: _workshopType,
+      title: 'Street Food Trail',
       content:
           'Caminhada guiada degustando petiscos autorais pelos quiosques locais.',
       location: 'Centro Historico',
@@ -151,8 +394,9 @@ class MockScheduleBackend implements ScheduleBackendContract {
       longitude: -40.5048,
       thumbUrl:
           'https://images.unsplash.com/photo-1466978913421-dad2ebd01d17?w=800',
-      offsetDays: 1,
-      startHour: 12,
+      offsetDays: 2,
+      startHour: 13,
+      durationMinutes: 150,
       artists: const [
         _MockArtistSeed(
           id: 'artist-chef-paula',
@@ -166,41 +410,45 @@ class MockScheduleBackend implements ScheduleBackendContract {
       actionColor: '#FFE80D5D',
     ),
     _MockEventSeed(
-      id: 'event-two-days-mixology',
-      type: _workshopType,
-      title: 'Tropical Mixology Lab',
-      content: 'Sessao pratica de coqueteis com ingredientes regionais.',
-      location: 'Espaco Mixology Lab',
-      latitude: -20.6691,
-      longitude: -40.5004,
+      id: 'event-day2-capoeira',
+      type: _concertType,
+      title: 'Capoeira Sunset Roda',
+      content:
+          'Apresentacao com grupos tradicionais e oficina aberta ao publico.',
+      location: 'Parque da Prainha',
+      latitude: -20.6721,
+      longitude: -40.4989,
       thumbUrl:
-          'https://images.unsplash.com/photo-1497534446932-c925b458314e?w=800',
+          'https://images.unsplash.com/photo-1545239351-1141bd82e8a6?w=800',
       offsetDays: 2,
-      startHour: 18,
+      startHour: 16,
+      durationMinutes: 120,
       artists: const [
         _MockArtistSeed(
-          id: 'artist-mixology',
-          name: 'Mixologista Lara Silva',
+          id: 'artist-mestre-marajo',
+          name: 'Mestre Marajo',
           avatarUrl:
-              'https://images.unsplash.com/photo-1521579971123-1192931a1452?w=200',
+              'https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?w=200',
+          highlight: true,
         ),
       ],
-      actionLabel: 'Reservar',
-      actionUrl: 'https://example.com/mixology-lab',
-      actionColor: '#FFE80D5D',
+      actionLabel: 'Participar',
+      actionUrl: 'https://example.com/capoeira-sunset',
+      actionColor: '#FF4FA0E3',
     ),
     _MockEventSeed(
-      id: 'event-two-days-jazz',
+      id: 'event-day2-jazz-rooftop',
       type: _concertType,
-      title: 'Jazz Under the Stars',
+      title: 'Jazz Rooftop Session',
       content: 'Concerto instrumental com participacao de solistas convidados.',
       location: 'Mirante Alto da Serra',
       latitude: -20.6582,
-      longitude: -40.511,
+      longitude: -40.5110,
       thumbUrl:
-          'https://images.unsplash.com/photo-1526925539332-aa3b66e35444?w=800',
+          'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=800',
       offsetDays: 2,
-      startHour: 21,
+      startHour: 20,
+      durationMinutes: 150,
       artists: const [
         _MockArtistSeed(
           id: 'artist-quartet-azul',
@@ -214,33 +462,490 @@ class MockScheduleBackend implements ScheduleBackendContract {
       actionUrl: 'https://example.com/jazz-under-stars',
       actionColor: '#FF4FA0E3',
     ),
+    // Day 3
     _MockEventSeed(
-      id: 'event-three-days-sketch',
+      id: 'event-day3-sunrise-meditation',
       type: _workshopType,
-      title: 'Urban Sketching Walk',
+      title: 'Sunrise Meditation',
       content:
-          'Workshop itinerante registrando cenas urbanas com tecnicas rapidas.',
-      location: 'Praca Central',
-      latitude: -20.6743,
-      longitude: -40.4978,
+          'Meditacao guiada com musica ambiente para alinhar corpo e mente.',
+      location: 'Parque Morro da Pescaria',
+      latitude: -20.6625,
+      longitude: -40.4853,
       thumbUrl:
-          'https://images.unsplash.com/photo-1473862170182-43c138187c39?w=800',
+          'https://images.unsplash.com/photo-1506126613408-eca07ce68773?w=800',
       offsetDays: 3,
-      startHour: 10,
+      startHour: 6,
+      durationMinutes: 60,
       artists: const [
         _MockArtistSeed(
-          id: 'artist-arte-leo',
-          name: 'Artista Leo Ramos',
+          id: 'artist-thiago-zen',
+          name: 'Thiago Zen',
+          avatarUrl:
+              'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200',
+        ),
+      ],
+      actionLabel: 'Participar',
+      actionUrl: 'https://example.com/sunrise-meditation',
+      actionColor: '#FFE80D5D',
+    ),
+    _MockEventSeed(
+      id: 'event-day3-surf-clinic',
+      type: _workshopType,
+      title: 'Surf Clinic',
+      content:
+          'Clinica para surfistas intermediarios com analise de manobras e video.',
+      location: 'Praia da Cerca',
+      latitude: -20.6468,
+      longitude: -40.4862,
+      thumbUrl:
+          'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800',
+      offsetDays: 3,
+      startHour: 8,
+      durationMinutes: 150,
+      artists: const [
+        _MockArtistSeed(
+          id: 'artist-instrutor-maresia',
+          name: 'Instrutor Maresia',
           avatarUrl:
               'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=200',
         ),
       ],
-      actionLabel: 'Participar',
-      actionUrl: 'https://example.com/urban-sketch',
+      actionLabel: 'Reservar prancha',
+      actionUrl: 'https://example.com/surf-clinic',
       actionColor: '#FFE80D5D',
     ),
     _MockEventSeed(
-      id: 'event-five-days-market',
+      id: 'event-day3-kids-theatre',
+      type: _concertType,
+      title: 'Teatro Kids',
+      content:
+          'Peca interativa com fantoches e musica para criancas de 4 a 10 anos.',
+      location: 'Centro Cultural Radium',
+      latitude: -20.6700,
+      longitude: -40.5024,
+      thumbUrl:
+          'https://images.unsplash.com/photo-1472653816316-3ad6f10a6592?w=800',
+      offsetDays: 3,
+      startHour: 14,
+      durationMinutes: 90,
+      artists: const [
+        _MockArtistSeed(
+          id: 'artist-trupe-lua',
+          name: 'Trupe Lua Nova',
+          avatarUrl:
+              'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=200',
+        ),
+      ],
+      actionLabel: 'Garantir ingresso',
+      actionUrl: 'https://example.com/teatro-kids',
+      actionColor: '#FF4FA0E3',
+    ),
+    _MockEventSeed(
+      id: 'event-day3-mixology',
+      type: _workshopType,
+      title: 'Tropical Mixology Lab',
+      content: 'Sessao pratica de coqueteis com ingredientes regionais.',
+      location: 'Espaco Mixology Lab',
+      latitude: -20.6691,
+      longitude: -40.5004,
+      thumbUrl:
+          'https://images.unsplash.com/photo-1497534446932-c925b458314e?w=800',
+      offsetDays: 3,
+      startHour: 18,
+      durationMinutes: 120,
+      artists: const [
+        _MockArtistSeed(
+          id: 'artist-mixologista-lara',
+          name: 'Mixologista Lara Silva',
+          avatarUrl:
+              'https://images.unsplash.com/photo-1521579971123-1192931a1452?w=200',
+        ),
+      ],
+      actionLabel: 'Reservar',
+      actionUrl: 'https://example.com/mixology-lab',
+      actionColor: '#FFE80D5D',
+    ),
+    _MockEventSeed(
+      id: 'event-day3-rooftop-dj',
+      type: _concertType,
+      title: 'Rooftop DJ Sessions',
+      content:
+          'Sets de musica eletronica com projecoes digitais e vista 360 da baia.',
+      location: 'Terraco GuarAPPari',
+      latitude: -20.6688,
+      longitude: -40.4986,
+      thumbUrl:
+          'https://images.unsplash.com/photo-1506157786151-b8491531f063?w=800',
+      offsetDays: 3,
+      startHour: 21,
+      durationMinutes: 180,
+      artists: const [
+        _MockArtistSeed(
+          id: 'artist-dj-lume',
+          name: 'DJ Lume',
+          avatarUrl:
+              'https://images.unsplash.com/photo-1549213820-0fedc82f3817?w=200',
+          highlight: true,
+        ),
+      ],
+      actionLabel: 'Comprar ingresso',
+      actionUrl: 'https://example.com/rooftop-dj',
+      actionColor: '#FF4FA0E3',
+    ),
+    // Day 4
+    _MockEventSeed(
+      id: 'event-day4-trail-hike',
+      type: _workshopType,
+      title: 'Trail Hike Guarapari',
+      content:
+          'Trilha guiada com interpretacao ambiental pelo Parque da Pescaria.',
+      location: 'Entrada Parque Pescaria',
+      latitude: -20.6610,
+      longitude: -40.4860,
+      thumbUrl:
+          'https://images.unsplash.com/photo-1469474968028-56623f02e42e?w=800',
+      offsetDays: 4,
+      startHour: 7,
+      durationMinutes: 150,
+      artists: const [
+        _MockArtistSeed(
+          id: 'artist-guia-ana',
+          name: 'Guia Ana Prado',
+          avatarUrl:
+              'https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?w=200',
+        ),
+      ],
+      actionLabel: 'Reservar vaga',
+      actionUrl: 'https://example.com/trail-hike',
+      actionColor: '#FFE80D5D',
+    ),
+    _MockEventSeed(
+      id: 'event-day4-photo-walk',
+      type: _workshopType,
+      title: 'Photo Walk Centro Historico',
+      content:
+          'Roteiro fotografico com dicas de composicao e luz nas construcoes coloniais.',
+      location: 'Praca Manoel Teixeira',
+      latitude: -20.6734,
+      longitude: -40.5035,
+      thumbUrl:
+          'https://images.unsplash.com/photo-1473862170182-43c138187c39?w=800',
+      offsetDays: 4,
+      startHour: 9,
+      durationMinutes: 120,
+      artists: const [
+        _MockArtistSeed(
+          id: 'artist-foto-helena',
+          name: 'Fotografa Helena Luz',
+          avatarUrl:
+              'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=200',
+          highlight: true,
+        ),
+      ],
+      actionLabel: 'Participar',
+      actionUrl: 'https://example.com/photo-walk',
+      actionColor: '#FFE80D5D',
+    ),
+    _MockEventSeed(
+      id: 'event-day4-farmers-brunch',
+      type: _workshopType,
+      title: 'Farmers Brunch',
+      content:
+          'Banquete colaborativo com produtos organicos e apresentacoes de pequenos produtores.',
+      location: 'Quintal Agroecologico',
+      latitude: -20.6767,
+      longitude: -40.4981,
+      thumbUrl:
+          'https://images.unsplash.com/photo-1493770348161-369560ae357d?w=800',
+      offsetDays: 4,
+      startHour: 12,
+      durationMinutes: 180,
+      artists: const [],
+      actionLabel: 'Confirmar presenca',
+      actionUrl: 'https://example.com/farmers-brunch',
+      actionColor: '#FFE80D5D',
+    ),
+    _MockEventSeed(
+      id: 'event-day4-chorinho',
+      type: _concertType,
+      title: 'Chorinho na Rua',
+      content:
+          'Roda de chorinho com repertorio tradicional e intervencoes de danca.',
+      location: 'Rua Joaquim Fonseca',
+      latitude: -20.6718,
+      longitude: -40.5007,
+      thumbUrl:
+          'https://images.unsplash.com/photo-1518544889280-0f4e3b8ac60c?w=800',
+      offsetDays: 4,
+      startHour: 17,
+      durationMinutes: 150,
+      artists: const [
+        _MockArtistSeed(
+          id: 'artist-choro-encanto',
+          name: 'Grupo Choro Encanto',
+          avatarUrl:
+              'https://images.unsplash.com/photo-1489515217757-5fd1be406fef?w=200',
+        ),
+      ],
+      actionLabel: 'Contribuir com o chapeu',
+      actionUrl: 'https://example.com/chorinho-rua',
+      actionColor: '#FF4FA0E3',
+    ),
+    _MockEventSeed(
+      id: 'event-day4-poetry',
+      type: _concertType,
+      title: 'Moonlight Poetry Slam',
+      content:
+          'Batalha de poesia com musicistas convidadas e microfone aberto.',
+      location: 'Anfiteatro Praia dos Namorados',
+      latitude: -20.6660,
+      longitude: -40.4996,
+      thumbUrl:
+          'https://images.unsplash.com/photo-1455390582262-044cdead277a?w=800',
+      offsetDays: 4,
+      startHour: 20,
+      durationMinutes: 120,
+      artists: const [
+        _MockArtistSeed(
+          id: 'artist-poeta-lotus',
+          name: 'Poeta Lotus',
+          avatarUrl:
+              'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200',
+          highlight: true,
+        ),
+      ],
+      actionLabel: 'Inscrever poema',
+      actionUrl: 'https://example.com/moonlight-poetry',
+      actionColor: '#FF4FA0E3',
+    ),
+    // Day 5
+    _MockEventSeed(
+      id: 'event-day5-sup-session',
+      type: _workshopType,
+      title: 'SUP Session',
+      content:
+          'Aula de stand up paddle com foco em equilibrio e navegacao costeira.',
+      location: 'Enseada Azul',
+      latitude: -20.6508,
+      longitude: -40.4912,
+      thumbUrl:
+          'https://images.unsplash.com/photo-1489515217757-5fd1be406fef?w=800',
+      offsetDays: 5,
+      startHour: 8,
+      durationMinutes: 90,
+      artists: const [
+        _MockArtistSeed(
+          id: 'artist-instrutor-caique',
+          name: 'Instrutor Caique Ramos',
+          avatarUrl:
+              'https://images.unsplash.com/photo-1521579971123-1192931a1452?w=200',
+        ),
+      ],
+      actionLabel: 'Reservar prancha',
+      actionUrl: 'https://example.com/sup-session',
+      actionColor: '#FFE80D5D',
+    ),
+    _MockEventSeed(
+      id: 'event-day5-ceramic-studio',
+      type: _workshopType,
+      title: 'Studio de Ceramica',
+      content:
+          'Workshop avancado de torno e esmaltacao guiado por artistas residentes.',
+      location: 'Atelie Terra e Mar',
+      latitude: -20.6761,
+      longitude: -40.4974,
+      thumbUrl:
+          'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=800',
+      offsetDays: 5,
+      startHour: 10,
+      durationMinutes: 180,
+      artists: const [
+        _MockArtistSeed(
+          id: 'artist-luiza-ceram',
+          name: 'Luiza Ceramistas',
+          avatarUrl:
+              'https://images.unsplash.com/photo-1514844646970-96a3809b8f08?w=200',
+        ),
+      ],
+      actionLabel: 'Garantir vaga',
+      actionUrl: 'https://example.com/studio-ceramica',
+      actionColor: '#FFE80D5D',
+    ),
+    _MockEventSeed(
+      id: 'event-day5-vegan-popup',
+      type: _workshopType,
+      title: 'Vegan Pop-up Lunch',
+      content:
+          'Menu degustacao com chefs convidados explorando ingredientes locais.',
+      location: 'Praca Gastronomica',
+      latitude: -20.6733,
+      longitude: -40.5018,
+      thumbUrl:
+          'https://images.unsplash.com/photo-1466978913421-dad2ebd01d17?w=800',
+      offsetDays: 5,
+      startHour: 13,
+      durationMinutes: 120,
+      artists: const [
+        _MockArtistSeed(
+          id: 'artist-chef-luana',
+          name: 'Chef Luana Celeste',
+          avatarUrl:
+              'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=200',
+          highlight: true,
+        ),
+      ],
+      actionLabel: 'Reservar mesa',
+      actionUrl: 'https://example.com/vegan-popup',
+      actionColor: '#FFE80D5D',
+    ),
+    _MockEventSeed(
+      id: 'event-day5-forro-night',
+      type: _concertType,
+      title: 'Forro na Orla',
+      content:
+          'Aula coletiva seguida de show com trio pe de serra e dancarinos convidados.',
+      location: 'Orla Central',
+      latitude: -20.6678,
+      longitude: -40.5029,
+      thumbUrl:
+          'https://images.unsplash.com/photo-1518544889280-0f4e3b8ac60c?w=800',
+      offsetDays: 5,
+      startHour: 18,
+      durationMinutes: 150,
+      artists: const [
+        _MockArtistSeed(
+          id: 'artist-trio-sereno',
+          name: 'Trio Sereno',
+          avatarUrl:
+              'https://images.unsplash.com/photo-1454922915609-78549ad709bb?w=200',
+          highlight: true,
+        ),
+      ],
+      actionLabel: 'Comprar ingresso',
+      actionUrl: 'https://example.com/forro-orla',
+      actionColor: '#FF4FA0E3',
+    ),
+    _MockEventSeed(
+      id: 'event-day5-astronomy-talk',
+      type: _workshopType,
+      title: 'Astronomy Talk',
+      content:
+          'Observacao do ceu com telescopios e bate-papo com astronomos convidados.',
+      location: 'Mirante Alto da Serra',
+      latitude: -20.6582,
+      longitude: -40.5110,
+      thumbUrl:
+          'https://images.unsplash.com/photo-1496307042754-b4aa456c4a2d?w=800',
+      offsetDays: 5,
+      startHour: 21,
+      durationMinutes: 120,
+      artists: const [],
+      actionLabel: 'Inscrever-se',
+      actionUrl: 'https://example.com/astronomy-talk',
+      actionColor: '#FFE80D5D',
+    ),
+    // Day 6
+    _MockEventSeed(
+      id: 'event-day6-trail-run',
+      type: _workshopType,
+      title: 'Trail Run Experience',
+      content:
+          'Treino guiado por trilhas com foco em tecnicas de subida e descida.',
+      location: 'Trilha do Ermitao',
+      latitude: -20.6620,
+      longitude: -40.4872,
+      thumbUrl:
+          'https://images.unsplash.com/photo-1526481280695-3c46917ed726?w=800',
+      offsetDays: 6,
+      startHour: 7,
+      durationMinutes: 150,
+      artists: const [
+        _MockArtistSeed(
+          id: 'artist-coach-bruno',
+          name: 'Coach Bruno Sal',
+          avatarUrl:
+              'https://images.unsplash.com/photo-1531788612988-9f29f66fcd99?w=200',
+        ),
+      ],
+      actionLabel: 'Participar',
+      actionUrl: 'https://example.com/trail-run',
+      actionColor: '#FFE80D5D',
+    ),
+    _MockEventSeed(
+      id: 'event-day6-mindfulness',
+      type: _workshopType,
+      title: 'Mindfulness Lab',
+      content:
+          'Sessao de mindfulness com instrumentos ancestrais e aromaterapia.',
+      location: 'Casa GuarAPPari',
+      latitude: -20.6750,
+      longitude: -40.5000,
+      thumbUrl:
+          'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=800',
+      offsetDays: 6,
+      startHour: 10,
+      durationMinutes: 120,
+      artists: const [
+        _MockArtistSeed(
+          id: 'artist-samira-luz',
+          name: 'Samira Luz',
+          avatarUrl:
+              'https://images.unsplash.com/photo-1511910849309-0f35d0e0b33b?w=200',
+        ),
+      ],
+      actionLabel: 'Garantir presenca',
+      actionUrl: 'https://example.com/mindfulness-lab',
+      actionColor: '#FFE80D5D',
+    ),
+    _MockEventSeed(
+      id: 'event-day6-beer-tour',
+      type: _workshopType,
+      title: 'Craft Beer Tour',
+      content:
+          'Tour guiado por microcervejarias com degustacao harmonizada e musica ao vivo.',
+      location: 'Circuito Cervejeiro',
+      latitude: -20.6768,
+      longitude: -40.4989,
+      thumbUrl:
+          'https://images.unsplash.com/photo-1501183638710-841dd1904471?w=800',
+      offsetDays: 6,
+      startHour: 14,
+      durationMinutes: 180,
+      artists: const [],
+      actionLabel: 'Participar',
+      actionUrl: 'https://example.com/craft-beer-tour',
+      actionColor: '#FFE80D5D',
+    ),
+    _MockEventSeed(
+      id: 'event-day6-percussion',
+      type: _concertType,
+      title: 'Percussion Circle',
+      content:
+          'Vivencia percussiva coletiva com mestres de maracatu e congado.',
+      location: 'Praca do Sol',
+      latitude: -20.6704,
+      longitude: -40.4992,
+      thumbUrl:
+          'https://images.unsplash.com/photo-1518544889280-0f4e3b8ac60c?w=800',
+      offsetDays: 6,
+      startHour: 18,
+      durationMinutes: 150,
+      artists: const [
+        _MockArtistSeed(
+          id: 'artist-mestra-fogo',
+          name: 'Mestra Fogo',
+          avatarUrl:
+              'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=200',
+          highlight: true,
+        ),
+      ],
+      actionLabel: 'Participar',
+      actionUrl: 'https://example.com/percussion-circle',
+      actionColor: '#FF4FA0E3',
+    ),
+    _MockEventSeed(
+      id: 'event-day6-night-market',
       type: _concertType,
       title: 'Night Market Beats',
       content:
@@ -250,11 +955,144 @@ class MockScheduleBackend implements ScheduleBackendContract {
       longitude: -40.4954,
       thumbUrl:
           'https://images.unsplash.com/photo-1497032628192-86f99bcd76bc?w=800',
-      offsetDays: 5,
-      startHour: 17,
-      artists: const [],
+      offsetDays: 6,
+      startHour: 21,
+      durationMinutes: 180,
+      artists: const [
+        _MockArtistSeed(
+          id: 'artist-dj-riera',
+          name: 'DJ Riera',
+          avatarUrl:
+              'https://images.unsplash.com/photo-1549213820-0fedc82f3817?w=200',
+        ),
+      ],
       actionLabel: 'Ver agenda',
       actionUrl: 'https://example.com/night-market-beats',
+      actionColor: '#FF4FA0E3',
+    ),
+    // Day 7
+    _MockEventSeed(
+      id: 'event-day7-cleanup',
+      type: _workshopType,
+      title: 'Coastal Cleanup',
+      content:
+          'Mutirao colaborativo de limpeza com briefing ambiental e triagem de residuos.',
+      location: 'Praia do Morro Posto 4',
+      latitude: -20.6668,
+      longitude: -40.4994,
+      thumbUrl:
+          'https://images.unsplash.com/photo-1529612700005-e35377bf1415?w=800',
+      offsetDays: 7,
+      startHour: 7,
+      durationMinutes: 120,
+      artists: const [],
+      actionLabel: 'Participar',
+      actionUrl: 'https://example.com/coastal-cleanup',
+      actionColor: '#FFE80D5D',
+    ),
+    _MockEventSeed(
+      id: 'event-day7-sea-turtle-talk',
+      type: _workshopType,
+      title: 'Sea Turtle Talk',
+      content:
+          'Palestra sobre conservacao marinha com pesquisadores e visita guiada.',
+      location: 'Centro Ambiental Guarapari',
+      latitude: -20.6715,
+      longitude: -40.4975,
+      thumbUrl:
+          'https://images.unsplash.com/photo-1526481280695-3c46917ed726?w=800',
+      offsetDays: 7,
+      startHour: 9,
+      durationMinutes: 90,
+      artists: const [
+        _MockArtistSeed(
+          id: 'artist-bio-camila',
+          name: 'Biologa Camila Nery',
+          avatarUrl:
+              'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200',
+        ),
+      ],
+      actionLabel: 'Confirmar presenca',
+      actionUrl: 'https://example.com/sea-turtle-talk',
+      actionColor: '#FFE80D5D',
+    ),
+    _MockEventSeed(
+      id: 'event-day7-food-fest',
+      type: _workshopType,
+      title: 'Local Food Fest',
+      content:
+          'Festival gastronomico com chefs convidados, oficinas e area kids.',
+      location: 'Parque da Prainha',
+      latitude: -20.6721,
+      longitude: -40.4989,
+      thumbUrl:
+          'https://images.unsplash.com/photo-1542838132-92c53300491e?w=800',
+      offsetDays: 7,
+      startHour: 12,
+      durationMinutes: 240,
+      artists: const [
+        _MockArtistSeed(
+          id: 'artist-chef-matheus',
+          name: 'Chef Matheus Prado',
+          avatarUrl:
+              'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=200',
+        ),
+      ],
+      actionLabel: 'Comprar ingresso',
+      actionUrl: 'https://example.com/local-food-fest',
+      actionColor: '#FFE80D5D',
+    ),
+    _MockEventSeed(
+      id: 'event-day7-sunset-cinema',
+      type: _concertType,
+      title: 'Sunset Cinema e Jazz',
+      content:
+          'Exibicao de filme com encerramento musical ao vivo no gramado do parque.',
+      location: 'Parque Morro da Pescaria',
+      latitude: -20.6625,
+      longitude: -40.4853,
+      thumbUrl:
+          'https://images.unsplash.com/photo-1524985069026-dd778a71c7b4?w=800',
+      offsetDays: 7,
+      startHour: 17,
+      durationMinutes: 150,
+      artists: const [
+        _MockArtistSeed(
+          id: 'artist-jazz-trio-mar',
+          name: 'Trio Mar Azul',
+          avatarUrl:
+              'https://images.unsplash.com/photo-1489515217757-5fd1be406fef?w=200',
+        ),
+      ],
+      actionLabel: 'Retirar ingresso',
+      actionUrl: 'https://example.com/sunset-cinema',
+      actionColor: '#FF4FA0E3',
+    ),
+    _MockEventSeed(
+      id: 'event-day7-lantern-walk',
+      type: _concertType,
+      title: 'Midnight Lantern Walk',
+      content:
+          'Caminhada noturna com lanternas artesanais e trilha sonora ao vivo.',
+      location: 'Praca da Paz',
+      latitude: -20.6690,
+      longitude: -40.5030,
+      thumbUrl:
+          'https://images.unsplash.com/photo-1473862170182-43c138187c39?w=800',
+      offsetDays: 7,
+      startHour: 22,
+      durationMinutes: 120,
+      artists: const [
+        _MockArtistSeed(
+          id: 'artist-coletivo-lumen',
+          name: 'Coletivo Lumen',
+          avatarUrl:
+              'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200',
+          highlight: true,
+        ),
+      ],
+      actionLabel: 'Participar',
+      actionUrl: 'https://example.com/lantern-walk',
       actionColor: '#FF4FA0E3',
     ),
   ];
@@ -273,6 +1111,7 @@ class _MockEventSeed {
     required this.offsetDays,
     required this.startHour,
     this.startMinute = 0,
+    this.durationMinutes = 90,
     required this.artists,
     required this.actionLabel,
     required this.actionUrl,
@@ -290,6 +1129,7 @@ class _MockEventSeed {
   final int offsetDays;
   final int startHour;
   final int startMinute;
+  final int durationMinutes;
   final List<_MockArtistSeed> artists;
   final String actionLabel;
   final String actionUrl;
@@ -303,6 +1143,7 @@ class _MockEventSeed {
         minutes: startMinute,
       ),
     );
+    final endDate = date.add(Duration(minutes: durationMinutes));
 
     return EventDTO(
       id: id,
@@ -317,6 +1158,7 @@ class _MockEventSeed {
         data: {'url': thumbUrl},
       ),
       dateTimeStart: date.toIso8601String(),
+      dateTimeEnd: endDate.toIso8601String(),
       artists: artists.map((artist) => artist.toDto()).toList(),
       actions: [
         EventActionsDTO(

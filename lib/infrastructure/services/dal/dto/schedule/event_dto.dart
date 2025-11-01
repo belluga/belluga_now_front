@@ -14,6 +14,7 @@ class EventDTO {
     this.longitude,
     this.thumb,
     required this.dateTimeStart,
+    this.dateTimeEnd,
     required this.artists,
     required this.actions,
   });
@@ -27,6 +28,7 @@ class EventDTO {
   final double? longitude;
   final ThumbDTO? thumb;
   final String dateTimeStart;
+  final String? dateTimeEnd;
   final List<EventArtistDTO> artists;
   final List<EventActionsDTO> actions;
 }

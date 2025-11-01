@@ -410,8 +410,8 @@ class _CityMapView extends StatelessWidget {
                 event.coordinate!.latitude,
                 event.coordinate!.longitude,
               ),
-              width: 70,
-              height: 70,
+              width: 96,
+              height: 96,
               child: GestureDetector(
                 onTap: () => onSelectEvent(event),
                 child: EventMarker(

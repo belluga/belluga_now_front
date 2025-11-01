@@ -18,6 +18,7 @@ class EventModel {
   final DescriptionValue location;
   final ThumbModel? thumb;
   final DateTimeValue dateTimeStart;
+  final DateTimeValue? dateTimeEnd;
   final List<EventArtistModel> artists;
   final List<EventActionModel> actions;
   final CityCoordinate? coordinate;
@@ -30,6 +31,7 @@ class EventModel {
     required this.location,
     required this.thumb,
     required this.dateTimeStart,
+    required this.dateTimeEnd,
     required this.artists,
     required this.actions,
     required this.coordinate,
@@ -44,6 +46,9 @@ class EventModel {
       location: DescriptionValue()..parse(dto.location),
       thumb: dto.thumb != null ? ThumbModel.fromDTO(dto.thumb!) : null,
       dateTimeStart: DateTimeValue()..parse(dto.dateTimeStart),
+      dateTimeEnd: dto.dateTimeEnd != null
+          ? (DateTimeValue()..parse(dto.dateTimeEnd!))
+          : null,
       artists: dto.artists.map(EventArtistModel.fromDTO).toList(),
       actions: dto.actions.map((e) => EventActionModel.fromDTO(e)).toList(),
       coordinate: (dto.latitude != null && dto.longitude != null)
