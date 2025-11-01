@@ -3,10 +3,10 @@ import 'dart:async';
 import 'package:belluga_now/domain/map/city_poi_model.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
+import 'package:belluga_now/infrastructure/services/dal/datasources/poi_query.dart';
 import 'package:belluga_now/presentation/tenant/screens/map/controller/city_map_controller.dart';
 import 'package:belluga_now/presentation/tenant/screens/map/widgets/event_info_card.dart';
 import 'package:belluga_now/presentation/tenant/screens/map/widgets/event_marker.dart';
-import 'package:belluga_now/presentation/tenant/screens/map/widgets/event_temporal_state.dart';
 import 'package:belluga_now/presentation/tenant/screens/map/widgets/location_status_banner.dart';
 import 'package:belluga_now/presentation/tenant/screens/map/widgets/poi_info_card.dart';
 import 'package:belluga_now/presentation/tenant/screens/map/widgets/poi_marker.dart';
@@ -69,16 +69,10 @@ class _CityMapScreenState extends State<CityMapScreen> {
                       _status = _MapStatus.fetching;
                       _statusMessage = 'Buscando pontos próximos...';
                     });
-                    final success =
-                        await _controller.loadPoints(_userOrigin!);
+                    await _controller.loadPois(_queryForOrigin(_userOrigin!));
                     await _loadTodayEvents();
                     if (!mounted) return;
-                    setState(() {
-                      _status = success ? _MapStatus.ready : _MapStatus.error;
-                      _statusMessage = success
-                          ? null
-                          : 'Não foi possível carregar os pontos próximos.';
-                    });
+                    _updateStatusFromState();
                   },
           ),
           IconButton(
@@ -88,20 +82,21 @@ class _CityMapScreenState extends State<CityMapScreen> {
           ),
         ],
       ),
-      body: StreamValueBuilder<List<EventModel>?>(
-        streamValue: _controller.eventsStreamValue,
-        builder: (context, events) {
-          final eventList = events ?? const <EventModel>[];
-          return StreamValueBuilder<List<CityPoiModel>?>(
-            streamValue: _controller.poisStreamValue,
-            builder: (context, pois) {
-              final poiList = pois ?? const <CityPoiModel>[];
-              return StreamValueBuilder<CityPoiModel?>(
-                streamValue: _controller.selectedPoiStreamValue,
-                builder: (context, selectedPoi) {
-                  return StreamValueBuilder<EventModel?>(
-                    streamValue: _controller.selectedEventStreamValue,
-                    builder: (context, selectedEvent) {
+      body: StreamValueBuilder<List<CityPoiModel>>(
+        streamValue: _controller.pois,
+        onNullWidget: const Center(child: CircularProgressIndicator()),
+        builder: (context, poiStreamValue) {
+          final poiList = poiStreamValue;
+          return StreamValueBuilder<List<EventModel>?>(
+            streamValue: _controller.eventsStreamValue,
+            builder: (context, events) {
+              final eventList = events ?? const <EventModel>[];
+              return StreamValueBuilder<EventModel?>(
+                streamValue: _controller.selectedEventStreamValue,
+                builder: (context, selectedEvent) {
+                  return StreamValueBuilder<CityPoiModel?>(
+                    streamValue: _controller.selectedPoiStreamValue,
+                    builder: (context, selectedPoi) {
                       return Stack(
                         children: [
                           _CityMapView(
@@ -129,6 +124,49 @@ class _CityMapScreenState extends State<CityMapScreen> {
                             left: 16,
                             right: 16,
                             child: _buildStatusBanner(theme),
+                          ),
+                          StreamValueBuilder<bool>(
+                            streamValue: _controller.isLoading,
+                            builder: (context, isLoading) {
+                              if (isLoading == true) {
+                                return const Positioned.fill(
+                                  child: IgnorePointer(
+                                    child: Center(
+                                      child: CircularProgressIndicator(),
+                                    ),
+                                  ),
+                                );
+                              }
+                              return const SizedBox.shrink();
+                            },
+                          ),
+                          StreamValueBuilder<String?>(
+                            streamValue: _controller.errorMessage,
+                            builder: (context, error) {
+                              if (error == null) {
+                                return const SizedBox.shrink();
+                              }
+                              return Positioned(
+                                bottom: 24,
+                                left: 24,
+                                right: 24,
+                                child: SafeArea(
+                                  child: Card(
+                                    color: theme.colorScheme.errorContainer,
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(12),
+                                      child: Text(
+                                        error,
+                                        style: TextStyle(
+                                          color:
+                                              theme.colorScheme.onErrorContainer,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              );
+                            },
                           ),
                           if (selectedEvent != null)
                             Align(
@@ -271,15 +309,10 @@ class _CityMapScreenState extends State<CityMapScreen> {
         _statusMessage = 'Buscando pontos próximos...';
       });
 
-      final poiSuccess = await _controller.loadPoints(origin);
+      await _controller.loadPois(_queryForOrigin(origin));
       await _loadTodayEvents();
       if (mounted) {
-        setState(() {
-          _status = poiSuccess ? _MapStatus.ready : _MapStatus.error;
-          _statusMessage = poiSuccess
-              ? null
-              : 'Não foi possível carregar os pontos próximos.';
-        });
+        _updateStatusFromState();
       }
 
       _hasRequestedPois = true;
@@ -317,40 +350,48 @@ class _CityMapScreenState extends State<CityMapScreen> {
   void _fallbackLoadPois() {
     if (_hasRequestedPois) return;
     _hasRequestedPois = true;
-    final center = _controller.defaultCenter;
     setState(() {
       _status = _MapStatus.fallback;
       _statusMessage = 'Exibindo pontos padrão da cidade.';
     });
     unawaited(() async {
-      final success = await _controller.loadPoints(center);
+      await _controller.loadPois(const PoiQuery());
       await _loadTodayEvents();
       if (!mounted) return;
-      setState(() {
-        _status = success ? _MapStatus.ready : _MapStatus.error;
-        _statusMessage = success
-            ? null
-            : 'Não foi possível carregar os pontos padrão.';
-      });
+      _updateStatusFromState();
     }());
   }
 
   Future<void> _loadTodayEvents() async {
     if (_eventsLoaded) {
-      await _controller.loadEventsForDate(_today);
       return;
     }
     _eventsLoaded = true;
-    await _controller.loadEventsForDate(_today);
+    await _controller.initialize();
   }
 
-  DateTime get _today {
-    final now = DateTime.now();
-    return DateTime(now.year, now.month, now.day);
+  void _updateStatusFromState() {
+    setState(() {
+      _status = _controller.hasError ? _MapStatus.error : _MapStatus.ready;
+      _statusMessage =
+          _controller.hasError ? _controller.currentErrorMessage : null;
+    });
+  }
+
+  PoiQuery _queryForOrigin(CityCoordinate origin) {
+    const boundsOffset = 0.1;
+    return PoiQuery(
+      northEast: CityCoordinate(
+        latitude: origin.latitude + boundsOffset,
+        longitude: origin.longitude + boundsOffset,
+      ),
+      southWest: CityCoordinate(
+        latitude: origin.latitude - boundsOffset,
+        longitude: origin.longitude - boundsOffset,
+      ),
+    );
   }
 }
-
-enum _MapStatus { locating, fetching, ready, error, fallback }
 
 class _CityMapView extends StatelessWidget {
   const _CityMapView({
@@ -378,7 +419,6 @@ class _CityMapView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final selectedEventId = selectedEvent?.id.value;
-    final now = DateTime.now();
     final markers = <Marker>[
       if (userPosition != null)
         Marker(
@@ -407,27 +447,21 @@ class _CityMapView extends StatelessWidget {
       ...events
           .where((event) => event.coordinate != null)
           .map(
-            (event) {
-              final temporalState =
-                  resolveEventTemporalState(event, reference: now);
-              final markerSize =
-                  temporalState == CityEventTemporalState.now ? 96.0 : 68.0;
-              return Marker(
-                point: LatLng(
-                  event.coordinate!.latitude,
-                  event.coordinate!.longitude,
+            (event) => Marker(
+              point: LatLng(
+                event.coordinate!.latitude,
+                event.coordinate!.longitude,
+              ),
+              width: 96,
+              height: 96,
+              child: GestureDetector(
+                onTap: () => onSelectEvent(event),
+                child: EventMarker(
+                  event: event,
+                  isSelected: selectedEventId == event.id.value,
                 ),
-                width: markerSize,
-                height: markerSize,
-                child: GestureDetector(
-                  onTap: () => onSelectEvent(event),
-                  child: EventMarker(
-                    event: event,
-                    isSelected: selectedEventId == event.id.value,
-                  ),
-                ),
-              );
-            },
+              ),
+            ),
           ),
     ];
 
@@ -447,3 +481,5 @@ class _CityMapView extends StatelessWidget {
     );
   }
 }
+
+enum _MapStatus { locating, fetching, ready, error, fallback }

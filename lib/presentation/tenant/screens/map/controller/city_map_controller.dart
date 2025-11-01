@@ -1,11 +1,12 @@
 import 'dart:async';
-import 'dart:math' as math;
 
 import 'package:belluga_now/domain/map/city_poi_model.dart';
+import 'package:belluga_now/domain/map/events/poi_update_event.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/domain/repositories/city_map_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
+import 'package:belluga_now/infrastructure/services/dal/datasources/poi_query.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value.dart';
 
@@ -13,34 +14,44 @@ class CityMapController implements Disposable {
   CityMapController({
     CityMapRepositoryContract? repository,
     ScheduleRepositoryContract? scheduleRepository,
-  })  : _repository =
-            repository ?? GetIt.I.get<CityMapRepositoryContract>(),
+  })  : _repository = repository ?? GetIt.I.get<CityMapRepositoryContract>(),
         _scheduleRepository =
-            scheduleRepository ?? GetIt.I.get<ScheduleRepositoryContract>();
+            scheduleRepository ?? GetIt.I.get<ScheduleRepositoryContract>(),
+        eventsStreamValue = StreamValue<List<EventModel>?>() {
+    _poiEventsSubscription = _repository.poiEvents.listen(_handlePoiEvent);
+  }
 
   final CityMapRepositoryContract _repository;
   final ScheduleRepositoryContract _scheduleRepository;
 
-  final poisStreamValue = StreamValue<List<CityPoiModel>?>(defaultValue: const []);
-  final eventsStreamValue = StreamValue<List<EventModel>?>(defaultValue: const []);
+  final StreamValue<List<EventModel>?> eventsStreamValue;
+
+  final isLoading = StreamValue<bool>(defaultValue: false);
+  final pois = StreamValue<List<CityPoiModel>>(defaultValue: const []);
+  final errorMessage = StreamValue<String?>();
+  final latestOffer = StreamValue<PoiOfferActivatedEvent?>();
 
   final selectedPoiStreamValue = StreamValue<CityPoiModel?>();
   final selectedEventStreamValue = StreamValue<EventModel?>();
 
   CityCoordinate get defaultCenter => _repository.defaultCenter();
 
-  Timer? _movingPoiTimer;
+  PoiQuery _currentQuery = const PoiQuery();
+  StreamSubscription<PoiUpdateEvent?>? _poiEventsSubscription;
 
-  Future<bool> loadPoints(CityCoordinate origin) async {
-    poisStreamValue.addValue(null);
+  Future<void> initialize() async {
+    await _loadEventsForDate(_today);
+  }
+
+  Future<void> loadPois(PoiQuery query) async {
+    _currentQuery = query;
+    _setLoadingState();
+
     try {
-      final points = await _repository.fetchPointsOfInterest(origin);
-      poisStreamValue.addValue(points);
-      _startDynamicPoiUpdates(points);
-      return true;
+      final pois = await _repository.fetchPoints(query);
+      _setSuccessState(pois);
     } catch (_) {
-      poisStreamValue.addValue(const []);
-      return false;
+      _setErrorState('Não foi possível carregar os pontos de interesse.');
     }
   }
 
@@ -52,7 +63,7 @@ class CityMapController implements Disposable {
     selectedEventStreamValue.addValue(event);
   }
 
-  Future<void> loadEventsForDate(DateTime date) async {
+  Future<void> _loadEventsForDate(DateTime date) async {
     try {
       selectedEventStreamValue.addValue(null);
       final events = await _scheduleRepository.getEventsByDate(date);
@@ -62,56 +73,96 @@ class CityMapController implements Disposable {
     }
   }
 
-  void _startDynamicPoiUpdates(List<CityPoiModel> points) {
-    _movingPoiTimer?.cancel();
-    var currentPoints = List<CityPoiModel>.from(points);
-    final dynamicPois = currentPoints.where((poi) => poi.isDynamic).toList();
-    if (dynamicPois.isEmpty) {
+  void _handlePoiEvent(PoiUpdateEvent? event) {
+
+    if(event == null){
       return;
     }
 
-    _movingPoiTimer = Timer.periodic(const Duration(seconds: 20), (_) {
-      currentPoints = currentPoints.map((poi) {
-        if (!poi.isDynamic || poi.movementRadiusMeters == null) {
-          return poi;
-        }
-
-        final radius = poi.movementRadiusMeters!;
-        final deltaLat = (radius / 111320) * (0.5 - _random.nextDouble());
-        final denominator =
-            111320 * math.cos(poi.coordinate.latitude * math.pi / 180);
-        final deltaLng = denominator == 0
-            ? 0
-            : (radius / denominator) * (0.5 - _random.nextDouble());
-
-        return CityPoiModel(
-          id: poi.id,
-          name: poi.name,
-          description: poi.description,
-          address: poi.address,
-          category: poi.category,
-          coordinate: CityCoordinate(
-            latitude: poi.coordinate.latitude + deltaLat,
-            longitude: poi.coordinate.longitude + deltaLng,
-          ),
-          assetPath: poi.assetPath,
-          isDynamic: poi.isDynamic,
-          movementRadiusMeters: poi.movementRadiusMeters,
-        );
-      }).toList(growable: false);
-
-      poisStreamValue.addValue(currentPoints);
-    });
+    switch (event) {
+      case PoiMovedEvent(:final coordinate):
+        _updatePoiCoordinate(event.poiId, coordinate);
+        break;
+      case PoiOfferActivatedEvent():
+        final offerEvent = event;
+        isLoading.addValue(false);
+        errorMessage.addValue(null);
+        latestOffer.addValue(offerEvent);
+        break;
+    }
   }
 
-  final _random = math.Random();
+  void _updatePoiCoordinate(String poiId, CityCoordinate coordinate) {
+    final currentPois = List<CityPoiModel>.from(pois.value ?? const []);
+    final index = currentPois.indexWhere((poi) => poi.id == poiId);
+    if (index == -1) {
+      return;
+    }
+    final poi = currentPois[index];
+    currentPois[index] = CityPoiModel(
+      id: poi.id,
+      name: poi.name,
+      description: poi.description,
+      address: poi.address,
+      category: poi.category,
+      coordinate: coordinate,
+      assetPath: poi.assetPath,
+      isDynamic: poi.isDynamic,
+      movementRadiusMeters: poi.movementRadiusMeters,
+      tags: poi.tags,
+    );
+
+    pois.addValue(List<CityPoiModel>.unmodifiable(currentPois));
+    errorMessage.addValue(null);
+    latestOffer.addValue(null);
+
+    if (selectedPoiStreamValue.value?.id == poiId) {
+      selectedPoiStreamValue.addValue(currentPois[index]);
+    }
+  }
+
+  bool get hasError => (errorMessage.value?.isNotEmpty ?? false);
+  String? get currentErrorMessage => errorMessage.value;
+  List<CityPoiModel> get currentPois =>
+      List<CityPoiModel>.unmodifiable(pois.value ?? const []);
+
+  PoiQuery get currentQuery => _currentQuery;
+
+  Future<void> reload() => loadPois(_currentQuery);
+
+  DateTime get _today {
+    final now = DateTime.now();
+    return DateTime(now.year, now.month, now.day);
+  }
 
   @override
   void onDispose() {
-    poisStreamValue.dispose();
-    selectedPoiStreamValue.dispose();
     eventsStreamValue.dispose();
+    isLoading.dispose();
+    pois.dispose();
+    errorMessage.dispose();
+    latestOffer.dispose();
+    selectedPoiStreamValue.dispose();
     selectedEventStreamValue.dispose();
-    _movingPoiTimer?.cancel();
+    _poiEventsSubscription?.cancel();
+  }
+
+  void _setLoadingState() {
+    isLoading.addValue(true);
+    errorMessage.addValue(null);
+    latestOffer.addValue(null);
+  }
+
+  void _setSuccessState(List<CityPoiModel> newPois) {
+    isLoading.addValue(false);
+    errorMessage.addValue(null);
+    latestOffer.addValue(null);
+    pois.addValue(List<CityPoiModel>.unmodifiable(newPois));
+  }
+
+  void _setErrorState(String message) {
+    isLoading.addValue(false);
+    errorMessage.addValue(message);
+    latestOffer.addValue(null);
   }
 }
