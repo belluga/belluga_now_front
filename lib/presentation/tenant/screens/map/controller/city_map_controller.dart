@@ -37,6 +37,7 @@ class CityMapController implements Disposable {
   final selectedCategories =
       StreamValue<Set<CityPoiCategory>>(defaultValue: <CityPoiCategory>{});
   final selectedTags = StreamValue<Set<String>>(defaultValue: <String>{});
+  final activeFilterCount = StreamValue<int>(defaultValue: 0);
 
   final selectedPoiStreamValue = StreamValue<CityPoiModel?>();
   final selectedEventStreamValue = StreamValue<EventModel?>();
@@ -109,6 +110,7 @@ class CityMapController implements Disposable {
       selectedTags.value ?? const <String>{},
     )..removeWhere((tag) => !allowedTags.contains(tag));
     selectedTags.addValue(Set<String>.unmodifiable(nextTags));
+    _updateActiveFilterCount();
 
     unawaited(
       _applyFilters(normalized, nextTags),
@@ -134,6 +136,7 @@ class CityMapController implements Disposable {
 
     final normalized = Set<String>.unmodifiable(currentTags);
     selectedTags.addValue(normalized);
+    _updateActiveFilterCount();
     unawaited(
       _applyFilters(
         selectedCategories.value ?? const <CityPoiCategory>{},
@@ -149,6 +152,7 @@ class CityMapController implements Disposable {
     selectedTags.addValue(
       Set<String>.unmodifiable(<String>{}),
     );
+    _updateActiveFilterCount();
     await _applyFilters(const <CityPoiCategory>{}, const <String>{});
   }
 
@@ -250,6 +254,7 @@ class CityMapController implements Disposable {
     selectedTags.dispose();
     selectedPoiStreamValue.dispose();
     selectedEventStreamValue.dispose();
+    activeFilterCount.dispose();
     _poiEventsSubscription?.cancel();
   }
 
@@ -303,5 +308,11 @@ class CityMapController implements Disposable {
     );
 
     await loadPois(query);
+  }
+
+  void _updateActiveFilterCount() {
+    final categoryCount = selectedCategories.value?.length ?? 0;
+    final tagCount = selectedTags.value?.length ?? 0;
+    activeFilterCount.addValue(categoryCount + tagCount);
   }
 }

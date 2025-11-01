@@ -114,31 +114,27 @@ class _ActionsRow extends StatelessWidget {
     return Row(
       children: [
         Expanded(
-          child: OutlinedButton.icon(
+          child: FilledButton.icon(
             onPressed: onDetails,
             icon: const Icon(Icons.info_outlined),
-            label: const Text('Detalhes'),
-          ),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: OutlinedButton.icon(
-            onPressed: onShare,
-            icon: const Icon(Icons.share_outlined),
-            label: const Text('Compartilhar'),
-          ),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: FilledButton.icon(
-            onPressed: onRoute,
-            icon: const Icon(Icons.route_outlined),
-            label: const Text('Traçar rota'),
+            label: const Text('Ver Mais'),
             style: FilledButton.styleFrom(
-              backgroundColor: scheme.primary,
-              foregroundColor: scheme.onPrimary,
+              minimumSize: const Size.fromHeight(44),
             ),
           ),
+        ),
+        const SizedBox(width: 8),
+        IconButton(
+          onPressed: onShare,
+          icon: const Icon(Icons.share_outlined),
+          tooltip: 'Compartilhar',
+        ),
+        const SizedBox(width: 8),
+        IconButton(
+          onPressed: onRoute,
+          icon: const Icon(Icons.directions_outlined),
+          tooltip: 'Traçar rota',
+          color: scheme.primary,
         ),
       ],
     );

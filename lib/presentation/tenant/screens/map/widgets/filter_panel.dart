@@ -93,7 +93,6 @@ class FilterPanel extends StatelessWidget {
                         );
                       },
                     ),
-                    const SizedBox(height: 24),
                     StreamValueBuilder<Set<CityPoiCategory>>(
                       streamValue: controller.selectedCategories,
                       builder: (context, categories) {
@@ -212,47 +211,33 @@ class _TagSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (!hasCategorySelection || availableTags.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
     final textTheme = Theme.of(context).textTheme;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        const SizedBox(height: 24),
         Text(
           'Subcategorias',
           style: textTheme.titleSmall,
         ),
         const SizedBox(height: 8),
-        if (!hasCategorySelection)
-          Padding(
-            padding: const EdgeInsets.only(top: 4, bottom: 16),
-            child: Text(
-              'Selecione uma categoria para ver opções de subcategorias.',
-              style: textTheme.bodySmall?.copyWith(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            for (final tag in availableTags)
+              FilterChip(
+                label: Text(_formatTag(tag)),
+                selected: selectedTags.contains(tag),
+                onSelected: (_) => onToggle(tag),
               ),
-            ),
-          )
-        else if (availableTags.isEmpty)
-          Padding(
-            padding: const EdgeInsets.only(top: 4, bottom: 16),
-            child: Text(
-              'Nenhuma subcategoria disponível para os filtros selecionados.',
-              style: textTheme.bodySmall,
-            ),
-          )
-        else
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              for (final tag in availableTags)
-                FilterChip(
-                  label: Text(_formatTag(tag)),
-                  selected: selectedTags.contains(tag),
-                  onSelected: (_) => onToggle(tag),
-                ),
-            ],
-          ),
+          ],
+        ),
       ],
     );
   }

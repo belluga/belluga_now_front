@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/manual_route_stubs.dart';
-import 'package:belluga_now/domain/map/city_poi_category.dart';
 import 'package:belluga_now/domain/map/city_poi_model.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
@@ -16,6 +15,7 @@ import 'package:belluga_now/presentation/tenant/screens/map/widgets/filter_panel
 import 'package:belluga_now/presentation/tenant/screens/map/widgets/poi_info_card.dart';
 import 'package:belluga_now/presentation/tenant/screens/map/widgets/poi_marker.dart';
 import 'package:belluga_now/presentation/tenant/screens/map/widgets/user_location_marker.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -42,6 +42,7 @@ class _CityMapScreenState extends State<CityMapScreen> {
   bool _eventsLoaded = false;
   _MapStatus _status = _MapStatus.locating;
   String? _statusMessage = 'Localizando você...';
+  String? _hoveredPoiId;
 
   @override
   void initState() {
@@ -65,25 +66,23 @@ class _CityMapScreenState extends State<CityMapScreen> {
       appBar: AppBar(
         title: const Text('Mapa de Guarapari'),
         actions: [
-          StreamValueBuilder<Set<CityPoiCategory>>(
-            streamValue: _controller.selectedCategories,
-            builder: (context, categories) {
-              return StreamValueBuilder<Set<String>>(
-                streamValue: _controller.selectedTags,
-                builder: (context, tags) {
-                  final hasCategoryFilters = categories?.isNotEmpty ?? false;
-                  final hasTagFilters = tags?.isNotEmpty ?? false;
-                  final hasFilters = hasCategoryFilters || hasTagFilters;
-                  return IconButton(
-                    icon: Icon(
-                      Icons.filter_list,
-                      color:
-                          hasFilters ? theme.colorScheme.primary : null,
-                    ),
-                    tooltip: 'Filtrar',
-                    onPressed: () => _openFilterPanel(),
-                  );
-                },
+          StreamValueBuilder<int>(
+            streamValue: _controller.activeFilterCount,
+            builder: (context, count) {
+              final filterCount = count ?? 0;
+              final filterButton = IconButton(
+                icon: Icon(
+                  Icons.filter_list,
+                  color: filterCount > 0 ? theme.colorScheme.primary : null,
+                ),
+                tooltip: 'Filtrar',
+                onPressed: () => _openFilterPanel(),
+              );
+              return Badge.count(
+                count: filterCount,
+                isLabelVisible: filterCount > 0,
+                alignment: Alignment.topRight,
+                child: filterButton,
               );
             },
           ),
@@ -135,6 +134,8 @@ class _CityMapScreenState extends State<CityMapScreen> {
                               _controller.selectPoi(poi);
                               _controller.selectEvent(null);
                             },
+                            hoveredPoiId: _hoveredPoiId,
+                            onHoverChange: _handlePoiHover,
                             events: eventList,
                             selectedEvent: selectedEvent,
                             onSelectEvent: (event) {
@@ -355,7 +356,7 @@ class _CityMapScreenState extends State<CityMapScreen> {
       _hasRequestedPois = true;
 
       if (mounted) {
-        _mapController.move(userLatLng, 15);
+        _mapController.move(userLatLng, 16);
       }
     } on PlatformException catch (error) {
       setState(() {
@@ -379,7 +380,7 @@ class _CityMapScreenState extends State<CityMapScreen> {
   void _centerOnUser() {
     final position = _userPosition;
     if (position == null) return;
-    _mapController.move(position, 15);
+    _mapController.move(position, 16);
     _controller.selectPoi(null);
     _controller.selectEvent(null);
   }
@@ -392,6 +393,18 @@ class _CityMapScreenState extends State<CityMapScreen> {
       isScrollControlled: true,
       builder: (_) => FilterPanel(controller: _controller),
     );
+  }
+
+  void _handlePoiHover(String? poiId) {
+    if (!kIsWeb) {
+      return;
+    }
+    if (_hoveredPoiId == poiId) {
+      return;
+    }
+    setState(() {
+      _hoveredPoiId = poiId;
+    });
   }
 
   void _handleMapInteraction() {
@@ -460,6 +473,8 @@ class _CityMapView extends StatelessWidget {
     required this.pois,
     required this.selectedPoi,
     required this.onSelectPoi,
+    required this.hoveredPoiId,
+    required this.onHoverChange,
     required this.events,
     required this.selectedEvent,
     required this.onSelectEvent,
@@ -472,6 +487,8 @@ class _CityMapView extends StatelessWidget {
   final List<CityPoiModel> pois;
   final CityPoiModel? selectedPoi;
   final ValueChanged<CityPoiModel?> onSelectPoi;
+  final String? hoveredPoiId;
+  final ValueChanged<String?> onHoverChange;
   final List<EventModel> events;
   final EventModel? selectedEvent;
   final ValueChanged<EventModel?> onSelectEvent;
@@ -502,9 +519,10 @@ class _CityMapView extends StatelessWidget {
     final sortedPois = List<CityPoiModel>.from(pois)
       ..sort((a, b) => a.priority.compareTo(b.priority));
     for (final poi in sortedPois) {
+      final isHovered = hoveredPoiId == poi.id;
       markerEntries.add(
         _MarkerEntry(
-          priority: poi.priority,
+          priority: isHovered ? poi.priority + 1000 : poi.priority,
           marker: Marker(
             point: LatLng(
               poi.coordinate.latitude,
@@ -514,9 +532,14 @@ class _CityMapView extends StatelessWidget {
             height: 52,
             child: GestureDetector(
               onTap: () => onSelectPoi(poi),
-              child: PoiMarker(
-                poi: poi,
-                isSelected: selectedPoi?.id == poi.id,
+              child: MouseRegion(
+                onEnter: (_) => onHoverChange(poi.id),
+                onExit: (_) => onHoverChange(null),
+                child: PoiMarker(
+                  poi: poi,
+                  isSelected: selectedPoi?.id == poi.id,
+                  isHovered: isHovered && kIsWeb,
+                ),
               ),
             ),
           ),
@@ -569,9 +592,9 @@ class _CityMapView extends StatelessWidget {
         mapController: mapController,
         mapOptions: MapOptions(
           initialCenter: initialCenter,
-          initialZoom: userPosition != null ? 15 : 14,
-          minZoom: 11,
-          maxZoom: 19,
+          initialZoom: 16,
+          minZoom: 14,
+          maxZoom: 18,
           interactionOptions:
               const InteractionOptions(flags: InteractiveFlag.all),
         ),
