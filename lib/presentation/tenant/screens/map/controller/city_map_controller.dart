@@ -93,7 +93,7 @@ class CityMapController implements Disposable {
   }
 
   void _updatePoiCoordinate(String poiId, CityCoordinate coordinate) {
-    final currentPois = List<CityPoiModel>.from(pois.value ?? const []);
+    final currentPois = List<CityPoiModel>.from(pois.value);
     final index = currentPois.indexWhere((poi) => poi.id == poiId);
     if (index == -1) {
       return;
@@ -106,6 +106,7 @@ class CityMapController implements Disposable {
       address: poi.address,
       category: poi.category,
       coordinate: coordinate,
+      priority: poi.priority,
       assetPath: poi.assetPath,
       isDynamic: poi.isDynamic,
       movementRadiusMeters: poi.movementRadiusMeters,
@@ -124,7 +125,7 @@ class CityMapController implements Disposable {
   bool get hasError => (errorMessage.value?.isNotEmpty ?? false);
   String? get currentErrorMessage => errorMessage.value;
   List<CityPoiModel> get currentPois =>
-      List<CityPoiModel>.unmodifiable(pois.value ?? const []);
+      List<CityPoiModel>.unmodifiable(pois.value);
 
   PoiQuery get currentQuery => _currentQuery;
 

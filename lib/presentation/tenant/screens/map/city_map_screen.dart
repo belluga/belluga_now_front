@@ -7,6 +7,7 @@ import 'package:belluga_now/infrastructure/services/dal/datasources/poi_query.da
 import 'package:belluga_now/presentation/tenant/screens/map/controller/city_map_controller.dart';
 import 'package:belluga_now/presentation/tenant/screens/map/widgets/event_info_card.dart';
 import 'package:belluga_now/presentation/tenant/screens/map/widgets/event_marker.dart';
+import 'package:belluga_now/presentation/tenant/screens/map/widgets/event_temporal_state.dart';
 import 'package:belluga_now/presentation/tenant/screens/map/widgets/location_status_banner.dart';
 import 'package:belluga_now/presentation/tenant/screens/map/widgets/poi_info_card.dart';
 import 'package:belluga_now/presentation/tenant/screens/map/widgets/poi_marker.dart';
@@ -419,51 +420,83 @@ class _CityMapView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final selectedEventId = selectedEvent?.id.value;
-    final markers = <Marker>[
-      if (userPosition != null)
-        Marker(
-          point: userPosition!,
-          width: 48,
-          height: 48,
-          child: const UserLocationMarker(),
-        ),
-      ...pois.map(
-        (poi) => Marker(
-          point: LatLng(
-            poi.coordinate.latitude,
-            poi.coordinate.longitude,
+    final now = DateTime.now();
+    final markerEntries = <_MarkerEntry>[];
+
+    if (userPosition != null) {
+      markerEntries.add(
+        _MarkerEntry(
+          priority: 110,
+          marker: Marker(
+            point: userPosition!,
+            width: 48,
+            height: 48,
+            child: const UserLocationMarker(),
           ),
-          width: 52,
-          height: 52,
-          child: GestureDetector(
-            onTap: () => onSelectPoi(poi),
-            child: PoiMarker(
-              poi: poi,
-              isSelected: selectedPoi?.id == poi.id,
+        ),
+      );
+    }
+
+    final sortedPois = List<CityPoiModel>.from(pois)
+      ..sort((a, b) => a.priority.compareTo(b.priority));
+    for (final poi in sortedPois) {
+      markerEntries.add(
+        _MarkerEntry(
+          priority: poi.priority,
+          marker: Marker(
+            point: LatLng(
+              poi.coordinate.latitude,
+              poi.coordinate.longitude,
             ),
-          ),
-        ),
-      ),
-      ...events
-          .where((event) => event.coordinate != null)
-          .map(
-            (event) => Marker(
-              point: LatLng(
-                event.coordinate!.latitude,
-                event.coordinate!.longitude,
-              ),
-              width: 96,
-              height: 96,
-              child: GestureDetector(
-                onTap: () => onSelectEvent(event),
-                child: EventMarker(
-                  event: event,
-                  isSelected: selectedEventId == event.id.value,
-                ),
+            width: 52,
+            height: 52,
+            child: GestureDetector(
+              onTap: () => onSelectPoi(poi),
+              child: PoiMarker(
+                poi: poi,
+                isSelected: selectedPoi?.id == poi.id,
               ),
             ),
           ),
-    ];
+        ),
+      );
+    }
+
+    final eventCandidates = events
+        .where((event) => event.coordinate != null)
+        .toList(growable: false)
+      ..sort(
+        (a, b) => _priorityForEvent(a, now).compareTo(
+          _priorityForEvent(b, now),
+        ),
+      );
+
+    for (final event in eventCandidates) {
+      final eventPriority = _priorityForEvent(event, now);
+      markerEntries.add(
+        _MarkerEntry(
+          priority: eventPriority,
+          marker: Marker(
+            point: LatLng(
+              event.coordinate!.latitude,
+              event.coordinate!.longitude,
+            ),
+            width: 96,
+            height: 96,
+            child: GestureDetector(
+              onTap: () => onSelectEvent(event),
+              child: EventMarker(
+                event: event,
+                isSelected: selectedEventId == event.id.value,
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    markerEntries.sort((a, b) => a.priority.compareTo(b.priority));
+    final markers = markerEntries.map((entry) => entry.marker).toList();
 
     final initialCenter = userPosition ?? defaultCenter;
 
@@ -483,3 +516,22 @@ class _CityMapView extends StatelessWidget {
 }
 
 enum _MapStatus { locating, fetching, ready, error, fallback }
+
+class _MarkerEntry {
+  _MarkerEntry({required this.priority, required this.marker});
+
+  final int priority;
+  final Marker marker;
+}
+
+int _priorityForEvent(EventModel event, DateTime now) {
+  final state = resolveEventTemporalState(event, reference: now);
+  switch (state) {
+    case CityEventTemporalState.now:
+      return 90;
+    case CityEventTemporalState.upcoming:
+      return 80;
+    case CityEventTemporalState.past:
+      return 70;
+  }
+}

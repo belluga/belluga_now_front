@@ -13,6 +13,7 @@ class CityPoiDTO {
     this.isDynamic = false,
     this.movementRadiusMeters,
     this.tags = const <String>[],
+    this.priority = 10,
   });
 
   final String id;
@@ -26,4 +27,5 @@ class CityPoiDTO {
   final bool isDynamic;
   final double? movementRadiusMeters;
   final List<String> tags;
+  final int priority;
 }

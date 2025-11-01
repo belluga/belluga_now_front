@@ -8,6 +8,42 @@ class MockPoiDatabase {
 
   static final List<CityPoiDTO> _pois = List.unmodifiable(<CityPoiDTO>[
       CityPoiDTO(
+        id: 'poi-sponsor-kidelicia-loja-central',
+        name: 'Kidelícia Sorvetes - Loja Central',
+        description:
+            'Patrocinador oficial Belluga Now — sorvetes artesanais e ponto de encontro.',
+        address:
+            'Praça Philomeno Pereira Ribeiro, 282 - Muquiçaba, Guarapari - ES',
+        category: CityPoiCategory.sponsor,
+        latitude: -20.66220228691961,
+        longitude: -40.498375644182275,
+        assetPath: 'assets/images/kidelicia_logo.png',
+        priority: 100,
+        tags: ['sponsor', 'sorvetes'],
+      ),
+      CityPoiDTO(
+        id: 'poi-event-luau-praia-do-morro',
+        name: 'Luau Praia do Morro',
+        description: 'Apresentação musical ao vivo na areia da Praia do Morro.',
+        address: 'Praia do Morro, Guarapari',
+        category: CityPoiCategory.culture,
+        latitude: -20.6629,
+        longitude: -40.4958,
+        priority: 90,
+        tags: ['evento', 'musica', 'agora'],
+      ),
+      CityPoiDTO(
+        id: 'poi-event-feira-artesanal',
+        name: 'Feira Artesanal da Orla',
+        description: 'Feira cultural com artistas locais e gastronomia típica.',
+        address: 'Orla da Praia das Castanheiras, Centro, Guarapari',
+        category: CityPoiCategory.culture,
+        latitude: -20.6715,
+        longitude: -40.4996,
+        priority: 80,
+        tags: ['evento', 'cultura'],
+      ),
+      CityPoiDTO(
         id: 'poi-restaurant-american-grill',
         name: 'American Grill',
         description: 'Regional',
