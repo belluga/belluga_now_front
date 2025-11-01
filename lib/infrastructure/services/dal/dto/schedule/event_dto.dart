@@ -10,6 +10,8 @@ class EventDTO {
     required this.title,
     required this.content,
     required this.location,
+    this.latitude,
+    this.longitude,
     this.thumb,
     required this.dateTimeStart,
     required this.artists,
@@ -21,6 +23,8 @@ class EventDTO {
   final String title;
   final String? content;
   final String location;
+  final double? latitude;
+  final double? longitude;
   final ThumbDTO? thumb;
   final String dateTimeStart;
   final List<EventArtistDTO> artists;

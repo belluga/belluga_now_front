@@ -4,20 +4,28 @@ import 'dart:math' as math;
 import 'package:belluga_now/domain/map/city_poi_model.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/domain/repositories/city_map_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
+import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value.dart';
 
 class CityMapController implements Disposable {
   CityMapController({
     CityMapRepositoryContract? repository,
-  }) : _repository =
-            repository ?? GetIt.I.get<CityMapRepositoryContract>();
+    ScheduleRepositoryContract? scheduleRepository,
+  })  : _repository =
+            repository ?? GetIt.I.get<CityMapRepositoryContract>(),
+        _scheduleRepository =
+            scheduleRepository ?? GetIt.I.get<ScheduleRepositoryContract>();
 
   final CityMapRepositoryContract _repository;
+  final ScheduleRepositoryContract _scheduleRepository;
 
-  final poisStreamValue = StreamValue<List<CityPoiModel>?>(defaultValue: null);
+  final poisStreamValue = StreamValue<List<CityPoiModel>?>(defaultValue: const []);
+  final eventsStreamValue = StreamValue<List<EventModel>?>(defaultValue: const []);
 
   final selectedPoiStreamValue = StreamValue<CityPoiModel?>();
+  final selectedEventStreamValue = StreamValue<EventModel?>();
 
   CityCoordinate get defaultCenter => _repository.defaultCenter();
 
@@ -38,6 +46,20 @@ class CityMapController implements Disposable {
 
   void selectPoi(CityPoiModel? poi) {
     selectedPoiStreamValue.addValue(poi);
+  }
+
+  void selectEvent(EventModel? event) {
+    selectedEventStreamValue.addValue(event);
+  }
+
+  Future<void> loadEventsForDate(DateTime date) async {
+    try {
+      selectedEventStreamValue.addValue(null);
+      final events = await _scheduleRepository.getEventsByDate(date);
+      eventsStreamValue.addValue(events);
+    } catch (_) {
+      eventsStreamValue.addValue(const []);
+    }
   }
 
   void _startDynamicPoiUpdates(List<CityPoiModel> points) {
@@ -88,6 +110,8 @@ class CityMapController implements Disposable {
   void onDispose() {
     poisStreamValue.dispose();
     selectedPoiStreamValue.dispose();
+    eventsStreamValue.dispose();
+    selectedEventStreamValue.dispose();
     _movingPoiTimer?.cancel();
   }
 }

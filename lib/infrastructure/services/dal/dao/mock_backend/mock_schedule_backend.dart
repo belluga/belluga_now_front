@@ -65,6 +65,8 @@ class MockScheduleBackend implements ScheduleBackendContract {
       content:
           'Encontro intimista com classicos reinterpretados em formato acustico.',
       location: 'Garden Stage Centro',
+      latitude: -20.6714,
+      longitude: -40.5042,
       thumbUrl:
           'https://images.unsplash.com/photo-1489515217757-5fd1be406fef?w=800',
       offsetDays: -1,
@@ -88,6 +90,8 @@ class MockScheduleBackend implements ScheduleBackendContract {
       content:
           'Sessao matinal ao ar livre focada em respiracao e alongamentos.',
       location: 'Deck Praia do Morro',
+      latitude: -20.6634,
+      longitude: -40.4976,
       thumbUrl:
           'https://images.unsplash.com/photo-1506126613408-eca07ce68773?w=800',
       offsetDays: 0,
@@ -111,6 +115,8 @@ class MockScheduleBackend implements ScheduleBackendContract {
       title: 'Electro Sunset Party',
       content: 'Line-up de DJs com sets ao vivo e visual do por do sol.',
       location: 'Orla Central',
+      latitude: -20.6678,
+      longitude: -40.5029,
       thumbUrl:
           'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?w=800',
       offsetDays: 0,
@@ -141,6 +147,8 @@ class MockScheduleBackend implements ScheduleBackendContract {
       content:
           'Caminhada guiada degustando petiscos autorais pelos quiosques locais.',
       location: 'Centro Historico',
+      latitude: -20.6749,
+      longitude: -40.5048,
       thumbUrl:
           'https://images.unsplash.com/photo-1466978913421-dad2ebd01d17?w=800',
       offsetDays: 1,
@@ -163,6 +171,8 @@ class MockScheduleBackend implements ScheduleBackendContract {
       title: 'Tropical Mixology Lab',
       content: 'Sessao pratica de coqueteis com ingredientes regionais.',
       location: 'Espaco Mixology Lab',
+      latitude: -20.6691,
+      longitude: -40.5004,
       thumbUrl:
           'https://images.unsplash.com/photo-1497534446932-c925b458314e?w=800',
       offsetDays: 2,
@@ -185,6 +195,8 @@ class MockScheduleBackend implements ScheduleBackendContract {
       title: 'Jazz Under the Stars',
       content: 'Concerto instrumental com participacao de solistas convidados.',
       location: 'Mirante Alto da Serra',
+      latitude: -20.6582,
+      longitude: -40.511,
       thumbUrl:
           'https://images.unsplash.com/photo-1526925539332-aa3b66e35444?w=800',
       offsetDays: 2,
@@ -209,6 +221,8 @@ class MockScheduleBackend implements ScheduleBackendContract {
       content:
           'Workshop itinerante registrando cenas urbanas com tecnicas rapidas.',
       location: 'Praca Central',
+      latitude: -20.6743,
+      longitude: -40.4978,
       thumbUrl:
           'https://images.unsplash.com/photo-1473862170182-43c138187c39?w=800',
       offsetDays: 3,
@@ -232,6 +246,8 @@ class MockScheduleBackend implements ScheduleBackendContract {
       content:
           'Programacao musical acompanhando a feira noturna de empreendedores.',
       location: 'Boulevard Belluga',
+      latitude: -20.6685,
+      longitude: -40.4954,
       thumbUrl:
           'https://images.unsplash.com/photo-1497032628192-86f99bcd76bc?w=800',
       offsetDays: 5,
@@ -251,6 +267,8 @@ class _MockEventSeed {
     required this.title,
     required this.content,
     required this.location,
+    required this.latitude,
+    required this.longitude,
     required this.thumbUrl,
     required this.offsetDays,
     required this.startHour,
@@ -266,6 +284,8 @@ class _MockEventSeed {
   final String title;
   final String content;
   final String location;
+  final double latitude;
+  final double longitude;
   final String thumbUrl;
   final int offsetDays;
   final int startHour;
@@ -290,6 +310,8 @@ class _MockEventSeed {
       title: title,
       content: content,
       location: location,
+      latitude: latitude,
+      longitude: longitude,
       thumb: ThumbDTO(
         type: 'image',
         data: {'url': thumbUrl},

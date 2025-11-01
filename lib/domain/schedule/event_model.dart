@@ -1,5 +1,6 @@
 import 'package:belluga_now/domain/courses/thumb_model.dart';
 import 'package:belluga_now/domain/schedule/event_artist_model.dart';
+import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/domain/schedule/event_action_model/event_action_model.dart';
 import 'package:belluga_now/domain/schedule/event_type_model.dart';
 import 'package:belluga_now/domain/value_objects/title_value.dart';
@@ -19,6 +20,7 @@ class EventModel {
   final DateTimeValue dateTimeStart;
   final List<EventArtistModel> artists;
   final List<EventActionModel> actions;
+  final CityCoordinate? coordinate;
 
   EventModel({
     required this.id,
@@ -30,6 +32,7 @@ class EventModel {
     required this.dateTimeStart,
     required this.artists,
     required this.actions,
+    required this.coordinate,
   });
 
   factory EventModel.fromDTO(EventDTO dto) {
@@ -43,6 +46,12 @@ class EventModel {
       dateTimeStart: DateTimeValue()..parse(dto.dateTimeStart),
       artists: dto.artists.map(EventArtistModel.fromDTO).toList(),
       actions: dto.actions.map((e) => EventActionModel.fromDTO(e)).toList(),
+      coordinate: (dto.latitude != null && dto.longitude != null)
+          ? CityCoordinate(
+              latitude: dto.latitude!,
+              longitude: dto.longitude!,
+            )
+          : null,
     );
   }
 }
