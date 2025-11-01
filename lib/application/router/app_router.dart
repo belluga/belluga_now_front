@@ -1,5 +1,6 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
+import 'package:belluga_now/application/router/manual_route_stubs.dart';
 import 'package:belluga_now/application/router/guards/auth_route_guard.dart';
 import 'package:belluga_now/application/router/guards/tenant_route_guard.dart';
 import 'package:get_it_modular_with_auto_route/get_it_modular_with_auto_route.dart';
@@ -50,6 +51,10 @@ class AppRouter extends AppRouterContract {
         AutoRoute(
           path: '/agenda/procurar',
           page: EventSearchRoute.page,
+        ),
+        AutoRoute(
+          path: '/mapa',
+          page: CityMapRoute.page,
         ),
         ...childModules.expand((module) => module.routes),
       ];
