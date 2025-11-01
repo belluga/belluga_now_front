@@ -11,8 +11,11 @@ class CityMapRepository extends CityMapRepositoryContract {
   final CityPoiDataSource _dataSource;
 
   @override
-  Future<List<CityPoiModel>> fetchPointsOfInterest() async {
-    final dtos = _dataSource.fetchPoints();
+  Future<List<CityPoiModel>> fetchPointsOfInterest(CityCoordinate origin) async {
+    final dtos = _dataSource.fetchPoints(
+      latitude: origin.latitude,
+      longitude: origin.longitude,
+    );
     return dtos.map(CityPoiModel.fromDTO).toList(growable: false);
   }
 

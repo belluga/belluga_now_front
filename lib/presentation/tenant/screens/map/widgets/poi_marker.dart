@@ -17,6 +17,73 @@ class PoiMarker extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final theme = categoryTheme(poi.category, scheme);
 
+    if (poi.assetPath != null) {
+      final isDynamicSponsor = poi.isDynamic;
+      final baseSize = isDynamicSponsor ? 42.0 : 64.0;
+      final selectedSize = isDynamicSponsor ? 48.0 : 72.0;
+      final badgeColor = isDynamicSponsor
+          ? theme.color.withOpacity(0.85)
+          : theme.color;
+      final badgeIcon = isDynamicSponsor
+          ? Icons.shopping_bag_outlined
+          : Icons.storefront;
+
+      return AnimatedScale(
+        duration: const Duration(milliseconds: 200),
+        scale: isSelected ? 1.18 : 1.0,
+        child: Stack(
+          alignment: Alignment.bottomRight,
+          children: [
+            Container(
+              width: isSelected ? selectedSize : baseSize,
+              height: isSelected ? selectedSize : baseSize,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(isSelected ? 0.35 : 0.25),
+                    blurRadius: isSelected ? 12 : 8,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              clipBehavior: Clip.antiAlias,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  image: DecorationImage(
+                    image: AssetImage(poi.assetPath!),
+                    fit: BoxFit.cover,
+                  ),
+                ),
+              ),
+            ),
+            Positioned(
+              right: 0,
+              bottom: 0,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: badgeColor,
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: scheme.surface,
+                    width: 2,
+                  ),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(4),
+                  child: Icon(
+                    badgeIcon,
+                    size: 14,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     return AnimatedScale(
       duration: const Duration(milliseconds: 180),
       scale: isSelected ? 1.12 : 1.0,

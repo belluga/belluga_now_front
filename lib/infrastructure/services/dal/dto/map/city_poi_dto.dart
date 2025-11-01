@@ -9,6 +9,9 @@ class CityPoiDTO {
     required this.category,
     required this.latitude,
     required this.longitude,
+    this.assetPath,
+    this.isDynamic = false,
+    this.movementRadiusMeters,
   });
 
   final String id;
@@ -18,4 +21,7 @@ class CityPoiDTO {
   final CityPoiCategory category;
   final double latitude;
   final double longitude;
+  final String? assetPath;
+  final bool isDynamic;
+  final double? movementRadiusMeters;
 }

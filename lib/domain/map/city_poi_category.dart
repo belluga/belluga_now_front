@@ -5,4 +5,5 @@ enum CityPoiCategory {
   church,
   culture,
   nature,
+  sponsor,
 }

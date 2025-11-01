@@ -54,5 +54,11 @@ CityPoiCategoryThemeData categoryTheme(
         color: const Color(0xFF00897B),
         label: 'Natureza',
       );
+    case CityPoiCategory.sponsor:
+      return CityPoiCategoryThemeData(
+        icon: Icons.star,
+        color: const Color(0xFFD84315),
+        label: 'Parceiro',
+      );
   }
 }

@@ -7,10 +7,12 @@ class PoiInfoCard extends StatelessWidget {
     super.key,
     required this.poi,
     required this.onDismiss,
+    required this.onRoute,
   });
 
   final CityPoiModel poi;
   final VoidCallback onDismiss;
+  final VoidCallback onRoute;
 
   @override
   Widget build(BuildContext context) {
@@ -84,6 +86,15 @@ class PoiInfoCard extends StatelessWidget {
                   ),
                 ),
               ],
+            ),
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: onRoute,
+                icon: const Icon(Icons.directions_outlined),
+                label: const Text('Ver rotas'),
+              ),
             ),
           ],
         ),

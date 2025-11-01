@@ -4,7 +4,7 @@ import 'package:belluga_now/infrastructure/services/dal/dto/map/city_poi_dto.dar
 class CityPoiDataSource {
   const CityPoiDataSource();
 
-  List<CityPoiDTO> fetchPoints() {
+  List<CityPoiDTO> fetchPoints({required double latitude, required double longitude}) {
     return const [
       CityPoiDTO(
         id: 'poi-praia-do-morro',
@@ -15,6 +15,53 @@ class CityPoiDataSource {
         category: CityPoiCategory.nature,
         latitude: -20.666407,
         longitude: -40.496702,
+      ),
+      CityPoiDTO(
+        id: 'poi-kidelicia-loja',
+        name: 'Kidelícia Sorvetes - Loja Central',
+        description:
+            'Loja oficial da Kidelícia, sorvetes artesanais e retirada de pedidos para entregadores.',
+        address: 'Praça Philomeno Pereira Ribeiro, 282 - Muquiçaba, Guarapari - ES, 29215-430',
+        category: CityPoiCategory.sponsor,
+        latitude: -20.66220228691961,
+        longitude: -40.498375644182275,
+        assetPath: 'assets/images/kidelicia_logo.png',
+      ),
+      CityPoiDTO(
+        id: 'poi-kidelicia-vendedor-01',
+        name: 'Vendedor Kidelícia (Zona Praia)',
+        description: 'Carrinho Kidelícia atendendo a orla da Praia do Morro.',
+        address: 'Região da Praia do Morro',
+        category: CityPoiCategory.sponsor,
+        latitude: -20.6648,
+        longitude: -40.4959,
+        assetPath: 'assets/images/kidelicia_logo.png',
+        isDynamic: true,
+        movementRadiusMeters: 180,
+      ),
+      CityPoiDTO(
+        id: 'poi-kidelicia-vendedor-02',
+        name: 'Vendedor Kidelícia (Centro)',
+        description: 'Carrinho Kidelícia circulando pelo centro comercial.',
+        address: 'Centro de Guarapari',
+        category: CityPoiCategory.sponsor,
+        latitude: -20.6741,
+        longitude: -40.5021,
+        assetPath: 'assets/images/kidelicia_logo.png',
+        isDynamic: true,
+        movementRadiusMeters: 150,
+      ),
+      CityPoiDTO(
+        id: 'poi-kidelicia-vendedor-03',
+        name: 'Vendedor Kidelícia (Muquiçaba)',
+        description: 'Carrinho Kidelícia atendendo a região de Muquiçaba.',
+        address: 'Bairro Muquiçaba',
+        category: CityPoiCategory.sponsor,
+        latitude: -20.6618,
+        longitude: -40.4992,
+        assetPath: 'assets/images/kidelicia_logo.png',
+        isDynamic: true,
+        movementRadiusMeters: 160,
       ),
       CityPoiDTO(
         id: 'poi-radium-hotel',
