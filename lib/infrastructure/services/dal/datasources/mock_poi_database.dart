@@ -1,4 +1,5 @@
 import 'package:belluga_now/domain/map/city_poi_category.dart';
+import 'package:belluga_now/domain/map/filters/poi_filter_options.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/infrastructure/services/dal/datasources/poi_query.dart';
 import 'package:belluga_now/infrastructure/services/dal/dto/map/city_poi_dto.dart';
@@ -1422,5 +1423,27 @@ class MockPoiDatabase {
       }
       return true;
     }).toList(growable: false);
+  }
+
+  PoiFilterOptions availableFilters() {
+    final Map<CityPoiCategory, Set<String>> mapping = {};
+    for (final poi in _pois) {
+      final set = mapping.putIfAbsent(
+        poi.category,
+        () => <String>{},
+      );
+      set.addAll(poi.tags);
+    }
+
+    final categories = mapping.entries
+        .map(
+          (entry) => PoiFilterCategory(
+            category: entry.key,
+            tags: entry.value,
+          ),
+        )
+        .toList(growable: false);
+
+    return PoiFilterOptions(categories: categories);
   }
 }

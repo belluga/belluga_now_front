@@ -7,10 +7,16 @@ class PoiInfoCard extends StatelessWidget {
     super.key,
     required this.poi,
     required this.onDismiss,
+    required this.onDetails,
+    required this.onShare,
+    required this.onRoute,
   });
 
   final CityPoiModel poi;
   final VoidCallback onDismiss;
+  final VoidCallback onDetails;
+  final VoidCallback onShare;
+  final VoidCallback onRoute;
 
   @override
   Widget build(BuildContext context) {
@@ -78,9 +84,63 @@ class PoiInfoCard extends StatelessWidget {
                 ),
               ],
             ),
+            const SizedBox(height: 16),
+            _ActionsRow(
+              onDetails: onDetails,
+              onShare: onShare,
+              onRoute: onRoute,
+            ),
           ],
         ),
       ),
+    );
+  }
+}
+
+class _ActionsRow extends StatelessWidget {
+  const _ActionsRow({
+    required this.onDetails,
+    required this.onShare,
+    required this.onRoute,
+  });
+
+  final VoidCallback onDetails;
+  final VoidCallback onShare;
+  final VoidCallback onRoute;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Row(
+      children: [
+        Expanded(
+          child: OutlinedButton.icon(
+            onPressed: onDetails,
+            icon: const Icon(Icons.info_outlined),
+            label: const Text('Detalhes'),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: OutlinedButton.icon(
+            onPressed: onShare,
+            icon: const Icon(Icons.share_outlined),
+            label: const Text('Compartilhar'),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: FilledButton.icon(
+            onPressed: onRoute,
+            icon: const Icon(Icons.route_outlined),
+            label: const Text('Traçar rota'),
+            style: FilledButton.styleFrom(
+              backgroundColor: scheme.primary,
+              foregroundColor: scheme.onPrimary,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

@@ -1,5 +1,8 @@
 import 'dart:async';
 
+import 'package:auto_route/auto_route.dart';
+import 'package:belluga_now/application/router/manual_route_stubs.dart';
+import 'package:belluga_now/domain/map/city_poi_category.dart';
 import 'package:belluga_now/domain/map/city_poi_model.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
@@ -9,6 +12,7 @@ import 'package:belluga_now/presentation/tenant/screens/map/widgets/event_info_c
 import 'package:belluga_now/presentation/tenant/screens/map/widgets/event_marker.dart';
 import 'package:belluga_now/presentation/tenant/screens/map/widgets/event_temporal_state.dart';
 import 'package:belluga_now/presentation/tenant/screens/map/widgets/location_status_banner.dart';
+import 'package:belluga_now/presentation/tenant/screens/map/widgets/filter_panel.dart';
 import 'package:belluga_now/presentation/tenant/screens/map/widgets/poi_info_card.dart';
 import 'package:belluga_now/presentation/tenant/screens/map/widgets/poi_marker.dart';
 import 'package:belluga_now/presentation/tenant/screens/map/widgets/user_location_marker.dart';
@@ -42,6 +46,7 @@ class _CityMapScreenState extends State<CityMapScreen> {
   @override
   void initState() {
     super.initState();
+    unawaited(_controller.loadFilters());
     _resolveUserLocation();
   }
 
@@ -60,6 +65,28 @@ class _CityMapScreenState extends State<CityMapScreen> {
       appBar: AppBar(
         title: const Text('Mapa de Guarapari'),
         actions: [
+          StreamValueBuilder<Set<CityPoiCategory>>(
+            streamValue: _controller.selectedCategories,
+            builder: (context, categories) {
+              return StreamValueBuilder<Set<String>>(
+                streamValue: _controller.selectedTags,
+                builder: (context, tags) {
+                  final hasCategoryFilters = categories?.isNotEmpty ?? false;
+                  final hasTagFilters = tags?.isNotEmpty ?? false;
+                  final hasFilters = hasCategoryFilters || hasTagFilters;
+                  return IconButton(
+                    icon: Icon(
+                      Icons.filter_list,
+                      color:
+                          hasFilters ? theme.colorScheme.primary : null,
+                    ),
+                    tooltip: 'Filtrar',
+                    onPressed: () => _openFilterPanel(),
+                  );
+                },
+              );
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.refresh_outlined),
             tooltip: 'Recarregar pontos',
@@ -87,7 +114,7 @@ class _CityMapScreenState extends State<CityMapScreen> {
         streamValue: _controller.pois,
         onNullWidget: const Center(child: CircularProgressIndicator()),
         builder: (context, poiStreamValue) {
-          final poiList = poiStreamValue;
+          final poiList = poiStreamValue ?? const <CityPoiModel>[];
           return StreamValueBuilder<List<EventModel>?>(
             streamValue: _controller.eventsStreamValue,
             builder: (context, events) {
@@ -119,6 +146,7 @@ class _CityMapScreenState extends State<CityMapScreen> {
                               defaultCenter.latitude,
                               defaultCenter.longitude,
                             ),
+                            onMapInteraction: _handleMapInteraction,
                           ),
                           Positioned(
                             top: 16,
@@ -195,6 +223,14 @@ class _CityMapScreenState extends State<CityMapScreen> {
                                     poi: selectedPoi,
                                     onDismiss: () =>
                                         _controller.selectPoi(null),
+                                    onDetails: () =>
+                                        _openPoiDetails(selectedPoi),
+                                    onShare: () =>
+                                        _controller.sharePoi(selectedPoi),
+                                    onRoute: () =>
+                                        _controller.getDirectionsToPoi(
+                                      selectedPoi,
+                                    ),
                                   ),
                                 ),
                               ),
@@ -348,6 +384,30 @@ class _CityMapScreenState extends State<CityMapScreen> {
     _controller.selectEvent(null);
   }
 
+  Future<void> _openFilterPanel() async {
+    unawaited(_controller.loadFilters());
+    if (!mounted) return;
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => FilterPanel(controller: _controller),
+    );
+  }
+
+  void _handleMapInteraction() {
+    if (_controller.selectedPoiStreamValue.value != null) {
+      _controller.selectPoi(null);
+    }
+    if (_controller.selectedEventStreamValue.value != null) {
+      _controller.selectEvent(null);
+    }
+  }
+
+  Future<void> _openPoiDetails(CityPoiModel poi) async {
+    if (!mounted) return;
+    await context.router.push(PoiDetailsRoute(poi: poi));
+  }
+
   void _fallbackLoadPois() {
     if (_hasRequestedPois) return;
     _hasRequestedPois = true;
@@ -405,6 +465,7 @@ class _CityMapView extends StatelessWidget {
     required this.onSelectEvent,
     required this.userPosition,
     required this.defaultCenter,
+    required this.onMapInteraction,
   });
 
   final MapController mapController;
@@ -416,6 +477,7 @@ class _CityMapView extends StatelessWidget {
   final ValueChanged<EventModel?> onSelectEvent;
   final LatLng? userPosition;
   final LatLng defaultCenter;
+  final VoidCallback onMapInteraction;
 
   @override
   Widget build(BuildContext context) {
@@ -500,17 +562,22 @@ class _CityMapView extends StatelessWidget {
 
     final initialCenter = userPosition ?? defaultCenter;
 
-    return FmMap(
-      mapController: mapController,
-      mapOptions: MapOptions(
-        initialCenter: initialCenter,
-        initialZoom: userPosition != null ? 15 : 14,
-        minZoom: 11,
-        maxZoom: 19,
-        interactionOptions: const InteractionOptions(flags: InteractiveFlag.all),
+    return Listener(
+      behavior: HitTestBehavior.deferToChild,
+      onPointerDown: (_) => onMapInteraction(),
+      child: FmMap(
+        mapController: mapController,
+        mapOptions: MapOptions(
+          initialCenter: initialCenter,
+          initialZoom: userPosition != null ? 15 : 14,
+          minZoom: 11,
+          maxZoom: 19,
+          interactionOptions:
+              const InteractionOptions(flags: InteractiveFlag.all),
+        ),
+        markers: markers,
+        attributionAlignment: Alignment.bottomRight,
       ),
-      markers: markers,
-      attributionAlignment: Alignment.bottomRight,
     );
   }
 }

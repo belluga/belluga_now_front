@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:belluga_now/domain/map/city_poi_model.dart';
 import 'package:belluga_now/domain/map/events/poi_update_event.dart';
+import 'package:belluga_now/domain/map/filters/poi_filter_options.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/domain/repositories/city_map_repository_contract.dart';
 import 'package:belluga_now/infrastructure/services/dal/datasources/mock_poi_database.dart';
@@ -36,6 +37,9 @@ class CityMapRepository extends CityMapRepositoryContract {
     final List<CityPoiDTO> dtos = await _httpService.getPois(query);
     return dtos.map(CityPoiModel.fromDTO).toList(growable: false);
   }
+
+  @override
+  Future<PoiFilterOptions> fetchFilters() => _httpService.getFilters();
 
   @override
   Stream<PoiUpdateEvent?> get poiEvents => _poiEvents.stream;
