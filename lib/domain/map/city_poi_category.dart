@@ -4,6 +4,9 @@ enum CityPoiCategory {
   monument,
   church,
   culture,
+  lodging,
+  attraction,
+  beach,
   nature,
   sponsor,
 }

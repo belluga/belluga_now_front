@@ -27,9 +27,14 @@ class MockScheduleBackend implements ScheduleBackendContract {
 
   @override
   Future<List<EventDTO>> fetchEvents() async {
-    final events = _eventSeeds.map((seed) => seed.toDto(_today)).toList()
-      ..sort((a, b) => DateTime.parse(a.dateTimeStart)
-          .compareTo(DateTime.parse(b.dateTimeStart)));
+    final events = List<EventDTO>.generate(
+      _eventSeeds.length,
+      (index) {
+        final venue = _eventVenues[index % _eventVenues.length];
+        return _eventSeeds[index].toDto(_today, venue);
+      },
+    )..sort((a, b) => DateTime.parse(a.dateTimeStart)
+        .compareTo(DateTime.parse(b.dateTimeStart)));
 
     return events;
   }
@@ -57,7 +62,115 @@ class MockScheduleBackend implements ScheduleBackendContract {
     color: '#FFE80D5D',
   );
 
-  static final List<_MockEventSeed> _eventSeeds = [
+  static const List<_EventVenue> _eventVenues = [
+    _EventVenue(
+      id: 'american-grill',
+      name: 'American Grill',
+      address: 'Guarapari',
+      latitude: -20.6600241,
+      longitude: -40.502093,
+    ),
+    _EventVenue(
+      id: 'bolinhas-bar',
+      name: 'Bolinhas Bar e Restaurante',
+      address: 'Av. Des. Laurival de Almeida, Centro',
+      latitude: -20.6739006,
+      longitude: -40.4980227,
+    ),
+    _EventVenue(
+      id: 'box-mineiro',
+      name: 'Box Mineiro',
+      address: 'Rua Henrique Coutinho, Centro',
+      latitude: -20.6703232,
+      longitude: -40.4965388,
+    ),
+    _EventVenue(
+      id: 'barraca-do-marcelo',
+      name: 'Barraca do Marcelo',
+      address: 'Praia de Meaípe',
+      latitude: -20.7381371,
+      longitude: -40.5430268,
+    ),
+    _EventVenue(
+      id: 'le-cave',
+      name: 'Le Cave',
+      address: 'Enseada Azul',
+      latitude: -20.6520423,
+      longitude: -40.4859819,
+    ),
+    _EventVenue(
+      id: 'donatello',
+      name: 'Donatello Restaurante e Pizzaria',
+      address: 'Avenida Maria de Lourdes Carvalho Dantas',
+      latitude: -20.6534829,
+      longitude: -40.4894282,
+    ),
+    _EventVenue(
+      id: 'deck',
+      name: 'Deck',
+      address: 'Centro',
+      latitude: -20.6720688,
+      longitude: -40.4976626,
+    ),
+    _EventVenue(
+      id: 'kibe-lanches',
+      name: 'Kibe Lanches',
+      address: 'Centro',
+      latitude: -20.671917,
+      longitude: -40.4979096,
+    ),
+    _EventVenue(
+      id: 'herois-burger',
+      name: 'Heróis Burger',
+      address: 'Guarapari',
+      latitude: -20.6513284,
+      longitude: -40.4792761,
+    ),
+    _EventVenue(
+      id: 'bistro-sal-e-tal',
+      name: 'Bistro Sal e Tal',
+      address: 'Guarapari',
+      latitude: -20.7217392,
+      longitude: -40.5241274,
+    ),
+    _EventVenue(
+      id: 'benfica',
+      name: 'Benfica',
+      address: 'Rua Henrique Coutinho, Centro',
+      latitude: -20.6708241,
+      longitude: -40.496421,
+    ),
+    _EventVenue(
+      id: 'cia-comida',
+      name: 'Cia & Comida',
+      address: 'Guarapari',
+      latitude: -20.6703032,
+      longitude: -40.4984612,
+    ),
+    _EventVenue(
+      id: 'gostoso',
+      name: 'Gostoso',
+      address: 'Guarapari',
+      latitude: -20.6731777,
+      longitude: -40.4982096,
+    ),
+    _EventVenue(
+      id: 'free-dog',
+      name: 'Free Dog Pizzaria e Lanchonete',
+      address: 'Avenida José Ferreira Ferro',
+      latitude: -20.6562124,
+      longitude: -40.4922658,
+    ),
+    _EventVenue(
+      id: 'restaurante-boqueirao',
+      name: 'Restaurante Boqueirão',
+      address: 'Meaípe',
+      latitude: -20.7416995,
+      longitude: -40.5359065,
+    ),
+  ];
+
+static final List<_MockEventSeed> _eventSeeds = [
     // Day 0
     _MockEventSeed(
       id: 'event-day0-morning-flow',
@@ -1098,6 +1211,22 @@ class MockScheduleBackend implements ScheduleBackendContract {
   ];
 }
 
+class _EventVenue {
+  const _EventVenue({
+    required this.id,
+    required this.name,
+    required this.address,
+    required this.latitude,
+    required this.longitude,
+  });
+
+  final String id;
+  final String name;
+  final String address;
+  final double latitude;
+  final double longitude;
+}
+
 class _MockEventSeed {
   const _MockEventSeed({
     required this.id,
@@ -1122,8 +1251,11 @@ class _MockEventSeed {
   final EventTypeDTO type;
   final String title;
   final String content;
+  // ignore: unused_field
   final String location;
+  // ignore: unused_field
   final double latitude;
+  // ignore: unused_field
   final double longitude;
   final String thumbUrl;
   final int offsetDays;
@@ -1135,7 +1267,7 @@ class _MockEventSeed {
   final String actionUrl;
   final String actionColor;
 
-  EventDTO toDto(DateTime baseDate) {
+  EventDTO toDto(DateTime baseDate, _EventVenue venue) {
     final date = baseDate.add(
       Duration(
         days: offsetDays,
@@ -1145,14 +1277,16 @@ class _MockEventSeed {
     );
     final endDate = date.add(Duration(minutes: durationMinutes));
 
+    final locationLabel = '${venue.name} · ${venue.address}';
+
     return EventDTO(
       id: id,
       type: type,
       title: title,
       content: content,
-      location: location,
-      latitude: latitude,
-      longitude: longitude,
+      location: locationLabel,
+      latitude: venue.latitude,
+      longitude: venue.longitude,
       thumb: ThumbDTO(
         type: 'image',
         data: {'url': thumbUrl},

@@ -48,6 +48,24 @@ CityPoiCategoryThemeData categoryTheme(
         color: const Color(0xFF8E24AA),
         label: 'Cultura',
       );
+    case CityPoiCategory.lodging:
+      return CityPoiCategoryThemeData(
+        icon: Icons.hotel,
+        color: const Color(0xFF00639B),
+        label: 'Hospedagem',
+      );
+    case CityPoiCategory.attraction:
+      return CityPoiCategoryThemeData(
+        icon: Icons.attractions,
+        color: const Color(0xFFF57C00),
+        label: 'Atração',
+      );
+    case CityPoiCategory.beach:
+      return CityPoiCategoryThemeData(
+        icon: Icons.beach_access,
+        color: const Color(0xFF0288D1),
+        label: 'Praia',
+      );
     case CityPoiCategory.nature:
       return CityPoiCategoryThemeData(
         icon: Icons.park,
