@@ -1,4 +1,5 @@
 import 'package:belluga_now/domain/map/city_poi_category.dart';
+import 'package:belluga_now/domain/map/filters/main_filter_option.dart';
 import 'package:belluga_now/domain/map/filters/poi_filter_options.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/infrastructure/services/dal/datasources/poi_query.dart';
@@ -1457,4 +1458,50 @@ class MockPoiDatabase {
 
     return PoiFilterOptions(categories: categories);
   }
+
+  List<MainFilterOption> availableMainFilters() {
+    return const <MainFilterOption>[
+      MainFilterOption(
+        id: 'main_filter_promotions',
+        label: 'Promocoes',
+        iconName: 'local_offer',
+        type: MainFilterType.promotions,
+        behavior: MainFilterBehavior.quickApply,
+        categories: <CityPoiCategory>{CityPoiCategory.sponsor},
+      ),
+      MainFilterOption(
+        id: 'main_filter_events',
+        label: 'Eventos',
+        iconName: 'event',
+        type: MainFilterType.events,
+        behavior: MainFilterBehavior.opensPanel,
+      ),
+      MainFilterOption(
+        id: 'main_filter_music',
+        label: 'Musica',
+        iconName: 'music_note',
+        type: MainFilterType.music,
+        behavior: MainFilterBehavior.opensPanel,
+        metadata: <String, dynamic>{'eventSlug': 'show'},
+      ),
+      MainFilterOption(
+        id: 'main_filter_regions',
+        label: 'Regioes',
+        iconName: 'map',
+        type: MainFilterType.regions,
+        behavior: MainFilterBehavior.opensPanel,
+      ),
+      MainFilterOption(
+        id: 'main_filter_cuisines',
+        label: 'Gastronomia',
+        iconName: 'restaurant',
+        type: MainFilterType.cuisines,
+        behavior: MainFilterBehavior.opensPanel,
+        metadata: <String, dynamic>{
+          'highlightCategory': CityPoiCategory.restaurant,
+        },
+      ),
+    ];
+  }
 }
+

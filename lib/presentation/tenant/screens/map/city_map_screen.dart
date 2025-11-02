@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/manual_route_stubs.dart';
+import 'package:belluga_now/domain/map/city_poi_category.dart';
 import 'package:belluga_now/domain/map/city_poi_model.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
@@ -11,12 +12,13 @@ import 'package:belluga_now/presentation/tenant/screens/map/widgets/event_info_c
 import 'package:belluga_now/presentation/tenant/screens/map/widgets/event_marker.dart';
 import 'package:belluga_now/presentation/tenant/screens/map/widgets/event_temporal_state.dart';
 import 'package:belluga_now/presentation/tenant/screens/map/widgets/location_status_banner.dart';
-import 'package:belluga_now/presentation/tenant/screens/map/widgets/filter_panel.dart';
 import 'package:belluga_now/presentation/tenant/screens/map/widgets/poi_info_card.dart';
 import 'package:belluga_now/presentation/tenant/screens/map/widgets/poi_marker.dart';
 import 'package:belluga_now/presentation/tenant/screens/map/widgets/user_location_marker.dart';
 import 'package:belluga_now/presentation/tenant/widgets/event_details.dart';
 import 'package:belluga_now/presentation/view_models/event_card_data.dart';
+import 'package:belluga_now/domain/map/filters/main_filter_option.dart';
+import 'package:belluga_now/domain/map/filters/poi_filter_options.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -26,6 +28,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:get_it/get_it.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
+import 'package:intl/intl.dart';
 
 class CityMapScreen extends StatefulWidget {
   const CityMapScreen({super.key});
@@ -39,16 +42,17 @@ class _CityMapScreenState extends State<CityMapScreen> {
   final _controller = GetIt.I.get<CityMapController>();
 
   LatLng? _userPosition;
-  CityCoordinate? _userOrigin;
   bool _hasRequestedPois = false;
   bool _eventsLoaded = false;
   _MapStatus _status = _MapStatus.locating;
   String? _statusMessage = 'Localizando voce...';
   String? _hoveredPoiId;
+  bool _isFilterFabMenuOpen = false;
 
   @override
   void initState() {
     super.initState();
+    unawaited(_controller.loadMainFilters());
     unawaited(_controller.loadFilters());
     _resolveUserLocation();
   }
@@ -86,42 +90,357 @@ class _CityMapScreenState extends State<CityMapScreen> {
           ),
         ],
       ),
-      body: Column(
-        children: [
-          _buildFilterAndRegionBar(theme),
-          Expanded(
-            child: _buildMapArea(theme, defaultCenter),
-          ),
-        ],
+      body: _buildMapArea(theme, defaultCenter),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+      floatingActionButton: _buildMainFilterFabGroup(theme),
+    );
+  }
+
+  Widget _buildMainFilterFabGroup(ThemeData theme) {
+    return StreamValueBuilder<List<MainFilterOption>>(
+      streamValue: _controller.mainFilterOptionsStreamValue,
+      builder: (context, options) {
+        final filters = options;
+        return StreamValueBuilder<MainFilterOption?>(
+          streamValue: _controller.activeMainFilterStreamValue,
+          builder: (context, activeFilter) {
+            return Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                if (_isFilterFabMenuOpen)
+                  ...filters.reversed.map(
+                    (option) => Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: _buildSecondaryFilterFab(
+                        theme: theme,
+                        option: option,
+                        activeFilter: activeFilter,
+                      ),
+                    ),
+                  ),
+                FloatingActionButton(
+                  heroTag: 'main-filter-toggle-fab',
+                  onPressed: _toggleMainFilterMenu,
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 200),
+                    child: Icon(
+                      _isFilterFabMenuOpen ? Icons.close : Icons.filter_list,
+                      key: ValueKey<bool>(_isFilterFabMenuOpen),
+                    ),
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildSecondaryFilterFab({
+    required ThemeData theme,
+    required MainFilterOption option,
+    required MainFilterOption? activeFilter,
+  }) {
+    final icon = _iconForMainFilter(option);
+    final isActive = option.isQuickApply &&
+        activeFilter != null &&
+        activeFilter.id == option.id;
+    final backgroundColor = isActive
+        ? theme.colorScheme.primary
+        : theme.colorScheme.surface;
+    final foregroundColor = isActive
+        ? theme.colorScheme.onPrimary
+        : theme.colorScheme.onSurface;
+
+    return Tooltip(
+      message: option.label,
+      child: FloatingActionButton.small(
+        heroTag: 'main-filter-${option.id}',
+        backgroundColor: backgroundColor,
+        onPressed: () => _onMainFilterTap(option),
+        child: Icon(icon, color: foregroundColor),
       ),
     );
   }
 
-  Widget _buildFilterAndRegionBar(ThemeData theme) {
-    return Material(
-      elevation: 2,
-      color: theme.colorScheme.surface,
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            FilterPanel(controller: _controller),
-            const SizedBox(width: 16),
-            for (final region in _controller.regions)
-              Padding(
-                padding: const EdgeInsets.only(right: 12),
-                child: FilledButton.tonalIcon(
-                  onPressed: () => _handleRegionTap(region),
-                  icon: const Icon(Icons.place_outlined),
-                  label: Text(region.label),
-                ),
+  void _toggleMainFilterMenu() {
+    setState(() {
+      _isFilterFabMenuOpen = !_isFilterFabMenuOpen;
+    });
+  }
+
+  IconData _iconForMainFilter(MainFilterOption option) {
+    switch (option.iconName) {
+      case 'local_offer':
+        return Icons.local_offer;
+      case 'event':
+        return Icons.event;
+      case 'music_note':
+        return Icons.music_note;
+      case 'map':
+        return Icons.map;
+      case 'restaurant':
+        return Icons.restaurant;
+      default:
+        return Icons.filter_alt;
+    }
+  }
+
+  Future<void> _onMainFilterTap(MainFilterOption option) async {
+    if (option.opensPanel) {
+      setState(() {
+        _isFilterFabMenuOpen = false;
+      });
+
+      switch (option.type) {
+        case MainFilterType.events:
+          await _openEventFilterSheet();
+          break;
+        case MainFilterType.music:
+          await _openEventFilterSheet(musicOnly: true);
+          break;
+        case MainFilterType.regions:
+          await _openRegionPicker();
+          break;
+        case MainFilterType.cuisines:
+          await _openCuisinePanel();
+          break;
+        case MainFilterType.promotions:
+          break;
+      }
+      return;
+    }
+
+    await _controller.applyMainFilter(option);
+    if (!mounted) return;
+    setState(() {
+      _isFilterFabMenuOpen = false;
+    });
+  }
+
+  Future<void> _openEventFilterSheet({bool musicOnly = false}) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) {
+        final theme = Theme.of(context);
+        return SafeArea(
+          child: SizedBox(
+            height: MediaQuery.of(context).size.height * 0.45,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(
+                        musicOnly ? Icons.music_note : Icons.event,
+                        color: theme.colorScheme.primary,
+                      ),
+                      const SizedBox(width: 12),
+                      Text(
+                        musicOnly ? 'Eventos musicais' : 'Eventos',
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  Expanded(
+                    child: StreamValueBuilder<List<EventModel>?>(
+                      streamValue: _controller.eventsStreamValue,
+                      builder: (context, events) {
+                        final allEvents = events ?? const <EventModel>[];
+                        final filtered = musicOnly
+                            ? allEvents.where(
+                                (event) =>
+                                    event.type.slug.value.toLowerCase() ==
+                                    'show',
+                              )
+                            : allEvents;
+                        final items = filtered.toList(growable: false);
+                        if (items.isEmpty) {
+                          return Center(
+                            child: Text(
+                              musicOnly
+                                  ? 'Nenhum evento musical disponivel.'
+                                  : 'Nenhum evento disponivel no momento.',
+                              style: theme.textTheme.bodyMedium,
+                            ),
+                          );
+                        }
+                        return ListView.separated(
+                          itemCount: items.length,
+                          separatorBuilder: (_, __) =>
+                              const Divider(height: 1),
+                          itemBuilder: (context, index) {
+                            final event = items[index];
+                            final start = event.dateTimeStart.value;
+                            final subtitle = start != null
+                                ? DateFormat('dd/MM • HH:mm').format(start)
+                                : 'Horario a definir';
+                            return ListTile(
+                              title: Text(event.title.value),
+                              subtitle: Text(
+                                '${event.location.value} • $subtitle',
+                              ),
+                              trailing:
+                                  const Icon(Icons.arrow_forward_ios, size: 16),
+                              onTap: () {
+                                Navigator.of(context).pop();
+                                _controller.selectEvent(event);
+                                final coordinate = event.coordinate;
+                                if (coordinate != null) {
+                                  _mapController.move(
+                                    LatLng(
+                                      coordinate.latitude,
+                                      coordinate.longitude,
+                                    ),
+                                    16,
+                                  );
+                                }
+                              },
+                              onLongPress: () {
+                                Navigator.of(context).pop();
+                                _openEventDetails(event);
+                              },
+                            );
+                          },
+                        );
+                      },
+                    ),
+                  ),
+                ],
               ),
-          ],
-        ),
-      ),
+            ),
+          ),
+        );
+      },
     );
+  }
+
+  Future<void> _openRegionPicker() async {
+    final selected = await showModalBottomSheet<MapRegionDefinition>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) {
+        return SafeArea(
+          child: ListView.separated(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            itemBuilder: (context, index) {
+              final region = _controller.regions[index];
+              return ListTile(
+                leading: const Icon(Icons.place_outlined),
+                title: Text(region.label),
+                onTap: () => Navigator.of(context).pop(region),
+              );
+            },
+            separatorBuilder: (_, __) => const Divider(height: 1),
+            itemCount: _controller.regions.length,
+          ),
+        );
+      },
+    );
+
+    if (selected != null) {
+      await _handleRegionTap(selected);
+    }
+  }
+
+  Future<void> _openCuisinePanel() async {
+    await _controller.loadFilters();
+    if (!mounted) return;
+    final options = _controller.filterOptionsStreamValue.value;
+    PoiFilterCategory? restaurantCategory;
+    if (options != null) {
+      for (final option in options.categories) {
+        if (option.category == CityPoiCategory.restaurant) {
+          restaurantCategory = option;
+          break;
+        }
+      }
+    }
+
+    if (restaurantCategory == null || restaurantCategory.tags.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Nenhum filtro de gastronomia disponivel.'),
+        ),
+      );
+      return;
+    }
+
+    final selectedCategoriesValue = _controller.selectedCategories.value;
+    final hasRestaurantSelected =
+        selectedCategoriesValue.contains(CityPoiCategory.restaurant);
+    if (!hasRestaurantSelected) {
+      _controller.toggleCategory(CityPoiCategory.restaurant);
+    }
+
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) {
+        final tags = restaurantCategory!.tags.toList()..sort();
+        final theme = Theme.of(context);
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.restaurant, color: theme.colorScheme.primary),
+                    const SizedBox(width: 12),
+                    Text(
+                      'Gastronomia',
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                StreamValueBuilder<Set<String>>(
+                  streamValue: _controller.selectedTags,
+                  builder: (context, selectedTags) {
+                    final current = selectedTags;
+                    return Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        for (final tag in tags)
+                          FilterChip(
+                            label: Text(_formatTag(tag)),
+                            selected: current.contains(tag),
+                            onSelected: (_) => _controller.toggleTag(tag),
+                          ),
+                      ],
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  String _formatTag(String tag) {
+    if (tag.isEmpty) {
+      return tag;
+    }
+    if (tag.length == 1) {
+      return tag.toUpperCase();
+    }
+    return tag[0].toUpperCase() + tag.substring(1);
   }
 
   Future<void> _openSearchDialog() async {
@@ -202,7 +521,7 @@ class _CityMapScreenState extends State<CityMapScreen> {
       streamValue: _controller.pois,
       onNullWidget: const Center(child: CircularProgressIndicator()),
       builder: (context, poiStreamValue) {
-        final poiList = poiStreamValue ?? const <CityPoiModel>[];
+        final poiList = poiStreamValue;
         return StreamValueBuilder<List<EventModel>?>(
           streamValue: _controller.eventsStreamValue,
           builder: (context, events) {
@@ -429,7 +748,6 @@ class _CityMapScreenState extends State<CityMapScreen> {
       final userLatLng = LatLng(position.latitude, position.longitude);
 
       setState(() {
-        _userOrigin = origin;
         _userPosition = userLatLng;
         _status = _MapStatus.fetching;
         _statusMessage = 'Buscando pontos pr├│ximos...';
@@ -750,3 +1068,6 @@ int _priorityForEvent(EventModel event, DateTime now) {
       return 70;
   }
 }
+
+
+
