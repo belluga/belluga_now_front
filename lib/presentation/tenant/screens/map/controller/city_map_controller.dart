@@ -15,6 +15,7 @@ import 'package:get_it/get_it.dart';
 import 'package:map_launcher/map_launcher.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:intl/intl.dart';
 import 'package:stream_value/core/stream_value.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -34,8 +35,6 @@ class CityMapController implements Disposable {
 
   final StreamValue<List<EventModel>?> eventsStreamValue;
 
-  final isFilterVisible = StreamValue<bool>(defaultValue: false);
-
   final isLoading = StreamValue<bool>(defaultValue: false);
   final pois = StreamValue<List<CityPoiModel>>(defaultValue: const []);
   final errorMessage = StreamValue<String?>();
@@ -48,6 +47,37 @@ class CityMapController implements Disposable {
 
   final selectedPoiStreamValue = StreamValue<CityPoiModel?>();
   final selectedEventStreamValue = StreamValue<EventModel?>();
+  final mapNavigationTarget = StreamValue<MapNavigationTarget?>();
+
+  static const List<MapRegionDefinition> _regions = <MapRegionDefinition>[
+    MapRegionDefinition(
+      id: 'rota_ferradura',
+      label: 'Rota da Ferradura',
+      center: CityCoordinate(latitude: -20.6608, longitude: -40.4915),
+      zoom: 14.2,
+    ),
+    MapRegionDefinition(
+      id: 'meaipe',
+      label: 'Meaípe',
+      center: CityCoordinate(latitude: -20.7254, longitude: -40.5198),
+      zoom: 14.0,
+    ),
+    MapRegionDefinition(
+      id: 'setiba',
+      label: 'Setiba',
+      center: CityCoordinate(latitude: -20.6392, longitude: -40.4455),
+      zoom: 13.6,
+    ),
+    MapRegionDefinition(
+      id: 'nova_guarapari',
+      label: 'Nova Guarapari',
+      center: CityCoordinate(latitude: -20.6965, longitude: -40.5092),
+      zoom: 13.8,
+    ),
+  ];
+
+  List<MapRegionDefinition> get regions =>
+      List<MapRegionDefinition>.unmodifiable(_regions);
 
   CityCoordinate get defaultCenter => _repository.defaultCenter();
 
@@ -97,6 +127,37 @@ class CityMapController implements Disposable {
 
   void selectEvent(EventModel? event) {
     selectedEventStreamValue.addValue(event);
+  }
+
+  Future<void> searchPois(String query) async {
+    final nextQuery = _composeQuery(searchTerm: query);
+    await loadPois(nextQuery);
+  }
+
+  Future<void> clearSearch() async {
+    final query = _composeQuery(searchTerm: '');
+    await loadPois(query);
+  }
+
+  Future<void> goToRegion(MapRegionDefinition region) async {
+    final delta = region.boundsDelta;
+    final ne = CityCoordinate(
+      latitude: region.center.latitude + delta,
+      longitude: region.center.longitude + delta,
+    );
+    final sw = CityCoordinate(
+      latitude: region.center.latitude - delta,
+      longitude: region.center.longitude - delta,
+    );
+
+    final query = _composeQuery(
+      northEast: ne,
+      southWest: sw,
+    );
+    await loadPois(query);
+    mapNavigationTarget.addValue(
+      MapNavigationTarget(center: region.center, zoom: region.zoom),
+    );
   }
 
   void toggleCategory(CityPoiCategory category) {
@@ -172,11 +233,48 @@ class CityMapController implements Disposable {
     final message =
         shareLines.where((line) => line.trim().isNotEmpty).join('\n');
 
-    unawaited(_sharePoi(message, poi.name));
+    unawaited(_shareContent(message, poi.name));
+  }
+
+  void shareEvent(EventModel event) {
+    final lines = <String>[
+      event.title.value,
+      event.location.value,
+    ];
+    final start = event.dateTimeStart.value;
+    if (start != null) {
+      lines.add(
+        'Início: ${DateFormat('dd/MM/yyyy HH:mm').format(start)}',
+      );
+    }
+
+    final message = lines.where((line) => line.trim().isNotEmpty).join('\n');
+    unawaited(_shareContent(message, event.title.value));
   }
 
   void getDirectionsToPoi(CityPoiModel poi, BuildContext context) {
-    unawaited(_openDirections(poi, context));
+    unawaited(
+      _openDirectionsToCoordinate(
+        poi.coordinate,
+        poi.name,
+        context,
+      ),
+    );
+  }
+
+  void getDirectionsToEvent(EventModel event, BuildContext context) {
+    final coordinate = event.coordinate;
+    if (coordinate == null) {
+      return;
+    }
+
+    unawaited(
+      _openDirectionsToCoordinate(
+        coordinate,
+        event.title.value,
+        context,
+      ),
+    );
   }
 
   Future<void> _loadEventsForDate(DateTime date) async {
@@ -249,11 +347,57 @@ class CityMapController implements Disposable {
 
   PoiQuery get currentQuery => _currentQuery;
 
+  String? get currentSearchTerm => _currentQuery.searchTerm;
+
+  bool get hasActiveSearch =>
+      (_currentQuery.searchTerm?.trim().isNotEmpty ?? false);
+
   Future<void> reload() => loadPois(_currentQuery);
 
   DateTime get _today {
     final now = DateTime.now();
     return DateTime(now.year, now.month, now.day);
+  }
+
+  PoiQuery _composeQuery({
+    CityCoordinate? northEast,
+    CityCoordinate? southWest,
+    Iterable<CityPoiCategory>? categories,
+    Iterable<String>? tags,
+    String? searchTerm,
+  }) {
+    Set<CityPoiCategory>? resolvedCategories;
+    if (categories == null) {
+      resolvedCategories = _currentQuery.categories;
+    } else if (categories.isEmpty) {
+      resolvedCategories = null;
+    } else {
+      resolvedCategories =
+          Set<CityPoiCategory>.unmodifiable(categories.toSet());
+    }
+
+    Set<String>? resolvedTags;
+    if (tags == null) {
+      resolvedTags = _currentQuery.tags;
+    } else if (tags.isEmpty) {
+      resolvedTags = null;
+    } else {
+      resolvedTags = Set<String>.unmodifiable(
+        tags.map((tag) => tag.toLowerCase()).toSet(),
+      );
+    }
+
+    final sanitizedSearch = searchTerm == null
+        ? _currentQuery.searchTerm
+        : (searchTerm.trim().isEmpty ? null : searchTerm.trim());
+
+    return PoiQuery(
+      northEast: northEast ?? _currentQuery.northEast,
+      southWest: southWest ?? _currentQuery.southWest,
+      categories: resolvedCategories,
+      tags: resolvedTags,
+      searchTerm: sanitizedSearch,
+    );
   }
 
   @override
@@ -269,6 +413,7 @@ class CityMapController implements Disposable {
     selectedPoiStreamValue.dispose();
     selectedEventStreamValue.dispose();
     activeFilterCount.dispose();
+    mapNavigationTarget.dispose();
     _poiEventsSubscription?.cancel();
   }
 
@@ -309,36 +454,28 @@ class CityMapController implements Disposable {
     Iterable<CityPoiCategory> categories,
     Iterable<String> tags,
   ) async {
-    final categorySet =
-        categories is Set<CityPoiCategory> ? categories : categories.toSet();
-    final tagSet = tags is Set<String> ? tags : tags.toSet();
-
-    final query = PoiQuery(
-      northEast: _currentQuery.northEast,
-      southWest: _currentQuery.southWest,
-      categories: categorySet.isEmpty ? null : categorySet,
-      tags: tagSet.isEmpty
-          ? null
-          : tagSet.map((tag) => tag.toLowerCase()).toSet(),
+    final query = _composeQuery(
+      categories: categories,
+      tags: tags,
     );
 
     await loadPois(query);
   }
 
-  Future<void> _sharePoi(String message, String subject) async {
+  Future<void> _shareContent(String message, String subject) async {
     try {
       await Share.share(message, subject: subject);
     } catch (error, stackTrace) {
-      debugPrint('Failed to share POI: $error');
+      debugPrint('Failed to share content: $error');
       debugPrintStack(stackTrace: stackTrace);
     }
   }
 
-  Future<void> _openDirections(
-    CityPoiModel poi,
+  Future<void> _openDirectionsToCoordinate(
+    CityCoordinate coordinate,
+    String destinationName,
     BuildContext context,
   ) async {
-    final coordinate = poi.coordinate;
     final destination = Coords(
       coordinate.latitude,
       coordinate.longitude,
@@ -347,11 +484,11 @@ class CityMapController implements Disposable {
     try {
       final availableMaps = await MapLauncher.installedMaps;
       final rideShareOptions =
-          await _availableRideShareOptions(destination, poi.name);
+          await _availableRideShareOptions(destination, destinationName);
       final totalOptions = availableMaps.length + rideShareOptions.length;
 
       if (totalOptions == 0) {
-        await _launchFallbackDirections(destination, poi.name);
+        await _launchFallbackDirections(destination, destinationName);
         return;
       }
 
@@ -359,7 +496,7 @@ class CityMapController implements Disposable {
         if (availableMaps.length == 1) {
           await availableMaps.first.showDirections(
             destination: destination,
-            destinationTitle: poi.name,
+            destinationTitle: destinationName,
           );
         } else {
           await rideShareOptions.first.launcher();
@@ -372,16 +509,16 @@ class CityMapController implements Disposable {
         availableMaps,
         rideShareOptions,
         destination,
-        poi.name,
+        destinationName,
       );
       if (launcher == null) {
         return;
       }
       await launcher();
     } catch (error, stackTrace) {
-      debugPrint('Failed to open directions for ${poi.name}: $error');
+      debugPrint('Failed to open directions for $destinationName: $error');
       debugPrintStack(stackTrace: stackTrace);
-      await _launchFallbackDirections(destination, poi.name);
+      await _launchFallbackDirections(destination, destinationName);
     }
   }
 
@@ -584,6 +721,32 @@ class CityMapController implements Disposable {
 }
 
 typedef _NavigationLauncher = Future<void> Function();
+
+class MapRegionDefinition {
+  const MapRegionDefinition({
+    required this.id,
+    required this.label,
+    required this.center,
+    required this.zoom,
+    this.boundsDelta = 0.08,
+  });
+
+  final String id;
+  final String label;
+  final CityCoordinate center;
+  final double zoom;
+  final double boundsDelta;
+}
+
+class MapNavigationTarget {
+  const MapNavigationTarget({
+    required this.center,
+    required this.zoom,
+  });
+
+  final CityCoordinate center;
+  final double zoom;
+}
 
 class _RideShareOption {
   const _RideShareOption({

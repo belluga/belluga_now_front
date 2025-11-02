@@ -1405,7 +1405,18 @@ class MockPoiDatabase {
     ]);
 
   List<CityPoiDTO> findPois({PoiQuery query = const PoiQuery()}) {
+    final searchTerm = query.searchTerm?.trim().toLowerCase();
     return _pois.where((poi) {
+      if (searchTerm != null && searchTerm.isNotEmpty) {
+        final matchesText = poi.name.toLowerCase().contains(searchTerm) ||
+            poi.description.toLowerCase().contains(searchTerm) ||
+            poi.tags.any(
+              (tag) => tag.toLowerCase().contains(searchTerm),
+            );
+        if (!matchesText) {
+          return false;
+        }
+      }
       if (!query.matchesCategory(poi.category)) {
         return false;
       }

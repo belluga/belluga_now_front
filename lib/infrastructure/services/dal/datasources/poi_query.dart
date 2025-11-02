@@ -7,12 +7,14 @@ class PoiQuery {
     this.southWest,
     this.categories,
     this.tags,
+    this.searchTerm,
   });
 
   final CityCoordinate? northEast;
   final CityCoordinate? southWest;
   final Set<CityPoiCategory>? categories;
   final Set<String>? tags;
+  final String? searchTerm;
 
   bool get hasBounds => northEast != null && southWest != null;
 

@@ -9,10 +9,16 @@ class EventInfoCard extends StatelessWidget {
     super.key,
     required this.event,
     required this.onDismiss,
+    required this.onDetails,
+    required this.onShare,
+    this.onRoute,
   });
 
   final EventModel event;
   final VoidCallback onDismiss;
+  final VoidCallback onDetails;
+  final VoidCallback onShare;
+  final VoidCallback? onRoute;
 
   @override
   Widget build(BuildContext context) {
@@ -46,21 +52,11 @@ class EventInfoCard extends StatelessWidget {
       CityEventTemporalState.upcoming =>
         event.type.color.value ?? scheme.primary,
     };
-
-    final baseCardColor = Theme.of(context).cardColor;
-    final cardColor = isPast
-        ? Color.alphaBlend(
-            scheme.surface.withOpacity(0.75),
-            baseCardColor,
-          )
-        : baseCardColor;
     final mutedTextColor =
         isPast ? scheme.onSurfaceVariant.withOpacity(0.65) : null;
 
-    return Opacity(
-      opacity: isPast ? 0.7 : 1,
+    return Card(
       child: Card(
-        color: cardColor,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         elevation: 8,
         child: Padding(
@@ -162,11 +158,65 @@ class EventInfoCard extends StatelessWidget {
                   ),
                 ],
               ),
+              const SizedBox(height: 16),
+              _EventActionsRow(
+                onDetails: onDetails,
+                onShare: onShare,
+                onRoute: onRoute,
+              ),
             ],
           ),
         ),
       ),
     );
+  }
+}
+
+class _EventActionsRow extends StatelessWidget {
+  const _EventActionsRow({
+    required this.onDetails,
+    required this.onShare,
+    this.onRoute,
+  });
+
+  final VoidCallback onDetails;
+  final VoidCallback onShare;
+  final VoidCallback? onRoute;
+
+  @override
+  Widget build(BuildContext context) {
+    final actions = <Widget>[
+      Expanded(
+        child: FilledButton.icon(
+          onPressed: onDetails,
+          icon: const Icon(Icons.info_outlined),
+          label: const Text('Detalhes'),
+        ),
+      ),
+      const SizedBox(width: 8),
+      Expanded(
+        child: OutlinedButton.icon(
+          onPressed: onShare,
+          icon: const Icon(Icons.share_outlined),
+          label: const Text('Compartilhar'),
+        ),
+      ),
+    ];
+
+    if (onRoute != null) {
+      actions.add(const SizedBox(width: 8));
+      actions.add(
+        Expanded(
+          child: FilledButton.tonalIcon(
+            onPressed: onRoute,
+            icon: const Icon(Icons.directions_outlined),
+            label: const Text('Rota'),
+          ),
+        ),
+      );
+    }
+
+    return Row(children: actions);
   }
 }
 

@@ -17,12 +17,48 @@ class FilterPanel extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
+        color: theme.colorScheme.surfaceVariant.withOpacity(0.35),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: theme.colorScheme.outline.withOpacity(0.4)),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Flexible(
+                fit: FlexFit.loose,
+                child: Text(
+                  'Filtros',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              StreamValueBuilder<Set<CityPoiCategory>>(
+                streamValue: controller.selectedCategories,
+                builder: (context, categories) {
+                  final hasCategories = categories?.isNotEmpty ?? false;
+                  final hasTags =
+                      controller.selectedTags.value?.isNotEmpty ?? false;
+                  final hasFilters = hasCategories || hasTags;
+                  return TextButton.icon(
+                    onPressed: hasFilters
+                        ? () {
+                            controller.clearFilters();
+                          }
+                        : null,
+                    icon: const Icon(Icons.clear_all),
+                    label: const Text('Limpar'),
+                  );
+                },
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
           StreamValueBuilder<PoiFilterOptions?>(
             streamValue: controller.filterOptionsStreamValue,
             builder: (context, options) {
@@ -108,6 +144,7 @@ class _CategoryChips extends StatelessWidget {
       children: [
         Wrap(
           spacing: 8,
+          runSpacing: 8,
           children: [
             for (final categoryOption in categories)
               _CategoryChip(
@@ -185,6 +222,7 @@ class _TagSection extends StatelessWidget {
         const SizedBox(height: 8),
         Wrap(
           spacing: 8,
+          runSpacing: 8,
           children: [
             for (final tag in availableTags)
               FilterChip(
@@ -217,13 +255,15 @@ class _ErrorMessage extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 32),
       child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
           Icon(Icons.warning_amber_rounded,
               color: theme.colorScheme.error),
           const SizedBox(width: 12),
-          Expanded(
+          Flexible(
+            fit: FlexFit.loose,
             child: Text(
-              'Não foi possível carregar os filtros neste momento.',
+              'Nao foi possivel carregar os filtros neste momento.',
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: theme.colorScheme.error,
               ),

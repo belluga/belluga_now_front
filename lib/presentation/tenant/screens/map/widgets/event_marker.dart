@@ -47,7 +47,7 @@ class _EventMarkerState extends State<EventMarker>
         final progress = _controller.value;
         final isLive = state == CityEventTemporalState.now;
 
-        return SizedBox(
+        Widget marker = SizedBox(
           width: frameSize,
           height: frameSize,
           child: Stack(
@@ -90,6 +90,23 @@ class _EventMarkerState extends State<EventMarker>
             ],
           ),
         );
+
+        if (state == CityEventTemporalState.past) {
+          marker = ColorFiltered(
+            colorFilter: const ColorFilter.matrix(<double>[
+              0.2126, 0.7152, 0.0722, 0, 0,
+              0.2126, 0.7152, 0.0722, 0, 0,
+              0.2126, 0.7152, 0.0722, 0, 0,
+              0, 0, 0, 1, 0,
+            ]),
+            child: Opacity(
+              opacity: 0.1,
+              child: marker,
+            ),
+          );
+        }
+
+        return marker;
       },
     );
   }
@@ -172,21 +189,6 @@ class _MarkerCore extends StatelessWidget {
             )
           : _FallbackIcon(color: activeColor),
     );
-
-    if (state == CityEventTemporalState.past) {
-      return ColorFiltered(
-        colorFilter: const ColorFilter.matrix(<double>[
-          0.2126, 0.7152, 0.0722, 0, 0,
-          0.2126, 0.7152, 0.0722, 0, 0,
-          0.2126, 0.7152, 0.0722, 0, 0,
-          0, 0, 0, 1, 0,
-        ]),
-        child: Opacity(
-          opacity: 0.35,
-          child: core,
-        ),
-      );
-    }
 
     return core;
   }
