@@ -11,7 +11,7 @@
 - **Application layer** wires theming (`application_contract.dart`), global initialisation, and module bootstrap. Keep business logic out of this layer.
 - **Domain layer** expresses rules through models that wrap primitives with `ValueObject`s (`MongoIDValue`, `TitleValue`, `DateTimeValue`, etc.).
 - **Infrastructure layer** talks to backends (real or mock) and exposes DTOs that mirror external payloads.
-- **Presentation layer** focuses on widgets, controllers, and view models. Widgets consume primitives via view models such as `EventCardData`, never DTOs or raw value objects.
+- **Presentation layer** focuses on widgets, controllers, and view models. Widgets consume primitives via view models suchs as `EventCardData`, never DTOs or raw value objects.
 
 ## Data Flow Contracts
 
@@ -82,6 +82,51 @@
     dates, etc. via multiple streams.
   - Auth controllers manage form status (loading, field enabled, errors) as
     streams.
+
+## Code Quality & Architectural Principles
+
+To ensure a maintainable, testable, and scalable codebase, the following principles must be strictly adhered to, especially within the Presentation Layer:
+
+-   **Widgets are for UI (Purely Presentational):**
+    -   Widgets should focus solely on rendering the user interface based on the state provided to them.
+    -   They should contain minimal to no business logic, complex decision-making, or asynchronous operations.
+    -   All UI-specific state that impacts the overall screen should be managed by the controller.
+
+-   **Controllers Manage State & Logic:**
+    -   Controllers are responsible for all application state, business logic, and orchestrating data flow.
+    -   They expose `StreamValue`s for the UI to consume.
+    -   Complex logic, asynchronous calls, and state transitions belong here.
+
+-   **Strict Theming (No Hardcoded Colors):**
+    -   All colors used in the UI must derive from `Theme.of(context).colorScheme`.
+    -   Hardcoded color values (e.g., `Color(0xFF...)`, `Colors.red`) are strictly forbidden.
+    -   The only exception is for dynamic colors coming directly from the backend (e.g., a POI's specific brand color), which should still be handled gracefully.
+
+-   **One Widget Per File (Generally):**
+    -   Extract smaller, reusable widgets into their own dedicated files.
+    -   **Hierarchical Widget Organization:**
+        -   A main widget (e.g., a screen) should reside in its own file at the root of its feature context (e.g., `my_feature_screen.dart`).
+        -   Local helper widgets, not intended for broader sharing, should be placed in a `widgets/` subfolder *within the main widget's folder* (e.g., `my_feature_screen/widgets/my_local_helper_widget.dart`).
+        -   If a widget initially created as a local helper is later found to be beneficial for reuse across multiple contexts, it should be moved to a higher-level, common `widgets/` folder that oversees all contexts where it is used.
+    -   Private helper widgets (`_MyWidget`) within a file should be extracted if they grow beyond a trivial size or are used in multiple places.
+
+-   **Delegation of Dynamic Routing:**
+    -   Widgets should delegate dynamic routing logic to the controller.
+    -   The widget calls a controller method (e.g., `controller.navigateToDetails(item)`), and the controller handles the logic to determine the correct route and parameters, returning the route to the widget for execution (e.g., `context.router.push(route)`).
+
+-   **Avoid Local `setState` in Screens:**
+    -   For any state that impacts the overall screen or is derived from controller actions, it should be managed by the controller and exposed via `StreamValue`s.
+    -   `setState` should be reserved for purely transient, local UI state that does not affect the application's core logic or other parts of the UI.
+
+-   **Complex Widgets with Dedicated Controllers:**
+    -   For complex UI components (e.g., a custom FAB menu, a detailed filter panel), consider giving them their own dedicated controllers.
+    -   These controllers manage the component's internal state and logic, communicating with parent controllers (like `CityMapController`) for broader application state changes.
+    -   This enhances modularity, testability, and separation of concerns.
+
+-   **Helper Widgets and Dependency Injection (DI):**
+    -   Helper widgets, even when extracted into their own files, can access controllers via GetIt's Dependency Injection mechanism.
+    -   If a helper widget is scoped solely for a specific screen (i.e., it's not intended for broader reuse across different screens), it is acceptable for it to retrieve that screen's controller directly via `GetIt.I.get<ScreenController>()`.
+    -   This approach avoids 'prop drilling' (passing numerous parameters down the widget tree) and keeps widget constructors clean, while still adhering to the principle of widgets being purely presentational.
 
 ## Data Layer
 

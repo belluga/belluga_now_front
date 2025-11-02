@@ -6,7 +6,6 @@ import 'package:belluga_now/domain/map/city_poi_category.dart';
 import 'package:belluga_now/domain/map/city_poi_model.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
-import 'package:belluga_now/infrastructure/services/dal/datasources/poi_query.dart';
 import 'package:belluga_now/presentation/tenant/screens/map/controller/city_map_controller.dart';
 import 'package:belluga_now/presentation/tenant/screens/map/widgets/event_info_card.dart';
 import 'package:belluga_now/presentation/tenant/screens/map/widgets/event_marker.dart';
@@ -21,14 +20,15 @@ import 'package:belluga_now/domain/map/filters/main_filter_option.dart';
 import 'package:belluga_now/domain/map/filters/poi_filter_options.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:free_map/fm_map.dart';
+import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:get_it/get_it.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 import 'package:intl/intl.dart';
+import 'package:belluga_now/infrastructure/services/dal/datasources/poi_query.dart';
 
 class CityMapScreen extends StatefulWidget {
   const CityMapScreen({super.key});
@@ -41,24 +41,38 @@ class _CityMapScreenState extends State<CityMapScreen> {
   final _mapController = MapController();
   final _controller = GetIt.I.get<CityMapController>();
 
+  String? _hoveredPoiId;
+  bool _isFilterFabMenuOpen = false;
+  StreamSubscription<MapNavigationTarget?>? _navigationSubscription;
   LatLng? _userPosition;
   bool _hasRequestedPois = false;
   bool _eventsLoaded = false;
   _MapStatus _status = _MapStatus.locating;
-  String? _statusMessage = 'Localizando voce...';
-  String? _hoveredPoiId;
-  bool _isFilterFabMenuOpen = false;
+  String? _statusMessage;
 
   @override
   void initState() {
     super.initState();
     unawaited(_controller.loadMainFilters());
     unawaited(_controller.loadFilters());
-    _resolveUserLocation();
+    unawaited(_controller.initialize());
+    _navigationSubscription =
+        _controller.mapNavigationTarget.stream.listen((target) {
+      if (target == null) {
+        return;
+      }
+      final center = LatLng(
+        target.center.latitude,
+        target.center.longitude,
+      );
+      _mapController.move(center, target.zoom);
+    });
+    unawaited(_resolveUserLocation());
   }
 
   @override
   void dispose() {
+    _navigationSubscription?.cancel();
     _controller.onDispose();
     super.dispose();
   }
@@ -83,14 +97,27 @@ class _CityMapScreenState extends State<CityMapScreen> {
               tooltip: 'Limpar busca',
               onPressed: _handleClearSearch,
             ),
-          IconButton(
-            icon: const Icon(Icons.my_location_outlined),
-            tooltip: 'Centralizar na minha posicao',
-            onPressed: _userPosition == null ? null : _centerOnUser,
+          StreamValueBuilder<CityCoordinate?>(
+            streamValue: _controller.userLocationStreamValue,
+            builder: (context, coordinate) {
+              final userCoordinate = coordinate;
+              return IconButton(
+                icon: const Icon(Icons.my_location_outlined),
+                tooltip: 'Centralizar na minha posicao',
+                onPressed: userCoordinate == null
+                    ? null
+                    : () => _centerOnUser(userCoordinate),
+              );
+            },
           ),
         ],
       ),
-      body: _buildMapArea(theme, defaultCenter),
+      body: StreamValueBuilder<CityCoordinate?>(
+        streamValue: _controller.userLocationStreamValue,
+        builder: (context, coordinate) {
+          return _buildMapArea(theme, defaultCenter, coordinate);
+        },
+      ),
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       floatingActionButton: _buildMainFilterFabGroup(theme),
     );
@@ -516,7 +543,22 @@ class _CityMapScreenState extends State<CityMapScreen> {
     _updateStatusFromState();
   }
 
-  Widget _buildMapArea(ThemeData theme, CityCoordinate defaultCenter) {
+  Widget _buildMapArea(
+    ThemeData theme,
+    CityCoordinate defaultCenter,
+    CityCoordinate? userCoordinate,
+  ) {
+    final LatLng? userPosition;
+    if (userCoordinate != null) {
+      userPosition = LatLng(
+        userCoordinate.latitude,
+        userCoordinate.longitude,
+      );
+      _userPosition = userPosition;
+    } else {
+      userPosition = _userPosition;
+    }
+
     return StreamValueBuilder<List<CityPoiModel>>(
       streamValue: _controller.pois,
       onNullWidget: const Center(child: CircularProgressIndicator()),
@@ -550,7 +592,7 @@ class _CityMapScreenState extends State<CityMapScreen> {
                             _controller.selectEvent(event);
                             _controller.selectPoi(null);
                           },
-                          userPosition: _userPosition,
+                          userPosition: userPosition,
                           defaultCenter: LatLng(
                             defaultCenter.latitude,
                             defaultCenter.longitude,
@@ -783,10 +825,13 @@ class _CityMapScreenState extends State<CityMapScreen> {
     }
   }
 
-  void _centerOnUser() {
-    final position = _userPosition;
-    if (position == null) return;
-    _mapController.move(position, 16);
+  void _centerOnUser(CityCoordinate coordinate) {
+    final target = LatLng(
+      coordinate.latitude,
+      coordinate.longitude,
+    );
+    _userPosition = target;
+    _mapController.move(target, 16);
     _controller.selectPoi(null);
     _controller.selectEvent(null);
   }

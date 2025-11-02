@@ -11,6 +11,7 @@ import 'package:belluga_now/domain/repositories/schedule_repository_contract.dar
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/infrastructure/services/dal/datasources/poi_query.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get_it/get_it.dart';
 import 'package:map_launcher/map_launcher.dart';
 import 'package:share_plus/share_plus.dart';
@@ -18,6 +19,9 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:intl/intl.dart';
 import 'package:stream_value/core/stream_value.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:geolocator/geolocator.dart';
+
+enum MapStatus { locating, fetching, ready, error, fallback }
 
 class CityMapController implements Disposable {
   CityMapController({
@@ -47,6 +51,11 @@ class CityMapController implements Disposable {
   final mainFilterOptionsStreamValue =
       StreamValue<List<MainFilterOption>>(defaultValue: const []);
   final activeMainFilterStreamValue = StreamValue<MainFilterOption?>();
+  final userLocationStreamValue = StreamValue<CityCoordinate?>();
+  final mapStatusStreamValue =
+      StreamValue<MapStatus>(defaultValue: MapStatus.locating);
+  final statusMessageStreamValue =
+      StreamValue<String?>(defaultValue: 'Localizando voce...');
 
   final selectedPoiStreamValue = StreamValue<CityPoiModel?>();
   final selectedEventStreamValue = StreamValue<EventModel?>();
@@ -89,6 +98,10 @@ class CityMapController implements Disposable {
   PoiQuery? _previousQueryBeforeMainFilter;
   Set<CityPoiCategory>? _previousSelectedCategories;
   Set<String>? _previousSelectedTags;
+  CityCoordinate? _userOrigin;
+  CityCoordinate? _userLocation;
+  bool _hasRequestedPois = false;
+  bool _eventsLoaded = false;
   StreamSubscription<PoiUpdateEvent?>? _poiEventsSubscription;
   PoiFilterOptions? _cachedFilterOptions;
   bool _filtersLoadFailed = false;
@@ -130,15 +143,26 @@ class CityMapController implements Disposable {
     }
   }
 
-  Future<void> loadPois(PoiQuery query) async {
+  Future<void> loadPois(
+    PoiQuery query, {
+    String? loadingMessage,
+  }) async {
     _currentQuery = query;
+    _setMapStatus(
+      MapStatus.fetching,
+      message: loadingMessage ?? 'Carregando pontos...',
+    );
     _setLoadingState();
 
     try {
       final fetchedPois = await _repository.fetchPoints(query);
       _setSuccessState(fetchedPois);
+      _setMapStatus(MapStatus.ready);
     } catch (_) {
-      _setErrorState('Não foi possível carregar os pontos de interesse.');
+      const errorMessage =
+          'Nao foi possivel carregar os pontos de interesse.';
+      _setErrorState(errorMessage);
+      _setMapStatus(MapStatus.error, message: errorMessage);
     }
   }
 
@@ -152,12 +176,12 @@ class CityMapController implements Disposable {
 
   Future<void> searchPois(String query) async {
     final nextQuery = _composeQuery(searchTerm: query);
-    await loadPois(nextQuery);
+    await loadPois(nextQuery, loadingMessage: 'Buscando pontos...');
   }
 
   Future<void> clearSearch() async {
     final query = _composeQuery(searchTerm: '');
-    await loadPois(query);
+    await loadPois(query, loadingMessage: 'Carregando pontos...');
   }
 
   Future<void> goToRegion(MapRegionDefinition region) async {
@@ -175,10 +199,82 @@ class CityMapController implements Disposable {
       northEast: ne,
       southWest: sw,
     );
-    await loadPois(query);
+    await loadPois(
+      query,
+      loadingMessage: 'Carregando regiao ${region.label}...',
+    );
     mapNavigationTarget.addValue(
       MapNavigationTarget(center: region.center, zoom: region.zoom),
     );
+  }
+
+  Future<void> resolveUserLocation() async {
+    _setMapStatus(MapStatus.locating, message: 'Localizando voce...');
+    try {
+      final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        _setMapStatus(
+          MapStatus.error,
+          message:
+              'Ative os servicos de localizacao para ver sua posicao. Exibindo pontos padrao da cidade.',
+        );
+        await _fallbackLoadPois();
+        return;
+      }
+
+      var permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+
+      if (permission == LocationPermission.deniedForever ||
+          permission == LocationPermission.denied) {
+        _setMapStatus(
+          MapStatus.error,
+          message:
+              'Permita o acesso a localizacao para localizar pontos proximos. Exibindo pontos padrao da cidade.',
+        );
+        await _fallbackLoadPois();
+        return;
+      }
+
+      final position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.best,
+      );
+
+      final coordinate = CityCoordinate(
+        latitude: position.latitude,
+        longitude: position.longitude,
+      );
+
+      _userOrigin = coordinate;
+      _userLocation = coordinate;
+      userLocationStreamValue.addValue(coordinate);
+
+      await loadPois(
+        _queryForOrigin(coordinate),
+        loadingMessage: 'Buscando pontos proximos...',
+      );
+      await initialize();
+      _hasRequestedPois = true;
+      mapNavigationTarget.addValue(
+        MapNavigationTarget(center: coordinate, zoom: 16),
+      );
+    } on PlatformException catch (error) {
+      _setMapStatus(
+        MapStatus.error,
+        message:
+            'Nao foi possivel obter a localizacao (${error.code}). Exibindo pontos padrao da cidade.',
+      );
+      await _fallbackLoadPois();
+    } catch (_) {
+      _setMapStatus(
+        MapStatus.error,
+        message:
+            'Nao foi possivel obter a localizacao. Exibindo pontos padrao da cidade.',
+      );
+      await _fallbackLoadPois();
+    }
   }
 
   void toggleCategory(CityPoiCategory category) {
@@ -238,6 +334,8 @@ class CityMapController implements Disposable {
 
   bool get hasActiveMainFilter => _activeMainFilter != null;
 
+  CityCoordinate? get userLocation => _userLocation;
+
   Future<void> applyMainFilter(MainFilterOption option) async {
     if (option.opensPanel) {
       activeMainFilterStreamValue.addValue(option);
@@ -254,7 +352,8 @@ class CityMapController implements Disposable {
     }
 
     _previousQueryBeforeMainFilter = _currentQuery;
-    _previousSelectedCategories = Set<CityPoiCategory>.from(selectedCategories.value);
+    _previousSelectedCategories =
+        Set<CityPoiCategory>.from(selectedCategories.value);
     _previousSelectedTags = Set<String>.from(selectedTags.value);
 
     _activeMainFilter = option;
@@ -278,7 +377,7 @@ class CityMapController implements Disposable {
 
     _updateActiveFilterCount();
     final query = _buildQueryForMainFilter(option);
-    await loadPois(query);
+    await loadPois(query, loadingMessage: 'Carregando pontos...');
   }
 
   Future<void> clearMainFilter() async {
@@ -307,7 +406,7 @@ class CityMapController implements Disposable {
     _previousSelectedTags = null;
 
     _updateActiveFilterCount();
-    await loadPois(fallbackQuery);
+    await loadPois(fallbackQuery, loadingMessage: 'Carregando pontos...');
   }
 
   Future<void> clearFilters() async {
@@ -520,6 +619,9 @@ class CityMapController implements Disposable {
     selectedEventStreamValue.dispose();
     activeFilterCount.dispose();
     activeMainFilterStreamValue.dispose();
+    userLocationStreamValue.dispose();
+    mapStatusStreamValue.dispose();
+    statusMessageStreamValue.dispose();
     mapNavigationTarget.dispose();
     _poiEventsSubscription?.cancel();
   }
@@ -566,7 +668,12 @@ class CityMapController implements Disposable {
       tags: tags,
     );
 
-    await loadPois(query);
+    await loadPois(query, loadingMessage: 'Carregando pontos...');
+  }
+
+  void _setMapStatus(MapStatus status, {String? message}) {
+    mapStatusStreamValue.addValue(status);
+    statusMessageStreamValue.addValue(message);
   }
 
   PoiQuery _buildQueryForMainFilter(MainFilterOption option) {
@@ -586,6 +693,38 @@ class CityMapController implements Disposable {
               tagSet.map((tag) => tag.toLowerCase()).toSet(),
             ),
       searchTerm: baseQuery.searchTerm,
+    );
+  }
+
+  Future<void> _fallbackLoadPois() async {
+    final shouldLoad = !_hasRequestedPois;
+    if (shouldLoad) {
+      _hasRequestedPois = true;
+      await loadPois(
+        const PoiQuery(),
+        loadingMessage: 'Carregando pontos...',
+      );
+      await initialize();
+    } else {
+      await initialize();
+    }
+    _setMapStatus(
+      MapStatus.fallback,
+      message: 'Exibindo pontos padrao da cidade.',
+    );
+  }
+
+  PoiQuery _queryForOrigin(CityCoordinate origin) {
+    const boundsOffset = 0.1;
+    return PoiQuery(
+      northEast: CityCoordinate(
+        latitude: origin.latitude + boundsOffset,
+        longitude: origin.longitude + boundsOffset,
+      ),
+      southWest: CityCoordinate(
+        latitude: origin.latitude - boundsOffset,
+        longitude: origin.longitude - boundsOffset,
+      ),
     );
   }
 
@@ -886,6 +1025,9 @@ class _RideShareOption {
   final IconData icon;
   final _NavigationLauncher launcher;
 }
+
+
+
 
 
 
