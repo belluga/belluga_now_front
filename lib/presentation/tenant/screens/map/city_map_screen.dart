@@ -11,7 +11,7 @@ import 'package:belluga_now/presentation/tenant/screens/map/widgets/event_info_c
 import 'package:belluga_now/presentation/tenant/screens/map/widgets/event_marker.dart';
 import 'package:belluga_now/presentation/tenant/screens/map/widgets/event_temporal_state.dart';
 import 'package:belluga_now/presentation/tenant/screens/map/widgets/location_status_banner.dart';
-import 'package:belluga_now/presentation/tenant/screens/map/widgets/poi_info_card.dart';
+import 'package:belluga_now/presentation/tenant/screens/map/poi_info_card/poi_info_card.dart';
 import 'package:belluga_now/presentation/tenant/screens/map/widgets/poi_marker.dart';
 import 'package:belluga_now/presentation/tenant/screens/map/widgets/user_location_marker.dart';
 import 'package:belluga_now/presentation/tenant/widgets/event_details.dart';
