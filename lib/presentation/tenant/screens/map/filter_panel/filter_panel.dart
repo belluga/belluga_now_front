@@ -1,4 +1,3 @@
-import 'package:belluga_now/domain/map/city_poi_category.dart';
 import 'package:belluga_now/domain/map/filters/poi_filter_options.dart';
 import 'package:belluga_now/presentation/tenant/screens/map/controller/city_map_controller.dart';
 import 'package:belluga_now/presentation/tenant/screens/map/filter_panel/widgets/filter_category_chips.dart';
@@ -41,13 +40,10 @@ class FilterPanel extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
-              StreamValueBuilder<Set<CityPoiCategory>>(
-                streamValue: _controller.selectedCategories,
-                builder: (context, categories) {
-                  final hasCategories = categories?.isNotEmpty ?? false;
-                  final hasTags =
-                      _controller.selectedTags.value?.isNotEmpty ?? false;
-                  final hasFilters = hasCategories || hasTags;
+              StreamValueBuilder<int>(
+                streamValue: _controller.activeFilterCount,
+                builder: (context, count) {
+                  final hasFilters = (count ?? 0) > 0;
                   return TextButton.icon(
                     onPressed: hasFilters ? _controller.clearFilters : null,
                     icon: const Icon(Icons.clear_all),
@@ -81,37 +77,8 @@ class FilterPanel extends StatelessWidget {
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  StreamValueBuilder<Set<CityPoiCategory>>(
-                    streamValue: _controller.selectedCategories,
-                    builder: (context, categories) {
-                      final selected = categories ?? const <CityPoiCategory>{};
-                      return FilterCategoryChips(
-                        options: options,
-                        selected: selected,
-                        onToggle: _controller.toggleCategory,
-                      );
-                    },
-                  ),
-                  StreamValueBuilder<Set<CityPoiCategory>>(
-                    streamValue: _controller.selectedCategories,
-                    builder: (context, categories) {
-                      final selected = categories ?? const <CityPoiCategory>{};
-                      final availableTags =
-                          options.tagsForCategories(selected).toList()
-                            ..sort();
-                      return StreamValueBuilder<Set<String>>(
-                        streamValue: _controller.selectedTags,
-                        builder: (context, tags) {
-                          return FilterTagSection(
-                            availableTags: availableTags,
-                            selectedTags: tags ?? const <String>{},
-                            hasCategorySelection: selected.isNotEmpty,
-                            onToggle: _controller.toggleTag,
-                          );
-                        },
-                      );
-                    },
-                  ),
+                  FilterCategoryChips(options: options),
+                  FilterTagSection(options: options),
                 ],
               );
             },
