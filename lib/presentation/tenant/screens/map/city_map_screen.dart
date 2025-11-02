@@ -109,143 +109,179 @@ class _CityMapScreenState extends State<CityMapScreen> {
           ),
         ],
       ),
-      body: StreamValueBuilder<List<CityPoiModel>>(
-        streamValue: _controller.pois,
-        onNullWidget: const Center(child: CircularProgressIndicator()),
-        builder: (context, poiStreamValue) {
-          final poiList = poiStreamValue ?? const <CityPoiModel>[];
-          return StreamValueBuilder<List<EventModel>?>(
-            streamValue: _controller.eventsStreamValue,
-            builder: (context, events) {
-              final eventList = events ?? const <EventModel>[];
-              return StreamValueBuilder<EventModel?>(
-                streamValue: _controller.selectedEventStreamValue,
-                builder: (context, selectedEvent) {
-                  return StreamValueBuilder<CityPoiModel?>(
-                    streamValue: _controller.selectedPoiStreamValue,
-                    builder: (context, selectedPoi) {
-                      return Stack(
-                        children: [
-                          _CityMapView(
-                            mapController: _mapController,
-                            pois: poiList,
-                            selectedPoi: selectedPoi,
-                            onSelectPoi: (poi) {
-                              _controller.selectPoi(poi);
-                              _controller.selectEvent(null);
-                            },
-                            hoveredPoiId: _hoveredPoiId,
-                            onHoverChange: _handlePoiHover,
-                            events: eventList,
-                            selectedEvent: selectedEvent,
-                            onSelectEvent: (event) {
-                              _controller.selectEvent(event);
-                              _controller.selectPoi(null);
-                            },
-                            userPosition: _userPosition,
-                            defaultCenter: LatLng(
-                              defaultCenter.latitude,
-                              defaultCenter.longitude,
-                            ),
-                            onMapInteraction: _handleMapInteraction,
-                          ),
-                          Positioned(
-                            top: 16,
-                            left: 16,
-                            right: 16,
-                            child: _buildStatusBanner(theme),
-                          ),
-                          StreamValueBuilder<bool>(
-                            streamValue: _controller.isLoading,
-                            builder: (context, isLoading) {
-                              if (isLoading == true) {
-                                return const Positioned.fill(
-                                  child: IgnorePointer(
-                                    child: Center(
-                                      child: CircularProgressIndicator(),
-                                    ),
+      body: Column(
+        children: [
+          StreamValueBuilder<bool>(
+            streamValue: _controller.isFilterVisible,
+            builder: (context, isFilterVisible) {
+              if (isFilterVisible == false) {
+                return const SizedBox.shrink();
+              }
+
+              return Material(
+                elevation: 2,
+                color: theme.colorScheme.surface,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(child: FilterPanel(controller: _controller)),
+                    const SizedBox(width: 16),
+                  ],
+                ),
+              );
+            }
+          ),
+          Expanded(
+            child: StreamValueBuilder<List<CityPoiModel>>(
+              streamValue: _controller.pois,
+              onNullWidget: const Center(child: CircularProgressIndicator()),
+              builder: (context, poiStreamValue) {
+                final poiList = poiStreamValue;
+                return StreamValueBuilder<List<EventModel>?>(
+                  streamValue: _controller.eventsStreamValue,
+                  builder: (context, events) {
+                    final eventList = events ?? const <EventModel>[];
+                    return StreamValueBuilder<EventModel?>(
+                      streamValue: _controller.selectedEventStreamValue,
+                      builder: (context, selectedEvent) {
+                        return StreamValueBuilder<CityPoiModel?>(
+                          streamValue: _controller.selectedPoiStreamValue,
+                          builder: (context, selectedPoi) {
+                            return Stack(
+                              children: [
+                                _CityMapView(
+                                  mapController: _mapController,
+                                  pois: poiList,
+                                  selectedPoi: selectedPoi,
+                                  onSelectPoi: (poi) {
+                                    _controller.selectPoi(poi);
+                                    _controller.selectEvent(null);
+                                  },
+                                  hoveredPoiId: _hoveredPoiId,
+                                  onHoverChange: _handlePoiHover,
+                                  events: eventList,
+                                  selectedEvent: selectedEvent,
+                                  onSelectEvent: (event) {
+                                    _controller.selectEvent(event);
+                                    _controller.selectPoi(null);
+                                  },
+                                  userPosition: _userPosition,
+                                  defaultCenter: LatLng(
+                                    defaultCenter.latitude,
+                                    defaultCenter.longitude,
                                   ),
-                                );
-                              }
-                              return const SizedBox.shrink();
-                            },
-                          ),
-                          StreamValueBuilder<String?>(
-                            streamValue: _controller.errorMessage,
-                            builder: (context, error) {
-                              if (error == null) {
-                                return const SizedBox.shrink();
-                              }
-                              return Positioned(
-                                bottom: 24,
-                                left: 24,
-                                right: 24,
-                                child: SafeArea(
-                                  child: Card(
-                                    color: theme.colorScheme.errorContainer,
-                                    child: Padding(
-                                      padding: const EdgeInsets.all(12),
-                                      child: Text(
-                                        error,
-                                        style: TextStyle(
+                                  onMapInteraction: _handleMapInteraction,
+                                ),
+                                Positioned(
+                                  top: 16,
+                                  left: 16,
+                                  right: 16,
+                                  child: _buildStatusBanner(theme),
+                                ),
+                                StreamValueBuilder<bool>(
+                                  streamValue: _controller.isLoading,
+                                  builder: (context, isLoading) {
+                                    if (isLoading == true) {
+                                      return const Positioned.fill(
+                                        child: IgnorePointer(
+                                          child: Center(
+                                            child: CircularProgressIndicator(),
+                                          ),
+                                        ),
+                                      );
+                                    }
+                                    return const SizedBox.shrink();
+                                  },
+                                ),
+                                StreamValueBuilder<String?>(
+                                  streamValue: _controller.errorMessage,
+                                  builder: (context, error) {
+                                    if (error == null) {
+                                      return const SizedBox.shrink();
+                                    }
+                                    return Positioned(
+                                      bottom: 24,
+                                      left: 24,
+                                      right: 24,
+                                      child: SafeArea(
+                                        child: Card(
                                           color:
-                                              theme.colorScheme.onErrorContainer,
+                                              theme.colorScheme.errorContainer,
+                                          child: Padding(
+                                            padding: const EdgeInsets.all(12),
+                                            child: Text(
+                                              error,
+                                              style: TextStyle(
+                                                color: theme.colorScheme
+                                                    .onErrorContainer,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                ),
+                                if (selectedEvent != null)
+                                  Align(
+                                    alignment: Alignment.bottomCenter,
+                                    child: Padding(
+                                      padding: const EdgeInsets.fromLTRB(
+                                        24,
+                                        0,
+                                        24,
+                                        32,
+                                      ),
+                                      child: SafeArea(
+                                        child: EventInfoCard(
+                                          event: selectedEvent,
+                                          onDismiss: () =>
+                                              _controller.selectEvent(null),
+                                        ),
+                                      ),
+                                    ),
+                                  )
+                                else if (selectedPoi != null)
+                                  Align(
+                                    alignment: Alignment.bottomCenter,
+                                    child: Padding(
+                                      padding: const EdgeInsets.fromLTRB(
+                                        24,
+                                        0,
+                                        24,
+                                        32,
+                                      ),
+                                      child: SafeArea(
+                                        child: PoiInfoCard(
+                                          poi: selectedPoi,
+                                          onDismiss: () =>
+                                              _controller.selectPoi(null),
+                                          onDetails: () =>
+                                              _openPoiDetails(selectedPoi),
+                                          onShare: () =>
+                                              _controller.sharePoi(selectedPoi),
+                                          onRoute: () =>
+                                              _controller.getDirectionsToPoi(
+                                            selectedPoi,
+                                            context,
+                                          ),
                                         ),
                                       ),
                                     ),
                                   ),
-                                ),
-                              );
-                            },
-                          ),
-                          if (selectedEvent != null)
-                            Align(
-                              alignment: Alignment.bottomCenter,
-                              child: Padding(
-                                padding:
-                                    const EdgeInsets.fromLTRB(24, 0, 24, 32),
-                                child: SafeArea(
-                                  child: EventInfoCard(
-                                    event: selectedEvent,
-                                    onDismiss: () =>
-                                        _controller.selectEvent(null),
-                                  ),
-                                ),
-                              ),
-                            )
-                          else if (selectedPoi != null)
-                            Align(
-                              alignment: Alignment.bottomCenter,
-                              child: Padding(
-                                padding:
-                                    const EdgeInsets.fromLTRB(24, 0, 24, 32),
-                                child: SafeArea(
-                                  child: PoiInfoCard(
-                                    poi: selectedPoi,
-                                    onDismiss: () =>
-                                        _controller.selectPoi(null),
-                                    onDetails: () =>
-                                        _openPoiDetails(selectedPoi),
-                                    onShare: () =>
-                                        _controller.sharePoi(selectedPoi),
-                                    onRoute: () =>
-                                        _controller.getDirectionsToPoi(
-                                      selectedPoi,
-                                      context,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                        ],
-                      );
-                    },
-                  );
-                },
-              );
-            },
-          );
-        },
+                              ],
+                            );
+                          },
+                        );
+                      },
+                    );
+                  },
+                );
+              },
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -386,15 +422,9 @@ class _CityMapScreenState extends State<CityMapScreen> {
     _controller.selectEvent(null);
   }
 
-  Future<void> _openFilterPanel() async {
-    unawaited(_controller.loadFilters());
-    if (!mounted) return;
-    await showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      builder: (_) => FilterPanel(controller: _controller),
-    );
-  }
+  void _openFilterPanel() =>
+    _controller.isFilterVisible.addValue(!_controller.isFilterVisible.value);
+  
 
   void _handlePoiHover(String? poiId) {
     if (!kIsWeb) {
@@ -409,6 +439,9 @@ class _CityMapScreenState extends State<CityMapScreen> {
   }
 
   void _handleMapInteraction() {
+    if(_controller.isFilterVisible.value == true){
+      _controller.isFilterVisible.addValue(false);
+    }
     if (_controller.selectedPoiStreamValue.value != null) {
       _controller.selectPoi(null);
     }

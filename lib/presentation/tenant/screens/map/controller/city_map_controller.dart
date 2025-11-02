@@ -34,6 +34,8 @@ class CityMapController implements Disposable {
 
   final StreamValue<List<EventModel>?> eventsStreamValue;
 
+  final isFilterVisible = StreamValue<bool>(defaultValue: false);
+
   final isLoading = StreamValue<bool>(defaultValue: false);
   final pois = StreamValue<List<CityPoiModel>>(defaultValue: const []);
   final errorMessage = StreamValue<String?>();
@@ -167,9 +169,8 @@ class CityMapController implements Disposable {
       if (poi.description.isNotEmpty) poi.description,
       poi.address,
     ];
-    final message = shareLines
-        .where((line) => line.trim().isNotEmpty)
-        .join('\n');
+    final message =
+        shareLines.where((line) => line.trim().isNotEmpty).join('\n');
 
     unawaited(_sharePoi(message, poi.name));
   }
@@ -240,8 +241,7 @@ class CityMapController implements Disposable {
 
   bool get hasError => (errorMessage.value?.isNotEmpty ?? false);
   String? get currentErrorMessage => errorMessage.value;
-  List<CityPoiModel> get currentPois =>
-      List<CityPoiModel>.unmodifiable(
+  List<CityPoiModel> get currentPois => List<CityPoiModel>.unmodifiable(
         pois.value ?? const <CityPoiModel>[],
       );
 
@@ -309,16 +309,17 @@ class CityMapController implements Disposable {
     Iterable<CityPoiCategory> categories,
     Iterable<String> tags,
   ) async {
-    final categorySet = categories is Set<CityPoiCategory>
-        ? categories
-        : categories.toSet();
+    final categorySet =
+        categories is Set<CityPoiCategory> ? categories : categories.toSet();
     final tagSet = tags is Set<String> ? tags : tags.toSet();
 
     final query = PoiQuery(
       northEast: _currentQuery.northEast,
       southWest: _currentQuery.southWest,
       categories: categorySet.isEmpty ? null : categorySet,
-      tags: tagSet.isEmpty ? null : tagSet.map((tag) => tag.toLowerCase()).toSet(),
+      tags: tagSet.isEmpty
+          ? null
+          : tagSet.map((tag) => tag.toLowerCase()).toSet(),
     );
 
     await loadPois(query);
@@ -429,14 +430,14 @@ class CityMapController implements Disposable {
                   ),
                 ),
               if (maps.isNotEmpty && rideOptions.isNotEmpty)
-              for (final option in rideOptions)
-                ListTile(
-                  leading: Icon(option.icon, size: 28),
-                  title: Text(option.label),
-                  onTap: () => Navigator.of(sheetContext).pop(
-                    option.launcher,
+                for (final option in rideOptions)
+                  ListTile(
+                    leading: Icon(option.icon, size: 28),
+                    title: Text(option.label),
+                    onTap: () => Navigator.of(sheetContext).pop(
+                      option.launcher,
+                    ),
                   ),
-                ),
               const SizedBox(height: 12),
             ],
           ),
@@ -487,7 +488,7 @@ class CityMapController implements Disposable {
         'https://m.uber.com/ul/?action=setPickup'
         '&dropoff[latitude]=$latitude'
         '&dropoff[longitude]=$longitude'
-      '&dropoff[nickname]=$encodedTitle',
+        '&dropoff[nickname]=$encodedTitle',
       ),
     ];
 

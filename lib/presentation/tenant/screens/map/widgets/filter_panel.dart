@@ -13,112 +13,75 @@ class FilterPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final mediaQuery = MediaQuery.of(context);
 
-    return SafeArea(
-      child: Padding(
-        padding: EdgeInsets.only(
-          left: 20,
-          right: 20,
-          top: 16,
-          bottom: mediaQuery.viewInsets.bottom + 16,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    'Filtros',
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          StreamValueBuilder<PoiFilterOptions?>(
+            streamValue: controller.filterOptionsStreamValue,
+            builder: (context, options) {
+              if (options == null) {
+                return const Center(
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(vertical: 16),
+                    child: SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(strokeWidth: 2.5),
                     ),
                   ),
-                ),
-                StreamValueBuilder<Set<CityPoiCategory>>(
-                  streamValue: controller.selectedCategories,
-                  builder: (context, categories) {
-                    final hasCategories = categories?.isNotEmpty ?? false;
-                    final hasTags =
-                        controller.selectedTags.value?.isNotEmpty ?? false;
-                    final hasFilters = hasCategories || hasTags;
-                    return TextButton.icon(
-                      onPressed: hasFilters
-                          ? () {
-                              controller.clearFilters();
-                            }
-                          : null,
-                      icon: const Icon(Icons.clear_all),
-                      label: const Text('Limpar'),
-                    );
-                  },
-                ),
-                IconButton(
-                  icon: const Icon(Icons.close),
-                  tooltip: 'Fechar',
-                  onPressed: () => Navigator.of(context).pop(),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            StreamValueBuilder<PoiFilterOptions?>(
-              streamValue: controller.filterOptionsStreamValue,
-              builder: (context, options) {
-                if (options == null) {
-                  return const Center(
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(vertical: 32),
-                      child: CircularProgressIndicator(),
-                    ),
-                  );
-                }
-
-                if (controller.filtersLoadFailed) {
-                  return _ErrorMessage(theme: theme);
-                }
-
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    StreamValueBuilder<Set<CityPoiCategory>>(
-                      streamValue: controller.selectedCategories,
-                      builder: (context, categories) {
-                        final selected = categories ?? const <CityPoiCategory>{};
-                        return _CategoryChips(
-                          options: options,
-                          selected: selected,
-                          onToggle: controller.toggleCategory,
-                        );
-                      },
-                    ),
-                    StreamValueBuilder<Set<CityPoiCategory>>(
-                      streamValue: controller.selectedCategories,
-                      builder: (context, categories) {
-                        final selected = categories ?? const <CityPoiCategory>{};
-                        final availableTags =
-                            options.tagsForCategories(selected).toList()
-                              ..sort();
-                        return StreamValueBuilder<Set<String>>(
-                          streamValue: controller.selectedTags,
-                          builder: (context, tags) {
-                            return _TagSection(
-                              availableTags: availableTags,
-                              selectedTags: tags ?? const <String>{},
-                              hasCategorySelection: selected.isNotEmpty,
-                              onToggle: controller.toggleTag,
-                            );
-                          },
-                        );
-                      },
-                    ),
-                  ],
                 );
-              },
-            ),
-          ],
-        ),
+              }
+
+              if (controller.filtersLoadFailed) {
+                return _ErrorMessage(theme: theme);
+              }
+
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  StreamValueBuilder<Set<CityPoiCategory>>(
+                    streamValue: controller.selectedCategories,
+                    builder: (context, categories) {
+                      final selected = categories ?? const <CityPoiCategory>{};
+                      return _CategoryChips(
+                        options: options,
+                        selected: selected,
+                        onToggle: controller.toggleCategory,
+                      );
+                    },
+                  ),
+                  StreamValueBuilder<Set<CityPoiCategory>>(
+                    streamValue: controller.selectedCategories,
+                    builder: (context, categories) {
+                      final selected = categories ?? const <CityPoiCategory>{};
+                      final availableTags =
+                          options.tagsForCategories(selected).toList()
+                            ..sort();
+                      return StreamValueBuilder<Set<String>>(
+                        streamValue: controller.selectedTags,
+                        builder: (context, tags) {
+                          return _TagSection(
+                            availableTags: availableTags,
+                            selectedTags: tags ?? const <String>{},
+                            hasCategorySelection: selected.isNotEmpty,
+                            onToggle: controller.toggleTag,
+                          );
+                        },
+                      );
+                    },
+                  ),
+                ],
+              );
+            },
+          ),
+        ],
       ),
     );
   }
@@ -143,14 +106,8 @@ class _CategoryChips extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Categorias',
-          style: Theme.of(context).textTheme.titleSmall,
-        ),
-        const SizedBox(height: 8),
         Wrap(
           spacing: 8,
-          runSpacing: 8,
           children: [
             for (final categoryOption in categories)
               _CategoryChip(
@@ -228,11 +185,11 @@ class _TagSection extends StatelessWidget {
         const SizedBox(height: 8),
         Wrap(
           spacing: 8,
-          runSpacing: 8,
           children: [
             for (final tag in availableTags)
               FilterChip(
                 label: Text(_formatTag(tag)),
+                visualDensity: VisualDensity.compact,
                 selected: selectedTags.contains(tag),
                 onSelected: (_) => onToggle(tag),
               ),
