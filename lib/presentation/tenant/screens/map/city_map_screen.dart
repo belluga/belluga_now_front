@@ -231,6 +231,7 @@ class _CityMapScreenState extends State<CityMapScreen> {
                                     onRoute: () =>
                                         _controller.getDirectionsToPoi(
                                       selectedPoi,
+                                      context,
                                     ),
                                   ),
                                 ),
