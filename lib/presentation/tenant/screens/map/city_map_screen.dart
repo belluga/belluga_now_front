@@ -21,13 +21,16 @@ import 'package:belluga_now/domain/map/filters/poi_filter_options.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:free_map/fm_map.dart';
 import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:get_it/get_it.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:belluga_now/infrastructure/services/dal/datasources/poi_query.dart';
 
 class CityMapScreen extends StatefulWidget {
@@ -657,12 +660,11 @@ class _CityMapScreenState extends State<CityMapScreen> {
                                   event: selectedEvent,
                                   onDismiss: () => _controller.selectEvent(null),
                                   onDetails: () => _openEventDetails(selectedEvent),
-                                  onShare: () => _controller.shareEvent(selectedEvent),
+                                  onShare: () => _shareEvent(selectedEvent),
                                   onRoute: selectedEvent.coordinate == null
                                       ? null
-                                      : () => _controller.getDirectionsToEvent(
+                                      : () => _handleDirectionsForEvent(
                                             selectedEvent,
-                                            context,
                                           ),
                                 ),
                               ),
@@ -678,11 +680,10 @@ class _CityMapScreenState extends State<CityMapScreen> {
                                   poi: selectedPoi,
                                   onDismiss: () => _controller.selectPoi(null),
                                   onDetails: () => _openPoiDetails(selectedPoi),
-                                  onShare: () => _controller.sharePoi(selectedPoi),
-                                  onRoute: () => _controller.getDirectionsToPoi(
-                                    selectedPoi,
-                                    context,
-                                  ),
+                                   onShare: () => _sharePoi(selectedPoi),
+                                   onRoute: () => _handleDirectionsForPoi(
+                                     selectedPoi,
+                                   ),
                                 ),
                               ),
                             ),
@@ -836,6 +837,153 @@ class _CityMapScreenState extends State<CityMapScreen> {
     _controller.selectEvent(null);
   }
   
+  Future<void> _sharePoi(CityPoiModel poi) async {
+    final payload = _controller.buildPoiSharePayload(poi);
+    await Share.share(payload.message, subject: payload.subject);
+  }
+
+  Future<void> _shareEvent(EventModel event) async {
+    final payload = _controller.buildEventSharePayload(event);
+    await Share.share(payload.message, subject: payload.subject);
+  }
+
+  Future<void> _handleDirectionsForPoi(CityPoiModel poi) async {
+    final info = await _controller.preparePoiDirections(poi);
+    if (info == null) {
+      _showSnackbar('Localizacao indisponivel para este ponto.');
+      return;
+    }
+    await _presentDirectionsOptions(info);
+  }
+
+  Future<void> _handleDirectionsForEvent(EventModel event) async {
+    final info = await _controller.prepareEventDirections(event);
+    if (info == null) {
+      _showSnackbar('Este evento nao possui localizacao cadastrada.');
+      return;
+    }
+    await _presentDirectionsOptions(info);
+  }
+
+  Future<void> _presentDirectionsOptions(DirectionsInfo info) async {
+    final maps = info.availableMaps;
+    final rideOptions = info.rideShareOptions;
+    final totalOptions = maps.length + rideOptions.length;
+
+    if (totalOptions == 0) {
+      await _launchFallbackDirections(info);
+      return;
+    }
+
+    if (totalOptions == 1) {
+      if (maps.length == 1) {
+        await maps.first.showDirections(
+          destination: info.destination,
+          destinationTitle: info.destinationName,
+        );
+      } else {
+        final success = await _controller.launchRideShareOption(
+          rideOptions.first,
+        );
+        if (!success) {
+          await _launchFallbackDirections(info);
+        }
+      }
+      return;
+    }
+
+    if (!mounted) {
+      return;
+    }
+
+    await showModalBottomSheet<void>(
+      context: context,
+      builder: (sheetContext) {
+        final theme = Theme.of(sheetContext);
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'Escolha como chegar',
+                    style: theme.textTheme.titleMedium,
+                  ),
+                ),
+              ),
+              for (final map in maps)
+                ListTile(
+                  leading: SvgPicture.asset(
+                    map.icon,
+                    width: 32,
+                    height: 32,
+                  ),
+                  title: Text(map.mapName),
+                  onTap: () async {
+                    Navigator.of(sheetContext).pop();
+                    await map.showDirections(
+                      destination: info.destination,
+                      destinationTitle: info.destinationName,
+                    );
+                  },
+                ),
+              if (maps.isNotEmpty && rideOptions.isNotEmpty)
+                const Divider(height: 1),
+              for (final option in rideOptions)
+                ListTile(
+                  leading: Icon(
+                    _rideShareIcon(option.provider),
+                    color: theme.colorScheme.primary,
+                  ),
+                  title: Text(option.label),
+                  onTap: () async {
+                    Navigator.of(sheetContext).pop();
+                    final success =
+                        await _controller.launchRideShareOption(option);
+                    if (!success) {
+                      await _launchFallbackDirections(info);
+                    }
+                  },
+                ),
+              const SizedBox(height: 12),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  IconData _rideShareIcon(RideShareProvider provider) {
+    switch (provider) {
+      case RideShareProvider.uber:
+        return Icons.local_taxi;
+      case RideShareProvider.ninetyNine:
+        return Icons.local_taxi_outlined;
+    }
+  }
+
+  Future<void> _launchFallbackDirections(DirectionsInfo info) async {
+    final launched = await launchUrl(
+      info.fallbackUrl,
+      mode: LaunchMode.externalApplication,
+    );
+    if (!launched) {
+      _showSnackbar('Nao foi possivel abrir o mapa para direcoes.');
+    }
+  }
+
+  void _showSnackbar(String message) {
+    if (!mounted) {
+      return;
+    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+  }
 
   void _handlePoiHover(String? poiId) {
     if (!kIsWeb) {

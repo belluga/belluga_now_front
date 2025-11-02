@@ -76,6 +76,25 @@
     streams for events, visible dates, etc.).
 - `StreamValue` keeps the “bloc-like” intent while allowing targeted updates (fetch more events without touching other widgets). Controllers should dispose every `StreamValue` they own.
 
+### Shared State Management (Single Source of Truth)
+
+For any piece of application state that is shared, accessed, or modified by multiple, otherwise-decoupled components (like different controllers or widgets), the following principles apply:
+
+-   **Single Source of Truth (SSoT):** Shared state should be managed in a single, centralized location (a dedicated service or repository). This prevents state desynchronization and makes the application's state predictable.
+
+-   **State Exposure via Observation (Reactive State):** Shared state should be exposed to consumers via observable streams (like our `StreamValue`). Components should react to state changes rather than imperatively polling for updates.
+
+-   **Decoupling State Management from UI Components:** The logic for managing and updating shared state should be completely decoupled from the UI components that consume it. This enhances modularity and testability.
+
+-   **Separation of State from Action:** The service is responsible for holding the *state*. The *actions* that modify this state are still initiated by the controllers.
+
+**Concrete Example: `FilterStateService`**
+
+-   A dedicated service (e.g., `FilterStateService`) acts as a central repository for the currently active filters affecting the map's output.
+-   It exposes a `StreamValue<PoiQuery>` (or similar) representing the current filter state.
+-   The `CityMapController` (or other relevant controllers) updates this service whenever filters are applied.
+-   Any controller or UI component needing to know the active filters can observe this service's `StreamValue`, ensuring a single, consistent source of truth.
+
 - Example patterns:
   - `TenantHomeController` → `StreamValue<HomeOverview?>`.
   - `ScheduleScreenController` tracks events, schedule summaries, visible
@@ -128,6 +147,10 @@ To ensure a maintainable, testable, and scalable codebase, the following princip
     -   If a helper widget is scoped solely for a specific screen (i.e., it's not intended for broader reuse across different screens), it is acceptable for it to retrieve that screen's controller directly via `GetIt.I.get<ScreenController>()`.
     -   This approach avoids 'prop drilling' (passing numerous parameters down the widget tree) and keeps widget constructors clean, while still adhering to the principle of widgets being purely presentational.
 
+-   **Controllers are `BuildContext`-Agnostic:**
+    -   Controllers must never accept `BuildContext` as a parameter or directly perform UI actions that require it (e.g., showing dialogs, navigating, displaying snackbars).
+    -   Any operation requiring `BuildContext` is inherently a UI responsibility and should be handled by the widget layer, with the controller providing the necessary data or intent.
+
 ## Data Layer
 
 - **Repositories**
@@ -146,6 +169,12 @@ To ensure a maintainable, testable, and scalable codebase, the following princip
     home, schedule, etc.).
   - Additional mock backends for schedule, notes, etc. under
     `lib/infrastructure/services/dal/dao/mock_backend`.
+
+- **Data Externalization:**
+  - To ensure flexibility and avoid hardcoded values, dynamic content should be externalized and fetched from the backend.
+  - **Regions List:** The list of map regions (e.g., "Rota da Ferradura") should be fetched from the backend rather than being hardcoded in controllers.
+  - **Main Filter Icon Mapping:** The mapping of main filter icons should be driven by data from the backend (e.g., an `iconKey` string) rather than hardcoded logic in the UI.
+  - **Fallback Image URL:** Fallback image URLs should be provided by the backend or a configuration service, not hardcoded in the application.
 
 ## Example Feature: Schedule
 

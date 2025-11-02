@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/presentation/tenant/screens/map/controller/city_map_controller.dart';
 import 'package:belluga_now/presentation/tenant/screens/map/controller/fab_menu_controller.dart';
-import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value.dart';
 
@@ -29,13 +28,18 @@ class EventsPanelController implements Disposable {
     _fabMenuController.closePanel();
   }
 
-  void shareEvent(EventModel event) {
-    _mapController.shareEvent(event);
+  SharePayload buildSharePayload(EventModel event) {
+    return _mapController.buildEventSharePayload(event);
   }
 
-  void routeToEvent(EventModel event, BuildContext context) {
-    _mapController.getDirectionsToEvent(event, context);
+  Future<DirectionsInfo?> prepareDirections(EventModel event) {
+    final directions = _mapController.prepareEventDirections(event);
     _fabMenuController.closePanel();
+    return directions;
+  }
+
+  Future<bool> launchRideShareOption(RideShareOption option) {
+    return _mapController.launchRideShareOption(option);
   }
 
   @override

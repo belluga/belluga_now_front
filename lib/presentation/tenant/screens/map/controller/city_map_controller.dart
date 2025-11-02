@@ -10,12 +10,10 @@ import 'package:belluga_now/domain/repositories/city_map_repository_contract.dar
 import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/infrastructure/services/dal/datasources/poi_query.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:get_it/get_it.dart';
 import 'package:map_launcher/map_launcher.dart';
-import 'package:share_plus/share_plus.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:intl/intl.dart';
 import 'package:stream_value/core/stream_value.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -428,7 +426,7 @@ class CityMapController implements Disposable {
     await _applyFilters(const <CityPoiCategory>{}, const <String>{});
   }
 
-  void sharePoi(CityPoiModel poi) {
+  SharePayload buildPoiSharePayload(CityPoiModel poi) {
     final shareLines = <String>[
       poi.name,
       if (poi.description.isNotEmpty) poi.description,
@@ -437,10 +435,10 @@ class CityMapController implements Disposable {
     final message =
         shareLines.where((line) => line.trim().isNotEmpty).join('\n');
 
-    unawaited(_shareContent(message, poi.name));
+    return SharePayload(message: message, subject: poi.name);
   }
 
-  void shareEvent(EventModel event) {
+  SharePayload buildEventSharePayload(EventModel event) {
     final lines = <String>[
       event.title.value,
       event.location.value,
@@ -448,39 +446,39 @@ class CityMapController implements Disposable {
     final start = event.dateTimeStart.value;
     if (start != null) {
       lines.add(
-        'Início: ${DateFormat('dd/MM/yyyy HH:mm').format(start)}',
+        'Inicio: ${DateFormat('dd/MM/yyyy HH:mm').format(start)}',
+      );
+    }
+
+    final coordinate = event.coordinate;
+    if (coordinate != null) {
+      lines.add(
+        'Localizacao: https://maps.google.com/?q=${coordinate.latitude},${coordinate.longitude}',
       );
     }
 
     final message = lines.where((line) => line.trim().isNotEmpty).join('\n');
-    unawaited(_shareContent(message, event.title.value));
+    return SharePayload(message: message, subject: event.title.value);
   }
 
-  void getDirectionsToPoi(CityPoiModel poi, BuildContext context) {
-    unawaited(
-      _openDirectionsToCoordinate(
-        poi.coordinate,
-        poi.name,
-        context,
-      ),
+  Future<DirectionsInfo?> preparePoiDirections(CityPoiModel poi) {
+    return _buildDirectionsInfo(
+      coordinate: poi.coordinate,
+      destinationName: poi.name,
     );
   }
 
-  void getDirectionsToEvent(EventModel event, BuildContext context) {
+  Future<DirectionsInfo?> prepareEventDirections(EventModel event) {
     final coordinate = event.coordinate;
     if (coordinate == null) {
-      return;
+      return Future.value(null);
     }
 
-    unawaited(
-      _openDirectionsToCoordinate(
-        coordinate,
-        event.title.value,
-        context,
-      ),
+    return _buildDirectionsInfo(
+      coordinate: coordinate,
+      destinationName: event.title.value,
     );
   }
-
   Future<void> _loadEventsForDate(DateTime date) async {
     try {
       selectedEventStreamValue.addValue(null);
@@ -728,20 +726,10 @@ class CityMapController implements Disposable {
     );
   }
 
-  Future<void> _shareContent(String message, String subject) async {
-    try {
-      await Share.share(message, subject: subject);
-    } catch (error, stackTrace) {
-      debugPrint('Failed to share content: $error');
-      debugPrintStack(stackTrace: stackTrace);
-    }
-  }
-
-  Future<void> _openDirectionsToCoordinate(
-    CityCoordinate coordinate,
-    String destinationName,
-    BuildContext context,
-  ) async {
+  Future<DirectionsInfo?> _buildDirectionsInfo({
+    required CityCoordinate coordinate,
+    required String destinationName,
+  }) async {
     final destination = Coords(
       coordinate.latitude,
       coordinate.longitude,
@@ -751,131 +739,47 @@ class CityMapController implements Disposable {
       final availableMaps = await MapLauncher.installedMaps;
       final rideShareOptions =
           await _availableRideShareOptions(destination, destinationName);
-      final totalOptions = availableMaps.length + rideShareOptions.length;
-
-      if (totalOptions == 0) {
-        await _launchFallbackDirections(destination, destinationName);
-        return;
-      }
-
-      if (totalOptions == 1) {
-        if (availableMaps.length == 1) {
-          await availableMaps.first.showDirections(
-            destination: destination,
-            destinationTitle: destinationName,
-          );
-        } else {
-          await rideShareOptions.first.launcher();
-        }
-        return;
-      }
-
-      final launcher = await _selectNavigationLauncher(
-        context,
-        availableMaps,
-        rideShareOptions,
-        destination,
-        destinationName,
+      final fallbackUrl =
+          _buildFallbackDirectionsUri(destination, destinationName);
+      return DirectionsInfo(
+        coordinate: coordinate,
+        destination: destination,
+        destinationName: destinationName,
+        availableMaps: availableMaps,
+        rideShareOptions: rideShareOptions,
+        fallbackUrl: fallbackUrl,
       );
-      if (launcher == null) {
-        return;
-      }
-      await launcher();
     } catch (error, stackTrace) {
-      debugPrint('Failed to open directions for $destinationName: $error');
+      debugPrint('Failed to prepare directions for $destinationName: $error');
       debugPrintStack(stackTrace: stackTrace);
-      await _launchFallbackDirections(destination, destinationName);
+      final fallbackUrl =
+          _buildFallbackDirectionsUri(destination, destinationName);
+      return DirectionsInfo(
+        coordinate: coordinate,
+        destination: destination,
+        destinationName: destinationName,
+        availableMaps: const [],
+        rideShareOptions: const [],
+        fallbackUrl: fallbackUrl,
+      );
     }
   }
 
-  Future<_NavigationLauncher?> _selectNavigationLauncher(
-    BuildContext context,
-    List<AvailableMap> maps,
-    List<_RideShareOption> rideOptions,
+  Uri _buildFallbackDirectionsUri(
     Coords destination,
-    String destinationTitle,
-  ) async {
-    final navigator = Navigator.maybeOf(context);
-    if (navigator == null || !navigator.mounted) {
-      return null;
-    }
-    return showModalBottomSheet<_NavigationLauncher>(
-      context: context,
-      builder: (sheetContext) {
-        return SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    'Escolha como chegar',
-                    style: Theme.of(sheetContext).textTheme.titleMedium,
-                  ),
-                ),
-              ),
-              for (final map in maps)
-                ListTile(
-                  leading: SvgPicture.asset(
-                    map.icon,
-                    width: 32,
-                    height: 32,
-                  ),
-                  title: Text(map.mapName),
-                  onTap: () => Navigator.of(sheetContext).pop(
-                    () => map.showDirections(
-                      destination: destination,
-                      destinationTitle: destinationTitle,
-                    ),
-                  ),
-                ),
-              if (maps.isNotEmpty && rideOptions.isNotEmpty)
-                for (final option in rideOptions)
-                  ListTile(
-                    leading: Icon(option.icon, size: 28),
-                    title: Text(option.label),
-                    onTap: () => Navigator.of(sheetContext).pop(
-                      option.launcher,
-                    ),
-                  ),
-              const SizedBox(height: 12),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  Future<void> _launchFallbackDirections(
-    Coords destination,
-    String label,
-  ) async {
-    final uri = Uri.parse(
+    String _destinationName,
+  ) {
+    return Uri.parse(
       'https://www.google.com/maps/dir/?api=1'
       '&destination=${destination.latitude},${destination.longitude}',
     );
-    try {
-      final launched = await launchUrl(
-        uri,
-        mode: LaunchMode.externalApplication,
-      );
-      if (!launched) {
-        debugPrint('Could not launch fallback directions for $label');
-      }
-    } catch (error, stackTrace) {
-      debugPrint('Fallback navigation failed for $label: $error');
-      debugPrintStack(stackTrace: stackTrace);
-    }
   }
 
-  Future<List<_RideShareOption>> _availableRideShareOptions(
+  Future<List<RideShareOption>> _availableRideShareOptions(
     Coords destination,
     String destinationTitle,
   ) async {
-    final options = <_RideShareOption>[];
+    final options = <RideShareOption>[];
     final latitude = destination.latitude;
     final longitude = destination.longitude;
     final encodedTitle = Uri.encodeComponent(destinationTitle);
@@ -897,10 +801,10 @@ class CityMapController implements Disposable {
 
     if (await _hasAnyLaunchHandler(uberUris)) {
       options.add(
-        _RideShareOption(
+        RideShareOption(
+          provider: RideShareProvider.uber,
           label: 'Uber',
-          icon: Icons.local_taxi,
-          launcher: () => _launchFirstSupportedUri(uberUris, 'Uber'),
+          uris: uberUris,
         ),
       );
     }
@@ -931,10 +835,10 @@ class CityMapController implements Disposable {
 
     if (await _hasAnyLaunchHandler(ninetyNineUris)) {
       options.add(
-        _RideShareOption(
+        RideShareOption(
+          provider: RideShareProvider.ninetyNine,
           label: '99',
-          icon: Icons.local_taxi_outlined,
-          launcher: () => _launchFirstSupportedUri(ninetyNineUris, '99'),
+          uris: ninetyNineUris,
         ),
       );
     }
@@ -942,7 +846,11 @@ class CityMapController implements Disposable {
     return options;
   }
 
-  Future<void> _launchFirstSupportedUri(
+  Future<bool> launchRideShareOption(RideShareOption option) {
+    return _launchFirstSupportedUri(option.uris, option.label);
+  }
+
+  Future<bool> _launchFirstSupportedUri(
     List<Uri> uris,
     String providerName,
   ) async {
@@ -953,11 +861,12 @@ class CityMapController implements Disposable {
           mode: LaunchMode.externalApplication,
         );
         if (launched) {
-          return;
+          return true;
         }
       }
     }
     debugPrint('No handler available for $providerName');
+    return false;
   }
 
   Future<bool> _hasAnyLaunchHandler(List<Uri> uris) async {
@@ -978,7 +887,6 @@ class CityMapController implements Disposable {
       return false;
     }
   }
-
   void _updateActiveFilterCount() {
     final categoryCount = selectedCategories.value.length;
     final tagCount = selectedTags.value.length;
@@ -986,8 +894,47 @@ class CityMapController implements Disposable {
   }
 }
 
-typedef _NavigationLauncher = Future<void> Function();
+class SharePayload {
+  const SharePayload({
+    required this.message,
+    required this.subject,
+  });
 
+  final String message;
+  final String subject;
+}
+
+class DirectionsInfo {
+  const DirectionsInfo({
+    required this.coordinate,
+    required this.destination,
+    required this.destinationName,
+    required this.availableMaps,
+    required this.rideShareOptions,
+    required this.fallbackUrl,
+  });
+
+  final CityCoordinate coordinate;
+  final Coords destination;
+  final String destinationName;
+  final List<AvailableMap> availableMaps;
+  final List<RideShareOption> rideShareOptions;
+  final Uri fallbackUrl;
+}
+
+enum RideShareProvider { uber, ninetyNine }
+
+class RideShareOption {
+  const RideShareOption({
+    required this.provider,
+    required this.label,
+    required this.uris,
+  });
+
+  final RideShareProvider provider;
+  final String label;
+  final List<Uri> uris;
+}
 class MapRegionDefinition {
   const MapRegionDefinition({
     required this.id,
@@ -1014,17 +961,7 @@ class MapNavigationTarget {
   final double zoom;
 }
 
-class _RideShareOption {
-  const _RideShareOption({
-    required this.label,
-    required this.icon,
-    required this.launcher,
-  });
 
-  final String label;
-  final IconData icon;
-  final _NavigationLauncher launcher;
-}
 
 
 
