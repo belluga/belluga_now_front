@@ -72,7 +72,6 @@ class CityMapController implements Disposable {
   CityCoordinate get defaultCenter => _repository.defaultCenter();
 
   PoiQuery _currentQuery = const PoiQuery();
-  MainFilterOption? _activeMainFilter;
   PoiQuery? _previousQueryBeforeMainFilter;
   Set<CityPoiCategory>? _previousSelectedCategories;
   Set<String>? _previousSelectedTags;
@@ -80,7 +79,6 @@ class CityMapController implements Disposable {
   bool _hasRequestedPois = false;
   bool _eventsLoaded = false;
   StreamSubscription<PoiUpdateEvent?>? _poiEventsSubscription;
-  PoiFilterOptions? _cachedFilterOptions;
   bool _filtersLoadFailed = false;
   String? _fallbackEventImage;
 
@@ -104,12 +102,10 @@ class CityMapController implements Disposable {
     }
     try {
       final options = await _repository.fetchFilters();
-      _cachedFilterOptions = options;
       _filtersLoadFailed = false;
       filterOptionsStreamValue.addValue(options);
     } catch (error) {
       debugPrint('Failed to load POI filters: $error');
-      _cachedFilterOptions = null;
       _filtersLoadFailed = true;
       filterOptionsStreamValue.addValue(
         PoiFilterOptions(categories: const <PoiFilterCategory>[]),
@@ -358,9 +354,9 @@ class CityMapController implements Disposable {
     );
   }
 
-  MainFilterOption? get activeMainFilter => _activeMainFilter;
+  MainFilterOption? get activeMainFilter => activeMainFilterStreamValue.value;
 
-  bool get hasActiveMainFilter => _activeMainFilter != null;
+  bool get hasActiveMainFilter => activeMainFilterStreamValue.value != null;
 
   CityCoordinate? get userLocation => userLocationStreamValue.value;
 
@@ -370,11 +366,13 @@ class CityMapController implements Disposable {
       return;
     }
 
-    if (_activeMainFilter != null && _activeMainFilter!.id != option.id) {
+    final currentMainFilter = activeMainFilterStreamValue.value;
+
+    if (currentMainFilter != null && currentMainFilter.id != option.id) {
       await clearMainFilter();
     }
 
-    if (_activeMainFilter?.id == option.id) {
+    if (currentMainFilter?.id == option.id) {
       await clearMainFilter();
       return;
     }
@@ -384,7 +382,6 @@ class CityMapController implements Disposable {
         Set<CityPoiCategory>.from(selectedCategories.value);
     _previousSelectedTags = Set<String>.from(selectedTags.value);
 
-    _activeMainFilter = option;
     activeMainFilterStreamValue.addValue(option);
 
     final optionCategories = option.categories;
@@ -409,11 +406,10 @@ class CityMapController implements Disposable {
   }
 
   Future<void> clearMainFilter() async {
-    if (_activeMainFilter == null) {
+    if (activeMainFilterStreamValue.value == null) {
       return;
     }
 
-    _activeMainFilter = null;
     activeMainFilterStreamValue.addValue(null);
 
     if (_previousSelectedCategories != null) {
@@ -437,8 +433,7 @@ class CityMapController implements Disposable {
   }
 
   Future<void> clearFilters() async {
-    if (_activeMainFilter != null) {
-      _activeMainFilter = null;
+    if (activeMainFilterStreamValue.value != null) {
       activeMainFilterStreamValue.addValue(null);
       _previousQueryBeforeMainFilter = null;
       _previousSelectedCategories = null;
@@ -681,7 +676,7 @@ class CityMapController implements Disposable {
   Set<String> _allowedTagsForCategories(
     Iterable<CityPoiCategory> categories,
   ) {
-    final options = _cachedFilterOptions;
+    final options = filterOptionsStreamValue.value;
     if (options == null) {
       return const <String>{};
     }
