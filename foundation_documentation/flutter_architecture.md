@@ -6,6 +6,43 @@
 
 ---
 
+## Core Architectural Concepts
+
+These are the foundational, system-wide principles that guide the development of the entire application.
+
+-   **Backend-Driven UI:**
+    -   **Principle:** UI labels, terminology, and Calls to Action (CTAs) should not be hardcoded in the app. They should be treated as configurable data, defined on the backend and associated with a specific entity category (e.g., a Partner's "Follow" verb, an Item's primary CTA).
+    -   **Impact:** This allows for maximum flexibility, enabling remote configuration and A/B testing without requiring app deployments. It requires a robust Category Management System and Configuration Endpoint on the backend.
+
+-   **Component/Template-Based Design:**
+    -   **Principle:** The system should favor creating flexible, data-driven page templates (e.g., a generic `ItemLandingPage`, `PartnerLandingPage`) over building unique, one-off screens for every item.
+    -   **Impact:** This promotes UI consistency and development speed. It requires APIs to return data in a standardized format that can populate these templates.
+
+-   **Asynchronous User State Management:**
+    -   **Principle:** User-specific, stateful interactions (like pending invites, notifications, or required actions) should be managed as a queue or a list in the user's state, fetched from the backend.
+    -   **Impact:** This allows the app to handle pending interactions gracefully. On startup, the app checks this queue and can present the relevant UI (e.g., a "Tinder-like" invite screen) to the user.
+
+-   **Unified Data Models/Interfaces:**
+    -   **Principle:** Entities with similar behaviors should implement a common interface or data model (e.g., a `Schedulable` interface for anything that can be added to a user's calendar).
+    -   **Impact:** This simplifies the logic for features that operate on different types of data (e.g., a "My Schedule" screen can display a simple list of all `Schedulable` items, regardless of their origin).
+
+## Core Growth Engine: Social & Invitation System
+
+This is a foundational part of the app's architecture, designed to drive viral growth and user engagement.
+
+-   **Core Loop:**
+    -   User discovers a Partner/Event.
+    -   User engages ("Virar Fã," "Confirmar Presença," "Check-in").
+    -   This engagement **grants permission** for that specific partner to send targeted push notifications.
+    -   User is prompted to **invite friends**, expanding the user base.
+    -   New users are brought in through invites, see who invited them (social proof), and start their own discovery/engagement loop.
+
+-   **System-Wide Implications:**
+    -   **Permissions Model:** The backend needs a granular permissions system to track which partners a user has granted notification permissions to.
+    -   **Push Notification Service:** The backend must have a service that allows partners to send push notifications to their specific "fanbase."
+        -   **Technical Implementation:** The intended mechanism for this is **Firebase Cloud Messaging (FCM) Topics**. When a user follows a partner, the app subscribes them to that partner's specific FCM Topic.
+    -   **Viral Tracking:** The invite system must be robust, tracking the entire chain from inviter to invitee to conversion (sign-up, engagement) to power gamification and analytics.
+
 ## Layered Structure Snapshot
 
 - **Application layer** wires theming (`application_contract.dart`), global initialisation, and module bootstrap. Keep business logic out of this layer.
@@ -94,6 +131,14 @@ For any piece of application state that is shared, accessed, or modified by mult
 -   It exposes a `StreamValue<PoiQuery>` (or similar) representing the current filter state.
 -   The `CityMapController` (or other relevant controllers) updates this service whenever filters are applied.
 -   Any controller or UI component needing to know the active filters can observe this service's `StreamValue`, ensuring a single, consistent source of truth.
+
+### `StreamValue` as the Single Source of Truth
+
+-   **Principle:** When using a `StreamValue` to manage a piece of state within a controller, the `StreamValue` itself must be the **only** source of truth for that state.
+-   **Anti-Pattern to Avoid:** Do not maintain a separate private variable (e.g., `_myState`) alongside a `StreamValue` (e.g., `myStateStreamValue`) for the same data. Updating both creates two sources of truth and leads to bugs.
+-   **Correct Pattern:**
+    -   **State Update:** Only update the `StreamValue`: `myStateStreamValue.addValue(newState);`
+    -   **State Access (Internal):** Access the current value directly from the stream: `final currentState = myStateStreamValue.value;`
 
 - Example patterns:
   - `TenantHomeController` → `StreamValue<HomeOverview?>`.

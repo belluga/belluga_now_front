@@ -30,8 +30,11 @@ class EventInfoCard extends StatelessWidget {
     final date = event.dateTimeStart.value;
     final artists = event.artists.map((e) => e.name.value).join(', ');
     final primaryArtist = event.artists.isNotEmpty ? event.artists.first : null;
-    final avatarUri = primaryArtist?.avatarUrl.value?.toString();
-    final fallbackUri = event.thumb?.thumbUri.value?.toString();
+    final avatarUriValue = primaryArtist?.avatarUrl.value;
+    final avatarUri = avatarUriValue == null ? null : avatarUriValue.toString();
+    final fallbackUriValue = event.thumb?.thumbUri.value;
+    final fallbackUri =
+        fallbackUriValue == null ? null : fallbackUriValue.toString();
     final imageUrl = avatarUri?.isNotEmpty == true
         ? avatarUri
         : (fallbackUri?.isNotEmpty == true ? fallbackUri : null);
@@ -39,8 +42,7 @@ class EventInfoCard extends StatelessWidget {
     final formattedDate = date != null
         ? DateFormat('dd MMM, HH:mm').format(date)
         : 'Horário a confirmar';
-    final timeLabel =
-        date != null ? DateFormat('HH:mm').format(date) : '--:--';
+    final timeLabel = date != null ? DateFormat('HH:mm').format(date) : '--:--';
     final badgeText = switch (state) {
       CityEventTemporalState.now => 'AGORA',
       CityEventTemporalState.past => 'Encerrado',
@@ -49,8 +51,7 @@ class EventInfoCard extends StatelessWidget {
     final badgeColor = switch (state) {
       CityEventTemporalState.now => const Color(0xFFE53935),
       CityEventTemporalState.past => Colors.grey.shade500,
-      CityEventTemporalState.upcoming =>
-        event.type.color.value ?? scheme.primary,
+      CityEventTemporalState.upcoming => event.type.color.value,
     };
     final mutedTextColor =
         isPast ? scheme.onSurfaceVariant.withOpacity(0.65) : null;
@@ -74,8 +75,7 @@ class EventInfoCard extends StatelessWidget {
                     children: [
                       _EventAvatar(
                         imageUrl: imageUrl,
-                        fallbackColor:
-                            event.type.color.value ?? scheme.primary,
+                        fallbackColor: event.type.color.value,
                         isPast: isPast,
                       ),
                       Positioned(
@@ -97,15 +97,15 @@ class EventInfoCard extends StatelessWidget {
                           event.title.value,
                           style: textTheme.titleMedium?.copyWith(
                             fontWeight: FontWeight.w700,
-                            color: mutedTextColor ?? textTheme.titleMedium?.color,
+                            color:
+                                mutedTextColor ?? textTheme.titleMedium?.color,
                           ),
                         ),
                         const SizedBox(height: 4),
                         Text(
                           formattedDate,
                           style: textTheme.labelMedium?.copyWith(
-                            color: mutedTextColor ??
-                                scheme.onSurfaceVariant,
+                            color: mutedTextColor ?? scheme.onSurfaceVariant,
                           ),
                         ),
                       ],
@@ -255,7 +255,8 @@ class _EventAvatar extends StatelessWidget {
           ? Image.network(
               imageUrl!,
               fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => _AvatarFallback(color: fallbackColor),
+              errorBuilder: (_, __, ___) =>
+                  _AvatarFallback(color: fallbackColor),
             )
           : _AvatarFallback(color: fallbackColor),
     );
@@ -266,10 +267,26 @@ class _EventAvatar extends StatelessWidget {
 
     return ColorFiltered(
       colorFilter: const ColorFilter.matrix(<double>[
-        0.2126, 0.7152, 0.0722, 0, 0,
-        0.2126, 0.7152, 0.0722, 0, 0,
-        0.2126, 0.7152, 0.0722, 0, 0,
-        0, 0, 0, 1, 0,
+        0.2126,
+        0.7152,
+        0.0722,
+        0,
+        0,
+        0.2126,
+        0.7152,
+        0.0722,
+        0,
+        0,
+        0.2126,
+        0.7152,
+        0.0722,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
       ]),
       child: Opacity(opacity: 0.4, child: avatar),
     );

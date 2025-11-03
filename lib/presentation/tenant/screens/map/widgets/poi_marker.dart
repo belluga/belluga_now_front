@@ -23,16 +23,12 @@ class PoiMarker extends StatelessWidget {
       final isDynamicSponsor = poi.isDynamic;
       final baseSize = isDynamicSponsor ? 42.0 : 64.0;
       final selectedSize = isDynamicSponsor ? 48.0 : 72.0;
-      final badgeColor = isDynamicSponsor
-          ? theme.color.withOpacity(0.85)
-          : theme.color;
-      final badgeIcon = isDynamicSponsor
-          ? Icons.shopping_bag_outlined
-          : Icons.storefront;
-      final scale =
-          isSelected ? 1.18 : (isHovered ? 1.08 : 1.0);
-      final shadowOpacity =
-          isSelected ? 0.35 : (isHovered ? 0.3 : 0.25);
+      final badgeColor =
+          isDynamicSponsor ? theme.color.withOpacity(0.85) : theme.color;
+      final badgeIcon =
+          isDynamicSponsor ? Icons.shopping_bag_outlined : Icons.storefront;
+      final scale = isSelected ? 1.18 : (isHovered ? 1.08 : 1.0);
+      final shadowOpacity = isSelected ? 0.35 : (isHovered ? 0.3 : 0.25);
 
       return AnimatedScale(
         duration: const Duration(milliseconds: 200),
@@ -91,8 +87,7 @@ class PoiMarker extends StatelessWidget {
     }
 
     final scale = isSelected ? 1.12 : (isHovered ? 1.06 : 1.0);
-    final shadowOpacity =
-        isSelected ? 0.35 : (isHovered ? 0.3 : 0.25);
+    final shadowOpacity = isSelected ? 0.35 : (isHovered ? 0.3 : 0.25);
 
     return AnimatedScale(
       duration: const Duration(milliseconds: 180),

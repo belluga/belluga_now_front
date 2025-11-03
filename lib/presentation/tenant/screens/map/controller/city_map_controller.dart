@@ -5,6 +5,7 @@ import 'package:belluga_now/domain/map/city_poi_model.dart';
 import 'package:belluga_now/domain/map/events/poi_update_event.dart';
 import 'package:belluga_now/domain/map/filters/main_filter_option.dart';
 import 'package:belluga_now/domain/map/filters/poi_filter_options.dart';
+import 'package:belluga_now/domain/map/map_region_definition.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/domain/repositories/city_map_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
@@ -28,14 +29,15 @@ class CityMapController implements Disposable {
   })  : _repository = repository ?? GetIt.I.get<CityMapRepositoryContract>(),
         _scheduleRepository =
             scheduleRepository ?? GetIt.I.get<ScheduleRepositoryContract>(),
-        eventsStreamValue = StreamValue<List<EventModel>?>() {
+        eventsStreamValue =
+            StreamValue<List<EventModel>>(defaultValue: const []) {
     _poiEventsSubscription = _repository.poiEvents.listen(_handlePoiEvent);
   }
 
   final CityMapRepositoryContract _repository;
   final ScheduleRepositoryContract _scheduleRepository;
 
-  final StreamValue<List<EventModel>?> eventsStreamValue;
+  final StreamValue<List<EventModel>> eventsStreamValue;
 
   final isLoading = StreamValue<bool>(defaultValue: false);
   final pois = StreamValue<List<CityPoiModel>>(defaultValue: const []);
@@ -54,40 +56,18 @@ class CityMapController implements Disposable {
       StreamValue<MapStatus>(defaultValue: MapStatus.locating);
   final statusMessageStreamValue =
       StreamValue<String?>(defaultValue: 'Localizando voce...');
+  final searchTermStreamValue = StreamValue<String?>();
 
   final selectedPoiStreamValue = StreamValue<CityPoiModel?>();
   final selectedEventStreamValue = StreamValue<EventModel?>();
   final mapNavigationTarget = StreamValue<MapNavigationTarget?>();
 
-  static const List<MapRegionDefinition> _regions = <MapRegionDefinition>[
-    MapRegionDefinition(
-      id: 'rota_ferradura',
-      label: 'Rota da Ferradura',
-      center: CityCoordinate(latitude: -20.6608, longitude: -40.4915),
-      zoom: 14.2,
-    ),
-    MapRegionDefinition(
-      id: 'meaipe',
-      label: 'Meaípe',
-      center: CityCoordinate(latitude: -20.7254, longitude: -40.5198),
-      zoom: 14.0,
-    ),
-    MapRegionDefinition(
-      id: 'setiba',
-      label: 'Setiba',
-      center: CityCoordinate(latitude: -20.6392, longitude: -40.4455),
-      zoom: 13.6,
-    ),
-    MapRegionDefinition(
-      id: 'nova_guarapari',
-      label: 'Nova Guarapari',
-      center: CityCoordinate(latitude: -20.6965, longitude: -40.5092),
-      zoom: 13.8,
-    ),
-  ];
+  final hoveredPoiIdStreamValue = StreamValue<String?>();
+  final regionsStreamValue =
+      StreamValue<List<MapRegionDefinition>>(defaultValue: const []);
 
   List<MapRegionDefinition> get regions =>
-      List<MapRegionDefinition>.unmodifiable(_regions);
+      List<MapRegionDefinition>.unmodifiable(regionsStreamValue.value);
 
   CityCoordinate get defaultCenter => _repository.defaultCenter();
 
@@ -96,16 +76,26 @@ class CityMapController implements Disposable {
   PoiQuery? _previousQueryBeforeMainFilter;
   Set<CityPoiCategory>? _previousSelectedCategories;
   Set<String>? _previousSelectedTags;
-  CityCoordinate? _userOrigin;
-  CityCoordinate? _userLocation;
+
   bool _hasRequestedPois = false;
   bool _eventsLoaded = false;
   StreamSubscription<PoiUpdateEvent?>? _poiEventsSubscription;
   PoiFilterOptions? _cachedFilterOptions;
   bool _filtersLoadFailed = false;
+  String? _fallbackEventImage;
 
   Future<void> initialize() async {
-    await _loadEventsForDate(_today);
+    await Future.wait([
+      loadMainFilters(),
+      loadFilters(),
+      loadRegions(),
+      _loadFallbackAssets(),
+    ]);
+
+    if (!_eventsLoaded) {
+      await _loadEventsForDate(_today);
+      _eventsLoaded = true;
+    }
   }
 
   Future<void> loadFilters() async {
@@ -141,11 +131,44 @@ class CityMapController implements Disposable {
     }
   }
 
+  Future<void> loadRegions() async {
+    final current = regionsStreamValue.value;
+    if (current.isNotEmpty) {
+      return;
+    }
+    try {
+      final regions = await _repository.fetchRegions();
+      regionsStreamValue.addValue(
+        List<MapRegionDefinition>.unmodifiable(regions),
+      );
+    } catch (error, stackTrace) {
+      debugPrint('Failed to load regions: $error');
+      debugPrintStack(stackTrace: stackTrace);
+      regionsStreamValue.addValue(const <MapRegionDefinition>[]);
+    }
+  }
+
+  Future<void> _loadFallbackAssets() async {
+    if (_fallbackEventImage != null) {
+      return;
+    }
+    try {
+      _fallbackEventImage = await _repository.fetchFallbackEventImage();
+    } catch (error, stackTrace) {
+      debugPrint('Failed to load fallback assets: $error');
+      debugPrintStack(stackTrace: stackTrace);
+      _fallbackEventImage = null;
+    }
+  }
+
+  String? get fallbackEventImage => _fallbackEventImage;
+
   Future<void> loadPois(
     PoiQuery query, {
     String? loadingMessage,
   }) async {
     _currentQuery = query;
+    searchTermStreamValue.addValue(query.searchTerm);
     _setMapStatus(
       MapStatus.fetching,
       message: loadingMessage ?? 'Carregando pontos...',
@@ -157,8 +180,7 @@ class CityMapController implements Disposable {
       _setSuccessState(fetchedPois);
       _setMapStatus(MapStatus.ready);
     } catch (_) {
-      const errorMessage =
-          'Nao foi possivel carregar os pontos de interesse.';
+      const errorMessage = 'Nao foi possivel carregar os pontos de interesse.';
       _setErrorState(errorMessage);
       _setMapStatus(MapStatus.error, message: errorMessage);
     }
@@ -170,6 +192,16 @@ class CityMapController implements Disposable {
 
   void selectEvent(EventModel? event) {
     selectedEventStreamValue.addValue(event);
+  }
+
+  void setHoveredPoi(String? poiId) {
+    hoveredPoiIdStreamValue.addValue(poiId);
+  }
+
+  void clearSelections() {
+    selectPoi(null);
+    selectEvent(null);
+    setHoveredPoi(null);
   }
 
   Future<void> searchPois(String query) async {
@@ -245,8 +277,6 @@ class CityMapController implements Disposable {
         longitude: position.longitude,
       );
 
-      _userOrigin = coordinate;
-      _userLocation = coordinate;
       userLocationStreamValue.addValue(coordinate);
 
       await loadPois(
@@ -332,7 +362,7 @@ class CityMapController implements Disposable {
 
   bool get hasActiveMainFilter => _activeMainFilter != null;
 
-  CityCoordinate? get userLocation => _userLocation;
+  CityCoordinate? get userLocation => userLocationStreamValue.value;
 
   Future<void> applyMainFilter(MainFilterOption option) async {
     if (option.opensPanel) {
@@ -397,8 +427,7 @@ class CityMapController implements Disposable {
       );
     }
 
-    final fallbackQuery =
-        _previousQueryBeforeMainFilter ?? const PoiQuery();
+    final fallbackQuery = _previousQueryBeforeMainFilter ?? const PoiQuery();
     _previousQueryBeforeMainFilter = null;
     _previousSelectedCategories = null;
     _previousSelectedTags = null;
@@ -479,13 +508,16 @@ class CityMapController implements Disposable {
       destinationName: event.title.value,
     );
   }
+
   Future<void> _loadEventsForDate(DateTime date) async {
     try {
       selectedEventStreamValue.addValue(null);
       final events = await _scheduleRepository.getEventsByDate(date);
       eventsStreamValue.addValue(events);
+      _eventsLoaded = true;
     } catch (_) {
       eventsStreamValue.addValue(const []);
+      _eventsLoaded = true;
     }
   }
 
@@ -621,6 +653,9 @@ class CityMapController implements Disposable {
     mapStatusStreamValue.dispose();
     statusMessageStreamValue.dispose();
     mapNavigationTarget.dispose();
+    hoveredPoiIdStreamValue.dispose();
+    regionsStreamValue.dispose();
+    searchTermStreamValue.dispose();
     _poiEventsSubscription?.cancel();
   }
 
@@ -887,6 +922,7 @@ class CityMapController implements Disposable {
       return false;
     }
   }
+
   void _updateActiveFilterCount() {
     final categoryCount = selectedCategories.value.length;
     final tagCount = selectedTags.value.length;
@@ -935,21 +971,6 @@ class RideShareOption {
   final String label;
   final List<Uri> uris;
 }
-class MapRegionDefinition {
-  const MapRegionDefinition({
-    required this.id,
-    required this.label,
-    required this.center,
-    required this.zoom,
-    this.boundsDelta = 0.08,
-  });
-
-  final String id;
-  final String label;
-  final CityCoordinate center;
-  final double zoom;
-  final double boundsDelta;
-}
 
 class MapNavigationTarget {
   const MapNavigationTarget({
@@ -960,12 +981,3 @@ class MapNavigationTarget {
   final CityCoordinate center;
   final double zoom;
 }
-
-
-
-
-
-
-
-
-

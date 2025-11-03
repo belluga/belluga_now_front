@@ -12,12 +12,13 @@ class CuisinePanelController implements Disposable {
     CityMapController? mapController,
     FabMenuController? fabMenuController,
   })  : _mapController = mapController ?? GetIt.I.get<CityMapController>(),
-        _fabMenuController = fabMenuController ?? GetIt.I.get<FabMenuController>(),
+        _fabMenuController =
+            fabMenuController ?? GetIt.I.get<FabMenuController>(),
         availableTags = StreamValue<List<String>>(defaultValue: const []) {
     _filterOptionsSubscription =
         _mapController.filterOptionsStreamValue.stream.listen(_handleOptions);
-    _selectedCategoriesSubscription =
-        _mapController.selectedCategories.stream.listen(_handleSelectedCategories);
+    _selectedCategoriesSubscription = _mapController.selectedCategories.stream
+        .listen(_handleSelectedCategories);
   }
 
   final CityMapController _mapController;
@@ -27,10 +28,11 @@ class CuisinePanelController implements Disposable {
 
   StreamValue<Set<String>> get selectedTags => _mapController.selectedTags;
 
-  bool isTagSelected(String tag) => _mapController.selectedTags.value.contains(tag);
+  bool isTagSelected(String tag) =>
+      _mapController.selectedTags.value.contains(tag);
 
   StreamSubscription<PoiFilterOptions?>? _filterOptionsSubscription;
-  StreamSubscription<Set<CityPoiCategory>?>? _selectedCategoriesSubscription;
+  StreamSubscription<Set<CityPoiCategory>>? _selectedCategoriesSubscription;
 
   Future<void> activate() async {
     await _mapController.loadFilters();
@@ -61,7 +63,7 @@ class CuisinePanelController implements Disposable {
     _refreshTags();
   }
 
-  void _handleSelectedCategories(Set<CityPoiCategory>? _) {
+  void _handleSelectedCategories(Set<CityPoiCategory> _) {
     _refreshTags();
   }
 

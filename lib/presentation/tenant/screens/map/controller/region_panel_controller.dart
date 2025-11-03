@@ -1,16 +1,18 @@
 import 'dart:async';
 
+import 'package:belluga_now/domain/map/map_region_definition.dart';
 import 'package:belluga_now/presentation/tenant/screens/map/controller/city_map_controller.dart';
 import 'package:belluga_now/presentation/tenant/screens/map/controller/fab_menu_controller.dart';
-import 'package:get_it/get_it.dart';
-import 'package:get_it_modular_with_auto_route/get_it_modular_with_auto_route.dart';
+import 'package:get_it/get_it.dart' show Disposable, GetIt;
 import 'package:stream_value/core/stream_value.dart';
 
 class RegionPanelController implements Disposable {
   RegionPanelController({
     CityMapController? mapController,
+    FabMenuController? fabMenuController,
   })  : _mapController = mapController ?? GetIt.I.get<CityMapController>(),
-        _fabMenuController = GetIt.I.get<FabMenuController>(),
+        _fabMenuController =
+            fabMenuController ?? GetIt.I.get<FabMenuController>(),
         selectedRegion = StreamValue<MapRegionDefinition?>();
 
   final CityMapController _mapController;

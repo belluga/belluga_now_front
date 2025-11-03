@@ -1,6 +1,7 @@
 import 'package:belluga_now/domain/map/city_poi_category.dart';
 import 'package:belluga_now/domain/map/filters/main_filter_option.dart';
 import 'package:belluga_now/domain/map/filters/poi_filter_options.dart';
+import 'package:belluga_now/domain/map/map_region_definition.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/infrastructure/services/dal/datasources/poi_query.dart';
 import 'package:belluga_now/infrastructure/services/dal/dto/map/city_poi_dto.dart';
@@ -1405,7 +1406,40 @@ class MockPoiDatabase {
       ),
     ]);
 
-  List<CityPoiDTO> findPois({PoiQuery query = const PoiQuery()}) {
+    static final List<MapRegionDefinition> _regions = List.unmodifiable(<MapRegionDefinition>[
+    MapRegionDefinition(
+      id: 'rota_ferradura',
+      label: 'Rota da Ferradura',
+      center: CityCoordinate(latitude: -20.6608, longitude: -40.4915),
+      zoom: 14.2,
+    ),
+    MapRegionDefinition(
+      id: 'meaipe',
+      label: 'Meaípe',
+      center: CityCoordinate(latitude: -20.7254, longitude: -40.5198),
+      zoom: 14.0,
+    ),
+    MapRegionDefinition(
+      id: 'setiba',
+      label: 'Setiba',
+      center: CityCoordinate(latitude: -20.6392, longitude: -40.4455),
+      zoom: 13.6,
+    ),
+    MapRegionDefinition(
+      id: 'nova_guarapari',
+      label: 'Nova Guarapari',
+      center: CityCoordinate(latitude: -20.6965, longitude: -40.5092),
+      zoom: 13.8,
+    ),
+  ]);
+
+  static const String _eventFallbackImage =
+      'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?w=800';
+
+  List<MapRegionDefinition> availableRegions() => _regions;
+
+  String eventFallbackImage() => _eventFallbackImage;
+List<CityPoiDTO> findPois({PoiQuery query = const PoiQuery()}) {
     final searchTerm = query.searchTerm?.trim().toLowerCase();
     return _pois.where((poi) {
       if (searchTerm != null && searchTerm.isNotEmpty) {

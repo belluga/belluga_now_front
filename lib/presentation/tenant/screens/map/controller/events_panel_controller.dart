@@ -11,7 +11,8 @@ class EventsPanelController implements Disposable {
     CityMapController? mapController,
     FabMenuController? fabMenuController,
   })  : _mapController = mapController ?? GetIt.I.get<CityMapController>(),
-        _fabMenuController = fabMenuController ?? GetIt.I.get<FabMenuController>(),
+        _fabMenuController =
+            fabMenuController ?? GetIt.I.get<FabMenuController>(),
         events = StreamValue<List<EventModel>>(defaultValue: const []) {
     _subscription = _mapController.eventsStreamValue.stream.listen(_syncEvents);
     _syncEvents(_mapController.eventsStreamValue.value);
@@ -21,7 +22,7 @@ class EventsPanelController implements Disposable {
   final FabMenuController _fabMenuController;
 
   final StreamValue<List<EventModel>> events;
-  StreamSubscription<List<EventModel>?>? _subscription;
+  StreamSubscription<List<EventModel>>? _subscription;
 
   void selectEvent(EventModel event) {
     _mapController.selectEvent(event);
@@ -48,8 +49,8 @@ class EventsPanelController implements Disposable {
     _subscription?.cancel();
   }
 
-  void _syncEvents(List<EventModel>? source) {
-    events.addValue(filterEvents(source ?? const []));
+  void _syncEvents(List<EventModel> source) {
+    events.addValue(filterEvents(source));
   }
 
   List<EventModel> filterEvents(List<EventModel> items) => items;

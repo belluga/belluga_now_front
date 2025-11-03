@@ -21,7 +21,7 @@ class FilterTagSection extends StatelessWidget {
     return StreamValueBuilder<Set<CityPoiCategory>>(
       streamValue: controller.selectedCategories,
       builder: (context, categories) {
-        final selectedCategories = categories ?? const <CityPoiCategory>{};
+        final selectedCategories = categories;
         final availableTags =
             options.tagsForCategories(selectedCategories).toList()..sort();
         if (selectedCategories.isEmpty || availableTags.isEmpty) {
@@ -30,7 +30,7 @@ class FilterTagSection extends StatelessWidget {
         return StreamValueBuilder<Set<String>>(
           streamValue: controller.selectedTags,
           builder: (context, tags) {
-            final selectedTags = tags ?? const <String>{};
+            final selectedTags = tags;
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [

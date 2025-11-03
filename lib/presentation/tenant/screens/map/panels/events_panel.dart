@@ -96,7 +96,8 @@ class EventsPanel extends StatelessWidget {
           return;
         }
         if (info == null) {
-          _showSnackbar(context, 'Este evento nao possui localizacao cadastrada.');
+          _showSnackbar(
+              context, 'Este evento nao possui localizacao cadastrada.');
           return;
         }
         await _presentDirectionsOptions(context, info);

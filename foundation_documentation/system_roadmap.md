@@ -30,7 +30,22 @@ This document outlines the planned future features and architectural initiatives
         -   **Invite Ranking:** A system to rank users based on the number of confirmed invites they have sent.
         -   **Partner-Specific Rankings:** Each partner (restaurant, musician, etc.) can see their own leaderboard of top "inviters."
         -   **Custom Ranking Names:** Partners can create custom names for their top ranks (e.g., "Anfitrião," "Super Fã").
-        -   **Badges:** Users can earn gamification badges for achieving milestones, both for specific partners (e.g., "Top Fan of [Restaurant]") and across the app (e.g., "Invited friends to 10 different partners").
+-   **Phase 9: Invite Flow & Gamification:**
+    -   Implement the full logic for the "Tinder-like" invite screen.
+    -   Implement the "Invite Friends" feature (in-app and WhatsApp).
+    -   Build out the gamification features (rankings, badges).
+
+-   **Phase X: Invite Status & Privacy Controls (v1.1):**
+    -   **Concept:** Allow users to see the status of invites they have sent, while respecting the privacy of the invitees.
+    -   **UI Implementation:**
+        -   On the event card in "My Schedule," display a small widget with an avatar roll of invited friends.
+        -   Each avatar will have a color halo representing the invite status (e.g., pending, accepted, declined).
+        -   Tapping this widget will open a modal bottom sheet/dialog with a detailed list of all invite statuses for that event.
+    -   **Privacy Implementation:**
+        -   A global privacy setting will allow users to control whether others can see their invite status.
+        -   The backend will check this setting before revealing an invitee's status to the inviter.
+
+-   **Phase 10: Home Screen & Global Data Integration:**
 
 -   **Landlord (Partner) Module:**
     -   A dedicated module for business partners to manage their POIs, create and manage events, activate and manage offers/promotions, and potentially view analytics.

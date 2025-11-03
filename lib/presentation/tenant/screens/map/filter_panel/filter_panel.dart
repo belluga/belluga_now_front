@@ -43,7 +43,7 @@ class FilterPanel extends StatelessWidget {
               StreamValueBuilder<int>(
                 streamValue: _controller.activeFilterCount,
                 builder: (context, count) {
-                  final hasFilters = (count ?? 0) > 0;
+                  final hasFilters = count > 0;
                   return TextButton.icon(
                     onPressed: hasFilters ? _controller.clearFilters : null,
                     icon: const Icon(Icons.clear_all),

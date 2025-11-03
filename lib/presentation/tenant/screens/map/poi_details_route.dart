@@ -45,7 +45,8 @@ class PoiDetailsRoutePage extends StatelessWidget {
             const SizedBox(height: 24),
             Text(
               'Sobre',
-              style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+              style:
+                  textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 8),
             Text(
@@ -55,7 +56,8 @@ class PoiDetailsRoutePage extends StatelessWidget {
             const SizedBox(height: 24),
             Text(
               'Endereço',
-              style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+              style:
+                  textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 8),
             Text(
@@ -66,8 +68,8 @@ class PoiDetailsRoutePage extends StatelessWidget {
               const SizedBox(height: 24),
               Text(
                 'Tags',
-                style:
-                    textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+                style: textTheme.titleMedium
+                    ?.copyWith(fontWeight: FontWeight.w600),
               ),
               const SizedBox(height: 8),
               Wrap(

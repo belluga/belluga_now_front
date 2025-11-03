@@ -24,7 +24,7 @@ class CuisinePanel extends StatelessWidget {
       child: StreamValueBuilder<List<String>>(
         streamValue: controller.availableTags,
         builder: (_, tags) {
-          final options = tags ?? const <String>[];
+          final options = tags;
           if (options.isEmpty) {
             return Center(
               child: Text(

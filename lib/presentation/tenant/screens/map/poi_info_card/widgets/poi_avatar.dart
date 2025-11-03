@@ -19,9 +19,8 @@ class PoiAvatar extends StatelessWidget {
     if (poi.assetPath != null) {
       final isDynamicSponsor = poi.isDynamic;
       final size = isDynamicSponsor ? 48.0 : 64.0;
-      final badgeIcon = isDynamicSponsor
-          ? Icons.shopping_bag_outlined
-          : Icons.storefront;
+      final badgeIcon =
+          isDynamicSponsor ? Icons.shopping_bag_outlined : Icons.storefront;
 
       return Stack(
         clipBehavior: Clip.none,

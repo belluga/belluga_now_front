@@ -30,7 +30,7 @@ class FilterCategoryChips extends StatelessWidget {
         StreamValueBuilder<Set<CityPoiCategory>>(
           streamValue: controller.selectedCategories,
           builder: (context, selectedCategories) {
-            final selected = selectedCategories ?? const <CityPoiCategory>{};
+            final selected = selectedCategories;
             return Wrap(
               spacing: 8,
               runSpacing: 8,
