@@ -76,6 +76,14 @@ class AppRouter extends AppRouterContract {
           path: '/experiencias/detalhe',
           page: ExperienceDetailRoute.page,
         ),
+        AutoRoute(
+          path: '/convites',
+          page: InviteFlowRoute.page,
+        ),
+        AutoRoute(
+          path: '/convites/compartilhar',
+          page: InviteShareRoute.page,
+        ),
         ...childModules.expand((module) => module.routes),
       ];
 }

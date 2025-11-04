@@ -1,3 +1,5 @@
+import 'package:auto_route/auto_route.dart';
+import 'package:belluga_now/application/router/manual_route_stubs.dart';
 import 'package:belluga_now/domain/home/home_event.dart';
 import 'package:belluga_now/domain/home/home_favorite.dart';
 import 'package:belluga_now/domain/home/home_overview.dart';
@@ -98,7 +100,7 @@ class _TenantHomeScreenState extends State<TenantHomeScreen> {
             pinFirst: true,
           ),
           const SizedBox(height: 8),
-          InvitesBanner(onPressed: () {}),
+          InvitesBanner(onPressed: _openInviteFlow),
           const SizedBox(height: 16),
           SectionHeader(
             title: 'Seus Eventos',
@@ -158,5 +160,9 @@ class _TenantHomeScreenState extends State<TenantHomeScreen> {
           ),
       ],
     );
+  }
+
+  void _openInviteFlow() {
+    context.router.push(const InviteFlowRoute());
   }
 }

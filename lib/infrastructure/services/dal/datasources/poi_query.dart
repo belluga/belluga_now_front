@@ -54,9 +54,8 @@ class PoiQuery {
     final lon = coordinate.longitude;
 
     final withinLat = lat <= north && lat >= south;
-    final withinLon = west <= east
-        ? lon >= west && lon <= east
-        : lon >= west || lon <= east;
+    final withinLon =
+        west <= east ? lon >= west && lon <= east : lon >= west || lon <= east;
 
     return withinLat && withinLon;
   }

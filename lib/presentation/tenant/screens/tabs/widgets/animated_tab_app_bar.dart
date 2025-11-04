@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
-class AnimatedTabAppBar extends StatelessWidget
-    implements PreferredSizeWidget {
+class AnimatedTabAppBar extends StatelessWidget implements PreferredSizeWidget {
   const AnimatedTabAppBar({super.key, this.appBar});
 
   final PreferredSizeWidget? appBar;

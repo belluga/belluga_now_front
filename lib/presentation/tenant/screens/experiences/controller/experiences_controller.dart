@@ -6,8 +6,7 @@ import 'package:stream_value/core/stream_value.dart';
 class ExperiencesController implements Disposable {
   ExperiencesController({
     ExperiencesRepositoryContract? repository,
-  }) : _repository =
-            repository ?? GetIt.I.get<ExperiencesRepositoryContract>();
+  }) : _repository = repository ?? GetIt.I.get<ExperiencesRepositoryContract>();
 
   final ExperiencesRepositoryContract _repository;
 
@@ -16,13 +15,17 @@ class ExperiencesController implements Disposable {
 
   final StreamValue<String?> selectedCategoryStreamValue =
       StreamValue<String?>();
+  final StreamValue<Set<String>> selectedTagsStreamValue =
+      StreamValue<Set<String>>(defaultValue: const <String>{});
 
   List<ExperienceModel> _allExperiences = const [];
   String? _currentCategory;
   String _searchQuery = '';
+  Set<String> _selectedTags = <String>{};
 
   Set<String> get categories =>
       _allExperiences.map((exp) => exp.category).toSet();
+  Set<String> get tags => _allExperiences.expand((exp) => exp.tags).toSet();
 
   Future<void> init() async {
     final experiences = await _repository.fetchExperiences();
@@ -44,8 +47,34 @@ class ExperiencesController implements Disposable {
   void clearFilters() {
     _currentCategory = null;
     _searchQuery = '';
+    _selectedTags = <String>{};
     selectedCategoryStreamValue.addValue(null);
+    selectedTagsStreamValue.addValue(const <String>{});
     experiencesStreamValue.addValue(_allExperiences);
+  }
+
+  void toggleTag(String tag) {
+    final normalizedTag = tag.trim();
+    if (normalizedTag.isEmpty) {
+      return;
+    }
+
+    final nextTags = _selectedTags.contains(normalizedTag)
+        ? (_selectedTags.toSet()..remove(normalizedTag))
+        : (_selectedTags.toSet()..add(normalizedTag));
+
+    _selectedTags = nextTags;
+    selectedTagsStreamValue.addValue(_selectedTags);
+    _applyFilters();
+  }
+
+  void clearTagFilters() {
+    if (_selectedTags.isEmpty) {
+      return;
+    }
+    _selectedTags = <String>{};
+    selectedTagsStreamValue.addValue(_selectedTags);
+    _applyFilters();
   }
 
   void _applyFilters() {
@@ -57,6 +86,19 @@ class ExperiencesController implements Disposable {
             experience.category.toLowerCase() ==
             _currentCategory!.toLowerCase(),
       );
+    }
+
+    if (_selectedTags.isNotEmpty) {
+      filtered = filtered.where((experience) {
+        if (experience.tags.isEmpty) {
+          return false;
+        }
+        final normalizedTags =
+            experience.tags.map((tag) => tag.toLowerCase()).toSet();
+        return _selectedTags
+            .map((tag) => tag.toLowerCase())
+            .every(normalizedTags.contains);
+      });
     }
 
     if (_searchQuery.isNotEmpty) {
@@ -77,5 +119,6 @@ class ExperiencesController implements Disposable {
   void onDispose() {
     experiencesStreamValue.dispose();
     selectedCategoryStreamValue.dispose();
+    selectedTagsStreamValue.dispose();
   }
 }

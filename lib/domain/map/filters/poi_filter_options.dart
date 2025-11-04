@@ -5,9 +5,9 @@ class PoiFilterOptions {
 
   final List<PoiFilterCategory> categories;
 
-  List<PoiFilterCategory> get sortedCategories => List<PoiFilterCategory>
-      .from(categories)
-    ..sort((a, b) => a.category.index.compareTo(b.category.index));
+  List<PoiFilterCategory> get sortedCategories =>
+      List<PoiFilterCategory>.from(categories)
+        ..sort((a, b) => a.category.index.compareTo(b.category.index));
 
   Set<String> tagsForCategories(Iterable<CityPoiCategory> selected) {
     if (selected.isEmpty) {
@@ -26,9 +26,13 @@ class PoiFilterOptions {
 
 class PoiFilterCategory {
   PoiFilterCategory({required this.category, required Set<String> tags})
-      : tags = tags.map((tag) => tag.trim()).where((tag) => tag.isNotEmpty).map(
+      : tags = tags
+            .map((tag) => tag.trim())
+            .where((tag) => tag.isNotEmpty)
+            .map(
               (tag) => tag,
-            ).toSet();
+            )
+            .toSet();
 
   final CityPoiCategory category;
   final Set<String> tags;

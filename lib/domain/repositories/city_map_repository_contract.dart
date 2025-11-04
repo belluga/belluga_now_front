@@ -12,7 +12,7 @@ abstract class CityMapRepositoryContract {
   Future<PoiFilterOptions> fetchFilters();
 
   Future<List<MainFilterOption>> fetchMainFilters();
-  
+
   Future<List<MapRegionDefinition>> fetchRegions();
 
   Future<String> fetchFallbackEventImage();

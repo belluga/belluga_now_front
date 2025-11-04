@@ -84,6 +84,26 @@ class ExperienceDetailScreen extends StatelessWidget {
                     style: theme.textTheme.bodyLarge,
                   ),
                 ),
+                if (experience.tags.isNotEmpty)
+                  _Section(
+                    title: 'Tags',
+                    child: Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: experience.tags
+                          .map(
+                            (tag) => Chip(
+                              label: Text(tag),
+                              side: BorderSide(
+                                color: theme.colorScheme.primary,
+                              ),
+                              backgroundColor:
+                                  theme.colorScheme.primaryContainer,
+                            ),
+                          )
+                          .toList(),
+                    ),
+                  ),
                 if (experience.highlightItems.isNotEmpty)
                   _Section(
                     title: 'Inclui',

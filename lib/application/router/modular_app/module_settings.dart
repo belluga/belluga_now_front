@@ -5,6 +5,7 @@ import 'package:belluga_now/application/router/modular_app/modules/initializatio
 import 'package:belluga_now/application/router/modular_app/modules/map_module.dart';
 import 'package:belluga_now/application/router/modular_app/modules/mercado_module.dart';
 import 'package:belluga_now/application/router/modular_app/modules/experiences_module.dart';
+import 'package:belluga_now/application/router/modular_app/modules/invites_module.dart';
 import 'package:belluga_now/application/router/modular_app/modules/profile_module.dart';
 import 'package:belluga_now/application/router/modular_app/modules/schedule_module.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
@@ -47,6 +48,7 @@ class ModuleSettings extends ModuleSettingsContract {
     await registerSubModule(MapModule());
     await registerSubModule(MercadoModule());
     await registerSubModule(ExperiencesModule());
+    await registerSubModule(InvitesModule());
   }
 
   void _registerBackend() {

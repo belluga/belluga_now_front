@@ -8,6 +8,7 @@ class ExperienceModel {
     this.description = '',
     this.imageUrl,
     this.highlightItems = const [],
+    this.tags = const [],
     this.duration,
     this.priceLabel,
     this.meetingPoint,
@@ -21,6 +22,7 @@ class ExperienceModel {
   final String description;
   final String? imageUrl;
   final List<String> highlightItems;
+  final List<String> tags;
   final String? duration;
   final String? priceLabel;
   final String? meetingPoint;

@@ -59,8 +59,9 @@ class _DateRowState extends State<DateRow> {
                               final bool canGoBack = firstDate.isAfter(minDate);
 
                               return IconButton(
-                                  onPressed:
-                                      canGoBack ? _navigateToPreviousMonth : null,
+                                  onPressed: canGoBack
+                                      ? _navigateToPreviousMonth
+                                      : null,
                                   iconSize: 16,
                                   icon: const Icon(Icons.arrow_back_ios));
                             }),
@@ -89,7 +90,8 @@ class _DateRowState extends State<DateRow> {
                             streamValue: _controller.firsVisibleDateStreamValue,
                             builder: (context, firstDate) {
                               final maxDate = _controller.lastDayRange;
-                              final bool canGoForward = firstDate.isBefore(maxDate);
+                              final bool canGoForward =
+                                  firstDate.isBefore(maxDate);
 
                               return IconButton(
                                   onPressed: canGoForward
@@ -219,7 +221,8 @@ class _DateRowState extends State<DateRow> {
     final tentativeTarget =
         DateTime(referenceDate.year, referenceDate.month - 1, 1);
     final minDate = _controller.firstDayRange;
-    final target = tentativeTarget.isBefore(minDate) ? minDate : tentativeTarget;
+    final target =
+        tentativeTarget.isBefore(minDate) ? minDate : tentativeTarget;
 
     _animateToDate(target);
   }

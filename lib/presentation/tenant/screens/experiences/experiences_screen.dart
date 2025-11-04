@@ -68,12 +68,28 @@ class _ExperiencesScreenState extends State<ExperiencesScreen> {
                   onCategorySelected: null,
                 ),
                 builder: (context, selectedCategory) {
-                  final categories = _controller.categories.toList()
-                    ..sort();
+                  final categories = _controller.categories.toList()..sort();
                   return _CategoryChips(
                     categories: categories,
                     selectedCategory: selectedCategory,
                     onCategorySelected: _controller.selectCategory,
+                  );
+                },
+              ),
+              const SizedBox(height: 12),
+              StreamValueBuilder<Set<String>>(
+                streamValue: _controller.selectedTagsStreamValue,
+                builder: (context, selectedTags) {
+                  final tags = _controller.tags.toList()..sort();
+                  if (tags.isEmpty) {
+                    return const SizedBox.shrink();
+                  }
+                  final currentSelection = selectedTags ?? <String>{};
+                  return _TagChips(
+                    tags: tags,
+                    selectedTags: currentSelection,
+                    onTagToggled: _controller.toggleTag,
+                    onClearTags: _controller.clearTagFilters,
                   );
                 },
               ),
@@ -211,3 +227,43 @@ class _EmptyState extends StatelessWidget {
   }
 }
 
+class _TagChips extends StatelessWidget {
+  const _TagChips({
+    required this.tags,
+    required this.selectedTags,
+    required this.onTagToggled,
+    required this.onClearTags,
+  });
+
+  final List<String> tags;
+  final Set<String> selectedTags;
+  final void Function(String tag) onTagToggled;
+  final VoidCallback onClearTags;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            if (selectedTags.isNotEmpty)
+              FilterChip(
+                label: const Text('Limpar tags'),
+                selected: false,
+                onSelected: (_) => onClearTags(),
+              ),
+            for (final tag in tags)
+              FilterChip(
+                label: Text(tag),
+                selected: selectedTags.contains(tag),
+                onSelected: (_) => onTagToggled(tag),
+              ),
+          ],
+        ),
+      ],
+    );
+  }
+}

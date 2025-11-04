@@ -1,4 +1,6 @@
 import 'package:auto_route/auto_route.dart';
+import 'package:belluga_now/domain/invites/invite_friend_model.dart';
+import 'package:belluga_now/domain/invites/invite_model.dart';
 import 'package:belluga_now/domain/map/city_poi_model.dart';
 import 'package:belluga_now/domain/experiences/experience_model.dart';
 import 'package:belluga_now/presentation/tenant/screens/map/city_map_route.dart';
@@ -8,6 +10,8 @@ import 'package:belluga_now/presentation/tenant/screens/mercado/models/mercado_p
 import 'package:belluga_now/presentation/tenant/screens/mercado/producer_store_route.dart';
 import 'package:belluga_now/presentation/tenant/screens/experiences/experiences_route.dart';
 import 'package:belluga_now/presentation/tenant/screens/experiences/experience_detail_route.dart';
+import 'package:belluga_now/presentation/tenant/screens/invites/invite_flow_route.dart';
+import 'package:belluga_now/presentation/tenant/screens/invites/invite_share_route.dart';
 
 class CityMapRoute extends PageRouteInfo<void> {
   const CityMapRoute({List<PageRouteInfo>? children})
@@ -97,8 +101,7 @@ class ExperiencesRoute extends PageRouteInfo<void> {
   );
 }
 
-class ExperienceDetailRoute
-    extends PageRouteInfo<ExperienceDetailRouteArgs> {
+class ExperienceDetailRoute extends PageRouteInfo<ExperienceDetailRouteArgs> {
   ExperienceDetailRoute({
     required ExperienceModel experience,
     List<PageRouteInfo>? children,
@@ -123,4 +126,54 @@ class ExperienceDetailRouteArgs {
   ExperienceDetailRouteArgs({required this.experience});
 
   final ExperienceModel experience;
+}
+
+class InviteFlowRoute extends PageRouteInfo<void> {
+  const InviteFlowRoute({List<PageRouteInfo>? children})
+      : super(InviteFlowRoute.name, initialChildren: children);
+
+  static const String name = 'InviteFlowRoute';
+
+  static PageInfo page = PageInfo(
+    name,
+    builder: (data) => const InviteFlowRoutePage(),
+  );
+}
+
+class InviteShareRoute extends PageRouteInfo<InviteShareRouteArgs> {
+  InviteShareRoute({
+    required InviteModel invite,
+    required List<InviteFriendModel> friends,
+    List<PageRouteInfo>? children,
+  }) : super(
+          InviteShareRoute.name,
+          args: InviteShareRouteArgs(
+            invite: invite,
+            friends: friends,
+          ),
+          initialChildren: children,
+        );
+
+  static const String name = 'InviteShareRoute';
+
+  static PageInfo page = PageInfo(
+    name,
+    builder: (data) {
+      final args = data.argsAs<InviteShareRouteArgs>();
+      return InviteShareRoutePage(
+        invite: args.invite,
+        friends: args.friends,
+      );
+    },
+  );
+}
+
+class InviteShareRouteArgs {
+  InviteShareRouteArgs({
+    required this.invite,
+    required this.friends,
+  });
+
+  final InviteModel invite;
+  final List<InviteFriendModel> friends;
 }

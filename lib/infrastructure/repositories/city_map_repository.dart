@@ -48,8 +48,7 @@ class CityMapRepository extends CityMapRepositoryContract {
       _httpService.getMainFilters();
 
   @override
-  Future<List<MapRegionDefinition>> fetchRegions() =>
-      _httpService.getRegions();
+  Future<List<MapRegionDefinition>> fetchRegions() => _httpService.getRegions();
 
   @override
   Future<String> fetchFallbackEventImage() =>
