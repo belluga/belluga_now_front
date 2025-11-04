@@ -4,9 +4,14 @@ import 'package:belluga_now/presentation/view_models/event_card_data.dart';
 import 'package:flutter/material.dart';
 
 class UpcomingEventCard extends StatelessWidget {
-  const UpcomingEventCard({super.key, required this.data});
+  const UpcomingEventCard({
+    super.key,
+    required this.data,
+    this.onTap,
+  });
 
   final EventCardData data;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -14,47 +19,54 @@ class UpcomingEventCard extends StatelessWidget {
     final scheduleLabel =
         '${data.startDateTime.dayLabel} ${data.startDateTime.monthLabel} • ${data.startDateTime.timeLabel}';
 
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _UpcomingEventThumbnail(imageUrl: data.imageUrl),
-        const SizedBox(width: 16),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                data.title,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(20),
+        onTap: onTap,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _UpcomingEventThumbnail(imageUrl: data.imageUrl),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    data.title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  EventInfoRow(
+                    icon: Icons.event_outlined,
+                    label: scheduleLabel,
+                  ),
+                  const SizedBox(height: 6),
+                  EventInfoRow(
+                    icon: Icons.place_outlined,
+                    label: data.venue,
+                  ),
+                  const SizedBox(height: 6),
+                  _ParticipantsSection(data: data),
+                ],
               ),
-              const SizedBox(height: 8),
-              EventInfoRow(
-                icon: Icons.event_outlined,
-                label: scheduleLabel,
-              ),
-              const SizedBox(height: 6),
-              EventInfoRow(
-                icon: Icons.place_outlined,
-                label: data.venue,
-              ),
-              const SizedBox(height: 6),
-              _ParticipantsSection(data: data),
-            ],
-          ),
+            ),
+            const SizedBox(width: 8),
+            IconButton(
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(),
+              onPressed: () {},
+              icon: const Icon(Icons.favorite_border),
+              tooltip: 'Favoritar',
+            ),
+          ],
         ),
-        const SizedBox(width: 8),
-        IconButton(
-          padding: EdgeInsets.zero,
-          constraints: const BoxConstraints(),
-          onPressed: () {},
-          icon: const Icon(Icons.favorite_border),
-          tooltip: 'Favoritar',
-        ),
-      ],
+      ),
     );
   }
 }

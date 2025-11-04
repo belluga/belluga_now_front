@@ -23,6 +23,36 @@ class MockInvitesDatabase {
         'musica ao vivo',
         'friends only',
       ],
+      inviters: [
+        InviteInviter(
+          type: InviteInviterType.user,
+          name: 'Jade Carvalho',
+          avatarUrl:
+              'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=200',
+        ),
+        InviteInviter(
+          type: InviteInviterType.partner,
+          name: 'Sitio do Cafe Feliz',
+          partner: InvitePartnerSummary(
+            id: 'sitio-do-cafe-feliz',
+            name: 'Sitio do Cafe Feliz',
+            type: InvitePartnerType.mercadoProducer,
+            tagline: 'Cafes especiais e produtos da roca',
+            heroImageUrl:
+                'https://images.unsplash.com/photo-1504753793650-d4a2b783c15e?auto=format&fit=crop&w=600&q=80',
+            logoImageUrl:
+                'https://images.unsplash.com/photo-1511920170033-f8396924c348?auto=format&fit=crop&w=400&q=80',
+          ),
+        ),
+        InviteInviter(
+          type: InviteInviterType.user,
+          name: 'Lucas Andrade',
+        ),
+        InviteInviter(
+          type: InviteInviterType.user,
+          name: 'Duda Lima',
+        ),
+      ],
       inviterName: 'Jade Carvalho',
       inviterAvatarUrl:
           'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=200',
@@ -46,6 +76,22 @@ class MockInvitesDatabase {
         'educacao ambiental',
         'noite',
       ],
+      inviters: [
+        InviteInviter(
+          type: InviteInviterType.partner,
+          name: 'Instituto Mar Limpo',
+          avatarUrl:
+              'https://images.unsplash.com/photo-1458253756246-1e4ed949191b?w=200',
+          partner: InvitePartnerSummary(
+            id: 'instituto-mar-limpo',
+            name: 'Instituto Mar Limpo',
+            type: InvitePartnerType.mercadoProducer,
+            tagline: 'Parceiro ambiental capixaba',
+            heroImageUrl:
+                'https://images.unsplash.com/photo-1458253756246-1e4ed949191b?w=900',
+          ),
+        ),
+      ],
       inviterName: 'Instituto Mar Limpo',
       inviterAvatarUrl:
           'https://images.unsplash.com/photo-1458253756246-1e4ed949191b?w=200',
@@ -65,6 +111,24 @@ class MockInvitesDatabase {
         'gastronomia do mar',
         'lua cheia',
         'intimista',
+      ],
+      inviters: [
+        InviteInviter(
+          type: InviteInviterType.partner,
+          name: 'Chef Marina Experiencias',
+          partner: InvitePartnerSummary(
+            id: 'chef-marina',
+            name: 'Chef Marina Experiencias',
+            type: InvitePartnerType.mercadoProducer,
+            tagline: 'Vivencias gastronomicas a beira-mar',
+            heroImageUrl:
+                'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=900',
+          ),
+        ),
+        InviteInviter(
+          type: InviteInviterType.user,
+          name: 'Equipe Solar',
+        ),
       ],
       inviterName: 'Chef Marina',
       inviterAvatarUrl:

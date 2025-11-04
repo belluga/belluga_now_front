@@ -1,4 +1,7 @@
 import 'package:belluga_now/domain/invites/invite_model.dart';
+import 'package:belluga_now/presentation/tenant/screens/mercado/mock_data/mock_mercado_data.dart';
+import 'package:belluga_now/presentation/tenant/screens/mercado/models/mercado_producer.dart';
+import 'package:belluga_now/presentation/tenant/screens/mercado/producer_store_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
@@ -19,7 +22,9 @@ class InviteCard extends StatelessWidget {
     final theme = Theme.of(context);
     final dateFormatter = DateFormat('EEE, d MMM - HH:mm');
     final formattedDate = dateFormatter.format(invite.eventDateTime.toLocal());
-    final hasInviter = (invite.inviterName?.isNotEmpty ?? false);
+    final hasInviter = invite.inviters.isNotEmpty ||
+        (invite.inviterName?.isNotEmpty ?? false) ||
+        invite.additionalInviters.isNotEmpty;
 
     return SizedBox.expand(
       child: Column(
@@ -102,17 +107,18 @@ class _InviterBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final name = invite.inviterName;
-    if (name == null || name.isEmpty) {
+    final inviters = _resolveInviters();
+    if (inviters.isEmpty) {
       return const SizedBox.shrink();
     }
 
+    final primary = inviters.first;
+    final others =
+        inviters.length > 1 ? inviters.sublist(1) : <_InviteSummary>[];
     final theme = Theme.of(context);
-    final moreCount = invite.additionalInviters.length;
-    final avatarUrl = invite.inviterAvatarUrl;
-    final textStyle = theme.textTheme.bodyMedium?.copyWith(
-      fontWeight: FontWeight.w600,
-    );
+    final avatarUrl = primary.avatarUrl ??
+        primary.partner?.logoImageUrl ??
+        primary.partner?.heroImageUrl;
 
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
@@ -120,36 +126,37 @@ class _InviterBanner extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'Voce foi convidado por $name',
-                style: theme.textTheme.bodySmall,
-                textAlign: TextAlign.center,
-              ),
-            ],
+          Text(
+            'Voce foi convidado por',
+            style: theme.textTheme.bodySmall,
           ),
+          const SizedBox(height: 6),
           Wrap(
             spacing: 8,
             runSpacing: 6,
             alignment: WrapAlignment.center,
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              Text(
-                name,
-                style: theme.textTheme.labelLarge,
-                textAlign: TextAlign.center,
+              _InviterName(
+                summary: primary,
+                isPreview: isPreview,
+                onTapPartner: primary.partner != null && !isPreview
+                    ? () => _showPartnerSheet(context, primary.partner!)
+                    : null,
               ),
               _Avatar(
                 avatarUrl: avatarUrl,
-                placeholderText: name.substring(0, 1).toUpperCase(),
+                placeholderText: primary.name.isNotEmpty
+                    ? primary.name[0].toUpperCase()
+                    : '?',
               ),
-              if (moreCount > 0)
+              if (others.isNotEmpty)
                 GestureDetector(
-                  onTap: isPreview ? null : () => _showInvitersDialog(context),
+                  onTap: isPreview
+                      ? null
+                      : () => _showInvitersDialog(context, inviters),
                   child: Text(
-                    'e mais $moreCount',
+                    'e mais ${others.length}',
                     style: theme.textTheme.labelLarge?.copyWith(
                       color: theme.colorScheme.primary,
                       decoration: isPreview
@@ -165,8 +172,10 @@ class _InviterBanner extends StatelessWidget {
     );
   }
 
-  Future<void> _showInvitersDialog(BuildContext context) async {
-    final inviters = _resolveInviters();
+  Future<void> _showInvitersDialog(
+    BuildContext context,
+    List<_InviteSummary> inviters,
+  ) async {
     if (inviters.isEmpty) {
       return;
     }
@@ -182,17 +191,26 @@ class _InviterBanner extends StatelessWidget {
             child: ListView.builder(
               itemCount: inviters.length,
               itemBuilder: (context, index) {
-                final inviter = inviters[index];
+                final summary = inviters[index];
                 return ListTile(
                   leading: _Avatar(
-                    avatarUrl: inviter.avatarUrl,
-                    placeholderText: inviter.name.isNotEmpty
-                        ? inviter.name[0].toUpperCase()
+                    avatarUrl: summary.avatarUrl ??
+                        summary.partner?.logoImageUrl ??
+                        summary.partner?.heroImageUrl,
+                    placeholderText: summary.name.isNotEmpty
+                        ? summary.name[0].toUpperCase()
                         : '?',
+                    radius: 18,
                   ),
-                  title: Text(inviter.name),
+                  title: Text(summary.name),
                   dense: true,
                   contentPadding: const EdgeInsets.symmetric(vertical: 4),
+                  onTap: summary.partner != null && !isPreview
+                      ? () {
+                          Navigator.of(dialogContext).pop();
+                          _showPartnerSheet(context, summary.partner!);
+                        }
+                      : null,
                 );
               },
             ),
@@ -209,23 +227,77 @@ class _InviterBanner extends StatelessWidget {
   }
 
   List<_InviteSummary> _resolveInviters() {
-    final inviters = <_InviteSummary>[];
+    if (invite.inviters.isNotEmpty) {
+      return invite.inviters
+          .map(_InviteSummary.fromInviter)
+          .where((summary) => summary.name.isNotEmpty)
+          .toList();
+    }
+
+    final fallback = <_InviteSummary>[];
     if (invite.inviterName != null && invite.inviterName!.isNotEmpty) {
-      inviters.add(
+      fallback.add(
         _InviteSummary(
           name: invite.inviterName!,
+          type: InviteInviterType.user,
           avatarUrl: invite.inviterAvatarUrl,
         ),
       );
     }
+    fallback.addAll(
+      invite.additionalInviters.where((name) => name.isNotEmpty).map(
+            (name) => _InviteSummary(
+              name: name,
+              type: InviteInviterType.user,
+            ),
+          ),
+    );
+    return fallback;
+  }
 
-    inviters.addAll(
-      invite.additionalInviters.map(
-        (name) => _InviteSummary(name: name),
+  Future<void> _showPartnerSheet(
+    BuildContext context,
+    InvitePartnerSummary partner,
+  ) async {
+    Widget sheetContent;
+    switch (partner.type) {
+      case InvitePartnerType.mercadoProducer:
+        final producer = _findMercadoProducer(partner.id);
+        sheetContent = producer != null
+            ? ProducerStoreScreen(producer: producer)
+            : _PartnerFallback(name: partner.name);
+        break;
+    }
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) => FractionallySizedBox(
+        heightFactor: 0.9,
+        child: ClipRRect(
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+          child: Material(
+            color: Theme.of(context).colorScheme.surface,
+            child: Stack(
+              children: [
+                Positioned.fill(child: sheetContent),
+                Positioned(
+                  top: 8,
+                  right: 8,
+                  child: SafeArea(
+                    child: IconButton(
+                      icon: const Icon(Icons.close),
+                      onPressed: () => Navigator.of(sheetContext).pop(),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
-
-    return inviters;
   }
 }
 
@@ -300,15 +372,17 @@ class _Avatar extends StatelessWidget {
   const _Avatar({
     required this.avatarUrl,
     required this.placeholderText,
+    this.radius = 10,
   });
 
   final String? avatarUrl;
   final String placeholderText;
+  final double radius;
 
   @override
   Widget build(BuildContext context) {
     return CircleAvatar(
-      radius: 10,
+      radius: radius,
       backgroundImage: avatarUrl != null ? NetworkImage(avatarUrl!) : null,
       backgroundColor: Theme.of(context).colorScheme.secondaryContainer,
       child: avatarUrl == null
@@ -321,16 +395,6 @@ class _Avatar extends StatelessWidget {
           : null,
     );
   }
-}
-
-class _InviteSummary {
-  _InviteSummary({
-    required this.name,
-    this.avatarUrl,
-  });
-
-  final String name;
-  final String? avatarUrl;
 }
 
 class _Footer extends StatelessWidget {
@@ -386,5 +450,96 @@ class _Footer extends StatelessWidget {
         ),
       ],
     );
+  }
+}
+
+class _InviterName extends StatelessWidget {
+  const _InviterName({
+    required this.summary,
+    required this.isPreview,
+    this.onTapPartner,
+  });
+
+  final _InviteSummary summary;
+  final bool isPreview;
+  final VoidCallback? onTapPartner;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final text = Text(
+      summary.name,
+      style: theme.textTheme.labelLarge?.copyWith(
+        fontWeight: FontWeight.w700,
+      ),
+      textAlign: TextAlign.center,
+    );
+
+    if (summary.partner != null && onTapPartner != null) {
+      return Material(
+        type: MaterialType.transparency,
+        child: InkWell(
+          onTap: isPreview ? null : onTapPartner,
+          borderRadius: BorderRadius.circular(12),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+            child: text,
+          ),
+        ),
+      );
+    }
+
+    return text;
+  }
+}
+
+class _PartnerFallback extends StatelessWidget {
+  const _PartnerFallback({required this.name});
+
+  final String name;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Text(
+          'Detalhes do parceiro $name indisponiveis no momento.',
+          style: Theme.of(context).textTheme.bodyLarge,
+          textAlign: TextAlign.center,
+        ),
+      ),
+    );
+  }
+}
+
+class _InviteSummary {
+  _InviteSummary({
+    required this.name,
+    required this.type,
+    this.avatarUrl,
+    this.partner,
+  });
+
+  factory _InviteSummary.fromInviter(InviteInviter inviter) {
+    return _InviteSummary(
+      name: inviter.name,
+      type: inviter.type,
+      avatarUrl: inviter.avatarUrl,
+      partner: inviter.partner,
+    );
+  }
+
+  final String name;
+  final InviteInviterType type;
+  final String? avatarUrl;
+  final InvitePartnerSummary? partner;
+}
+
+MercadoProducer? _findMercadoProducer(String id) {
+  try {
+    return mockMercadoProducers.firstWhere((producer) => producer.id == id);
+  } catch (_) {
+    return null;
   }
 }

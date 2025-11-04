@@ -3,6 +3,7 @@ import 'package:belluga_now/domain/invites/invite_friend_model.dart';
 import 'package:belluga_now/domain/invites/invite_model.dart';
 import 'package:belluga_now/domain/map/city_poi_model.dart';
 import 'package:belluga_now/domain/experiences/experience_model.dart';
+import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/presentation/tenant/screens/map/city_map_route.dart';
 import 'package:belluga_now/presentation/tenant/screens/map/poi_details_route.dart';
 import 'package:belluga_now/presentation/tenant/screens/mercado/mercado_route.dart';
@@ -10,6 +11,7 @@ import 'package:belluga_now/presentation/tenant/screens/mercado/models/mercado_p
 import 'package:belluga_now/presentation/tenant/screens/mercado/producer_store_route.dart';
 import 'package:belluga_now/presentation/tenant/screens/experiences/experiences_route.dart';
 import 'package:belluga_now/presentation/tenant/screens/experiences/experience_detail_route.dart';
+import 'package:belluga_now/presentation/tenant/screens/schedule/event_detail_route.dart';
 import 'package:belluga_now/presentation/tenant/screens/invites/invite_flow_route.dart';
 import 'package:belluga_now/presentation/tenant/screens/invites/invite_share_route.dart';
 
@@ -126,6 +128,33 @@ class ExperienceDetailRouteArgs {
   ExperienceDetailRouteArgs({required this.experience});
 
   final ExperienceModel experience;
+}
+
+class EventDetailRoute extends PageRouteInfo<EventDetailRouteArgs> {
+  EventDetailRoute({
+    required EventModel event,
+    List<PageRouteInfo>? children,
+  }) : super(
+          EventDetailRoute.name,
+          args: EventDetailRouteArgs(event: event),
+          initialChildren: children,
+        );
+
+  static const String name = 'EventDetailRoute';
+
+  static PageInfo page = PageInfo(
+    name,
+    builder: (data) {
+      final args = data.argsAs<EventDetailRouteArgs>();
+      return EventDetailRoutePage(event: args.event);
+    },
+  );
+}
+
+class EventDetailRouteArgs {
+  EventDetailRouteArgs({required this.event});
+
+  final EventModel event;
 }
 
 class InviteFlowRoute extends PageRouteInfo<void> {

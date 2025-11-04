@@ -1,6 +1,5 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
-import 'package:belluga_now/application/router/manual_route_stubs.dart';
 import 'package:flutter/material.dart';
 
 class BellugaBottomNavigationBar extends StatelessWidget {
