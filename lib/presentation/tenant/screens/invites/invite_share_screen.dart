@@ -2,6 +2,7 @@ import 'package:belluga_now/domain/invites/invite_friend_model.dart';
 import 'package:belluga_now/domain/invites/invite_model.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:share_plus/share_plus.dart';
 
 class InviteShareScreen extends StatefulWidget {
   const InviteShareScreen({
@@ -24,7 +25,7 @@ class _InviteShareScreenState extends State<InviteShareScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final dateFormatter = DateFormat('EEE, d MMM • HH:mm');
+    final dateFormatter = DateFormat('EEE, d MMM - HH:mm');
     final formattedDate =
         dateFormatter.format(widget.invite.eventDateTime.toLocal());
 
@@ -73,12 +74,12 @@ class _InviteShareScreenState extends State<InviteShareScreen> {
             SizedBox(
               width: double.infinity,
               child: FilledButton.icon(
-                onPressed: _onShareTapped,
-                icon: const Icon(Icons.whatshot),
+                onPressed: _onSendInternalInvites,
+                icon: const Icon(Icons.people_alt_outlined),
                 label: Text(
                   _selectedFriendIds.isEmpty
-                      ? 'Compartilhar via WhatsApp'
-                      : 'Compartilhar via WhatsApp (${_selectedFriendIds.length})',
+                      ? 'Enviar convites internos'
+                      : 'Enviar convites internos (${_selectedFriendIds.length})',
                 ),
               ),
             ),
@@ -86,9 +87,18 @@ class _InviteShareScreenState extends State<InviteShareScreen> {
             SizedBox(
               width: double.infinity,
               child: OutlinedButton.icon(
+                onPressed: _shareExternally,
+                icon: const Icon(Icons.ios_share),
+                label: const Text('Compartilhar convite'),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton.icon(
                 onPressed: () => _copyLink(context),
                 icon: const Icon(Icons.copy),
-                label: const Text('Copiar link do convite'),
+                label: const Text('Copiar link'),
               ),
             ),
           ],
@@ -107,16 +117,30 @@ class _InviteShareScreenState extends State<InviteShareScreen> {
     });
   }
 
-  void _onShareTapped() {
+  void _onSendInternalInvites() {
     final count = _selectedFriendIds.length;
     final message = count == 0
-        ? 'Selecione pelo menos um amigo para compartilhar.'
-        : 'Convite enviado para $count amigo(s) via WhatsApp.';
+        ? 'Selecione pelo menos um amigo para enviar o convite.'
+        : 'Convite marcado para $count contato(s) dentro do app.';
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
       ),
+    );
+  }
+
+  Future<void> _shareExternally() async {
+    final invite = widget.invite;
+    final date =
+        DateFormat('d MMM, HH:mm').format(invite.eventDateTime.toLocal());
+    final shareMessage =
+        'Bora? ${invite.eventName} em ${invite.location} no dia $date.\n'
+        'Detalhes: https://belluga.now/invite/${invite.id}';
+
+    await Share.share(
+      shareMessage,
+      subject: 'Convite Belluga Now',
     );
   }
 

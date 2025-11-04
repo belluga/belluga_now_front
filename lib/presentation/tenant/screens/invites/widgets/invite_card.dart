@@ -6,14 +6,16 @@ class InviteCard extends StatelessWidget {
   const InviteCard({
     super.key,
     required this.invite,
+    this.isPreview = false,
   });
 
   final InviteModel invite;
+  final bool isPreview;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final dateFormatter = DateFormat('EEE, d MMM • HH:mm');
+    final dateFormatter = DateFormat('EEE, d MMM - HH:mm');
     final formattedDate = dateFormatter.format(invite.eventDateTime.toLocal());
 
     return Card(
@@ -36,7 +38,9 @@ class InviteCard extends StatelessWidget {
                   end: Alignment.bottomCenter,
                   colors: [
                     Colors.black.withValues(alpha: 0.2),
-                    Colors.black.withValues(alpha: 0.8),
+                    Colors.black.withValues(
+                      alpha: isPreview ? 0.6 : 0.8,
+                    ),
                   ],
                 ),
               ),
@@ -61,6 +65,7 @@ class InviteCard extends StatelessWidget {
               message: invite.message,
               tags: invite.tags,
               theme: theme,
+              isPreview: isPreview,
             ),
           ),
         ],
@@ -142,12 +147,14 @@ class _Footer extends StatelessWidget {
     required this.message,
     required this.tags,
     required this.theme,
+    required this.isPreview,
   });
 
   final String eventName;
   final String message;
   final List<String> tags;
   final ThemeData theme;
+  final bool isPreview;
 
   @override
   Widget build(BuildContext context) {
@@ -165,7 +172,7 @@ class _Footer extends StatelessWidget {
         Text(
           message,
           style: theme.textTheme.bodyMedium?.copyWith(
-            color: Colors.white70,
+            color: isPreview ? Colors.white60 : Colors.white70,
           ),
         ),
         const SizedBox(height: 14),

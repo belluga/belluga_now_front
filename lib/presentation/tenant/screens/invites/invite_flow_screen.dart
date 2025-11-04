@@ -85,7 +85,10 @@ class _InviteFlowScreenState extends State<InviteFlowScreen> {
                         Expanded(
                           child: Padding(
                             padding: const EdgeInsets.symmetric(vertical: 12),
-                            child: InviteCard(invite: invite),
+                            child: _InviteDeck(
+                              current: invite,
+                              previews: _controller.peekNextInvites(limit: 3),
+                            ),
                           ),
                         ),
                         const SizedBox(height: 16),
@@ -140,6 +143,82 @@ class _InviteFlowScreenState extends State<InviteFlowScreen> {
         content: Text(message),
         behavior: SnackBarBehavior.floating,
       ),
+    );
+  }
+}
+
+class _InviteDeck extends StatelessWidget {
+  const _InviteDeck({
+    required this.current,
+    required this.previews,
+  });
+
+  final InviteModel current;
+  final List<InviteModel> previews;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final layers = <Widget>[];
+        final limitedPreviews = previews.take(3).toList();
+
+        for (var index = limitedPreviews.length - 1; index >= 0; index--) {
+          final depth = limitedPreviews.length - index;
+          final preview = limitedPreviews[index];
+          final widthFactor =
+              (0.94 - (depth * 0.04)).clamp(0.78, 0.94).toDouble();
+          final heightFactor =
+              (0.9 - (depth * 0.035)).clamp(0.75, 0.9).toDouble();
+          final width = constraints.maxWidth * widthFactor;
+          final height = constraints.maxHeight * heightFactor;
+          final horizontalMargin = (constraints.maxWidth - width) / 2;
+          final topOffset = 18.0 * depth;
+
+          layers.add(
+            Positioned(
+              top: topOffset,
+              left: horizontalMargin,
+              right: horizontalMargin,
+              child: IgnorePointer(
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 250),
+                  curve: Curves.easeOut,
+                  height: height,
+                  child: InviteCard(
+                    invite: preview,
+                    isPreview: true,
+                  ),
+                ),
+              ),
+            ),
+          );
+        }
+
+        layers.add(
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 250),
+            transitionBuilder: (child, animation) => ScaleTransition(
+              scale: CurvedAnimation(
+                parent: animation,
+                curve: Curves.easeOutBack,
+              ),
+              child: child,
+            ),
+            child: SizedBox(
+              key: ValueKey(current.id),
+              width: constraints.maxWidth,
+              height: constraints.maxHeight,
+              child: InviteCard(invite: current),
+            ),
+          ),
+        );
+
+        return Stack(
+          clipBehavior: Clip.none,
+          children: layers,
+        );
+      },
     );
   }
 }

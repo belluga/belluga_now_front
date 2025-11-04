@@ -29,6 +29,27 @@ class InviteFlowController implements Disposable {
   List<InviteFriendModel> get friendSuggestions =>
       List.unmodifiable(_friendSuggestions);
   Map<String, InviteDecision> get decisions => Map.unmodifiable(_decisions);
+  InviteModel? get nextInvitePreview {
+    if (_pendingInvites.length <= 1) {
+      return null;
+    }
+    return _pendingInvites.elementAt(1);
+  }
+
+  List<InviteModel> peekNextInvites({int limit = 2}) {
+    if (_pendingInvites.length <= 1 || limit <= 0) {
+      return const [];
+    }
+
+    final previews = <InviteModel>[];
+    for (var i = 1;
+        i < _pendingInvites.length && previews.length < limit;
+        i++) {
+      previews.add(_pendingInvites.elementAt(i));
+    }
+
+    return previews;
+  }
 
   Future<void> init() async {
     final invites = await _repository.fetchInvites();
