@@ -87,11 +87,11 @@ class _InviteFlowScreenState extends State<InviteFlowScreen> {
                         const SizedBox(height: 16),
                         _ActionBar(
                           onDecline: () =>
-                              _triggerSwipe(CardStackSwiperDirection.left),
+                              _triggerSwipe(CardStackSwiperDirection.right),
                           onMaybe: () =>
                               _triggerSwipe(CardStackSwiperDirection.top),
                           onAccept: () =>
-                              _triggerSwipe(CardStackSwiperDirection.right),
+                              _triggerSwipe(CardStackSwiperDirection.left),
                         ),
                       ],
                     );
@@ -161,9 +161,9 @@ class _InviteFlowScreenState extends State<InviteFlowScreen> {
   InviteDecision? _mapDirection(CardStackSwiperDirection direction) {
     switch (direction) {
       case CardStackSwiperDirection.left:
-        return InviteDecision.declined;
-      case CardStackSwiperDirection.right:
         return InviteDecision.accepted;
+      case CardStackSwiperDirection.right:
+        return InviteDecision.declined;
       case CardStackSwiperDirection.top:
         return InviteDecision.maybe;
       case CardStackSwiperDirection.none:
