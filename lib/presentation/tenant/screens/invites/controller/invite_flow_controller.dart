@@ -20,6 +20,8 @@ class InviteFlowController implements Disposable {
       StreamValue<int>(defaultValue: 0);
   final StreamValue<Map<String, InviteDecision>> decisionsStreamValue =
       StreamValue<Map<String, InviteDecision>>(defaultValue: const {});
+  final StreamValue<List<InviteModel>> pendingInvitesStreamValue =
+      StreamValue<List<InviteModel>>(defaultValue: const []);
 
   final ListQueue<InviteModel> _pendingInvites = ListQueue<InviteModel>();
   final Map<String, InviteDecision> _decisions = <String, InviteDecision>{};
@@ -29,28 +31,7 @@ class InviteFlowController implements Disposable {
   List<InviteFriendModel> get friendSuggestions =>
       List.unmodifiable(_friendSuggestions);
   Map<String, InviteDecision> get decisions => Map.unmodifiable(_decisions);
-  InviteModel? get nextInvitePreview {
-    if (_pendingInvites.length <= 1) {
-      return null;
-    }
-    return _pendingInvites.elementAt(1);
-  }
-
-  List<InviteModel> peekNextInvites({int limit = 2}) {
-    if (_pendingInvites.length <= 1 || limit <= 0) {
-      return const [];
-    }
-
-    final previews = <InviteModel>[];
-    for (var i = 1;
-        i < _pendingInvites.length && previews.length < limit;
-        i++) {
-      previews.add(_pendingInvites.elementAt(i));
-    }
-
-    return previews;
-  }
-
+  List<InviteModel> get pendingInvites => List.unmodifiable(_pendingInvites);
   Future<void> init() async {
     final invites = await _repository.fetchInvites();
     final friends = await _repository.fetchFriendSuggestions();
@@ -92,6 +73,7 @@ class InviteFlowController implements Disposable {
     final nextInvite = _pendingInvites.isEmpty ? null : _pendingInvites.first;
     currentInviteStreamValue.addValue(nextInvite);
     remainingInvitesStreamValue.addValue(_pendingInvites.length);
+    pendingInvitesStreamValue.addValue(_pendingInvites.toList(growable: false));
   }
 
   @override
@@ -99,5 +81,6 @@ class InviteFlowController implements Disposable {
     currentInviteStreamValue.dispose();
     remainingInvitesStreamValue.dispose();
     decisionsStreamValue.dispose();
+    pendingInvitesStreamValue.dispose();
   }
 }

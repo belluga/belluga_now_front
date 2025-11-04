@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:auto_route/auto_route.dart';
+import 'package:card_stack_swiper/card_stack_swiper.dart';
 import 'package:belluga_now/application/router/manual_route_stubs.dart';
 import 'package:belluga_now/domain/invites/invite_decision.dart';
 import 'package:belluga_now/domain/invites/invite_model.dart';
@@ -18,6 +21,8 @@ class InviteFlowScreen extends StatefulWidget {
 class _InviteFlowScreenState extends State<InviteFlowScreen> {
   late final InviteFlowController _controller =
       GetIt.I.get<InviteFlowController>();
+  final CardStackSwiperController _swiperController =
+      CardStackSwiperController();
 
   @override
   void initState() {
@@ -27,6 +32,7 @@ class _InviteFlowScreenState extends State<InviteFlowScreen> {
 
   @override
   void dispose() {
+    unawaited(_swiperController.dispose());
     _controller.onDispose();
     super.dispose();
   }
@@ -55,7 +61,12 @@ class _InviteFlowScreenState extends State<InviteFlowScreen> {
               StreamValueBuilder<int>(
                 streamValue: _controller.remainingInvitesStreamValue,
                 builder: (context, remaining) {
-                  final count = remaining ?? 0;
+                  final count = remaining;
+
+                  if(count == 0){
+                    return SizedBox.shrink();
+                  }
+
                   final label = count == 0
                       ? 'Nenhum convite pendente'
                       : count == 1
@@ -71,10 +82,11 @@ class _InviteFlowScreenState extends State<InviteFlowScreen> {
               ),
               const SizedBox(height: 12),
               Expanded(
-                child: StreamValueBuilder<InviteModel?>(
-                  streamValue: _controller.currentInviteStreamValue,
-                  builder: (context, invite) {
-                    if (invite == null) {
+                child: StreamValueBuilder<List<InviteModel>>(
+                  streamValue: _controller.pendingInvitesStreamValue,
+                  builder: (context, invites) {
+                    final data = invites ?? const <InviteModel>[];
+                    if (data.isEmpty) {
                       return _EmptyInviteState(
                         onBackToHome: () => context.router.maybePop(),
                       );
@@ -86,18 +98,23 @@ class _InviteFlowScreenState extends State<InviteFlowScreen> {
                           child: Padding(
                             padding: const EdgeInsets.symmetric(vertical: 12),
                             child: _InviteDeck(
-                              current: invite,
-                              previews: _controller.peekNextInvites(limit: 3),
+                              key: ValueKey(
+                                data.map((invite) => invite.id).join('|'),
+                              ),
+                              invites: data,
+                              swiperController: _swiperController,
+                              onSwipe: _onCardSwiped,
                             ),
                           ),
                         ),
                         const SizedBox(height: 16),
                         _ActionBar(
                           onDecline: () =>
-                              _handleDecision(InviteDecision.declined),
-                          onMaybe: () => _handleDecision(InviteDecision.maybe),
+                              _triggerSwipe(CardStackSwiperDirection.left),
+                          onMaybe: () =>
+                              _triggerSwipe(CardStackSwiperDirection.top),
                           onAccept: () =>
-                              _handleDecision(InviteDecision.accepted),
+                              _triggerSwipe(CardStackSwiperDirection.right),
                         ),
                       ],
                     );
@@ -111,29 +128,70 @@ class _InviteFlowScreenState extends State<InviteFlowScreen> {
     );
   }
 
-  Future<void> _handleDecision(InviteDecision decision) async {
+  void _triggerSwipe(CardStackSwiperDirection direction) {
+    if (_controller.pendingInvites.isEmpty) {
+      _showSnack('Nenhum convite pendente.');
+      return;
+    }
+    _swiperController.swipe(direction);
+  }
+
+  Future<bool> _onCardSwiped(
+    int previousIndex,
+    int? currentIndex,
+    CardStackSwiperDirection direction,
+  ) async {
+    final decision = _mapDirection(direction);
+    if (decision == null) {
+      return false;
+    }
+
     final acceptedInvite = _controller.respondToInvite(decision);
 
     if (!mounted) {
-      return;
+      return true;
     }
 
     switch (decision) {
       case InviteDecision.declined:
         _showSnack('Convite marcado como nao vou desta vez.');
+        break;
       case InviteDecision.maybe:
         _showSnack('Convite salvo como pensar depois.');
+        break;
       case InviteDecision.accepted:
         if (acceptedInvite != null) {
-          await context.router.push(
-            InviteShareRoute(
-              invite: acceptedInvite,
-              friends: _controller.friendSuggestions,
-            ),
-          );
+          Future.microtask(() {
+            if (!mounted) {
+              return;
+            }
+            context.router.push(
+              InviteShareRoute(
+                invite: acceptedInvite,
+                friends: _controller.friendSuggestions,
+              ),
+            );
+          });
         } else {
           _showSnack('Convite confirmado!');
         }
+        break;
+    }
+
+    return true;
+  }
+
+  InviteDecision? _mapDirection(CardStackSwiperDirection direction) {
+    switch (direction) {
+      case CardStackSwiperDirection.left:
+        return InviteDecision.declined;
+      case CardStackSwiperDirection.right:
+        return InviteDecision.accepted;
+      case CardStackSwiperDirection.top:
+        return InviteDecision.maybe;
+      case CardStackSwiperDirection.none:
+      case CardStackSwiperDirection.bottom:
+        return null;
     }
   }
 
@@ -149,76 +207,45 @@ class _InviteFlowScreenState extends State<InviteFlowScreen> {
 
 class _InviteDeck extends StatelessWidget {
   const _InviteDeck({
-    required this.current,
-    required this.previews,
+    super.key,
+    required this.invites,
+    required this.swiperController,
+    required this.onSwipe,
   });
 
-  final InviteModel current;
-  final List<InviteModel> previews;
+  final List<InviteModel> invites;
+  final CardStackSwiperController swiperController;
+  final CardStackSwiperOnSwipe onSwipe;
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final layers = <Widget>[];
-        final limitedPreviews = previews.take(3).toList();
-
-        for (var index = limitedPreviews.length - 1; index >= 0; index--) {
-          final depth = limitedPreviews.length - index;
-          final preview = limitedPreviews[index];
-          final widthFactor =
-              (0.94 - (depth * 0.04)).clamp(0.78, 0.94).toDouble();
-          final heightFactor =
-              (0.9 - (depth * 0.035)).clamp(0.75, 0.9).toDouble();
-          final width = constraints.maxWidth * widthFactor;
-          final height = constraints.maxHeight * heightFactor;
-          final horizontalMargin = (constraints.maxWidth - width) / 2;
-          final topOffset = 18.0 * depth;
-
-          layers.add(
-            Positioned(
-              top: topOffset,
-              left: horizontalMargin,
-              right: horizontalMargin,
-              child: IgnorePointer(
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 250),
-                  curve: Curves.easeOut,
-                  height: height,
-                  child: InviteCard(
-                    invite: preview,
-                    isPreview: true,
-                  ),
-                ),
-              ),
-            ),
-          );
-        }
-
-        layers.add(
-          AnimatedSwitcher(
-            duration: const Duration(milliseconds: 250),
-            transitionBuilder: (child, animation) => ScaleTransition(
-              scale: CurvedAnimation(
-                parent: animation,
-                curve: Curves.easeOutBack,
-              ),
-              child: child,
-            ),
-            child: SizedBox(
-              key: ValueKey(current.id),
-              width: constraints.maxWidth,
-              height: constraints.maxHeight,
-              child: InviteCard(invite: current),
-            ),
+    return CardStackSwiper(
+      controller: swiperController,
+      cardsCount: invites.length,
+      // isLoop: false,
+      allowedSwipeDirection: const AllowedSwipeDirection.only(
+        left: true,
+        right: true,
+        up: true,
+      ),
+      cardBuilder: (
+        context,
+        index,
+        horizontalOffsetPercentage,
+        verticalOffsetPercentage,
+      ) {
+        final invite = invites[index];
+        final isPreview =
+            horizontalOffsetPercentage != 0 || verticalOffsetPercentage != 0;
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 6),
+          child: InviteCard(
+            invite: invite,
+            isPreview: isPreview,
           ),
         );
-
-        return Stack(
-          clipBehavior: Clip.none,
-          children: layers,
-        );
       },
+      onSwipe: onSwipe,
     );
   }
 }
