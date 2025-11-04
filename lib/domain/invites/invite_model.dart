@@ -8,6 +8,9 @@ class InviteModel {
     required this.hostName,
     required this.message,
     required this.tags,
+    this.inviterName,
+    this.inviterAvatarUrl,
+    this.additionalInviters = const [],
   });
 
   final String id;
@@ -18,4 +21,7 @@ class InviteModel {
   final String hostName;
   final String message;
   final List<String> tags;
+  final String? inviterName;
+  final String? inviterAvatarUrl;
+  final List<String> additionalInviters;
 }

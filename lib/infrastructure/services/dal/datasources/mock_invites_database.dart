@@ -23,6 +23,13 @@ class MockInvitesDatabase {
         'musica ao vivo',
         'friends only',
       ],
+      inviterName: 'Jade Carvalho',
+      inviterAvatarUrl:
+          'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=200',
+      additionalInviters: [
+        'Lucas Andrade',
+        'Duda Lima',
+      ],
     ),
     InviteModel(
       id: 'reef-research-night',
@@ -39,6 +46,10 @@ class MockInvitesDatabase {
         'educacao ambiental',
         'noite',
       ],
+      inviterName: 'Instituto Mar Limpo',
+      inviterAvatarUrl:
+          'https://images.unsplash.com/photo-1458253756246-1e4ed949191b?w=200',
+      additionalInviters: [],
     ),
     InviteModel(
       id: 'moon-dinner',
@@ -54,6 +65,12 @@ class MockInvitesDatabase {
         'gastronomia do mar',
         'lua cheia',
         'intimista',
+      ],
+      inviterName: 'Chef Marina',
+      inviterAvatarUrl:
+          'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200',
+      additionalInviters: [
+        'Equipe Solar',
       ],
     ),
   ];

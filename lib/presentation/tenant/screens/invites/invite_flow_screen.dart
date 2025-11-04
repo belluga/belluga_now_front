@@ -58,29 +58,6 @@ class _InviteFlowScreenState extends State<InviteFlowScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              StreamValueBuilder<int>(
-                streamValue: _controller.remainingInvitesStreamValue,
-                builder: (context, remaining) {
-                  final count = remaining;
-
-                  if(count == 0){
-                    return SizedBox.shrink();
-                  }
-
-                  final label = count == 0
-                      ? 'Nenhum convite pendente'
-                      : count == 1
-                          ? '1 convite pendente'
-                          : '$count convites pendentes';
-                  return Text(
-                    label,
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
-                  );
-                },
-              ),
-              const SizedBox(height: 12),
               Expanded(
                 child: StreamValueBuilder<List<InviteModel>>(
                   streamValue: _controller.pendingInvitesStreamValue,
@@ -205,7 +182,7 @@ class _InviteFlowScreenState extends State<InviteFlowScreen> {
   }
 }
 
-class _InviteDeck extends StatelessWidget {
+class _InviteDeck extends StatefulWidget {
   const _InviteDeck({
     super.key,
     required this.invites,
@@ -218,11 +195,64 @@ class _InviteDeck extends StatelessWidget {
   final CardStackSwiperOnSwipe onSwipe;
 
   @override
+  State<_InviteDeck> createState() => _InviteDeckState();
+}
+
+class _InviteDeckState extends State<_InviteDeck> {
+  int _currentTopIndex = 0;
+
+  @override
+  void didUpdateWidget(covariant _InviteDeck oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.invites.isEmpty) {
+      _currentTopIndex = 0;
+    } else if (_currentTopIndex >= widget.invites.length) {
+      _currentTopIndex = 0;
+    }
+  }
+
+  void _setTopIndex(int? currentIndex, int previousIndex) {
+    if (widget.invites.isEmpty) {
+      _currentTopIndex = 0;
+      return;
+    }
+    final nextIndex = currentIndex ?? previousIndex;
+    _currentTopIndex = nextIndex.clamp(0, widget.invites.length - 1);
+  }
+
+  FutureOr<bool> _handleSwipe(
+    int previousIndex,
+    int? currentIndex,
+    CardStackSwiperDirection direction,
+  ) {
+    final result = widget.onSwipe(previousIndex, currentIndex, direction);
+
+    if (result is Future<bool>) {
+      return result.then((approved) {
+        if (approved) {
+          setState(() {
+            _setTopIndex(currentIndex, previousIndex);
+          });
+        }
+        return approved;
+      });
+    }
+
+    if (result) {
+      setState(() {
+        _setTopIndex(currentIndex, previousIndex);
+      });
+    }
+
+    return result;
+  }
+
+  @override
   Widget build(BuildContext context) {
     return CardStackSwiper(
-      controller: swiperController,
-      cardsCount: invites.length,
-      // isLoop: false,
+      controller: widget.swiperController,
+      cardsCount: widget.invites.length,
+      isLoop: false,
       allowedSwipeDirection: const AllowedSwipeDirection.only(
         left: true,
         right: true,
@@ -234,18 +264,20 @@ class _InviteDeck extends StatelessWidget {
         horizontalOffsetPercentage,
         verticalOffsetPercentage,
       ) {
-        final invite = invites[index];
+        final invite = widget.invites[index];
         final isPreview =
             horizontalOffsetPercentage != 0 || verticalOffsetPercentage != 0;
+        final isTop = index == _currentTopIndex;
         return Padding(
           padding: const EdgeInsets.symmetric(horizontal: 6),
           child: InviteCard(
             invite: invite,
             isPreview: isPreview,
+            isTopOfDeck: isTop,
           ),
         );
       },
-      onSwipe: onSwipe,
+      onSwipe: _handleSwipe,
     );
   }
 }
@@ -271,34 +303,37 @@ class _ActionBar extends StatelessWidget {
             Expanded(
               child: OutlinedButton.icon(
                 onPressed: onDecline,
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  side: BorderSide(
+                    color: theme.colorScheme.error,
+                  ),
+                  foregroundColor: Theme.of(context).colorScheme.error,
+                ),
                 icon: const Icon(Icons.close),
-                label: const Text('Nao rola'),
+                label: const Text('Recusar'),
               ),
             ),
             const SizedBox(width: 12),
             Expanded(
-              child: OutlinedButton.icon(
-                onPressed: onMaybe,
-                icon: const Icon(Icons.hourglass_bottom),
-                label: const Text('Talvez'),
+              child: FilledButton.icon(
+                onPressed: onAccept,
+                icon: const Icon(Icons.rocket_launch_outlined),
+                label: const Text('Bora!'),
+                style: FilledButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  textStyle: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
               ),
             ),
           ],
         ),
-        const SizedBox(height: 12),
-        SizedBox(
-          width: double.infinity,
-          child: FilledButton.icon(
-            onPressed: onAccept,
-            icon: const Icon(Icons.rocket_launch_outlined),
-            label: const Text('Bora!'),
-            style: FilledButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              textStyle: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
+        const SizedBox(height: 8),
+        TextButton(
+          onPressed: onMaybe,
+          child: const Text('Talvez'),
         ),
       ],
     );
