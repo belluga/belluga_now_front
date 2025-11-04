@@ -60,6 +60,22 @@ class AppRouter extends AppRouterContract {
           path: '/mapa/poi',
           page: PoiDetailsRoute.page,
         ),
+        AutoRoute(
+          path: '/mercado',
+          page: MercadoRoute.page,
+        ),
+        AutoRoute(
+          path: '/mercado/produtor',
+          page: ProducerStoreRoute.page,
+        ),
+        AutoRoute(
+          path: '/experiencias',
+          page: ExperiencesRoute.page,
+        ),
+        AutoRoute(
+          path: '/experiencias/detalhe',
+          page: ExperienceDetailRoute.page,
+        ),
         ...childModules.expand((module) => module.routes),
       ];
 }

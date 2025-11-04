@@ -1,5 +1,6 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
+import 'package:belluga_now/application/router/manual_route_stubs.dart';
 import 'package:flutter/material.dart';
 
 class BellugaBottomNavigationBar extends StatelessWidget {
@@ -22,11 +23,12 @@ class BellugaBottomNavigationBar extends StatelessWidget {
         height: _navHeight,
         backgroundColor: scheme.surface,
         elevation: 0,
-        indicatorColor: scheme.primaryContainer.withOpacity(0.8),
+        indicatorColor: scheme.primaryContainer.withValues(alpha: 0.8),
         labelTextStyle: WidgetStateProperty.resolveWith(
           (states) => theme.textTheme.labelSmall?.copyWith(
-            fontWeight:
-                states.contains(WidgetState.selected) ? FontWeight.w700 : FontWeight.w500,
+            fontWeight: states.contains(WidgetState.selected)
+                ? FontWeight.w700
+                : FontWeight.w500,
           ),
         ),
         iconTheme: WidgetStateProperty.resolveWith(
@@ -80,10 +82,16 @@ class BellugaBottomNavigationBar extends StatelessWidget {
       case 1:
         context.router.replaceAll([const ScheduleRoute()]);
         break;
+      case 2:
+        context.router.replaceAll([const MercadoRoute()]);
+        break;
+      case 3:
+        context.router.replaceAll([const ExperiencesRoute()]);
+        break;
       default:
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Funcionalidade ainda não disponível.'),
+          SnackBar(
+            content: Text('Funcionalidade ainda nao disponivel.'),
           ),
         );
     }
