@@ -13,6 +13,7 @@ import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/infrastructure/services/dal/datasources/poi_query.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
+import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter/services.dart';
 import 'package:get_it/get_it.dart';
 import 'package:map_launcher/map_launcher.dart';
@@ -59,6 +60,7 @@ class CityMapController implements Disposable {
       StreamValue<String?>(defaultValue: 'Localizando voce...');
   final searchTermStreamValue = StreamValue<String?>();
   final TextEditingController searchInputController = TextEditingController();
+  final MapController mapController = MapController();
 
   final selectedPoiStreamValue = StreamValue<CityPoiModel?>();
   final selectedEventStreamValue = StreamValue<EventModel?>();
@@ -654,6 +656,7 @@ class CityMapController implements Disposable {
     regionsStreamValue.dispose();
     searchTermStreamValue.dispose();
     searchInputController.dispose();
+    mapController.dispose();
     _poiEventsSubscription?.cancel();
   }
 

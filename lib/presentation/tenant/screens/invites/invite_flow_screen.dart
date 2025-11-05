@@ -68,7 +68,6 @@ class _InviteFlowScreenState extends State<InviteFlowScreen> {
                               data.map((invite) => invite.id).join('|'),
                             ),
                             invites: data,
-                            swiperController: _controller.swiperController,
                             onSwipe: _onCardSwiped,
                           ),
                         ),
@@ -190,12 +189,10 @@ class _InviteDeck extends StatelessWidget {
   const _InviteDeck({
     super.key,
     required this.invites,
-    required this.swiperController,
     required this.onSwipe,
   });
 
   final List<InviteModel> invites;
-  final CardStackSwiperController swiperController;
   final CardStackSwiperOnSwipe onSwipe;
 
   FutureOr<bool> _handleSwipe(
@@ -239,7 +236,7 @@ class _InviteDeck extends StatelessWidget {
       streamValue: controller.topCardIndexStreamValue,
       builder: (_, topIndex) {
         return CardStackSwiper(
-          controller: swiperController,
+          controller: controller.swiperController,
           cardsCount: invites.length,
           isLoop: false,
           allowedSwipeDirection: const AllowedSwipeDirection.only(

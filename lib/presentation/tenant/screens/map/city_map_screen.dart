@@ -45,8 +45,6 @@ class CityMapScreen extends StatefulWidget {
 }
 
 class _CityMapScreenState extends State<CityMapScreen> {
-  final MapController _mapController = MapController();
-
   late final CityMapController _cityMapController;
   late final FabMenuController _fabMenuController;
   late final RegionPanelController _regionPanelController;
@@ -189,7 +187,7 @@ class _CityMapScreenState extends State<CityMapScreen> {
                               _cityMapController.hoveredPoiIdStreamValue,
                           builder: (_, hoveredId) {
                             return CityMapView(
-                              mapController: _mapController,
+                              mapController: _cityMapController.mapController,
                               pois: pois,
                               selectedPoi: selectedPoi,
                               onSelectPoi: _handleSelectPoi,
@@ -543,7 +541,7 @@ class _CityMapScreenState extends State<CityMapScreen> {
 
   Future<void> _centerOnUser(CityCoordinate coordinate) async {
     final target = LatLng(coordinate.latitude, coordinate.longitude);
-    _mapController.move(target, 16);
+    _cityMapController.mapController.move(target, 16);
     _cityMapController.clearSelections();
     _cityMapController.setHoveredPoi(null);
     _fabMenuController.closePanel();
@@ -771,7 +769,7 @@ class _CityMapScreenState extends State<CityMapScreen> {
       target.center.latitude,
       target.center.longitude,
     );
-    _mapController.move(center, target.zoom);
+    _cityMapController.mapController.move(center, target.zoom);
   }
 
   void _handlePanelChange(LateralPanelType? panel) {
