@@ -1,14 +1,33 @@
 import 'package:belluga_now/domain/experiences/experience_model.dart';
 import 'package:belluga_now/domain/repositories/experiences_repository_contract.dart';
+import 'package:flutter/widgets.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value.dart';
 
 class ExperiencesController implements Disposable {
   ExperiencesController({
     ExperiencesRepositoryContract? repository,
-  }) : _repository = repository ?? GetIt.I.get<ExperiencesRepositoryContract>();
+  }) : _repository = repository ?? GetIt.I.get<ExperiencesRepositoryContract>() {
+    _searchListener = () {
+      final rawText = searchTextController.text;
+      if (rawText.trim().isEmpty) {
+        if (_searchQuery.isEmpty && searchTermStreamValue.value == null) {
+          return;
+        }
+        _searchQuery = '';
+        searchTermStreamValue.addValue(null);
+        _applyFilters();
+        return;
+      }
+      updateSearchQuery(rawText);
+    };
+    searchTextController.addListener(_searchListener);
+  }
 
   final ExperiencesRepositoryContract _repository;
+
+  final TextEditingController searchTextController = TextEditingController();
+  late final VoidCallback _searchListener;
 
   final StreamValue<List<ExperienceModel>> experiencesStreamValue =
       StreamValue<List<ExperienceModel>>(defaultValue: const []);
@@ -17,6 +36,8 @@ class ExperiencesController implements Disposable {
       StreamValue<String?>();
   final StreamValue<Set<String>> selectedTagsStreamValue =
       StreamValue<Set<String>>(defaultValue: const <String>{});
+  final StreamValue<String?> searchTermStreamValue =
+      StreamValue<String?>(defaultValue: null);
 
   List<ExperienceModel> _allExperiences = const [];
   String? _currentCategory;
@@ -40,17 +61,31 @@ class ExperiencesController implements Disposable {
   }
 
   void updateSearchQuery(String query) {
-    _searchQuery = query.trim().toLowerCase();
+    final normalized = query.trim().toLowerCase();
+    if (_searchQuery == normalized) {
+      return;
+    }
+    _searchQuery = normalized;
+    searchTermStreamValue.addValue(
+      searchTextController.text.isEmpty ? null : searchTextController.text,
+    );
     _applyFilters();
   }
 
-  void clearFilters() {
+  void clearFilters({bool resetSearchText = true}) {
     _currentCategory = null;
     _searchQuery = '';
     _selectedTags = <String>{};
     selectedCategoryStreamValue.addValue(null);
     selectedTagsStreamValue.addValue(const <String>{});
-    experiencesStreamValue.addValue(_allExperiences);
+    if (resetSearchText && searchTextController.text.isNotEmpty) {
+      searchTextController
+        ..removeListener(_searchListener)
+        ..clear()
+        ..addListener(_searchListener);
+    }
+    searchTermStreamValue.addValue(null);
+    _applyFilters();
   }
 
   void toggleTag(String tag) {
@@ -120,5 +155,9 @@ class ExperiencesController implements Disposable {
     experiencesStreamValue.dispose();
     selectedCategoryStreamValue.dispose();
     selectedTagsStreamValue.dispose();
+    searchTermStreamValue.dispose();
+    searchTextController
+      ..removeListener(_searchListener)
+      ..dispose();
   }
 }

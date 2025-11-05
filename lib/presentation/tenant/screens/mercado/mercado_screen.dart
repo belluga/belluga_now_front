@@ -16,33 +16,21 @@ class MercadoScreen extends StatefulWidget {
 
 class _MercadoScreenState extends State<MercadoScreen> {
   late final _controller = GetIt.I.get<MercadoController>();
-  final _searchController = TextEditingController();
-  late final VoidCallback _searchListener;
 
   @override
   void initState() {
     super.initState();
     _controller.init();
-    _searchListener = () {
-      _controller.setSearchTerm(_searchController.text);
-    };
-    _searchController.addListener(_searchListener);
   }
 
   @override
   void dispose() {
-    _searchController.removeListener(_searchListener);
-    _searchController.dispose();
     _controller.onDispose();
     super.dispose();
   }
 
   void _handleClearSearch() {
-    if (_searchController.text.isEmpty) {
-      return;
-    }
-    _searchController.clear();
-    _controller.clearSearchTerm();
+    _controller.clearSearch();
   }
 
   @override
@@ -60,7 +48,7 @@ class _MercadoScreenState extends State<MercadoScreen> {
             child: Padding(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
               child: SearchBar(
-                controller: _searchController,
+                controller: _controller.searchTextController,
                 hintText: 'Buscar por produtor ou categoria...',
                 leading: const Icon(Icons.search),
                 trailing: [

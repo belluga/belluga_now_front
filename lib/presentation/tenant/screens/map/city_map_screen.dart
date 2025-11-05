@@ -493,14 +493,18 @@ class _CityMapScreenState extends State<CityMapScreen> {
 
   Future<void> _openSearchDialog() async {
     final initialTerm = _cityMapController.searchTermStreamValue.value ?? '';
-    final controller = TextEditingController(text: initialTerm);
+    final textController = _cityMapController.searchInputController
+      ..text = initialTerm
+      ..selection = TextSelection.fromPosition(
+        TextPosition(offset: initialTerm.length),
+      );
     final result = await showDialog<String>(
       context: context,
       builder: (context) {
         return AlertDialog(
           title: const Text('Buscar pontos'),
           content: TextField(
-            controller: controller,
+            controller: textController,
             autofocus: true,
             decoration: const InputDecoration(
               hintText: 'Digite um termo para buscar',
@@ -514,15 +518,14 @@ class _CityMapScreenState extends State<CityMapScreen> {
               child: const Text('Cancelar'),
             ),
             FilledButton(
-              onPressed: () => Navigator.of(context).pop(controller.text),
+              onPressed: () =>
+                  Navigator.of(context).pop(textController.text),
               child: const Text('Buscar'),
             ),
           ],
         );
       },
     );
-    controller.dispose();
-
     if (!mounted || result == null) {
       return;
     }

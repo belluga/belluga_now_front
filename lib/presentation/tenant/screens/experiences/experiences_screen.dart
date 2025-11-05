@@ -19,8 +19,6 @@ class _ExperiencesScreenState extends State<ExperiencesScreen> {
   late final ExperiencesController _controller =
       GetIt.I.get<ExperiencesController>();
 
-  final TextEditingController _searchController = TextEditingController();
-
   @override
   void initState() {
     super.initState();
@@ -29,7 +27,6 @@ class _ExperiencesScreenState extends State<ExperiencesScreen> {
 
   @override
   void dispose() {
-    _searchController.dispose();
     _controller.onDispose();
     super.dispose();
   }
@@ -50,11 +47,23 @@ class _ExperiencesScreenState extends State<ExperiencesScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               TextField(
-                controller: _searchController,
-                onChanged: _onSearchChanged,
+                controller: _controller.searchTextController,
                 decoration: InputDecoration(
                   hintText: 'Buscar por experiencia ou categoria...',
                   prefixIcon: const Icon(Icons.search),
+                  suffixIcon: StreamValueBuilder<String?>(
+                    streamValue: _controller.searchTermStreamValue,
+                    builder: (context, term) {
+                      if (term == null || term.isEmpty) {
+                        return const SizedBox.shrink();
+                      }
+                      return IconButton(
+                        icon: const Icon(Icons.close),
+                        tooltip: 'Limpar pesquisa',
+                        onPressed: _controller.clearFilters,
+                      );
+                    },
+                  ),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(16),
                   ),
@@ -138,14 +147,6 @@ class _ExperiencesScreenState extends State<ExperiencesScreen> {
         ),
       ),
     );
-  }
-
-  void _onSearchChanged(String value) {
-    if (value.isEmpty) {
-      _controller.clearFilters();
-    } else {
-      _controller.updateSearchQuery(value);
-    }
   }
 
   void _openDetails(ExperienceModel experience) {
