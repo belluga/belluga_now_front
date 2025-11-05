@@ -155,6 +155,13 @@ To ensure a maintainable, testable, and scalable codebase, the following princip
     -   Widgets should focus solely on rendering the user interface based on the state provided to them.
     -   They should contain minimal to no business logic, complex decision-making, or asynchronous operations.
     -   All UI-specific state that impacts the overall screen should be managed by the controller.
+-   **Controllers Own UI Controllers:**
+    -   Feature controllers are the single owners of Flutter-side controllers such as `TextEditingController`, `ScrollController`, or `CardStackSwiperController`.
+    -   Widgets access those controllers via GetIt and never instantiate or dispose them locally, ensuring a single lifecycle owner and making shared behavior (e.g., programmatic scrolling, staged search updates) testable.
+    -   Controllers expose helper methods (e.g., `clearSearch`, `applyDecision`) so widgets trigger intent rather than mutating controller state directly.
+-   **Constructor Discipline:**
+    -   Production constructors stay minimal, wiring default dependencies internally. We defer injection hooks (test-only factories, optional parameters) until an explicit testing requirement emerges.
+    -   When we later introduce test constructors, prefer named factories or `@visibleForTesting` helpers so the primary constructor remains clean in autocomplete and day-to-day usage.
 
 -   **Controllers Manage State & Logic:**
     -   Controllers are responsible for all application state, business logic, and orchestrating data flow.
