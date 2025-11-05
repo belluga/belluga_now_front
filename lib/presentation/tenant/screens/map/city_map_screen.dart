@@ -187,7 +187,6 @@ class _CityMapScreenState extends State<CityMapScreen> {
                               _cityMapController.hoveredPoiIdStreamValue,
                           builder: (_, hoveredId) {
                             return CityMapView(
-                              mapController: _cityMapController.mapController,
                               pois: pois,
                               selectedPoi: selectedPoi,
                               onSelectPoi: _handleSelectPoi,

@@ -1,5 +1,6 @@
 import 'package:belluga_now/domain/map/city_poi_model.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
+import 'package:belluga_now/presentation/tenant/screens/map/controller/city_map_controller.dart';
 import 'package:belluga_now/presentation/tenant/screens/map/widgets/event_marker.dart';
 import 'package:belluga_now/presentation/tenant/screens/map/widgets/event_temporal_state.dart';
 import 'package:belluga_now/presentation/tenant/screens/map/widgets/poi_marker.dart';
@@ -9,11 +10,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:free_map/fm_map.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:get_it/get_it.dart';
 
 class CityMapView extends StatelessWidget {
   const CityMapView({
     super.key,
-    required this.mapController,
     required this.pois,
     required this.selectedPoi,
     required this.onSelectPoi,
@@ -27,7 +28,6 @@ class CityMapView extends StatelessWidget {
     required this.onMapInteraction,
   });
 
-  final MapController mapController;
   final List<CityPoiModel> pois;
   final CityPoiModel? selectedPoi;
   final ValueChanged<CityPoiModel?> onSelectPoi;
@@ -45,6 +45,8 @@ class CityMapView extends StatelessWidget {
     final selectedEventId = selectedEvent?.id.value;
     final now = DateTime.now();
     final markerEntries = <_MarkerEntry>[];
+    final mapController =
+        GetIt.I.get<CityMapController>().mapController;
 
     if (userPosition != null) {
       markerEntries.add(
