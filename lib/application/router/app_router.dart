@@ -50,8 +50,8 @@ class AppRouter extends AppRouterContract {
           page: ScheduleRoute.page,
         ),
         AutoRoute(
-          path: '/agenda/evento',
-          page: manual.EventDetailRoute.page,
+          path: '/agenda/evento/:slug',
+          page: EventDetailRoute.page,
         ),
         AutoRoute(
           path: '/agenda/procurar',

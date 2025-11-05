@@ -42,6 +42,17 @@ class ScheduleRepository extends ScheduleRepositoryContract {
   }
 
   @override
+  Future<EventModel?> getEventBySlug(String slug) async {
+    final events = await _loadEvents();
+    try {
+      final dto = events.firstWhere((event) => event.id == slug);
+      return EventModel.fromDTO(dto);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  @override
   Future<ScheduleSummaryModel> getScheduleSummary() async {
     final summary = await _backend.fetchSummary();
     return ScheduleSummaryModel.fromDTO(summary);

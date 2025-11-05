@@ -130,33 +130,6 @@ class ExperienceDetailRouteArgs {
   final ExperienceModel experience;
 }
 
-class EventDetailRoute extends PageRouteInfo<EventDetailRouteArgs> {
-  EventDetailRoute({
-    required EventModel event,
-    List<PageRouteInfo>? children,
-  }) : super(
-          EventDetailRoute.name,
-          args: EventDetailRouteArgs(event: event),
-          initialChildren: children,
-        );
-
-  static const String name = 'EventDetailRoute';
-
-  static PageInfo page = PageInfo(
-    name,
-    builder: (data) {
-      final args = data.argsAs<EventDetailRouteArgs>();
-      return EventDetailScreen(event: args.event);
-    },
-  );
-}
-
-class EventDetailRouteArgs {
-  EventDetailRouteArgs({required this.event});
-
-  final EventModel event;
-}
-
 class InviteFlowRoute extends PageRouteInfo<void> {
   const InviteFlowRoute({List<PageRouteInfo>? children})
       : super(InviteFlowRoute.name, initialChildren: children);

@@ -766,8 +766,10 @@ class _CityMapScreenState extends State<CityMapScreen> {
         .toList(growable: false);
     final startDate = event.dateTimeStart.value ?? DateTime.now();
     final venue = event.location.value;
+    final slug = event.title.value.toLowerCase().replaceAll(' ', '-');
 
     return EventCardData(
+      slug: slug,
       title: event.title.value,
       imageUrl: imageUrl?.isNotEmpty == true ? imageUrl! : fallbackImage,
       startDateTime: startDate,

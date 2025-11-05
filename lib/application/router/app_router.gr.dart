@@ -10,10 +10,9 @@
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
 import 'package:auto_route/auto_route.dart' as _i20;
-import 'package:belluga_now/domain/experiences/experience_model.dart' as _i23;
-import 'package:belluga_now/domain/invites/invite_model.dart' as _i24;
-import 'package:belluga_now/domain/map/city_poi_model.dart' as _i25;
-import 'package:belluga_now/domain/schedule/event_model.dart' as _i22;
+import 'package:belluga_now/domain/experiences/experience_model.dart' as _i22;
+import 'package:belluga_now/domain/invites/invite_model.dart' as _i23;
+import 'package:belluga_now/domain/map/city_poi_model.dart' as _i24;
 import 'package:belluga_now/presentation/init/init_screen.dart' as _i8;
 import 'package:belluga_now/presentation/landlord/screens/home/landlord_home_route.dart'
     as _i11;
@@ -40,7 +39,7 @@ import 'package:belluga_now/presentation/tenant/screens/map/poi_details_route.da
 import 'package:belluga_now/presentation/tenant/screens/mercado/mercado_route.dart'
     as _i12;
 import 'package:belluga_now/presentation/tenant/screens/mercado/models/mercado_producer.dart'
-    as _i26;
+    as _i25;
 import 'package:belluga_now/presentation/tenant/screens/mercado/producer_store_route.dart'
     as _i14;
 import 'package:belluga_now/presentation/tenant/screens/profile/profile_route.dart'
@@ -104,15 +103,15 @@ class CityMapRoute extends _i20.PageRouteInfo<void> {
 }
 
 /// generated route for
-/// [_i4.EventDetailRoute]
+/// [_i4.EventDetailRoutePage]
 class EventDetailRoute extends _i20.PageRouteInfo<EventDetailRouteArgs> {
   EventDetailRoute({
     _i21.Key? key,
-    required _i22.EventModel event,
+    required String slug,
     List<_i20.PageRouteInfo>? children,
   }) : super(
           EventDetailRoute.name,
-          args: EventDetailRouteArgs(key: key, event: event),
+          args: EventDetailRouteArgs(key: key, slug: slug),
           initialChildren: children,
         );
 
@@ -122,32 +121,35 @@ class EventDetailRoute extends _i20.PageRouteInfo<EventDetailRouteArgs> {
     name,
     builder: (data) {
       final args = data.argsAs<EventDetailRouteArgs>();
-      return _i4.EventDetailRoute(key: args.key, event: args.event);
+      return _i4.EventDetailRoutePage(
+        key: args.key,
+        slug: args.slug,
+      );
     },
   );
 }
 
 class EventDetailRouteArgs {
-  const EventDetailRouteArgs({this.key, required this.event});
+  const EventDetailRouteArgs({this.key, required this.slug});
 
   final _i21.Key? key;
 
-  final _i22.EventModel event;
+  final String slug;
 
   @override
   String toString() {
-    return 'EventDetailRouteArgs{key: $key, event: $event}';
+    return 'EventDetailRouteArgs{key: $key, slug: $slug}';
   }
 
   @override
   bool operator ==(Object other) {
     if (identical(this, other)) return true;
     if (other is! EventDetailRouteArgs) return false;
-    return key == other.key && event == other.event;
+    return key == other.key && slug == other.slug;
   }
 
   @override
-  int get hashCode => key.hashCode ^ event.hashCode;
+  int get hashCode => key.hashCode ^ slug.hashCode;
 }
 
 /// generated route for
@@ -172,7 +174,7 @@ class ExperienceDetailRoute
     extends _i20.PageRouteInfo<ExperienceDetailRouteArgs> {
   ExperienceDetailRoute({
     _i21.Key? key,
-    required _i23.ExperienceModel experience,
+    required _i22.ExperienceModel experience,
     List<_i20.PageRouteInfo>? children,
   }) : super(
           ExperienceDetailRoute.name,
@@ -199,7 +201,7 @@ class ExperienceDetailRouteArgs {
 
   final _i21.Key? key;
 
-  final _i23.ExperienceModel experience;
+  final _i22.ExperienceModel experience;
 
   @override
   String toString() {
@@ -270,7 +272,7 @@ class InviteFlowRoute extends _i20.PageRouteInfo<void> {
 class InviteShareRoute extends _i20.PageRouteInfo<InviteShareRouteArgs> {
   InviteShareRoute({
     _i21.Key? key,
-    required _i24.InviteModel invite,
+    required _i23.InviteModel invite,
     List<_i20.PageRouteInfo>? children,
   }) : super(
           InviteShareRoute.name,
@@ -294,7 +296,7 @@ class InviteShareRouteArgs {
 
   final _i21.Key? key;
 
-  final _i24.InviteModel invite;
+  final _i23.InviteModel invite;
 
   @override
   String toString() {
@@ -349,7 +351,7 @@ class MercadoRoute extends _i20.PageRouteInfo<void> {
 class PoiDetailsRoute extends _i20.PageRouteInfo<PoiDetailsRouteArgs> {
   PoiDetailsRoute({
     _i21.Key? key,
-    required _i25.CityPoiModel poi,
+    required _i24.CityPoiModel poi,
     List<_i20.PageRouteInfo>? children,
   }) : super(
           PoiDetailsRoute.name,
@@ -373,7 +375,7 @@ class PoiDetailsRouteArgs {
 
   final _i21.Key? key;
 
-  final _i25.CityPoiModel poi;
+  final _i24.CityPoiModel poi;
 
   @override
   String toString() {
@@ -396,7 +398,7 @@ class PoiDetailsRouteArgs {
 class ProducerStoreRoute extends _i20.PageRouteInfo<ProducerStoreRouteArgs> {
   ProducerStoreRoute({
     _i21.Key? key,
-    required _i26.MercadoProducer producer,
+    required _i25.MercadoProducer producer,
     List<_i20.PageRouteInfo>? children,
   }) : super(
           ProducerStoreRoute.name,
@@ -423,7 +425,7 @@ class ProducerStoreRouteArgs {
 
   final _i21.Key? key;
 
-  final _i26.MercadoProducer producer;
+  final _i25.MercadoProducer producer;
 
   @override
   String toString() {

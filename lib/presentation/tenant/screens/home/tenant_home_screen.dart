@@ -1,5 +1,5 @@
 import 'package:auto_route/auto_route.dart';
-import 'package:belluga_now/application/router/manual_route_stubs.dart';
+import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/domain/home/home_event.dart';
 import 'package:belluga_now/domain/home/home_favorite.dart';
 import 'package:belluga_now/domain/home/home_overview.dart';
@@ -106,7 +106,7 @@ class _TenantHomeScreenState extends State<TenantHomeScreen> {
           ),
           SectionHeader(
             title: 'Seus Eventos',
-            onPressed: () {},
+            onPressed: _openMyEvents,
           ),
           SizedBox(
             height: MediaQuery.of(context).size.width * 0.8 * 9 / 16,
@@ -121,7 +121,7 @@ class _TenantHomeScreenState extends State<TenantHomeScreen> {
           const SizedBox(height: 16),
           SectionHeader(
             title: 'Proximos Eventos',
-            onPressed: () {},
+            onPressed: _openMyEvents,
           ),
           const SizedBox(height: 16),
           ListView.separated(
@@ -131,7 +131,10 @@ class _TenantHomeScreenState extends State<TenantHomeScreen> {
             separatorBuilder: (_, __) => const Divider(height: 32),
             itemBuilder: (context, index) {
               final event = upcomingEvents[index];
-              return UpcomingEventCard(data: event);
+              return UpcomingEventCard(
+                data: event,
+                onTap: () => _openEventDetailSlug(event.slug),
+              );
             },
           ),
         ],
@@ -150,7 +153,9 @@ class _TenantHomeScreenState extends State<TenantHomeScreen> {
   }
 
   EventCardData _mapEvent(HomeEvent event) {
+    final slug = event.title.toLowerCase().replaceAll(' ', '-');
     return EventCardData(
+      slug: slug,
       title: event.title,
       imageUrl: event.imageUri.toString(),
       startDateTime: event.startDateTime,
@@ -166,5 +171,13 @@ class _TenantHomeScreenState extends State<TenantHomeScreen> {
 
   void _openInviteFlow() {
     context.router.push(const InviteFlowRoute());
+  }
+
+  void _openMyEvents() {
+    context.router.push(const ScheduleRoute());
+  }
+
+  void _openEventDetailSlug(String slug) {
+    context.router.push(EventDetailRoute(slug: slug));
   }
 }

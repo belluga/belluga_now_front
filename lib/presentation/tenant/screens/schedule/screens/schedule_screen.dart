@@ -115,8 +115,10 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
         )
         .toList();
     final startDate = event.dateTimeStart.value ?? DateTime.now();
+    final slug = event.title.value.toLowerCase().replaceAll(' ', '-');
 
     return EventCardData(
+      slug: slug,
       title: event.title.value,
       imageUrl: imageUrl,
       startDateTime: startDate,
@@ -127,6 +129,8 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
 
   void _navigateToSearch() => context.router.push(const EventSearchRoute());
 
-  void _openEventDetail(EventModel event) =>
-      context.router.push(EventDetailRoute(event: event));
+  void _openEventDetail(EventModel event) {
+    final slug = event.title.value.toLowerCase().replaceAll(' ', '-');
+    context.router.push(EventDetailRoute(slug: slug));
+  }
 }
