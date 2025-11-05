@@ -21,8 +21,6 @@ class InviteFlowScreen extends StatefulWidget {
 class _InviteFlowScreenState extends State<InviteFlowScreen> {
   final _controller = GetIt.I.get<InviteFlowController>();
 
-  bool _isConfirmingPresence = false;
-
   @override
   void initState() {
     super.initState();
@@ -76,11 +74,17 @@ class _InviteFlowScreenState extends State<InviteFlowScreen> {
                           ),
                         ),
                         const SizedBox(height: 16),
-                        _ActionBar(
-                          controller: _controller,
-                          onConfirmPresence: _handleConfirmPresence,
-                          onInviteFriends: _handleInviteFriendsTap,
-                          isConfirmingPresence: _isConfirmingPresence,
+                        StreamValueBuilder<bool>(
+                          streamValue:
+                              _controller.confirmingPresenceStreamValue,
+                          builder: (_, isConfirmingPresence) {
+                            return _ActionBar(
+                              controller: _controller,
+                              onConfirmPresence: _handleConfirmPresence,
+                              onInviteFriends: _handleInviteFriendsTap,
+                              isConfirmingPresence: isConfirmingPresence,
+                            );
+                          },
                         ),
                       ],
                     );
@@ -103,19 +107,16 @@ class _InviteFlowScreenState extends State<InviteFlowScreen> {
   }
 
   void _handleConfirmPresence() {
-    if (_isConfirmingPresence) {
+    if (_controller.confirmingPresenceStreamValue.value) {
       return;
     }
 
-    final invite = _controller.currentInvite;
-    if (invite == null) {
+    final started = _controller.beginConfirmPresence();
+    if (!started) {
       _showSnack('Nenhum convite pendente.');
       return;
     }
 
-    setState(() {
-      _isConfirmingPresence = true;
-    });
     _triggerSwipe(CardStackSwiperDirection.left);
   }
 
@@ -141,30 +142,25 @@ class _InviteFlowScreenState extends State<InviteFlowScreen> {
 
     switch (decision) {
       case InviteDecision.declined:
-        setState(() {
-          _isConfirmingPresence = false;
-        });
+        _controller.resetConfirmPresence();
         _showSnack('Convite marcado como nao vou desta vez.');
         break;
       case InviteDecision.maybe:
-        setState(() {
-          _isConfirmingPresence = false;
-        });
+        _controller.resetConfirmPresence();
         _showSnack('Convite salvo como pensar depois.');
         break;
       case InviteDecision.accepted:
         if (acceptedInvite != null) {
           final inviteToShare = acceptedInvite;
 
-          context.router.push(
+          await context.router.push(
             InviteShareRoute(
               invite: inviteToShare,
             ),
           );
+          _controller.resetConfirmPresence();
         } else {
-          setState(() {
-            _isConfirmingPresence = false;
-          });
+          _controller.resetConfirmPresence();
           _showSnack('Convite confirmado!');
         }
         break;

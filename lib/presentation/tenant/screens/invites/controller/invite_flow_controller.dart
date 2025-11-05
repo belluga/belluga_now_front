@@ -27,6 +27,9 @@ class InviteFlowController {
   bool get hasPendingInvites => _repository.hasPendingInvites;
   Map<String, InviteDecision> get decisions => Map.unmodifiable(_decisions);
 
+  final confirmingPresenceStreamValue =
+      StreamValue<bool>(defaultValue: false);
+
   Future<void> init() async {
     await fetchPendingInvites();
   }
@@ -71,6 +74,7 @@ class InviteFlowController {
       return current;
     }
 
+    confirmingPresenceStreamValue.addValue(false);
     return null;
   }
 
@@ -81,8 +85,26 @@ class InviteFlowController {
     decisionsStreamValue.addValue(Map.unmodifiable(_decisions));
   }
 
+  bool beginConfirmPresence() {
+    if (confirmingPresenceStreamValue.value) {
+      return false;
+    }
+
+    if (!hasPendingInvites) {
+      return false;
+    }
+
+    confirmingPresenceStreamValue.addValue(true);
+    return true;
+  }
+
+  void resetConfirmPresence() {
+    confirmingPresenceStreamValue.addValue(false);
+  }
+
   Future<void> dispose() async {
     decisionsStreamValue.dispose();
     swiperController.dispose();
+    confirmingPresenceStreamValue.dispose();
   }
 }
