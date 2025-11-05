@@ -27,8 +27,8 @@ class InviteFlowController {
   bool get hasPendingInvites => _repository.hasPendingInvites;
   Map<String, InviteDecision> get decisions => Map.unmodifiable(_decisions);
 
-  final confirmingPresenceStreamValue =
-      StreamValue<bool>(defaultValue: false);
+  final confirmingPresenceStreamValue = StreamValue<bool>(defaultValue: false);
+  final topCardIndexStreamValue = StreamValue<int>(defaultValue: 0);
 
   Future<void> init() async {
     await fetchPendingInvites();
@@ -37,6 +37,7 @@ class InviteFlowController {
   Future<void> fetchPendingInvites() async {
     final _invites = await _repository.fetchInvites();
     pendingInvitesStreamValue.addValue(_invites);
+    _ensureTopIndexBounds(_invites.length);
   }
 
   void removeInvite() {
@@ -49,6 +50,7 @@ class InviteFlowController {
     _pendingInvites.removeAt(0);
 
     pendingInvitesStreamValue.addValue(_pendingInvites);
+    _ensureTopIndexBounds(_pendingInvites.length);
   }
 
   void addInvite(InviteModel invite) {
@@ -56,6 +58,7 @@ class InviteFlowController {
     _pendingInvites.add(invite);
 
     pendingInvitesStreamValue.addValue(_pendingInvites);
+    _ensureTopIndexBounds(_pendingInvites.length);
   }
 
   InviteModel? respondToInvite(InviteDecision decision) {
@@ -102,9 +105,46 @@ class InviteFlowController {
     confirmingPresenceStreamValue.addValue(false);
   }
 
+  void updateTopCardIndex({
+    required int previousIndex,
+    required int? currentIndex,
+    required int invitesLength,
+  }) {
+    if (invitesLength == 0) {
+      topCardIndexStreamValue.addValue(0);
+      return;
+    }
+
+    final nextIndex =
+        (currentIndex ?? previousIndex).clamp(0, invitesLength - 1);
+    if (nextIndex != topCardIndexStreamValue.value) {
+      topCardIndexStreamValue.addValue(nextIndex);
+    }
+  }
+
+  void _ensureTopIndexBounds(int invitesLength) {
+    if (invitesLength <= 0) {
+      if (topCardIndexStreamValue.value != 0) {
+        topCardIndexStreamValue.addValue(0);
+      }
+      return;
+    }
+
+    final current = topCardIndexStreamValue.value;
+    final clamped = current.clamp(0, invitesLength - 1);
+    if (clamped != current) {
+      topCardIndexStreamValue.addValue(clamped);
+    }
+  }
+
+  void syncTopCardIndex(int invitesLength) {
+    _ensureTopIndexBounds(invitesLength);
+  }
+
   Future<void> dispose() async {
     decisionsStreamValue.dispose();
     swiperController.dispose();
     confirmingPresenceStreamValue.dispose();
+    topCardIndexStreamValue.dispose();
   }
 }

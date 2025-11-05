@@ -63,15 +63,15 @@ class _InviteFlowScreenState extends State<InviteFlowScreen> {
                         Expanded(
                           child: Padding(
                             padding: const EdgeInsets.symmetric(vertical: 12),
-                            child: _InviteDeck(
-                              key: ValueKey(
-                                data.map((invite) => invite.id).join('|'),
-                              ),
-                              invites: data,
-                              swiperController: _controller.swiperController,
-                              onSwipe: _onCardSwiped,
+                          child: _InviteDeck(
+                            key: ValueKey(
+                              data.map((invite) => invite.id).join('|'),
                             ),
+                            invites: data,
+                            swiperController: _controller.swiperController,
+                            onSwipe: _onCardSwiped,
                           ),
+                        ),
                         ),
                         const SizedBox(height: 16),
                         StreamValueBuilder<bool>(
@@ -193,7 +193,7 @@ class _InviteFlowScreenState extends State<InviteFlowScreen> {
   }
 }
 
-class _InviteDeck extends StatefulWidget {
+class _InviteDeck extends StatelessWidget {
   const _InviteDeck({
     super.key,
     required this.invites,
@@ -205,54 +205,33 @@ class _InviteDeck extends StatefulWidget {
   final CardStackSwiperController swiperController;
   final CardStackSwiperOnSwipe onSwipe;
 
-  @override
-  State<_InviteDeck> createState() => _InviteDeckState();
-}
-
-class _InviteDeckState extends State<_InviteDeck> {
-  int _currentTopIndex = 0;
-
-  @override
-  void didUpdateWidget(covariant _InviteDeck oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (widget.invites.isEmpty) {
-      _currentTopIndex = 0;
-    } else if (_currentTopIndex >= widget.invites.length) {
-      _currentTopIndex = 0;
-    }
-  }
-
-  void _setTopIndex(int? currentIndex, int previousIndex) {
-    if (widget.invites.isEmpty) {
-      _currentTopIndex = 0;
-      return;
-    }
-    final nextIndex = currentIndex ?? previousIndex;
-    _currentTopIndex = nextIndex.clamp(0, widget.invites.length - 1);
-  }
-
   FutureOr<bool> _handleSwipe(
     int previousIndex,
     int? currentIndex,
     CardStackSwiperDirection direction,
   ) {
-    final result = widget.onSwipe(previousIndex, currentIndex, direction);
+    final result = onSwipe(previousIndex, currentIndex, direction);
+    final controller = GetIt.I.get<InviteFlowController>();
 
     if (result is Future<bool>) {
       return result.then((approved) {
         if (approved) {
-          setState(() {
-            _setTopIndex(currentIndex, previousIndex);
-          });
+          controller.updateTopCardIndex(
+            previousIndex: previousIndex,
+            currentIndex: currentIndex,
+            invitesLength: invites.length,
+          );
         }
         return approved;
       });
     }
 
     if (result) {
-      setState(() {
-        _setTopIndex(currentIndex, previousIndex);
-      });
+      controller.updateTopCardIndex(
+        previousIndex: previousIndex,
+        currentIndex: currentIndex,
+        invitesLength: invites.length,
+      );
     }
 
     return result;
@@ -260,35 +239,43 @@ class _InviteDeckState extends State<_InviteDeck> {
 
   @override
   Widget build(BuildContext context) {
-    return CardStackSwiper(
-      controller: widget.swiperController,
-      cardsCount: widget.invites.length,
-      isLoop: false,
-      allowedSwipeDirection: const AllowedSwipeDirection.only(
-        left: true,
-        right: true,
-        up: true,
-      ),
-      cardBuilder: (
-        context,
-        index,
-        horizontalOffsetPercentage,
-        verticalOffsetPercentage,
-      ) {
-        final invite = widget.invites[index];
-        final isPreview =
-            horizontalOffsetPercentage != 0 || verticalOffsetPercentage != 0;
-        final isTop = index == _currentTopIndex;
-        return Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 6),
-          child: InviteCard(
-            invite: invite,
-            isPreview: isPreview,
-            isTopOfDeck: isTop,
+    final controller = GetIt.I.get<InviteFlowController>();
+    controller.syncTopCardIndex(invites.length);
+
+    return StreamValueBuilder<int>(
+      streamValue: controller.topCardIndexStreamValue,
+      builder: (_, topIndex) {
+        return CardStackSwiper(
+          controller: swiperController,
+          cardsCount: invites.length,
+          isLoop: false,
+          allowedSwipeDirection: const AllowedSwipeDirection.only(
+            left: true,
+            right: true,
+            up: true,
           ),
+          cardBuilder: (
+            context,
+            index,
+            horizontalOffsetPercentage,
+            verticalOffsetPercentage,
+          ) {
+            final invite = invites[index];
+            final isPreview =
+                horizontalOffsetPercentage != 0 || verticalOffsetPercentage != 0;
+            final isTop = index == topIndex;
+            return Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 6),
+              child: InviteCard(
+                invite: invite,
+                isPreview: isPreview,
+                isTopOfDeck: isTop,
+              ),
+            );
+          },
+          onSwipe: _handleSwipe,
         );
       },
-      onSwipe: _handleSwipe,
     );
   }
 }
