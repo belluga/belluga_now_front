@@ -8,6 +8,7 @@ abstract class AuthRecoveryPasswordControllerContract {
 
   StreamValue<bool> get loading;
   StreamValue<String?> get error;
+  List<TextEditingController> get tokenControllers;
 
   bool validate();
   Future<void> submit();

@@ -1,17 +1,21 @@
+import 'package:belluga_now/domain/controllers/recovery_password_token_controller_contract.dart';
 import 'package:flutter/material.dart';
+import 'package:get_it/get_it.dart';
 
 class RecoveryPasswordTokenWidget extends StatelessWidget {
-  final List<TextEditingController> controllers;
-  final void Function(String token) onSubmit;
-
   const RecoveryPasswordTokenWidget({
     super.key,
-    required this.controllers,
     required this.onSubmit,
   });
 
+  final void Function(String token) onSubmit;
+
   @override
   Widget build(BuildContext context) {
+    final controller =
+        GetIt.I.get<AuthRecoveryPasswordControllerContract>();
+    final tokenControllers = controller.tokenControllers;
+
     return Column(
       children: [
         const Text(
@@ -22,11 +26,12 @@ class RecoveryPasswordTokenWidget extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: List.generate(6, (index) {
+            final textController = tokenControllers[index];
             return Container(
               width: 40,
               margin: const EdgeInsets.symmetric(horizontal: 4),
               child: TextField(
-                controller: controllers[index],
+                controller: textController,
                 textAlign: TextAlign.center,
                 keyboardType: TextInputType.number,
                 maxLength: 1,
@@ -40,7 +45,8 @@ class RecoveryPasswordTokenWidget extends StatelessWidget {
                   }
 
                   if (index == 5 && value.isNotEmpty) {
-                    final token = controllers.map((c) => c.text).join();
+                    final token =
+                        tokenControllers.map((c) => c.text).join();
                     onSubmit(token);
                   }
                 },

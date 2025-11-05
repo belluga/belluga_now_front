@@ -25,6 +25,10 @@ class AuthRecoveryPasswordController
   @override
   final error = StreamValue<String>(defaultValue: '');
 
+  @override
+  final List<TextEditingController> tokenControllers =
+      List<TextEditingController>.generate(6, (_) => TextEditingController());
+
   final _authRepository = GetIt.I<AuthRepositoryContract>();
 
   String? codigoEnviado;
@@ -60,5 +64,8 @@ class AuthRecoveryPasswordController
     emailController.dispose();
     loading.dispose();
     error.dispose();
+    for (final controller in tokenControllers) {
+      controller.dispose();
+    }
   }
 }
