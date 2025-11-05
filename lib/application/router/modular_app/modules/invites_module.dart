@@ -14,8 +14,10 @@ class InvitesModule extends ModuleContract {
       () => InvitesRepository(),
     );
 
-    registerFactory<InviteFlowController>(() => InviteFlowController());
-    registerFactory<InviteShareScreenController>(
+    registerLazySingleton<InviteFlowController>(
+      () => InviteFlowController(),
+    );
+    registerLazySingleton<InviteShareScreenController>(
       () => InviteShareScreenController(),
     );
   }

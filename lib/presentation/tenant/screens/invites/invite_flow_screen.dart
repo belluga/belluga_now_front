@@ -77,6 +77,7 @@ class _InviteFlowScreenState extends State<InviteFlowScreen> {
                         ),
                         const SizedBox(height: 16),
                         _ActionBar(
+                          controller: _controller,
                           onConfirmPresence: _handleConfirmPresence,
                           onInviteFriends: _handleInviteFriendsTap,
                           isConfirmingPresence: _isConfirmingPresence,
@@ -297,14 +298,14 @@ class _InviteDeckState extends State<_InviteDeck> {
 }
 
 class _ActionBar extends StatelessWidget {
-  _ActionBar({
+  const _ActionBar({
+    required this.controller,
     required this.onConfirmPresence,
     required this.onInviteFriends,
     required this.isConfirmingPresence,
   });
 
-  final _controller = GetIt.I.get<InviteFlowController>();
-
+  final InviteFlowController controller;
   final VoidCallback onConfirmPresence;
   final VoidCallback onInviteFriends;
   final bool isConfirmingPresence;
@@ -325,7 +326,7 @@ class _ActionBar extends StatelessWidget {
           children: [
             Expanded(
               child: OutlinedButton.icon(
-                onPressed: () => _controller.respondToInvite(InviteDecision.declined),
+                onPressed: () => controller.respondToInvite(InviteDecision.declined),
                 icon: Icon(buttonIcon),
                 label: Text("Recusar"),
                 style: FilledButton.styleFrom(
@@ -339,7 +340,7 @@ class _ActionBar extends StatelessWidget {
             SizedBox(width: 8),
             Expanded(
               child: FilledButton.icon(
-                onPressed: () => _controller.respondToInvite(InviteDecision.accepted),
+                onPressed: () => controller.respondToInvite(InviteDecision.accepted),
                 icon: Icon(buttonIcon),
                 label: Text(buttonLabel),
                 style: FilledButton.styleFrom(
@@ -354,7 +355,7 @@ class _ActionBar extends StatelessWidget {
         ),
         const SizedBox(height: 12),
         TextButton.icon(
-          onPressed: () => _controller.respondToInvite(InviteDecision.maybe),
+          onPressed: () => controller.respondToInvite(InviteDecision.maybe),
           icon: const Icon(Icons.group_add_outlined),
           label: const Text('Quem sabe...'),
         ),

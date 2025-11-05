@@ -83,7 +83,6 @@ class InviteFlowController {
 
   Future<void> dispose() async {
     decisionsStreamValue.dispose();
-    pendingInvitesStreamValue.dispose();
     swiperController.dispose();
   }
 }

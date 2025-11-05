@@ -41,15 +41,15 @@ class MapModule extends ModuleContract {
       ),
     );
 
-    registerFactory<CityMapController>(
+    registerLazySingleton<CityMapController>(
       () => CityMapController(),
     );
 
-    registerFactory<FabMenuController>(() => FabMenuController());
-    registerFactory<RegionPanelController>(() => RegionPanelController());
-    registerFactory<EventsPanelController>(() => EventsPanelController());
-    registerFactory<MusicPanelController>(() => MusicPanelController());
-    registerFactory<CuisinePanelController>(() => CuisinePanelController());
+    registerLazySingleton<FabMenuController>(() => FabMenuController());
+    registerLazySingleton<RegionPanelController>(() => RegionPanelController());
+    registerLazySingleton<EventsPanelController>(() => EventsPanelController());
+    registerLazySingleton<MusicPanelController>(() => MusicPanelController());
+    registerLazySingleton<CuisinePanelController>(() => CuisinePanelController());
   }
 
   @override
