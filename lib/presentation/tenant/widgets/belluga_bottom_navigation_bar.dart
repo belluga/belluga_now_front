@@ -88,11 +88,7 @@ class BellugaBottomNavigationBar extends StatelessWidget {
         context.router.replaceAll([const ExperiencesRoute()]);
         break;
       default:
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Funcionalidade ainda nao disponivel.'),
-          ),
-        );
+        context.router.replaceAll([const TenantMenuRoute()]);
     }
   }
 }

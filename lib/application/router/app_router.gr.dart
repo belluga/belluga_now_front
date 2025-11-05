@@ -42,6 +42,8 @@ import 'package:belluga_now/presentation/tenant/screens/mercado/models/mercado_p
     as _i25;
 import 'package:belluga_now/presentation/tenant/screens/mercado/producer_store_route.dart'
     as _i14;
+import 'package:belluga_now/presentation/tenant/screens/menu/tenant_menu_route.dart'
+    as _i26;
 import 'package:belluga_now/presentation/tenant/screens/profile/profile_route.dart'
     as _i15;
 import 'package:belluga_now/presentation/tenant/screens/schedule/event_detail_route.dart'
@@ -543,6 +545,22 @@ class TenantHomeRoute extends _i20.PageRouteInfo<void> {
     name,
     builder: (data) {
       return const _i18.TenantHomeRoutePage();
+    },
+  );
+}
+
+/// generated route for
+/// [_i26.TenantMenuRoutePage]
+class TenantMenuRoute extends _i20.PageRouteInfo<void> {
+  const TenantMenuRoute({List<_i20.PageRouteInfo>? children})
+      : super(TenantMenuRoute.name, initialChildren: children);
+
+  static const String name = 'TenantMenuRoute';
+
+  static _i20.PageInfo page = _i20.PageInfo(
+    name,
+    builder: (data) {
+      return const _i26.TenantMenuRoutePage();
     },
   );
 }

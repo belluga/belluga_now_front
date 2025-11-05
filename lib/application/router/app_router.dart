@@ -72,6 +72,10 @@ class AppRouter extends AppRouterContract {
           page: ProducerStoreRoute.page,
         ),
         AutoRoute(
+          path: '/menu',
+          page: TenantMenuRoute.page,
+        ),
+        AutoRoute(
           path: '/experiencias',
           page: ExperiencesRoute.page,
         ),
