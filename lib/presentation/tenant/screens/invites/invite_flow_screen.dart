@@ -79,9 +79,7 @@ class _InviteFlowScreenState extends State<InviteFlowScreen> {
                               _controller.confirmingPresenceStreamValue,
                           builder: (_, isConfirmingPresence) {
                             return _ActionBar(
-                              controller: _controller,
                               onConfirmPresence: _handleConfirmPresence,
-                              onInviteFriends: _handleInviteFriendsTap,
                               isConfirmingPresence: isConfirmingPresence,
                             );
                           },
@@ -120,10 +118,6 @@ class _InviteFlowScreenState extends State<InviteFlowScreen> {
     _triggerSwipe(CardStackSwiperDirection.left);
   }
 
-  void _handleInviteFriendsTap() {
-    _handleConfirmPresence();
-  }
-
   Future<bool> _onCardSwiped(
     int previousIndex,
     int? currentIndex,
@@ -134,7 +128,8 @@ class _InviteFlowScreenState extends State<InviteFlowScreen> {
       return false;
     }
 
-    final acceptedInvite = _controller.respondToInvite(decision);
+    final result = await _controller.applyDecision(decision);
+    final acceptedInvite = result;
 
     if (!mounted) {
       return true;
@@ -142,11 +137,9 @@ class _InviteFlowScreenState extends State<InviteFlowScreen> {
 
     switch (decision) {
       case InviteDecision.declined:
-        _controller.resetConfirmPresence();
         _showSnack('Convite marcado como nao vou desta vez.');
         break;
       case InviteDecision.maybe:
-        _controller.resetConfirmPresence();
         _showSnack('Convite salvo como pensar depois.');
         break;
       case InviteDecision.accepted:
@@ -160,8 +153,8 @@ class _InviteFlowScreenState extends State<InviteFlowScreen> {
           );
           _controller.resetConfirmPresence();
         } else {
-          _controller.resetConfirmPresence();
           _showSnack('Convite confirmado!');
+          _controller.resetConfirmPresence();
         }
         break;
     }
@@ -282,15 +275,11 @@ class _InviteDeck extends StatelessWidget {
 
 class _ActionBar extends StatelessWidget {
   const _ActionBar({
-    required this.controller,
     required this.onConfirmPresence,
-    required this.onInviteFriends,
     required this.isConfirmingPresence,
   });
 
-  final InviteFlowController controller;
   final VoidCallback onConfirmPresence;
-  final VoidCallback onInviteFriends;
   final bool isConfirmingPresence;
 
   @override
@@ -309,7 +298,9 @@ class _ActionBar extends StatelessWidget {
           children: [
             Expanded(
               child: OutlinedButton.icon(
-                onPressed: () => controller.respondToInvite(InviteDecision.declined),
+                onPressed: () => GetIt.I
+                    .get<InviteFlowController>()
+                    .applyDecision(InviteDecision.declined),
                 icon: Icon(buttonIcon),
                 label: Text("Recusar"),
                 style: FilledButton.styleFrom(
@@ -323,7 +314,7 @@ class _ActionBar extends StatelessWidget {
             SizedBox(width: 8),
             Expanded(
               child: FilledButton.icon(
-                onPressed: () => controller.respondToInvite(InviteDecision.accepted),
+                onPressed: onConfirmPresence,
                 icon: Icon(buttonIcon),
                 label: Text(buttonLabel),
                 style: FilledButton.styleFrom(
@@ -338,7 +329,9 @@ class _ActionBar extends StatelessWidget {
         ),
         const SizedBox(height: 12),
         TextButton.icon(
-          onPressed: () => controller.respondToInvite(InviteDecision.maybe),
+          onPressed: () => GetIt.I
+              .get<InviteFlowController>()
+              .applyDecision(InviteDecision.maybe),
           icon: const Icon(Icons.group_add_outlined),
           label: const Text('Quem sabe...'),
         ),

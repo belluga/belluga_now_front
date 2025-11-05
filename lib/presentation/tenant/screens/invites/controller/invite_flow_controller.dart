@@ -61,7 +61,15 @@ class InviteFlowController {
     _ensureTopIndexBounds(_pendingInvites.length);
   }
 
-  InviteModel? respondToInvite(InviteDecision decision) {
+  Future<InviteModel?> applyDecision(InviteDecision decision) async {
+    final invite = await _finalizeDecision(decision);
+    if (decision != InviteDecision.accepted) {
+      resetConfirmPresence();
+    }
+    return invite;
+  }
+
+  Future<InviteModel?> _finalizeDecision(InviteDecision decision) async {
     final _pendingInvites = pendingInvitesStreamValue.value;
 
     final current = _pendingInvites.isEmpty ? null : _pendingInvites.first;
@@ -77,7 +85,6 @@ class InviteFlowController {
       return current;
     }
 
-    confirmingPresenceStreamValue.addValue(false);
     return null;
   }
 
