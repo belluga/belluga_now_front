@@ -1,5 +1,6 @@
 class HomeEventDTO {
   const HomeEventDTO({
+    this.id,
     required this.title,
     required this.imageUrl,
     required this.startDateTime,
@@ -7,6 +8,7 @@ class HomeEventDTO {
     required this.artist,
   });
 
+  final String? id;
   final String title;
   final String imageUrl;
   final DateTime startDateTime;

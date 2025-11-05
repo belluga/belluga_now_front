@@ -766,7 +766,7 @@ class _CityMapScreenState extends State<CityMapScreen> {
         .toList(growable: false);
     final startDate = event.dateTimeStart.value ?? DateTime.now();
     final venue = event.location.value;
-    final slug = event.title.value.toLowerCase().replaceAll(' ', '-');
+    final slug = _slugify(event.title.value);
 
     return EventCardData(
       slug: slug,
@@ -802,6 +802,12 @@ class _CityMapScreenState extends State<CityMapScreen> {
       case null:
         break;
     }
+  }
+
+  String _slugify(String value) {
+    final slug = value.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), '-');
+    final cleaned = slug.replaceAll(RegExp(r'-{2,}'), '-');
+    return cleaned.replaceAll(RegExp(r'^-+|-+$'), '');
   }
 
   Future<void> _onMainFilterTap(MainFilterOption option) async {

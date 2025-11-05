@@ -48,6 +48,7 @@ class MockHomeBackend extends HomeBackendContract {
       ],
       featuredEvents: [
         HomeEventDTO(
+          id: 'event-day0-morning-flow',
           title: 'Festival de Verao',
           imageUrl:
               'https://images.unsplash.com/photo-1524368535928-5b5e00ddc76b?w=800',
@@ -56,6 +57,7 @@ class MockHomeBackend extends HomeBackendContract {
           artist: 'DJ Mare Alta',
         ),
         HomeEventDTO(
+          id: 'event-day0-sunset-acoustic',
           title: 'Luau Exclusivo',
           imageUrl:
               'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=800',
@@ -64,6 +66,7 @@ class MockHomeBackend extends HomeBackendContract {
           artist: 'Banda Eclipse',
         ),
         HomeEventDTO(
+          id: 'event-day0-electro-sunset',
           title: 'Sunset Experience',
           imageUrl:
               'https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?w=800',
@@ -74,6 +77,7 @@ class MockHomeBackend extends HomeBackendContract {
       ],
       upcomingEvents: [
         HomeEventDTO(
+          id: 'event-day1-coffee-lab',
           title: 'Circuito Gastronomico',
           imageUrl:
               'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=800',
@@ -82,6 +86,7 @@ class MockHomeBackend extends HomeBackendContract {
           artist: 'Chef Paula Figueiredo',
         ),
         HomeEventDTO(
+          id: 'event-day1-coastal-run',
           title: 'Passeio de Escuna',
           imageUrl:
               'https://images.unsplash.com/photo-1493558103817-58b2924bce98?w=800',
@@ -90,6 +95,7 @@ class MockHomeBackend extends HomeBackendContract {
           artist: 'Guia Clara Nunes',
         ),
         HomeEventDTO(
+          id: 'event-day1-artisan-stage',
           title: 'Tour Historico a Pe',
           imageUrl:
               'https://images.unsplash.com/photo-1534447677768-be436bb09401?w=800',

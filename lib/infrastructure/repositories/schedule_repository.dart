@@ -43,13 +43,26 @@ class ScheduleRepository extends ScheduleRepositoryContract {
 
   @override
   Future<EventModel?> getEventBySlug(String slug) async {
-    final events = await _loadEvents();
-    try {
-      final dto = events.firstWhere((event) => event.id == slug);
-      return EventModel.fromDTO(dto);
-    } catch (_) {
-      return null;
+    final normalizedSlug = _normalizeSlug(slug);
+    final events = await getAllEvents();
+    for (final event in events) {
+      final idValue = event.id.value;
+      if (idValue != null && idValue == slug) {
+        return event;
+      }
+
+      final titleSlug = _normalizeSlug(event.title.value);
+      if (titleSlug == normalizedSlug) {
+        return event;
+      }
     }
+    return null;
+  }
+
+  String _normalizeSlug(String value) {
+    final slug = value.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), '-');
+    final cleaned = slug.replaceAll(RegExp(r'-{2,}'), '-');
+    return cleaned.replaceAll(RegExp(r'^-+|-+$'), '');
   }
 
   @override

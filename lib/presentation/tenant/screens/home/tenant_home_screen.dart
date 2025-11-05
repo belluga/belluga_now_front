@@ -153,7 +153,7 @@ class _TenantHomeScreenState extends State<TenantHomeScreen> {
   }
 
   EventCardData _mapEvent(HomeEvent event) {
-    final slug = event.title.toLowerCase().replaceAll(' ', '-');
+    final slug = event.slug;
     return EventCardData(
       slug: slug,
       title: event.title,
@@ -180,4 +180,5 @@ class _TenantHomeScreenState extends State<TenantHomeScreen> {
   void _openEventDetailSlug(String slug) {
     context.router.push(EventDetailRoute(slug: slug));
   }
+
 }
