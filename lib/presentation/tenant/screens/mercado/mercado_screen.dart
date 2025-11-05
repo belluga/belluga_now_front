@@ -15,27 +15,34 @@ class MercadoScreen extends StatefulWidget {
 }
 
 class _MercadoScreenState extends State<MercadoScreen> {
-  late final MercadoController _controller = GetIt.I.get<MercadoController>();
-  final TextEditingController _searchController = TextEditingController();
+  late final _controller = GetIt.I.get<MercadoController>();
+  final _searchController = TextEditingController();
+  late final VoidCallback _searchListener;
 
   @override
   void initState() {
     super.initState();
     _controller.init();
-    _searchController.addListener(_onSearchChanged);
+    _searchListener = () {
+      _controller.setSearchTerm(_searchController.text);
+    };
+    _searchController.addListener(_searchListener);
   }
 
   @override
   void dispose() {
-    _searchController.removeListener(_onSearchChanged);
+    _searchController.removeListener(_searchListener);
     _searchController.dispose();
     _controller.onDispose();
     super.dispose();
   }
 
-  void _onSearchChanged() {
-    _controller.setSearchTerm(_searchController.text);
-    setState(() {});
+  void _handleClearSearch() {
+    if (_searchController.text.isEmpty) {
+      return;
+    }
+    _searchController.clear();
+    _controller.clearSearchTerm();
   }
 
   @override
@@ -57,15 +64,20 @@ class _MercadoScreenState extends State<MercadoScreen> {
                 hintText: 'Buscar por produtor ou categoria...',
                 leading: const Icon(Icons.search),
                 trailing: [
-                  if (_searchController.text.isNotEmpty)
-                    IconButton(
-                      icon: const Icon(Icons.close),
-                      tooltip: 'Limpar pesquisa',
-                      onPressed: () {
-                        _searchController.clear();
-                        setState(() {});
-                      },
-                    ),
+                  StreamValueBuilder<String?>(
+                    streamValue: _controller.searchTermStreamValue,
+                    onNullWidget: const SizedBox.shrink(),
+                    builder: (context, term) {
+                      if (term == null || term.isEmpty) {
+                        return const SizedBox.shrink();
+                      }
+                      return IconButton(
+                        icon: const Icon(Icons.close),
+                        tooltip: 'Limpar pesquisa',
+                        onPressed: _handleClearSearch,
+                      );
+                    },
+                  ),
                 ],
               ),
             ),

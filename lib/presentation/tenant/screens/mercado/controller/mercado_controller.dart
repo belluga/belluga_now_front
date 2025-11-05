@@ -30,9 +30,21 @@ class MercadoController implements Disposable {
 
   void setSearchTerm(String value) {
     final normalized = value.trim();
-    searchTermStreamValue.addValue(
-      normalized.isEmpty ? null : normalized.toLowerCase(),
-    );
+    final nextValue = normalized.isEmpty ? null : normalized.toLowerCase();
+
+    if (searchTermStreamValue.value == nextValue) {
+      return;
+    }
+
+    searchTermStreamValue.addValue(nextValue);
+    _applyFilters();
+  }
+
+  void clearSearchTerm() {
+    if (searchTermStreamValue.value == null) {
+      return;
+    }
+    searchTermStreamValue.addValue(null);
     _applyFilters();
   }
 
