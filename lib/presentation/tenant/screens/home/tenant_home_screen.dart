@@ -9,7 +9,7 @@ import 'package:belluga_now/presentation/tenant/widgets/belluga_bottom_navigatio
 import 'package:belluga_now/presentation/tenant/widgets/carousel_event_card.dart';
 import 'package:belluga_now/presentation/tenant/widgets/favorites_strip.dart';
 import 'package:belluga_now/presentation/tenant/widgets/floating_action_button_custom.dart';
-import 'package:belluga_now/presentation/tenant/widgets/invites_banner.dart';
+import 'package:belluga_now/presentation/tenant/screens/home/widgets/invites_banner_builder.dart';
 import 'package:belluga_now/presentation/tenant/widgets/section_header.dart';
 import 'package:belluga_now/presentation/tenant/widgets/upcoming_event_card.dart';
 import 'package:belluga_now/presentation/view_models/event_card_data.dart';
@@ -100,8 +100,10 @@ class _TenantHomeScreenState extends State<TenantHomeScreen> {
             pinFirst: true,
           ),
           const SizedBox(height: 8),
-          InvitesBanner(onPressed: _openInviteFlow),
-          const SizedBox(height: 16),
+          InvitesBannerBuilder(
+            onPressed: _openInviteFlow,
+            margin: EdgeInsets.only(bottom: 16),
+          ),
           SectionHeader(
             title: 'Seus Eventos',
             onPressed: () {},

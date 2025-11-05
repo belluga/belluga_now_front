@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:auto_route/auto_route.dart';
 import 'package:card_stack_swiper/card_stack_swiper.dart';
-import 'package:belluga_now/application/router/manual_route_stubs.dart';
+import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/domain/invites/invite_decision.dart';
 import 'package:belluga_now/domain/invites/invite_model.dart';
 import 'package:belluga_now/presentation/tenant/screens/invites/controller/invite_flow_controller.dart';
@@ -19,10 +19,9 @@ class InviteFlowScreen extends StatefulWidget {
 }
 
 class _InviteFlowScreenState extends State<InviteFlowScreen> {
-  late final InviteFlowController _controller =
-      GetIt.I.get<InviteFlowController>();
-  final CardStackSwiperController _swiperController =
-      CardStackSwiperController();
+  final _controller = GetIt.I.get<InviteFlowController>();
+
+  bool _isConfirmingPresence = false;
 
   @override
   void initState() {
@@ -31,16 +30,7 @@ class _InviteFlowScreenState extends State<InviteFlowScreen> {
   }
 
   @override
-  void dispose() {
-    unawaited(_swiperController.dispose());
-    _controller.onDispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
     return Scaffold(
       appBar: AppBar(
         title: const Text('Convites'),
@@ -61,8 +51,9 @@ class _InviteFlowScreenState extends State<InviteFlowScreen> {
               Expanded(
                 child: StreamValueBuilder<List<InviteModel>>(
                   streamValue: _controller.pendingInvitesStreamValue,
+                  onNullWidget: CircularProgressIndicator(),
                   builder: (context, invites) {
-                    final data = invites ?? const <InviteModel>[];
+                    final data = invites;
                     if (data.isEmpty) {
                       return _EmptyInviteState(
                         onBackToHome: () => context.router.maybePop(),
@@ -79,19 +70,16 @@ class _InviteFlowScreenState extends State<InviteFlowScreen> {
                                 data.map((invite) => invite.id).join('|'),
                               ),
                               invites: data,
-                              swiperController: _swiperController,
+                              swiperController: _controller.swiperController,
                               onSwipe: _onCardSwiped,
                             ),
                           ),
                         ),
                         const SizedBox(height: 16),
                         _ActionBar(
-                          onDecline: () =>
-                              _triggerSwipe(CardStackSwiperDirection.right),
-                          onMaybe: () =>
-                              _triggerSwipe(CardStackSwiperDirection.top),
-                          onAccept: () =>
-                              _triggerSwipe(CardStackSwiperDirection.left),
+                          onConfirmPresence: _handleConfirmPresence,
+                          onInviteFriends: _handleInviteFriendsTap,
+                          isConfirmingPresence: _isConfirmingPresence,
                         ),
                       ],
                     );
@@ -106,11 +94,32 @@ class _InviteFlowScreenState extends State<InviteFlowScreen> {
   }
 
   void _triggerSwipe(CardStackSwiperDirection direction) {
-    if (_controller.pendingInvites.isEmpty) {
+    if (!_controller.hasPendingInvites) {
       _showSnack('Nenhum convite pendente.');
       return;
     }
-    _swiperController.swipe(direction);
+    _controller.swiperController.swipe(direction);
+  }
+
+  void _handleConfirmPresence() {
+    if (_isConfirmingPresence) {
+      return;
+    }
+
+    final invite = _controller.currentInvite;
+    if (invite == null) {
+      _showSnack('Nenhum convite pendente.');
+      return;
+    }
+
+    setState(() {
+      _isConfirmingPresence = true;
+    });
+    _triggerSwipe(CardStackSwiperDirection.left);
+  }
+
+  void _handleInviteFriendsTap() {
+    _handleConfirmPresence();
   }
 
   Future<bool> _onCardSwiped(
@@ -131,25 +140,30 @@ class _InviteFlowScreenState extends State<InviteFlowScreen> {
 
     switch (decision) {
       case InviteDecision.declined:
+        setState(() {
+          _isConfirmingPresence = false;
+        });
         _showSnack('Convite marcado como nao vou desta vez.');
         break;
       case InviteDecision.maybe:
+        setState(() {
+          _isConfirmingPresence = false;
+        });
         _showSnack('Convite salvo como pensar depois.');
         break;
       case InviteDecision.accepted:
         if (acceptedInvite != null) {
-          Future.microtask(() {
-            if (!mounted) {
-              return;
-            }
-            context.router.push(
-              InviteShareRoute(
-                invite: acceptedInvite,
-                friends: _controller.friendSuggestions,
-              ),
-            );
-          });
+          final inviteToShare = acceptedInvite;
+
+          context.router.push(
+            InviteShareRoute(
+              invite: inviteToShare,
+            ),
+          );
         } else {
+          setState(() {
+            _isConfirmingPresence = false;
+          });
           _showSnack('Convite confirmado!');
         }
         break;
@@ -283,43 +297,51 @@ class _InviteDeckState extends State<_InviteDeck> {
 }
 
 class _ActionBar extends StatelessWidget {
-  const _ActionBar({
-    required this.onDecline,
-    required this.onMaybe,
-    required this.onAccept,
+  _ActionBar({
+    required this.onConfirmPresence,
+    required this.onInviteFriends,
+    required this.isConfirmingPresence,
   });
 
-  final VoidCallback onDecline;
-  final VoidCallback onMaybe;
-  final VoidCallback onAccept;
+  final _controller = GetIt.I.get<InviteFlowController>();
+
+  final VoidCallback onConfirmPresence;
+  final VoidCallback onInviteFriends;
+  final bool isConfirmingPresence;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final buttonLabel =
+        isConfirmingPresence ? 'Bora! Agora é chamar os amigos...' : 'Bora?';
+    final buttonIcon = isConfirmingPresence
+        ? Icons.check_circle_outline
+        : Icons.rocket_launch_outlined;
+
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Row(
           children: [
             Expanded(
               child: OutlinedButton.icon(
-                onPressed: onDecline,
-                style: OutlinedButton.styleFrom(
+                onPressed: () => _controller.respondToInvite(InviteDecision.declined),
+                icon: Icon(buttonIcon),
+                label: Text("Recusar"),
+                style: FilledButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 16),
-                  side: BorderSide(
-                    color: theme.colorScheme.error,
+                  textStyle: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
                   ),
-                  foregroundColor: Theme.of(context).colorScheme.error,
                 ),
-                icon: const Icon(Icons.close),
-                label: const Text('Recusar'),
               ),
             ),
-            const SizedBox(width: 12),
+            SizedBox(width: 8),
             Expanded(
               child: FilledButton.icon(
-                onPressed: onAccept,
-                icon: const Icon(Icons.rocket_launch_outlined),
-                label: const Text('Bora!'),
+                onPressed: () => _controller.respondToInvite(InviteDecision.accepted),
+                icon: Icon(buttonIcon),
+                label: Text(buttonLabel),
                 style: FilledButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   textStyle: theme.textTheme.titleMedium?.copyWith(
@@ -330,10 +352,11 @@ class _ActionBar extends StatelessWidget {
             ),
           ],
         ),
-        const SizedBox(height: 8),
-        TextButton(
-          onPressed: onMaybe,
-          child: const Text('Talvez'),
+        const SizedBox(height: 12),
+        TextButton.icon(
+          onPressed: () => _controller.respondToInvite(InviteDecision.maybe),
+          icon: const Icon(Icons.group_add_outlined),
+          label: const Text('Quem sabe...'),
         ),
       ],
     );

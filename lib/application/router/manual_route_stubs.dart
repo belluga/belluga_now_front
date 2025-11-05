@@ -11,9 +11,9 @@ import 'package:belluga_now/presentation/tenant/screens/mercado/models/mercado_p
 import 'package:belluga_now/presentation/tenant/screens/mercado/producer_store_route.dart';
 import 'package:belluga_now/presentation/tenant/screens/experiences/experiences_route.dart';
 import 'package:belluga_now/presentation/tenant/screens/experiences/experience_detail_route.dart';
-import 'package:belluga_now/presentation/tenant/screens/schedule/event_detail_route.dart';
 import 'package:belluga_now/presentation/tenant/screens/invites/invite_flow_route.dart';
 import 'package:belluga_now/presentation/tenant/screens/invites/invite_share_route.dart';
+import 'package:belluga_now/presentation/tenant/screens/schedule/screens/event_detail_screen.dart';
 
 class CityMapRoute extends PageRouteInfo<void> {
   const CityMapRoute({List<PageRouteInfo>? children})
@@ -146,7 +146,7 @@ class EventDetailRoute extends PageRouteInfo<EventDetailRouteArgs> {
     name,
     builder: (data) {
       final args = data.argsAs<EventDetailRouteArgs>();
-      return EventDetailRoutePage(event: args.event);
+      return EventDetailScreen(event: args.event);
     },
   );
 }
@@ -191,7 +191,6 @@ class InviteShareRoute extends PageRouteInfo<InviteShareRouteArgs> {
       final args = data.argsAs<InviteShareRouteArgs>();
       return InviteShareRoutePage(
         invite: args.invite,
-        friends: args.friends,
       );
     },
   );

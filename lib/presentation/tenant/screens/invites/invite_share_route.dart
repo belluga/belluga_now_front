@@ -1,6 +1,5 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/modular_app/modules/invites_module.dart';
-import 'package:belluga_now/domain/invites/invite_friend_model.dart';
 import 'package:belluga_now/domain/invites/invite_model.dart';
 import 'package:belluga_now/presentation/tenant/screens/invites/invite_share_screen.dart';
 import 'package:flutter/material.dart';
@@ -11,18 +10,15 @@ class InviteShareRoutePage extends StatelessWidget {
   const InviteShareRoutePage({
     super.key,
     required this.invite,
-    required this.friends,
   });
 
   final InviteModel invite;
-  final List<InviteFriendModel> friends;
 
   @override
   Widget build(BuildContext context) {
     return ModuleScope<InvitesModule>(
       child: InviteShareScreen(
         invite: invite,
-        friends: friends,
       ),
     );
   }

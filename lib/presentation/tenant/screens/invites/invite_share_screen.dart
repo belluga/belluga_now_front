@@ -1,30 +1,37 @@
 import 'package:belluga_now/domain/invites/invite_friend_model.dart';
 import 'package:belluga_now/domain/invites/invite_model.dart';
+import 'package:belluga_now/presentation/tenant/screens/invites/controller/invite_share_screen_controller.dart';
 import 'package:flutter/material.dart';
+import 'package:get_it/get_it.dart';
 import 'package:intl/intl.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:stream_value/main.dart';
 
 class InviteShareScreen extends StatefulWidget {
   const InviteShareScreen({
     super.key,
     required this.invite,
-    required this.friends,
   });
 
   final InviteModel invite;
-  final List<InviteFriendModel> friends;
 
   @override
   State<InviteShareScreen> createState() => _InviteShareScreenState();
 }
 
 class _InviteShareScreenState extends State<InviteShareScreen> {
-  late final Set<String> _selectedFriendIds =
-      widget.friends.take(3).map((friend) => friend.id).toSet();
+
+  final _controller = GetIt.I.get<InviteShareScreenController>();
+
+  @override
+  void initState() {
+    super.initState();
+
+    _controller.init();
+  }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final dateFormatter = DateFormat('EEE, d MMM - HH:mm');
     final formattedDate =
         dateFormatter.format(widget.invite.eventDateTime.toLocal());
@@ -41,27 +48,45 @@ class _InviteShareScreenState extends State<InviteShareScreen> {
               formattedDate: formattedDate,
             ),
             Expanded(
-              child: ListView.separated(
-                padding: const EdgeInsets.fromLTRB(20, 20, 20, 120),
-                itemBuilder: (context, index) {
-                  final friend = widget.friends[index];
-                  final isSelected = _selectedFriendIds.contains(friend.id);
-                  return ListTile(
-                    onTap: () => _toggle(friend.id),
-                    leading: CircleAvatar(
-                      backgroundImage: NetworkImage(friend.avatarUrl),
-                    ),
-                    title: Text(friend.name),
-                    subtitle: Text(friend.matchLabel),
-                    trailing: Checkbox(
-                      value: isSelected,
-                      onChanged: (_) => _toggle(friend.id),
-                    ),
-                  );
-                },
-                separatorBuilder: (_, __) => const Divider(),
-                itemCount: widget.friends.length,
-              ),
+              child: StreamValueBuilder<List<InviteFriendModel>>(
+                  streamValue: _controller.friendsSuggestionsStreamValue,
+                  onNullWidget: const Center(
+                    child: CircularProgressIndicator(),
+                  ),
+                  builder: (context, friends) {
+                    return StreamValueBuilder<List<InviteFriendModel>>(
+                        streamValue:
+                            _controller.selectedFriendsSuggestionsStreamValue,
+                        onNullWidget: const Center(
+                          child: CircularProgressIndicator(),
+                        ),
+                        builder: (context, selectedFriends) {
+                          return ListView.separated(
+                            padding: const EdgeInsets.fromLTRB(20, 20, 20, 120),
+                            itemBuilder: (context, index) {
+                              final friend = friends[index];
+                              final isSelected =
+                                  selectedFriends.contains(friend);
+                              return ListTile(
+                                onTap: () => _controller.toggleFriend(friend),
+                                leading: CircleAvatar(
+                                  backgroundImage:
+                                      NetworkImage(friend.avatarUrl),
+                                ),
+                                title: Text(friend.name),
+                                subtitle: Text(friend.matchLabel),
+                                trailing: Checkbox(
+                                  value: isSelected,
+                                  onChanged: (_) =>
+                                      _controller.toggleFriend(friend),
+                                ),
+                              );
+                            },
+                            separatorBuilder: (_, __) => const Divider(),
+                            itemCount: friends.length,
+                          );
+                        });
+                  }),
             ),
           ],
         ),
@@ -76,11 +101,16 @@ class _InviteShareScreenState extends State<InviteShareScreen> {
               child: FilledButton.icon(
                 onPressed: _onSendInternalInvites,
                 icon: const Icon(Icons.people_alt_outlined),
-                label: Text(
-                  _selectedFriendIds.isEmpty
-                      ? 'Enviar convites internos'
-                      : 'Enviar convites internos (${_selectedFriendIds.length})',
-                ),
+                label: StreamValueBuilder<List<InviteFriendModel>>(
+                    streamValue:
+                        _controller.selectedFriendsSuggestionsStreamValue,
+                    builder: (context, selectedFriends) {
+                      return Text(
+                        selectedFriends.isEmpty
+                            ? 'Convidar amigos'
+                            : 'Convidar (${selectedFriends.length}) amigos!',
+                      );
+                    }),
               ),
             ),
             const SizedBox(height: 12),
@@ -88,8 +118,8 @@ class _InviteShareScreenState extends State<InviteShareScreen> {
               width: double.infinity,
               child: OutlinedButton.icon(
                 onPressed: _shareExternally,
-                icon: const Icon(Icons.ios_share),
-                label: const Text('Compartilhar convite'),
+                icon: const Icon(Icons.group_add_outlined),
+                label: const Text('Convidar amigos'),
               ),
             ),
             const SizedBox(height: 8),
@@ -107,18 +137,9 @@ class _InviteShareScreenState extends State<InviteShareScreen> {
     );
   }
 
-  void _toggle(String friendId) {
-    setState(() {
-      if (_selectedFriendIds.contains(friendId)) {
-        _selectedFriendIds.remove(friendId);
-      } else {
-        _selectedFriendIds.add(friendId);
-      }
-    });
-  }
-
   void _onSendInternalInvites() {
-    final count = _selectedFriendIds.length;
+    final count =
+        _controller.selectedFriendsSuggestionsStreamValue.value.length;
     final message = count == 0
         ? 'Selecione pelo menos um amigo para enviar o convite.'
         : 'Convite marcado para $count contato(s) dentro do app.';

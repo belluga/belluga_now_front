@@ -1,10 +1,13 @@
+import 'package:auto_route/auto_route.dart';
+import 'package:belluga_now/application/router/app_router.gr.dart';
+import 'package:belluga_now/domain/invites/invite_model.dart';
 import 'package:belluga_now/domain/schedule/event_action_model/event_action_model.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/schedule/event_type_model.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
-class EventDetailScreen extends StatelessWidget {
+class EventDetailScreen extends StatefulWidget {
   const EventDetailScreen({
     super.key,
     required this.event,
@@ -13,16 +16,45 @@ class EventDetailScreen extends StatelessWidget {
   final EventModel event;
 
   @override
+  State<EventDetailScreen> createState() => _EventDetailScreenState();
+
+  static String _formatEventDateRange(
+    DateTime start,
+    DateTime? end,
+  ) {
+    final startLabel =
+        DateFormat('EEE, d MMM • HH:mm', 'pt_BR').format(start.toLocal());
+    if (end == null) {
+      return startLabel;
+    }
+
+    final bool sameDay = DateUtils.isSameDay(start, end);
+    final endLabel =
+        DateFormat(sameDay ? 'HH:mm' : 'EEE, d MMM • HH:mm', 'pt_BR')
+            .format(end.toLocal());
+    return sameDay ? '$startLabel - $endLabel' : '$startLabel\naté $endLabel';
+  }
+
+  static String _stripHtml(String value) {
+    return value.replaceAll(RegExp(r'<[^>]*>'), '').trim();
+  }
+
+  static const String _fallbackImage =
+      'https://images.unsplash.com/photo-1489515217757-5fd1be406fef?w=1200';
+}
+
+class _EventDetailScreenState extends State<EventDetailScreen> {
+  @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final theme = Theme.of(context).textTheme;
-    final DateTime startDate = event.dateTimeStart.value ?? DateTime.now();
-    final DateTime? endDate = event.dateTimeEnd?.value;
+    final DateTime startDate = widget.event.dateTimeStart.value ?? DateTime.now();
+    final DateTime? endDate = widget.event.dateTimeEnd?.value;
     final String coverImage =
-        event.thumb?.thumbUri.value?.toString() ?? _fallbackImage;
+        widget.event.thumb?.thumbUri.value?.toString() ?? EventDetailScreen._fallbackImage;
     final EventActionModel? primaryAction =
-        event.actions.isNotEmpty ? event.actions.first : null;
-    final EventTypeModel type = event.type;
+        widget.event.actions.isNotEmpty ? widget.event.actions.first : null;
+    final EventTypeModel type = widget.event.type;
 
     return Scaffold(
       backgroundColor: colorScheme.surface,
@@ -39,7 +71,7 @@ class EventDetailScreen extends StatelessWidget {
                 bottom: 16,
               ),
               title: Text(
-                event.title.value,
+                widget.event.title.value,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -88,15 +120,15 @@ class EventDetailScreen extends StatelessWidget {
                   _InfoCard(
                     icon: Icons.calendar_today_outlined,
                     label: 'Quando',
-                    value: _formatEventDateRange(startDate, endDate),
+                    value: EventDetailScreen._formatEventDateRange(startDate, endDate),
                   ),
                   const SizedBox(height: 16),
                   _InfoCard(
                     icon: Icons.place_outlined,
                     label: 'Onde',
-                    value: event.location.value,
+                    value: widget.event.location.value,
                   ),
-                  if (event.artists.isNotEmpty) ...[
+                  if (widget.event.artists.isNotEmpty) ...[
                     const SizedBox(height: 24),
                     Text(
                       'Line-up & Convidados',
@@ -108,7 +140,7 @@ class EventDetailScreen extends StatelessWidget {
                     Wrap(
                       spacing: 12,
                       runSpacing: 12,
-                      children: event.artists
+                      children: widget.event.artists
                           .map(
                             (artist) => _ArtistPill(
                               name: artist.name.value,
@@ -127,7 +159,7 @@ class EventDetailScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    _stripHtml(event.content.value ?? ''),
+                    EventDetailScreen._stripHtml(widget.event.content.value ?? ''),
                     style: theme.bodyLarge,
                   ),
                   const SizedBox(height: 24),
@@ -181,36 +213,15 @@ class EventDetailScreen extends StatelessWidget {
             SizedBox(
               width: double.infinity,
               child: OutlinedButton.icon(
-                onPressed: () => _copyLink(context),
-                icon: const Icon(Icons.ios_share),
-                label: const Text('Compartilhar'),
+                onPressed: () => _openInviteFlow(),
+                icon: const Icon(Icons.group_add_outlined),
+                label: const Text('Convidar amigos'),
               ),
             ),
           ],
         ),
       ),
     );
-  }
-
-  static String _formatEventDateRange(
-    DateTime start,
-    DateTime? end,
-  ) {
-    final startLabel =
-        DateFormat('EEE, d MMM • HH:mm', 'pt_BR').format(start.toLocal());
-    if (end == null) {
-      return startLabel;
-    }
-
-    final bool sameDay = DateUtils.isSameDay(start, end);
-    final endLabel =
-        DateFormat(sameDay ? 'HH:mm' : 'EEE, d MMM • HH:mm', 'pt_BR')
-            .format(end.toLocal());
-    return sameDay ? '$startLabel - $endLabel' : '$startLabel\naté $endLabel';
-  }
-
-  static String _stripHtml(String value) {
-    return value.replaceAll(RegExp(r'<[^>]*>'), '').trim();
   }
 
   void _showComingSoon(BuildContext context) {
@@ -229,8 +240,43 @@ class EventDetailScreen extends StatelessWidget {
     );
   }
 
-  static const String _fallbackImage =
-      'https://images.unsplash.com/photo-1489515217757-5fd1be406fef?w=1200';
+  Future<void> _openInviteFlow() async {
+    final invite = _buildInviteFromEvent();
+
+    context.router.push(
+      InviteShareRoute(
+        invite: invite,
+      ),
+    );
+  }
+
+  InviteModel _buildInviteFromEvent() {
+    final eventName = widget.event.title.value;
+    final eventDate = widget.event.dateTimeStart.value ?? DateTime.now();
+    final imageUrl = widget.event.thumb?.thumbUri.value?.toString() ?? EventDetailScreen._fallbackImage;
+    final locationLabel = widget.event.location.value;
+    final hostName = widget.event.artists.isNotEmpty
+        ? widget.event.artists.first.name.value
+        : 'Belluga Now';
+    final description = EventDetailScreen._stripHtml(widget.event.content.value ?? '').trim();
+    final slug = widget.event.type.slug.value;
+    final typeLabel = widget.event.type.name.value;
+    final tags = <String>[
+      if (slug.isNotEmpty) slug,
+      if (typeLabel.isNotEmpty && typeLabel != slug) typeLabel,
+    ];
+
+    return InviteModel(
+      id: widget.event.id.value ?? eventName,
+      eventName: eventName,
+      eventDateTime: eventDate,
+      eventImageUrl: imageUrl,
+      location: locationLabel,
+      hostName: hostName,
+      message: description.isEmpty ? 'Partiu $eventName?' : description,
+      tags: tags.isEmpty ? const ['belluga'] : tags,
+    );
+  }
 }
 
 class _TypeChip extends StatelessWidget {
@@ -240,7 +286,7 @@ class _TypeChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final Color color = type.color.value ?? Theme.of(context).colorScheme.primary;
+    final Color color = type.color.value;
 
     return DecoratedBox(
       decoration: BoxDecoration(
@@ -333,10 +379,10 @@ class _ArtistPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final Color foreground = highlight ? colorScheme.onPrimary : colorScheme.onSurface;
-    final Color background = highlight
-        ? colorScheme.primary
-        : colorScheme.surfaceContainerHighest;
+    final Color foreground =
+        highlight ? colorScheme.onPrimary : colorScheme.onSurface;
+    final Color background =
+        highlight ? colorScheme.primary : colorScheme.surfaceContainerHighest;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),

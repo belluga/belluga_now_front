@@ -5,9 +5,9 @@ import 'package:belluga_now/presentation/tenant/screens/schedule/screens/event_d
 import 'package:flutter/material.dart';
 import 'package:get_it_modular_with_auto_route/get_it_modular_with_auto_route.dart';
 
-@RoutePage(name: 'EventDetailRoute')
-class EventDetailRoutePage extends StatelessWidget {
-  const EventDetailRoutePage({
+@RoutePage()
+class EventDetailRoute extends StatelessWidget {
+  const EventDetailRoute({
     super.key,
     required this.event,
   });

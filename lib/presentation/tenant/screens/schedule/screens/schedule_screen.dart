@@ -1,6 +1,5 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
-import 'package:belluga_now/application/router/manual_route_stubs.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/presentation/common/widgets/main_logo.dart';
 import 'package:belluga_now/presentation/tenant/screens/schedule/controller/schedule_screen_controller.dart';
@@ -126,11 +125,8 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     );
   }
 
-  void _navigateToSearch() {
-    context.router.push(const EventSearchRoute());
-  }
+  void _navigateToSearch() => context.router.push(const EventSearchRoute());
 
-  void _openEventDetail(EventModel event) {
-    context.router.push(EventDetailRoute(event: event));
-  }
+  void _openEventDetail(EventModel event) =>
+      context.router.push(EventDetailRoute(event: event));
 }

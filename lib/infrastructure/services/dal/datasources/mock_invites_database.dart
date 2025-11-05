@@ -4,8 +4,8 @@ import 'package:belluga_now/domain/invites/invite_model.dart';
 class MockInvitesDatabase {
   const MockInvitesDatabase();
 
-  List<InviteModel> get invites => List.unmodifiable(_invites);
-  List<InviteFriendModel> get friends => List.unmodifiable(_friends);
+  List<InviteModel> get invites => _invites;
+  List<InviteFriendModel> get friends => _friends;
 
   static final List<InviteModel> _invites = [
     InviteModel(
