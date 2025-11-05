@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:auto_route/auto_route.dart';
-import 'package:belluga_now/application/router/manual_route_stubs.dart';
+import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/domain/map/city_poi_model.dart';
 import 'package:belluga_now/domain/map/filters/main_filter_option.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
@@ -26,7 +26,6 @@ import 'package:belluga_now/presentation/tenant/screens/map/widgets/city_map_vie
 import 'package:belluga_now/presentation/tenant/screens/map/widgets/event_info_card.dart';
 import 'package:belluga_now/presentation/tenant/screens/map/widgets/location_status_banner.dart';
 import 'package:belluga_now/presentation/tenant/screens/map/widgets/main_filter_icon_resolver.dart';
-import 'package:belluga_now/presentation/tenant/widgets/event_details.dart';
 import 'package:belluga_now/presentation/view_models/event_card_data.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -730,25 +729,8 @@ class _CityMapScreenState extends State<CityMapScreen> {
     if (!mounted) {
       return;
     }
-    final eventData = _mapEventToCardData(event);
-    await showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) {
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Material(
-              color: Theme.of(context).colorScheme.primary,
-              borderRadius: BorderRadius.circular(24),
-              clipBehavior: Clip.antiAlias,
-              child: EventDetails(eventCardData: eventData),
-            ),
-          ),
-        );
-      },
-    );
+    final slug = _slugify(event.id.value ?? event.title.value);
+    await context.router.push(EventDetailRoute(slug: slug));
   }
 
   EventCardData _mapEventToCardData(EventModel event) {
@@ -766,7 +748,7 @@ class _CityMapScreenState extends State<CityMapScreen> {
         .toList(growable: false);
     final startDate = event.dateTimeStart.value ?? DateTime.now();
     final venue = event.location.value;
-    final slug = _slugify(event.title.value);
+    final slug = _slugify(event.id.value ?? event.title.value);
 
     return EventCardData(
       slug: slug,
