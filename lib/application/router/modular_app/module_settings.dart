@@ -11,8 +11,10 @@ import 'package:belluga_now/application/router/modular_app/modules/schedule_modu
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/home_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_repository_contract.dart';
 import 'package:belluga_now/infrastructure/repositories/home_repository.dart';
+import 'package:belluga_now/infrastructure/repositories/schedule_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/tenant_repository.dart';
 import 'package:belluga_now/infrastructure/services/dal/dao/backend_contract.dart';
 import 'package:belluga_now/infrastructure/services/schedule_backend_contract.dart';
@@ -109,6 +111,10 @@ class ModuleSettings extends ModuleSettingsContract {
 
     GetIt.I.registerLazySingleton<ScheduleBackendContract>(
       () => backend.schedule,
+    );
+
+    GetIt.I.registerLazySingleton<ScheduleRepositoryContract>(
+      () => ScheduleRepository()
     );
   }
 }
