@@ -1,5 +1,5 @@
 import 'package:auto_route/auto_route.dart';
-import 'package:belluga_now/application/router/manual_route_stubs.dart';
+import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/presentation/tenant/screens/mercado/controller/mercado_controller.dart';
 import 'package:belluga_now/presentation/tenant/screens/mercado/models/mercado_producer.dart';
 import 'package:belluga_now/presentation/tenant/widgets/belluga_bottom_navigation_bar.dart';
