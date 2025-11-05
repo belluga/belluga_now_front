@@ -4,12 +4,9 @@ import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value.dart';
 
 class TenantHomeController implements Disposable {
-  TenantHomeController({
-    HomeRepositoryContract? homeRepository,
-  }) : _homeRepository =
-            homeRepository ?? GetIt.I.get<HomeRepositoryContract>();
+  TenantHomeController();
 
-  final HomeRepositoryContract _homeRepository;
+  final _homeRepository = GetIt.I.get<HomeRepositoryContract>();
 
   final StreamValue<HomeOverview?> overviewStreamValue =
       StreamValue<HomeOverview?>();

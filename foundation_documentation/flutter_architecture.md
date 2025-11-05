@@ -6,12 +6,49 @@
 
 ---
 
+## Core Architectural Concepts
+
+These are the foundational, system-wide principles that guide the development of the entire application.
+
+-   **Backend-Driven UI:**
+    -   **Principle:** UI labels, terminology, and Calls to Action (CTAs) should not be hardcoded in the app. They should be treated as configurable data, defined on the backend and associated with a specific entity category (e.g., a Partner's "Follow" verb, an Item's primary CTA).
+    -   **Impact:** This allows for maximum flexibility, enabling remote configuration and A/B testing without requiring app deployments. It requires a robust Category Management System and Configuration Endpoint on the backend.
+
+-   **Component/Template-Based Design:**
+    -   **Principle:** The system should favor creating flexible, data-driven page templates (e.g., a generic `ItemLandingPage`, `PartnerLandingPage`) over building unique, one-off screens for every item.
+    -   **Impact:** This promotes UI consistency and development speed. It requires APIs to return data in a standardized format that can populate these templates.
+
+-   **Asynchronous User State Management:**
+    -   **Principle:** User-specific, stateful interactions (like pending invites, notifications, or required actions) should be managed as a queue or a list in the user's state, fetched from the backend.
+    -   **Impact:** This allows the app to handle pending interactions gracefully. On startup, the app checks this queue and can present the relevant UI (e.g., a "Tinder-like" invite screen) to the user.
+
+-   **Unified Data Models/Interfaces:**
+    -   **Principle:** Entities with similar behaviors should implement a common interface or data model (e.g., a `Schedulable` interface for anything that can be added to a user's calendar).
+    -   **Impact:** This simplifies the logic for features that operate on different types of data (e.g., a "My Schedule" screen can display a simple list of all `Schedulable` items, regardless of their origin).
+
+## Core Growth Engine: Social & Invitation System
+
+This is a foundational part of the app's architecture, designed to drive viral growth and user engagement.
+
+-   **Core Loop:**
+    -   User discovers a Partner/Event.
+    -   User engages ("Virar Fã," "Confirmar Presença," "Check-in").
+    -   This engagement **grants permission** for that specific partner to send targeted push notifications.
+    -   User is prompted to **invite friends**, expanding the user base.
+    -   New users are brought in through invites, see who invited them (social proof), and start their own discovery/engagement loop.
+
+-   **System-Wide Implications:**
+    -   **Permissions Model:** The backend needs a granular permissions system to track which partners a user has granted notification permissions to.
+    -   **Push Notification Service:** The backend must have a service that allows partners to send push notifications to their specific "fanbase."
+        -   **Technical Implementation:** The intended mechanism for this is **Firebase Cloud Messaging (FCM) Topics**. When a user follows a partner, the app subscribes them to that partner's specific FCM Topic.
+    -   **Viral Tracking:** The invite system must be robust, tracking the entire chain from inviter to invitee to conversion (sign-up, engagement) to power gamification and analytics.
+
 ## Layered Structure Snapshot
 
 - **Application layer** wires theming (`application_contract.dart`), global initialisation, and module bootstrap. Keep business logic out of this layer.
 - **Domain layer** expresses rules through models that wrap primitives with `ValueObject`s (`MongoIDValue`, `TitleValue`, `DateTimeValue`, etc.).
 - **Infrastructure layer** talks to backends (real or mock) and exposes DTOs that mirror external payloads.
-- **Presentation layer** focuses on widgets, controllers, and view models. Widgets consume primitives via view models such as `EventCardData`, never DTOs or raw value objects.
+- **Presentation layer** focuses on widgets, controllers, and view models. Widgets consume primitives via view models suchs as `EventCardData`, never DTOs or raw value objects.
 
 ## Data Flow Contracts
 
@@ -76,12 +113,88 @@
     streams for events, visible dates, etc.).
 - `StreamValue` keeps the “bloc-like” intent while allowing targeted updates (fetch more events without touching other widgets). Controllers should dispose every `StreamValue` they own.
 
+### Shared State Management (Single Source of Truth)
+
+For any piece of application state that is shared, accessed, or modified by multiple, otherwise-decoupled components (like different controllers or widgets), the following principles apply:
+
+-   **Single Source of Truth (SSoT):** Shared state should be managed in a single, centralized location (a dedicated service or repository). This prevents state desynchronization and makes the application's state predictable.
+
+-   **State Exposure via Observation (Reactive State):** Shared state should be exposed to consumers via observable streams (like our `StreamValue`). Components should react to state changes rather than imperatively polling for updates.
+
+-   **Decoupling State Management from UI Components:** The logic for managing and updating shared state should be completely decoupled from the UI components that consume it. This enhances modularity and testability.
+
+-   **Separation of State from Action:** The service is responsible for holding the *state*. The *actions* that modify this state are still initiated by the controllers.
+
+**Concrete Example: `FilterStateService`**
+
+-   A dedicated service (e.g., `FilterStateService`) acts as a central repository for the currently active filters affecting the map's output.
+-   It exposes a `StreamValue<PoiQuery>` (or similar) representing the current filter state.
+-   The `CityMapController` (or other relevant controllers) updates this service whenever filters are applied.
+-   Any controller or UI component needing to know the active filters can observe this service's `StreamValue`, ensuring a single, consistent source of truth.
+
+### `StreamValue` as the Single Source of Truth
+
+-   **Principle:** When using a `StreamValue` to manage a piece of state within a controller, the `StreamValue` itself must be the **only** source of truth for that state.
+-   **Anti-Pattern to Avoid:** Do not maintain a separate private variable (e.g., `_myState`) alongside a `StreamValue` (e.g., `myStateStreamValue`) for the same data. Updating both creates two sources of truth and leads to bugs.
+-   **Correct Pattern:**
+    -   **State Update:** Only update the `StreamValue`: `myStateStreamValue.addValue(newState);`
+    -   **State Access (Internal):** Access the current value directly from the stream: `final currentState = myStateStreamValue.value;`
+
 - Example patterns:
   - `TenantHomeController` → `StreamValue<HomeOverview?>`.
   - `ScheduleScreenController` tracks events, schedule summaries, visible
     dates, etc. via multiple streams.
   - Auth controllers manage form status (loading, field enabled, errors) as
     streams.
+
+## Code Quality & Architectural Principles
+
+To ensure a maintainable, testable, and scalable codebase, the following principles must be strictly adhered to, especially within the Presentation Layer:
+
+-   **Widgets are for UI (Purely Presentational):**
+    -   Widgets should focus solely on rendering the user interface based on the state provided to them.
+    -   They should contain minimal to no business logic, complex decision-making, or asynchronous operations.
+    -   All UI-specific state that impacts the overall screen should be managed by the controller.
+
+-   **Controllers Manage State & Logic:**
+    -   Controllers are responsible for all application state, business logic, and orchestrating data flow.
+    -   They expose `StreamValue`s for the UI to consume.
+    -   Complex logic, asynchronous calls, and state transitions belong here.
+
+-   **Strict Theming (No Hardcoded Colors):**
+    -   All colors used in the UI must derive from `Theme.of(context).colorScheme`.
+    -   Hardcoded color values (e.g., `Color(0xFF...)`, `Colors.red`) are strictly forbidden.
+    -   The only exception is for dynamic colors coming directly from the backend (e.g., a POI's specific brand color), which should still be handled gracefully.
+
+-   **One Widget Per File (Generally):**
+    -   Extract smaller, reusable widgets into their own dedicated files.
+    -   **Hierarchical Widget Organization:**
+        -   A main widget (e.g., a screen) should reside in its own file at the root of its feature context (e.g., `my_feature_screen.dart`).
+        -   Local helper widgets, not intended for broader sharing, should be placed in a `widgets/` subfolder *within the main widget's folder* (e.g., `my_feature_screen/widgets/my_local_helper_widget.dart`).
+        -   If a widget initially created as a local helper is later found to be beneficial for reuse across multiple contexts, it should be moved to a higher-level, common `widgets/` folder that oversees all contexts where it is used.
+    -   Private helper widgets (`_MyWidget`) within a file should be extracted if they grow beyond a trivial size or are used in multiple places.
+
+-   **Delegation of Dynamic Routing:**
+    -   Widgets should delegate dynamic routing logic to the controller.
+    -   The widget calls a controller method (e.g., `controller.navigateToDetails(item)`), and the controller handles the logic to determine the correct route and parameters, returning the route to the widget for execution (e.g., `context.router.push(route)`).
+
+-   **Avoid Local `setState` in Screens:**
+    -   For any state that impacts the overall screen or is derived from controller actions, it should be managed by the controller and exposed via `StreamValue`s.
+    -   `setState` should be reserved for purely transient, local UI state that does not affect the application's core logic or other parts of the UI.
+
+-   **Complex Widgets with Dedicated Controllers:**
+    -   For complex UI components (e.g., a custom FAB menu, a detailed filter panel), consider giving them their own dedicated controllers.
+    -   These controllers manage the component's internal state and logic, communicating with parent controllers (like `CityMapController`) for broader application state changes.
+    -   This enhances modularity, testability, and separation of concerns.
+
+-   **Helper Widgets and Dependency Injection (DI):**
+    -   Helper widgets, even when extracted into their own files, can access controllers via GetIt's Dependency Injection mechanism.
+    -   If a helper widget is scoped solely for a specific screen (i.e., it's not intended for broader reuse across different screens), it is acceptable for it to retrieve that screen's controller directly via `GetIt.I.get<ScreenController>()`.
+    -   This approach avoids 'prop drilling' (passing numerous parameters down the widget tree) and keeps widget constructors clean, while still adhering to the principle of widgets being purely presentational.
+
+-   **Controllers are `BuildContext`-Agnostic:**
+    -   Controllers must never accept `BuildContext` as a parameter or directly perform UI actions that require it (e.g., showing dialogs, navigating, displaying snackbars).
+    -   Any operation requiring `BuildContext` is inherently a UI responsibility and should be handled by the widget layer, with the controller providing the necessary data or intent.
 
 ## Data Layer
 
@@ -101,6 +214,12 @@
     home, schedule, etc.).
   - Additional mock backends for schedule, notes, etc. under
     `lib/infrastructure/services/dal/dao/mock_backend`.
+
+- **Data Externalization:**
+  - To ensure flexibility and avoid hardcoded values, dynamic content should be externalized and fetched from the backend.
+  - **Regions List:** The list of map regions (e.g., "Rota da Ferradura") should be fetched from the backend rather than being hardcoded in controllers.
+  - **Main Filter Icon Mapping:** The mapping of main filter icons should be driven by data from the backend (e.g., an `iconKey` string) rather than hardcoded logic in the UI.
+  - **Fallback Image URL:** Fallback image URLs should be provided by the backend or a configuration service, not hardcoded in the application.
 
 ## Example Feature: Schedule
 

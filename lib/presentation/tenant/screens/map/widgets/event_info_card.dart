@@ -9,10 +9,16 @@ class EventInfoCard extends StatelessWidget {
     super.key,
     required this.event,
     required this.onDismiss,
+    required this.onDetails,
+    required this.onShare,
+    this.onRoute,
   });
 
   final EventModel event;
   final VoidCallback onDismiss;
+  final VoidCallback onDetails;
+  final VoidCallback onShare;
+  final VoidCallback? onRoute;
 
   @override
   Widget build(BuildContext context) {
@@ -24,8 +30,11 @@ class EventInfoCard extends StatelessWidget {
     final date = event.dateTimeStart.value;
     final artists = event.artists.map((e) => e.name.value).join(', ');
     final primaryArtist = event.artists.isNotEmpty ? event.artists.first : null;
-    final avatarUri = primaryArtist?.avatarUrl.value?.toString();
-    final fallbackUri = event.thumb?.thumbUri.value?.toString();
+    final avatarUriValue = primaryArtist?.avatarUrl.value;
+    final avatarUri = avatarUriValue == null ? null : avatarUriValue.toString();
+    final fallbackUriValue = event.thumb?.thumbUri.value;
+    final fallbackUri =
+        fallbackUriValue == null ? null : fallbackUriValue.toString();
     final imageUrl = avatarUri?.isNotEmpty == true
         ? avatarUri
         : (fallbackUri?.isNotEmpty == true ? fallbackUri : null);
@@ -33,8 +42,7 @@ class EventInfoCard extends StatelessWidget {
     final formattedDate = date != null
         ? DateFormat('dd MMM, HH:mm').format(date)
         : 'Horário a confirmar';
-    final timeLabel =
-        date != null ? DateFormat('HH:mm').format(date) : '--:--';
+    final timeLabel = date != null ? DateFormat('HH:mm').format(date) : '--:--';
     final badgeText = switch (state) {
       CityEventTemporalState.now => 'AGORA',
       CityEventTemporalState.past => 'Encerrado',
@@ -43,24 +51,13 @@ class EventInfoCard extends StatelessWidget {
     final badgeColor = switch (state) {
       CityEventTemporalState.now => const Color(0xFFE53935),
       CityEventTemporalState.past => Colors.grey.shade500,
-      CityEventTemporalState.upcoming =>
-        event.type.color.value ?? scheme.primary,
+      CityEventTemporalState.upcoming => event.type.color.value,
     };
-
-    final baseCardColor = Theme.of(context).cardColor;
-    final cardColor = isPast
-        ? Color.alphaBlend(
-            scheme.surface.withOpacity(0.75),
-            baseCardColor,
-          )
-        : baseCardColor;
     final mutedTextColor =
         isPast ? scheme.onSurfaceVariant.withOpacity(0.65) : null;
 
-    return Opacity(
-      opacity: isPast ? 0.7 : 1,
+    return Card(
       child: Card(
-        color: cardColor,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         elevation: 8,
         child: Padding(
@@ -78,8 +75,7 @@ class EventInfoCard extends StatelessWidget {
                     children: [
                       _EventAvatar(
                         imageUrl: imageUrl,
-                        fallbackColor:
-                            event.type.color.value ?? scheme.primary,
+                        fallbackColor: event.type.color.value,
                         isPast: isPast,
                       ),
                       Positioned(
@@ -101,15 +97,15 @@ class EventInfoCard extends StatelessWidget {
                           event.title.value,
                           style: textTheme.titleMedium?.copyWith(
                             fontWeight: FontWeight.w700,
-                            color: mutedTextColor ?? textTheme.titleMedium?.color,
+                            color:
+                                mutedTextColor ?? textTheme.titleMedium?.color,
                           ),
                         ),
                         const SizedBox(height: 4),
                         Text(
                           formattedDate,
                           style: textTheme.labelMedium?.copyWith(
-                            color: mutedTextColor ??
-                                scheme.onSurfaceVariant,
+                            color: mutedTextColor ?? scheme.onSurfaceVariant,
                           ),
                         ),
                       ],
@@ -162,11 +158,67 @@ class EventInfoCard extends StatelessWidget {
                   ),
                 ],
               ),
+              const SizedBox(height: 16),
+              _EventActionsRow(
+                onDetails: onDetails,
+                onShare: onShare,
+                onRoute: onRoute,
+              ),
             ],
           ),
         ),
       ),
     );
+  }
+}
+
+class _EventActionsRow extends StatelessWidget {
+  const _EventActionsRow({
+    required this.onDetails,
+    required this.onShare,
+    this.onRoute,
+  });
+
+  final VoidCallback onDetails;
+  final VoidCallback onShare;
+  final VoidCallback? onRoute;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
+    final actions = <Widget>[
+      Expanded(
+        child: FilledButton.icon(
+          onPressed: onDetails,
+          icon: const Icon(Icons.info_outlined),
+          label: const Text('Detalhes'),
+          style: FilledButton.styleFrom(
+            minimumSize: const Size.fromHeight(44),
+          ),
+        ),
+      ),
+      const SizedBox(width: 8),
+      IconButton(
+        onPressed: onShare,
+        icon: const Icon(Icons.share_outlined),
+        tooltip: 'Compartilhar',
+      ),
+    ];
+
+    if (onRoute != null) {
+      actions.add(const SizedBox(width: 8));
+      actions.add(
+        IconButton(
+          onPressed: onRoute,
+          icon: const Icon(Icons.directions_outlined),
+          tooltip: 'Traçar rota',
+          color: scheme.primary,
+        ),
+      );
+    }
+
+    return Row(children: actions);
   }
 }
 
@@ -205,7 +257,8 @@ class _EventAvatar extends StatelessWidget {
           ? Image.network(
               imageUrl!,
               fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => _AvatarFallback(color: fallbackColor),
+              errorBuilder: (_, __, ___) =>
+                  _AvatarFallback(color: fallbackColor),
             )
           : _AvatarFallback(color: fallbackColor),
     );
@@ -216,10 +269,26 @@ class _EventAvatar extends StatelessWidget {
 
     return ColorFiltered(
       colorFilter: const ColorFilter.matrix(<double>[
-        0.2126, 0.7152, 0.0722, 0, 0,
-        0.2126, 0.7152, 0.0722, 0, 0,
-        0.2126, 0.7152, 0.0722, 0, 0,
-        0, 0, 0, 1, 0,
+        0.2126,
+        0.7152,
+        0.0722,
+        0,
+        0,
+        0.2126,
+        0.7152,
+        0.0722,
+        0,
+        0,
+        0.2126,
+        0.7152,
+        0.0722,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
       ]),
       child: Opacity(opacity: 0.4, child: avatar),
     );

@@ -6,6 +6,7 @@ import 'package:value_object_pattern/domain/value_objects/date_time_value.dart';
 
 class HomeEvent {
   HomeEvent({
+    required this.slug,
     required this.titleValue,
     required this.imageUriValue,
     required this.startDateTimeValue,
@@ -13,6 +14,7 @@ class HomeEvent {
     required this.artistValue,
   });
 
+  final String slug;
   final TitleValue titleValue;
   final ThumbUriValue imageUriValue;
   final DateTimeValue startDateTimeValue;
@@ -31,6 +33,7 @@ class HomeEvent {
     final artist = TitleValue()..parse(dto.artist);
 
     return HomeEvent(
+      slug: dto.id ?? _slugify(dto.title),
       titleValue: title,
       imageUriValue: imageUri,
       startDateTimeValue: startDate,
@@ -49,4 +52,10 @@ class HomeEvent {
 
   String get location => locationValue.value;
   String get artist => artistValue.value;
+
+  static String _slugify(String value) {
+    final slug = value.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), '-');
+    final cleaned = slug.replaceAll(RegExp(r'-{2,}'), '-');
+    return cleaned.replaceAll(RegExp(r'^-+|-+$'), '');
+  }
 }

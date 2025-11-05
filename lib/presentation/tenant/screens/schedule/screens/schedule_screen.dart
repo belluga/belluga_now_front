@@ -63,17 +63,15 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
             ],
           ),
           Expanded(
-              child: SafeArea(
-            top: false,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0),
-              child: StreamValueBuilder<List<EventModel>?>(
+            child: SafeArea(
+              top: false,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: StreamValueBuilder<List<EventModel>?>(
                   streamValue: _controller.eventsStreamValue,
-                  onNullWidget: const Center(
-                    child: CircularProgressIndicator(),
-                  ),
+                  onNullWidget: const Center(child: CircularProgressIndicator()),
                   builder: (context, events) {
-                    final data = events ?? [];
+                    final data = events ?? const <EventModel>[];
                     if (data.isEmpty) {
                       return const Center(
                         child: Text('Nenhum evento nesta data.'),
@@ -87,15 +85,18 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                           for (final event in data) ...[
                             UpcomingEventCard(
                               data: _mapToViewModel(event),
+                              onTap: () => _openEventDetail(event),
                             ),
                             const SizedBox(height: 24),
                           ],
                         ],
                       ),
                     );
-                  }),
+                  },
+                ),
+              ),
             ),
-          )),
+          ),
         ],
       ),
     );
@@ -114,8 +115,10 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
         )
         .toList();
     final startDate = event.dateTimeStart.value ?? DateTime.now();
+    final slug = _slugify(event.title.value);
 
     return EventCardData(
+      slug: slug,
       title: event.title.value,
       imageUrl: imageUrl,
       startDateTime: startDate,
@@ -124,7 +127,16 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     );
   }
 
-  void _navigateToSearch() {
-    context.router.push(const EventSearchRoute());
+  void _navigateToSearch() => context.router.push(const EventSearchRoute());
+
+  void _openEventDetail(EventModel event) {
+    final slug = _slugify(event.title.value);
+    context.router.push(EventDetailRoute(slug: slug));
+  }
+
+  String _slugify(String value) {
+    final slug = value.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), '-');
+    final cleaned = slug.replaceAll(RegExp(r'-{2,}'), '-');
+    return cleaned.replaceAll(RegExp(r'^-+|-+$'), '');
   }
 }

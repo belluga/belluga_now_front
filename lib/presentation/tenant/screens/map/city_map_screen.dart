@@ -1,24 +1,41 @@
 import 'dart:async';
 
+import 'package:auto_route/auto_route.dart';
+import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/domain/map/city_poi_model.dart';
+import 'package:belluga_now/domain/map/filters/main_filter_option.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
-import 'package:belluga_now/presentation/tenant/screens/map/controller/city_map_controller.dart';
+import 'package:belluga_now/presentation/tenant/screens/map/controller/city_map_controller.dart'
+    show
+        CityMapController,
+        DirectionsInfo,
+        MapNavigationTarget,
+        MapStatus,
+        RideShareProvider;
+import 'package:belluga_now/presentation/tenant/screens/map/controller/cuisine_panel_controller.dart';
+import 'package:belluga_now/presentation/tenant/screens/map/controller/events_panel_controller.dart';
+import 'package:belluga_now/presentation/tenant/screens/map/controller/fab_menu_controller.dart';
+import 'package:belluga_now/presentation/tenant/screens/map/controller/music_panel_controller.dart';
+import 'package:belluga_now/presentation/tenant/screens/map/controller/region_panel_controller.dart';
+import 'package:belluga_now/presentation/tenant/screens/map/panels/cuisine_panel.dart';
+import 'package:belluga_now/presentation/tenant/screens/map/panels/events_panel.dart';
+import 'package:belluga_now/presentation/tenant/screens/map/panels/region_panel.dart';
+import 'package:belluga_now/presentation/tenant/screens/map/poi_info_card/poi_info_card.dart';
+import 'package:belluga_now/presentation/tenant/screens/map/widgets/city_map_view.dart';
 import 'package:belluga_now/presentation/tenant/screens/map/widgets/event_info_card.dart';
-import 'package:belluga_now/presentation/tenant/screens/map/widgets/event_marker.dart';
-import 'package:belluga_now/presentation/tenant/screens/map/widgets/event_temporal_state.dart';
 import 'package:belluga_now/presentation/tenant/screens/map/widgets/location_status_banner.dart';
-import 'package:belluga_now/presentation/tenant/screens/map/widgets/poi_info_card.dart';
-import 'package:belluga_now/presentation/tenant/screens/map/widgets/poi_marker.dart';
-import 'package:belluga_now/presentation/tenant/screens/map/widgets/user_location_marker.dart';
+import 'package:belluga_now/presentation/tenant/screens/map/widgets/main_filter_icon_resolver.dart';
+import 'package:belluga_now/presentation/view_models/event_card_data.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
-import 'package:free_map/fm_map.dart';
-import 'package:geolocator/geolocator.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:get_it/get_it.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class CityMapScreen extends StatefulWidget {
   const CityMapScreen({super.key});
@@ -28,422 +45,836 @@ class CityMapScreen extends StatefulWidget {
 }
 
 class _CityMapScreenState extends State<CityMapScreen> {
-  final _mapController = MapController();
-  final _controller = GetIt.I.get<CityMapController>();
+  final MapController _mapController = MapController();
 
-  LatLng? _userPosition;
-  CityCoordinate? _userOrigin;
-  bool _hasRequestedPois = false;
-  bool _eventsLoaded = false;
-  _MapStatus _status = _MapStatus.locating;
-  String? _statusMessage = 'Localizando você...';
+  late final CityMapController _cityMapController;
+  late final FabMenuController _fabMenuController;
+  late final RegionPanelController _regionPanelController;
+  late final EventsPanelController _eventsPanelController;
+  late final MusicPanelController _musicPanelController;
+  late final CuisinePanelController _cuisinePanelController;
+
+  StreamSubscription<MapNavigationTarget?>? _navigationSubscription;
+  StreamSubscription<LateralPanelType?>? _panelSubscription;
 
   @override
   void initState() {
     super.initState();
-    _resolveUserLocation();
+    _cityMapController = GetIt.I.get<CityMapController>();
+    _fabMenuController = GetIt.I.get<FabMenuController>();
+    _regionPanelController = RegionPanelController(
+      mapController: _cityMapController,
+      fabMenuController: _fabMenuController,
+    );
+    _eventsPanelController = EventsPanelController(
+      mapController: _cityMapController,
+      fabMenuController: _fabMenuController,
+    );
+    _musicPanelController = MusicPanelController(
+      mapController: _cityMapController,
+      fabMenuController: _fabMenuController,
+    );
+    _cuisinePanelController = CuisinePanelController(
+      mapController: _cityMapController,
+      fabMenuController: _fabMenuController,
+    );
+
+    _navigationSubscription = _cityMapController.mapNavigationTarget.stream
+        .listen(_handleNavigationTarget);
+    _panelSubscription =
+        _fabMenuController.activePanel.stream.listen(_handlePanelChange);
+
+    unawaited(_cityMapController.initialize());
+    unawaited(_cityMapController.resolveUserLocation());
   }
 
   @override
   void dispose() {
-    _controller.onDispose();
+    _navigationSubscription?.cancel();
+    _panelSubscription?.cancel();
+    _cuisinePanelController.onDispose();
+    _musicPanelController.onDispose();
+    _eventsPanelController.onDispose();
+    _regionPanelController.onDispose();
+    _fabMenuController.onDispose();
+    _cityMapController.onDispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final defaultCenter = _controller.defaultCenter;
+    final defaultCenter = _cityMapController.defaultCenter;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Mapa de Guarapari'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh_outlined),
-            tooltip: 'Recarregar pontos',
-            onPressed: _userOrigin == null
-                ? null
-                : () async {
-                    setState(() {
-                      _status = _MapStatus.fetching;
-                      _statusMessage = 'Buscando pontos próximos...';
-                    });
-                    final success =
-                        await _controller.loadPoints(_userOrigin!);
-                    await _loadTodayEvents();
-                    if (!mounted) return;
-                    setState(() {
-                      _status = success ? _MapStatus.ready : _MapStatus.error;
-                      _statusMessage = success
-                          ? null
-                          : 'Não foi possível carregar os pontos próximos.';
-                    });
-                  },
-          ),
-          IconButton(
-            icon: const Icon(Icons.my_location_outlined),
-            tooltip: 'Centralizar na minha posição',
-            onPressed: _userPosition == null ? null : _centerOnUser,
-          ),
+      appBar: _buildAppBar(),
+      body: Stack(
+        children: [
+          Positioned.fill(child: _buildMapLayers(defaultCenter)),
+          _buildStatusBanner(),
+          _buildErrorCard(),
+          _buildSelectedInfoCards(),
+          _buildLateralPanel(),
+          _buildLoadingOverlay(),
         ],
       ),
-      body: StreamValueBuilder<List<EventModel>?>(
-        streamValue: _controller.eventsStreamValue,
-        builder: (context, events) {
-          final eventList = events ?? const <EventModel>[];
-          return StreamValueBuilder<List<CityPoiModel>?>(
-            streamValue: _controller.poisStreamValue,
-            builder: (context, pois) {
-              final poiList = pois ?? const <CityPoiModel>[];
-              return StreamValueBuilder<CityPoiModel?>(
-                streamValue: _controller.selectedPoiStreamValue,
-                builder: (context, selectedPoi) {
-                  return StreamValueBuilder<EventModel?>(
-                    streamValue: _controller.selectedEventStreamValue,
-                    builder: (context, selectedEvent) {
-                      return Stack(
-                        children: [
-                          _CityMapView(
-                            mapController: _mapController,
-                            pois: poiList,
-                            selectedPoi: selectedPoi,
-                            onSelectPoi: (poi) {
-                              _controller.selectPoi(poi);
-                              _controller.selectEvent(null);
-                            },
-                            events: eventList,
-                            selectedEvent: selectedEvent,
-                            onSelectEvent: (event) {
-                              _controller.selectEvent(event);
-                              _controller.selectPoi(null);
-                            },
-                            userPosition: _userPosition,
-                            defaultCenter: LatLng(
-                              defaultCenter.latitude,
-                              defaultCenter.longitude,
-                            ),
-                          ),
-                          Positioned(
-                            top: 16,
-                            left: 16,
-                            right: 16,
-                            child: _buildStatusBanner(theme),
-                          ),
-                          if (selectedEvent != null)
-                            Align(
-                              alignment: Alignment.bottomCenter,
-                              child: Padding(
-                                padding:
-                                    const EdgeInsets.fromLTRB(24, 0, 24, 32),
-                                child: SafeArea(
-                                  child: EventInfoCard(
-                                    event: selectedEvent,
-                                    onDismiss: () =>
-                                        _controller.selectEvent(null),
-                                  ),
-                                ),
-                              ),
-                            )
-                          else if (selectedPoi != null)
-                            Align(
-                              alignment: Alignment.bottomCenter,
-                              child: Padding(
-                                padding:
-                                    const EdgeInsets.fromLTRB(24, 0, 24, 32),
-                                child: SafeArea(
-                                  child: PoiInfoCard(
-                                    poi: selectedPoi,
-                                    onDismiss: () =>
-                                        _controller.selectPoi(null),
-                                  ),
-                                ),
-                              ),
-                            ),
-                        ],
-                      );
-                    },
-                  );
-                },
-              );
-            },
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+      floatingActionButton: _buildMainFilterFabGroup(),
+    );
+  }
+
+  PreferredSizeWidget _buildAppBar() {
+    return AppBar(
+      title: const Text('Mapa de Guarapari'),
+      actions: [
+        IconButton(
+          icon: const Icon(Icons.search),
+          tooltip: 'Buscar pontos',
+          onPressed: _openSearchDialog,
+        ),
+        StreamValueBuilder<String?>(
+          streamValue: _cityMapController.searchTermStreamValue,
+          builder: (_, term) {
+            final hasSearch = (term?.trim().isNotEmpty ?? false);
+            if (!hasSearch) {
+              return const SizedBox.shrink();
+            }
+            return IconButton(
+              icon: const Icon(Icons.clear),
+              tooltip: 'Limpar busca',
+              onPressed: _handleClearSearch,
+            );
+          },
+        ),
+        StreamValueBuilder<CityCoordinate?>(
+          streamValue: _cityMapController.userLocationStreamValue,
+          builder: (_, coordinate) {
+            final target = coordinate;
+            return IconButton(
+              icon: const Icon(Icons.my_location_outlined),
+              tooltip: 'Centralizar na minha posicao',
+              onPressed: target == null ? null : () => _centerOnUser(target),
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMapLayers(CityCoordinate defaultCenter) {
+    final defaultLatLng = LatLng(
+      defaultCenter.latitude,
+      defaultCenter.longitude,
+    );
+
+    return StreamValueBuilder<List<CityPoiModel>>(
+      streamValue: _cityMapController.pois,
+      builder: (_, pois) {
+        return StreamValueBuilder<List<EventModel>>(
+          streamValue: _cityMapController.eventsStreamValue,
+          builder: (_, events) {
+            return StreamValueBuilder<CityCoordinate?>(
+              streamValue: _cityMapController.userLocationStreamValue,
+              builder: (_, coordinate) {
+                final userLatLng = coordinate == null
+                    ? null
+                    : LatLng(coordinate.latitude, coordinate.longitude);
+                return StreamValueBuilder<CityPoiModel?>(
+                  streamValue: _cityMapController.selectedPoiStreamValue,
+                  builder: (_, selectedPoi) {
+                    return StreamValueBuilder<EventModel?>(
+                      streamValue: _cityMapController.selectedEventStreamValue,
+                      builder: (_, selectedEvent) {
+                        return StreamValueBuilder<String?>(
+                          streamValue:
+                              _cityMapController.hoveredPoiIdStreamValue,
+                          builder: (_, hoveredId) {
+                            return CityMapView(
+                              mapController: _mapController,
+                              pois: pois,
+                              selectedPoi: selectedPoi,
+                              onSelectPoi: _handleSelectPoi,
+                              hoveredPoiId: hoveredId,
+                              onHoverChange: _handleHoverChange,
+                              events: events,
+                              selectedEvent: selectedEvent,
+                              onSelectEvent: _handleSelectEvent,
+                              userPosition: userLatLng,
+                              defaultCenter: defaultLatLng,
+                              onMapInteraction: _handleMapInteraction,
+                            );
+                          },
+                        );
+                      },
+                    );
+                  },
+                );
+              },
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildStatusBanner() {
+    final theme = Theme.of(context);
+    return StreamValueBuilder<String?>(
+      streamValue: _cityMapController.statusMessageStreamValue,
+      builder: (_, message) {
+        if (message == null || message.isEmpty) {
+          return const SizedBox.shrink();
+        }
+        return StreamValueBuilder<MapStatus>(
+          streamValue: _cityMapController.mapStatusStreamValue,
+          builder: (_, status) {
+            final visuals = _resolveStatusVisuals(status, theme);
+            return Align(
+              alignment: Alignment.topCenter,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                child: SafeArea(
+                  child: LocationStatusBanner(
+                    icon: visuals.icon,
+                    label: message,
+                    backgroundColor: visuals.background,
+                    textColor: visuals.textColor,
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildErrorCard() {
+    final theme = Theme.of(context);
+    return StreamValueBuilder<String?>(
+      streamValue: _cityMapController.errorMessage,
+      builder: (_, error) {
+        if (error == null) {
+          return const SizedBox.shrink();
+        }
+        return Align(
+          alignment: Alignment.bottomCenter,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+            child: SafeArea(
+              child: Card(
+                color: theme.colorScheme.errorContainer,
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Text(
+                    error,
+                    style: TextStyle(
+                      color: theme.colorScheme.onErrorContainer,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildSelectedInfoCards() {
+    return StreamValueBuilder<EventModel?>(
+      streamValue: _cityMapController.selectedEventStreamValue,
+      builder: (_, selectedEvent) {
+        if (selectedEvent != null) {
+          return Align(
+            alignment: Alignment.bottomCenter,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(24, 0, 24, 32),
+              child: SafeArea(
+                child: EventInfoCard(
+                  event: selectedEvent,
+                  onDismiss: () => _cityMapController.selectEvent(null),
+                  onDetails: () => _openEventDetails(selectedEvent),
+                  onShare: () => _shareEvent(selectedEvent),
+                  onRoute: selectedEvent.coordinate == null
+                      ? null
+                      : () => _handleDirectionsForEvent(selectedEvent),
+                ),
+              ),
+            ),
           );
-        },
+        }
+        return StreamValueBuilder<CityPoiModel?>(
+          streamValue: _cityMapController.selectedPoiStreamValue,
+          builder: (_, selectedPoi) {
+            if (selectedPoi == null) {
+              return const SizedBox.shrink();
+            }
+            return Align(
+              alignment: Alignment.bottomCenter,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(24, 0, 24, 32),
+                child: SafeArea(
+                  child: PoiInfoCard(
+                    poi: selectedPoi,
+                    onDismiss: () => _cityMapController.selectPoi(null),
+                    onDetails: () => _openPoiDetails(selectedPoi),
+                    onShare: () => _sharePoi(selectedPoi),
+                    onRoute: () => _handleDirectionsForPoi(selectedPoi),
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildLateralPanel() {
+    return StreamValueBuilder<LateralPanelType?>(
+      streamValue: _fabMenuController.activePanel,
+      builder: (_, panel) {
+        final panelType = panel;
+        if (panelType == null) {
+          return const SizedBox.shrink();
+        }
+
+        late final Widget panelWidget;
+        switch (panelType) {
+          case LateralPanelType.regions:
+            panelWidget = RegionPanel(
+              controller: _regionPanelController,
+              onClose: _fabMenuController.closePanel,
+            );
+            break;
+          case LateralPanelType.events:
+            panelWidget = EventsPanel(
+              controller: _eventsPanelController,
+              onClose: _fabMenuController.closePanel,
+              title: 'Eventos',
+              icon: Icons.event,
+            );
+            break;
+          case LateralPanelType.music:
+            panelWidget = EventsPanel(
+              controller: _musicPanelController,
+              onClose: _fabMenuController.closePanel,
+              title: 'Shows',
+              icon: Icons.music_note,
+            );
+            break;
+          case LateralPanelType.cuisines:
+            panelWidget = CuisinePanel(
+              controller: _cuisinePanelController,
+              onClose: _cuisinePanelController.closePanel,
+            );
+            break;
+        }
+
+        return Align(
+          alignment: Alignment.centerRight,
+          child: Padding(
+            padding: const EdgeInsets.only(top: 16, bottom: 16, right: 16),
+            child: SafeArea(child: panelWidget),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildLoadingOverlay() {
+    return StreamValueBuilder<bool>(
+      streamValue: _cityMapController.isLoading,
+      builder: (_, isLoading) {
+        if (isLoading != true) {
+          return const SizedBox.shrink();
+        }
+        return const Positioned.fill(
+          child: IgnorePointer(
+            child: Center(
+              child: CircularProgressIndicator(),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildMainFilterFabGroup() {
+    final theme = Theme.of(context);
+    return StreamValueBuilder<List<MainFilterOption>>(
+      streamValue: _cityMapController.mainFilterOptionsStreamValue,
+      builder: (_, options) {
+        if (options.isEmpty) {
+          return const SizedBox.shrink();
+        }
+        return StreamValueBuilder<bool>(
+          streamValue: _fabMenuController.menuExpanded,
+          builder: (_, expanded) {
+            return StreamValueBuilder<MainFilterOption?>(
+              streamValue: _cityMapController.activeMainFilterStreamValue,
+              builder: (_, activeFilter) {
+                return StreamValueBuilder<LateralPanelType?>(
+                  streamValue: _fabMenuController.activePanel,
+                  builder: (_, activePanel) {
+                    final children = <Widget>[];
+                    if (expanded == true) {
+                      for (final option in options.reversed) {
+                        children.add(
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: _buildSecondaryFilterFab(
+                              theme: theme,
+                              option: option,
+                              activeFilter: activeFilter,
+                              activePanel: activePanel,
+                            ),
+                          ),
+                        );
+                      }
+                    }
+
+                    children.add(
+                      FloatingActionButton(
+                        heroTag: 'main-filter-toggle-fab',
+                        onPressed: _fabMenuController.toggleMenu,
+                        child: AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 200),
+                          child: Icon(
+                            expanded == true ? Icons.close : Icons.filter_list,
+                            key: ValueKey<bool>(expanded == true),
+                          ),
+                        ),
+                      ),
+                    );
+
+                    return Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: children,
+                    );
+                  },
+                );
+              },
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildSecondaryFilterFab({
+    required ThemeData theme,
+    required MainFilterOption option,
+    required MainFilterOption? activeFilter,
+    required LateralPanelType? activePanel,
+  }) {
+    final icon = resolveMainFilterIcon(option.iconName);
+    final panelType = _panelTypeFor(option.type);
+    final isActive = option.isQuickApply
+        ? activeFilter?.id == option.id
+        : (panelType != null && panelType == activePanel);
+    final backgroundColor =
+        isActive ? theme.colorScheme.primary : theme.colorScheme.surface;
+    final foregroundColor =
+        isActive ? theme.colorScheme.onPrimary : theme.colorScheme.onSurface;
+
+    return Tooltip(
+      message: option.label,
+      child: FloatingActionButton.small(
+        heroTag: 'main-filter-${option.id}',
+        backgroundColor: backgroundColor,
+        foregroundColor: foregroundColor,
+        onPressed: () => _onMainFilterTap(option),
+        child: Icon(icon),
       ),
     );
   }
 
-  Widget _buildStatusBanner(ThemeData theme) {
-    if (_statusMessage == null) {
-      return const SizedBox.shrink();
+  Future<void> _openSearchDialog() async {
+    final initialTerm = _cityMapController.searchTermStreamValue.value ?? '';
+    final controller = TextEditingController(text: initialTerm);
+    final result = await showDialog<String>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Buscar pontos'),
+          content: TextField(
+            controller: controller,
+            autofocus: true,
+            decoration: const InputDecoration(
+              hintText: 'Digite um termo para buscar',
+            ),
+            textInputAction: TextInputAction.search,
+            onSubmitted: (value) => Navigator.of(context).pop(value),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancelar'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(controller.text),
+              child: const Text('Buscar'),
+            ),
+          ],
+        );
+      },
+    );
+    controller.dispose();
+
+    if (!mounted || result == null) {
+      return;
+    }
+    final query = result.trim();
+    if (query.isEmpty) {
+      await _handleClearSearch();
+      return;
+    }
+    await _cityMapController.searchPois(query);
+  }
+
+  Future<void> _handleClearSearch() async {
+    await _cityMapController.clearSearch();
+  }
+
+  Future<void> _centerOnUser(CityCoordinate coordinate) async {
+    final target = LatLng(coordinate.latitude, coordinate.longitude);
+    _mapController.move(target, 16);
+    _cityMapController.clearSelections();
+    _cityMapController.setHoveredPoi(null);
+    _fabMenuController.closePanel();
+  }
+
+  void _handleSelectPoi(CityPoiModel? poi) {
+    if (poi == null) {
+      _cityMapController.selectPoi(null);
+      return;
+    }
+    _cityMapController.selectPoi(poi);
+    _cityMapController.selectEvent(null);
+    _fabMenuController.closePanel();
+  }
+
+  void _handleSelectEvent(EventModel? event) {
+    if (event == null) {
+      _cityMapController.selectEvent(null);
+      return;
+    }
+    _cityMapController.selectEvent(event);
+    _cityMapController.selectPoi(null);
+    _fabMenuController.closePanel();
+  }
+
+  void _handleHoverChange(String? poiId) {
+    if (!kIsWeb) {
+      return;
+    }
+    _cityMapController.setHoveredPoi(poiId);
+  }
+
+  void _handleMapInteraction() {
+    _cityMapController.clearSelections();
+    _cityMapController.setHoveredPoi(null);
+    _fabMenuController.closePanel();
+  }
+
+  Future<void> _sharePoi(CityPoiModel poi) async {
+    final payload = _cityMapController.buildPoiSharePayload(poi);
+    await Share.share(payload.message, subject: payload.subject);
+  }
+
+  Future<void> _shareEvent(EventModel event) async {
+    final payload = _cityMapController.buildEventSharePayload(event);
+    await Share.share(payload.message, subject: payload.subject);
+  }
+
+  Future<void> _handleDirectionsForPoi(CityPoiModel poi) async {
+    final info = await _cityMapController.preparePoiDirections(poi);
+    if (info == null) {
+      _showSnackbar('Localizacao indisponivel para este ponto.');
+      return;
+    }
+    await _presentDirectionsOptions(info);
+  }
+
+  Future<void> _handleDirectionsForEvent(EventModel event) async {
+    final info = await _cityMapController.prepareEventDirections(event);
+    if (info == null) {
+      _showSnackbar('Este evento nao possui localizacao cadastrada.');
+      return;
+    }
+    await _presentDirectionsOptions(info);
+  }
+
+  Future<void> _presentDirectionsOptions(DirectionsInfo info) async {
+    final maps = info.availableMaps;
+    final rideShares = info.rideShareOptions;
+    final totalOptions = maps.length + rideShares.length;
+
+    if (totalOptions == 0) {
+      await _launchFallbackDirections(info);
+      return;
     }
 
-    late final Color background;
-    late final Color textColor;
-    late final IconData icon;
-
-    switch (_status) {
-      case _MapStatus.locating:
-        background = theme.colorScheme.surfaceContainerHigh;
-        textColor = theme.colorScheme.onSurfaceVariant;
-        icon = Icons.hourglass_bottom;
-        break;
-      case _MapStatus.fetching:
-        background = theme.colorScheme.secondaryContainer;
-        textColor = theme.colorScheme.onSecondaryContainer;
-        icon = Icons.explore_outlined;
-        break;
-      case _MapStatus.fallback:
-        background = theme.colorScheme.surfaceContainerHighest;
-        textColor = theme.colorScheme.onSurfaceVariant;
-        icon = Icons.location_off_outlined;
-        break;
-      case _MapStatus.error:
-        background = theme.colorScheme.errorContainer;
-        textColor = theme.colorScheme.onErrorContainer;
-        icon = Icons.warning_amber_rounded;
-        break;
-      case _MapStatus.ready:
-        background = theme.colorScheme.surfaceContainerHighest;
-        textColor = theme.colorScheme.onSurfaceVariant;
-        icon = Icons.info_outline;
-        break;
+    if (totalOptions == 1) {
+      if (maps.length == 1) {
+        await maps.first.showDirections(
+          destination: info.destination,
+          destinationTitle: info.destinationName,
+        );
+      } else {
+        final success = await _cityMapController.launchRideShareOption(
+          rideShares.first,
+        );
+        if (!success) {
+          await _launchFallbackDirections(info);
+        }
+      }
+      return;
     }
 
-    return LocationStatusBanner(
-      icon: icon,
-      label: _statusMessage!,
-      backgroundColor: background,
-      textColor: textColor,
+    if (!mounted) {
+      return;
+    }
+
+    await showModalBottomSheet<void>(
+      context: context,
+      builder: (sheetContext) {
+        final theme = Theme.of(sheetContext);
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'Escolha como chegar',
+                    style: theme.textTheme.titleMedium,
+                  ),
+                ),
+              ),
+              for (final map in maps)
+                ListTile(
+                  leading: SvgPicture.asset(
+                    map.icon,
+                    width: 32,
+                    height: 32,
+                  ),
+                  title: Text(map.mapName),
+                  onTap: () async {
+                    Navigator.of(sheetContext).pop();
+                    await map.showDirections(
+                      destination: info.destination,
+                      destinationTitle: info.destinationName,
+                    );
+                  },
+                ),
+              if (maps.isNotEmpty && rideShares.isNotEmpty)
+                const Divider(height: 1),
+              for (final option in rideShares)
+                ListTile(
+                  leading: Icon(
+                    _rideShareIcon(option.provider),
+                    color: theme.colorScheme.primary,
+                  ),
+                  title: Text(option.label),
+                  onTap: () async {
+                    Navigator.of(sheetContext).pop();
+                    final success =
+                        await _cityMapController.launchRideShareOption(option);
+                    if (!success && mounted) {
+                      await _launchFallbackDirections(info);
+                    }
+                  },
+                ),
+              const SizedBox(height: 12),
+            ],
+          ),
+        );
+      },
     );
   }
 
-  Future<void> _resolveUserLocation() async {
-    setState(() {
-      _status = _MapStatus.locating;
-      _statusMessage = 'Localizando você...';
-    });
-
-    try {
-      final serviceEnabled = await Geolocator.isLocationServiceEnabled();
-      if (!serviceEnabled) {
-        setState(() {
-          _status = _MapStatus.error;
-          _statusMessage =
-              'Ative os serviços de localização para ver sua posição. Exibindo pontos padrão da cidade.';
-        });
-        _fallbackLoadPois();
-        await _loadTodayEvents();
-        return;
-      }
-
-      var permission = await Geolocator.checkPermission();
-      if (permission == LocationPermission.denied) {
-        permission = await Geolocator.requestPermission();
-      }
-
-      if (permission == LocationPermission.deniedForever ||
-          permission == LocationPermission.denied) {
-        setState(() {
-          _status = _MapStatus.error;
-          _statusMessage =
-              'Permita o acesso à localização para localizar pontos próximos. Exibindo pontos padrão da cidade.';
-        });
-        _fallbackLoadPois();
-        await _loadTodayEvents();
-        return;
-      }
-
-      final position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.best,
-      );
-
-      final origin = CityCoordinate(
-        latitude: position.latitude,
-        longitude: position.longitude,
-      );
-      final userLatLng = LatLng(position.latitude, position.longitude);
-
-      setState(() {
-        _userOrigin = origin;
-        _userPosition = userLatLng;
-        _status = _MapStatus.fetching;
-        _statusMessage = 'Buscando pontos próximos...';
-      });
-
-      final poiSuccess = await _controller.loadPoints(origin);
-      await _loadTodayEvents();
-      if (mounted) {
-        setState(() {
-          _status = poiSuccess ? _MapStatus.ready : _MapStatus.error;
-          _statusMessage = poiSuccess
-              ? null
-              : 'Não foi possível carregar os pontos próximos.';
-        });
-      }
-
-      _hasRequestedPois = true;
-
-      if (mounted) {
-        _mapController.move(userLatLng, 15);
-      }
-    } on PlatformException catch (error) {
-      setState(() {
-        _status = _MapStatus.error;
-        _statusMessage =
-            'Não foi possível obter a localização (${error.code}). Exibindo pontos padrão da cidade.';
-      });
-      _fallbackLoadPois();
-      await _loadTodayEvents();
-    } catch (_) {
-      setState(() {
-        _status = _MapStatus.error;
-        _statusMessage =
-            'Não foi possível obter a localização. Exibindo pontos padrão da cidade.';
-      });
-      _fallbackLoadPois();
-      await _loadTodayEvents();
+  Future<void> _launchFallbackDirections(DirectionsInfo info) async {
+    final launched = await launchUrl(
+      info.fallbackUrl,
+      mode: LaunchMode.externalApplication,
+    );
+    if (!launched) {
+      _showSnackbar('Nao foi possivel abrir o mapa para direcoes.');
     }
   }
 
-  void _centerOnUser() {
-    final position = _userPosition;
-    if (position == null) return;
-    _mapController.move(position, 15);
-    _controller.selectPoi(null);
-    _controller.selectEvent(null);
-  }
-
-  void _fallbackLoadPois() {
-    if (_hasRequestedPois) return;
-    _hasRequestedPois = true;
-    final center = _controller.defaultCenter;
-    setState(() {
-      _status = _MapStatus.fallback;
-      _statusMessage = 'Exibindo pontos padrão da cidade.';
-    });
-    unawaited(() async {
-      final success = await _controller.loadPoints(center);
-      await _loadTodayEvents();
-      if (!mounted) return;
-      setState(() {
-        _status = success ? _MapStatus.ready : _MapStatus.error;
-        _statusMessage = success
-            ? null
-            : 'Não foi possível carregar os pontos padrão.';
-      });
-    }());
-  }
-
-  Future<void> _loadTodayEvents() async {
-    if (_eventsLoaded) {
-      await _controller.loadEventsForDate(_today);
+  void _showSnackbar(String message) {
+    if (!mounted) {
       return;
     }
-    _eventsLoaded = true;
-    await _controller.loadEventsForDate(_today);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
   }
 
-  DateTime get _today {
-    final now = DateTime.now();
-    return DateTime(now.year, now.month, now.day);
+  Future<void> _openPoiDetails(CityPoiModel poi) async {
+    if (!mounted) {
+      return;
+    }
+    await context.router.push(PoiDetailsRoute(poi: poi));
+  }
+
+  Future<void> _openEventDetails(EventModel event) async {
+    if (!mounted) {
+      return;
+    }
+    final slug = _slugify(event.id.value ?? event.title.value);
+    await context.router.push(EventDetailRoute(slug: slug));
+  }
+
+  EventCardData _mapEventToCardData(EventModel event) {
+    final thumbUri = event.thumb?.thumbUri.value;
+    final imageUrl = thumbUri?.toString();
+    final fallbackImage = _cityMapController.fallbackEventImage ??
+        'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?w=800';
+    final participants = event.artists
+        .map(
+          (artist) => EventParticipantData(
+            name: artist.name.value,
+            isHighlight: artist.isHighlight.value,
+          ),
+        )
+        .toList(growable: false);
+    final startDate = event.dateTimeStart.value ?? DateTime.now();
+    final venue = event.location.value;
+    final slug = _slugify(event.id.value ?? event.title.value);
+
+    return EventCardData(
+      slug: slug,
+      title: event.title.value,
+      imageUrl: imageUrl?.isNotEmpty == true ? imageUrl! : fallbackImage,
+      startDateTime: startDate,
+      venue: venue,
+      participants: participants,
+    );
+  }
+
+  void _handleNavigationTarget(MapNavigationTarget? target) {
+    if (target == null) {
+      return;
+    }
+    final center = LatLng(
+      target.center.latitude,
+      target.center.longitude,
+    );
+    _mapController.move(center, target.zoom);
+  }
+
+  void _handlePanelChange(LateralPanelType? panel) {
+    switch (panel) {
+      case LateralPanelType.cuisines:
+        unawaited(_cuisinePanelController.activate());
+        break;
+      case LateralPanelType.regions:
+        unawaited(_cityMapController.loadRegions());
+        break;
+      case LateralPanelType.events:
+      case LateralPanelType.music:
+      case null:
+        break;
+    }
+  }
+
+  String _slugify(String value) {
+    final slug = value.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), '-');
+    final cleaned = slug.replaceAll(RegExp(r'-{2,}'), '-');
+    return cleaned.replaceAll(RegExp(r'^-+|-+$'), '');
+  }
+
+  Future<void> _onMainFilterTap(MainFilterOption option) async {
+    if (option.opensPanel) {
+      final panelType = _panelTypeFor(option.type);
+      if (panelType != null) {
+        _fabMenuController.openPanel(panelType);
+      }
+      return;
+    }
+    _fabMenuController.closePanel();
+    await _cityMapController.applyMainFilter(option);
+  }
+
+  LateralPanelType? _panelTypeFor(MainFilterType type) {
+    switch (type) {
+      case MainFilterType.regions:
+        return LateralPanelType.regions;
+      case MainFilterType.events:
+        return LateralPanelType.events;
+      case MainFilterType.music:
+        return LateralPanelType.music;
+      case MainFilterType.cuisines:
+        return LateralPanelType.cuisines;
+      case MainFilterType.promotions:
+        return null;
+    }
+  }
+
+  IconData _rideShareIcon(RideShareProvider provider) {
+    switch (provider) {
+      case RideShareProvider.uber:
+        return Icons.local_taxi;
+      case RideShareProvider.ninetyNine:
+        return Icons.local_taxi_outlined;
+    }
+  }
+
+  _StatusVisuals _resolveStatusVisuals(
+    MapStatus status,
+    ThemeData theme,
+  ) {
+    switch (status) {
+      case MapStatus.locating:
+        return _StatusVisuals(
+          background: theme.colorScheme.surfaceContainerHigh,
+          textColor: theme.colorScheme.onSurfaceVariant,
+          icon: Icons.hourglass_bottom,
+        );
+      case MapStatus.fetching:
+        return _StatusVisuals(
+          background: theme.colorScheme.secondaryContainer,
+          textColor: theme.colorScheme.onSecondaryContainer,
+          icon: Icons.explore_outlined,
+        );
+      case MapStatus.fallback:
+        return _StatusVisuals(
+          background: theme.colorScheme.surfaceContainerHighest,
+          textColor: theme.colorScheme.onSurfaceVariant,
+          icon: Icons.location_off_outlined,
+        );
+      case MapStatus.error:
+        return _StatusVisuals(
+          background: theme.colorScheme.errorContainer,
+          textColor: theme.colorScheme.onErrorContainer,
+          icon: Icons.warning_amber_rounded,
+        );
+      case MapStatus.ready:
+        return _StatusVisuals(
+          background: theme.colorScheme.surfaceContainerHighest,
+          textColor: theme.colorScheme.onSurfaceVariant,
+          icon: Icons.info_outline,
+        );
+    }
   }
 }
 
-enum _MapStatus { locating, fetching, ready, error, fallback }
-
-class _CityMapView extends StatelessWidget {
-  const _CityMapView({
-    required this.mapController,
-    required this.pois,
-    required this.selectedPoi,
-    required this.onSelectPoi,
-    required this.events,
-    required this.selectedEvent,
-    required this.onSelectEvent,
-    required this.userPosition,
-    required this.defaultCenter,
+class _StatusVisuals {
+  const _StatusVisuals({
+    required this.background,
+    required this.textColor,
+    required this.icon,
   });
 
-  final MapController mapController;
-  final List<CityPoiModel> pois;
-  final CityPoiModel? selectedPoi;
-  final ValueChanged<CityPoiModel?> onSelectPoi;
-  final List<EventModel> events;
-  final EventModel? selectedEvent;
-  final ValueChanged<EventModel?> onSelectEvent;
-  final LatLng? userPosition;
-  final LatLng defaultCenter;
-
-  @override
-  Widget build(BuildContext context) {
-    final selectedEventId = selectedEvent?.id.value;
-    final now = DateTime.now();
-    final markers = <Marker>[
-      if (userPosition != null)
-        Marker(
-          point: userPosition!,
-          width: 48,
-          height: 48,
-          child: const UserLocationMarker(),
-        ),
-      ...pois.map(
-        (poi) => Marker(
-          point: LatLng(
-            poi.coordinate.latitude,
-            poi.coordinate.longitude,
-          ),
-          width: 52,
-          height: 52,
-          child: GestureDetector(
-            onTap: () => onSelectPoi(poi),
-            child: PoiMarker(
-              poi: poi,
-              isSelected: selectedPoi?.id == poi.id,
-            ),
-          ),
-        ),
-      ),
-      ...events
-          .where((event) => event.coordinate != null)
-          .map(
-            (event) {
-              final temporalState =
-                  resolveEventTemporalState(event, reference: now);
-              final markerSize =
-                  temporalState == CityEventTemporalState.now ? 96.0 : 68.0;
-              return Marker(
-                point: LatLng(
-                  event.coordinate!.latitude,
-                  event.coordinate!.longitude,
-                ),
-                width: markerSize,
-                height: markerSize,
-                child: GestureDetector(
-                  onTap: () => onSelectEvent(event),
-                  child: EventMarker(
-                    event: event,
-                    isSelected: selectedEventId == event.id.value,
-                  ),
-                ),
-              );
-            },
-          ),
-    ];
-
-    final initialCenter = userPosition ?? defaultCenter;
-
-    return FmMap(
-      mapController: mapController,
-      mapOptions: MapOptions(
-        initialCenter: initialCenter,
-        initialZoom: userPosition != null ? 15 : 14,
-        minZoom: 11,
-        maxZoom: 19,
-        interactionOptions: const InteractionOptions(flags: InteractiveFlag.all),
-      ),
-      markers: markers,
-      attributionAlignment: Alignment.bottomRight,
-    );
-  }
+  final Color background;
+  final Color textColor;
+  final IconData icon;
 }

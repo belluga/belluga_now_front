@@ -32,7 +32,7 @@ class _EventMarkerState extends State<EventMarker>
 
   @override
   Widget build(BuildContext context) {
-    final baseColor = widget.event.type.color.value ?? const Color(0xFF4FA0E3);
+    final baseColor = widget.event.type.color.value;
     final now = DateTime.now();
     final state = resolveEventTemporalState(widget.event, reference: now);
     final scale = widget.isSelected ? 1.1 : 1.0;
@@ -47,7 +47,7 @@ class _EventMarkerState extends State<EventMarker>
         final progress = _controller.value;
         final isLive = state == CityEventTemporalState.now;
 
-        return SizedBox(
+        Widget marker = SizedBox(
           width: frameSize,
           height: frameSize,
           child: Stack(
@@ -90,9 +90,43 @@ class _EventMarkerState extends State<EventMarker>
             ],
           ),
         );
+
+        if (state == CityEventTemporalState.past) {
+          marker = ColorFiltered(
+            colorFilter: const ColorFilter.matrix(<double>[
+              0.2126,
+              0.7152,
+              0.0722,
+              0,
+              0,
+              0.2126,
+              0.7152,
+              0.0722,
+              0,
+              0,
+              0.2126,
+              0.7152,
+              0.0722,
+              0,
+              0,
+              0,
+              0,
+              0,
+              1,
+              0,
+            ]),
+            child: Opacity(
+              opacity: 0.1,
+              child: marker,
+            ),
+          );
+        }
+
+        return marker;
       },
     );
   }
+
   Color _badgeColorForState(CityEventTemporalState state, Color baseColor) {
     switch (state) {
       case CityEventTemporalState.now:
@@ -100,7 +134,6 @@ class _EventMarkerState extends State<EventMarker>
       case CityEventTemporalState.past:
         return Colors.grey.shade500;
       case CityEventTemporalState.upcoming:
-      default:
         return baseColor;
     }
   }
@@ -136,8 +169,11 @@ class _MarkerCore extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final primaryArtist = event.artists.isNotEmpty ? event.artists.first : null;
-    final avatarUri = primaryArtist?.avatarUrl.value?.toString();
-    final fallbackUri = event.thumb?.thumbUri.value?.toString();
+    final avatarUriValue = primaryArtist?.avatarUrl.value;
+    final avatarUri = avatarUriValue == null ? null : avatarUriValue.toString();
+    final fallbackUriValue = event.thumb?.thumbUri.value;
+    final fallbackUri =
+        fallbackUriValue == null ? null : fallbackUriValue.toString();
     final imageUrl = avatarUri?.isNotEmpty == true
         ? avatarUri
         : (fallbackUri?.isNotEmpty == true ? fallbackUri : null);
@@ -172,21 +208,6 @@ class _MarkerCore extends StatelessWidget {
             )
           : _FallbackIcon(color: activeColor),
     );
-
-    if (state == CityEventTemporalState.past) {
-      return ColorFiltered(
-        colorFilter: const ColorFilter.matrix(<double>[
-          0.2126, 0.7152, 0.0722, 0, 0,
-          0.2126, 0.7152, 0.0722, 0, 0,
-          0.2126, 0.7152, 0.0722, 0, 0,
-          0, 0, 0, 1, 0,
-        ]),
-        child: Opacity(
-          opacity: 0.35,
-          child: core,
-        ),
-      );
-    }
 
     return core;
   }

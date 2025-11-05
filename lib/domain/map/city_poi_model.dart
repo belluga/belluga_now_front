@@ -10,9 +10,11 @@ class CityPoiModel {
     required this.address,
     required this.category,
     required this.coordinate,
+    required this.priority,
     this.assetPath,
     this.isDynamic = false,
     this.movementRadiusMeters,
+    this.tags = const [],
   });
 
   final String id;
@@ -21,9 +23,11 @@ class CityPoiModel {
   final String address;
   final CityPoiCategory category;
   final CityCoordinate coordinate;
+  final int priority;
   final String? assetPath;
   final bool isDynamic;
   final double? movementRadiusMeters;
+  final List<String> tags;
 
   factory CityPoiModel.fromDTO(CityPoiDTO dto) {
     return CityPoiModel(
@@ -36,9 +40,11 @@ class CityPoiModel {
         latitude: dto.latitude,
         longitude: dto.longitude,
       ),
+      priority: dto.priority,
       assetPath: dto.assetPath,
       isDynamic: dto.isDynamic,
       movementRadiusMeters: dto.movementRadiusMeters,
+      tags: dto.tags,
     );
   }
 }

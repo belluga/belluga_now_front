@@ -5,4 +5,5 @@ abstract class ScheduleRepositoryContract {
   Future<ScheduleSummaryModel> getScheduleSummary();
   Future<List<EventModel>> getEventsByDate(DateTime date);
   Future<List<EventModel>> getAllEvents();
+  Future<EventModel?> getEventBySlug(String slug);
 }

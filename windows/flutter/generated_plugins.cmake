@@ -7,6 +7,7 @@ list(APPEND FLUTTER_PLUGIN_LIST
   geolocator_windows
   platform_device_id_windows
   sentry_flutter
+  share_plus
   url_launcher_windows
 )
 

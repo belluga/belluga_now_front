@@ -1,5 +1,6 @@
 class EventCardData {
   const EventCardData({
+    required this.slug,
     required this.title,
     required this.imageUrl,
     required this.startDateTime,
@@ -7,6 +8,7 @@ class EventCardData {
     required this.participants,
   });
 
+  final String slug;
   final String title;
   final String imageUrl;
   final DateTime startDateTime;

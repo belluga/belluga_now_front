@@ -170,7 +170,7 @@ class MockScheduleBackend implements ScheduleBackendContract {
     ),
   ];
 
-static final List<_MockEventSeed> _eventSeeds = [
+  static final List<_MockEventSeed> _eventSeeds = [
     // Day 0
     _MockEventSeed(
       id: 'event-day0-morning-flow',
@@ -375,8 +375,7 @@ static final List<_MockEventSeed> _eventSeeds = [
       id: 'event-day1-artisan-stage',
       type: _concertType,
       title: 'Artisan Fair Stage',
-      content:
-          'Pocket shows durante a feira de artesaos no centro historico.',
+      content: 'Pocket shows durante a feira de artesaos no centro historico.',
       location: 'Praca Philomeno Pereira',
       latitude: -20.6726,
       longitude: -40.5009,
