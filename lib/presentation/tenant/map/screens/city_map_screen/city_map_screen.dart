@@ -26,8 +26,7 @@ import 'package:belluga_now/presentation/tenant/map/screens/city_map_screen/widg
 import 'package:belluga_now/presentation/tenant/map/screens/city_map_screen/widgets/shared/event_info_card.dart';
 import 'package:belluga_now/presentation/tenant/map/screens/city_map_screen/widgets/shared/location_status_banner.dart';
 import 'package:belluga_now/presentation/tenant/map/screens/city_map_screen/widgets/shared/main_filter_icon_resolver.dart';
-import 'package:belluga_now/presentation/view_models/event_card_data.dart';
-import 'package:flutter/foundation.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:get_it/get_it.dart';
@@ -580,12 +579,16 @@ class _CityMapScreenState extends State<CityMapScreen> {
 
   Future<void> _sharePoi(CityPoiModel poi) async {
     final payload = _cityMapController.buildPoiSharePayload(poi);
-    await Share.share(payload.message, subject: payload.subject);
+    await SharePlus.instance.share(
+      ShareParams(text: payload.message, subject: payload.subject),
+    );
   }
 
   Future<void> _shareEvent(EventModel event) async {
     final payload = _cityMapController.buildEventSharePayload(event);
-    await Share.share(payload.message, subject: payload.subject);
+    await SharePlus.instance.share(
+      ShareParams(text: payload.message, subject: payload.subject),
+    );
   }
 
   Future<void> _handleDirectionsForPoi(CityPoiModel poi) async {
@@ -733,36 +736,6 @@ class _CityMapScreenState extends State<CityMapScreen> {
         ? _slugify(slugSource)
         : _slugify(event.title.value);
     await context.router.push(EventDetailRoute(slug: slug));
-  }
-
-  EventCardData _mapEventToCardData(EventModel event) {
-    final thumbUri = event.thumb?.thumbUri.value;
-    final imageUrl = thumbUri?.toString();
-    final fallbackImage = _cityMapController.fallbackEventImage ??
-        'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?w=800';
-    final participants = event.artists
-        .map(
-          (artist) => EventParticipantData(
-            name: artist.name.value,
-            isHighlight: artist.isHighlight.value,
-          ),
-        )
-        .toList(growable: false);
-    final startDate = event.dateTimeStart.value ?? DateTime.now();
-    final venue = event.location.value;
-    final slugSource = event.id.value;
-    final slug = slugSource.isNotEmpty
-        ? _slugify(slugSource)
-        : _slugify(event.title.value);
-
-    return EventCardData(
-      slug: slug,
-      title: event.title.value,
-      imageUrl: imageUrl?.isNotEmpty == true ? imageUrl! : fallbackImage,
-      startDateTime: startDate,
-      venue: venue,
-      participants: participants,
-    );
   }
 
   void _handleNavigationTarget(MapNavigationTarget? target) {

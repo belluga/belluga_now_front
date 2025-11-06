@@ -159,9 +159,8 @@ class _InviteShareScreenState extends State<InviteShareScreen> {
         'Bora? ${invite.eventName} em ${invite.location} no dia $date.\n'
         'Detalhes: https://belluga.now/invite/${invite.id}';
 
-    await Share.share(
-      shareMessage,
-      subject: 'Convite Belluga Now',
+    await SharePlus.instance.share(
+      ShareParams(text: shareMessage, subject: 'Convite Belluga Now'),
     );
   }
 

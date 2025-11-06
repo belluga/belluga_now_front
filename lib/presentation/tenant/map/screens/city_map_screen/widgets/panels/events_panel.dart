@@ -88,7 +88,9 @@ class EventsPanel extends StatelessWidget {
     switch (action) {
       case _EventMenuAction.share:
         final payload = controller.buildSharePayload(event);
-        await Share.share(payload.message, subject: payload.subject);
+        await SharePlus.instance.share(
+          ShareParams(text: payload.message, subject: payload.subject),
+        );
         break;
       case _EventMenuAction.route:
         final info = await controller.prepareDirections(event);
