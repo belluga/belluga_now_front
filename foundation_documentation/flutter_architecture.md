@@ -1,309 +1,162 @@
 # Belluga Now Flutter Architecture Overview
 
-> _Maintainer’s note_: This summary captures knowledge inferred while navigating
-> the codebase. It is intentionally pragmatic—focused on how things are wired in
-> practice so future sessions can jump straight to implementation details.
+> _Maintainer’s note_: This document distills how the Belluga Now Flutter
+> application (Guar[APP]ari) is wired today. It combines the original Belluga
+> architectural conventions with the reusable guidance we brought from the
+> WhatsFlow project, keeping the strongest parts of both.
 
 ---
 
-## Core Architectural Concepts
-
-These are the foundational, system-wide principles that guide the development of the entire application.
-
--   **Backend-Driven UI:**
-    -   **Principle:** UI labels, terminology, and Calls to Action (CTAs) should not be hardcoded in the app. They should be treated as configurable data, defined on the backend and associated with a specific entity category (e.g., a Partner's "Follow" verb, an Item's primary CTA).
-    -   **Impact:** This allows for maximum flexibility, enabling remote configuration and A/B testing without requiring app deployments. It requires a robust Category Management System and Configuration Endpoint on the backend.
-
--   **Component/Template-Based Design:**
-    -   **Principle:** The system should favor creating flexible, data-driven page templates (e.g., a generic `ItemLandingPage`, `PartnerLandingPage`) over building unique, one-off screens for every item.
-    -   **Impact:** This promotes UI consistency and development speed. It requires APIs to return data in a standardized format that can populate these templates.
-
--   **Asynchronous User State Management:**
-    -   **Principle:** User-specific, stateful interactions (like pending invites, notifications, or required actions) should be managed as a queue or a list in the user's state, fetched from the backend.
-    -   **Impact:** This allows the app to handle pending interactions gracefully. On startup, the app checks this queue and can present the relevant UI (e.g., a "Tinder-like" invite screen) to the user.
-
--   **Unified Data Models/Interfaces:**
-    -   **Principle:** Entities with similar behaviors should implement a common interface or data model (e.g., a `Schedulable` interface for anything that can be added to a user's calendar).
-    -   **Impact:** This simplifies the logic for features that operate on different types of data (e.g., a "My Schedule" screen can display a simple list of all `Schedulable` items, regardless of their origin).
-
-## Core Growth Engine: Social & Invitation System
-
-This is a foundational part of the app's architecture, designed to drive viral growth and user engagement.
-
--   **Core Loop:**
-    -   User discovers a Partner/Event.
-    -   User engages ("Virar Fã," "Confirmar Presença," "Check-in").
-    -   This engagement **grants permission** for that specific partner to send targeted push notifications.
-    -   User is prompted to **invite friends**, expanding the user base.
-    -   New users are brought in through invites, see who invited them (social proof), and start their own discovery/engagement loop.
-
--   **System-Wide Implications:**
-    -   **Permissions Model:** The backend needs a granular permissions system to track which partners a user has granted notification permissions to.
-    -   **Push Notification Service:** The backend must have a service that allows partners to send push notifications to their specific "fanbase."
-        -   **Technical Implementation:** The intended mechanism for this is **Firebase Cloud Messaging (FCM) Topics**. When a user follows a partner, the app subscribes them to that partner's specific FCM Topic.
-    -   **Viral Tracking:** The invite system must be robust, tracking the entire chain from inviter to invitee to conversion (sign-up, engagement) to power gamification and analytics.
-
-## Layered Structure Snapshot
-
-- **Application layer** wires theming (`application_contract.dart`), global initialisation, and module bootstrap. Keep business logic out of this layer.
-- **Domain layer** expresses rules through models that wrap primitives with `ValueObject`s (`MongoIDValue`, `TitleValue`, `DateTimeValue`, etc.).
-- **Infrastructure layer** talks to backends (real or mock) and exposes DTOs that mirror external payloads.
-- **Presentation layer** focuses on widgets, controllers, and view models. Widgets consume primitives via view models suchs as `EventCardData`, never DTOs or raw value objects.
-
-## Data Flow Contracts
-
-- DTOs live under `lib/infrastructure/services/dal/dto/**` and stay close to the transport format (nullable fields, primitive types).
-- Domain models expose `fromDTO` constructors. DTOs never “know” the domain (`toDomain` is avoided).
-- Repositories convert DTOs into domain objects and expose domain-centric APIs. They are the only layer that depends on both DTOs and domain entities.
-- Controllers compose repositories and publish results through `StreamValue<T>`. Widgets observe them with `StreamValueBuilder`, enabling atomic updates (i.e. only the affected section rerenders).
-- View models shape the data widgets need (formatting, fallbacks, asset URLs) so presentation stays decoupled from domain intricacies.
-
-## Project Structure & Modularity
-
-- **`lib/application`**  
-  - `ApplicationContract` extends `ModularAppContract` from
-    `get_it_modular_with_auto_route`, bootstrapping `AppRouter` and
-    `ModuleSettings`.
-  - `ModuleSettings` registers global dependencies (backend, repositories,
-    controllers) and then registers feature modules.
-  - `ApplicationMobile` / `ApplicationWeb` wire platform-specific
-    preferences (orientation, etc.) and provide concrete auth/backend builders.
-
-- **Feature Modules (`lib/application/router/modular_app/modules`)**
-  - Each module extends `ModuleContract`.
-  - They register feature-specific controllers/repositories via GetIt.
-  - Modules currently used:
-    - `InitializationModule` – registers tenant and landlord home controllers.
-    - `AuthModule` – provides login, remember-password, create-password, and
-      recovery controllers (lazy or factory registered).
-    - `ProfileModule`, `ScheduleModule`, etc. register their respective
-      controllers/repositories.
-
-## Navigation
-
-- **Router**: `AppRouter` (AutoRoute) mixes top-level routes and module-provided
-  routes.
-  - Home (`/`) guarded by `TenantRouteGuard`.
-  - Landlord home, login, recovery, etc. available via explicit paths.
-  - Schedule routes (`/agenda`, `/agenda/procurar`) currently unguarded
-    (deliberately for dev/testing).
-
-- **Route Wrapper Pattern**  
-  - Every screen exposed via AutoRoute has a companion `*_route.dart`
-    widget that wraps the real screen inside a `ModuleScope<FeatureModule>`.
-  - Example: `ScheduleRoute` → `ModuleScope<ScheduleModule>(child:
-    ScheduleScreen())`.
-  - This ensures module dependencies are initialized/disposed automatically.
-
-## Dependency Injection (GetIt)
-
-- Controllers & repositories are registered in modules or during app init.
-- Screens obtain dependencies via `GetIt.I.get<T>()` (with late finals).
-- Disposal responsibilities:
-  - Some controllers expose `onDispose()` to close streams/controllers.
-  - Screens typically call `controller.onDispose()` in `dispose()`, but avoid
-    unregistering from GetIt—the module handles lifecycle.
-
-## State Management
-
-- Uses [`stream_value`](https://pub.dev/packages/stream_value) extensively.
-  - Controllers expose `StreamValue<T>` for UI state.
-  - Widgets use `StreamValueBuilder` to rebuild sections of UI.
-  - Pattern encourages atomic streams (e.g. schedule screen has separate
-    streams for events, visible dates, etc.).
-- `StreamValue` keeps the “bloc-like” intent while allowing targeted updates (fetch more events without touching other widgets). Controllers should dispose every `StreamValue` they own.
-
-### Shared State Management (Single Source of Truth)
-
-For any piece of application state that is shared, accessed, or modified by multiple, otherwise-decoupled components (like different controllers or widgets), the following principles apply:
-
--   **Single Source of Truth (SSoT):** Shared state should be managed in a single, centralized location (a dedicated service or repository). This prevents state desynchronization and makes the application's state predictable.
-
--   **State Exposure via Observation (Reactive State):** Shared state should be exposed to consumers via observable streams (like our `StreamValue`). Components should react to state changes rather than imperatively polling for updates.
-
--   **Decoupling State Management from UI Components:** The logic for managing and updating shared state should be completely decoupled from the UI components that consume it. This enhances modularity and testability.
-
--   **Separation of State from Action:** The service is responsible for holding the *state*. The *actions* that modify this state are still initiated by the controllers.
-
-**Concrete Example: `FilterStateService`**
-
--   A dedicated service (e.g., `FilterStateService`) acts as a central repository for the currently active filters affecting the map's output.
--   It exposes a `StreamValue<PoiQuery>` (or similar) representing the current filter state.
--   The `CityMapController` (or other relevant controllers) updates this service whenever filters are applied.
--   Any controller or UI component needing to know the active filters can observe this service's `StreamValue`, ensuring a single, consistent source of truth.
-
-### `StreamValue` as the Single Source of Truth
-
--   **Principle:** When using a `StreamValue` to manage a piece of state within a controller, the `StreamValue` itself must be the **only** source of truth for that state.
--   **Anti-Pattern to Avoid:** Do not maintain a separate private variable (e.g., `_myState`) alongside a `StreamValue` (e.g., `myStateStreamValue`) for the same data. Updating both creates two sources of truth and leads to bugs.
--   **Correct Pattern:**
-    -   **State Update:** Only update the `StreamValue`: `myStateStreamValue.addValue(newState);`
-    -   **State Access (Internal):** Access the current value directly from the stream: `final currentState = myStateStreamValue.value;`
-
-- Example patterns:
-  - `TenantHomeController` → `StreamValue<HomeOverview?>`.
-  - `ScheduleScreenController` tracks events, schedule summaries, visible
-    dates, etc. via multiple streams.
-  - Auth controllers manage form status (loading, field enabled, errors) as
-    streams.
-
-## Code Quality & Architectural Principles
-
-To ensure a maintainable, testable, and scalable codebase, the following principles must be strictly adhered to, especially within the Presentation Layer:
-
--   **Widgets are for UI (Purely Presentational):**
-    -   Widgets should focus solely on rendering the user interface based on the state provided to them.
-    -   They should contain minimal to no business logic, complex decision-making, or asynchronous operations.
-    -   All UI-specific state that impacts the overall screen should be managed by the controller.
--   **Controllers Own UI Controllers:**
-    -   Feature controllers are the single owners of Flutter-side controllers such as `TextEditingController`, `ScrollController`, or `CardStackSwiperController`.
-    -   Widgets access those controllers via GetIt and never instantiate or dispose them locally, ensuring a single lifecycle owner and making shared behavior (e.g., programmatic scrolling, staged search updates) testable.
-    -   Controllers expose helper methods (e.g., `clearSearch`, `applyDecision`) so widgets trigger intent rather than mutating controller state directly.
--   **Constructor Discipline:**
-    -   Production constructors stay minimal, wiring default dependencies internally. We defer injection hooks (test-only factories, optional parameters) until an explicit testing requirement emerges.
-    -   When we later introduce test constructors, prefer named factories or `@visibleForTesting` helpers so the primary constructor remains clean in autocomplete and day-to-day usage.
-
--   **Controllers Manage State & Logic:**
-    -   Controllers are responsible for all application state, business logic, and orchestrating data flow.
-    -   They expose `StreamValue`s for the UI to consume.
-    -   Complex logic, asynchronous calls, and state transitions belong here.
-
--   **Strict Theming (No Hardcoded Colors):**
-    -   All colors used in the UI must derive from `Theme.of(context).colorScheme`.
-    -   Hardcoded color values (e.g., `Color(0xFF...)`, `Colors.red`) are strictly forbidden.
-    -   The only exception is for dynamic colors coming directly from the backend (e.g., a POI's specific brand color), which should still be handled gracefully.
-
--   **One Widget Per File (Generally):**
-    -   Extract smaller, reusable widgets into their own dedicated files.
-    -   **Hierarchical Widget Organization:**
-        -   A main widget (e.g., a screen) should reside in its own file at the root of its feature context (e.g., `my_feature_screen.dart`).
-        -   Local helper widgets, not intended for broader sharing, should be placed in a `widgets/` subfolder *within the main widget's folder* (e.g., `my_feature_screen/widgets/my_local_helper_widget.dart`).
-        -   If a widget initially created as a local helper is later found to be beneficial for reuse across multiple contexts, it should be moved to a higher-level, common `widgets/` folder that oversees all contexts where it is used.
-    -   Private helper widgets (`_MyWidget`) within a file should be extracted if they grow beyond a trivial size or are used in multiple places.
-
--   **Delegation of Dynamic Routing:**
-    -   Widgets should delegate dynamic routing logic to the controller.
-    -   The widget calls a controller method (e.g., `controller.navigateToDetails(item)`), and the controller handles the logic to determine the correct route and parameters, returning the route to the widget for execution (e.g., `context.router.push(route)`).
-
--   **Avoid Local `setState` in Screens:**
-    -   For any state that impacts the overall screen or is derived from controller actions, it should be managed by the controller and exposed via `StreamValue`s.
-    -   `setState` should be reserved for purely transient, local UI state that does not affect the application's core logic or other parts of the UI.
-
--   **Complex Widgets with Dedicated Controllers:**
-    -   For complex UI components (e.g., a custom FAB menu, a detailed filter panel), consider giving them their own dedicated controllers.
-    -   These controllers manage the component's internal state and logic, communicating with parent controllers (like `CityMapController`) for broader application state changes.
-    -   This enhances modularity, testability, and separation of concerns.
-
--   **Helper Widgets and Dependency Injection (DI):**
-    -   Helper widgets, even when extracted into their own files, can access controllers via GetIt's Dependency Injection mechanism.
-    -   If a helper widget is scoped solely for a specific screen (i.e., it's not intended for broader reuse across different screens), it is acceptable for it to retrieve that screen's controller directly via `GetIt.I.get<ScreenController>()`.
-    -   This approach avoids 'prop drilling' (passing numerous parameters down the widget tree) and keeps widget constructors clean, while still adhering to the principle of widgets being purely presentational.
-
--   **Controllers are `BuildContext`-Agnostic:**
-    -   Controllers must never accept `BuildContext` as a parameter or directly perform UI actions that require it (e.g., showing dialogs, navigating, displaying snackbars).
-    -   Any operation requiring `BuildContext` is inherently a UI responsibility and should be handled by the widget layer, with the controller providing the necessary data or intent.
-
-## Data Layer
-
-- **Repositories**
-  - Interfaces under `lib/domain/repositories`.
-  - Implementations under `lib/infrastructure/repositories`.
-  - Repositories depend either on GetIt-registered backend contracts or other
-    repositories.
-
-- **DTOs**
-  - Located in `lib/infrastructure/services/dal/dto/**`.
-  - Domain models expose `fromDTO` constructors.
-  - Example: Home module uses DTOs → domain models → view models.
-
-- **Backends**
-  - `MockBackend` provides mock implementations for features (tenant, auth,
-    home, schedule, etc.).
-  - Additional mock backends for schedule, notes, etc. under
-    `lib/infrastructure/services/dal/dao/mock_backend`.
-
-- **Data Externalization:**
-  - To ensure flexibility and avoid hardcoded values, dynamic content should be externalized and fetched from the backend.
-  - **Regions List:** The list of map regions (e.g., "Rota da Ferradura") should be fetched from the backend rather than being hardcoded in controllers.
-  - **Main Filter Icon Mapping:** The mapping of main filter icons should be driven by data from the backend (e.g., an `iconKey` string) rather than hardcoded logic in the UI.
-  - **Fallback Image URL:** Fallback image URLs should be provided by the backend or a configuration service, not hardcoded in the application.
-
-## Example Feature: Schedule
-
-- `ScheduleScreenController` requests data from `ScheduleRepository`, pushes results into `eventsStreamValue`, and keeps additional `StreamValue`s for date selectors and visibility flags.
-- `ScheduleRepository` delegates to `ScheduleBackendContract` (mocked via `MockScheduleBackend`) and converts DTOs to domain models (`EventModel.fromDTO`).
-- `ScheduleScreen` maps each `EventModel` into `EventCardData`, reusing the shared `UpcomingEventCard` for visual consistency with the home tab.
-- Mock data now covers several calendar days and multiple events per day, so navigating the date row demonstrates distinct cards per selection.
-
-## UI Layer Patterns
-
-- **Bottom Navigation**
-  - `BellugaBottomNavigationBar` receives `currentIndex` and drives route
-    navigation via `context.router.replaceAll`.
-  - Currently only Home (`index 0`) and Agenda (`index 1`) are functional;
-    other tabs show a Snackbar placeholder.
-
-- **App Bars**
-  - `MainLogo` widget centralizes the display of the horizontal PNG logo and is
-    reused by Home, Schedule, Auth screens, etc.
-
-- **Schedule Feature**
-  - `ScheduleScreenController` fetches mock data, maintains visible/selected
-    dates, and stream-updates the UI.
-  - `ScheduleScreen` uses `MainLogo`, bottom navigation, and listens to event
-    streams to render cards.
-
-- **Auth Flow**
-  - Controllers manage validation, errors, and navigation to subsequent pages.
-  - Route wrappers ensure controllers are registered before screen build.
-
-## Styling & Theming Notes
-
-- `ApplicationContract` centralises colour definitions (primary `#4fa0e3`, secondary `#e80d5d`). Derive any additional swatches from these seeds.
-- Shared branding elements (like `MainLogo`) should be reused in every top-level screen to avoid divergent asset handling.
-
-## Value Object Notes
-
-- Uses `value_object_pattern` package.
-  - Some VO constructors enforce specific lengths (e.g. `TitleValue`
-    default min length of 5).  
-  - Adjusted event type name creation with `TitleValue(minLenght: 1)` to accept
-    shorter names (“Show”).
-
-## Asset Loading
-
-- Logos now rely on PNG (`assets/images/logo_horizontal.png`) after SVG caused
-  missing-asset exceptions.
-  - Ensure `pubspec.yaml` includes the assets directory (`assets/images/`).
-
-## Error Handling & Gotchas
-
-- When adding new DTO fields, ensure corresponding VO/parsers accept their
-  format (e.g., DateTime string parsing, slug creation).
-- Stream lifecycles: remember to dispose controllers that own text fields,
-  scroll controllers, etc., inside `onDispose()` implementations.
-- AutoRoute refresh: run `flutter pub run build_runner build
-  --delete-conflicting-outputs` after modifying routes or annotations.
-
-## Workflows & Tooling
-
-- After changing routing/modules or generated files, run
-  `flutter pub run build_runner build` to sync AutoRoute outputs.
-- Run `flutter analyze` regularly. Existing warnings (missing type annotations,
-  `withOpacity` deprecations) are known, but new code should not introduce
-  regressions.
-- Prefer the established GetIt + `StreamValue` pattern for new features; align
-  controller lifecycles with `ScheduleScreenController` and `TenantHomeController`.
-- Document new architectural insights here to keep future sessions aligned.
+## 1. Core Architectural Concepts
+
+These principles govern every feature we design:
+
+- **Backend-Driven UI** – Labels, CTAs, colours, and copy come from backend
+  contracts rather than being hard-coded in Flutter. This allows dynamic
+  branding and experimentation without new builds.
+- **Component / Template-Based Design** – We prefer data-driven templates such
+  as `ItemLandingPage` and `PartnerLandingPage` over bespoke screens. Feature
+  APIs must deliver data shaped for those templates.
+- **Asynchronous State Management** – User-specific state (invites queue,
+  agenda actions, pending tasks) is fetched asynchronously and exposed through
+  reactive services. Controllers observe and react; widgets never poll.
+- **Unified Data Models** – Domain models implement shared interfaces when
+  behaviour overlaps (e.g., anything displayable in the agenda implements a
+  `Schedulable` contract). This keeps cross-module features simple.
+
+## 2. Core Growth Engine: Social & Invites
+
+The invite loop remains foundational:
+
+1. Tenants discover a partner or event.
+2. Confirmation grants the partner permission for targeted notifications.
+3. The app prompts invites via the “Bora?” flow, encouraging viral spread.
+4. New users land in-context and can repeat the cycle.
+
+Implications:
+
+- Permissions and analytics live server-side; the client only consumes
+  contract-safe data.
+- Firebase Cloud Messaging topics align with partner IDs for push campaigns.
+- Invite flows run through dedicated controllers (`InviteFlowController`,
+  `InviteShareScreenController`) that surface the entire state via `StreamValue`.
+
+## 3. Map & POI Experience Snapshot
+
+- Map data is fetched via REST (viewport queries) and supplemented with
+  WebSocket events for live updates.
+- `CityMapController` owns *all* shared state: the `MapController`, filters,
+  WebSocket subscriptions, and POI/event streams.
+- Helper controllers (`FabMenuController`, `RegionPanelController`, etc.) are
+  registered in the map module and interact through `StreamValue`s rather than
+  direct state mutation.
+
+## 4. Layered Structure
+
+- **Application layer** – Bootstraps theming (`ApplicationContract`), global
+  dependency registration (`ModuleSettings`), and AutoRoute configuration.
+- **Domain layer** – Holds value objects, entities, and use-case logic aligned
+  with `foundation_documentation/domain_entities.md`.
+- **Infrastructure layer** – Talks to backends and exposes DTOs that mirror
+  transport payloads. No presentation concerns live here.
+- **Presentation layer** – Widgets, controllers, and view models. Widgets are
+  pure UI; controllers own state and side effects; view models adapt domain
+  objects for rendering.
+
+## 5. Data Flow Contracts
+
+- DTOs live under `lib/infrastructure/services/dal/dto/**` and stay close to
+  the network format (nullable primitives, snake_case keys when required).
+- Domain models expose `fromDTO` constructors. DTOs never “push” into the
+  domain layer; controllers call the domain conversion.
+- Repositories convert DTOs to domain models and surface domain-centric APIs.
+- Controllers compose repositories, expose their state through
+  `StreamValue<T>`, and offer intent methods (e.g., `applyDecision`,
+  `toggleCategory`).
+- Widgets observe controller `StreamValue`s via `StreamValueBuilder`, enabling
+  finely scoped rebuilds.
+
+## 6. Project Structure & Modularity
+
+- `lib/application` – Application contracts, router, dependency bootstrap.
+- `lib/domain` – Value objects, entities, repository contracts, shared enums.
+- `lib/infrastructure` – Repository implementations, datasources, adapters,
+  mock backends.
+- `lib/presentation` – Feature folders (`tenant/screens/...`, `common/...`).
+  Each feature has a `controllers/` and `widgets/` subfolder when needed.
+- `foundation_documentation/` – Living architecture docs, module specs, mock
+  roadmaps.
+
+### 6.1 Module Creation Workflow (Borrowed & Adapted)
+
+1. **Document first** – Create or update the relevant module document under
+   `foundation_documentation/modules/` using the template. Capture purpose,
+   key workflows, data schemas, and API contracts.
+2. **Create the module** – Add a new `ModuleContract` in
+   `lib/application/router/modular_app/modules/` that registers controllers,
+   repositories, and any scoped services.
+3. **Wire the presentation** – Build screen + controller pairs. Controllers
+   register in the module; screens retrieve them through GetIt.
+4. **Expose routes** – Update `ModuleSettings.initializeSubmodules()` and the
+   AutoRoute configuration to include the new module’s routes.
+5. **Sync documentation** – Update the roadmap and module docs once
+   implementation details settle.
+
+## 7. Navigation (AutoRoute)
+
+- `AppRouter` mixes top-level routes and module-provided routes. Root routes
+  (init, auth, tenant shell) live in `app_router.dart` / `app_router.gr.dart`.
+- Feature routes sit in `*_route.dart` files that wrap screens in
+  `ModuleScope<FeatureModule>` to guarantee dependencies are registered before
+  build.
+- Guarded routes (e.g., tenant shell) reference auth controllers/resolvers.
+
+## 8. Dependency Injection (GetIt)
+
+- `ModuleSettings.registerGlobalDependencies()` owns global singletons
+  (HTTP client, secure storage, analytics, etc.).
+- Each feature module registers its controllers, repositories, and ancillary
+  services via `registerFactory` / `registerLazySingleton`.
+- Widgets fetch controllers via `GetIt.I.get<T>()`. No widget should instantiate
+  a controller directly unless explicitly documented as an exception.
+- Disposal is handled within controllers’ `onDispose()` (or via module scopes
+  for factories).
+
+## 9. Code Quality & Architectural Principles
+
+- **Widgets are Pure UI** – Widgets render based on controller/view-model
+  state. They avoid business logic, async operations, or direct repository
+  access.
+- **Controllers Manage State & Logic** – Controllers own state transitions,
+  side effects, validation, and expose `StreamValue`s for observation.
+- **Controllers Own UI Controllers** – Feature controllers (map, invites,
+  mercado, experiences, auth recovery) hold `TextEditingController`,
+  `ScrollController`, `MapController`, etc. Widgets obtain them through GetIt
+  and never create/dispose them locally.
+- **Constructor Discipline** – Production constructors stay minimal. We defer
+  test-only factories or DI overrides until the testing effort explicitly
+  demands them.
+- **Reactive State Exposure** – Shared state is surfaced via `StreamValue<T>`.
+  No controller keeps parallel private variables for the same data.
+- **Strict Theming** – All colours come from `Theme.of(context).colorScheme`
+  (except branded values delivered by the backend).
+- **One Widget per File** – Significant helper widgets move into dedicated
+  files under `widgets/`. Methods returning widgets are reserved for trivial
+  snippets; otherwise, promote them to proper widgets.
+- **Controllers are BuildContext-Agnostic** – Controllers never require
+  `BuildContext`. They signal intent; widgets perform navigation/dialog work.
+
+## 10. Testing & Tooling Notes
+
+- `flutter analyze` must stay clean; CI should run analyzer + unit tests.
+- Feature controllers expose intent methods that make unit testing easy
+  (e.g., verify `applyDecision` adjusts the invite stream appropriately).
+- When adding generated code (AutoRoute, freezed, json_serializable), ensure
+  build_runner configs live under `tool/` and that generated files remain
+  checked in or explicitly ignored per team policy.
 
 ---
 
-### Suggested Workflow Tips
-
-1. **Add dependencies via modules** – keep GetIt registration consistent.
-2. **Wrap new routes** with ModuleScope to guarantee dependencies are ready.
-3. **Use StreamValue** for state to stay aligned with existing pattern.
-4. **Check value-object constraints** when mapping new DTO fields.
-5. **Use `MainLogo`** for any screen that needs branding instead of inline assets.
-
-This document should be updated whenever architectural conventions evolve.
+_Keep this document current. Every time we introduce a significant pattern or
+module, update the relevant section so future engineers (human or AI) can align
+quickly._
