@@ -33,8 +33,9 @@ abstract class CreatePasswordControllerContract extends Disposable {
   late FormFieldControllerPasswordLogin newPasswordController;
   late FormFieldControllerPasswordLogin confirmPasswordController;
 
-  void cleanNewPasswordError(_) => newPasswordController.cleanError();
-  void cleanConfirmPasswordError(_) => confirmPasswordController.cleanError();
+  void cleanNewPasswordError(Object? _) => newPasswordController.cleanError();
+  void cleanConfirmPasswordError(Object? _) =>
+      confirmPasswordController.cleanError();
 
   void _cleanAllErrors() {
     cleanNewPasswordError(null);

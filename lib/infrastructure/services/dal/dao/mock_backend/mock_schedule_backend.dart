@@ -1238,7 +1238,6 @@ class _MockEventSeed {
     required this.thumbUrl,
     required this.offsetDays,
     required this.startHour,
-    this.startMinute = 0,
     this.durationMinutes = 90,
     required this.artists,
     required this.actionLabel,
@@ -1259,7 +1258,6 @@ class _MockEventSeed {
   final String thumbUrl;
   final int offsetDays;
   final int startHour;
-  final int startMinute;
   final int durationMinutes;
   final List<_MockArtistSeed> artists;
   final String actionLabel;
@@ -1271,7 +1269,6 @@ class _MockEventSeed {
       Duration(
         days: offsetDays,
         hours: startHour,
-        minutes: startMinute,
       ),
     );
     final endDate = date.add(Duration(minutes: durationMinutes));

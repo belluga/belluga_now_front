@@ -50,7 +50,7 @@ class ScheduleRepository extends ScheduleRepositoryContract
     final events = await getAllEvents();
     for (final event in events) {
       final idValue = event.id.value;
-      if (idValue != null && idValue == slug) {
+      if (idValue == slug) {
         return event;
       }
 

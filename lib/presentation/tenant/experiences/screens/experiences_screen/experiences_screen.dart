@@ -93,7 +93,7 @@ class _ExperiencesScreenState extends State<ExperiencesScreen> {
                   if (tags.isEmpty) {
                     return const SizedBox.shrink();
                   }
-                  final currentSelection = selectedTags ?? <String>{};
+                  final currentSelection = selectedTags;
                   return _TagChips(
                     tags: tags,
                     selectedTags: currentSelection,

@@ -29,7 +29,6 @@ import 'package:belluga_now/presentation/tenant/map/screens/city_map_screen/widg
 import 'package:belluga_now/presentation/view_models/event_card_data.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:get_it/get_it.dart';
 import 'package:latlong2/latlong.dart';
@@ -729,7 +728,10 @@ class _CityMapScreenState extends State<CityMapScreen> {
     if (!mounted) {
       return;
     }
-    final slug = _slugify(event.id.value ?? event.title.value);
+    final slugSource = event.id.value;
+    final slug = slugSource.isNotEmpty
+        ? _slugify(slugSource)
+        : _slugify(event.title.value);
     await context.router.push(EventDetailRoute(slug: slug));
   }
 
@@ -748,7 +750,10 @@ class _CityMapScreenState extends State<CityMapScreen> {
         .toList(growable: false);
     final startDate = event.dateTimeStart.value ?? DateTime.now();
     final venue = event.location.value;
-    final slug = _slugify(event.id.value ?? event.title.value);
+    final slugSource = event.id.value;
+    final slug = slugSource.isNotEmpty
+        ? _slugify(slugSource)
+        : _slugify(event.title.value);
 
     return EventCardData(
       slug: slug,

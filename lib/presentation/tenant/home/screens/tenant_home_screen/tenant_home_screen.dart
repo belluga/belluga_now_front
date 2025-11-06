@@ -198,7 +198,10 @@ class _TenantHomeScreenState extends State<TenantHomeScreen> {
         )
         .toList(growable: false);
     final startDate = event.dateTimeStart.value ?? DateTime.now();
-    final slug = _slugify(event.id.value ?? event.title.value);
+    final slugSource = event.id.value;
+    final slug = slugSource.isNotEmpty
+        ? _slugify(slugSource)
+        : _slugify(event.title.value);
 
     return EventCardData(
       slug: slug,

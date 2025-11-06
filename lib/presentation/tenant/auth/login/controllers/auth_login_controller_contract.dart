@@ -42,8 +42,8 @@ abstract class AuthLoginControllerContract extends Object with Disposable {
 
   final generalErrorStreamValue = StreamValue<String?>();
 
-  void cleanEmailError(_) => authEmailFieldController.cleanError();
-  void cleanPasswordError(_) => passwordController.cleanError();
+  void cleanEmailError(Object? _) => authEmailFieldController.cleanError();
+  void cleanPasswordError(Object? _) => passwordController.cleanError();
 
   void _cleanAllErrors() {
     cleanEmailError(null);
