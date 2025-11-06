@@ -55,8 +55,11 @@ Implications:
 
 - **Application layer** – Bootstraps theming (`ApplicationContract`), global
   dependency registration (`ModuleSettings`), and AutoRoute configuration.
-- **Domain layer** – Holds value objects, entities, and use-case logic aligned
-  with `foundation_documentation/domain_entities.md`.
+- **Domain layer** – Holds value objects, core entities, and use-case logic aligned
+  with `foundation_documentation/domain_entities.md`. When a feature needs a
+  specialised projection (e.g., `EventSummary`), place it alongside the entity
+  under a contextual subfolder such as `domain/events/projections/` so the
+  relationship stays explicit.
 - **Infrastructure layer** – Talks to backends and exposes DTOs that mirror
   transport payloads. No presentation concerns live here.
 - **Presentation layer** – Widgets, controllers, and view models. Widgets are
@@ -145,6 +148,11 @@ Implications:
   No controller keeps parallel private variables for the same data.
 - **Strict Theming** – All colours come from `Theme.of(context).colorScheme`
   (except branded values delivered by the backend).
+- **DTO → Domain → View Model Flow** – Services return DTOs; repositories map
+  them into domain entities (or domain projections) before returning to
+  controllers. Controllers work exclusively with domain objects and, when the UI
+  needs a specific projection (additional formatting, combined fields), create a
+  view model under the screen’s `view_models/` folder. Widgets never touch DTOs.
 - **One Widget per File** – Significant helper widgets move into dedicated
   files under `widgets/`. Methods returning widgets are reserved for trivial
   snippets; otherwise, promote them to proper widgets.
