@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:auto_route/auto_route.dart';
-import 'package:belluga_now/presentation/tenant/screens/mercado/controller/mercado_controller.dart';
+import 'package:belluga_now/presentation/tenant/mercado/screens/mercado_screen/controllers/mercado_controller.dart';
 import 'package:get_it_modular_with_auto_route/get_it_modular_with_auto_route.dart';
 
 class MercadoModule extends ModuleContract {

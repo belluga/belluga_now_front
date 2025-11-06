@@ -82,8 +82,13 @@ Implications:
 - `lib/domain` – Value objects, entities, repository contracts, shared enums.
 - `lib/infrastructure` – Repository implementations, datasources, adapters,
   mock backends.
-- `lib/presentation` – Feature folders (`tenant/screens/...`, `common/...`).
-  Each feature has a `controllers/` and `widgets/` subfolder when needed.
+- `lib/presentation` – Feature-first layout. Under `tenant/` each feature lives
+  in its own folder (`tenant/invites`, `tenant/map`, etc.) with:
+  - `screens/<screen_name>/` containing the screen, a `controllers/`
+    subfolder, and optionally a `widgets/` subfolder for screen-specific UI.
+  - `widgets/` at the feature root for helpers shared by multiple screens.
+  - `routes/` for AutoRoute wrappers, plus optional `data/` or `models/` when
+    the feature carries mock data or local models.
 - `foundation_documentation/` – Living architecture docs, module specs, mock
   roadmaps.
 

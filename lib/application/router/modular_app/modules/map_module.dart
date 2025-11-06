@@ -8,12 +8,12 @@ import 'package:belluga_now/infrastructure/services/dal/datasources/mock_poi_dat
 import 'package:belluga_now/infrastructure/services/http/mock_http_service.dart';
 import 'package:belluga_now/infrastructure/services/networking/mock_web_socket_service.dart';
 import 'package:belluga_now/infrastructure/repositories/schedule_repository.dart';
-import 'package:belluga_now/presentation/tenant/screens/map/controller/city_map_controller.dart';
-import 'package:belluga_now/presentation/tenant/screens/map/controller/cuisine_panel_controller.dart';
-import 'package:belluga_now/presentation/tenant/screens/map/controller/events_panel_controller.dart';
-import 'package:belluga_now/presentation/tenant/screens/map/controller/fab_menu_controller.dart';
-import 'package:belluga_now/presentation/tenant/screens/map/controller/music_panel_controller.dart';
-import 'package:belluga_now/presentation/tenant/screens/map/controller/region_panel_controller.dart';
+import 'package:belluga_now/presentation/tenant/map/screens/city_map_screen/controllers/city_map_controller.dart';
+import 'package:belluga_now/presentation/tenant/map/screens/city_map_screen/controllers/cuisine_panel_controller.dart';
+import 'package:belluga_now/presentation/tenant/map/screens/city_map_screen/controllers/events_panel_controller.dart';
+import 'package:belluga_now/presentation/tenant/map/screens/city_map_screen/controllers/fab_menu_controller.dart';
+import 'package:belluga_now/presentation/tenant/map/screens/city_map_screen/controllers/music_panel_controller.dart';
+import 'package:belluga_now/presentation/tenant/map/screens/city_map_screen/controllers/region_panel_controller.dart';
 import 'package:get_it/get_it.dart';
 import 'package:get_it_modular_with_auto_route/get_it_modular_with_auto_route.dart';
 

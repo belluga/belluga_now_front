@@ -5,10 +5,10 @@ import 'package:belluga_now/domain/controllers/auth_login_controller_contract.da
 import 'package:belluga_now/domain/controllers/create_password_controller_contract.dart';
 import 'package:belluga_now/domain/controllers/remember_password_contract.dart';
 import 'package:belluga_now/domain/controllers/recovery_password_token_controller_contract.dart';
-import 'package:belluga_now/presentation/screens/auth/create_new_password/controller/create_password_controller.dart';
-import 'package:belluga_now/presentation/screens/auth/login/controller/auth_login_controller.dart';
-import 'package:belluga_now/presentation/screens/auth/login/controller/remember_password_controller.dart';
-import 'package:belluga_now/presentation/screens/auth/recovery_password_bug/controller/recovery_password_token_controller.dart';
+import 'package:belluga_now/presentation/common/screens/auth/create_new_password/controller/create_password_controller.dart';
+import 'package:belluga_now/presentation/common/screens/auth/login/controller/auth_login_controller.dart';
+import 'package:belluga_now/presentation/common/screens/auth/login/controller/remember_password_controller.dart';
+import 'package:belluga_now/presentation/common/screens/auth/recovery_password_bug/controller/recovery_password_token_controller.dart';
 import 'package:get_it/get_it.dart';
 import 'package:get_it_modular_with_auto_route/get_it_modular_with_auto_route.dart';
 

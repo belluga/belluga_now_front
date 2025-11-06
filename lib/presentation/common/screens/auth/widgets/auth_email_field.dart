@@ -1,0 +1,19 @@
+import 'package:flutter/material.dart';
+import 'package:belluga_now/presentation/common/screens/auth/widgets/form_field_belluga.dart';
+
+class AuthEmailField extends FormFieldBelluga {
+  const AuthEmailField({
+    super.key,
+    super.isEnabled,
+    required super.formFieldController,
+  });
+
+  @override
+  String get label => "Email";
+
+  @override
+  String get hint => "Seu email";
+
+  @override
+  TextInputType get inputType => TextInputType.emailAddress;
+}
