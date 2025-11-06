@@ -8,13 +8,14 @@ import 'package:belluga_now/domain/map/map_region_definition.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/domain/repositories/city_map_repository_contract.dart';
 import 'package:belluga_now/infrastructure/services/dal/datasources/mock_poi_database.dart';
+import 'package:belluga_now/infrastructure/mappers/map_dto_mapper.dart';
 import 'package:belluga_now/infrastructure/services/dal/datasources/poi_query.dart';
 import 'package:belluga_now/infrastructure/services/dal/dto/map/city_poi_dto.dart';
 import 'package:belluga_now/infrastructure/services/http/mock_http_service.dart';
 import 'package:belluga_now/infrastructure/services/networking/mock_web_socket_service.dart';
 import 'package:stream_value/core/stream_value.dart';
 
-class CityMapRepository extends CityMapRepositoryContract {
+class CityMapRepository extends CityMapRepositoryContract with MapDtoMapper {
   CityMapRepository({
     MockPoiDatabase? database,
     MockHttpService? httpService,
@@ -37,7 +38,7 @@ class CityMapRepository extends CityMapRepositoryContract {
   @override
   Future<List<CityPoiModel>> fetchPoints(PoiQuery query) async {
     final List<CityPoiDTO> dtos = await _httpService.getPois(query);
-    return dtos.map(CityPoiModel.fromDTO).toList(growable: false);
+    return dtos.map(mapCityPoi).toList(growable: false);
   }
 
   @override

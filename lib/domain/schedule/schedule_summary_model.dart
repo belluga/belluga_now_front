@@ -1,5 +1,4 @@
 import 'package:belluga_now/domain/schedule/schedule_summary_item_model.dart';
-import 'package:belluga_now/infrastructure/services/dal/dto/schedule/event_summary_dto.dart';
 
 class ScheduleSummaryModel {
   final List<ScheduleSummaryItemModel> items;
@@ -32,11 +31,5 @@ class ScheduleSummaryModel {
   DateTime get firstDayRange {
     final start = today.subtract(Duration(days: _daysBackwardLimit));
     return DateTime(start.year, start.month, start.day);
-  }
-
-  factory ScheduleSummaryModel.fromDTO(EventSummaryDTO dto) {
-    return ScheduleSummaryModel(
-      items: dto.items.map((e) => ScheduleSummaryItemModel.fromDTO(e)).toList(),
-    );
   }
 }

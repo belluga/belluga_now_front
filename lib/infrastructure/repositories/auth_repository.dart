@@ -1,12 +1,14 @@
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/user/user_belluga.dart';
+import 'package:belluga_now/infrastructure/mappers/user_dto_mapper.dart';
 import 'package:belluga_now/infrastructure/services/dal/dto/user_dto.dart';
 import 'package:belluga_now/infrastructure/services/dal/dao/backend_contract.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/main.dart';
 
-final class AuthRepository extends AuthRepositoryContract<UserBelluga> {
+final class AuthRepository extends AuthRepositoryContract<UserBelluga>
+    with UserDtoMapper {
   AuthRepository() {
     _userTokenStreamValue.stream.listen(_onUpdateUserTokenOnLocalStorage);
   }
@@ -52,7 +54,7 @@ final class AuthRepository extends AuthRepositoryContract<UserBelluga> {
 
     final user = await backend.auth.loginCheck();
 
-    userStreamValue.addValue(UserBelluga.fromDTO(user));
+    userStreamValue.addValue(mapUser(user));
 
     return Future.value();
   }
@@ -66,7 +68,7 @@ final class AuthRepository extends AuthRepositoryContract<UserBelluga> {
     );
 
     _userTokenStreamValue.addValue(_token);
-    userStreamValue.addValue(UserBelluga.fromDTO(_user));
+    userStreamValue.addValue(mapUser(_user));
 
     return Future.value();
   }
