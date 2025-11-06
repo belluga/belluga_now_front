@@ -153,6 +153,11 @@ Implications:
   controllers. Controllers work exclusively with domain objects and, when the UI
   needs a specific projection (additional formatting, combined fields), create a
   view model under the screen’s `view_models/` folder. Widgets never touch DTOs.
+- **Infrastructure-Scoped Mappers** – Keep DTO knowledge inside the
+  infrastructure layer. If a feature needs shared helpers, expose them as
+  mixins or mapper classes that live alongside the repository implementation
+  (e.g., `infrastructure/mappers/<feature>_dto_mapper.dart`). Repositories may
+  apply those mixins, but domain entities must remain unaware of DTO types.
 - **One Widget per File** – Significant helper widgets move into dedicated
   files under `widgets/`. Methods returning widgets are reserved for trivial
   snippets; otherwise, promote them to proper widgets.

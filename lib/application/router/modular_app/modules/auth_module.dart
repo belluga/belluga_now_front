@@ -1,10 +1,10 @@
 import 'dart:async';
 
 import 'package:auto_route/auto_route.dart';
-import 'package:belluga_now/domain/controllers/auth_login_controller_contract.dart';
-import 'package:belluga_now/domain/controllers/create_password_controller_contract.dart';
-import 'package:belluga_now/domain/controllers/remember_password_contract.dart';
-import 'package:belluga_now/domain/controllers/recovery_password_token_controller_contract.dart';
+import 'package:belluga_now/presentation/tenant/auth/login/controllers/auth_login_controller_contract.dart';
+import 'package:belluga_now/presentation/tenant/auth/login/controllers/create_password_controller_contract.dart';
+import 'package:belluga_now/presentation/tenant/auth/login/controllers/remember_password_contract.dart';
+import 'package:belluga_now/presentation/tenant/auth/login/controllers/recovery_password_token_controller_contract.dart';
 import 'package:belluga_now/presentation/common/screens/auth/create_new_password/controller/create_password_controller.dart';
 import 'package:belluga_now/presentation/common/screens/auth/login/controller/auth_login_controller.dart';
 import 'package:belluga_now/presentation/common/screens/auth/login/controller/remember_password_controller.dart';
