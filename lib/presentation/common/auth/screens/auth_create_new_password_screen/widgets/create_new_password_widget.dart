@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:belluga_now/application/configurations/widget_keys.dart';
 import 'package:belluga_now/presentation/tenant/auth/login/controllers/create_password_controller_contract.dart';
-import 'package:belluga_now/presentation/common/screens/auth/create_new_password/widgets/new_password_box_widget.dart';
-import 'package:belluga_now/presentation/common/screens/auth/create_new_password/widgets/confirm_password_box_widget.dart';
+import 'package:belluga_now/presentation/common/auth/screens/auth_create_new_password_screen/widgets/new_password_box_widget.dart';
+import 'package:belluga_now/presentation/common/auth/screens/auth_create_new_password_screen/widgets/confirm_password_box_widget.dart';
 import 'package:get_it/get_it.dart';
 
 class CreateNewPasswordWidget extends StatelessWidget {

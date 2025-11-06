@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:belluga_now/presentation/common/screens/auth/login/controller/form_field_controller_email.dart';
+import 'package:belluga_now/presentation/common/auth/screens/auth_login_screen/controllers/form_field_controller_email.dart';
 import 'package:stream_value/core/stream_value.dart';
 
 abstract class AuthRecoveryPasswordControllerContract {

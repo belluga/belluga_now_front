@@ -1,7 +1,7 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/presentation/tenant/auth/login/controllers/create_password_controller_contract.dart';
-import 'package:belluga_now/presentation/common/screens/auth/create_new_password/widgets/create_new_password_widget.dart';
+import 'package:belluga_now/presentation/common/auth/screens/auth_create_new_password_screen/widgets/create_new_password_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 

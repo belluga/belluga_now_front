@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:belluga_now/application/configurations/widget_keys.dart';
 import 'package:belluga_now/presentation/tenant/auth/login/controllers/auth_login_controller_contract.dart';
-import 'package:belluga_now/presentation/common/screens/auth/widgets/auth_email_field.dart';
-import 'package:belluga_now/presentation/common/screens/auth/widgets/auth_password_field.dart';
+import 'package:belluga_now/presentation/common/auth/widgets/auth_email_field.dart';
+import 'package:belluga_now/presentation/common/auth/widgets/auth_password_field.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 

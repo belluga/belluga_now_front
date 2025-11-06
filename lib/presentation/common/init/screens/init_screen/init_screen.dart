@@ -2,7 +2,7 @@ import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:belluga_now/application/configurations/widget_keys.dart';
 import 'package:belluga_now/domain/controllers/belluga_init_screen_controller_contract.dart';
-import 'package:belluga_now/presentation/common/screens/init/controller/init_screen_controller.dart';
+import 'package:belluga_now/presentation/common/init/screens/init_screen/controllers/init_screen_controller.dart';
 import 'package:get_it/get_it.dart';
 
 @RoutePage()

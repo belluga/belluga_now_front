@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:belluga_now/presentation/common/screens/auth/widgets/form_field_belluga.dart';
+import 'package:belluga_now/presentation/common/auth/widgets/form_field_belluga.dart';
 
 class NewPasswordBoxWidget extends FormFieldBelluga {
   const NewPasswordBoxWidget({

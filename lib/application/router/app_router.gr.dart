@@ -13,15 +13,15 @@ import 'package:auto_route/auto_route.dart' as _i21;
 import 'package:belluga_now/domain/experiences/experience_model.dart' as _i23;
 import 'package:belluga_now/domain/invites/invite_model.dart' as _i24;
 import 'package:belluga_now/domain/map/city_poi_model.dart' as _i25;
-import 'package:belluga_now/presentation/common/screens/auth/create_new_password/auth_create_new_password_route.dart'
+import 'package:belluga_now/presentation/common/auth/routes/auth_create_new_password_route.dart'
     as _i1;
-import 'package:belluga_now/presentation/common/screens/auth/login/auth_login_route.dart'
+import 'package:belluga_now/presentation/common/auth/routes/auth_login_route.dart'
     as _i2;
-import 'package:belluga_now/presentation/common/screens/auth/recovery_password_bug/recovery_password_route.dart'
+import 'package:belluga_now/presentation/common/auth/routes/recovery_password_route.dart'
     as _i16;
-import 'package:belluga_now/presentation/common/screens/init/init_screen.dart'
+import 'package:belluga_now/presentation/common/init/screens/init_screen/init_screen.dart'
     as _i8;
-import 'package:belluga_now/presentation/landlord/home/landlord_home_route.dart'
+import 'package:belluga_now/presentation/landlord/home/routes/landlord_home_route.dart'
     as _i11;
 import 'package:belluga_now/presentation/tenant/experiences/routes/experience_detail_route.dart'
     as _i6;

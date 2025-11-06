@@ -2,7 +2,7 @@ import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:belluga_now/presentation/tenant/auth/login/controllers/auth_login_controller_contract.dart';
 import 'package:belluga_now/presentation/common/widgets/button_loading.dart';
-import 'package:belluga_now/presentation/common/screens/auth/login/widgets/auth_login_form.dart';
+import 'package:belluga_now/presentation/common/auth/screens/auth_login_screen/widgets/auth_login_form.dart';
 import 'package:get_it/get_it.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
