@@ -25,7 +25,7 @@ class FilterCategoryChip extends StatelessWidget {
       avatar: Icon(themeData.icon, size: 18, color: themeData.color),
       selected: isSelected,
       onSelected: (_) => controller.toggleCategory(category),
-      selectedColor: themeData.color.withOpacity(0.18),
+      selectedColor: themeData.color.withValues(alpha: 0.18),
       checkmarkColor: themeData.color,
       side: isSelected
           ? BorderSide(color: themeData.color, width: 1.4)

@@ -30,14 +30,12 @@ class EventInfoCard extends StatelessWidget {
     final date = event.dateTimeStart.value;
     final artists = event.artists.map((e) => e.name.value).join(', ');
     final primaryArtist = event.artists.isNotEmpty ? event.artists.first : null;
-    final avatarUriValue = primaryArtist?.avatarUrl.value;
-    final avatarUri = avatarUriValue == null ? null : avatarUriValue.toString();
-    final fallbackUriValue = event.thumb?.thumbUri.value;
-    final fallbackUri =
-        fallbackUriValue == null ? null : fallbackUriValue.toString();
-    final imageUrl = avatarUri?.isNotEmpty == true
+    final avatarUri = primaryArtist?.avatarUrl.value.toString();
+    final fallbackUri = event.thumb?.thumbUri.value.toString();
+    final hasAvatar = avatarUri?.isNotEmpty ?? false;
+    final imageUrl = hasAvatar
         ? avatarUri
-        : (fallbackUri?.isNotEmpty == true ? fallbackUri : null);
+        : ((fallbackUri?.isNotEmpty ?? false) ? fallbackUri : null);
 
     final formattedDate = date != null
         ? DateFormat('dd MMM, HH:mm').format(date)
@@ -54,7 +52,7 @@ class EventInfoCard extends StatelessWidget {
       CityEventTemporalState.upcoming => event.type.color.value,
     };
     final mutedTextColor =
-        isPast ? scheme.onSurfaceVariant.withOpacity(0.65) : null;
+        isPast ? scheme.onSurfaceVariant.withValues(alpha: 0.65) : null;
 
     return Card(
       child: Card(
@@ -246,7 +244,7 @@ class _EventAvatar extends StatelessWidget {
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.14),
+            color: Colors.black.withValues(alpha: 0.14),
             blurRadius: 5,
             offset: const Offset(0, 3),
           ),
@@ -303,7 +301,7 @@ class _AvatarFallback extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: color.withOpacity(0.12),
+      color: color.withValues(alpha: 0.12),
       alignment: Alignment.center,
       child: Icon(
         Icons.music_note,

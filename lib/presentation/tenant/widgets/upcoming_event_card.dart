@@ -140,7 +140,7 @@ class _UpcomingEventThumbnail extends StatelessWidget {
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
-                    Colors.black.withOpacity(0.45),
+                    Colors.black.withValues(alpha: 0.45),
                     Colors.transparent,
                   ],
                   begin: Alignment.bottomCenter,

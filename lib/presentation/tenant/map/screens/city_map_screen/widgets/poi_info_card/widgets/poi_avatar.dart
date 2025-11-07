@@ -33,7 +33,7 @@ class PoiAvatar extends StatelessWidget {
               shape: BoxShape.circle,
               boxShadow: [
                 BoxShadow(
-                  color: scheme.shadow.withOpacity(0.4),
+                  color: scheme.shadow.withValues(alpha: 0.4),
                   blurRadius: 8,
                   offset: const Offset(0, 4),
                 ),
@@ -71,7 +71,7 @@ class PoiAvatar extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: themeData.color.withOpacity(0.12),
+        color: themeData.color.withValues(alpha: 0.12),
       ),
       padding: const EdgeInsets.all(12),
       child: Icon(themeData.icon, color: themeData.color),

@@ -43,7 +43,7 @@ class CuisinePanel extends StatelessWidget {
                     label: Text(_formatTag(tag)),
                     selected: controller.isTagSelected(tag),
                     onSelected: (_) => controller.toggleTag(tag),
-                    selectedColor: scheme.primary.withOpacity(0.16),
+                    selectedColor: scheme.primary.withValues(alpha: 0.16),
                   ),
               ],
             ),

@@ -48,10 +48,12 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final theme = Theme.of(context).textTheme;
-    final DateTime startDate = widget.event.dateTimeStart.value ?? DateTime.now();
+    final DateTime startDate =
+        widget.event.dateTimeStart.value ?? DateTime.now();
     final DateTime? endDate = widget.event.dateTimeEnd?.value;
+    final coverUri = widget.event.thumb?.thumbUri.value;
     final String coverImage =
-        widget.event.thumb?.thumbUri.value?.toString() ?? EventDetailScreen._fallbackImage;
+        coverUri?.toString() ?? EventDetailScreen._fallbackImage;
     final EventActionModel? primaryAction =
         widget.event.actions.isNotEmpty ? widget.event.actions.first : null;
     final EventTypeModel type = widget.event.type;
@@ -96,8 +98,8 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                         begin: Alignment.topCenter,
                         end: Alignment.bottomCenter,
                         colors: [
-                          Colors.black.withOpacity(0.05),
-                          Colors.black.withOpacity(0.65),
+                          Colors.black.withValues(alpha: 0.05),
+                          Colors.black.withValues(alpha: 0.65),
                         ],
                       ),
                     ),
@@ -144,7 +146,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                           .map(
                             (artist) => _ArtistPill(
                               name: artist.name.value,
-                              highlight: artist.isHighlight.value ?? false,
+                              highlight: artist.isHighlight.value,
                             ),
                           )
                           .toList(growable: false),
@@ -232,14 +234,6 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     );
   }
 
-  void _copyLink(BuildContext context) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Link copiado para compartilhar com a galera!'),
-      ),
-    );
-  }
-
   Future<void> _openInviteFlow() async {
     final invite = _buildInviteFromEvent();
 
@@ -253,7 +247,9 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
   InviteModel _buildInviteFromEvent() {
     final eventName = widget.event.title.value;
     final eventDate = widget.event.dateTimeStart.value ?? DateTime.now();
-    final imageUrl = widget.event.thumb?.thumbUri.value?.toString() ?? EventDetailScreen._fallbackImage;
+    final inviteCoverUri = widget.event.thumb?.thumbUri.value;
+    final imageUrl =
+        inviteCoverUri?.toString() ?? EventDetailScreen._fallbackImage;
     final locationLabel = widget.event.location.value;
     final hostName = widget.event.artists.isNotEmpty
         ? widget.event.artists.first.name.value
@@ -266,8 +262,11 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
       if (typeLabel.isNotEmpty && typeLabel != slug) typeLabel,
     ];
 
+    final eventId = widget.event.id.value;
+    final inviteId = eventId.isNotEmpty ? eventId : eventName;
+
     return InviteModel(
-      id: widget.event.id.value ?? eventName,
+      id: inviteId,
       eventName: eventName,
       eventDateTime: eventDate,
       eventImageUrl: imageUrl,
@@ -291,7 +290,7 @@ class _TypeChip extends StatelessWidget {
     return DecoratedBox(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(32),
-        color: color.withOpacity(0.16),
+        color: color.withValues(alpha: 0.16),
       ),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
@@ -336,7 +335,7 @@ class _InfoCard extends StatelessWidget {
         children: [
           CircleAvatar(
             radius: 24,
-            backgroundColor: colorScheme.primary.withOpacity(0.08),
+            backgroundColor: colorScheme.primary.withValues(alpha: 0.08),
             child: Icon(icon, color: colorScheme.primary),
           ),
           const SizedBox(width: 16),

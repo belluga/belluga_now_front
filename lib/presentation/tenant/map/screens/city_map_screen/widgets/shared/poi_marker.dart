@@ -24,7 +24,7 @@ class PoiMarker extends StatelessWidget {
       final baseSize = isDynamicSponsor ? 42.0 : 64.0;
       final selectedSize = isDynamicSponsor ? 48.0 : 72.0;
       final badgeColor =
-          isDynamicSponsor ? theme.color.withOpacity(0.85) : theme.color;
+          isDynamicSponsor ? theme.color.withValues(alpha: 0.85) : theme.color;
       final badgeIcon =
           isDynamicSponsor ? Icons.shopping_bag_outlined : Icons.storefront;
       final scale = isSelected ? 1.18 : (isHovered ? 1.08 : 1.0);
@@ -43,7 +43,7 @@ class PoiMarker extends StatelessWidget {
                 shape: BoxShape.circle,
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(shadowOpacity),
+                    color: Colors.black.withValues(alpha: shadowOpacity),
                     blurRadius: isSelected ? 12 : 8,
                     offset: const Offset(0, 4),
                   ),
@@ -95,10 +95,10 @@ class PoiMarker extends StatelessWidget {
       child: DecoratedBox(
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          color: theme.color.withOpacity(0.92),
+          color: theme.color.withValues(alpha: 0.92),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(shadowOpacity),
+              color: Colors.black.withValues(alpha: shadowOpacity),
               blurRadius: isSelected ? 10 : 6,
               offset: const Offset(0, 4),
             ),

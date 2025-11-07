@@ -17,7 +17,8 @@ class EventBadgeChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final effectiveColor = dimmed ? color.withOpacity(0.85) : color;
+    final effectiveColor =
+        dimmed ? color.withValues(alpha: 0.85) : color;
 
     return DecoratedBox(
       decoration: BoxDecoration(

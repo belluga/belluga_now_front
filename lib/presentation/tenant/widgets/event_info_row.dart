@@ -22,7 +22,7 @@ class EventInfoRow extends StatelessWidget {
         Icon(
           icon,
           size: 18,
-          color: resolvedColor.withOpacity(0.9),
+          color: resolvedColor.withValues(alpha: 0.9),
         ),
         const SizedBox(width: 8),
         Expanded(

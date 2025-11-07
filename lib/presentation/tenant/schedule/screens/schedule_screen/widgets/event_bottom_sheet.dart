@@ -195,7 +195,7 @@ class _EventArtistTile extends StatelessWidget {
       child: ListTile(
         leading: CircleAvatar(
           backgroundImage: imageUri != null ? NetworkImage(imageUri) : null,
-          backgroundColor: theme.colorScheme.surfaceVariant,
+          backgroundColor: theme.colorScheme.surfaceContainerHighest,
           child: imageUri == null
               ? Icon(
                   Icons.person,

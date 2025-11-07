@@ -42,20 +42,20 @@ class EventDetails extends StatelessWidget {
                 EventInfoRow(
                   icon: Icons.place_outlined,
                   label: eventCardData.venue,
-                  color: onPrimary.withOpacity(0.9),
+                  color: onPrimary.withValues(alpha: 0.9),
                 ),
                 const SizedBox(height: 6),
                 if (eventCardData.hasParticipants)
                   EventInfoRow(
                     icon: Icons.music_note_outlined,
                     label: eventCardData.participantsLabelWithHighlight,
-                    color: onPrimary.withOpacity(0.9),
+                    color: onPrimary.withValues(alpha: 0.9),
                   )
                 else
                   EventInfoRow(
                     icon: Icons.groups_outlined,
                     label: 'Curadoria em definição',
-                    color: onPrimary.withOpacity(0.9),
+                    color: onPrimary.withValues(alpha: 0.9),
                   ),
               ],
             ),

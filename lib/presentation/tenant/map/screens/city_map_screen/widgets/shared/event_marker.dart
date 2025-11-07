@@ -169,14 +169,12 @@ class _MarkerCore extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final primaryArtist = event.artists.isNotEmpty ? event.artists.first : null;
-    final avatarUriValue = primaryArtist?.avatarUrl.value;
-    final avatarUri = avatarUriValue == null ? null : avatarUriValue.toString();
-    final fallbackUriValue = event.thumb?.thumbUri.value;
-    final fallbackUri =
-        fallbackUriValue == null ? null : fallbackUriValue.toString();
-    final imageUrl = avatarUri?.isNotEmpty == true
+    final avatarUri = primaryArtist?.avatarUrl.value.toString();
+    final fallbackUri = event.thumb?.thumbUri.value.toString();
+    final hasAvatar = avatarUri?.isNotEmpty ?? false;
+    final imageUrl = hasAvatar
         ? avatarUri
-        : (fallbackUri?.isNotEmpty == true ? fallbackUri : null);
+        : ((fallbackUri?.isNotEmpty ?? false) ? fallbackUri : null);
 
     final decoration = BoxDecoration(
       shape: BoxShape.circle,
@@ -188,7 +186,7 @@ class _MarkerCore extends StatelessWidget {
       ),
       boxShadow: [
         BoxShadow(
-          color: Colors.black.withOpacity(0.16),
+          color: Colors.black.withValues(alpha: 0.16),
           blurRadius: 5,
           offset: const Offset(0, 3),
         ),
@@ -235,7 +233,7 @@ class _PulseCircle extends StatelessWidget {
       height: size,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: color.withOpacity(0.16 * opacity),
+        color: color.withValues(alpha: 0.16 * opacity),
       ),
     );
   }
@@ -249,7 +247,7 @@ class _FallbackIcon extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: color.withOpacity(0.1),
+      color: color.withValues(alpha: 0.1),
       alignment: Alignment.center,
       child: Icon(
         Icons.music_note,

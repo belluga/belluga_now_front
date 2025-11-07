@@ -50,7 +50,7 @@ class CarouselEventCard extends StatelessWidget {
                       gradient: LinearGradient(
                         colors: [
                           theme.colorScheme.onSurface,
-                          theme.colorScheme.onSurface.withOpacity(0.45),
+                          theme.colorScheme.onSurface.withValues(alpha: 0.45),
                           Colors.transparent,
                         ],
                         stops: const [0.0, 0.55, 1.0],

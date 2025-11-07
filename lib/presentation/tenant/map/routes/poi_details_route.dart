@@ -28,7 +28,7 @@ class PoiDetailsRoutePage extends StatelessWidget {
               children: [
                 CircleAvatar(
                   radius: 30,
-                  backgroundColor: themeData.color.withOpacity(0.12),
+                  backgroundColor: themeData.color.withValues(alpha: 0.12),
                   child: Icon(themeData.icon, color: themeData.color, size: 28),
                 ),
                 const SizedBox(width: 16),
