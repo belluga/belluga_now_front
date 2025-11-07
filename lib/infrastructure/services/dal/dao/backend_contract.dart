@@ -1,11 +1,13 @@
 import 'package:belluga_now/infrastructure/services/dal/dao/auth_backend_contract.dart';
-import 'package:belluga_now/infrastructure/services/dal/dao/home_backend_contract.dart';
+import 'package:belluga_now/infrastructure/services/dal/dao/favorite_backend_contract.dart';
 import 'package:belluga_now/infrastructure/services/dal/dao/tenant_backend_contract.dart';
+import 'package:belluga_now/infrastructure/services/dal/dao/venue_event_backend_contract.dart';
 import 'package:belluga_now/infrastructure/services/schedule_backend_contract.dart';
 
 abstract class BackendContract {
   AuthBackendContract get auth;
   TenantBackendContract get tenant;
-  HomeBackendContract get home;
+  FavoriteBackendContract get favorites;
+  VenueEventBackendContract get venueEvents;
   ScheduleBackendContract get schedule;
 }

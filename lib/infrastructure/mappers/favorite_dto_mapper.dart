@@ -3,10 +3,10 @@ import 'package:belluga_now/domain/favorite/value_objects/favorite_badge_value.d
 import 'package:belluga_now/domain/value_objects/asset_path_value.dart';
 import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
 import 'package:belluga_now/domain/value_objects/title_value.dart';
-import 'package:belluga_now/infrastructure/services/dal/dto/home/home_favorite_dto.dart';
+import 'package:belluga_now/infrastructure/services/dal/dto/favorite/favorite_preview_dto.dart';
 
 mixin FavoriteDtoMapper {
-  Favorite mapFavorite(HomeFavoriteDTO dto) {
+  Favorite mapFavorite(FavoritePreviewDTO dto) {
     final title = TitleValue()..parse(dto.title);
 
     ThumbUriValue? imageUri;
@@ -34,7 +34,7 @@ mixin FavoriteDtoMapper {
         : null;
 
     return Favorite(
-      id: dto.id ?? Favorite.slugify(dto.title),
+      id: dto.id,
       titleValue: title,
       imageUriValue: imageUri,
       assetPathValue: assetPath,

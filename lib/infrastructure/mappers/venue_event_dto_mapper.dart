@@ -2,11 +2,11 @@ import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.da
 import 'package:belluga_now/domain/value_objects/description_value.dart';
 import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
 import 'package:belluga_now/domain/value_objects/title_value.dart';
-import 'package:belluga_now/infrastructure/services/dal/dto/home/home_event_dto.dart';
+import 'package:belluga_now/infrastructure/services/dal/dto/venue_event/venue_event_preview_dto.dart';
 import 'package:value_object_pattern/domain/value_objects/date_time_value.dart';
 
 mixin VenueEventDtoMapper {
-  VenueEventResume mapVenueEventResume(HomeEventDTO dto) {
+  VenueEventResume mapVenueEventResume(VenueEventPreviewDTO dto) {
     final title = TitleValue()..parse(dto.title);
     final imageUri = ThumbUriValue(
       defaultValue: Uri.parse(dto.imageUrl),
@@ -20,7 +20,7 @@ mixin VenueEventDtoMapper {
     final artist = TitleValue()..parse(dto.artist);
 
     return VenueEventResume(
-      slug: dto.id ?? VenueEventResume.slugify(dto.title),
+      slug: dto.id,
       titleValue: title,
       imageUriValue: imageUri,
       startDateTimeValue: startDate,

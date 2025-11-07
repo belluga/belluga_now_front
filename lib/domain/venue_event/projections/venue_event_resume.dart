@@ -25,8 +25,10 @@ class VenueEventResume {
   Uri get imageUri => imageUriValue.value;
   DateTime get startDateTime {
     final date = startDateTimeValue.value;
-    assert(date != null, 'startDateTime should not be null');
-    return date!;
+    if (date == null) {
+      throw StateError('startDateTime should not be null');
+    }
+    return date;
   }
 
   String get location => locationValue.value;
@@ -62,11 +64,19 @@ class VenueEventResume {
         ? event.artists.map((artist) => artist.name.value).toList()
         : <String>[];
 
+    final startDateTime = event.dateTimeStart.value;
+    if (startDateTime == null) {
+      throw StateError('EventModel.dateTimeStart must be defined');
+    }
+
+    final startValue = DateTimeValue(isRequired: true)
+      ..parse(startDateTime.toIso8601String());
+
     return VenueEventResume(
       slug: slug,
       titleValue: event.title,
       imageUriValue: thumb,
-      startDateTimeValue: event.dateTimeStart,
+      startDateTimeValue: startValue,
       locationValue: event.location,
       artists: artistNames.isNotEmpty ? artistNames : [artistName],
     );

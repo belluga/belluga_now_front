@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-class HomeFavoriteDTO {
-  const HomeFavoriteDTO({
+class FavoritePreviewDTO {
+  const FavoritePreviewDTO({
     required this.id,
     required this.title,
     this.imageUrl,
@@ -12,7 +12,8 @@ class HomeFavoriteDTO {
     this.isPrimary = false,
   });
 
-  factory HomeFavoriteDTO.withBadgeIcon({
+
+  factory FavoritePreviewDTO.withBadgeIcon({
     required String id,
     required String title,
     String? imageUrl,
@@ -20,7 +21,7 @@ class HomeFavoriteDTO {
     IconData? badgeIcon,
     bool isPrimary = false,
   }) {
-    return HomeFavoriteDTO(
+    return FavoritePreviewDTO(
       id: id,
       title: title,
       imageUrl: imageUrl,
