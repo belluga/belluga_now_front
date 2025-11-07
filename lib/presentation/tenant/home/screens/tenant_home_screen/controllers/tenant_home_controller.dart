@@ -30,7 +30,7 @@ class TenantHomeController implements Disposable {
     final previousValue = favoritesStreamValue.value;
     favoritesStreamValue.addValue(null);
     try {
-      final favorites = await _favoriteRepository.fetchFavorites();
+      final favorites = await _favoriteRepository.fetchFavoriteResumes();
       favoritesStreamValue.addValue(favorites);
     } catch (_) {
       favoritesStreamValue.addValue(previousValue);

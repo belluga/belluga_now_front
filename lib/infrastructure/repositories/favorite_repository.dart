@@ -1,18 +1,25 @@
+import 'package:belluga_now/domain/favorite/favorite.dart';
 import 'package:belluga_now/domain/favorite/projections/favorite_resume.dart';
 import 'package:belluga_now/domain/repositories/favorite_repository_contract.dart';
-import 'package:belluga_now/infrastructure/mappers/home_dto_mapper.dart';
+import 'package:belluga_now/infrastructure/mappers/favorite_dto_mapper.dart';
 import 'package:belluga_now/infrastructure/services/dal/dao/backend_contract.dart';
 import 'package:belluga_now/infrastructure/services/dal/dto/home/home_favorite_dto.dart';
 import 'package:get_it/get_it.dart';
 
-class FavoriteRepository extends FavoriteRepositoryContract with HomeDtoMapper {
-  // TODO(belluga): When Favorite aggregate lands, map DTOs directly into the
-  // domain entity and expose additional projections (resumes, stats) from
-  // that type instead of returning resumes here.
+class FavoriteRepository extends FavoriteRepositoryContract
+    with FavoriteDtoMapper {
   @override
-  Future<List<FavoriteResume>> fetchFavorites() async {
+  Future<List<Favorite>> fetchFavorites() async {
     final List<HomeFavoriteDTO> dtos = await backend.home.fetchFavorites();
-    return dtos.map(mapFavoriteResume).toList(growable: false);
+    return dtos.map(mapFavorite).toList(growable: false);
+  }
+
+  @override
+  Future<List<FavoriteResume>> fetchFavoriteResumes() async {
+    final favorites = await fetchFavorites();
+    return favorites
+        .map(FavoriteResume.fromFavorite)
+        .toList(growable: false);
   }
 
   BackendContract get backend => GetIt.I.get<BackendContract>();
