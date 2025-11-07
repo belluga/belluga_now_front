@@ -13,5 +13,11 @@ class VenueEventRepository extends VenueEventRepositoryContract
     return dtos.map(mapVenueEventResume).toList(growable: false);
   }
 
+  @override
+  Future<List<VenueEventResume>> fetchUpcomingEvents() async {
+    final List<HomeEventDTO> dtos = await backend.home.fetchUpcomingEvents();
+    return dtos.map(mapVenueEventResume).toList(growable: false);
+  }
+
   BackendContract get backend => GetIt.I.get<BackendContract>();
 }

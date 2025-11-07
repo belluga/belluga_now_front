@@ -1,7 +1,6 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
-import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/presentation/common/widgets/main_logo.dart';
 import 'package:belluga_now/presentation/tenant/schedule/screens/schedule_screen/controllers/schedule_screen_controller.dart';
 import 'package:belluga_now/presentation/tenant/schedule/screens/schedule_screen/widgets/dates_row.dart';
@@ -67,11 +66,11 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
               top: false,
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: StreamValueBuilder<List<EventModel>?>(
+                child: StreamValueBuilder<List<VenueEventResume>?>(
                   streamValue: _controller.eventsStreamValue,
                   onNullWidget: const Center(child: CircularProgressIndicator()),
                   builder: (context, events) {
-                    final data = events ?? const <EventModel>[];
+                    final data = events ?? const <VenueEventResume>[];
                     if (data.isEmpty) {
                       return const Center(
                         child: Text('Nenhum evento nesta data.'),
@@ -83,19 +82,9 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                       child: Column(
                         children: [
                           for (final event in data) ...[
-                            Builder(
-                              builder: (context) {
-                                final resume = VenueEventResume.fromScheduleEvent(
-                                  event,
-                                  Uri.parse(
-                                    'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?w=800',
-                                  ),
-                                );
-                                return UpcomingEventCard(
-                                  event: resume,
-                                  onTap: () => _openEventDetail(resume.slug),
-                                );
-                              },
+                            UpcomingEventCard(
+                              event: event,
+                              onTap: () => _openEventDetail(event.slug),
                             ),
                             const SizedBox(height: 24),
                           ],

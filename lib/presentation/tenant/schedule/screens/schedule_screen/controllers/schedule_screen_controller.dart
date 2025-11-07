@@ -1,8 +1,8 @@
 import 'package:belluga_now/application/functions/today.dart';
 import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
-import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/schedule/schedule_summary_item_model.dart';
 import 'package:belluga_now/domain/schedule/schedule_summary_model.dart';
+import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value.dart';
@@ -10,7 +10,7 @@ import 'package:stream_value/core/stream_value.dart';
 class ScheduleScreenController implements Disposable {
   final _scheduleRepository = GetIt.I.get<ScheduleRepositoryContract>();
 
-  final eventsStreamValue = StreamValue<List<EventModel>?>();
+  final eventsStreamValue = StreamValue<List<VenueEventResume>?>();
 
   ScheduleScreenController() {
     visibleDatesStreamValue.stream.listen(updateCurrentMonth);
@@ -51,9 +51,8 @@ class ScheduleScreenController implements Disposable {
   Future<void> _getEvents({DateTime? date}) async {
     date ??= Today.today;
     eventsStreamValue.addValue(null);
-    final List<EventModel> _events =
-        await _scheduleRepository.getEventsByDate(date);
-    eventsStreamValue.addValue(_events);
+    final events = await _scheduleRepository.getEventResumesByDate(date);
+    eventsStreamValue.addValue(events);
   }
 
   Future<void> _getScheduleSummary() async {

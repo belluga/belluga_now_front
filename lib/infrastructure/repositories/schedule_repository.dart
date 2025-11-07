@@ -1,6 +1,7 @@
 import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/schedule/schedule_summary_model.dart';
+import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
 import 'package:belluga_now/infrastructure/mappers/course_dto_mapper.dart';
 import 'package:belluga_now/infrastructure/mappers/schedule_dto_mapper.dart';
 import 'package:belluga_now/infrastructure/services/dal/dto/schedule/event_dto.dart';
@@ -9,6 +10,10 @@ import 'package:get_it/get_it.dart';
 
 class ScheduleRepository extends ScheduleRepositoryContract
     with CourseDtoMapper, ScheduleDtoMapper {
+  static final Uri _defaultEventImage = Uri.parse(
+    'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?w=800',
+  );
+
   ScheduleRepository({ScheduleBackendContract? backend})
       : _backend = backend ?? GetIt.I.get<ScheduleBackendContract>();
 
@@ -72,5 +77,18 @@ class ScheduleRepository extends ScheduleRepositoryContract
   Future<ScheduleSummaryModel> getScheduleSummary() async {
     final summary = await _backend.fetchSummary();
     return mapScheduleSummary(summary);
+  }
+
+  @override
+  Future<List<VenueEventResume>> getEventResumesByDate(DateTime date) async {
+    final events = await getEventsByDate(date);
+    return events
+        .map(
+          (event) => VenueEventResume.fromScheduleEvent(
+            event,
+            _defaultEventImage,
+          ),
+        )
+        .toList(growable: false);
   }
 }
