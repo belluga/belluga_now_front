@@ -1,7 +1,6 @@
-import 'package:flutter/material.dart';
-
-import 'package:belluga_now/presentation/view_models/favorite_item_data.dart';
+import 'package:belluga_now/domain/favorite/projections/favorite_resume.dart';
 import 'package:belluga_now/presentation/tenant/widgets/favorite_chip.dart';
+import 'package:flutter/material.dart';
 
 class FavoritesStrip extends StatelessWidget {
   const FavoritesStrip({
@@ -12,7 +11,7 @@ class FavoritesStrip extends StatelessWidget {
     this.spacing = 12,
   });
 
-  final List<FavoriteItemData> items;
+  final List<FavoriteResume> items;
   final bool pinFirst;
   final double height;
   final double spacing;

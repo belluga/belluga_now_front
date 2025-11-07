@@ -49,3 +49,8 @@ app.*.map.json
 .fvm/
 
 /android/keystores/
+
+# DELPHI AI
+AGENTS.md
+delphi-ai
+foundation_documentation

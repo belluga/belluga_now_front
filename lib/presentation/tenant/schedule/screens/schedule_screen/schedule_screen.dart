@@ -1,12 +1,12 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
+import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/presentation/common/widgets/main_logo.dart';
 import 'package:belluga_now/presentation/tenant/schedule/screens/schedule_screen/controllers/schedule_screen_controller.dart';
 import 'package:belluga_now/presentation/tenant/schedule/screens/schedule_screen/widgets/dates_row.dart';
 import 'package:belluga_now/presentation/tenant/widgets/belluga_bottom_navigation_bar.dart';
 import 'package:belluga_now/presentation/tenant/widgets/upcoming_event_card.dart';
-import 'package:belluga_now/presentation/view_models/event_card_data.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
@@ -83,9 +83,19 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                       child: Column(
                         children: [
                           for (final event in data) ...[
-                            UpcomingEventCard(
-                              data: _mapToViewModel(event),
-                              onTap: () => _openEventDetail(event),
+                            Builder(
+                              builder: (context) {
+                                final resume = VenueEventResume.fromScheduleEvent(
+                                  event,
+                                  Uri.parse(
+                                    'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?w=800',
+                                  ),
+                                );
+                                return UpcomingEventCard(
+                                  event: resume,
+                                  onTap: () => _openEventDetail(resume.slug),
+                                );
+                              },
                             ),
                             const SizedBox(height: 24),
                           ],
@@ -101,42 +111,9 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       ),
     );
   }
-
-  EventCardData _mapToViewModel(EventModel event) {
-    final imageUrl = event.thumb?.thumbUri.value.toString() ??
-        'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?w=800';
-    final location = event.location.value;
-    final participants = event.artists
-        .map(
-          (artist) => EventParticipantData(
-            name: artist.name.value,
-            isHighlight: artist.isHighlight.value,
-          ),
-        )
-        .toList();
-    final startDate = event.dateTimeStart.value ?? DateTime.now();
-    final slug = _slugify(event.title.value);
-
-    return EventCardData(
-      slug: slug,
-      title: event.title.value,
-      imageUrl: imageUrl,
-      startDateTime: startDate,
-      venue: location,
-      participants: participants,
-    );
-  }
-
   void _navigateToSearch() => context.router.push(const EventSearchRoute());
 
-  void _openEventDetail(EventModel event) {
-    final slug = _slugify(event.title.value);
+  void _openEventDetail(String slug) {
     context.router.push(EventDetailRoute(slug: slug));
-  }
-
-  String _slugify(String value) {
-    final slug = value.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), '-');
-    final cleaned = slug.replaceAll(RegExp(r'-{2,}'), '-');
-    return cleaned.replaceAll(RegExp(r'^-+|-+$'), '');
   }
 }

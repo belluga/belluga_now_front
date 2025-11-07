@@ -1,11 +1,11 @@
+import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
 import 'package:belluga_now/presentation/tenant/widgets/event_details.dart';
-import 'package:belluga_now/presentation/view_models/event_card_data.dart';
 import 'package:flutter/material.dart';
 
 class CarouselEventCard extends StatelessWidget {
-  const CarouselEventCard({super.key, required this.data});
+  const CarouselEventCard({super.key, required this.event});
 
-  final EventCardData data;
+  final VenueEventResume event;
 
   @override
   Widget build(BuildContext context) {
@@ -31,7 +31,7 @@ class CarouselEventCard extends StatelessWidget {
                 fit: StackFit.expand,
                 children: [
                   Image.network(
-                    data.imageUrl,
+                    event.imageUri.toString(),
                     fit: BoxFit.cover,
                     loadingBuilder: (context, child, loadingProgress) {
                       if (loadingProgress == null) return child;
@@ -76,7 +76,7 @@ class CarouselEventCard extends StatelessWidget {
                         ),
                       ),
                       child: isFullSize
-                          ? EventDetails(eventCardData: data)
+                          ? EventDetails(event: event)
                           : const SizedBox(
                               key: ValueKey('empty'),
                               height: 0,

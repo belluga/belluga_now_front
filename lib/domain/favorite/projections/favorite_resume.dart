@@ -3,8 +3,8 @@ import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
 import 'package:belluga_now/domain/value_objects/title_value.dart';
 import 'package:flutter/material.dart';
 
-class HomeFavorite {
-  HomeFavorite({
+class FavoriteResume {
+  FavoriteResume({
     required this.titleValue,
     this.imageUriValue,
     this.assetPathValue,

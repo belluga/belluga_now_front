@@ -10,11 +10,13 @@ import 'package:belluga_now/application/router/modular_app/modules/profile_modul
 import 'package:belluga_now/application/router/modular_app/modules/schedule_module.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
-import 'package:belluga_now/domain/repositories/home_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/favorite_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/venue_event_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_repository_contract.dart';
-import 'package:belluga_now/infrastructure/repositories/home_repository.dart';
+import 'package:belluga_now/infrastructure/repositories/favorite_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/schedule_repository.dart';
+import 'package:belluga_now/infrastructure/repositories/venue_event_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/tenant_repository.dart';
 import 'package:belluga_now/infrastructure/services/dal/dao/backend_contract.dart';
 import 'package:belluga_now/infrastructure/services/schedule_backend_contract.dart';
@@ -38,7 +40,8 @@ class ModuleSettings extends ModuleSettingsContract {
     _registerScheduleBackend();
     await _registerTenantRepository();
     await _registerAuthRepository();
-    _registerHomeRepository();
+    _registerFavoriteRepository();
+    _registerVenueEventRepository();
   }
 
   @override
@@ -92,13 +95,23 @@ class ModuleSettings extends ModuleSettingsContract {
     GetIt.I.registerSingleton<AuthRepositoryContract>(authRepository);
   }
 
-  void _registerHomeRepository() {
-    if (GetIt.I.isRegistered<HomeRepositoryContract>()) {
+  void _registerFavoriteRepository() {
+    if (GetIt.I.isRegistered<FavoriteRepositoryContract>()) {
       return;
     }
 
-    GetIt.I.registerLazySingleton<HomeRepositoryContract>(
-      () => HomeRepository(),
+    GetIt.I.registerLazySingleton<FavoriteRepositoryContract>(
+      () => FavoriteRepository(),
+    );
+  }
+
+  void _registerVenueEventRepository() {
+    if (GetIt.I.isRegistered<VenueEventRepositoryContract>()) {
+      return;
+    }
+
+    GetIt.I.registerLazySingleton<VenueEventRepositoryContract>(
+      () => VenueEventRepository(),
     );
   }
 

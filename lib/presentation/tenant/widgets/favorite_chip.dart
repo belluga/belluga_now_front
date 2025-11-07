@@ -1,10 +1,10 @@
-import 'package:belluga_now/presentation/view_models/favorite_item_data.dart';
+import 'package:belluga_now/domain/favorite/projections/favorite_resume.dart';
 import 'package:flutter/material.dart';
 
 class FavoriteChip extends StatelessWidget {
   const FavoriteChip({super.key, required this.item});
 
-  final FavoriteItemData item;
+  final FavoriteResume item;
 
   @override
   Widget build(BuildContext context) {
@@ -75,7 +75,7 @@ class FavoriteChip extends StatelessWidget {
 class _FavoriteImage extends StatelessWidget {
   const _FavoriteImage({required this.item});
 
-  final FavoriteItemData item;
+  final FavoriteResume item;
 
   @override
   Widget build(BuildContext context) {
@@ -88,8 +88,19 @@ class _FavoriteImage extends StatelessWidget {
       );
     }
 
+    final imageUrl = item.imageUri?.toString();
+    if (imageUrl == null) {
+      return Container(
+        color: colorScheme.surfaceContainerHighest,
+        child: Icon(
+          Icons.image_not_supported_outlined,
+          color: colorScheme.onSurfaceVariant,
+        ),
+      );
+    }
+
     return Image.network(
-      item.imageUrl!,
+      imageUrl,
       fit: BoxFit.cover,
       loadingBuilder: (context, child, loadingProgress) {
         if (loadingProgress == null) return child;

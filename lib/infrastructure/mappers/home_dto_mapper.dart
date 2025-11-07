@@ -1,29 +1,17 @@
-import 'package:belluga_now/domain/home/home_event.dart';
-import 'package:belluga_now/domain/home/home_favorite.dart';
-import 'package:belluga_now/domain/home/home_overview.dart';
+import 'package:belluga_now/domain/favorite/projections/favorite_resume.dart';
+import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
 import 'package:belluga_now/domain/value_objects/asset_path_value.dart';
 import 'package:belluga_now/domain/value_objects/description_value.dart';
 import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
 import 'package:belluga_now/domain/value_objects/title_value.dart';
 import 'package:belluga_now/infrastructure/services/dal/dto/home/home_event_dto.dart';
 import 'package:belluga_now/infrastructure/services/dal/dto/home/home_favorite_dto.dart';
-import 'package:belluga_now/infrastructure/services/dal/dto/home/home_overview_dto.dart';
 import 'package:flutter/material.dart';
 import 'package:value_object_pattern/domain/value_objects/date_time_value.dart';
 
-/// Mixin used by infrastructure repositories to translate Home DTOs
-/// into their domain counterparts while keeping DTO awareness out of
-/// the domain layer.
+/// DTO → domain projection helpers scoped to the home feature.
 mixin HomeDtoMapper {
-  HomeOverview mapHomeOverview(HomeOverviewDTO dto) {
-    return HomeOverview(
-      favorites: dto.favorites.map(mapHomeFavorite).toList(),
-      featuredEvents: dto.featuredEvents.map(mapHomeEvent).toList(),
-      upcomingEvents: dto.upcomingEvents.map(mapHomeEvent).toList(),
-    );
-  }
-
-  HomeFavorite mapHomeFavorite(HomeFavoriteDTO dto) {
+  FavoriteResume mapFavoriteResume(HomeFavoriteDTO dto) {
     final title = TitleValue()..parse(dto.title);
 
     ThumbUriValue? imageUri;
@@ -42,7 +30,7 @@ mixin HomeDtoMapper {
       )..parse(dto.assetPath);
     }
 
-    return HomeFavorite(
+    return FavoriteResume(
       titleValue: title,
       imageUriValue: imageUri,
       assetPathValue: assetPath,
@@ -57,7 +45,7 @@ mixin HomeDtoMapper {
     );
   }
 
-  HomeEvent mapHomeEvent(HomeEventDTO dto) {
+  VenueEventResume mapVenueEventResume(HomeEventDTO dto) {
     final title = TitleValue()..parse(dto.title);
     final imageUri = ThumbUriValue(
       defaultValue: Uri.parse(dto.imageUrl),
@@ -70,13 +58,13 @@ mixin HomeDtoMapper {
     final location = DescriptionValue()..parse(dto.location);
     final artist = TitleValue()..parse(dto.artist);
 
-    return HomeEvent(
-      slug: dto.id ?? HomeEvent.slugify(dto.title),
+    return VenueEventResume(
+      slug: dto.id ?? VenueEventResume.slugify(dto.title),
       titleValue: title,
       imageUriValue: imageUri,
       startDateTimeValue: startDate,
       locationValue: location,
-      artistValue: artist,
+      artists: artist.value.isNotEmpty ? [artist.value] : const [],
     );
   }
 }

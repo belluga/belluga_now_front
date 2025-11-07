@@ -1,12 +1,12 @@
+import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
 import 'package:belluga_now/presentation/tenant/widgets/date_badge.dart';
 import 'package:belluga_now/presentation/tenant/widgets/event_info_row.dart';
-import 'package:belluga_now/presentation/view_models/event_card_data.dart';
 import 'package:flutter/material.dart';
 
 class EventDetails extends StatelessWidget {
-  const EventDetails({super.key, required this.eventCardData});
+  const EventDetails({super.key, required this.event});
 
-  final EventCardData eventCardData;
+  final VenueEventResume event;
 
   @override
   Widget build(BuildContext context) {
@@ -20,7 +20,7 @@ class EventDetails extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           DateBadge(
-            date: eventCardData.startDateTime,
+            date: event.startDateTime,
             displayTime: true,
           ),
           const SizedBox(width: 16),
@@ -30,7 +30,7 @@ class EventDetails extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  eventCardData.title,
+                  event.title,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: theme.textTheme.titleMedium?.copyWith(
@@ -39,16 +39,16 @@ class EventDetails extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 10),
-                EventInfoRow(
-                  icon: Icons.place_outlined,
-                  label: eventCardData.venue,
-                  color: onPrimary.withValues(alpha: 0.9),
-                ),
+                  EventInfoRow(
+                    icon: Icons.place_outlined,
+                    label: event.location,
+                    color: onPrimary.withValues(alpha: 0.9),
+                  ),
                 const SizedBox(height: 6),
-                if (eventCardData.hasParticipants)
+                if (event.hasArtists)
                   EventInfoRow(
                     icon: Icons.music_note_outlined,
-                    label: eventCardData.participantsLabelWithHighlight,
+                    label: event.artists.join(', '),
                     color: onPrimary.withValues(alpha: 0.9),
                   )
                 else
