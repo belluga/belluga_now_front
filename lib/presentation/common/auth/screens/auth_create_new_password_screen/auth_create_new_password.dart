@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/presentation/tenant/auth/login/controllers/create_password_controller_contract.dart';
@@ -17,11 +19,13 @@ class _AuthCreateNewPasswordScreenState
     extends State<AuthCreateNewPasswordScreen> {
   late final CreatePasswordControllerContract _controller =
       GetIt.I.get<CreatePasswordControllerContract>();
+  StreamSubscription<String?>? _generalErrorSubscription;
 
   @override
   void initState() {
     super.initState();
-    _controller.generalErrorStreamValue.stream.listen(_onGeneralError);
+    _generalErrorSubscription =
+        _controller.generalErrorStreamValue.stream.listen(_onGeneralError);
   }
 
   @override
@@ -102,6 +106,7 @@ class _AuthCreateNewPasswordScreenState
 
   @override
   void dispose() {
+    _generalErrorSubscription?.cancel();
     _controller.onDispose();
     super.dispose();
   }

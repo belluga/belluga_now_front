@@ -26,12 +26,6 @@ class _ExperiencesScreenState extends State<ExperiencesScreen> {
   }
 
   @override
-  void dispose() {
-    _controller.onDispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 

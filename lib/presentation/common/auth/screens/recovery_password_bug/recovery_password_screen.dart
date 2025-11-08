@@ -12,14 +12,21 @@ class RecoveryPasswordScreen extends StatefulWidget {
 }
 
 class _RecoveryPasswordScreenState extends State<RecoveryPasswordScreen> {
-  late AuthRecoveryPasswordControllerContract _controller;
+  late final AuthRecoveryPasswordControllerContract _controller =
+      GetIt.I.get<AuthRecoveryPasswordControllerContract>();
 
   @override
   void initState() {
     super.initState();
-    _controller = GetIt.I.get<AuthRecoveryPasswordControllerContract>(
-      param1: widget.initialEmmail,
-    );
+    _controller.attachInitialEmail(widget.initialEmmail);
+  }
+
+  @override
+  void didUpdateWidget(covariant RecoveryPasswordScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.initialEmmail != widget.initialEmmail) {
+      _controller.attachInitialEmail(widget.initialEmmail);
+    }
   }
 
   @override
@@ -77,9 +84,4 @@ class _RecoveryPasswordScreenState extends State<RecoveryPasswordScreen> {
     );
   }
 
-  @override
-  void dispose() {
-    super.dispose();
-    _controller.onDispose();
-  }
 }

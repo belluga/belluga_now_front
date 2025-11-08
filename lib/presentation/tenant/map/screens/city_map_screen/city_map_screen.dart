@@ -58,22 +58,10 @@ class _CityMapScreenState extends State<CityMapScreen> {
     super.initState();
     _cityMapController = GetIt.I.get<CityMapController>();
     _fabMenuController = GetIt.I.get<FabMenuController>();
-    _regionPanelController = RegionPanelController(
-      mapController: _cityMapController,
-      fabMenuController: _fabMenuController,
-    );
-    _eventsPanelController = EventsPanelController(
-      mapController: _cityMapController,
-      fabMenuController: _fabMenuController,
-    );
-    _musicPanelController = MusicPanelController(
-      mapController: _cityMapController,
-      fabMenuController: _fabMenuController,
-    );
-    _cuisinePanelController = CuisinePanelController(
-      mapController: _cityMapController,
-      fabMenuController: _fabMenuController,
-    );
+    _regionPanelController = GetIt.I.get<RegionPanelController>();
+    _eventsPanelController = GetIt.I.get<EventsPanelController>();
+    _musicPanelController = GetIt.I.get<MusicPanelController>();
+    _cuisinePanelController = GetIt.I.get<CuisinePanelController>();
 
     _navigationSubscription = _cityMapController.mapNavigationTarget.stream
         .listen(_handleNavigationTarget);
@@ -88,12 +76,6 @@ class _CityMapScreenState extends State<CityMapScreen> {
   void dispose() {
     _navigationSubscription?.cancel();
     _panelSubscription?.cancel();
-    _cuisinePanelController.onDispose();
-    _musicPanelController.onDispose();
-    _eventsPanelController.onDispose();
-    _regionPanelController.onDispose();
-    _fabMenuController.onDispose();
-    _cityMapController.onDispose();
     super.dispose();
   }
 

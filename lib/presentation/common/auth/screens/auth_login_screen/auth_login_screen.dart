@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/presentation/tenant/auth/login/controllers/auth_login_controller_contract.dart';
@@ -19,12 +21,14 @@ class _AuthLoginScreenState extends State<AuthLoginScreen>
     with WidgetsBindingObserver {
   late final AuthLoginControllerContract _controller =
       GetIt.I.get<AuthLoginControllerContract>();
+  StreamSubscription<String?>? _generalErrorSubscription;
 
   @override
   void initState() {
     super.initState();
 
-    _controller.generalErrorStreamValue.stream.listen(_onGeneralError);
+    _generalErrorSubscription =
+        _controller.generalErrorStreamValue.stream.listen(_onGeneralError);
     WidgetsBinding.instance.addObserver(this);
   }
 
@@ -137,8 +141,8 @@ class _AuthLoginScreenState extends State<AuthLoginScreen>
 
   @override
   void dispose() {
-    super.dispose();
     WidgetsBinding.instance.removeObserver(this);
-    _controller.onDispose();
+    _generalErrorSubscription?.cancel();
+    super.dispose();
   }
 }

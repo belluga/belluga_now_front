@@ -1,3 +1,4 @@
+import 'package:belluga_now/application/router/modular_app/modules/mercado_module.dart';
 import 'package:belluga_now/domain/invites/invite_inviter.dart';
 import 'package:belluga_now/domain/invites/invite_inviter_type.dart';
 import 'package:belluga_now/domain/invites/invite_model.dart';
@@ -7,6 +8,7 @@ import 'package:belluga_now/presentation/tenant/mercado/data/mock_data/mock_merc
 import 'package:belluga_now/presentation/tenant/mercado/models/mercado_producer.dart';
 import 'package:belluga_now/presentation/tenant/mercado/screens/producer_store_screen/producer_store_screen.dart';
 import 'package:flutter/material.dart';
+import 'package:get_it_modular_with_auto_route/get_it_modular_with_auto_route.dart';
 
 class InviteCardInviterBanner extends StatelessWidget {
   const InviteCardInviterBanner({
@@ -177,7 +179,9 @@ class InviteCardInviterBanner extends StatelessWidget {
       case InvitePartnerType.mercadoProducer:
         final producer = _findMercadoProducer(partner.id);
         sheetContent = producer != null
-            ? ProducerStoreScreen(producer: producer)
+            ? ModuleScope<MercadoModule>(
+                child: ProducerStoreScreen(producer: producer),
+              )
             : _PartnerFallback(name: partner.name);
         break;
     }

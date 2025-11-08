@@ -5,12 +5,18 @@ import 'package:belluga_now/presentation/tenant/mercado/screens/producer_store_s
 import 'package:belluga_now/presentation/tenant/mercado/screens/producer_store_screen/widgets/producer_hero_section.dart';
 import 'package:belluga_now/presentation/tenant/mercado/screens/producer_store_screen/widgets/producer_products_section.dart';
 import 'package:flutter/material.dart';
+import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 
 class ProducerStoreScreen extends StatefulWidget {
-  const ProducerStoreScreen({super.key, required this.producer});
+  const ProducerStoreScreen({
+    super.key,
+    required this.producer,
+    this.controller,
+  });
 
   final MercadoProducer producer;
+  final ProducerStoreController? controller;
 
   @override
   State<ProducerStoreScreen> createState() => _ProducerStoreScreenState();
@@ -18,12 +24,20 @@ class ProducerStoreScreen extends StatefulWidget {
 
 class _ProducerStoreScreenState extends State<ProducerStoreScreen> {
   late final ProducerStoreController _controller =
-      ProducerStoreController(producer: widget.producer);
+      widget.controller ?? GetIt.I.get<ProducerStoreController>();
 
   @override
-  void dispose() {
-    _controller.onDispose();
-    super.dispose();
+  void initState() {
+    super.initState();
+    _controller.attachProducer(widget.producer);
+  }
+
+  @override
+  void didUpdateWidget(covariant ProducerStoreScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.producer != widget.producer) {
+      _controller.attachProducer(widget.producer);
+    }
   }
 
   @override

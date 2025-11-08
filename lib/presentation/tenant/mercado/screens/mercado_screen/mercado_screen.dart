@@ -23,12 +23,6 @@ class _MercadoScreenState extends State<MercadoScreen> {
     _controller.init();
   }
 
-  @override
-  void dispose() {
-    _controller.onDispose();
-    super.dispose();
-  }
-
   void _handleClearSearch() {
     _controller.clearSearch();
   }

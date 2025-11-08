@@ -31,13 +31,9 @@ class AuthModule extends ModuleContract {
       () => CreatePasswordController(),
     );
 
-    if (!GetIt.I.isRegistered<AuthRecoveryPasswordControllerContract>()) {
-      GetIt.I.registerFactoryParam<AuthRecoveryPasswordControllerContract,
-          String?, void>(
-        (initialEmail, _) =>
-            AuthRecoveryPasswordController(initialEmail: initialEmail),
-      );
-    }
+    registerLazySingleton<AuthRecoveryPasswordControllerContract>(
+      () => AuthRecoveryPasswordController(),
+    );
   }
 
   @override

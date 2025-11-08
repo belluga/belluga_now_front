@@ -30,12 +30,6 @@ class _TenantHomeScreenState extends State<TenantHomeScreen> {
   }
 
   @override
-  void dispose() {
-    _controller.onDispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
