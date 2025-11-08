@@ -2,7 +2,10 @@ import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/domain/experiences/experience_model.dart';
 import 'package:belluga_now/presentation/tenant/experiences/screens/experiences_screen/controllers/experiences_controller.dart';
+import 'package:belluga_now/presentation/tenant/experiences/screens/experiences_screen/widgets/category_chips.dart';
 import 'package:belluga_now/presentation/tenant/experiences/screens/experiences_screen/widgets/experience_card.dart';
+import 'package:belluga_now/presentation/tenant/experiences/screens/experiences_screen/widgets/experiences_empty_state.dart';
+import 'package:belluga_now/presentation/tenant/experiences/screens/experiences_screen/widgets/tag_chips.dart';
 import 'package:belluga_now/presentation/tenant/widgets/belluga_bottom_navigation_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
@@ -66,13 +69,13 @@ class _ExperiencesScreenState extends State<ExperiencesScreen> {
               const SizedBox(height: 16),
               StreamValueBuilder<String?>(
                 streamValue: _controller.selectedCategoryStreamValue,
-                onNullWidget: _CategoryChips(
-                  categories: const [],
+                onNullWidget: const CategoryChips(
+                  categories: [],
                   onCategorySelected: null,
                 ),
                 builder: (context, selectedCategory) {
                   final categories = _controller.categories.toList()..sort();
-                  return _CategoryChips(
+                  return CategoryChips(
                     categories: categories,
                     selectedCategory: selectedCategory,
                     onCategorySelected: _controller.selectCategory,
@@ -88,7 +91,7 @@ class _ExperiencesScreenState extends State<ExperiencesScreen> {
                     return const SizedBox.shrink();
                   }
                   final currentSelection = selectedTags;
-                  return _TagChips(
+                  return TagChips(
                     tags: tags,
                     selectedTags: currentSelection,
                     onTagToggled: _controller.toggleTag,
@@ -102,7 +105,7 @@ class _ExperiencesScreenState extends State<ExperiencesScreen> {
                   streamValue: _controller.experiencesStreamValue,
                   builder: (context, experiences) {
                     if (experiences.isEmpty) {
-                      return const _EmptyState();
+                      return const ExperiencesEmptyState();
                     }
                     return LayoutBuilder(
                       builder: (context, constraints) {
@@ -146,119 +149,6 @@ class _ExperiencesScreenState extends State<ExperiencesScreen> {
   void _openDetails(ExperienceModel experience) {
     context.router.push(
       ExperienceDetailRoute(experience: experience),
-    );
-  }
-}
-
-class _CategoryChips extends StatelessWidget {
-  const _CategoryChips({
-    required this.categories,
-    this.selectedCategory,
-    required this.onCategorySelected,
-  });
-
-  final List<String> categories;
-  final String? selectedCategory;
-  final void Function(String?)? onCategorySelected;
-
-  @override
-  Widget build(BuildContext context) {
-    if (categories.isEmpty) {
-      return const SizedBox.shrink();
-    }
-
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        children: [
-          Padding(
-            padding: const EdgeInsets.only(right: 8),
-            child: FilterChip(
-              label: const Text('Todos'),
-              selected: selectedCategory == null,
-              onSelected: (_) => onCategorySelected?.call(null),
-            ),
-          ),
-          ...categories.map(
-            (category) => Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: FilterChip(
-                label: Text(category),
-                selected: category == selectedCategory,
-                onSelected: (_) => onCategorySelected?.call(category),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _EmptyState extends StatelessWidget {
-  const _EmptyState();
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            Icons.travel_explore,
-            size: 40,
-            color: theme.colorScheme.onSurfaceVariant,
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Nenhuma experiencia encontrada.',
-            style: theme.textTheme.bodyMedium,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _TagChips extends StatelessWidget {
-  const _TagChips({
-    required this.tags,
-    required this.selectedTags,
-    required this.onTagToggled,
-    required this.onClearTags,
-  });
-
-  final List<String> tags;
-  final Set<String> selectedTags;
-  final void Function(String tag) onTagToggled;
-  final VoidCallback onClearTags;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            if (selectedTags.isNotEmpty)
-              FilterChip(
-                label: const Text('Limpar tags'),
-                selected: false,
-                onSelected: (_) => onClearTags(),
-              ),
-            for (final tag in tags)
-              FilterChip(
-                label: Text(tag),
-                selected: selectedTags.contains(tag),
-                onSelected: (_) => onTagToggled(tag),
-              ),
-          ],
-        ),
-      ],
     );
   }
 }

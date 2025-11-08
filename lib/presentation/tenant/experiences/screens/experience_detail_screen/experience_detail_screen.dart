@@ -1,4 +1,5 @@
 import 'package:belluga_now/domain/experiences/experience_model.dart';
+import 'package:belluga_now/presentation/tenant/experiences/screens/experience_detail_screen/widgets/experience_detail_section.dart';
 import 'package:flutter/material.dart';
 
 class ExperienceDetailScreen extends StatelessWidget {
@@ -49,7 +50,7 @@ class ExperienceDetailScreen extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(20, 24, 20, 120),
             sliver: SliverList.list(
               children: [
-                _Section(
+                ExperienceDetailSection(
                   title: 'Oferecido por',
                   child: Text(
                     experience.providerName,
@@ -57,7 +58,7 @@ class ExperienceDetailScreen extends StatelessWidget {
                   ),
                 ),
                 if (experience.priceLabel != null)
-                  _Section(
+                  ExperienceDetailSection(
                     title: 'Investimento',
                     child: Text(
                       experience.priceLabel!,
@@ -68,16 +69,16 @@ class ExperienceDetailScreen extends StatelessWidget {
                     ),
                   ),
                 if (experience.duration != null)
-                  _Section(
+                  ExperienceDetailSection(
                     title: 'Duracao',
                     child: Text(experience.duration!),
                   ),
                 if (experience.meetingPoint != null)
-                  _Section(
+                  ExperienceDetailSection(
                     title: 'Ponto de encontro',
                     child: Text(experience.meetingPoint!),
                   ),
-                _Section(
+                ExperienceDetailSection(
                   title: 'Descricao',
                   child: Text(
                     experience.description,
@@ -85,7 +86,7 @@ class ExperienceDetailScreen extends StatelessWidget {
                   ),
                 ),
                 if (experience.tags.isNotEmpty)
-                  _Section(
+                  ExperienceDetailSection(
                     title: 'Tags',
                     child: Wrap(
                       spacing: 8,
@@ -105,7 +106,7 @@ class ExperienceDetailScreen extends StatelessWidget {
                     ),
                   ),
                 if (experience.highlightItems.isNotEmpty)
-                  _Section(
+                  ExperienceDetailSection(
                     title: 'Inclui',
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -149,37 +150,6 @@ class ExperienceDetailScreen extends StatelessWidget {
             ),
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _Section extends StatelessWidget {
-  const _Section({
-    required this.title,
-    required this.child,
-  });
-
-  final String title;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: theme.textTheme.titleSmall?.copyWith(
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: 8),
-          child,
-        ],
       ),
     );
   }
