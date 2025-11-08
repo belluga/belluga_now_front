@@ -272,7 +272,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     final eventId = widget.event.id.value;
     final inviteId = eventId.isNotEmpty ? eventId : eventName;
 
-    return InviteModel(
+    return InviteModel.fromPrimitives(
       id: inviteId,
       eventName: eventName,
       eventDateTime: eventDate,

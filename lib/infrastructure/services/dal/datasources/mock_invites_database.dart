@@ -20,7 +20,7 @@ class MockInvitesDatabase {
   List<Friend> get friends => _friends;
 
   static final List<InviteModel> _invites = [
-    InviteModel(
+    InviteModel.fromPrimitives(
       id: 'sun-chasers',
       eventName: 'Sun Chasers Beach Session',
       eventDateTime: DateTime(2025, 11, 18, 16, 30),
@@ -30,7 +30,7 @@ class MockInvitesDatabase {
       hostName: 'Jade e Lucas',
       message:
           'Vem curtir um fim de tarde com jam acustica e rodada de mate gelado. A galera da yoga vai colar.',
-      tags: [
+      tags: const [
         'sunset',
         'musica ao vivo',
         'friends only',
@@ -73,12 +73,12 @@ class MockInvitesDatabase {
       inviterName: 'Jade Carvalho',
       inviterAvatarUrl:
           'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=200',
-      additionalInviters: [
+      additionalInviters: const [
         'Lucas Andrade',
         'Duda Lima',
       ],
     ),
-    InviteModel(
+    InviteModel.fromPrimitives(
       id: 'reef-research-night',
       eventName: 'Noite Lab Marinho + Reef Night Dive',
       eventDateTime: DateTime(2025, 11, 21, 19, 0),
@@ -88,7 +88,7 @@ class MockInvitesDatabase {
       hostName: 'Instituto Mar Limpo',
       message:
           'Sessao pocket sobre especies locais, seguida de mergulho noturno guiado. Equipamentos inclusos.',
-      tags: [
+      tags: const [
         'mergulho',
         'educacao ambiental',
         'noite',
@@ -115,9 +115,9 @@ class MockInvitesDatabase {
       inviterName: 'Instituto Mar Limpo',
       inviterAvatarUrl:
           'https://images.unsplash.com/photo-1458253756246-1e4ed949191b?w=200',
-      additionalInviters: [],
+      additionalInviters: const [],
     ),
-    InviteModel(
+    InviteModel.fromPrimitives(
       id: 'moon-dinner',
       eventName: 'Jantar Colaborativo Lua Cheia',
       eventDateTime: DateTime(2025, 11, 25, 20, 0),
@@ -127,7 +127,7 @@ class MockInvitesDatabase {
       hostName: 'Chef Marina',
       message:
           'Cada convidado leva um prato autoral com ingredientes do mar. Playlist de lo-fi e telescopio aberto.',
-      tags: [
+      tags: const [
         'gastronomia do mar',
         'lua cheia',
         'intimista',
@@ -157,7 +157,7 @@ class MockInvitesDatabase {
       inviterName: 'Chef Marina',
       inviterAvatarUrl:
           'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200',
-      additionalInviters: [
+      additionalInviters: const [
         'Equipe Solar',
       ],
     ),
