@@ -1,6 +1,7 @@
 import 'package:belluga_now/domain/map/city_poi_model.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/domain/map/value_objects/city_poi_address_value.dart';
+import 'package:belluga_now/domain/map/value_objects/city_poi_description_value.dart';
 import 'package:belluga_now/domain/map/value_objects/city_poi_id_value.dart';
 import 'package:belluga_now/domain/map/value_objects/city_poi_name_value.dart';
 import 'package:belluga_now/domain/map/value_objects/distance_in_meters_value.dart';
@@ -9,14 +10,13 @@ import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_priority_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_tag_value.dart';
 import 'package:belluga_now/domain/value_objects/asset_path_value.dart';
-import 'package:belluga_now/domain/value_objects/description_value.dart';
 import 'package:belluga_now/infrastructure/services/dal/dto/map/city_poi_dto.dart';
 
 mixin MapDtoMapper {
   CityPoiModel mapCityPoi(CityPoiDTO dto) {
     final idValue = CityPoiIdValue()..parse(dto.id);
     final nameValue = CityPoiNameValue()..parse(dto.name);
-    final descriptionValue = DescriptionValue()..parse(dto.description);
+    final descriptionValue = CityPoiDescriptionValue()..parse(dto.description);
     final addressValue = CityPoiAddressValue()..parse(dto.address);
     final coordinate = CityCoordinate(
       latitudeValue: LatitudeValue()..parse(dto.latitude.toString()),

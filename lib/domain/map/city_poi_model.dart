@@ -1,13 +1,13 @@
 import 'package:belluga_now/domain/map/city_poi_category.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/domain/map/value_objects/city_poi_address_value.dart';
+import 'package:belluga_now/domain/map/value_objects/city_poi_description_value.dart';
 import 'package:belluga_now/domain/map/value_objects/city_poi_id_value.dart';
 import 'package:belluga_now/domain/map/value_objects/city_poi_name_value.dart';
 import 'package:belluga_now/domain/map/value_objects/distance_in_meters_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_priority_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_tag_value.dart';
 import 'package:belluga_now/domain/value_objects/asset_path_value.dart';
-import 'package:belluga_now/domain/value_objects/description_value.dart';
 
 class CityPoiModel {
   CityPoiModel({
@@ -26,7 +26,7 @@ class CityPoiModel {
 
   final CityPoiIdValue idValue;
   final CityPoiNameValue nameValue;
-  final DescriptionValue descriptionValue;
+  final CityPoiDescriptionValue descriptionValue;
   final CityPoiAddressValue addressValue;
   final CityPoiCategory category;
   final CityCoordinate coordinate;
