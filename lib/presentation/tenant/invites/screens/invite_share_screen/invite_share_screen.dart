@@ -2,6 +2,7 @@ import 'package:belluga_now/domain/invites/invite_model.dart';
 import 'package:belluga_now/domain/invites/projections/friend_resume.dart';
 import 'package:belluga_now/presentation/tenant/invites/screens/invite_share_screen/controllers/invite_share_screen_controller.dart';
 import 'package:belluga_now/presentation/tenant/invites/screens/invite_share_screen/widgets/invite_event_summary.dart';
+import 'package:belluga_now/presentation/tenant/invites/screens/invite_share_screen/widgets/friend_selection_list.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:intl/intl.dart';
@@ -47,46 +48,8 @@ class _InviteShareScreenState extends State<InviteShareScreen> {
               invite: widget.invite,
               formattedDate: formattedDate,
             ),
-            Expanded(
-              child: StreamValueBuilder<List<FriendResume>>(
-                  streamValue: _controller.friendsSuggestionsStreamValue,
-                  onNullWidget: const Center(
-                    child: CircularProgressIndicator(),
-                  ),
-                  builder: (context, friends) {
-                    return StreamValueBuilder<List<FriendResume>>(
-                        streamValue:
-                            _controller.selectedFriendsSuggestionsStreamValue,
-                        onNullWidget: const Center(
-                          child: CircularProgressIndicator(),
-                        ),
-                        builder: (context, selectedFriends) {
-                          return ListView.separated(
-                            padding: const EdgeInsets.fromLTRB(20, 20, 20, 120),
-                            itemBuilder: (context, index) {
-                              final friend = friends[index];
-                              final isSelected =
-                                  selectedFriends.contains(friend);
-                              return ListTile(
-                                onTap: () => _controller.toggleFriend(friend),
-                                leading: CircleAvatar(
-                                  backgroundImage:
-                                      NetworkImage(friend.avatarUri.toString()),
-                                ),
-                                title: Text(friend.name),
-                                subtitle: Text(friend.matchLabel),
-                                trailing: Checkbox(
-                                  value: isSelected,
-                                  onChanged: (_) =>
-                                      _controller.toggleFriend(friend),
-                                ),
-                              );
-                            },
-                            separatorBuilder: (_, __) => const Divider(),
-                            itemCount: friends.length,
-                          );
-                        });
-                  }),
+            const Expanded(
+              child: FriendSelectionList(),
             ),
           ],
         ),

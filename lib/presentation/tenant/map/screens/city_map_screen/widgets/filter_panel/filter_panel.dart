@@ -7,10 +7,21 @@ import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 
-class FilterPanel extends StatelessWidget {
-  FilterPanel({super.key});
+class FilterPanel extends StatefulWidget {
+  const FilterPanel({super.key}) : controller = null;
 
-  final CityMapController _controller = GetIt.I.get<CityMapController>();
+  @visibleForTesting
+  const FilterPanel.withController(this.controller, {super.key});
+
+  final CityMapController? controller;
+
+  @override
+  State<FilterPanel> createState() => _FilterPanelState();
+}
+
+class _FilterPanelState extends State<FilterPanel> {
+  CityMapController get _controller =>
+      widget.controller ?? GetIt.I.get<CityMapController>();
 
   @override
   Widget build(BuildContext context) {
@@ -19,7 +30,8 @@ class FilterPanel extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.35),
+        color:
+            theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.35),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: theme.colorScheme.outline.withValues(alpha: 0.4),

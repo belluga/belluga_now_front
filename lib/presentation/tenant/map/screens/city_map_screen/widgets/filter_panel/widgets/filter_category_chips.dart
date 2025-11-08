@@ -6,18 +6,33 @@ import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 
-class FilterCategoryChips extends StatelessWidget {
+class FilterCategoryChips extends StatefulWidget {
   const FilterCategoryChips({
+    super.key,
+    required this.options,
+  }) : controller = null;
+
+  @visibleForTesting
+  const FilterCategoryChips.withController(
+    this.controller, {
     super.key,
     required this.options,
   });
 
   final PoiFilterOptions options;
+  final CityMapController? controller;
+
+  @override
+  State<FilterCategoryChips> createState() => _FilterCategoryChipsState();
+}
+
+class _FilterCategoryChipsState extends State<FilterCategoryChips> {
+  CityMapController get _controller =>
+      widget.controller ?? GetIt.I.get<CityMapController>();
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final controller = GetIt.I.get<CityMapController>();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -28,14 +43,14 @@ class FilterCategoryChips extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         StreamValueBuilder<Set<CityPoiCategory>>(
-          streamValue: controller.selectedCategories,
+          streamValue: _controller.selectedCategories,
           builder: (context, selectedCategories) {
             final selected = selectedCategories;
             return Wrap(
               spacing: 8,
               runSpacing: 8,
               children: [
-                for (final categoryOption in options.categories)
+                for (final categoryOption in widget.options.categories)
                   FilterCategoryChip(
                     category: categoryOption.category,
                     isSelected: selected.contains(categoryOption.category),
