@@ -1,5 +1,6 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
+import 'package:get_it/get_it.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/presentation/common/widgets/profile_action_button/controllers/profile_action_button_controller.dart';
 
@@ -11,7 +12,7 @@ class ProfileActionButton extends StatefulWidget {
 }
 
 class _ProfileActionButtonState extends State<ProfileActionButton> {
-  final _controller = ProfileActionButtonController();
+  final _controller = GetIt.I.get<ProfileActionButtonController>();
 
   @override
   Widget build(BuildContext context) {
