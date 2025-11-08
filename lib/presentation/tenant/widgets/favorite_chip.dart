@@ -1,4 +1,5 @@
 import 'package:belluga_now/domain/favorite/projections/favorite_resume.dart';
+import 'package:belluga_now/presentation/tenant/widgets/favorite_chip_image.dart';
 import 'package:flutter/material.dart';
 
 class FavoriteChip extends StatelessWidget {
@@ -36,7 +37,7 @@ class FavoriteChip extends StatelessWidget {
                   child: SizedBox(
                     width: 66,
                     height: 66,
-                    child: _FavoriteImage(item: item),
+                    child: FavoriteChipImage(item: item),
                   ),
                 ),
               ),
@@ -86,60 +87,6 @@ class FavoriteChip extends StatelessWidget {
       codePoint,
       fontFamily: badge.fontFamily,
       fontPackage: badge.fontPackage,
-    );
-  }
-}
-
-class _FavoriteImage extends StatelessWidget {
-  const _FavoriteImage({required this.item});
-
-  final FavoriteResume item;
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-
-    if (item.assetPath != null) {
-      return Image.asset(
-        item.assetPath!,
-        fit: BoxFit.cover,
-      );
-    }
-
-    final imageUrl = item.imageUri?.toString();
-    if (imageUrl == null) {
-      return Container(
-        color: colorScheme.surfaceContainerHighest,
-        child: Icon(
-          Icons.image_not_supported_outlined,
-          color: colorScheme.onSurfaceVariant,
-        ),
-      );
-    }
-
-    return Image.network(
-      imageUrl,
-      fit: BoxFit.cover,
-      loadingBuilder: (context, child, loadingProgress) {
-        if (loadingProgress == null) return child;
-        return Container(
-          color: colorScheme.surfaceContainerHighest,
-          child: const Center(
-            child: SizedBox(
-              width: 20,
-              height: 20,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            ),
-          ),
-        );
-      },
-      errorBuilder: (_, __, ___) => Container(
-        color: colorScheme.surfaceContainerHighest,
-        child: Icon(
-          Icons.image_not_supported_outlined,
-          color: colorScheme.onSurfaceVariant,
-        ),
-      ),
     );
   }
 }

@@ -4,6 +4,9 @@ import 'package:belluga_now/domain/invites/invite_inviter_type.dart';
 import 'package:belluga_now/domain/invites/invite_model.dart';
 import 'package:belluga_now/domain/invites/invite_partner_summary.dart';
 import 'package:belluga_now/domain/invites/invite_partner_type.dart';
+import 'package:belluga_now/presentation/tenant/invites/screens/invite_flow_screen/widgets/invite_summary_avatar.dart';
+import 'package:belluga_now/presentation/tenant/invites/screens/invite_flow_screen/widgets/inviter_name_label.dart';
+import 'package:belluga_now/presentation/tenant/invites/screens/invite_flow_screen/widgets/partner_fallback.dart';
 import 'package:belluga_now/presentation/tenant/mercado/data/mock_data/mock_mercado_data.dart';
 import 'package:belluga_now/presentation/tenant/mercado/models/mercado_producer.dart';
 import 'package:belluga_now/presentation/tenant/mercado/screens/producer_store_screen/producer_store_screen.dart';
@@ -52,14 +55,15 @@ class InviteCardInviterBanner extends StatelessWidget {
             alignment: WrapAlignment.center,
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              _InviterName(
-                summary: primary,
+              InviterNameLabel(
+                name: primary.name,
+                partner: primary.partner,
                 isPreview: isPreview,
                 onTapPartner: primary.partner != null && !isPreview
                     ? () => _showPartnerSheet(context, primary.partner!)
                     : null,
               ),
-              _Avatar(
+              InviteSummaryAvatar(
                 avatarUrl: avatarUrl,
                 placeholderText: primary.name.isNotEmpty
                     ? primary.name[0].toUpperCase()
@@ -108,7 +112,7 @@ class InviteCardInviterBanner extends StatelessWidget {
               itemBuilder: (context, index) {
                 final summary = inviters[index];
                 return ListTile(
-                  leading: _Avatar(
+                  leading: InviteSummaryAvatar(
                     avatarUrl: summary.avatarUrl ??
                         summary.partner?.logoImageUrl ??
                         summary.partner?.heroImageUrl,
@@ -182,7 +186,7 @@ class InviteCardInviterBanner extends StatelessWidget {
             ? ModuleScope<MercadoModule>(
                 child: ProducerStoreScreen(producer: producer),
               )
-            : _PartnerFallback(name: partner.name);
+            : PartnerFallbackView(name: partner.name);
         break;
     }
 
@@ -221,95 +225,6 @@ class InviteCardInviterBanner extends StatelessWidget {
     return mockMercadoProducers.firstWhere(
       (producer) => producer.id == partnerId,
       orElse: () => mockMercadoProducers.first,
-    );
-  }
-}
-
-class _Avatar extends StatelessWidget {
-  const _Avatar({
-    required this.avatarUrl,
-    required this.placeholderText,
-    this.radius = 24,
-  });
-
-  final String? avatarUrl;
-  final String placeholderText;
-  final double radius;
-
-  @override
-  Widget build(BuildContext context) {
-    return CircleAvatar(
-      radius: radius,
-      backgroundImage: avatarUrl != null ? NetworkImage(avatarUrl!) : null,
-      backgroundColor: Theme.of(context).colorScheme.surfaceTint,
-      child: avatarUrl == null
-          ? Text(
-              placeholderText,
-              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-            )
-          : null,
-    );
-  }
-}
-
-class _InviterName extends StatelessWidget {
-  const _InviterName({
-    required this.summary,
-    required this.isPreview,
-    this.onTapPartner,
-  });
-
-  final _InviteSummary summary;
-  final bool isPreview;
-  final VoidCallback? onTapPartner;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final text = Text(
-      summary.name,
-      style: theme.textTheme.labelLarge?.copyWith(
-        fontWeight: FontWeight.w700,
-      ),
-      textAlign: TextAlign.center,
-    );
-
-    if (summary.partner != null && onTapPartner != null) {
-      return Material(
-        type: MaterialType.transparency,
-        child: InkWell(
-          onTap: isPreview ? null : onTapPartner,
-          borderRadius: BorderRadius.circular(12),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-            child: text,
-          ),
-        ),
-      );
-    }
-
-    return text;
-  }
-}
-
-class _PartnerFallback extends StatelessWidget {
-  const _PartnerFallback({required this.name});
-
-  final String name;
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Text(
-          'Detalhes do parceiro $name indisponiveis no momento.',
-          style: Theme.of(context).textTheme.bodyLarge,
-          textAlign: TextAlign.center,
-        ),
-      ),
     );
   }
 }

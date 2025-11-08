@@ -1,6 +1,8 @@
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/presentation/tenant/map/screens/city_map_screen/widgets/shared/event_badge_chip.dart';
 import 'package:belluga_now/presentation/tenant/map/screens/city_map_screen/widgets/shared/event_temporal_state.dart';
+import 'package:belluga_now/presentation/tenant/map/screens/city_map_screen/widgets/shared/marker_core.dart';
+import 'package:belluga_now/presentation/tenant/map/screens/city_map_screen/widgets/shared/marker_pulse_circle.dart';
 import 'package:flutter/material.dart';
 
 class EventMarker extends StatefulWidget {
@@ -55,12 +57,12 @@ class _EventMarkerState extends State<EventMarker>
             alignment: Alignment.center,
             children: [
               if (isLive) ...[
-                _PulseCircle(
+                MarkerPulseCircle(
                   progress: progress,
                   color: baseColor,
                   maxSize: coreSize * 2.1,
                 ),
-                _PulseCircle(
+                MarkerPulseCircle(
                   progress: (progress + 0.45) % 1.0,
                   color: baseColor,
                   maxSize: coreSize * 1.75,
@@ -68,7 +70,7 @@ class _EventMarkerState extends State<EventMarker>
               ],
               Transform.scale(
                 scale: scale,
-                child: _MarkerCore(
+                child: MarkerCore(
                   event: widget.event,
                   state: state,
                   activeColor: baseColor,
@@ -151,109 +153,5 @@ class _EventMarkerState extends State<EventMarker>
     final minutes = start.minute.toString().padLeft(2, '0');
     return '$hours:$minutes';
   }
-}
 
-class _MarkerCore extends StatelessWidget {
-  const _MarkerCore({
-    required this.event,
-    required this.state,
-    required this.activeColor,
-    required this.size,
-  });
-
-  final EventModel event;
-  final CityEventTemporalState state;
-  final Color activeColor;
-  final double size;
-
-  @override
-  Widget build(BuildContext context) {
-    final primaryArtist = event.artists.isNotEmpty ? event.artists.first : null;
-    final avatarUri = primaryArtist?.avatarUri?.toString();
-    final fallbackUri = event.thumb?.thumbUri.value.toString();
-    final hasAvatar = avatarUri?.isNotEmpty ?? false;
-    final imageUrl = hasAvatar
-        ? avatarUri
-        : ((fallbackUri?.isNotEmpty ?? false) ? fallbackUri : null);
-
-    final decoration = BoxDecoration(
-      shape: BoxShape.circle,
-      border: Border.all(
-        color: state == CityEventTemporalState.past
-            ? Colors.grey.shade500
-            : activeColor,
-        width: 2.8,
-      ),
-      boxShadow: [
-        BoxShadow(
-          color: Colors.black.withValues(alpha: 0.16),
-          blurRadius: 5,
-          offset: const Offset(0, 3),
-        ),
-      ],
-    );
-
-    final core = Container(
-      width: size,
-      height: size,
-      decoration: decoration,
-      clipBehavior: Clip.antiAlias,
-      child: imageUrl != null
-          ? Image.network(
-              imageUrl,
-              fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => _FallbackIcon(color: activeColor),
-            )
-          : _FallbackIcon(color: activeColor),
-    );
-
-    return core;
-  }
-}
-
-class _PulseCircle extends StatelessWidget {
-  const _PulseCircle({
-    required this.progress,
-    required this.color,
-    required this.maxSize,
-  });
-
-  final double progress;
-  final Color color;
-  final double maxSize;
-
-  @override
-  Widget build(BuildContext context) {
-    final eased = Curves.easeOut.transform(progress);
-    final size = (eased.clamp(0.1, 1.0)) * maxSize;
-    final opacity = (1 - eased).clamp(0.0, 1.0);
-
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: color.withValues(alpha: 0.16 * opacity),
-      ),
-    );
-  }
-}
-
-class _FallbackIcon extends StatelessWidget {
-  const _FallbackIcon({required this.color});
-
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      color: color.withValues(alpha: 0.1),
-      alignment: Alignment.center,
-      child: Icon(
-        Icons.music_note,
-        color: color,
-        size: 28,
-      ),
-    );
-  }
 }

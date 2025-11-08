@@ -1,8 +1,7 @@
-import 'package:belluga_now/domain/artist/artist_resume.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/presentation/tenant/schedule/screens/schedule_screen/widgets/event_action_button.dart';
 import 'package:belluga_now/presentation/tenant/schedule/screens/schedule_screen/widgets/event_bottom_sheet.dart';
-import 'package:belluga_now/presentation/tenant/widgets/event_info_row.dart';
+import 'package:belluga_now/presentation/tenant/schedule/screens/schedule_screen/widgets/event_participants.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
@@ -58,7 +57,7 @@ class _EventCardState extends State<EventCard> {
                 ),
               ],
               const SizedBox(height: 12),
-              _EventParticipants(artists: widget.event.artists),
+              EventParticipants(artists: widget.event.artists),
               const SizedBox(height: 16),
               Wrap(
                 spacing: 8,
@@ -106,35 +105,5 @@ class _EventCardState extends State<EventCard> {
     final formattedDate = DateFormat.MMMMEEEEd().format(date);
     final formattedHour = DateFormat.Hm().format(date);
     return 'Data: $formattedDate as ${formattedHour}h';
-  }
-}
-
-class _EventParticipants extends StatelessWidget {
-  const _EventParticipants({required this.artists});
-
-  final List<ArtistResume> artists;
-
-  @override
-  Widget build(BuildContext context) {
-    if (artists.isEmpty) {
-      return EventInfoRow(
-        icon: Icons.groups_outlined,
-        label: 'Curadoria em definição',
-        color: Theme.of(context).colorScheme.onSurfaceVariant,
-      );
-    }
-
-    final label = artists
-        .map(
-          (artist) => artist.isHighlight
-              ? '${artist.displayName} ★'
-              : artist.displayName,
-        )
-        .join(', ');
-
-    return EventInfoRow(
-      icon: Icons.music_note_outlined,
-      label: label,
-    );
   }
 }

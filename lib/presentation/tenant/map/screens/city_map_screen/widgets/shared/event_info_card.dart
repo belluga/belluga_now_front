@@ -1,4 +1,6 @@
 import 'package:belluga_now/domain/schedule/event_model.dart';
+import 'package:belluga_now/presentation/tenant/map/screens/city_map_screen/widgets/shared/event_actions_row.dart';
+import 'package:belluga_now/presentation/tenant/map/screens/city_map_screen/widgets/shared/event_avatar.dart';
 import 'package:belluga_now/presentation/tenant/map/screens/city_map_screen/widgets/shared/event_badge_chip.dart';
 import 'package:belluga_now/presentation/tenant/map/screens/city_map_screen/widgets/shared/event_temporal_state.dart';
 import 'package:flutter/material.dart';
@@ -72,7 +74,7 @@ class EventInfoCard extends StatelessWidget {
                     clipBehavior: Clip.none,
                     alignment: Alignment.bottomCenter,
                     children: [
-                      _EventAvatar(
+                      EventAvatar(
                         imageUrl: imageUrl,
                         fallbackColor: event.type.color.value,
                         isPast: isPast,
@@ -158,7 +160,7 @@ class EventInfoCard extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 16),
-              _EventActionsRow(
+              EventActionsRow(
                 onDetails: onDetails,
                 onShare: onShare,
                 onRoute: onRoute,
@@ -171,143 +173,3 @@ class EventInfoCard extends StatelessWidget {
   }
 }
 
-class _EventActionsRow extends StatelessWidget {
-  const _EventActionsRow({
-    required this.onDetails,
-    required this.onShare,
-    this.onRoute,
-  });
-
-  final VoidCallback onDetails;
-  final VoidCallback onShare;
-  final VoidCallback? onRoute;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-
-    final actions = <Widget>[
-      Expanded(
-        child: FilledButton.icon(
-          onPressed: onDetails,
-          icon: const Icon(Icons.info_outlined),
-          label: const Text('Detalhes'),
-          style: FilledButton.styleFrom(
-            minimumSize: const Size.fromHeight(44),
-          ),
-        ),
-      ),
-      const SizedBox(width: 8),
-      IconButton(
-        onPressed: onShare,
-        icon: const Icon(Icons.share_outlined),
-        tooltip: 'Compartilhar',
-      ),
-    ];
-
-    if (onRoute != null) {
-      actions.add(const SizedBox(width: 8));
-      actions.add(
-        IconButton(
-          onPressed: onRoute,
-          icon: const Icon(Icons.directions_outlined),
-          tooltip: 'Traçar rota',
-          color: scheme.primary,
-        ),
-      );
-    }
-
-    return Row(children: actions);
-  }
-}
-
-class _EventAvatar extends StatelessWidget {
-  const _EventAvatar({
-    required this.imageUrl,
-    required this.fallbackColor,
-    required this.isPast,
-  });
-
-  final String? imageUrl;
-  final Color fallbackColor;
-  final bool isPast;
-
-  @override
-  Widget build(BuildContext context) {
-    final avatar = Container(
-      width: 60,
-      height: 60,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        border: Border.all(
-          color: isPast ? Colors.grey.shade500 : fallbackColor,
-          width: 2.8,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.14),
-            blurRadius: 5,
-            offset: const Offset(0, 3),
-          ),
-        ],
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: imageUrl != null
-          ? Image.network(
-              imageUrl!,
-              fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) =>
-                  _AvatarFallback(color: fallbackColor),
-            )
-          : _AvatarFallback(color: fallbackColor),
-    );
-
-    if (!isPast) {
-      return avatar;
-    }
-
-    return ColorFiltered(
-      colorFilter: const ColorFilter.matrix(<double>[
-        0.2126,
-        0.7152,
-        0.0722,
-        0,
-        0,
-        0.2126,
-        0.7152,
-        0.0722,
-        0,
-        0,
-        0.2126,
-        0.7152,
-        0.0722,
-        0,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-      ]),
-      child: Opacity(opacity: 0.4, child: avatar),
-    );
-  }
-}
-
-class _AvatarFallback extends StatelessWidget {
-  const _AvatarFallback({required this.color});
-
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      color: color.withValues(alpha: 0.12),
-      alignment: Alignment.center,
-      child: Icon(
-        Icons.music_note,
-        color: color,
-      ),
-    );
-  }
-}

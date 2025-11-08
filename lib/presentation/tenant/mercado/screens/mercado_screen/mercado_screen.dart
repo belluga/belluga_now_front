@@ -1,7 +1,8 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
-import 'package:belluga_now/presentation/tenant/mercado/screens/mercado_screen/controllers/mercado_controller.dart';
 import 'package:belluga_now/presentation/tenant/mercado/models/mercado_producer.dart';
+import 'package:belluga_now/presentation/tenant/mercado/screens/mercado_screen/controllers/mercado_controller.dart';
+import 'package:belluga_now/presentation/tenant/mercado/screens/mercado_screen/widgets/producer_card.dart';
 import 'package:belluga_now/presentation/tenant/widgets/belluga_bottom_navigation_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
@@ -151,7 +152,7 @@ class _MercadoScreenState extends State<MercadoScreen> {
                   separatorBuilder: (_, __) => const SizedBox(height: 16),
                   itemBuilder: (context, index) {
                     final producer = producers[index];
-                    return _ProducerCard(
+                    return ProducerCard(
                       producer: producer,
                       onTap: () => _openProducer(producer),
                       categoryResolver: _controller.categoryById,
@@ -168,105 +169,5 @@ class _MercadoScreenState extends State<MercadoScreen> {
 
   void _openProducer(MercadoProducer producer) {
     context.router.push(ProducerStoreRoute(producer: producer));
-  }
-}
-
-class _ProducerCard extends StatelessWidget {
-  const _ProducerCard({
-    required this.producer,
-    required this.onTap,
-    required this.categoryResolver,
-  });
-
-  final MercadoProducer producer;
-  final VoidCallback onTap;
-  final MercadoCategory? Function(String) categoryResolver;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final categoryIcons = producer.categories
-        .map(categoryResolver)
-        .whereType<MercadoCategory>()
-        .map((category) => category.icon)
-        .toList(growable: false);
-
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  CircleAvatar(
-                    radius: 32,
-                    backgroundImage: NetworkImage(producer.logoImageUrl),
-                    backgroundColor: theme.colorScheme.surfaceContainerHigh,
-                    onBackgroundImageError: (_, __) {},
-                    child: producer.logoImageUrl.isEmpty
-                        ? Text(
-                            producer.name.characters.first.toUpperCase(),
-                            style: theme.textTheme.titleLarge?.copyWith(
-                              color: theme.colorScheme.onSurface,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          )
-                        : null,
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          producer.name,
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          producer.tagline,
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Text(
-                producer.address,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-              ),
-              const SizedBox(height: 12),
-              Wrap(
-                spacing: 8,
-                children: categoryIcons
-                    .map(
-                      (icon) => Icon(
-                        icon,
-                        size: 20,
-                        color: theme.colorScheme.primary,
-                      ),
-                    )
-                    .toList(),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
   }
 }

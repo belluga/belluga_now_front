@@ -1,4 +1,5 @@
 import 'package:belluga_now/domain/experiences/experience_model.dart';
+import 'package:belluga_now/presentation/tenant/experiences/screens/experiences_screen/widgets/experience_category_chip.dart';
 import 'package:flutter/material.dart';
 
 class ExperienceCard extends StatelessWidget {
@@ -49,7 +50,7 @@ class ExperienceCard extends StatelessWidget {
             Positioned(
               top: 12,
               left: 12,
-              child: _CategoryChip(label: experience.category),
+              child: ExperienceCategoryChip(label: experience.category),
             ),
             Positioned(
               bottom: 12,
@@ -86,32 +87,6 @@ class ExperienceCard extends StatelessWidget {
               ),
             ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-class _CategoryChip extends StatelessWidget {
-  const _CategoryChip({required this.label});
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.45),
-        borderRadius: BorderRadius.circular(24),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        child: Text(
-          label,
-          style: const TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.w600,
-          ),
         ),
       ),
     );

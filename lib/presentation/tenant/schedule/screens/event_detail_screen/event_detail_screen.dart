@@ -4,6 +4,10 @@ import 'package:belluga_now/domain/invites/invite_model.dart';
 import 'package:belluga_now/domain/schedule/event_action_model/event_action_model.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/schedule/event_type_model.dart';
+import 'package:belluga_now/presentation/tenant/schedule/screens/event_detail_screen/widgets/artist_pill.dart';
+import 'package:belluga_now/presentation/tenant/schedule/screens/event_detail_screen/widgets/event_detail_info_card.dart';
+import 'package:belluga_now/presentation/tenant/schedule/screens/event_detail_screen/widgets/event_hint_list.dart';
+import 'package:belluga_now/presentation/tenant/schedule/screens/event_detail_screen/widgets/event_type_chip.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
@@ -107,7 +111,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                   Positioned(
                     top: kToolbarHeight + 24,
                     left: 20,
-                    child: _TypeChip(type: type),
+                    child: EventTypeChip(type: type),
                   ),
                 ],
               ),
@@ -119,14 +123,14 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _InfoCard(
+                  EventDetailInfoCard(
                     icon: Icons.calendar_today_outlined,
                     label: 'Quando',
                     value: EventDetailScreen._formatEventDateRange(
                         startDate, endDate),
                   ),
                   const SizedBox(height: 16),
-                  _InfoCard(
+                  EventDetailInfoCard(
                     icon: Icons.place_outlined,
                     label: 'Onde',
                     value: widget.event.location.value,
@@ -140,18 +144,18 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                       ),
                     ),
                     const SizedBox(height: 12),
-                    Wrap(
-                      spacing: 12,
-                      runSpacing: 12,
-                      children: widget.event.artists
-                          .map(
-                            (artist) => _ArtistPill(
-                              name: artist.displayName,
-                              highlight: artist.isHighlight,
-                            ),
-                          )
-                          .toList(growable: false),
-                    ),
+                      Wrap(
+                        spacing: 12,
+                        runSpacing: 12,
+                        children: widget.event.artists
+                            .map(
+                              (artist) => EventArtistPill(
+                                name: artist.displayName,
+                                highlight: artist.isHighlight,
+                              ),
+                            )
+                            .toList(growable: false),
+                      ),
                   ],
                   const SizedBox(height: 24),
                   Text(
@@ -174,8 +178,8 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  _HintList(
-                    hints: [
+                  EventHintList(
+                    hints: const [
                       'Chegue com 15 minutos de antecedência para organizar o grupo.',
                       'Leve uma garrafa reutilizável — água disponível no ponto de apoio.',
                       'Convites aceitos podem ser compartilhados com a sua rede dentro do app.',
@@ -281,168 +285,3 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
   }
 }
 
-class _TypeChip extends StatelessWidget {
-  const _TypeChip({required this.type});
-
-  final EventTypeModel type;
-
-  @override
-  Widget build(BuildContext context) {
-    final Color color = type.color.value;
-
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(32),
-        color: color.withValues(alpha: 0.16),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-        child: Text(
-          type.name.value,
-          style: TextStyle(
-            fontWeight: FontWeight.w700,
-            color: color,
-            letterSpacing: 0.2,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _InfoCard extends StatelessWidget {
-  const _InfoCard({
-    required this.icon,
-    required this.label,
-    required this.value,
-  });
-
-  final IconData icon;
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-
-    return Container(
-      width: double.infinity,
-      decoration: BoxDecoration(
-        color: colorScheme.surfaceContainerHigh,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      padding: const EdgeInsets.all(20),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          CircleAvatar(
-            radius: 24,
-            backgroundColor: colorScheme.primary.withValues(alpha: 0.08),
-            child: Icon(icon, color: colorScheme.primary),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  style: theme.textTheme.labelLarge?.copyWith(
-                    color: colorScheme.onSurfaceVariant,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  value,
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ArtistPill extends StatelessWidget {
-  const _ArtistPill({
-    required this.name,
-    required this.highlight,
-  });
-
-  final String name;
-  final bool highlight;
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final Color foreground =
-        highlight ? colorScheme.onPrimary : colorScheme.onSurface;
-    final Color background =
-        highlight ? colorScheme.primary : colorScheme.surfaceContainerHighest;
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(24),
-        color: background,
-        border: highlight
-            ? null
-            : Border.all(color: colorScheme.outlineVariant, width: 1),
-      ),
-      child: Text(
-        highlight ? '$name ★' : name,
-        style: TextStyle(
-          fontWeight: FontWeight.w600,
-          color: foreground,
-        ),
-      ),
-    );
-  }
-}
-
-class _HintList extends StatelessWidget {
-  const _HintList({required this.hints});
-
-  final List<String> hints;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context).textTheme;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: hints
-          .map(
-            (hint) => Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Padding(
-                    padding: EdgeInsets.only(top: 4),
-                    child: Icon(
-                      Icons.check_circle_outline,
-                      size: 18,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      hint,
-                      style: theme.bodyMedium,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          )
-          .toList(growable: false),
-    );
-  }
-}
