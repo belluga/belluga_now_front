@@ -2,24 +2,41 @@ import 'package:belluga_now/presentation/tenant/auth/login/controllers/recovery_
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 
-class RecoveryPasswordTokenWidget extends StatelessWidget {
+class RecoveryPasswordTokenWidget extends StatefulWidget {
   const RecoveryPasswordTokenWidget({
+    super.key,
+    required this.onSubmit,
+  }) : controller = null;
+
+  @visibleForTesting
+  const RecoveryPasswordTokenWidget.withController(
+    this.controller, {
     super.key,
     required this.onSubmit,
   });
 
   final void Function(String token) onSubmit;
+  final AuthRecoveryPasswordControllerContract? controller;
+
+  @override
+  State<RecoveryPasswordTokenWidget> createState() =>
+      _RecoveryPasswordTokenWidgetState();
+}
+
+class _RecoveryPasswordTokenWidgetState
+    extends State<RecoveryPasswordTokenWidget> {
+  AuthRecoveryPasswordControllerContract get _controller =>
+      widget.controller ??
+      GetIt.I.get<AuthRecoveryPasswordControllerContract>();
 
   @override
   Widget build(BuildContext context) {
-    final controller =
-        GetIt.I.get<AuthRecoveryPasswordControllerContract>();
-    final tokenControllers = controller.tokenControllers;
+    final tokenControllers = _controller.tokenControllers;
 
     return Column(
       children: [
         const Text(
-          "Insira o código que foi enviado no seu email",
+          'Insira o código que foi enviado no seu email',
           style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 16),
@@ -45,9 +62,10 @@ class RecoveryPasswordTokenWidget extends StatelessWidget {
                   }
 
                   if (index == 5 && value.isNotEmpty) {
-                    final token =
-                        tokenControllers.map((c) => c.text).join();
-                    onSubmit(token);
+                    final token = tokenControllers
+                        .map((controller) => controller.text)
+                        .join();
+                    widget.onSubmit(token);
                   }
                 },
                 decoration: const InputDecoration(

@@ -5,30 +5,47 @@ import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 
-class FilterTagSection extends StatelessWidget {
+class FilterTagSection extends StatefulWidget {
   const FilterTagSection({
+    super.key,
+    required this.options,
+  }) : controller = null;
+
+  @visibleForTesting
+  const FilterTagSection.withController(
+    this.controller, {
     super.key,
     required this.options,
   });
 
   final PoiFilterOptions options;
+  final CityMapController? controller;
+
+  @override
+  State<FilterTagSection> createState() => _FilterTagSectionState();
+}
+
+class _FilterTagSectionState extends State<FilterTagSection> {
+  CityMapController get _controller =>
+      widget.controller ?? GetIt.I.get<CityMapController>();
 
   @override
   Widget build(BuildContext context) {
-    final controller = GetIt.I.get<CityMapController>();
     final textTheme = Theme.of(context).textTheme;
 
     return StreamValueBuilder<Set<CityPoiCategory>>(
-      streamValue: controller.selectedCategories,
+      streamValue: _controller.selectedCategories,
       builder: (context, categories) {
         final selectedCategories = categories;
-        final availableTags =
-            options.tagsForCategories(selectedCategories).toList()..sort();
+        final availableTags = widget.options
+            .tagsForCategories(selectedCategories)
+            .toList()
+          ..sort();
         if (selectedCategories.isEmpty || availableTags.isEmpty) {
           return const SizedBox.shrink();
         }
         return StreamValueBuilder<Set<String>>(
-          streamValue: controller.selectedTags,
+          streamValue: _controller.selectedTags,
           builder: (context, tags) {
             final selectedTags = tags;
             return Column(
@@ -49,7 +66,7 @@ class FilterTagSection extends StatelessWidget {
                         label: Text(_formatTag(tag)),
                         visualDensity: VisualDensity.compact,
                         selected: selectedTags.contains(tag),
-                        onSelected: (_) => controller.toggleTag(tag),
+                        onSelected: (_) => _controller.toggleTag(tag),
                       ),
                   ],
                 ),

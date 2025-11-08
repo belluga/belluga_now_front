@@ -10,18 +10,24 @@ import 'package:visibility_detector/visibility_detector.dart';
 import 'date_item.dart';
 
 class DateRow extends StatefulWidget {
-  const DateRow({super.key});
+  const DateRow({super.key}) : controller = null;
+
+  @visibleForTesting
+  const DateRow.withController(this.controller, {super.key});
+
+  final ScheduleScreenController? controller;
 
   @override
   State<DateRow> createState() => _DateRowState();
 }
 
 class _DateRowState extends State<DateRow> {
-  final _controller = GetIt.I.get<ScheduleScreenController>();
-
   static const double _itemWidth = 70.0;
   static const double _itemPadding = 8.0;
   static const double _totalItemWidth = _itemWidth + (_itemPadding * 2);
+
+  ScheduleScreenController get _controller =>
+      widget.controller ?? GetIt.I.get<ScheduleScreenController>();
 
   @override
   Widget build(BuildContext context) {
@@ -106,7 +112,7 @@ class _DateRowState extends State<DateRow> {
                         streamValue: _controller.isTodayVisible,
                         builder: (context, isTodayVisible) {
                           if (isTodayVisible) {
-                            return SizedBox.shrink();
+                            return const SizedBox.shrink();
                           }
 
                           return ElevatedButton.icon(
@@ -175,8 +181,8 @@ class _DateRowState extends State<DateRow> {
                                   builder: (context, asyncSnapshot) {
                                     return DateItem(
                                       date: date,
-                                      padding:
-                                          EdgeInsets.symmetric(horizontal: 8),
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 8),
                                       onTap: _controller.selectDate,
                                       isSelected: _controller.isSameDay(
                                         date,
@@ -197,22 +203,25 @@ class _DateRowState extends State<DateRow> {
   }
 
   void _jumpToToday() {
-    final _screenWidth = MediaQuery.of(context).size.width;
-    final _centerOffset = (_screenWidth / 2) - (_totalItemWidth / 2);
-    final _scrollTo =
-        (_controller.initialIndex * _totalItemWidth) - _centerOffset;
-    _controller.scrollController.jumpTo(_scrollTo);
+    final screenWidth = MediaQuery.of(context).size.width;
+    final centerOffset = (screenWidth / 2) - (_totalItemWidth / 2);
+    final scrollTo =
+        (_controller.initialIndex * _totalItemWidth) - centerOffset;
+    _controller.scrollController.jumpTo(scrollTo);
 
     _controller.selectDate(Today.today);
   }
 
   void _navigateToToday() {
-    final _screenWidth = MediaQuery.of(context).size.width;
-    final _centerOffset = (_screenWidth / 2) - (_totalItemWidth / 2);
-    final _scrollTo =
-        (_controller.initialIndex * _totalItemWidth) - _centerOffset;
-    _controller.scrollController.animateTo(_scrollTo,
-        duration: const Duration(milliseconds: 300), curve: Curves.bounceIn);
+    final screenWidth = MediaQuery.of(context).size.width;
+    final centerOffset = (screenWidth / 2) - (_totalItemWidth / 2);
+    final scrollTo =
+        (_controller.initialIndex * _totalItemWidth) - centerOffset;
+    _controller.scrollController.animateTo(
+      scrollTo,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.bounceIn,
+    );
 
     _controller.selectDate(Today.today);
   }
@@ -243,8 +252,11 @@ class _DateRowState extends State<DateRow> {
     final int index = _controller.getIndexByDate(normalized);
     final double offset = index * _totalItemWidth;
 
-    _controller.scrollController.animateTo(offset,
-        duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
+    _controller.scrollController.animateTo(
+      offset,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeOut,
+    );
 
     _controller.selectDate(normalized);
   }

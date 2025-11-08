@@ -9,11 +9,28 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:free_map/fm_map.dart';
-import 'package:latlong2/latlong.dart';
 import 'package:get_it/get_it.dart';
+import 'package:latlong2/latlong.dart';
 
-class CityMapView extends StatelessWidget {
+class CityMapView extends StatefulWidget {
   const CityMapView({
+    super.key,
+    required this.pois,
+    required this.selectedPoi,
+    required this.onSelectPoi,
+    required this.hoveredPoiId,
+    required this.onHoverChange,
+    required this.events,
+    required this.selectedEvent,
+    required this.onSelectEvent,
+    required this.userPosition,
+    required this.defaultCenter,
+    required this.onMapInteraction,
+  }) : controller = null;
+
+  @visibleForTesting
+  const CityMapView.withController(
+    this.controller, {
     super.key,
     required this.pois,
     required this.selectedPoi,
@@ -39,21 +56,28 @@ class CityMapView extends StatelessWidget {
   final LatLng? userPosition;
   final LatLng defaultCenter;
   final VoidCallback onMapInteraction;
+  final CityMapController? controller;
+
+  @override
+  State<CityMapView> createState() => _CityMapViewState();
+}
+
+class _CityMapViewState extends State<CityMapView> {
+  late final CityMapController _controller =
+      widget.controller ?? GetIt.I.get<CityMapController>();
 
   @override
   Widget build(BuildContext context) {
-    final selectedEventId = selectedEvent?.id.value;
+    final selectedEventId = widget.selectedEvent?.id.value;
     final now = DateTime.now();
     final markerEntries = <_MarkerEntry>[];
-    final mapController =
-        GetIt.I.get<CityMapController>().mapController;
 
-    if (userPosition != null) {
+    if (widget.userPosition != null) {
       markerEntries.add(
         _MarkerEntry(
           priority: 110,
           marker: Marker(
-            point: userPosition!,
+            point: widget.userPosition!,
             width: 48,
             height: 48,
             child: const UserLocationMarker(),
@@ -62,10 +86,10 @@ class CityMapView extends StatelessWidget {
       );
     }
 
-    final sortedPois = List<CityPoiModel>.from(pois)
+    final sortedPois = List<CityPoiModel>.from(widget.pois)
       ..sort((a, b) => a.priority.compareTo(b.priority));
     for (final poi in sortedPois) {
-      final isHovered = hoveredPoiId == poi.id;
+      final isHovered = widget.hoveredPoiId == poi.id;
       markerEntries.add(
         _MarkerEntry(
           priority: isHovered ? poi.priority + 1000 : poi.priority,
@@ -77,13 +101,13 @@ class CityMapView extends StatelessWidget {
             width: 52,
             height: 52,
             child: GestureDetector(
-              onTap: () => onSelectPoi(poi),
+              onTap: () => widget.onSelectPoi(poi),
               child: MouseRegion(
-                onEnter: (_) => onHoverChange(poi.id),
-                onExit: (_) => onHoverChange(null),
+                onEnter: (_) => widget.onHoverChange(poi.id),
+                onExit: (_) => widget.onHoverChange(null),
                 child: PoiMarker(
                   poi: poi,
-                  isSelected: selectedPoi?.id == poi.id,
+                  isSelected: widget.selectedPoi?.id == poi.id,
                   isHovered: isHovered && kIsWeb,
                 ),
               ),
@@ -93,7 +117,7 @@ class CityMapView extends StatelessWidget {
       );
     }
 
-    final eventCandidates = events
+    final eventCandidates = widget.events
         .where((event) => event.coordinate != null)
         .toList(growable: false)
       ..sort(
@@ -115,7 +139,7 @@ class CityMapView extends StatelessWidget {
             width: 96,
             height: 96,
             child: GestureDetector(
-              onTap: () => onSelectEvent(event),
+              onTap: () => widget.onSelectEvent(event),
               child: EventMarker(
                 event: event,
                 isSelected: selectedEventId == event.id.value,
@@ -128,14 +152,13 @@ class CityMapView extends StatelessWidget {
 
     markerEntries.sort((a, b) => a.priority.compareTo(b.priority));
     final markers = markerEntries.map((entry) => entry.marker).toList();
-
-    final initialCenter = userPosition ?? defaultCenter;
+    final initialCenter = widget.userPosition ?? widget.defaultCenter;
 
     return Listener(
       behavior: HitTestBehavior.deferToChild,
-      onPointerDown: (_) => onMapInteraction(),
+      onPointerDown: (_) => widget.onMapInteraction(),
       child: FmMap(
-        mapController: mapController,
+        mapController: _controller.mapController,
         mapOptions: MapOptions(
           initialCenter: initialCenter,
           initialZoom: 16,

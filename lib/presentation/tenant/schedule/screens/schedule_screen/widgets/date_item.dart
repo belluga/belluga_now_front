@@ -11,6 +11,17 @@ class DateItem extends StatefulWidget {
     this.isSelected = false,
     this.padding,
     this.width = 70,
+  }) : controller = null;
+
+  @visibleForTesting
+  const DateItem.withController(
+    this.controller, {
+    super.key,
+    required this.date,
+    required this.onTap,
+    this.isSelected = false,
+    this.padding,
+    this.width = 70,
   });
 
   final DateTime date;
@@ -18,13 +29,15 @@ class DateItem extends StatefulWidget {
   final double width;
   final EdgeInsets? padding;
   final void Function(DateTime) onTap;
+  final ScheduleScreenController? controller;
 
   @override
   State<DateItem> createState() => _DateItemState();
 }
 
 class _DateItemState extends State<DateItem> {
-  final _controller = GetIt.I.get<ScheduleScreenController>();
+  ScheduleScreenController get _controller =>
+      widget.controller ?? GetIt.I.get<ScheduleScreenController>();
 
   @override
   Widget build(BuildContext context) {
