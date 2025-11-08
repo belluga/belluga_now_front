@@ -5,7 +5,12 @@ import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value.dart';
 
 class EventSearchScreenController implements Disposable {
-  final _scheduleRepository = GetIt.I.get<ScheduleRepositoryContract>();
+  EventSearchScreenController({
+    ScheduleRepositoryContract? scheduleRepository,
+  }) : _scheduleRepository =
+            scheduleRepository ?? GetIt.I.get<ScheduleRepositoryContract>();
+
+  final ScheduleRepositoryContract _scheduleRepository;
 
   final searchController = TextEditingController();
   final focusNode = FocusNode();
@@ -97,6 +102,7 @@ class EventSearchScreenController implements Disposable {
 
   @override
   void onDispose() {
+    allEventsStreamValue.dispose();
     availableEventsStreamValue.dispose();
     searchResultsStreamValue.dispose();
     showHistoryStreamValue.dispose();

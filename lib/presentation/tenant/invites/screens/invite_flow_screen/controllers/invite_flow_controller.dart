@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:belluga_now/domain/invites/invite_decision.dart';
 import 'package:belluga_now/domain/invites/invite_model.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
@@ -5,12 +7,17 @@ import 'package:card_stack_swiper/card_stack_swiper.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value.dart';
 
-class InviteFlowScreenController {
-  InviteFlowScreenController();
+class InviteFlowScreenController with Disposable {
+  InviteFlowScreenController({
+    InvitesRepositoryContract? repository,
+    CardStackSwiperController? cardStackSwiperController,
+  })  : _repository = repository ?? GetIt.I.get<InvitesRepositoryContract>(),
+        swiperController =
+            cardStackSwiperController ?? CardStackSwiperController();
 
-  final _repository = GetIt.I.get<InvitesRepositoryContract>();
+  final InvitesRepositoryContract _repository;
 
-  final swiperController = CardStackSwiperController();
+  final CardStackSwiperController swiperController;
 
   InviteModel? get currentInvite => pendingInvitesStreamValue.value.isNotEmpty
       ? pendingInvitesStreamValue.value.first
@@ -148,7 +155,8 @@ class InviteFlowScreenController {
     _ensureTopIndexBounds(invitesLength);
   }
 
-  Future<void> dispose() async {
+  @override
+  FutureOr<void> onDispose() async {
     decisionsStreamValue.dispose();
     swiperController.dispose();
     confirmingPresenceStreamValue.dispose();

@@ -1,23 +1,28 @@
 import 'dart:async';
 
-import 'package:belluga_now/domain/invites/invite_friend_model.dart';
+import 'package:belluga_now/domain/invites/projections/friend_resume.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value.dart';
 
-class InviteShareScreenController {
-  
-  final repository = GetIt.I.get<InvitesRepositoryContract>();
+class InviteShareScreenController with Disposable {
+  InviteShareScreenController({
+    InvitesRepositoryContract? repository,
+  }) : _repository = repository ?? GetIt.I.get<InvitesRepositoryContract>();
 
-  final friendsSuggestionsStreamValue = StreamValue<List<InviteFriendModel>?>();
-  final selectedFriendsSuggestionsStreamValue = StreamValue<List<InviteFriendModel>>(defaultValue: []);
+  final InvitesRepositoryContract _repository;
+
+  final friendsSuggestionsStreamValue = StreamValue<List<FriendResume>?>();
+  final selectedFriendsSuggestionsStreamValue =
+      StreamValue<List<FriendResume>>(defaultValue: []);
 
   Future<void> init() async {
     await fetchFriendSuggestions();
   }
 
-  void toggleFriend(InviteFriendModel friend) {
-    final _selectedFriends = List<InviteFriendModel>.from(selectedFriendsSuggestionsStreamValue.value);
+  void toggleFriend(FriendResume friend) {
+    final _selectedFriends =
+        List<FriendResume>.from(selectedFriendsSuggestionsStreamValue.value);
     if (_selectedFriends.contains(friend)) {
       _selectedFriends.remove(friend);
     } else {
@@ -27,11 +32,13 @@ class InviteShareScreenController {
   }
 
   Future<void> fetchFriendSuggestions() async {
-    final _friends = await repository.fetchFriendSuggestions();
-    friendsSuggestionsStreamValue.addValue(_friends);
+    final friends = await _repository.fetchFriendResumes();
+    friendsSuggestionsStreamValue.addValue(friends);
   }
 
-  FutureOr dispose() async {
+  @override
+  FutureOr<void> onDispose() async {
     friendsSuggestionsStreamValue.dispose();
+    selectedFriendsSuggestionsStreamValue.dispose();
   }
 }

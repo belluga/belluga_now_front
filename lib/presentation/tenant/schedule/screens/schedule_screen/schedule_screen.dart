@@ -68,7 +68,8 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: StreamValueBuilder<List<VenueEventResume>?>(
                   streamValue: _controller.eventsStreamValue,
-                  onNullWidget: const Center(child: CircularProgressIndicator()),
+                  onNullWidget:
+                      const Center(child: CircularProgressIndicator()),
                   builder: (context, events) {
                     final data = events ?? const <VenueEventResume>[];
                     if (data.isEmpty) {
@@ -100,6 +101,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       ),
     );
   }
+
   void _navigateToSearch() => context.router.push(const EventSearchRoute());
 
   void _openEventDetail(String slug) {

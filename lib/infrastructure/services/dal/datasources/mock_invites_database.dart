@@ -1,11 +1,18 @@
-import 'package:belluga_now/domain/invites/invite_friend_model.dart';
 import 'package:belluga_now/domain/invites/invite_model.dart';
+import 'package:belluga_now/domain/partner/value_objects/invite_partner_hero_image_value.dart';
+import 'package:belluga_now/domain/partner/value_objects/invite_partner_logo_image_value.dart';
+import 'package:belluga_now/domain/partner/value_objects/invite_partner_name_value.dart';
+import 'package:belluga_now/domain/partner/value_objects/invite_partner_tagline_value.dart';
+import 'package:belluga_now/domain/user/friend.dart';
+import 'package:belluga_now/domain/user/value_objects/friend_avatar_value.dart';
+import 'package:belluga_now/domain/user/value_objects/friend_match_label_value.dart';
+import 'package:belluga_now/domain/value_objects/title_value.dart';
 
 class MockInvitesDatabase {
   const MockInvitesDatabase();
 
   List<InviteModel> get invites => _invites;
-  List<InviteFriendModel> get friends => _friends;
+  List<Friend> get friends => _friends;
 
   static final List<InviteModel> _invites = [
     InviteModel(
@@ -35,13 +42,18 @@ class MockInvitesDatabase {
           name: 'Sitio do Cafe Feliz',
           partner: InvitePartnerSummary(
             id: 'sitio-do-cafe-feliz',
-            name: 'Sitio do Cafe Feliz',
+            nameValue: InvitePartnerNameValue()..parse('Sitio do Cafe Feliz'),
             type: InvitePartnerType.mercadoProducer,
-            tagline: 'Cafes especiais e produtos da roca',
-            heroImageUrl:
+            taglineValue: InvitePartnerTaglineValue()
+              ..parse('Cafes especiais e produtos da roca'),
+            heroImageValue: InvitePartnerHeroImageValue()
+              ..parse(
                 'https://images.unsplash.com/photo-1504753793650-d4a2b783c15e?auto=format&fit=crop&w=600&q=80',
-            logoImageUrl:
+              ),
+            logoImageValue: InvitePartnerLogoImageValue()
+              ..parse(
                 'https://images.unsplash.com/photo-1511920170033-f8396924c348?auto=format&fit=crop&w=400&q=80',
+              ),
           ),
         ),
         InviteInviter(
@@ -84,11 +96,14 @@ class MockInvitesDatabase {
               'https://images.unsplash.com/photo-1458253756246-1e4ed949191b?w=200',
           partner: InvitePartnerSummary(
             id: 'instituto-mar-limpo',
-            name: 'Instituto Mar Limpo',
+            nameValue: InvitePartnerNameValue()..parse('Instituto Mar Limpo'),
             type: InvitePartnerType.mercadoProducer,
-            tagline: 'Parceiro ambiental capixaba',
-            heroImageUrl:
+            taglineValue: InvitePartnerTaglineValue()
+              ..parse('Parceiro ambiental capixaba'),
+            heroImageValue: InvitePartnerHeroImageValue()
+              ..parse(
                 'https://images.unsplash.com/photo-1458253756246-1e4ed949191b?w=900',
+              ),
           ),
         ),
       ],
@@ -118,11 +133,15 @@ class MockInvitesDatabase {
           name: 'Chef Marina Experiencias',
           partner: InvitePartnerSummary(
             id: 'chef-marina',
-            name: 'Chef Marina Experiencias',
+            nameValue: InvitePartnerNameValue()
+              ..parse('Chef Marina Experiencias'),
             type: InvitePartnerType.mercadoProducer,
-            tagline: 'Vivencias gastronomicas a beira-mar',
-            heroImageUrl:
+            taglineValue: InvitePartnerTaglineValue()
+              ..parse('Vivencias gastronomicas a beira-mar'),
+            heroImageValue: InvitePartnerHeroImageValue()
+              ..parse(
                 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=900',
+              ),
           ),
         ),
         InviteInviter(
@@ -139,41 +158,51 @@ class MockInvitesDatabase {
     ),
   ];
 
-  static final List<InviteFriendModel> _friends = [
-    InviteFriendModel(
+  static final List<Friend> _friends = [
+    Friend(
       id: 'carol-viajante',
-      name: 'Carol Viajante',
-      avatarUrl:
-          'https://images.unsplash.com/photo-1544723795-3fb6469f5b39?w=200',
-      matchLabel: 'Vocês foram a 4 experiencias de oceano juntos',
+      nameValue: TitleValue()..parse('Carol Viajante'),
+      avatarValue: FriendAvatarValue()
+        ..parse(
+            'https://images.unsplash.com/photo-1544723795-3fb6469f5b39?w=200'),
+      matchLabelValue: FriendMatchLabelValue()
+        ..parse('Vocês foram a 4 experiencias de oceano juntos'),
     ),
-    InviteFriendModel(
+    Friend(
       id: 'leo-fotografo',
-      name: 'Leo Fotografo',
-      avatarUrl:
-          'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200',
-      matchLabel: 'Amigo destaque em fotografia submarina',
+      nameValue: TitleValue()..parse('Leo Fotografo'),
+      avatarValue: FriendAvatarValue()
+        ..parse(
+            'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200'),
+      matchLabelValue: FriendMatchLabelValue()
+        ..parse('Amigo destaque em fotografia submarina'),
     ),
-    InviteFriendModel(
+    Friend(
       id: 'bia-surfer',
-      name: 'Bia Surfer',
-      avatarUrl:
-          'https://images.unsplash.com/photo-1544723795-3fb77d388754?w=200',
-      matchLabel: 'Curte remadas noturnas e aulas de SUP',
+      nameValue: TitleValue()..parse('Bia Surfer'),
+      avatarValue: FriendAvatarValue()
+        ..parse(
+            'https://images.unsplash.com/photo-1544723795-3fb77d388754?w=200'),
+      matchLabelValue: FriendMatchLabelValue()
+        ..parse('Curte remadas noturnas e aulas de SUP'),
     ),
-    InviteFriendModel(
+    Friend(
       id: 'igor-tech',
-      name: 'Igor Tech',
-      avatarUrl:
-          'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200',
-      matchLabel: 'Sempre topa experiencias com storytelling',
+      nameValue: TitleValue()..parse('Igor Tech'),
+      avatarValue: FriendAvatarValue()
+        ..parse(
+            'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200'),
+      matchLabelValue: FriendMatchLabelValue()
+        ..parse('Sempre topa experiencias com storytelling'),
     ),
-    InviteFriendModel(
+    Friend(
       id: 'mila-yogi',
-      name: 'Mila Yogi',
-      avatarUrl:
-          'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=200',
-      matchLabel: 'Parceira dos retiros de bem-estar',
+      nameValue: TitleValue()..parse('Mila Yogi'),
+      avatarValue: FriendAvatarValue()
+        ..parse(
+            'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=200'),
+      matchLabelValue: FriendMatchLabelValue()
+        ..parse('Parceira dos retiros de bem-estar'),
     ),
   ];
 }

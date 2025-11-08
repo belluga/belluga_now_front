@@ -6,10 +6,16 @@ import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value.dart';
 
 class TenantHomeController implements Disposable {
-  TenantHomeController();
+  TenantHomeController({
+    FavoriteRepositoryContract? favoriteRepository,
+    VenueEventRepositoryContract? venueEventRepository,
+  })  : _favoriteRepository =
+            favoriteRepository ?? GetIt.I.get<FavoriteRepositoryContract>(),
+        _venueEventRepository =
+            venueEventRepository ?? GetIt.I.get<VenueEventRepositoryContract>();
 
-  final _favoriteRepository = GetIt.I.get<FavoriteRepositoryContract>();
-  final _venueEventRepository = GetIt.I.get<VenueEventRepositoryContract>();
+  final FavoriteRepositoryContract _favoriteRepository;
+  final VenueEventRepositoryContract _venueEventRepository;
 
   final StreamValue<List<FavoriteResume>?> favoritesStreamValue =
       StreamValue<List<FavoriteResume>?>();

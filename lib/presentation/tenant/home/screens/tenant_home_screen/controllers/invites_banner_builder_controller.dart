@@ -4,7 +4,12 @@ import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value.dart';
 
 class InvitesBannerBuilderController {
-  final _invitesRepository = GetIt.I.get<InvitesRepositoryContract>();
+  InvitesBannerBuilderController({
+    InvitesRepositoryContract? invitesRepository,
+  }) : _invitesRepository =
+            invitesRepository ?? GetIt.I.get<InvitesRepositoryContract>();
+
+  final InvitesRepositoryContract _invitesRepository;
 
   StreamValue<List<InviteModel>> get pendingInvitesStreamValue =>
       _invitesRepository.pendingInvitesStreamValue;

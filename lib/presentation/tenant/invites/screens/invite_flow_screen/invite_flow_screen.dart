@@ -6,7 +6,8 @@ import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/domain/invites/invite_decision.dart';
 import 'package:belluga_now/domain/invites/invite_model.dart';
 import 'package:belluga_now/presentation/tenant/invites/screens/invite_flow_screen/controllers/invite_flow_controller.dart';
-import 'package:belluga_now/presentation/tenant/invites/screens/invite_flow_screen/widgets/invite_card.dart';
+import 'package:belluga_now/presentation/tenant/invites/screens/invite_flow_screen/widgets/invite_deck.dart';
+import 'package:belluga_now/presentation/tenant/invites/screens/invite_flow_screen/widgets/invite_flow_action_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
@@ -63,7 +64,7 @@ class _InviteFlowScreenState extends State<InviteFlowScreen> {
                         Expanded(
                           child: Padding(
                             padding: const EdgeInsets.symmetric(vertical: 12),
-                            child: _InviteDeck(
+                            child: InviteDeck(
                               key: ValueKey(
                                 data.map((invite) => invite.id).join('|'),
                               ),
@@ -77,7 +78,7 @@ class _InviteFlowScreenState extends State<InviteFlowScreen> {
                           streamValue:
                               _controller.confirmingPresenceStreamValue,
                           builder: (_, isConfirmingPresence) {
-                            return _ActionBar(
+                            return InviteFlowActionBar(
                               onConfirmPresence: _handleConfirmPresence,
                               isConfirmingPresence: isConfirmingPresence,
                             );
@@ -181,158 +182,6 @@ class _InviteFlowScreenState extends State<InviteFlowScreen> {
         content: Text(message),
         behavior: SnackBarBehavior.floating,
       ),
-    );
-  }
-}
-
-class _InviteDeck extends StatelessWidget {
-  const _InviteDeck({
-    super.key,
-    required this.invites,
-    required this.onSwipe,
-  });
-
-  final List<InviteModel> invites;
-  final CardStackSwiperOnSwipe onSwipe;
-
-  FutureOr<bool> _handleSwipe(
-    int previousIndex,
-    int? currentIndex,
-    CardStackSwiperDirection direction,
-  ) {
-    final result = onSwipe(previousIndex, currentIndex, direction);
-    final controller = GetIt.I.get<InviteFlowScreenController>();
-
-    if (result is Future<bool>) {
-      return result.then((approved) {
-        if (approved) {
-          controller.updateTopCardIndex(
-            previousIndex: previousIndex,
-            currentIndex: currentIndex,
-            invitesLength: invites.length,
-          );
-        }
-        return approved;
-      });
-    }
-
-    if (result) {
-      controller.updateTopCardIndex(
-        previousIndex: previousIndex,
-        currentIndex: currentIndex,
-        invitesLength: invites.length,
-      );
-    }
-
-    return result;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final controller = GetIt.I.get<InviteFlowScreenController>();
-    controller.syncTopCardIndex(invites.length);
-
-    return StreamValueBuilder<int>(
-      streamValue: controller.topCardIndexStreamValue,
-      builder: (_, topIndex) {
-        return CardStackSwiper(
-          controller: controller.swiperController,
-          cardsCount: invites.length,
-          isLoop: false,
-          allowedSwipeDirection: const AllowedSwipeDirection.only(
-            left: true,
-            right: true,
-            up: true,
-          ),
-          cardBuilder: (
-            context,
-            index,
-            horizontalOffsetPercentage,
-            verticalOffsetPercentage,
-          ) {
-            final invite = invites[index];
-            final isPreview = horizontalOffsetPercentage != 0 ||
-                verticalOffsetPercentage != 0;
-            final isTop = index == topIndex;
-            return Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 6),
-              child: InviteCard(
-                invite: invite,
-                isPreview: isPreview,
-                isTopOfDeck: isTop,
-              ),
-            );
-          },
-          onSwipe: _handleSwipe,
-        );
-      },
-    );
-  }
-}
-
-class _ActionBar extends StatelessWidget {
-  const _ActionBar({
-    required this.onConfirmPresence,
-    required this.isConfirmingPresence,
-  });
-
-  final VoidCallback onConfirmPresence;
-  final bool isConfirmingPresence;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final buttonLabel =
-        isConfirmingPresence ? 'Bora! Agora é chamar os amigos...' : 'Bora?';
-    final buttonIcon = isConfirmingPresence
-        ? Icons.check_circle_outline
-        : Icons.rocket_launch_outlined;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: OutlinedButton.icon(
-                onPressed: () => GetIt.I
-                    .get<InviteFlowScreenController>()
-                    .applyDecision(InviteDecision.declined),
-                icon: Icon(buttonIcon),
-                label: Text("Recusar"),
-                style: FilledButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  textStyle: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
-            ),
-            SizedBox(width: 8),
-            Expanded(
-              child: FilledButton.icon(
-                onPressed: onConfirmPresence,
-                icon: Icon(buttonIcon),
-                label: Text(buttonLabel),
-                style: FilledButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  textStyle: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        TextButton.icon(
-          onPressed: () => GetIt.I
-              .get<InviteFlowScreenController>()
-              .applyDecision(InviteDecision.maybe),
-          icon: const Icon(Icons.group_add_outlined),
-          label: const Text('Quem sabe...'),
-        ),
-      ],
     );
   }
 }

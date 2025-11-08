@@ -1,5 +1,6 @@
-import 'package:belluga_now/domain/invites/invite_friend_model.dart';
 import 'package:belluga_now/domain/invites/invite_model.dart';
+import 'package:belluga_now/domain/invites/projections/friend_resume.dart';
+import 'package:belluga_now/domain/user/friend.dart';
 import 'package:stream_value/core/stream_value.dart';
 
 abstract class InvitesRepositoryContract {
@@ -15,5 +16,6 @@ abstract class InvitesRepositoryContract {
   }
 
   Future<List<InviteModel>> fetchInvites();
-  Future<List<InviteFriendModel>> fetchFriendSuggestions();
+  Future<List<Friend>> fetchFriends();
+  Future<List<FriendResume>> fetchFriendResumes();
 }

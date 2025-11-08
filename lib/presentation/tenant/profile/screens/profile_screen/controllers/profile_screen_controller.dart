@@ -4,7 +4,12 @@ import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value.dart';
 
 class ProfileScreenController {
-  final _authRepository = GetIt.I.get<AuthRepositoryContract>();
+  ProfileScreenController({
+    AuthRepositoryContract? authRepository,
+  }) : _authRepository =
+            authRepository ?? GetIt.I.get<AuthRepositoryContract>();
+
+  final AuthRepositoryContract _authRepository;
 
   StreamValue<UserContract?> get userStreamValue =>
       _authRepository.userStreamValue;

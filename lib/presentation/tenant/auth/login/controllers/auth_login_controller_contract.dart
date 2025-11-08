@@ -9,7 +9,12 @@ import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value.dart';
 
 abstract class AuthLoginControllerContract extends Object with Disposable {
-  AuthLoginControllerContract({String? initialEmail, String? initialPassword}) {
+  AuthLoginControllerContract({
+    AuthRepositoryContract? authRepository,
+    String? initialEmail,
+    String? initialPassword,
+  }) : _authRepository =
+            authRepository ?? GetIt.I.get<AuthRepositoryContract>() {
     authEmailFieldController = FormFieldControllerEmail(
       initialValue: initialEmail,
     );
@@ -19,7 +24,7 @@ abstract class AuthLoginControllerContract extends Object with Disposable {
     );
   }
 
-  final _authRepository = GetIt.I.get<AuthRepositoryContract>();
+  final AuthRepositoryContract _authRepository;
 
   final sliverAppBarController = SliverAppBarController();
 

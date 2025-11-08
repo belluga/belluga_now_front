@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:belluga_now/application/functions/today.dart';
 import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
 import 'package:belluga_now/domain/schedule/schedule_summary_item_model.dart';
@@ -8,16 +10,26 @@ import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value.dart';
 
 class ScheduleScreenController implements Disposable {
-  final _scheduleRepository = GetIt.I.get<ScheduleRepositoryContract>();
+  ScheduleScreenController({
+    ScheduleRepositoryContract? scheduleRepository,
+  }) : _scheduleRepository =
+            scheduleRepository ?? GetIt.I.get<ScheduleRepositoryContract>() {
+    _visibleDatesSubscription = visibleDatesStreamValue.stream.listen((dates) {
+      updateCurrentMonth(dates);
+      todayBecomeVisible(dates);
+    });
+    _invisibleDatesSubscription =
+        invisibleDatesStreamValue.stream.listen((dates) {
+      updateCurrentMonth(dates);
+      todayBecomeInvisible(dates);
+    });
+  }
+
+  final ScheduleRepositoryContract _scheduleRepository;
 
   final eventsStreamValue = StreamValue<List<VenueEventResume>?>();
-
-  ScheduleScreenController() {
-    visibleDatesStreamValue.stream.listen(updateCurrentMonth);
-    visibleDatesStreamValue.stream.listen(todayBecomeVisible);
-    invisibleDatesStreamValue.stream.listen(updateCurrentMonth);
-    invisibleDatesStreamValue.stream.listen(todayBecomeInvisible);
-  }
+  late final StreamSubscription<List<DateTime>> _visibleDatesSubscription;
+  late final StreamSubscription<List<DateTime>> _invisibleDatesSubscription;
 
   final scrollController = ScrollController();
 
@@ -125,5 +137,10 @@ class ScheduleScreenController implements Disposable {
     firsVisibleDateStreamValue.dispose();
     visibleDatesStreamValue.dispose();
     invisibleDatesStreamValue.dispose();
+    eventsStreamValue.dispose();
+    isTodayVisible.dispose();
+    scheduleSummaryStreamValue.dispose();
+    _visibleDatesSubscription.cancel();
+    _invisibleDatesSubscription.cancel();
   }
 }

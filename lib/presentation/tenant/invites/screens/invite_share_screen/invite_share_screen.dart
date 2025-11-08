@@ -1,6 +1,7 @@
-import 'package:belluga_now/domain/invites/invite_friend_model.dart';
 import 'package:belluga_now/domain/invites/invite_model.dart';
+import 'package:belluga_now/domain/invites/projections/friend_resume.dart';
 import 'package:belluga_now/presentation/tenant/invites/screens/invite_share_screen/controllers/invite_share_screen_controller.dart';
+import 'package:belluga_now/presentation/tenant/invites/screens/invite_share_screen/widgets/invite_event_summary.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:intl/intl.dart';
@@ -20,7 +21,6 @@ class InviteShareScreen extends StatefulWidget {
 }
 
 class _InviteShareScreenState extends State<InviteShareScreen> {
-
   final _controller = GetIt.I.get<InviteShareScreenController>();
 
   @override
@@ -43,18 +43,18 @@ class _InviteShareScreenState extends State<InviteShareScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            _EventSummary(
+            InviteEventSummary(
               invite: widget.invite,
               formattedDate: formattedDate,
             ),
             Expanded(
-              child: StreamValueBuilder<List<InviteFriendModel>>(
+              child: StreamValueBuilder<List<FriendResume>>(
                   streamValue: _controller.friendsSuggestionsStreamValue,
                   onNullWidget: const Center(
                     child: CircularProgressIndicator(),
                   ),
                   builder: (context, friends) {
-                    return StreamValueBuilder<List<InviteFriendModel>>(
+                    return StreamValueBuilder<List<FriendResume>>(
                         streamValue:
                             _controller.selectedFriendsSuggestionsStreamValue,
                         onNullWidget: const Center(
@@ -71,7 +71,7 @@ class _InviteShareScreenState extends State<InviteShareScreen> {
                                 onTap: () => _controller.toggleFriend(friend),
                                 leading: CircleAvatar(
                                   backgroundImage:
-                                      NetworkImage(friend.avatarUrl),
+                                      NetworkImage(friend.avatarUrl.toString()),
                                 ),
                                 title: Text(friend.name),
                                 subtitle: Text(friend.matchLabel),
@@ -101,7 +101,7 @@ class _InviteShareScreenState extends State<InviteShareScreen> {
               child: FilledButton.icon(
                 onPressed: _onSendInternalInvites,
                 icon: const Icon(Icons.people_alt_outlined),
-                label: StreamValueBuilder<List<InviteFriendModel>>(
+                label: StreamValueBuilder<List<FriendResume>>(
                     streamValue:
                         _controller.selectedFriendsSuggestionsStreamValue,
                     builder: (context, selectedFriends) {
@@ -168,102 +168,6 @@ class _InviteShareScreenState extends State<InviteShareScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text('Link copiado para a area de transferencia.'),
-      ),
-    );
-  }
-}
-
-class _EventSummary extends StatelessWidget {
-  const _EventSummary({
-    required this.invite,
-    required this.formattedDate,
-  });
-
-  final InviteModel invite;
-  final String formattedDate;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Container(
-      width: double.infinity,
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest,
-        borderRadius: const BorderRadius.only(
-          bottomLeft: Radius.circular(24),
-          bottomRight: Radius.circular(24),
-        ),
-      ),
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(16),
-                child: Image.network(
-                  invite.eventImageUrl,
-                  width: 84,
-                  height: 84,
-                  fit: BoxFit.cover,
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      invite.eventName,
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        const Icon(Icons.calendar_today, size: 16),
-                        const SizedBox(width: 6),
-                        Expanded(
-                          child: Text(
-                            formattedDate,
-                            style: theme.textTheme.bodySmall,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        const Icon(Icons.place_outlined, size: 16),
-                        const SizedBox(width: 6),
-                        Expanded(
-                          child: Text(
-                            invite.location,
-                            style: theme.textTheme.bodySmall,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Wrap(
-            spacing: 8,
-            children: invite.tags
-                .map(
-                  (tag) => Chip(
-                    label: Text('#$tag'),
-                    visualDensity: VisualDensity.compact,
-                  ),
-                )
-                .toList(),
-          ),
-        ],
       ),
     );
   }

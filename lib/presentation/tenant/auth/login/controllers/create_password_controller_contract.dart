@@ -7,9 +7,11 @@ import 'package:stream_value/core/stream_value.dart';
 
 abstract class CreatePasswordControllerContract extends Disposable {
   CreatePasswordControllerContract({
+    AuthRepositoryContract? authRepository,
     String? newPassword,
     String? confirmPassword,
-  }) {
+  }) : _authRepository =
+            authRepository ?? GetIt.I.get<AuthRepositoryContract>() {
     newPasswordController = FormFieldControllerPasswordLogin(
       initialValue: newPassword,
     );
@@ -18,7 +20,7 @@ abstract class CreatePasswordControllerContract extends Disposable {
     );
   }
 
-  final _authRepository = GetIt.I.get<AuthRepositoryContract>();
+  final AuthRepositoryContract _authRepository;
 
   final newPasswordFormKey = GlobalKey<FormState>();
 

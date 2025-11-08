@@ -3,7 +3,9 @@ import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:get_it/get_it.dart';
 
 class EventDetailController {
-  EventDetailController() : _repository = GetIt.I.get<ScheduleRepositoryContract>();
+  EventDetailController({
+    ScheduleRepositoryContract? repository,
+  }) : _repository = repository ?? GetIt.I.get<ScheduleRepositoryContract>();
 
   final ScheduleRepositoryContract _repository;
 

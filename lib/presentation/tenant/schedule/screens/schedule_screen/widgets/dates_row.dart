@@ -179,9 +179,10 @@ class _DateRowState extends State<DateRow> {
                                           EdgeInsets.symmetric(horizontal: 8),
                                       onTap: _controller.selectDate,
                                       isSelected: _controller.isSameDay(
-                                          date,
-                                          _controller
-                                              .selectedDateStreamValue.value),
+                                        date,
+                                        _controller
+                                            .selectedDateStreamValue.value,
+                                      ),
                                     );
                                   }),
                             );
