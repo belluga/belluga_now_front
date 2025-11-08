@@ -59,6 +59,7 @@ class _InviteFlowScreenState extends State<InviteFlowScreen> {
                         onBackToHome: () => context.router.maybePop(),
                       );
                     }
+                    _controller.syncTopCardIndex(data.length);
 
                     return Column(
                       children: [
@@ -70,7 +71,20 @@ class _InviteFlowScreenState extends State<InviteFlowScreen> {
                                 data.map((invite) => invite.id).join('|'),
                               ),
                               invites: data,
-                              onSwipe: _onCardSwiped,
+                              swiperController: _controller.swiperController,
+                              topCardIndexStreamValue:
+                                  _controller.topCardIndexStreamValue,
+                              onSwipe: (
+                                previousIndex,
+                                currentIndex,
+                                direction,
+                              ) =>
+                                  _onCardSwiped(
+                                previousIndex: previousIndex,
+                                currentIndex: currentIndex,
+                                direction: direction,
+                                invitesLength: data.length,
+                              ),
                             ),
                           ),
                         ),
@@ -81,6 +95,10 @@ class _InviteFlowScreenState extends State<InviteFlowScreen> {
                           builder: (_, isConfirmingPresence) {
                             return InviteFlowActionBar(
                               onConfirmPresence: _handleConfirmPresence,
+                              onDecline: () => _controller
+                                  .applyDecision(InviteDecision.declined),
+                              onMaybe: () => _controller
+                                  .applyDecision(InviteDecision.maybe),
                               isConfirmingPresence: isConfirmingPresence,
                             );
                           },
@@ -119,11 +137,12 @@ class _InviteFlowScreenState extends State<InviteFlowScreen> {
     _triggerSwipe(CardStackSwiperDirection.left);
   }
 
-  Future<bool> _onCardSwiped(
-    int previousIndex,
-    int? currentIndex,
-    CardStackSwiperDirection direction,
-  ) async {
+  Future<bool> _onCardSwiped({
+    required int previousIndex,
+    required int? currentIndex,
+    required CardStackSwiperDirection direction,
+    required int invitesLength,
+  }) async {
     final decision = _mapDirection(direction);
     if (decision == null) {
       return false;
@@ -131,6 +150,11 @@ class _InviteFlowScreenState extends State<InviteFlowScreen> {
 
     final result = await _controller.applyDecision(decision);
     final acceptedInvite = result;
+    _controller.updateTopCardIndex(
+      previousIndex: previousIndex,
+      currentIndex: currentIndex,
+      invitesLength: invitesLength,
+    );
 
     if (!mounted) {
       return true;

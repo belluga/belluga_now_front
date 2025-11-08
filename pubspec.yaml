@@ -56,4 +56,4 @@ flutter:
   fonts:
     - family: BellugaNattive
       fonts:
-        - asset: fonts/BellugaNattive.ttf
+        - asset: assets/fonts/BellugaNattive.ttf

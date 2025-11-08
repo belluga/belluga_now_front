@@ -1,22 +1,22 @@
-import 'package:belluga_now/domain/invites/invite_decision.dart';
-import 'package:belluga_now/presentation/tenant/invites/screens/invite_flow_screen/controllers/invite_flow_controller.dart';
 import 'package:flutter/material.dart';
-import 'package:get_it/get_it.dart';
 
 class InviteFlowActionBar extends StatelessWidget {
   const InviteFlowActionBar({
     super.key,
     required this.onConfirmPresence,
+    required this.onDecline,
+    required this.onMaybe,
     required this.isConfirmingPresence,
   });
 
   final VoidCallback onConfirmPresence;
+  final VoidCallback onDecline;
+  final VoidCallback onMaybe;
   final bool isConfirmingPresence;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final controller = GetIt.I.get<InviteFlowScreenController>();
     final buttonLabel =
         isConfirmingPresence ? 'Bora! Agora é chamar os amigos...' : 'Bora?';
     final buttonIcon = isConfirmingPresence
@@ -30,8 +30,7 @@ class InviteFlowActionBar extends StatelessWidget {
           children: [
             Expanded(
               child: OutlinedButton.icon(
-                onPressed: () =>
-                    controller.applyDecision(InviteDecision.declined),
+                onPressed: onDecline,
                 icon: Icon(buttonIcon),
                 label: const Text('Recusar'),
                 style: FilledButton.styleFrom(
@@ -60,7 +59,7 @@ class InviteFlowActionBar extends StatelessWidget {
         ),
         const SizedBox(height: 12),
         TextButton.icon(
-          onPressed: () => controller.applyDecision(InviteDecision.maybe),
+          onPressed: onMaybe,
           icon: const Icon(Icons.group_add_outlined),
           label: const Text('Quem sabe...'),
         ),
