@@ -39,16 +39,16 @@ class EventDetails extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 10),
-                  EventInfoRow(
-                    icon: Icons.place_outlined,
-                    label: event.location,
-                    color: onPrimary.withValues(alpha: 0.9),
-                  ),
+                EventInfoRow(
+                  icon: Icons.place_outlined,
+                  label: event.location,
+                  color: onPrimary.withValues(alpha: 0.9),
+                ),
                 const SizedBox(height: 6),
                 if (event.hasArtists)
                   EventInfoRow(
                     icon: Icons.music_note_outlined,
-                    label: event.artists.join(', '),
+                    label: event.artistNamesLabel,
                     color: onPrimary.withValues(alpha: 0.9),
                   )
                 else

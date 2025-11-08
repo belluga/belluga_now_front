@@ -1,3 +1,4 @@
+import 'package:belluga_now/domain/artist/artist_resume.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/value_objects/description_value.dart';
 import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
@@ -19,7 +20,7 @@ class VenueEventResume {
   final ThumbUriValue imageUriValue;
   final DateTimeValue startDateTimeValue;
   final DescriptionValue locationValue;
-  final List<String> artists;
+  final List<ArtistResume> artists;
 
   String get title => titleValue.value;
   Uri get imageUri => imageUriValue.value;
@@ -32,8 +33,10 @@ class VenueEventResume {
   }
 
   String get location => locationValue.value;
-  String get primaryArtist => artists.isNotEmpty ? artists.first : '';
   bool get hasArtists => artists.isNotEmpty;
+  ArtistResume? get primaryArtist => hasArtists ? artists.first : null;
+  String get artistNamesLabel =>
+      artists.map((artist) => artist.displayName).join(', ');
 
   static String slugify(String value) {
     final slug = value.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), '-');
@@ -56,14 +59,6 @@ class VenueEventResume {
           isRequired: true,
         )..parse(fallbackImage.toString()));
 
-    final artistName = event.artists.isNotEmpty
-        ? event.artists.first.name.value
-        : 'Belluga Now';
-
-    final artistNames = event.artists.isNotEmpty
-        ? event.artists.map((artist) => artist.name.value).toList()
-        : <String>[];
-
     final startDateTime = event.dateTimeStart.value;
     if (startDateTime == null) {
       throw StateError('EventModel.dateTimeStart must be defined');
@@ -78,7 +73,7 @@ class VenueEventResume {
       imageUriValue: thumb,
       startDateTimeValue: startValue,
       locationValue: event.location,
-      artists: artistNames.isNotEmpty ? artistNames : [artistName],
+      artists: event.artists,
     );
   }
 }

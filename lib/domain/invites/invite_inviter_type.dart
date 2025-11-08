@@ -1,0 +1,4 @@
+enum InviteInviterType {
+  user,
+  partner,
+}

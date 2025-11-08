@@ -7,6 +7,7 @@ import 'package:belluga_now/domain/invites/invite_decision.dart';
 import 'package:belluga_now/domain/invites/invite_model.dart';
 import 'package:belluga_now/presentation/tenant/invites/screens/invite_flow_screen/controllers/invite_flow_controller.dart';
 import 'package:belluga_now/presentation/tenant/invites/screens/invite_flow_screen/widgets/invite_deck.dart';
+import 'package:belluga_now/presentation/tenant/invites/screens/invite_flow_screen/widgets/invite_empty_state.dart';
 import 'package:belluga_now/presentation/tenant/invites/screens/invite_flow_screen/widgets/invite_flow_action_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
@@ -54,7 +55,7 @@ class _InviteFlowScreenState extends State<InviteFlowScreen> {
                   builder: (context, invites) {
                     final data = invites;
                     if (data.isEmpty) {
-                      return _EmptyInviteState(
+                      return InviteEmptyState(
                         onBackToHome: () => context.router.maybePop(),
                       );
                     }
@@ -181,50 +182,6 @@ class _InviteFlowScreenState extends State<InviteFlowScreen> {
       SnackBar(
         content: Text(message),
         behavior: SnackBarBehavior.floating,
-      ),
-    );
-  }
-}
-
-class _EmptyInviteState extends StatelessWidget {
-  const _EmptyInviteState({
-    required this.onBackToHome,
-  });
-
-  final VoidCallback onBackToHome;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            Icons.inbox_outlined,
-            size: 64,
-            color: theme.colorScheme.secondary,
-          ),
-          const SizedBox(height: 12),
-          Text(
-            'Tudo em dia!',
-            style: theme.textTheme.headlineSmall?.copyWith(
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Voce respondeu todos os convites pendentes.',
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-          ),
-          const SizedBox(height: 20),
-          FilledButton(
-            onPressed: onBackToHome,
-            child: const Text('Voltar para Home'),
-          ),
-        ],
       ),
     );
   }

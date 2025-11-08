@@ -3,6 +3,11 @@ import 'package:belluga_now/domain/map/filters/main_filter_option.dart';
 import 'package:belluga_now/domain/map/filters/poi_filter_options.dart';
 import 'package:belluga_now/domain/map/map_region_definition.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
+import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
+import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
+import 'package:belluga_now/domain/map/value_objects/map_region_id_value.dart';
+import 'package:belluga_now/domain/map/value_objects/map_region_label_value.dart';
+import 'package:belluga_now/domain/map/value_objects/map_zoom_value.dart';
 import 'package:belluga_now/infrastructure/services/dal/datasources/poi_query.dart';
 import 'package:belluga_now/infrastructure/services/dal/dto/map/city_poi_dto.dart';
 
@@ -1465,28 +1470,40 @@ class MockPoiDatabase {
   static final List<MapRegionDefinition> _regions =
       List.unmodifiable(<MapRegionDefinition>[
     MapRegionDefinition(
-      id: 'rota_ferradura',
-      label: 'Rota da Ferradura',
-      center: CityCoordinate(latitude: -20.6608, longitude: -40.4915),
-      zoom: 14.2,
+      idValue: MapRegionIdValue()..parse('rota_ferradura'),
+      labelValue: MapRegionLabelValue()..parse('Rota da Ferradura'),
+      center: CityCoordinate(
+        latitudeValue: LatitudeValue()..parse('-20.6608'),
+        longitudeValue: LongitudeValue()..parse('-40.4915'),
+      ),
+      zoomValue: MapZoomValue()..parse('14.2'),
     ),
     MapRegionDefinition(
-      id: 'meaipe',
-      label: 'Meaípe',
-      center: CityCoordinate(latitude: -20.7254, longitude: -40.5198),
-      zoom: 14.0,
+      idValue: MapRegionIdValue()..parse('meaipe'),
+      labelValue: MapRegionLabelValue()..parse('Meaípe'),
+      center: CityCoordinate(
+        latitudeValue: LatitudeValue()..parse('-20.7254'),
+        longitudeValue: LongitudeValue()..parse('-40.5198'),
+      ),
+      zoomValue: MapZoomValue()..parse('14.0'),
     ),
     MapRegionDefinition(
-      id: 'setiba',
-      label: 'Setiba',
-      center: CityCoordinate(latitude: -20.6392, longitude: -40.4455),
-      zoom: 13.6,
+      idValue: MapRegionIdValue()..parse('setiba'),
+      labelValue: MapRegionLabelValue()..parse('Setiba'),
+      center: CityCoordinate(
+        latitudeValue: LatitudeValue()..parse('-20.6392'),
+        longitudeValue: LongitudeValue()..parse('-40.4455'),
+      ),
+      zoomValue: MapZoomValue()..parse('13.6'),
     ),
     MapRegionDefinition(
-      id: 'nova_guarapari',
-      label: 'Nova Guarapari',
-      center: CityCoordinate(latitude: -20.6965, longitude: -40.5092),
-      zoom: 13.8,
+      idValue: MapRegionIdValue()..parse('nova_guarapari'),
+      labelValue: MapRegionLabelValue()..parse('Nova Guarapari'),
+      center: CityCoordinate(
+        latitudeValue: LatitudeValue()..parse('-20.6965'),
+        longitudeValue: LongitudeValue()..parse('-40.5092'),
+      ),
+      zoomValue: MapZoomValue()..parse('13.8'),
     ),
   ]);
 
@@ -1517,8 +1534,8 @@ class MockPoiDatabase {
       }
       if (query.hasBounds) {
         final coordinate = CityCoordinate(
-          latitude: poi.latitude,
-          longitude: poi.longitude,
+          latitudeValue: LatitudeValue()..parse(poi.latitude.toString()),
+          longitudeValue: LongitudeValue()..parse(poi.longitude.toString()),
         );
         if (!query.containsCoordinate(coordinate)) {
           return false;

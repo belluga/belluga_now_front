@@ -28,9 +28,10 @@ class EventInfoCard extends StatelessWidget {
     final state = resolveEventTemporalState(event, reference: now);
     final isPast = state == CityEventTemporalState.past;
     final date = event.dateTimeStart.value;
-    final artists = event.artists.map((e) => e.name.value).join(', ');
+    final artists =
+        event.artists.map((artist) => artist.displayName).join(', ');
     final primaryArtist = event.artists.isNotEmpty ? event.artists.first : null;
-    final avatarUri = primaryArtist?.avatarUrl.value.toString();
+    final avatarUri = primaryArtist?.avatarUri?.toString();
     final fallbackUri = event.thumb?.thumbUri.value.toString();
     final hasAvatar = avatarUri?.isNotEmpty ?? false;
     final imageUrl = hasAvatar

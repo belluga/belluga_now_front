@@ -1,16 +1,20 @@
-import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
+import 'package:belluga_now/domain/artist/artist_resume.dart';
+import 'package:belluga_now/domain/artist/value_objects/artist_avatar_value.dart';
+import 'package:belluga_now/domain/artist/value_objects/artist_id_value.dart';
+import 'package:belluga_now/domain/artist/value_objects/artist_is_highlight_value.dart';
+import 'package:belluga_now/domain/artist/value_objects/artist_name_value.dart';
 import 'package:belluga_now/domain/courses/value_objects/slug_value.dart';
+import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
+import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
+import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
 import 'package:belluga_now/domain/schedule/event_action_model/event_action_external_navigation.dart';
 import 'package:belluga_now/domain/schedule/event_action_model/event_action_model.dart';
 import 'package:belluga_now/domain/schedule/event_action_model/event_action_unsupported_navigation.dart';
 import 'package:belluga_now/domain/schedule/event_action_types.dart';
-import 'package:belluga_now/domain/schedule/event_artist_model.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/schedule/event_type_model.dart';
 import 'package:belluga_now/domain/schedule/schedule_summary_item_model.dart';
 import 'package:belluga_now/domain/schedule/schedule_summary_model.dart';
-import 'package:belluga_now/domain/schedule/value_objects/event_artist_is_highlight_value.dart';
-import 'package:belluga_now/domain/schedule/value_objects/event_artist_name_value.dart';
 import 'package:belluga_now/domain/value_objects/color_value.dart';
 import 'package:belluga_now/domain/value_objects/description_value.dart';
 import 'package:value_object_pattern/domain/value_objects/html_content_value.dart';
@@ -44,8 +48,9 @@ mixin ScheduleDtoMapper on CourseDtoMapper {
       actions: dto.actions.map(mapEventAction).toList(),
       coordinate: (dto.latitude != null && dto.longitude != null)
           ? CityCoordinate(
-              latitude: dto.latitude!,
-              longitude: dto.longitude!,
+              latitudeValue: LatitudeValue()..parse(dto.latitude!.toString()),
+              longitudeValue: LongitudeValue()
+                ..parse(dto.longitude!.toString()),
             )
           : null,
     );
@@ -63,18 +68,18 @@ mixin ScheduleDtoMapper on CourseDtoMapper {
     );
   }
 
-  EventArtistModel mapEventArtist(EventArtistDTO dto) {
-    final name = EventArtistNameValue()..parse(dto.name);
-    final avatar = URIValue(
+  ArtistResume mapEventArtist(EventArtistDTO dto) {
+    final avatar = ArtistAvatarValue(
       defaultValue: Uri.parse(
         'https://www.istockphoto.com/br/vetor/sem-imagem-dispon%C3%ADvel-espa%C3%A7o-de-vis%C3%A3o-design-de-ilustra%C3%A7%C3%A3o-do-%C3%ADcone-da-miniatura-gm1409329028-459910308',
       ),
     )..tryParse(dto.avatarUrl);
 
-    return EventArtistModel(
-      name: name,
-      avatarUrl: avatar,
-      isHighlight: EventArtistIsHighlightValue()
+    return ArtistResume(
+      idValue: ArtistIdValue()..parse(dto.id),
+      nameValue: ArtistNameValue()..parse(dto.name),
+      avatarValue: avatar,
+      isHighlightValue: ArtistIsHighlightValue()
         ..parse((dto.highlight ?? false).toString()),
     );
   }

@@ -16,6 +16,8 @@ class FavoriteChip extends StatelessWidget {
             colorScheme.secondaryContainer,
           ];
 
+    final badgeIcon = _resolveBadgeIcon();
+
     return SizedBox(
       width: 82,
       child: Column(
@@ -38,7 +40,7 @@ class FavoriteChip extends StatelessWidget {
                   ),
                 ),
               ),
-              if (item.badgeIcon != null)
+              if (badgeIcon != null)
                 Positioned(
                   right: -4,
                   bottom: -4,
@@ -46,7 +48,7 @@ class FavoriteChip extends StatelessWidget {
                     radius: 12,
                     backgroundColor: colorScheme.surface,
                     child: Icon(
-                      item.badgeIcon,
+                      badgeIcon,
                       size: 14,
                       color: item.isPrimary
                           ? colorScheme.primary
@@ -68,6 +70,22 @@ class FavoriteChip extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+
+  IconData? _resolveBadgeIcon() {
+    final badge = item.badge;
+    if (badge == null) {
+      return null;
+    }
+    final codePoint = badge.codePoint;
+    if (codePoint <= 0) {
+      return null;
+    }
+    return IconData(
+      codePoint,
+      fontFamily: badge.fontFamily,
+      fontPackage: badge.fontPackage,
     );
   }
 }

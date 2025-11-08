@@ -1,4 +1,4 @@
-import 'package:belluga_now/domain/schedule/event_artist_model.dart';
+import 'package:belluga_now/domain/artist/artist_resume.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/presentation/tenant/schedule/screens/schedule_screen/widgets/event_action_button.dart';
 import 'package:belluga_now/presentation/tenant/schedule/screens/schedule_screen/widgets/event_bottom_sheet.dart';
@@ -112,7 +112,7 @@ class _EventCardState extends State<EventCard> {
 class _EventParticipants extends StatelessWidget {
   const _EventParticipants({required this.artists});
 
-  final List<EventArtistModel> artists;
+  final List<ArtistResume> artists;
 
   @override
   Widget build(BuildContext context) {
@@ -126,9 +126,9 @@ class _EventParticipants extends StatelessWidget {
 
     final label = artists
         .map(
-          (artist) => artist.isHighlight.value
-              ? '${artist.name.value} ★'
-              : artist.name.value,
+          (artist) => artist.isHighlight
+              ? '${artist.displayName} ★'
+              : artist.displayName,
         )
         .join(', ');
 

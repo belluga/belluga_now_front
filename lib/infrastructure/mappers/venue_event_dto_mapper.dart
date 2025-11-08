@@ -1,3 +1,8 @@
+import 'package:belluga_now/domain/artist/artist_resume.dart';
+import 'package:belluga_now/domain/artist/value_objects/artist_avatar_value.dart';
+import 'package:belluga_now/domain/artist/value_objects/artist_id_value.dart';
+import 'package:belluga_now/domain/artist/value_objects/artist_is_highlight_value.dart';
+import 'package:belluga_now/domain/artist/value_objects/artist_name_value.dart';
 import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
 import 'package:belluga_now/domain/value_objects/description_value.dart';
 import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
@@ -17,7 +22,20 @@ mixin VenueEventDtoMapper {
       ..parse(dto.startDateTime.toIso8601String());
 
     final location = DescriptionValue()..parse(dto.location);
-    final artist = TitleValue()..parse(dto.artist);
+    final artistName = dto.artist.trim();
+    final List<ArtistResume> artists;
+    if (artistName.isEmpty) {
+      artists = const [];
+    } else {
+      artists = [
+        ArtistResume(
+          idValue: ArtistIdValue()..parse('${dto.id}-$artistName'),
+          nameValue: ArtistNameValue()..parse(artistName),
+          avatarValue: ArtistAvatarValue(),
+          isHighlightValue: ArtistIsHighlightValue()..parse('false'),
+        ),
+      ];
+    }
 
     return VenueEventResume(
       slug: dto.id,
@@ -25,7 +43,7 @@ mixin VenueEventDtoMapper {
       imageUriValue: imageUri,
       startDateTimeValue: startDate,
       locationValue: location,
-      artists: artist.value.isNotEmpty ? [artist.value] : const [],
+      artists: artists,
     );
   }
 }

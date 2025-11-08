@@ -1,10 +1,15 @@
+import 'package:belluga_now/domain/invites/invite_inviter.dart';
+import 'package:belluga_now/domain/invites/invite_inviter_type.dart';
 import 'package:belluga_now/domain/invites/invite_model.dart';
+import 'package:belluga_now/domain/invites/invite_partner_summary.dart';
+import 'package:belluga_now/domain/invites/invite_partner_type.dart';
 import 'package:belluga_now/domain/partner/value_objects/invite_partner_hero_image_value.dart';
 import 'package:belluga_now/domain/partner/value_objects/invite_partner_logo_image_value.dart';
 import 'package:belluga_now/domain/partner/value_objects/invite_partner_name_value.dart';
 import 'package:belluga_now/domain/partner/value_objects/invite_partner_tagline_value.dart';
 import 'package:belluga_now/domain/user/friend.dart';
 import 'package:belluga_now/domain/user/value_objects/friend_avatar_value.dart';
+import 'package:belluga_now/domain/user/value_objects/friend_id_value.dart';
 import 'package:belluga_now/domain/user/value_objects/friend_match_label_value.dart';
 import 'package:belluga_now/domain/value_objects/title_value.dart';
 
@@ -160,7 +165,7 @@ class MockInvitesDatabase {
 
   static final List<Friend> _friends = [
     Friend(
-      id: 'carol-viajante',
+      idValue: FriendIdValue()..parse('carol-viajante'),
       nameValue: TitleValue()..parse('Carol Viajante'),
       avatarValue: FriendAvatarValue()
         ..parse(
@@ -169,7 +174,7 @@ class MockInvitesDatabase {
         ..parse('Vocês foram a 4 experiencias de oceano juntos'),
     ),
     Friend(
-      id: 'leo-fotografo',
+      idValue: FriendIdValue()..parse('leo-fotografo'),
       nameValue: TitleValue()..parse('Leo Fotografo'),
       avatarValue: FriendAvatarValue()
         ..parse(
@@ -178,7 +183,7 @@ class MockInvitesDatabase {
         ..parse('Amigo destaque em fotografia submarina'),
     ),
     Friend(
-      id: 'bia-surfer',
+      idValue: FriendIdValue()..parse('bia-surfer'),
       nameValue: TitleValue()..parse('Bia Surfer'),
       avatarValue: FriendAvatarValue()
         ..parse(
@@ -187,7 +192,7 @@ class MockInvitesDatabase {
         ..parse('Curte remadas noturnas e aulas de SUP'),
     ),
     Friend(
-      id: 'igor-tech',
+      idValue: FriendIdValue()..parse('igor-tech'),
       nameValue: TitleValue()..parse('Igor Tech'),
       avatarValue: FriendAvatarValue()
         ..parse(
@@ -196,7 +201,7 @@ class MockInvitesDatabase {
         ..parse('Sempre topa experiencias com storytelling'),
     ),
     Friend(
-      id: 'mila-yogi',
+      idValue: FriendIdValue()..parse('mila-yogi'),
       nameValue: TitleValue()..parse('Mila Yogi'),
       avatarValue: FriendAvatarValue()
         ..parse(

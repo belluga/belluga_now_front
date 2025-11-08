@@ -1,5 +1,9 @@
 include: package:flutter_lints/flutter.yaml
 
+analyzer:
+  exclude:
+    - lib/application/configurations/belluga_nattive_icons.dart
+
 linter:
   rules:
     no_leading_underscores_for_local_identifiers: false

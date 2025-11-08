@@ -1,4 +1,8 @@
+import 'package:belluga_now/domain/invites/invite_inviter.dart';
+import 'package:belluga_now/domain/invites/invite_inviter_type.dart';
 import 'package:belluga_now/domain/invites/invite_model.dart';
+import 'package:belluga_now/domain/invites/invite_partner_summary.dart';
+import 'package:belluga_now/domain/invites/invite_partner_type.dart';
 import 'package:belluga_now/presentation/tenant/mercado/data/mock_data/mock_mercado_data.dart';
 import 'package:belluga_now/presentation/tenant/mercado/models/mercado_producer.dart';
 import 'package:belluga_now/presentation/tenant/mercado/screens/producer_store_screen/producer_store_screen.dart';

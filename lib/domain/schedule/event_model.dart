@@ -1,5 +1,5 @@
 import 'package:belluga_now/domain/courses/thumb_model.dart';
-import 'package:belluga_now/domain/schedule/event_artist_model.dart';
+import 'package:belluga_now/domain/artist/artist_resume.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/domain/schedule/event_action_model/event_action_model.dart';
 import 'package:belluga_now/domain/schedule/event_type_model.dart';
@@ -18,7 +18,7 @@ class EventModel {
   final ThumbModel? thumb;
   final DateTimeValue dateTimeStart;
   final DateTimeValue? dateTimeEnd;
-  final List<EventArtistModel> artists;
+  final List<ArtistResume> artists;
   final List<EventActionModel> actions;
   final CityCoordinate? coordinate;
 
@@ -35,5 +35,4 @@ class EventModel {
     required this.actions,
     required this.coordinate,
   });
-
 }

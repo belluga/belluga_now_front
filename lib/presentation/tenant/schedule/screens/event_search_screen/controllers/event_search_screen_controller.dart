@@ -91,7 +91,7 @@ class EventSearchScreenController implements Disposable {
       final contentMatch =
           (event.content.value ?? "").toLowerCase().contains(lowercaseQuery);
       final artistMatch = event.artists.any(
-        (artist) => artist.name.value.toLowerCase().contains(lowercaseQuery),
+        (artist) => artist.displayName.toLowerCase().contains(lowercaseQuery),
       );
 
       return titleMatch || contentMatch || artistMatch;

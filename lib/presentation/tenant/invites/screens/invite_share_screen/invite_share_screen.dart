@@ -71,7 +71,7 @@ class _InviteShareScreenState extends State<InviteShareScreen> {
                                 onTap: () => _controller.toggleFriend(friend),
                                 leading: CircleAvatar(
                                   backgroundImage:
-                                      NetworkImage(friend.avatarUrl.toString()),
+                                      NetworkImage(friend.avatarUri.toString()),
                                 ),
                                 title: Text(friend.name),
                                 subtitle: Text(friend.matchLabel),

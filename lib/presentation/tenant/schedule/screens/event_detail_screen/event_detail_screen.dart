@@ -122,7 +122,8 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                   _InfoCard(
                     icon: Icons.calendar_today_outlined,
                     label: 'Quando',
-                    value: EventDetailScreen._formatEventDateRange(startDate, endDate),
+                    value: EventDetailScreen._formatEventDateRange(
+                        startDate, endDate),
                   ),
                   const SizedBox(height: 16),
                   _InfoCard(
@@ -145,8 +146,8 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                       children: widget.event.artists
                           .map(
                             (artist) => _ArtistPill(
-                              name: artist.name.value,
-                              highlight: artist.isHighlight.value,
+                              name: artist.displayName,
+                              highlight: artist.isHighlight,
                             ),
                           )
                           .toList(growable: false),
@@ -161,7 +162,8 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    EventDetailScreen._stripHtml(widget.event.content.value ?? ''),
+                    EventDetailScreen._stripHtml(
+                        widget.event.content.value ?? ''),
                     style: theme.bodyLarge,
                   ),
                   const SizedBox(height: 24),
@@ -252,9 +254,10 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
         inviteCoverUri?.toString() ?? EventDetailScreen._fallbackImage;
     final locationLabel = widget.event.location.value;
     final hostName = widget.event.artists.isNotEmpty
-        ? widget.event.artists.first.name.value
+        ? widget.event.artists.first.displayName
         : 'Belluga Now';
-    final description = EventDetailScreen._stripHtml(widget.event.content.value ?? '').trim();
+    final description =
+        EventDetailScreen._stripHtml(widget.event.content.value ?? '').trim();
     final slug = widget.event.type.slug.value;
     final typeLabel = widget.event.type.name.value;
     final tags = <String>[

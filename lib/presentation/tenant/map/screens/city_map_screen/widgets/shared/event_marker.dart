@@ -169,7 +169,7 @@ class _MarkerCore extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final primaryArtist = event.artists.isNotEmpty ? event.artists.first : null;
-    final avatarUri = primaryArtist?.avatarUrl.value.toString();
+    final avatarUri = primaryArtist?.avatarUri?.toString();
     final fallbackUri = event.thumb?.thumbUri.value.toString();
     final hasAvatar = avatarUri?.isNotEmpty ?? false;
     final imageUrl = hasAvatar

@@ -87,7 +87,7 @@ class _ParticipantsSection extends StatelessWidget {
 
     return EventInfoRow(
       icon: Icons.music_note_outlined,
-      label: event.artists.join(', '),
+      label: event.artistNamesLabel,
     );
   }
 }

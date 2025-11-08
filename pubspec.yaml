@@ -26,6 +26,7 @@ dependencies:
   package_info_plus: ^8.3.1
   platform_device_id_plus: ^1.0.7
   sentry_flutter: ^9.7.0
+  
   slugify: ^2.0.0
   stream_value: ^0.0.6
   url_launcher: ^6.3.2
@@ -52,3 +53,7 @@ flutter:
   assets:
     - assets/images/
     - assets/mock/
+  fonts:
+    - family: BellugaNattive
+      fonts:
+        - asset: fonts/BellugaNattive.ttf

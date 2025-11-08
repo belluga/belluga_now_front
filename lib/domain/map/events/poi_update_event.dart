@@ -1,25 +1,15 @@
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
+import 'package:belluga_now/domain/map/value_objects/city_poi_id_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_icon_symbol_value.dart';
+import 'package:belluga_now/domain/value_objects/description_value.dart';
+
+part 'poi_moved_event.dart';
+part 'poi_offer_activated_event.dart';
 
 sealed class PoiUpdateEvent {
-  const PoiUpdateEvent(this.poiId);
+  const PoiUpdateEvent(this.poiIdValue);
 
-  final String poiId;
-}
+  final CityPoiIdValue poiIdValue;
 
-class PoiMovedEvent extends PoiUpdateEvent {
-  const PoiMovedEvent({required String poiId, required this.coordinate})
-      : super(poiId);
-
-  final CityCoordinate coordinate;
-}
-
-class PoiOfferActivatedEvent extends PoiUpdateEvent {
-  const PoiOfferActivatedEvent({
-    required String poiId,
-    required this.details,
-    required this.icon,
-  }) : super(poiId);
-
-  final String details;
-  final String icon;
+  String get poiId => poiIdValue.value;
 }

@@ -7,6 +7,8 @@ import 'package:belluga_now/domain/map/filters/main_filter_option.dart';
 import 'package:belluga_now/domain/map/filters/poi_filter_options.dart';
 import 'package:belluga_now/domain/map/map_region_definition.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
+import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
+import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
 import 'package:belluga_now/domain/repositories/city_map_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
@@ -216,12 +218,16 @@ class CityMapController implements Disposable {
   Future<void> goToRegion(MapRegionDefinition region) async {
     final delta = region.boundsDelta;
     final ne = CityCoordinate(
-      latitude: region.center.latitude + delta,
-      longitude: region.center.longitude + delta,
+      latitudeValue: LatitudeValue()
+        ..parse((region.center.latitude + delta).toString()),
+      longitudeValue: LongitudeValue()
+        ..parse((region.center.longitude + delta).toString()),
     );
     final sw = CityCoordinate(
-      latitude: region.center.latitude - delta,
-      longitude: region.center.longitude - delta,
+      latitudeValue: LatitudeValue()
+        ..parse((region.center.latitude - delta).toString()),
+      longitudeValue: LongitudeValue()
+        ..parse((region.center.longitude - delta).toString()),
     );
 
     final query = _composeQuery(
@@ -274,8 +280,8 @@ class CityMapController implements Disposable {
       );
 
       final coordinate = CityCoordinate(
-        latitude: position.latitude,
-        longitude: position.longitude,
+        latitudeValue: LatitudeValue()..parse(position.latitude.toString()),
+        longitudeValue: LongitudeValue()..parse(position.longitude.toString()),
       );
 
       userLocationStreamValue.addValue(coordinate);
@@ -549,17 +555,17 @@ class CityMapController implements Disposable {
     }
     final poi = currentPois[index];
     currentPois[index] = CityPoiModel(
-      id: poi.id,
-      name: poi.name,
-      description: poi.description,
-      address: poi.address,
+      idValue: poi.idValue,
+      nameValue: poi.nameValue,
+      descriptionValue: poi.descriptionValue,
+      addressValue: poi.addressValue,
       category: poi.category,
       coordinate: coordinate,
-      priority: poi.priority,
-      assetPath: poi.assetPath,
+      priorityValue: poi.priorityValue,
+      assetPathValue: poi.assetPathValue,
       isDynamic: poi.isDynamic,
-      movementRadiusMeters: poi.movementRadiusMeters,
-      tags: poi.tags,
+      movementRadiusValue: poi.movementRadiusValue,
+      tagValues: poi.tagValues,
     );
 
     pois.addValue(List<CityPoiModel>.unmodifiable(currentPois));
@@ -753,12 +759,16 @@ class CityMapController implements Disposable {
     const boundsOffset = 0.1;
     return PoiQuery(
       northEast: CityCoordinate(
-        latitude: origin.latitude + boundsOffset,
-        longitude: origin.longitude + boundsOffset,
+        latitudeValue: LatitudeValue()
+          ..parse((origin.latitude + boundsOffset).toString()),
+        longitudeValue: LongitudeValue()
+          ..parse((origin.longitude + boundsOffset).toString()),
       ),
       southWest: CityCoordinate(
-        latitude: origin.latitude - boundsOffset,
-        longitude: origin.longitude - boundsOffset,
+        latitudeValue: LatitudeValue()
+          ..parse((origin.latitude - boundsOffset).toString()),
+        longitudeValue: LongitudeValue()
+          ..parse((origin.longitude - boundsOffset).toString()),
       ),
     );
   }

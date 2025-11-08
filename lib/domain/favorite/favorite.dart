@@ -1,4 +1,4 @@
-import 'package:belluga_now/domain/favorite/value_objects/favorite_badge_value.dart';
+import 'package:belluga_now/domain/favorite/favorite_badge.dart';
 import 'package:belluga_now/domain/value_objects/asset_path_value.dart';
 import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
 import 'package:belluga_now/domain/value_objects/title_value.dart';
@@ -9,7 +9,7 @@ class Favorite {
     required this.titleValue,
     this.imageUriValue,
     this.assetPathValue,
-    this.badgeValue,
+    this.badge,
     this.isPrimary = false,
   })  : assert(
           imageUriValue != null || assetPathValue != null,
@@ -25,7 +25,7 @@ class Favorite {
   final TitleValue titleValue;
   final ThumbUriValue? imageUriValue;
   final AssetPathValue? assetPathValue;
-  final FavoriteBadgeValue? badgeValue;
+  final FavoriteBadge? badge;
   final bool isPrimary;
 
   String get title => titleValue.value;
