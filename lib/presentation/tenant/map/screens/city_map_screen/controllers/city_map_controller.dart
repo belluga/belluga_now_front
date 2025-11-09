@@ -61,8 +61,7 @@ class CityMapController implements Disposable {
   final userLocationStreamValue = StreamValue<CityCoordinate?>();
   final mapStatusStreamValue =
       StreamValue<MapStatus>(defaultValue: MapStatus.locating);
-  final statusMessageStreamValue =
-      StreamValue<String?>(defaultValue: 'Localizando voce...');
+  final statusMessageStreamValue = StreamValue<String?>();
   final searchTermStreamValue = StreamValue<String?>();
   final TextEditingController searchInputController = TextEditingController();
   final MapController mapController = MapController();
@@ -174,10 +173,8 @@ class CityMapController implements Disposable {
   }) async {
     _currentQuery = query;
     searchTermStreamValue.addValue(query.searchTerm);
-    _setMapStatus(
-      MapStatus.fetching,
-      message: loadingMessage ?? 'Carregando pontos...',
-    );
+    _setMapStatus(MapStatus.fetching);
+    _setMapMessage(loadingMessage ?? 'Carregando pontos...');
     _setLoadingState();
 
     try {
@@ -187,7 +184,8 @@ class CityMapController implements Disposable {
     } catch (_) {
       const errorMessage = 'Nao foi possivel carregar os pontos de interesse.';
       _setErrorState(errorMessage);
-      _setMapStatus(MapStatus.error, message: errorMessage);
+      _setMapStatus(MapStatus.error);
+      _setMapMessage(errorMessage);
     }
   }
 
@@ -248,15 +246,14 @@ class CityMapController implements Disposable {
   }
 
   Future<void> resolveUserLocation() async {
-    _setMapStatus(MapStatus.locating, message: 'Localizando voce...');
+    _setMapStatus(MapStatus.locating);
+    _setMapMessage('Localizando voce...');
     try {
       final serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
-        _setMapStatus(
-          MapStatus.error,
-          message:
-              'Ative os servicos de localizacao para ver sua posicao. Exibindo pontos padrao da cidade.',
-        );
+        _setMapStatus(MapStatus.error);
+        _setMapMessage(
+            'Ative os servicos de localizacao para ver sua posicao. Exibindo pontos padrao da cidade.');
         await _fallbackLoadPois();
         return;
       }
@@ -268,11 +265,9 @@ class CityMapController implements Disposable {
 
       if (permission == LocationPermission.deniedForever ||
           permission == LocationPermission.denied) {
-        _setMapStatus(
-          MapStatus.error,
-          message:
-              'Permita o acesso a localizacao para localizar pontos proximos. Exibindo pontos padrao da cidade.',
-        );
+        _setMapStatus(MapStatus.error);
+        _setMapMessage(
+            'Permita o acesso a localizacao para localizar pontos proximos. Exibindo pontos padrao da cidade.');
         await _fallbackLoadPois();
         return;
       }
@@ -300,18 +295,14 @@ class CityMapController implements Disposable {
         MapNavigationTarget(center: coordinate, zoom: 16),
       );
     } on PlatformException catch (error) {
-      _setMapStatus(
-        MapStatus.error,
-        message:
-            'Nao foi possivel obter a localizacao (${error.code}). Exibindo pontos padrao da cidade.',
-      );
+      _setMapStatus(MapStatus.error);
+      _setMapMessage(
+          'Nao foi possivel obter a localizacao (${error.code}). Exibindo pontos padrao da cidade.');
       await _fallbackLoadPois();
     } catch (_) {
-      _setMapStatus(
-        MapStatus.error,
-        message:
-            'Nao foi possivel obter a localizacao. Exibindo pontos padrao da cidade.',
-      );
+      _setMapStatus(MapStatus.error);
+      _setMapMessage(
+          'Nao foi possivel obter a localizacao. Exibindo pontos padrao da cidade.');
       await _fallbackLoadPois();
     }
   }
@@ -716,8 +707,11 @@ class CityMapController implements Disposable {
     await loadPois(query, loadingMessage: 'Carregando pontos...');
   }
 
-  void _setMapStatus(MapStatus status, {String? message}) {
+  void _setMapStatus(MapStatus status) {
     mapStatusStreamValue.addValue(status);
+  }
+
+  void _setMapMessage(String? message) {
     statusMessageStreamValue.addValue(message);
   }
 
@@ -753,10 +747,8 @@ class CityMapController implements Disposable {
     } else {
       await initialize();
     }
-    _setMapStatus(
-      MapStatus.fallback,
-      message: 'Exibindo pontos padrao da cidade.',
-    );
+    _setMapStatus(MapStatus.fallback);
+    _setMapMessage('Exibindo pontos padrao da cidade.');
   }
 
   PoiQuery _queryForOrigin(CityCoordinate origin) {
