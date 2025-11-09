@@ -8,9 +8,9 @@ import 'package:belluga_now/presentation/tenant/map/screens/city_map_screen/widg
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
-import 'package:free_map/fm_map.dart';
 import 'package:get_it/get_it.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
 class CityMapView extends StatefulWidget {
   const CityMapView({
@@ -63,8 +63,40 @@ class CityMapView extends StatefulWidget {
 }
 
 class _CityMapViewState extends State<CityMapView> {
+  static const _fallbackPackageName = 'com.belluganow.app';
+
   late final CityMapController _controller =
       widget.controller ?? GetIt.I.get<CityMapController>();
+  String? _packageName;
+
+  @override
+  void initState() {
+    super.initState();
+    _resolvePackageName();
+  }
+
+  Future<void> _resolvePackageName() async {
+    try {
+      final info = await PackageInfo.fromPlatform();
+      if (!mounted) {
+        return;
+      }
+      final resolved =
+          info.packageName.isNotEmpty ? info.packageName : _fallbackPackageName;
+      setState(() {
+        _packageName = resolved;
+      });
+    } catch (error, stackTrace) {
+      debugPrint('CityMapView -> failed to resolve package name: $error');
+      debugPrintStack(stackTrace: stackTrace);
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _packageName = _fallbackPackageName;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -88,6 +120,9 @@ class _CityMapViewState extends State<CityMapView> {
 
     final sortedPois = List<CityPoiModel>.from(widget.pois)
       ..sort((a, b) => a.priority.compareTo(b.priority));
+    debugPrint('CityMapView -> rendering ${sortedPois.length} POIs, '
+        '${widget.events.length} events, '
+        'userPosition=${widget.userPosition}, defaultCenter=${widget.defaultCenter}');
     for (final poi in sortedPois) {
       final isHovered = widget.hoveredPoiId == poi.id;
       markerEntries.add(
@@ -151,24 +186,54 @@ class _CityMapViewState extends State<CityMapView> {
     }
 
     markerEntries.sort((a, b) => a.priority.compareTo(b.priority));
-    final markers = markerEntries.map((entry) => entry.marker).toList();
     final initialCenter = widget.userPosition ?? widget.defaultCenter;
+    final markers = markerEntries.map((entry) => entry.marker).toList();
+    final theme = Theme.of(context);
+    final resolvedPackageName = _packageName ?? _fallbackPackageName;
 
     return Listener(
       behavior: HitTestBehavior.deferToChild,
       onPointerDown: (_) => widget.onMapInteraction(),
-      child: FmMap(
-        mapController: _controller.mapController,
-        mapOptions: MapOptions(
-          initialCenter: initialCenter,
-          initialZoom: 16,
-          minZoom: 14,
-          maxZoom: 18,
-          interactionOptions:
-              const InteractionOptions(flags: InteractiveFlag.all),
-        ),
-        markers: markers,
-        attributionAlignment: Alignment.bottomRight,
+      child: Stack(
+        children: [
+          FlutterMap(
+            mapController: _controller.mapController,
+            options: MapOptions(
+              initialCenter: initialCenter,
+              initialZoom: 16,
+              minZoom: 14,
+              maxZoom: 18,
+              interactionOptions:
+                  const InteractionOptions(flags: InteractiveFlag.all),
+            ),
+            children: [
+              TileLayer(
+                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                userAgentPackageName: resolvedPackageName,
+              ),
+              MarkerLayer(markers: markers),
+            ],
+          ),
+          Positioned(
+            right: 12,
+            bottom: 12,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surface.withValues(alpha: 0.85),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                child: Text(
+                  '© OpenStreetMap',
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
