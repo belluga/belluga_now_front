@@ -17,15 +17,12 @@ import 'package:belluga_now/presentation/tenant/map/screens/city_map_screen/cont
 import 'package:belluga_now/presentation/tenant/map/screens/city_map_screen/controllers/music_panel_controller.dart';
 import 'package:belluga_now/presentation/tenant/map/screens/city_map_screen/controllers/region_panel_controller.dart';
 import 'package:belluga_now/presentation/tenant/map/screens/city_map_screen/widgets/city_map_error_card.dart';
+import 'package:belluga_now/presentation/tenant/map/screens/city_map_screen/widgets/city_map_layers.dart';
+import 'package:belluga_now/presentation/tenant/map/screens/city_map_screen/widgets/city_map_lateral_panel.dart';
 import 'package:belluga_now/presentation/tenant/map/screens/city_map_screen/widgets/city_map_loading_overlay.dart';
+import 'package:belluga_now/presentation/tenant/map/screens/city_map_screen/widgets/city_map_main_filter_fab.dart';
+import 'package:belluga_now/presentation/tenant/map/screens/city_map_screen/widgets/city_map_selected_cards.dart';
 import 'package:belluga_now/presentation/tenant/map/screens/city_map_screen/widgets/city_map_status_banner.dart';
-import 'package:belluga_now/presentation/tenant/map/screens/city_map_screen/widgets/panels/cuisine_panel.dart';
-import 'package:belluga_now/presentation/tenant/map/screens/city_map_screen/widgets/panels/events_panel.dart';
-import 'package:belluga_now/presentation/tenant/map/screens/city_map_screen/widgets/panels/region_panel.dart';
-import 'package:belluga_now/presentation/tenant/map/screens/city_map_screen/widgets/poi_info_card/poi_info_card.dart';
-import 'package:belluga_now/presentation/tenant/map/screens/city_map_screen/widgets/shared/city_map_view.dart';
-import 'package:belluga_now/presentation/tenant/map/screens/city_map_screen/widgets/shared/event_info_card.dart';
-import 'package:belluga_now/presentation/tenant/map/screens/city_map_screen/widgets/shared/main_filter_icon_resolver.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -87,16 +84,44 @@ class _CityMapScreenState extends State<CityMapScreen> {
       appBar: _buildAppBar(),
       body: Stack(
         children: [
-          Positioned.fill(child: _buildMapLayers(defaultCenter)),
+          Positioned.fill(
+            child: CityMapLayers(
+              controller: _cityMapController,
+              defaultCenter: defaultCenter,
+              onSelectPoi: _handleSelectPoi,
+              onHoverChange: _handleHoverChange,
+              onSelectEvent: _handleSelectEvent,
+              onMapInteraction: _handleMapInteraction,
+            ),
+          ),
           CityMapStatusBanner(controller: _cityMapController),
           CityMapErrorCard(controller: _cityMapController),
-          _buildSelectedInfoCards(),
-          _buildLateralPanel(),
+          CityMapSelectedCards(
+            controller: _cityMapController,
+            onOpenEventDetails: _openEventDetails,
+            onShareEvent: _shareEvent,
+            onRouteToEvent: _handleDirectionsForEvent,
+            onOpenPoiDetails: _openPoiDetails,
+            onSharePoi: _sharePoi,
+            onRouteToPoi: _handleDirectionsForPoi,
+          ),
+          CityMapLateralPanel(
+            fabMenuController: _fabMenuController,
+            regionPanelController: _regionPanelController,
+            eventsPanelController: _eventsPanelController,
+            musicPanelController: _musicPanelController,
+            cuisinePanelController: _cuisinePanelController,
+          ),
           CityMapLoadingOverlay(controller: _cityMapController),
         ],
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
-      floatingActionButton: _buildMainFilterFabGroup(),
+      floatingActionButton: CityMapMainFilterFabGroup(
+        controller: _cityMapController,
+        fabMenuController: _fabMenuController,
+        onMainFilterTap: _onMainFilterTap,
+        panelResolver: _panelTypeFor,
+      ),
     );
   }
 
@@ -135,254 +160,6 @@ class _CityMapScreenState extends State<CityMapScreen> {
           },
         ),
       ],
-    );
-  }
-
-  Widget _buildMapLayers(CityCoordinate defaultCenter) {
-    final defaultLatLng = LatLng(
-      defaultCenter.latitude,
-      defaultCenter.longitude,
-    );
-
-    return StreamValueBuilder<List<CityPoiModel>>(
-      streamValue: _cityMapController.pois,
-      builder: (_, pois) {
-        return StreamValueBuilder<List<EventModel>>(
-          streamValue: _cityMapController.eventsStreamValue,
-          builder: (_, events) {
-            return StreamValueBuilder<CityCoordinate?>(
-              streamValue: _cityMapController.userLocationStreamValue,
-              builder: (_, coordinate) {
-                final userLatLng = coordinate == null
-                    ? null
-                    : LatLng(coordinate.latitude, coordinate.longitude);
-                return StreamValueBuilder<CityPoiModel?>(
-                  streamValue: _cityMapController.selectedPoiStreamValue,
-                  builder: (_, selectedPoi) {
-                    return StreamValueBuilder<EventModel?>(
-                      streamValue: _cityMapController.selectedEventStreamValue,
-                      builder: (_, selectedEvent) {
-                        return StreamValueBuilder<String?>(
-                          streamValue:
-                              _cityMapController.hoveredPoiIdStreamValue,
-                          builder: (_, hoveredId) {
-                            return CityMapView(
-                              pois: pois,
-                              selectedPoi: selectedPoi,
-                              onSelectPoi: _handleSelectPoi,
-                              hoveredPoiId: hoveredId,
-                              onHoverChange: _handleHoverChange,
-                              events: events,
-                              selectedEvent: selectedEvent,
-                              onSelectEvent: _handleSelectEvent,
-                              userPosition: userLatLng,
-                              defaultCenter: defaultLatLng,
-                              onMapInteraction: _handleMapInteraction,
-                            );
-                          },
-                        );
-                      },
-                    );
-                  },
-                );
-              },
-            );
-          },
-        );
-      },
-    );
-  }
-
-  Widget _buildSelectedInfoCards() {
-    return StreamValueBuilder<EventModel?>(
-      streamValue: _cityMapController.selectedEventStreamValue,
-      builder: (_, selectedEvent) {
-        if (selectedEvent != null) {
-          return Align(
-            alignment: Alignment.bottomCenter,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(24, 0, 24, 32),
-              child: SafeArea(
-                child: EventInfoCard(
-                  event: selectedEvent,
-                  onDismiss: () => _cityMapController.selectEvent(null),
-                  onDetails: () => _openEventDetails(selectedEvent),
-                  onShare: () => _shareEvent(selectedEvent),
-                  onRoute: selectedEvent.coordinate == null
-                      ? null
-                      : () => _handleDirectionsForEvent(selectedEvent),
-                ),
-              ),
-            ),
-          );
-        }
-        return StreamValueBuilder<CityPoiModel?>(
-          streamValue: _cityMapController.selectedPoiStreamValue,
-          builder: (_, selectedPoi) {
-            if (selectedPoi == null) {
-              return const SizedBox.shrink();
-            }
-            return Align(
-              alignment: Alignment.bottomCenter,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(24, 0, 24, 32),
-                child: SafeArea(
-                  child: PoiInfoCard(
-                    poi: selectedPoi,
-                    onDismiss: () => _cityMapController.selectPoi(null),
-                    onDetails: () => _openPoiDetails(selectedPoi),
-                    onShare: () => _sharePoi(selectedPoi),
-                    onRoute: () => _handleDirectionsForPoi(selectedPoi),
-                  ),
-                ),
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
-
-  Widget _buildLateralPanel() {
-    return StreamValueBuilder<LateralPanelType?>(
-      streamValue: _fabMenuController.activePanel,
-      builder: (_, panel) {
-        final panelType = panel;
-        if (panelType == null) {
-          return const SizedBox.shrink();
-        }
-
-        late final Widget panelWidget;
-        switch (panelType) {
-          case LateralPanelType.regions:
-            panelWidget = RegionPanel(
-              controller: _regionPanelController,
-              onClose: _fabMenuController.closePanel,
-            );
-            break;
-          case LateralPanelType.events:
-            panelWidget = EventsPanel(
-              controller: _eventsPanelController,
-              onClose: _fabMenuController.closePanel,
-              title: 'Eventos',
-              icon: Icons.event,
-            );
-            break;
-          case LateralPanelType.music:
-            panelWidget = EventsPanel(
-              controller: _musicPanelController,
-              onClose: _fabMenuController.closePanel,
-              title: 'Shows',
-              icon: Icons.music_note,
-            );
-            break;
-          case LateralPanelType.cuisines:
-            panelWidget = CuisinePanel(
-              controller: _cuisinePanelController,
-              onClose: _cuisinePanelController.closePanel,
-            );
-            break;
-        }
-
-        return Align(
-          alignment: Alignment.centerRight,
-          child: Padding(
-            padding: const EdgeInsets.only(top: 16, bottom: 16, right: 16),
-            child: SafeArea(child: panelWidget),
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildMainFilterFabGroup() {
-    final theme = Theme.of(context);
-    return StreamValueBuilder<List<MainFilterOption>>(
-      streamValue: _cityMapController.mainFilterOptionsStreamValue,
-      builder: (_, options) {
-        if (options.isEmpty) {
-          return const SizedBox.shrink();
-        }
-        return StreamValueBuilder<bool>(
-          streamValue: _fabMenuController.menuExpanded,
-          builder: (_, expanded) {
-            return StreamValueBuilder<MainFilterOption?>(
-              streamValue: _cityMapController.activeMainFilterStreamValue,
-              builder: (_, activeFilter) {
-                return StreamValueBuilder<LateralPanelType?>(
-                  streamValue: _fabMenuController.activePanel,
-                  builder: (_, activePanel) {
-                    final children = <Widget>[];
-                    if (expanded == true) {
-                      for (final option in options.reversed) {
-                        children.add(
-                          Padding(
-                            padding: const EdgeInsets.only(bottom: 12),
-                            child: _buildSecondaryFilterFab(
-                              theme: theme,
-                              option: option,
-                              activeFilter: activeFilter,
-                              activePanel: activePanel,
-                            ),
-                          ),
-                        );
-                      }
-                    }
-
-                    children.add(
-                      FloatingActionButton(
-                        heroTag: 'main-filter-toggle-fab',
-                        onPressed: _fabMenuController.toggleMenu,
-                        child: AnimatedSwitcher(
-                          duration: const Duration(milliseconds: 200),
-                          child: Icon(
-                            expanded == true ? Icons.close : Icons.filter_list,
-                            key: ValueKey<bool>(expanded == true),
-                          ),
-                        ),
-                      ),
-                    );
-
-                    return Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: children,
-                    );
-                  },
-                );
-              },
-            );
-          },
-        );
-      },
-    );
-  }
-
-  Widget _buildSecondaryFilterFab({
-    required ThemeData theme,
-    required MainFilterOption option,
-    required MainFilterOption? activeFilter,
-    required LateralPanelType? activePanel,
-  }) {
-    final icon = resolveMainFilterIcon(option.iconName);
-    final panelType = _panelTypeFor(option.type);
-    final isActive = option.isQuickApply
-        ? activeFilter?.id == option.id
-        : (panelType != null && panelType == activePanel);
-    final backgroundColor =
-        isActive ? theme.colorScheme.primary : theme.colorScheme.surface;
-    final foregroundColor =
-        isActive ? theme.colorScheme.onPrimary : theme.colorScheme.onSurface;
-
-    return Tooltip(
-      message: option.label,
-      child: FloatingActionButton.small(
-        heroTag: 'main-filter-${option.id}',
-        backgroundColor: backgroundColor,
-        foregroundColor: foregroundColor,
-        onPressed: () => _onMainFilterTap(option),
-        child: Icon(icon),
-      ),
     );
   }
 
