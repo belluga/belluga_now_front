@@ -136,23 +136,17 @@ class _MapExperiencePrototypeScreenState
           ],
         ),
         floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
-        floatingActionButton: Padding(
-          padding: EdgeInsets.only(
-            right: 16,
-            bottom: 32 + MediaQuery.of(context).padding.bottom,
-          ),
-          child: MapIntentFabMenu(
-            expanded: _menuExpanded,
-            activeIntent: _activeIntent,
-            onToggle: () => setState(() => _menuExpanded = !_menuExpanded),
-            onSelectIntent: (intent) {
-              setState(() {
-                _activeIntent = intent;
-                _menuExpanded = false;
-              });
-              _handleIntent(intent);
-            },
-          ),
+        floatingActionButton: MapIntentFabMenu(
+          expanded: _menuExpanded,
+          activeIntent: _activeIntent,
+          onToggle: () => setState(() => _menuExpanded = !_menuExpanded),
+          onSelectIntent: (intent) {
+            setState(() {
+              _activeIntent = intent;
+              _menuExpanded = false;
+            });
+            _handleIntent(intent);
+          },
         ),
       ),
     );
