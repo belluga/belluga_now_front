@@ -1,3 +1,5 @@
+// ignore_for_file: prefer_const_constructors_in_immutables
+
 import 'dart:async';
 
 import 'package:belluga_now/domain/map/city_poi_model.dart';
@@ -6,12 +8,25 @@ import 'package:belluga_now/presentation/tenant/map/screens/city_map_screen/cont
 import 'package:belluga_now/presentation/tenant/map/screens/city_map_screen/widgets/poi_info_card/poi_info_card.dart';
 import 'package:belluga_now/presentation/tenant/map/screens/city_map_screen/widgets/shared/event_info_card.dart';
 import 'package:flutter/material.dart';
+import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 
 class CityMapSelectedCards extends StatelessWidget {
-  const CityMapSelectedCards({
+  CityMapSelectedCards({
     super.key,
-    required this.controller,
+    CityMapController? controller,
+    required this.onOpenEventDetails,
+    required this.onShareEvent,
+    required this.onRouteToEvent,
+    required this.onOpenPoiDetails,
+    required this.onSharePoi,
+    required this.onRouteToPoi,
+  }) : _controller = controller ?? GetIt.I.get<CityMapController>();
+
+  @visibleForTesting
+  CityMapSelectedCards.withController(
+    this._controller, {
+    super.key,
     required this.onOpenEventDetails,
     required this.onShareEvent,
     required this.onRouteToEvent,
@@ -20,7 +35,7 @@ class CityMapSelectedCards extends StatelessWidget {
     required this.onRouteToPoi,
   });
 
-  final CityMapController controller;
+  final CityMapController _controller;
   final FutureOr<void> Function(EventModel event) onOpenEventDetails;
   final FutureOr<void> Function(EventModel event) onShareEvent;
   final FutureOr<void> Function(EventModel event) onRouteToEvent;
@@ -31,12 +46,12 @@ class CityMapSelectedCards extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return StreamValueBuilder<EventModel?>(
-      streamValue: controller.selectedEventStreamValue,
+      streamValue: _controller.selectedEventStreamValue,
       builder: (_, selectedEvent) {
         if (selectedEvent != null) {
           return _EventCard(
             event: selectedEvent,
-            controller: controller,
+            controller: _controller,
             onOpenDetails: () => onOpenEventDetails(selectedEvent),
             onShare: () => onShareEvent(selectedEvent),
             onRoute: selectedEvent.coordinate == null
@@ -46,14 +61,14 @@ class CityMapSelectedCards extends StatelessWidget {
         }
 
         return StreamValueBuilder<CityPoiModel?>(
-          streamValue: controller.selectedPoiStreamValue,
+          streamValue: _controller.selectedPoiStreamValue,
           builder: (_, selectedPoi) {
             if (selectedPoi == null) {
               return const SizedBox.shrink();
             }
             return _PoiCard(
               poi: selectedPoi,
-              controller: controller,
+              controller: _controller,
               onOpenDetails: () => onOpenPoiDetails(selectedPoi),
               onShare: () => onSharePoi(selectedPoi),
               onRoute: () => onRouteToPoi(selectedPoi),

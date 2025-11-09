@@ -181,6 +181,7 @@ class CityMapController implements Disposable {
       final fetchedPois = await _repository.fetchPoints(query);
       _setSuccessState(fetchedPois);
       _setMapStatus(MapStatus.ready);
+      _setMapMessage(null);
     } catch (_) {
       const errorMessage = 'Nao foi possivel carregar os pontos de interesse.';
       _setErrorState(errorMessage);

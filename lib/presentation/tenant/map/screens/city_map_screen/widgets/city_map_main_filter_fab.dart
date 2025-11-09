@@ -1,23 +1,37 @@
+// ignore_for_file: prefer_const_constructors_in_immutables
+
 import 'package:belluga_now/domain/map/filters/main_filter_option.dart';
 import 'package:belluga_now/presentation/tenant/map/screens/city_map_screen/controllers/city_map_controller.dart';
 import 'package:belluga_now/presentation/tenant/map/screens/city_map_screen/controllers/fab_menu_controller.dart';
 import 'package:belluga_now/presentation/tenant/map/screens/city_map_screen/widgets/shared/main_filter_icon_resolver.dart';
 import 'package:flutter/material.dart';
+import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 
 typedef MainFilterTap = Future<void> Function(MainFilterOption option);
 
 class CityMapMainFilterFabGroup extends StatelessWidget {
-  const CityMapMainFilterFabGroup({
+  CityMapMainFilterFabGroup({
     super.key,
-    required this.controller,
-    required this.fabMenuController,
+    CityMapController? controller,
+    FabMenuController? fabMenuController,
+    required this.onMainFilterTap,
+    required this.panelResolver,
+  })  : _controller = controller ?? GetIt.I.get<CityMapController>(),
+        _fabMenuController =
+            fabMenuController ?? GetIt.I.get<FabMenuController>();
+
+  @visibleForTesting
+  CityMapMainFilterFabGroup.withControllers(
+    this._controller,
+    this._fabMenuController, {
+    super.key,
     required this.onMainFilterTap,
     required this.panelResolver,
   });
 
-  final CityMapController controller;
-  final FabMenuController fabMenuController;
+  final CityMapController _controller;
+  final FabMenuController _fabMenuController;
   final MainFilterTap onMainFilterTap;
   final LateralPanelType? Function(MainFilterType type) panelResolver;
 
@@ -25,19 +39,19 @@ class CityMapMainFilterFabGroup extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return StreamValueBuilder<List<MainFilterOption>>(
-      streamValue: controller.mainFilterOptionsStreamValue,
+      streamValue: _controller.mainFilterOptionsStreamValue,
       builder: (_, options) {
         if (options.isEmpty) {
           return const SizedBox.shrink();
         }
         return StreamValueBuilder<bool>(
-          streamValue: fabMenuController.menuExpanded,
+          streamValue: _fabMenuController.menuExpanded,
           builder: (_, expanded) {
             return StreamValueBuilder<MainFilterOption?>(
-              streamValue: controller.activeMainFilterStreamValue,
+              streamValue: _controller.activeMainFilterStreamValue,
               builder: (_, activeFilter) {
                 return StreamValueBuilder<LateralPanelType?>(
-                  streamValue: fabMenuController.activePanel,
+                  streamValue: _fabMenuController.activePanel,
                   builder: (_, activePanel) {
                     final children = <Widget>[];
                     if (expanded == true) {
@@ -61,7 +75,7 @@ class CityMapMainFilterFabGroup extends StatelessWidget {
                     children.add(
                       FloatingActionButton(
                         heroTag: 'main-filter-toggle-fab',
-                        onPressed: fabMenuController.toggleMenu,
+                        onPressed: _fabMenuController.toggleMenu,
                         child: AnimatedSwitcher(
                           duration: const Duration(milliseconds: 200),
                           child: Icon(

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:belluga_now/application/router/modular_app/modules/auth_module.dart';
 import 'package:belluga_now/application/router/modular_app/modules/initialization_module.dart';
 import 'package:belluga_now/application/router/modular_app/modules/map_module.dart';
+import 'package:belluga_now/application/router/modular_app/modules/map_prototype_module.dart';
 import 'package:belluga_now/application/router/modular_app/modules/mercado_module.dart';
 import 'package:belluga_now/application/router/modular_app/modules/experiences_module.dart';
 import 'package:belluga_now/application/router/modular_app/modules/invites_module.dart';
@@ -51,6 +52,7 @@ class ModuleSettings extends ModuleSettingsContract {
     await registerSubModule(ProfileModule());
     await registerSubModule(ScheduleModule());
     await registerSubModule(MapModule());
+    await registerSubModule(MapPrototypeModule());
     await registerSubModule(MercadoModule());
     await registerSubModule(ExperiencesModule());
     await registerSubModule(InvitesModule());

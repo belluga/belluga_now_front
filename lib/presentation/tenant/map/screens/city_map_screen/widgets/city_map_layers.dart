@@ -1,16 +1,30 @@
+// ignore_for_file: prefer_const_constructors_in_immutables
+
 import 'package:belluga_now/domain/map/city_poi_model.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/presentation/tenant/map/screens/city_map_screen/controllers/city_map_controller.dart';
 import 'package:belluga_now/presentation/tenant/map/screens/city_map_screen/widgets/shared/city_map_view.dart';
 import 'package:flutter/material.dart';
+import 'package:get_it/get_it.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 
 class CityMapLayers extends StatelessWidget {
-  const CityMapLayers({
+  CityMapLayers({
     super.key,
-    required this.controller,
+    CityMapController? controller,
+    required this.defaultCenter,
+    required this.onSelectPoi,
+    required this.onHoverChange,
+    required this.onSelectEvent,
+    required this.onMapInteraction,
+  }) : _controller = controller ?? GetIt.I.get<CityMapController>();
+
+  @visibleForTesting
+  CityMapLayers.withController(
+    this._controller, {
+    super.key,
     required this.defaultCenter,
     required this.onSelectPoi,
     required this.onHoverChange,
@@ -18,7 +32,7 @@ class CityMapLayers extends StatelessWidget {
     required this.onMapInteraction,
   });
 
-  final CityMapController controller;
+  final CityMapController _controller;
   final CityCoordinate defaultCenter;
   final ValueChanged<CityPoiModel?> onSelectPoi;
   final ValueChanged<String?> onHoverChange;
@@ -33,25 +47,25 @@ class CityMapLayers extends StatelessWidget {
     );
 
     return StreamValueBuilder<List<CityPoiModel>>(
-      streamValue: controller.pois,
+      streamValue: _controller.pois,
       builder: (_, pois) {
         return StreamValueBuilder<List<EventModel>>(
-          streamValue: controller.eventsStreamValue,
+          streamValue: _controller.eventsStreamValue,
           builder: (_, events) {
             return StreamValueBuilder<CityCoordinate?>(
-              streamValue: controller.userLocationStreamValue,
+              streamValue: _controller.userLocationStreamValue,
               builder: (_, coordinate) {
                 final userLatLng = coordinate == null
                     ? null
                     : LatLng(coordinate.latitude, coordinate.longitude);
                 return StreamValueBuilder<CityPoiModel?>(
-                  streamValue: controller.selectedPoiStreamValue,
+                  streamValue: _controller.selectedPoiStreamValue,
                   builder: (_, selectedPoi) {
                     return StreamValueBuilder<EventModel?>(
-                      streamValue: controller.selectedEventStreamValue,
+                      streamValue: _controller.selectedEventStreamValue,
                       builder: (_, selectedEvent) {
                         return StreamValueBuilder<String?>(
-                          streamValue: controller.hoveredPoiIdStreamValue,
+                          streamValue: _controller.hoveredPoiIdStreamValue,
                           builder: (_, hoveredId) {
                             return CityMapView(
                               pois: pois,

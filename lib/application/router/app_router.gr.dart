@@ -9,26 +9,28 @@
 // coverage:ignore-file
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
-import 'package:auto_route/auto_route.dart' as _i21;
-import 'package:belluga_now/domain/experiences/experience_model.dart' as _i23;
-import 'package:belluga_now/domain/invites/invite_model.dart' as _i24;
-import 'package:belluga_now/domain/map/city_poi_model.dart' as _i25;
+import 'package:auto_route/auto_route.dart' as _i22;
+import 'package:belluga_now/domain/experiences/experience_model.dart' as _i24;
+import 'package:belluga_now/domain/invites/invite_model.dart' as _i25;
+import 'package:belluga_now/domain/map/city_poi_model.dart' as _i26;
 import 'package:belluga_now/presentation/common/auth/routes/auth_create_new_password_route.dart'
     as _i1;
 import 'package:belluga_now/presentation/common/auth/routes/auth_login_route.dart'
     as _i2;
 import 'package:belluga_now/presentation/common/auth/routes/recovery_password_route.dart'
-    as _i16;
+    as _i17;
 import 'package:belluga_now/presentation/common/init/screens/init_screen/init_screen.dart'
     as _i8;
 import 'package:belluga_now/presentation/landlord/home/routes/landlord_home_route.dart'
     as _i11;
+import 'package:belluga_now/presentation/prototypes/map_experience/routes/map_experience_prototype_route.dart'
+    as _i12;
 import 'package:belluga_now/presentation/tenant/experiences/routes/experience_detail_route.dart'
     as _i6;
 import 'package:belluga_now/presentation/tenant/experiences/routes/experiences_route.dart'
     as _i7;
 import 'package:belluga_now/presentation/tenant/home/routes/tenant_home_route.dart'
-    as _i18;
+    as _i19;
 import 'package:belluga_now/presentation/tenant/invites/routes/invite_flow_route.dart'
     as _i9;
 import 'package:belluga_now/presentation/tenant/invites/routes/invite_share_route.dart'
@@ -36,36 +38,36 @@ import 'package:belluga_now/presentation/tenant/invites/routes/invite_share_rout
 import 'package:belluga_now/presentation/tenant/map/routes/city_map_route.dart'
     as _i3;
 import 'package:belluga_now/presentation/tenant/map/routes/poi_details_route.dart'
-    as _i13;
-import 'package:belluga_now/presentation/tenant/menu/routes/tenant_menu_route.dart'
-    as _i19;
-import 'package:belluga_now/presentation/tenant/mercado/models/mercado_producer.dart'
-    as _i26;
-import 'package:belluga_now/presentation/tenant/mercado/routes/mercado_route.dart'
-    as _i12;
-import 'package:belluga_now/presentation/tenant/mercado/routes/producer_store_route.dart'
     as _i14;
-import 'package:belluga_now/presentation/tenant/profile/routes/profile_route.dart'
+import 'package:belluga_now/presentation/tenant/menu/routes/tenant_menu_route.dart'
+    as _i20;
+import 'package:belluga_now/presentation/tenant/mercado/models/mercado_producer.dart'
+    as _i27;
+import 'package:belluga_now/presentation/tenant/mercado/routes/mercado_route.dart'
+    as _i13;
+import 'package:belluga_now/presentation/tenant/mercado/routes/producer_store_route.dart'
     as _i15;
+import 'package:belluga_now/presentation/tenant/profile/routes/profile_route.dart'
+    as _i16;
 import 'package:belluga_now/presentation/tenant/schedule/routes/event_detail_route.dart'
     as _i4;
 import 'package:belluga_now/presentation/tenant/schedule/routes/event_search_route.dart'
     as _i5;
 import 'package:belluga_now/presentation/tenant/schedule/routes/schedule_route.dart'
-    as _i17;
+    as _i18;
 import 'package:belluga_now/presentation/tenant/tabs/tenant_tabs_route.dart'
-    as _i20;
-import 'package:flutter/material.dart' as _i22;
+    as _i21;
+import 'package:flutter/material.dart' as _i23;
 
 /// generated route for
 /// [_i1.AuthCreateNewPasswordRoutePage]
-class AuthCreateNewPasswordRoute extends _i21.PageRouteInfo<void> {
-  const AuthCreateNewPasswordRoute({List<_i21.PageRouteInfo>? children})
+class AuthCreateNewPasswordRoute extends _i22.PageRouteInfo<void> {
+  const AuthCreateNewPasswordRoute({List<_i22.PageRouteInfo>? children})
       : super(AuthCreateNewPasswordRoute.name, initialChildren: children);
 
   static const String name = 'AuthCreateNewPasswordRoute';
 
-  static _i21.PageInfo page = _i21.PageInfo(
+  static _i22.PageInfo page = _i22.PageInfo(
     name,
     builder: (data) {
       return const _i1.AuthCreateNewPasswordRoutePage();
@@ -75,13 +77,13 @@ class AuthCreateNewPasswordRoute extends _i21.PageRouteInfo<void> {
 
 /// generated route for
 /// [_i2.AuthLoginRoutePage]
-class AuthLoginRoute extends _i21.PageRouteInfo<void> {
-  const AuthLoginRoute({List<_i21.PageRouteInfo>? children})
+class AuthLoginRoute extends _i22.PageRouteInfo<void> {
+  const AuthLoginRoute({List<_i22.PageRouteInfo>? children})
       : super(AuthLoginRoute.name, initialChildren: children);
 
   static const String name = 'AuthLoginRoute';
 
-  static _i21.PageInfo page = _i21.PageInfo(
+  static _i22.PageInfo page = _i22.PageInfo(
     name,
     builder: (data) {
       return const _i2.AuthLoginRoutePage();
@@ -91,13 +93,13 @@ class AuthLoginRoute extends _i21.PageRouteInfo<void> {
 
 /// generated route for
 /// [_i3.CityMapRoutePage]
-class CityMapRoute extends _i21.PageRouteInfo<void> {
-  const CityMapRoute({List<_i21.PageRouteInfo>? children})
+class CityMapRoute extends _i22.PageRouteInfo<void> {
+  const CityMapRoute({List<_i22.PageRouteInfo>? children})
       : super(CityMapRoute.name, initialChildren: children);
 
   static const String name = 'CityMapRoute';
 
-  static _i21.PageInfo page = _i21.PageInfo(
+  static _i22.PageInfo page = _i22.PageInfo(
     name,
     builder: (data) {
       return const _i3.CityMapRoutePage();
@@ -107,11 +109,11 @@ class CityMapRoute extends _i21.PageRouteInfo<void> {
 
 /// generated route for
 /// [_i4.EventDetailRoutePage]
-class EventDetailRoute extends _i21.PageRouteInfo<EventDetailRouteArgs> {
+class EventDetailRoute extends _i22.PageRouteInfo<EventDetailRouteArgs> {
   EventDetailRoute({
-    _i22.Key? key,
+    _i23.Key? key,
     required String slug,
-    List<_i21.PageRouteInfo>? children,
+    List<_i22.PageRouteInfo>? children,
   }) : super(
           EventDetailRoute.name,
           args: EventDetailRouteArgs(key: key, slug: slug),
@@ -121,7 +123,7 @@ class EventDetailRoute extends _i21.PageRouteInfo<EventDetailRouteArgs> {
 
   static const String name = 'EventDetailRoute';
 
-  static _i21.PageInfo page = _i21.PageInfo(
+  static _i22.PageInfo page = _i22.PageInfo(
     name,
     builder: (data) {
       final pathParams = data.inheritedPathParams;
@@ -136,7 +138,7 @@ class EventDetailRoute extends _i21.PageRouteInfo<EventDetailRouteArgs> {
 class EventDetailRouteArgs {
   const EventDetailRouteArgs({this.key, required this.slug});
 
-  final _i22.Key? key;
+  final _i23.Key? key;
 
   final String slug;
 
@@ -158,13 +160,13 @@ class EventDetailRouteArgs {
 
 /// generated route for
 /// [_i5.EventSearchRoute]
-class EventSearchRoute extends _i21.PageRouteInfo<void> {
-  const EventSearchRoute({List<_i21.PageRouteInfo>? children})
+class EventSearchRoute extends _i22.PageRouteInfo<void> {
+  const EventSearchRoute({List<_i22.PageRouteInfo>? children})
       : super(EventSearchRoute.name, initialChildren: children);
 
   static const String name = 'EventSearchRoute';
 
-  static _i21.PageInfo page = _i21.PageInfo(
+  static _i22.PageInfo page = _i22.PageInfo(
     name,
     builder: (data) {
       return const _i5.EventSearchRoute();
@@ -175,11 +177,11 @@ class EventSearchRoute extends _i21.PageRouteInfo<void> {
 /// generated route for
 /// [_i6.ExperienceDetailRoutePage]
 class ExperienceDetailRoute
-    extends _i21.PageRouteInfo<ExperienceDetailRouteArgs> {
+    extends _i22.PageRouteInfo<ExperienceDetailRouteArgs> {
   ExperienceDetailRoute({
-    _i22.Key? key,
-    required _i23.ExperienceModel experience,
-    List<_i21.PageRouteInfo>? children,
+    _i23.Key? key,
+    required _i24.ExperienceModel experience,
+    List<_i22.PageRouteInfo>? children,
   }) : super(
           ExperienceDetailRoute.name,
           args: ExperienceDetailRouteArgs(key: key, experience: experience),
@@ -188,7 +190,7 @@ class ExperienceDetailRoute
 
   static const String name = 'ExperienceDetailRoute';
 
-  static _i21.PageInfo page = _i21.PageInfo(
+  static _i22.PageInfo page = _i22.PageInfo(
     name,
     builder: (data) {
       final args = data.argsAs<ExperienceDetailRouteArgs>();
@@ -203,9 +205,9 @@ class ExperienceDetailRoute
 class ExperienceDetailRouteArgs {
   const ExperienceDetailRouteArgs({this.key, required this.experience});
 
-  final _i22.Key? key;
+  final _i23.Key? key;
 
-  final _i23.ExperienceModel experience;
+  final _i24.ExperienceModel experience;
 
   @override
   String toString() {
@@ -225,13 +227,13 @@ class ExperienceDetailRouteArgs {
 
 /// generated route for
 /// [_i7.ExperiencesRoutePage]
-class ExperiencesRoute extends _i21.PageRouteInfo<void> {
-  const ExperiencesRoute({List<_i21.PageRouteInfo>? children})
+class ExperiencesRoute extends _i22.PageRouteInfo<void> {
+  const ExperiencesRoute({List<_i22.PageRouteInfo>? children})
       : super(ExperiencesRoute.name, initialChildren: children);
 
   static const String name = 'ExperiencesRoute';
 
-  static _i21.PageInfo page = _i21.PageInfo(
+  static _i22.PageInfo page = _i22.PageInfo(
     name,
     builder: (data) {
       return const _i7.ExperiencesRoutePage();
@@ -241,13 +243,13 @@ class ExperiencesRoute extends _i21.PageRouteInfo<void> {
 
 /// generated route for
 /// [_i8.InitScreen]
-class InitRoute extends _i21.PageRouteInfo<void> {
-  const InitRoute({List<_i21.PageRouteInfo>? children})
+class InitRoute extends _i22.PageRouteInfo<void> {
+  const InitRoute({List<_i22.PageRouteInfo>? children})
       : super(InitRoute.name, initialChildren: children);
 
   static const String name = 'InitRoute';
 
-  static _i21.PageInfo page = _i21.PageInfo(
+  static _i22.PageInfo page = _i22.PageInfo(
     name,
     builder: (data) {
       return const _i8.InitScreen();
@@ -257,13 +259,13 @@ class InitRoute extends _i21.PageRouteInfo<void> {
 
 /// generated route for
 /// [_i9.InviteFlowRoutePage]
-class InviteFlowRoute extends _i21.PageRouteInfo<void> {
-  const InviteFlowRoute({List<_i21.PageRouteInfo>? children})
+class InviteFlowRoute extends _i22.PageRouteInfo<void> {
+  const InviteFlowRoute({List<_i22.PageRouteInfo>? children})
       : super(InviteFlowRoute.name, initialChildren: children);
 
   static const String name = 'InviteFlowRoute';
 
-  static _i21.PageInfo page = _i21.PageInfo(
+  static _i22.PageInfo page = _i22.PageInfo(
     name,
     builder: (data) {
       return const _i9.InviteFlowRoutePage();
@@ -273,11 +275,11 @@ class InviteFlowRoute extends _i21.PageRouteInfo<void> {
 
 /// generated route for
 /// [_i10.InviteShareRoutePage]
-class InviteShareRoute extends _i21.PageRouteInfo<InviteShareRouteArgs> {
+class InviteShareRoute extends _i22.PageRouteInfo<InviteShareRouteArgs> {
   InviteShareRoute({
-    _i22.Key? key,
-    required _i24.InviteModel invite,
-    List<_i21.PageRouteInfo>? children,
+    _i23.Key? key,
+    required _i25.InviteModel invite,
+    List<_i22.PageRouteInfo>? children,
   }) : super(
           InviteShareRoute.name,
           args: InviteShareRouteArgs(key: key, invite: invite),
@@ -286,7 +288,7 @@ class InviteShareRoute extends _i21.PageRouteInfo<InviteShareRouteArgs> {
 
   static const String name = 'InviteShareRoute';
 
-  static _i21.PageInfo page = _i21.PageInfo(
+  static _i22.PageInfo page = _i22.PageInfo(
     name,
     builder: (data) {
       final args = data.argsAs<InviteShareRouteArgs>();
@@ -298,9 +300,9 @@ class InviteShareRoute extends _i21.PageRouteInfo<InviteShareRouteArgs> {
 class InviteShareRouteArgs {
   const InviteShareRouteArgs({this.key, required this.invite});
 
-  final _i22.Key? key;
+  final _i23.Key? key;
 
-  final _i24.InviteModel invite;
+  final _i25.InviteModel invite;
 
   @override
   String toString() {
@@ -320,13 +322,13 @@ class InviteShareRouteArgs {
 
 /// generated route for
 /// [_i11.LandlordHomeRoutePage]
-class LandlordHomeRoute extends _i21.PageRouteInfo<void> {
-  const LandlordHomeRoute({List<_i21.PageRouteInfo>? children})
+class LandlordHomeRoute extends _i22.PageRouteInfo<void> {
+  const LandlordHomeRoute({List<_i22.PageRouteInfo>? children})
       : super(LandlordHomeRoute.name, initialChildren: children);
 
   static const String name = 'LandlordHomeRoute';
 
-  static _i21.PageInfo page = _i21.PageInfo(
+  static _i22.PageInfo page = _i22.PageInfo(
     name,
     builder: (data) {
       return const _i11.LandlordHomeRoutePage();
@@ -335,28 +337,44 @@ class LandlordHomeRoute extends _i21.PageRouteInfo<void> {
 }
 
 /// generated route for
-/// [_i12.MercadoRoutePage]
-class MercadoRoute extends _i21.PageRouteInfo<void> {
-  const MercadoRoute({List<_i21.PageRouteInfo>? children})
-      : super(MercadoRoute.name, initialChildren: children);
+/// [_i12.MapExperiencePrototypeRoutePage]
+class MapExperiencePrototypeRoute extends _i22.PageRouteInfo<void> {
+  const MapExperiencePrototypeRoute({List<_i22.PageRouteInfo>? children})
+      : super(MapExperiencePrototypeRoute.name, initialChildren: children);
 
-  static const String name = 'MercadoRoute';
+  static const String name = 'MapExperiencePrototypeRoute';
 
-  static _i21.PageInfo page = _i21.PageInfo(
+  static _i22.PageInfo page = _i22.PageInfo(
     name,
     builder: (data) {
-      return const _i12.MercadoRoutePage();
+      return const _i12.MapExperiencePrototypeRoutePage();
     },
   );
 }
 
 /// generated route for
-/// [_i13.PoiDetailsRoutePage]
-class PoiDetailsRoute extends _i21.PageRouteInfo<PoiDetailsRouteArgs> {
+/// [_i13.MercadoRoutePage]
+class MercadoRoute extends _i22.PageRouteInfo<void> {
+  const MercadoRoute({List<_i22.PageRouteInfo>? children})
+      : super(MercadoRoute.name, initialChildren: children);
+
+  static const String name = 'MercadoRoute';
+
+  static _i22.PageInfo page = _i22.PageInfo(
+    name,
+    builder: (data) {
+      return const _i13.MercadoRoutePage();
+    },
+  );
+}
+
+/// generated route for
+/// [_i14.PoiDetailsRoutePage]
+class PoiDetailsRoute extends _i22.PageRouteInfo<PoiDetailsRouteArgs> {
   PoiDetailsRoute({
-    _i22.Key? key,
-    required _i25.CityPoiModel poi,
-    List<_i21.PageRouteInfo>? children,
+    _i23.Key? key,
+    required _i26.CityPoiModel poi,
+    List<_i22.PageRouteInfo>? children,
   }) : super(
           PoiDetailsRoute.name,
           args: PoiDetailsRouteArgs(key: key, poi: poi),
@@ -365,11 +383,11 @@ class PoiDetailsRoute extends _i21.PageRouteInfo<PoiDetailsRouteArgs> {
 
   static const String name = 'PoiDetailsRoute';
 
-  static _i21.PageInfo page = _i21.PageInfo(
+  static _i22.PageInfo page = _i22.PageInfo(
     name,
     builder: (data) {
       final args = data.argsAs<PoiDetailsRouteArgs>();
-      return _i13.PoiDetailsRoutePage(key: args.key, poi: args.poi);
+      return _i14.PoiDetailsRoutePage(key: args.key, poi: args.poi);
     },
   );
 }
@@ -377,9 +395,9 @@ class PoiDetailsRoute extends _i21.PageRouteInfo<PoiDetailsRouteArgs> {
 class PoiDetailsRouteArgs {
   const PoiDetailsRouteArgs({this.key, required this.poi});
 
-  final _i22.Key? key;
+  final _i23.Key? key;
 
-  final _i25.CityPoiModel poi;
+  final _i26.CityPoiModel poi;
 
   @override
   String toString() {
@@ -398,12 +416,12 @@ class PoiDetailsRouteArgs {
 }
 
 /// generated route for
-/// [_i14.ProducerStoreRoutePage]
-class ProducerStoreRoute extends _i21.PageRouteInfo<ProducerStoreRouteArgs> {
+/// [_i15.ProducerStoreRoutePage]
+class ProducerStoreRoute extends _i22.PageRouteInfo<ProducerStoreRouteArgs> {
   ProducerStoreRoute({
-    _i22.Key? key,
-    required _i26.MercadoProducer producer,
-    List<_i21.PageRouteInfo>? children,
+    _i23.Key? key,
+    required _i27.MercadoProducer producer,
+    List<_i22.PageRouteInfo>? children,
   }) : super(
           ProducerStoreRoute.name,
           args: ProducerStoreRouteArgs(key: key, producer: producer),
@@ -412,11 +430,11 @@ class ProducerStoreRoute extends _i21.PageRouteInfo<ProducerStoreRouteArgs> {
 
   static const String name = 'ProducerStoreRoute';
 
-  static _i21.PageInfo page = _i21.PageInfo(
+  static _i22.PageInfo page = _i22.PageInfo(
     name,
     builder: (data) {
       final args = data.argsAs<ProducerStoreRouteArgs>();
-      return _i14.ProducerStoreRoutePage(
+      return _i15.ProducerStoreRoutePage(
         key: args.key,
         producer: args.producer,
       );
@@ -427,9 +445,9 @@ class ProducerStoreRoute extends _i21.PageRouteInfo<ProducerStoreRouteArgs> {
 class ProducerStoreRouteArgs {
   const ProducerStoreRouteArgs({this.key, required this.producer});
 
-  final _i22.Key? key;
+  final _i23.Key? key;
 
-  final _i26.MercadoProducer producer;
+  final _i27.MercadoProducer producer;
 
   @override
   String toString() {
@@ -448,29 +466,29 @@ class ProducerStoreRouteArgs {
 }
 
 /// generated route for
-/// [_i15.ProfileRoutePage]
-class ProfileRoute extends _i21.PageRouteInfo<void> {
-  const ProfileRoute({List<_i21.PageRouteInfo>? children})
+/// [_i16.ProfileRoutePage]
+class ProfileRoute extends _i22.PageRouteInfo<void> {
+  const ProfileRoute({List<_i22.PageRouteInfo>? children})
       : super(ProfileRoute.name, initialChildren: children);
 
   static const String name = 'ProfileRoute';
 
-  static _i21.PageInfo page = _i21.PageInfo(
+  static _i22.PageInfo page = _i22.PageInfo(
     name,
     builder: (data) {
-      return const _i15.ProfileRoutePage();
+      return const _i16.ProfileRoutePage();
     },
   );
 }
 
 /// generated route for
-/// [_i16.RecoveryPasswordRoutePage]
+/// [_i17.RecoveryPasswordRoutePage]
 class RecoveryPasswordRoute
-    extends _i21.PageRouteInfo<RecoveryPasswordRouteArgs> {
+    extends _i22.PageRouteInfo<RecoveryPasswordRouteArgs> {
   RecoveryPasswordRoute({
-    _i22.Key? key,
+    _i23.Key? key,
     String? initialEmmail,
-    List<_i21.PageRouteInfo>? children,
+    List<_i22.PageRouteInfo>? children,
   }) : super(
           RecoveryPasswordRoute.name,
           args: RecoveryPasswordRouteArgs(
@@ -482,13 +500,13 @@ class RecoveryPasswordRoute
 
   static const String name = 'RecoveryPasswordRoute';
 
-  static _i21.PageInfo page = _i21.PageInfo(
+  static _i22.PageInfo page = _i22.PageInfo(
     name,
     builder: (data) {
       final args = data.argsAs<RecoveryPasswordRouteArgs>(
         orElse: () => const RecoveryPasswordRouteArgs(),
       );
-      return _i16.RecoveryPasswordRoutePage(
+      return _i17.RecoveryPasswordRoutePage(
         key: args.key,
         initialEmmail: args.initialEmmail,
       );
@@ -499,7 +517,7 @@ class RecoveryPasswordRoute
 class RecoveryPasswordRouteArgs {
   const RecoveryPasswordRouteArgs({this.key, this.initialEmmail});
 
-  final _i22.Key? key;
+  final _i23.Key? key;
 
   final String? initialEmmail;
 
@@ -520,65 +538,65 @@ class RecoveryPasswordRouteArgs {
 }
 
 /// generated route for
-/// [_i17.ScheduleRoute]
-class ScheduleRoute extends _i21.PageRouteInfo<void> {
-  const ScheduleRoute({List<_i21.PageRouteInfo>? children})
+/// [_i18.ScheduleRoute]
+class ScheduleRoute extends _i22.PageRouteInfo<void> {
+  const ScheduleRoute({List<_i22.PageRouteInfo>? children})
       : super(ScheduleRoute.name, initialChildren: children);
 
   static const String name = 'ScheduleRoute';
 
-  static _i21.PageInfo page = _i21.PageInfo(
+  static _i22.PageInfo page = _i22.PageInfo(
     name,
     builder: (data) {
-      return const _i17.ScheduleRoute();
+      return const _i18.ScheduleRoute();
     },
   );
 }
 
 /// generated route for
-/// [_i18.TenantHomeRoutePage]
-class TenantHomeRoute extends _i21.PageRouteInfo<void> {
-  const TenantHomeRoute({List<_i21.PageRouteInfo>? children})
+/// [_i19.TenantHomeRoutePage]
+class TenantHomeRoute extends _i22.PageRouteInfo<void> {
+  const TenantHomeRoute({List<_i22.PageRouteInfo>? children})
       : super(TenantHomeRoute.name, initialChildren: children);
 
   static const String name = 'TenantHomeRoute';
 
-  static _i21.PageInfo page = _i21.PageInfo(
+  static _i22.PageInfo page = _i22.PageInfo(
     name,
     builder: (data) {
-      return const _i18.TenantHomeRoutePage();
+      return const _i19.TenantHomeRoutePage();
     },
   );
 }
 
 /// generated route for
-/// [_i19.TenantMenuRoutePage]
-class TenantMenuRoute extends _i21.PageRouteInfo<void> {
-  const TenantMenuRoute({List<_i21.PageRouteInfo>? children})
+/// [_i20.TenantMenuRoutePage]
+class TenantMenuRoute extends _i22.PageRouteInfo<void> {
+  const TenantMenuRoute({List<_i22.PageRouteInfo>? children})
       : super(TenantMenuRoute.name, initialChildren: children);
 
   static const String name = 'TenantMenuRoute';
 
-  static _i21.PageInfo page = _i21.PageInfo(
+  static _i22.PageInfo page = _i22.PageInfo(
     name,
     builder: (data) {
-      return const _i19.TenantMenuRoutePage();
+      return const _i20.TenantMenuRoutePage();
     },
   );
 }
 
 /// generated route for
-/// [_i20.TenantTabsRoutePage]
-class TenantTabsRoute extends _i21.PageRouteInfo<void> {
-  const TenantTabsRoute({List<_i21.PageRouteInfo>? children})
+/// [_i21.TenantTabsRoutePage]
+class TenantTabsRoute extends _i22.PageRouteInfo<void> {
+  const TenantTabsRoute({List<_i22.PageRouteInfo>? children})
       : super(TenantTabsRoute.name, initialChildren: children);
 
   static const String name = 'TenantTabsRoute';
 
-  static _i21.PageInfo page = _i21.PageInfo(
+  static _i22.PageInfo page = _i22.PageInfo(
     name,
     builder: (data) {
-      return const _i20.TenantTabsRoutePage();
+      return const _i21.TenantTabsRoutePage();
     },
   );
 }

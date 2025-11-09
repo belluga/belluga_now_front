@@ -1,3 +1,5 @@
+// ignore_for_file: prefer_const_constructors_in_immutables
+
 import 'package:belluga_now/presentation/tenant/map/screens/city_map_screen/controllers/cuisine_panel_controller.dart';
 import 'package:belluga_now/presentation/tenant/map/screens/city_map_screen/controllers/events_panel_controller.dart';
 import 'package:belluga_now/presentation/tenant/map/screens/city_map_screen/controllers/fab_menu_controller.dart';
@@ -6,28 +8,52 @@ import 'package:belluga_now/presentation/tenant/map/screens/city_map_screen/widg
 import 'package:belluga_now/presentation/tenant/map/screens/city_map_screen/widgets/panels/events_panel.dart';
 import 'package:belluga_now/presentation/tenant/map/screens/city_map_screen/widgets/panels/region_panel.dart';
 import 'package:flutter/material.dart';
+import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 
 class CityMapLateralPanel extends StatelessWidget {
-  const CityMapLateralPanel({
+  CityMapLateralPanel({
     super.key,
-    required this.fabMenuController,
-    required this.regionPanelController,
-    required this.eventsPanelController,
-    required this.musicPanelController,
-    required this.cuisinePanelController,
-  });
+    FabMenuController? fabMenuController,
+    RegionPanelController? regionPanelController,
+    EventsPanelController? eventsPanelController,
+    EventsPanelController? musicPanelController,
+    CuisinePanelController? cuisinePanelController,
+  })  : _fabMenuController =
+            fabMenuController ?? GetIt.I.get<FabMenuController>(),
+        _regionPanelController =
+            regionPanelController ?? GetIt.I.get<RegionPanelController>(),
+        _eventsPanelController =
+            eventsPanelController ?? GetIt.I.get<EventsPanelController>(),
+        _musicPanelController =
+            musicPanelController ?? GetIt.I.get<EventsPanelController>(),
+        _cuisinePanelController =
+            cuisinePanelController ?? GetIt.I.get<CuisinePanelController>();
 
-  final FabMenuController fabMenuController;
-  final RegionPanelController regionPanelController;
-  final EventsPanelController eventsPanelController;
-  final EventsPanelController musicPanelController;
-  final CuisinePanelController cuisinePanelController;
+  @visibleForTesting
+  CityMapLateralPanel.withControllers({
+    super.key,
+    required FabMenuController fabMenuController,
+    required RegionPanelController regionPanelController,
+    required EventsPanelController eventsPanelController,
+    required EventsPanelController musicPanelController,
+    required CuisinePanelController cuisinePanelController,
+  })  : _fabMenuController = fabMenuController,
+        _regionPanelController = regionPanelController,
+        _eventsPanelController = eventsPanelController,
+        _musicPanelController = musicPanelController,
+        _cuisinePanelController = cuisinePanelController;
+
+  final FabMenuController _fabMenuController;
+  final RegionPanelController _regionPanelController;
+  final EventsPanelController _eventsPanelController;
+  final EventsPanelController _musicPanelController;
+  final CuisinePanelController _cuisinePanelController;
 
   @override
   Widget build(BuildContext context) {
     return StreamValueBuilder<LateralPanelType?>(
-      streamValue: fabMenuController.activePanel,
+      streamValue: _fabMenuController.activePanel,
       builder: (_, panel) {
         final panelType = panel;
         if (panelType == null) {
@@ -38,30 +64,30 @@ class CityMapLateralPanel extends StatelessWidget {
         switch (panelType) {
           case LateralPanelType.regions:
             panelWidget = RegionPanel(
-              controller: regionPanelController,
-              onClose: fabMenuController.closePanel,
+              controller: _regionPanelController,
+              onClose: _fabMenuController.closePanel,
             );
             break;
           case LateralPanelType.events:
             panelWidget = EventsPanel(
-              controller: eventsPanelController,
-              onClose: fabMenuController.closePanel,
+              controller: _eventsPanelController,
+              onClose: _fabMenuController.closePanel,
               title: 'Eventos',
               icon: Icons.event,
             );
             break;
           case LateralPanelType.music:
             panelWidget = EventsPanel(
-              controller: musicPanelController,
-              onClose: fabMenuController.closePanel,
+              controller: _musicPanelController,
+              onClose: _fabMenuController.closePanel,
               title: 'Shows',
               icon: Icons.music_note,
             );
             break;
           case LateralPanelType.cuisines:
             panelWidget = CuisinePanel(
-              controller: cuisinePanelController,
-              onClose: cuisinePanelController.closePanel,
+              controller: _cuisinePanelController,
+              onClose: _cuisinePanelController.closePanel,
             );
             break;
         }

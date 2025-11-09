@@ -9,13 +9,9 @@ import 'package:belluga_now/domain/map/map_navigation_target.dart';
 import 'package:belluga_now/domain/map/ride_share_provider.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
-import 'package:belluga_now/presentation/tenant/map/screens/city_map_screen/controllers/city_map_controller.dart'
-    show CityMapController;
+import 'package:belluga_now/presentation/tenant/map/screens/city_map_screen/controllers/city_map_controller.dart';
 import 'package:belluga_now/presentation/tenant/map/screens/city_map_screen/controllers/cuisine_panel_controller.dart';
-import 'package:belluga_now/presentation/tenant/map/screens/city_map_screen/controllers/events_panel_controller.dart';
 import 'package:belluga_now/presentation/tenant/map/screens/city_map_screen/controllers/fab_menu_controller.dart';
-import 'package:belluga_now/presentation/tenant/map/screens/city_map_screen/controllers/music_panel_controller.dart';
-import 'package:belluga_now/presentation/tenant/map/screens/city_map_screen/controllers/region_panel_controller.dart';
 import 'package:belluga_now/presentation/tenant/map/screens/city_map_screen/widgets/city_map_error_card.dart';
 import 'package:belluga_now/presentation/tenant/map/screens/city_map_screen/widgets/city_map_layers.dart';
 import 'package:belluga_now/presentation/tenant/map/screens/city_map_screen/widgets/city_map_lateral_panel.dart';
@@ -42,9 +38,6 @@ class CityMapScreen extends StatefulWidget {
 class _CityMapScreenState extends State<CityMapScreen> {
   late final CityMapController _cityMapController;
   late final FabMenuController _fabMenuController;
-  late final RegionPanelController _regionPanelController;
-  late final EventsPanelController _eventsPanelController;
-  late final MusicPanelController _musicPanelController;
   late final CuisinePanelController _cuisinePanelController;
 
   StreamSubscription<MapNavigationTarget?>? _navigationSubscription;
@@ -55,9 +48,6 @@ class _CityMapScreenState extends State<CityMapScreen> {
     super.initState();
     _cityMapController = GetIt.I.get<CityMapController>();
     _fabMenuController = GetIt.I.get<FabMenuController>();
-    _regionPanelController = GetIt.I.get<RegionPanelController>();
-    _eventsPanelController = GetIt.I.get<EventsPanelController>();
-    _musicPanelController = GetIt.I.get<MusicPanelController>();
     _cuisinePanelController = GetIt.I.get<CuisinePanelController>();
 
     _navigationSubscription = _cityMapController.mapNavigationTarget.stream
@@ -86,7 +76,6 @@ class _CityMapScreenState extends State<CityMapScreen> {
         children: [
           Positioned.fill(
             child: CityMapLayers(
-              controller: _cityMapController,
               defaultCenter: defaultCenter,
               onSelectPoi: _handleSelectPoi,
               onHoverChange: _handleHoverChange,
@@ -94,10 +83,9 @@ class _CityMapScreenState extends State<CityMapScreen> {
               onMapInteraction: _handleMapInteraction,
             ),
           ),
-          CityMapStatusBanner(controller: _cityMapController),
+          CityMapStatusBanner(),
           CityMapErrorCard(controller: _cityMapController),
           CityMapSelectedCards(
-            controller: _cityMapController,
             onOpenEventDetails: _openEventDetails,
             onShareEvent: _shareEvent,
             onRouteToEvent: _handleDirectionsForEvent,
@@ -105,20 +93,12 @@ class _CityMapScreenState extends State<CityMapScreen> {
             onSharePoi: _sharePoi,
             onRouteToPoi: _handleDirectionsForPoi,
           ),
-          CityMapLateralPanel(
-            fabMenuController: _fabMenuController,
-            regionPanelController: _regionPanelController,
-            eventsPanelController: _eventsPanelController,
-            musicPanelController: _musicPanelController,
-            cuisinePanelController: _cuisinePanelController,
-          ),
+          CityMapLateralPanel(),
           CityMapLoadingOverlay(controller: _cityMapController),
         ],
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       floatingActionButton: CityMapMainFilterFabGroup(
-        controller: _cityMapController,
-        fabMenuController: _fabMenuController,
         onMainFilterTap: _onMainFilterTap,
         panelResolver: _panelTypeFor,
       ),
