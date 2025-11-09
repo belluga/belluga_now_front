@@ -211,6 +211,9 @@ class _MapExperiencePrototypeScreenState
               'Integrações com apps de rota e caronas aparecerão aqui quando finalizarmos a experiência.',
         );
         break;
+      case MapIntent.myLocation:
+        await _centerOnUser();
+        break;
     }
   }
 
@@ -248,14 +251,15 @@ class _MapExperiencePrototypeScreenState
     }
   }
 
-  Future<void> _centerOnUser() async {
+  Future<void> _centerOnUser({bool animate = true}) async {
     final coordinate = _cityMapController.userLocationStreamValue.value;
     if (coordinate == null) {
       _showSnackbar('Ainda estamos localizando você.');
       return;
     }
     final target = LatLng(coordinate.latitude, coordinate.longitude);
-    _cityMapController.mapController.move(target, 15);
+    await _ensureMapReady();
+    _cityMapController.mapController.move(target, 16);
   }
 
   Future<void> _showSimpleSheet({
@@ -318,10 +322,22 @@ class _MapExperiencePrototypeScreenState
     await _cityMapController.loadPois(const PoiQuery());
     await _simulateDelay();
     await _cityMapController.resolveUserLocation();
+    await _centerOnUser(animate: false);
   }
 
   Future<void> _simulateDelay() =>
       Future<void>.delayed(const Duration(milliseconds: 650));
+
+  Future<void> _ensureMapReady() async {
+    try {
+      _cityMapController.mapController.camera;
+      return;
+    } catch (_) {
+      try {
+        await _cityMapController.mapController.mapEventStream.first;
+      } catch (_) {}
+    }
+  }
 }
 
 class _MapHeader extends StatelessWidget {
@@ -414,7 +430,9 @@ class _PrototypeMapLayers extends StatelessWidget {
                         return StreamValueBuilder<String?>(
                           streamValue: controller.hoveredPoiIdStreamValue,
                           builder: (_, hoveredId) {
-                            return CityMapView(
+                            // ignore: invalid_use_of_visible_for_testing_member
+                            return CityMapView.withController(
+                              controller,
                               pois: pois,
                               selectedPoi: selectedPoi,
                               onSelectPoi: onSelectPoi,

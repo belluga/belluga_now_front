@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 enum MapIntent {
@@ -5,9 +7,10 @@ enum MapIntent {
   contribute,
   social,
   travel,
+  myLocation,
 }
 
-class MapIntentFabMenu extends StatelessWidget {
+class MapIntentFabMenu extends StatefulWidget {
   const MapIntentFabMenu({
     super.key,
     required this.expanded,
@@ -22,41 +25,98 @@ class MapIntentFabMenu extends StatelessWidget {
   final ValueChanged<MapIntent> onSelectIntent;
 
   @override
+  State<MapIntentFabMenu> createState() => _MapIntentFabMenuState();
+}
+
+class _MapIntentFabMenuState extends State<MapIntentFabMenu> {
+  static const _condenseDelay = Duration(seconds: 2);
+
+  bool _condensed = false;
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _handleExpandedChange(widget.expanded);
+  }
+
+  @override
+  void didUpdateWidget(covariant MapIntentFabMenu oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.expanded != widget.expanded) {
+      _handleExpandedChange(widget.expanded);
+    }
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  void _handleExpandedChange(bool expanded) {
+    _timer?.cancel();
+    if (expanded) {
+      setState(() => _condensed = false);
+      _timer = Timer(_condenseDelay, () {
+        if (mounted && widget.expanded) {
+          setState(() => _condensed = true);
+        }
+      });
+    } else {
+      setState(() => _condensed = false);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final children = <Widget>[
+    final buttons = [
       _IntentButton(
         label: 'Explorar',
         icon: Icons.auto_awesome,
         intent: MapIntent.discover,
-        isActive: activeIntent == MapIntent.discover,
+        isActive: widget.activeIntent == MapIntent.discover,
         color: scheme.primary,
-        onTap: () => onSelectIntent(MapIntent.discover),
+        onTap: () => widget.onSelectIntent(MapIntent.discover),
+        condensed: _condensed,
       ),
       _IntentButton(
         label: 'Contribuir',
         icon: Icons.volunteer_activism,
         intent: MapIntent.contribute,
-        isActive: activeIntent == MapIntent.contribute,
+        isActive: widget.activeIntent == MapIntent.contribute,
         color: scheme.tertiary,
-        onTap: () => onSelectIntent(MapIntent.contribute),
+        onTap: () => widget.onSelectIntent(MapIntent.contribute),
+        condensed: _condensed,
       ),
       _IntentButton(
         label: 'Social',
         icon: Icons.groups_2,
         intent: MapIntent.social,
-        isActive: activeIntent == MapIntent.social,
+        isActive: widget.activeIntent == MapIntent.social,
         color: scheme.secondary,
-        onTap: () => onSelectIntent(MapIntent.social),
+        onTap: () => widget.onSelectIntent(MapIntent.social),
+        condensed: _condensed,
       ),
       _IntentButton(
         label: 'Mover-se',
         icon: Icons.directions,
         intent: MapIntent.travel,
-        isActive: activeIntent == MapIntent.travel,
+        isActive: widget.activeIntent == MapIntent.travel,
         color: scheme.primaryContainer,
-        onTap: () => onSelectIntent(MapIntent.travel),
+        onTap: () => widget.onSelectIntent(MapIntent.travel),
         foregroundColor: scheme.onPrimaryContainer,
+        condensed: _condensed,
+      ),
+      _IntentButton(
+        label: 'Você está aqui',
+        icon: Icons.my_location,
+        intent: MapIntent.myLocation,
+        isActive: widget.activeIntent == MapIntent.myLocation,
+        color: scheme.secondaryContainer,
+        onTap: () => widget.onSelectIntent(MapIntent.myLocation),
+        condensed: _condensed,
       ),
     ];
 
@@ -66,46 +126,30 @@ class MapIntentFabMenu extends StatelessWidget {
       children: [
         AnimatedSwitcher(
           duration: const Duration(milliseconds: 250),
-          child: expanded
-              ? Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 12,
-                    ),
-                    decoration: ShapeDecoration(
-                      color: scheme.surfaceContainerHighest.withValues(alpha: 0.92),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(24),
-                      ),
-                      shadows: const [
-                        BoxShadow(
-                          color: Colors.black26,
-                          blurRadius: 12,
-                          offset: Offset(0, 6),
+          child: widget.expanded
+              ? Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: buttons
+                      .map(
+                        (button) => Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 4),
+                          child: button,
                         ),
-                      ],
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children:
-                          children.map((w) => Padding(padding: const EdgeInsets.symmetric(vertical: 4), child: w)).toList(),
-                    ),
-                  ),
+                      )
+                      .toList(),
                 )
               : const SizedBox.shrink(),
         ),
         FloatingActionButton.large(
           heroTag: 'map-intent-fab-main',
-          onPressed: onToggle,
+          onPressed: widget.onToggle,
           child: AnimatedSwitcher(
             duration: const Duration(milliseconds: 200),
             transitionBuilder: (child, animation) =>
                 ScaleTransition(scale: animation, child: child),
             child: Icon(
-              expanded ? Icons.close : Icons.tune,
-              key: ValueKey<bool>(expanded),
+              widget.expanded ? Icons.close : Icons.tune,
+              key: ValueKey<bool>(widget.expanded),
               size: 28,
             ),
           ),
@@ -123,6 +167,7 @@ class _IntentButton extends StatelessWidget {
     required this.isActive,
     required this.color,
     required this.onTap,
+    required this.condensed,
     this.foregroundColor,
   });
 
@@ -133,18 +178,31 @@ class _IntentButton extends StatelessWidget {
   final Color color;
   final Color? foregroundColor;
   final VoidCallback onTap;
+  final bool condensed;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final bgColor = isActive ? color : scheme.surface;
-    final fgColor = isActive ? (foregroundColor ?? scheme.onPrimary) : scheme.onSurfaceVariant;
+    final fgColor =
+        isActive ? (foregroundColor ?? scheme.onPrimary) : scheme.onSurfaceVariant;
     final elevation = isActive ? 2.0 : 0.5;
+
+    if (condensed) {
+      return FloatingActionButton(
+        heroTag: 'intent-${intent.name}-condensed',
+        mini: true,
+        backgroundColor: bgColor,
+        foregroundColor: fgColor,
+        onPressed: onTap,
+        child: Icon(icon),
+      );
+    }
 
     return SizedBox(
       width: 190,
       child: FilledButton.icon(
-        key: ValueKey<MapIntent>(intent),
+        key: ValueKey<String>('extended-${intent.name}'),
         style: FilledButton.styleFrom(
           backgroundColor: bgColor,
           foregroundColor: fgColor,
