@@ -137,9 +137,11 @@ class _MapExperiencePrototypeScreenState
             ),
             Positioned(
               left: 16,
+              right: 96,
               bottom: 16,
-
-              child: SafeArea(child: _PoiDetailDeck(controller: _cityMapController)),
+              child: SafeArea(
+                child: _PoiDetailDeck(controller: _cityMapController),
+              ),
             ),
           ],
         ),
@@ -558,9 +560,8 @@ class _PoiDetailDeck extends StatelessWidget {
         }
         return AnimatedContainer(
           duration: const Duration(milliseconds: 250),
-          width: 280,
-          decoration: BoxDecoration(
-            color: scheme.surface,
+        decoration: BoxDecoration(
+          color: scheme.surface,
             borderRadius: BorderRadius.circular(28),
             boxShadow: const [
               BoxShadow(
