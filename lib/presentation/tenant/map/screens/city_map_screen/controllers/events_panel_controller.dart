@@ -1,6 +1,9 @@
 import 'dart:async';
 
 import 'package:belluga_now/domain/schedule/event_model.dart';
+import 'package:belluga_now/domain/map/direction_info.dart';
+import 'package:belluga_now/domain/share/share_payload.dart';
+import 'package:belluga_now/domain/map/ride_share_option.dart';
 import 'package:belluga_now/presentation/tenant/map/screens/city_map_screen/controllers/city_map_controller.dart';
 import 'package:belluga_now/presentation/tenant/map/screens/city_map_screen/controllers/fab_menu_controller.dart';
 import 'package:get_it/get_it.dart';

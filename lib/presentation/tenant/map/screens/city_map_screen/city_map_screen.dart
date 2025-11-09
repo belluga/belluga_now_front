@@ -4,15 +4,14 @@ import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/domain/map/city_poi_model.dart';
 import 'package:belluga_now/domain/map/filters/main_filter_option.dart';
+import 'package:belluga_now/domain/map/direction_info.dart';
+import 'package:belluga_now/domain/map/map_navigation_target.dart';
+import 'package:belluga_now/domain/map/map_status.dart';
+import 'package:belluga_now/domain/map/ride_share_provider.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/presentation/tenant/map/screens/city_map_screen/controllers/city_map_controller.dart'
-    show
-        CityMapController,
-        DirectionsInfo,
-        MapNavigationTarget,
-        MapStatus,
-        RideShareProvider;
+    show CityMapController;
 import 'package:belluga_now/presentation/tenant/map/screens/city_map_screen/controllers/cuisine_panel_controller.dart';
 import 'package:belluga_now/presentation/tenant/map/screens/city_map_screen/controllers/events_panel_controller.dart';
 import 'package:belluga_now/presentation/tenant/map/screens/city_map_screen/controllers/fab_menu_controller.dart';

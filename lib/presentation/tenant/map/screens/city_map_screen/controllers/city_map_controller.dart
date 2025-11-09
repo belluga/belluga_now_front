@@ -2,16 +2,22 @@ import 'dart:async';
 
 import 'package:belluga_now/domain/map/city_poi_category.dart';
 import 'package:belluga_now/domain/map/city_poi_model.dart';
+import 'package:belluga_now/domain/map/direction_info.dart';
 import 'package:belluga_now/domain/map/events/poi_update_event.dart';
 import 'package:belluga_now/domain/map/filters/main_filter_option.dart';
 import 'package:belluga_now/domain/map/filters/poi_filter_options.dart';
+import 'package:belluga_now/domain/map/map_navigation_target.dart';
 import 'package:belluga_now/domain/map/map_region_definition.dart';
+import 'package:belluga_now/domain/map/map_status.dart';
+import 'package:belluga_now/domain/map/ride_share_option.dart';
+import 'package:belluga_now/domain/map/ride_share_provider.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
 import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
 import 'package:belluga_now/domain/repositories/city_map_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
+import 'package:belluga_now/domain/share/share_payload.dart';
 import 'package:belluga_now/infrastructure/services/dal/datasources/poi_query.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -22,8 +28,6 @@ import 'package:intl/intl.dart';
 import 'package:stream_value/core/stream_value.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:geolocator/geolocator.dart';
-
-enum MapStatus { locating, fetching, ready, error, fallback }
 
 class CityMapController implements Disposable {
   CityMapController({
@@ -940,56 +944,4 @@ class CityMapController implements Disposable {
     final tagCount = selectedTags.value.length;
     activeFilterCount.addValue(categoryCount + tagCount);
   }
-}
-
-class SharePayload {
-  const SharePayload({
-    required this.message,
-    required this.subject,
-  });
-
-  final String message;
-  final String subject;
-}
-
-class DirectionsInfo {
-  const DirectionsInfo({
-    required this.coordinate,
-    required this.destination,
-    required this.destinationName,
-    required this.availableMaps,
-    required this.rideShareOptions,
-    required this.fallbackUrl,
-  });
-
-  final CityCoordinate coordinate;
-  final Coords destination;
-  final String destinationName;
-  final List<AvailableMap> availableMaps;
-  final List<RideShareOption> rideShareOptions;
-  final Uri fallbackUrl;
-}
-
-enum RideShareProvider { uber, ninetyNine }
-
-class RideShareOption {
-  const RideShareOption({
-    required this.provider,
-    required this.label,
-    required this.uris,
-  });
-
-  final RideShareProvider provider;
-  final String label;
-  final List<Uri> uris;
-}
-
-class MapNavigationTarget {
-  const MapNavigationTarget({
-    required this.center,
-    required this.zoom,
-  });
-
-  final CityCoordinate center;
-  final double zoom;
 }

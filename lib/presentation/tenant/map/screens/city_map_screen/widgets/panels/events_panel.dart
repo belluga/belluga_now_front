@@ -1,6 +1,6 @@
 import 'package:belluga_now/domain/schedule/event_model.dart';
-import 'package:belluga_now/presentation/tenant/map/screens/city_map_screen/controllers/city_map_controller.dart'
-    show DirectionsInfo, RideShareProvider;
+import 'package:belluga_now/domain/map/direction_info.dart';
+import 'package:belluga_now/domain/map/ride_share_provider.dart';
 import 'package:belluga_now/presentation/tenant/map/screens/city_map_screen/controllers/events_panel_controller.dart';
 import 'package:belluga_now/presentation/tenant/map/screens/city_map_screen/widgets/panels/map_lateral_panel.dart';
 import 'package:flutter/material.dart';
