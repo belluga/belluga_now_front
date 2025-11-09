@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:belluga_now/application/router/modular_app/modules/map_prototype_module.dart';
 import 'package:belluga_now/domain/map/city_poi_model.dart';
+import 'package:belluga_now/domain/map/map_status.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/repositories/city_map_repository_contract.dart';
@@ -67,13 +68,7 @@ class _MapExperiencePrototypeScreenState
   void initState() {
     super.initState();
     _cityMapController = _resolveController();
-    scheduleMicrotask(() async {
-      await _cityMapController.loadMainFilters();
-      await _cityMapController.loadFilters();
-      await _cityMapController.loadRegions();
-      await _cityMapController.loadPois(const PoiQuery());
-      await _cityMapController.resolveUserLocation();
-    });
+    scheduleMicrotask(_initializeController);
   }
 
   @override
@@ -123,16 +118,23 @@ class _MapExperiencePrototypeScreenState
             ),
             SafeArea(
               child: SizedBox(
-                height: 76,
+                height: 120,
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: _MapHeader(
-                    onSearch: _openSearchDialog,
-                    onLocate: _centerOnUser,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      _MapHeader(
+                        onSearch: _openSearchDialog,
+                        onLocate: _centerOnUser,
+                      ),
+                      const SizedBox(height: 8),
+                      _StatusBanner(controller: _cityMapController),
+                    ],
                   ),
                 ),
               ),
-            )
+            ),
           ],
         ),
         floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
@@ -305,6 +307,21 @@ class _MapExperiencePrototypeScreenState
       SnackBar(content: Text(message)),
     );
   }
+
+  Future<void> _initializeController() async {
+    await _simulateDelay();
+    await _cityMapController.loadMainFilters();
+    await _cityMapController.loadFilters();
+    await _simulateDelay();
+    await _cityMapController.loadRegions();
+    await _simulateDelay();
+    await _cityMapController.loadPois(const PoiQuery());
+    await _simulateDelay();
+    await _cityMapController.resolveUserLocation();
+  }
+
+  Future<void> _simulateDelay() =>
+      Future<void>.delayed(const Duration(milliseconds: 650));
 }
 
 class _MapHeader extends StatelessWidget {
@@ -422,5 +439,64 @@ class _PrototypeMapLayers extends StatelessWidget {
         );
       },
     );
+  }
+}
+
+class _StatusBanner extends StatelessWidget {
+  const _StatusBanner({required this.controller});
+
+  final CityMapController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    final baseStyle = Theme.of(context).textTheme.bodySmall;
+    return StreamValueBuilder<MapStatus>(
+      streamValue: controller.mapStatusStreamValue,
+      builder: (_, status) {
+        return StreamValueBuilder<String?>(
+          streamValue: controller.statusMessageStreamValue,
+          builder: (_, message) {
+            final resolvedMessage =
+                message ?? _fallbackMessage(status);
+            if (resolvedMessage == null) {
+              return const SizedBox.shrink();
+            }
+            return Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.35),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Text(
+                resolvedMessage,
+                style: baseStyle?.copyWith(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                    ) ??
+                    const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                    ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  String? _fallbackMessage(MapStatus status) {
+    switch (status) {
+      case MapStatus.locating:
+        return 'Localizando você...';
+      case MapStatus.fetching:
+        return 'Buscando pontos de interesse...';
+      case MapStatus.fallback:
+        return 'Exibindo mapa padrão da cidade.';
+      case MapStatus.error:
+        return 'Não foi possível atualizar o mapa.';
+      case MapStatus.ready:
+        return null;
+    }
   }
 }
