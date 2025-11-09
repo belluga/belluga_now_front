@@ -140,7 +140,7 @@ class _MapIntentFabMenuState extends State<MapIntentFabMenu> {
                 )
               : const SizedBox.shrink(),
         ),
-        FloatingActionButton.large(
+        FloatingActionButton(
           heroTag: 'map-intent-fab-main',
           onPressed: widget.onToggle,
           child: AnimatedSwitcher(
@@ -150,7 +150,6 @@ class _MapIntentFabMenuState extends State<MapIntentFabMenu> {
             child: Icon(
               widget.expanded ? Icons.close : Icons.tune,
               key: ValueKey<bool>(widget.expanded),
-              size: 28,
             ),
           ),
         ),
@@ -186,36 +185,30 @@ class _IntentButton extends StatelessWidget {
     final bgColor = isActive ? color : scheme.surface;
     final fgColor =
         isActive ? (foregroundColor ?? scheme.onPrimary) : scheme.onSurfaceVariant;
-    final elevation = isActive ? 2.0 : 0.5;
+    final elevation = 0.5;
 
-    if (condensed) {
-      return FloatingActionButton(
-        heroTag: 'intent-${intent.name}-condensed',
-        mini: true,
-        backgroundColor: bgColor,
-        foregroundColor: fgColor,
-        onPressed: onTap,
-        child: Icon(icon),
-      );
-    }
-
-    return SizedBox(
-      width: 190,
-      child: FilledButton.icon(
-        key: ValueKey<String>('extended-${intent.name}'),
-        style: FilledButton.styleFrom(
-          backgroundColor: bgColor,
-          foregroundColor: fgColor,
-          elevation: elevation,
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-        ),
-        onPressed: onTap,
-        icon: Icon(icon, size: 20),
-        label: Text(label),
-      ),
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 250),
+      child: condensed
+          ? FloatingActionButton.small(
+              key: ValueKey<String>('condensed-${intent.name}'),
+              heroTag: 'intent-${intent.name}-condensed',
+              backgroundColor: bgColor,
+              foregroundColor: fgColor,
+              elevation: elevation,
+              onPressed: onTap,
+              child: Icon(icon),
+            )
+          : FloatingActionButton.extended(
+              key: ValueKey<String>('expanded-${intent.name}'),
+              heroTag: 'intent-${intent.name}-expanded',
+              backgroundColor: bgColor,
+              foregroundColor: fgColor,
+              elevation: elevation,
+              onPressed: onTap,
+              icon: Icon(icon),
+              label: Text(label),
+            ),
     );
   }
 }

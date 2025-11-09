@@ -135,6 +135,12 @@ class _MapExperiencePrototypeScreenState
                 ),
               ),
             ),
+            Positioned(
+              left: 16,
+              bottom: 16,
+
+              child: SafeArea(child: _PoiDetailDeck(controller: _cityMapController)),
+            ),
           ],
         ),
         floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
@@ -182,8 +188,16 @@ class _MapExperiencePrototypeScreenState
   Future<void> _handleIntent(MapIntent intent) async {
     switch (intent) {
       case MapIntent.discover:
-        _cityMapController.clearSelections();
-        _showSnackbar('Explorando todos os pontos de Guarapari.');
+        final current = _cityMapController.selectedPoiStreamValue.value;
+        if (current == null) {
+          final poi = _cityMapController.pois.value.firstOrNull;
+          if (poi != null) {
+            _cityMapController.selectPoi(poi);
+            await _centerOnPoi(poi);
+          }
+        } else {
+          _cityMapController.clearSelections();
+        }
         break;
       case MapIntent.contribute:
         await _showSimpleSheet(
@@ -260,6 +274,15 @@ class _MapExperiencePrototypeScreenState
     final target = LatLng(coordinate.latitude, coordinate.longitude);
     await _ensureMapReady();
     _cityMapController.mapController.move(target, 16);
+  }
+
+  Future<void> _centerOnPoi(CityPoiModel poi) async {
+    await _ensureMapReady();
+    final target = LatLng(
+      poi.coordinate.latitude,
+      poi.coordinate.longitude,
+    );
+    _cityMapController.mapController.move(target, poi.isDynamic ? 15 : 16);
   }
 
   Future<void> _showSimpleSheet({
@@ -516,5 +539,88 @@ class _StatusBanner extends StatelessWidget {
       case MapStatus.ready:
         return null;
     }
+  }
+}
+
+class _PoiDetailDeck extends StatelessWidget {
+  const _PoiDetailDeck({required this.controller});
+
+  final CityMapController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return StreamValueBuilder<CityPoiModel?>(
+      streamValue: controller.selectedPoiStreamValue,
+      builder: (_, poi) {
+        if (poi == null) {
+          return const SizedBox.shrink();
+        }
+        return AnimatedContainer(
+          duration: const Duration(milliseconds: 250),
+          width: 280,
+          decoration: BoxDecoration(
+            color: scheme.surface,
+            borderRadius: BorderRadius.circular(28),
+            boxShadow: const [
+              BoxShadow(
+                color: Colors.black26,
+                blurRadius: 16,
+                offset: Offset(0, 8),
+              ),
+            ],
+          ),
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                poi.name,
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                poi.address,
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: poi.tags.map((tag) {
+                  return Chip(
+                    label: Text(tag),
+                    visualDensity: VisualDensity.compact,
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  FilledButton(
+                    onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Abrindo ${poi.name}')),
+                    ),
+                    child: const Text('Ver detalhes'),
+                  ),
+                  const SizedBox(width: 8),
+                  IconButton(
+                    tooltip: 'Compartilhar',
+                    onPressed: () =>
+                        ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Compartilhar ${poi.name}')),
+                    ),
+                    icon: const Icon(Icons.share_outlined),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 }
