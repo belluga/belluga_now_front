@@ -6,7 +6,6 @@ import 'package:belluga_now/domain/map/city_poi_model.dart';
 import 'package:belluga_now/domain/map/filters/main_filter_option.dart';
 import 'package:belluga_now/domain/map/direction_info.dart';
 import 'package:belluga_now/domain/map/map_navigation_target.dart';
-import 'package:belluga_now/domain/map/map_status.dart';
 import 'package:belluga_now/domain/map/ride_share_provider.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
@@ -17,13 +16,15 @@ import 'package:belluga_now/presentation/tenant/map/screens/city_map_screen/cont
 import 'package:belluga_now/presentation/tenant/map/screens/city_map_screen/controllers/fab_menu_controller.dart';
 import 'package:belluga_now/presentation/tenant/map/screens/city_map_screen/controllers/music_panel_controller.dart';
 import 'package:belluga_now/presentation/tenant/map/screens/city_map_screen/controllers/region_panel_controller.dart';
+import 'package:belluga_now/presentation/tenant/map/screens/city_map_screen/widgets/city_map_error_card.dart';
+import 'package:belluga_now/presentation/tenant/map/screens/city_map_screen/widgets/city_map_loading_overlay.dart';
+import 'package:belluga_now/presentation/tenant/map/screens/city_map_screen/widgets/city_map_status_banner.dart';
 import 'package:belluga_now/presentation/tenant/map/screens/city_map_screen/widgets/panels/cuisine_panel.dart';
 import 'package:belluga_now/presentation/tenant/map/screens/city_map_screen/widgets/panels/events_panel.dart';
 import 'package:belluga_now/presentation/tenant/map/screens/city_map_screen/widgets/panels/region_panel.dart';
 import 'package:belluga_now/presentation/tenant/map/screens/city_map_screen/widgets/poi_info_card/poi_info_card.dart';
 import 'package:belluga_now/presentation/tenant/map/screens/city_map_screen/widgets/shared/city_map_view.dart';
 import 'package:belluga_now/presentation/tenant/map/screens/city_map_screen/widgets/shared/event_info_card.dart';
-import 'package:belluga_now/presentation/tenant/map/screens/city_map_screen/widgets/shared/location_status_banner.dart';
 import 'package:belluga_now/presentation/tenant/map/screens/city_map_screen/widgets/shared/main_filter_icon_resolver.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
@@ -87,11 +88,11 @@ class _CityMapScreenState extends State<CityMapScreen> {
       body: Stack(
         children: [
           Positioned.fill(child: _buildMapLayers(defaultCenter)),
-          _buildStatusBanner(),
-          _buildErrorCard(),
+          CityMapStatusBanner(controller: _cityMapController),
+          CityMapErrorCard(controller: _cityMapController),
           _buildSelectedInfoCards(),
           _buildLateralPanel(),
-          _buildLoadingOverlay(),
+          CityMapLoadingOverlay(controller: _cityMapController),
         ],
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
@@ -187,70 +188,6 @@ class _CityMapScreenState extends State<CityMapScreen> {
               },
             );
           },
-        );
-      },
-    );
-  }
-
-  Widget _buildStatusBanner() {
-    final theme = Theme.of(context);
-    return StreamValueBuilder<String?>(
-      streamValue: _cityMapController.statusMessageStreamValue,
-      builder: (_, message) {
-        if (message == null || message.isEmpty) {
-          return const SizedBox.shrink();
-        }
-        return StreamValueBuilder<MapStatus>(
-          streamValue: _cityMapController.mapStatusStreamValue,
-          builder: (_, status) {
-            final visuals = _resolveStatusVisuals(status, theme);
-            return Align(
-              alignment: Alignment.topCenter,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-                child: SafeArea(
-                  child: LocationStatusBanner(
-                    icon: visuals.icon,
-                    label: message,
-                    backgroundColor: visuals.background,
-                    textColor: visuals.textColor,
-                  ),
-                ),
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
-
-  Widget _buildErrorCard() {
-    final theme = Theme.of(context);
-    return StreamValueBuilder<String?>(
-      streamValue: _cityMapController.errorMessage,
-      builder: (_, error) {
-        if (error == null) {
-          return const SizedBox.shrink();
-        }
-        return Align(
-          alignment: Alignment.bottomCenter,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
-            child: SafeArea(
-              child: Card(
-                color: theme.colorScheme.errorContainer,
-                child: Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: Text(
-                    error,
-                    style: TextStyle(
-                      color: theme.colorScheme.onErrorContainer,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
         );
       },
     );
@@ -352,24 +289,6 @@ class _CityMapScreenState extends State<CityMapScreen> {
           child: Padding(
             padding: const EdgeInsets.only(top: 16, bottom: 16, right: 16),
             child: SafeArea(child: panelWidget),
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildLoadingOverlay() {
-    return StreamValueBuilder<bool>(
-      streamValue: _cityMapController.isLoading,
-      builder: (_, isLoading) {
-        if (isLoading != true) {
-          return const SizedBox.shrink();
-        }
-        return const Positioned.fill(
-          child: IgnorePointer(
-            child: Center(
-              child: CircularProgressIndicator(),
-            ),
           ),
         );
       },
@@ -494,8 +413,7 @@ class _CityMapScreenState extends State<CityMapScreen> {
               child: const Text('Cancelar'),
             ),
             FilledButton(
-              onPressed: () =>
-                  Navigator.of(context).pop(textController.text),
+              onPressed: () => Navigator.of(context).pop(textController.text),
               child: const Text('Buscar'),
             ),
           ],
@@ -786,54 +704,4 @@ class _CityMapScreenState extends State<CityMapScreen> {
         return Icons.local_taxi_outlined;
     }
   }
-
-  _StatusVisuals _resolveStatusVisuals(
-    MapStatus status,
-    ThemeData theme,
-  ) {
-    switch (status) {
-      case MapStatus.locating:
-        return _StatusVisuals(
-          background: theme.colorScheme.surfaceContainerHigh,
-          textColor: theme.colorScheme.onSurfaceVariant,
-          icon: Icons.hourglass_bottom,
-        );
-      case MapStatus.fetching:
-        return _StatusVisuals(
-          background: theme.colorScheme.secondaryContainer,
-          textColor: theme.colorScheme.onSecondaryContainer,
-          icon: Icons.explore_outlined,
-        );
-      case MapStatus.fallback:
-        return _StatusVisuals(
-          background: theme.colorScheme.surfaceContainerHighest,
-          textColor: theme.colorScheme.onSurfaceVariant,
-          icon: Icons.location_off_outlined,
-        );
-      case MapStatus.error:
-        return _StatusVisuals(
-          background: theme.colorScheme.errorContainer,
-          textColor: theme.colorScheme.onErrorContainer,
-          icon: Icons.warning_amber_rounded,
-        );
-      case MapStatus.ready:
-        return _StatusVisuals(
-          background: theme.colorScheme.surfaceContainerHighest,
-          textColor: theme.colorScheme.onSurfaceVariant,
-          icon: Icons.info_outline,
-        );
-    }
-  }
-}
-
-class _StatusVisuals {
-  const _StatusVisuals({
-    required this.background,
-    required this.textColor,
-    required this.icon,
-  });
-
-  final Color background;
-  final Color textColor;
-  final IconData icon;
 }
