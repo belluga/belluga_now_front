@@ -2,6 +2,7 @@ import 'package:belluga_now/domain/map/city_poi_category.dart';
 import 'package:belluga_now/domain/map/city_poi_model.dart';
 import 'package:belluga_now/infrastructure/repositories/poi_repository.dart';
 import 'package:belluga_now/presentation/prototypes/map_experience/controllers/map_screen_controller.dart';
+import 'package:belluga_now/presentation/prototypes/map_experience/widgets/poi_detail_card_builder.dart';
 import 'package:belluga_now/presentation/tenant/map/screens/city_map_screen/widgets/shared/poi_category_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
@@ -17,6 +18,7 @@ class PoiDetailDeck extends StatefulWidget {
 class _PoiDetailDeckState extends State<PoiDetailDeck> {
   final _controller = GetIt.I.get<MapScreenController>();
   final PageController _pageController = PageController(viewportFraction: 0.88);
+  final PoiDetailCardBuilder _cardBuilder = const PoiDetailCardBuilder();
   int _pageIndex = 0;
   PoiFilterMode? _lastFilterMode;
 
@@ -64,6 +66,7 @@ class _PoiDetailDeckState extends State<PoiDetailDeck> {
                 controller: _controller,
                 colorScheme: scheme,
                 pageController: _pageController,
+                cardBuilder: _cardBuilder,
                 onChanged: (index) {
                   setState(() => _pageIndex = index);
                   _controller.selectPoi(filtered[index]);
@@ -79,6 +82,7 @@ class _PoiDetailDeckState extends State<PoiDetailDeck> {
           builder: (_, poi) => _SinglePoiCard(
             poi: poi!,
             colorScheme: scheme,
+            cardBuilder: _cardBuilder,
           ),
         );
       },
@@ -106,6 +110,7 @@ class _FilteredDeck extends StatelessWidget {
     required this.controller,
     required this.colorScheme,
     required this.pageController,
+    required this.cardBuilder,
     required this.onChanged,
   });
 
@@ -113,6 +118,7 @@ class _FilteredDeck extends StatelessWidget {
   final MapScreenController controller;
   final ColorScheme colorScheme;
   final PageController pageController;
+  final PoiDetailCardBuilder cardBuilder;
   final ValueChanged<int> onChanged;
 
   @override
@@ -142,18 +148,19 @@ class _FilteredDeck extends StatelessWidget {
         ),
         const SizedBox(height: 12),
         SizedBox(
-          height: 200,
+          height: 260,
           child: PageView.builder(
             controller: pageController,
             itemCount: pois.length,
             onPageChanged: onChanged,
-            itemBuilder: (_, index) {
+            itemBuilder: (context, index) {
               final poi = pois[index];
               return Padding(
                 padding: EdgeInsets.only(
                   right: index == pois.length - 1 ? 0 : 12,
                 ),
-                child: _PoiCard(
+                child: cardBuilder.build(
+                  context: context,
                   poi: poi,
                   colorScheme: colorScheme,
                   onPrimaryAction: () => controller.selectPoi(poi),
@@ -177,11 +184,11 @@ class _FilteredDeck extends StatelessWidget {
       case PoiFilterMode.events:
         return 'Eventos em destaque';
       case PoiFilterMode.restaurants:
-        return 'Restaurantes selecionados';
+        return 'Sugestões gastronômicas';
       case PoiFilterMode.beaches:
-        return 'Praias em foco';
+        return 'Praias recomendadas';
       case PoiFilterMode.lodging:
-        return 'Hospedagens próximas';
+        return 'Hospedagens parceiras';
       case PoiFilterMode.none:
         return 'Pontos selecionados';
     }
@@ -225,107 +232,21 @@ class _SinglePoiCard extends StatelessWidget {
   const _SinglePoiCard({
     required this.poi,
     required this.colorScheme,
+    required this.cardBuilder,
   });
 
   final CityPoiModel poi;
   final ColorScheme colorScheme;
+  final PoiDetailCardBuilder cardBuilder;
 
   @override
   Widget build(BuildContext context) {
-    return _PoiCard(
+    return cardBuilder.build(
+      context: context,
       poi: poi,
       colorScheme: colorScheme,
       onPrimaryAction: () => ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Abrindo ${poi.name}')),
-      ),
-    );
-  }
-}
-
-class _PoiCard extends StatelessWidget {
-  const _PoiCard({
-    required this.poi,
-    required this.colorScheme,
-    required this.onPrimaryAction,
-  });
-
-  final CityPoiModel poi;
-  final ColorScheme colorScheme;
-  final VoidCallback onPrimaryAction;
-
-  @override
-  Widget build(BuildContext context) {
-    final tags = poi.tags.take(5).toList();
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 250),
-      decoration: BoxDecoration(
-        color: colorScheme.surface,
-        borderRadius: BorderRadius.circular(28),
-        boxShadow: const [
-          BoxShadow(
-            color: Colors.black26,
-            blurRadius: 16,
-            offset: Offset(0, 8),
-          ),
-        ],
-      ),
-      constraints: const BoxConstraints(maxWidth: 320),
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            poi.name,
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            poi.address,
-            style: Theme.of(context).textTheme.bodySmall,
-          ),
-          if (tags.isNotEmpty) ...[
-            const SizedBox(height: 12),
-            ConstrainedBox(
-              constraints: const BoxConstraints(maxHeight: 60),
-              child: SingleChildScrollView(
-                child: Wrap(
-                  spacing: 6,
-                  runSpacing: 6,
-                  children: tags
-                      .map(
-                        (tag) => Chip(
-                          label: Text(tag),
-                          visualDensity: VisualDensity.compact,
-                        ),
-                      )
-                      .toList(),
-                ),
-              ),
-            ),
-          ],
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: FilledButton(
-                  onPressed: onPrimaryAction,
-                  child: const Text('Ver detalhes'),
-                ),
-              ),
-              const SizedBox(width: 8),
-              IconButton(
-                tooltip: 'Compartilhar',
-                onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Compartilhar ${poi.name}')),
-                ),
-                icon: const Icon(Icons.share_outlined),
-              ),
-            ],
-          ),
-        ],
       ),
     );
   }
