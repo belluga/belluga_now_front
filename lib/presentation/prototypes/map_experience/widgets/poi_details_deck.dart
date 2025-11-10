@@ -1,5 +1,8 @@
+import 'package:auto_route/auto_route.dart';
+import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/domain/map/city_poi_category.dart';
 import 'package:belluga_now/domain/map/city_poi_model.dart';
+import 'package:belluga_now/domain/map/event_poi_model.dart';
 import 'package:belluga_now/infrastructure/repositories/poi_repository.dart';
 import 'package:belluga_now/presentation/prototypes/map_experience/controllers/map_screen_controller.dart';
 import 'package:belluga_now/presentation/prototypes/map_experience/widgets/poi_detail_card_builder.dart';
@@ -67,6 +70,7 @@ class _PoiDetailDeckState extends State<PoiDetailDeck> {
                 colorScheme: scheme,
                 pageController: _pageController,
                 cardBuilder: _cardBuilder,
+                onPrimaryAction: _handlePoiAction,
                 onChanged: (index) {
                   setState(() => _pageIndex = index);
                   _controller.selectPoi(filtered[index]);
@@ -83,6 +87,7 @@ class _PoiDetailDeckState extends State<PoiDetailDeck> {
             poi: poi!,
             colorScheme: scheme,
             cardBuilder: _cardBuilder,
+            onPrimaryAction: _handlePoiAction,
           ),
         );
       },
@@ -102,6 +107,39 @@ class _PoiDetailDeckState extends State<PoiDetailDeck> {
       }
     });
   }
+
+  void _handlePoiAction(CityPoiModel poi) {
+    if (poi is EventPoiModel) {
+      final slug = _resolveEventSlug(poi);
+      if (slug != null) {
+        if (!mounted) return;
+        context.router.push(EventDetailRoute(slug: slug));
+        return;
+      }
+    }
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(content: Text('Abrindo ${poi.name}')),
+      );
+  }
+
+  String? _resolveEventSlug(EventPoiModel poi) {
+    final id = poi.event.id.value;
+    if (id.isNotEmpty) {
+      return id;
+    }
+    final title = poi.event.title.value;
+    if (title.isEmpty) {
+      return null;
+    }
+    final normalized =
+        title.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), '-');
+    return normalized
+        .replaceAll(RegExp(r'-{2,}'), '-')
+        .replaceAll(RegExp(r'^-+|-+$'), '');
+  }
 }
 
 class _FilteredDeck extends StatelessWidget {
@@ -111,6 +149,7 @@ class _FilteredDeck extends StatelessWidget {
     required this.colorScheme,
     required this.pageController,
     required this.cardBuilder,
+    required this.onPrimaryAction,
     required this.onChanged,
   });
 
@@ -119,6 +158,7 @@ class _FilteredDeck extends StatelessWidget {
   final ColorScheme colorScheme;
   final PageController pageController;
   final PoiDetailCardBuilder cardBuilder;
+  final ValueChanged<CityPoiModel> onPrimaryAction;
   final ValueChanged<int> onChanged;
 
   @override
@@ -163,7 +203,10 @@ class _FilteredDeck extends StatelessWidget {
                   context: context,
                   poi: poi,
                   colorScheme: colorScheme,
-                  onPrimaryAction: () => controller.selectPoi(poi),
+                  onPrimaryAction: () {
+                    controller.selectPoi(poi);
+                    onPrimaryAction(poi);
+                  },
                 ),
               );
             },
@@ -233,11 +276,13 @@ class _SinglePoiCard extends StatelessWidget {
     required this.poi,
     required this.colorScheme,
     required this.cardBuilder,
+    required this.onPrimaryAction,
   });
 
   final CityPoiModel poi;
   final ColorScheme colorScheme;
   final PoiDetailCardBuilder cardBuilder;
+  final ValueChanged<CityPoiModel> onPrimaryAction;
 
   @override
   Widget build(BuildContext context) {
@@ -245,9 +290,7 @@ class _SinglePoiCard extends StatelessWidget {
       context: context,
       poi: poi,
       colorScheme: colorScheme,
-      onPrimaryAction: () => ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Abrindo ${poi.name}')),
-      ),
+      onPrimaryAction: () => onPrimaryAction(poi),
     );
   }
 }

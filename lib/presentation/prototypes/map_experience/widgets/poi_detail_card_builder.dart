@@ -359,7 +359,7 @@ class _EventPoiDetailCard extends StatelessWidget {
               Expanded(
                 child: FilledButton(
                   onPressed: onPrimaryAction,
-                  child: const Text('Abrir evento'),
+                  child: const Text('Ver detalhes'),
                 ),
               ),
               const SizedBox(width: 8),
