@@ -1,7 +1,9 @@
 import 'dart:async';
 
+import 'package:belluga_now/domain/map/city_poi_category.dart';
 import 'package:belluga_now/infrastructure/repositories/poi_repository.dart';
 import 'package:belluga_now/presentation/prototypes/map_experience/controllers/fab_menu_controller.dart';
+import 'package:belluga_now/presentation/tenant/map/screens/city_map_screen/widgets/shared/poi_category_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
@@ -70,33 +72,25 @@ class _FabMenuState extends State<FabMenu> {
           streamValue: _fabController.filterModeStreamValue,
           builder: (_, mode) {
             final filterConfigs = [
-              _FilterConfig(
+              const _FilterConfig(
                 mode: PoiFilterMode.events,
                 label: 'Eventos agora',
                 icon: Icons.local_activity,
-                activeColor: scheme.primary,
-                activeForeground: scheme.onPrimary,
               ),
-              _FilterConfig(
+              const _FilterConfig(
                 mode: PoiFilterMode.restaurants,
                 label: 'Restaurantes',
                 icon: Icons.restaurant,
-                activeColor: scheme.secondary,
-                activeForeground: scheme.onSecondary,
               ),
-              _FilterConfig(
+              const _FilterConfig(
                 mode: PoiFilterMode.beaches,
                 label: 'Praias',
                 icon: Icons.beach_access,
-                activeColor: scheme.tertiary,
-                activeForeground: scheme.onTertiary,
               ),
-              _FilterConfig(
+              const _FilterConfig(
                 mode: PoiFilterMode.lodging,
                 label: 'Hospedagens',
                 icon: Icons.hotel,
-                activeColor: scheme.primaryContainer,
-                activeForeground: scheme.onPrimaryContainer,
               ),
             ];
 
@@ -116,16 +110,18 @@ class _FabMenuState extends State<FabMenu> {
                   const SizedBox(height: 8),
                   ...filterConfigs.map((config) {
                     final isActive = mode == config.mode;
+                    final activeColor = _colorForFilter(config.mode, scheme);
+                    final activeFg = isActive
+                        ? _foregroundForColor(activeColor)
+                        : scheme.onSurfaceVariant;
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 8),
                       child: _ActionButton(
                         label: config.label,
                         icon: config.icon,
                         backgroundColor:
-                            isActive ? config.activeColor : scheme.surface,
-                        foregroundColor: isActive
-                            ? config.activeForeground
-                            : scheme.onSurfaceVariant,
+                            isActive ? activeColor : scheme.surface,
+                        foregroundColor: activeFg,
                         onTap: () =>
                             _fabController.toggleFilterMode(config.mode),
                         condensed: _condensed,
@@ -194,13 +190,29 @@ class _FilterConfig {
     required this.mode,
     required this.label,
     required this.icon,
-    required this.activeColor,
-    required this.activeForeground,
   });
 
   final PoiFilterMode mode;
   final String label;
   final IconData icon;
-  final Color activeColor;
-  final Color activeForeground;
+}
+
+Color _colorForFilter(PoiFilterMode mode, ColorScheme scheme) {
+  switch (mode) {
+    case PoiFilterMode.events:
+      return scheme.primary;
+    case PoiFilterMode.restaurants:
+      return categoryTheme(CityPoiCategory.restaurant, scheme).color;
+    case PoiFilterMode.beaches:
+      return categoryTheme(CityPoiCategory.beach, scheme).color;
+    case PoiFilterMode.lodging:
+      return categoryTheme(CityPoiCategory.lodging, scheme).color;
+    case PoiFilterMode.none:
+      return scheme.surfaceContainerHighest;
+  }
+}
+
+Color _foregroundForColor(Color color) {
+  final brightness = ThemeData.estimateBrightnessForColor(color);
+  return brightness == Brightness.dark ? Colors.white : Colors.black87;
 }

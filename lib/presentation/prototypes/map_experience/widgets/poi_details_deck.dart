@@ -1,6 +1,8 @@
+import 'package:belluga_now/domain/map/city_poi_category.dart';
 import 'package:belluga_now/domain/map/city_poi_model.dart';
 import 'package:belluga_now/infrastructure/repositories/poi_repository.dart';
 import 'package:belluga_now/presentation/prototypes/map_experience/controllers/map_screen_controller.dart';
+import 'package:belluga_now/presentation/tenant/map/screens/city_map_screen/widgets/shared/poi_category_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
@@ -16,6 +18,7 @@ class _PoiDetailDeckState extends State<PoiDetailDeck> {
   final _controller = GetIt.I.get<MapScreenController>();
   final PageController _pageController = PageController(viewportFraction: 0.88);
   int _pageIndex = 0;
+  PoiFilterMode? _lastFilterMode;
 
   @override
   void dispose() {
@@ -29,16 +32,14 @@ class _PoiDetailDeckState extends State<PoiDetailDeck> {
     return StreamValueBuilder<PoiFilterMode>(
       streamValue: _controller.filterModeStreamValue,
       builder: (_, mode) {
+        if (_lastFilterMode != mode) {
+          _lastFilterMode = mode;
+          if (mode != PoiFilterMode.none) {
+            _resetCarousel();
+          }
+        }
         if (mode == PoiFilterMode.none && _pageIndex != 0) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (!mounted) {
-              return;
-            }
-            setState(() => _pageIndex = 0);
-            if (_pageController.hasClients) {
-              _pageController.jumpToPage(0);
-            }
-          });
+          _resetCarousel();
         }
         if (mode != PoiFilterMode.none) {
           return StreamValueBuilder<List<CityPoiModel>>(
@@ -83,6 +84,20 @@ class _PoiDetailDeckState extends State<PoiDetailDeck> {
       },
     );
   }
+
+  void _resetCarousel() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        return;
+      }
+      if (_pageIndex != 0) {
+        setState(() => _pageIndex = 0);
+      }
+      if (_pageController.hasClients) {
+        _pageController.jumpToPage(0);
+      }
+    });
+  }
 }
 
 class _FilteredDeck extends StatelessWidget {
@@ -108,10 +123,16 @@ class _FilteredDeck extends StatelessWidget {
       children: [
         Row(
           children: [
-            Icon(Icons.local_activity, color: colorScheme.primary),
+            Icon(
+              _iconForFilterMode(controller.filterModeStreamValue.value),
+              color: _accentColorForFilter(
+                controller.filterModeStreamValue.value,
+                colorScheme,
+              ),
+            ),
             const SizedBox(width: 8),
             Text(
-              'Eventos em destaque',
+              _titleForFilterMode(controller.filterModeStreamValue.value),
               style: Theme.of(context)
                   .textTheme
                   .titleMedium
@@ -149,6 +170,54 @@ class _FilteredDeck extends StatelessWidget {
         ),
       ],
     );
+  }
+
+  String _titleForFilterMode(PoiFilterMode mode) {
+    switch (mode) {
+      case PoiFilterMode.events:
+        return 'Eventos em destaque';
+      case PoiFilterMode.restaurants:
+        return 'Restaurantes selecionados';
+      case PoiFilterMode.beaches:
+        return 'Praias em foco';
+      case PoiFilterMode.lodging:
+        return 'Hospedagens próximas';
+      case PoiFilterMode.none:
+        return 'Pontos selecionados';
+    }
+  }
+
+  IconData _iconForFilterMode(PoiFilterMode mode) {
+    switch (mode) {
+      case PoiFilterMode.events:
+        return Icons.local_activity;
+      case PoiFilterMode.restaurants:
+        return Icons.restaurant;
+      case PoiFilterMode.beaches:
+        return Icons.beach_access;
+      case PoiFilterMode.lodging:
+        return Icons.hotel;
+      case PoiFilterMode.none:
+        return Icons.map;
+    }
+  }
+
+  Color _accentColorForFilter(
+    PoiFilterMode mode,
+    ColorScheme scheme,
+  ) {
+    switch (mode) {
+      case PoiFilterMode.events:
+        return scheme.primary;
+      case PoiFilterMode.restaurants:
+        return categoryTheme(CityPoiCategory.restaurant, scheme).color;
+      case PoiFilterMode.beaches:
+        return categoryTheme(CityPoiCategory.beach, scheme).color;
+      case PoiFilterMode.lodging:
+        return categoryTheme(CityPoiCategory.lodging, scheme).color;
+      case PoiFilterMode.none:
+        return scheme.primary;
+    }
   }
 }
 
