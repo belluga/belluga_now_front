@@ -4,7 +4,6 @@ import 'package:belluga_now/presentation/tenant/menu/screens/menu_screen/models/
 import 'package:belluga_now/presentation/tenant/menu/screens/menu_screen/widgets/menu_logout_tile.dart';
 import 'package:belluga_now/presentation/tenant/menu/screens/menu_screen/widgets/menu_section_card.dart';
 import 'package:belluga_now/presentation/tenant/widgets/belluga_bottom_navigation_bar.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 class MenuScreen extends StatelessWidget {
@@ -77,22 +76,6 @@ class MenuScreen extends StatelessWidget {
         ],
       ),
     ];
-
-    if (kDebugMode) {
-      sections.add(
-        MenuSection(
-          title: 'Protótipos',
-          actions: [
-            MenuAction(
-              icon: Icons.explore_outlined,
-              label: 'Mapa – experiência beta',
-              helper: 'Wireframe navegável do novo mapa',
-              onTap: () => context.router.pushPath('/prototype/map-experience'),
-            ),
-          ],
-        ),
-      );
-    }
 
     return Scaffold(
       appBar: AppBar(

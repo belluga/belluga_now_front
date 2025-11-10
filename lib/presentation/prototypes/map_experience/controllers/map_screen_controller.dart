@@ -167,6 +167,14 @@ class MapScreenController implements Disposable {
 
   void clearFilters() => _poiRepository.clearFilters();
 
+  Future<void> focusOnPoi(CityPoiModel poi, {double? zoom}) async {
+    await ensureMapReady();
+    final coordinate = poi.coordinate;
+    final target = LatLng(coordinate.latitude, coordinate.longitude);
+    final targetZoom = zoom ?? mapController.camera.zoom;
+    mapController.move(target, targetZoom);
+  }
+
   PoiQuery _composeQuery({
     CityCoordinate? northEast,
     CityCoordinate? southWest,

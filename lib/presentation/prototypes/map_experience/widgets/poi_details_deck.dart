@@ -96,7 +96,9 @@ class _PoiDetailDeckState extends State<PoiDetailDeck>
                 onRoute: _handleRoute,
                 onChanged: (index) {
                   setState(() => _pageIndex = index);
-                  _controller.selectPoi(filtered[index]);
+                  final poi = filtered[index];
+                  _controller.selectPoi(poi);
+                  unawaited(_controller.focusOnPoi(poi));
                 },
                 deckHeight: deckHeight,
                 onCardHeightChanged: (poiId, height) =>

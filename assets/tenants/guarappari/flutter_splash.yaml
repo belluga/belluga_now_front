@@ -1,0 +1,6 @@
+flutter_native_splash:
+  color: "#4fa0e3"
+  image: assets/tenants/guarappari/launcher_icons/adaptive_icon_foreground.png
+  android_12:
+    image: assets/tenants/guarappari/launcher_icons/adaptive_icon_foreground.png
+    color: "#4fa0e3"
