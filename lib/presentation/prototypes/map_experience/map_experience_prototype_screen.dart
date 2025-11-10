@@ -1,11 +1,10 @@
 import 'dart:async';
 
+import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/presentation/prototypes/map_experience/controllers/map_screen_controller.dart';
-import 'package:belluga_now/presentation/prototypes/map_experience/widgets/map_header.dart';
 import 'package:belluga_now/presentation/prototypes/map_experience/widgets/fab_menu.dart';
 import 'package:belluga_now/presentation/prototypes/map_experience/widgets/poi_details_deck.dart';
 import 'package:belluga_now/presentation/prototypes/map_experience/widgets/prototype_map_layers.dart';
-import 'package:belluga_now/presentation/prototypes/map_experience/widgets/status_banner.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 
@@ -69,6 +68,27 @@ class _MapExperiencePrototypeScreenState
             //     ),
             //   ),
             // ),
+            SafeArea(
+              child: Align(
+                alignment: Alignment.topLeft,
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: IconButton.filled(
+                    style: IconButton.styleFrom(
+                      backgroundColor: Colors.black54,
+                      foregroundColor: Colors.white,
+                    ),
+                    onPressed: () async {
+                      final router = context.router;
+                      if (router.canPop()) {
+                        await router.maybePop();
+                      }
+                    },
+                    icon: const Icon(Icons.arrow_back),
+                  ),
+                ),
+              ),
+            ),
             Positioned(
               left: 16,
               right: 96,
@@ -85,40 +105,6 @@ class _MapExperiencePrototypeScreenState
         ),
       ),
     );
-  }
-
-  Future<void> _openSearchDialog() async {
-    final controller = TextEditingController();
-    final query = await showDialog<String>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Buscar pontos'),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          decoration:
-              const InputDecoration(hintText: 'Digite o termo de busca'),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancelar'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(controller.text),
-            child: const Text('Buscar'),
-          ),
-        ],
-      ),
-    );
-    if (query == null) {
-      return;
-    }
-    if (query.trim().isEmpty) {
-      await _controller.clearSearch();
-    } else {
-      await _controller.searchPois(query.trim());
-    }
   }
 
   Future<void> _initializeController() async {

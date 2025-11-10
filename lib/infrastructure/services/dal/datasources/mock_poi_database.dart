@@ -1639,19 +1639,20 @@ class MockPoiDatabase {
   }) {
     final usedIds = <String>{...existingIds};
     final normalizedCategoryIndex = <String, CityPoiCategory>{
-      for (final poi in existingCatalog)
-        _normalizeName(poi.name): poi.category,
+      for (final poi in existingCatalog) _normalizeName(poi.name): poi.category,
     };
-    final seenNames = normalizedCategoryIndex.keys
-        .where((name) => name.isNotEmpty)
-        .toSet();
+    final seenNames =
+        normalizedCategoryIndex.keys.where((name) => name.isNotEmpty).toSet();
     final List<CityPoiDTO> googleEntries = <CityPoiDTO>[];
     for (var index = 0; index < poisGoogleData.length; index++) {
       final data = poisGoogleData[index];
       final rawName = (data['name'] as String?)?.trim();
       final latitude = (data['latitude'] as num?)?.toDouble();
       final longitude = (data['longitude'] as num?)?.toDouble();
-      if (rawName == null || rawName.isEmpty || latitude == null || longitude == null) {
+      if (rawName == null ||
+          rawName.isEmpty ||
+          latitude == null ||
+          longitude == null) {
         continue;
       }
       final normalizedName = _normalizeName(rawName);
@@ -1668,8 +1669,9 @@ class MockPoiDatabase {
       final poi = CityPoiDTO(
         id: poiId,
         name: rawName,
-        description:
-            (description != null && description.isNotEmpty) ? description : 'Ponto recomendado pelo catálogo Google.',
+        description: (description != null && description.isNotEmpty)
+            ? description
+            : 'Ponto recomendado pelo catálogo Google.',
         address: _resolveAddress(data),
         category: _inferCategory(data, duplicatedCategory: duplicatedCategory),
         latitude: latitude,
@@ -1687,7 +1689,8 @@ class MockPoiDatabase {
     int index,
   ) {
     String slug = name.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), '-');
-    slug = slug.replaceAll(RegExp(r'-{2,}'), '-').replaceAll(RegExp(r'^-|-$'), '');
+    slug =
+        slug.replaceAll(RegExp(r'-{2,}'), '-').replaceAll(RegExp(r'^-|-$'), '');
     if (slug.isEmpty) {
       slug = 'poi-${index + 1}';
     }
@@ -1759,7 +1762,8 @@ class MockPoiDatabase {
     if (containsAny(combined, const ['beach', 'praia'])) {
       return CityPoiCategory.beach;
     }
-    if (containsAny(subtypes, const ['park', 'ecological', 'trail', 'nature'])) {
+    if (containsAny(
+        subtypes, const ['park', 'ecological', 'trail', 'nature'])) {
       return CityPoiCategory.nature;
     }
     if (containsAny(combined, const [
@@ -1824,10 +1828,7 @@ class MockPoiDatabase {
     if (containsBeach(poi.name)) {
       return true;
     }
-    if (containsBeach(poi.description)) {
-      return true;
-    }
-    if (poi.tags.any(containsBeach)) {
+    if (poi.description.isNotEmpty && containsBeach(poi.description)) {
       return true;
     }
     return false;

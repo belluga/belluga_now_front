@@ -13,12 +13,16 @@ class PoiDetailCardBuilder {
     required CityPoiModel poi,
     required ColorScheme colorScheme,
     required VoidCallback onPrimaryAction,
+    required VoidCallback onShare,
+    required VoidCallback onRoute,
   }) {
     if (poi is EventPoiModel) {
       return _EventPoiDetailCard(
         eventPoi: poi,
         colorScheme: colorScheme,
         onPrimaryAction: onPrimaryAction,
+        onShare: onShare,
+        onRoute: onRoute,
       );
     }
 
@@ -28,24 +32,32 @@ class PoiDetailCardBuilder {
           poi: poi,
           colorScheme: colorScheme,
           onPrimaryAction: onPrimaryAction,
+          onShare: onShare,
+          onRoute: onRoute,
         );
       case CityPoiCategory.beach:
         return _BeachPoiCard(
           poi: poi,
           colorScheme: colorScheme,
           onPrimaryAction: onPrimaryAction,
+          onShare: onShare,
+          onRoute: onRoute,
         );
       case CityPoiCategory.lodging:
         return _LodgingPoiCard(
           poi: poi,
           colorScheme: colorScheme,
           onPrimaryAction: onPrimaryAction,
+          onShare: onShare,
+          onRoute: onRoute,
         );
       default:
         return _DefaultPoiCard(
           poi: poi,
           colorScheme: colorScheme,
           onPrimaryAction: onPrimaryAction,
+          onShare: onShare,
+          onRoute: onRoute,
         );
     }
   }
@@ -56,12 +68,16 @@ abstract class _BasePoiCard extends StatelessWidget {
     required this.poi,
     required this.colorScheme,
     required this.onPrimaryAction,
+    required this.onShare,
+    required this.onRoute,
     this.primaryLabel = 'Ver detalhes',
   });
 
   final CityPoiModel poi;
   final ColorScheme colorScheme;
   final VoidCallback onPrimaryAction;
+  final VoidCallback onShare;
+  final VoidCallback onRoute;
   final String primaryLabel;
 
   @override
@@ -96,20 +112,25 @@ abstract class _BasePoiCard extends StatelessWidget {
             section(context),
             const SizedBox(height: 12),
           ],
+          FilledButton(
+            onPressed: onPrimaryAction,
+            style:
+                FilledButton.styleFrom(minimumSize: const Size.fromHeight(48)),
+            child: Text(primaryLabel),
+          ),
+          const SizedBox(height: 8),
           Row(
+            mainAxisAlignment: MainAxisAlignment.end,
             children: [
-              Expanded(
-                child: FilledButton(
-                  onPressed: onPrimaryAction,
-                  child: Text(primaryLabel),
-                ),
+              IconButton(
+                tooltip: 'Traçar rota',
+                onPressed: onRoute,
+                icon: const Icon(Icons.directions_outlined),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 4),
               IconButton(
                 tooltip: 'Compartilhar',
-                onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Compartilhar ${poi.name}')),
-                ),
+                onPressed: onShare,
                 icon: const Icon(Icons.share_outlined),
               ),
             ],
@@ -160,6 +181,8 @@ class _DefaultPoiCard extends _BasePoiCard {
     required super.poi,
     required super.colorScheme,
     required super.onPrimaryAction,
+    required super.onShare,
+    required super.onRoute,
   });
 
   @override
@@ -174,6 +197,8 @@ class _RestaurantPoiCard extends _BasePoiCard {
     required super.poi,
     required super.colorScheme,
     required super.onPrimaryAction,
+    required super.onShare,
+    required super.onRoute,
   }) : super(primaryLabel: 'Ver cardápio');
 
   @override
@@ -203,6 +228,8 @@ class _BeachPoiCard extends _BasePoiCard {
     required super.poi,
     required super.colorScheme,
     required super.onPrimaryAction,
+    required super.onShare,
+    required super.onRoute,
   }) : super(primaryLabel: 'Ver rota');
 
   @override
@@ -228,6 +255,8 @@ class _LodgingPoiCard extends _BasePoiCard {
     required super.poi,
     required super.colorScheme,
     required super.onPrimaryAction,
+    required super.onShare,
+    required super.onRoute,
   }) : super(primaryLabel: 'Reservar agora');
 
   @override
@@ -253,11 +282,15 @@ class _EventPoiDetailCard extends StatelessWidget {
     required this.eventPoi,
     required this.colorScheme,
     required this.onPrimaryAction,
+    required this.onShare,
+    required this.onRoute,
   });
 
   final EventPoiModel eventPoi;
   final ColorScheme colorScheme;
   final VoidCallback onPrimaryAction;
+  final VoidCallback onShare;
+  final VoidCallback onRoute;
 
   @override
   Widget build(BuildContext context) {
@@ -354,20 +387,25 @@ class _EventPoiDetailCard extends StatelessWidget {
             ),
           ],
           const SizedBox(height: 16),
+          FilledButton(
+            onPressed: onPrimaryAction,
+            style:
+                FilledButton.styleFrom(minimumSize: const Size.fromHeight(48)),
+            child: const Text('Ver detalhes'),
+          ),
+          const SizedBox(height: 8),
           Row(
+            mainAxisAlignment: MainAxisAlignment.end,
             children: [
-              Expanded(
-                child: FilledButton(
-                  onPressed: onPrimaryAction,
-                  child: const Text('Ver detalhes'),
-                ),
+              IconButton(
+                tooltip: 'Traçar rota',
+                onPressed: onRoute,
+                icon: const Icon(Icons.directions_outlined),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 4),
               IconButton(
                 tooltip: 'Compartilhar',
-                onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Compartilhar ${eventPoi.name}')),
-                ),
+                onPressed: onShare,
                 icon: const Icon(Icons.share_outlined),
               ),
             ],
