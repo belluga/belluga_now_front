@@ -144,7 +144,18 @@ class PoiRepository {
   Future<List<CityPoiModel>> _fetchEventPois(PoiQuery query) async {
     try {
       final events = await _scheduleRepository.getAllEvents();
+      final today = DateTime.now();
       return events
+          .where((event) {
+            final start = event.dateTimeStart.value;
+            if (start == null) {
+              return false;
+            }
+            final localStart = start.toLocal();
+            return localStart.year == today.year &&
+                localStart.month == today.month &&
+                localStart.day == today.day;
+          })
           .where(_eventHasCoordinate)
           .map(EventPoiModel.fromEvent)
           .where((poi) => _matchesQuery(poi, query))

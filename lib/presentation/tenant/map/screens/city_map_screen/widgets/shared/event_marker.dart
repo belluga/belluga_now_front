@@ -118,7 +118,7 @@ class _EventMarkerState extends State<EventMarker>
               0,
             ]),
             child: Opacity(
-              opacity: 0.1,
+              opacity: 0.7,
               child: marker,
             ),
           );
@@ -144,6 +144,9 @@ class _EventMarkerState extends State<EventMarker>
     if (state == CityEventTemporalState.now) {
       return 'AGORA';
     }
+    if (state == CityEventTemporalState.past) {
+      return 'Encerrado';
+    }
     final start = event.dateTimeStart.value;
     if (start == null) {
       return '--:--';
@@ -153,5 +156,4 @@ class _EventMarkerState extends State<EventMarker>
     final minutes = start.minute.toString().padLeft(2, '0');
     return '$hours:$minutes';
   }
-
 }
