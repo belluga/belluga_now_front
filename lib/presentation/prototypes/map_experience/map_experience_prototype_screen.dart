@@ -53,22 +53,22 @@ class _MapExperiencePrototypeScreenState
                 ),
               ],
             ),
-            SafeArea(
-              child: SizedBox(
-                height: 120,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      MapHeader(onSearch: _openSearchDialog),
-                      const SizedBox(height: 8),
-                      StatusBanner(),
-                    ],
-                  ),
-                ),
-              ),
-            ),
+            // SafeArea(
+            //   child: SizedBox(
+            //     height: 120,
+            //     child: Padding(
+            //       padding: const EdgeInsets.symmetric(horizontal: 16),
+            //       child: Column(
+            //         crossAxisAlignment: CrossAxisAlignment.stretch,
+            //         children: [
+            //           MapHeader(onSearch: _openSearchDialog),
+            //           const SizedBox(height: 8),
+            //           StatusBanner(),
+            //         ],
+            //       ),
+            //     ),
+            //   ),
+            // ),
             Positioned(
               left: 16,
               right: 96,

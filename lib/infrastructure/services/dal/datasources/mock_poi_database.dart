@@ -9,12 +9,13 @@ import 'package:belluga_now/domain/map/value_objects/map_region_id_value.dart';
 import 'package:belluga_now/domain/map/value_objects/map_region_label_value.dart';
 import 'package:belluga_now/domain/map/value_objects/map_zoom_value.dart';
 import 'package:belluga_now/infrastructure/services/dal/datasources/poi_query.dart';
+import 'package:belluga_now/infrastructure/services/dal/datasources/pois_google_data.dart';
 import 'package:belluga_now/infrastructure/services/dal/dto/map/city_poi_dto.dart';
 
 class MockPoiDatabase {
   const MockPoiDatabase();
 
-  static final List<CityPoiDTO> _pois = List.unmodifiable(<CityPoiDTO>[
+  static final List<CityPoiDTO> _rawPois = List.unmodifiable(<CityPoiDTO>[
     CityPoiDTO(
       id: 'poi-sponsor-kidelicia-loja-central',
       name: 'Kidelícia Sorvetes - Loja Central',
@@ -1467,6 +1468,26 @@ class MockPoiDatabase {
     ),
   ]);
 
+  static final List<CityPoiDTO> _curatedPois = List.unmodifiable(
+    _deduplicatePois(
+      _rawPois.map(_normalizeBeachCategory),
+    ),
+  );
+
+  static final List<CityPoiDTO> _googlePois = _buildGooglePoiDtos(
+    existingIds: _curatedPois.map((poi) => poi.id).toSet(),
+    existingCatalog: _curatedPois,
+  );
+
+  static final List<CityPoiDTO> _catalog = List.unmodifiable(
+    _deduplicatePois(
+      <CityPoiDTO>[
+        ..._curatedPois,
+        ..._googlePois.map(_normalizeBeachCategory),
+      ],
+    ),
+  );
+
   static final List<MapRegionDefinition> _regions =
       List.unmodifiable(<MapRegionDefinition>[
     MapRegionDefinition(
@@ -1515,7 +1536,7 @@ class MockPoiDatabase {
   String eventFallbackImage() => _eventFallbackImage;
   List<CityPoiDTO> findPois({PoiQuery query = const PoiQuery()}) {
     final searchTerm = query.searchTerm?.trim().toLowerCase();
-    return _pois.where((poi) {
+    return _catalog.where((poi) {
       if (searchTerm != null && searchTerm.isNotEmpty) {
         final matchesText = poi.name.toLowerCase().contains(searchTerm) ||
             poi.description.toLowerCase().contains(searchTerm) ||
@@ -1547,7 +1568,7 @@ class MockPoiDatabase {
 
   PoiFilterOptions availableFilters() {
     final Map<CityPoiCategory, Set<String>> mapping = {};
-    for (final poi in _pois) {
+    for (final poi in _catalog) {
       final set = mapping.putIfAbsent(
         poi.category,
         () => <String>{},
@@ -1610,5 +1631,253 @@ class MockPoiDatabase {
         },
       ),
     ];
+  }
+
+  static List<CityPoiDTO> _buildGooglePoiDtos({
+    required Set<String> existingIds,
+    required List<CityPoiDTO> existingCatalog,
+  }) {
+    final usedIds = <String>{...existingIds};
+    final normalizedCategoryIndex = <String, CityPoiCategory>{
+      for (final poi in existingCatalog)
+        _normalizeName(poi.name): poi.category,
+    };
+    final seenNames = normalizedCategoryIndex.keys
+        .where((name) => name.isNotEmpty)
+        .toSet();
+    final List<CityPoiDTO> googleEntries = <CityPoiDTO>[];
+    for (var index = 0; index < poisGoogleData.length; index++) {
+      final data = poisGoogleData[index];
+      final rawName = (data['name'] as String?)?.trim();
+      final latitude = (data['latitude'] as num?)?.toDouble();
+      final longitude = (data['longitude'] as num?)?.toDouble();
+      if (rawName == null || rawName.isEmpty || latitude == null || longitude == null) {
+        continue;
+      }
+      final normalizedName = _normalizeName(rawName);
+      if (normalizedName.isNotEmpty && seenNames.contains(normalizedName)) {
+        continue;
+      }
+      if (normalizedName.isNotEmpty) {
+        seenNames.add(normalizedName);
+      }
+      final poiId = _buildGooglePoiId(rawName, usedIds, index);
+      usedIds.add(poiId);
+      final description = (data['description'] as String?)?.trim();
+      final duplicatedCategory = normalizedCategoryIndex[normalizedName];
+      final poi = CityPoiDTO(
+        id: poiId,
+        name: rawName,
+        description:
+            (description != null && description.isNotEmpty) ? description : 'Ponto recomendado pelo catálogo Google.',
+        address: _resolveAddress(data),
+        category: _inferCategory(data, duplicatedCategory: duplicatedCategory),
+        latitude: latitude,
+        longitude: longitude,
+        tags: _buildTags(data),
+      );
+      googleEntries.add(poi);
+    }
+    return List<CityPoiDTO>.unmodifiable(googleEntries);
+  }
+
+  static String _buildGooglePoiId(
+    String name,
+    Set<String> existing,
+    int index,
+  ) {
+    String slug = name.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), '-');
+    slug = slug.replaceAll(RegExp(r'-{2,}'), '-').replaceAll(RegExp(r'^-|-$'), '');
+    if (slug.isEmpty) {
+      slug = 'poi-${index + 1}';
+    }
+    var candidate = 'poi-google-$slug';
+    var suffix = 1;
+    while (existing.contains(candidate)) {
+      candidate = 'poi-google-$slug-$suffix';
+      suffix += 1;
+    }
+    return candidate;
+  }
+
+  static String _resolveAddress(Map<String, dynamic> data) {
+    final address = (data['address'] as String?)?.trim();
+    if (address != null && address.isNotEmpty) {
+      return address;
+    }
+    final borough = (data['borough'] as String?)?.trim();
+    if (borough != null && borough.isNotEmpty) {
+      return borough;
+    }
+    return 'Guarapari';
+  }
+
+  static List<String> _buildTags(Map<String, dynamic> data) {
+    final tags = <String>{};
+    void addValues(String? raw) {
+      if (raw == null || raw.trim().isEmpty) {
+        return;
+      }
+      final parts = raw.split(',');
+      for (final part in parts) {
+        final value = part.trim().toLowerCase();
+        if (value.isNotEmpty) {
+          tags.add(value);
+        }
+      }
+    }
+
+    addValues(data['subtypes'] as String?);
+    addValues(data['category'] as String?);
+    addValues(data['borough'] as String?);
+
+    final rating = data['rating'];
+    if (rating is num) {
+      tags.add('rating-${rating.toStringAsFixed(1)}');
+    }
+
+    return List<String>.unmodifiable(tags);
+  }
+
+  static CityPoiCategory _inferCategory(
+    Map<String, dynamic> data, {
+    CityPoiCategory? duplicatedCategory,
+  }) {
+    if (duplicatedCategory == CityPoiCategory.beach) {
+      return CityPoiCategory.beach;
+    }
+    final category = (data['category'] as String?)?.toLowerCase() ?? '';
+    final subtypes = (data['subtypes'] as String?)?.toLowerCase() ?? '';
+    final name = (data['name'] as String?)?.toLowerCase() ?? '';
+    bool containsAny(String source, List<String> probes) =>
+        probes.any((probe) => source.contains(probe));
+    final combined = '$category $subtypes $name';
+
+    if (containsAny(combined, const ['hotel', 'lodging', 'pousada', 'inn'])) {
+      return CityPoiCategory.lodging;
+    }
+    if (containsAny(combined, const ['beach', 'praia'])) {
+      return CityPoiCategory.beach;
+    }
+    if (containsAny(subtypes, const ['park', 'ecological', 'trail', 'nature'])) {
+      return CityPoiCategory.nature;
+    }
+    if (containsAny(combined, const [
+      'restaurant',
+      'restaurante',
+      'bar',
+      'pub',
+      'cafe',
+      'coffee',
+      'padaria',
+      'bakery',
+      'lanchonete',
+      'hamburgueria',
+      'sorveteria',
+      'delicatessen',
+      'chocolate',
+      'massa',
+      'sushi',
+    ])) {
+      return CityPoiCategory.restaurant;
+    }
+    if (containsAny(combined, const ['church', 'igreja'])) {
+      return CityPoiCategory.church;
+    }
+    if (containsAny(combined, const ['event', 'cultural'])) {
+      return CityPoiCategory.culture;
+    }
+    return CityPoiCategory.attraction;
+  }
+
+  static String _normalizeName(String name) {
+    final stripped = _stripDiacritics(name.toLowerCase());
+    return stripped.replaceAll(RegExp(r'[^a-z0-9]+'), '');
+  }
+
+  static CityPoiDTO _normalizeBeachCategory(CityPoiDTO poi) {
+    if (poi.category == CityPoiCategory.beach || !_looksLikeBeach(poi)) {
+      return poi;
+    }
+    return CityPoiDTO(
+      id: poi.id,
+      name: poi.name,
+      description: poi.description,
+      address: poi.address,
+      category: CityPoiCategory.beach,
+      latitude: poi.latitude,
+      longitude: poi.longitude,
+      assetPath: poi.assetPath,
+      isDynamic: poi.isDynamic,
+      movementRadiusMeters: poi.movementRadiusMeters,
+      tags: poi.tags,
+      priority: poi.priority,
+    );
+  }
+
+  static bool _looksLikeBeach(CityPoiDTO poi) {
+    bool containsBeach(String text) {
+      final normalized = _stripDiacritics(text.toLowerCase());
+      return normalized.contains('praia') || normalized.contains('beach');
+    }
+
+    if (containsBeach(poi.name)) {
+      return true;
+    }
+    if (containsBeach(poi.description)) {
+      return true;
+    }
+    if (poi.tags.any(containsBeach)) {
+      return true;
+    }
+    return false;
+  }
+
+  static List<CityPoiDTO> _deduplicatePois(Iterable<CityPoiDTO> pois) {
+    final result = <CityPoiDTO>[];
+    final seen = <String>{};
+    for (final poi in pois) {
+      final key = _normalizeName(poi.name);
+      if (key.isEmpty || seen.add(key)) {
+        result.add(poi);
+      }
+    }
+    return result;
+  }
+
+  static String _stripDiacritics(String input) {
+    const replacements = <String, String>{
+      'á': 'a',
+      'à': 'a',
+      'â': 'a',
+      'ã': 'a',
+      'ä': 'a',
+      'ç': 'c',
+      'é': 'e',
+      'è': 'e',
+      'ê': 'e',
+      'ë': 'e',
+      'í': 'i',
+      'ì': 'i',
+      'î': 'i',
+      'ï': 'i',
+      'ñ': 'n',
+      'ó': 'o',
+      'ò': 'o',
+      'ô': 'o',
+      'õ': 'o',
+      'ö': 'o',
+      'ú': 'u',
+      'ù': 'u',
+      'û': 'u',
+      'ü': 'u',
+      'ý': 'y',
+      'ÿ': 'y',
+    };
+    final buffer = StringBuffer();
+    for (final char in input.split('')) {
+      buffer.write(replacements[char] ?? char);
+    }
+    return buffer.toString();
   }
 }
