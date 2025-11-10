@@ -37,12 +37,6 @@ class MapScreenController implements Disposable {
   StreamValue<CityCoordinate?> get userLocationStreamValue =>
       _userLocationRepository.userLocationStreamValue;
 
-  StreamValue<List<CityPoiModel>> get pois =>
-      _poiRepository.filteredPoisStreamValue;
-
-  StreamValue<List<CityPoiModel>> get allPois =>
-      _poiRepository.allPoisStreamValue;
-
   StreamValue<List<CityPoiModel>> get filteredPoisStreamValue =>
       _poiRepository.filteredPoisStreamValue;
 

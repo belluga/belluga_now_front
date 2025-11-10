@@ -23,7 +23,7 @@ class PrototypeMapLayers extends StatelessWidget {
     );
 
     return StreamValueBuilder<List<CityPoiModel>>(
-      streamValue: _controller.allPois,
+      streamValue: _controller.filteredPoisStreamValue,
       builder: (_, pois) {
         return StreamValueBuilder<CityPoiModel?>(
           streamValue: _controller.selectedPoiStreamValue,
