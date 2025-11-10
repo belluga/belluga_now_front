@@ -1,3 +1,4 @@
+import 'package:belluga_now/domain/map/city_poi_category.dart';
 import 'package:belluga_now/domain/map/city_poi_model.dart';
 import 'package:belluga_now/domain/map/event_poi_model.dart';
 import 'package:belluga_now/domain/map/events/poi_update_event.dart';
@@ -13,7 +14,7 @@ import 'package:flutter/foundation.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value.dart';
 
-enum PoiFilterMode { none, events }
+enum PoiFilterMode { none, events, restaurants, beaches, lodging }
 
 class PoiRepository {
   PoiRepository({
@@ -116,6 +117,21 @@ class PoiRepository {
     switch (_filterMode) {
       case PoiFilterMode.events:
         filtered = all.where((poi) => poi.isDynamic).toList(growable: false);
+        break;
+      case PoiFilterMode.restaurants:
+        filtered = all
+            .where((poi) => poi.category == CityPoiCategory.restaurant)
+            .toList(growable: false);
+        break;
+      case PoiFilterMode.beaches:
+        filtered = all
+            .where((poi) => poi.category == CityPoiCategory.beach)
+            .toList(growable: false);
+        break;
+      case PoiFilterMode.lodging:
+        filtered = all
+            .where((poi) => poi.category == CityPoiCategory.lodging)
+            .toList(growable: false);
         break;
       case PoiFilterMode.none:
         filtered = all;

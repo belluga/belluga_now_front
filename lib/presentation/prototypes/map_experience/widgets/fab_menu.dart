@@ -69,7 +69,37 @@ class _FabMenuState extends State<FabMenu> {
         return StreamValueBuilder<PoiFilterMode>(
           streamValue: _fabController.filterModeStreamValue,
           builder: (_, mode) {
-            final filterActive = mode != PoiFilterMode.none;
+            final filterConfigs = [
+              _FilterConfig(
+                mode: PoiFilterMode.events,
+                label: 'Eventos agora',
+                icon: Icons.local_activity,
+                activeColor: scheme.primary,
+                activeForeground: scheme.onPrimary,
+              ),
+              _FilterConfig(
+                mode: PoiFilterMode.restaurants,
+                label: 'Restaurantes',
+                icon: Icons.restaurant,
+                activeColor: scheme.secondary,
+                activeForeground: scheme.onSecondary,
+              ),
+              _FilterConfig(
+                mode: PoiFilterMode.beaches,
+                label: 'Praias',
+                icon: Icons.beach_access,
+                activeColor: scheme.tertiary,
+                activeForeground: scheme.onTertiary,
+              ),
+              _FilterConfig(
+                mode: PoiFilterMode.lodging,
+                label: 'Hospedagens',
+                icon: Icons.hotel,
+                activeColor: scheme.primaryContainer,
+                activeForeground: scheme.onPrimaryContainer,
+              ),
+            ];
+
             return Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.end,
@@ -84,21 +114,25 @@ class _FabMenuState extends State<FabMenu> {
                     condensed: _condensed,
                   ),
                   const SizedBox(height: 8),
-                  _ActionButton(
-                    label:
-                        filterActive ? 'Limpar filtro' : 'Eventos acontecendo',
-                    icon: filterActive
-                        ? Icons.layers_clear
-                        : Icons.local_activity,
-                    backgroundColor:
-                        filterActive ? scheme.errorContainer : scheme.primary,
-                    foregroundColor: filterActive
-                        ? scheme.onErrorContainer
-                        : scheme.onPrimary,
-                    onTap: _fabController.toggleEventFilter,
-                    condensed: _condensed,
-                  ),
-                  const SizedBox(height: 12),
+                  ...filterConfigs.map((config) {
+                    final isActive = mode == config.mode;
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: _ActionButton(
+                        label: config.label,
+                        icon: config.icon,
+                        backgroundColor:
+                            isActive ? config.activeColor : scheme.surface,
+                        foregroundColor: isActive
+                            ? config.activeForeground
+                            : scheme.onSurfaceVariant,
+                        onTap: () =>
+                            _fabController.toggleFilterMode(config.mode),
+                        condensed: _condensed,
+                      ),
+                    );
+                  }),
+                  const SizedBox(height: 4),
                 ],
                 FloatingActionButton(
                   heroTag: 'map-fab-main',
@@ -153,4 +187,20 @@ class _ActionButton extends StatelessWidget {
       label: Text(label),
     );
   }
+}
+
+class _FilterConfig {
+  const _FilterConfig({
+    required this.mode,
+    required this.label,
+    required this.icon,
+    required this.activeColor,
+    required this.activeForeground,
+  });
+
+  final PoiFilterMode mode;
+  final String label;
+  final IconData icon;
+  final Color activeColor;
+  final Color activeForeground;
 }

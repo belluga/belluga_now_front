@@ -14,12 +14,13 @@ class FabMenuController {
   StreamValue<PoiFilterMode> get filterModeStreamValue =>
       _poiRepository.filterModeStreamValue;
 
-  void toggleEventFilter() {
+  void toggleFilterMode(PoiFilterMode mode) {
     final current = filterModeStreamValue.value;
-    final next = current == PoiFilterMode.events
-        ? PoiFilterMode.none
-        : PoiFilterMode.events;
-    _poiRepository.applyFilterMode(next);
+    if (current == mode) {
+      _poiRepository.clearFilters();
+    } else {
+      _poiRepository.applyFilterMode(mode);
+    }
   }
 
   void toggleExpanded() {
