@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:belluga_now/infrastructure/repositories/poi_repository.dart';
 import 'package:belluga_now/presentation/prototypes/map_experience/controllers/fab_menu_controller.dart';
 import 'package:flutter/material.dart';
@@ -17,14 +19,53 @@ class FabMenu extends StatefulWidget {
 }
 
 class _FabMenuState extends State<FabMenu> {
+  static const _condenseDelay = Duration(seconds: 2);
+
   final _fabController = GetIt.I.get<FabMenuController>();
+
+  bool _condensed = false;
+  bool? _lastExpanded;
+  Timer? _condenseTimer;
+
+  @override
+  void dispose() {
+    _condenseTimer?.cancel();
+    super.dispose();
+  }
+
+  void _handleExpandedChange(bool expanded) {
+    _condenseTimer?.cancel();
+    if (!expanded) {
+      if (_condensed) {
+        setState(() => _condensed = false);
+      }
+      return;
+    }
+    if (_condensed) {
+      setState(() => _condensed = false);
+    }
+    _condenseTimer = Timer(_condenseDelay, () {
+      if (!mounted) {
+        return;
+      }
+      setState(() => _condensed = true);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     return StreamValueBuilder<bool>(
       streamValue: _fabController.expandedStreamValue,
-      builder: (_, isExpanded) {
+      builder: (_, expanded) {
+        if (_lastExpanded != expanded) {
+          _lastExpanded = expanded;
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) {
+              _handleExpandedChange(expanded);
+            }
+          });
+        }
         return StreamValueBuilder<PoiFilterMode>(
           streamValue: _fabController.filterModeStreamValue,
           builder: (_, mode) {
@@ -33,13 +74,14 @@ class _FabMenuState extends State<FabMenu> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                if (isExpanded) ...[
+                if (expanded) ...[
                   _ActionButton(
                     label: 'Ir para você',
                     icon: Icons.my_location,
                     backgroundColor: scheme.secondaryContainer,
                     foregroundColor: scheme.onSecondaryContainer,
                     onTap: widget.onNavigateToUser,
+                    condensed: _condensed,
                   ),
                   const SizedBox(height: 8),
                   _ActionButton(
@@ -54,13 +96,14 @@ class _FabMenuState extends State<FabMenu> {
                         ? scheme.onErrorContainer
                         : scheme.onPrimary,
                     onTap: _fabController.toggleEventFilter,
+                    condensed: _condensed,
                   ),
                   const SizedBox(height: 12),
                 ],
                 FloatingActionButton(
                   heroTag: 'map-fab-main',
                   onPressed: _fabController.toggleExpanded,
-                  child: Icon(isExpanded ? Icons.close : Icons.tune),
+                  child: Icon(expanded ? Icons.close : Icons.tune),
                 ),
               ],
             );
@@ -78,6 +121,7 @@ class _ActionButton extends StatelessWidget {
     required this.backgroundColor,
     required this.foregroundColor,
     required this.onTap,
+    required this.condensed,
   });
 
   final String label;
@@ -85,11 +129,22 @@ class _ActionButton extends StatelessWidget {
   final Color backgroundColor;
   final Color foregroundColor;
   final VoidCallback onTap;
+  final bool condensed;
 
   @override
   Widget build(BuildContext context) {
+    if (condensed) {
+      return FloatingActionButton.small(
+        heroTag: 'condensed-${label.hashCode}-${icon.codePoint}',
+        backgroundColor: backgroundColor,
+        foregroundColor: foregroundColor,
+        elevation: 0.5,
+        onPressed: onTap,
+        child: Icon(icon),
+      );
+    }
     return FloatingActionButton.extended(
-      heroTag: '${label.hashCode}-${icon.codePoint}',
+      heroTag: 'expanded-${label.hashCode}-${icon.codePoint}',
       backgroundColor: backgroundColor,
       foregroundColor: foregroundColor,
       elevation: 0.5,
