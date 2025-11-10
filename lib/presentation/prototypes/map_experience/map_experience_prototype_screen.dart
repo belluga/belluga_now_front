@@ -1,25 +1,13 @@
 import 'dart:async';
 
-import 'package:belluga_now/application/router/modular_app/modules/map_prototype_module.dart';
-import 'package:belluga_now/domain/map/city_poi_model.dart';
-import 'package:belluga_now/domain/map/map_status.dart';
-import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
-import 'package:belluga_now/domain/schedule/event_model.dart';
-import 'package:belluga_now/domain/repositories/city_map_repository_contract.dart';
-import 'package:belluga_now/infrastructure/repositories/city_map_repository.dart';
-import 'package:belluga_now/infrastructure/repositories/schedule_repository.dart';
-import 'package:belluga_now/infrastructure/services/dal/datasources/mock_poi_database.dart';
-import 'package:belluga_now/infrastructure/services/http/mock_http_service.dart';
-import 'package:belluga_now/infrastructure/services/networking/mock_web_socket_service.dart';
-import 'package:belluga_now/infrastructure/services/dal/datasources/poi_query.dart';
-import 'package:belluga_now/presentation/prototypes/map_experience/widgets/map_intent_fab_menu.dart';
-import 'package:belluga_now/presentation/tenant/map/screens/city_map_screen/controllers/city_map_controller.dart';
-import 'package:belluga_now/presentation/tenant/map/screens/city_map_screen/widgets/shared/city_map_view.dart';
-import 'package:flutter/foundation.dart';
+import 'package:belluga_now/presentation/prototypes/map_experience/controllers/map_screen_controller.dart';
+import 'package:belluga_now/presentation/prototypes/map_experience/widgets/map_header.dart';
+import 'package:belluga_now/presentation/prototypes/map_experience/widgets/fab_menu.dart';
+import 'package:belluga_now/presentation/prototypes/map_experience/widgets/poi_details_deck.dart';
+import 'package:belluga_now/presentation/prototypes/map_experience/widgets/prototype_map_layers.dart';
+import 'package:belluga_now/presentation/prototypes/map_experience/widgets/status_banner.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
-import 'package:latlong2/latlong.dart';
-import 'package:stream_value/core/stream_value_builder.dart';
 
 class MapExperiencePrototypeScreen extends StatefulWidget {
   const MapExperiencePrototypeScreen({super.key});
@@ -31,54 +19,12 @@ class MapExperiencePrototypeScreen extends StatefulWidget {
 
 class _MapExperiencePrototypeScreenState
     extends State<MapExperiencePrototypeScreen> {
-  late final CityMapController _cityMapController;
-  CityMapRepositoryContract? _ownedCityMapRepository;
-  MockWebSocketService? _ownedWebSocketService;
-  bool _ownsController = false;
-  MapIntent _activeIntent = MapIntent.discover;
-  bool _menuExpanded = true;
-  CityMapController _resolveController() {
-    final getIt = GetIt.I;
-    if (getIt.isRegistered<CityMapController>(
-      instanceName: MapPrototypeModule.instanceName,
-    )) {
-      return getIt.get<CityMapController>(
-        instanceName: MapPrototypeModule.instanceName,
-      );
-    }
-    _ownsController = true;
-    final mockDatabase = MockPoiDatabase();
-    final httpService = MockHttpService(database: mockDatabase);
-    final webSocketService = MockWebSocketService();
-    final mapRepository = CityMapRepository(
-      database: mockDatabase,
-      httpService: httpService,
-      webSocketService: webSocketService,
-    );
-    final scheduleRepository = ScheduleRepository();
-    _ownedCityMapRepository = mapRepository;
-    _ownedWebSocketService = webSocketService;
-    return CityMapController(
-      repository: mapRepository,
-      scheduleRepository: scheduleRepository,
-    );
-  }
+  final _controller = GetIt.I.get<MapScreenController>();
 
   @override
   void initState() {
     super.initState();
-    _cityMapController = _resolveController();
-    scheduleMicrotask(_initializeController);
-  }
-
-  @override
-  void dispose() {
-    if (_ownsController) {
-      _cityMapController.onDispose();
-      _ownedCityMapRepository?.dispose();
-      _ownedWebSocketService?.dispose();
-    }
-    super.dispose();
+    _initializeController();
   }
 
   @override
@@ -95,8 +41,6 @@ class _MapExperiencePrototypeScreenState
       textTheme: base.textTheme.apply(fontFamily: 'Roboto'),
     );
 
-    final defaultCenter = _cityMapController.defaultCenter;
-
     return Theme(
       data: theme,
       child: Scaffold(
@@ -105,14 +49,7 @@ class _MapExperiencePrototypeScreenState
             Column(
               children: [
                 Expanded(
-                  child: _PrototypeMapLayers(
-                    controller: _cityMapController,
-                    defaultCenter: defaultCenter,
-                    onSelectPoi: _handleSelectPoi,
-                    onHoverChange: _handleHoverChange,
-                    onSelectEvent: _handleSelectEvent,
-                    onMapInteraction: _handleMapInteraction,
-                  ),
+                  child: PrototypeMapLayers(),
                 ),
               ],
             ),
@@ -124,12 +61,9 @@ class _MapExperiencePrototypeScreenState
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      _MapHeader(
-                        onSearch: _openSearchDialog,
-                        onLocate: _centerOnUser,
-                      ),
+                      MapHeader(onSearch: _openSearchDialog),
                       const SizedBox(height: 8),
-                      _StatusBanner(controller: _cityMapController),
+                      StatusBanner(),
                     ],
                   ),
                 ),
@@ -140,97 +74,17 @@ class _MapExperiencePrototypeScreenState
               right: 96,
               bottom: 16,
               child: SafeArea(
-                child: _PoiDetailDeck(controller: _cityMapController),
+                child: PoiDetailDeck(),
               ),
             ),
           ],
         ),
         floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
-        floatingActionButton: MapIntentFabMenu(
-          expanded: _menuExpanded,
-          activeIntent: _activeIntent,
-          onToggle: () => setState(() => _menuExpanded = !_menuExpanded),
-          onSelectIntent: (intent) {
-            setState(() {
-              _activeIntent = intent;
-              _menuExpanded = false;
-            });
-            _handleIntent(intent);
-          },
+        floatingActionButton: FabMenu(
+          onNavigateToUser: _centerOnUser,
         ),
       ),
     );
-  }
-
-  void _handleSelectPoi(CityPoiModel? poi) {
-    _cityMapController.selectPoi(poi);
-    if (poi != null) {
-      _cityMapController.selectEvent(null);
-    }
-  }
-
-  void _handleSelectEvent(EventModel? event) {
-    _cityMapController.selectEvent(event);
-    if (event != null) {
-      _cityMapController.selectPoi(null);
-    }
-  }
-
-  void _handleHoverChange(String? poiId) {
-    if (!kIsWeb) {
-      return;
-    }
-    _cityMapController.setHoveredPoi(poiId);
-  }
-
-  void _handleMapInteraction() {
-    _cityMapController.clearSelections();
-  }
-
-  Future<void> _handleIntent(MapIntent intent) async {
-    switch (intent) {
-      case MapIntent.discover:
-        final current = _cityMapController.selectedPoiStreamValue.value;
-        if (current == null) {
-          final poi = _cityMapController.pois.value.firstOrNull;
-          if (poi != null) {
-            _cityMapController.selectPoi(poi);
-            await _centerOnPoi(poi);
-          }
-        } else {
-          _cityMapController.clearSelections();
-        }
-        break;
-      case MapIntent.contribute:
-        await _showSimpleSheet(
-          title: 'Contribuir com a cidade',
-          description:
-              'Em breve você poderá reivindicar pontos, enviar histórias e atualizar horários diretamente do mapa.',
-        );
-        break;
-      case MapIntent.social:
-        await _showSimpleSheet(
-          title: 'Visão social',
-          description:
-              'Esta visão mostrará os pontos favoritos dos seus amigos e recomendações da comunidade.',
-        );
-        break;
-      case MapIntent.travel:
-        final poi = _cityMapController.selectedPoiStreamValue.value;
-        if (poi == null) {
-          _showSnackbar('Selecione um ponto no mapa para traçar uma rota.');
-          return;
-        }
-        await _showSimpleSheet(
-          title: 'Mover-se até ${poi.name}',
-          description:
-              'Integrações com apps de rota e caronas aparecerão aqui quando finalizarmos a experiência.',
-        );
-        break;
-      case MapIntent.myLocation:
-        await _centerOnUser();
-        break;
-    }
   }
 
   Future<void> _openSearchDialog() async {
@@ -261,367 +115,23 @@ class _MapExperiencePrototypeScreenState
       return;
     }
     if (query.trim().isEmpty) {
-      await _cityMapController.clearSearch();
+      await _controller.clearSearch();
     } else {
-      await _cityMapController.searchPois(query.trim());
+      await _controller.searchPois(query.trim());
     }
   }
 
-  Future<void> _centerOnUser({bool animate = true}) async {
-    final coordinate = _cityMapController.userLocationStreamValue.value;
-    if (coordinate == null) {
-      _showSnackbar('Ainda estamos localizando você.');
-      return;
-    }
-    final target = LatLng(coordinate.latitude, coordinate.longitude);
-    await _ensureMapReady();
-    _cityMapController.mapController.move(target, 16);
+  Future<void> _initializeController() async {
+    await _controller.init();
   }
 
-  Future<void> _centerOnPoi(CityPoiModel poi) async {
-    await _ensureMapReady();
-    final target = LatLng(
-      poi.coordinate.latitude,
-      poi.coordinate.longitude,
-    );
-    _cityMapController.mapController.move(target, poi.isDynamic ? 15 : 16);
-  }
-
-  Future<void> _showSimpleSheet({
-    required String title,
-    required String description,
-  }) async {
-    if (!mounted) {
-      return;
-    }
-    await showModalBottomSheet<void>(
-      context: context,
-      showDragHandle: true,
-      builder: (context) {
-        return Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
-              const SizedBox(height: 12),
-              Text(
-                description,
-                style: Theme.of(context).textTheme.bodyMedium,
-              ),
-              const SizedBox(height: 16),
-              Align(
-                alignment: Alignment.centerRight,
-                child: FilledButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: const Text('Entendido'),
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  void _showSnackbar(String message) {
-    if (!mounted) {
+  Future<void> _centerOnUser() async {
+    final message = await _controller.centerOnUser();
+    if (!mounted || message == null) {
       return;
     }
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(message)),
-    );
-  }
-
-  Future<void> _initializeController() async {
-    await _simulateDelay();
-    await _cityMapController.loadMainFilters();
-    await _cityMapController.loadFilters();
-    await _simulateDelay();
-    await _cityMapController.loadRegions();
-    await _simulateDelay();
-    await _cityMapController.loadPois(const PoiQuery());
-    await _simulateDelay();
-    await _cityMapController.resolveUserLocation();
-    await _centerOnUser(animate: false);
-  }
-
-  Future<void> _simulateDelay() =>
-      Future<void>.delayed(const Duration(milliseconds: 650));
-
-  Future<void> _ensureMapReady() async {
-    try {
-      _cityMapController.mapController.camera;
-      return;
-    } catch (_) {
-      try {
-        await _cityMapController.mapController.mapEventStream.first;
-      } catch (_) {}
-    }
-  }
-}
-
-class _MapHeader extends StatelessWidget {
-  const _MapHeader({
-    required this.onSearch,
-    required this.onLocate,
-  });
-
-  final VoidCallback onSearch;
-  final VoidCallback onLocate;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return Card(
-      elevation: 4,
-      color: scheme.surfaceContainerHigh.withValues(alpha: 0.9),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        child: Row(
-          children: [
-            const Icon(Icons.map_outlined),
-            const SizedBox(width: 8),
-            const Expanded(
-              child: Text(
-                'Mapa • Guarapari',
-                style: TextStyle(fontWeight: FontWeight.w600),
-              ),
-            ),
-            IconButton(
-              icon: const Icon(Icons.search),
-              tooltip: 'Buscar pontos',
-              onPressed: onSearch,
-            ),
-            IconButton(
-              icon: const Icon(Icons.my_location),
-              tooltip: 'Centralizar em mim',
-              onPressed: onLocate,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _PrototypeMapLayers extends StatelessWidget {
-  const _PrototypeMapLayers({
-    required this.controller,
-    required this.defaultCenter,
-    required this.onSelectPoi,
-    required this.onHoverChange,
-    required this.onSelectEvent,
-    required this.onMapInteraction,
-  });
-
-  final CityMapController controller;
-  final CityCoordinate defaultCenter;
-  final ValueChanged<CityPoiModel?> onSelectPoi;
-  final ValueChanged<String?> onHoverChange;
-  final ValueChanged<EventModel?> onSelectEvent;
-  final VoidCallback onMapInteraction;
-
-  @override
-  Widget build(BuildContext context) {
-    final defaultLatLng = LatLng(
-      defaultCenter.latitude,
-      defaultCenter.longitude,
-    );
-
-    return StreamValueBuilder<List<CityPoiModel>>(
-      streamValue: controller.pois,
-      builder: (_, pois) {
-        return StreamValueBuilder<List<EventModel>>(
-          streamValue: controller.eventsStreamValue,
-          builder: (_, events) {
-            return StreamValueBuilder<CityCoordinate?>(
-              streamValue: controller.userLocationStreamValue,
-              builder: (_, coordinate) {
-                final userLatLng = coordinate == null
-                    ? null
-                    : LatLng(coordinate.latitude, coordinate.longitude);
-                return StreamValueBuilder<CityPoiModel?>(
-                  streamValue: controller.selectedPoiStreamValue,
-                  builder: (_, selectedPoi) {
-                    return StreamValueBuilder<EventModel?>(
-                      streamValue: controller.selectedEventStreamValue,
-                      builder: (_, selectedEvent) {
-                        return StreamValueBuilder<String?>(
-                          streamValue: controller.hoveredPoiIdStreamValue,
-                          builder: (_, hoveredId) {
-                            // ignore: invalid_use_of_visible_for_testing_member
-                            return CityMapView.withController(
-                              controller,
-                              pois: pois,
-                              selectedPoi: selectedPoi,
-                              onSelectPoi: onSelectPoi,
-                              hoveredPoiId: hoveredId,
-                              onHoverChange: onHoverChange,
-                              events: events,
-                              selectedEvent: selectedEvent,
-                              onSelectEvent: onSelectEvent,
-                              userPosition: userLatLng,
-                              defaultCenter: defaultLatLng,
-                              onMapInteraction: onMapInteraction,
-                            );
-                          },
-                        );
-                      },
-                    );
-                  },
-                );
-              },
-            );
-          },
-        );
-      },
-    );
-  }
-}
-
-class _StatusBanner extends StatelessWidget {
-  const _StatusBanner({required this.controller});
-
-  final CityMapController controller;
-
-  @override
-  Widget build(BuildContext context) {
-    final baseStyle = Theme.of(context).textTheme.bodySmall;
-    return StreamValueBuilder<MapStatus>(
-      streamValue: controller.mapStatusStreamValue,
-      builder: (_, status) {
-        return StreamValueBuilder<String?>(
-          streamValue: controller.statusMessageStreamValue,
-          builder: (_, message) {
-            final resolvedMessage =
-                message ?? _fallbackMessage(status);
-            if (resolvedMessage == null) {
-              return const SizedBox.shrink();
-            }
-            return Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.35),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Text(
-                resolvedMessage,
-                style: baseStyle?.copyWith(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w600,
-                    ) ??
-                    const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w600,
-                    ),
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
-
-  String? _fallbackMessage(MapStatus status) {
-    switch (status) {
-      case MapStatus.locating:
-        return 'Localizando você...';
-      case MapStatus.fetching:
-        return 'Buscando pontos de interesse...';
-      case MapStatus.fallback:
-        return 'Exibindo mapa padrão da cidade.';
-      case MapStatus.error:
-        return 'Não foi possível atualizar o mapa.';
-      case MapStatus.ready:
-        return null;
-    }
-  }
-}
-
-class _PoiDetailDeck extends StatelessWidget {
-  const _PoiDetailDeck({required this.controller});
-
-  final CityMapController controller;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return StreamValueBuilder<CityPoiModel?>(
-      streamValue: controller.selectedPoiStreamValue,
-      builder: (_, poi) {
-        if (poi == null) {
-          return const SizedBox.shrink();
-        }
-        return AnimatedContainer(
-          duration: const Duration(milliseconds: 250),
-        decoration: BoxDecoration(
-          color: scheme.surface,
-            borderRadius: BorderRadius.circular(28),
-            boxShadow: const [
-              BoxShadow(
-                color: Colors.black26,
-                blurRadius: 16,
-                offset: Offset(0, 8),
-              ),
-            ],
-          ),
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                poi.name,
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                poi.address,
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
-              const SizedBox(height: 12),
-              Wrap(
-                spacing: 6,
-                runSpacing: 6,
-                children: poi.tags.map((tag) {
-                  return Chip(
-                    label: Text(tag),
-                    visualDensity: VisualDensity.compact,
-                  );
-                }).toList(),
-              ),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  FilledButton(
-                    onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Abrindo ${poi.name}')),
-                    ),
-                    child: const Text('Ver detalhes'),
-                  ),
-                  const SizedBox(width: 8),
-                  IconButton(
-                    tooltip: 'Compartilhar',
-                    onPressed: () =>
-                        ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Compartilhar ${poi.name}')),
-                    ),
-                    icon: const Icon(Icons.share_outlined),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        );
-      },
     );
   }
 }

@@ -6,12 +6,13 @@ import 'package:belluga_now/domain/map/map_region_definition.dart';
 import 'package:belluga_now/infrastructure/services/dal/datasources/mock_poi_database.dart';
 import 'package:belluga_now/infrastructure/services/dal/datasources/poi_query.dart';
 import 'package:belluga_now/infrastructure/services/dal/dto/map/city_poi_dto.dart';
+import 'package:get_it/get_it.dart';
 
 class MockHttpService {
   MockHttpService({
-    required MockPoiDatabase database,
+    MockPoiDatabase? database,
     Duration latency = const Duration(milliseconds: 350),
-  })  : _database = database,
+  })  : _database = database ?? GetIt.I.get<MockPoiDatabase>(),
         _latency = latency;
 
   final MockPoiDatabase _database;

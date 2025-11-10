@@ -59,4 +59,46 @@ class PoiQuery {
 
     return withinLat && withinLon;
   }
+
+  factory PoiQuery.compose({
+    required PoiQuery currentQuery,
+    CityCoordinate? northEast,
+    CityCoordinate? southWest,
+    Iterable<CityPoiCategory>? categories,
+    Iterable<String>? tags,
+    String? searchTerm,
+  }) {
+    Set<CityPoiCategory>? resolvedCategories;
+    if (categories == null) {
+      resolvedCategories = currentQuery.categories;
+    } else if (categories.isEmpty) {
+      resolvedCategories = null;
+    } else {
+      resolvedCategories =
+          Set<CityPoiCategory>.unmodifiable(categories.toSet());
+    }
+
+    Set<String>? resolvedTags;
+    if (tags == null) {
+      resolvedTags = currentQuery.tags;
+    } else if (tags.isEmpty) {
+      resolvedTags = null;
+    } else {
+      resolvedTags = Set<String>.unmodifiable(
+        tags.map((tag) => tag.toLowerCase()).toSet(),
+      );
+    }
+
+    final sanitizedSearch = searchTerm == null
+        ? currentQuery.searchTerm
+        : (searchTerm.trim().isEmpty ? null : searchTerm.trim());
+
+    return PoiQuery(
+      northEast: northEast ?? currentQuery.northEast,
+      southWest: southWest ?? currentQuery.southWest,
+      categories: resolvedCategories,
+      tags: resolvedTags,
+      searchTerm: sanitizedSearch,
+    );
+  }
 }
