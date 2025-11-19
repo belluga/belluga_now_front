@@ -53,4 +53,5 @@ app.*.map.json
 # DELPHI AI
 AGENTS.md
 delphi-ai
+scripts
 foundation_documentation

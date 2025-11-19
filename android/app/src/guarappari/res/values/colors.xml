@@ -1,5 +1,4 @@
-<?xml vers
-ion="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color n4ame="ic_launcher_background">#4fa0e3</color>
+    <color name="ic_launcher_background">#4fa0e3</color>
 </resources>

@@ -19,8 +19,8 @@ dependencies:
   free_map: ^2.5.0
   flutter_map: ^8.2.2
   latlong2: ^0.9.1
-  get_it: ^8.2.0
-  get_it_modular_with_auto_route: ^2.0.0
+  get_it: ^9.0.5
+  get_it_modular_with_auto_route: ^2.2.0
   intl: ^0.20.2
   geolocator: ^14.0.2
   package_info_plus: ^8.3.1
