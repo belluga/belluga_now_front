@@ -1,4 +1,5 @@
 import 'package:belluga_now/domain/schedule/schedule_summary_item_model.dart';
+import 'package:belluga_now/infrastructure/services/dal/dto/schedule/event_summary_dto.dart';
 
 class ScheduleSummaryModel {
   final List<ScheduleSummaryItemModel> items;
@@ -6,6 +7,12 @@ class ScheduleSummaryModel {
   ScheduleSummaryModel({
     required this.items,
   });
+
+  factory ScheduleSummaryModel.fromDto(EventSummaryDTO dto) {
+    return ScheduleSummaryModel(
+      items: dto.items.map((e) => ScheduleSummaryItemModel.fromDto(e)).toList(),
+    );
+  }
 
   static const int _daysBackwardLimit = 15;
   static const int _monthsForwardLimit = 3;

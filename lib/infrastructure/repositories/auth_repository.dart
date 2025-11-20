@@ -1,14 +1,12 @@
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/user/user_belluga.dart';
-import 'package:belluga_now/infrastructure/mappers/user_dto_mapper.dart';
-import 'package:belluga_now/infrastructure/services/dal/dto/user_dto.dart';
+import 'package:belluga_now/infrastructure/user/dtos/user_dto.dart';
 import 'package:belluga_now/infrastructure/services/dal/dao/backend_contract.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/main.dart';
 
-final class AuthRepository extends AuthRepositoryContract<UserBelluga>
-    with UserDtoMapper {
+final class AuthRepository extends AuthRepositoryContract<UserBelluga> {
   AuthRepository() {
     _userTokenStreamValue.stream.listen(_onUpdateUserTokenOnLocalStorage);
   }
@@ -54,21 +52,21 @@ final class AuthRepository extends AuthRepositoryContract<UserBelluga>
 
     final user = await backend.auth.loginCheck();
 
-    userStreamValue.addValue(mapUser(user));
+    userStreamValue.addValue(UserBelluga.fromDto(user));
 
     return Future.value();
   }
 
   @override
   Future<void> loginWithEmailPassword(String email, String password) async {
-    var (UserDTO _user, String _token) =
+    var (UserDto _user, String _token) =
         await backend.auth.loginWithEmailPassword(
       email,
       password,
     );
 
     _userTokenStreamValue.addValue(_token);
-    userStreamValue.addValue(mapUser(_user));
+    userStreamValue.addValue(UserBelluga.fromDto(_user));
 
     return Future.value();
   }

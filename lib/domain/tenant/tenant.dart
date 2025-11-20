@@ -1,4 +1,5 @@
 import 'package:belluga_now/application/configurations/belluga_constants.dart';
+import 'package:belluga_now/infrastructure/tenant/dtos/tenant_dto.dart';
 import 'package:belluga_now/domain/app_data/app_data_stub.dart';
 import 'package:belluga_now/domain/app_data/app_type.dart';
 import 'package:belluga_now/domain/tenant/value_objects/app_domain_value.dart';
@@ -22,6 +23,17 @@ class Tenant {
     this.domains,
     this.appDomains,
   });
+
+  factory Tenant.fromDto(TenantDto dto) {
+    return Tenant(
+      name: TenantNameValue()..parse(dto.name),
+      subdomain: SubdomainValue()..parse(dto.subdomain),
+      mainLogoUrl: MainLogoUrlValue()..parse(dto.mainLogoUrl),
+      domains: dto.domains?.map((d) => DomainValue()..parse(d)).toList(),
+      appDomains:
+          dto.appDomains?.map((d) => AppDomainValue()..parse(d)).toList(),
+    );
+  }
 
   AppData get appData => GetIt.I.get<AppData>();
 

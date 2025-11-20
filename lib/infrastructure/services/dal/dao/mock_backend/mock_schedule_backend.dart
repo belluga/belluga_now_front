@@ -1,10 +1,11 @@
-import 'package:belluga_now/infrastructure/services/dal/dto/schedule/event_actions_dto.dart';
-import 'package:belluga_now/infrastructure/services/dal/dto/schedule/event_artist_dto.dart';
-import 'package:belluga_now/infrastructure/services/dal/dto/schedule/event_dto.dart';
+import 'package:belluga_now/infrastructure/artist/dtos/artist_resume_dto.dart';
+import 'package:belluga_now/infrastructure/courses/dtos/thumb_dto.dart';
+import 'package:belluga_now/infrastructure/map/dtos/city_coordinate_dto.dart';
+import 'package:belluga_now/infrastructure/schedule/dtos/event_action_dto.dart';
+import 'package:belluga_now/infrastructure/schedule/dtos/event_dto.dart';
 import 'package:belluga_now/infrastructure/services/dal/dto/schedule/event_summary_dto.dart';
 import 'package:belluga_now/infrastructure/services/dal/dto/schedule/event_summary_item_dto.dart';
 import 'package:belluga_now/infrastructure/services/dal/dto/schedule/event_type_dto.dart';
-import 'package:belluga_now/infrastructure/services/dal/dto/thumb_dto.dart';
 import 'package:belluga_now/infrastructure/services/schedule_backend_contract.dart';
 
 class MockScheduleBackend implements ScheduleBackendContract {
@@ -16,8 +17,8 @@ class MockScheduleBackend implements ScheduleBackendContract {
     final items = events
         .map(
           (event) => EventSummaryItemDTO(
-            dateTimeStart: event.dateTimeStart,
-            color: event.type.color,
+            dateTimeStart: event.startTime,
+            color: _getTypeColor(event.type),
           ),
         )
         .toList();
@@ -25,16 +26,32 @@ class MockScheduleBackend implements ScheduleBackendContract {
     return EventSummaryDTO(items: items);
   }
 
+  /// Generates a stable 24-character hex MongoDB ObjectId from a string seed
+  static String _generateMongoId(String seed) {
+    // Use hashCode to generate a stable number from the seed
+    final hash = seed.hashCode.abs();
+    // Create a 24-character hex string
+    final hexString = hash.toRadixString(16).padLeft(24, '0');
+    // Ensure it's exactly 24 characters
+    return hexString.substring(0, 24);
+  }
+
+  String _getTypeColor(String typeId) {
+    if (typeId == _concertType.id) return _concertType.color ?? '#000000';
+    if (typeId == _workshopType.id) return _workshopType.color ?? '#000000';
+    return '#000000';
+  }
+
   @override
-  Future<List<EventDTO>> fetchEvents() async {
-    final events = List<EventDTO>.generate(
+  Future<List<EventDto>> fetchEvents() async {
+    final events = List<EventDto>.generate(
       _eventSeeds.length,
       (index) {
         final venue = _eventVenues[index % _eventVenues.length];
         return _eventSeeds[index].toDto(_today, venue);
       },
-    )..sort((a, b) => DateTime.parse(a.dateTimeStart)
-        .compareTo(DateTime.parse(b.dateTimeStart)));
+    )..sort((a, b) =>
+        DateTime.parse(a.startTime).compareTo(DateTime.parse(b.startTime)));
 
     return events;
   }
@@ -44,8 +61,12 @@ class MockScheduleBackend implements ScheduleBackendContract {
     return DateTime(now.year, now.month, now.day);
   }
 
+  // Generate stable fake MongoDB IDs for event types
+  static final String _concertTypeId = '507f1f77bcf86cd799439011';
+  static final String _workshopTypeId = '507f1f77bcf86cd799439012';
+
   static final _concertType = EventTypeDTO(
-    id: 'concert',
+    id: _concertTypeId,
     name: 'Show',
     slug: 'show',
     description: 'Apresentacoes ao vivo',
@@ -54,7 +75,7 @@ class MockScheduleBackend implements ScheduleBackendContract {
   );
 
   static final _workshopType = EventTypeDTO(
-    id: 'workshop',
+    id: _workshopTypeId,
     name: 'Oficina',
     slug: 'oficina',
     description: 'Atividades guiadas com especialistas',
@@ -1264,7 +1285,7 @@ class _MockEventSeed {
   final String actionUrl;
   final String actionColor;
 
-  EventDTO toDto(DateTime baseDate, _EventVenue venue) {
+  EventDto toDto(DateTime baseDate, _EventVenue venue) {
     final date = baseDate.add(
       Duration(
         days: offsetDays,
@@ -1275,25 +1296,28 @@ class _MockEventSeed {
 
     final locationLabel = '${venue.name} · ${venue.address}';
 
-    return EventDTO(
-      id: id,
-      type: type,
+    return EventDto(
+      id: MockScheduleBackend._generateMongoId(id),
+      slug: id, // Keep original human-readable ID as slug
+      type: type.id,
       title: title,
       content: content,
       location: locationLabel,
-      latitude: venue.latitude,
-      longitude: venue.longitude,
-      thumb: ThumbDTO(
-        type: 'image',
-        data: {'url': thumbUrl},
+      coordinate: CityCoordinateDto(
+        latitude: venue.latitude,
+        longitude: venue.longitude,
       ),
-      dateTimeStart: date.toIso8601String(),
-      dateTimeEnd: endDate.toIso8601String(),
+      thumb: ThumbDto(
+        url: thumbUrl,
+        type: 'image',
+      ),
+      startTime: date.toIso8601String(),
+      endTime: endDate.toIso8601String(),
       artists: artists.map((artist) => artist.toDto()).toList(),
       actions: [
-        EventActionsDTO(
+        EventActionDto(
           label: actionLabel,
-          openIn: 'external',
+          type: 'external_navigation',
           externalUrl: actionUrl,
           color: actionColor,
         ),
@@ -1315,12 +1339,12 @@ class _MockArtistSeed {
   final String avatarUrl;
   final bool highlight;
 
-  EventArtistDTO toDto() {
-    return EventArtistDTO(
-      id: id,
+  ArtistResumeDto toDto() {
+    return ArtistResumeDto(
+      id: MockScheduleBackend._generateMongoId(id),
       name: name,
       avatarUrl: avatarUrl,
-      highlight: highlight,
+      isHighlight: highlight,
     );
   }
 }

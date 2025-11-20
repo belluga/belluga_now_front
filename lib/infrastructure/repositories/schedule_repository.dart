@@ -3,13 +3,12 @@ import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/schedule/schedule_summary_model.dart';
 import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
 import 'package:belluga_now/infrastructure/mappers/course_dto_mapper.dart';
-import 'package:belluga_now/infrastructure/mappers/schedule_dto_mapper.dart';
-import 'package:belluga_now/infrastructure/services/dal/dto/schedule/event_dto.dart';
+import 'package:belluga_now/infrastructure/schedule/dtos/event_dto.dart';
 import 'package:belluga_now/infrastructure/services/schedule_backend_contract.dart';
 import 'package:get_it/get_it.dart';
 
 class ScheduleRepository extends ScheduleRepositoryContract
-    with CourseDtoMapper, ScheduleDtoMapper {
+    with CourseDtoMapper {
   static final Uri _defaultEventImage = Uri.parse(
     'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?w=800',
   );
@@ -18,9 +17,9 @@ class ScheduleRepository extends ScheduleRepositoryContract
       : _backend = backend ?? GetIt.I.get<ScheduleBackendContract>();
 
   final ScheduleBackendContract _backend;
-  List<EventDTO>? _cachedEvents;
+  List<EventDto>? _cachedEvents;
 
-  Future<List<EventDTO>> _loadEvents() async {
+  Future<List<EventDto>> _loadEvents() async {
     if (_cachedEvents != null) {
       return _cachedEvents!;
     }
@@ -32,7 +31,7 @@ class ScheduleRepository extends ScheduleRepositoryContract
   @override
   Future<List<EventModel>> getAllEvents() async {
     final events = await _loadEvents();
-    return events.map(mapEvent).toList();
+    return events.map((e) => EventModel.fromDto(e)).toList();
   }
 
   @override
@@ -76,7 +75,7 @@ class ScheduleRepository extends ScheduleRepositoryContract
   @override
   Future<ScheduleSummaryModel> getScheduleSummary() async {
     final summary = await _backend.fetchSummary();
-    return mapScheduleSummary(summary);
+    return ScheduleSummaryModel.fromDto(summary);
   }
 
   @override

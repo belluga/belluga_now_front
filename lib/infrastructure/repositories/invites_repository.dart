@@ -13,7 +13,8 @@ class InvitesRepository extends InvitesRepositoryContract {
 
   @override
   Future<List<InviteModel>> fetchInvites() async {
-    return _database.invites;
+    final dtos = _database.invites;
+    return dtos.map((dto) => InviteModel.fromDto(dto)).toList();
   }
 
   @override
@@ -24,8 +25,6 @@ class InvitesRepository extends InvitesRepositoryContract {
   @override
   Future<List<FriendResume>> fetchFriendResumes() async {
     final friends = await fetchFriends();
-    return friends
-        .map(FriendResume.fromFriend)
-        .toList(growable: false);
+    return friends.map(FriendResume.fromFriend).toList(growable: false);
   }
 }

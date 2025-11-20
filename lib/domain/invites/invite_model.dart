@@ -10,6 +10,7 @@ import 'package:belluga_now/domain/invites/value_objects/invite_message_value.da
 import 'package:belluga_now/domain/invites/value_objects/invite_tag_value.dart';
 import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
 import 'package:belluga_now/domain/value_objects/title_value.dart';
+import 'package:belluga_now/infrastructure/invites/dtos/invite_dto.dart';
 import 'package:value_object_pattern/domain/exceptions/value_exceptions.dart';
 
 class InviteModel {
@@ -118,6 +119,31 @@ class InviteModel {
       inviterAvatarValue: inviterAvatarVo,
       additionalInviterValues: parsedAdditionalInviters,
       inviters: inviters,
+    );
+  }
+
+  factory InviteModel.fromDto(InviteDto dto) {
+    return InviteModel(
+      idValue: InviteIdValue()..parse(dto.id),
+      eventNameValue: TitleValue()..parse(dto.eventName),
+      eventDateValue: InviteEventDateValue(isRequired: true)
+        ..parse(dto.eventDate),
+      eventImageValue: ThumbUriValue(
+          isRequired: true, defaultValue: Uri.parse(dto.eventImageUrl))
+        ..parse(dto.eventImageUrl),
+      locationValue: InviteLocationValue()..parse(dto.location),
+      hostNameValue: InviteHostNameValue()..parse(dto.hostName),
+      messageValue: InviteMessageValue()..parse(dto.message),
+      tagValues: dto.tags.map((t) => InviteTagValue()..parse(t)).toList(),
+      inviterNameValue: dto.inviterName != null
+          ? (InviteInviterNameValue()..parse(dto.inviterName!))
+          : null,
+      inviterAvatarValue: dto.inviterAvatarUrl != null
+          ? (InviteInviterAvatarValue()..parse(dto.inviterAvatarUrl!))
+          : null,
+      additionalInviterValues: dto.additionalInviters
+          .map((i) => InviteAdditionalInviterNameValue()..parse(i))
+          .toList(),
     );
   }
 }
