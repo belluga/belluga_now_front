@@ -1,10 +1,12 @@
+import 'package:auto_route/auto_route.dart';
+import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
+import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
 import 'package:belluga_now/presentation/tenant/schedule/screens/event_search_screen/controllers/event_search_screen_controller.dart';
-import 'package:belluga_now/presentation/tenant/schedule/screens/schedule_screen/widgets/event_card.dart';
 import 'package:belluga_now/presentation/tenant/widgets/back_button_belluga.dart';
+import 'package:belluga_now/presentation/tenant/widgets/date_grouped_event_list.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
-import 'package:intl/intl.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 
 class EventSearchScreen extends StatefulWidget {
@@ -16,6 +18,10 @@ class EventSearchScreen extends StatefulWidget {
 
 class _EventSearchScreenState extends State<EventSearchScreen> {
   final _controller = GetIt.I.get<EventSearchScreenController>();
+
+  static final Uri _defaultEventImage = Uri.parse(
+    'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?w=800',
+  );
 
   @override
   void initState() {
@@ -104,76 +110,23 @@ class _EventSearchScreenState extends State<EventSearchScreen> {
               );
             }
 
-            return _buildGroupedEvents(context, data);
+            // Convert EventModel to VenueEventResume
+            final resumes = data
+                .map((e) => VenueEventResume.fromScheduleEvent(
+                      e,
+                      _defaultEventImage,
+                    ))
+                .toList();
+
+            return DateGroupedEventList(
+              events: resumes,
+              onEventSelected: (slug) {
+                context.router.push(EventDetailRoute(slug: slug));
+              },
+            );
           },
         ),
       ),
-    );
-  }
-
-  Widget _buildGroupedEvents(BuildContext context, List<EventModel> events) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-
-    // Group events by date
-    final Map<String, List<EventModel>> groupedEvents = {};
-    for (var event in events) {
-      final eventDate = event.dateTimeStart.value;
-      if (eventDate == null) {
-        continue;
-      }
-      final dateKey = DateFormat('yyyy-MM-dd').format(eventDate);
-      groupedEvents.putIfAbsent(dateKey, () => []);
-      groupedEvents[dateKey]!.add(event);
-    }
-
-    // Sort dates
-    final sortedDates = groupedEvents.keys.toList()
-      ..sort((a, b) => a.compareTo(b));
-
-    return ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      itemCount: sortedDates.length,
-      itemBuilder: (context, index) {
-        final dateKey = sortedDates[index];
-        final dateEvents = groupedEvents[dateKey]!;
-        final date = DateTime.parse(dateKey);
-
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Date divider
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Divider(color: colorScheme.outlineVariant),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Text(
-                      DateFormat.MMMMEEEEd().format(date),
-                      style: theme.textTheme.titleSmall?.copyWith(
-                        color: colorScheme.primary,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                  Expanded(
-                    child: Divider(color: colorScheme.outlineVariant),
-                  ),
-                ],
-              ),
-            ),
-            // Events for this date
-            ...dateEvents.map((event) => Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: EventCard(event: event),
-                )),
-          ],
-        );
-      },
     );
   }
 }

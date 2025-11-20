@@ -25,18 +25,47 @@ class UpcomingEventsSection extends StatelessWidget {
           return EmptyUpcomingEventsState(onExplore: onExplore);
         }
 
-        return ListView.separated(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          itemCount: events.length,
-          separatorBuilder: (_, __) => const Divider(height: 32),
-          itemBuilder: (context, index) {
-            final event = events[index];
-            return UpcomingEventCard(
-              event: event,
-              onTap: () => onEventSelected(event.slug),
-            );
-          },
+        // Filter for Today and Tomorrow
+        final now = DateTime.now();
+        final today = DateTime(now.year, now.month, now.day);
+        final dayAfterTomorrow = today.add(const Duration(days: 2));
+
+        final filteredEvents = events.where((event) {
+          final eventDate = event.startDateTime;
+          return eventDate.isBefore(dayAfterTomorrow) &&
+              eventDate.isAfter(today.subtract(const Duration(seconds: 1)));
+        }).toList();
+
+        if (filteredEvents.isEmpty) {
+          // If no events for today/tomorrow, show empty state or maybe just the button?
+          // For now, let's show the empty state which encourages exploring.
+          return EmptyUpcomingEventsState(onExplore: onExplore);
+        }
+
+        return Column(
+          children: [
+            ListView.separated(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: filteredEvents.length,
+              separatorBuilder: (_, __) => const SizedBox(height: 16),
+              itemBuilder: (context, index) {
+                final event = filteredEvents[index];
+                return UpcomingEventCard(
+                  event: event,
+                  onTap: () => onEventSelected(event.slug),
+                );
+              },
+            ),
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton(
+                onPressed: onExplore,
+                child: const Text('Ver todos os eventos'),
+              ),
+            ),
+          ],
         );
       },
     );
