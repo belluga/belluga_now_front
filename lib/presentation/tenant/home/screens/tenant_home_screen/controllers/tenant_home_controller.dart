@@ -1,6 +1,6 @@
 import 'package:belluga_now/domain/favorite/projections/favorite_resume.dart';
 import 'package:belluga_now/domain/repositories/favorite_repository_contract.dart';
-import 'package:belluga_now/domain/repositories/venue_event_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
 import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value.dart';
@@ -8,14 +8,14 @@ import 'package:stream_value/core/stream_value.dart';
 class TenantHomeController implements Disposable {
   TenantHomeController({
     FavoriteRepositoryContract? favoriteRepository,
-    VenueEventRepositoryContract? venueEventRepository,
+    ScheduleRepositoryContract? scheduleRepository,
   })  : _favoriteRepository =
             favoriteRepository ?? GetIt.I.get<FavoriteRepositoryContract>(),
-        _venueEventRepository =
-            venueEventRepository ?? GetIt.I.get<VenueEventRepositoryContract>();
+        _scheduleRepository =
+            scheduleRepository ?? GetIt.I.get<ScheduleRepositoryContract>();
 
   final FavoriteRepositoryContract _favoriteRepository;
-  final VenueEventRepositoryContract _venueEventRepository;
+  final ScheduleRepositoryContract _scheduleRepository;
 
   final StreamValue<List<FavoriteResume>?> favoritesStreamValue =
       StreamValue<List<FavoriteResume>?>();
@@ -47,7 +47,7 @@ class TenantHomeController implements Disposable {
     final previousValue = featuredEventsStreamValue.value;
     featuredEventsStreamValue.addValue(null);
     try {
-      final events = await _venueEventRepository.fetchFeaturedEvents();
+      final events = await _scheduleRepository.fetchFeaturedEvents();
       featuredEventsStreamValue.addValue(events);
     } catch (_) {
       featuredEventsStreamValue.addValue(previousValue);
@@ -56,7 +56,7 @@ class TenantHomeController implements Disposable {
 
   Future<void> loadUpcomingEvents() async {
     try {
-      final events = await _venueEventRepository.fetchUpcomingEvents();
+      final events = await _scheduleRepository.fetchUpcomingEvents();
       upcomingEventsStreamValue.addValue(events);
     } catch (_) {
       // keep last value; StreamValue already holds previous state

@@ -90,4 +90,45 @@ class ScheduleRepository extends ScheduleRepositoryContract
         )
         .toList(growable: false);
   }
+
+  @override
+  Future<List<VenueEventResume>> fetchFeaturedEvents() async {
+    final events = await getAllEvents();
+    // For now, return all events as featured, or filter if needed.
+    // Since we are consolidating, we want to ensure we return valid data from the same source.
+    // In a real app, this would filter by a 'featured' flag.
+    return events
+        .take(5) // Limit to 5 for featured
+        .map(
+          (event) => VenueEventResume.fromScheduleEvent(
+            event,
+            _defaultEventImage,
+          ),
+        )
+        .toList(growable: false);
+  }
+
+  @override
+  Future<List<VenueEventResume>> fetchUpcomingEvents() async {
+    final events = await getAllEvents();
+    // Filter for future events
+    final now = DateTime.now();
+    final upcoming = events.where((e) {
+      final start = e.dateTimeStart.value;
+      return start != null && start.isAfter(now);
+    }).toList();
+
+    // If no upcoming, just return all for demo purposes, or empty.
+    // Let's return all sorted by date if upcoming is empty to ensure data visibility.
+    final listToMap = upcoming.isNotEmpty ? upcoming : events;
+
+    return listToMap
+        .map(
+          (event) => VenueEventResume.fromScheduleEvent(
+            event,
+            _defaultEventImage,
+          ),
+        )
+        .toList(growable: false);
+  }
 }

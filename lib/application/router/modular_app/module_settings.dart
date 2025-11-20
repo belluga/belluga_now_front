@@ -13,11 +13,9 @@ import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/favorite_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
-import 'package:belluga_now/domain/repositories/venue_event_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_repository_contract.dart';
 import 'package:belluga_now/infrastructure/repositories/favorite_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/schedule_repository.dart';
-import 'package:belluga_now/infrastructure/repositories/venue_event_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/tenant_repository.dart';
 import 'package:belluga_now/infrastructure/services/dal/dao/backend_contract.dart';
 import 'package:belluga_now/infrastructure/services/schedule_backend_contract.dart';
@@ -42,7 +40,6 @@ class ModuleSettings extends ModuleSettingsContract {
     await _registerTenantRepository();
     await _registerAuthRepository();
     _registerFavoriteRepository();
-    _registerVenueEventRepository();
   }
 
   @override
@@ -107,16 +104,6 @@ class ModuleSettings extends ModuleSettingsContract {
     );
   }
 
-  void _registerVenueEventRepository() {
-    if (GetIt.I.isRegistered<VenueEventRepositoryContract>()) {
-      return;
-    }
-
-    GetIt.I.registerLazySingleton<VenueEventRepositoryContract>(
-      () => VenueEventRepository(),
-    );
-  }
-
   void _registerScheduleBackend() {
     if (GetIt.I.isRegistered<ScheduleBackendContract>()) {
       return;
@@ -129,7 +116,6 @@ class ModuleSettings extends ModuleSettingsContract {
     );
 
     GetIt.I.registerLazySingleton<ScheduleRepositoryContract>(
-      () => ScheduleRepository()
-    );
+        () => ScheduleRepository());
   }
 }

@@ -11,4 +11,7 @@ abstract class ScheduleRepositoryContract {
   /// Returns the events for [date] already projected for presentation flows
   /// that require [VenueEventResume] rather than the raw [EventModel].
   Future<List<VenueEventResume>> getEventResumesByDate(DateTime date);
+
+  Future<List<VenueEventResume>> fetchFeaturedEvents();
+  Future<List<VenueEventResume>> fetchUpcomingEvents();
 }
