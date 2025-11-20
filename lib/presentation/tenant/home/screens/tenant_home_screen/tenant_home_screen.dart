@@ -9,6 +9,7 @@ import 'package:belluga_now/presentation/tenant/home/screens/tenant_home_screen/
 import 'package:belluga_now/presentation/tenant/widgets/belluga_bottom_navigation_bar.dart';
 import 'package:belluga_now/presentation/tenant/widgets/floating_action_button_custom.dart';
 import 'package:belluga_now/presentation/tenant/widgets/section_header.dart';
+import 'package:belluga_now/presentation/tenant/widgets/animated_search_button.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 
@@ -33,14 +34,28 @@ class _TenantHomeScreenState extends State<TenantHomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        titleSpacing: 16,
-        title: const MainLogo(),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.search),
-            onPressed: () {},
-            tooltip: 'Buscar',
+        titleSpacing: 0,
+        title: SizedBox(
+          width: double.infinity,
+          child: Stack(
+            alignment: Alignment.centerLeft,
+            children: [
+              const Padding(
+                padding: EdgeInsets.only(left: 16),
+                child: MainLogo(),
+              ),
+              Positioned(
+                right: 0,
+                child: AnimatedSearchButton(
+                  onTap: () {
+                    context.router.push(const EventSearchRoute());
+                  },
+                ),
+              ),
+            ],
           ),
+        ),
+        actions: [
           IconButton(
             icon: const Icon(Icons.notifications_none),
             onPressed: () {},

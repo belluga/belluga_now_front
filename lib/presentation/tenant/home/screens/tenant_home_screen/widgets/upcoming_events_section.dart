@@ -60,7 +60,7 @@ class UpcomingEventsSection extends StatelessWidget {
             const SizedBox(height: 16),
             SizedBox(
               width: double.infinity,
-              child: OutlinedButton(
+              child: FilledButton.tonal(
                 onPressed: onExplore,
                 child: const Text('Ver todos os eventos'),
               ),
