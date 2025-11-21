@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:auto_route/auto_route.dart';
+import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
 import 'package:belluga_now/infrastructure/repositories/schedule_repository.dart';
 import 'package:belluga_now/presentation/tenant/schedule/screens/event_detail_screen/controllers/event_detail_controller.dart';
@@ -21,5 +22,18 @@ class ScheduleModule extends ModuleContract {
   }
 
   @override
-  List<AutoRoute> get routes => const [];
+  List<AutoRoute> get routes => [
+        AutoRoute(
+          path: '/agenda',
+          page: ScheduleRoute.page,
+        ),
+        AutoRoute(
+          path: '/agenda/evento/:slug',
+          page: EventDetailRoute.page,
+        ),
+        AutoRoute(
+          path: '/agenda/procurar',
+          page: EventSearchRoute.page,
+        ),
+      ];
 }

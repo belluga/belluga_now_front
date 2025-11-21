@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:auto_route/auto_route.dart';
+import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/domain/repositories/city_map_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
 import 'package:belluga_now/infrastructure/repositories/city_map_repository.dart';
@@ -49,9 +50,19 @@ class MapModule extends ModuleContract {
     registerLazySingleton<RegionPanelController>(() => RegionPanelController());
     registerLazySingleton<EventsPanelController>(() => EventsPanelController());
     registerLazySingleton<MusicPanelController>(() => MusicPanelController());
-    registerLazySingleton<CuisinePanelController>(() => CuisinePanelController());
+    registerLazySingleton<CuisinePanelController>(
+        () => CuisinePanelController());
   }
 
   @override
-  List<AutoRoute> get routes => const [];
+  List<AutoRoute> get routes => [
+        AutoRoute(
+          path: '/mapa',
+          page: CityMapRoute.page,
+        ),
+        AutoRoute(
+          path: '/mapa/poi',
+          page: PoiDetailsRoute.page,
+        ),
+      ];
 }

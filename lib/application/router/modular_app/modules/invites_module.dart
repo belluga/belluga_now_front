@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:auto_route/auto_route.dart';
+import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
 import 'package:belluga_now/infrastructure/repositories/invites_repository.dart';
 import 'package:belluga_now/presentation/tenant/invites/screens/invite_flow_screen/controllers/invite_flow_controller.dart';
@@ -23,5 +24,14 @@ class InvitesModule extends ModuleContract {
   }
 
   @override
-  List<AutoRoute> get routes => const [];
+  List<AutoRoute> get routes => [
+        AutoRoute(
+          path: '/convites',
+          page: InviteFlowRoute.page,
+        ),
+        AutoRoute(
+          path: '/convites/compartilhar',
+          page: InviteShareRoute.page,
+        ),
+      ];
 }

@@ -1,11 +1,10 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:belluga_now/application/configurations/widget_keys.dart';
-import 'package:belluga_now/domain/controllers/belluga_init_screen_controller_contract.dart';
+import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/presentation/common/init/screens/init_screen/controllers/init_screen_controller.dart';
 import 'package:get_it/get_it.dart';
 
-@RoutePage()
 class InitScreen extends StatefulWidget {
   const InitScreen({super.key});
 
@@ -14,7 +13,7 @@ class InitScreen extends StatefulWidget {
 }
 
 class _InitScreenState extends State<InitScreen> {
-  late final BellugaInitScreenControllerContract _controller;
+  final _controller = GetIt.I.get<InitScreenController>();
 
   @override
   void initState() {
@@ -31,21 +30,28 @@ class _InitScreenState extends State<InitScreen> {
   }
 
   Future<void> _init() async {
-    _controller =
-        GetIt.I.registerSingleton<BellugaInitScreenControllerContract>(
-      InitScreenController(),
-    );
+    // Initialize through controller
     await _controller.initialize();
 
-    await Future.delayed(const Duration(milliseconds: 2000));
+    // Small delay for splash screen
+    await Future.delayed(const Duration(milliseconds: 1000));
+
+    // Navigate to initial route determined by controller
     _gotoInitialRoute();
   }
 
-  void _gotoInitialRoute() => context.router.replace(_controller.initialRoute);
+  void _gotoInitialRoute() {
+    final initialRoute = _controller.initialRoute;
 
-  @override
-  void dispose() {
-    super.dispose();
-    GetIt.I.unregister<BellugaInitScreenControllerContract>();
+    // Always push TenantHomeRoute first to establish the base stack
+    context.router.pushAndPopUntil(
+      const TenantHomeRoute(),
+      predicate: (route) => false,
+    );
+
+    // If the controller determined we should show invites, push it on top
+    if (initialRoute is InviteFlowRoute) {
+      context.router.push(const InviteFlowRoute());
+    }
   }
 }

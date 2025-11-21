@@ -19,14 +19,22 @@ final class InitScreenController extends BellugaInitScreenControllerContract {
     defaultValue: "Carregando",
   );
 
+  PageRouteInfo? _determinedRoute;
+
   @override
-  PageRouteInfo get initialRoute => _getInitialRoute();
+  PageRouteInfo get initialRoute => _determinedRoute ?? const TenantHomeRoute();
 
   @override
   Future<void> initialize() async {
     // loadingStatusStreamValue.addValue("É bom te ver por aqui!");
     // loadingStatusStreamValue.addValue("Ajustando últimos detalhes!");
     await _invitesRepository.init();
+
+    if (_invitesRepository.hasPendingInvites) {
+      _determinedRoute = const InviteFlowRoute();
+    } else {
+      _determinedRoute = const TenantHomeRoute();
+    }
     // await _initializeBehavior();
   }
 
@@ -37,11 +45,4 @@ final class InitScreenController extends BellugaInitScreenControllerContract {
   // openAPPEvent() {
   //   _behaviorController.saveEvent(type: EventTrackingTypes.openApp);
   // }
-
-  PageRouteInfo _getInitialRoute() {
-    if (_invitesRepository.hasPendingInvites) {
-      return const InviteFlowRoute();
-    }
-    return const TenantHomeRoute();
-  }
 }

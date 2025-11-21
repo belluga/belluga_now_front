@@ -19,7 +19,7 @@ import 'package:belluga_now/presentation/common/auth/routes/auth_login_route.dar
     as _i2;
 import 'package:belluga_now/presentation/common/auth/routes/recovery_password_route.dart'
     as _i17;
-import 'package:belluga_now/presentation/common/init/screens/init_screen/init_screen.dart'
+import 'package:belluga_now/presentation/common/init/routes/init_route.dart'
     as _i8;
 import 'package:belluga_now/presentation/landlord/home/routes/landlord_home_route.dart'
     as _i11;
@@ -242,7 +242,7 @@ class ExperiencesRoute extends _i22.PageRouteInfo<void> {
 }
 
 /// generated route for
-/// [_i8.InitScreen]
+/// [_i8.InitRoutePage]
 class InitRoute extends _i22.PageRouteInfo<void> {
   const InitRoute({List<_i22.PageRouteInfo>? children})
       : super(InitRoute.name, initialChildren: children);
@@ -252,7 +252,7 @@ class InitRoute extends _i22.PageRouteInfo<void> {
   static _i22.PageInfo page = _i22.PageInfo(
     name,
     builder: (data) {
-      return const _i8.InitScreen();
+      return const _i8.InitRoutePage();
     },
   );
 }
