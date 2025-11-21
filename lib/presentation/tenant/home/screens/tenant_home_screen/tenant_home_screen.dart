@@ -12,6 +12,8 @@ import 'package:belluga_now/presentation/tenant/widgets/section_header.dart';
 import 'package:belluga_now/presentation/tenant/widgets/animated_search_button.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
+import 'package:stream_value/core/stream_value_builder.dart';
+import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
 
 class TenantHomeScreen extends StatefulWidget {
   const TenantHomeScreen({super.key});
@@ -82,12 +84,25 @@ class _TenantHomeScreenState extends State<TenantHomeScreen> {
                 onPressed: _openInviteFlow,
                 margin: const EdgeInsets.only(bottom: 16),
               ),
-              SectionHeader(
-                title: 'Seus Eventos',
-                onPressed: _openMyEvents,
+              StreamValueBuilder<List<VenueEventResume>?>(
+                streamValue: _controller.myEventsStreamValue,
+                builder: (context, events) {
+                  if (events == null || events.isEmpty) {
+                    return const SizedBox.shrink();
+                  }
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      SectionHeader(
+                        title: 'Seus Eventos',
+                        onPressed: _openMyEvents,
+                      ),
+                      FeaturedEventsSection(controller: _controller),
+                      const SizedBox(height: 16),
+                    ],
+                  );
+                },
               ),
-              FeaturedEventsSection(controller: _controller),
-              const SizedBox(height: 16),
               SectionHeader(
                 title: 'Próximos Eventos',
                 onPressed: _openMyEvents,

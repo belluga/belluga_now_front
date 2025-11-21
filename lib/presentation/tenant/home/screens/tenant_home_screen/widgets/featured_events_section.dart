@@ -16,7 +16,7 @@ class FeaturedEventsSection extends StatelessWidget {
   Widget build(BuildContext context) {
     final width = MediaQuery.of(context).size.width;
     return StreamValueBuilder<List<VenueEventResume>?>(
-      streamValue: controller.featuredEventsStreamValue,
+      streamValue: controller.myEventsStreamValue,
       onNullWidget: SizedBox(
         height: width * 0.8 * 9 / 16,
         child: const Center(child: CircularProgressIndicator()),
@@ -24,7 +24,7 @@ class FeaturedEventsSection extends StatelessWidget {
       builder: (context, events) {
         final items = events ?? const <VenueEventResume>[];
         if (items.isEmpty) {
-          return const EmptyFeaturedEventsState();
+          return const EmptyMyEventsState();
         }
 
         final cardWidth = width * 0.8;
@@ -44,8 +44,8 @@ class FeaturedEventsSection extends StatelessWidget {
   }
 }
 
-class EmptyFeaturedEventsState extends StatelessWidget {
-  const EmptyFeaturedEventsState({super.key});
+class EmptyMyEventsState extends StatelessWidget {
+  const EmptyMyEventsState({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -54,10 +54,11 @@ class EmptyFeaturedEventsState extends StatelessWidget {
       height: 200,
       child: Center(
         child: Text(
-          'Nenhum evento em destaque.',
+          'Você ainda não confirmou presença em nenhum evento.',
           style: theme.textTheme.bodyMedium?.copyWith(
             color: theme.colorScheme.onSurfaceVariant,
           ),
+          textAlign: TextAlign.center,
         ),
       ),
     );

@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:belluga_now/domain/favorite/projections/favorite_resume.dart';
 import 'package:belluga_now/domain/repositories/favorite_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/user_events_repository_contract.dart';
 import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value.dart';
@@ -9,27 +12,39 @@ class TenantHomeController implements Disposable {
   TenantHomeController({
     FavoriteRepositoryContract? favoriteRepository,
     ScheduleRepositoryContract? scheduleRepository,
+    UserEventsRepositoryContract? userEventsRepository,
   })  : _favoriteRepository =
             favoriteRepository ?? GetIt.I.get<FavoriteRepositoryContract>(),
         _scheduleRepository =
-            scheduleRepository ?? GetIt.I.get<ScheduleRepositoryContract>();
+            scheduleRepository ?? GetIt.I.get<ScheduleRepositoryContract>(),
+        _userEventsRepository =
+            userEventsRepository ?? GetIt.I.get<UserEventsRepositoryContract>();
 
   final FavoriteRepositoryContract _favoriteRepository;
   final ScheduleRepositoryContract _scheduleRepository;
+  final UserEventsRepositoryContract _userEventsRepository;
 
   final StreamValue<List<FavoriteResume>?> favoritesStreamValue =
       StreamValue<List<FavoriteResume>?>();
-  final StreamValue<List<VenueEventResume>?> featuredEventsStreamValue =
+  final StreamValue<List<VenueEventResume>?> myEventsStreamValue =
       StreamValue<List<VenueEventResume>?>();
   final StreamValue<List<VenueEventResume>> upcomingEventsStreamValue =
       StreamValue<List<VenueEventResume>>(defaultValue: const []);
 
+  StreamSubscription? _myEventsSubscription;
+
   Future<void> init() async {
     await Future.wait([
       loadFavorites(),
-      loadFeaturedEvents(),
+      loadMyEvents(),
       loadUpcomingEvents(),
     ]);
+
+    // Listen for changes in confirmed events
+    _myEventsSubscription =
+        _userEventsRepository.confirmedEventSlugsStream.stream.listen((_) {
+      loadMyEvents();
+    });
   }
 
   Future<void> loadFavorites() async {
@@ -43,14 +58,15 @@ class TenantHomeController implements Disposable {
     }
   }
 
-  Future<void> loadFeaturedEvents() async {
-    final previousValue = featuredEventsStreamValue.value;
-    featuredEventsStreamValue.addValue(null);
+  Future<void> loadMyEvents() async {
+    final previousValue = myEventsStreamValue.value;
+    // Don't set to null here to avoid flashing loading state on updates
+    // myEventsStreamValue.addValue(null);
     try {
-      final events = await _scheduleRepository.fetchFeaturedEvents();
-      featuredEventsStreamValue.addValue(events);
+      final events = await _userEventsRepository.fetchMyEvents();
+      myEventsStreamValue.addValue(events);
     } catch (_) {
-      featuredEventsStreamValue.addValue(previousValue);
+      myEventsStreamValue.addValue(previousValue);
     }
   }
 
@@ -65,8 +81,9 @@ class TenantHomeController implements Disposable {
 
   @override
   void onDispose() {
+    _myEventsSubscription?.cancel();
     favoritesStreamValue.dispose();
-    featuredEventsStreamValue.dispose();
+    myEventsStreamValue.dispose();
     upcomingEventsStreamValue.dispose();
   }
 }

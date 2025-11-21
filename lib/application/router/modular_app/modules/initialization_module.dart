@@ -5,8 +5,10 @@ import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/application/router/guards/tenant_route_guard.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/user_events_repository_contract.dart';
 import 'package:belluga_now/infrastructure/repositories/invites_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/schedule_repository.dart';
+import 'package:belluga_now/infrastructure/repositories/user_events_repository.dart';
 import 'package:belluga_now/presentation/common/init/screens/init_screen/controllers/init_screen_controller.dart';
 import 'package:belluga_now/presentation/landlord/home/screens/landlord_home_screen/controllers/landlord_home_screen_controller.dart';
 import 'package:belluga_now/presentation/tenant/home/screens/tenant_home_screen/controllers/invites_banner_builder_controller.dart';
@@ -26,6 +28,10 @@ class InitializationModule extends ModuleContract {
         () => ScheduleRepository(),
       );
     }
+
+    registerLazySingleton<UserEventsRepositoryContract>(
+      () => UserEventsRepository(),
+    );
 
     registerLazySingleton<InitScreenController>(
       () => InitScreenController(),

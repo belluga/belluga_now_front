@@ -1,5 +1,6 @@
 import 'package:belluga_now/domain/invites/invite_model.dart';
 import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/user_events_repository_contract.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/schedule/friend_resume.dart';
 import 'package:belluga_now/domain/schedule/invite_status.dart';
@@ -12,9 +13,13 @@ import 'package:stream_value/core/stream_value.dart';
 class EventDetailController implements Disposable {
   EventDetailController({
     ScheduleRepositoryContract? repository,
-  }) : _repository = repository ?? GetIt.I.get<ScheduleRepositoryContract>();
+    UserEventsRepositoryContract? userEventsRepository,
+  })  : _repository = repository ?? GetIt.I.get<ScheduleRepositoryContract>(),
+        _userEventsRepository =
+            userEventsRepository ?? GetIt.I.get<UserEventsRepositoryContract>();
 
   final ScheduleRepositoryContract _repository;
+  final UserEventsRepositoryContract _userEventsRepository;
 
   // Reactive state
   final eventStreamValue = StreamValue<EventModel?>();
@@ -49,7 +54,6 @@ class EventDetailController implements Disposable {
   }
 
   /// Confirm attendance at this event
-  /// TODO: Wire to real repository when backend is ready
   Future<void> confirmAttendance() async {
     final event = eventStreamValue.value;
     if (event == null) return;
@@ -57,7 +61,8 @@ class EventDetailController implements Disposable {
     isLoadingStreamValue.addValue(true);
 
     try {
-      // TODO: await _repository.confirmEventAttendance(event.id.value);
+      // Call repository to persist confirmation
+      await _userEventsRepository.confirmEventAttendance(event.id.value);
 
       // Optimistic update
       isConfirmedStreamValue.addValue(true);

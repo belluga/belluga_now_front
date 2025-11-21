@@ -12,6 +12,5 @@ abstract class ScheduleRepositoryContract {
   /// that require [VenueEventResume] rather than the raw [EventModel].
   Future<List<VenueEventResume>> getEventResumesByDate(DateTime date);
 
-  Future<List<VenueEventResume>> fetchFeaturedEvents();
   Future<List<VenueEventResume>> fetchUpcomingEvents();
 }
