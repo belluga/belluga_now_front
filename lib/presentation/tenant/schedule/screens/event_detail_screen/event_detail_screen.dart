@@ -19,9 +19,12 @@ import 'package:belluga_now/presentation/tenant/schedule/screens/event_detail_sc
 import 'package:belluga_now/presentation/tenant/schedule/screens/event_detail_screen/widgets/quick_actions_grid.dart';
 import 'package:belluga_now/presentation/tenant/schedule/screens/event_detail_screen/widgets/social_proof_section.dart';
 import 'package:belluga_now/presentation/tenant/schedule/screens/event_detail_screen/widgets/venue_card.dart';
+import 'package:belluga_now/presentation/tenant/schedule/screens/event_detail_screen/controllers/event_detail_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_html/flutter_html.dart';
+import 'package:get_it/get_it.dart';
 import 'package:intl/intl.dart';
+import 'package:stream_value/core/stream_value_builder.dart';
 
 class EventDetailScreen extends StatefulWidget {
   const EventDetailScreen({
@@ -60,20 +63,27 @@ class EventDetailScreen extends StatefulWidget {
 }
 
 class _EventDetailScreenState extends State<EventDetailScreen> {
-  late bool _isConfirmed;
-  late List<SentInviteStatus> _sentInvites;
-  late List<FriendResume> _friendsGoing;
-  late int _totalConfirmed;
-  late List<InviteModel> _receivedInvites;
+  final _controller = GetIt.I.get<EventDetailController>();
 
   @override
   void initState() {
     super.initState();
-    _isConfirmed = widget.event.isConfirmed;
-    _sentInvites = widget.event.sentInvites ?? [];
-    _friendsGoing = widget.event.friendsGoing ?? [];
-    _totalConfirmed = widget.event.totalConfirmed;
-    _receivedInvites = widget.event.receivedInvites ?? [];
+    // Initialize controller state from widget.event
+    _controller.eventStreamValue.addValue(widget.event);
+    _controller.isConfirmedStreamValue.addValue(widget.event.isConfirmed);
+    _controller.receivedInvitesStreamValue
+        .addValue(widget.event.receivedInvites ?? const []);
+    _controller.sentInvitesStreamValue
+        .addValue(widget.event.sentInvites ?? const []);
+    _controller.friendsGoingStreamValue
+        .addValue(widget.event.friendsGoing ?? const []);
+    _controller.totalConfirmedStreamValue.addValue(widget.event.totalConfirmed);
+  }
+
+  @override
+  void dispose() {
+    _controller.onDispose();
+    super.dispose();
   }
 
   @override
@@ -104,32 +114,47 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // Received Invite Banner
-                  AnimatedSize(
-                    duration: const Duration(milliseconds: 300),
-                    child: _receivedInvites.isNotEmpty
-                        ? Padding(
-                            padding: const EdgeInsets.only(bottom: 24),
-                            child: InviteBanner(
-                              invite: _receivedInvites.first,
-                              onAccept: _handleAcceptInvite,
-                              onDecline: _handleDeclineInvite,
-                            ),
-                          )
-                        : const SizedBox.shrink(),
+                  StreamValueBuilder<List<InviteModel>>(
+                    streamValue: _controller.receivedInvitesStreamValue,
+                    builder: (context, receivedInvites) {
+                      return AnimatedSize(
+                        duration: const Duration(milliseconds: 300),
+                        child: receivedInvites.isNotEmpty
+                            ? Padding(
+                                padding: const EdgeInsets.only(bottom: 24),
+                                child: InviteBanner(
+                                  invite: receivedInvites.first,
+                                  onAccept: _handleAcceptInvite,
+                                  onDecline: _handleDeclineInvite,
+                                ),
+                              )
+                            : const SizedBox.shrink(),
+                      );
+                    },
                   ),
 
                   // Confirmed Banner
-                  AnimatedSize(
-                    duration: const Duration(milliseconds: 300),
-                    child: _isConfirmed && _receivedInvites.isEmpty
-                        ? Padding(
-                            padding: const EdgeInsets.only(bottom: 24),
-                            child: ConfirmedBanner(
-                              confirmedAt:
-                                  widget.event.confirmedAt ?? DateTime.now(),
-                            ),
-                          )
-                        : const SizedBox.shrink(),
+                  StreamValueBuilder<bool>(
+                    streamValue: _controller.isConfirmedStreamValue,
+                    builder: (context, isConfirmed) {
+                      return StreamValueBuilder<List<InviteModel>>(
+                        streamValue: _controller.receivedInvitesStreamValue,
+                        builder: (context, receivedInvites) {
+                          return AnimatedSize(
+                            duration: const Duration(milliseconds: 300),
+                            child: isConfirmed && receivedInvites.isEmpty
+                                ? Padding(
+                                    padding: const EdgeInsets.only(bottom: 24),
+                                    child: ConfirmedBanner(
+                                      confirmedAt: widget.event.confirmedAt ??
+                                          DateTime.now(),
+                                    ),
+                                  )
+                                : const SizedBox.shrink(),
+                          );
+                        },
+                      );
+                    },
                   ),
 
                   // Event Details
@@ -240,46 +265,76 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                   ),
 
                   // Invite Status Section (if confirmed)
-                  AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 400),
-                    child: _isConfirmed
-                        ? Column(
-                            children: [
-                              const SizedBox(height: 24),
-                              InviteStatusSection(
-                                sentInvites: _sentInvites,
-                                onInvite: _handleInviteFriends,
-                              ),
-                            ],
-                          )
-                        : const SizedBox.shrink(),
+                  StreamValueBuilder<bool>(
+                    streamValue: _controller.isConfirmedStreamValue,
+                    builder: (context, isConfirmed) {
+                      return StreamValueBuilder<List<SentInviteStatus>>(
+                        streamValue: _controller.sentInvitesStreamValue,
+                        builder: (context, sentInvites) {
+                          return AnimatedSwitcher(
+                            duration: const Duration(milliseconds: 400),
+                            child: isConfirmed
+                                ? Column(
+                                    children: [
+                                      const SizedBox(height: 24),
+                                      InviteStatusSection(
+                                        sentInvites: sentInvites,
+                                        onInvite: _handleInviteFriends,
+                                      ),
+                                    ],
+                                  )
+                                : const SizedBox.shrink(),
+                          );
+                        },
+                      );
+                    },
                   ),
 
                   // Social Proof (if confirmed or has friends going)
-                  if (_friendsGoing.isNotEmpty) ...[
-                    const SizedBox(height: 8),
-                    SocialProofSection(
-                      friendsGoing: _friendsGoing,
-                      totalConfirmed: _totalConfirmed,
-                    ),
-                  ],
-
-                  // Quick Actions (if confirmed)
-                  AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 400),
-                    child: _isConfirmed
-                        ? Column(
+                  StreamValueBuilder<List<FriendResume>>(
+                    streamValue: _controller.friendsGoingStreamValue,
+                    builder: (context, friendsGoing) {
+                      return StreamValueBuilder<int>(
+                        streamValue: _controller.totalConfirmedStreamValue,
+                        builder: (context, totalConfirmed) {
+                          if (friendsGoing.isEmpty) {
+                            return const SizedBox.shrink();
+                          }
+                          return Column(
                             children: [
                               const SizedBox(height: 8),
-                              QuickActionsGrid(
-                                onFavoriteArtists: () {}, // TODO: Implement
-                                onFavoriteVenue: () {}, // TODO: Implement
-                                onSetReminder: () {}, // TODO: Implement
-                                onInviteFriends: _handleInviteFriends,
+                              SocialProofSection(
+                                friendsGoing: friendsGoing,
+                                totalConfirmed: totalConfirmed,
                               ),
                             ],
-                          )
-                        : const SizedBox.shrink(),
+                          );
+                        },
+                      );
+                    },
+                  ),
+
+                  // Quick Actions (if confirmed)
+                  StreamValueBuilder<bool>(
+                    streamValue: _controller.isConfirmedStreamValue,
+                    builder: (context, isConfirmed) {
+                      return AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 400),
+                        child: isConfirmed
+                            ? Column(
+                                children: [
+                                  const SizedBox(height: 8),
+                                  QuickActionsGrid(
+                                    onFavoriteArtists: () {}, // TODO: Implement
+                                    onFavoriteVenue: () {}, // TODO: Implement
+                                    onSetReminder: () {}, // TODO: Implement
+                                    onInviteFriends: _handleInviteFriends,
+                                  ),
+                                ],
+                              )
+                            : const SizedBox.shrink(),
+                      );
+                    },
                   ),
                 ],
               ),
@@ -287,49 +342,63 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
           ),
         ],
       ),
-      bottomNavigationBar: SafeArea(
-        minimum: const EdgeInsets.fromLTRB(20, 12, 20, 24),
-        child: SizedBox(
-          width: double.infinity,
-          child: AnimatedBooraButton(
-            isConfirmed: _isConfirmed && _receivedInvites.isEmpty,
-            onPressed: _receivedInvites.isNotEmpty
-                ? _handleAcceptInvite
-                : (_isConfirmed ? null : _handleBooraAction),
-            text: _getCTAButtonText(),
-          ),
-        ),
+      bottomNavigationBar: StreamValueBuilder<bool>(
+        streamValue: _controller.isConfirmedStreamValue,
+        builder: (context, isConfirmed) {
+          return StreamValueBuilder<List<InviteModel>>(
+            streamValue: _controller.receivedInvitesStreamValue,
+            builder: (context, receivedInvites) {
+              return SafeArea(
+                minimum: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: AnimatedBooraButton(
+                    isConfirmed: isConfirmed && receivedInvites.isEmpty,
+                    onPressed: receivedInvites.isNotEmpty
+                        ? _handleAcceptInvite
+                        : (isConfirmed ? null : _handleBooraAction),
+                    text: _getCTAButtonText(),
+                  ),
+                ),
+              );
+            },
+          );
+        },
       ),
     );
   }
 
   String _getCTAButtonText() {
-    if (_receivedInvites.isNotEmpty) {
+    final receivedInvites = _controller.receivedInvitesStreamValue.value;
+    final isConfirmed = _controller.isConfirmedStreamValue.value;
+
+    if (receivedInvites.isNotEmpty) {
       return 'Aceitar convite';
     }
-    if (_isConfirmed) {
+    if (isConfirmed) {
       return 'Confirmado ✓';
     }
     return 'Bóora!';
   }
 
   void _handleBooraAction() {
-    setState(() {
-      _isConfirmed = true;
-    });
+    _controller.confirmAttendance();
   }
 
   void _handleAcceptInvite() {
-    setState(() {
-      _isConfirmed = true;
-      _receivedInvites = [];
-    });
+    final firstInvite =
+        _controller.receivedInvitesStreamValue.value.firstOrNull;
+    if (firstInvite != null) {
+      _controller.acceptInvite(firstInvite.id);
+    }
   }
 
   void _handleDeclineInvite() {
-    setState(() {
-      _receivedInvites = [];
-    });
+    final firstInvite =
+        _controller.receivedInvitesStreamValue.value.firstOrNull;
+    if (firstInvite != null) {
+      _controller.declineInvite(firstInvite.id);
+    }
   }
 
   void _handleInviteFriends() {

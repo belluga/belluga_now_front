@@ -26,7 +26,9 @@ class _EventDetailLoaderState extends State<EventDetailLoader> {
   @override
   void initState() {
     super.initState();
-    _eventFuture = _controller.loadEvent(widget.slug);
+    _eventFuture = _controller.loadEventBySlug(widget.slug).then((_) {
+      return _controller.eventStreamValue.value;
+    });
   }
 
   @override
