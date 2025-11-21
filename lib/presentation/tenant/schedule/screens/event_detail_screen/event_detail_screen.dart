@@ -1,14 +1,26 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/domain/invites/invite_model.dart';
-import 'package:belluga_now/domain/schedule/event_action_model/event_action_model.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/schedule/event_type_model.dart';
+import 'package:belluga_now/domain/schedule/friend_resume.dart';
+
+import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
+import 'package:belluga_now/presentation/tenant/schedule/screens/event_detail_screen/widgets/animated_boora_button.dart';
 import 'package:belluga_now/presentation/tenant/schedule/screens/event_detail_screen/widgets/artist_pill.dart';
+import 'package:belluga_now/presentation/tenant/schedule/screens/event_detail_screen/widgets/confirmed_banner.dart';
+import 'package:belluga_now/presentation/tenant/schedule/screens/event_detail_screen/widgets/event_detail_header.dart';
 import 'package:belluga_now/presentation/tenant/schedule/screens/event_detail_screen/widgets/event_detail_info_card.dart';
 import 'package:belluga_now/presentation/tenant/schedule/screens/event_detail_screen/widgets/event_hint_list.dart';
-import 'package:belluga_now/presentation/tenant/schedule/screens/event_detail_screen/widgets/event_type_chip.dart';
+import 'package:belluga_now/presentation/tenant/schedule/screens/event_detail_screen/widgets/event_participant_pill.dart';
+
+import 'package:belluga_now/presentation/tenant/schedule/screens/event_detail_screen/widgets/invite_banner.dart';
+import 'package:belluga_now/presentation/tenant/schedule/screens/event_detail_screen/widgets/invite_status_section.dart';
+import 'package:belluga_now/presentation/tenant/schedule/screens/event_detail_screen/widgets/quick_actions_grid.dart';
+import 'package:belluga_now/presentation/tenant/schedule/screens/event_detail_screen/widgets/social_proof_section.dart';
+import 'package:belluga_now/presentation/tenant/schedule/screens/event_detail_screen/widgets/venue_card.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_html/flutter_html.dart';
 import 'package:intl/intl.dart';
 
 class EventDetailScreen extends StatefulWidget {
@@ -48,6 +60,22 @@ class EventDetailScreen extends StatefulWidget {
 }
 
 class _EventDetailScreenState extends State<EventDetailScreen> {
+  late bool _isConfirmed;
+  late List<SentInviteStatus> _sentInvites;
+  late List<FriendResume> _friendsGoing;
+  late int _totalConfirmed;
+  late List<InviteModel> _receivedInvites;
+
+  @override
+  void initState() {
+    super.initState();
+    _isConfirmed = widget.event.isConfirmed;
+    _sentInvites = widget.event.sentInvites ?? [];
+    _friendsGoing = widget.event.friendsGoing ?? [];
+    _totalConfirmed = widget.event.totalConfirmed;
+    _receivedInvites = widget.event.receivedInvites ?? [];
+  }
+
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
@@ -58,64 +86,16 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     final coverUri = widget.event.thumb?.thumbUri.value;
     final String coverImage =
         coverUri?.toString() ?? EventDetailScreen._fallbackImage;
-    final EventActionModel? primaryAction =
-        widget.event.actions.isNotEmpty ? widget.event.actions.first : null;
     final EventTypeModel type = widget.event.type;
 
     return Scaffold(
       backgroundColor: colorScheme.surface,
       body: CustomScrollView(
         slivers: [
-          SliverAppBar(
-            pinned: true,
-            expandedHeight: 320,
-            backgroundColor: colorScheme.surface,
-            foregroundColor: colorScheme.onSurface,
-            flexibleSpace: FlexibleSpaceBar(
-              titlePadding: const EdgeInsetsDirectional.only(
-                start: 16,
-                bottom: 16,
-              ),
-              title: Text(
-                widget.event.title.value,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-              background: Stack(
-                fit: StackFit.expand,
-                children: [
-                  Image.network(
-                    coverImage,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => Container(
-                      color: colorScheme.surfaceContainerHigh,
-                      alignment: Alignment.center,
-                      child: const Icon(
-                        Icons.image_not_supported_outlined,
-                        size: 48,
-                      ),
-                    ),
-                  ),
-                  DecoratedBox(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [
-                          Colors.black.withValues(alpha: 0.05),
-                          Colors.black.withValues(alpha: 0.65),
-                        ],
-                      ),
-                    ),
-                  ),
-                  Positioned(
-                    top: kToolbarHeight + 24,
-                    left: 20,
-                    child: EventTypeChip(type: type),
-                  ),
-                ],
-              ),
-            ),
+          EventDetailHeader(
+            title: widget.event.title.value,
+            coverImage: coverImage,
+            type: type,
           ),
           SliverToBoxAdapter(
             child: Padding(
@@ -123,6 +103,36 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // Received Invite Banner
+                  AnimatedSize(
+                    duration: const Duration(milliseconds: 300),
+                    child: _receivedInvites.isNotEmpty
+                        ? Padding(
+                            padding: const EdgeInsets.only(bottom: 24),
+                            child: InviteBanner(
+                              invite: _receivedInvites.first,
+                              onAccept: _handleAcceptInvite,
+                              onDecline: _handleDeclineInvite,
+                            ),
+                          )
+                        : const SizedBox.shrink(),
+                  ),
+
+                  // Confirmed Banner
+                  AnimatedSize(
+                    duration: const Duration(milliseconds: 300),
+                    child: _isConfirmed && _receivedInvites.isEmpty
+                        ? Padding(
+                            padding: const EdgeInsets.only(bottom: 24),
+                            child: ConfirmedBanner(
+                              confirmedAt:
+                                  widget.event.confirmedAt ?? DateTime.now(),
+                            ),
+                          )
+                        : const SizedBox.shrink(),
+                  ),
+
+                  // Event Details
                   EventDetailInfoCard(
                     icon: Icons.calendar_today_outlined,
                     label: 'Quando',
@@ -135,7 +145,35 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                     label: 'Onde',
                     value: widget.event.location.value,
                   ),
-                  if (widget.event.artists.isNotEmpty) ...[
+                  // Venue section
+                  if (widget.event.venue != null) ...[
+                    const SizedBox(height: 16),
+                    VenueCard(venue: widget.event.venue!),
+                  ],
+                  // Participants section (new model) or Artists (fallback)
+                  if (widget.event.participants.isNotEmpty) ...[
+                    const SizedBox(height: 24),
+                    Text(
+                      'Participantes',
+                      style: theme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Wrap(
+                      spacing: 12,
+                      runSpacing: 12,
+                      children: widget.event.participants
+                          .map(
+                            (participant) => EventParticipantPill(
+                              name: participant.partner.displayName,
+                              role: participant.role.value,
+                              isHighlight: participant.isHighlight,
+                            ),
+                          )
+                          .toList(growable: false),
+                    ),
+                  ] else if (widget.event.artists.isNotEmpty) ...[
                     const SizedBox(height: 24),
                     Text(
                       'Line-up & Convidados',
@@ -144,18 +182,18 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                       ),
                     ),
                     const SizedBox(height: 12),
-                      Wrap(
-                        spacing: 12,
-                        runSpacing: 12,
-                        children: widget.event.artists
-                            .map(
-                              (artist) => EventArtistPill(
-                                name: artist.displayName,
-                                highlight: artist.isHighlight,
-                              ),
-                            )
-                            .toList(growable: false),
-                      ),
+                    Wrap(
+                      spacing: 12,
+                      runSpacing: 12,
+                      children: widget.event.artists
+                          .map(
+                            (artist) => EventArtistPill(
+                              name: artist.displayName,
+                              highlight: artist.isHighlight,
+                            ),
+                          )
+                          .toList(growable: false),
+                    ),
                   ],
                   const SizedBox(height: 24),
                   Text(
@@ -165,10 +203,25 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  Text(
-                    EventDetailScreen._stripHtml(
-                        widget.event.content.value ?? ''),
-                    style: theme.bodyLarge,
+                  Html(
+                    data: widget.event.content.value ?? '',
+                    style: {
+                      'body': Style(
+                        margin: Margins.zero,
+                        padding: HtmlPaddings.zero,
+                        fontSize: FontSize(theme.bodyLarge?.fontSize ?? 16.0),
+                        lineHeight: LineHeight.number(1.5),
+                        color: colorScheme.onSurface.withValues(alpha: 0.8),
+                      ),
+                      'p': Style(margin: Margins.only(bottom: 12)),
+                      'h1, h2, h3': Style(
+                        fontWeight: FontWeight.w700,
+                        margin: Margins.only(top: 16, bottom: 8),
+                      ),
+                      'ul, ol': Style(
+                        margin: Margins.only(left: 16, bottom: 12),
+                      ),
+                    },
                   ),
                   const SizedBox(height: 24),
                   Text(
@@ -185,6 +238,49 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                       'Convites aceitos podem ser compartilhados com a sua rede dentro do app.',
                     ],
                   ),
+
+                  // Invite Status Section (if confirmed)
+                  AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 400),
+                    child: _isConfirmed
+                        ? Column(
+                            children: [
+                              const SizedBox(height: 24),
+                              InviteStatusSection(
+                                sentInvites: _sentInvites,
+                                onInvite: _handleInviteFriends,
+                              ),
+                            ],
+                          )
+                        : const SizedBox.shrink(),
+                  ),
+
+                  // Social Proof (if confirmed or has friends going)
+                  if (_friendsGoing.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    SocialProofSection(
+                      friendsGoing: _friendsGoing,
+                      totalConfirmed: _totalConfirmed,
+                    ),
+                  ],
+
+                  // Quick Actions (if confirmed)
+                  AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 400),
+                    child: _isConfirmed
+                        ? Column(
+                            children: [
+                              const SizedBox(height: 8),
+                              QuickActionsGrid(
+                                onFavoriteArtists: () {}, // TODO: Implement
+                                onFavoriteVenue: () {}, // TODO: Implement
+                                onSetReminder: () {}, // TODO: Implement
+                                onInviteFriends: _handleInviteFriends,
+                              ),
+                            ],
+                          )
+                        : const SizedBox.shrink(),
+                  ),
                 ],
               ),
             ),
@@ -193,51 +289,51 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
       ),
       bottomNavigationBar: SafeArea(
         minimum: const EdgeInsets.fromLTRB(20, 12, 20, 24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton(
-                onPressed: () {
-                  if (primaryAction != null) {
-                    primaryAction.open(context);
-                  } else {
-                    _showComingSoon(context);
-                  }
-                },
-                style: FilledButton.styleFrom(
-                  backgroundColor:
-                      primaryAction?.color?.value ?? colorScheme.primary,
-                  padding: const EdgeInsets.symmetric(vertical: 18),
-                ),
-                child: Text(
-                  primaryAction?.label.value ?? 'Confirmar presença',
-                  style: const TextStyle(fontWeight: FontWeight.w700),
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                onPressed: () => _openInviteFlow(),
-                icon: const Icon(Icons.group_add_outlined),
-                label: const Text('Convidar amigos'),
-              ),
-            ),
-          ],
+        child: SizedBox(
+          width: double.infinity,
+          child: AnimatedBooraButton(
+            isConfirmed: _isConfirmed && _receivedInvites.isEmpty,
+            onPressed: _receivedInvites.isNotEmpty
+                ? _handleAcceptInvite
+                : (_isConfirmed ? null : _handleBooraAction),
+            text: _getCTAButtonText(),
+          ),
         ),
       ),
     );
   }
 
-  void _showComingSoon(BuildContext context) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Em breve você poderá confirmar presença por aqui!'),
-      ),
-    );
+  String _getCTAButtonText() {
+    if (_receivedInvites.isNotEmpty) {
+      return 'Aceitar convite';
+    }
+    if (_isConfirmed) {
+      return 'Confirmado ✓';
+    }
+    return 'Bóora!';
+  }
+
+  void _handleBooraAction() {
+    setState(() {
+      _isConfirmed = true;
+    });
+  }
+
+  void _handleAcceptInvite() {
+    setState(() {
+      _isConfirmed = true;
+      _receivedInvites = [];
+    });
+  }
+
+  void _handleDeclineInvite() {
+    setState(() {
+      _receivedInvites = [];
+    });
+  }
+
+  void _handleInviteFriends() {
+    _openInviteFlow();
   }
 
   Future<void> _openInviteFlow() async {
@@ -250,6 +346,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     );
   }
 
+  // Keep for future use when implementing invite flow after confirmation
   InviteModel _buildInviteFromEvent() {
     final eventName = widget.event.title.value;
     final eventDate = widget.event.dateTimeStart.value ?? DateTime.now();
@@ -284,4 +381,3 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     );
   }
 }
-

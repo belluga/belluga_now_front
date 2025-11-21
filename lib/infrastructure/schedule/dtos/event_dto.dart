@@ -13,9 +13,17 @@ class EventDto {
   final ThumbDto? thumb;
   final String startTime;
   final String? endTime;
+  final Map<String, dynamic>? venue; // Partner as venue
   final List<ArtistResumeDto> artists;
+  final List<Map<String, dynamic>>?
+      participants; // Event participants with roles
   final List<EventActionDto> actions;
   final CityCoordinateDto? coordinate;
+  final bool isConfirmed;
+  final int totalConfirmed;
+  final List<Map<String, dynamic>>? receivedInvites;
+  final List<Map<String, dynamic>>? sentInvites;
+  final List<Map<String, dynamic>>? friendsGoing;
 
   EventDto({
     required this.id,
@@ -27,9 +35,16 @@ class EventDto {
     this.thumb,
     required this.startTime,
     this.endTime,
+    this.venue,
     required this.artists,
+    this.participants,
     required this.actions,
     this.coordinate,
+    this.isConfirmed = false,
+    this.totalConfirmed = 0,
+    this.receivedInvites,
+    this.sentInvites,
+    this.friendsGoing,
   });
 
   factory EventDto.fromJson(Map<String, dynamic> json) {
@@ -45,10 +60,14 @@ class EventDto {
           : null,
       startTime: json['start_time'] as String,
       endTime: json['end_time'] as String?,
+      venue: json['venue'] as Map<String, dynamic>?,
       artists: (json['artists'] as List<dynamic>?)
               ?.map((e) => ArtistResumeDto.fromJson(e as Map<String, dynamic>))
               .toList() ??
           [],
+      participants: (json['participants'] as List<dynamic>?)
+          ?.map((e) => e as Map<String, dynamic>)
+          .toList(),
       actions: (json['actions'] as List<dynamic>?)
               ?.map((e) => EventActionDto.fromJson(e as Map<String, dynamic>))
               .toList() ??
@@ -57,6 +76,17 @@ class EventDto {
           ? CityCoordinateDto.fromJson(
               json['coordinate'] as Map<String, dynamic>)
           : null,
+      isConfirmed: json['is_confirmed'] as bool? ?? false,
+      totalConfirmed: json['total_confirmed'] as int? ?? 0,
+      receivedInvites: (json['received_invites'] as List<dynamic>?)
+          ?.map((e) => e as Map<String, dynamic>)
+          .toList(),
+      sentInvites: (json['sent_invites'] as List<dynamic>?)
+          ?.map((e) => e as Map<String, dynamic>)
+          .toList(),
+      friendsGoing: (json['friends_going'] as List<dynamic>?)
+          ?.map((e) => e as Map<String, dynamic>)
+          .toList(),
     );
   }
 
@@ -74,6 +104,11 @@ class EventDto {
       'artists': artists.map((e) => e.toJson()).toList(),
       'actions': actions.map((e) => e.toJson()).toList(),
       'coordinate': coordinate?.toJson(),
+      'is_confirmed': isConfirmed,
+      'total_confirmed': totalConfirmed,
+      'received_invites': receivedInvites,
+      'sent_invites': sentInvites,
+      'friends_going': friendsGoing,
     };
   }
 }

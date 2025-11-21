@@ -219,6 +219,22 @@ class MockScheduleBackend implements ScheduleBackendContract {
       actionLabel: 'Reservar vaga',
       actionUrl: 'https://example.com/morning-flow',
       actionColor: '#FFE80D5D',
+      isConfirmed: true,
+      totalConfirmed: 12,
+      friendsGoing: [
+        {
+          'id': 'friend-1',
+          'display_name': 'Ana Clara',
+          'avatar_url':
+              'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200',
+        },
+        {
+          'id': 'friend-2',
+          'display_name': 'Pedro Silva',
+          'avatar_url':
+              'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200',
+        },
+      ],
     ),
     _MockEventSeed(
       id: 'event-day0-street-art',
@@ -251,6 +267,22 @@ class MockScheduleBackend implements ScheduleBackendContract {
       actionLabel: 'Garantir tinta',
       actionUrl: 'https://example.com/street-art-jam',
       actionColor: '#FFE80D5D',
+      receivedInvites: [
+        {
+          'id': 'invite-1',
+          'event_name': 'Street Art Jam',
+          'event_date': '2025-11-21T11:00:00.000',
+          'event_image_url':
+              'https://images.unsplash.com/photo-1526481280695-3c46917ed726?w=800',
+          'location': 'Beco Criativo',
+          'host_name': 'Nina Ruas',
+          'message': 'Vamos pintar juntos!',
+          'tags': ['arte', 'urbano'],
+          'inviter_name': 'Carla Dias',
+          'inviter_avatar_url':
+              'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=200',
+        }
+      ],
     ),
     _MockEventSeed(
       id: 'event-day0-lunch-beats',
@@ -278,6 +310,40 @@ class MockScheduleBackend implements ScheduleBackendContract {
       actionLabel: 'Ouvir set',
       actionUrl: 'https://example.com/lunch-beats',
       actionColor: '#FF4FA0E3',
+      sentInvites: [
+        {
+          'friend': {
+            'id': 'friend-3',
+            'display_name': 'Lucas Oliveira',
+            'avatar_url':
+                'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200',
+          },
+          'status': 'accepted',
+          'sent_at': '2025-11-20T10:00:00.000',
+          'responded_at': '2025-11-20T12:30:00.000',
+        },
+        {
+          'friend': {
+            'id': 'friend-4',
+            'display_name': 'Mariana Costa',
+            'avatar_url':
+                'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=200',
+          },
+          'status': 'pending',
+          'sent_at': '2025-11-21T09:00:00.000',
+        },
+        {
+          'friend': {
+            'id': 'friend-5',
+            'display_name': 'Rafael Santos',
+            'avatar_url':
+                'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=200',
+          },
+          'status': 'declined',
+          'sent_at': '2025-11-20T14:00:00.000',
+          'responded_at': '2025-11-20T15:00:00.000',
+        },
+      ],
     ),
     _MockEventSeed(
       id: 'event-day0-sunset-acoustic',
@@ -305,6 +371,27 @@ class MockScheduleBackend implements ScheduleBackendContract {
       actionLabel: 'Comprar ingresso',
       actionUrl: 'https://example.com/sunset-acoustic',
       actionColor: '#FF4FA0E3',
+      totalConfirmed: 45,
+      friendsGoing: [
+        {
+          'id': 'friend-6',
+          'display_name': 'Beatriz Lima',
+          'avatar_url':
+              'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200',
+        },
+        {
+          'id': 'friend-7',
+          'display_name': 'Gabriel Souza',
+          'avatar_url':
+              'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200',
+        },
+        {
+          'id': 'friend-8',
+          'display_name': 'Fernanda Alves',
+          'avatar_url':
+              'https://images.unsplash.com/photo-1531123897727-8f129e1688ce?w=200',
+        },
+      ],
     ),
     _MockEventSeed(
       id: 'event-day0-electro-sunset',
@@ -1264,6 +1351,11 @@ class _MockEventSeed {
     required this.actionLabel,
     required this.actionUrl,
     required this.actionColor,
+    this.isConfirmed = false,
+    this.totalConfirmed = 0,
+    this.receivedInvites,
+    this.sentInvites,
+    this.friendsGoing,
   });
 
   final String id;
@@ -1284,6 +1376,11 @@ class _MockEventSeed {
   final String actionLabel;
   final String actionUrl;
   final String actionColor;
+  final bool isConfirmed;
+  final int totalConfirmed;
+  final List<Map<String, dynamic>>? receivedInvites;
+  final List<Map<String, dynamic>>? sentInvites;
+  final List<Map<String, dynamic>>? friendsGoing;
 
   EventDto toDto(DateTime baseDate, _EventVenue venue) {
     final date = baseDate.add(
@@ -1322,6 +1419,11 @@ class _MockEventSeed {
           color: actionColor,
         ),
       ],
+      isConfirmed: isConfirmed,
+      totalConfirmed: totalConfirmed,
+      receivedInvites: receivedInvites,
+      sentInvites: sentInvites,
+      friendsGoing: friendsGoing,
     );
   }
 }

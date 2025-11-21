@@ -13,6 +13,8 @@ import 'package:belluga_now/domain/schedule/event_action_model/event_action_unsu
 import 'package:belluga_now/domain/schedule/event_action_types.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/schedule/event_type_model.dart';
+import 'package:belluga_now/domain/schedule/value_objects/event_is_confirmed_value.dart';
+import 'package:belluga_now/domain/schedule/value_objects/event_total_confirmed_value.dart';
 import 'package:belluga_now/domain/schedule/schedule_summary_item_model.dart';
 import 'package:belluga_now/domain/schedule/schedule_summary_model.dart';
 import 'package:belluga_now/domain/value_objects/color_value.dart';
@@ -45,6 +47,7 @@ mixin ScheduleDtoMapper on CourseDtoMapper {
           ? (DateTimeValue()..parse(dto.dateTimeEnd!))
           : null,
       artists: dto.artists.map(mapEventArtist).toList(),
+      participants: [], // TODO: Add participants mapping when backend provides data
       actions: dto.actions.map(mapEventAction).toList(),
       coordinate: (dto.latitude != null && dto.longitude != null)
           ? CityCoordinate(
@@ -53,6 +56,11 @@ mixin ScheduleDtoMapper on CourseDtoMapper {
                 ..parse(dto.longitude!.toString()),
             )
           : null,
+      isConfirmedValue: EventIsConfirmedValue()..parse('false'),
+      totalConfirmedValue: EventTotalConfirmedValue()..parse('0'),
+      receivedInvites: [],
+      sentInvites: [],
+      friendsGoing: [],
     );
   }
 
