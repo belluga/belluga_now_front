@@ -6,6 +6,7 @@ import 'package:belluga_now/infrastructure/services/dal/dto/thumb_dto.dart';
 class EventDTO {
   const EventDTO({
     required this.id,
+    required this.slug,
     required this.type,
     required this.title,
     required this.content,
@@ -20,6 +21,7 @@ class EventDTO {
   });
 
   final String id;
+  final String slug;
   final EventTypeDTO type;
   final String title;
   final String? content;

@@ -58,6 +58,10 @@ class ScheduleRepository extends ScheduleRepositoryContract
         return event;
       }
 
+      if (event.slug == slug) {
+        return event;
+      }
+
       final titleSlug = _normalizeSlug(event.title.value);
       if (titleSlug == normalizedSlug) {
         return event;

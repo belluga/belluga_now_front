@@ -26,6 +26,7 @@ import 'package:belluga_now/domain/schedule/value_objects/event_total_confirmed_
 
 class EventModel {
   final MongoIDValue id;
+  final SlugValue slugValue; // Added slugValue
   final EventTypeModel type;
   final TitleValue title;
   final HTMLContentValue content;
@@ -55,9 +56,11 @@ class EventModel {
 
   bool get isConfirmed => isConfirmedValue.value;
   int get totalConfirmed => totalConfirmedValue.value;
+  String get slug => slugValue.value; // Added getter
 
   EventModel({
     required this.id,
+    required this.slugValue,
     required this.type,
     required this.title,
     required this.content,
@@ -81,6 +84,7 @@ class EventModel {
   factory EventModel.fromDto(EventDto dto) {
     return EventModel(
       id: MongoIDValue()..parse(dto.id),
+      slugValue: SlugValue()..parse(dto.slug), // Map slug
       type: EventTypeModel(
         id: MongoIDValue()..parse(dto.type),
         name: TitleValue()..parse(dto.type),

@@ -31,6 +31,9 @@ class TenantHomeController implements Disposable {
   final StreamValue<List<VenueEventResume>> upcomingEventsStreamValue =
       StreamValue<List<VenueEventResume>>(defaultValue: const []);
 
+  StreamValue<Set<String>> get confirmedSlugsStream =>
+      _userEventsRepository.confirmedEventSlugsStream;
+
   StreamSubscription? _myEventsSubscription;
 
   Future<void> init() async {

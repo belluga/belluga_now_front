@@ -44,16 +44,23 @@ class UpcomingEventsSection extends StatelessWidget {
 
         return Column(
           children: [
-            ListView.separated(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: filteredEvents.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 16),
-              itemBuilder: (context, index) {
-                final event = filteredEvents[index];
-                return UpcomingEventCard(
-                  event: event,
-                  onTap: () => onEventSelected(event.slug),
+            StreamValueBuilder<Set<String>>(
+              streamValue: controller.confirmedSlugsStream,
+              builder: (context, confirmedSlugs) {
+                return ListView.separated(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: filteredEvents.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 16),
+                  itemBuilder: (context, index) {
+                    final event = filteredEvents[index];
+                    final isConfirmed = confirmedSlugs.contains(event.slug);
+                    return UpcomingEventCard(
+                      event: event,
+                      onTap: () => onEventSelected(event.slug),
+                      isConfirmed: isConfirmed,
+                    );
+                  },
                 );
               },
             ),

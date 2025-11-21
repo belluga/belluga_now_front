@@ -10,10 +10,12 @@ class UpcomingEventCard extends StatelessWidget {
     super.key,
     required this.event,
     this.onTap,
+    this.isConfirmed = false,
   });
 
   final VenueEventResume event;
   final VoidCallback? onTap;
+  final bool isConfirmed;
 
   @override
   Widget build(BuildContext context) {
@@ -63,8 +65,13 @@ class UpcomingEventCard extends StatelessWidget {
               padding: EdgeInsets.zero,
               constraints: const BoxConstraints(),
               onPressed: () {},
-              icon: const Icon(Icons.favorite_border),
-              tooltip: 'Favoritar',
+              icon: Icon(
+                isConfirmed
+                    ? Icons.rocket_launch
+                    : Icons.rocket_launch_outlined,
+                color: isConfirmed ? theme.colorScheme.primary : null,
+              ),
+              tooltip: isConfirmed ? 'Confirmado!' : 'Confirmar presença',
             ),
           ],
         ),

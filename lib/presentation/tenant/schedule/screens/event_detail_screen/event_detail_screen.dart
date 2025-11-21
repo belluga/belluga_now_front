@@ -4,7 +4,6 @@ import 'package:belluga_now/domain/invites/invite_model.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/schedule/event_type_model.dart';
 import 'package:belluga_now/domain/schedule/friend_resume.dart';
-
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
 import 'package:belluga_now/presentation/tenant/schedule/screens/event_detail_screen/widgets/animated_boora_button.dart';
 import 'package:belluga_now/presentation/tenant/schedule/screens/event_detail_screen/widgets/artist_pill.dart';
@@ -13,7 +12,6 @@ import 'package:belluga_now/presentation/tenant/schedule/screens/event_detail_sc
 import 'package:belluga_now/presentation/tenant/schedule/screens/event_detail_screen/widgets/event_detail_info_card.dart';
 import 'package:belluga_now/presentation/tenant/schedule/screens/event_detail_screen/widgets/event_hint_list.dart';
 import 'package:belluga_now/presentation/tenant/schedule/screens/event_detail_screen/widgets/event_participant_pill.dart';
-
 import 'package:belluga_now/presentation/tenant/schedule/screens/event_detail_screen/widgets/invite_banner.dart';
 import 'package:belluga_now/presentation/tenant/schedule/screens/event_detail_screen/widgets/invite_status_section.dart';
 import 'package:belluga_now/presentation/tenant/schedule/screens/event_detail_screen/widgets/quick_actions_grid.dart';
@@ -37,21 +35,15 @@ class EventDetailScreen extends StatefulWidget {
   @override
   State<EventDetailScreen> createState() => _EventDetailScreenState();
 
-  static String _formatEventDateRange(
-    DateTime start,
-    DateTime? end,
-  ) {
+  static String _formatEventDateRange(DateTime start, DateTime? end) {
     final startLabel =
         DateFormat('EEE, d MMM • HH:mm', 'pt_BR').format(start.toLocal());
-    if (end == null) {
-      return startLabel;
-    }
-
+    if (end == null) return startLabel;
     final bool sameDay = DateUtils.isSameDay(start, end);
     final endLabel =
         DateFormat(sameDay ? 'HH:mm' : 'EEE, d MMM • HH:mm', 'pt_BR')
             .format(end.toLocal());
-    return sameDay ? '$startLabel - $endLabel' : '$startLabel\naté $endLabel';
+    return sameDay ? '$startLabel - $endLabel' : '$startLabel\\naté $endLabel';
   }
 
   static String _stripHtml(String value) {
@@ -63,21 +55,13 @@ class EventDetailScreen extends StatefulWidget {
 }
 
 class _EventDetailScreenState extends State<EventDetailScreen> {
-  final _controller = GetIt.I.get<EventDetailController>();
+  final EventDetailController _controller = GetIt.I<EventDetailController>();
 
   @override
   void initState() {
     super.initState();
-    // Initialize controller state from widget.event
-    _controller.eventStreamValue.addValue(widget.event);
-    _controller.isConfirmedStreamValue.addValue(widget.event.isConfirmed);
-    _controller.receivedInvitesStreamValue
-        .addValue(widget.event.receivedInvites ?? const []);
-    _controller.sentInvitesStreamValue
-        .addValue(widget.event.sentInvites ?? const []);
-    _controller.friendsGoingStreamValue
-        .addValue(widget.event.friendsGoing ?? const []);
-    _controller.totalConfirmedStreamValue.addValue(widget.event.totalConfirmed);
+    // Load event details using slug (ensures latest confirmation state)
+    _controller.loadEventBySlug(widget.event.slug);
   }
 
   @override
@@ -132,7 +116,6 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                       );
                     },
                   ),
-
                   // Confirmed Banner
                   StreamValueBuilder<bool>(
                     streamValue: _controller.isConfirmedStreamValue,
@@ -156,7 +139,6 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                       );
                     },
                   ),
-
                   // Event Details
                   EventDetailInfoCard(
                     icon: Icons.calendar_today_outlined,
@@ -175,57 +157,50 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                     const SizedBox(height: 16),
                     VenueCard(venue: widget.event.venue!),
                   ],
-                  // Participants section (new model) or Artists (fallback)
+                  // Participants or Artists
                   if (widget.event.participants.isNotEmpty) ...[
                     const SizedBox(height: 24),
                     Text(
                       'Participantes',
-                      style: theme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
+                      style: theme.titleMedium
+                          ?.copyWith(fontWeight: FontWeight.w700),
                     ),
                     const SizedBox(height: 12),
                     Wrap(
                       spacing: 12,
                       runSpacing: 12,
                       children: widget.event.participants
-                          .map(
-                            (participant) => EventParticipantPill(
-                              name: participant.partner.displayName,
-                              role: participant.role.value,
-                              isHighlight: participant.isHighlight,
-                            ),
-                          )
+                          .map((p) => EventParticipantPill(
+                                name: p.partner.displayName,
+                                role: p.role.value,
+                                isHighlight: p.isHighlight,
+                              ))
                           .toList(growable: false),
                     ),
                   ] else if (widget.event.artists.isNotEmpty) ...[
                     const SizedBox(height: 24),
                     Text(
                       'Line-up & Convidados',
-                      style: theme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
+                      style: theme.titleMedium
+                          ?.copyWith(fontWeight: FontWeight.w700),
                     ),
                     const SizedBox(height: 12),
                     Wrap(
                       spacing: 12,
                       runSpacing: 12,
                       children: widget.event.artists
-                          .map(
-                            (artist) => EventArtistPill(
-                              name: artist.displayName,
-                              highlight: artist.isHighlight,
-                            ),
-                          )
+                          .map((a) => EventArtistPill(
+                                name: a.displayName,
+                                highlight: a.isHighlight,
+                              ))
                           .toList(growable: false),
                     ),
                   ],
                   const SizedBox(height: 24),
                   Text(
                     'Sobre o evento',
-                    style: theme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
+                    style: theme.titleMedium
+                        ?.copyWith(fontWeight: FontWeight.w700),
                   ),
                   const SizedBox(height: 12),
                   Html(
@@ -251,9 +226,8 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                   const SizedBox(height: 24),
                   Text(
                     'Saiba antes de ir',
-                    style: theme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
+                    style: theme.titleMedium
+                        ?.copyWith(fontWeight: FontWeight.w700),
                   ),
                   const SizedBox(height: 12),
                   EventHintList(
@@ -263,7 +237,6 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                       'Convites aceitos podem ser compartilhados com a sua rede dentro do app.',
                     ],
                   ),
-
                   // Invite Status Section (if confirmed)
                   StreamValueBuilder<bool>(
                     streamValue: _controller.isConfirmedStreamValue,
@@ -289,7 +262,6 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                       );
                     },
                   ),
-
                   // Social Proof (if confirmed or has friends going)
                   StreamValueBuilder<List<FriendResume>>(
                     streamValue: _controller.friendsGoingStreamValue,
@@ -297,9 +269,8 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                       return StreamValueBuilder<int>(
                         streamValue: _controller.totalConfirmedStreamValue,
                         builder: (context, totalConfirmed) {
-                          if (friendsGoing.isEmpty) {
+                          if (friendsGoing.isEmpty)
                             return const SizedBox.shrink();
-                          }
                           return Column(
                             children: [
                               const SizedBox(height: 8),
@@ -313,7 +284,6 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                       );
                     },
                   ),
-
                   // Quick Actions (if confirmed)
                   StreamValueBuilder<bool>(
                     streamValue: _controller.isConfirmedStreamValue,
@@ -325,9 +295,9 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                                 children: [
                                   const SizedBox(height: 8),
                                   QuickActionsGrid(
-                                    onFavoriteArtists: () {}, // TODO: Implement
-                                    onFavoriteVenue: () {}, // TODO: Implement
-                                    onSetReminder: () {}, // TODO: Implement
+                                    onFavoriteArtists: () {},
+                                    onFavoriteVenue: () {},
+                                    onSetReminder: () {},
                                     onInviteFriends: _handleInviteFriends,
                                   ),
                                 ],
@@ -371,13 +341,8 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
   String _getCTAButtonText() {
     final receivedInvites = _controller.receivedInvitesStreamValue.value;
     final isConfirmed = _controller.isConfirmedStreamValue.value;
-
-    if (receivedInvites.isNotEmpty) {
-      return 'Aceitar convite';
-    }
-    if (isConfirmed) {
-      return 'Confirmado ✓';
-    }
+    if (receivedInvites.isNotEmpty) return 'Aceitar convite';
+    if (isConfirmed) return 'Confirmado ✓';
     return 'Bóora!';
   }
 
@@ -407,15 +372,9 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
 
   Future<void> _openInviteFlow() async {
     final invite = _buildInviteFromEvent();
-
-    context.router.push(
-      InviteShareRoute(
-        invite: invite,
-      ),
-    );
+    context.router.push(InviteShareRoute(invite: invite));
   }
 
-  // Keep for future use when implementing invite flow after confirmation
   InviteModel _buildInviteFromEvent() {
     final eventName = widget.event.title.value;
     final eventDate = widget.event.dateTimeStart.value ?? DateTime.now();
@@ -434,10 +393,8 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
       if (slug.isNotEmpty) slug,
       if (typeLabel.isNotEmpty && typeLabel != slug) typeLabel,
     ];
-
     final eventId = widget.event.id.value;
     final inviteId = eventId.isNotEmpty ? eventId : eventName;
-
     return InviteModel.fromPrimitives(
       id: inviteId,
       eventName: eventName,

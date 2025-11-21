@@ -48,7 +48,7 @@ class VenueEventResume {
     EventModel event,
     Uri fallbackImage,
   ) {
-    final slugSource = event.id.value;
+    final slugSource = event.slug;
     final slug = slugSource.isNotEmpty
         ? slugSource
         : VenueEventResume.slugify(event.title.value);

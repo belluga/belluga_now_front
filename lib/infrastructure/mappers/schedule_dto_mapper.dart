@@ -37,6 +37,7 @@ mixin ScheduleDtoMapper on CourseDtoMapper {
   EventModel mapEvent(EventDTO dto) {
     return EventModel(
       id: MongoIDValue()..tryParse(dto.id),
+      slugValue: SlugValue()..parse(dto.slug),
       type: mapEventType(dto.type),
       title: TitleValue()..parse(dto.title),
       content: HTMLContentValue()..parse(dto.content),

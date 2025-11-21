@@ -42,7 +42,23 @@ class EventDetailController implements Disposable {
 
       if (event != null) {
         eventStreamValue.addValue(event);
-        isConfirmedStreamValue.addValue(event.isConfirmedValue.value);
+
+        // Check local confirmation state first, then fallback to backend value
+        final isConfirmedLocally =
+            _userEventsRepository.isEventConfirmed(event.slug);
+
+        // DEBUG: Trace persistence
+        // ignore: avoid_print
+        print('EventDetailController: Loading event slug: "${event.slug}"');
+        // ignore: avoid_print
+        print(
+            'EventDetailController: Repository confirmed slugs: ${_userEventsRepository.confirmedEventSlugsStream.value}');
+        // ignore: avoid_print
+        print('EventDetailController: isConfirmedLocally: $isConfirmedLocally');
+
+        isConfirmedStreamValue
+            .addValue(isConfirmedLocally || event.isConfirmedValue.value);
+
         receivedInvitesStreamValue.addValue(event.receivedInvites ?? const []);
         sentInvitesStreamValue.addValue(event.sentInvites ?? const []);
         friendsGoingStreamValue.addValue(event.friendsGoing ?? const []);
@@ -62,7 +78,7 @@ class EventDetailController implements Disposable {
 
     try {
       // Call repository to persist confirmation
-      await _userEventsRepository.confirmEventAttendance(event.id.value);
+      await _userEventsRepository.confirmEventAttendance(event.slug);
 
       // Optimistic update
       isConfirmedStreamValue.addValue(true);
