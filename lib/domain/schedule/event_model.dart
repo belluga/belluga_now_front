@@ -51,7 +51,7 @@ class EventModel {
   final List<SentInviteStatus>? sentInvites;
 
   // Social proof
-  final List<FriendResume>? friendsGoing;
+  final List<EventFriendResume>? friendsGoing;
   final EventTotalConfirmedValue totalConfirmedValue;
 
   bool get isConfirmed => isConfirmedValue.value;
@@ -119,13 +119,18 @@ class EventModel {
         ..parse(dto.isConfirmed.toString()),
       totalConfirmedValue: EventTotalConfirmedValue()
         ..parse(dto.totalConfirmed.toString()),
-      receivedInvites: dto.receivedInvites
-          ?.map((e) => InviteModel.fromDto(InviteDto.fromJson(e)))
-          .toList(),
+      receivedInvites: dto.receivedInvites?.map((e) {
+        final inviteMap = Map<String, dynamic>.from(e);
+        if (inviteMap['event_id'] == null) {
+          inviteMap['event_id'] = dto.id;
+        }
+        return InviteModel.fromDto(InviteDto.fromJson(inviteMap));
+      }).toList(),
       sentInvites:
           dto.sentInvites?.map((e) => SentInviteStatus.fromDto(e)).toList(),
-      friendsGoing:
-          dto.friendsGoing?.map((e) => FriendResume.fromDto(e)).toList(),
+      friendsGoing: dto.friendsGoing
+          ?.map((friend) => EventFriendResume.fromDto(friend))
+          .toList(),
     );
   }
 }

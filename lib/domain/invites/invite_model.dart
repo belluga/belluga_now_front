@@ -1,6 +1,7 @@
 import 'package:belluga_now/domain/invites/invite_inviter.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_additional_inviter_name_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_event_date_value.dart';
+import 'package:belluga_now/domain/invites/value_objects/invite_event_id_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_host_name_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_id_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_inviter_avatar_value.dart';
@@ -16,6 +17,7 @@ import 'package:value_object_pattern/domain/exceptions/value_exceptions.dart';
 class InviteModel {
   InviteModel({
     required this.idValue,
+    required this.eventIdValue,
     required this.eventNameValue,
     required this.eventDateValue,
     required this.eventImageValue,
@@ -32,6 +34,7 @@ class InviteModel {
             List.unmodifiable(additionalInviterValues ?? const []);
 
   final InviteIdValue idValue;
+  final InviteEventIdValue eventIdValue;
   final TitleValue eventNameValue;
   final InviteEventDateValue eventDateValue;
   final ThumbUriValue eventImageValue;
@@ -45,6 +48,7 @@ class InviteModel {
   final List<InviteInviter> inviters;
 
   String get id => idValue.value;
+  String get eventId => eventIdValue.value;
   String get eventName => eventNameValue.value;
   DateTime get eventDateTime {
     final date = eventDateValue.value;
@@ -70,6 +74,7 @@ class InviteModel {
 
   factory InviteModel.fromPrimitives({
     required String id,
+    required String eventId,
     required String eventName,
     required DateTime eventDateTime,
     required String eventImageUrl,
@@ -104,6 +109,7 @@ class InviteModel {
 
     return InviteModel(
       idValue: InviteIdValue()..parse(id),
+      eventIdValue: InviteEventIdValue()..parse(eventId),
       eventNameValue: TitleValue()..parse(eventName),
       eventDateValue: InviteEventDateValue(isRequired: true)
         ..parse(eventDateTime.toIso8601String()),
@@ -125,6 +131,7 @@ class InviteModel {
   factory InviteModel.fromDto(InviteDto dto) {
     return InviteModel(
       idValue: InviteIdValue()..parse(dto.id),
+      eventIdValue: InviteEventIdValue()..parse(dto.eventId),
       eventNameValue: TitleValue()..parse(dto.eventName),
       eventDateValue: InviteEventDateValue(isRequired: true)
         ..parse(dto.eventDate),

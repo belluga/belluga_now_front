@@ -4,8 +4,9 @@ import 'package:belluga_now/domain/user/value_objects/friend_id_value.dart';
 import 'package:belluga_now/domain/user/value_objects/friend_match_label_value.dart';
 import 'package:belluga_now/domain/value_objects/title_value.dart';
 
-class FriendResume {
-  FriendResume({
+/// Lightweight friend projection for invite sharing and friend selection
+class InviteFriendResume {
+  InviteFriendResume({
     required this.idValue,
     required this.nameValue,
     required this.avatarValue,
@@ -30,8 +31,8 @@ class FriendResume {
 
   String get matchLabel => matchLabelValue.value;
 
-  factory FriendResume.fromFriend(Friend friend) {
-    return FriendResume(
+  factory InviteFriendResume.fromFriend(Friend friend) {
+    return InviteFriendResume(
       idValue: friend.idValue,
       nameValue: friend.nameValue,
       avatarValue: friend.avatarValue,

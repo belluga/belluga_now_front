@@ -9,7 +9,7 @@ class SocialProofSection extends StatelessWidget {
     required this.totalConfirmed,
   });
 
-  final List<FriendResume> friendsGoing;
+  final List<EventFriendResume> friendsGoing;
   final int totalConfirmed;
 
   @override

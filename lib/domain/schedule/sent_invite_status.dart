@@ -10,7 +10,7 @@ class SentInviteStatus {
     this.respondedAt,
   });
 
-  final FriendResume friend;
+  final EventFriendResume friend;
   final InviteStatus status;
   final DateTime sentAt;
   final DateTime? respondedAt;
@@ -18,7 +18,9 @@ class SentInviteStatus {
   /// Create from DTO
   factory SentInviteStatus.fromDto(Map<String, dynamic> json) {
     return SentInviteStatus(
-      friend: FriendResume.fromDto(json['friend'] as Map<String, dynamic>),
+      friend: EventFriendResume.fromDto(
+        json['friend'] as Map<String, dynamic>? ?? {},
+      ),
       status: _parseStatus(json['status'] as String?),
       sentAt: DateTime.parse(json['sent_at'] as String),
       respondedAt: json['responded_at'] != null

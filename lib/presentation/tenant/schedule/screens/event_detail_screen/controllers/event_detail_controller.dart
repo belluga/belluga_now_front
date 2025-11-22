@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:belluga_now/domain/invites/invite_model.dart';
+import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_events_repository_contract.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
@@ -14,22 +17,30 @@ class EventDetailController implements Disposable {
   EventDetailController({
     ScheduleRepositoryContract? repository,
     UserEventsRepositoryContract? userEventsRepository,
+    InvitesRepositoryContract? invitesRepository,
   })  : _repository = repository ?? GetIt.I.get<ScheduleRepositoryContract>(),
         _userEventsRepository =
-            userEventsRepository ?? GetIt.I.get<UserEventsRepositoryContract>();
+            userEventsRepository ?? GetIt.I.get<UserEventsRepositoryContract>(),
+        _invitesRepository =
+            invitesRepository ?? GetIt.I.get<InvitesRepositoryContract>();
 
   final ScheduleRepositoryContract _repository;
   final UserEventsRepositoryContract _userEventsRepository;
+  final InvitesRepositoryContract _invitesRepository;
 
   // Reactive state
   final eventStreamValue = StreamValue<EventModel?>();
   final isConfirmedStreamValue = StreamValue<bool>(defaultValue: false);
   final receivedInvitesStreamValue =
       StreamValue<List<InviteModel>>(defaultValue: const []);
-  final sentInvitesStreamValue =
-      StreamValue<List<SentInviteStatus>>(defaultValue: const []);
+
+  // Delegate to repository for single source of truth
+  StreamValue<Map<String, List<SentInviteStatus>>>
+      get sentInvitesByEventStreamValue =>
+          _invitesRepository.sentInvitesByEventStreamValue;
+
   final friendsGoingStreamValue =
-      StreamValue<List<FriendResume>>(defaultValue: const []);
+      StreamValue<List<EventFriendResume>>(defaultValue: const []);
   final totalConfirmedStreamValue = StreamValue<int>(defaultValue: 0);
   final isLoadingStreamValue = StreamValue<bool>(defaultValue: false);
 
@@ -60,7 +71,19 @@ class EventDetailController implements Disposable {
             .addValue(isConfirmedLocally || event.isConfirmedValue.value);
 
         receivedInvitesStreamValue.addValue(event.receivedInvites ?? const []);
-        sentInvitesStreamValue.addValue(event.sentInvites ?? const []);
+
+        // Populate repository with initial data from event model if missing
+        // This ensures we have data even before a refresh
+        final currentMap = Map<String, List<SentInviteStatus>>.from(
+            _invitesRepository.sentInvitesByEventStreamValue.value);
+
+        if (!currentMap.containsKey(event.id.value) &&
+            event.sentInvites != null &&
+            event.sentInvites!.isNotEmpty) {
+          currentMap[event.id.value] = event.sentInvites!;
+          _invitesRepository.sentInvitesByEventStreamValue.addValue(currentMap);
+        }
+
         friendsGoingStreamValue.addValue(event.friendsGoing ?? const []);
         totalConfirmedStreamValue.addValue(event.totalConfirmedValue.value);
       }
@@ -130,14 +153,16 @@ class EventDetailController implements Disposable {
 
   /// Send invites to friends
   /// TODO: Wire to real repository when backend is ready
-  Future<void> inviteFriends(List<FriendResume> friends) async {
+  Future<void> inviteFriends(List<EventFriendResume> friends) async {
     if (friends.isEmpty) return;
+    final event = eventStreamValue.value;
+    if (event == null) return;
 
     isLoadingStreamValue.addValue(true);
 
     try {
       // TODO: await _inviteRepository.sendInvites(
-      //   eventStreamValue.value!.id.value,
+      //   event.id.value,
       //   friends.map((f) => f.id.value).toList(),
       // );
 
@@ -153,8 +178,13 @@ class EventDetailController implements Disposable {
           )
           .toList();
 
-      final currentInvites = sentInvitesStreamValue.value;
-      sentInvitesStreamValue.addValue([...currentInvites, ...newInvites]);
+      final currentMap = Map<String, List<SentInviteStatus>>.from(
+          _invitesRepository.sentInvitesByEventStreamValue.value);
+
+      final currentList = currentMap[event.id.value] ?? [];
+      currentMap[event.id.value] = [...currentList, ...newInvites];
+
+      _invitesRepository.sentInvitesByEventStreamValue.addValue(currentMap);
     } finally {
       isLoadingStreamValue.addValue(false);
     }
@@ -165,7 +195,7 @@ class EventDetailController implements Disposable {
     eventStreamValue.dispose();
     isConfirmedStreamValue.dispose();
     receivedInvitesStreamValue.dispose();
-    sentInvitesStreamValue.dispose();
+    // sentInvitesByEventStreamValue is owned by repository, do not dispose
     friendsGoingStreamValue.dispose();
     totalConfirmedStreamValue.dispose();
     isLoadingStreamValue.dispose();

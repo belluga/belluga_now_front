@@ -28,7 +28,7 @@ class _InviteShareScreenState extends State<InviteShareScreen> {
   void initState() {
     super.initState();
 
-    _controller.init();
+    _controller.init(widget.invite.eventId);
   }
 
   @override
@@ -40,6 +40,13 @@ class _InviteShareScreenState extends State<InviteShareScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Convidar Amigos'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: _controller.refreshFriends,
+            tooltip: 'Atualizar lista',
+          ),
+        ],
       ),
       body: SafeArea(
         child: Column(
@@ -64,7 +71,7 @@ class _InviteShareScreenState extends State<InviteShareScreen> {
               child: FilledButton.icon(
                 onPressed: _onSendInternalInvites,
                 icon: const Icon(Icons.people_alt_outlined),
-                label: StreamValueBuilder<List<FriendResume>>(
+                label: StreamValueBuilder<List<InviteFriendResume>>(
                     streamValue:
                         _controller.selectedFriendsSuggestionsStreamValue,
                     builder: (context, selectedFriends) {
@@ -100,18 +107,39 @@ class _InviteShareScreenState extends State<InviteShareScreen> {
     );
   }
 
-  void _onSendInternalInvites() {
+  Future<void> _onSendInternalInvites() async {
     final count =
         _controller.selectedFriendsSuggestionsStreamValue.value.length;
-    final message = count == 0
-        ? 'Selecione pelo menos um amigo para enviar o convite.'
-        : 'Convite marcado para $count contato(s) dentro do app.';
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-      ),
-    );
+    if (count == 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Selecione pelo menos um amigo para enviar o convite.'),
+        ),
+      );
+      return;
+    }
+
+    try {
+      await _controller.sendInvites();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Convite enviado para $count amigo(s)!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Erro ao enviar convites. Tente novamente.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   Future<void> _shareExternally() async {

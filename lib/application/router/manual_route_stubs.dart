@@ -1,6 +1,5 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/domain/invites/invite_model.dart';
-import 'package:belluga_now/domain/invites/projections/friend_resume.dart';
 import 'package:belluga_now/domain/map/city_poi_model.dart';
 import 'package:belluga_now/domain/experiences/experience_model.dart';
 import 'package:belluga_now/presentation/tenant/experiences/routes/experience_detail_route.dart';
@@ -143,14 +142,10 @@ class InviteFlowRoute extends PageRouteInfo<void> {
 class InviteShareRoute extends PageRouteInfo<InviteShareRouteArgs> {
   InviteShareRoute({
     required InviteModel invite,
-    required List<FriendResume> friends,
     List<PageRouteInfo>? children,
   }) : super(
           InviteShareRoute.name,
-          args: InviteShareRouteArgs(
-            invite: invite,
-            friends: friends,
-          ),
+          args: InviteShareRouteArgs(invite: invite),
           initialChildren: children,
         );
 
@@ -170,9 +165,7 @@ class InviteShareRoute extends PageRouteInfo<InviteShareRouteArgs> {
 class InviteShareRouteArgs {
   InviteShareRouteArgs({
     required this.invite,
-    required this.friends,
   });
 
-    final InviteModel invite;
-    final List<FriendResume> friends;
+  final InviteModel invite;
 }

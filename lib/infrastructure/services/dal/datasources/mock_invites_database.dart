@@ -6,14 +6,29 @@ import 'package:belluga_now/domain/user/value_objects/friend_match_label_value.d
 import 'package:belluga_now/domain/value_objects/title_value.dart';
 
 class MockInvitesDatabase {
-  const MockInvitesDatabase();
+  MockInvitesDatabase();
 
   List<InviteDto> get invites => _invites;
   List<Friend> get friends => _friends;
 
+  // Mutable storage for sent invites by event slug
+  static final Map<String, List<Map<String, dynamic>>> _sentInvitesByEvent = {};
+
+  void addSentInvite(String eventSlug, Map<String, dynamic> inviteData) {
+    if (!_sentInvitesByEvent.containsKey(eventSlug)) {
+      _sentInvitesByEvent[eventSlug] = [];
+    }
+    _sentInvitesByEvent[eventSlug]!.add(inviteData);
+  }
+
+  List<Map<String, dynamic>> getSentInvitesForEvent(String eventSlug) {
+    return _sentInvitesByEvent[eventSlug] ?? [];
+  }
+
   static final List<InviteDto> _invites = [
     InviteDto(
       id: 'sun-chasers',
+      eventId: 'event-123',
       eventName: 'Sun Chasers Beach Session',
       eventDate: '2025-11-18T16:30:00.000',
       eventImageUrl:
@@ -36,7 +51,54 @@ class MockInvitesDatabase {
       ],
     ),
     InviteDto(
+      id: 'rooftop-jazz',
+      eventId: 'event-456',
+      eventName: 'Rooftop Jazz & Wine',
+      eventDate: '2025-11-20T20:00:00.000',
+      eventImageUrl:
+          'https://images.unsplash.com/photo-1511192336575-5a79af67a629?w=900',
+      location: 'Sky Lounge Bar',
+      hostName: 'Jazz Collective',
+      message:
+          'Noite de jazz experimental com vista para a cidade. Traga seu vinho favorito (rolha free).',
+      tags: const [
+        'jazz',
+        'wine',
+        'rooftop',
+        'nightlife',
+      ],
+      inviterName: 'Jazz Collective',
+      inviterAvatarUrl:
+          'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=200',
+      additionalInviters: const [],
+    ),
+    InviteDto(
+      id: 'sunday-brunch',
+      eventId: 'event-789',
+      eventName: 'Sunday Garden Brunch',
+      eventDate: '2025-11-23T10:00:00.000',
+      eventImageUrl:
+          'https://images.unsplash.com/photo-1493770348161-369560ae357d?w=900',
+      location: 'Jardim Botânico',
+      hostName: 'Café do Jardim',
+      message:
+          'Brunch colaborativo no jardim. Traga uma fruta ou bebida para compartilhar. Música ambiente e toalhas de piquenique.',
+      tags: const [
+        'brunch',
+        'picnic',
+        'nature',
+        'sunday vibes',
+      ],
+      inviterName: 'Ana Silva',
+      inviterAvatarUrl:
+          'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=200',
+      additionalInviters: const [
+        'Pedro Santos',
+      ],
+    ),
+    InviteDto(
       id: 'reef-research-night',
+      eventId: 'event-457', // Added eventId
       eventName: 'Noite Lab Marinho + Reef Night Dive',
       eventDate: '2025-11-21T19:00:00.000',
       eventImageUrl:
@@ -57,6 +119,7 @@ class MockInvitesDatabase {
     ),
     InviteDto(
       id: 'moon-dinner',
+      eventId: 'event-458', // Added eventId
       eventName: 'Jantar Colaborativo Lua Cheia',
       eventDate: '2025-11-25T20:00:00.000',
       eventImageUrl:

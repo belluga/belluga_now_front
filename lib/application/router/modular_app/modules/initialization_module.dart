@@ -3,9 +3,11 @@ import 'dart:async';
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/application/router/guards/tenant_route_guard.dart';
+import 'package:belluga_now/domain/repositories/friends_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_events_repository_contract.dart';
+import 'package:belluga_now/infrastructure/repositories/friends_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/invites_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/schedule_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/user_events_repository.dart';
@@ -21,6 +23,10 @@ class InitializationModule extends ModuleContract {
   FutureOr<void> registerDependencies() {
     registerLazySingleton<InvitesRepositoryContract>(
       () => InvitesRepository()..init(),
+    );
+
+    registerLazySingleton<FriendsRepositoryContract>(
+      () => FriendsRepository(),
     );
 
     if (!GetIt.I.isRegistered<ScheduleRepositoryContract>()) {

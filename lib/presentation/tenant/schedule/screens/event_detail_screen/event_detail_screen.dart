@@ -241,9 +241,12 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                   StreamValueBuilder<bool>(
                     streamValue: _controller.isConfirmedStreamValue,
                     builder: (context, isConfirmed) {
-                      return StreamValueBuilder<List<SentInviteStatus>>(
-                        streamValue: _controller.sentInvitesStreamValue,
-                        builder: (context, sentInvites) {
+                      return StreamValueBuilder<
+                          Map<String, List<SentInviteStatus>>>(
+                        streamValue: _controller.sentInvitesByEventStreamValue,
+                        builder: (context, sentInvitesMap) {
+                          final sentInvites =
+                              sentInvitesMap[widget.event.id.value] ?? [];
                           return AnimatedSwitcher(
                             duration: const Duration(milliseconds: 400),
                             child: isConfirmed
@@ -263,7 +266,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                     },
                   ),
                   // Social Proof (if confirmed or has friends going)
-                  StreamValueBuilder<List<FriendResume>>(
+                  StreamValueBuilder<List<EventFriendResume>>(
                     streamValue: _controller.friendsGoingStreamValue,
                     builder: (context, friendsGoing) {
                       return StreamValueBuilder<int>(
@@ -397,6 +400,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     final inviteId = eventId.isNotEmpty ? eventId : eventName;
     return InviteModel.fromPrimitives(
       id: inviteId,
+      eventId: eventId,
       eventName: eventName,
       eventDateTime: eventDate,
       eventImageUrl: imageUrl,
