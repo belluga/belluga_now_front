@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:belluga_now/domain/invites/invite_decision.dart';
 import 'package:belluga_now/domain/invites/invite_model.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/user_events_repository_contract.dart';
 import 'package:card_stack_swiper/card_stack_swiper.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value.dart';
@@ -10,12 +11,16 @@ import 'package:stream_value/core/stream_value.dart';
 class InviteFlowScreenController with Disposable {
   InviteFlowScreenController({
     InvitesRepositoryContract? repository,
+    UserEventsRepositoryContract? userEventsRepository,
     CardStackSwiperController? cardStackSwiperController,
   })  : _repository = repository ?? GetIt.I.get<InvitesRepositoryContract>(),
+        _userEventsRepository =
+            userEventsRepository ?? GetIt.I.get<UserEventsRepositoryContract>(),
         swiperController =
             cardStackSwiperController ?? CardStackSwiperController();
 
   final InvitesRepositoryContract _repository;
+  final UserEventsRepositoryContract _userEventsRepository;
 
   final CardStackSwiperController swiperController;
 
@@ -89,6 +94,7 @@ class InviteFlowScreenController with Disposable {
     decisionsStreamValue.addValue(Map.unmodifiable(_decisions));
 
     if (decision == InviteDecision.accepted) {
+      await _userEventsRepository.confirmEventAttendance(current.eventId);
       return current;
     }
 

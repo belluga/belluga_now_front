@@ -1,0 +1,118 @@
+import 'package:auto_route/auto_route.dart';
+import 'package:belluga_now/application/router/app_router.gr.dart';
+import 'package:belluga_now/domain/favorite/favorite_badge.dart';
+import 'package:belluga_now/domain/favorite/projections/favorite_resume.dart';
+import 'package:belluga_now/presentation/tenant/home/screens/tenant_home_screen/widgets/favorite_chip.dart';
+import 'package:flutter/material.dart';
+
+class FavoritesStrip extends StatefulWidget {
+  const FavoritesStrip({
+    super.key,
+    required this.items,
+    this.pinFirst = false,
+    this.height = 118,
+    this.spacing = 12,
+  });
+
+  final List<FavoriteResume> items;
+  final bool pinFirst;
+  final double height;
+  final double spacing;
+
+  @override
+  State<FavoritesStrip> createState() => _FavoritesStripState();
+}
+
+class _FavoritesStripState extends State<FavoritesStrip> {
+  @override
+  Widget build(BuildContext context) {
+    final pinned =
+        widget.pinFirst && widget.items.isNotEmpty ? widget.items.first : null;
+    final scrollItems = pinned == null
+        ? widget.items
+        : widget.items.sublist(1); // omit pinned from list view
+
+    return SizedBox(
+      height: widget.height,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (pinned != null)
+            Padding(
+              padding: EdgeInsets.only(right: widget.spacing),
+              child: FavoriteChip(
+                title: pinned.title,
+                imageUri: pinned.imageUri,
+                badge: _convertBadgeToIconData(pinned.badge),
+                onTap: () => _onFavoriteTap(pinned),
+                isPrimary: pinned.isPrimary,
+                iconImageUrl: pinned.iconImageUrl,
+                primaryColor: pinned.primaryColor,
+              ),
+            ),
+          Expanded(
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: scrollItems.length + 1,
+              padding: EdgeInsets.only(
+                left: widget.pinFirst ? 0 : widget.spacing,
+                right: widget.spacing,
+              ),
+              separatorBuilder: (_, __) => SizedBox(width: widget.spacing),
+              itemBuilder: (context, index) {
+                if (index == scrollItems.length) {
+                  return FavoriteChip(
+                    title: 'Procurar',
+                    onTap: _onSearchTap,
+                  );
+                }
+
+                final item = scrollItems[index];
+                return FavoriteChip(
+                  title: item.title,
+                  imageUri: item.imageUri,
+                  badge: _convertBadgeToIconData(item.badge),
+                  onTap: () => _onFavoriteTap(item),
+                  isPrimary: item.isPrimary,
+                  iconImageUrl: item.iconImageUrl,
+                  primaryColor: item.primaryColor,
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  IconData? _convertBadgeToIconData(FavoriteBadge? badge) {
+    if (badge == null) return null;
+    final codePoint = badge.codePoint;
+    if (codePoint <= 0) return null;
+    return IconData(
+      codePoint,
+      fontFamily: badge.fontFamily,
+      fontPackage: badge.fontPackage,
+    );
+  }
+
+  void _onSearchTap() {
+    context.router.push(DiscoveryRoute());
+  }
+
+  void _onFavoriteTap(FavoriteResume favorite) {
+    // If it's the primary favorite (app owner), navigate to About screen
+    // Otherwise, navigate to Partner Details
+    if (favorite.isPrimary) {
+      // TODO: Navigate to About screen when implemented
+      // context.router.push(AboutRoute());
+      return;
+    }
+
+    // For partners, navigate to partner details using slug
+    final slug = favorite.slug;
+    if (slug != null && slug.isNotEmpty) {
+      context.router.push(PartnerDetailRoute(slug: slug));
+    }
+  }
+}

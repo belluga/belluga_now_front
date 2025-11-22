@@ -14,21 +14,21 @@ class UserEventsRepository implements UserEventsRepositoryContract {
 
   final ScheduleRepositoryContract _scheduleRepository;
 
-  /// Stream of confirmed event slugs
+  /// Stream of confirmed event IDs
   @override
-  final StreamValue<Set<String>> confirmedEventSlugsStream =
+  final StreamValue<Set<String>> confirmedEventIdsStream =
       StreamValue<Set<String>>(defaultValue: const {});
 
-  /// In-memory storage for confirmed event slugs
+  /// In-memory storage for confirmed event IDs
   /// We use the stream value as the source of truth
-  Set<String> get _confirmedEventSlugs => confirmedEventSlugsStream.value;
+  Set<String> get _confirmedEventIds => confirmedEventIdsStream.value;
 
   @override
   Future<List<VenueEventResume>> fetchMyEvents() async {
-    // Fetch all upcoming events and filter by confirmed slugs
+    // Fetch all upcoming events and filter by confirmed IDs
     final allEvents = await _scheduleRepository.fetchUpcomingEvents();
     return allEvents
-        .where((event) => _confirmedEventSlugs.contains(event.slug))
+        .where((event) => _confirmedEventIds.contains(event.id))
         .toList();
   }
 
@@ -41,20 +41,20 @@ class UserEventsRepository implements UserEventsRepositoryContract {
 
   @override
   Future<void> confirmEventAttendance(String eventId) async {
-    final newSet = Set<String>.from(_confirmedEventSlugs)..add(eventId);
-    confirmedEventSlugsStream.addValue(newSet);
+    final newSet = Set<String>.from(_confirmedEventIds)..add(eventId);
+    confirmedEventIdsStream.addValue(newSet);
     // TODO: Call backend API when available
   }
 
   @override
   Future<void> unconfirmEventAttendance(String eventId) async {
-    final newSet = Set<String>.from(_confirmedEventSlugs)..remove(eventId);
-    confirmedEventSlugsStream.addValue(newSet);
+    final newSet = Set<String>.from(_confirmedEventIds)..remove(eventId);
+    confirmedEventIdsStream.addValue(newSet);
     // TODO: Call backend API when available
   }
 
   @override
   bool isEventConfirmed(String eventId) {
-    return _confirmedEventSlugs.contains(eventId);
+    return _confirmedEventIds.contains(eventId);
   }
 }

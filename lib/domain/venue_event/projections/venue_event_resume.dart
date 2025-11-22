@@ -7,6 +7,7 @@ import 'package:value_object_pattern/domain/value_objects/date_time_value.dart';
 
 class VenueEventResume {
   VenueEventResume({
+    required this.id,
     required this.slug,
     required this.titleValue,
     required this.imageUriValue,
@@ -15,6 +16,7 @@ class VenueEventResume {
     required this.artists,
   });
 
+  final String id;
   final String slug;
   final TitleValue titleValue;
   final ThumbUriValue imageUriValue;
@@ -68,6 +70,7 @@ class VenueEventResume {
       ..parse(startDateTime.toIso8601String());
 
     return VenueEventResume(
+      id: event.id.value,
       slug: slug,
       titleValue: event.title,
       imageUriValue: thumb,

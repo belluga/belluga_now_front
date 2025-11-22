@@ -64,14 +64,14 @@ class EventDetailController implements Disposable {
 
         // Check local confirmation state first, then fallback to backend value
         final isConfirmedLocally =
-            _userEventsRepository.isEventConfirmed(event.slug);
+            _userEventsRepository.isEventConfirmed(event.id.value);
 
         // DEBUG: Trace persistence
         // ignore: avoid_print
         print('EventDetailController: Loading event slug: "${event.slug}"');
         // ignore: avoid_print
         print(
-            'EventDetailController: Repository confirmed slugs: ${_userEventsRepository.confirmedEventSlugsStream.value}');
+            'EventDetailController: Repository confirmed IDs: ${_userEventsRepository.confirmedEventIdsStream.value}');
         // ignore: avoid_print
         print('EventDetailController: isConfirmedLocally: $isConfirmedLocally');
 
@@ -114,7 +114,7 @@ class EventDetailController implements Disposable {
 
     try {
       // Call repository to persist confirmation
-      await _userEventsRepository.confirmEventAttendance(event.slug);
+      await _userEventsRepository.confirmEventAttendance(event.id.value);
 
       // Optimistic update
       isConfirmedStreamValue.addValue(true);
@@ -133,10 +133,16 @@ class EventDetailController implements Disposable {
   /// Accept a received invite
   /// TODO: Wire to real repository when backend is ready
   Future<void> acceptInvite(String inviteId) async {
+    final event = eventStreamValue.value;
+    if (event == null) return;
+
     isLoadingStreamValue.addValue(true);
 
     try {
       // TODO: await _inviteRepository.acceptInvite(inviteId);
+
+      // Persist confirmation
+      await _userEventsRepository.confirmEventAttendance(event.id.value);
 
       // Optimistic update: remove from received invites and confirm
       receivedInvitesStreamValue.addValue(const []);

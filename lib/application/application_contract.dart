@@ -5,6 +5,8 @@ import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/infrastructure/services/dal/dao/backend_contract.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it_modular_with_auto_route/get_it_modular_with_auto_route.dart';
+import 'package:belluga_now/infrastructure/repositories/app_data_repository.dart';
+import 'package:get_it/get_it.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:intl/intl_standalone.dart';
 
@@ -21,6 +23,7 @@ abstract class ApplicationContract extends ModularAppContract {
 
   BackendContract initBackendRepository();
   AuthRepositoryContract initAuthRepository();
+  AppDataRepository initAppDataRepository();
   Future<void> initialSettingsPlatform();
 
   @override
@@ -39,59 +42,18 @@ abstract class ApplicationContract extends ModularAppContract {
   Future<void> init() async {
     await initialSettings();
     await initialSettingsPlatform();
+
+    final appDataRepository = initAppDataRepository();
+    await appDataRepository.init();
+    GetIt.I.registerSingleton<AppDataRepository>(appDataRepository);
+
     await super.init();
   }
 
   ThemeData getThemeData() {
-    const primarySeed = Color(0xFF4FA0E3);
-    const secondarySeed = Color(0xFFE80D5D);
-
-    final primaryScheme = ColorScheme.fromSeed(seedColor: primarySeed);
-    final secondaryScheme = ColorScheme.fromSeed(
-      seedColor: secondarySeed,
-      brightness: primaryScheme.brightness,
-    );
-
-    final colorScheme = primaryScheme.copyWith(
-      primary: primarySeed,
-      onPrimary: primaryScheme.onPrimary,
-      primaryContainer: primaryScheme.primaryContainer,
-      onPrimaryContainer: primaryScheme.onPrimaryContainer,
-      secondary: secondaryScheme.primary,
-      onSecondary: secondaryScheme.onPrimary,
-      secondaryContainer: secondaryScheme.primaryContainer,
-      onSecondaryContainer: secondaryScheme.onPrimaryContainer,
-      tertiary: secondaryScheme.secondary,
-      onTertiary: secondaryScheme.onSecondary,
-      tertiaryContainer: secondaryScheme.secondaryContainer,
-      onTertiaryContainer: secondaryScheme.onSecondaryContainer,
-    );
-
-    return ThemeData(
-      colorScheme: colorScheme,
-      bottomNavigationBarTheme: BottomNavigationBarThemeData(
-        backgroundColor: colorScheme.surface,
-        selectedItemColor: colorScheme.primary,
-        unselectedItemColor: colorScheme.onSurfaceVariant,
-        selectedLabelStyle: TextStyle(
-          color: colorScheme.primary,
-          fontWeight: FontWeight.w600,
-        ),
-        unselectedLabelStyle: TextStyle(
-          color: colorScheme.onSurfaceVariant,
-          fontWeight: FontWeight.w500,
-        ),
-        selectedIconTheme: IconThemeData(
-          color: colorScheme.primary,
-          size: 28,
-        ),
-        unselectedIconTheme: IconThemeData(
-          color: colorScheme.onSurfaceVariant,
-          size: 24,
-        ),
-        type: BottomNavigationBarType.fixed,
-      ),
-    );
+    final appData = GetIt.I.get<AppDataRepository>().appData;
+    // For now using light theme by default, or we could check platform brightness
+    return appData.themeDataSettings.themeData(Brightness.light);
   }
 
   @override

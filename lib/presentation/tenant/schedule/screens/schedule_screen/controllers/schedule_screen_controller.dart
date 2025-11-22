@@ -1,7 +1,10 @@
 import 'dart:async';
 
 import 'package:belluga_now/application/functions/today.dart';
+import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/user_events_repository_contract.dart';
+import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/schedule/schedule_summary_item_model.dart';
 import 'package:belluga_now/domain/schedule/schedule_summary_model.dart';
 import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
@@ -12,8 +15,14 @@ import 'package:stream_value/core/stream_value.dart';
 class ScheduleScreenController implements Disposable {
   ScheduleScreenController({
     ScheduleRepositoryContract? scheduleRepository,
-  }) : _scheduleRepository =
-            scheduleRepository ?? GetIt.I.get<ScheduleRepositoryContract>() {
+    UserEventsRepositoryContract? userEventsRepository,
+    InvitesRepositoryContract? invitesRepository,
+  })  : _scheduleRepository =
+            scheduleRepository ?? GetIt.I.get<ScheduleRepositoryContract>(),
+        _userEventsRepository =
+            userEventsRepository ?? GetIt.I.get<UserEventsRepositoryContract>(),
+        _invitesRepository =
+            invitesRepository ?? GetIt.I.get<InvitesRepositoryContract>() {
     _visibleDatesSubscription = visibleDatesStreamValue.stream.listen((dates) {
       updateCurrentMonth(dates);
       todayBecomeVisible(dates);
@@ -26,10 +35,16 @@ class ScheduleScreenController implements Disposable {
   }
 
   final ScheduleRepositoryContract _scheduleRepository;
+  final UserEventsRepositoryContract _userEventsRepository;
+  final InvitesRepositoryContract _invitesRepository;
 
   final eventsStreamValue = StreamValue<List<VenueEventResume>?>();
+  final allEventsStreamValue =
+      StreamValue<List<EventModel>>(defaultValue: const []);
   late final StreamSubscription<List<DateTime>> _visibleDatesSubscription;
   late final StreamSubscription<List<DateTime>> _invisibleDatesSubscription;
+  StreamSubscription? _confirmedEventsSubscription;
+  StreamSubscription? _pendingInvitesSubscription;
 
   final scrollController = ScrollController();
 
@@ -71,7 +86,27 @@ class ScheduleScreenController implements Disposable {
     final ScheduleSummaryModel _scheduleSummary =
         await _scheduleRepository.getScheduleSummary();
     scheduleSummaryStreamValue.addValue(_scheduleSummary);
+
+    // Cache all events for marker counting
+    final events = await _scheduleRepository.getAllEvents();
+    allEventsStreamValue.addValue(events);
+
     await _getEvents(date: Today.today);
+
+    // Listen to confirmed events changes and refresh allEventsStreamValue to trigger UI update
+    _confirmedEventsSubscription?.cancel();
+    _confirmedEventsSubscription =
+        _userEventsRepository.confirmedEventIdsStream.stream.listen((_) {
+      // Re-emit the same value to trigger StreamValueBuilder in DateItem
+      allEventsStreamValue.addValue(allEventsStreamValue.value);
+    });
+
+    // Listen to pending invites changes
+    _pendingInvitesSubscription?.cancel();
+    _pendingInvitesSubscription =
+        _invitesRepository.pendingInvitesStreamValue.stream.listen((_) {
+      allEventsStreamValue.addValue(allEventsStreamValue.value);
+    });
   }
 
   void selectDate(DateTime date) {
@@ -130,6 +165,34 @@ class ScheduleScreenController implements Disposable {
   int getIndexByDate(DateTime date) =>
       initialIndex + (date.difference(Today.today).inDays);
 
+  /// Count confirmed events for a specific date
+  int getConfirmedEventsCountByDate(DateTime date) {
+    final allEvents = allEventsStreamValue.value;
+
+    // Filter events for this date that are confirmed
+    return allEvents.where((event) {
+      final eventDate = event.dateTimeStart.value;
+      if (eventDate == null) return false;
+      return isSameDay(eventDate, date) &&
+          _userEventsRepository.isEventConfirmed(event.id.value);
+    }).length;
+  }
+
+  /// Count pending invites for a specific date
+  int getPendingInvitesCountByDate(DateTime date) {
+    final allInvites = _invitesRepository.pendingInvitesStreamValue.value;
+    return allInvites.where((invite) {
+      final inviteDate = invite.eventDateValue.value;
+      if (inviteDate == null) return false;
+
+      // Check if this event is already confirmed
+      final isConfirmed =
+          _userEventsRepository.isEventConfirmed(invite.eventId);
+
+      return isSameDay(inviteDate, date) && !isConfirmed;
+    }).length;
+  }
+
   @override
   void onDispose() {
     scrollController.dispose();
@@ -138,9 +201,12 @@ class ScheduleScreenController implements Disposable {
     visibleDatesStreamValue.dispose();
     invisibleDatesStreamValue.dispose();
     eventsStreamValue.dispose();
+    allEventsStreamValue.dispose();
     isTodayVisible.dispose();
     scheduleSummaryStreamValue.dispose();
     _visibleDatesSubscription.cancel();
     _invisibleDatesSubscription.cancel();
+    _confirmedEventsSubscription?.cancel();
+    _pendingInvitesSubscription?.cancel();
   }
 }

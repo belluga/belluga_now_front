@@ -1,25 +1,32 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:belluga_now/application/router/modular_app/modules/auth_module.dart';
+import 'package:belluga_now/application/router/modular_app/modules/discovery_module.dart';
+import 'package:belluga_now/application/router/modular_app/modules/experiences_module.dart';
 import 'package:belluga_now/application/router/modular_app/modules/initialization_module.dart';
+import 'package:belluga_now/application/router/modular_app/modules/invites_module.dart';
 import 'package:belluga_now/application/router/modular_app/modules/landlord_module.dart';
 import 'package:belluga_now/application/router/modular_app/modules/map_module.dart';
 import 'package:belluga_now/application/router/modular_app/modules/map_prototype_module.dart';
-import 'package:belluga_now/application/router/modular_app/modules/mercado_module.dart';
-import 'package:belluga_now/application/router/modular_app/modules/experiences_module.dart';
-import 'package:belluga_now/application/router/modular_app/modules/invites_module.dart';
 import 'package:belluga_now/application/router/modular_app/modules/menu_module.dart';
+import 'package:belluga_now/application/router/modular_app/modules/mercado_module.dart';
 import 'package:belluga_now/application/router/modular_app/modules/profile_module.dart';
 import 'package:belluga_now/application/router/modular_app/modules/schedule_module.dart';
-import 'package:belluga_now/domain/app_data/app_data.dart';
+
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/contacts_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/favorite_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/partners_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_events_repository_contract.dart';
-import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
+import 'package:belluga_now/infrastructure/repositories/contacts_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/favorite_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/invites_repository.dart';
+import 'package:belluga_now/infrastructure/repositories/mock_contacts_repository.dart';
+import 'package:belluga_now/infrastructure/repositories/partners_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/schedule_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/tenant_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/user_events_repository.dart';
@@ -41,11 +48,11 @@ class ModuleSettings extends ModuleSettingsContract {
   @override
   FutureOr<void> registerGlobalDependencies() async {
     _registerBackend();
-    await _registerAppData();
     _registerScheduleBackend();
     await _registerTenantRepository();
     await _registerAuthRepository();
     _registerFavoriteRepository();
+    _registerContactsRepository();
   }
 
   @override
@@ -57,6 +64,7 @@ class ModuleSettings extends ModuleSettingsContract {
     await registerSubModule(InvitesModule()); // Moved before ScheduleModule
     await registerSubModule(ScheduleModule());
     await registerSubModule(MapModule());
+    await registerSubModule(DiscoveryModule());
     await registerSubModule(MercadoModule());
     await registerSubModule(ExperiencesModule());
     await registerSubModule(MenuModule());
@@ -67,26 +75,14 @@ class ModuleSettings extends ModuleSettingsContract {
     if (GetIt.I.isRegistered<BackendContract>()) {
       return;
     }
-
     final backend = _backendBuilder();
     GetIt.I.registerSingleton<BackendContract>(backend);
-  }
-
-  Future<void> _registerAppData() async {
-    if (GetIt.I.isRegistered<AppData>()) {
-      return;
-    }
-
-    final appData = AppData();
-    await appData.initialize();
-    GetIt.I.registerSingleton<AppData>(appData);
   }
 
   Future<void> _registerTenantRepository() async {
     if (GetIt.I.isRegistered<TenantRepositoryContract>()) {
       return;
     }
-
     final tenantRepository = TenantRepository();
     await tenantRepository.init();
     GetIt.I.registerSingleton<TenantRepositoryContract>(tenantRepository);
@@ -96,7 +92,6 @@ class ModuleSettings extends ModuleSettingsContract {
     if (GetIt.I.isRegistered<AuthRepositoryContract>()) {
       return;
     }
-
     final authRepository = _authRepositoryBuilder();
     await authRepository.init();
     GetIt.I.registerSingleton<AuthRepositoryContract>(authRepository);
@@ -106,7 +101,6 @@ class ModuleSettings extends ModuleSettingsContract {
     if (GetIt.I.isRegistered<FavoriteRepositoryContract>()) {
       return;
     }
-
     GetIt.I.registerLazySingleton<FavoriteRepositoryContract>(
       () => FavoriteRepository(),
     );
@@ -116,22 +110,37 @@ class ModuleSettings extends ModuleSettingsContract {
     if (GetIt.I.isRegistered<ScheduleBackendContract>()) {
       return;
     }
-
     final backend = GetIt.I.get<BackendContract>();
-
     GetIt.I.registerLazySingleton<ScheduleBackendContract>(
       () => backend.schedule,
     );
-
     GetIt.I.registerLazySingleton<ScheduleRepositoryContract>(
         () => ScheduleRepository());
-
     GetIt.I.registerLazySingleton<UserEventsRepositoryContract>(
       () => UserEventsRepository(),
     );
-
     GetIt.I.registerLazySingleton<InvitesRepositoryContract>(
       () => InvitesRepository(),
     );
+    GetIt.I.registerLazySingleton<PartnersRepositoryContract>(
+      () => PartnersRepository(),
+    );
+  }
+
+  void _registerContactsRepository() {
+    if (GetIt.I.isRegistered<ContactsRepositoryContract>()) {
+      return;
+    }
+
+    // Use mock on Linux/MacOS/Windows for development
+    if (Platform.isLinux || Platform.isMacOS || Platform.isWindows) {
+      GetIt.I.registerLazySingleton<ContactsRepositoryContract>(
+        () => MockContactsRepository(),
+      );
+    } else {
+      GetIt.I.registerLazySingleton<ContactsRepositoryContract>(
+        () => ContactsRepository(),
+      );
+    }
   }
 }

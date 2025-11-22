@@ -4,8 +4,8 @@ import 'package:stream_value/core/stream_value.dart';
 /// Repository contract for user-specific event relationships
 /// Handles confirmed events, featured events, and user event actions
 abstract class UserEventsRepositoryContract {
-  /// Stream of confirmed event slugs to notify listeners of changes
-  StreamValue<Set<String>> get confirmedEventSlugsStream;
+  /// Stream of confirmed event IDs to notify listeners of changes
+  StreamValue<Set<String>> get confirmedEventIdsStream;
 
   /// Fetch events that the user has confirmed attendance for
   Future<List<VenueEventResume>> fetchMyEvents();

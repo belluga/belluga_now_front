@@ -47,6 +47,8 @@
 		<true/>
 		<key>NSLocationWhenInUseUsageDescription</key>
 		<string>Permita que o app indique pontos de interesse próximos a você.</string>
+		<key>NSContactsUsageDescription</key>
+		<string>Precisamos acessar seus contatos para que você possa convidar amigos.</string>
 		<key>UIStatusBarHidden</key>
 		<false/>
 	</dict>

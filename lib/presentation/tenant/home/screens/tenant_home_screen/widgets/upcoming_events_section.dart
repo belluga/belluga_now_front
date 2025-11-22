@@ -1,3 +1,4 @@
+import 'package:belluga_now/domain/invites/invite_model.dart';
 import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
 import 'package:belluga_now/presentation/tenant/home/screens/tenant_home_screen/controllers/tenant_home_controller.dart';
 import 'package:belluga_now/presentation/tenant/widgets/upcoming_event_card.dart';
@@ -45,20 +46,28 @@ class UpcomingEventsSection extends StatelessWidget {
         return Column(
           children: [
             StreamValueBuilder<Set<String>>(
-              streamValue: controller.confirmedSlugsStream,
-              builder: (context, confirmedSlugs) {
-                return ListView.separated(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: filteredEvents.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 16),
-                  itemBuilder: (context, index) {
-                    final event = filteredEvents[index];
-                    final isConfirmed = confirmedSlugs.contains(event.slug);
-                    return UpcomingEventCard(
-                      event: event,
-                      onTap: () => onEventSelected(event.slug),
-                      isConfirmed: isConfirmed,
+              streamValue: controller.confirmedIdsStream,
+              builder: (context, confirmedIds) {
+                return StreamValueBuilder<List<InviteModel>>(
+                  streamValue: controller.pendingInvitesStreamValue,
+                  builder: (context, pendingInvites) {
+                    return ListView.separated(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: filteredEvents.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 16),
+                      itemBuilder: (context, index) {
+                        final event = filteredEvents[index];
+                        final isConfirmed = confirmedIds.contains(event.id);
+                        final hasPendingInvite = pendingInvites.any(
+                            (invite) => invite.eventIdValue.value == event.id);
+                        return UpcomingEventCard(
+                          event: event,
+                          onTap: () => onEventSelected(event.slug),
+                          isConfirmed: isConfirmed,
+                          hasPendingInvite: hasPendingInvite,
+                        );
+                      },
                     );
                   },
                 );

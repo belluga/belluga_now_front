@@ -11,9 +11,11 @@ class UpcomingEventCard extends StatelessWidget {
     required this.event,
     this.onTap,
     this.isConfirmed = false,
+    this.hasPendingInvite = false,
   });
 
   final VenueEventResume event;
+  final bool hasPendingInvite;
   final VoidCallback? onTap;
   final bool isConfirmed;
 
@@ -66,12 +68,18 @@ class UpcomingEventCard extends StatelessWidget {
               constraints: const BoxConstraints(),
               onPressed: () {},
               icon: Icon(
-                isConfirmed
+                isConfirmed || hasPendingInvite
                     ? Icons.rocket_launch
                     : Icons.rocket_launch_outlined,
-                color: isConfirmed ? theme.colorScheme.primary : null,
+                color: isConfirmed
+                    ? theme.colorScheme.primary
+                    : (hasPendingInvite ? Colors.orange : null),
               ),
-              tooltip: isConfirmed ? 'Confirmado!' : 'Confirmar presença',
+              tooltip: isConfirmed
+                  ? 'Confirmado!'
+                  : (hasPendingInvite
+                      ? 'Convite pendente'
+                      : 'Confirmar presença'),
             ),
           ],
         ),

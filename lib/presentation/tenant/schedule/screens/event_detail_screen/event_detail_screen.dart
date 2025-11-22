@@ -350,16 +350,22 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     return 'Bóora!';
   }
 
-  void _handleBooraAction() {
-    _controller.confirmAttendance();
+  Future<void> _handleBooraAction() async {
+    await _controller.confirmAttendance();
+    if (mounted) {
+      _openInviteFlow();
+    }
   }
 
-  void _handleAcceptInvite(String inviteId) {
-    _controller.acceptInvite(inviteId);
+  Future<void> _handleAcceptInvite(String inviteId) async {
+    await _controller.acceptInvite(inviteId);
+    if (mounted) {
+      _openInviteFlow();
+    }
   }
 
-  void _handleDeclineInvite(String inviteId) {
-    _controller.declineInvite(inviteId);
+  Future<void> _handleDeclineInvite(String inviteId) async {
+    await _controller.declineInvite(inviteId);
   }
 
   void _handleInviteFriends() {

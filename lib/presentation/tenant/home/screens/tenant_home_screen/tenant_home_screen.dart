@@ -2,7 +2,7 @@ import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/presentation/common/widgets/main_logo.dart';
 import 'package:belluga_now/presentation/tenant/home/screens/tenant_home_screen/controllers/tenant_home_controller.dart';
-import 'package:belluga_now/presentation/tenant/home/screens/tenant_home_screen/widgets/favorites_section.dart';
+import 'package:belluga_now/presentation/tenant/home/screens/tenant_home_screen/widgets/favorite_section/favorites_section_builder.dart';
 import 'package:belluga_now/presentation/tenant/home/screens/tenant_home_screen/widgets/featured_events_section.dart';
 import 'package:belluga_now/presentation/tenant/home/screens/tenant_home_screen/widgets/invites_banner_builder.dart';
 import 'package:belluga_now/presentation/tenant/home/screens/tenant_home_screen/widgets/upcoming_events_section.dart';
@@ -78,16 +78,16 @@ class _TenantHomeScreenState extends State<TenantHomeScreen> {
                 title: 'Seus Favoritos',
                 onPressed: () {},
               ),
-              FavoritesSection(controller: _controller),
+              FavoritesSectionBuilder(controller: _controller),
               const SizedBox(height: 8),
               InvitesBannerBuilder(
                 onPressed: _openInviteFlow,
                 margin: const EdgeInsets.only(bottom: 16),
               ),
-              StreamValueBuilder<List<VenueEventResume>?>(
+              StreamValueBuilder<List<VenueEventResume>>(
                 streamValue: _controller.myEventsStreamValue,
                 builder: (context, events) {
-                  if (events == null || events.isEmpty) {
+                  if (events.isEmpty) {
                     return const SizedBox.shrink();
                   }
                   return Column(

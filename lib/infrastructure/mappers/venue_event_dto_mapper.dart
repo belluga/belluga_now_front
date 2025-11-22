@@ -38,6 +38,7 @@ mixin VenueEventDtoMapper {
     }
 
     return VenueEventResume(
+      id: dto.id,
       slug: dto.id,
       titleValue: title,
       imageUriValue: imageUri,

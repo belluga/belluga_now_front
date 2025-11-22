@@ -2,6 +2,7 @@ import 'package:belluga_now/presentation/tenant/schedule/screens/schedule_screen
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:intl/intl.dart';
+import 'package:stream_value/core/stream_value_builder.dart';
 
 class DateItem extends StatefulWidget {
   const DateItem({
@@ -50,8 +51,6 @@ class _DateItemState extends State<DateItem> {
     final backgroundColor =
         widget.isSelected ? colorScheme.primaryContainer : Colors.transparent;
 
-    final eventItems = _controller.getEventsSummaryByDate(widget.date);
-
     return InkWell(
       onTap: _selectDate,
       child: Padding(
@@ -92,22 +91,60 @@ class _DateItemState extends State<DateItem> {
               ),
               const SizedBox(height: 4),
               SizedBox(
-                width: 40,
-                child: eventItems.isEmpty
-                    ? const SizedBox.shrink()
-                    : Wrap(
-                        spacing: 3,
-                        runSpacing: 3,
-                        alignment: WrapAlignment.center,
-                        children: eventItems
-                            .map(
-                              (_) => CircleAvatar(
-                                radius: 3,
-                                backgroundColor: colorScheme.secondary,
+                width: 50,
+                child: StreamValueBuilder<List<dynamic>>(
+                  streamValue: _controller.allEventsStreamValue,
+                  builder: (context, _) {
+                    final confirmedCount =
+                        _controller.getConfirmedEventsCountByDate(widget.date);
+                    final pendingCount =
+                        _controller.getPendingInvitesCountByDate(widget.date);
+
+                    if (confirmedCount == 0 && pendingCount == 0) {
+                      return const SizedBox.shrink();
+                    }
+
+                    return Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // Confirmed events markers (green)
+                        if (confirmedCount > 0)
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: List.generate(
+                              confirmedCount.clamp(0, 3),
+                              (_) => Padding(
+                                padding:
+                                    const EdgeInsets.symmetric(horizontal: 1.5),
+                                child: CircleAvatar(
+                                  radius: 3,
+                                  backgroundColor: Colors.green.shade600,
+                                ),
                               ),
-                            )
-                            .toList(),
-                      ),
+                            ),
+                          ),
+                        if (confirmedCount > 0 && pendingCount > 0)
+                          const SizedBox(height: 2),
+                        // Pending invites markers (orange)
+                        if (pendingCount > 0)
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: List.generate(
+                              pendingCount.clamp(0, 3),
+                              (_) => Padding(
+                                padding:
+                                    const EdgeInsets.symmetric(horizontal: 1.5),
+                                child: CircleAvatar(
+                                  radius: 3,
+                                  backgroundColor: Colors.orange.shade600,
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
+                    );
+                  },
+                ),
               ),
             ],
           ),
