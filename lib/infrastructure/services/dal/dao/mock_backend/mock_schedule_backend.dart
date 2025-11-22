@@ -1,11 +1,11 @@
-import 'package:belluga_now/infrastructure/artist/dtos/artist_resume_dto.dart';
-import 'package:belluga_now/infrastructure/courses/dtos/thumb_dto.dart';
-import 'package:belluga_now/infrastructure/map/dtos/city_coordinate_dto.dart';
-import 'package:belluga_now/infrastructure/schedule/dtos/event_action_dto.dart';
-import 'package:belluga_now/infrastructure/schedule/dtos/event_dto.dart';
+import 'package:belluga_now/domain/schedule/event_action_types.dart';
+import 'package:belluga_now/infrastructure/services/dal/dto/schedule/event_action_dto.dart';
+import 'package:belluga_now/infrastructure/services/dal/dto/schedule/event_artist_dto.dart';
+import 'package:belluga_now/infrastructure/services/dal/dto/schedule/event_dto.dart';
 import 'package:belluga_now/infrastructure/services/dal/dto/schedule/event_summary_dto.dart';
 import 'package:belluga_now/infrastructure/services/dal/dto/schedule/event_summary_item_dto.dart';
 import 'package:belluga_now/infrastructure/services/dal/dto/schedule/event_type_dto.dart';
+import 'package:belluga_now/infrastructure/services/dal/dto/thumb_dto.dart';
 import 'package:belluga_now/infrastructure/services/schedule_backend_contract.dart';
 
 class MockScheduleBackend implements ScheduleBackendContract {
@@ -17,8 +17,8 @@ class MockScheduleBackend implements ScheduleBackendContract {
     final items = events
         .map(
           (event) => EventSummaryItemDTO(
-            dateTimeStart: event.startTime,
-            color: _getTypeColor(event.type),
+            dateTimeStart: event.dateTimeStart,
+            color: _getTypeColor(event.type.id),
           ),
         )
         .toList();
@@ -27,7 +27,7 @@ class MockScheduleBackend implements ScheduleBackendContract {
   }
 
   /// Generates a stable 24-character hex MongoDB ObjectId from a string seed
-  static String _generateMongoId(String seed) {
+  static String generateMongoId(String seed) {
     // Use hashCode to generate a stable number from the seed
     final hash = seed.hashCode.abs();
     // Create a 24-character hex string
@@ -43,15 +43,16 @@ class MockScheduleBackend implements ScheduleBackendContract {
   }
 
   @override
-  Future<List<EventDto>> fetchEvents() async {
-    final events = List<EventDto>.generate(
-      _eventSeeds.length,
+  Future<List<EventDTO>> fetchEvents() async {
+    final events = List<EventDTO>.generate(
+      eventSeeds.length,
       (index) {
         final venue = _eventVenues[index % _eventVenues.length];
-        return _eventSeeds[index].toDto(_today, venue);
+        return eventSeeds[index].toDto(_today, venue);
       },
     )..sort((a, b) =>
-        DateTime.parse(a.startTime).compareTo(DateTime.parse(b.startTime)));
+        DateTime.parse(a.dateTimeStart)
+            .compareTo(DateTime.parse(b.dateTimeStart)));
 
     return events;
   }
@@ -83,106 +84,106 @@ class MockScheduleBackend implements ScheduleBackendContract {
     color: '#FFE80D5D',
   );
 
-  static const List<_EventVenue> _eventVenues = [
-    _EventVenue(
+  static const List<EventVenue> _eventVenues = [
+    EventVenue(
       id: 'american-grill',
       name: 'American Grill',
       address: 'Guarapari',
       latitude: -20.6600241,
       longitude: -40.502093,
     ),
-    _EventVenue(
+    EventVenue(
       id: 'bolinhas-bar',
       name: 'Bolinhas Bar e Restaurante',
       address: 'Av. Des. Laurival de Almeida, Centro',
       latitude: -20.6739006,
       longitude: -40.4980227,
     ),
-    _EventVenue(
+    EventVenue(
       id: 'box-mineiro',
       name: 'Box Mineiro',
       address: 'Rua Henrique Coutinho, Centro',
       latitude: -20.6703232,
       longitude: -40.4965388,
     ),
-    _EventVenue(
+    EventVenue(
       id: 'barraca-do-marcelo',
       name: 'Barraca do Marcelo',
       address: 'Praia de Meaípe',
       latitude: -20.7381371,
       longitude: -40.5430268,
     ),
-    _EventVenue(
+    EventVenue(
       id: 'le-cave',
       name: 'Le Cave',
       address: 'Enseada Azul',
       latitude: -20.6520423,
       longitude: -40.4859819,
     ),
-    _EventVenue(
+    EventVenue(
       id: 'donatello',
       name: 'Donatello Restaurante e Pizzaria',
       address: 'Avenida Maria de Lourdes Carvalho Dantas',
       latitude: -20.6534829,
       longitude: -40.4894282,
     ),
-    _EventVenue(
+    EventVenue(
       id: 'deck',
       name: 'Deck',
       address: 'Centro',
       latitude: -20.6720688,
       longitude: -40.4976626,
     ),
-    _EventVenue(
+    EventVenue(
       id: 'kibe-lanches',
       name: 'Kibe Lanches',
       address: 'Centro',
       latitude: -20.671917,
       longitude: -40.4979096,
     ),
-    _EventVenue(
+    EventVenue(
       id: 'herois-burger',
       name: 'Heróis Burger',
       address: 'Guarapari',
       latitude: -20.6513284,
       longitude: -40.4792761,
     ),
-    _EventVenue(
+    EventVenue(
       id: 'bistro-sal-e-tal',
       name: 'Bistro Sal e Tal',
       address: 'Guarapari',
       latitude: -20.7217392,
       longitude: -40.5241274,
     ),
-    _EventVenue(
+    EventVenue(
       id: 'benfica',
       name: 'Benfica',
       address: 'Rua Henrique Coutinho, Centro',
       latitude: -20.6708241,
       longitude: -40.496421,
     ),
-    _EventVenue(
+    EventVenue(
       id: 'cia-comida',
       name: 'Cia & Comida',
       address: 'Guarapari',
       latitude: -20.6703032,
       longitude: -40.4984612,
     ),
-    _EventVenue(
+    EventVenue(
       id: 'gostoso',
       name: 'Gostoso',
       address: 'Guarapari',
       latitude: -20.6731777,
       longitude: -40.4982096,
     ),
-    _EventVenue(
+    EventVenue(
       id: 'free-dog',
       name: 'Free Dog Pizzaria e Lanchonete',
       address: 'Avenida José Ferreira Ferro',
       latitude: -20.6562124,
       longitude: -40.4922658,
     ),
-    _EventVenue(
+    EventVenue(
       id: 'restaurante-boqueirao',
       name: 'Restaurante Boqueirão',
       address: 'Meaípe',
@@ -191,9 +192,9 @@ class MockScheduleBackend implements ScheduleBackendContract {
     ),
   ];
 
-  static final List<_MockEventSeed> _eventSeeds = [
+  static final List<MockEventSeed> eventSeeds = [
     // Day 0
-    _MockEventSeed(
+    MockEventSeed(
       id: 'event-day0-morning-flow',
       type: _workshopType,
       title: 'Morning Flow Yoga',
@@ -208,7 +209,7 @@ class MockScheduleBackend implements ScheduleBackendContract {
       startHour: 8,
       durationMinutes: 75,
       artists: const [
-        _MockArtistSeed(
+        MockArtistSeed(
           id: 'artist-marina-luz',
           name: 'Instrutora Marina Luz',
           avatarUrl:
@@ -219,7 +220,7 @@ class MockScheduleBackend implements ScheduleBackendContract {
       actionLabel: 'Reservar vaga',
       actionUrl: 'https://example.com/morning-flow',
       actionColor: '#FFE80D5D',
-      isConfirmed: true,
+      isConfirmed: false,
       totalConfirmed: 12,
       friendsGoing: [
         {
@@ -236,7 +237,7 @@ class MockScheduleBackend implements ScheduleBackendContract {
         },
       ],
     ),
-    _MockEventSeed(
+    MockEventSeed(
       id: 'event-day0-street-art',
       type: _workshopType,
       title: 'Street Art Jam',
@@ -251,13 +252,13 @@ class MockScheduleBackend implements ScheduleBackendContract {
       startHour: 11,
       durationMinutes: 120,
       artists: const [
-        _MockArtistSeed(
+        MockArtistSeed(
           id: 'artist-nina-ruas',
           name: 'Nina Ruas',
           avatarUrl:
               'https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91?w=200',
         ),
-        _MockArtistSeed(
+        MockArtistSeed(
           id: 'artist-tarsila-urb',
           name: 'Coletivo Tarsila',
           avatarUrl:
@@ -284,7 +285,7 @@ class MockScheduleBackend implements ScheduleBackendContract {
         }
       ],
     ),
-    _MockEventSeed(
+    MockEventSeed(
       id: 'event-day0-lunch-beats',
       type: _concertType,
       title: 'Lunch Beats',
@@ -299,7 +300,7 @@ class MockScheduleBackend implements ScheduleBackendContract {
       startHour: 13,
       durationMinutes: 90,
       artists: const [
-        _MockArtistSeed(
+        MockArtistSeed(
           id: 'artist-dj-savana',
           name: 'DJ Savana',
           avatarUrl:
@@ -345,7 +346,7 @@ class MockScheduleBackend implements ScheduleBackendContract {
         },
       ],
     ),
-    _MockEventSeed(
+    MockEventSeed(
       id: 'event-day0-sunset-acoustic',
       type: _concertType,
       title: 'Sunset Acoustic Session',
@@ -360,7 +361,7 @@ class MockScheduleBackend implements ScheduleBackendContract {
       startHour: 17,
       durationMinutes: 110,
       artists: const [
-        _MockArtistSeed(
+        MockArtistSeed(
           id: 'artist-voz-aurora',
           name: 'Aurora Ribeiro',
           avatarUrl:
@@ -393,7 +394,7 @@ class MockScheduleBackend implements ScheduleBackendContract {
         },
       ],
     ),
-    _MockEventSeed(
+    MockEventSeed(
       id: 'event-day0-electro-sunset',
       type: _concertType,
       title: 'Electro Sunset Party',
@@ -407,14 +408,14 @@ class MockScheduleBackend implements ScheduleBackendContract {
       startHour: 20,
       durationMinutes: 150,
       artists: const [
-        _MockArtistSeed(
+        MockArtistSeed(
           id: 'artist-dj-horizonte',
           name: 'DJ Horizonte',
           avatarUrl:
               'https://images.unsplash.com/photo-1549213820-0fedc82f3817?w=200',
           highlight: true,
         ),
-        _MockArtistSeed(
+        MockArtistSeed(
           id: 'artist-dj-verde',
           name: 'DJ Verde Mar',
           avatarUrl:
@@ -426,7 +427,7 @@ class MockScheduleBackend implements ScheduleBackendContract {
       actionColor: '#FF4FA0E3',
     ),
     // Day 1
-    _MockEventSeed(
+    MockEventSeed(
       id: 'event-day1-coastal-run',
       type: _workshopType,
       title: 'Coastal Run Warm-up',
@@ -441,7 +442,7 @@ class MockScheduleBackend implements ScheduleBackendContract {
       startHour: 7,
       durationMinutes: 60,
       artists: const [
-        _MockArtistSeed(
+        MockArtistSeed(
           id: 'artist-coach-marcio',
           name: 'Coach Marcio Reis',
           avatarUrl:
@@ -452,7 +453,7 @@ class MockScheduleBackend implements ScheduleBackendContract {
       actionUrl: 'https://example.com/coastal-run',
       actionColor: '#FFE80D5D',
     ),
-    _MockEventSeed(
+    MockEventSeed(
       id: 'event-day1-coffee-lab',
       type: _workshopType,
       title: 'Coffee Roasting Lab',
@@ -467,7 +468,7 @@ class MockScheduleBackend implements ScheduleBackendContract {
       startHour: 10,
       durationMinutes: 120,
       artists: const [
-        _MockArtistSeed(
+        MockArtistSeed(
           id: 'artist-barista-joana',
           name: 'Barista Joana Ramos',
           avatarUrl:
@@ -479,7 +480,7 @@ class MockScheduleBackend implements ScheduleBackendContract {
       actionUrl: 'https://example.com/coffee-roasting',
       actionColor: '#FFE80D5D',
     ),
-    _MockEventSeed(
+    MockEventSeed(
       id: 'event-day1-artisan-stage',
       type: _concertType,
       title: 'Artisan Fair Stage',
@@ -493,7 +494,7 @@ class MockScheduleBackend implements ScheduleBackendContract {
       startHour: 14,
       durationMinutes: 150,
       artists: const [
-        _MockArtistSeed(
+        MockArtistSeed(
           id: 'artist-trio-cascata',
           name: 'Trio Cascata',
           avatarUrl:
@@ -504,7 +505,7 @@ class MockScheduleBackend implements ScheduleBackendContract {
       actionUrl: 'https://example.com/artisan-stage',
       actionColor: '#FF4FA0E3',
     ),
-    _MockEventSeed(
+    MockEventSeed(
       id: 'event-day1-samba-square',
       type: _concertType,
       title: 'Samba na Praca',
@@ -519,7 +520,7 @@ class MockScheduleBackend implements ScheduleBackendContract {
       startHour: 17,
       durationMinutes: 180,
       artists: const [
-        _MockArtistSeed(
+        MockArtistSeed(
           id: 'artist-samba-coral',
           name: 'Grupo Coral da Barra',
           avatarUrl:
@@ -531,7 +532,7 @@ class MockScheduleBackend implements ScheduleBackendContract {
       actionUrl: 'https://example.com/samba-praca',
       actionColor: '#FF4FA0E3',
     ),
-    _MockEventSeed(
+    MockEventSeed(
       id: 'event-day1-starlight-cinema',
       type: _workshopType,
       title: 'Starlight Cinema',
@@ -551,7 +552,7 @@ class MockScheduleBackend implements ScheduleBackendContract {
       actionColor: '#FFE80D5D',
     ),
     // Day 2
-    _MockEventSeed(
+    MockEventSeed(
       id: 'event-day2-beach-pilates',
       type: _workshopType,
       title: 'Beach Pilates',
@@ -566,7 +567,7 @@ class MockScheduleBackend implements ScheduleBackendContract {
       startHour: 8,
       durationMinutes: 70,
       artists: const [
-        _MockArtistSeed(
+        MockArtistSeed(
           id: 'artist-ana-oliveira',
           name: 'Ana Oliveira',
           avatarUrl:
@@ -577,7 +578,7 @@ class MockScheduleBackend implements ScheduleBackendContract {
       actionUrl: 'https://example.com/beach-pilates',
       actionColor: '#FFE80D5D',
     ),
-    _MockEventSeed(
+    MockEventSeed(
       id: 'event-day2-ceramic-lab',
       type: _workshopType,
       title: 'Ceramica Contemporanea',
@@ -592,7 +593,7 @@ class MockScheduleBackend implements ScheduleBackendContract {
       startHour: 10,
       durationMinutes: 150,
       artists: const [
-        _MockArtistSeed(
+        MockArtistSeed(
           id: 'artist-luiza-ceram',
           name: 'Luiza Ceramistas',
           avatarUrl:
@@ -603,7 +604,7 @@ class MockScheduleBackend implements ScheduleBackendContract {
       actionUrl: 'https://example.com/ceramica-contemporanea',
       actionColor: '#FFE80D5D',
     ),
-    _MockEventSeed(
+    MockEventSeed(
       id: 'event-day2-food-trail',
       type: _workshopType,
       title: 'Street Food Trail',
@@ -618,7 +619,7 @@ class MockScheduleBackend implements ScheduleBackendContract {
       startHour: 13,
       durationMinutes: 150,
       artists: const [
-        _MockArtistSeed(
+        MockArtistSeed(
           id: 'artist-chef-paula',
           name: 'Chef Paula Figueiredo',
           avatarUrl:
@@ -629,7 +630,7 @@ class MockScheduleBackend implements ScheduleBackendContract {
       actionUrl: 'https://example.com/street-food-tour',
       actionColor: '#FFE80D5D',
     ),
-    _MockEventSeed(
+    MockEventSeed(
       id: 'event-day2-capoeira',
       type: _concertType,
       title: 'Capoeira Sunset Roda',
@@ -644,7 +645,7 @@ class MockScheduleBackend implements ScheduleBackendContract {
       startHour: 16,
       durationMinutes: 120,
       artists: const [
-        _MockArtistSeed(
+        MockArtistSeed(
           id: 'artist-mestre-marajo',
           name: 'Mestre Marajo',
           avatarUrl:
@@ -656,7 +657,7 @@ class MockScheduleBackend implements ScheduleBackendContract {
       actionUrl: 'https://example.com/capoeira-sunset',
       actionColor: '#FF4FA0E3',
     ),
-    _MockEventSeed(
+    MockEventSeed(
       id: 'event-day2-jazz-rooftop',
       type: _concertType,
       title: 'Jazz Rooftop Session',
@@ -670,7 +671,7 @@ class MockScheduleBackend implements ScheduleBackendContract {
       startHour: 20,
       durationMinutes: 150,
       artists: const [
-        _MockArtistSeed(
+        MockArtistSeed(
           id: 'artist-quartet-azul',
           name: 'Quarteto Horizonte Azul',
           avatarUrl:
@@ -683,7 +684,7 @@ class MockScheduleBackend implements ScheduleBackendContract {
       actionColor: '#FF4FA0E3',
     ),
     // Day 3
-    _MockEventSeed(
+    MockEventSeed(
       id: 'event-day3-sunrise-meditation',
       type: _workshopType,
       title: 'Sunrise Meditation',
@@ -698,7 +699,7 @@ class MockScheduleBackend implements ScheduleBackendContract {
       startHour: 6,
       durationMinutes: 60,
       artists: const [
-        _MockArtistSeed(
+        MockArtistSeed(
           id: 'artist-thiago-zen',
           name: 'Thiago Zen',
           avatarUrl:
@@ -709,7 +710,7 @@ class MockScheduleBackend implements ScheduleBackendContract {
       actionUrl: 'https://example.com/sunrise-meditation',
       actionColor: '#FFE80D5D',
     ),
-    _MockEventSeed(
+    MockEventSeed(
       id: 'event-day3-surf-clinic',
       type: _workshopType,
       title: 'Surf Clinic',
@@ -724,7 +725,7 @@ class MockScheduleBackend implements ScheduleBackendContract {
       startHour: 8,
       durationMinutes: 150,
       artists: const [
-        _MockArtistSeed(
+        MockArtistSeed(
           id: 'artist-instrutor-maresia',
           name: 'Instrutor Maresia',
           avatarUrl:
@@ -735,7 +736,7 @@ class MockScheduleBackend implements ScheduleBackendContract {
       actionUrl: 'https://example.com/surf-clinic',
       actionColor: '#FFE80D5D',
     ),
-    _MockEventSeed(
+    MockEventSeed(
       id: 'event-day3-kids-theatre',
       type: _concertType,
       title: 'Teatro Kids',
@@ -750,7 +751,7 @@ class MockScheduleBackend implements ScheduleBackendContract {
       startHour: 14,
       durationMinutes: 90,
       artists: const [
-        _MockArtistSeed(
+        MockArtistSeed(
           id: 'artist-trupe-lua',
           name: 'Trupe Lua Nova',
           avatarUrl:
@@ -761,7 +762,7 @@ class MockScheduleBackend implements ScheduleBackendContract {
       actionUrl: 'https://example.com/teatro-kids',
       actionColor: '#FF4FA0E3',
     ),
-    _MockEventSeed(
+    MockEventSeed(
       id: 'event-day3-mixology',
       type: _workshopType,
       title: 'Tropical Mixology Lab',
@@ -775,7 +776,7 @@ class MockScheduleBackend implements ScheduleBackendContract {
       startHour: 18,
       durationMinutes: 120,
       artists: const [
-        _MockArtistSeed(
+        MockArtistSeed(
           id: 'artist-mixologista-lara',
           name: 'Mixologista Lara Silva',
           avatarUrl:
@@ -786,7 +787,7 @@ class MockScheduleBackend implements ScheduleBackendContract {
       actionUrl: 'https://example.com/mixology-lab',
       actionColor: '#FFE80D5D',
     ),
-    _MockEventSeed(
+    MockEventSeed(
       id: 'event-day3-rooftop-dj',
       type: _concertType,
       title: 'Rooftop DJ Sessions',
@@ -801,7 +802,7 @@ class MockScheduleBackend implements ScheduleBackendContract {
       startHour: 21,
       durationMinutes: 180,
       artists: const [
-        _MockArtistSeed(
+        MockArtistSeed(
           id: 'artist-dj-lume',
           name: 'DJ Lume',
           avatarUrl:
@@ -814,7 +815,7 @@ class MockScheduleBackend implements ScheduleBackendContract {
       actionColor: '#FF4FA0E3',
     ),
     // Day 4
-    _MockEventSeed(
+    MockEventSeed(
       id: 'event-day4-trail-hike',
       type: _workshopType,
       title: 'Trail Hike Guarapari',
@@ -829,7 +830,7 @@ class MockScheduleBackend implements ScheduleBackendContract {
       startHour: 7,
       durationMinutes: 150,
       artists: const [
-        _MockArtistSeed(
+        MockArtistSeed(
           id: 'artist-guia-ana',
           name: 'Guia Ana Prado',
           avatarUrl:
@@ -840,7 +841,7 @@ class MockScheduleBackend implements ScheduleBackendContract {
       actionUrl: 'https://example.com/trail-hike',
       actionColor: '#FFE80D5D',
     ),
-    _MockEventSeed(
+    MockEventSeed(
       id: 'event-day4-photo-walk',
       type: _workshopType,
       title: 'Photo Walk Centro Historico',
@@ -855,7 +856,7 @@ class MockScheduleBackend implements ScheduleBackendContract {
       startHour: 9,
       durationMinutes: 120,
       artists: const [
-        _MockArtistSeed(
+        MockArtistSeed(
           id: 'artist-foto-helena',
           name: 'Fotografa Helena Luz',
           avatarUrl:
@@ -867,7 +868,7 @@ class MockScheduleBackend implements ScheduleBackendContract {
       actionUrl: 'https://example.com/photo-walk',
       actionColor: '#FFE80D5D',
     ),
-    _MockEventSeed(
+    MockEventSeed(
       id: 'event-day4-farmers-brunch',
       type: _workshopType,
       title: 'Farmers Brunch',
@@ -886,7 +887,7 @@ class MockScheduleBackend implements ScheduleBackendContract {
       actionUrl: 'https://example.com/farmers-brunch',
       actionColor: '#FFE80D5D',
     ),
-    _MockEventSeed(
+    MockEventSeed(
       id: 'event-day4-chorinho',
       type: _concertType,
       title: 'Chorinho na Rua',
@@ -901,7 +902,7 @@ class MockScheduleBackend implements ScheduleBackendContract {
       startHour: 17,
       durationMinutes: 150,
       artists: const [
-        _MockArtistSeed(
+        MockArtistSeed(
           id: 'artist-choro-encanto',
           name: 'Grupo Choro Encanto',
           avatarUrl:
@@ -912,7 +913,7 @@ class MockScheduleBackend implements ScheduleBackendContract {
       actionUrl: 'https://example.com/chorinho-rua',
       actionColor: '#FF4FA0E3',
     ),
-    _MockEventSeed(
+    MockEventSeed(
       id: 'event-day4-poetry',
       type: _concertType,
       title: 'Moonlight Poetry Slam',
@@ -927,7 +928,7 @@ class MockScheduleBackend implements ScheduleBackendContract {
       startHour: 20,
       durationMinutes: 120,
       artists: const [
-        _MockArtistSeed(
+        MockArtistSeed(
           id: 'artist-poeta-lotus',
           name: 'Poeta Lotus',
           avatarUrl:
@@ -940,7 +941,7 @@ class MockScheduleBackend implements ScheduleBackendContract {
       actionColor: '#FF4FA0E3',
     ),
     // Day 5
-    _MockEventSeed(
+    MockEventSeed(
       id: 'event-day5-sup-session',
       type: _workshopType,
       title: 'SUP Session',
@@ -955,7 +956,7 @@ class MockScheduleBackend implements ScheduleBackendContract {
       startHour: 8,
       durationMinutes: 90,
       artists: const [
-        _MockArtistSeed(
+        MockArtistSeed(
           id: 'artist-instrutor-caique',
           name: 'Instrutor Caique Ramos',
           avatarUrl:
@@ -966,7 +967,7 @@ class MockScheduleBackend implements ScheduleBackendContract {
       actionUrl: 'https://example.com/sup-session',
       actionColor: '#FFE80D5D',
     ),
-    _MockEventSeed(
+    MockEventSeed(
       id: 'event-day5-ceramic-studio',
       type: _workshopType,
       title: 'Studio de Ceramica',
@@ -981,7 +982,7 @@ class MockScheduleBackend implements ScheduleBackendContract {
       startHour: 10,
       durationMinutes: 180,
       artists: const [
-        _MockArtistSeed(
+        MockArtistSeed(
           id: 'artist-luiza-ceram',
           name: 'Luiza Ceramistas',
           avatarUrl:
@@ -992,7 +993,7 @@ class MockScheduleBackend implements ScheduleBackendContract {
       actionUrl: 'https://example.com/studio-ceramica',
       actionColor: '#FFE80D5D',
     ),
-    _MockEventSeed(
+    MockEventSeed(
       id: 'event-day5-vegan-popup',
       type: _workshopType,
       title: 'Vegan Pop-up Lunch',
@@ -1007,7 +1008,7 @@ class MockScheduleBackend implements ScheduleBackendContract {
       startHour: 13,
       durationMinutes: 120,
       artists: const [
-        _MockArtistSeed(
+        MockArtistSeed(
           id: 'artist-chef-luana',
           name: 'Chef Luana Celeste',
           avatarUrl:
@@ -1019,7 +1020,7 @@ class MockScheduleBackend implements ScheduleBackendContract {
       actionUrl: 'https://example.com/vegan-popup',
       actionColor: '#FFE80D5D',
     ),
-    _MockEventSeed(
+    MockEventSeed(
       id: 'event-day5-forro-night',
       type: _concertType,
       title: 'Forro na Orla',
@@ -1034,7 +1035,7 @@ class MockScheduleBackend implements ScheduleBackendContract {
       startHour: 18,
       durationMinutes: 150,
       artists: const [
-        _MockArtistSeed(
+        MockArtistSeed(
           id: 'artist-trio-sereno',
           name: 'Trio Sereno',
           avatarUrl:
@@ -1046,7 +1047,7 @@ class MockScheduleBackend implements ScheduleBackendContract {
       actionUrl: 'https://example.com/forro-orla',
       actionColor: '#FF4FA0E3',
     ),
-    _MockEventSeed(
+    MockEventSeed(
       id: 'event-day5-astronomy-talk',
       type: _workshopType,
       title: 'Astronomy Talk',
@@ -1066,7 +1067,7 @@ class MockScheduleBackend implements ScheduleBackendContract {
       actionColor: '#FFE80D5D',
     ),
     // Day 6
-    _MockEventSeed(
+    MockEventSeed(
       id: 'event-day6-trail-run',
       type: _workshopType,
       title: 'Trail Run Experience',
@@ -1081,7 +1082,7 @@ class MockScheduleBackend implements ScheduleBackendContract {
       startHour: 7,
       durationMinutes: 150,
       artists: const [
-        _MockArtistSeed(
+        MockArtistSeed(
           id: 'artist-coach-bruno',
           name: 'Coach Bruno Sal',
           avatarUrl:
@@ -1092,7 +1093,7 @@ class MockScheduleBackend implements ScheduleBackendContract {
       actionUrl: 'https://example.com/trail-run',
       actionColor: '#FFE80D5D',
     ),
-    _MockEventSeed(
+    MockEventSeed(
       id: 'event-day6-mindfulness',
       type: _workshopType,
       title: 'Mindfulness Lab',
@@ -1107,7 +1108,7 @@ class MockScheduleBackend implements ScheduleBackendContract {
       startHour: 10,
       durationMinutes: 120,
       artists: const [
-        _MockArtistSeed(
+        MockArtistSeed(
           id: 'artist-samira-luz',
           name: 'Samira Luz',
           avatarUrl:
@@ -1118,7 +1119,7 @@ class MockScheduleBackend implements ScheduleBackendContract {
       actionUrl: 'https://example.com/mindfulness-lab',
       actionColor: '#FFE80D5D',
     ),
-    _MockEventSeed(
+    MockEventSeed(
       id: 'event-day6-beer-tour',
       type: _workshopType,
       title: 'Craft Beer Tour',
@@ -1137,7 +1138,7 @@ class MockScheduleBackend implements ScheduleBackendContract {
       actionUrl: 'https://example.com/craft-beer-tour',
       actionColor: '#FFE80D5D',
     ),
-    _MockEventSeed(
+    MockEventSeed(
       id: 'event-day6-percussion',
       type: _concertType,
       title: 'Percussion Circle',
@@ -1152,7 +1153,7 @@ class MockScheduleBackend implements ScheduleBackendContract {
       startHour: 18,
       durationMinutes: 150,
       artists: const [
-        _MockArtistSeed(
+        MockArtistSeed(
           id: 'artist-mestra-fogo',
           name: 'Mestra Fogo',
           avatarUrl:
@@ -1164,7 +1165,7 @@ class MockScheduleBackend implements ScheduleBackendContract {
       actionUrl: 'https://example.com/percussion-circle',
       actionColor: '#FF4FA0E3',
     ),
-    _MockEventSeed(
+    MockEventSeed(
       id: 'event-day6-night-market',
       type: _concertType,
       title: 'Night Market Beats',
@@ -1179,7 +1180,7 @@ class MockScheduleBackend implements ScheduleBackendContract {
       startHour: 21,
       durationMinutes: 180,
       artists: const [
-        _MockArtistSeed(
+        MockArtistSeed(
           id: 'artist-dj-riera',
           name: 'DJ Riera',
           avatarUrl:
@@ -1191,7 +1192,7 @@ class MockScheduleBackend implements ScheduleBackendContract {
       actionColor: '#FF4FA0E3',
     ),
     // Day 7
-    _MockEventSeed(
+    MockEventSeed(
       id: 'event-day7-cleanup',
       type: _workshopType,
       title: 'Coastal Cleanup',
@@ -1210,7 +1211,7 @@ class MockScheduleBackend implements ScheduleBackendContract {
       actionUrl: 'https://example.com/coastal-cleanup',
       actionColor: '#FFE80D5D',
     ),
-    _MockEventSeed(
+    MockEventSeed(
       id: 'event-day7-sea-turtle-talk',
       type: _workshopType,
       title: 'Sea Turtle Talk',
@@ -1225,7 +1226,7 @@ class MockScheduleBackend implements ScheduleBackendContract {
       startHour: 9,
       durationMinutes: 90,
       artists: const [
-        _MockArtistSeed(
+        MockArtistSeed(
           id: 'artist-bio-camila',
           name: 'Biologa Camila Nery',
           avatarUrl:
@@ -1236,7 +1237,7 @@ class MockScheduleBackend implements ScheduleBackendContract {
       actionUrl: 'https://example.com/sea-turtle-talk',
       actionColor: '#FFE80D5D',
     ),
-    _MockEventSeed(
+    MockEventSeed(
       id: 'event-day7-food-fest',
       type: _workshopType,
       title: 'Local Food Fest',
@@ -1251,7 +1252,7 @@ class MockScheduleBackend implements ScheduleBackendContract {
       startHour: 12,
       durationMinutes: 240,
       artists: const [
-        _MockArtistSeed(
+        MockArtistSeed(
           id: 'artist-chef-matheus',
           name: 'Chef Matheus Prado',
           avatarUrl:
@@ -1262,7 +1263,7 @@ class MockScheduleBackend implements ScheduleBackendContract {
       actionUrl: 'https://example.com/local-food-fest',
       actionColor: '#FFE80D5D',
     ),
-    _MockEventSeed(
+    MockEventSeed(
       id: 'event-day7-sunset-cinema',
       type: _concertType,
       title: 'Sunset Cinema e Jazz',
@@ -1277,7 +1278,7 @@ class MockScheduleBackend implements ScheduleBackendContract {
       startHour: 17,
       durationMinutes: 150,
       artists: const [
-        _MockArtistSeed(
+        MockArtistSeed(
           id: 'artist-jazz-trio-mar',
           name: 'Trio Mar Azul',
           avatarUrl:
@@ -1288,7 +1289,7 @@ class MockScheduleBackend implements ScheduleBackendContract {
       actionUrl: 'https://example.com/sunset-cinema',
       actionColor: '#FF4FA0E3',
     ),
-    _MockEventSeed(
+    MockEventSeed(
       id: 'event-day7-lantern-walk',
       type: _concertType,
       title: 'Midnight Lantern Walk',
@@ -1303,7 +1304,7 @@ class MockScheduleBackend implements ScheduleBackendContract {
       startHour: 22,
       durationMinutes: 120,
       artists: const [
-        _MockArtistSeed(
+        MockArtistSeed(
           id: 'artist-coletivo-lumen',
           name: 'Coletivo Lumen',
           avatarUrl:
@@ -1318,8 +1319,8 @@ class MockScheduleBackend implements ScheduleBackendContract {
   ];
 }
 
-class _EventVenue {
-  const _EventVenue({
+class EventVenue {
+  const EventVenue({
     required this.id,
     required this.name,
     required this.address,
@@ -1334,8 +1335,8 @@ class _EventVenue {
   final double longitude;
 }
 
-class _MockEventSeed {
-  const _MockEventSeed({
+class MockEventSeed {
+  const MockEventSeed({
     required this.id,
     required this.type,
     required this.title,
@@ -1353,83 +1354,77 @@ class _MockEventSeed {
     required this.actionColor,
     this.isConfirmed = false,
     this.totalConfirmed = 0,
-    this.receivedInvites,
-    this.sentInvites,
-    this.friendsGoing,
+    this.receivedInvites = const [],
+    this.sentInvites = const [],
+    this.friendsGoing = const [],
   });
 
   final String id;
   final EventTypeDTO type;
   final String title;
   final String content;
-  // ignore: unused_field
   final String location;
-  // ignore: unused_field
   final double latitude;
-  // ignore: unused_field
   final double longitude;
   final String thumbUrl;
   final int offsetDays;
   final int startHour;
   final int durationMinutes;
-  final List<_MockArtistSeed> artists;
+  final List<MockArtistSeed> artists;
   final String actionLabel;
   final String actionUrl;
   final String actionColor;
   final bool isConfirmed;
   final int totalConfirmed;
-  final List<Map<String, dynamic>>? receivedInvites;
-  final List<Map<String, dynamic>>? sentInvites;
-  final List<Map<String, dynamic>>? friendsGoing;
+  final List<Map<String, dynamic>> receivedInvites;
+  final List<Map<String, dynamic>> sentInvites;
+  final List<Map<String, dynamic>> friendsGoing;
 
-  EventDto toDto(DateTime baseDate, _EventVenue venue) {
-    final date = baseDate.add(
-      Duration(
-        days: offsetDays,
-        hours: startHour,
-      ),
-    );
-    final endDate = date.add(Duration(minutes: durationMinutes));
+  EventDTO toDto(DateTime today, EventVenue venue) {
+    final start = today
+        .add(Duration(days: offsetDays))
+        .add(Duration(hours: startHour))
+        .toIso8601String();
+    final end = today
+        .add(Duration(days: offsetDays))
+        .add(Duration(hours: startHour, minutes: durationMinutes))
+        .toIso8601String();
 
-    final locationLabel = '${venue.name} · ${venue.address}';
-
-    return EventDto(
-      id: MockScheduleBackend._generateMongoId(id),
-      slug: id, // Keep original human-readable ID as slug
-      type: type.id,
+    return EventDTO(
+      id: MockScheduleBackend.generateMongoId(id),
+      slug: id,
+      type: type,
       title: title,
       content: content,
-      location: locationLabel,
-      coordinate: CityCoordinateDto(
-        latitude: venue.latitude,
-        longitude: venue.longitude,
-      ),
-      thumb: ThumbDto(
-        url: thumbUrl,
+      dateTimeStart: start,
+      dateTimeEnd: end,
+      location: venue.name,
+      latitude: venue.latitude,
+      longitude: venue.longitude,
+      thumb: ThumbDTO(
         type: 'image',
+        data: {'url': thumbUrl},
       ),
-      startTime: date.toIso8601String(),
-      endTime: endDate.toIso8601String(),
-      artists: artists.map((artist) => artist.toDto()).toList(),
+      artists: artists.map((a) => a.toDto()).toList(),
       actions: [
-        EventActionDto(
+        EventActionDTO(
           label: actionLabel,
-          type: 'external_navigation',
+          openIn: EventActionTypes.external.name,
           externalUrl: actionUrl,
           color: actionColor,
         ),
       ],
       isConfirmed: isConfirmed,
       totalConfirmed: totalConfirmed,
+      friendsGoing: friendsGoing,
       receivedInvites: receivedInvites,
       sentInvites: sentInvites,
-      friendsGoing: friendsGoing,
     );
   }
 }
 
-class _MockArtistSeed {
-  const _MockArtistSeed({
+class MockArtistSeed {
+  const MockArtistSeed({
     required this.id,
     required this.name,
     required this.avatarUrl,
@@ -1441,12 +1436,12 @@ class _MockArtistSeed {
   final String avatarUrl;
   final bool highlight;
 
-  ArtistResumeDto toDto() {
-    return ArtistResumeDto(
-      id: MockScheduleBackend._generateMongoId(id),
+  EventArtistDTO toDto() {
+    return EventArtistDTO(
+      id: id,
       name: name,
       avatarUrl: avatarUrl,
-      isHighlight: highlight,
+      highlight: highlight,
     );
   }
 }

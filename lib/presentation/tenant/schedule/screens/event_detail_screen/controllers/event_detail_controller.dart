@@ -8,6 +8,7 @@ import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/schedule/friend_resume.dart';
 import 'package:belluga_now/domain/schedule/invite_status.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
+import 'package:belluga_now/infrastructure/repositories/user_events_repository.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value.dart';
 
@@ -19,8 +20,15 @@ class EventDetailController implements Disposable {
     UserEventsRepositoryContract? userEventsRepository,
     InvitesRepositoryContract? invitesRepository,
   })  : _repository = repository ?? GetIt.I.get<ScheduleRepositoryContract>(),
-        _userEventsRepository =
-            userEventsRepository ?? GetIt.I.get<UserEventsRepositoryContract>(),
+        _userEventsRepository = userEventsRepository ??
+            (() {
+              if (!GetIt.I.isRegistered<UserEventsRepositoryContract>()) {
+                GetIt.I.registerLazySingleton<UserEventsRepositoryContract>(
+                  () => UserEventsRepository(),
+                );
+              }
+              return GetIt.I.get<UserEventsRepositoryContract>();
+            }()),
         _invitesRepository =
             invitesRepository ?? GetIt.I.get<InvitesRepositoryContract>();
 
@@ -70,7 +78,12 @@ class EventDetailController implements Disposable {
         isConfirmedStreamValue
             .addValue(isConfirmedLocally || event.isConfirmedValue.value);
 
-        receivedInvitesStreamValue.addValue(event.receivedInvites ?? const []);
+        // Load received invites from repository (same source as swipe screen)
+        final allInvites = _invitesRepository.pendingInvitesStreamValue.value;
+        final eventInvites = allInvites
+            .where((invite) => invite.eventIdValue.value == event.id.value)
+            .toList();
+        receivedInvitesStreamValue.addValue(eventInvites);
 
         // Populate repository with initial data from event model if missing
         // This ensures we have data even before a refresh

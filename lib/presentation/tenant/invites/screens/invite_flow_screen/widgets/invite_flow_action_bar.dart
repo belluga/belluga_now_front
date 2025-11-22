@@ -5,13 +5,11 @@ class InviteFlowActionBar extends StatelessWidget {
     super.key,
     required this.onConfirmPresence,
     required this.onDecline,
-    required this.onMaybe,
     required this.isConfirmingPresence,
   });
 
   final VoidCallback onConfirmPresence;
   final VoidCallback onDecline;
-  final VoidCallback onMaybe;
   final bool isConfirmingPresence;
 
   @override
@@ -56,12 +54,6 @@ class InviteFlowActionBar extends StatelessWidget {
               ),
             ),
           ],
-        ),
-        const SizedBox(height: 12),
-        TextButton.icon(
-          onPressed: onMaybe,
-          icon: const Icon(Icons.group_add_outlined),
-          label: const Text('Quem sabe...'),
         ),
       ],
     );

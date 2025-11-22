@@ -12,7 +12,7 @@ import 'package:belluga_now/presentation/tenant/schedule/screens/event_detail_sc
 import 'package:belluga_now/presentation/tenant/schedule/screens/event_detail_screen/widgets/event_detail_info_card.dart';
 import 'package:belluga_now/presentation/tenant/schedule/screens/event_detail_screen/widgets/event_hint_list.dart';
 import 'package:belluga_now/presentation/tenant/schedule/screens/event_detail_screen/widgets/event_participant_pill.dart';
-import 'package:belluga_now/presentation/tenant/schedule/screens/event_detail_screen/widgets/invite_banner.dart';
+import 'package:belluga_now/presentation/tenant/schedule/screens/event_detail_screen/widgets/swipeable_invite_widget.dart';
 import 'package:belluga_now/presentation/tenant/schedule/screens/event_detail_screen/widgets/invite_status_section.dart';
 import 'package:belluga_now/presentation/tenant/schedule/screens/event_detail_screen/widgets/quick_actions_grid.dart';
 import 'package:belluga_now/presentation/tenant/schedule/screens/event_detail_screen/widgets/social_proof_section.dart';
@@ -106,8 +106,8 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                         child: receivedInvites.isNotEmpty
                             ? Padding(
                                 padding: const EdgeInsets.only(bottom: 24),
-                                child: InviteBanner(
-                                  invite: receivedInvites.first,
+                                child: SwipeableInviteWidget(
+                                  invites: receivedInvites,
                                   onAccept: _handleAcceptInvite,
                                   onDecline: _handleDeclineInvite,
                                 ),
@@ -272,8 +272,9 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                       return StreamValueBuilder<int>(
                         streamValue: _controller.totalConfirmedStreamValue,
                         builder: (context, totalConfirmed) {
-                          if (friendsGoing.isEmpty)
+                          if (friendsGoing.isEmpty) {
                             return const SizedBox.shrink();
+                          }
                           return Column(
                             children: [
                               const SizedBox(height: 8),
@@ -328,7 +329,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                   child: AnimatedBooraButton(
                     isConfirmed: isConfirmed && receivedInvites.isEmpty,
                     onPressed: receivedInvites.isNotEmpty
-                        ? _handleAcceptInvite
+                        ? () => _handleAcceptInvite(receivedInvites.first.id)
                         : (isConfirmed ? null : _handleBooraAction),
                     text: _getCTAButtonText(),
                   ),
@@ -353,20 +354,12 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     _controller.confirmAttendance();
   }
 
-  void _handleAcceptInvite() {
-    final firstInvite =
-        _controller.receivedInvitesStreamValue.value.firstOrNull;
-    if (firstInvite != null) {
-      _controller.acceptInvite(firstInvite.id);
-    }
+  void _handleAcceptInvite(String inviteId) {
+    _controller.acceptInvite(inviteId);
   }
 
-  void _handleDeclineInvite() {
-    final firstInvite =
-        _controller.receivedInvitesStreamValue.value.firstOrNull;
-    if (firstInvite != null) {
-      _controller.declineInvite(firstInvite.id);
-    }
+  void _handleDeclineInvite(String inviteId) {
+    _controller.declineInvite(inviteId);
   }
 
   void _handleInviteFriends() {

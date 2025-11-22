@@ -12,8 +12,9 @@ import 'package:belluga_now/domain/schedule/event_action_model/event_action_mode
 import 'package:belluga_now/domain/schedule/event_type_model.dart';
 import 'package:belluga_now/domain/value_objects/description_value.dart';
 import 'package:belluga_now/domain/value_objects/title_value.dart';
-import 'package:belluga_now/infrastructure/schedule/dtos/event_dto.dart';
+import 'package:belluga_now/infrastructure/artist/dtos/artist_resume_dto.dart';
 import 'package:belluga_now/infrastructure/invites/dtos/invite_dto.dart';
+import 'package:belluga_now/infrastructure/services/dal/dto/schedule/event_dto.dart';
 import 'package:flutter/material.dart';
 import 'package:value_object_pattern/domain/value_objects/date_time_value.dart';
 import 'package:value_object_pattern/domain/value_objects/html_content_value.dart';
@@ -81,40 +82,59 @@ class EventModel {
     required this.totalConfirmedValue,
   });
 
-  factory EventModel.fromDto(EventDto dto) {
+  factory EventModel.fromDto(EventDTO dto) {
+    final thumb = dto.thumb != null ? ThumbModel.fromDalDto(dto.thumb!) : null;
+    final coordinate = (dto.latitude != null && dto.longitude != null)
+        ? CityCoordinate(
+            latitudeValue: LatitudeValue()
+              ..parse(dto.latitude!.toString()),
+            longitudeValue: LongitudeValue()
+              ..parse(dto.longitude!.toString()),
+          )
+        : null;
+    final artists = dto.artists
+        .map(
+          (artist) => ArtistResume.fromDto(
+            ArtistResumeDto(
+              id: artist.id,
+              name: artist.name,
+              avatarUrl: artist.avatarUrl,
+              isHighlight: artist.highlight ?? false,
+            ),
+          ),
+        )
+        .toList();
+    final participants = dto.participants
+            ?.map((e) => EventParticipant.fromDto(e))
+            .toList() ??
+        [];
+
     return EventModel(
       id: MongoIDValue()..parse(dto.id),
       slugValue: SlugValue()..parse(dto.slug), // Map slug
       type: EventTypeModel(
-        id: MongoIDValue()..parse(dto.type),
-        name: TitleValue()..parse(dto.type),
-        slug: SlugValue()..parse(dto.type),
-        description: DescriptionValue()..parse(dto.type),
-        icon: SlugValue()..parse('default-icon'),
+        id: MongoIDValue()..parse(dto.type.id),
+        name: TitleValue(minLenght: 1)..parse(dto.type.name),
+        slug: SlugValue()..parse(dto.type.slug),
+        description: DescriptionValue()..parse(dto.type.description),
+        icon: SlugValue()..parse(dto.type.icon ?? 'default-icon'),
         color: ColorValue(defaultValue: const Color(0xFF000000))
-          ..parse('#000000'),
+          ..parse(dto.type.color ?? '#000000'),
       ),
       title: TitleValue()..parse(dto.title),
       content: HTMLContentValue()..parse(dto.content),
-      location: DescriptionValue()..parse(dto.location),
-      thumb: dto.thumb != null ? ThumbModel.fromDto(dto.thumb!) : null,
-      dateTimeStart: DateTimeValue()..parse(dto.startTime),
-      dateTimeEnd:
-          dto.endTime != null ? (DateTimeValue()..parse(dto.endTime!)) : null,
-      venue: dto.venue != null ? PartnerResume.fromDto(dto.venue!) : null,
-      artists: dto.artists.map((e) => ArtistResume.fromDto(e)).toList(),
-      participants:
-          dto.participants?.map((e) => EventParticipant.fromDto(e)).toList() ??
-              [],
-      actions: dto.actions.map((e) => EventActionModel.fromDto(e)).toList(),
-      coordinate: dto.coordinate != null
-          ? CityCoordinate(
-              latitudeValue: LatitudeValue()
-                ..parse(dto.coordinate!.latitude.toString()),
-              longitudeValue: LongitudeValue()
-                ..parse(dto.coordinate!.longitude.toString()),
-            )
+      // Location strings in mocks are short (e.g., city names); allow min length 1.
+      location: DescriptionValue(minLenght: 1)..parse(dto.location),
+      thumb: thumb,
+      dateTimeStart: DateTimeValue()..parse(dto.dateTimeStart),
+      dateTimeEnd: dto.dateTimeEnd != null
+          ? (DateTimeValue()..parse(dto.dateTimeEnd!))
           : null,
+      venue: dto.venue != null ? PartnerResume.fromDto(dto.venue!) : null,
+      artists: artists,
+      participants: participants,
+      actions: dto.actions.map((e) => EventActionModel.fromDto(e)).toList(),
+      coordinate: coordinate,
       isConfirmedValue: EventIsConfirmedValue()
         ..parse(dto.isConfirmed.toString()),
       totalConfirmedValue: EventTotalConfirmedValue()

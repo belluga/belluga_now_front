@@ -97,8 +97,6 @@ class _InviteFlowScreenState extends State<InviteFlowScreen> {
                               onConfirmPresence: _handleConfirmPresence,
                               onDecline: () => _controller
                                   .applyDecision(InviteDecision.declined),
-                              onMaybe: () => _controller
-                                  .applyDecision(InviteDecision.maybe),
                               isConfirmingPresence: isConfirmingPresence,
                             );
                           },
@@ -134,7 +132,7 @@ class _InviteFlowScreenState extends State<InviteFlowScreen> {
       return;
     }
 
-    _triggerSwipe(CardStackSwiperDirection.left);
+    _triggerSwipe(CardStackSwiperDirection.right);
   }
 
   Future<bool> _onCardSwiped({
@@ -164,9 +162,6 @@ class _InviteFlowScreenState extends State<InviteFlowScreen> {
       case InviteDecision.declined:
         _showSnack('Convite marcado como nao vou desta vez.');
         break;
-      case InviteDecision.maybe:
-        _showSnack('Convite salvo como pensar depois.');
-        break;
       case InviteDecision.accepted:
         if (acceptedInvite != null) {
           final inviteToShare = acceptedInvite;
@@ -182,6 +177,8 @@ class _InviteFlowScreenState extends State<InviteFlowScreen> {
           _controller.resetConfirmPresence();
         }
         break;
+      default:
+        break;
     }
 
     return true;
@@ -189,12 +186,11 @@ class _InviteFlowScreenState extends State<InviteFlowScreen> {
 
   InviteDecision? _mapDirection(CardStackSwiperDirection direction) {
     switch (direction) {
-      case CardStackSwiperDirection.left:
-        return InviteDecision.accepted;
       case CardStackSwiperDirection.right:
+        return InviteDecision.accepted;
+      case CardStackSwiperDirection.left:
         return InviteDecision.declined;
       case CardStackSwiperDirection.top:
-        return InviteDecision.maybe;
       case CardStackSwiperDirection.none:
       case CardStackSwiperDirection.bottom:
         return null;

@@ -16,9 +16,13 @@ import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/favorite_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/user_events_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
 import 'package:belluga_now/infrastructure/repositories/favorite_repository.dart';
+import 'package:belluga_now/infrastructure/repositories/invites_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/schedule_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/tenant_repository.dart';
+import 'package:belluga_now/infrastructure/repositories/user_events_repository.dart';
 import 'package:belluga_now/infrastructure/services/dal/dao/backend_contract.dart';
 import 'package:belluga_now/infrastructure/services/schedule_backend_contract.dart';
 import 'package:get_it/get_it.dart';
@@ -50,11 +54,11 @@ class ModuleSettings extends ModuleSettingsContract {
     await registerSubModule(AuthModule());
     await registerSubModule(LandlordModule());
     await registerSubModule(ProfileModule());
+    await registerSubModule(InvitesModule()); // Moved before ScheduleModule
     await registerSubModule(ScheduleModule());
     await registerSubModule(MapModule());
     await registerSubModule(MercadoModule());
     await registerSubModule(ExperiencesModule());
-    await registerSubModule(InvitesModule());
     await registerSubModule(MenuModule());
     await registerSubModule(MapPrototypeModule());
   }
@@ -121,5 +125,13 @@ class ModuleSettings extends ModuleSettingsContract {
 
     GetIt.I.registerLazySingleton<ScheduleRepositoryContract>(
         () => ScheduleRepository());
+
+    GetIt.I.registerLazySingleton<UserEventsRepositoryContract>(
+      () => UserEventsRepository(),
+    );
+
+    GetIt.I.registerLazySingleton<InvitesRepositoryContract>(
+      () => InvitesRepository(),
+    );
   }
 }

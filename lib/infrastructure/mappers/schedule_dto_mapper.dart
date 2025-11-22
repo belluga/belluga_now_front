@@ -4,6 +4,7 @@ import 'package:belluga_now/domain/artist/value_objects/artist_id_value.dart';
 import 'package:belluga_now/domain/artist/value_objects/artist_is_highlight_value.dart';
 import 'package:belluga_now/domain/artist/value_objects/artist_name_value.dart';
 import 'package:belluga_now/domain/courses/value_objects/slug_value.dart';
+import 'package:belluga_now/domain/invites/invite_model.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
 import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
@@ -12,6 +13,9 @@ import 'package:belluga_now/domain/schedule/event_action_model/event_action_mode
 import 'package:belluga_now/domain/schedule/event_action_model/event_action_unsupported_navigation.dart';
 import 'package:belluga_now/domain/schedule/event_action_types.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
+import 'package:belluga_now/domain/schedule/event_participant.dart';
+import 'package:belluga_now/domain/schedule/friend_resume.dart';
+import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
 import 'package:belluga_now/domain/schedule/event_type_model.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_is_confirmed_value.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_total_confirmed_value.dart';
@@ -22,7 +26,8 @@ import 'package:belluga_now/domain/value_objects/description_value.dart';
 import 'package:value_object_pattern/domain/value_objects/html_content_value.dart';
 import 'package:belluga_now/domain/value_objects/title_value.dart';
 import 'package:belluga_now/infrastructure/mappers/course_dto_mapper.dart';
-import 'package:belluga_now/infrastructure/services/dal/dto/schedule/event_actions_dto.dart';
+import 'package:belluga_now/infrastructure/invites/dtos/invite_dto.dart';
+import 'package:belluga_now/infrastructure/services/dal/dto/schedule/event_action_dto.dart';
 import 'package:belluga_now/infrastructure/services/dal/dto/schedule/event_artist_dto.dart';
 import 'package:belluga_now/infrastructure/services/dal/dto/schedule/event_dto.dart';
 import 'package:belluga_now/infrastructure/services/dal/dto/schedule/event_summary_dto.dart';
@@ -48,7 +53,10 @@ mixin ScheduleDtoMapper on CourseDtoMapper {
           ? (DateTimeValue()..parse(dto.dateTimeEnd!))
           : null,
       artists: dto.artists.map(mapEventArtist).toList(),
-      participants: [], // TODO: Add participants mapping when backend provides data
+      participants: dto.participants
+              ?.map((participant) => EventParticipant.fromDto(participant))
+              .toList() ??
+          [],
       actions: dto.actions.map(mapEventAction).toList(),
       coordinate: (dto.latitude != null && dto.longitude != null)
           ? CityCoordinate(
@@ -57,11 +65,23 @@ mixin ScheduleDtoMapper on CourseDtoMapper {
                 ..parse(dto.longitude!.toString()),
             )
           : null,
-      isConfirmedValue: EventIsConfirmedValue()..parse('false'),
-      totalConfirmedValue: EventTotalConfirmedValue()..parse('0'),
-      receivedInvites: [],
-      sentInvites: [],
-      friendsGoing: [],
+      isConfirmedValue: EventIsConfirmedValue()
+        ..parse(dto.isConfirmed.toString()),
+      totalConfirmedValue: EventTotalConfirmedValue()
+        ..parse(dto.totalConfirmed.toString()),
+      receivedInvites: dto.receivedInvites
+          ?.map((invite) {
+            final inviteMap = Map<String, dynamic>.from(invite);
+            inviteMap['event_id'] = inviteMap['event_id'] ?? dto.id;
+            return InviteModel.fromDto(InviteDto.fromJson(inviteMap));
+          })
+          .toList(),
+      sentInvites: dto.sentInvites
+          ?.map((invite) => SentInviteStatus.fromDto(invite))
+          .toList(),
+      friendsGoing: dto.friendsGoing
+          ?.map((friend) => EventFriendResume.fromDto(friend))
+          .toList(),
     );
   }
 
@@ -93,7 +113,7 @@ mixin ScheduleDtoMapper on CourseDtoMapper {
     );
   }
 
-  EventActionModel mapEventAction(EventActionsDTO dto) {
+  EventActionModel mapEventAction(EventActionDTO dto) {
     final id = MongoIDValue()..tryParse(dto.id);
     final label = TitleValue()..parse(dto.label);
     final ColorValue? colorValue;
@@ -104,7 +124,10 @@ mixin ScheduleDtoMapper on CourseDtoMapper {
         ..tryParse(dto.color!);
     }
 
-    final openIn = EventActionTypes.values.byName(dto.openIn);
+    final openIn = EventActionTypes.values.firstWhere(
+      (value) => value.name == dto.openIn,
+      orElse: () => EventActionTypes.external,
+    );
 
     switch (openIn) {
       case EventActionTypes.external:
@@ -113,7 +136,7 @@ mixin ScheduleDtoMapper on CourseDtoMapper {
             id: id,
             label: label,
             color: colorValue,
-            message:
+            message: dto.message ??
                 'Link externo indisponível no momento. Tente novamente mais tarde.',
           );
         }
@@ -128,7 +151,7 @@ mixin ScheduleDtoMapper on CourseDtoMapper {
           id: id,
           label: label,
           color: colorValue,
-          message:
+          message: dto.message ??
               'Esta ação será habilitada quando a navegação in-app estiver disponível.',
         );
     }

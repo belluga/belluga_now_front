@@ -2,6 +2,8 @@ import 'package:belluga_now/domain/courses/enums/thumb_types.dart';
 import 'package:belluga_now/domain/courses/value_objects/thumb_type_value.dart';
 import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
 import 'package:belluga_now/infrastructure/courses/dtos/thumb_dto.dart';
+import 'package:belluga_now/infrastructure/services/dal/dto/thumb_dto.dart'
+    as dal;
 
 class ThumbModel {
   final ThumbTypeValue thumbType;
@@ -14,6 +16,17 @@ class ThumbModel {
     return ThumbModel(
       thumbUri: ThumbUriValue(defaultValue: Uri.parse(dto.url))..parse(dto.url),
       thumbType: ThumbTypeValue(defaultValue: thumbType)..parse(dto.type),
+    );
+  }
+
+  factory ThumbModel.fromDalDto(dal.ThumbDTO dto) {
+    final uri = dto.data['url'] as String? ?? '';
+    final thumbType =
+        dto.type.isNotEmpty ? dto.type : ThumbTypes.image.name;
+    return ThumbModel(
+      thumbUri: ThumbUriValue(defaultValue: Uri.parse(uri))..parse(uri),
+      thumbType:
+          ThumbTypeValue(defaultValue: ThumbTypes.image)..parse(thumbType),
     );
   }
 }
