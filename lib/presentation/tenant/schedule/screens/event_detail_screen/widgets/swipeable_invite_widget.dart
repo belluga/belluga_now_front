@@ -11,8 +11,8 @@ class SwipeableInviteWidget extends StatelessWidget {
   });
 
   final List<InviteModel> invites;
-  final ValueChanged<String> onAccept;
-  final ValueChanged<String> onDecline;
+  final Future<void> Function(String) onAccept;
+  final Future<void> Function(String) onDecline;
 
   @override
   Widget build(BuildContext context) {
@@ -30,7 +30,6 @@ class SwipeableInviteWidget extends StatelessWidget {
         allowedSwipeDirection: const AllowedSwipeDirection.only(
           left: true,
           right: true,
-          up: true,
         ),
         cardBuilder: (context, index, horizontalOffset, verticalOffset) {
           final invite = invites[index];
@@ -44,10 +43,10 @@ class SwipeableInviteWidget extends StatelessWidget {
           final invite = invites[previousIndex];
           switch (direction) {
             case CardStackSwiperDirection.right:
-              onAccept(invite.id);
+              await onAccept(invite.id);
               break;
             case CardStackSwiperDirection.left:
-              onDecline(invite.id);
+              await onDecline(invite.id);
               break;
             default:
               break;
