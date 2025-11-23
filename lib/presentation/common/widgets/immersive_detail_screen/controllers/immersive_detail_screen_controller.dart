@@ -8,20 +8,49 @@ class ImmersiveDetailScreenController {
     int initialTabIndex = 0,
   })  : scrollController = ScrollController(),
         currentTabIndexStreamValue =
-            StreamValue<int>(defaultValue: initialTabIndex);
+            StreamValue<int>(defaultValue: initialTabIndex) {
+    // The _onScroll listener is removed as per the change.
+  }
 
   late final ScrollController scrollController;
   final List<ImmersiveTabItem> tabItems;
 
   late final StreamValue<int> currentTabIndexStreamValue;
 
-  final GlobalKey columnKey = GlobalKey();
   final GlobalKey<NestedScrollViewState> nestedScrollViewKey =
       GlobalKey<NestedScrollViewState>();
 
   double _topPadding = 0;
+  bool _isProgrammaticScroll = false;
+
+  // Track visibility of each tab
+  final Map<int, double> _tabVisibility = {};
 
   void setTopPadding(double topPadding) => _topPadding = topPadding;
+
+  void onTabVisibilityChanged(int index, double visibleFraction) {
+    // Don't auto-switch during programmatic scrolling
+    if (_isProgrammaticScroll) return;
+
+    _tabVisibility[index] = visibleFraction;
+
+    // Find the tab with highest visibility that's >25%
+    int? mostVisibleTab;
+    double highestVisibility = 0.25; // Minimum threshold
+
+    _tabVisibility.forEach((tabIndex, visibility) {
+      if (visibility > highestVisibility) {
+        highestVisibility = visibility;
+        mostVisibleTab = tabIndex;
+      }
+    });
+
+    // Switch to the most visible tab if it's different from current
+    if (mostVisibleTab != null &&
+        mostVisibleTab != currentTabIndexStreamValue.value) {
+      currentTabIndexStreamValue.addValue(mostVisibleTab!);
+    }
+  }
 
   void onTabTapped(int index) {
     currentTabIndexStreamValue.addValue(index);
@@ -29,17 +58,24 @@ class ImmersiveDetailScreenController {
     final nestedState = nestedScrollViewKey.currentState;
     if (nestedState == null) return;
 
+    // Set flag to prevent auto tab switching during programmatic scroll
+    _isProgrammaticScroll = true;
+
     // For the first tab, try scrolling to negative offset to compensate for any padding
     if (index == 0) {
       // Test different offsets to find the right one
       const testOffset = -48.0; // Try negative tab bar height
       print("Tab 0 - Scrolling to: $testOffset");
-      
-      nestedState.innerController.animateTo(
+
+      nestedState.innerController
+          .animateTo(
         testOffset,
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeInOut,
-      );
+      )
+          .then((_) {
+        _isProgrammaticScroll = false;
+      });
       return;
     }
 
@@ -62,11 +98,15 @@ class ImmersiveDetailScreenController {
     print(
         "Tab $index - Raw target: $targetScroll, Pinned header: $pinnedHeaderHeight, Adjusted: $adjustedTarget");
 
-    nestedState.innerController.animateTo(
+    nestedState.innerController
+        .animateTo(
       adjustedTarget,
       duration: const Duration(milliseconds: 300),
       curve: Curves.easeInOut,
-    );
+    )
+        .then((_) {
+      _isProgrammaticScroll = false;
+    });
   }
 
   void dispose() {

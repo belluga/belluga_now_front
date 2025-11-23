@@ -3,6 +3,7 @@ import 'package:belluga_now/presentation/common/widgets/immersive_detail_screen/
 import 'package:belluga_now/presentation/common/widgets/immersive_detail_screen/immersive_header_delegate.dart';
 import 'package:flutter/material.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
+import 'package:visibility_detector/visibility_detector.dart';
 
 /// Generic immersive detail screen with hero content, tabs, and dynamic footer.
 ///
@@ -167,16 +168,22 @@ class _ImmersiveDetailScreenState extends State<ImmersiveDetailScreen> {
             },
             body: SingleChildScrollView(
               child: Column(
-                key: _controller.columnKey,
                 children: widget.tabs.asMap().entries.map((entry) {
                   final index = entry.key;
                   final tab = entry.value;
-                  return Container(
-                    key: _controller.tabItems[index].key,
-                    // Force each tab to be at least the height of the viewport
-                    child: ConstrainedBox(
-                      constraints: BoxConstraints(minHeight: minTabHeight),
-                      child: tab.content,
+                  return VisibilityDetector(
+                    key: Key('tab_visibility_$index'),
+                    onVisibilityChanged: (info) {
+                      _controller.onTabVisibilityChanged(
+                          index, info.visibleFraction);
+                    },
+                    child: Container(
+                      key: _controller.tabItems[index].key,
+                      // Force each tab to be at least the height of the viewport
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(minHeight: minTabHeight),
+                        child: tab.content,
+                      ),
                     ),
                   );
                 }).toList(),
@@ -189,6 +196,7 @@ class _ImmersiveDetailScreenState extends State<ImmersiveDetailScreen> {
           streamValue: _controller.currentTabIndexStreamValue,
           builder: (context, currentTabIndex) {
             return _controller.tabItems[currentTabIndex].footer ??
+                widget.footer ??
                 const SizedBox.shrink();
           }),
     );
