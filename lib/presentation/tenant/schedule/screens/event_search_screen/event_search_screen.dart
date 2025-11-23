@@ -121,7 +121,7 @@ class _EventSearchScreenState extends State<EventSearchScreen> {
             return DateGroupedEventList(
               events: resumes,
               onEventSelected: (slug) {
-                context.router.push(EventDetailRoute(slug: slug));
+                context.router.push(ImmersiveEventDetailRoute(eventSlug: slug));
               },
             );
           },

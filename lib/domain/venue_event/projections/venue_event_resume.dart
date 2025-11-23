@@ -1,4 +1,5 @@
 import 'package:belluga_now/domain/artist/artist_resume.dart';
+import 'package:belluga_now/domain/gamification/mission_resume.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/value_objects/description_value.dart';
 import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
@@ -14,6 +15,7 @@ class VenueEventResume {
     required this.startDateTimeValue,
     required this.locationValue,
     required this.artists,
+    this.mission,
   });
 
   final String id;
@@ -23,6 +25,7 @@ class VenueEventResume {
   final DateTimeValue startDateTimeValue;
   final DescriptionValue locationValue;
   final List<ArtistResume> artists;
+  final MissionResume? mission;
 
   String get title => titleValue.value;
   Uri get imageUri => imageUriValue.value;
@@ -77,6 +80,7 @@ class VenueEventResume {
       startDateTimeValue: startValue,
       locationValue: event.location,
       artists: event.artists,
+      mission: null, // TODO: Map from EventModel when available
     );
   }
 }

@@ -391,7 +391,7 @@ class _CityMapScreenState extends State<CityMapScreen> {
     final slug = slugSource.isNotEmpty
         ? _slugify(slugSource)
         : _slugify(event.title.value);
-    await context.router.push(EventDetailRoute(slug: slug));
+    await context.router.push(ImmersiveEventDetailRoute(eventSlug: slug));
   }
 
   void _handleNavigationTarget(MapNavigationTarget? target) {

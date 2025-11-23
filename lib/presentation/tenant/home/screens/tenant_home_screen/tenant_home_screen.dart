@@ -129,6 +129,6 @@ class _TenantHomeScreenState extends State<TenantHomeScreen> {
   }
 
   void _openEventDetailSlug(String slug) {
-    context.router.push(EventDetailRoute(slug: slug));
+    context.router.push(ImmersiveEventDetailRoute(eventSlug: slug));
   }
 }
