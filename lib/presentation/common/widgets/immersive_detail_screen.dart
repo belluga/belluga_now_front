@@ -108,7 +108,6 @@ class _ImmersiveDetailScreenState extends State<ImmersiveDetailScreen> {
     if (_isManualScrolling) return;
 
     final scrollOffset = _scrollController.offset;
-    print('📜 Scroll event: offset=$scrollOffset');
 
     final topPadding = MediaQuery.of(context).padding.top;
 
@@ -118,16 +117,12 @@ class _ImmersiveDetailScreenState extends State<ImmersiveDetailScreen> {
 
     // Calculate current content area height
     final newContentAreaHeight = _calculateContentAreaHeight(context);
-    print(
-        '📏 Calculated content area height: $newContentAreaHeight (current: $_contentAreaHeight)');
 
     // Check if anything changed that requires rebuild
     bool needsRebuild = false;
 
     // Update content area height (changes gradually as AppBar collapses)
     if (_contentAreaHeight != newContentAreaHeight) {
-      print(
-          '🔄 Content area height changed: $_contentAreaHeight -> $newContentAreaHeight');
       _contentAreaHeight = newContentAreaHeight;
       needsRebuild = true;
     }
@@ -165,15 +160,18 @@ class _ImmersiveDetailScreenState extends State<ImmersiveDetailScreen> {
     }
   }
 
-  void _scrollToSection(int index) {
-    final screenHeight = MediaQuery.of(context).size.height;
+  void _scrollToSection(int index, double contentHeight) {
     final topPadding = MediaQuery.of(context).padding.top;
 
     const appBarExpandedHeight = 400.0;
     final appBarPinnedHeight = kToolbarHeight + topPadding;
 
-    final baseOffset = appBarExpandedHeight - appBarPinnedHeight;
-    final targetOffset = baseOffset + (index * screenHeight);
+    // Collapse threshold - scroll position where AppBar is fully collapsed
+    final collapseThreshold = appBarExpandedHeight - appBarPinnedHeight;
+
+    // Target offset: collapse AppBar fully + scroll to tab's content
+    // We use the passed contentHeight (which should be the max/collapsed height)
+    final targetOffset = collapseThreshold + (index * contentHeight);
 
     _scrollController.animateTo(
       targetOffset,
@@ -183,11 +181,27 @@ class _ImmersiveDetailScreenState extends State<ImmersiveDetailScreen> {
   }
 
   void _onTabTapped(int index) {
+    // Calculate max content area height (when AppBar is collapsed)
+    final screenHeight = MediaQuery.of(context).size.height;
+    final topPadding = MediaQuery.of(context).padding.top;
+    final bottomPadding = MediaQuery.of(context).padding.bottom;
+    final appBarPinnedHeight = kToolbarHeight + topPadding;
+    const tabBarHeight = 48.0;
+    final footerHeight = widget.footer != null ? 80.0 : 0.0;
+
+    final maxContentAreaHeight = screenHeight -
+        appBarPinnedHeight -
+        tabBarHeight -
+        footerHeight -
+        bottomPadding;
+
     setState(() {
       _currentTabIndex = index;
       _isManualScrolling = true; // Set flag before scrolling
+      _contentAreaHeight = maxContentAreaHeight; // Force max height immediately
     });
-    _scrollToSection(index);
+
+    _scrollToSection(index, maxContentAreaHeight);
 
     // Reset flag after animation completes
     Future.delayed(const Duration(milliseconds: 350), () {
@@ -305,14 +319,10 @@ class _ImmersiveDetailScreenState extends State<ImmersiveDetailScreen> {
               // Expanded Content Area - dynamically sized
               SliverToBoxAdapter(
                 child: Column(
-                  children: widget.tabs.asMap().entries.map((entry) {
-                    final index = entry.key;
-                    final tab = entry.value;
+                  children: widget.tabs.map((tab) {
                     final minHeight = _contentAreaHeight > 0
                         ? _contentAreaHeight
                         : MediaQuery.of(context).size.height * 0.6;
-
-                    print('🎨 Building tab $index with minHeight: $minHeight');
 
                     return ConstrainedBox(
                       constraints: BoxConstraints(minHeight: minHeight),
