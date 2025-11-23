@@ -2,12 +2,12 @@ import 'package:belluga_now/presentation/tenant/schedule/screens/immersive_event
 import 'package:flutter/material.dart';
 
 class ImmersiveHeaderDelegate extends SliverPersistentHeaderDelegate {
-  final bool isConfirmed;
+  final List<String> tabs;
   final int currentTabIndex;
   final ValueChanged<int> onTabTapped;
 
   ImmersiveHeaderDelegate({
-    required this.isConfirmed,
+    required this.tabs,
     required this.currentTabIndex,
     required this.onTabTapped,
   });
@@ -15,13 +15,6 @@ class ImmersiveHeaderDelegate extends SliverPersistentHeaderDelegate {
   @override
   Widget build(
       BuildContext context, double shrinkOffset, bool overlapsContent) {
-    final tabs = [
-      if (isConfirmed) 'Sua Galera',
-      'O Rolê',
-      'Line-up',
-      'O Local',
-    ];
-
     return Material(
       elevation: 4,
       shadowColor: Colors.black.withOpacity(0.2),
@@ -48,7 +41,7 @@ class ImmersiveHeaderDelegate extends SliverPersistentHeaderDelegate {
 
   @override
   bool shouldRebuild(covariant ImmersiveHeaderDelegate oldDelegate) {
-    return oldDelegate.isConfirmed != isConfirmed ||
-        oldDelegate.currentTabIndex != currentTabIndex;
+    return oldDelegate.currentTabIndex != currentTabIndex ||
+        oldDelegate.tabs.length != tabs.length;
   }
 }
