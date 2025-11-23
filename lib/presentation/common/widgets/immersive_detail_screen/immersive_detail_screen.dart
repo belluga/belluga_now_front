@@ -63,6 +63,7 @@ class _ImmersiveDetailScreenState extends State<ImmersiveDetailScreen> {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final topPadding = MediaQuery.of(context).padding.top;
+    _controller.setTopPadding(topPadding);
     const appBarExpandedHeight = 400.0;
 
     return Scaffold(
@@ -81,6 +82,7 @@ class _ImmersiveDetailScreenState extends State<ImmersiveDetailScreen> {
           final minTabHeight = availableHeight - pinnedHeaderHeight;
 
           return NestedScrollView(
+            key: _controller.nestedScrollViewKey,
             controller: _controller.scrollController,
             headerSliverBuilder: (context, innerBoxIsScrolled) {
               return [
@@ -148,24 +150,24 @@ class _ImmersiveDetailScreenState extends State<ImmersiveDetailScreen> {
                     child: widget.betweenHeroAndTabs,
                   ),
                 StreamValueBuilder<int>(
-                  streamValue: _controller.currentTabIndexStreamValue,
-                  builder: (context, currentTabIndex) {
-                    return SliverPersistentHeader(
-                      pinned: true,
-                      delegate: ImmersiveHeaderDelegate(
-                        tabs: widget.tabs.map((t) => t.title).toList(),
-                        currentTabIndex: currentTabIndex,
-                        onTabTapped: _controller.onTabTapped,
-                        colorScheme: colorScheme,
-                        topPadding: 0,
-                      ),
-                    );
-                  }
-                ),
+                    streamValue: _controller.currentTabIndexStreamValue,
+                    builder: (context, currentTabIndex) {
+                      return SliverPersistentHeader(
+                        pinned: true,
+                        delegate: ImmersiveHeaderDelegate(
+                          tabs: widget.tabs.map((t) => t.title).toList(),
+                          currentTabIndex: currentTabIndex,
+                          onTabTapped: _controller.onTabTapped,
+                          colorScheme: colorScheme,
+                          topPadding: 0,
+                        ),
+                      );
+                    }),
               ];
             },
             body: SingleChildScrollView(
               child: Column(
+                key: _controller.columnKey,
                 children: widget.tabs.asMap().entries.map((entry) {
                   final index = entry.key;
                   final tab = entry.value;
@@ -184,11 +186,11 @@ class _ImmersiveDetailScreenState extends State<ImmersiveDetailScreen> {
         },
       ),
       bottomNavigationBar: StreamValueBuilder<int>(
-        streamValue: _controller.currentTabIndexStreamValue,
-        builder: (context, currentTabIndex) {
-          return _controller.tabItems[currentTabIndex].footer ?? const SizedBox.shrink();
-        }
-      ),
+          streamValue: _controller.currentTabIndexStreamValue,
+          builder: (context, currentTabIndex) {
+            return _controller.tabItems[currentTabIndex].footer ??
+                const SizedBox.shrink();
+          }),
     );
   }
 

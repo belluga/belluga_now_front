@@ -11,72 +11,62 @@ class ImmersiveDetailScreenController {
             StreamValue<int>(defaultValue: initialTabIndex);
 
   late final ScrollController scrollController;
-  double _topPadding = 0;
   final List<ImmersiveTabItem> tabItems;
 
   late final StreamValue<int> currentTabIndexStreamValue;
 
+  final GlobalKey columnKey = GlobalKey();
+  final GlobalKey<NestedScrollViewState> nestedScrollViewKey =
+      GlobalKey<NestedScrollViewState>();
+
+  double _topPadding = 0;
+
   void setTopPadding(double topPadding) => _topPadding = topPadding;
 
-  double _calculateTabOffset(int index) {
-    double offset = 0;
-    for (int i = 0; i < index; i++) {
-      final tabContext = tabItems[i].key.currentContext;
-      offset += tabContext?.size?.height ?? 0;
-    }
-    return offset + _topPadding;
-  }
-    
-
   void onTabTapped(int index) {
-
     currentTabIndexStreamValue.addValue(index);
 
-    // final pinnedHeaderHeight = _topPadding + kToolbarHeight + 48.0;
+    final nestedState = nestedScrollViewKey.currentState;
+    if (nestedState == null) return;
 
-    // print("pinnedHeaderHeight: $pinnedHeaderHeight");
+    // For the first tab, try scrolling to negative offset to compensate for any padding
+    if (index == 0) {
+      // Test different offsets to find the right one
+      const testOffset = -48.0; // Try negative tab bar height
+      print("Tab 0 - Scrolling to: $testOffset");
+      
+      nestedState.innerController.animateTo(
+        testOffset,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+      );
+      return;
+    }
 
-    final _currentContentOffset = _calculateTabOffset(index);
-    print("_currentContentOffset: $_currentContentOffset");
+    // For other tabs, use simple sum of heights
+    double targetScroll = 0;
+    for (int i = 0; i < index; i++) {
+      final tabContext = tabItems[i].key.currentContext;
+      if (tabContext != null) {
+        final renderBox = tabContext.findRenderObject() as RenderBox?;
+        targetScroll += renderBox?.size.height ?? 0;
+      }
+    }
 
-    final targetScroll = _currentContentOffset;
-    print("targetScroll: $targetScroll");
+    // The inner controller's scroll 0 is AFTER the pinned header
+    // So we need to subtract the pinned header height
+    const tabBarHeight = 48.0;
+    final pinnedHeaderHeight = _topPadding + kToolbarHeight + tabBarHeight;
+    final adjustedTarget = targetScroll - pinnedHeaderHeight;
 
-    scrollController.animateTo(
-      targetScroll,
+    print(
+        "Tab $index - Raw target: $targetScroll, Pinned header: $pinnedHeaderHeight, Adjusted: $adjustedTarget");
+
+    nestedState.innerController.animateTo(
+      adjustedTarget,
       duration: const Duration(milliseconds: 300),
       curve: Curves.easeInOut,
     );
-
-    // if (tabContext != null) {
-    //   final tabBox = tabContext.findRenderObject() as RenderBox;
-
-    //   // Get tab position relative to the column
-    //   final tabOffset = tabBox.localToGlobal(Offset.zero, ancestor: columnBox);
-    //   final tabRelativeY = tabOffset.dy;
-
-    //   // 3. Calculate absolute target scroll offset
-    //   // Based on testing, the correct target is simply the relative Y position
-    //   // minus the pinned header height. This brings the tab to exactly below the header.
-    //   final targetScroll = tabRelativeY - pinnedHeaderHeight;
-
-    //   // Ensure we don't scroll to negative offset
-    //   final clampedTarget = targetScroll < 0 ? 0.0 : targetScroll;
-
-    //   _scrollController
-    //       .animateTo(
-    //     clampedTarget,
-    //     duration: const Duration(milliseconds: 300),
-    //     curve: Curves.easeInOut,
-    //   )
-    //       .then((_) {
-    //     if (mounted) {
-    //       setState(() {
-    //         _isManualScrolling = false;
-    //       });
-    //     }
-    //   });
-    // }
   }
 
   void dispose() {
