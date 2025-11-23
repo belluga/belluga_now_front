@@ -1,6 +1,7 @@
 import 'package:belluga_now/presentation/common/widgets/immersive_detail_screen/controllers/immersive_detail_screen_controller.dart';
 import 'package:belluga_now/presentation/common/widgets/immersive_detail_screen/models/immersive_tab_item.dart';
 import 'package:belluga_now/presentation/common/widgets/immersive_detail_screen/immersive_header_delegate.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 import 'package:visibility_detector/visibility_detector.dart';
@@ -58,6 +59,19 @@ class _ImmersiveDetailScreenState extends State<ImmersiveDetailScreen> {
       initialTabIndex: widget.initialTabIndex,
       tabItems: widget.tabs,
     );
+  }
+
+  @override
+  void didUpdateWidget(covariant ImmersiveDetailScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final titlesChanged = !listEquals(
+      oldWidget.tabs.map((t) => t.title).toList(),
+      widget.tabs.map((t) => t.title).toList(),
+    );
+
+    if (oldWidget.tabs.length != widget.tabs.length || titlesChanged) {
+      _controller.updateTabs(widget.tabs);
+    }
   }
 
   @override
@@ -127,7 +141,7 @@ class _ImmersiveDetailScreenState extends State<ImmersiveDetailScreen> {
                                 begin: Alignment.topCenter,
                                 end: Alignment.bottomCenter,
                                 colors: [
-                                  Colors.black.withOpacity(0.3),
+                                  Colors.black.withValues(alpha: 0.3),
                                   Colors.transparent,
                                 ],
                               ),
@@ -195,7 +209,16 @@ class _ImmersiveDetailScreenState extends State<ImmersiveDetailScreen> {
       bottomNavigationBar: StreamValueBuilder<int>(
           streamValue: _controller.currentTabIndexStreamValue,
           builder: (context, currentTabIndex) {
-            return _controller.tabItems[currentTabIndex].footer ??
+            if (_controller.tabItems.isEmpty) {
+              return const SizedBox.shrink();
+            }
+
+            final safeIndex = currentTabIndex.clamp(
+              0,
+              _controller.tabItems.length - 1,
+            );
+
+            return _controller.tabItems[safeIndex].footer ??
                 widget.footer ??
                 const SizedBox.shrink();
           }),

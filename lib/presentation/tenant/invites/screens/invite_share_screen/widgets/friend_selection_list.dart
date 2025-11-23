@@ -68,8 +68,8 @@ class _FriendSelectionListState extends State<FriendSelectionList> {
                           ),
                           visualDensity: VisualDensity.compact,
                           backgroundColor: item.isAccepted
-                              ? Colors.green.withOpacity(0.1)
-                              : Colors.grey.withOpacity(0.1),
+                              ? Colors.green.withValues(alpha: 0.1)
+                              : Colors.grey.withValues(alpha: 0.1),
                         )
                       : Checkbox(
                           value: isSelected,

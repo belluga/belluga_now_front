@@ -8,12 +8,10 @@ class ImmersiveDetailScreenController {
     int initialTabIndex = 0,
   })  : scrollController = ScrollController(),
         currentTabIndexStreamValue =
-            StreamValue<int>(defaultValue: initialTabIndex) {
-    // The _onScroll listener is removed as per the change.
-  }
+            StreamValue<int>(defaultValue: initialTabIndex);
 
   late final ScrollController scrollController;
-  final List<ImmersiveTabItem> tabItems;
+  List<ImmersiveTabItem> tabItems;
 
   late final StreamValue<int> currentTabIndexStreamValue;
 
@@ -28,7 +26,23 @@ class ImmersiveDetailScreenController {
 
   void setTopPadding(double topPadding) => _topPadding = topPadding;
 
+  void updateTabs(List<ImmersiveTabItem> updatedTabs) {
+    tabItems = updatedTabs;
+    _tabVisibility.removeWhere((index, _) => index >= tabItems.length);
+
+    if (tabItems.isEmpty) {
+      currentTabIndexStreamValue.addValue(0);
+      return;
+    }
+
+    if (currentTabIndexStreamValue.value >= tabItems.length) {
+      currentTabIndexStreamValue.addValue(tabItems.length - 1);
+    }
+  }
+
   void onTabVisibilityChanged(int index, double visibleFraction) {
+    if (index >= tabItems.length) return;
+
     // Don't auto-switch during programmatic scrolling
     if (_isProgrammaticScroll) return;
 
@@ -53,6 +67,8 @@ class ImmersiveDetailScreenController {
   }
 
   void onTabTapped(int index) {
+    if (index >= tabItems.length) return;
+
     currentTabIndexStreamValue.addValue(index);
 
     final nestedState = nestedScrollViewKey.currentState;
@@ -65,7 +81,6 @@ class ImmersiveDetailScreenController {
     if (index == 0) {
       // Test different offsets to find the right one
       const testOffset = -48.0; // Try negative tab bar height
-      print("Tab 0 - Scrolling to: $testOffset");
 
       nestedState.innerController
           .animateTo(
@@ -94,9 +109,6 @@ class ImmersiveDetailScreenController {
     const tabBarHeight = 48.0;
     final pinnedHeaderHeight = _topPadding + kToolbarHeight + tabBarHeight;
     final adjustedTarget = targetScroll - pinnedHeaderHeight;
-
-    print(
-        "Tab $index - Raw target: $targetScroll, Pinned header: $pinnedHeaderHeight, Adjusted: $adjustedTarget");
 
     nestedState.innerController
         .animateTo(

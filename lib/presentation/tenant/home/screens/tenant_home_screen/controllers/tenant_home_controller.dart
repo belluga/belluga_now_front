@@ -48,8 +48,8 @@ class TenantHomeController implements Disposable {
       StreamValue<List<FavoriteResume>?>();
   final StreamValue<List<VenueEventResume>> myEventsStreamValue =
       StreamValue<List<VenueEventResume>>(defaultValue: []);
-  final StreamValue<List<VenueEventResume>?> upcomingEventsStreamValue =
-      StreamValue<List<VenueEventResume>?>();
+  final StreamValue<List<VenueEventResume>> upcomingEventsStreamValue =
+      StreamValue<List<VenueEventResume>>(defaultValue: []);
 
   StreamValue<Set<String>> get confirmedIdsStream =>
       _userEventsRepository.confirmedEventIdsStream;
