@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 /// Each tab consists of a title, content widget, and optional footer.
 /// This model enables dynamic tab configuration for reusable immersive screens.
 class ImmersiveTabItem {
-  const ImmersiveTabItem({
+  ImmersiveTabItem({
     required this.title,
     required this.content,
     this.footer,
@@ -20,4 +20,6 @@ class ImmersiveTabItem {
   /// Optional footer widget specific to this tab
   /// If null, the screen's default footer will be used
   final Widget? footer;
+
+  final key = GlobalKey();
 }

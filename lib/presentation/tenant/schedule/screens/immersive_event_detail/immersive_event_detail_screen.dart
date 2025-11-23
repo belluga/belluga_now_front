@@ -1,6 +1,6 @@
 import 'package:belluga_now/domain/schedule/event_model.dart';
-import 'package:belluga_now/presentation/common/models/immersive_tab_item.dart';
-import 'package:belluga_now/presentation/common/widgets/immersive_detail_screen.dart';
+import 'package:belluga_now/presentation/common/widgets/immersive_detail_screen/models/immersive_tab_item.dart';
+import 'package:belluga_now/presentation/common/widgets/immersive_detail_screen/immersive_detail_screen.dart';
 import 'package:belluga_now/presentation/tenant/schedule/screens/immersive_event_detail/controllers/immersive_event_detail_controller.dart';
 import 'package:belluga_now/presentation/tenant/schedule/screens/immersive_event_detail/widgets/event_info_section.dart';
 import 'package:belluga_now/presentation/tenant/schedule/screens/immersive_event_detail/widgets/immersive_event_footer.dart';
