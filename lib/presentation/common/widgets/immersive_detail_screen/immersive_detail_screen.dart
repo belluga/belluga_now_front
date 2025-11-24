@@ -193,9 +193,10 @@ class _ImmersiveDetailScreenState extends State<ImmersiveDetailScreen> {
                     },
                     child: Container(
                       key: _controller.tabItems[index].key,
-                      // Force each tab to be at least the height of the viewport
                       child: ConstrainedBox(
-                        constraints: BoxConstraints(minHeight: minTabHeight),
+                        constraints: BoxConstraints(
+                          minHeight: minTabHeight,
+                        ),
                         child: tab.content,
                       ),
                     ),

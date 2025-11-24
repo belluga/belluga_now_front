@@ -1,4 +1,5 @@
 import 'package:belluga_now/domain/schedule/event_model.dart';
+import 'package:belluga_now/domain/invites/invite_model.dart';
 import 'package:belluga_now/presentation/common/widgets/immersive_detail_screen/models/immersive_tab_item.dart';
 import 'package:belluga_now/presentation/common/widgets/immersive_detail_screen/immersive_detail_screen.dart';
 import 'package:belluga_now/presentation/tenant/schedule/screens/immersive_event_detail/controllers/immersive_event_detail_controller.dart';
@@ -7,7 +8,9 @@ import 'package:belluga_now/presentation/tenant/schedule/screens/immersive_event
 import 'package:belluga_now/presentation/tenant/schedule/screens/immersive_event_detail/widgets/immersive_hero.dart';
 import 'package:belluga_now/presentation/tenant/schedule/screens/immersive_event_detail/widgets/lineup_section.dart';
 import 'package:belluga_now/presentation/tenant/schedule/screens/immersive_event_detail/widgets/location_section.dart';
+import 'package:belluga_now/presentation/tenant/schedule/screens/immersive_event_detail/widgets/mission_widget.dart';
 import 'package:belluga_now/presentation/tenant/schedule/screens/immersive_event_detail/widgets/sua_galera_section.dart';
+import 'package:belluga_now/presentation/tenant/schedule/screens/event_detail_screen/widgets/swipeable_invite_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
@@ -54,58 +57,91 @@ class _ImmersiveEventDetailScreenState
         return StreamValueBuilder<bool>(
           streamValue: _controller.isConfirmedStreamValue,
           builder: (context, isConfirmed) {
-            // Build tabs dynamically based on confirmation state
-            // When confirmed, "Sua Galera" comes first
-            final tabs = <ImmersiveTabItem>[
-              if (isConfirmed)
-                ImmersiveTabItem(
-                  title: 'Sua Galera',
-                  content: SuaGaleraSection(
-                    isConfirmedStream: _controller.isConfirmedStreamValue,
-                    missionStream: _controller.missionStreamValue,
-                    friendsGoingStream: _controller.friendsGoingStreamValue,
+            return StreamValueBuilder<List<InviteModel>>(
+              streamValue: _controller.receivedInvitesStreamValue,
+              builder: (context, receivedInvites) {
+                // Build tabs dynamically; loyalty tab moves to the end
+                final tabs = <ImmersiveTabItem>[
+                  ImmersiveTabItem(
+                    title: 'O Rolê',
+                    content: EventInfoSection(event: event),
                   ),
-                ),
-              ImmersiveTabItem(
-                title: 'O Rolê',
-                content: EventInfoSection(event: event),
-              ),
-              ImmersiveTabItem(
-                title: 'Line-up',
-                content: LineupSection(event: event),
-              ),
-              ImmersiveTabItem(
-                title: 'O Local',
-                content: LocationSection(event: event),
-              ),
-            ];
+                  ImmersiveTabItem(
+                    title: 'Line-up',
+                    content: LineupSection(event: event),
+                  ),
+                  ImmersiveTabItem(
+                    title: 'O Local',
+                    content: LocationSection(event: event),
+                  ),
+                  if (isConfirmed)
+                    ImmersiveTabItem(
+                      title: 'Ganhe Brindes',
+                      content: Align(
+                        alignment: Alignment.topCenter,
+                        child: UnconstrainedBox(
+                          alignment: Alignment.topCenter,
+                          constrainedAxis: Axis.horizontal,
+                          child: StreamValueBuilder(
+                            streamValue: _controller.missionStreamValue,
+                            onNullWidget: const SizedBox.shrink(),
+                            builder: (context, mission) {
+                              return MissionWidget(mission: mission);
+                            },
+                          ),
+                        ),
+                      ),
+                    ),
+                ];
 
-            // Build footer
-            final footer = ImmersiveEventFooter(
-              isConfirmedStream: _controller.isConfirmedStreamValue,
-              activeTabStream: _controller.activeTabStreamValue,
-              onConfirmAttendance: _controller.confirmAttendance,
-              onInviteFriends: () {
-                // TODO: Navigate to invite flow
-              },
-              onShowQrCode: () {
-                // TODO: Show QR code
-              },
-              onFollowArtists: () {
-                // TODO: Follow all artists
-              },
-              onTraceRoute: () {
-                // TODO: Open maps
-              },
-            );
+                final topBanner = (!isConfirmed && receivedInvites.isNotEmpty)
+                    ? Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+                        child: SwipeableInviteWidget(
+                          invites: receivedInvites,
+                          onAccept: _controller.acceptInvite,
+                          onDecline: _controller.declineInvite,
+                        ),
+                      )
+                    : (isConfirmed
+                        ? Padding(
+                            padding:
+                                const EdgeInsets.fromLTRB(16, 16, 16, 12),
+                            child: SuaGaleraSection(
+                              friendsGoingStream:
+                                  _controller.friendsGoingStreamValue,
+                            ),
+                          )
+                        : null);
 
-            return ImmersiveDetailScreen(
-              heroContent: ImmersiveHero(event: event),
-              title: event.title.value,
-              tabs: tabs,
-              // Don't auto-navigate, let user scroll naturally
-              // initialTabIndex defaults to 0
-              footer: footer,
+                final footer = ImmersiveEventFooter(
+                  isConfirmedStream: _controller.isConfirmedStreamValue,
+                  activeTabStream: _controller.activeTabStreamValue,
+                  onConfirmAttendance: _controller.confirmAttendance,
+                  onInviteFriends: () {
+                    // TODO: Navigate to invite flow
+                  },
+                  onShowQrCode: () {
+                    // TODO: Show QR code
+                  },
+                  onFollowArtists: () {
+                    // TODO: Follow all artists
+                  },
+                  onTraceRoute: () {
+                    // TODO: Open maps
+                  },
+                );
+
+                return ImmersiveDetailScreen(
+                  heroContent: ImmersiveHero(event: event),
+                  title: event.title.value,
+                  betweenHeroAndTabs: topBanner,
+                  tabs: tabs,
+                  // Don't auto-navigate, let user scroll naturally
+                  // initialTabIndex defaults to 0
+                  footer: footer,
+                );
+              },
             );
           },
         );

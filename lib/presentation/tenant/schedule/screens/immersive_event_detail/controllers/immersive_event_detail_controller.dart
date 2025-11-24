@@ -33,9 +33,11 @@ class ImmersiveEventDetailController implements Disposable {
   final InvitesRepositoryContract _invitesRepository;
 
   final scrollController = ScrollController();
+  StreamSubscription<List<InviteModel>>? _pendingInvitesSubscription;
 
   void init(EventModel event) {
     eventStreamValue.addValue(event);
+    _hydrateState(event);
   }
 
   // Reactive state
@@ -57,6 +59,36 @@ class ImmersiveEventDetailController implements Disposable {
       StreamValue<List<EventFriendResume>>(defaultValue: const []);
   final totalConfirmedStreamValue = StreamValue<int>(defaultValue: 0);
   final isLoadingStreamValue = StreamValue<bool>(defaultValue: false);
+
+  void _hydrateState(EventModel event) {
+    final isConfirmedLocally =
+        _userEventsRepository.isEventConfirmed(event.id.value);
+    isConfirmedStreamValue
+        .addValue(isConfirmedLocally || event.isConfirmedValue.value);
+    totalConfirmedStreamValue.addValue(event.totalConfirmedValue.value);
+
+    _updateReceivedInvites(
+      _invitesRepository.pendingInvitesStreamValue.value,
+      event.id.value,
+    );
+
+    _pendingInvitesSubscription = _invitesRepository
+        .pendingInvitesStreamValue.stream
+        .listen((invites) => _updateReceivedInvites(invites, event.id.value));
+  }
+
+  void _updateReceivedInvites(List<InviteModel> invites, String eventId) {
+    final filtered =
+        invites.where((invite) => invite.eventIdValue.value == eventId).toList();
+    receivedInvitesStreamValue.addValue(filtered);
+  }
+
+  void _pruneInviteFromRepository(String inviteId) {
+    final current = _invitesRepository.pendingInvitesStreamValue.value;
+    final updated =
+        current.where((invite) => invite.id != inviteId).toList(growable: false);
+    _invitesRepository.pendingInvitesStreamValue.addValue(updated);
+  }
 
   /// Confirm attendance at this event
   Future<void> confirmAttendance() async {
@@ -91,8 +123,24 @@ class ImmersiveEventDetailController implements Disposable {
     activeTabStreamValue.addValue(index);
   }
 
+  Future<void> acceptInvite(String inviteId) async {
+    _pruneInviteFromRepository(inviteId);
+    await confirmAttendance();
+  }
+
+  Future<void> declineInvite(String inviteId) async {
+    isLoadingStreamValue.addValue(true);
+    try {
+      _pruneInviteFromRepository(inviteId);
+      receivedInvitesStreamValue.addValue(const []);
+    } finally {
+      isLoadingStreamValue.addValue(false);
+    }
+  }
+
   @override
   void onDispose() {
+    _pendingInvitesSubscription?.cancel();
     eventStreamValue.dispose();
     isConfirmedStreamValue.dispose();
     receivedInvitesStreamValue.dispose();
