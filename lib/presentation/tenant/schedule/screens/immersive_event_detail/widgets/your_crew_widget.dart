@@ -4,116 +4,184 @@ import 'package:flutter/material.dart';
 class YourCrewWidget extends StatelessWidget {
   const YourCrewWidget({
     required this.friendsGoing,
+    required this.onInviteFriends,
     super.key,
   });
 
   final List<EventFriendResume> friendsGoing;
+  final VoidCallback onInviteFriends;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.all(16),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
+    final displayedFriends = friendsGoing.take(3).toList();
+    final hasFriends = displayedFriends.isNotEmpty;
+    final showTitle = !hasFriends;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          // Header
+          if (showTitle) ...[
+            const Text(
+              'Quem vai com você?',
+              style: TextStyle(
+                fontWeight: FontWeight.w700,
+                fontSize: 16,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 6),
+          ],
           Row(
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.people, color: Colors.blue),
-              const SizedBox(width: 8),
-              const Text(
-                'Sua Galera',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 18,
+              ...displayedFriends.map(
+                (friend) => Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: _FriendAvatar(name: friend.displayName, url: friend.avatarUrl),
                 ),
               ),
-            ],
-          ),
-          const SizedBox(height: 16),
-
-          // Summary
-          if (friendsGoing.isEmpty)
-            Text(
-              'Nenhum amigo confirmado ainda. Seja o primeiro a convidar!',
-              style: TextStyle(color: Colors.grey[600]),
-            )
-          else ...[
-            Text(
-              'Você e ${friendsGoing.length} amigo(s) já confirmaram:',
-              style: const TextStyle(
-                fontWeight: FontWeight.w600,
-                fontSize: 14,
-              ),
-            ),
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: friendsGoing.take(10).map((friend) {
-                return _FriendChip(name: friend.displayName);
-              }).toList(),
-            ),
-            if (friendsGoing.length > 10)
-              Padding(
-                padding: const EdgeInsets.only(top: 8),
-                child: Text(
-                  '+${friendsGoing.length - 10} outros',
-                  style: TextStyle(
-                    color: Colors.grey[600],
-                    fontSize: 12,
+              if (hasFriends)
+                Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: _ActionAvatar(
+                    onTap: onInviteFriends,
+                    icon: Icons.rocket_launch,
+                    backgroundColor: Colors.purple.withValues(alpha: 0.15),
+                    iconColor: Colors.purple,
+                  ),
+                )
+              else ...[
+                Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: _ActionAvatar(
+                    onTap: onInviteFriends,
+                    icon: Icons.add,
+                    backgroundColor: Colors.blue.withValues(alpha: 0.15),
+                    iconColor: Colors.blue,
                   ),
                 ),
+                _BoraButton(onTap: onInviteFriends),
+              ],
+            ],
+          ),
+          if (hasFriends) ...[
+            const SizedBox(height: 6),
+            Text(
+              _buildSummary(),
+              style: TextStyle(
+                fontSize: 13,
+                color: Colors.grey[800],
+                fontWeight: FontWeight.w500,
               ),
+              textAlign: TextAlign.center,
+            ),
           ],
         ],
       ),
     );
   }
+
+  String _buildSummary() {
+    final last = friendsGoing.last.displayName;
+    final othersCount = friendsGoing.length - 1;
+    if (othersCount <= 0) {
+      return '$last aceitou seu convite.';
+    }
+    return '$last e mais $othersCount aceitaram seu convite.';
+  }
 }
 
-class _FriendChip extends StatelessWidget {
-  const _FriendChip({
-    required this.name,
-  });
+class _FriendAvatar extends StatelessWidget {
+  const _FriendAvatar({required this.name, this.url});
 
   final String name;
+  final String? url;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: Colors.green.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.green),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(Icons.check_circle, color: Colors.green, size: 14),
-          const SizedBox(width: 6),
-          Text(
-            name,
-            style: TextStyle(
-              fontSize: 13,
-              color: Colors.green.shade900,
-              fontWeight: FontWeight.w600,
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        CircleAvatar(
+          radius: 18,
+          backgroundImage: url != null && url!.isNotEmpty ? NetworkImage(url!) : null,
+          child: (url == null || url!.isEmpty)
+              ? Text(
+                  name.isNotEmpty ? name[0].toUpperCase() : '?',
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                )
+              : null,
+        ),
+        Positioned(
+          bottom: -2,
+          right: -2,
+          child: Container(
+            padding: const EdgeInsets.all(2),
+            decoration: const BoxDecoration(
+              shape: BoxShape.circle,
+              color: Colors.white,
+            ),
+            child: const Icon(
+              Icons.check_circle,
+              color: Colors.green,
+              size: 14,
             ),
           ),
-        ],
+        ),
+      ],
+    );
+  }
+}
+
+class _BoraButton extends StatelessWidget {
+  const _BoraButton({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return ElevatedButton.icon(
+      onPressed: onTap,
+      style: ElevatedButton.styleFrom(
+        backgroundColor: const Color(0xFF9C27B0),
+        foregroundColor: Colors.white,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(24),
+        ),
+      ),
+      icon: const Icon(Icons.rocket_launch, size: 18),
+      label: const Text(
+        'BORA? Agitar a galera!',
+        style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+      ),
+    );
+  }
+}
+
+class _ActionAvatar extends StatelessWidget {
+  const _ActionAvatar({
+    required this.onTap,
+    required this.icon,
+    required this.backgroundColor,
+    required this.iconColor,
+  });
+
+  final VoidCallback onTap;
+  final IconData icon;
+  final Color backgroundColor;
+  final Color iconColor;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: CircleAvatar(
+        radius: 18,
+        backgroundColor: backgroundColor,
+        child: Icon(icon, color: iconColor),
       ),
     );
   }

@@ -7,17 +7,22 @@ import 'package:stream_value/core/stream_value_builder.dart';
 class SuaGaleraSection extends StatelessWidget {
   const SuaGaleraSection({
     required this.friendsGoingStream,
+    required this.onInviteFriends,
     super.key,
   });
 
   final StreamValue<List<EventFriendResume>> friendsGoingStream;
+  final VoidCallback onInviteFriends;
 
   @override
   Widget build(BuildContext context) {
     return StreamValueBuilder(
       streamValue: friendsGoingStream,
       builder: (context, friendsGoing) {
-        return YourCrewWidget(friendsGoing: friendsGoing);
+        return YourCrewWidget(
+          friendsGoing: friendsGoing,
+          onInviteFriends: onInviteFriends,
+        );
       },
     );
   }

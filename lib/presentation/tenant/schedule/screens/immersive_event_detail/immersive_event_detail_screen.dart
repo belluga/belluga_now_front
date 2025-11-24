@@ -1,4 +1,6 @@
 import 'package:belluga_now/domain/schedule/event_model.dart';
+import 'package:auto_route/auto_route.dart';
+import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/domain/invites/invite_model.dart';
 import 'package:belluga_now/presentation/common/widgets/immersive_detail_screen/models/immersive_tab_item.dart';
 import 'package:belluga_now/presentation/common/widgets/immersive_detail_screen/immersive_detail_screen.dart';
@@ -9,8 +11,6 @@ import 'package:belluga_now/presentation/tenant/schedule/screens/immersive_event
 import 'package:belluga_now/presentation/tenant/schedule/screens/immersive_event_detail/widgets/lineup_section.dart';
 import 'package:belluga_now/presentation/tenant/schedule/screens/immersive_event_detail/widgets/location_section.dart';
 import 'package:belluga_now/presentation/tenant/schedule/screens/immersive_event_detail/widgets/mission_widget.dart';
-import 'package:belluga_now/presentation/tenant/schedule/screens/immersive_event_detail/widgets/sua_galera_section.dart';
-import 'package:belluga_now/presentation/tenant/schedule/screens/event_detail_screen/widgets/swipeable_invite_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
@@ -61,18 +61,24 @@ class _ImmersiveEventDetailScreenState
               streamValue: _controller.receivedInvitesStreamValue,
               builder: (context, receivedInvites) {
                 // Build tabs dynamically; loyalty tab moves to the end
+                final InviteModel? pendingInvite =
+                    receivedInvites.isNotEmpty ? receivedInvites.first : null;
+
                 final tabs = <ImmersiveTabItem>[
                   ImmersiveTabItem(
                     title: 'O Rolê',
                     content: EventInfoSection(event: event),
-                    footer: isConfirmed
+                    footer: pendingInvite != null
                         ? DynamicFooter(
-                            buttonText: 'Ver meu QR Code de Acesso',
-                            buttonIcon: Icons.qr_code,
-                            buttonColor: Colors.blue,
-                            onActionPressed: () {
-                              // TODO: show QR code
-                            },
+                            leftTitle: pendingInvite.inviterName ?? 'Convite',
+                            leftSubtitle: '${pendingInvite.hostName} te convidou',
+                            leftIcon: Icons.mail_outline,
+                            leftIconColor: Colors.purple,
+                            buttonText: 'Aceitar convite',
+                            buttonIcon: Icons.rocket_launch,
+                            buttonColor: const Color(0xFF9C27B0),
+                            onActionPressed: () =>
+                                _controller.acceptInvite(pendingInvite.id),
                           )
                         : null,
                   ),
@@ -103,7 +109,7 @@ class _ImmersiveEventDetailScreenState
                             },
                           )
                         : null,
-                  ),
+                    ),
                   if (isConfirmed)
                     ImmersiveTabItem(
                       title: 'Ganhe Brindes',
@@ -121,43 +127,14 @@ class _ImmersiveEventDetailScreenState
                           ),
                         ),
                       ),
-                      footer: DynamicFooter(
-                        leftTitle: 'Tudo certo!',
-                        leftSubtitle: 'Presença confirmada.',
-                        leftIcon: Icons.check_circle,
-                        leftIconColor: Colors.green,
-                        buttonText: 'BORA? Agitar a galera!',
-                        buttonIcon: Icons.rocket_launch,
-                        buttonColor: const Color(0xFF9C27B0),
-                        onActionPressed: () {
-                          // TODO: invite friends
-                        },
-                      ),
+                      footer: null,
                     ),
                 ];
 
-                final topBanner = (!isConfirmed && receivedInvites.isNotEmpty)
-                    ? Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
-                        child: SwipeableInviteWidget(
-                          invites: receivedInvites,
-                          onAccept: _controller.acceptInvite,
-                          onDecline: _controller.declineInvite,
-                        ),
-                      )
-                    : (isConfirmed
-                        ? Padding(
-                            padding:
-                                const EdgeInsets.fromLTRB(16, 16, 16, 12),
-                            child: SuaGaleraSection(
-                              friendsGoingStream:
-                                  _controller.friendsGoingStreamValue,
-                            ),
-                          )
-                        : null);
+                const topBanner = null;
 
                 final footer = isConfirmed
-                    ? null
+                    ? _buildInviteFooter(() => _openInviteFlow(event))
                     : DynamicFooter(
                         buttonText: 'Bóora! Confirmar Presença!',
                         buttonIcon: Icons.celebration,
@@ -181,4 +158,79 @@ class _ImmersiveEventDetailScreenState
       },
     );
   }
+
+  void _openInviteFlow(EventModel event) {
+    final invite = _buildInviteFromEvent(event);
+    context.router.push(InviteShareRoute(invite: invite));
+  }
+
+  InviteModel _buildInviteFromEvent(EventModel event) {
+    final eventName = event.title.value;
+    final eventDate = event.dateTimeStart.value ?? DateTime.now();
+    final inviteCoverUri = event.thumb?.thumbUri.value;
+    const fallbackImage =
+        'https://images.unsplash.com/photo-1489515217757-5fd1be406fef?w=1200';
+    final imageUrl = inviteCoverUri?.toString() ?? fallbackImage;
+    final locationLabel = event.location.value;
+    final hostName = event.artists.isNotEmpty
+        ? event.artists.first.displayName
+        : 'Belluga Now';
+    final description = _stripHtml(event.content.value ?? '').trim();
+    final slug = event.type.slug.value;
+    final typeLabel = event.type.name.value;
+    final tags = <String>[
+      if (slug.isNotEmpty) slug,
+      if (typeLabel.isNotEmpty && typeLabel != slug) typeLabel,
+    ];
+    final eventId = event.id.value;
+    final inviteId = eventId.isNotEmpty ? eventId : eventName;
+    return InviteModel.fromPrimitives(
+      id: inviteId,
+      eventId: eventId,
+      eventName: eventName,
+      eventDateTime: eventDate,
+      eventImageUrl: imageUrl,
+      location: locationLabel,
+      hostName: hostName,
+      message: description.isEmpty ? 'Partiu $eventName?' : description,
+      tags: tags.isEmpty ? const ['belluga'] : tags,
+    );
+  }
+
+  String _stripHtml(String value) {
+    return value.replaceAll(RegExp(r'<[^>]*>'), '').trim();
+  }
+}
+
+Widget _buildInviteFooter(VoidCallback onInviteFriends) {
+  return DynamicFooter(
+    leftWidget: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        CircleAvatar(
+          radius: 16,
+          backgroundColor: Colors.purple.withValues(alpha: 0.12),
+          child: const Icon(
+            Icons.rocket_launch,
+            color: Colors.purple,
+            size: 18,
+          ),
+        ),
+        const SizedBox(width: 8),
+        const Flexible(
+          child: Text(
+            'Convide sua galera para ir com você.',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+      ],
+    ),
+    buttonText: 'BORA? Agitar a galera!',
+    buttonIcon: Icons.rocket_launch,
+    buttonColor: const Color(0xFF9C27B0),
+    onActionPressed: onInviteFriends,
+  );
 }
