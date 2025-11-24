@@ -38,6 +38,8 @@ class InviteShareScreenController with Disposable {
   final selectedContactsStreamValue =
       StreamValue<List<ContactModel>>(defaultValue: []);
   final contactsPermissionGranted = StreamValue<bool>(defaultValue: false);
+  final sentInvitesStreamValue =
+      StreamValue<List<SentInviteStatus>>(defaultValue: const []);
 
   /// Initialize controller with event ID to fetch friends and their invite status
   /// eventId should be the ID of the event (not the invite ID)
@@ -108,6 +110,12 @@ class InviteShareScreenController with Disposable {
     await _loadFriendsWithStatus();
   }
 
+  Future<void> sendInviteToFriend(String friendId) async {
+    if (_currentEventId == null) return;
+    await _invitesRepository.sendInvites(_currentEventId!, [friendId]);
+    await _loadFriendsWithStatus();
+  }
+
   /// Load friends and merge with event-specific invite status
   Future<void> _loadFriendsWithStatus() async {
     if (_currentEventId == null) return;
@@ -118,6 +126,7 @@ class InviteShareScreenController with Disposable {
     // 2. Fetch sent invites for this specific event
     final sentInvites =
         await _invitesRepository.getSentInvitesForEvent(_currentEventId!);
+    sentInvitesStreamValue.addValue(sentInvites);
 
     // 3. Merge friends with invite status
     final friendsWithStatus = _mergeFriendsWithStatus(
@@ -161,5 +170,6 @@ class InviteShareScreenController with Disposable {
     contactsStreamValue.dispose();
     selectedContactsStreamValue.dispose();
     contactsPermissionGranted.dispose();
+    sentInvitesStreamValue.dispose();
   }
 }

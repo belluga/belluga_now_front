@@ -46,10 +46,6 @@ class EventDetailScreen extends StatefulWidget {
     return sameDay ? '$startLabel - $endLabel' : '$startLabel\\naté $endLabel';
   }
 
-  static String _stripHtml(String value) {
-    return value.replaceAll(RegExp(r'<[^>]*>'), '').trim();
-  }
-
   static const String _fallbackImage =
       'https://images.unsplash.com/photo-1489515217757-5fd1be406fef?w=1200';
 }
@@ -373,40 +369,6 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
   }
 
   Future<void> _openInviteFlow() async {
-    final invite = _buildInviteFromEvent();
-    context.router.push(InviteShareRoute(invite: invite));
-  }
-
-  InviteModel _buildInviteFromEvent() {
-    final eventName = widget.event.title.value;
-    final eventDate = widget.event.dateTimeStart.value ?? DateTime.now();
-    final inviteCoverUri = widget.event.thumb?.thumbUri.value;
-    final imageUrl =
-        inviteCoverUri?.toString() ?? EventDetailScreen._fallbackImage;
-    final locationLabel = widget.event.location.value;
-    final hostName = widget.event.artists.isNotEmpty
-        ? widget.event.artists.first.displayName
-        : 'Belluga Now';
-    final description =
-        EventDetailScreen._stripHtml(widget.event.content.value ?? '').trim();
-    final slug = widget.event.type.slug.value;
-    final typeLabel = widget.event.type.name.value;
-    final tags = <String>[
-      if (slug.isNotEmpty) slug,
-      if (typeLabel.isNotEmpty && typeLabel != slug) typeLabel,
-    ];
-    final eventId = widget.event.id.value;
-    final inviteId = eventId.isNotEmpty ? eventId : eventName;
-    return InviteModel.fromPrimitives(
-      id: inviteId,
-      eventId: eventId,
-      eventName: eventName,
-      eventDateTime: eventDate,
-      eventImageUrl: imageUrl,
-      location: locationLabel,
-      hostName: hostName,
-      message: description.isEmpty ? 'Partiu $eventName?' : description,
-      tags: tags.isEmpty ? const ['belluga'] : tags,
-    );
+    context.router.push(const InviteFlowRoute());
   }
 }

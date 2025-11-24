@@ -19,7 +19,7 @@ class CarouselEventCard extends StatelessWidget {
         return SizedBox(
           width: constraints.maxWidth,
           child: AspectRatio(
-            aspectRatio: 16 / 11,
+            aspectRatio: 16 / 7,
             child: Card(
               elevation: 3,
               clipBehavior: Clip.antiAlias,
