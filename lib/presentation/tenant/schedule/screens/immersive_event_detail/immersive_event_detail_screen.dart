@@ -13,6 +13,7 @@ import 'package:belluga_now/presentation/tenant/schedule/screens/immersive_event
 import 'package:belluga_now/presentation/tenant/schedule/screens/immersive_event_detail/widgets/lineup_section.dart';
 import 'package:belluga_now/presentation/tenant/schedule/screens/immersive_event_detail/widgets/location_section.dart';
 import 'package:belluga_now/presentation/tenant/schedule/screens/immersive_event_detail/widgets/mission_widget.dart';
+import 'package:belluga_now/presentation/tenant/schedule/screens/event_detail_screen/widgets/swipeable_invite_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
@@ -70,6 +71,17 @@ class _ImmersiveEventDetailScreenState
                   builder: (context, sentInvitesByEvent) {
                     final sentForEvent =
                         sentInvitesByEvent[event.id.value] ?? const [];
+
+                    final Widget? topBanner = receivedInvites.isNotEmpty
+                        ? Padding(
+                            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                            child: SwipeableInviteWidget(
+                              invites: receivedInvites,
+                              onAccept: _controller.acceptInvite,
+                              onDecline: _controller.declineInvite,
+                            ),
+                          )
+                        : null;
 
                     final tabs = <ImmersiveTabItem>[
                       ImmersiveTabItem(
@@ -139,8 +151,6 @@ class _ImmersiveEventDetailScreenState
                           footer: null,
                         ),
                     ];
-
-                    const topBanner = null;
 
                     final footer = isConfirmed
                         ? _buildInviteFooter(

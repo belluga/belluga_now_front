@@ -1,8 +1,8 @@
 import 'package:belluga_now/domain/invites/invite_model.dart';
-import 'package:card_stack_swiper/card_stack_swiper.dart';
+import 'package:belluga_now/presentation/common/widgets/swipeable_card/swipeable_card.dart';
 import 'package:flutter/material.dart';
 
-class SwipeableInviteWidget extends StatelessWidget {
+class SwipeableInviteWidget extends StatefulWidget {
   const SwipeableInviteWidget({
     super.key,
     required this.invites,
@@ -15,44 +15,71 @@ class SwipeableInviteWidget extends StatelessWidget {
   final Future<void> Function(String) onDecline;
 
   @override
-  Widget build(BuildContext context) {
-    if (invites.isEmpty) return const SizedBox.shrink();
+  State<SwipeableInviteWidget> createState() => _SwipeableInviteWidgetState();
+}
 
-    // If only one invite, show it directly without swiper (or with swiper but locked?)
-    // The user asked for "swipable as the swipe screen", which implies the deck UI.
-    // Even for one card, the deck UI looks nice.
+class _SwipeableInviteWidgetState extends State<SwipeableInviteWidget> {
+  int _currentIndex = 0;
+
+  void _handleNext() {
+    if (_currentIndex < widget.invites.length - 1) {
+      setState(() {
+        _currentIndex++;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.invites.isEmpty || _currentIndex >= widget.invites.length) {
+      return const SizedBox.shrink();
+    }
+
+    final currentInvite = widget.invites[_currentIndex];
+    final nextInvite = _currentIndex + 1 < widget.invites.length
+        ? widget.invites[_currentIndex + 1]
+        : null;
 
     return SizedBox(
-      height: 180, // Fixed height for the widget
-      child: CardStackSwiper(
-        cardsCount: invites.length,
-        isLoop: false,
-        allowedSwipeDirection: const AllowedSwipeDirection.only(
-          left: true,
-          right: true,
-        ),
-        cardBuilder: (context, index, horizontalOffset, verticalOffset) {
-          final invite = invites[index];
-          return _InviteDeckCard(
-            invite: invite,
-            onAccept: () => onAccept(invite.id),
-            onDecline: () => onDecline(invite.id),
-          );
-        },
-        onSwipe: (previousIndex, currentIndex, direction) async {
-          final invite = invites[previousIndex];
-          switch (direction) {
-            case CardStackSwiperDirection.right:
-              await onAccept(invite.id);
-              break;
-            case CardStackSwiperDirection.left:
-              await onDecline(invite.id);
-              break;
-            default:
-              break;
-          }
-          return true;
-        },
+      height: 180,
+      child: Stack(
+        children: [
+          if (nextInvite != null)
+            Positioned.fill(
+              child: Transform.scale(
+                scale: 0.95,
+                child: _InviteDeckCard(
+                  invite: nextInvite,
+                  onAccept: () {}, // Background card actions disabled
+                  onDecline: () {},
+                ),
+              ),
+            ),
+          SwipeableCard(
+            key: ValueKey(currentInvite.id),
+            onSwipeRight: () async {
+              await widget.onAccept(currentInvite.id);
+              _handleNext();
+            },
+            onSwipeLeft: () async {
+              await widget.onDecline(currentInvite.id);
+              _handleNext();
+            },
+            child: _InviteDeckCard(
+              invite: currentInvite,
+              onAccept: () async {
+                // Manual button press
+                await widget.onAccept(currentInvite.id);
+                _handleNext();
+              },
+              onDecline: () async {
+                // Manual button press
+                await widget.onDecline(currentInvite.id);
+                _handleNext();
+              },
+            ),
+          ),
+        ],
       ),
     );
   }
