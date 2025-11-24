@@ -69,6 +69,9 @@ class ImmersiveDetailScreenController {
   void onTabTapped(int index) {
     if (index >= tabItems.length) return;
 
+    _tabVisibility
+      ..clear()
+      ..[index] = 1.0;
     currentTabIndexStreamValue.addValue(index);
 
     final nestedState = nestedScrollViewKey.currentState;
