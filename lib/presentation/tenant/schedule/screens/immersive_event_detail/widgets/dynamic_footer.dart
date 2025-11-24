@@ -1,30 +1,40 @@
 import 'package:flutter/material.dart';
 
-enum FooterMode {
-  buyTicket,
-  bora,
-  viewQrCode,
-  followArtists,
-  traceRoute,
-}
-
 class DynamicFooter extends StatelessWidget {
   const DynamicFooter({
-    required this.mode,
-    required this.onActionPressed,
-    this.leftText,
-    this.actionText,
+    this.leftTitle,
+    this.leftSubtitle,
+    this.leftIcon,
+    this.leftIconColor,
+    this.leftWidget,
+    this.buttonText,
+    this.buttonIcon,
+    this.buttonColor,
+    this.onActionPressed,
+    this.rightWidget,
     super.key,
   });
 
-  final FooterMode mode;
-  final VoidCallback onActionPressed;
-  final String? leftText;
-  final String? actionText;
+  final String? leftTitle;
+  final String? leftSubtitle;
+  final IconData? leftIcon;
+  final Color? leftIconColor;
+  final Widget? leftWidget;
+
+  final String? buttonText;
+  final IconData? buttonIcon;
+  final Color? buttonColor;
+  final VoidCallback? onActionPressed;
+  final Widget? rightWidget;
 
   @override
   Widget build(BuildContext context) {
-    final config = _getFooterConfig();
+    final leftContent = leftWidget ?? _buildLeftContent(context);
+    final rightContent = rightWidget ?? _buildButton(context);
+
+    if (leftContent == null && rightContent == null) {
+      return const SizedBox.shrink();
+    }
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -40,151 +50,93 @@ class DynamicFooter extends StatelessWidget {
       ),
       child: SafeArea(
         top: false,
-        child: config.leftWidget != null
-            ? Row(
-                children: [
-                  // Left side (status or price)
-                  Expanded(
-                    flex: 2,
-                    child: config.leftWidget!,
-                  ),
-
-                  const SizedBox(width: 12),
-
-                  // Right side (action button)
-                  Expanded(
-                    flex: 3,
-                    child: ElevatedButton(
-                      onPressed: onActionPressed,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: config.buttonColor,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          if (config.buttonIcon != null) ...[
-                            Icon(config.buttonIcon, size: 18),
-                            const SizedBox(width: 8),
-                          ],
-                          Text(
-                            actionText ?? config.buttonText,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              )
-            : ElevatedButton(
-                onPressed: onActionPressed,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: config.buttonColor,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    if (config.buttonIcon != null) ...[
-                      Icon(config.buttonIcon, size: 20),
-                      const SizedBox(width: 8),
-                    ],
-                    Text(
-                      actionText ?? config.buttonText,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+        child: Row(
+          children: [
+            if (leftContent != null) Expanded(child: leftContent),
+            if (leftContent != null && rightContent != null)
+              const SizedBox(width: 12),
+            if (rightContent != null) Expanded(child: rightContent),
+          ],
+        ),
       ),
     );
   }
 
-  _FooterConfig _getFooterConfig() {
-    switch (mode) {
-      case FooterMode.buyTicket:
-        return _FooterConfig(
-          leftWidget: null, // Remove price display
-          buttonText: 'Bóora! Confirmar Presença!',
-          buttonColor: const Color(0xFF9C27B0), // Purple
-          buttonIcon: Icons.celebration,
-        );
+  Widget? _buildLeftContent(BuildContext context) {
+    if (leftTitle == null && leftSubtitle == null && leftIcon == null) {
+      return null;
+    }
 
-      case FooterMode.bora:
-        return _FooterConfig(
-          leftWidget: Row(
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (leftIcon != null) ...[
+          Icon(
+            leftIcon,
+            color: leftIconColor ?? Colors.green,
+            size: 20,
+          ),
+          const SizedBox(width: 8),
+        ],
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.check_circle, color: Colors.green, size: 20),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  leftText ?? 'Tudo certo!\nPresença confirmada.',
+              if (leftTitle != null)
+                Text(
+                  leftTitle!,
                   style: const TextStyle(
                     fontSize: 12,
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.w700,
                   ),
-                  maxLines: 2,
                 ),
-              ),
+              if (leftSubtitle != null) ...[
+                const SizedBox(height: 2),
+                Text(
+                  leftSubtitle!,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
             ],
           ),
-          buttonText: 'BORA? Agitar a galera!',
-          buttonColor: const Color(0xFF9C27B0), // Purple
-          buttonIcon: Icons.rocket_launch,
-        );
-
-      case FooterMode.viewQrCode:
-        return _FooterConfig(
-          leftWidget: null,
-          buttonText: 'Ver meu QR Code de Acesso',
-          buttonColor: Colors.blue,
-          buttonIcon: Icons.qr_code,
-        );
-
-      case FooterMode.followArtists:
-        return _FooterConfig(
-          leftWidget: null,
-          buttonText: 'Seguir todos os artistas',
-          buttonColor: const Color(0xFF6A1B9A), // Deep Purple
-          buttonIcon: Icons.star,
-        );
-
-      case FooterMode.traceRoute:
-        return _FooterConfig(
-          leftWidget: null,
-          buttonText: 'Traçar Rota agora',
-          buttonColor: const Color(0xFF00ACC1), // Cyan
-          buttonIcon: Icons.navigation,
-        );
-    }
+        ),
+      ],
+    );
   }
-}
 
-class _FooterConfig {
-  final Widget? leftWidget;
-  final String buttonText;
-  final Color buttonColor;
-  final IconData? buttonIcon;
+  Widget? _buildButton(BuildContext context) {
+    if (buttonText == null) return null;
 
-  _FooterConfig({
-    this.leftWidget,
-    required this.buttonText,
-    required this.buttonColor,
-    this.buttonIcon,
-  });
+    return ElevatedButton(
+      onPressed: onActionPressed,
+      style: ElevatedButton.styleFrom(
+        backgroundColor: buttonColor ?? Theme.of(context).colorScheme.primary,
+        foregroundColor: Colors.white,
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
+        ),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          if (buttonIcon != null) ...[
+            Icon(buttonIcon, size: 18),
+            const SizedBox(width: 8),
+          ],
+          Text(
+            buttonText!,
+            style: const TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 14,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }

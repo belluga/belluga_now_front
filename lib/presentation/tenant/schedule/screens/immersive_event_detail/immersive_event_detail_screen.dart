@@ -3,8 +3,8 @@ import 'package:belluga_now/domain/invites/invite_model.dart';
 import 'package:belluga_now/presentation/common/widgets/immersive_detail_screen/models/immersive_tab_item.dart';
 import 'package:belluga_now/presentation/common/widgets/immersive_detail_screen/immersive_detail_screen.dart';
 import 'package:belluga_now/presentation/tenant/schedule/screens/immersive_event_detail/controllers/immersive_event_detail_controller.dart';
+import 'package:belluga_now/presentation/tenant/schedule/screens/immersive_event_detail/widgets/dynamic_footer.dart';
 import 'package:belluga_now/presentation/tenant/schedule/screens/immersive_event_detail/widgets/event_info_section.dart';
-import 'package:belluga_now/presentation/tenant/schedule/screens/immersive_event_detail/widgets/immersive_event_footer.dart';
 import 'package:belluga_now/presentation/tenant/schedule/screens/immersive_event_detail/widgets/immersive_hero.dart';
 import 'package:belluga_now/presentation/tenant/schedule/screens/immersive_event_detail/widgets/lineup_section.dart';
 import 'package:belluga_now/presentation/tenant/schedule/screens/immersive_event_detail/widgets/location_section.dart';
@@ -65,14 +65,44 @@ class _ImmersiveEventDetailScreenState
                   ImmersiveTabItem(
                     title: 'O Rolê',
                     content: EventInfoSection(event: event),
+                    footer: isConfirmed
+                        ? DynamicFooter(
+                            buttonText: 'Ver meu QR Code de Acesso',
+                            buttonIcon: Icons.qr_code,
+                            buttonColor: Colors.blue,
+                            onActionPressed: () {
+                              // TODO: show QR code
+                            },
+                          )
+                        : null,
                   ),
                   ImmersiveTabItem(
                     title: 'Line-up',
                     content: LineupSection(event: event),
+                    footer: isConfirmed
+                        ? DynamicFooter(
+                            buttonText: 'Seguir todos os artistas',
+                            buttonIcon: Icons.star,
+                            buttonColor: const Color(0xFF6A1B9A),
+                            onActionPressed: () {
+                              // TODO: follow all artists
+                            },
+                          )
+                        : null,
                   ),
                   ImmersiveTabItem(
                     title: 'O Local',
                     content: LocationSection(event: event),
+                    footer: isConfirmed
+                        ? DynamicFooter(
+                            buttonText: 'Traçar Rota agora',
+                            buttonIcon: Icons.navigation,
+                            buttonColor: const Color(0xFF00ACC1),
+                            onActionPressed: () {
+                              // TODO: open maps
+                            },
+                          )
+                        : null,
                   ),
                   if (isConfirmed)
                     ImmersiveTabItem(
@@ -90,6 +120,18 @@ class _ImmersiveEventDetailScreenState
                             },
                           ),
                         ),
+                      ),
+                      footer: DynamicFooter(
+                        leftTitle: 'Tudo certo!',
+                        leftSubtitle: 'Presença confirmada.',
+                        leftIcon: Icons.check_circle,
+                        leftIconColor: Colors.green,
+                        buttonText: 'BORA? Agitar a galera!',
+                        buttonIcon: Icons.rocket_launch,
+                        buttonColor: const Color(0xFF9C27B0),
+                        onActionPressed: () {
+                          // TODO: invite friends
+                        },
                       ),
                     ),
                 ];
@@ -114,23 +156,14 @@ class _ImmersiveEventDetailScreenState
                           )
                         : null);
 
-                final footer = ImmersiveEventFooter(
-                  isConfirmedStream: _controller.isConfirmedStreamValue,
-                  activeTabStream: _controller.activeTabStreamValue,
-                  onConfirmAttendance: _controller.confirmAttendance,
-                  onInviteFriends: () {
-                    // TODO: Navigate to invite flow
-                  },
-                  onShowQrCode: () {
-                    // TODO: Show QR code
-                  },
-                  onFollowArtists: () {
-                    // TODO: Follow all artists
-                  },
-                  onTraceRoute: () {
-                    // TODO: Open maps
-                  },
-                );
+                final footer = isConfirmed
+                    ? null
+                    : DynamicFooter(
+                        buttonText: 'Bóora! Confirmar Presença!',
+                        buttonIcon: Icons.celebration,
+                        buttonColor: const Color(0xFF9C27B0),
+                        onActionPressed: _controller.confirmAttendance,
+                      );
 
                 return ImmersiveDetailScreen(
                   heroContent: ImmersiveHero(event: event),

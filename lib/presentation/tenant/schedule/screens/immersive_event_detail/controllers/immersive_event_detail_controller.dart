@@ -47,7 +47,6 @@ class ImmersiveEventDetailController implements Disposable {
       StreamValue<List<InviteModel>>(defaultValue: const []);
 
   // New state for Immersive Screen
-  final activeTabStreamValue = StreamValue<int>(defaultValue: 0);
   final missionStreamValue = StreamValue<MissionResume?>();
 
   // Delegate to repository for single source of truth
@@ -119,10 +118,6 @@ class ImmersiveEventDetailController implements Disposable {
     }
   }
 
-  void updateActiveTab(int index) {
-    activeTabStreamValue.addValue(index);
-  }
-
   Future<void> acceptInvite(String inviteId) async {
     _pruneInviteFromRepository(inviteId);
     await confirmAttendance();
@@ -147,7 +142,6 @@ class ImmersiveEventDetailController implements Disposable {
     friendsGoingStreamValue.dispose();
     totalConfirmedStreamValue.dispose();
     isLoadingStreamValue.dispose();
-    activeTabStreamValue.dispose();
     missionStreamValue.dispose();
     scrollController.dispose();
   }
