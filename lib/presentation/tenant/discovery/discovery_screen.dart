@@ -1,6 +1,7 @@
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/domain/partners/partner_model.dart';
 import 'package:belluga_now/presentation/tenant/discovery/controllers/discovery_screen_controller.dart';
+import 'package:belluga_now/presentation/tenant/discovery/widgets/discovery_partner_card.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
@@ -103,6 +104,20 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                           onTap: () => _controller
                               .setTypeFilter(PartnerType.experienceProvider),
                         ),
+                        const SizedBox(width: 8),
+                        _buildFilterChip(
+                          label: 'Influenciadores',
+                          isSelected: selectedType == PartnerType.influencer,
+                          onTap: () =>
+                              _controller.setTypeFilter(PartnerType.influencer),
+                        ),
+                        const SizedBox(width: 8),
+                        _buildFilterChip(
+                          label: 'Curadores',
+                          isSelected: selectedType == PartnerType.curator,
+                          onTap: () =>
+                              _controller.setTypeFilter(PartnerType.curator),
+                        ),
                       ],
                     ),
                   );
@@ -174,105 +189,19 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
   }
 
   Widget _buildPartnerCard(PartnerModel partner) {
-    final colorScheme = Theme.of(context).colorScheme;
     final isFav = _controller.isFavorite(partner.id);
 
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: () {
-          context.router.push(PartnerDetailRoute(slug: partner.slug));
-        },
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Cover/Avatar image
-            Expanded(
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  if (partner.avatarUrl != null)
-                    Image.network(
-                      partner.avatarUrl!,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        return Container(
-                          color: colorScheme.surfaceContainerHighest,
-                          child: Icon(
-                            partner.type == PartnerType.artist
-                                ? Icons.person
-                                : Icons.place,
-                            size: 48,
-                            color: colorScheme.onSurfaceVariant,
-                          ),
-                        );
-                      },
-                    )
-                  else
-                    Container(
-                      color: colorScheme.surfaceContainerHighest,
-                      child: Icon(
-                        partner.type == PartnerType.artist
-                            ? Icons.person
-                            : Icons.place,
-                        size: 48,
-                        color: colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                  // Favorite button
-                  Positioned(
-                    top: 8,
-                    right: 8,
-                    child: CircleAvatar(
-                      radius: 16,
-                      backgroundColor: Colors.white.withValues(alpha: 0.9),
-                      child: IconButton(
-                        padding: EdgeInsets.zero,
-                        iconSize: 20,
-                        icon: Icon(
-                          isFav ? Icons.favorite : Icons.favorite_border,
-                          color: isFav ? Colors.red : Colors.grey,
-                        ),
-                        onPressed: () {
-                          setState(() {
-                            _controller.toggleFavorite(partner.id);
-                          });
-                        },
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            // Partner info
-            Padding(
-              padding: const EdgeInsets.all(12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    partner.name,
-                    style: Theme.of(context).textTheme.titleSmall,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    partner.type == PartnerType.artist
-                        ? 'Artista'
-                        : partner.type == PartnerType.venue
-                            ? 'Local'
-                            : 'Experiência',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: colorScheme.onSurfaceVariant,
-                        ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
+    return DiscoveryPartnerCard(
+      partner: partner,
+      isFavorite: isFav,
+      onFavoriteTap: () {
+        setState(() {
+          _controller.toggleFavorite(partner.id);
+        });
+      },
+      onTap: () {
+        context.router.push(PartnerDetailRoute(slug: partner.slug));
+      },
     );
   }
 }

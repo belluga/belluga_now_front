@@ -1,4 +1,5 @@
 import 'package:belluga_now/domain/courses/value_objects/slug_value.dart';
+import 'package:belluga_now/domain/partners/engagement_data.dart';
 import 'package:belluga_now/domain/value_objects/description_value.dart';
 import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
 import 'package:belluga_now/domain/value_objects/title_value.dart';
@@ -8,9 +9,24 @@ enum PartnerType {
   artist,
   venue,
   experienceProvider,
+  influencer,
+  curator,
 }
 
 class PartnerModel {
+  final MongoIDValue idValue;
+  final TitleValue nameValue;
+  final SlugValue slugValue;
+  final PartnerType type;
+  final ThumbUriValue? avatarValue;
+  final ThumbUriValue? coverValue;
+  final DescriptionValue? bioValue;
+  final List<String> tags;
+  final List<String> upcomingEventIds;
+  final bool isVerified;
+  final EngagementData? engagementData;
+  final int acceptedInvites; // Universal metric for all partners
+
   PartnerModel({
     required this.idValue,
     required this.nameValue,
@@ -21,18 +37,11 @@ class PartnerModel {
     this.bioValue,
     List<String>? tags,
     List<String>? upcomingEventIds,
+    this.isVerified = false,
+    this.engagementData,
+    this.acceptedInvites = 0,
   })  : tags = List.unmodifiable(tags ?? const []),
         upcomingEventIds = List.unmodifiable(upcomingEventIds ?? const []);
-
-  final MongoIDValue idValue;
-  final TitleValue nameValue;
-  final SlugValue slugValue;
-  final PartnerType type;
-  final ThumbUriValue? avatarValue;
-  final ThumbUriValue? coverValue;
-  final DescriptionValue? bioValue;
-  final List<String> tags;
-  final List<String> upcomingEventIds;
 
   String get id => idValue.value;
   String get name => nameValue.value;
@@ -53,6 +62,9 @@ class PartnerModel {
     String? bio,
     List<String>? tags,
     List<String>? upcomingEventIds,
+    bool isVerified = false,
+    EngagementData? engagementData,
+    int acceptedInvites = 0,
   }) {
     ThumbUriValue? avatarValue;
     if (avatarUrl != null && avatarUrl.isNotEmpty) {
@@ -81,6 +93,9 @@ class PartnerModel {
       bioValue: bioValue,
       tags: tags,
       upcomingEventIds: upcomingEventIds,
+      isVerified: isVerified,
+      engagementData: engagementData,
+      acceptedInvites: acceptedInvites,
     );
   }
 
@@ -94,6 +109,9 @@ class PartnerModel {
     DescriptionValue? bioValue,
     List<String>? tags,
     List<String>? upcomingEventIds,
+    bool? isVerified,
+    EngagementData? engagementData,
+    int? acceptedInvites,
   }) {
     return PartnerModel(
       idValue: idValue ?? this.idValue,
@@ -105,6 +123,9 @@ class PartnerModel {
       bioValue: bioValue ?? this.bioValue,
       tags: tags ?? this.tags,
       upcomingEventIds: upcomingEventIds ?? this.upcomingEventIds,
+      isVerified: isVerified ?? this.isVerified,
+      engagementData: engagementData ?? this.engagementData,
+      acceptedInvites: acceptedInvites ?? this.acceptedInvites,
     );
   }
 }

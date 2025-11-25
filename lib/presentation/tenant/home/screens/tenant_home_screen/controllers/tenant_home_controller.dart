@@ -187,6 +187,10 @@ class TenantHomeController implements Disposable {
         return Icons.place;
       case PartnerType.experienceProvider:
         return Icons.local_activity;
+      case PartnerType.influencer:
+        return Icons.camera_alt;
+      case PartnerType.curator:
+        return Icons.verified_user;
     }
   }
 

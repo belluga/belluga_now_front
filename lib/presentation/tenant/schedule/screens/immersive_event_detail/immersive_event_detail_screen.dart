@@ -63,9 +63,6 @@ class _ImmersiveEventDetailScreenState
             return StreamValueBuilder<List<InviteModel>>(
               streamValue: _controller.receivedInvitesStreamValue,
               builder: (context, receivedInvites) {
-                final InviteModel? pendingInvite =
-                    receivedInvites.isNotEmpty ? receivedInvites.first : null;
-
                 return StreamValueBuilder<Map<String, List<SentInviteStatus>>>(
                   streamValue: _controller.sentInvitesByEventStreamValue,
                   builder: (context, sentInvitesByEvent) {
@@ -87,21 +84,7 @@ class _ImmersiveEventDetailScreenState
                       ImmersiveTabItem(
                         title: 'O Rolê',
                         content: EventInfoSection(event: event),
-                        footer: pendingInvite != null
-                            ? DynamicFooter(
-                                leftTitle:
-                                    pendingInvite.inviterName ?? 'Convite',
-                                leftSubtitle:
-                                    '${pendingInvite.hostName} te convidou',
-                                leftIcon: Icons.mail_outline,
-                                leftIconColor: Colors.purple,
-                                buttonText: 'Aceitar convite',
-                                buttonIcon: Icons.rocket_launch,
-                                buttonColor: const Color(0xFF9C27B0),
-                                onActionPressed: () =>
-                                    _controller.acceptInvite(pendingInvite.id),
-                              )
-                            : null,
+                        footer: null,
                       ),
                       ImmersiveTabItem(
                         title: 'Line-up',
