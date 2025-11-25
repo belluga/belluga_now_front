@@ -117,6 +117,7 @@ class _DiscoveryPartnerCardState extends State<DiscoveryPartnerCard>
                 left: 8,
                 right: 8,
                 child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     if (widget.partner.distanceMeters != null)
                       Container(

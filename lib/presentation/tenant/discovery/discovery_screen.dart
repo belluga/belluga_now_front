@@ -37,14 +37,16 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: _buildAppBar(),
-      body: StreamValueBuilder<bool>(
-        streamValue: _controller.isLoadingStreamValue,
-        builder: (context, isLoading) {
-          if (isLoading) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          return _buildContent();
-        },
+      body: SafeArea(
+        child: StreamValueBuilder<bool>(
+          streamValue: _controller.isLoadingStreamValue,
+          builder: (context, isLoading) {
+            if (isLoading) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            return _buildContent();
+          },
+        ),
       ),
     );
   }
@@ -87,92 +89,133 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
     return StreamValueBuilder<bool>(
       streamValue: _controller.isSearchingStreamValue,
       builder: (context, isSearching) {
-        return SingleChildScrollView(
-          padding: const EdgeInsets.only(bottom: 16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (!isSearching) ...[
-                _buildSection(
-                  title: 'Tocando agora',
-                  stream: _controller.liveNowStreamValue,
-                  onSeeAll: () {
-                    context.router.push(const ScheduleRoute());
-                  },
-                ),
-                _buildSection(
-                  title: 'Perto de você',
-                  stream: _controller.nearbyStreamValue,
-                ),
-                _buildCuratorContentSection(),
-              ],
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-                child: Row(
-                  children: [
-                    const Text(
-                      'Tudo',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const Spacer(),
-                  ],
-                ),
-              ),
-              _buildFilterChips(),
-              const SizedBox(height: 8),
-              StreamValueBuilder<Set<String>>(
-                streamValue: _controller.favoriteIdsStream,
-                builder: (context, favorites) {
-                  return StreamValueBuilder<List<PartnerModel>>(
-                    streamValue: _controller.filteredPartnersStreamValue,
-                    builder: (context, partners) {
-                      if (partners.isEmpty) {
-                        return StreamValueBuilder<bool>(
-                          streamValue: _controller.hasLoadedStreamValue,
-                          builder: (context, hasLoaded) {
-                            if (!hasLoaded) {
-                              return const Padding(
-                                padding: EdgeInsets.all(24.0),
-                                child: Center(child: CircularProgressIndicator()),
-                              );
-                            }
-                            return const Padding(
-                              padding: EdgeInsets.all(24.0),
-                              child: Center(
-                                  child: Text('Nenhum resultado para os filtros.')),
-                            );
-                          },
+        return StreamValueBuilder<PartnerType?>(
+          streamValue: _controller.selectedTypeFilterStreamValue,
+          builder: (context, selectedType) {
+            return StreamValueBuilder<String>(
+              streamValue: _controller.searchQueryStreamValue,
+              builder: (context, query) {
+                final showSections =
+                    !isSearching && selectedType == null && query.isEmpty;
+                return StreamValueBuilder<Set<String>>(
+                  streamValue: _controller.favoriteIdsStream,
+                  builder: (context, favorites) {
+                    return StreamValueBuilder<List<PartnerModel>>(
+                      streamValue: _controller.filteredPartnersStreamValue,
+                      builder: (context, partners) {
+                        return CustomScrollView(
+                          slivers: [
+                            if (showSections) ...[
+                              SliverToBoxAdapter(
+                                child: _buildSection(
+                                  title: 'Tocando agora',
+                                  stream: _controller.liveNowStreamValue,
+                                  onSeeAll: () {
+                                    context.router.push(const CityMapRoute());
+                                  },
+                                ),
+                              ),
+                              SliverToBoxAdapter(
+                                child: _buildSection(
+                                  title: 'Perto de você',
+                                  stream: _controller.nearbyStreamValue,
+                                  onSeeAll: () {
+                                    context.router.push(const CityMapRoute());
+                                  },
+                                ),
+                              ),
+                              SliverToBoxAdapter(
+                                child: _buildCuratorContentSection(),
+                              ),
+                            ],
+                            SliverPersistentHeader(
+                              pinned: true,
+                              delegate: _ChipsHeaderDelegate(
+                                extent: 112,
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Padding(
+                                      padding: const EdgeInsets.fromLTRB(
+                                          16, 12, 16, 8),
+                                      child: Row(
+                                        children: [
+                                          const Text(
+                                            'Tudo',
+                                            style: TextStyle(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                          const Spacer(),
+                                        ],
+                                      ),
+                                    ),
+                                    Padding(
+                                      padding:
+                                          const EdgeInsets.symmetric(horizontal: 16),
+                                      child: _buildFilterChips(),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            if (partners.isEmpty)
+                              SliverToBoxAdapter(
+                                child: StreamValueBuilder<bool>(
+                                  streamValue: _controller.hasLoadedStreamValue,
+                                  builder: (context, hasLoaded) {
+                                    if (!hasLoaded) {
+                                      return const Padding(
+                                        padding: EdgeInsets.all(24.0),
+                                        child: Center(
+                                            child:
+                                                CircularProgressIndicator()),
+                                      );
+                                    }
+                                    return const Padding(
+                                      padding: EdgeInsets.all(24.0),
+                                      child: Center(
+                                          child: Text(
+                                              'Nenhum resultado para os filtros.')),
+                                    );
+                                  },
+                                ),
+                              )
+                            else
+                              SliverPadding(
+                                padding: const EdgeInsets.fromLTRB(
+                                    16, 8, 16, 32),
+                                sliver: SliverGrid(
+                                  gridDelegate:
+                                      const SliverGridDelegateWithFixedCrossAxisCount(
+                                    crossAxisCount: 2,
+                                    childAspectRatio: 0.75,
+                                    crossAxisSpacing: 16,
+                                    mainAxisSpacing: 16,
+                                  ),
+                                  delegate: SliverChildBuilderDelegate(
+                                    (context, index) {
+                                      final partner = partners[index];
+                                      return _buildPartnerCard(
+                                        partner,
+                                        isFavorite:
+                                            favorites.contains(partner.id),
+                                      );
+                                    },
+                                    childCount: partners.length,
+                                  ),
+                                ),
+                              ),
+                          ],
                         );
-                      }
-                      return GridView.builder(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        gridDelegate:
-                            const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 2,
-                          childAspectRatio: 0.75,
-                          crossAxisSpacing: 16,
-                          mainAxisSpacing: 16,
-                        ),
-                        itemCount: partners.length,
-                        itemBuilder: (context, index) {
-                          final partner = partners[index];
-                          return _buildPartnerCard(
-                            partner,
-                            isFavorite: favorites.contains(partner.id),
-                          );
-                        },
-                      );
-                    },
-                  );
-                },
-              ),
-            ],
-          ),
+                      },
+                    );
+                  },
+                );
+              },
+            );
+          },
         );
       },
     );
@@ -308,4 +351,39 @@ class _FilterChipData {
   _FilterChipData({required this.label, required this.type});
   final String label;
   final PartnerType? type;
+}
+
+class _ChipsHeaderDelegate extends SliverPersistentHeaderDelegate {
+  _ChipsHeaderDelegate({
+    required this.extent,
+    required this.child,
+  });
+
+  final double extent;
+  final Widget child;
+
+  @override
+  double get minExtent => extent;
+
+  @override
+  double get maxExtent => extent;
+
+  @override
+  Widget build(
+      BuildContext context, double shrinkOffset, bool overlapsContent) {
+    return Container(
+      color: Theme.of(context).scaffoldBackgroundColor,
+      height: extent,
+      child: SafeArea(
+        top: false,
+        bottom: false,
+        child: child,
+      ),
+    );
+  }
+
+  @override
+  bool shouldRebuild(covariant SliverPersistentHeaderDelegate oldDelegate) {
+    return true;
+  }
 }

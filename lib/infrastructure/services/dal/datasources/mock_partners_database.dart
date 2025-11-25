@@ -379,6 +379,45 @@ class MockPartnersDatabase {
       );
     }
 
+    // Sync venues and artists from schedule events
+    final venueMap = <String, PartnerModel>{};
+    for (final seed in MockScheduleBackend.eventSeeds) {
+      // Venue partner from event location/coords
+      final venueSlug = _slugify(seed.location);
+      if (!venueMap.containsKey(venueSlug)) {
+        venueMap[venueSlug] = PartnerModel.fromPrimitives(
+          id: MockScheduleBackend.generateMongoId(venueSlug),
+          name: seed.location,
+          slug: venueSlug,
+          type: PartnerType.venue,
+          avatarUrl: seed.thumbUrl,
+          coverUrl: seed.thumbUrl,
+          tags: const ['evento', 'local'],
+          distanceMeters: 1800,
+        );
+      }
+      // Artists
+      for (final artist in seed.artists) {
+        final artistSlug = _slugify(artist.name);
+        partners.add(
+          PartnerModel.fromPrimitives(
+            id: MockScheduleBackend.generateMongoId(artist.id),
+            name: artist.name,
+            slug: artistSlug,
+            type: PartnerType.artist,
+            avatarUrl: artist.avatarUrl,
+            coverUrl: seed.thumbUrl,
+            tags: const ['show', 'artista'],
+            engagementData: const ArtistEngagementData(status: 'COMEÇA EM BREVE'),
+            acceptedInvites: 15,
+            distanceMeters: 1900,
+          ),
+        );
+      }
+    }
+
+    partners.addAll(venueMap.values);
+
     return partners;
   }
 
@@ -413,5 +452,12 @@ class MockPartnersDatabase {
     } catch (e) {
       return null;
     }
+  }
+
+  static String _slugify(String input) {
+    return input
+        .toLowerCase()
+        .replaceAll(RegExp(r'[^a-z0-9]+'), '-')
+        .replaceAll(RegExp(r'^-+|-+$'), '');
   }
 }
