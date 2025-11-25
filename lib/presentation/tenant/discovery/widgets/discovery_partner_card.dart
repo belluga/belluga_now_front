@@ -114,29 +114,60 @@ class _DiscoveryPartnerCardState extends State<DiscoveryPartnerCard>
               // Distance + favorite row
               Positioned(
                 top: 8,
+                left: 8,
                 right: 8,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
+                child: Row(
                   children: [
-                    CircleAvatar(
-                      radius: 18,
-                      backgroundColor: Colors.black.withValues(alpha: 0.5),
-                      child: IconButton(
-                        padding: EdgeInsets.zero,
-                        iconSize: 22,
-                        icon: Icon(
-                          widget.isFavorite
-                              ? Icons.favorite
-                              : Icons.favorite_border,
-                          color: widget.isFavorite ? Colors.red : Colors.white,
+                    if (widget.partner.distanceMeters != null)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.45),
+                          borderRadius: BorderRadius.circular(12),
                         ),
-                        onPressed: widget.onFavoriteTap,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.place,
+                                size: 14, color: Colors.white),
+                            const SizedBox(width: 4),
+                            Text(
+                              widget.partner.distanceMeters! >= 1000
+                                  ? '${(widget.partner.distanceMeters! / 1000).toStringAsFixed(1)} km'
+                                  : '${widget.partner.distanceMeters!.toStringAsFixed(0)} m',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                    else
+                      const SizedBox.shrink(),
+                    const Spacer(),
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
+                        CircleAvatar(
+                          radius: 18,
+                          backgroundColor: Colors.black.withValues(alpha: 0.5),
+                          child: IconButton(
+                            padding: EdgeInsets.zero,
+                            iconSize: 22,
+                            icon: Icon(
+                              widget.isFavorite
+                                  ? Icons.favorite
+                                  : Icons.favorite_border,
+                              color:
+                                  widget.isFavorite ? Colors.red : Colors.white,
+                            ),
+                            onPressed: widget.onFavoriteTap,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
                         _buildMetricChip(
                           Icons.rocket_launch,
                           widget.partner.acceptedInvites.toString(),
