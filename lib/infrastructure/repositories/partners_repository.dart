@@ -9,16 +9,15 @@ class PartnersRepository extends PartnersRepositoryContract {
 
   final MockPartnersDatabase _database;
 
-  // App manager is always favorited by default
-  static const String _appManagerId = 'app-manager';
-
   @override
   Future<void> init() async {
     final partners = await fetchAllPartners();
     allPartnersStreamValue.addValue(partners);
 
-    // Initialize favorites with app manager
-    favoritePartnerIdsStreamValue.addValue({_appManagerId});
+    // Initialize favorites from mock persistence (app manager included)
+    favoritePartnerIdsStreamValue.addValue(
+      Set<String>.from(_database.favoritePartnerIds),
+    );
   }
 
   @override
@@ -47,21 +46,10 @@ class PartnersRepository extends PartnersRepositoryContract {
 
   @override
   Future<void> toggleFavorite(String partnerId) async {
-    final currentFavorites =
-        Set<String>.from(favoritePartnerIdsStreamValue.value);
-
-    if (partnerId == _appManagerId) {
-      // App manager cannot be unfavorited
-      return;
-    }
-
-    if (currentFavorites.contains(partnerId)) {
-      currentFavorites.remove(partnerId);
-    } else {
-      currentFavorites.add(partnerId);
-    }
-
-    favoritePartnerIdsStreamValue.addValue(currentFavorites);
+    _database.toggleFavorite(partnerId);
+    favoritePartnerIdsStreamValue.addValue(
+      Set<String>.from(_database.favoritePartnerIds),
+    );
   }
 
   @override

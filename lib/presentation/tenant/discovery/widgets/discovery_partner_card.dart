@@ -7,6 +7,7 @@ class DiscoveryPartnerCard extends StatefulWidget {
   final bool isFavorite;
   final VoidCallback onFavoriteTap;
   final VoidCallback onTap;
+  final bool showDetails;
 
   const DiscoveryPartnerCard({
     super.key,
@@ -14,6 +15,7 @@ class DiscoveryPartnerCard extends StatefulWidget {
     required this.isFavorite,
     required this.onFavoriteTap,
     required this.onTap,
+    this.showDetails = true,
   });
 
   @override
@@ -56,7 +58,7 @@ class _DiscoveryPartnerCardState extends State<DiscoveryPartnerCard>
       child: InkWell(
         onTap: widget.onTap,
         child: AspectRatio(
-          aspectRatio: 0.75, // Portrait card
+          aspectRatio: 1.2, // Wider to reduce height
           child: Stack(
             fit: StackFit.expand,
             children: [
@@ -90,39 +92,63 @@ class _DiscoveryPartnerCardState extends State<DiscoveryPartnerCard>
                 bottom: 0,
                 left: 0,
                 right: 0,
-                child: Container(
-                  height: 120,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [
-                        Colors.transparent,
-                        Colors.black.withValues(alpha: 0.7),
-                        Colors.black.withValues(alpha: 0.9),
-                      ],
+                child: AnimatedOpacity(
+                  duration: const Duration(milliseconds: 200),
+                  opacity: widget.showDetails ? 1 : 0.0,
+                  child: Container(
+                    height: 120,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Colors.transparent,
+                          Colors.black.withValues(alpha: 0.7),
+                          Colors.black.withValues(alpha: 0.9),
+                        ],
+                      ),
                     ),
                   ),
                 ),
               ),
-              // Favorite button (top right)
+              // Distance + favorite row
               Positioned(
                 top: 8,
                 right: 8,
-                child: CircleAvatar(
-                  radius: 18,
-                  backgroundColor: Colors.black.withValues(alpha: 0.5),
-                  child: IconButton(
-                    padding: EdgeInsets.zero,
-                    iconSize: 22,
-                    icon: Icon(
-                      widget.isFavorite
-                          ? Icons.favorite
-                          : Icons.favorite_border,
-                      color: widget.isFavorite ? Colors.red : Colors.white,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    CircleAvatar(
+                      radius: 18,
+                      backgroundColor: Colors.black.withValues(alpha: 0.5),
+                      child: IconButton(
+                        padding: EdgeInsets.zero,
+                        iconSize: 22,
+                        icon: Icon(
+                          widget.isFavorite
+                              ? Icons.favorite
+                              : Icons.favorite_border,
+                          color: widget.isFavorite ? Colors.red : Colors.white,
+                        ),
+                        onPressed: widget.onFavoriteTap,
+                      ),
                     ),
-                    onPressed: widget.onFavoriteTap,
-                  ),
+                    const SizedBox(height: 8),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        _buildMetricChip(
+                          Icons.rocket_launch,
+                          widget.partner.acceptedInvites.toString(),
+                          'Convites aceitos',
+                        ),
+                        if (widget.partner.engagementData != null) ...[
+                          const SizedBox(height: 4),
+                          _buildAdditionalMetric(widget.partner.engagementData!),
+                        ],
+                      ],
+                    ),
+                  ],
                 ),
               ),
               // Partner info (bottom overlay)
@@ -130,117 +156,148 @@ class _DiscoveryPartnerCardState extends State<DiscoveryPartnerCard>
                 bottom: 0,
                 left: 0,
                 right: 0,
-                child: Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      // Type label + TOCANDO AGORA badge
-                      Row(
-                        children: [
-                          Text(
-                            _getPartnerLabel(widget.partner.type),
-                            style: const TextStyle(
-                              fontSize: 11,
-                              color: Colors.white70,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                          if (isLiveNow) ...[
-                            const SizedBox(width: 8),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 6, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: Colors.red.withValues(alpha: 0.9),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 200),
+                  switchInCurve: Curves.easeOut,
+                  switchOutCurve: Curves.easeIn,
+                  transitionBuilder: (child, animation) => FadeTransition(
+                    opacity: animation,
+                    child: SizeTransition(
+                      sizeFactor: animation,
+                      axisAlignment: -1,
+                      child: child,
+                    ),
+                  ),
+                  child: widget.showDetails
+                      ? Padding(
+                          key: const ValueKey('details'),
+                          padding: const EdgeInsets.all(12),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              // Type label + TOCANDO AGORA badge
+                              Row(
                                 children: [
-                                  AnimatedBuilder(
-                                    animation: _pulseAnimation,
-                                    builder: (context, child) {
-                                      return Transform.scale(
-                                        scale: _pulseAnimation.value,
-                                        child: const Icon(
-                                          Icons.music_note,
-                                          size: 10,
-                                          color: Colors.white,
-                                        ),
-                                      );
-                                    },
-                                  ),
-                                  const SizedBox(width: 3),
-                                  const Text(
-                                    'TOCANDO AGORA',
-                                    style: TextStyle(
-                                      fontSize: 9,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.white,
+                                  Text(
+                                    _getPartnerLabel(widget.partner.type),
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      color: Colors.white70,
+                                      fontWeight: FontWeight.w500,
                                     ),
                                   ),
+                                  if (isLiveNow) ...[
+                                    const SizedBox(width: 8),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 6, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: Colors.red.withValues(alpha: 0.9),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          AnimatedBuilder(
+                                            animation: _pulseAnimation,
+                                            builder: (context, child) {
+                                              return Transform.scale(
+                                                scale: _pulseAnimation.value,
+                                                child: const Icon(
+                                                  Icons.music_note,
+                                                  size: 10,
+                                                  color: Colors.white,
+                                                ),
+                                              );
+                                            },
+                                          ),
+                                          const SizedBox(width: 3),
+                                          const Text(
+                                            'TOCANDO AGORA',
+                                            style: TextStyle(
+                                              fontSize: 9,
+                                              fontWeight: FontWeight.bold,
+                                              color: Colors.white,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
                                 ],
                               ),
-                            ),
-                          ],
-                        ],
-                      ),
-                      const SizedBox(height: 4),
-                      // Name + Verified badge
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              widget.partner.name,
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                                shadows: [
-                                  Shadow(
-                                    offset: Offset(0, 1),
-                                    blurRadius: 3,
-                                    color: Colors.black45,
+                              const SizedBox(height: 4),
+                              // Name + Verified badge
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      widget.partner.name,
+                                      style: const TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.white,
+                                        shadows: [
+                                          Shadow(
+                                            offset: Offset(0, 1),
+                                            blurRadius: 3,
+                                            color: Colors.black45,
+                                          ),
+                                        ],
+                                      ),
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
                                   ),
+                                  if (widget.partner.isVerified) ...[
+                                    const SizedBox(width: 4),
+                                    const Icon(
+                                      Icons.verified,
+                                      size: 18,
+                                      color: Colors.blue,
+                                    ),
+                                  ],
                                 ],
                               ),
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          if (widget.partner.isVerified) ...[
-                            const SizedBox(width: 4),
-                            const Icon(
-                              Icons.verified,
-                              size: 18,
-                              color: Colors.blue,
-                            ),
-                          ],
-                        ],
-                      ),
-                      const SizedBox(height: 6),
-                      // Metrics row (acceptedInvites always first + other metrics)
-                      Row(
-                        children: [
-                          // Accepted invites (always shown)
-                          _buildMetricChip(
-                            Icons.rocket_launch,
-                            widget.partner.acceptedInvites.toString(),
-                            'Convites aceitos',
-                          ),
-                          // Additional metric based on engagement data
-                          if (widget.partner.engagementData != null) ...[
-                            const SizedBox(width: 6),
-                            _buildAdditionalMetric(
-                                widget.partner.engagementData!),
-                          ],
-                        ],
-                      ),
+                              const SizedBox(height: 6),
+                              if (widget.partner.tags.isNotEmpty)
+                                ConstrainedBox(
+                                  constraints: const BoxConstraints(maxHeight: 48),
+                                  child: Wrap(
+                                    spacing: 4,
+                                    runSpacing: 2,
+                                    children: widget.partner.tags
+                                        .take(4)
+                                        .map(
+                                          (tag) => Container(
+                                            padding: const EdgeInsets.symmetric(
+                                                horizontal: 6, vertical: 2),
+                                            decoration: BoxDecoration(
+                                              color: Colors.white
+                                                  .withValues(alpha: 0.12),
+                                              borderRadius:
+                                                  BorderRadius.circular(8),
+                                            ),
+                                            child: Text(
+                                              tag,
+                                              style: const TextStyle(
+                                                fontSize: 10,
+                                                color: Colors.white,
+                                              ),
+                                            ),
+                                          ),
+                                        )
+                                        .toList(),
+                                  ),
+                                ),
+                              const SizedBox(height: 6),
+                      // Metrics moved near the favorite column; no bottom row needed
                     ],
                   ),
-                ),
+                )
+              : const SizedBox(key: ValueKey('empty-details')),
+        ),
               ),
             ],
           ),

@@ -8,7 +8,29 @@ class MockPartnersDatabase {
   /// Get all partners (artists + venues)
   List<PartnerModel> get allPartners => _partners;
 
+  /// Persisted favorites in-memory to emulate storage
+  final Set<String> _favoritePartnerIds = {_appManagerId};
+
+  /// App manager is always favorited by default
+  static const String _appManagerId = 'app-manager';
+
   static final List<PartnerModel> _partners = _generatePartners();
+
+  /// Expose favorites
+  Set<String> get favoritePartnerIds => _favoritePartnerIds;
+
+  /// Toggle favorite and persist in-memory
+  void toggleFavorite(String partnerId) {
+    if (partnerId == _appManagerId) {
+      // App manager cannot be unfavorited
+      return;
+    }
+    if (_favoritePartnerIds.contains(partnerId)) {
+      _favoritePartnerIds.remove(partnerId);
+    } else {
+      _favoritePartnerIds.add(partnerId);
+    }
+  }
 
   static List<PartnerModel> _generatePartners() {
     final partners = <PartnerModel>[];
@@ -79,6 +101,7 @@ class MockPartnersDatabase {
       isVerified: true,
       engagementData: const VenueEngagementData(presenceCount: 120),
       acceptedInvites: 45,
+      distanceMeters: 1200,
     ));
 
     // Bistrô Pequeno (Minimal Config)
@@ -97,6 +120,7 @@ class MockPartnersDatabase {
       isVerified: true,
       engagementData: const VenueEngagementData(presenceCount: 45),
       acceptedInvites: 23,
+      distanceMeters: 2400,
     ));
 
     // Músico (DJ Residente)
@@ -114,6 +138,41 @@ class MockPartnersDatabase {
       upcomingEventIds: [],
       engagementData: const ArtistEngagementData(status: 'TOCANDO AGORA'),
       acceptedInvites: 87,
+      distanceMeters: 1800,
+    ));
+
+    partners.add(PartnerModel.fromPrimitives(
+      id: MockScheduleBackend.generateMongoId('band-alt'),
+      name: 'Banda Mar Aberto',
+      slug: 'banda-mar-aberto',
+      type: PartnerType.artist,
+      avatarUrl:
+          'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=400',
+      coverUrl:
+          'https://images.unsplash.com/photo-1511379938547-c1f69419868d?w=1200',
+      bio: 'Indie e MPB com clima de pôr do sol.',
+      tags: ['indie', 'mpb', 'show'],
+      upcomingEventIds: [],
+      engagementData: const ArtistEngagementData(status: 'COMEÇA EM BREVE'),
+      acceptedInvites: 54,
+      distanceMeters: 3100,
+    ));
+
+    partners.add(PartnerModel.fromPrimitives(
+      id: MockScheduleBackend.generateMongoId('dj-night'),
+      name: 'DJ Nightwave',
+      slug: 'dj-nightwave',
+      type: PartnerType.artist,
+      avatarUrl:
+          'https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91?w=400',
+      coverUrl:
+          'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=1200',
+      bio: 'Eletrônica e deep house para madrugadas intensas.',
+      tags: ['eletrônica', 'house', 'dj'],
+      upcomingEventIds: [],
+      engagementData: const ArtistEngagementData(status: 'TOCANDO AGORA'),
+      acceptedInvites: 102,
+      distanceMeters: 900,
     ));
 
     // Guia (Experience Provider)
@@ -131,6 +190,7 @@ class MockPartnersDatabase {
       upcomingEventIds: [],
       engagementData: const ExperienceEngagementData(experienceCount: 12),
       acceptedInvites: 34,
+      distanceMeters: 5200,
     ));
 
     // 2. Users (B2C+)
@@ -151,6 +211,7 @@ class MockPartnersDatabase {
       isVerified: true,
       engagementData: const InfluencerEngagementData(inviteCount: 150),
       acceptedInvites: 150,
+      distanceMeters: 4200,
     ));
 
     // Curator (Nível 3)
@@ -169,6 +230,7 @@ class MockPartnersDatabase {
       engagementData:
           const CuratorEngagementData(articleCount: 50, docCount: 20),
       acceptedInvites: 92,
+      distanceMeters: 3600,
     ));
 
     // Basic User (Nível 1 - usually not public, but added for completeness if needed)
@@ -205,6 +267,114 @@ class MockPartnersDatabase {
           bio: 'Local incrível para eventos em ${venue['address']}.',
           tags: ['venue', 'local', 'eventos'],
           upcomingEventIds: [],
+          distanceMeters: 2800,
+        ),
+      );
+    }
+
+    // Bulk fillers to reach volume and ensure sections have variety
+    final fillerCount = 45; // total >50
+    final venueNames = [
+      'Casa do Samba',
+      'Bar do Pescador',
+      'Café do Farol',
+      'Mercado da Praia',
+      'Quitanda do Sol',
+      'Tapas Guarapari',
+      'Bistrô do Morro',
+      'Restaurante do Porto',
+      'Churras do Mar',
+      'Cantina do Centro',
+    ];
+    final experienceNames = [
+      'Trilha das Conchas',
+      'Mergulho Azul',
+      'Canoa ao Pôr do Sol',
+      'Passeio de Escuna',
+      'Roteiro Histórico',
+    ];
+    final artistNames = [
+      'DJ Litoral',
+      'Trio do Samba',
+      'Coral do Mar',
+      'MC da Orla',
+      'Violinista da Serra',
+    ];
+    final influencerNames = [
+      'Vida Praiana',
+      'Night Rider',
+      'Foodie Capixaba',
+      'Trilheiro Urbano',
+      'Surf & Sun',
+    ];
+    final curatorNames = [
+      'Curadoria Capixaba',
+      'Arquivo Vivo',
+      'Roteiros & Causos',
+    ];
+
+    for (var i = 0; i < fillerCount; i++) {
+      final type = switch (i % 5) {
+        0 => PartnerType.venue,
+        1 => PartnerType.experienceProvider,
+        2 => PartnerType.artist,
+        3 => PartnerType.influencer,
+        _ => PartnerType.curator,
+      };
+      final slug = 'mock-partner-$i';
+      final name = switch (type) {
+        PartnerType.venue =>
+            '${venueNames[i % venueNames.length]} ${i ~/ venueNames.length + 1}',
+        PartnerType.experienceProvider =>
+            '${experienceNames[i % experienceNames.length]} ${i ~/ experienceNames.length + 1}',
+        PartnerType.artist =>
+            '${artistNames[i % artistNames.length]} ${i ~/ artistNames.length + 1}',
+        PartnerType.influencer =>
+            '${influencerNames[i % influencerNames.length]} ${i ~/ influencerNames.length + 1}',
+        PartnerType.curator =>
+            '${curatorNames[i % curatorNames.length]} ${i ~/ curatorNames.length + 1}',
+      };
+      final tags = switch (type) {
+        PartnerType.venue => ['local', 'gastronomia'],
+        PartnerType.experienceProvider => ['praia', 'aventura'],
+        PartnerType.artist => ['show', 'música'],
+        PartnerType.influencer => ['lifestyle', 'baladas'],
+        PartnerType.curator => ['história', 'causos'],
+      };
+
+      partners.add(
+        PartnerModel.fromPrimitives(
+          id: MockScheduleBackend.generateMongoId(slug),
+          name: name,
+          slug: slug,
+          type: type,
+          avatarUrl:
+              'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400&sig=${i + 20}',
+          coverUrl:
+              'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=1200&sig=${i + 20}',
+          bio: 'Perfil de teste para discovery.',
+          tags: type == PartnerType.influencer && i.isEven
+              ? [...tags, 'baladas', 'foodie']
+              : type == PartnerType.artist && i.isOdd
+                  ? [...tags, 'rock', 'samba']
+                  : type == PartnerType.venue && i % 3 == 0
+                      ? [...tags, 'vista-mar', 'romântico']
+                      : tags,
+          upcomingEventIds: const [],
+          engagementData: type == PartnerType.artist
+              ? const ArtistEngagementData(status: 'COMEÇA EM BREVE')
+              : type == PartnerType.venue
+                  ? VenueEngagementData(presenceCount: 15 + (i % 30))
+                  : type == PartnerType.experienceProvider
+                      ? ExperienceEngagementData(experienceCount: 3 + (i % 10))
+                      : type == PartnerType.influencer
+                          ? InfluencerEngagementData(inviteCount: 10 + (i % 20))
+                          : CuratorEngagementData(
+                              articleCount: 5 + (i % 12),
+                              docCount: 3 + (i % 8),
+                            ),
+          acceptedInvites: 20 + i,
+          distanceMeters: 500 + (i % 15) * 250,
         ),
       );
     }

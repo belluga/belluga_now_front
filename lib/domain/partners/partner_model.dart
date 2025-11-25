@@ -26,6 +26,7 @@ class PartnerModel {
   final bool isVerified;
   final EngagementData? engagementData;
   final int acceptedInvites; // Universal metric for all partners
+  final double? distanceMeters;
 
   PartnerModel({
     required this.idValue,
@@ -40,6 +41,7 @@ class PartnerModel {
     this.isVerified = false,
     this.engagementData,
     this.acceptedInvites = 0,
+    this.distanceMeters,
   })  : tags = List.unmodifiable(tags ?? const []),
         upcomingEventIds = List.unmodifiable(upcomingEventIds ?? const []);
 
@@ -65,6 +67,7 @@ class PartnerModel {
     bool isVerified = false,
     EngagementData? engagementData,
     int acceptedInvites = 0,
+    double? distanceMeters,
   }) {
     ThumbUriValue? avatarValue;
     if (avatarUrl != null && avatarUrl.isNotEmpty) {
@@ -96,6 +99,7 @@ class PartnerModel {
       isVerified: isVerified,
       engagementData: engagementData,
       acceptedInvites: acceptedInvites,
+      distanceMeters: distanceMeters,
     );
   }
 
@@ -112,6 +116,7 @@ class PartnerModel {
     bool? isVerified,
     EngagementData? engagementData,
     int? acceptedInvites,
+    double? distanceMeters,
   }) {
     return PartnerModel(
       idValue: idValue ?? this.idValue,
@@ -126,6 +131,7 @@ class PartnerModel {
       isVerified: isVerified ?? this.isVerified,
       engagementData: engagementData ?? this.engagementData,
       acceptedInvites: acceptedInvites ?? this.acceptedInvites,
+      distanceMeters: distanceMeters ?? this.distanceMeters,
     );
   }
 }

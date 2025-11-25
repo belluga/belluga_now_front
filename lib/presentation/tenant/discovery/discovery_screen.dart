@@ -1,9 +1,13 @@
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/domain/partners/partner_model.dart';
 import 'package:belluga_now/presentation/tenant/discovery/controllers/discovery_screen_controller.dart';
+import 'package:belluga_now/presentation/tenant/discovery/widgets/discovery_carousel.dart';
 import 'package:belluga_now/presentation/tenant/discovery/widgets/discovery_partner_card.dart';
+import 'package:belluga_now/presentation/tenant/discovery/widgets/curator_content_card.dart';
+import 'package:belluga_now/presentation/tenant/widgets/section_header.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
+import 'package:stream_value/core/stream_value.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 import 'package:auto_route/auto_route.dart';
 
@@ -16,7 +20,6 @@ class DiscoveryScreen extends StatefulWidget {
 
 class _DiscoveryScreenState extends State<DiscoveryScreen> {
   final _controller = GetIt.I.get<DiscoveryScreenController>();
-  final _searchController = TextEditingController();
 
   @override
   void initState() {
@@ -26,182 +29,283 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
 
   @override
   void dispose() {
-    _searchController.dispose();
     // Controller disposal handled by ModuleScope
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Descobrir'),
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(120),
-          child: Column(
-            children: [
-              // Search bar
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: TextField(
-                  controller: _searchController,
-                  decoration: InputDecoration(
-                    hintText: 'Buscar artistas, locais...',
-                    prefixIcon: const Icon(Icons.search),
-                    suffixIcon: _searchController.text.isNotEmpty
-                        ? IconButton(
-                            icon: const Icon(Icons.clear),
-                            onPressed: () {
-                              _searchController.clear();
-                              _controller.setSearchQuery('');
-                            },
-                          )
-                        : null,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    filled: true,
-                    fillColor: colorScheme.surface,
-                  ),
-                  onChanged: _controller.setSearchQuery,
-                ),
-              ),
-              // Category tabs
-              StreamValueBuilder<PartnerType?>(
-                streamValue: _controller.selectedTypeFilterStreamValue,
-                builder: (context, selectedType) {
-                  return SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Row(
-                      children: [
-                        _buildFilterChip(
-                          label: 'Todos',
-                          isSelected: selectedType == null,
-                          onTap: () => _controller.setTypeFilter(null),
-                        ),
-                        const SizedBox(width: 8),
-                        _buildFilterChip(
-                          label: 'Artistas',
-                          isSelected: selectedType == PartnerType.artist,
-                          onTap: () =>
-                              _controller.setTypeFilter(PartnerType.artist),
-                        ),
-                        const SizedBox(width: 8),
-                        _buildFilterChip(
-                          label: 'Locais',
-                          isSelected: selectedType == PartnerType.venue,
-                          onTap: () =>
-                              _controller.setTypeFilter(PartnerType.venue),
-                        ),
-                        const SizedBox(width: 8),
-                        _buildFilterChip(
-                          label: 'Experiências',
-                          isSelected:
-                              selectedType == PartnerType.experienceProvider,
-                          onTap: () => _controller
-                              .setTypeFilter(PartnerType.experienceProvider),
-                        ),
-                        const SizedBox(width: 8),
-                        _buildFilterChip(
-                          label: 'Influenciadores',
-                          isSelected: selectedType == PartnerType.influencer,
-                          onTap: () =>
-                              _controller.setTypeFilter(PartnerType.influencer),
-                        ),
-                        const SizedBox(width: 8),
-                        _buildFilterChip(
-                          label: 'Curadores',
-                          isSelected: selectedType == PartnerType.curator,
-                          onTap: () =>
-                              _controller.setTypeFilter(PartnerType.curator),
-                        ),
-                      ],
-                    ),
-                  );
-                },
-              ),
-              const SizedBox(height: 16),
-            ],
-          ),
-        ),
-      ),
+      appBar: _buildAppBar(),
       body: StreamValueBuilder<bool>(
         streamValue: _controller.isLoadingStreamValue,
         builder: (context, isLoading) {
           if (isLoading) {
             return const Center(child: CircularProgressIndicator());
           }
-
-          return StreamValueBuilder<List<PartnerModel>>(
-            streamValue: _controller.filteredPartnersStreamValue,
-            builder: (context, partners) {
-              if (partners.isEmpty) {
-                return const Center(
-                  child: Text('Nenhum parceiro encontrado'),
-                );
-              }
-
-              return GridView.builder(
-                padding: const EdgeInsets.all(16),
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  childAspectRatio: 0.75,
-                  crossAxisSpacing: 16,
-                  mainAxisSpacing: 16,
-                ),
-                itemCount: partners.length,
-                itemBuilder: (context, index) {
-                  final partner = partners[index];
-                  return _buildPartnerCard(partner);
-                },
-              );
-            },
-          );
+          return _buildContent();
         },
       ),
     );
   }
 
-  Widget _buildFilterChip({
-    required String label,
-    required bool isSelected,
-    required VoidCallback onTap,
-  }) {
+  PreferredSizeWidget _buildAppBar() {
     final colorScheme = Theme.of(context).colorScheme;
-
-    return GestureDetector(
-      onTap: onTap,
-      child: Chip(
-        label: Text(label),
-        backgroundColor:
-            isSelected ? colorScheme.primaryContainer : colorScheme.surface,
-        labelStyle: TextStyle(
-          color: isSelected
-              ? colorScheme.onPrimaryContainer
-              : colorScheme.onSurface,
-          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-        ),
+    return AppBar(
+      title: StreamValueBuilder<bool>(
+        streamValue: _controller.isSearchingStreamValue,
+        builder: (context, isSearching) {
+          return isSearching
+              ? TextField(
+                  controller: _controller.searchController,
+                  autofocus: true,
+                  decoration: InputDecoration(
+                    hintText: 'Buscar artistas, locais...',
+                    border: InputBorder.none,
+                    hintStyle: TextStyle(color: colorScheme.onSurfaceVariant),
+                  ),
+                  style: TextStyle(color: colorScheme.onSurface),
+                )
+              : const Text('Descobrir');
+        },
       ),
+      actions: [
+        StreamValueBuilder<bool>(
+          streamValue: _controller.isSearchingStreamValue,
+          builder: (context, isSearching) {
+            return IconButton(
+              icon: Icon(isSearching ? Icons.close : Icons.search),
+              onPressed: _controller.toggleSearch,
+            );
+          },
+        ),
+      ],
     );
   }
 
-  Widget _buildPartnerCard(PartnerModel partner) {
-    final isFav = _controller.isFavorite(partner.id);
+  Widget _buildContent() {
+    return StreamValueBuilder<bool>(
+      streamValue: _controller.isSearchingStreamValue,
+      builder: (context, isSearching) {
+        return SingleChildScrollView(
+          padding: const EdgeInsets.only(bottom: 16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (!isSearching) ...[
+                _buildSection(
+                  title: 'Tocando agora',
+                  stream: _controller.liveNowStreamValue,
+                  onSeeAll: () {
+                    context.router.push(const ScheduleRoute());
+                  },
+                ),
+                _buildSection(
+                  title: 'Perto de você',
+                  stream: _controller.nearbyStreamValue,
+                ),
+                _buildCuratorContentSection(),
+              ],
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                child: Row(
+                  children: [
+                    const Text(
+                      'Tudo',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const Spacer(),
+                  ],
+                ),
+              ),
+              _buildFilterChips(),
+              const SizedBox(height: 8),
+              StreamValueBuilder<Set<String>>(
+                streamValue: _controller.favoriteIdsStream,
+                builder: (context, favorites) {
+                  return StreamValueBuilder<List<PartnerModel>>(
+                    streamValue: _controller.filteredPartnersStreamValue,
+                    builder: (context, partners) {
+                      if (partners.isEmpty) {
+                        return StreamValueBuilder<bool>(
+                          streamValue: _controller.hasLoadedStreamValue,
+                          builder: (context, hasLoaded) {
+                            if (!hasLoaded) {
+                              return const Padding(
+                                padding: EdgeInsets.all(24.0),
+                                child: Center(child: CircularProgressIndicator()),
+                              );
+                            }
+                            return const Padding(
+                              padding: EdgeInsets.all(24.0),
+                              child: Center(
+                                  child: Text('Nenhum resultado para os filtros.')),
+                            );
+                          },
+                        );
+                      }
+                      return GridView.builder(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        gridDelegate:
+                            const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
+                          childAspectRatio: 0.75,
+                          crossAxisSpacing: 16,
+                          mainAxisSpacing: 16,
+                        ),
+                        itemCount: partners.length,
+                        itemBuilder: (context, index) {
+                          final partner = partners[index];
+                          return _buildPartnerCard(
+                            partner,
+                            isFavorite: favorites.contains(partner.id),
+                          );
+                        },
+                      );
+                    },
+                  );
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
 
+  Widget _buildCuratorContentSection() {
+    return StreamValueBuilder(
+      streamValue: _controller.curatorContentStreamValue,
+      builder: (context, contents) {
+        if (contents.isEmpty) return const SizedBox.shrink();
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              child: SectionHeader(
+                title: 'Veja isso (curadores)',
+                onPressed: () {},
+              ),
+            ),
+            const SizedBox(height: 4),
+            SizedBox(
+              height: 180,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                itemBuilder: (context, index) {
+                  final content = contents[index];
+                  return SizedBox(
+                    width: 220,
+                    child: CuratorContentCard(content: content),
+                  );
+                },
+                separatorBuilder: (_, __) => const SizedBox(width: 8),
+                itemCount: contents.length,
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildFilterChips() {
+    return StreamValueBuilder<PartnerType?>(
+      streamValue: _controller.selectedTypeFilterStreamValue,
+      builder: (context, selectedType) {
+        final items = <_FilterChipData>[
+          _FilterChipData(label: 'Todos', type: null),
+          _FilterChipData(label: 'Artistas', type: PartnerType.artist),
+          _FilterChipData(label: 'Locais', type: PartnerType.venue),
+          _FilterChipData(
+              label: 'Experiências', type: PartnerType.experienceProvider),
+          _FilterChipData(label: 'Pessoas', type: PartnerType.influencer),
+          _FilterChipData(label: 'Curadores', type: PartnerType.curator),
+        ];
+
+        return SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Row(
+            children: items
+                .map(
+                  (item) => Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: ChoiceChip(
+                      label: Text(item.label),
+                      selected: selectedType == item.type,
+                      onSelected: (_) => _controller.setTypeFilter(item.type),
+                    ),
+                  ),
+                )
+                .toList(),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildSection({
+    required String title,
+    required StreamValue<List<PartnerModel>> stream,
+    VoidCallback? onSeeAll,
+  }) {
+    return StreamValueBuilder<Set<String>>(
+      streamValue: _controller.favoriteIdsStream,
+      builder: (context, favorites) {
+        return StreamValueBuilder<List<PartnerModel>>(
+          streamValue: stream,
+          builder: (context, partners) {
+            if (partners.isEmpty) return const SizedBox.shrink();
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                  child: SectionHeader(
+                    title: title,
+                    onPressed: onSeeAll ?? () {},
+                  ),
+                ),
+                const SizedBox(height: 4),
+                DiscoveryCarousel(
+                  partners: partners,
+                  favorites: favorites,
+                  onFavoriteToggle: _controller.toggleFavorite,
+                ),
+                const SizedBox(height: 16),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildPartnerCard(PartnerModel partner,
+      {required bool isFavorite}) {
     return DiscoveryPartnerCard(
       partner: partner,
-      isFavorite: isFav,
-      onFavoriteTap: () {
-        setState(() {
-          _controller.toggleFavorite(partner.id);
-        });
-      },
+      isFavorite: isFavorite,
+      onFavoriteTap: () => _controller.toggleFavorite(partner.id),
       onTap: () {
         context.router.push(PartnerDetailRoute(slug: partner.slug));
       },
     );
   }
+}
+
+class _FilterChipData {
+  _FilterChipData({required this.label, required this.type});
+  final String label;
+  final PartnerType? type;
 }
