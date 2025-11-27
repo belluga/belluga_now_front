@@ -247,7 +247,7 @@ class MockScheduleBackend implements ScheduleBackendContract {
       latitude: -20.6708,
       longitude: -40.5013,
       thumbUrl:
-          'https://images.unsplash.com/photo-1526481280695-3c46917ed726?w=800',
+          'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=800&q=80',
       offsetDays: 0,
       startHour: 11,
       durationMinutes: 120,
@@ -274,7 +274,7 @@ class MockScheduleBackend implements ScheduleBackendContract {
           'event_name': 'Street Art Jam',
           'event_date': '2025-11-21T11:00:00.000',
           'event_image_url':
-              'https://images.unsplash.com/photo-1526481280695-3c46917ed726?w=800',
+              'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=800&q=80',
           'location': 'Beco Criativo',
           'host_name': 'Nina Ruas',
           'message': 'Vamos pintar juntos!',
@@ -304,7 +304,7 @@ class MockScheduleBackend implements ScheduleBackendContract {
           id: 'artist-dj-savana',
           name: 'DJ Savana',
           avatarUrl:
-              'https://images.unsplash.com/photo-1549213820-0fedc82f3817?w=200',
+              'https://images.unsplash.com/photo-1541532713592-79a0317b6b77?auto=format&fit=crop&w=400&q=80',
           highlight: true,
         ),
       ],
@@ -412,7 +412,7 @@ class MockScheduleBackend implements ScheduleBackendContract {
           id: 'artist-dj-horizonte',
           name: 'DJ Horizonte',
           avatarUrl:
-              'https://images.unsplash.com/photo-1549213820-0fedc82f3817?w=200',
+              'https://images.unsplash.com/photo-1541532713592-79a0317b6b77?auto=format&fit=crop&w=400&q=80',
           highlight: true,
         ),
         MockArtistSeed(
@@ -472,7 +472,7 @@ class MockScheduleBackend implements ScheduleBackendContract {
           id: 'artist-barista-joana',
           name: 'Barista Joana Ramos',
           avatarUrl:
-              'https://images.unsplash.com/photo-1511910849309-0f35d0e0b33b?w=200',
+              'https://images.unsplash.com/photo-1503023345310-bd7c1de61c7d?auto=format&fit=crop&w=200&q=80',
           highlight: true,
         ),
       ],
@@ -597,7 +597,7 @@ class MockScheduleBackend implements ScheduleBackendContract {
           id: 'artist-luiza-ceram',
           name: 'Luiza Ceramistas',
           avatarUrl:
-              'https://images.unsplash.com/photo-1514844646970-96a3809b8f08?w=200',
+              'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=200&q=80',
         ),
       ],
       actionLabel: 'Participar',
@@ -806,7 +806,7 @@ class MockScheduleBackend implements ScheduleBackendContract {
           id: 'artist-dj-lume',
           name: 'DJ Lume',
           avatarUrl:
-              'https://images.unsplash.com/photo-1549213820-0fedc82f3817?w=200',
+              'https://images.unsplash.com/photo-1541532713592-79a0317b6b77?auto=format&fit=crop&w=400&q=80',
           highlight: true,
         ),
       ],
@@ -986,7 +986,7 @@ class MockScheduleBackend implements ScheduleBackendContract {
           id: 'artist-luiza-ceram',
           name: 'Luiza Ceramistas',
           avatarUrl:
-              'https://images.unsplash.com/photo-1514844646970-96a3809b8f08?w=200',
+              'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=200&q=80',
         ),
       ],
       actionLabel: 'Garantir vaga',
@@ -1077,7 +1077,7 @@ class MockScheduleBackend implements ScheduleBackendContract {
       latitude: -20.6620,
       longitude: -40.4872,
       thumbUrl:
-          'https://images.unsplash.com/photo-1526481280695-3c46917ed726?w=800',
+          'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=800&q=80',
       offsetDays: 6,
       startHour: 7,
       durationMinutes: 150,
@@ -1112,7 +1112,7 @@ class MockScheduleBackend implements ScheduleBackendContract {
           id: 'artist-samira-luz',
           name: 'Samira Luz',
           avatarUrl:
-              'https://images.unsplash.com/photo-1511910849309-0f35d0e0b33b?w=200',
+              'https://images.unsplash.com/photo-1503023345310-bd7c1de61c7d?auto=format&fit=crop&w=200&q=80',
         ),
       ],
       actionLabel: 'Garantir presenca',
@@ -1184,7 +1184,7 @@ class MockScheduleBackend implements ScheduleBackendContract {
           id: 'artist-dj-riera',
           name: 'DJ Riera',
           avatarUrl:
-              'https://images.unsplash.com/photo-1549213820-0fedc82f3817?w=200',
+              'https://images.unsplash.com/photo-1541532713592-79a0317b6b77?auto=format&fit=crop&w=400&q=80',
         ),
       ],
       actionLabel: 'Ver agenda',
@@ -1221,7 +1221,7 @@ class MockScheduleBackend implements ScheduleBackendContract {
       latitude: -20.6715,
       longitude: -40.4975,
       thumbUrl:
-          'https://images.unsplash.com/photo-1526481280695-3c46917ed726?w=800',
+          'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=800&q=80',
       offsetDays: 7,
       startHour: 9,
       durationMinutes: 90,

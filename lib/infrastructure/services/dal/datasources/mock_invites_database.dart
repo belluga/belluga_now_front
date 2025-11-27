@@ -88,7 +88,7 @@ class MockInvitesDatabase {
       nameValue: TitleValue()..parse('Bia Surfer'),
       avatarValue: FriendAvatarValue()
         ..parse(
-            'https://images.unsplash.com/photo-1544723795-3fb77d388754?w=200'),
+            'https://images.unsplash.com/photo-1503023345310-bd7c1de61c7d?auto=format&fit=crop&w=400&q=80'),
       matchLabelValue: FriendMatchLabelValue()
         ..parse('Curte remadas noturnas e aulas de SUP'),
     ),

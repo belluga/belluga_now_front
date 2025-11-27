@@ -1,24 +1,55 @@
 import 'package:belluga_now/domain/partners/partner_model.dart';
 import 'package:belluga_now/domain/repositories/partners_repository_contract.dart';
+import 'package:belluga_now/infrastructure/services/dal/datasources/mock_partner_profile_database.dart';
+import 'package:belluga_now/infrastructure/services/dal/datasources/mock_partner_content_repository.dart';
+import 'package:belluga_now/presentation/tenant/partners/models/partner_profile_config.dart';
+import 'package:belluga_now/infrastructure/services/mock_audio_player_service.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value.dart';
 
 class PartnerDetailController implements Disposable {
   PartnerDetailController({
     PartnersRepositoryContract? partnersRepository,
-  }) : _partnersRepository =
-            partnersRepository ?? GetIt.I.get<PartnersRepositoryContract>();
+    MockPartnerProfileDatabase? profileDatabase,
+    MockPartnerContentRepository? contentRepository,
+    MockAudioPlayerService? audioPlayerService,
+  })  : _partnersRepository =
+            partnersRepository ?? GetIt.I.get<PartnersRepositoryContract>(),
+        _profileDatabase = profileDatabase ?? MockPartnerProfileDatabase(),
+        _contentRepository = contentRepository ?? MockPartnerContentRepository(),
+        _audioPlayerService = audioPlayerService ??
+            (GetIt.I.isRegistered<MockAudioPlayerService>()
+                ? GetIt.I.get<MockAudioPlayerService>()
+                : GetIt.I.registerSingleton<MockAudioPlayerService>(
+                    MockAudioPlayerService()));
 
   final PartnersRepositoryContract _partnersRepository;
+  final MockPartnerProfileDatabase _profileDatabase;
+  final MockPartnerContentRepository _contentRepository;
+  final MockAudioPlayerService _audioPlayerService;
 
   final partnerStreamValue = StreamValue<PartnerModel?>();
   final isLoadingStreamValue = StreamValue<bool>(defaultValue: false);
+  StreamValue<Set<String>> get favoriteIdsStream =>
+      _partnersRepository.favoritePartnerIdsStreamValue;
+  final profileConfigStreamValue =
+      StreamValue<PartnerProfileConfig?>(defaultValue: null);
+  final moduleDataStreamValue =
+      StreamValue<Map<ProfileModuleId, dynamic>>(defaultValue: const {});
+  MockAudioPlayerService get audioPlayerService => _audioPlayerService;
 
   Future<void> loadPartner(String slug) async {
     isLoadingStreamValue.addValue(true);
     try {
       final partner = await _partnersRepository.getPartnerBySlug(slug);
       partnerStreamValue.addValue(partner);
+      if (partner != null) {
+        profileConfigStreamValue
+            .addValue(_profileDatabase.buildConfig(partner));
+        moduleDataStreamValue.addValue(
+          _contentRepository.loadModulesForPartner(partner),
+        );
+      }
     } finally {
       isLoadingStreamValue.addValue(false);
     }
@@ -36,5 +67,7 @@ class PartnerDetailController implements Disposable {
   void onDispose() {
     partnerStreamValue.dispose();
     isLoadingStreamValue.dispose();
+    profileConfigStreamValue.dispose();
+    moduleDataStreamValue.dispose();
   }
 }

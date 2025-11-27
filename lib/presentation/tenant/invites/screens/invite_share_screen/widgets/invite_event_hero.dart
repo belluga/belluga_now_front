@@ -19,7 +19,8 @@ class InviteEventHero extends StatelessWidget {
         titleValue: invite.eventNameValue,
         imageUriValue: invite.eventImageValue,
         startDateTimeValue: invite.eventDateValue,
-        locationValue: DescriptionValue()
+        // Accept short venue labels from invite mocks without tripping the min length validator.
+        locationValue: DescriptionValue(minLenght: 1)
           ..parse(invite.locationValue.value.isNotEmpty
               ? invite.locationValue.value
               : 'Local a definir'),
