@@ -17,6 +17,7 @@ class EventDetails extends StatelessWidget {
       key: const ValueKey('details'),
       padding: const EdgeInsets.fromLTRB(16, 20, 16, 20),
       child: Row(
+        mainAxisSize: MainAxisSize.max,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           DateBadge(

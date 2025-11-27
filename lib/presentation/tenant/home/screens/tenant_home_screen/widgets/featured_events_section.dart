@@ -1,8 +1,8 @@
 import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
 import 'package:belluga_now/presentation/tenant/home/screens/tenant_home_screen/controllers/tenant_home_controller.dart';
 import 'package:belluga_now/presentation/tenant/widgets/carousel_event_card.dart';
+import 'package:belluga_now/presentation/tenant/widgets/stream_value_section.dart';
 import 'package:flutter/material.dart';
-import 'package:stream_value/core/stream_value_builder.dart';
 
 class FeaturedEventsSection extends StatelessWidget {
   const FeaturedEventsSection({
@@ -15,28 +15,28 @@ class FeaturedEventsSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final width = MediaQuery.of(context).size.width;
-    return StreamValueBuilder<List<VenueEventResume>?>(
-      streamValue: controller.myEventsStreamValue,
-      onNullWidget: SizedBox(
+    final cardWidth = width * 0.8;
+    final cardHeight = cardWidth * 9 / 16;
+
+    return StreamValueSection<VenueEventResume>(
+      title: 'Seus eventos',
+      stream: controller.myEventsStreamValue,
+      loading: SizedBox(
         height: width * 0.8 * 9 / 16,
         child: const Center(child: CircularProgressIndicator()),
       ),
-      builder: (context, events) {
-        final items = events ?? const <VenueEventResume>[];
-        if (items.isEmpty) {
-          return const EmptyMyEventsState();
-        }
-
-        final cardWidth = width * 0.8;
-        final cardHeight = cardWidth * 9 / 16;
-
+      empty: const EmptyMyEventsState(),
+      onSeeAll: () {}, // no-op for now
+      headerPadding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+      contentSpacing: EdgeInsets.zero,
+      contentBuilder: (context, events) {
         return SizedBox(
           height: cardHeight,
           child: CarouselView(
             itemExtent: cardWidth,
             itemSnapping: true,
             children:
-                items.map((event) => CarouselEventCard(event: event)).toList(),
+                events.map((event) => CarouselEventCard(event: event)).toList(),
           ),
         );
       },
