@@ -172,7 +172,11 @@ class _ImmersiveEventDetailScreenState
   InviteModel _buildInviteFromEvent(EventModel event) {
     final eventName = event.title.value;
     final eventDate = event.dateTimeStart.value ?? DateTime.now();
-    final inviteCoverUri = event.thumb?.thumbUri.value;
+    // Prefer event thumb; then first artist avatar; then hardcoded fallback.
+    final inviteCoverUri = event.thumb?.thumbUri.value ??
+        event.artists
+            .map((a) => a.avatarUri)
+            .firstWhere((uri) => uri != null, orElse: () => null);
     const fallbackImage =
         'https://images.unsplash.com/photo-1489515217757-5fd1be406fef?w=1200';
     final imageUrl = inviteCoverUri?.toString() ?? fallbackImage;
@@ -181,12 +185,7 @@ class _ImmersiveEventDetailScreenState
         ? event.artists.first.displayName
         : 'Belluga Now';
     final description = _stripHtml(event.content.value ?? '').trim();
-    final slug = event.type.slug.value;
-    final typeLabel = event.type.name.value;
-    final tags = <String>[
-      if (slug.isNotEmpty) slug,
-      if (typeLabel.isNotEmpty && typeLabel != slug) typeLabel,
-    ];
+    final tags = event.taxonomyTags;
     final eventId = event.id.value;
     final inviteId = eventId.isNotEmpty ? eventId : eventName;
     return InviteModel.fromPrimitives(

@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 
 class CarouselCard extends StatelessWidget {
@@ -14,7 +16,7 @@ class CarouselCard extends StatelessWidget {
       builder: (context, constraints) {
         final targetWidth = MediaQuery.of(context).size.width * 0.8;
         final isFullSize = constraints.maxWidth >= targetWidth * 0.8;
-        final height = constraints.maxWidth * 9 / 16;
+        final height = constraints.maxWidth * 9 / 16 * 0.8; // 20% shorter
 
         return SizedBox(
           width: constraints.maxWidth,
@@ -29,20 +31,23 @@ class CarouselCard extends StatelessWidget {
             child: Stack(
               fit: StackFit.expand,
               children: [
-                Image.network(
-                  imageUri.toString(),
-                  fit: BoxFit.cover,
-                  loadingBuilder: (context, child, loadingProgress) {
-                    if (loadingProgress == null) return child;
-                    return const Center(
-                      child: CircularProgressIndicator(),
-                    );
-                  },
-                  errorBuilder: (context, error, stackTrace) {
-                    return const Center(
-                      child: Icon(Icons.broken_image, size: 48),
-                    );
-                  },
+                ImageFiltered(
+                  imageFilter: ImageFilter.blur(sigmaX: 6, sigmaY: 6),
+                  child: Image.network(
+                    imageUri.toString(),
+                    fit: BoxFit.cover,
+                    loadingBuilder: (context, child, loadingProgress) {
+                      if (loadingProgress == null) return child;
+                      return const Center(
+                        child: CircularProgressIndicator(),
+                      );
+                    },
+                    errorBuilder: (context, error, stackTrace) {
+                      return const Center(
+                        child: Icon(Icons.broken_image, size: 48),
+                      );
+                    },
+                  ),
                 ),
                 DecoratedBox(
                   decoration: BoxDecoration(

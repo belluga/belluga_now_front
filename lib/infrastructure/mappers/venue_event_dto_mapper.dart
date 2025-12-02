@@ -33,6 +33,7 @@ mixin VenueEventDtoMapper {
           nameValue: ArtistNameValue()..parse(artistName),
           avatarValue: ArtistAvatarValue(),
           isHighlightValue: ArtistIsHighlightValue()..parse('false'),
+          genres: const [],
         ),
       ];
     }
@@ -45,6 +46,7 @@ mixin VenueEventDtoMapper {
       startDateTimeValue: startDate,
       locationValue: location,
       artists: artists,
+      tags: const [],
     );
   }
 }

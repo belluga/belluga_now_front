@@ -40,6 +40,7 @@ class EventModel {
   final List<EventParticipant> participants; // New: all participants with roles
   final List<EventActionModel> actions;
   final CityCoordinate? coordinate;
+  final List<String> tags;
 
   // Confirmation state
   final EventIsConfirmedValue isConfirmedValue;
@@ -58,6 +59,22 @@ class EventModel {
   bool get isConfirmed => isConfirmedValue.value;
   int get totalConfirmed => totalConfirmedValue.value;
   String get slug => slugValue.value; // Added getter
+  List<String> get taxonomyTags {
+    final cleaned = tags
+        .map((t) => t.trim())
+        .where((t) => t.isNotEmpty)
+        .toSet()
+        .toList();
+    if (cleaned.isNotEmpty) return cleaned;
+
+    final artistGenres = artists
+        .expand((artist) => artist.genres)
+        .map((g) => g.trim())
+        .where((g) => g.isNotEmpty)
+        .toSet()
+        .toList();
+    return artistGenres;
+  }
 
   EventModel({
     required this.id,
@@ -74,6 +91,7 @@ class EventModel {
     required this.participants,
     required this.actions,
     required this.coordinate,
+    required this.tags,
     required this.isConfirmedValue,
     this.confirmedAt,
     this.receivedInvites,
@@ -94,14 +112,15 @@ class EventModel {
         : null;
     final artists = dto.artists
         .map(
-          (artist) => ArtistResume.fromDto(
-            ArtistResumeDto(
-              id: artist.id,
-              name: artist.name,
-              avatarUrl: artist.avatarUrl,
-              isHighlight: artist.highlight ?? false,
+        (artist) => ArtistResume.fromDto(
+              ArtistResumeDto(
+                id: artist.id,
+                name: artist.name,
+                avatarUrl: artist.avatarUrl,
+                isHighlight: artist.highlight ?? false,
+                genres: artist.genres,
+              ),
             ),
-          ),
         )
         .toList();
     final participants = dto.participants
@@ -135,6 +154,7 @@ class EventModel {
       participants: participants,
       actions: dto.actions.map((e) => EventActionModel.fromDto(e)).toList(),
       coordinate: coordinate,
+      tags: dto.tags,
       isConfirmedValue: EventIsConfirmedValue()
         ..parse(dto.isConfirmed.toString()),
       totalConfirmedValue: EventTotalConfirmedValue()

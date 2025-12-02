@@ -12,6 +12,7 @@ class InviteHeroCard extends StatelessWidget {
     required this.invite,
     required this.onAccept,
     required this.onDecline,
+    required this.onViewDetails,
     required this.onClose,
     required this.remainingCount,
   });
@@ -19,6 +20,7 @@ class InviteHeroCard extends StatelessWidget {
   final InviteModel invite;
   final VoidCallback onAccept;
   final VoidCallback onDecline;
+  final VoidCallback onViewDetails;
   final VoidCallback onClose;
   final int remainingCount;
 
@@ -33,6 +35,7 @@ class InviteHeroCard extends StatelessWidget {
         invite.location.isNotEmpty ? invite.location : 'Local a definir';
     final inviter = invite.inviterName ?? 'Um amigo';
     final extraInviters = invite.additionalInviters.length;
+    final scrim = Theme.of(context).colorScheme.scrim;
 
     return Stack(
       children: [
@@ -53,9 +56,9 @@ class InviteHeroCard extends StatelessWidget {
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
-                  Colors.black.withValues(alpha: 0.55),
-                  Colors.black.withValues(alpha: 0.2),
-                  Colors.black.withValues(alpha: 0.55),
+                  scrim.withValues(alpha: 0.82),
+                  scrim.withValues(alpha: 0.45),
+                  scrim.withValues(alpha: 0.82),
                 ],
                 stops: const [0, 0.5, 1],
                 begin: Alignment.topCenter,
@@ -97,13 +100,14 @@ class InviteHeroCard extends StatelessWidget {
                               host: host,
                               inviter: inviter,
                               extraInviters: extraInviters,
-                              onAccept: onAccept,
-                              onDecline: onDecline,
-                            ),
-                          ),
+                          onAccept: onAccept,
+                          onDecline: onDecline,
+                          onViewDetails: onViewDetails,
                         ),
                       ),
                     ),
+                  ),
+                ),
                   ),
                 ),
                 if (remainingCount > 0) ...[
@@ -137,6 +141,7 @@ class _InviteContentCard extends StatelessWidget {
     required this.extraInviters,
     required this.onAccept,
     required this.onDecline,
+    required this.onViewDetails,
   });
 
   final String heroImage;
@@ -148,10 +153,12 @@ class _InviteContentCard extends StatelessWidget {
   final int extraInviters;
   final VoidCallback onAccept;
   final VoidCallback onDecline;
+  final VoidCallback onViewDetails;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final scrim = theme.colorScheme.scrim;
     return Card(
       elevation: 6,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
@@ -169,11 +176,11 @@ class _InviteContentCard extends StatelessWidget {
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
-                  Colors.black.withValues(alpha: 0.55),
-                  Colors.black.withValues(alpha: 0.2),
-                  Colors.black.withValues(alpha: 0.55),
+                  scrim.withValues(alpha: 0.8),
+                  scrim.withValues(alpha: 0.5),
+                  scrim.withValues(alpha: 0.9),
                 ],
-                stops: const [0, 0.5, 1],
+                stops: const [0, 0.45, 1],
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
               ),
@@ -262,6 +269,24 @@ class _InviteContentCard extends StatelessWidget {
                     ),
                   ],
                 ),
+                const SizedBox(height: 10),
+                SizedBox(
+                  width: double.infinity,
+                  child: TextButton(
+                    onPressed: onViewDetails,
+                    style: TextButton.styleFrom(
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
+                    child: const Text(
+                      'Ver detalhes do evento',
+                      style: TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                ),
               ],
             ),
           ),
@@ -283,10 +308,11 @@ class _InviterPill extends StatelessWidget {
     final description = extraInviters > 0
         ? '$inviter e +$extraInviters amigos te convidaram.'
         : '$inviter te convidou.';
+    final scheme = Theme.of(context).colorScheme;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.35),
+        color: scheme.surface.withValues(alpha: 0.35),
         borderRadius: BorderRadius.circular(16),
       ),
       child: Row(

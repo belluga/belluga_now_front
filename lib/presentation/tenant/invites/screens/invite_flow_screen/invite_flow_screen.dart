@@ -29,29 +29,28 @@ class _InviteFlowScreenState extends State<InviteFlowScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: SafeArea(
-        child: StreamValueBuilder<List<InviteModel>>(
-          streamValue: _controller.pendingInvitesStreamValue,
-          onNullWidget: const Center(child: CircularProgressIndicator()),
-          builder: (context, invites) {
-            if (invites.isEmpty) {
-              return InviteEmptyState(
-                onBackToHome: () => context.router.maybePop(),
-              );
-            }
-
-            final invite = invites.first;
-            final remaining = invites.length - 1;
-
-            return InviteHeroCard(
-              invite: invite,
-              onAccept: () => _handleDecision(InviteDecision.accepted),
-              onDecline: () => _handleDecision(InviteDecision.declined),
-              onClose: () => context.router.maybePop(),
-              remainingCount: remaining,
+      body: StreamValueBuilder<List<InviteModel>>(
+        streamValue: _controller.pendingInvitesStreamValue,
+        onNullWidget: const Center(child: CircularProgressIndicator()),
+        builder: (context, invites) {
+          if (invites.isEmpty) {
+            return InviteEmptyState(
+              onBackToHome: () => context.router.maybePop(),
             );
-          },
-        ),
+          }
+
+          final invite = invites.first;
+          final remaining = invites.length - 1;
+
+          return InviteHeroCard(
+            invite: invite,
+            onAccept: () => _handleDecision(InviteDecision.accepted),
+            onDecline: () => _handleDecision(InviteDecision.declined),
+            onViewDetails: () => _openEventDetails(invite),
+            onClose: () => context.router.maybePop(),
+            remainingCount: remaining,
+          );
+        },
       ),
     );
   }
@@ -60,16 +59,15 @@ class _InviteFlowScreenState extends State<InviteFlowScreen> {
     final result = await _controller.applyDecision(decision);
     if (!mounted) return;
 
-    if (decision == InviteDecision.declined) {
-      _showSnack('Convite marcado como não vou desta vez.');
-      return;
-    }
-
     if (result != null) {
       await context.router.push(InviteShareRoute(invite: result));
     } else {
       _showSnack('Convite confirmado!');
     }
+  }
+
+  void _openEventDetails(InviteModel invite) {
+    context.router.push(ImmersiveEventDetailRoute(eventSlug: invite.eventId));
   }
 
   void _showSnack(String message) {

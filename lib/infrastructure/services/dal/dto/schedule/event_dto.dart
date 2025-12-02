@@ -25,6 +25,7 @@ class EventDTO {
     this.receivedInvites,
     this.sentInvites,
     this.friendsGoing,
+    this.tags = const [],
   });
 
   final String id;
@@ -47,6 +48,7 @@ class EventDTO {
   final List<Map<String, dynamic>>? receivedInvites;
   final List<Map<String, dynamic>>? sentInvites;
   final List<Map<String, dynamic>>? friendsGoing;
+  final List<String> tags;
 
   factory EventDTO.fromJson(Map<String, dynamic> json) {
     return EventDTO(
@@ -105,6 +107,10 @@ class EventDTO {
       friendsGoing: (json['friends_going'] as List<dynamic>?)
           ?.map((e) => e as Map<String, dynamic>)
           .toList(),
+      tags: (json['tags'] as List<dynamic>?)
+              ?.map((e) => e.toString())
+              .toList() ??
+          const [],
     );
   }
 
@@ -151,6 +157,7 @@ class EventDTO {
       'received_invites': receivedInvites,
       'sent_invites': sentInvites,
       'friends_going': friendsGoing,
+      'tags': tags,
     };
   }
 }

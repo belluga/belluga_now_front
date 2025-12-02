@@ -1445,6 +1445,7 @@ class MockEventSeed {
     this.receivedInvites = const [],
     this.sentInvites = const [],
     this.friendsGoing = const [],
+    this.tags = const [],
   });
 
   final String id;
@@ -1467,12 +1468,14 @@ class MockEventSeed {
   final List<Map<String, dynamic>> receivedInvites;
   final List<Map<String, dynamic>> sentInvites;
   final List<Map<String, dynamic>> friendsGoing;
+  final List<String> tags;
 
   MockEventSeed copyWith({
     String? id,
     int? offsetDays,
     int? startHour,
     int? durationMinutes,
+    List<String>? tags,
   }) {
     return MockEventSeed(
       id: id ?? this.id,
@@ -1495,6 +1498,7 @@ class MockEventSeed {
       receivedInvites: receivedInvites,
       sentInvites: sentInvites,
       friendsGoing: friendsGoing,
+      tags: tags ?? this.tags,
     );
   }
 
@@ -1537,6 +1541,7 @@ class MockEventSeed {
       friendsGoing: friendsGoing,
       receivedInvites: receivedInvites,
       sentInvites: sentInvites,
+      tags: tags,
     );
   }
 }
@@ -1547,12 +1552,14 @@ class MockArtistSeed {
     required this.name,
     required this.avatarUrl,
     this.highlight = false,
+    this.genres = const [],
   });
 
   final String id;
   final String name;
   final String avatarUrl;
   final bool highlight;
+  final List<String> genres;
 
   EventArtistDTO toDto() {
     return EventArtistDTO(
@@ -1560,6 +1567,7 @@ class MockArtistSeed {
       name: name,
       avatarUrl: avatarUrl,
       highlight: highlight,
+      genres: genres,
     );
   }
 }

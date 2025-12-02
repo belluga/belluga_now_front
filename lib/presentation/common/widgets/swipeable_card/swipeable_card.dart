@@ -11,8 +11,8 @@ class SwipeableCard extends StatefulWidget {
     this.onSwipeDown,
     this.enableRotation = true,
     this.rotationFactor = 0.001, // Adjusted for sensible rotation
-    this.swipeThreshold = 100.0,
-    this.velocityThreshold = 1000.0,
+    this.swipeThreshold = 64.0,
+    this.velocityThreshold = 800.0,
   });
 
   final Widget child;
@@ -86,9 +86,11 @@ class _SwipeableCardState extends State<SwipeableCard>
     final dy = _dragOffset.dy;
     final absDx = dx.abs();
     final absDy = dy.abs();
+    final absVx = velocity.dx.abs();
+    final absVy = velocity.dy.abs();
 
-    // Determine primary direction
-    bool isHorizontal = absDx > absDy;
+    // Determine primary direction, factoring distance and velocity.
+    final isHorizontal = (absDx >= absDy) || (absVx > absVy);
 
     if (isHorizontal) {
       if (dx > widget.swipeThreshold ||
@@ -133,6 +135,11 @@ class _SwipeableCardState extends State<SwipeableCard>
     }
   }
 
+  void _onPanCancel() {
+    if (_isAnimatingOut) return;
+    _snapBack();
+  }
+
   void _snapBack() {
     _animation = Tween<Offset>(begin: _dragOffset, end: Offset.zero).animate(
       CurvedAnimation(parent: _controller, curve: Curves.easeOut),
@@ -160,8 +167,10 @@ class _SwipeableCardState extends State<SwipeableCard>
 
   @override
   Widget build(BuildContext context) {
-    final angle =
-        widget.enableRotation ? _dragOffset.dx * widget.rotationFactor : 0.0;
+    // Only rotate based on horizontal drag; vertical should not tilt the card.
+    final angle = (widget.enableRotation && _dragOffset.dx.abs() >= _dragOffset.dy.abs())
+        ? _dragOffset.dx * widget.rotationFactor
+        : 0.0;
 
     return Stack(
       children: [
@@ -171,6 +180,7 @@ class _SwipeableCardState extends State<SwipeableCard>
           onPanStart: _onPanStart,
           onPanUpdate: _onPanUpdate,
           onPanEnd: _onPanEnd,
+          onPanCancel: _onPanCancel,
           child: Transform.translate(
             offset: _dragOffset,
             child: Transform.rotate(

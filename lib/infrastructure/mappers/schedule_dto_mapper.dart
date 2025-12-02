@@ -82,6 +82,7 @@ mixin ScheduleDtoMapper on CourseDtoMapper {
       friendsGoing: dto.friendsGoing
           ?.map((friend) => EventFriendResume.fromDto(friend))
           .toList(),
+      tags: dto.tags,
     );
   }
 
@@ -110,6 +111,7 @@ mixin ScheduleDtoMapper on CourseDtoMapper {
       avatarValue: avatar,
       isHighlightValue: ArtistIsHighlightValue()
         ..parse((dto.highlight ?? false).toString()),
+      genres: dto.genres,
     );
   }
 
