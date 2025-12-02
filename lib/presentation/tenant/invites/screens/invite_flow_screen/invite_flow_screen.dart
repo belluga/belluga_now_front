@@ -19,6 +19,7 @@ class InviteFlowScreen extends StatefulWidget {
 
 class _InviteFlowScreenState extends State<InviteFlowScreen> {
   final _controller = GetIt.I.get<InviteFlowScreenController>();
+  final Set<String> _loadedImages = <String>{};
 
   @override
   void initState() {
@@ -33,6 +34,8 @@ class _InviteFlowScreenState extends State<InviteFlowScreen> {
         streamValue: _controller.pendingInvitesStreamValue,
         onNullWidget: const Center(child: CircularProgressIndicator()),
         builder: (context, invites) {
+          _precacheNextInvites(invites);
+
           if (invites.isEmpty) {
             // Avoid flashing empty state: pop back to previous screen.
             SchedulerBinding.instance.addPostFrameCallback((_) {
@@ -43,6 +46,11 @@ class _InviteFlowScreenState extends State<InviteFlowScreen> {
 
           final invite = invites.first;
           final remaining = invites.length - 1;
+          final isReady = _loadedImages.contains(invite.eventImageUrl);
+
+          if (!isReady) {
+            return const Center(child: CircularProgressIndicator());
+          }
 
           return InviteHeroCard(
             invite: invite,
@@ -84,5 +92,28 @@ class _InviteFlowScreenState extends State<InviteFlowScreen> {
 
   void _openEventDetails(InviteModel invite) {
     context.router.push(ImmersiveEventDetailRoute(eventSlug: invite.eventId));
+  }
+
+  void _precacheNextInvites(List<InviteModel> invites) {
+    if (!mounted) return;
+    final ctx = context;
+    final toPrecache = invites.take(3); // current + next 2
+    for (final invite in toPrecache) {
+      final url = invite.eventImageUrl;
+      if (_loadedImages.contains(url)) continue;
+      precacheImage(NetworkImage(url), ctx).then((_) {
+        if (mounted) {
+          setState(() {
+            _loadedImages.add(url);
+          });
+        }
+      }).catchError((_) {
+        if (mounted) {
+          setState(() {
+            _loadedImages.add(url); // avoid blocking on errors
+          });
+        }
+      });
+    }
   }
 }
