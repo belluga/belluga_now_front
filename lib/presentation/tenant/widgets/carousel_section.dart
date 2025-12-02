@@ -12,8 +12,8 @@ class CarouselSection<T> extends StatefulWidget {
     this.onSeeAll,
     this.loading,
     this.empty,
-    this.headerPadding =
-        const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+    this.headerPadding,
+    this.sectionPadding,
     this.contentSpacing = const EdgeInsets.only(top: 4, bottom: 16),
     required this.cardBuilder,
   });
@@ -23,7 +23,8 @@ class CarouselSection<T> extends StatefulWidget {
   final VoidCallback? onSeeAll;
   final Widget? loading;
   final Widget? empty;
-  final EdgeInsetsGeometry headerPadding;
+  final EdgeInsetsGeometry? headerPadding;
+  final EdgeInsetsGeometry? sectionPadding;
   final EdgeInsetsGeometry contentSpacing;
   final Widget Function(T) cardBuilder;
 
@@ -45,29 +46,32 @@ class _CarouselSectionState<T> extends State<CarouselSection<T>> {
         if (data.isEmpty) {
           return widget.empty ?? const SizedBox.shrink();
         }
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: widget.headerPadding,
-              child: SectionHeader(
-                title: widget.title,
-                onPressed: widget.onSeeAll ?? () {},
-              ),
-            ),
-            Padding(
-              padding: widget.contentSpacing,
-              child: SizedBox(
-                height: cardHeight,
-                child: CarouselView(
-                  itemExtent: cardWidth,
-                  itemSnapping: true,
-                  children:
-                      items.map((item) => widget.cardBuilder(item)).toList(),
+        return Container(
+          padding: widget.sectionPadding,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                padding: widget.headerPadding,
+                child: SectionHeader(
+                  title: widget.title,
+                  onPressed: widget.onSeeAll ?? () {},
                 ),
               ),
-            ),
-          ],
+              Padding(
+                padding: widget.contentSpacing,
+                child: SizedBox(
+                  height: cardHeight,
+                  child: CarouselView(
+                    itemExtent: cardWidth,
+                    itemSnapping: true,
+                    children:
+                        items.map((item) => widget.cardBuilder(item)).toList(),
+                  ),
+                ),
+              ),
+            ],
+          ),
         );
       },
     );

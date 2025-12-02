@@ -54,14 +54,9 @@ class BellugaBottomNavigationBar extends StatelessWidget {
             label: 'Agenda',
           ),
           NavigationDestination(
-            icon: Icon(Icons.shopping_basket_outlined),
-            selectedIcon: Icon(Icons.shopping_basket),
-            label: 'Mercado',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.travel_explore_outlined),
-            selectedIcon: Icon(Icons.travel_explore),
-            label: 'Experiencias',
+            icon: Icon(Icons.map_outlined),
+            selectedIcon: Icon(Icons.map),
+            label: 'Mapa',
           ),
           NavigationDestination(
             icon: Icon(Icons.menu_outlined),
@@ -78,17 +73,12 @@ class BellugaBottomNavigationBar extends StatelessWidget {
       case 0:
         context.router.replaceAll([const TenantHomeRoute()]);
         break;
-      case 1:
-        context.router.replaceAll([const ScheduleRoute()]);
-        break;
-      case 2:
-        context.router.replaceAll([const MercadoRoute()]);
-        break;
-      case 3:
-        context.router.replaceAll([const ExperiencesRoute()]);
-        break;
       default:
-        context.router.replaceAll([const TenantMenuRoute()]);
+        context.router.replaceAll([
+          if (index == 1) const ScheduleRoute(),
+          if (index == 2) const CityMapRoute(),
+          if (index == 3) const TenantMenuRoute(),
+        ]);
     }
   }
 }

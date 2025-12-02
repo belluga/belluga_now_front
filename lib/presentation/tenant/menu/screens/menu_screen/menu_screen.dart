@@ -21,18 +21,6 @@ class MenuScreen extends StatelessWidget {
             helper: 'Veja tudo que você já confirmou',
             onTap: () => context.router.pushPath('/agenda'),
           ),
-          MenuAction(
-            icon: Icons.fastfood_outlined,
-            label: 'Mercado',
-            helper: 'Produtores e experiências gastronômicas',
-            onTap: () => context.router.pushPath('/mercado'),
-          ),
-          MenuAction(
-            icon: Icons.travel_explore_outlined,
-            label: 'Explorar experiências',
-            helper: 'Descubra o que acontece por perto',
-            onTap: () => context.router.pushPath('/experiencias'),
-          ),
         ],
       ),
       MenuSection(
@@ -82,7 +70,7 @@ class MenuScreen extends StatelessWidget {
         titleSpacing: 16,
         title: const MainLogo(),
       ),
-      bottomNavigationBar: const BellugaBottomNavigationBar(currentIndex: 4),
+      bottomNavigationBar: const BellugaBottomNavigationBar(currentIndex: 3),
       body: SafeArea(
         child: ListView.separated(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 140),

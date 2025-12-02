@@ -1,7 +1,6 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/presentation/tenant/widgets/belluga_bottom_navigation_bar.dart';
-import 'package:belluga_now/presentation/tenant/widgets/floating_action_button_custom.dart';
 import 'package:flutter/material.dart';
 
 import 'widgets/animated_tab_app_bar.dart';
@@ -17,6 +16,8 @@ class TenantTabsRoutePage extends StatelessWidget {
       routes: const [
         TenantHomeRoute(),
         ScheduleRoute(),
+        CityMapRoute(),
+        TenantMenuRoute(),
       ],
       builder: (context, child) {
         final tabsRouter = AutoTabsRouter.of(context);
@@ -36,8 +37,7 @@ class TenantTabsRoutePage extends StatelessWidget {
                   config.backgroundColor ?? theme.colorScheme.surface,
               extendBody: true,
               appBar: AnimatedTabAppBar(appBar: appBar),
-              floatingActionButton:
-                  config.showFab ? const FloatingActionButtonCustom() : null,
+              floatingActionButton: null,
               body: body,
               bottomNavigationBar: BellugaBottomNavigationBar(
                 currentIndex: tabsRouter.activeIndex,

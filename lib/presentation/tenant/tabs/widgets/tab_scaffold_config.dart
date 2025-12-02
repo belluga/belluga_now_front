@@ -10,13 +10,11 @@ class TabScaffoldConfig {
   const TabScaffoldConfig({
     this.appBarBuilder,
     this.backgroundColor,
-    this.showFab = false,
     this.useSafeArea = true,
   });
 
   final TabAppBarBuilder? appBarBuilder;
   final Color? backgroundColor;
-  final bool showFab;
   final bool useSafeArea;
 
   PreferredSizeWidget? buildAppBar(BuildContext context) =>
@@ -44,7 +42,6 @@ TabScaffoldConfig tabConfigForIndex(int index) {
             const SizedBox(width: 8),
           ],
         ),
-        showFab: true,
       );
     case 1:
       return TabScaffoldConfig(
@@ -67,6 +64,10 @@ TabScaffoldConfig tabConfigForIndex(int index) {
           ],
         ),
       );
+    case 2:
+      return const TabScaffoldConfig(useSafeArea: false);
+    case 3:
+      return const TabScaffoldConfig();
     default:
       return const TabScaffoldConfig();
   }

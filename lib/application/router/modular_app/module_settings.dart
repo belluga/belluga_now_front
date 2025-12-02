@@ -3,14 +3,12 @@ import 'dart:io';
 
 import 'package:belluga_now/application/router/modular_app/modules/auth_module.dart';
 import 'package:belluga_now/application/router/modular_app/modules/discovery_module.dart';
-import 'package:belluga_now/application/router/modular_app/modules/experiences_module.dart';
 import 'package:belluga_now/application/router/modular_app/modules/initialization_module.dart';
 import 'package:belluga_now/application/router/modular_app/modules/invites_module.dart';
 import 'package:belluga_now/application/router/modular_app/modules/landlord_module.dart';
 import 'package:belluga_now/application/router/modular_app/modules/map_module.dart';
 import 'package:belluga_now/application/router/modular_app/modules/map_prototype_module.dart';
 import 'package:belluga_now/application/router/modular_app/modules/menu_module.dart';
-import 'package:belluga_now/application/router/modular_app/modules/mercado_module.dart';
 import 'package:belluga_now/application/router/modular_app/modules/profile_module.dart';
 import 'package:belluga_now/application/router/modular_app/modules/schedule_module.dart';
 
@@ -65,8 +63,6 @@ class ModuleSettings extends ModuleSettingsContract {
     await registerSubModule(ScheduleModule());
     await registerSubModule(MapModule());
     await registerSubModule(DiscoveryModule());
-    await registerSubModule(MercadoModule());
-    await registerSubModule(ExperiencesModule());
     await registerSubModule(MenuModule());
     await registerSubModule(MapPrototypeModule());
   }

@@ -20,8 +20,8 @@ class InviteCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final dateFormatter = DateFormat('EEE, d MMM - HH:mm');
-    final formattedDate = dateFormatter.format(invite.eventDateTime.toLocal());
-    final hasInviter = invite.inviters.isNotEmpty ||
+    final String formattedDate = dateFormatter.format(invite.eventDateTime.toLocal());
+    final bool hasInviter = invite.inviters.isNotEmpty ||
         (invite.inviterName?.isNotEmpty ?? false) ||
         invite.additionalInviters.isNotEmpty;
 

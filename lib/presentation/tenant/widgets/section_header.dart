@@ -15,7 +15,6 @@ class SectionHeader extends StatelessWidget {
       children: [
         Text(
           title,
-          // Adjusted style to match design's hierarchy
           style: theme.textTheme.titleLarge,
         ),
         IconButton(

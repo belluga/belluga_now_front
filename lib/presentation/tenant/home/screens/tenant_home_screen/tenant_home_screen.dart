@@ -3,16 +3,16 @@ import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/presentation/common/widgets/main_logo.dart';
 import 'package:belluga_now/presentation/tenant/home/screens/tenant_home_screen/controllers/tenant_home_controller.dart';
 import 'package:belluga_now/presentation/tenant/home/screens/tenant_home_screen/widgets/favorite_section/favorites_section_builder.dart';
-import 'package:belluga_now/presentation/tenant/home/screens/tenant_home_screen/widgets/featured_events_section.dart';
 import 'package:belluga_now/presentation/tenant/home/screens/tenant_home_screen/widgets/invites_banner_builder.dart';
 import 'package:belluga_now/presentation/tenant/home/screens/tenant_home_screen/widgets/upcoming_events_section.dart';
 import 'package:belluga_now/presentation/tenant/widgets/belluga_bottom_navigation_bar.dart';
-import 'package:belluga_now/presentation/tenant/widgets/floating_action_button_custom.dart';
+import 'package:belluga_now/presentation/tenant/widgets/carousel_card.dart';
+import 'package:belluga_now/presentation/tenant/widgets/carousel_section.dart';
+import 'package:belluga_now/presentation/tenant/widgets/event_details.dart';
 import 'package:belluga_now/presentation/tenant/widgets/section_header.dart';
 import 'package:belluga_now/presentation/tenant/widgets/animated_search_button.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
-import 'package:stream_value/core/stream_value_builder.dart';
 import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
 
 class TenantHomeScreen extends StatefulWidget {
@@ -34,6 +34,9 @@ class _TenantHomeScreenState extends State<TenantHomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+
+    final width = MediaQuery.of(context).size.width;
+
     return Scaffold(
       appBar: AppBar(
         titleSpacing: 0,
@@ -66,7 +69,6 @@ class _TenantHomeScreenState extends State<TenantHomeScreen> {
           const SizedBox(width: 8),
         ],
       ),
-      floatingActionButton: const FloatingActionButtonCustom(),
       bottomNavigationBar: const BellugaBottomNavigationBar(currentIndex: 0),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -84,30 +86,27 @@ class _TenantHomeScreenState extends State<TenantHomeScreen> {
                 onPressed: _openInviteFlow,
                 margin: const EdgeInsets.only(bottom: 16),
               ),
-              StreamValueBuilder<List<VenueEventResume>>(
+              CarouselSection<VenueEventResume>(
+                title: 'Seus Eventos',
                 streamValue: _controller.myEventsStreamValue,
-                builder: (context, events) {
-                  if (events.isEmpty) {
-                    return const SizedBox.shrink();
-                  }
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      SectionHeader(
-                        title: 'Seus Eventos',
-                        onPressed: _openMyEvents,
-                      ),
-                      FeaturedEventsSection(controller: _controller),
-                      const SizedBox(height: 16),
-                    ],
-                  );
-                },
+                loading: SizedBox(
+                  height: width * 0.8 * 9 / 16,
+                  child: const Center(child: CircularProgressIndicator()),
+                ),
+                empty: const SizedBox.shrink(),
+                onSeeAll: _openMyEvents,
+                sectionPadding: EdgeInsets.only(bottom: 16),
+                contentSpacing: EdgeInsets.zero,
+                cardBuilder: (event) => CarouselCard(
+                  imageUri: event.imageUri,
+                  contentOverlay: EventDetails(event: event),
+                ),
               ),
               SectionHeader(
                 title: 'Próximos Eventos',
                 onPressed: _openMyEvents,
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 8),
               UpcomingEventsSection(
                 controller: _controller,
                 onExplore: _openMyEvents,

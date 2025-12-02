@@ -5,6 +5,7 @@ import 'package:belluga_now/presentation/prototypes/map_experience/controllers/m
 import 'package:belluga_now/presentation/prototypes/map_experience/widgets/fab_menu.dart';
 import 'package:belluga_now/presentation/prototypes/map_experience/widgets/poi_details_deck.dart';
 import 'package:belluga_now/presentation/prototypes/map_experience/widgets/prototype_map_layers.dart';
+import 'package:belluga_now/presentation/tenant/widgets/belluga_bottom_navigation_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 
@@ -103,6 +104,8 @@ class _MapExperiencePrototypeScreenState
         floatingActionButton: FabMenu(
           onNavigateToUser: _centerOnUser,
         ),
+        bottomNavigationBar:
+            const BellugaBottomNavigationBar(currentIndex: 2),
       ),
     );
   }
