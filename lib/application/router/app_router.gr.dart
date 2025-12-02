@@ -10,8 +10,8 @@
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
 import 'package:auto_route/auto_route.dart' as _i21;
-import 'package:belluga_now/domain/invites/invite_model.dart' as _i23;
-import 'package:belluga_now/domain/map/city_poi_model.dart' as _i24;
+import 'package:belluga_now/domain/invites/invite_model.dart' as _i24;
+import 'package:belluga_now/domain/map/city_poi_model.dart' as _i25;
 import 'package:belluga_now/presentation/common/auth/routes/auth_create_new_password_route.dart'
     as _i1;
 import 'package:belluga_now/presentation/common/auth/routes/auth_login_route.dart'
@@ -50,6 +50,8 @@ import 'package:belluga_now/presentation/tenant/schedule/routes/immersive_event_
     as _i7;
 import 'package:belluga_now/presentation/tenant/schedule/routes/schedule_route.dart'
     as _i17;
+import 'package:belluga_now/presentation/tenant/schedule/screens/event_search_screen/models/invite_filter.dart'
+    as _i23;
 import 'package:belluga_now/presentation/tenant/tabs/tenant_tabs_route.dart'
     as _i20;
 import 'package:flutter/material.dart' as _i22;
@@ -171,18 +173,69 @@ class EventDetailRouteArgs {
 
 /// generated route for
 /// [_i6.EventSearchRoute]
-class EventSearchRoute extends _i21.PageRouteInfo<void> {
-  const EventSearchRoute({List<_i21.PageRouteInfo>? children})
-      : super(EventSearchRoute.name, initialChildren: children);
+class EventSearchRoute extends _i21.PageRouteInfo<EventSearchRouteArgs> {
+  EventSearchRoute({
+    _i22.Key? key,
+    bool startSearchActive = false,
+    _i23.InviteFilter inviteFilter = _i23.InviteFilter.none,
+    List<_i21.PageRouteInfo>? children,
+  }) : super(
+          EventSearchRoute.name,
+          args: EventSearchRouteArgs(
+            key: key,
+            startSearchActive: startSearchActive,
+            inviteFilter: inviteFilter,
+          ),
+          initialChildren: children,
+        );
 
   static const String name = 'EventSearchRoute';
 
   static _i21.PageInfo page = _i21.PageInfo(
     name,
     builder: (data) {
-      return const _i6.EventSearchRoute();
+      final args = data.argsAs<EventSearchRouteArgs>(
+        orElse: () => const EventSearchRouteArgs(),
+      );
+      return _i6.EventSearchRoute(
+        key: args.key,
+        startSearchActive: args.startSearchActive,
+        inviteFilter: args.inviteFilter,
+      );
     },
   );
+}
+
+class EventSearchRouteArgs {
+  const EventSearchRouteArgs({
+    this.key,
+    this.startSearchActive = false,
+    this.inviteFilter = _i23.InviteFilter.none,
+  });
+
+  final _i22.Key? key;
+
+  final bool startSearchActive;
+
+  final _i23.InviteFilter inviteFilter;
+
+  @override
+  String toString() {
+    return 'EventSearchRouteArgs{key: $key, startSearchActive: $startSearchActive, inviteFilter: $inviteFilter}';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    if (other is! EventSearchRouteArgs) return false;
+    return key == other.key &&
+        startSearchActive == other.startSearchActive &&
+        inviteFilter == other.inviteFilter;
+  }
+
+  @override
+  int get hashCode =>
+      key.hashCode ^ startSearchActive.hashCode ^ inviteFilter.hashCode;
 }
 
 /// generated route for
@@ -279,7 +332,7 @@ class InviteFlowRoute extends _i21.PageRouteInfo<void> {
 class InviteShareRoute extends _i21.PageRouteInfo<InviteShareRouteArgs> {
   InviteShareRoute({
     _i22.Key? key,
-    required _i23.InviteModel invite,
+    required _i24.InviteModel invite,
     List<_i21.PageRouteInfo>? children,
   }) : super(
           InviteShareRoute.name,
@@ -303,7 +356,7 @@ class InviteShareRouteArgs {
 
   final _i22.Key? key;
 
-  final _i23.InviteModel invite;
+  final _i24.InviteModel invite;
 
   @override
   String toString() {
@@ -410,7 +463,7 @@ class PartnerDetailRouteArgs {
 class PoiDetailsRoute extends _i21.PageRouteInfo<PoiDetailsRouteArgs> {
   PoiDetailsRoute({
     _i22.Key? key,
-    required _i24.CityPoiModel poi,
+    required _i25.CityPoiModel poi,
     List<_i21.PageRouteInfo>? children,
   }) : super(
           PoiDetailsRoute.name,
@@ -434,7 +487,7 @@ class PoiDetailsRouteArgs {
 
   final _i22.Key? key;
 
-  final _i24.CityPoiModel poi;
+  final _i25.CityPoiModel poi;
 
   @override
   String toString() {

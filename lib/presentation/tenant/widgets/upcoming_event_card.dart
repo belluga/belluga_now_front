@@ -12,12 +12,16 @@ class UpcomingEventCard extends StatelessWidget {
     this.onTap,
     this.isConfirmed = false,
     this.hasPendingInvite = false,
+    this.statusIconSize = 24,
+    this.statusIconColor,
   });
 
   final VenueEventResume event;
   final bool hasPendingInvite;
   final VoidCallback? onTap;
   final bool isConfirmed;
+  final double statusIconSize;
+  final Color? statusIconColor;
 
   @override
   Widget build(BuildContext context) {
@@ -67,14 +71,7 @@ class UpcomingEventCard extends StatelessWidget {
               padding: EdgeInsets.zero,
               constraints: const BoxConstraints(),
               onPressed: () {},
-              icon: Icon(
-                isConfirmed || hasPendingInvite
-                    ? Icons.rocket_launch
-                    : Icons.rocket_launch_outlined,
-                color: isConfirmed
-                    ? theme.colorScheme.primary
-                    : (hasPendingInvite ? Colors.orange : null),
-              ),
+              icon: _buildStatusIcon(theme),
               tooltip: isConfirmed
                   ? 'Confirmado!'
                   : (hasPendingInvite
@@ -85,5 +82,15 @@ class UpcomingEventCard extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  Icon _buildStatusIcon(ThemeData theme) {
+    final icon = isConfirmed || hasPendingInvite
+        ? Icons.rocket_launch
+        : Icons.rocket_launch_outlined;
+    final color = isConfirmed
+        ? theme.colorScheme.primary
+        : (hasPendingInvite ? Colors.orange : statusIconColor ?? theme.iconTheme.color);
+    return Icon(icon, color: color, size: statusIconSize);
   }
 }

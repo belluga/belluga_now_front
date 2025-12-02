@@ -10,12 +10,18 @@ class DateGroupedEventList extends StatelessWidget {
     required this.onEventSelected,
     this.shrinkWrap = false,
     this.physics,
+    this.isConfirmed,
+    this.hasPendingInvite,
+    this.statusIconSize,
   });
 
   final List<VenueEventResume> events;
   final ValueChanged<String> onEventSelected;
   final bool shrinkWrap;
   final ScrollPhysics? physics;
+  final bool Function(VenueEventResume event)? isConfirmed;
+  final bool Function(VenueEventResume event)? hasPendingInvite;
+  final double? statusIconSize;
 
   @override
   Widget build(BuildContext context) {
@@ -78,6 +84,9 @@ class DateGroupedEventList extends StatelessWidget {
                   child: UpcomingEventCard(
                     event: event,
                     onTap: () => onEventSelected(event.slug),
+                    isConfirmed: isConfirmed?.call(event) ?? false,
+                    hasPendingInvite: hasPendingInvite?.call(event) ?? false,
+                    statusIconSize: statusIconSize ?? 24,
                   ),
                 )),
           ],

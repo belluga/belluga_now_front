@@ -102,7 +102,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     );
   }
 
-  void _navigateToSearch() => context.router.push(const EventSearchRoute());
+  void _navigateToSearch() => context.router.push(EventSearchRoute());
 
   void _openEventDetail(String slug) {
     context.router.push(ImmersiveEventDetailRoute(eventSlug: slug));

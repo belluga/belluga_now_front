@@ -71,14 +71,16 @@ class BellugaBottomNavigationBar extends StatelessWidget {
   void _onItemTapped(BuildContext context, int index) {
     switch (index) {
       case 0:
-        context.router.replaceAll([const TenantHomeRoute()]);
+        context.router.replaceAll([TenantHomeRoute()]);
         break;
       default:
-        context.router.replaceAll([
-          if (index == 1) const ScheduleRoute(),
-          if (index == 2) const CityMapRoute(),
-          if (index == 3) const TenantMenuRoute(),
-        ]);
+        if (index == 1) {
+          context.router.replaceAll([ScheduleRoute()]);
+        } else if (index == 2) {
+          context.router.replaceAll([CityMapRoute()]);
+        } else if (index == 3) {
+          context.router.replaceAll([TenantMenuRoute()]);
+        }
     }
   }
 }

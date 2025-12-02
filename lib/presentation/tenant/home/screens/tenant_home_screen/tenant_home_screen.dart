@@ -11,6 +11,7 @@ import 'package:belluga_now/presentation/tenant/widgets/carousel_section.dart';
 import 'package:belluga_now/presentation/tenant/widgets/event_details.dart';
 import 'package:belluga_now/presentation/tenant/widgets/section_header.dart';
 import 'package:belluga_now/presentation/tenant/widgets/animated_search_button.dart';
+import 'package:belluga_now/presentation/tenant/schedule/screens/event_search_screen/models/invite_filter.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
@@ -53,7 +54,7 @@ class _TenantHomeScreenState extends State<TenantHomeScreen> {
                 right: 0,
                 child: AnimatedSearchButton(
                   onTap: () {
-                    context.router.push(const EventSearchRoute());
+                    context.router.push(EventSearchRoute());
                   },
                 ),
               ),
@@ -95,7 +96,7 @@ class _TenantHomeScreenState extends State<TenantHomeScreen> {
                 ),
                 empty: const SizedBox.shrink(),
                 onSeeAll: _openMyEvents,
-                sectionPadding: EdgeInsets.only(bottom: 16),
+                sectionPadding: const EdgeInsets.only(bottom: 16),
                 contentSpacing: EdgeInsets.zero,
                 cardBuilder: (event) => CarouselCard(
                   imageUri: event.imageUri,
@@ -124,7 +125,12 @@ class _TenantHomeScreenState extends State<TenantHomeScreen> {
   }
 
   void _openMyEvents() {
-    context.router.push(const ScheduleRoute());
+    context.router.push(
+      EventSearchRoute(
+        inviteFilter: InviteFilter.confirmedOnly,
+        startSearchActive: false,
+      ),
+    );
   }
 
   void _openEventDetailSlug(String slug) {

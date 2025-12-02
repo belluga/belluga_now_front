@@ -27,19 +27,19 @@ TabScaffoldConfig tabConfigForIndex(int index) {
       return TabScaffoldConfig(
         appBarBuilder: (context) => AppBar(
           titleSpacing: 16,
-          title: const MainLogo(),
+          title: MainLogo(),
           actions: [
             IconButton(
-              icon: const Icon(Icons.search),
-              onPressed: () => context.pushRoute(const EventSearchRoute()),
+              icon: Icon(Icons.search),
+              onPressed: () => context.pushRoute(EventSearchRoute()),
               tooltip: 'Buscar',
             ),
             IconButton(
-              icon: const Icon(Icons.notifications_none),
+              icon: Icon(Icons.notifications_none),
               onPressed: () {},
               tooltip: 'Notificações',
             ),
-            const SizedBox(width: 8),
+            SizedBox(width: 8),
           ],
         ),
       );
@@ -48,19 +48,19 @@ TabScaffoldConfig tabConfigForIndex(int index) {
         appBarBuilder: (context) => AppBar(
           titleSpacing: 16,
           automaticallyImplyLeading: false,
-          title: const MainLogo(),
+          title: MainLogo(),
           actions: [
             IconButton(
-              icon: const Icon(Icons.search),
-              onPressed: () => context.pushRoute(const EventSearchRoute()),
+              icon: Icon(Icons.search),
+              onPressed: () => context.pushRoute(EventSearchRoute()),
               tooltip: 'Buscar',
             ),
             IconButton(
-              icon: const Icon(Icons.notifications_none),
+              icon: Icon(Icons.notifications_none),
               onPressed: () {},
               tooltip: 'Notificações',
             ),
-            const SizedBox(width: 8),
+            SizedBox(width: 8),
           ],
         ),
       );

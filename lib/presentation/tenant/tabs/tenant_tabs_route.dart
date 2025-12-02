@@ -13,7 +13,7 @@ class TenantTabsRoutePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AutoTabsRouter(
-      routes: const [
+      routes: [
         TenantHomeRoute(),
         ScheduleRoute(),
         CityMapRoute(),

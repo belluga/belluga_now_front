@@ -44,7 +44,7 @@ class ScheduleScreenController implements Disposable {
   late final StreamSubscription<List<DateTime>> _visibleDatesSubscription;
   late final StreamSubscription<List<DateTime>> _invisibleDatesSubscription;
   StreamSubscription? _confirmedEventsSubscription;
-  StreamSubscription? _pendingInvitesSubscription;
+StreamSubscription? _pendingInvitesSubscription;
 
   final scrollController = ScrollController();
 
