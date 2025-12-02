@@ -116,8 +116,8 @@ class _EventSearchScreenState extends State<EventSearchScreen> {
                     return IconButton(
                       onPressed: _controller.toggleHistory,
                       tooltip: isSelected
-                          ? 'Mostrar apenas passados'
-                          : 'Mostrar apenas passados',
+                          ? 'Ver futuros e em andamento'
+                          : 'Ver eventos passados',
                       icon: _historyIcon(theme, isSelected),
                     );
                   },
@@ -136,6 +136,7 @@ class _EventSearchScreenState extends State<EventSearchScreen> {
           ),
           builder: (context, events) {
             final data = events ?? [];
+            final showHistory = _controller.showHistoryStreamValue.value;
 
             if (data.isEmpty) {
               return Center(
@@ -173,6 +174,9 @@ class _EventSearchScreenState extends State<EventSearchScreen> {
               hasPendingInvite: (event) =>
                   _controller.hasPendingInvite(event.id),
               statusIconSize: 22,
+              highlightNowEvents: true,
+              highlightTodayEvents: true,
+              sortDescending: showHistory,
               onEventSelected: (slug) {
                 context.router.push(ImmersiveEventDetailRoute(eventSlug: slug));
               },

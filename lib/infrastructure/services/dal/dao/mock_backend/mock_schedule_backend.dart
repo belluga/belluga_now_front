@@ -44,11 +44,24 @@ class MockScheduleBackend implements ScheduleBackendContract {
 
   @override
   Future<List<EventDTO>> fetchEvents() async {
+    // Include past 3 days by mirroring seeds with negative offsets
+    final seeds = <MockEventSeed>[...eventSeeds];
+    for (var daysBack = 1; daysBack <= 3; daysBack++) {
+      seeds.addAll(
+        eventSeeds.map(
+          (seed) => seed.copyWith(
+            id: '${seed.id}-past$daysBack',
+            offsetDays: -daysBack,
+          ),
+        ),
+      );
+    }
+
     final events = List<EventDTO>.generate(
-      eventSeeds.length,
+      seeds.length,
       (index) {
         final venue = _eventVenues[index % _eventVenues.length];
-        return eventSeeds[index].toDto(_today, venue);
+        return seeds[index].toDto(_today, venue);
       },
     )..sort((a, b) =>
         DateTime.parse(a.dateTimeStart)
@@ -1379,6 +1392,36 @@ class MockEventSeed {
   final List<Map<String, dynamic>> receivedInvites;
   final List<Map<String, dynamic>> sentInvites;
   final List<Map<String, dynamic>> friendsGoing;
+
+  MockEventSeed copyWith({
+    String? id,
+    int? offsetDays,
+    int? startHour,
+    int? durationMinutes,
+  }) {
+    return MockEventSeed(
+      id: id ?? this.id,
+      type: type,
+      title: title,
+      content: content,
+      location: location,
+      latitude: latitude,
+      longitude: longitude,
+      thumbUrl: thumbUrl,
+      offsetDays: offsetDays ?? this.offsetDays,
+      startHour: startHour ?? this.startHour,
+      durationMinutes: durationMinutes ?? this.durationMinutes,
+      artists: artists,
+      actionLabel: actionLabel,
+      actionUrl: actionUrl,
+      actionColor: actionColor,
+      isConfirmed: isConfirmed,
+      totalConfirmed: totalConfirmed,
+      receivedInvites: receivedInvites,
+      sentInvites: sentInvites,
+      friendsGoing: friendsGoing,
+    );
+  }
 
   EventDTO toDto(DateTime today, EventVenue venue) {
     final start = today

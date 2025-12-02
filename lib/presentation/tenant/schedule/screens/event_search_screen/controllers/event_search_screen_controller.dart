@@ -35,8 +35,7 @@ class EventSearchScreenController implements Disposable {
   final searchActiveStreamValue = StreamValue<bool>(defaultValue: false);
   final inviteFilterStreamValue =
       StreamValue<InviteFilter>(defaultValue: InviteFilter.none);
-  final timeFilterStreamValue =
-      StreamValue<TimeFilter>(defaultValue: TimeFilter.upcomingOnly);
+  final Duration defaultEventDuration = const Duration(hours: 3);
 
   StreamSubscription? _confirmedEventsSubscription;
   StreamSubscription? _pendingInvitesSubscription;
@@ -57,18 +56,9 @@ class EventSearchScreenController implements Disposable {
   }
 
   void toggleHistory() {
-    // Repurpose: when true, show only past events; when false, respect time filter
+    // When true, show only past events; when false, show upcoming/ongoing
     final currentValue = showHistoryStreamValue.value;
     showHistoryStreamValue.addValue(!currentValue);
-    _updateAvailableEvents();
-  }
-
-  void toggleTimeFilter() {
-    final current = timeFilterStreamValue.value;
-    final next = current == TimeFilter.upcomingOnly
-        ? TimeFilter.pastOnly
-        : TimeFilter.upcomingOnly;
-    timeFilterStreamValue.addValue(next);
     _updateAvailableEvents();
   }
 
@@ -110,9 +100,7 @@ class EventSearchScreenController implements Disposable {
 
   void _updateAvailableEvents() {
     final showPastOnly = showHistoryStreamValue.value;
-    final timeFilter = timeFilterStreamValue.value;
-
-    _rebuildAvailableEvents(timeFilter, showPastOnly);
+    _rebuildAvailableEvents(showPastOnly);
 
     final filtered =
         _applyInviteFilter(availableEventsStreamValue.value ?? const []);
@@ -124,29 +112,44 @@ class EventSearchScreenController implements Disposable {
     }
   }
 
-  void _rebuildAvailableEvents(TimeFilter timeFilter, bool showHistory) {
+  void _rebuildAvailableEvents(bool showPastOnly) {
     final now = DateTime.now();
     final all = allEventsStreamValue.value ?? const <EventModel>[];
     Iterable<EventModel> filtered = all;
 
-    if (timeFilter == TimeFilter.upcomingOnly) {
-      filtered = filtered.where(
-        (event) =>
-            event.dateTimeStart.value!.isAfter(now) ||
-            event.dateTimeStart.value!.isAtSameMomentAs(now),
-      );
-    } else {
-      filtered = filtered.where(
-        (event) => event.dateTimeStart.value!.isBefore(now),
-      );
+    bool isHappeningNow(EventModel event) {
+      final start = event.dateTimeStart.value;
+      if (start == null) return false;
+      final end = start.add(defaultEventDuration);
+      return (start.isBefore(now) || start.isAtSameMomentAs(now)) &&
+          (now.isBefore(end) || now.isAtSameMomentAs(end));
     }
 
-    if (!showHistory && timeFilter == TimeFilter.pastOnly) {
-      // If history is off and time filter is past, show empty until toggled
-      filtered = const Iterable.empty();
-    }
+    filtered = filtered.where((event) {
+      final start = event.dateTimeStart.value;
+      if (start == null) return false;
+      final happeningNow = isHappeningNow(event);
 
-    availableEventsStreamValue.addValue(filtered.toList());
+      if (showPastOnly) {
+        return start.isBefore(now) && !happeningNow;
+      }
+
+      // Upcoming bucket includes ongoing events
+      return happeningNow ||
+          start.isAfter(now) ||
+          start.isAtSameMomentAs(now);
+    });
+
+    final sorted = filtered.toList()
+      ..sort((a, b) {
+        final aStart = a.dateTimeStart.value!;
+        final bStart = b.dateTimeStart.value!;
+        return showPastOnly
+            ? bStart.compareTo(aStart)
+            : aStart.compareTo(bStart);
+      });
+
+    availableEventsStreamValue.addValue(sorted);
   }
 
   void searchEvents(String query) {
@@ -235,7 +238,6 @@ class EventSearchScreenController implements Disposable {
     showHistoryStreamValue.dispose();
     searchActiveStreamValue.dispose();
     inviteFilterStreamValue.dispose();
-    timeFilterStreamValue.dispose();
     _confirmedEventsSubscription?.cancel();
     _pendingInvitesSubscription?.cancel();
     focusNode.dispose();
