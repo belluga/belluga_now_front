@@ -129,56 +129,87 @@ class _EventSearchScreenState extends State<EventSearchScreen> {
       ),
       body: SafeArea(
         top: false,
-        child: StreamValueBuilder<List<EventModel>?>(
-          streamValue: _controller.searchResultsStreamValue,
-          onNullWidget: const Center(
-            child: CircularProgressIndicator(),
-          ),
-          builder: (context, events) {
-            final data = events ?? [];
-            final showHistory = _controller.showHistoryStreamValue.value;
+        child: StreamValueBuilder<bool>(
+          streamValue: _controller.isInitialLoadingStreamValue,
+          builder: (context, isInitialLoading) {
+            return StreamValueBuilder<List<EventModel>>(
+              streamValue: _controller.displayedEventsStreamValue,
+              builder: (context, events) {
+                return StreamValueBuilder<bool>(
+                  streamValue: _controller.isPageLoadingStreamValue,
+                  builder: (context, isPageLoading) {
+                    if (isInitialLoading && events.isEmpty) {
+                      return const Center(
+                        child: CircularProgressIndicator(),
+                      );
+                    }
 
-            if (data.isEmpty) {
-              return Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.search_off,
-                      size: 64,
-                      color: colorScheme.onSurfaceVariant
-                          .withAlpha((0.5 * 255).floor()),
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      'Nenhum resultado encontrado',
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        color: colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            }
+                    if (events.isEmpty) {
+                      return Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.search_off,
+                              size: 64,
+                              color: colorScheme.onSurfaceVariant
+                                  .withAlpha((0.5 * 255).floor()),
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              'Nenhum resultado encontrado',
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                color: colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }
 
-            final resumes = data
-                .map((e) => VenueEventResume.fromScheduleEvent(
-                      e,
-                      _defaultEventImage,
-                    ))
-                .toList();
+                    final resumes = events
+                        .map((e) => VenueEventResume.fromScheduleEvent(
+                              e,
+                              _defaultEventImage,
+                            ))
+                        .toList();
 
-            return DateGroupedEventList(
-              events: resumes,
-              isConfirmed: (event) => _controller.isEventConfirmed(event.id),
-              hasPendingInvite: (event) =>
-                  _controller.hasPendingInvite(event.id),
-              statusIconSize: 22,
-              highlightNowEvents: true,
-              highlightTodayEvents: true,
-              sortDescending: showHistory,
-              onEventSelected: (slug) {
-                context.router.push(ImmersiveEventDetailRoute(eventSlug: slug));
+                    return StreamValueBuilder<bool>(
+                      streamValue: _controller.showHistoryStreamValue,
+                      builder: (context, showHistory) {
+                        return DateGroupedEventList(
+                          controller: _controller.scrollController,
+                          events: resumes,
+                          isConfirmed: (event) =>
+                              _controller.isEventConfirmed(event.id),
+                          hasPendingInvite: (event) =>
+                              _controller.hasPendingInvite(event.id),
+                          statusIconSize: 22,
+                          highlightNowEvents: true,
+                          highlightTodayEvents: true,
+                          sortDescending: showHistory,
+                          footer: isPageLoading
+                              ? const Padding(
+                                  padding: EdgeInsets.symmetric(vertical: 16),
+                                  child: Center(
+                                    child: SizedBox(
+                                      width: 24,
+                                      height: 24,
+                                      child: CircularProgressIndicator(),
+                                    ),
+                                  ),
+                                )
+                              : null,
+                          onEventSelected: (slug) {
+                            context.router.push(
+                              ImmersiveEventDetailRoute(eventSlug: slug),
+                            );
+                          },
+                        );
+                      },
+                    );
+                  },
+                );
               },
             );
           },

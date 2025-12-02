@@ -17,12 +17,15 @@ class DateGroupedEventList extends StatelessWidget {
     this.highlightTodayEvents = false,
     this.defaultEventDuration = const Duration(hours: 3),
     this.sortDescending = false,
+    this.controller,
+    this.footer,
   });
 
   final List<VenueEventResume> events;
   final ValueChanged<String> onEventSelected;
   final bool shrinkWrap;
   final ScrollPhysics? physics;
+  final ScrollController? controller;
   final bool Function(VenueEventResume event)? isConfirmed;
   final bool Function(VenueEventResume event)? hasPendingInvite;
   final double? statusIconSize;
@@ -30,6 +33,7 @@ class DateGroupedEventList extends StatelessWidget {
   final bool highlightTodayEvents;
   final Duration defaultEventDuration;
   final bool sortDescending;
+  final Widget? footer;
 
   @override
   Widget build(BuildContext context) {
@@ -106,9 +110,17 @@ class DateGroupedEventList extends StatelessWidget {
     return ListView.builder(
       shrinkWrap: shrinkWrap,
       physics: physics,
+      controller: controller,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      itemCount: sections.length,
+      itemCount: sections.length + (footer != null ? 1 : 0),
       itemBuilder: (context, index) {
+        if (footer != null && index == sections.length) {
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 24),
+            child: footer,
+          );
+        }
+
         final section = sections[index];
         final dateEvents = section.events;
 

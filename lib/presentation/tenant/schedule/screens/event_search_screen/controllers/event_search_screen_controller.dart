@@ -6,7 +6,7 @@ import 'package:belluga_now/domain/repositories/user_events_repository_contract.
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/presentation/tenant/schedule/screens/event_search_screen/models/invite_filter.dart';
 import 'package:flutter/material.dart';
-import 'package:get_it/get_it.dart';
+import 'package:get_it/get_it.dart' show Disposable, GetIt;
 import 'package:stream_value/core/stream_value.dart';
 
 class EventSearchScreenController implements Disposable {
@@ -25,46 +25,118 @@ class EventSearchScreenController implements Disposable {
   final UserEventsRepositoryContract _userEventsRepository;
   final InvitesRepositoryContract _invitesRepository;
 
+  static const int _pageSize = 10;
+
   final searchController = TextEditingController();
   final focusNode = FocusNode();
+  final scrollController = ScrollController();
 
-  final allEventsStreamValue = StreamValue<List<EventModel>?>();
-  final availableEventsStreamValue = StreamValue<List<EventModel>?>();
-  final searchResultsStreamValue = StreamValue<List<EventModel>?>();
+  final displayedEventsStreamValue =
+      StreamValue<List<EventModel>>(defaultValue: const []);
+  final isInitialLoadingStreamValue = StreamValue<bool>(defaultValue: true);
+  final isPageLoadingStreamValue = StreamValue<bool>(defaultValue: false);
+  final hasMoreStreamValue = StreamValue<bool>(defaultValue: true);
   final showHistoryStreamValue = StreamValue<bool>(defaultValue: false);
   final searchActiveStreamValue = StreamValue<bool>(defaultValue: false);
   final inviteFilterStreamValue =
       StreamValue<InviteFilter>(defaultValue: InviteFilter.none);
-  final Duration defaultEventDuration = const Duration(hours: 3);
 
   StreamSubscription? _confirmedEventsSubscription;
   StreamSubscription? _pendingInvitesSubscription;
+  final List<EventModel> _fetchedEvents = [];
+  int _currentPage = 1;
+  bool _isFetching = false;
+  bool _hasMore = true;
 
   Future<void> init() async {
     await _invitesRepository.init();
-    await _populateAllEvents();
-    _updateAvailableEvents();
+    _attachScrollListener();
     _listenForStatusChanges();
+    await _refresh();
   }
 
-  Future<void> _populateAllEvents() async {
-    final List<EventModel> _allEvents =
-        await _scheduleRepository.getAllEvents();
-    _allEvents.sort(
-        (a, b) => a.dateTimeStart.value!.compareTo(b.dateTimeStart.value!));
-    allEventsStreamValue.addValue(_allEvents);
+  void _attachScrollListener() {
+    scrollController.addListener(() {
+      if (!_hasMore ||
+          _isFetching ||
+          isInitialLoadingStreamValue.value ||
+          !hasMoreStreamValue.value) {
+        return;
+      }
+
+      final position = scrollController.position;
+      const threshold = 320.0;
+      if (position.pixels + threshold >= position.maxScrollExtent) {
+        loadNextPage();
+      }
+    });
+  }
+
+  Future<void> _refresh() async {
+    await _waitForOngoingFetch();
+    _currentPage = 1;
+    _hasMore = true;
+    hasMoreStreamValue.addValue(true);
+    _fetchedEvents.clear();
+    displayedEventsStreamValue.addValue(const []);
+    isInitialLoadingStreamValue.addValue(true);
+    await _fetchPage(page: 1);
+    isInitialLoadingStreamValue.addValue(false);
+  }
+
+  Future<void> _waitForOngoingFetch() async {
+    while (_isFetching) {
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+    }
+  }
+
+  Future<void> loadNextPage() async {
+    if (!_hasMore || _isFetching) return;
+    await _fetchPage(page: _currentPage + 1);
+  }
+
+  Future<void> _fetchPage({required int page}) async {
+    if (_isFetching) return;
+    _isFetching = true;
+    if (page > 1) {
+      isPageLoadingStreamValue.addValue(true);
+    }
+
+    try {
+      final result = await _scheduleRepository.getEventsPage(
+        page: page,
+        pageSize: _pageSize,
+        showPastOnly: showHistoryStreamValue.value,
+        searchQuery: searchController.text,
+      );
+
+      if (page == 1) {
+        _fetchedEvents
+          ..clear()
+          ..addAll(result.events);
+      } else {
+        _fetchedEvents.addAll(result.events);
+      }
+
+      _hasMore = result.hasMore;
+      hasMoreStreamValue.addValue(_hasMore);
+      _currentPage = page;
+      _applyInviteFilterAndPublish();
+    } finally {
+      _isFetching = false;
+      isPageLoadingStreamValue.addValue(false);
+    }
   }
 
   void toggleHistory() {
-    // When true, show only past events; when false, show upcoming/ongoing
     final currentValue = showHistoryStreamValue.value;
     showHistoryStreamValue.addValue(!currentValue);
-    _updateAvailableEvents();
+    _refresh();
   }
 
   void setInviteFilter(InviteFilter filter) {
     inviteFilterStreamValue.addValue(filter);
-    _updateAvailableEvents();
+    _applyInviteFilterAndPublish();
   }
 
   void cycleInviteFilter() {
@@ -88,9 +160,6 @@ class EventSearchScreenController implements Disposable {
       focusNode.requestFocus();
     } else {
       focusNode.unfocus();
-      if (searchController.text.isEmpty) {
-        searchResultsStreamValue.addValue(availableEventsStreamValue.value);
-      }
     }
   }
 
@@ -98,90 +167,8 @@ class EventSearchScreenController implements Disposable {
     setSearchActive(!searchActiveStreamValue.value);
   }
 
-  void _updateAvailableEvents() {
-    final showPastOnly = showHistoryStreamValue.value;
-    _rebuildAvailableEvents(showPastOnly);
-
-    final filtered =
-        _applyInviteFilter(availableEventsStreamValue.value ?? const []);
-
-    if (searchController.text.isNotEmpty) {
-      _performSearch(filteredEvents: filtered);
-    } else {
-      searchResultsStreamValue.addValue(filtered);
-    }
-  }
-
-  void _rebuildAvailableEvents(bool showPastOnly) {
-    final now = DateTime.now();
-    final all = allEventsStreamValue.value ?? const <EventModel>[];
-    Iterable<EventModel> filtered = all;
-
-    bool isHappeningNow(EventModel event) {
-      final start = event.dateTimeStart.value;
-      if (start == null) return false;
-      final end = start.add(defaultEventDuration);
-      return (start.isBefore(now) || start.isAtSameMomentAs(now)) &&
-          (now.isBefore(end) || now.isAtSameMomentAs(end));
-    }
-
-    filtered = filtered.where((event) {
-      final start = event.dateTimeStart.value;
-      if (start == null) return false;
-      final happeningNow = isHappeningNow(event);
-
-      if (showPastOnly) {
-        return start.isBefore(now) && !happeningNow;
-      }
-
-      // Upcoming bucket includes ongoing events
-      return happeningNow ||
-          start.isAfter(now) ||
-          start.isAtSameMomentAs(now);
-    });
-
-    final sorted = filtered.toList()
-      ..sort((a, b) {
-        final aStart = a.dateTimeStart.value!;
-        final bStart = b.dateTimeStart.value!;
-        return showPastOnly
-            ? bStart.compareTo(aStart)
-            : aStart.compareTo(bStart);
-      });
-
-    availableEventsStreamValue.addValue(sorted);
-  }
-
-  void searchEvents(String query) {
-    if (query.isEmpty) {
-      searchResultsStreamValue.addValue(
-        _applyInviteFilter(availableEventsStreamValue.value ?? const []),
-      );
-      return;
-    }
-
-    _performSearch();
-  }
-
-  void _performSearch({List<EventModel>? filteredEvents}) {
-    final _availableEvents =
-        filteredEvents ?? _applyInviteFilter(availableEventsStreamValue.value ?? const []);
-
-    final lowercaseQuery = searchController.text.toLowerCase();
-
-    final filtered = _availableEvents.where((event) {
-      final titleMatch =
-          event.title.value.toLowerCase().contains(lowercaseQuery);
-      final contentMatch =
-          (event.content.value ?? "").toLowerCase().contains(lowercaseQuery);
-      final artistMatch = event.artists.any(
-        (artist) => artist.displayName.toLowerCase().contains(lowercaseQuery),
-      );
-
-      return titleMatch || contentMatch || artistMatch;
-    }).toList();
-
-    searchResultsStreamValue.addValue(filtered);
+  Future<void> searchEvents(String query) async {
+    await _refresh();
   }
 
   List<EventModel> _applyInviteFilter(List<EventModel> events) {
@@ -209,6 +196,10 @@ class EventSearchScreenController implements Disposable {
     }).toList();
   }
 
+  void _applyInviteFilterAndPublish() {
+    displayedEventsStreamValue.addValue(_applyInviteFilter(_fetchedEvents));
+  }
+
   bool isEventConfirmed(String eventId) =>
       _userEventsRepository.isEventConfirmed(eventId);
 
@@ -222,19 +213,20 @@ class EventSearchScreenController implements Disposable {
 
     _confirmedEventsSubscription =
         _userEventsRepository.confirmedEventIdsStream.stream.listen((_) {
-      _updateAvailableEvents();
+      _applyInviteFilterAndPublish();
     });
     _pendingInvitesSubscription =
         _invitesRepository.pendingInvitesStreamValue.stream.listen((_) {
-      _updateAvailableEvents();
+      _applyInviteFilterAndPublish();
     });
   }
 
   @override
   void onDispose() {
-    allEventsStreamValue.dispose();
-    availableEventsStreamValue.dispose();
-    searchResultsStreamValue.dispose();
+    displayedEventsStreamValue.dispose();
+    isInitialLoadingStreamValue.dispose();
+    isPageLoadingStreamValue.dispose();
+    hasMoreStreamValue.dispose();
     showHistoryStreamValue.dispose();
     searchActiveStreamValue.dispose();
     inviteFilterStreamValue.dispose();
@@ -242,5 +234,6 @@ class EventSearchScreenController implements Disposable {
     _pendingInvitesSubscription?.cancel();
     focusNode.dispose();
     searchController.dispose();
+    scrollController.dispose();
   }
 }

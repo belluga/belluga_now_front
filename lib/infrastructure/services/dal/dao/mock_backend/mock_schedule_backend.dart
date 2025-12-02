@@ -2,6 +2,7 @@ import 'package:belluga_now/domain/schedule/event_action_types.dart';
 import 'package:belluga_now/infrastructure/services/dal/dto/schedule/event_action_dto.dart';
 import 'package:belluga_now/infrastructure/services/dal/dto/schedule/event_artist_dto.dart';
 import 'package:belluga_now/infrastructure/services/dal/dto/schedule/event_dto.dart';
+import 'package:belluga_now/infrastructure/services/dal/dto/schedule/event_page_dto.dart';
 import 'package:belluga_now/infrastructure/services/dal/dto/schedule/event_summary_dto.dart';
 import 'package:belluga_now/infrastructure/services/dal/dto/schedule/event_summary_item_dto.dart';
 import 'package:belluga_now/infrastructure/services/dal/dto/schedule/event_type_dto.dart';
@@ -10,6 +11,9 @@ import 'package:belluga_now/infrastructure/services/schedule_backend_contract.da
 
 class MockScheduleBackend implements ScheduleBackendContract {
   MockScheduleBackend();
+
+  static const Duration _defaultEventDuration = Duration(hours: 3);
+  List<EventDTO>? _cachedEvents;
 
   @override
   Future<EventSummaryDTO> fetchSummary() async {
@@ -44,7 +48,89 @@ class MockScheduleBackend implements ScheduleBackendContract {
 
   @override
   Future<List<EventDTO>> fetchEvents() async {
-    // Include past 3 days by mirroring seeds with negative offsets
+    return _loadEvents();
+  }
+
+  @override
+  Future<EventPageDTO> fetchEventsPage({
+    required int page,
+    required int pageSize,
+    required bool showPastOnly,
+    String? searchQuery,
+  }) async {
+    final events = await _loadEvents();
+    final now = DateTime.now();
+    final query = searchQuery?.toLowerCase().trim();
+
+    bool isHappeningNow(EventDTO event) {
+      final start = DateTime.parse(event.dateTimeStart);
+      final end = start.add(_defaultEventDuration);
+      return (start.isBefore(now) || start.isAtSameMomentAs(now)) &&
+          (now.isBefore(end) || now.isAtSameMomentAs(end));
+    }
+
+    final filtered = events.where((event) {
+      final start = DateTime.parse(event.dateTimeStart);
+      final happeningNow = isHappeningNow(event);
+
+      final inTimeBucket = showPastOnly
+          ? start.isBefore(now) && !happeningNow
+          : happeningNow || start.isAfter(now) || start.isAtSameMomentAs(now);
+
+      if (!inTimeBucket) return false;
+
+      if (query == null || query.isEmpty) return true;
+
+      final titleMatch = event.title.toLowerCase().contains(query);
+      final contentMatch = event.content.toLowerCase().contains(query);
+      final artistMatch = event.artists.any(
+        (artist) => artist.name.toLowerCase().contains(query),
+      );
+
+      return titleMatch || contentMatch || artistMatch;
+    }).toList();
+
+    filtered.sort((a, b) {
+      final aStart = DateTime.parse(a.dateTimeStart);
+      final bStart = DateTime.parse(b.dateTimeStart);
+      return showPastOnly ? bStart.compareTo(aStart) : aStart.compareTo(bStart);
+    });
+
+    await Future.delayed(const Duration(seconds: 1));
+
+    final startIndex = (page - 1) * pageSize;
+    if (startIndex >= filtered.length) {
+      return EventPageDTO(events: const [], hasMore: false);
+    }
+
+    final pageEvents =
+        filtered.skip(startIndex).take(pageSize).toList(growable: false);
+    final hasMore = startIndex + pageSize < filtered.length;
+
+    return EventPageDTO(events: pageEvents, hasMore: hasMore);
+  }
+
+  Future<List<EventDTO>> _loadEvents() async {
+    if (_cachedEvents != null) {
+      return _cachedEvents!;
+    }
+
+    final seeds = _buildSeedsWithPast();
+    final events = List<EventDTO>.generate(
+      seeds.length,
+      (index) {
+        final venue = _eventVenues[index % _eventVenues.length];
+        return seeds[index].toDto(_today, venue);
+      },
+    )..sort((a, b) =>
+        DateTime.parse(a.dateTimeStart)
+            .compareTo(DateTime.parse(b.dateTimeStart)));
+
+    _cachedEvents = events;
+    return events;
+  }
+
+  List<MockEventSeed> _buildSeedsWithPast() {
     final seeds = <MockEventSeed>[...eventSeeds];
     for (var daysBack = 1; daysBack <= 3; daysBack++) {
       seeds.addAll(
@@ -56,18 +142,7 @@ class MockScheduleBackend implements ScheduleBackendContract {
         ),
       );
     }
-
-    final events = List<EventDTO>.generate(
-      seeds.length,
-      (index) {
-        final venue = _eventVenues[index % _eventVenues.length];
-        return seeds[index].toDto(_today, venue);
-      },
-    )..sort((a, b) =>
-        DateTime.parse(a.dateTimeStart)
-            .compareTo(DateTime.parse(b.dateTimeStart)));
-
-    return events;
+    return seeds;
   }
 
   static DateTime get _today {
