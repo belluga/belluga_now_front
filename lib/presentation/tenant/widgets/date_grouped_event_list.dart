@@ -55,25 +55,32 @@ class DateGroupedEventList extends StatelessWidget {
           children: [
             // Date divider
             Padding(
-              padding: const EdgeInsets.symmetric(vertical: 16),
+              padding: const EdgeInsets.symmetric(vertical: 20),
               child: Row(
                 children: [
                   Expanded(
-                    child: Divider(color: colorScheme.outlineVariant),
+                    child: Divider(
+                      color: colorScheme.primary.withValues(alpha: 0.3),
+                      thickness: 1.5,
+                    ),
                   ),
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    padding: const EdgeInsets.symmetric(horizontal: 18),
                     child: Text(
                       DateFormat.MMMMEEEEd().format(date).toUpperCase(),
-                      style: theme.textTheme.labelSmall?.copyWith(
+                      style: theme.textTheme.labelMedium?.copyWith(
+                        fontSize: (theme.textTheme.labelMedium?.fontSize ?? 12) + 2,
                         color: colorScheme.primary,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 1.2,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 1.6,
                       ),
                     ),
                   ),
                   Expanded(
-                    child: Divider(color: colorScheme.outlineVariant),
+                    child: Divider(
+                      color: colorScheme.primary.withValues(alpha: 0.3),
+                      thickness: 1.5,
+                    ),
                   ),
                 ],
               ),

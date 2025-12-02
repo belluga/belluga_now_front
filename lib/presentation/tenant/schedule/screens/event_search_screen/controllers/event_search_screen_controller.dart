@@ -35,6 +35,8 @@ class EventSearchScreenController implements Disposable {
   final searchActiveStreamValue = StreamValue<bool>(defaultValue: false);
   final inviteFilterStreamValue =
       StreamValue<InviteFilter>(defaultValue: InviteFilter.none);
+  final timeFilterStreamValue =
+      StreamValue<TimeFilter>(defaultValue: TimeFilter.upcomingOnly);
 
   StreamSubscription? _confirmedEventsSubscription;
   StreamSubscription? _pendingInvitesSubscription;
@@ -55,8 +57,18 @@ class EventSearchScreenController implements Disposable {
   }
 
   void toggleHistory() {
+    // Repurpose: when true, show only past events; when false, respect time filter
     final currentValue = showHistoryStreamValue.value;
     showHistoryStreamValue.addValue(!currentValue);
+    _updateAvailableEvents();
+  }
+
+  void toggleTimeFilter() {
+    final current = timeFilterStreamValue.value;
+    final next = current == TimeFilter.upcomingOnly
+        ? TimeFilter.pastOnly
+        : TimeFilter.upcomingOnly;
+    timeFilterStreamValue.addValue(next);
     _updateAvailableEvents();
   }
 
@@ -97,13 +109,10 @@ class EventSearchScreenController implements Disposable {
   }
 
   void _updateAvailableEvents() {
-    final _showHistory = showHistoryStreamValue.value;
+    final showPastOnly = showHistoryStreamValue.value;
+    final timeFilter = timeFilterStreamValue.value;
 
-    if (_showHistory) {
-      _makeAllEventsAvailable();
-    } else {
-      _makeOnlyFutureAvailable();
-    }
+    _rebuildAvailableEvents(timeFilter, showPastOnly);
 
     final filtered =
         _applyInviteFilter(availableEventsStreamValue.value ?? const []);
@@ -115,20 +124,29 @@ class EventSearchScreenController implements Disposable {
     }
   }
 
-  void _makeAllEventsAvailable() {
-    availableEventsStreamValue.addValue(allEventsStreamValue.value);
-  }
-
-  void _makeOnlyFutureAvailable() {
+  void _rebuildAvailableEvents(TimeFilter timeFilter, bool showHistory) {
     final now = DateTime.now();
+    final all = allEventsStreamValue.value ?? const <EventModel>[];
+    Iterable<EventModel> filtered = all;
 
-    final filteredEvents = allEventsStreamValue.value
-        ?.where((event) =>
+    if (timeFilter == TimeFilter.upcomingOnly) {
+      filtered = filtered.where(
+        (event) =>
             event.dateTimeStart.value!.isAfter(now) ||
-            event.dateTimeStart.value!.isAtSameMomentAs(now))
-        .toList();
+            event.dateTimeStart.value!.isAtSameMomentAs(now),
+      );
+    } else {
+      filtered = filtered.where(
+        (event) => event.dateTimeStart.value!.isBefore(now),
+      );
+    }
 
-    availableEventsStreamValue.addValue(filteredEvents);
+    if (!showHistory && timeFilter == TimeFilter.pastOnly) {
+      // If history is off and time filter is past, show empty until toggled
+      filtered = const Iterable.empty();
+    }
+
+    availableEventsStreamValue.addValue(filtered.toList());
   }
 
   void searchEvents(String query) {
@@ -217,6 +235,7 @@ class EventSearchScreenController implements Disposable {
     showHistoryStreamValue.dispose();
     searchActiveStreamValue.dispose();
     inviteFilterStreamValue.dispose();
+    timeFilterStreamValue.dispose();
     _confirmedEventsSubscription?.cancel();
     _pendingInvitesSubscription?.cancel();
     focusNode.dispose();

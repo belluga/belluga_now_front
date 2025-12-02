@@ -7,7 +7,6 @@ import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/presentation/tenant/schedule/screens/event_detail_screen/controllers/event_detail_controller.dart';
 import 'package:belluga_now/presentation/tenant/schedule/screens/event_search_screen/controllers/event_search_screen_controller.dart';
 import 'package:belluga_now/presentation/tenant/schedule/screens/immersive_event_detail/controllers/immersive_event_detail_controller.dart';
-import 'package:belluga_now/presentation/tenant/schedule/screens/schedule_screen/controllers/schedule_screen_controller.dart';
 import 'package:get_it_modular_with_auto_route/get_it_modular_with_auto_route.dart';
 
 class ScheduleModule extends ModuleContract {
@@ -18,7 +17,6 @@ class ScheduleModule extends ModuleContract {
   }
 
   void _registerControllers() {
-    registerLazySingleton(() => ScheduleScreenController());
     registerLazySingleton(() => EventSearchScreenController());
 
     registerFactory(() => EventDetailController());
@@ -33,7 +31,7 @@ class ScheduleModule extends ModuleContract {
   List<AutoRoute> get routes => [
         AutoRoute(
           path: '/agenda',
-          page: ScheduleRoute.page,
+          page: EventSearchRoute.page,
         ),
         AutoRoute(
           path: '/agenda/evento/:slug',
@@ -42,10 +40,6 @@ class ScheduleModule extends ModuleContract {
         AutoRoute(
           path: '/agenda/evento-imersivo/:slug',
           page: ImmersiveEventDetailRoute.page,
-        ),
-        AutoRoute(
-          path: '/agenda/procurar',
-          page: EventSearchRoute.page,
         ),
       ];
 }

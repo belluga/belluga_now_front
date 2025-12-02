@@ -15,7 +15,7 @@ class TenantTabsRoutePage extends StatelessWidget {
     return AutoTabsRouter(
       routes: [
         TenantHomeRoute(),
-        ScheduleRoute(),
+        EventSearchRoute(),
         CityMapRoute(),
         TenantMenuRoute(),
       ],

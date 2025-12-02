@@ -75,7 +75,7 @@ class BellugaBottomNavigationBar extends StatelessWidget {
         break;
       default:
         if (index == 1) {
-          context.router.replaceAll([ScheduleRoute()]);
+          context.router.replaceAll([EventSearchRoute()]);
         } else if (index == 2) {
           context.router.replaceAll([CityMapRoute()]);
         } else if (index == 3) {

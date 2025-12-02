@@ -4,7 +4,7 @@ import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
 import 'package:belluga_now/presentation/tenant/schedule/screens/event_search_screen/controllers/event_search_screen_controller.dart';
 import 'package:belluga_now/presentation/tenant/schedule/screens/event_search_screen/models/invite_filter.dart';
-import 'package:belluga_now/presentation/tenant/widgets/back_button_belluga.dart';
+import 'package:belluga_now/presentation/tenant/widgets/belluga_bottom_navigation_bar.dart';
 import 'package:belluga_now/presentation/tenant/widgets/date_grouped_event_list.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
@@ -52,16 +52,16 @@ class _EventSearchScreenState extends State<EventSearchScreen> {
           builder: (context, isActive) {
             return AppBar(
               automaticallyImplyLeading: false,
-              leading: isActive ? null : const BackButtonBelluga(),
-              leadingWidth: isActive ? 0 : null,
+              leading: null,
+              leadingWidth: 0,
               title: AnimatedSwitcher(
                 duration: const Duration(milliseconds: 200),
                 child: isActive
-                    ? TextField(
-                        key: const ValueKey('searchField'),
-                        controller: _controller.searchController,
-                        focusNode: _controller.focusNode,
-                        style: theme.textTheme.titleMedium,
+                  ? TextField(
+                      key: const ValueKey('searchField'),
+                      controller: _controller.searchController,
+                      focusNode: _controller.focusNode,
+                      style: theme.textTheme.titleMedium,
                         decoration: InputDecoration(
                           hintText: 'Buscar eventos...',
                           border: InputBorder.none,
@@ -78,14 +78,14 @@ class _EventSearchScreenState extends State<EventSearchScreen> {
                             ),
                           ),
                         ),
-                        onChanged: _controller.searchEvents,
-                        autofocus: true,
-                      )
-                    : Text(
-                        'Buscar eventos',
-                        key: const ValueKey('searchLabel'),
-                        style: theme.textTheme.titleLarge,
-                      ),
+                      onChanged: _controller.searchEvents,
+                      autofocus: true,
+                    )
+                  : Text(
+                      'Agenda',
+                      key: const ValueKey('searchLabel'),
+                      style: theme.textTheme.titleLarge,
+                    ),
               ),
               actionsPadding: const EdgeInsets.only(right: 8),
               actions: [
@@ -116,8 +116,8 @@ class _EventSearchScreenState extends State<EventSearchScreen> {
                     return IconButton(
                       onPressed: _controller.toggleHistory,
                       tooltip: isSelected
-                          ? 'Ocultar eventos já finalizados'
-                          : 'Mostrar eventos já finalizados',
+                          ? 'Mostrar apenas passados'
+                          : 'Mostrar apenas passados',
                       icon: _historyIcon(theme, isSelected),
                     );
                   },
@@ -180,6 +180,7 @@ class _EventSearchScreenState extends State<EventSearchScreen> {
           },
         ),
       ),
+      bottomNavigationBar: const BellugaBottomNavigationBar(currentIndex: 1),
     );
   }
 

@@ -95,7 +95,7 @@ class _TenantHomeScreenState extends State<TenantHomeScreen> {
                   child: const Center(child: CircularProgressIndicator()),
                 ),
                 empty: const SizedBox.shrink(),
-                onSeeAll: _openMyEvents,
+                onSeeAll: _openMyEventsConfirmed,
                 sectionPadding: const EdgeInsets.only(bottom: 16),
                 contentSpacing: EdgeInsets.zero,
                 cardBuilder: (event) => CarouselCard(
@@ -105,12 +105,12 @@ class _TenantHomeScreenState extends State<TenantHomeScreen> {
               ),
               SectionHeader(
                 title: 'Próximos Eventos',
-                onPressed: _openMyEvents,
+                onPressed: _openUpcomingEvents,
               ),
               const SizedBox(height: 8),
               UpcomingEventsSection(
                 controller: _controller,
-                onExplore: _openMyEvents,
+                onExplore: _openUpcomingEvents,
                 onEventSelected: _openEventDetailSlug,
               ),
             ],
@@ -124,16 +124,24 @@ class _TenantHomeScreenState extends State<TenantHomeScreen> {
     context.router.push(const InviteFlowRoute());
   }
 
-  void _openMyEvents() {
-    context.router.push(
-      EventSearchRoute(
-        inviteFilter: InviteFilter.confirmedOnly,
-        startSearchActive: false,
-      ),
-    );
+  void _openMyEventsConfirmed() {
+    _openSearchWithFilter(InviteFilter.confirmedOnly);
+  }
+
+  void _openUpcomingEvents() {
+    _openSearchWithFilter(InviteFilter.none);
   }
 
   void _openEventDetailSlug(String slug) {
     context.router.push(ImmersiveEventDetailRoute(eventSlug: slug));
+  }
+
+  void _openSearchWithFilter(InviteFilter filter) {
+    context.router.push(
+      EventSearchRoute(
+        inviteFilter: filter,
+        startSearchActive: false,
+      ),
+    );
   }
 }
