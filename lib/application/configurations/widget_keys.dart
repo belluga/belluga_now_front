@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 class WidgetKeys {
   static final auth = _WidgetKeysAuth();
-  static final splash =_WidgetKeysSplash();
+  static final splash = _WidgetKeysSplash();
 }
 
 class _WidgetKeysAuth {

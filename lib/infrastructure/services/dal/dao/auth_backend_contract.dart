@@ -1,10 +1,10 @@
-import 'package:belluga_now/infrastructure/services/dal/dto/user_dto.dart';
+import 'package:belluga_now/infrastructure/user/dtos/user_dto.dart';
 
 abstract class AuthBackendContract {
-  Future<(UserDTO, String)> loginWithEmailPassword(
+  Future<(UserDto, String)> loginWithEmailPassword(
     String email,
     String password,
   );
   Future<void> logout();
-  Future<UserDTO> loginCheck();
+  Future<UserDto> loginCheck();
 }

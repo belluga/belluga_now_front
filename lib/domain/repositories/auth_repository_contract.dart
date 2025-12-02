@@ -3,7 +3,6 @@ import 'package:belluga_now/infrastructure/services/dal/dao/backend_contract.dar
 import 'package:stream_value/core/stream_value.dart';
 
 abstract class AuthRepositoryContract<T extends UserContract> {
-  
   BackendContract get backend;
 
   final userStreamValue = StreamValue<T?>();

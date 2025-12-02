@@ -1,10 +1,10 @@
 import 'package:belluga_now/domain/app_data/app_data.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart';
 import 'package:get_it/get_it.dart';
 
 class BellugaConstants {
+  static final landlordDomain = "belluga.space";
   static final settings = _SettingsConstants();
   static final api = _ApiConstants();
   static final sentry = _SentryConstants();
@@ -13,37 +13,9 @@ class BellugaConstants {
 class _ApiConstants {
   AppData get _appData => GetIt.I.get<AppData>();
 
-  String get adminUrl {
-    final String _mainApi = '${_appData.schema}://${_appData.hostname}/admin/api';
+  String get adminUrl => '${_appData.schema}://${_appData.hostname}/admin/api';
 
-    final _environment = dotenv.env["ENV"] ?? "local";
-
-    if (kIsWeb) {
-      return _mainApi;
-    } else if (Platform.isAndroid) {
-      return _environment == "local"
-          ? "http://10.0.2.2:5000/api"
-          : _mainApi;
-    } else {
-      return _mainApi;
-    }
-  }
-
-  String get baseUrl {
-    final String _mainApi = '${_appData.schema}://${_appData.hostname}/api';
-
-    final _environment = dotenv.env["ENV"] ?? "local";
-
-    if (kIsWeb) {
-      return _mainApi;
-    } else if (Platform.isAndroid) {
-      return _environment == "local"
-          ? "http://10.0.2.2:5000/api"
-          : _mainApi;
-    } else {
-      return _mainApi;
-    }
-  }
+  String get baseUrl => '${_appData.schema}://${_appData.hostname}/api';
 }
 
 class _SettingsConstants {

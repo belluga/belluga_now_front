@@ -16,7 +16,6 @@ class AttributeModel<T> {
   final bool isEditable;
 
   String get text {
-
     final String _text = value != null ? value.toString() : hint ?? "";
     return _text;
   }

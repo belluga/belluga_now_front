@@ -4,7 +4,11 @@ class CategoryDTO {
   String slug;
   String? colorHex;
 
-  CategoryDTO({required this.id, required this.name, required this.slug, this.colorHex});
+  CategoryDTO(
+      {required this.id,
+      required this.name,
+      required this.slug,
+      this.colorHex});
 
   factory CategoryDTO.fromJson(Map<String, dynamic> json) {
     return CategoryDTO(

@@ -1,12 +1,12 @@
 import 'package:belluga_now/domain/auth/errors/belluga_auth_errors.dart';
 import 'package:belluga_now/infrastructure/services/dal/dao/auth_backend_contract.dart';
 import 'package:belluga_now/infrastructure/services/dal/dao/mock_backend/helpers/mock_functions.dart';
-import 'package:belluga_now/infrastructure/services/dal/dto/user_dto.dart';
-import 'package:belluga_now/infrastructure/services/dal/dto/user_profile_dto.dart';
+import 'package:belluga_now/infrastructure/user/dtos/user_dto.dart';
+import 'package:belluga_now/infrastructure/user/dtos/user_profile_dto.dart';
 
 class MockAuthBackend extends AuthBackendContract with MockFunctions {
   @override
-  Future<(UserDTO, String)> loginWithEmailPassword(
+  Future<(UserDto, String)> loginWithEmailPassword(
     String email,
     String password,
   ) async {
@@ -22,23 +22,21 @@ class MockAuthBackend extends AuthBackendContract with MockFunctions {
   }
 
   @override
-  Future<UserDTO> loginCheck() async => _mockUser;
+  Future<UserDto> loginCheck() async => _mockUser;
 
   @override
   Future<void> logout() async {}
 
   String get _fakePassword => "765432e1";
 
-  UserDTO get _mockUser => UserDTO(
+  UserDto get _mockUser => UserDto(
         id: fakeMongoId,
-        profile: UserProfileDTO(
-          firstName: "John",
-          lastName: "Doe",
+        profile: UserProfileDto(
           name: "John Doe",
           email: "email@mock.com",
-          gender: "Masculino",
           birthday: "",
           pictureUrl: "https://example.com/avatar.png",
         ),
+        customData: {},
       );
 }

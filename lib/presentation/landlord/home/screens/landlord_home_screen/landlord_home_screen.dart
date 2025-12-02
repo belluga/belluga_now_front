@@ -1,0 +1,37 @@
+import 'package:belluga_now/application/configurations/belluga_constants.dart';
+import 'package:belluga_now/presentation/landlord/home/screens/landlord_home_screen/controllers/landlord_home_screen_controller.dart';
+import 'package:flutter/material.dart';
+import 'package:get_it/get_it.dart';
+
+class LandlordHomeScreen extends StatefulWidget {
+  const LandlordHomeScreen({super.key});
+
+  @override
+  State<LandlordHomeScreen> createState() => _LandlordHomeScreenState();
+}
+
+class _LandlordHomeScreenState extends State<LandlordHomeScreen> {
+  late final LandlordHomeScreenController _controller =
+      GetIt.I.get<LandlordHomeScreenController>();
+
+  @override
+  void initState() {
+    super.initState();
+    _controller.init();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('This is Landlord HOME (Belluga NOW)'),
+            Text(BellugaConstants.settings.platform),
+          ],
+        ),
+      ),
+    );
+  }
+}

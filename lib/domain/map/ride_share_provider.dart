@@ -1,0 +1,4 @@
+enum RideShareProvider {
+  uber,
+  ninetyNine,
+}
