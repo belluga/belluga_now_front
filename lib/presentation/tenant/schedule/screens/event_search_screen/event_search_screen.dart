@@ -253,11 +253,11 @@ class _EventSearchScreenState extends State<EventSearchScreen> {
     }
   }
 
-  Icon _historyIcon(ThemeData theme, bool isSelected) {
-    return Icon(
-      isSelected ? Icons.history_toggle_off : Icons.history,
-      color:
-          isSelected ? theme.colorScheme.primary : theme.colorScheme.onSurfaceVariant,
-    );
+  Widget _historyIcon(ThemeData theme, bool isSelected) {
+    final color =
+        isSelected ? theme.colorScheme.primary : theme.colorScheme.onSurfaceVariant;
+    final icon = isSelected ? Icons.history : Icons.history_outlined;
+
+    return Icon(icon, color: color, size: 22);
   }
 }

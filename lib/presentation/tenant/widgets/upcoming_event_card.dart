@@ -90,7 +90,9 @@ class UpcomingEventCard extends StatelessWidget {
         : Icons.rocket_launch_outlined;
     final color = isConfirmed
         ? theme.colorScheme.primary
-        : (hasPendingInvite ? Colors.orange : statusIconColor ?? theme.iconTheme.color);
+        : (hasPendingInvite
+            ? theme.colorScheme.tertiary
+            : statusIconColor ?? theme.iconTheme.color);
     return Icon(icon, color: color, size: statusIconSize);
   }
 }

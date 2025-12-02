@@ -77,7 +77,7 @@ class DateGroupedEventList extends StatelessWidget {
     if (highlightNowEvents && nowEvents.isNotEmpty) {
       sections.add(
         _EventSection(
-          label: 'ACONTECENDO AGORA',
+          label: 'AGORA',
           events: nowEvents,
           tag: null,
           isNow: true,
@@ -127,55 +127,109 @@ class DateGroupedEventList extends StatelessWidget {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Date divider
+            // Date / tag divider
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 20),
-              child: Column(
-                children: [
-                  if (section.tag != null)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 4),
-                      child: Text(
-                        section.tag!,
-                        style: theme.textTheme.titleSmall?.copyWith(
+              child: section.isNow
+                  ? Center(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 8,
+                        ),
+                        decoration: BoxDecoration(
                           color: colorScheme.primary,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: 1.6,
+                          borderRadius: BorderRadius.circular(26),
+                          boxShadow: [
+                            BoxShadow(
+                              color: colorScheme.primary.withValues(alpha: 0.18),
+                              blurRadius: 10,
+                              offset: const Offset(0, 6),
+                            ),
+                          ],
                         ),
-                        textAlign: TextAlign.center,
-                      ),
-                    ),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      Expanded(
-                        child: Divider(
-                          color: colorScheme.primary.withValues(alpha: 0.3),
-                          thickness: 1.5,
-                        ),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
                         child: Text(
                           section.label,
-                          style: theme.textTheme.titleSmall?.copyWith(
-                            color: colorScheme.primary,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: 1.6,
-                          ),
+                          style: theme.textTheme.labelLarge?.copyWith(
+                                color: colorScheme.onPrimary,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: 1.2,
+                              ) ??
+                              TextStyle(
+                                color: colorScheme.onPrimary,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: 1.2,
+                              ),
                           textAlign: TextAlign.center,
                         ),
                       ),
-                      Expanded(
-                        child: Divider(
-                          color: colorScheme.primary.withValues(alpha: 0.3),
-                          thickness: 1.5,
+                    )
+                  : Column(
+                      children: [
+                        if (section.tag != null)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 8),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 6,
+                              ),
+                              decoration: BoxDecoration(
+                                color: colorScheme.primaryContainer,
+                                borderRadius: BorderRadius.circular(24),
+                              ),
+                              child: Text(
+                                section.tag!,
+                                style: theme.textTheme.labelLarge?.copyWith(
+                                      color: colorScheme.onPrimaryContainer,
+                                      fontWeight: FontWeight.w800,
+                                      letterSpacing: 1.2,
+                                    ) ??
+                                    TextStyle(
+                                      color: colorScheme.onPrimaryContainer,
+                                      fontWeight: FontWeight.w800,
+                                      letterSpacing: 1.2,
+                                    ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                          ),
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            Expanded(
+                              child: Divider(
+                                color: colorScheme.primary.withValues(alpha: 0.3),
+                                thickness: 1.5,
+                              ),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 12),
+                              child: Text(
+                                section.label,
+                                style: theme.textTheme.titleSmall?.copyWith(
+                                      color: colorScheme.primary,
+                                      fontWeight: FontWeight.w800,
+                                      letterSpacing: 1.3,
+                                    ) ??
+                                    TextStyle(
+                                      color: colorScheme.primary,
+                                      fontWeight: FontWeight.w800,
+                                      letterSpacing: 1.3,
+                                    ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                            Expanded(
+                              child: Divider(
+                                color: colorScheme.primary.withValues(alpha: 0.3),
+                                thickness: 1.5,
+                              ),
+                            ),
+                          ],
                         ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
+                      ],
+                    ),
             ),
             // Events for this date
             ...dateEvents.map((event) => Padding(
