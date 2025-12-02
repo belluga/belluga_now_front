@@ -90,7 +90,6 @@ class InviteFlowScreenController with Disposable {
     }
 
     _decisions[current.id] = decision;
-    removeInvite();
     decisionsStreamValue.addValue(Map.unmodifiable(_decisions));
 
     if (decision == InviteDecision.accepted) {
@@ -98,6 +97,8 @@ class InviteFlowScreenController with Disposable {
       return current;
     }
 
+    // Decline: remove immediately
+    removeInvite();
     return null;
   }
 

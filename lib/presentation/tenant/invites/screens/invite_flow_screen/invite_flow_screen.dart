@@ -4,10 +4,10 @@ import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/domain/invites/invite_decision.dart';
 import 'package:belluga_now/domain/invites/invite_model.dart';
 import 'package:belluga_now/presentation/tenant/invites/screens/invite_flow_screen/controllers/invite_flow_controller.dart';
-import 'package:belluga_now/presentation/tenant/invites/screens/invite_flow_screen/widgets/invite_empty_state.dart';
 import 'package:belluga_now/presentation/tenant/invites/screens/invite_flow_screen/widgets/invite_hero_card.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 
 class InviteFlowScreen extends StatefulWidget {
@@ -34,9 +34,11 @@ class _InviteFlowScreenState extends State<InviteFlowScreen> {
         onNullWidget: const Center(child: CircularProgressIndicator()),
         builder: (context, invites) {
           if (invites.isEmpty) {
-            return InviteEmptyState(
-              onBackToHome: () => context.router.maybePop(),
-            );
+            // Avoid flashing empty state: pop back to previous screen.
+            SchedulerBinding.instance.addPostFrameCallback((_) {
+              if (mounted) context.router.maybePop();
+            });
+            return const SizedBox.shrink();
           }
 
           final invite = invites.first;
@@ -59,23 +61,28 @@ class _InviteFlowScreenState extends State<InviteFlowScreen> {
     final result = await _controller.applyDecision(decision);
     if (!mounted) return;
 
-    if (result != null) {
-      await context.router.push(InviteShareRoute(invite: result));
-    } else {
-      _showSnack('Convite confirmado!');
+    if (decision == InviteDecision.accepted) {
+      if (result != null) {
+        await context.router.push(InviteShareRoute(invite: result));
+      }
+      // Remove only after returning from share to avoid flashing next card mid-navigation.
+      _controller.removeInvite();
+      _maybeExitIfNoInvites();
+      return;
+    }
+
+    // Decline path: removal already handled in controller.
+    _maybeExitIfNoInvites();
+  }
+
+  void _maybeExitIfNoInvites() {
+    final noInvites = _controller.pendingInvitesStreamValue.value.isEmpty;
+    if (noInvites && mounted) {
+      context.router.maybePop();
     }
   }
 
   void _openEventDetails(InviteModel invite) {
     context.router.push(ImmersiveEventDetailRoute(eventSlug: invite.eventId));
-  }
-
-  void _showSnack(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
   }
 }
