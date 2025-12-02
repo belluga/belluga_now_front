@@ -1,7 +1,8 @@
 import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
 import 'package:belluga_now/presentation/tenant/home/screens/tenant_home_screen/controllers/tenant_home_controller.dart';
-import 'package:belluga_now/presentation/tenant/widgets/carousel_event_card.dart';
-import 'package:belluga_now/presentation/tenant/widgets/stream_value_section.dart';
+import 'package:belluga_now/presentation/tenant/widgets/carousel_card.dart';
+import 'package:belluga_now/presentation/tenant/widgets/carousel_section.dart';
+import 'package:belluga_now/presentation/tenant/widgets/event_details.dart';
 import 'package:flutter/material.dart';
 
 class FeaturedEventsSection extends StatelessWidget {
@@ -15,12 +16,10 @@ class FeaturedEventsSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final width = MediaQuery.of(context).size.width;
-    final cardWidth = width * 0.8;
-    final cardHeight = cardWidth * 9 / 16;
 
-    return StreamValueSection<VenueEventResume>(
+    return CarouselSection<VenueEventResume>(
       title: 'Seus eventos',
-      stream: controller.myEventsStreamValue,
+      streamValue: controller.myEventsStreamValue,
       loading: SizedBox(
         height: width * 0.8 * 9 / 16,
         child: const Center(child: CircularProgressIndicator()),
@@ -29,17 +28,10 @@ class FeaturedEventsSection extends StatelessWidget {
       onSeeAll: () {}, // no-op for now
       headerPadding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
       contentSpacing: EdgeInsets.zero,
-      contentBuilder: (context, events) {
-        return SizedBox(
-          height: cardHeight,
-          child: CarouselView(
-            itemExtent: cardWidth,
-            itemSnapping: true,
-            children:
-                events.map((event) => CarouselEventCard(event: event)).toList(),
-          ),
-        );
-      },
+      cardBuilder: (event) => CarouselCard(
+        imageUri: event.imageUri,
+        contentOverlay: EventDetails(event: event),
+      ),
     );
   }
 }

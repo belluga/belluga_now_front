@@ -2,12 +2,12 @@ import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/domain/partners/partner_model.dart';
 import 'package:belluga_now/presentation/tenant/discovery/controllers/discovery_screen_controller.dart';
-import 'package:belluga_now/presentation/tenant/discovery/widgets/discovery_carousel.dart';
+import 'package:belluga_now/presentation/tenant/discovery/widgets/discovery_partner_card.dart';
 import 'package:belluga_now/presentation/tenant/discovery/widgets/discovery_curator_content_section.dart';
 import 'package:belluga_now/presentation/tenant/discovery/widgets/discovery_filter_chips.dart';
 import 'package:belluga_now/presentation/tenant/discovery/widgets/discovery_filter_header_delegate.dart';
 import 'package:belluga_now/presentation/tenant/discovery/widgets/discovery_partner_grid.dart';
-import 'package:belluga_now/presentation/tenant/widgets/stream_value_section.dart';
+import 'package:belluga_now/presentation/tenant/widgets/carousel_section.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
@@ -78,71 +78,81 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                     return StreamValueBuilder<String>(
                       streamValue: _controller.searchQueryStreamValue,
                       builder: (context, query) {
-                        final showSections =
-                            !isSearching && selectedType == null && query.isEmpty;
+                        final showSections = !isSearching &&
+                            selectedType == null &&
+                            query.isEmpty;
                         return StreamValueBuilder<Set<String>>(
                           streamValue: _controller.favoriteIdsStream,
                           builder: (context, favorites) {
                             return StreamValueBuilder<List<PartnerModel>>(
-                              streamValue: _controller.filteredPartnersStreamValue,
+                              streamValue:
+                                  _controller.filteredPartnersStreamValue,
                               builder: (context, partners) {
                                 return CustomScrollView(
                                   slivers: [
                                     if (showSections) ...[
                                       SliverToBoxAdapter(
-                                        child: StreamValueSection<PartnerModel>(
-                                          title: 'Tocando agora',
-                                          stream: _controller.liveNowStreamValue,
-                                          onSeeAll: () => _navigateToMap(context),
-                                          headerPadding: const EdgeInsets.symmetric(
-                                              horizontal: 16, vertical: 4),
-                                          contentSpacing:
-                                              const EdgeInsets.only(bottom: 16),
-                                          contentBuilder: (context, events) {
-                                            return StreamValueBuilder<Set<String>>(
-                                              streamValue:
-                                                  _controller.favoriteIdsStream,
-                                              builder: (context, favorites) {
-                                                return DiscoveryCarousel(
-                                                  partners: events,
-                                                  favorites: favorites,
-                                                  onFavoriteToggle:
-                                                      _controller.toggleFavorite,
-                                                );
-                                              },
-                                            );
-                                          },
+                                        child: Padding(
+                                          padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                                          child: CarouselSection<PartnerModel>(
+                                            title: 'Tocando agora',
+                                            streamValue:
+                                                _controller.liveNowStreamValue,
+                                            onSeeAll: () =>
+                                                _navigateToMap(context),
+                                            headerPadding:
+                                                const EdgeInsets.symmetric(
+                                                    horizontal: 16, vertical: 4),
+                                            contentSpacing:
+                                                const EdgeInsets.only(bottom: 16),
+                                            cardBuilder: (partner) =>
+                                                DiscoveryPartnerCard(
+                                              partner: partner,
+                                              isFavorite:
+                                                  favorites.contains(partner.id),
+                                              onFavoriteTap: () => _controller
+                                                  .toggleFavorite(partner.id),
+                                              onTap: () => context.router.push(
+                                                PartnerDetailRoute(
+                                                    slug: partner.slug),
+                                              ),
+                                            ),
+                                          ),
                                         ),
                                       ),
                                       SliverToBoxAdapter(
-                                        child: StreamValueSection<PartnerModel>(
-                                          title: 'Perto de você',
-                                          stream: _controller.nearbyStreamValue,
-                                          onSeeAll: () => _navigateToMap(context),
-                                          headerPadding: const EdgeInsets.symmetric(
-                                              horizontal: 16, vertical: 4),
-                                          contentSpacing:
-                                              const EdgeInsets.only(bottom: 16),
-                                          contentBuilder: (context, events) {
-                                            return StreamValueBuilder<Set<String>>(
-                                              streamValue:
-                                                  _controller.favoriteIdsStream,
-                                              builder: (context, favorites) {
-                                                return DiscoveryCarousel(
-                                                  partners: events,
-                                                  favorites: favorites,
-                                                  onFavoriteToggle:
-                                                      _controller.toggleFavorite,
-                                                );
-                                              },
-                                            );
-                                          },
+                                        child: Padding(
+                                          padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                                          child: CarouselSection<PartnerModel>(
+                                            title: 'Perto de você',
+                                            streamValue:
+                                                _controller.nearbyStreamValue,
+                                            onSeeAll: () =>
+                                                _navigateToMap(context),
+                                            headerPadding:
+                                                const EdgeInsets.symmetric(
+                                                    horizontal: 16, vertical: 4),
+                                            contentSpacing:
+                                                const EdgeInsets.only(bottom: 16),
+                                            cardBuilder: (partner) =>
+                                                DiscoveryPartnerCard(
+                                              partner: partner,
+                                              isFavorite:
+                                                  favorites.contains(partner.id),
+                                              onFavoriteTap: () => _controller
+                                                  .toggleFavorite(partner.id),
+                                              onTap: () => context.router.push(
+                                                PartnerDetailRoute(
+                                                    slug: partner.slug),
+                                              ),
+                                            ),
+                                          ),
                                         ),
                                       ),
                                       SliverToBoxAdapter(
                                         child: StreamValueBuilder(
-                                          streamValue:
-                                              _controller.curatorContentStreamValue,
+                                          streamValue: _controller
+                                              .curatorContentStreamValue,
                                           builder: (context, contents) {
                                             return DiscoveryCuratorContentSection(
                                               contents: contents,
@@ -155,10 +165,12 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                                       pinned: true,
                                       delegate: DiscoveryFilterHeaderDelegate(
                                         extent: 112,
-                                        filterBuilder: () => DiscoveryFilterChips(
+                                        filterBuilder: () =>
+                                            DiscoveryFilterChips(
                                           selectedTypeStream: _controller
                                               .selectedTypeFilterStreamValue,
-                                          onSelectType: _controller.setTypeFilter,
+                                          onSelectType:
+                                              _controller.setTypeFilter,
                                         ),
                                       ),
                                     ),
@@ -172,7 +184,8 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                                               return const Padding(
                                                 padding: EdgeInsets.all(24.0),
                                                 child: Center(
-                                                  child: CircularProgressIndicator(),
+                                                  child:
+                                                      CircularProgressIndicator(),
                                                 ),
                                               );
                                             }
@@ -198,7 +211,8 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                                               _controller.toggleFavorite,
                                           onPartnerTap: (partner) =>
                                               context.router.push(
-                                            PartnerDetailRoute(slug: partner.slug),
+                                            PartnerDetailRoute(
+                                                slug: partner.slug),
                                           ),
                                         ),
                                       ),

@@ -1,3 +1,4 @@
+import 'package:belluga_now/presentation/tenant/widgets/section_header.dart';
 import 'package:flutter/material.dart';
 
 /// Sticky header wrapper for the discovery filter chips.
@@ -34,15 +35,8 @@ class DiscoveryFilterHeaderDelegate extends SliverPersistentHeaderDelegate {
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
               child: Row(
-                children: const [
-                  Text(
-                    'Tudo',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  Spacer(),
+                children: [
+                  SectionHeader(title: "Todos", onPressed: (){}),
                 ],
               ),
             ),
