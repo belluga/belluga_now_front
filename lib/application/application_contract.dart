@@ -52,8 +52,7 @@ abstract class ApplicationContract extends ModularAppContract {
 
   ThemeData getThemeData() {
     final appData = GetIt.I.get<AppDataRepository>().appData;
-    // For now using light theme by default, or we could check platform brightness
-    return appData.themeDataSettings.themeData(Brightness.light);
+    return appData.themeDataSettings.themeData();
   }
 
   @override

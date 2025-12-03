@@ -1,35 +1,35 @@
+import 'package:belluga_now/infrastructure/services/dal/dto/app_data_dto.dart';
 import 'package:belluga_now/infrastructure/services/dal/dao/app_data_backend_contract.dart';
 
 class MockAppDataBackend implements AppDataBackendContract {
   @override
-  Future<Map<String, dynamic>> fetch() async {
+  Future<AppDataDTO> fetch() async {
     // Simulate network delay
     await Future.delayed(const Duration(milliseconds: 300));
 
-    return {
-      'name': 'Guarappari',
+    final json = {
+      'name': 'Boilerplate',
       'type': 'tenant',
-      'main_domain': 'https://guarappari.com.br',
-      'domains': ['https://guarappari.com.br'],
-      'app_domains': ['com.guarappari.app'],
+      'subdomain': 'boilerplate',
+      'main_domain': 'https://boilerplate.belluga.space',
+      'domains': <String>[],
+      'app_domains': ['com.boilerplatebellugatenant.app'],
       'theme_data_settings': {
-        'light_scheme_data': {
-          'brightness': 'light',
-          'primary_seed_color': '#4FA0E3',
-          'secondary_seed_color': '#E80D5D',
-        },
-        'dark_scheme_data': {
-          'brightness': 'dark',
-          'primary_seed_color': '#4FA0E3',
-          'secondary_seed_color': '#E80D5D',
-        },
+        'brightness_default': 'dark',
+        'primary_seed_color': '#A36CE3',
+        'secondary_seed_color': '#FF6E00',
       },
-      // Extra fields for app owner avatar
-      'icon_url':
-          'https://logodownload.org/wp-content/uploads/2018/08/aurora-logo-0.png',
-      'main_color': '#4FA0E3',
-      'main_logo_url':
-          'https://logodownload.org/wp-content/uploads/2018/08/aurora-logo-0.png',
+      'main_color': '#A36CE3',
+      'main_logo_light_url':
+          'https://boilerplate.belluga.space/storage/landlord/logos/light_logo.png',
+      'main_logo_dark_url':
+          'https://boilerplate.belluga.space/storage/landlord/logos/dark_logo.png',
+      'main_icon_light_url':
+          'https://boilerplate.belluga.space/storage/landlord/logos/light_icon.png',
+      'main_icon_dark_url':
+          'https://boilerplate.belluga.space/storage/landlord/logos/dark_icon.png',
     };
+
+    return AppDataDTO.fromJson(json);
   }
 }

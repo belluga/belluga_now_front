@@ -7,6 +7,7 @@ import 'package:belluga_now/domain/tenant/value_objects/icon_url_value.dart';
 import 'package:belluga_now/domain/tenant/value_objects/main_color_value.dart';
 import 'package:belluga_now/domain/tenant/value_objects/main_logo_url_value.dart';
 import 'package:belluga_now/domain/theme_data_settings/theme_data_settings.dart';
+import 'package:value_object_pattern/value_object.dart';
 
 class AppData {
   final AppType platformType;
@@ -21,11 +22,13 @@ class AppData {
   final DomainValue mainDomainValue;
   final List<DomainValue> domains;
   final List<AppDomainValue>? appDomains;
-  
-  // Extra fields for app owner avatar
-  final IconUrlValue? iconUrl;
-  final MainColorValue? mainColor;
-  final MainLogoUrlValue? mainLogoUrl;
+
+  // Extra fields for app owner avatar/branding
+  final IconUrlValue mainIconLightUrl;
+  final IconUrlValue mainIconDarkUrl;
+  final MainColorValue mainColor;
+  final MainLogoUrlValue mainLogoLightUrl;
+  final MainLogoUrlValue mainLogoDarkUrl;
 
   AppData._({
     required this.platformType,
@@ -39,52 +42,126 @@ class AppData {
     required this.mainDomainValue,
     required this.domains,
     required this.appDomains,
-    this.iconUrl,
-    this.mainColor,
-    this.mainLogoUrl,
+    required this.mainIconLightUrl,
+    required this.mainIconDarkUrl,
+    required this.mainColor,
+    required this.mainLogoLightUrl,
+    required this.mainLogoDarkUrl,
   });
 
   factory AppData.fromInitialization({
-    required Map<String, dynamic> remoteData,
+    required dynamic remoteData,
     required Map<String, dynamic> localInfo,
   }) {
+    // Support either DTO or raw map (fallback)
+    final Map<String, dynamic> map = remoteData is Map<String, dynamic>
+        ? remoteData
+        : {
+            'name': remoteData.name,
+            'type': remoteData.type,
+            'main_domain': remoteData.mainDomain,
+            'domains': remoteData.domains,
+            'app_domains': remoteData.appDomains,
+            'theme_data_settings': remoteData.themeDataSettings,
+            'icon_url': remoteData.iconUrl,
+            'main_color': remoteData.mainColor,
+            'main_icon_light_url': remoteData.mainIconLightUrl,
+            'main_icon_dark_url': remoteData.mainIconDarkUrl,
+            'main_logo_url': remoteData.mainLogoUrl,
+            'main_logo_light_url': remoteData.mainLogoLightUrl,
+            'main_logo_dark_url': remoteData.mainLogoDarkUrl,
+          };
+
+    final mainIconLightRaw =
+        map['main_icon_light_url'] ?? map['icon_url'] as String?;
+    final mainIconDarkRaw =
+        map['main_icon_dark_url'] ?? map['icon_url'] as String?;
+    final mainLogoLightRaw =
+        map['main_logo_light_url'] ?? map['main_logo_url'] as String?;
+    final mainLogoDarkRaw =
+        map['main_logo_dark_url'] ?? map['main_logo_url'] as String?;
+    final mainColorRaw = map['main_color'] as String?;
+
     return AppData._(
       platformType: localInfo['platformType'].value,
       port: localInfo['port'],
       hostname: localInfo['hostname'],
       href: localInfo['href'],
       device: localInfo['device'],
-      nameValue: EnvironmentNameValue()..parse(remoteData['name']),
-      themeDataSettings:
-          ThemeDataSettings.fromJson(remoteData['theme_data_settings']),
-      mainDomainValue:
-          DomainValue(defaultValue: Uri.parse(remoteData['main_domain'])),
-      typeValue: EnvironmentTypeValue()..parse(remoteData['type']),
-      domains: (remoteData['domains'] as List<dynamic>?)
+      nameValue: EnvironmentNameValue()..parse(map['name']),
+      themeDataSettings: ThemeDataSettings.fromJson(map['theme_data_settings']),
+      mainDomainValue: DomainValue(defaultValue: Uri.parse(map['main_domain'])),
+      typeValue: EnvironmentTypeValue()..parse(map['type']),
+      domains: (map['domains'] as List<dynamic>?)
               ?.map((domain) => DomainValue(defaultValue: Uri.parse(domain)))
               .toList() ??
           [],
-      appDomains: (remoteData['app_domains'] as List<dynamic>?)
+      appDomains: (map['app_domains'] as List<dynamic>?)
           ?.map((appDomain) => AppDomainValue()..parse(appDomain))
           .toList(),
-      iconUrl: remoteData['icon_url'] != null 
-          ? (IconUrlValue()..parse(remoteData['icon_url'])) 
-          : null,
-      mainColor: remoteData['main_color'] != null 
-          ? (MainColorValue()..parse(remoteData['main_color'])) 
-          : null,
-      mainLogoUrl: remoteData['main_logo_url'] != null 
-          ? (MainLogoUrlValue()..parse(remoteData['main_logo_url'])) 
-          : null,
+      mainIconLightUrl: _parseRequired(
+        mainIconLightRaw,
+        () => IconUrlValue(isRequired: true),
+        'main_icon_light_url',
+      ),
+      mainIconDarkUrl: _parseRequired(
+        mainIconDarkRaw,
+        () => IconUrlValue(isRequired: true),
+        'main_icon_dark_url',
+      ),
+      mainColor: _parseRequired(
+        mainColorRaw,
+        () => MainColorValue(isRequired: true, minLenght: 1),
+        'main_color',
+      ),
+      mainLogoLightUrl: _parseRequired(
+        mainLogoLightRaw,
+        () => MainLogoUrlValue(isRequired: true),
+        'main_logo_light_url',
+      ),
+      mainLogoDarkUrl: _parseRequired(
+        mainLogoDarkRaw,
+        () => MainLogoUrlValue(isRequired: true),
+        'main_logo_dark_url',
+      ),
     );
   }
 
   AppType get appType => typeValue.value;
 
+  IconUrlValue get iconUrl => mainIconDarkUrl;
+
+  MainLogoUrlValue get mainLogoUrl => mainLogoDarkUrl;
+
   String get schema => href.split(hostname).first;
+
+  /// Convenience constructor when a typed DTO is already available.
+  factory AppData.fromDto({
+    required dynamic dto,
+    required Map<String, dynamic> localInfo,
+  }) {
+    // Delegate to fromInitialization; it already accepts DTO or map.
+    return AppData.fromInitialization(remoteData: dto, localInfo: localInfo);
+  }
 
   @override
   String toString() {
     return 'AppData(port: $port, hostname: $hostname, href: $href, device: $device)';
+  }
+
+  static T _parseRequired<T extends ValueObject<dynamic>>(
+    String? rawValue,
+    T Function() builder,
+    String fieldName,
+  ) {
+    if (rawValue == null || rawValue.isEmpty) {
+      throw ArgumentError('AppData missing required field: $fieldName');
+    }
+
+    final valueObject = builder()..parse(rawValue);
+    if (valueObject.value == null) {
+      throw ArgumentError('AppData has invalid value for: $fieldName');
+    }
+    return valueObject;
   }
 }

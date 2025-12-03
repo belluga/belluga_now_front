@@ -4,6 +4,7 @@ import 'package:belluga_now/application/configurations/widget_keys.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/presentation/common/init/screens/init_screen/controllers/init_screen_controller.dart';
 import 'package:get_it/get_it.dart';
+import 'package:belluga_now/infrastructure/repositories/app_data_repository.dart';
 
 class InitScreen extends StatefulWidget {
   const InitScreen({super.key});
@@ -23,9 +24,43 @@ class _InitScreenState extends State<InitScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final appData = GetIt.I.get<AppDataRepository>().appData;
+    final iconUrl = (scheme.brightness == Brightness.dark
+            ? appData.mainIconDarkUrl
+            : appData.mainIconLightUrl)
+        .value
+        ?.toString();
     return Scaffold(
       key: WidgetKeys.splash.scaffold,
-      body: const Center(child: Text("SPLASH")),
+      body: Container(
+        width: double.infinity,
+        height: double.infinity,
+        color: scheme.primary,
+        child: Center(
+          child: iconUrl != null && iconUrl.isNotEmpty
+              ? Image.network(
+                  iconUrl,
+                  height: 96,
+                  fit: BoxFit.contain,
+                  errorBuilder: (_, __, ___) => Icon(
+                    Icons.waves,
+                    size: 72,
+                    color: scheme.onPrimary,
+                  ),
+                )
+              : Image.asset(
+                  'assets/images/logo_profile.png',
+                  height: 96,
+                  fit: BoxFit.contain,
+                  errorBuilder: (_, __, ___) => Icon(
+                    Icons.waves,
+                    size: 72,
+                    color: scheme.onPrimary,
+                  ),
+                ),
+        ),
+      ),
     );
   }
 

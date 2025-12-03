@@ -10,10 +10,15 @@ class EnvironmentTypeValue extends ValueObject<AppType> {
   @override
   AppType doParse(dynamic value) {
     if (value is String) {
-      if (value == 'tenant') {
-        return AppType.mobile; // Mapping tenant to mobile for now as per stub
-      } else {
-        return AppType.mobile;
+      switch (value) {
+        case 'tenant':
+        case 'landlord':
+        case 'mobile':
+          return AppType.mobile;
+        case 'web':
+          return AppType.web;
+        case 'desktop':
+          return AppType.desktop;
       }
     }
     return defaultValue;

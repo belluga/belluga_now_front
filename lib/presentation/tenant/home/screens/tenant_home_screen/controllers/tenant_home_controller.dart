@@ -88,11 +88,11 @@ class TenantHomeController implements Disposable {
 
       // Get app data for app owner
       final appData = GetIt.I.get<AppDataRepository>().appData;
-      final iconUrl = appData.iconUrl?.value?.toString();
-      final colorHex = appData.mainColor?.value;
+      final iconUrl = appData.iconUrl.value?.toString();
+      final colorHex = appData.mainColor.value;
 
       Color? primaryColor;
-      if (colorHex != null && colorHex.isNotEmpty) {
+      if (colorHex.isNotEmpty) {
         // Parse hex color (e.g., "#4FA0E3")
         final hexColor = colorHex.replaceAll('#', '');
         primaryColor = Color(int.parse('FF$hexColor', radix: 16));

@@ -1,3 +1,5 @@
+import 'package:belluga_now/infrastructure/services/dal/dto/app_data_dto.dart';
+
 abstract class AppDataBackendContract {
-  Future<Map<String, dynamic>> fetch();
+  Future<AppDataDTO> fetch();
 }
