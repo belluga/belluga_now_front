@@ -29,6 +29,9 @@ class DynamicFooter extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     final leftContent = leftWidget ?? _buildLeftContent(context);
     final rightContent = rightWidget ?? _buildButton(context);
 
@@ -39,12 +42,12 @@ class DynamicFooter extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: colorScheme.surfaceContainerHighest,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.1),
-            blurRadius: 10,
-            offset: const Offset(0, -2),
+            color: colorScheme.shadow.withValues(alpha: 0.2),
+            blurRadius: 12,
+            offset: const Offset(0, -3),
           ),
         ],
       ),
@@ -63,6 +66,17 @@ class DynamicFooter extends StatelessWidget {
   }
 
   Widget? _buildLeftContent(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final titleStyle = theme.textTheme.labelLarge?.copyWith(
+      fontWeight: FontWeight.w700,
+      color: colorScheme.onSurface,
+    );
+    final subtitleStyle = theme.textTheme.bodySmall?.copyWith(
+      fontWeight: FontWeight.w500,
+      color: colorScheme.onSurface.withValues(alpha: 0.78),
+    );
+
     if (leftTitle == null && leftSubtitle == null && leftIcon == null) {
       return null;
     }
@@ -73,7 +87,7 @@ class DynamicFooter extends StatelessWidget {
         if (leftIcon != null) ...[
           Icon(
             leftIcon,
-            color: leftIconColor ?? Colors.green,
+            color: leftIconColor ?? colorScheme.primary,
             size: 20,
           ),
           const SizedBox(width: 8),
@@ -86,19 +100,13 @@ class DynamicFooter extends StatelessWidget {
               if (leftTitle != null)
                 Text(
                   leftTitle!,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                  ),
+                  style: titleStyle,
                 ),
               if (leftSubtitle != null) ...[
                 const SizedBox(height: 2),
                 Text(
                   leftSubtitle!,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                  ),
+                  style: subtitleStyle,
                 ),
               ],
             ],
@@ -109,13 +117,20 @@ class DynamicFooter extends StatelessWidget {
   }
 
   Widget? _buildButton(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     if (buttonText == null) return null;
+
+    final background = buttonColor ?? colorScheme.primary;
+    final foreground =
+        background == colorScheme.primary ? colorScheme.onPrimary : colorScheme.onSecondary;
 
     return ElevatedButton(
       onPressed: onActionPressed,
       style: ElevatedButton.styleFrom(
-        backgroundColor: buttonColor ?? Theme.of(context).colorScheme.primary,
-        foregroundColor: Colors.white,
+        backgroundColor: background,
+        foregroundColor: foreground,
         padding: const EdgeInsets.symmetric(vertical: 14),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(8),

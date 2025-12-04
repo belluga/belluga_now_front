@@ -60,6 +60,7 @@ class _ImmersiveEventDetailScreenState
         return StreamValueBuilder<bool>(
           streamValue: _controller.isConfirmedStreamValue,
           builder: (context, isConfirmed) {
+            final colorScheme = Theme.of(context).colorScheme;
             return StreamValueBuilder<List<InviteModel>>(
               streamValue: _controller.receivedInvitesStreamValue,
               builder: (context, receivedInvites) {
@@ -93,7 +94,7 @@ class _ImmersiveEventDetailScreenState
                             ? DynamicFooter(
                                 buttonText: 'Seguir todos os artistas',
                                 buttonIcon: Icons.star,
-                                buttonColor: const Color(0xFF6A1B9A),
+                                buttonColor: colorScheme.secondary,
                                 onActionPressed: () {
                                   // TODO: follow all artists
                                 },
@@ -107,7 +108,7 @@ class _ImmersiveEventDetailScreenState
                             ? DynamicFooter(
                                 buttonText: 'Traçar Rota agora',
                                 buttonIcon: Icons.navigation,
-                                buttonColor: const Color(0xFF00ACC1),
+                                buttonColor: colorScheme.secondary,
                                 onActionPressed: () {
                                   // TODO: open maps
                                 },
@@ -137,11 +138,11 @@ class _ImmersiveEventDetailScreenState
 
                     final footer = isConfirmed
                         ? _buildInviteFooter(
-                            () => _openInviteFlow(event), sentForEvent)
+                            context, () => _openInviteFlow(event), sentForEvent)
                         : DynamicFooter(
                             buttonText: 'Bóora! Confirmar Presença!',
                             buttonIcon: Icons.celebration,
-                            buttonColor: const Color(0xFF9C27B0),
+                            buttonColor: colorScheme.primary,
                             onActionPressed: _controller.confirmAttendance,
                           );
 
@@ -207,10 +208,17 @@ class _ImmersiveEventDetailScreenState
 }
 
 Widget _buildInviteFooter(
+  BuildContext context,
   VoidCallback onInviteFriends,
   List<SentInviteStatus> sentInvites,
 ) {
   final hasInvites = sentInvites.isNotEmpty;
+  final theme = Theme.of(context);
+  final colorScheme = theme.colorScheme;
+  final subtleOnSurface = colorScheme.onSurface.withValues(alpha: 0.12);
+  final textColorMuted = colorScheme.onSurface.withValues(alpha: 0.8);
+  final primary = colorScheme.primary;
+
   return DynamicFooter(
     leftWidget: !hasInvites
         ? Row(
@@ -218,20 +226,21 @@ Widget _buildInviteFooter(
             children: [
               CircleAvatar(
                 radius: 16,
-                backgroundColor: Colors.purple.withValues(alpha: 0.12),
-                child: const Icon(
+                backgroundColor: subtleOnSurface,
+                child: Icon(
                   Icons.rocket_launch,
-                  color: Colors.purple,
+                  color: primary,
                   size: 18,
                 ),
               ),
               const SizedBox(width: 8),
-              const Flexible(
+              Flexible(
                 child: Text(
                   'Convide sua galera para ir com você.',
-                  style: TextStyle(
+                  style: theme.textTheme.bodyMedium?.copyWith(
                     fontSize: 14,
                     fontWeight: FontWeight.w700,
+                    color: colorScheme.onSurface,
                   ),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
@@ -249,9 +258,10 @@ Widget _buildInviteFooter(
                 constraints: const BoxConstraints(maxWidth: 220),
                 child: Text(
                   _inviteSummary(sentInvites),
-                  style: const TextStyle(
+                  style: theme.textTheme.bodySmall?.copyWith(
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
+                    color: textColorMuted,
                   ),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
@@ -261,7 +271,7 @@ Widget _buildInviteFooter(
           ),
     buttonText: 'BORA? Agitar a galera!',
     buttonIcon: Icons.rocket_launch,
-    buttonColor: const Color(0xFF9C27B0),
+    buttonColor: primary,
     onActionPressed: onInviteFriends,
   );
 }
@@ -379,10 +389,12 @@ class _PlusAvatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final baseOnSurface = colorScheme.onSurface;
     final bgColor = isEmptySlot
-        ? Colors.grey.withValues(alpha: 0.1)
-        : Colors.grey.withValues(alpha: 0.2);
-    final borderColor = Colors.grey.withValues(alpha: 0.5);
+        ? baseOnSurface.withValues(alpha: 0.08)
+        : baseOnSurface.withValues(alpha: 0.16);
+    final borderColor = baseOnSurface.withValues(alpha: 0.28);
 
     return CircleAvatar(
       radius: 16,
@@ -398,11 +410,11 @@ class _PlusAvatar extends StatelessWidget {
         child: Center(
           child: isEmptySlot
               ? Icon(Icons.person_outline,
-                  size: 16, color: Colors.grey.withValues(alpha: 0.8))
+                  size: 16, color: baseOnSurface.withValues(alpha: 0.65))
               : Text(
                   '+$count',
                   style: TextStyle(
-                    color: Colors.grey.shade800,
+                    color: baseOnSurface,
                     fontWeight: FontWeight.w700,
                     fontSize: 11,
                   ),

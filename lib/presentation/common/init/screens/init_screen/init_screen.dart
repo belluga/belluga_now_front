@@ -78,15 +78,11 @@ class _InitScreenState extends State<InitScreen> {
   void _gotoInitialRoute() {
     final initialRoute = _controller.initialRoute;
 
-    // Always push TenantHomeRoute first to establish the base stack
-    context.router.pushAndPopUntil(
+    // Always make Home the base of the stack, and stack InviteFlow on top when needed.
+    final routes = <PageRouteInfo>[
       const TenantHomeRoute(),
-      predicate: (route) => false,
-    );
-
-    // If the controller determined we should show invites, push it on top
-    if (initialRoute is InviteFlowRoute) {
-      context.router.push(const InviteFlowRoute());
-    }
+      if (initialRoute is InviteFlowRoute) const InviteFlowRoute(),
+    ];
+    context.router.replaceAll(routes);
   }
 }

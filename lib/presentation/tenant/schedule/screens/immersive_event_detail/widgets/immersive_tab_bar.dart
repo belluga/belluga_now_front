@@ -14,6 +14,12 @@ class ImmersiveTabBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final selectedColor = colorScheme.primary;
+    final unselectedColor = colorScheme.onSurface.withValues(alpha: 0.64);
+    final textStyle = theme.textTheme.labelLarge;
+
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -28,7 +34,7 @@ class ImmersiveTabBar extends StatelessWidget {
                 border: Border(
                   bottom: BorderSide(
                     color: isSelected
-                        ? Theme.of(context).primaryColor
+                        ? selectedColor
                         : Colors.transparent,
                     width: 2,
                   ),
@@ -37,10 +43,9 @@ class ImmersiveTabBar extends StatelessWidget {
               child: Text(
                 tabs[index],
                 style: TextStyle(
-                  color:
-                      isSelected ? Theme.of(context).primaryColor : Colors.grey,
-                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                ),
+                  color: isSelected ? selectedColor : unselectedColor,
+                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                ).merge(textStyle),
               ),
             ),
           );
