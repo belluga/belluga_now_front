@@ -80,7 +80,12 @@ class AppData {
         map['main_logo_light_url'] ?? map['main_logo_url'] as String?;
     final mainLogoDarkRaw =
         map['main_logo_dark_url'] ?? map['main_logo_url'] as String?;
-    final mainColorRaw = map['main_color'] as String?;
+    // `main_color` is no longer sent by the backend; use the seed color as the authoritative value.
+    final mainColorRaw = (map['main_color'] as String?) ??
+        (map['theme_data_settings'] is Map<String, dynamic>
+            ? (map['theme_data_settings'] as Map<String, dynamic>)[
+                'primary_seed_color'] as String?
+            : null);
 
     return AppData._(
       platformType: localInfo['platformType'].value,

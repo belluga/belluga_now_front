@@ -13,6 +13,7 @@ import 'package:belluga_now/application/router/modular_app/modules/profile_modul
 import 'package:belluga_now/application/router/modular_app/modules/schedule_module.dart';
 
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/friends_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/partners_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
@@ -20,6 +21,7 @@ import 'package:belluga_now/domain/repositories/tenant_repository_contract.dart'
 import 'package:belluga_now/domain/repositories/user_events_repository_contract.dart';
 import 'package:belluga_now/infrastructure/repositories/app_data_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/auth_repository.dart';
+import 'package:belluga_now/infrastructure/repositories/friends_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/invites_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/partners_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/schedule_repository.dart';
@@ -27,12 +29,13 @@ import 'package:belluga_now/infrastructure/repositories/tenant_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/user_events_repository.dart';
 import 'package:belluga_now/infrastructure/dal/dao/app_data_backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/backend_contract.dart';
-import 'package:belluga_now/infrastructure/dal/dao/mock_backend/mock_app_data_backend.dart';
+import 'package:belluga_now/infrastructure/dal/dao/laravel_backend/app_data_backend/app_data_backend.dart';
 import 'package:belluga_now/infrastructure/dal/dao/mock_backend/mock_backend.dart';
 import 'package:belluga_now/infrastructure/dal/dao/mock_backend/mock_schedule_backend.dart';
 import 'package:belluga_now/infrastructure/dal/dao/mock_backend/mock_tenant_backend.dart';
 import 'package:belluga_now/infrastructure/dal/dao/tenant_backend_contract.dart';
 import 'package:belluga_now/infrastructure/services/schedule_backend_contract.dart';
+import 'package:flutter/foundation.dart';
 import 'package:get_it/get_it.dart';
 import 'package:get_it_modular_with_auto_route/get_it_modular_with_auto_route.dart';
 import 'package:meta/meta.dart';
@@ -48,7 +51,7 @@ class ModuleSettings extends ModuleSettingsContract {
     ScheduleBackendContract Function()? scheduleBackendBuilderForTest,
   })  : _backendBuilder = backendBuilderForTest ?? (() => MockBackend()),
         _appDataBackendBuilder =
-            appDataBackendBuilderForTest ?? (() => MockAppDataBackend()),
+            appDataBackendBuilderForTest ?? (() => AppDataBackend()),
         _tenantBackendBuilder =
             tenantBackendBuilderForTest ?? (() => MockTenantBackend()),
         _scheduleBackendBuilder =
@@ -96,11 +99,14 @@ class ModuleSettings extends ModuleSettingsContract {
     _registerIfAbsent<UserEventsRepositoryContract>(
       () => UserEventsRepository(),
     );
-    _registerIfAbsent<InvitesRepositoryContract>(
-      () => InvitesRepository(),
+    _registerIfAbsent<FriendsRepositoryContract>(
+      () => FriendsRepository(),
     );
     _registerIfAbsent<PartnersRepositoryContract>(
       () => PartnersRepository(),
+    );
+    _registerIfAbsent<InvitesRepositoryContract>(
+      () => InvitesRepository(),
     );
   }
 
