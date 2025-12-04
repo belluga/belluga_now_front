@@ -1,4 +1,5 @@
 import 'package:belluga_now/domain/schedule/event_model.dart';
+import 'package:belluga_now/presentation/common/widgets/image_palette_theme.dart';
 import 'package:belluga_now/presentation/tenant/schedule/screens/event_detail_screen/controllers/event_detail_controller.dart';
 import 'package:belluga_now/presentation/tenant/schedule/screens/event_detail_screen/event_detail_screen.dart';
 import 'package:flutter/material.dart';
@@ -21,7 +22,7 @@ class EventDetailLoader extends StatefulWidget {
 class _EventDetailLoaderState extends State<EventDetailLoader> {
   late final EventDetailController _controller =
       widget.controller ?? GetIt.I.get<EventDetailController>();
-  late final Future<EventModel?> _eventFuture;
+  late Future<EventModel?> _eventFuture;
 
   @override
   void initState() {
@@ -52,7 +53,20 @@ class _EventDetailLoaderState extends State<EventDetailLoader> {
           );
         }
 
-        return EventDetailScreen(event: event);
+        final thumb = event.thumb?.thumbUri.value;
+        if (thumb == null) {
+          return EventDetailScreen(event: event);
+        }
+
+        return ImagePaletteTheme(
+          imageProvider: NetworkImage(thumb.toString()),
+          builder: (context, scheme) {
+            return EventDetailScreen(
+              event: event,
+              colorScheme: scheme,
+            );
+          },
+        );
       },
     );
   }

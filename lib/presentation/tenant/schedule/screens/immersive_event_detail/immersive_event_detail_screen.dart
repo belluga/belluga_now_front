@@ -26,10 +26,12 @@ import 'package:stream_value/core/stream_value_builder.dart';
 class ImmersiveEventDetailScreen extends StatefulWidget {
   const ImmersiveEventDetailScreen({
     required this.event,
+    this.colorScheme,
     super.key,
   });
 
   final EventModel event;
+  final ColorScheme? colorScheme;
 
   @override
   State<ImmersiveEventDetailScreen> createState() =>
@@ -60,7 +62,8 @@ class _ImmersiveEventDetailScreenState
         return StreamValueBuilder<bool>(
           streamValue: _controller.isConfirmedStreamValue,
           builder: (context, isConfirmed) {
-            final colorScheme = Theme.of(context).colorScheme;
+            final colorScheme =
+                widget.colorScheme ?? Theme.of(context).colorScheme;
             return StreamValueBuilder<List<InviteModel>>(
               streamValue: _controller.receivedInvitesStreamValue,
               builder: (context, receivedInvites) {
@@ -146,14 +149,19 @@ class _ImmersiveEventDetailScreenState
                             onActionPressed: _controller.confirmAttendance,
                           );
 
-                    return ImmersiveDetailScreen(
-                      heroContent: ImmersiveHero(event: event),
-                      title: event.title.value,
-                      betweenHeroAndTabs: topBanner,
-                      tabs: tabs,
-                      // Don't auto-navigate, let user scroll naturally
-                      // initialTabIndex defaults to 0
-                      footer: footer,
+                    return Theme(
+                      data: Theme.of(context).copyWith(
+                        colorScheme: colorScheme,
+                      ),
+                      child: ImmersiveDetailScreen(
+                        heroContent: ImmersiveHero(event: event),
+                        title: event.title.value,
+                        betweenHeroAndTabs: topBanner,
+                        tabs: tabs,
+                        // Don't auto-navigate, let user scroll naturally
+                        // initialTabIndex defaults to 0
+                        footer: footer,
+                      ),
                     );
                   },
                 );

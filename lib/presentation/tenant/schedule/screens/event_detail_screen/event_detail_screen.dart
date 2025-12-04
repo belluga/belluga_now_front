@@ -28,9 +28,11 @@ class EventDetailScreen extends StatefulWidget {
   const EventDetailScreen({
     super.key,
     required this.event,
+    this.colorScheme,
   });
 
   final EventModel event;
+  final ColorScheme? colorScheme;
 
   @override
   State<EventDetailScreen> createState() => _EventDetailScreenState();
@@ -68,7 +70,8 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
+    final effectiveScheme = widget.colorScheme ?? Theme.of(context).colorScheme;
+    final colorScheme = effectiveScheme;
     final theme = Theme.of(context).textTheme;
     final DateTime startDate =
         widget.event.dateTimeStart.value ?? DateTime.now();
@@ -78,7 +81,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
         coverUri?.toString() ?? EventDetailScreen._fallbackImage;
     final EventTypeModel type = widget.event.type;
 
-    return Scaffold(
+    final content = Scaffold(
       backgroundColor: colorScheme.surface,
       body: CustomScrollView(
         slivers: [
@@ -335,6 +338,11 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
           );
         },
       ),
+    );
+
+    return Theme(
+      data: Theme.of(context).copyWith(colorScheme: effectiveScheme),
+      child: content,
     );
   }
 

@@ -100,7 +100,9 @@ class _TenantHomeScreenState extends State<TenantHomeScreen> {
                 contentSpacing: EdgeInsets.zero,
                 cardBuilder: (event) => CarouselCard(
                   imageUri: event.imageUri,
-                  contentOverlay: EventDetails(event: event),
+                  contentOverlay: EventDetails(
+                    event: event,
+                  ),
                 ),
               ),
               SectionHeader(
