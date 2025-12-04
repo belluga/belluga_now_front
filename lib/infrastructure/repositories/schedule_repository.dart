@@ -96,8 +96,9 @@ class ScheduleRepository extends ScheduleRepositoryContract {
       searchQuery: searchQuery,
     );
 
-    final events =
-        pageDto.events.map((e) => EventModel.fromDto(e)).toList(growable: false);
+    final events = pageDto.events
+        .map((e) => EventModel.fromDto(e))
+        .toList(growable: false);
 
     return PagedEventsResult(
       events: events,
@@ -121,16 +122,25 @@ class ScheduleRepository extends ScheduleRepositoryContract {
   @override
   Future<List<VenueEventResume>> fetchUpcomingEvents() async {
     final events = await getAllEvents();
-    // Filter for future events
     final now = DateTime.now();
-    final upcoming = events.where((e) {
+    const assumedDuration = Duration(hours: 3);
+
+    bool isHappeningNow(EventModel e) {
       final start = e.dateTimeStart.value;
-      return start != null && start.isAfter(now);
+      if (start == null) return false;
+      final end = e.dateTimeEnd?.value ?? start.add(assumedDuration);
+      final started = !now.isBefore(start);
+      final notEnded = now.isBefore(end);
+      return started && notEnded;
+    }
+
+    final upcomingOrNow = events.where((e) {
+      final start = e.dateTimeStart.value;
+      if (start == null) return false;
+      return start.isAfter(now) || isHappeningNow(e);
     }).toList();
 
-    // If no upcoming, just return all for demo purposes, or empty.
-    // Let's return all sorted by date if upcoming is empty to ensure data visibility.
-    final listToMap = upcoming.isNotEmpty ? upcoming : events;
+    final listToMap = upcomingOrNow.isNotEmpty ? upcomingOrNow : events;
 
     return listToMap
         .map(

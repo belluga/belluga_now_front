@@ -50,6 +50,8 @@ class TenantHomeController implements Disposable {
       StreamValue<List<VenueEventResume>>(defaultValue: []);
   final StreamValue<List<VenueEventResume>> upcomingEventsStreamValue =
       StreamValue<List<VenueEventResume>>(defaultValue: []);
+  final StreamValue<List<VenueEventResume>> liveEventsStreamValue =
+      StreamValue<List<VenueEventResume>>(defaultValue: []);
 
   StreamValue<Set<String>> get confirmedIdsStream =>
       _userEventsRepository.confirmedEventIdsStream;
@@ -173,9 +175,22 @@ class TenantHomeController implements Disposable {
     try {
       final events = await _scheduleRepository.fetchUpcomingEvents();
       upcomingEventsStreamValue.addValue(events);
+      liveEventsStreamValue.addValue(_filterLiveNow(events));
     } catch (_) {
       // keep last value; StreamValue already holds previous state
     }
+  }
+
+  List<VenueEventResume> _filterLiveNow(List<VenueEventResume> events) {
+    const assumedDuration = Duration(hours: 3);
+    final now = DateTime.now();
+    return events.where((event) {
+      final start = event.startDateTime;
+      final end = start.add(assumedDuration);
+      final isStarted = !now.isBefore(start);
+      final isNotEnded = now.isBefore(end);
+      return isStarted && isNotEnded;
+    }).toList();
   }
 
   /// Get icon for partner type badge
@@ -201,5 +216,6 @@ class TenantHomeController implements Disposable {
     favoritesStreamValue.dispose();
     myEventsStreamValue.dispose();
     upcomingEventsStreamValue.dispose();
+    liveEventsStreamValue.dispose();
   }
 }

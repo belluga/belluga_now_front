@@ -6,9 +6,8 @@ import 'package:belluga_now/presentation/tenant/home/screens/tenant_home_screen/
 import 'package:belluga_now/presentation/tenant/home/screens/tenant_home_screen/widgets/invites_banner_builder.dart';
 import 'package:belluga_now/presentation/tenant/home/screens/tenant_home_screen/widgets/upcoming_events_section.dart';
 import 'package:belluga_now/presentation/tenant/widgets/belluga_bottom_navigation_bar.dart';
-import 'package:belluga_now/presentation/tenant/widgets/carousel_card.dart';
 import 'package:belluga_now/presentation/tenant/widgets/carousel_section.dart';
-import 'package:belluga_now/presentation/tenant/widgets/event_details.dart';
+import 'package:belluga_now/presentation/tenant/widgets/event_live_now_card.dart';
 import 'package:belluga_now/presentation/tenant/widgets/section_header.dart';
 import 'package:belluga_now/presentation/tenant/widgets/animated_search_button.dart';
 import 'package:belluga_now/presentation/tenant/schedule/screens/event_search_screen/models/invite_filter.dart';
@@ -35,7 +34,6 @@ class _TenantHomeScreenState extends State<TenantHomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-
     final width = MediaQuery.of(context).size.width;
 
     return Scaffold(
@@ -88,21 +86,19 @@ class _TenantHomeScreenState extends State<TenantHomeScreen> {
                 margin: const EdgeInsets.only(bottom: 16),
               ),
               CarouselSection<VenueEventResume>(
-                title: 'Seus Eventos',
-                streamValue: _controller.myEventsStreamValue,
+                title: 'Acontecendo Agora',
+                streamValue: _controller.liveEventsStreamValue,
                 loading: SizedBox(
                   height: width * 0.8 * 9 / 16,
                   child: const Center(child: CircularProgressIndicator()),
                 ),
                 empty: const SizedBox.shrink(),
-                onSeeAll: _openMyEventsConfirmed,
+                onSeeAll: _openUpcomingEvents,
                 sectionPadding: const EdgeInsets.only(bottom: 16),
                 contentSpacing: EdgeInsets.zero,
-                cardBuilder: (event) => CarouselCard(
-                  imageUri: event.imageUri,
-                  contentOverlay: EventDetails(
-                    event: event,
-                  ),
+                cardBuilder: (event) => EventLiveNowCard(
+                  event: event,
+                  onTap: () => _openEventDetailSlug(event.slug),
                 ),
               ),
               SectionHeader(
@@ -124,10 +120,6 @@ class _TenantHomeScreenState extends State<TenantHomeScreen> {
 
   void _openInviteFlow() {
     context.router.push(const InviteFlowRoute());
-  }
-
-  void _openMyEventsConfirmed() {
-    _openSearchWithFilter(InviteFilter.confirmedOnly);
   }
 
   void _openUpcomingEvents() {

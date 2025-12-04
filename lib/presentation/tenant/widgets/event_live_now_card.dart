@@ -69,83 +69,72 @@ class EventLiveNowCard extends StatelessWidget {
                       ),
                     ),
                   ),
-                  Container(
-                    key: const ValueKey('liveContent'),
-                    padding: EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.end,
-                          children: [
-                            Positioned(
-                              top: 12,
-                              left: 12,
-                              child: DecoratedBox(
-                                decoration: BoxDecoration(
-                                  color: colorScheme.errorContainer,
-                                  borderRadius: BorderRadius.circular(999),
-                                ),
-                                child: Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 10, vertical: 6),
-                                  child: Text(
-                                    'AGORA',
-                                    style:
-                                        theme.textTheme.labelMedium?.copyWith(
-                                      color: colorScheme.onErrorContainer,
-                                      fontWeight: FontWeight.w800,
-                                      letterSpacing: 1.1,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        Positioned(
-                          left: 16,
-                          right: 16,
-                          bottom: 16,
-                          child: AnimatedSwitcher(
-                            duration: const Duration(milliseconds: 200),
-                            child: isFullSize
-                                ? Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Text(
-                                        event.title,
-                                        maxLines: 2,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: theme.textTheme.titleMedium
-                                            ?.copyWith(
-                                          color: onOverlay,
-                                          fontWeight: FontWeight.w800,
+                  Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 200),
+                      child: isFullSize
+                          ? Column(
+                              key: const ValueKey('liveContent'),
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.end,
+                                  children: [
+                                    DecoratedBox(
+                                      decoration: BoxDecoration(
+                                        color: colorScheme.errorContainer,
+                                        borderRadius:
+                                            BorderRadius.circular(999),
+                                      ),
+                                      child: Padding(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 10, vertical: 6),
+                                        child: Text(
+                                          'AGORA',
+                                          style: theme.textTheme.labelMedium
+                                              ?.copyWith(
+                                            color: colorScheme.onErrorContainer,
+                                            fontWeight: FontWeight.w800,
+                                            letterSpacing: 1.1,
+                                          ),
                                         ),
                                       ),
-                                      const SizedBox(height: 10),
-                                      EventInfoRow(
-                                        icon: Icons.schedule,
-                                        label: timeRange,
-                                        color:
-                                            onOverlay.withValues(alpha: 0.95),
+                                    ),
+                                  ],
+                                ),
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      event.title,
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                      style:
+                                          theme.textTheme.titleMedium?.copyWith(
+                                        color: onOverlay,
+                                        fontWeight: FontWeight.w800,
                                       ),
-                                      const SizedBox(height: 6),
-                                      EventInfoRow(
-                                        icon: Icons.place_outlined,
-                                        label: event.location,
-                                        color: onOverlay.withValues(alpha: 0.9),
-                                      ),
-                                    ],
-                                  )
-                                : const SizedBox.shrink(
-                                    key: ValueKey('liveEmpty')),
-                          ),
-                        ),
-                      ],
+                                    ),
+                                    const SizedBox(height: 10),
+                                    EventInfoRow(
+                                      icon: Icons.schedule,
+                                      label: timeRange,
+                                      color: onOverlay.withValues(alpha: 0.95),
+                                    ),
+                                    const SizedBox(height: 6),
+                                    EventInfoRow(
+                                      icon: Icons.place_outlined,
+                                      label: event.location,
+                                      color: onOverlay.withValues(alpha: 0.9),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            )
+                          : const SizedBox.shrink(key: ValueKey('liveEmpty')),
                     ),
                   ),
                 ],

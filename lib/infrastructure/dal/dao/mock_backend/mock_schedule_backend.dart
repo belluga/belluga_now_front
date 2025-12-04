@@ -14,6 +14,7 @@ class MockScheduleBackend implements ScheduleBackendContract {
 
   static const Duration _defaultEventDuration = Duration(hours: 3);
   List<EventDTO>? _cachedEvents;
+  static const Duration _assumedLiveDuration = Duration(hours: 3);
 
   @override
   Future<EventSummaryDTO> fetchSummary() async {
@@ -122,9 +123,8 @@ class MockScheduleBackend implements ScheduleBackendContract {
         final venue = _eventVenues[index % _eventVenues.length];
         return seeds[index].toDto(_today, venue);
       },
-    )..sort((a, b) =>
-        DateTime.parse(a.dateTimeStart)
-            .compareTo(DateTime.parse(b.dateTimeStart)));
+    )..sort((a, b) => DateTime.parse(a.dateTimeStart)
+        .compareTo(DateTime.parse(b.dateTimeStart)));
 
     _cachedEvents = events;
     return events;
@@ -132,6 +132,35 @@ class MockScheduleBackend implements ScheduleBackendContract {
 
   List<MockEventSeed> _buildSeedsWithPast() {
     final seeds = <MockEventSeed>[...eventSeeds];
+
+    // Ensure at least two "happening now" events (start before now, still within duration)
+    final now = DateTime.now();
+    final liveStartHour = (now.hour - 1).clamp(0, 23);
+    final liveStartHour2 = (now.hour - 2).clamp(0, 23);
+    final liveSeeds = eventSeeds.take(2).toList();
+    final liveCopies = <MockEventSeed>[];
+    if (liveSeeds.isNotEmpty) {
+      liveCopies.add(
+        liveSeeds[0].copyWith(
+          id: '${liveSeeds[0].id}-live',
+          offsetDays: 0,
+          startHour: liveStartHour,
+          durationMinutes: _assumedLiveDuration.inMinutes,
+        ),
+      );
+    }
+    if (liveSeeds.length > 1) {
+      liveCopies.add(
+        liveSeeds[1].copyWith(
+          id: '${liveSeeds[1].id}-live2',
+          offsetDays: 0,
+          startHour: liveStartHour2,
+          durationMinutes: _assumedLiveDuration.inMinutes,
+        ),
+      );
+    }
+    seeds.addAll(liveCopies);
+
     for (var daysBack = 1; daysBack <= 3; daysBack++) {
       seeds.addAll(
         eventSeeds.map(
