@@ -11,7 +11,7 @@ import 'package:belluga_now/domain/invites/value_objects/invite_message_value.da
 import 'package:belluga_now/domain/invites/value_objects/invite_tag_value.dart';
 import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
 import 'package:belluga_now/domain/value_objects/title_value.dart';
-import 'package:belluga_now/infrastructure/invites/dtos/invite_dto.dart';
+import 'package:belluga_now/infrastructure/dal/dto/invites/invite_dto.dart';
 import 'package:value_object_pattern/domain/exceptions/value_exceptions.dart';
 
 class InviteModel {

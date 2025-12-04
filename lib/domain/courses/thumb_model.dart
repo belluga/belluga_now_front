@@ -1,8 +1,8 @@
 import 'package:belluga_now/domain/courses/enums/thumb_types.dart';
 import 'package:belluga_now/domain/courses/value_objects/thumb_type_value.dart';
 import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
-import 'package:belluga_now/infrastructure/courses/dtos/thumb_dto.dart';
-import 'package:belluga_now/infrastructure/services/dal/dto/thumb_dto.dart'
+import 'package:belluga_now/infrastructure/dal/dto/course/thumb_dto.dart';
+import 'package:belluga_now/infrastructure/dal/dto/thumb_dto.dart'
     as dal;
 
 class ThumbModel {

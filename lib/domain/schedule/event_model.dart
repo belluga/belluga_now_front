@@ -12,9 +12,9 @@ import 'package:belluga_now/domain/schedule/event_action_model/event_action_mode
 import 'package:belluga_now/domain/schedule/event_type_model.dart';
 import 'package:belluga_now/domain/value_objects/description_value.dart';
 import 'package:belluga_now/domain/value_objects/title_value.dart';
-import 'package:belluga_now/infrastructure/artist/dtos/artist_resume_dto.dart';
-import 'package:belluga_now/infrastructure/invites/dtos/invite_dto.dart';
-import 'package:belluga_now/infrastructure/services/dal/dto/schedule/event_dto.dart';
+import 'package:belluga_now/infrastructure/dal/dto/artist/artist_resume_dto.dart';
+import 'package:belluga_now/infrastructure/dal/dto/invites/invite_dto.dart';
+import 'package:belluga_now/infrastructure/dal/dto/schedule/event_dto.dart';
 import 'package:flutter/material.dart';
 import 'package:value_object_pattern/domain/value_objects/date_time_value.dart';
 import 'package:value_object_pattern/domain/value_objects/html_content_value.dart';

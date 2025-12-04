@@ -3,7 +3,7 @@ import 'package:belluga_now/domain/schedule/event_action_model/event_action_unsu
 import 'package:belluga_now/domain/schedule/event_action_types.dart';
 import 'package:belluga_now/domain/value_objects/color_value.dart';
 import 'package:belluga_now/domain/value_objects/title_value.dart';
-import 'package:belluga_now/infrastructure/services/dal/dto/schedule/event_action_dto.dart';
+import 'package:belluga_now/infrastructure/dal/dto/schedule/event_action_dto.dart';
 import 'package:flutter/material.dart';
 import 'package:value_object_pattern/domain/value_objects/mongo_id_value.dart';
 import 'package:value_object_pattern/domain/value_objects/uri_value.dart';

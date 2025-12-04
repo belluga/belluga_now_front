@@ -8,7 +8,7 @@ import 'package:belluga_now/domain/map/map_status.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/infrastructure/repositories/poi_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/user_location_repository.dart';
-import 'package:belluga_now/infrastructure/services/dal/datasources/poi_query.dart';
+import 'package:belluga_now/infrastructure/dal/datasources/poi_query.dart';
 import 'package:free_map/free_map.dart';
 import 'package:flutter/foundation.dart';
 import 'package:get_it/get_it.dart';

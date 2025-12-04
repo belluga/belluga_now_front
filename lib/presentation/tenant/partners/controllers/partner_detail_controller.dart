@@ -1,7 +1,7 @@
 import 'package:belluga_now/domain/partners/partner_model.dart';
 import 'package:belluga_now/domain/repositories/partners_repository_contract.dart';
-import 'package:belluga_now/infrastructure/services/dal/datasources/mock_partner_profile_database.dart';
-import 'package:belluga_now/infrastructure/services/dal/datasources/mock_partner_content_repository.dart';
+import 'package:belluga_now/infrastructure/dal/datasources/mock_partner_profile_database.dart';
+import 'package:belluga_now/infrastructure/dal/datasources/mock_partner_content_repository.dart';
 import 'package:belluga_now/presentation/tenant/partners/models/partner_profile_config.dart';
 import 'package:belluga_now/infrastructure/services/mock_audio_player_service.dart';
 import 'package:get_it/get_it.dart';

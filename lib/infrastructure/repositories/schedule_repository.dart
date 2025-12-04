@@ -3,9 +3,9 @@ import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/schedule/paged_events_result.dart';
 import 'package:belluga_now/domain/schedule/schedule_summary_model.dart';
 import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
-import 'package:belluga_now/infrastructure/mappers/course_dto_mapper.dart';
-import 'package:belluga_now/infrastructure/services/dal/dto/schedule/event_dto.dart';
-import 'package:belluga_now/infrastructure/services/dal/dto/schedule/event_page_dto.dart';
+import 'package:belluga_now/infrastructure/dal/dto/mappers/course_dto_mapper.dart';
+import 'package:belluga_now/infrastructure/dal/dto/schedule/event_dto.dart';
+import 'package:belluga_now/infrastructure/dal/dto/schedule/event_page_dto.dart';
 import 'package:belluga_now/infrastructure/services/schedule_backend_contract.dart';
 import 'package:get_it/get_it.dart';
 

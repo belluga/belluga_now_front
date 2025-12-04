@@ -3,9 +3,9 @@ import 'dart:async';
 import 'package:belluga_now/domain/map/filters/main_filter_option.dart';
 import 'package:belluga_now/domain/map/filters/poi_filter_options.dart';
 import 'package:belluga_now/domain/map/map_region_definition.dart';
-import 'package:belluga_now/infrastructure/services/dal/datasources/mock_poi_database.dart';
-import 'package:belluga_now/infrastructure/services/dal/datasources/poi_query.dart';
-import 'package:belluga_now/infrastructure/services/dal/dto/map/city_poi_dto.dart';
+import 'package:belluga_now/infrastructure/dal/datasources/mock_poi_database.dart';
+import 'package:belluga_now/infrastructure/dal/datasources/poi_query.dart';
+import 'package:belluga_now/infrastructure/dal/dto/map/city_poi_dto.dart';
 import 'package:get_it/get_it.dart';
 
 class MockHttpService {

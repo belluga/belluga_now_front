@@ -1,8 +1,8 @@
 import 'package:belluga_now/application/configurations/app_environment_fallback.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
-import 'package:belluga_now/infrastructure/services/dal/dao/app_data_backend_contract.dart';
-import 'package:belluga_now/infrastructure/services/dal/dao/local/app_data_local_info_source/app_data_local_info_source.dart';
-import 'package:belluga_now/infrastructure/services/dal/dto/app_data_dto.dart';
+import 'package:belluga_now/infrastructure/dal/dao/app_data_backend_contract.dart';
+import 'package:belluga_now/infrastructure/dal/dao/local/app_data_local_info_source/app_data_local_info_source.dart';
+import 'package:belluga_now/infrastructure/dal/dto/app_data_dto.dart';
 import 'dart:async';
 
 import 'package:flutter/widgets.dart';
@@ -11,14 +11,9 @@ import 'package:get_it/get_it.dart';
 class AppDataRepository {
   late AppData appData;
 
-  final AppDataBackendContract _backend;
-  final AppDataLocalInfoSource _localInfoSource;
+  final _backend = GetIt.I.get<AppDataBackendContract>();
 
-  AppDataRepository({
-    required AppDataLocalInfoSource localInfoSource,
-    required AppDataBackendContract backend,
-  })  : _backend = backend,
-        _localInfoSource = localInfoSource;
+  final _localInfoSource = AppDataLocalInfoSource();
 
   Future<void> init() async {
     final localInfo = await _localInfoSource.getInfo();

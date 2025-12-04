@@ -1,7 +1,7 @@
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/user/user_belluga.dart';
 import 'package:belluga_now/infrastructure/user/dtos/user_dto.dart';
-import 'package:belluga_now/infrastructure/services/dal/dao/backend_contract.dart';
+import 'package:belluga_now/infrastructure/dal/dao/backend_contract.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/main.dart';

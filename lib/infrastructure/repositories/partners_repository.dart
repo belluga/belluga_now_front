@@ -1,6 +1,6 @@
 import 'package:belluga_now/domain/partners/partner_model.dart';
 import 'package:belluga_now/domain/repositories/partners_repository_contract.dart';
-import 'package:belluga_now/infrastructure/services/dal/datasources/mock_partners_database.dart';
+import 'package:belluga_now/infrastructure/dal/datasources/mock_partners_database.dart';
 
 class PartnersRepository extends PartnersRepositoryContract {
   PartnersRepository({

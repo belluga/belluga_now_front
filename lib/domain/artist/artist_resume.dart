@@ -2,7 +2,7 @@ import 'package:belluga_now/domain/artist/value_objects/artist_avatar_value.dart
 import 'package:belluga_now/domain/artist/value_objects/artist_id_value.dart';
 import 'package:belluga_now/domain/artist/value_objects/artist_is_highlight_value.dart';
 import 'package:belluga_now/domain/artist/value_objects/artist_name_value.dart';
-import 'package:belluga_now/infrastructure/artist/dtos/artist_resume_dto.dart';
+import 'package:belluga_now/infrastructure/dal/dto/artist/artist_resume_dto.dart';
 
 class ArtistResume {
   ArtistResume({

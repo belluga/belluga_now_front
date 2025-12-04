@@ -1,6 +1,6 @@
 import 'package:belluga_now/domain/experiences/experience_model.dart';
 import 'package:belluga_now/domain/repositories/experiences_repository_contract.dart';
-import 'package:belluga_now/infrastructure/services/dal/datasources/mock_experiences_database.dart';
+import 'package:belluga_now/infrastructure/dal/datasources/mock_experiences_database.dart';
 
 class ExperiencesRepository extends ExperiencesRepositoryContract {
   ExperiencesRepository({

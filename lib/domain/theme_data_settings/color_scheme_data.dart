@@ -1,6 +1,6 @@
 import 'package:belluga_now/domain/theme_data_settings/value_objects/brightness_value.dart';
 import 'package:belluga_now/domain/value_objects/color_required_value.dart';
-import 'package:belluga_now/infrastructure/extensions/to_hex.dart';
+import 'package:belluga_now/application/functions/to_hex.dart';
 import 'package:flutter/material.dart';
 import 'package:material_color_utilities/material_color_utilities.dart';
 
