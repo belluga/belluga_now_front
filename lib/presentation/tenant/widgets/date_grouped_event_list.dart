@@ -11,7 +11,7 @@ class DateGroupedEventList extends StatelessWidget {
     this.shrinkWrap = false,
     this.physics,
     this.isConfirmed,
-    this.hasPendingInvite,
+    this.pendingInvitesCount,
     this.statusIconSize,
     this.highlightNowEvents = false,
     this.highlightTodayEvents = false,
@@ -27,7 +27,7 @@ class DateGroupedEventList extends StatelessWidget {
   final ScrollPhysics? physics;
   final ScrollController? controller;
   final bool Function(VenueEventResume event)? isConfirmed;
-  final bool Function(VenueEventResume event)? hasPendingInvite;
+  final int Function(VenueEventResume event)? pendingInvitesCount;
   final double? statusIconSize;
   final bool highlightNowEvents;
   final bool highlightTodayEvents;
@@ -93,9 +93,7 @@ class DateGroupedEventList extends StatelessWidget {
       )..sort((a, b) => sortDescending
           ? b.startDateTime.compareTo(a.startDateTime)
           : a.startDateTime.compareTo(b.startDateTime));
-      final tag = highlightTodayEvents
-          ? _tagForDate(date, now)
-          : null;
+      final tag = highlightTodayEvents ? _tagForDate(date, now) : null;
       sections.add(
         _EventSection(
           label: DateFormat.MMMMEEEEd().format(date).toUpperCase(),
@@ -142,7 +140,8 @@ class DateGroupedEventList extends StatelessWidget {
                           borderRadius: BorderRadius.circular(26),
                           boxShadow: [
                             BoxShadow(
-                              color: colorScheme.primary.withValues(alpha: 0.18),
+                              color:
+                                  colorScheme.primary.withValues(alpha: 0.18),
                               blurRadius: 10,
                               offset: const Offset(0, 6),
                             ),
@@ -199,12 +198,14 @@ class DateGroupedEventList extends StatelessWidget {
                           children: [
                             Expanded(
                               child: Divider(
-                                color: colorScheme.primary.withValues(alpha: 0.3),
+                                color:
+                                    colorScheme.primary.withValues(alpha: 0.3),
                                 thickness: 1.5,
                               ),
                             ),
                             Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 12),
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 12),
                               child: Text(
                                 section.label,
                                 style: theme.textTheme.titleSmall?.copyWith(
@@ -222,7 +223,8 @@ class DateGroupedEventList extends StatelessWidget {
                             ),
                             Expanded(
                               child: Divider(
-                                color: colorScheme.primary.withValues(alpha: 0.3),
+                                color:
+                                    colorScheme.primary.withValues(alpha: 0.3),
                                 thickness: 1.5,
                               ),
                             ),
@@ -238,7 +240,7 @@ class DateGroupedEventList extends StatelessWidget {
                     event: event,
                     onTap: () => onEventSelected(event.slug),
                     isConfirmed: isConfirmed?.call(event) ?? false,
-                    hasPendingInvite: hasPendingInvite?.call(event) ?? false,
+                    pendingInvitesCount: pendingInvitesCount?.call(event) ?? 0,
                     statusIconSize: statusIconSize ?? 24,
                   ),
                 )),

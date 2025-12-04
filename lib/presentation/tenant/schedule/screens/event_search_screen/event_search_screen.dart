@@ -58,11 +58,11 @@ class _EventSearchScreenState extends State<EventSearchScreen> {
               title: AnimatedSwitcher(
                 duration: const Duration(milliseconds: 200),
                 child: isActive
-                  ? TextField(
-                      key: const ValueKey('searchField'),
-                      controller: _controller.searchController,
-                      focusNode: _controller.focusNode,
-                      style: theme.textTheme.titleMedium,
+                    ? TextField(
+                        key: const ValueKey('searchField'),
+                        controller: _controller.searchController,
+                        focusNode: _controller.focusNode,
+                        style: theme.textTheme.titleMedium,
                         decoration: InputDecoration(
                           hintText: 'Buscar eventos...',
                           border: InputBorder.none,
@@ -79,14 +79,14 @@ class _EventSearchScreenState extends State<EventSearchScreen> {
                             ),
                           ),
                         ),
-                      onChanged: _controller.searchEvents,
-                      autofocus: true,
-                    )
-                  : Text(
-                      'Agenda',
-                      key: const ValueKey('searchLabel'),
-                      style: theme.textTheme.titleLarge,
-                    ),
+                        onChanged: _controller.searchEvents,
+                        autofocus: true,
+                      )
+                    : Text(
+                        'Agenda',
+                        key: const ValueKey('searchLabel'),
+                        style: theme.textTheme.titleLarge,
+                      ),
               ),
               actionsPadding: const EdgeInsets.only(right: 8),
               actions: [
@@ -183,8 +183,8 @@ class _EventSearchScreenState extends State<EventSearchScreen> {
                           events: resumes,
                           isConfirmed: (event) =>
                               _controller.isEventConfirmed(event.id),
-                          hasPendingInvite: (event) =>
-                              _controller.hasPendingInvite(event.id),
+                          pendingInvitesCount: (event) =>
+                              _controller.pendingInviteCount(event.id),
                           statusIconSize: 22,
                           highlightNowEvents: true,
                           highlightTodayEvents: true,
@@ -226,19 +226,19 @@ class _EventSearchScreenState extends State<EventSearchScreen> {
         return Icon(
           BooraIcons.invite_outlined,
           color: theme.iconTheme.color,
-          size: 22,
+          size: 20,
         );
       case InviteFilter.invitesAndConfirmed:
-        return const Icon(
+        return Icon(
           BooraIcons.invite_outlined,
-          color: Colors.orange,
-          size: 22,
+          color: theme.colorScheme.tertiary,
+          size: 20,
         );
       case InviteFilter.confirmedOnly:
         return Icon(
           BooraIcons.invite_solid,
           color: theme.colorScheme.primary,
-          size: 22,
+          size: 20,
         );
     }
   }
@@ -255,8 +255,9 @@ class _EventSearchScreenState extends State<EventSearchScreen> {
   }
 
   Widget _historyIcon(ThemeData theme, bool isSelected) {
-    final color =
-        isSelected ? theme.colorScheme.primary : theme.colorScheme.onSurfaceVariant;
+    final color = isSelected
+        ? theme.colorScheme.primary
+        : theme.colorScheme.onSurfaceVariant;
     final icon = isSelected ? Icons.history : Icons.history_outlined;
 
     return Icon(icon, color: color, size: 22);

@@ -59,13 +59,16 @@ class UpcomingEventsSection extends StatelessWidget {
                       itemBuilder: (context, index) {
                         final event = filteredEvents[index];
                         final isConfirmed = confirmedIds.contains(event.id);
-                        final hasPendingInvite = pendingInvites.any(
-                            (invite) => invite.eventIdValue.value == event.id);
+                        final pendingCount = pendingInvites
+                            .where(
+                              (invite) => invite.eventIdValue.value == event.id,
+                            )
+                            .length;
                         return UpcomingEventCard(
                           event: event,
                           onTap: () => onEventSelected(event.slug),
                           isConfirmed: isConfirmed,
-                          hasPendingInvite: hasPendingInvite,
+                          pendingInvitesCount: pendingCount,
                         );
                       },
                     );

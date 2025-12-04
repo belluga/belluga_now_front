@@ -203,9 +203,12 @@ class EventSearchScreenController implements Disposable {
   bool isEventConfirmed(String eventId) =>
       _userEventsRepository.isEventConfirmed(eventId);
 
-  bool hasPendingInvite(String eventId) =>
+  int pendingInviteCount(String eventId) =>
       _invitesRepository.pendingInvitesStreamValue.value
-          .any((invite) => invite.eventId == eventId);
+          .where((invite) => invite.eventId == eventId)
+          .length;
+
+  bool hasPendingInvite(String eventId) => pendingInviteCount(eventId) > 0;
 
   void _listenForStatusChanges() {
     _confirmedEventsSubscription?.cancel();
