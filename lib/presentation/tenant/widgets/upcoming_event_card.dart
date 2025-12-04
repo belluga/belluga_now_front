@@ -29,53 +29,71 @@ class UpcomingEventCard extends StatelessWidget {
     final theme = Theme.of(context);
     final scheduleLabel =
         '${event.startDateTime.dayLabel} ${event.startDateTime.monthLabel} • ${event.startDateTime.timeLabel}';
+    final cardRadius = BorderRadius.circular(18);
+    final surface =
+        theme.colorScheme.surfaceContainerHigh.withValues(alpha: 0.9);
+    final confirmedTint =
+        theme.colorScheme.primaryContainer.withValues(alpha: 0.18);
+    final pendingTint =
+        theme.colorScheme.tertiaryContainer.withValues(alpha: 0.16);
+    final cardColor = isConfirmed
+        ? Color.alphaBlend(confirmedTint, surface)
+        : (pendingInvitesCount > 0
+            ? Color.alphaBlend(pendingTint, surface)
+            : surface);
 
-    return Material(
-      color: Colors.transparent,
+    return Card(
+      color: cardColor,
+      elevation: 0,
+      margin: EdgeInsets.zero,
+      shape: RoundedRectangleBorder(borderRadius: cardRadius),
       child: InkWell(
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: cardRadius,
         onTap: onTap,
-        child: Builder(builder: (context) {
-          final statusWidget = _buildStatusWidget(theme);
-          return Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              UpcomingEventThumbnail(imageUrl: event.imageUri.toString()),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      event.title,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w700,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          child: Builder(builder: (context) {
+            final statusWidget = _buildStatusWidget(theme);
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                UpcomingEventThumbnail(imageUrl: event.imageUri.toString()),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        event.title,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 8),
-                    EventInfoRow(
-                      icon: Icons.event_outlined,
-                      label: scheduleLabel,
-                    ),
-                    const SizedBox(height: 6),
-                    EventInfoRow(
-                      icon: Icons.place_outlined,
-                      label: event.location,
-                    ),
-                    const SizedBox(height: 6),
-                    UpcomingEventParticipants(event: event),
-                  ],
+                      const SizedBox(height: 8),
+                      EventInfoRow(
+                        icon: Icons.event_outlined,
+                        label: scheduleLabel,
+                      ),
+                      const SizedBox(height: 6),
+                      EventInfoRow(
+                        icon: Icons.place_outlined,
+                        label: event.location,
+                      ),
+                      const SizedBox(height: 6),
+                      UpcomingEventParticipants(event: event),
+                    ],
+                  ),
                 ),
-              ),
-              if (statusWidget != null) ...[
-                const SizedBox(width: 8),
-                statusWidget,
+                if (statusWidget != null) ...[
+                  const SizedBox(width: 10),
+                  statusWidget,
+                ],
               ],
-            ],
-          );
-        }),
+            );
+          }),
+        ),
       ),
     );
   }
