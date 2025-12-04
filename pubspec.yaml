@@ -61,6 +61,6 @@ flutter:
     - assets/images/
     - assets/mock/
   fonts:
-    - family: BellugaNattive
+    - family: BooraIcons
       fonts:
-        - asset: assets/fonts/BellugaNattive.ttf
+        - asset: assets/fonts/BooraIcons.ttf

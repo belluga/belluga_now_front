@@ -3,6 +3,7 @@ import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.da
 import 'package:belluga_now/presentation/tenant/widgets/event_info_row.dart';
 import 'package:belluga_now/presentation/tenant/widgets/upcoming_event_participants.dart';
 import 'package:belluga_now/presentation/tenant/widgets/upcoming_event_thumbnail.dart';
+import 'package:belluga_now/application/icons/boora_icons.dart';
 import 'package:flutter/material.dart';
 
 class UpcomingEventCard extends StatelessWidget {
@@ -86,8 +87,8 @@ class UpcomingEventCard extends StatelessWidget {
 
   Icon _buildStatusIcon(ThemeData theme) {
     final icon = isConfirmed || hasPendingInvite
-        ? Icons.rocket_launch
-        : Icons.rocket_launch_outlined;
+        ? BooraIcons.invite_solid
+        : BooraIcons.invite_outlined;
     final color = isConfirmed
         ? theme.colorScheme.primary
         : (hasPendingInvite

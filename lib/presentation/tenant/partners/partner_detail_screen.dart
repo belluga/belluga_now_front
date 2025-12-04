@@ -12,6 +12,7 @@ import 'package:belluga_now/infrastructure/dal/dto/profile/profile_faq_dto.dart'
 import 'package:belluga_now/infrastructure/dal/dto/profile/profile_location_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/profile/profile_score_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/profile/profile_supported_entity_dto.dart';
+import 'package:belluga_now/application/icons/boora_icons.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
@@ -168,7 +169,8 @@ class _PartnerDetailScreenState extends State<PartnerDetailScreen> {
                   if (partner.isVerified)
                     const Chip(
                       label: Text('Verificado'),
-                      avatar: Icon(Icons.verified, color: Colors.white, size: 16),
+                      avatar:
+                          Icon(Icons.verified, color: Colors.white, size: 16),
                       backgroundColor: Colors.green,
                       labelStyle: TextStyle(
                         color: Colors.white,
@@ -208,12 +210,12 @@ class _PartnerDetailScreenState extends State<PartnerDetailScreen> {
           ],
           Row(
             children: [
-              _metricPill(Icons.rocket_launch, partner.acceptedInvites.toString(),
-                  'Convites aceitos'),
+              _metricPill(BooraIcons.invite_solid,
+                  partner.acceptedInvites.toString(), 'Convites aceitos'),
               if (partner.engagementData != null) ...[
                 const SizedBox(width: 8),
-                _metricPill(Icons.trending_up, _engagementLabel(partner.engagementData!),
-                    'Engajamento'),
+                _metricPill(Icons.trending_up,
+                    _engagementLabel(partner.engagementData!), 'Engajamento'),
               ],
             ],
           ),
@@ -498,8 +500,8 @@ class _PartnerDetailScreenState extends State<PartnerDetailScreen> {
                       child: ListTile(
                         leading: const Icon(Icons.explore),
                         title: Text(e['title'] ?? ''),
-                        subtitle:
-                            Text('${e['duration'] ?? ''} • ${e['price'] ?? ''}'),
+                        subtitle: Text(
+                            '${e['duration'] ?? ''} • ${e['price'] ?? ''}'),
                       ),
                     ),
                   )
@@ -518,13 +520,13 @@ class _PartnerDetailScreenState extends State<PartnerDetailScreen> {
                   .asMap()
                   .entries
                   .map(
-                      (entry) => ExpansionPanelRadio(
-                        value: entry.key,
-                        headerBuilder: (context, _) =>
-                            ListTile(title: Text(entry.value.question)),
-                        body: Padding(
-                          padding: const EdgeInsets.all(12.0),
-                          child: Text(entry.value.answer),
+                    (entry) => ExpansionPanelRadio(
+                      value: entry.key,
+                      headerBuilder: (context, _) =>
+                          ListTile(title: Text(entry.value.question)),
+                      body: Padding(
+                        padding: const EdgeInsets.all(12.0),
+                        child: Text(entry.value.answer),
                       ),
                     ),
                   )
@@ -693,12 +695,11 @@ class _PartnerDetailScreenState extends State<PartnerDetailScreen> {
             icon: StreamValueBuilder<bool>(
               streamValue: _controller.audioPlayerService.isPlayingStream,
               builder: (context, playing) {
-                final isCurrent = _controller.audioPlayerService
-                        .currentTrackStream.value ==
-                    track;
-                final icon = isCurrent && playing
-                    ? Icons.pause
-                    : Icons.play_arrow;
+                final isCurrent =
+                    _controller.audioPlayerService.currentTrackStream.value ==
+                        track;
+                final icon =
+                    isCurrent && playing ? Icons.pause : Icons.play_arrow;
                 return Icon(icon);
               },
             ),
@@ -720,7 +721,7 @@ class _PartnerDetailScreenState extends State<PartnerDetailScreen> {
       padding: const EdgeInsets.all(16),
       child: Row(
         children: [
-          const Icon(Icons.rocket_launch, size: 20),
+          const Icon(BooraIcons.invite_solid, size: 20),
           const SizedBox(width: 8),
           Text('${score?.invites ?? '--'} Convites Feitos'),
           const SizedBox(width: 16),
@@ -768,24 +769,25 @@ class _PartnerDetailScreenState extends State<PartnerDetailScreen> {
                         Container(
                           height: 80,
                           decoration: BoxDecoration(
-                      color: Colors.grey.shade300,
-                      borderRadius: BorderRadius.circular(10),
+                            color: Colors.grey.shade300,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: entity.thumb != null
+                              ? Image.network(
+                                  entity.thumb!,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_, __, ___) =>
+                                      const SizedBox(),
+                                )
+                              : null,
+                        ),
+                        const SizedBox(height: 8),
+                        Text(entity.title),
+                      ],
                     ),
-                    child: entity.thumb != null
-                        ? Image.network(
-                            entity.thumb!,
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => const SizedBox(),
-                          )
-                        : null,
-                  ),
-                  const SizedBox(height: 8),
-                  Text(entity.title),
-                ],
+                  );
+                },
               ),
-            );
-          },
-        ),
             ),
         ],
       ),
@@ -833,13 +835,11 @@ class _PartnerDetailScreenState extends State<PartnerDetailScreen> {
     );
   }
 
-  Widget _buildModules(
-      List<ProfileModuleConfig> modules, Map<ProfileModuleId, dynamic> moduleData) {
+  Widget _buildModules(List<ProfileModuleConfig> modules,
+      Map<ProfileModuleId, dynamic> moduleData) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
-      children: modules
-          .map((m) => _buildModule(m, moduleData[m.id]))
-          .toList(),
+      children: modules.map((m) => _buildModule(m, moduleData[m.id])).toList(),
     );
   }
 
@@ -871,7 +871,9 @@ class _PartnerDetailScreenState extends State<PartnerDetailScreen> {
       case ProfileModuleId.richText:
         return _richTextBlock(
           module.title ?? 'Sobre',
-          data is String ? data : 'Conteúdo institucional e história do parceiro.',
+          data is String
+              ? data
+              : 'Conteúdo institucional e história do parceiro.',
         );
       case ProfileModuleId.locationInfo:
         return _locationInfo(data);
@@ -901,8 +903,8 @@ class _PartnerDetailScreenState extends State<PartnerDetailScreen> {
                   streamValue: _controller.audioPlayerService.isPlayingStream,
                   builder: (context, playing) {
                     return IconButton(
-                      icon:
-                          Icon(playing ? Icons.pause_circle : Icons.play_circle),
+                      icon: Icon(
+                          playing ? Icons.pause_circle : Icons.play_circle),
                       onPressed: () {
                         _controller.audioPlayerService.toggle();
                       },

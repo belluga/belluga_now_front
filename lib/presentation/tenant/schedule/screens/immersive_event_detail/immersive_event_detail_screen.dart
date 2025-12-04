@@ -7,6 +7,7 @@ import 'package:belluga_now/domain/schedule/invite_status.dart';
 import 'package:belluga_now/presentation/common/widgets/immersive_detail_screen/models/immersive_tab_item.dart';
 import 'package:belluga_now/presentation/common/widgets/immersive_detail_screen/immersive_detail_screen.dart';
 import 'package:belluga_now/presentation/tenant/schedule/screens/immersive_event_detail/controllers/immersive_event_detail_controller.dart';
+import 'package:belluga_now/application/icons/boora_icons.dart';
 import 'package:belluga_now/presentation/tenant/schedule/screens/immersive_event_detail/widgets/dynamic_footer.dart';
 import 'package:belluga_now/presentation/tenant/schedule/screens/immersive_event_detail/widgets/event_info_section.dart';
 import 'package:belluga_now/presentation/tenant/schedule/screens/immersive_event_detail/widgets/immersive_hero.dart';
@@ -278,7 +279,7 @@ Widget _buildInviteFooter(
             ],
           ),
     buttonText: 'BORA? Agitar a galera!',
-    buttonIcon: Icons.rocket_launch,
+    buttonIcon: BooraIcons.invite_solid,
     buttonColor: primary,
     onActionPressed: onInviteFriends,
   );

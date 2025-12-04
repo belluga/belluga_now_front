@@ -1,5 +1,6 @@
 import 'package:belluga_now/domain/invites/invite_model.dart';
 import 'package:belluga_now/presentation/common/widgets/swipeable_card/swipeable_card.dart';
+import 'package:belluga_now/application/icons/boora_icons.dart';
 import 'package:flutter/material.dart';
 
 class SwipeableInviteWidget extends StatefulWidget {
@@ -202,7 +203,7 @@ class _InviteDeckCard extends StatelessWidget {
                           backgroundColor: colorScheme.primary,
                           foregroundColor: colorScheme.onPrimary,
                         ),
-                        icon: const Icon(Icons.rocket_launch, size: 18),
+                        icon: const Icon(BooraIcons.invite_solid, size: 18),
                         label: const Text('Bora!'),
                       ),
                     ),

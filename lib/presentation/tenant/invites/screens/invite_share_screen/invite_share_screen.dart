@@ -5,6 +5,7 @@ import 'package:belluga_now/domain/schedule/invite_status.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
 import 'package:belluga_now/presentation/tenant/invites/screens/invite_share_screen/controllers/invite_share_screen_controller.dart';
 import 'package:belluga_now/presentation/tenant/invites/screens/invite_share_screen/widgets/invite_event_hero.dart';
+import 'package:belluga_now/application/icons/boora_icons.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:share_plus/share_plus.dart';
@@ -191,8 +192,9 @@ class _FriendCard extends StatelessWidget {
             ElevatedButton(
               onPressed: disabled ? null : onInvite,
               style: ElevatedButton.styleFrom(
-                backgroundColor:
-                    disabled ? theme.colorScheme.surfaceContainerHighest : color,
+                backgroundColor: disabled
+                    ? theme.colorScheme.surfaceContainerHighest
+                    : color,
                 foregroundColor:
                     disabled ? theme.colorScheme.onSurface : Colors.white,
                 padding:
@@ -392,7 +394,7 @@ class _ShareFooter extends StatelessWidget {
             radius: 18,
             backgroundColor: Colors.purple.withValues(alpha: 0.12),
             child: const Icon(
-              Icons.rocket_launch,
+              BooraIcons.invite_solid,
               color: Colors.purple,
               size: 18,
             ),

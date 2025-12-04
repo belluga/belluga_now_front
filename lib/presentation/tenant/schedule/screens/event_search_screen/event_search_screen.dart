@@ -6,6 +6,7 @@ import 'package:belluga_now/presentation/tenant/schedule/screens/event_search_sc
 import 'package:belluga_now/presentation/tenant/schedule/screens/event_search_screen/models/invite_filter.dart';
 import 'package:belluga_now/presentation/tenant/widgets/belluga_bottom_navigation_bar.dart';
 import 'package:belluga_now/presentation/tenant/widgets/date_grouped_event_list.dart';
+import 'package:belluga_now/application/icons/boora_icons.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
@@ -223,19 +224,19 @@ class _EventSearchScreenState extends State<EventSearchScreen> {
     switch (filter) {
       case InviteFilter.none:
         return Icon(
-          Icons.rocket_launch_outlined,
+          BooraIcons.invite_outlined,
           color: theme.iconTheme.color,
           size: 22,
         );
       case InviteFilter.invitesAndConfirmed:
         return const Icon(
-          Icons.rocket_launch_outlined,
+          BooraIcons.invite_outlined,
           color: Colors.orange,
           size: 22,
         );
       case InviteFilter.confirmedOnly:
         return Icon(
-          Icons.rocket_launch,
+          BooraIcons.invite_solid,
           color: theme.colorScheme.primary,
           size: 22,
         );

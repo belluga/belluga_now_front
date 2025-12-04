@@ -1,3 +1,4 @@
+import 'package:belluga_now/application/icons/boora_icons.dart';
 import 'package:belluga_now/domain/invites/invite_model.dart';
 import 'package:belluga_now/presentation/tenant/home/screens/tenant_home_screen/controllers/invites_banner_builder_controller.dart';
 import 'package:flutter/material.dart';
@@ -77,7 +78,7 @@ class _InvitesBannerBuilderState extends State<InvitesBannerBuilder> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Icon(
-                          Icons.rocket_launch_outlined,
+                          BooraIcons.invite_outlined,
                           size: 16,
                           color: theme.colorScheme.onSecondaryContainer,
                         ),

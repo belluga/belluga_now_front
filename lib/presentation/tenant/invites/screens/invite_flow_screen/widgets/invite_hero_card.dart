@@ -2,6 +2,7 @@ import 'dart:ui';
 
 import 'package:belluga_now/domain/invites/invite_model.dart';
 import 'package:belluga_now/presentation/common/widgets/swipeable_card/swipeable_card.dart';
+import 'package:belluga_now/application/icons/boora_icons.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
@@ -100,14 +101,14 @@ class InviteHeroCard extends StatelessWidget {
                               host: host,
                               inviter: inviter,
                               extraInviters: extraInviters,
-                          onAccept: onAccept,
-                          onDecline: onDecline,
-                          onViewDetails: onViewDetails,
+                              onAccept: onAccept,
+                              onDecline: onDecline,
+                              onViewDetails: onViewDetails,
+                            ),
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                ),
                   ),
                 ),
                 if (remainingCount > 0) ...[
@@ -263,7 +264,7 @@ class _InviteContentCard extends StatelessWidget {
                             borderRadius: BorderRadius.circular(24),
                           ),
                         ),
-                        icon: const Icon(Icons.rocket_launch),
+                        icon: const Icon(BooraIcons.invite_solid),
                         label: const Text('Bora!'),
                       ),
                     ),
