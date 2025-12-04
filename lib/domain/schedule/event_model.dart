@@ -1,5 +1,5 @@
 import 'package:belluga_now/domain/artist/artist_resume.dart';
-import 'package:belluga_now/domain/courses/thumb_model.dart';
+import 'package:belluga_now/domain/thumb/thumb_model.dart';
 import 'package:belluga_now/domain/partner/partner_resume.dart';
 import 'package:belluga_now/domain/schedule/event_participant.dart';
 import 'package:belluga_now/domain/schedule/friend_resume.dart';
@@ -20,7 +20,7 @@ import 'package:value_object_pattern/domain/value_objects/date_time_value.dart';
 import 'package:value_object_pattern/domain/value_objects/html_content_value.dart';
 import 'package:value_object_pattern/domain/value_objects/mongo_id_value.dart';
 import 'package:belluga_now/domain/value_objects/color_value.dart';
-import 'package:belluga_now/domain/courses/value_objects/slug_value.dart';
+import 'package:belluga_now/domain/value_objects/slug_value.dart';
 
 import 'package:belluga_now/domain/schedule/value_objects/event_is_confirmed_value.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_total_confirmed_value.dart';
