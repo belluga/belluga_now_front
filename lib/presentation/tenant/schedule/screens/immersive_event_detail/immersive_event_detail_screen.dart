@@ -145,7 +145,7 @@ class _ImmersiveEventDetailScreenState
                             context, () => _openInviteFlow(event), sentForEvent)
                         : DynamicFooter(
                             buttonText: 'Bóora! Confirmar Presença!',
-                            buttonIcon: Icons.celebration,
+                            buttonIcon: BooraIcons.invite_solid,
                             buttonColor: colorScheme.primary,
                             onActionPressed: _controller.confirmAttendance,
                           );

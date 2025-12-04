@@ -134,6 +134,48 @@ class MockScheduleBackend implements ScheduleBackendContract {
     final seeds = <MockEventSeed>[...eventSeeds];
 
     // Ensure at least two "happening now" events (start before now, still within duration)
+    final liveCopies = liveNowSeedsForToday();
+    seeds.addAll(liveCopies.map(
+      (seed) => seed.copyWith(
+        receivedInvites: _sampleInvites(seed.id),
+      ),
+    ));
+
+    for (var daysBack = 1; daysBack <= 3; daysBack++) {
+      seeds.addAll(
+        eventSeeds.map(
+          (seed) => seed.copyWith(
+            id: '${seed.id}-past$daysBack',
+            offsetDays: -daysBack,
+          ),
+        ),
+      );
+    }
+    return seeds;
+  }
+
+  List<Map<String, dynamic>> _sampleInvites(String eventId) {
+    return [
+      {
+        'id': '${eventId}_inv1',
+        'event_id': eventId,
+        'event_name': 'Convite especial',
+        'event_date': DateTime.now().toIso8601String(),
+        'event_image_url':
+            'https://images.unsplash.com/photo-1492724441997-5dc865305da7?w=800',
+        'location': 'Guarapari',
+        'host_name': 'Equipe Belluga',
+        'message': 'Bora colar agora?',
+        'tags': ['ao vivo'],
+        'inviter_name': 'Maria',
+        'inviter_avatar_url':
+            'https://images.unsplash.com/photo-1531123897727-8f129e1688ce?w=200',
+        'additional_inviters': ['João'],
+      }
+    ];
+  }
+
+  static List<MockEventSeed> liveNowSeedsForToday() {
     final now = DateTime.now();
     final liveStartHour = (now.hour - 1).clamp(0, 23);
     final liveStartHour2 = (now.hour - 2).clamp(0, 23);
@@ -159,19 +201,7 @@ class MockScheduleBackend implements ScheduleBackendContract {
         ),
       );
     }
-    seeds.addAll(liveCopies);
-
-    for (var daysBack = 1; daysBack <= 3; daysBack++) {
-      seeds.addAll(
-        eventSeeds.map(
-          (seed) => seed.copyWith(
-            id: '${seed.id}-past$daysBack',
-            offsetDays: -daysBack,
-          ),
-        ),
-      );
-    }
-    return seeds;
+    return liveCopies;
   }
 
   static DateTime get _today {
@@ -1505,6 +1535,7 @@ class MockEventSeed {
     int? startHour,
     int? durationMinutes,
     List<String>? tags,
+    List<Map<String, dynamic>>? receivedInvites,
   }) {
     return MockEventSeed(
       id: id ?? this.id,
@@ -1524,7 +1555,7 @@ class MockEventSeed {
       actionColor: actionColor,
       isConfirmed: isConfirmed,
       totalConfirmed: totalConfirmed,
-      receivedInvites: receivedInvites,
+      receivedInvites: receivedInvites ?? this.receivedInvites,
       sentInvites: sentInvites,
       friendsGoing: friendsGoing,
       tags: tags ?? this.tags,

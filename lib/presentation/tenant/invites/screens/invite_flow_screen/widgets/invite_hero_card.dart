@@ -265,7 +265,7 @@ class _InviteContentCard extends StatelessWidget {
                           ),
                         ),
                         icon: const Icon(BooraIcons.invite_solid),
-                        label: const Text('Bora!'),
+                        label: const Text('Bóora!'),
                       ),
                     ),
                   ],

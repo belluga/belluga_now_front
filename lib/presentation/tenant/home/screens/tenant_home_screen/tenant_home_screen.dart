@@ -11,6 +11,8 @@ import 'package:belluga_now/presentation/tenant/widgets/event_live_now_card.dart
 import 'package:belluga_now/presentation/tenant/widgets/section_header.dart';
 import 'package:belluga_now/presentation/tenant/widgets/animated_search_button.dart';
 import 'package:belluga_now/presentation/tenant/schedule/screens/event_search_screen/models/invite_filter.dart';
+import 'package:belluga_now/domain/invites/invite_model.dart';
+import 'package:stream_value/core/stream_value_builder.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
@@ -85,21 +87,44 @@ class _TenantHomeScreenState extends State<TenantHomeScreen> {
                 onPressed: _openInviteFlow,
                 margin: const EdgeInsets.only(bottom: 16),
               ),
-              CarouselSection<VenueEventResume>(
-                title: 'Acontecendo Agora',
-                streamValue: _controller.liveEventsStreamValue,
-                loading: SizedBox(
-                  height: width * 0.8 * 9 / 16,
-                  child: const Center(child: CircularProgressIndicator()),
-                ),
-                empty: const SizedBox.shrink(),
-                onSeeAll: _openUpcomingEvents,
-                sectionPadding: const EdgeInsets.only(bottom: 16),
-                contentSpacing: EdgeInsets.zero,
-                cardBuilder: (event) => EventLiveNowCard(
-                  event: event,
-                  onTap: () => _openEventDetailSlug(event.slug),
-                ),
+              StreamValueBuilder<Set<String>>(
+                streamValue: _controller.confirmedIdsStream,
+                builder: (context, confirmedIds) {
+                  return StreamValueBuilder<List<InviteModel>>(
+                    streamValue: _controller.pendingInvitesStreamValue,
+                    builder: (context, pendingInvites) {
+                      return CarouselSection<VenueEventResume>(
+                        title: 'Acontecendo Agora',
+                        streamValue: _controller.liveEventsStreamValue,
+                        maxItems: 5,
+                        overflowTrailing:
+                            _SeeMoreLiveCard(onTap: _openUpcomingEvents),
+                        loading: SizedBox(
+                          height: width * 0.8 * 9 / 16,
+                          child:
+                              const Center(child: CircularProgressIndicator()),
+                        ),
+                        empty: const SizedBox.shrink(),
+                        onSeeAll: _openUpcomingEvents,
+                        sectionPadding: const EdgeInsets.only(bottom: 16),
+                        contentSpacing: EdgeInsets.zero,
+                        cardBuilder: (event) {
+                          final isConfirmed = confirmedIds.contains(event.id);
+                          final pendingCount = pendingInvites
+                              .where((invite) =>
+                                  invite.eventIdValue.value == event.id)
+                              .length;
+                          return EventLiveNowCard(
+                            event: event,
+                            isConfirmed: isConfirmed,
+                            pendingInvitesCount: pendingCount,
+                            onTap: () => _openEventDetailSlug(event.slug),
+                          );
+                        },
+                      );
+                    },
+                  );
+                },
               ),
               SectionHeader(
                 title: 'Próximos Eventos',
@@ -135,6 +160,45 @@ class _TenantHomeScreenState extends State<TenantHomeScreen> {
       EventSearchRoute(
         inviteFilter: filter,
         startSearchActive: false,
+      ),
+    );
+  }
+}
+
+class _SeeMoreLiveCard extends StatelessWidget {
+  const _SeeMoreLiveCard({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Card(
+      color: colorScheme.surfaceContainerHighest,
+      elevation: 0,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(20),
+        onTap: onTap,
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.more_horiz, color: colorScheme.primary),
+                const SizedBox(width: 8),
+                Text(
+                  'Ver mais',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        color: colorScheme.primary,
+                        fontWeight: FontWeight.w800,
+                      ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

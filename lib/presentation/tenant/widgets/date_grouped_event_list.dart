@@ -136,12 +136,12 @@ class DateGroupedEventList extends StatelessWidget {
                           vertical: 8,
                         ),
                         decoration: BoxDecoration(
-                          color: colorScheme.primary,
+                          color: colorScheme.errorContainer,
                           borderRadius: BorderRadius.circular(26),
                           boxShadow: [
                             BoxShadow(
-                              color:
-                                  colorScheme.primary.withValues(alpha: 0.18),
+                              color: colorScheme.errorContainer
+                                  .withValues(alpha: 0.18),
                               blurRadius: 10,
                               offset: const Offset(0, 6),
                             ),
@@ -150,12 +150,12 @@ class DateGroupedEventList extends StatelessWidget {
                         child: Text(
                           section.label,
                           style: theme.textTheme.labelLarge?.copyWith(
-                                color: colorScheme.onPrimary,
+                                color: colorScheme.onErrorContainer,
                                 fontWeight: FontWeight.w900,
                                 letterSpacing: 1.2,
                               ) ??
                               TextStyle(
-                                color: colorScheme.onPrimary,
+                                color: colorScheme.onErrorContainer,
                                 fontWeight: FontWeight.w900,
                                 letterSpacing: 1.2,
                               ),
@@ -174,18 +174,18 @@ class DateGroupedEventList extends StatelessWidget {
                                 vertical: 6,
                               ),
                               decoration: BoxDecoration(
-                                color: colorScheme.primaryContainer,
+                                color: colorScheme.secondaryContainer,
                                 borderRadius: BorderRadius.circular(24),
                               ),
                               child: Text(
                                 section.tag!,
                                 style: theme.textTheme.labelLarge?.copyWith(
-                                      color: colorScheme.onPrimaryContainer,
+                                      color: colorScheme.onSecondaryContainer,
                                       fontWeight: FontWeight.w800,
                                       letterSpacing: 1.2,
                                     ) ??
                                     TextStyle(
-                                      color: colorScheme.onPrimaryContainer,
+                                      color: colorScheme.onSecondaryContainer,
                                       fontWeight: FontWeight.w800,
                                       letterSpacing: 1.2,
                                     ),

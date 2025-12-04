@@ -30,11 +30,20 @@ class MockInvitesDatabase {
 
   static List<InviteDto> _generateInvites() {
     final seeds = MockScheduleBackend.eventSeeds;
+    // Include "happening now" live seeds so at least one live event has invites.
+    final liveSeeds = MockScheduleBackend.liveNowSeedsForToday();
+    final allSeeds = [...seeds, ...liveSeeds];
+
     // Filter for events in the next 10 days (offsetDays <= 10)
     final upcomingSeeds =
-        seeds.where((s) => s.offsetDays >= 0 && s.offsetDays <= 10).toList();
+        allSeeds.where((s) => s.offsetDays >= 0 && s.offsetDays <= 10).toList();
     upcomingSeeds.shuffle();
     final selectedSeeds = upcomingSeeds.take(5).toList();
+    // Ensure at least one live "now" seed is present for UI testing
+    if (liveSeeds.isNotEmpty &&
+        !selectedSeeds.any((s) => s.id == liveSeeds.first.id)) {
+      selectedSeeds.insert(0, liveSeeds.first);
+    }
 
     return selectedSeeds.map((seed) {
       final now = DateTime.now();

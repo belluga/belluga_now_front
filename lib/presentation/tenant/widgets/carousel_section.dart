@@ -15,6 +15,8 @@ class CarouselSection<T> extends StatefulWidget {
     this.headerPadding,
     this.sectionPadding,
     this.contentSpacing = const EdgeInsets.only(top: 4, bottom: 16),
+    this.maxItems,
+    this.overflowTrailing,
     required this.cardBuilder,
   });
 
@@ -26,6 +28,8 @@ class CarouselSection<T> extends StatefulWidget {
   final EdgeInsetsGeometry? headerPadding;
   final EdgeInsetsGeometry? sectionPadding;
   final EdgeInsetsGeometry contentSpacing;
+  final int? maxItems;
+  final Widget? overflowTrailing;
   final Widget Function(T) cardBuilder;
 
   @override
@@ -46,6 +50,16 @@ class _CarouselSectionState<T> extends State<CarouselSection<T>> {
         if (data.isEmpty) {
           return widget.empty ?? const SizedBox.shrink();
         }
+
+        final hasOverflow =
+            widget.maxItems != null && data.length > widget.maxItems!;
+        final reserveTrailing =
+            hasOverflow && widget.overflowTrailing != null ? 1 : 0;
+        final takeCount = widget.maxItems != null
+            ? (widget.maxItems! - reserveTrailing).clamp(0, data.length)
+            : data.length;
+        final displayItems = data.take(takeCount).toList();
+
         return Container(
           padding: widget.sectionPadding,
           child: Column(
@@ -65,8 +79,11 @@ class _CarouselSectionState<T> extends State<CarouselSection<T>> {
                   child: CarouselView(
                     itemExtent: cardWidth,
                     itemSnapping: true,
-                    children:
-                        items.map((item) => widget.cardBuilder(item)).toList(),
+                    children: [
+                      ...displayItems.map((item) => widget.cardBuilder(item)),
+                      if (hasOverflow && widget.overflowTrailing != null)
+                        widget.overflowTrailing!,
+                    ],
                   ),
                 ),
               ),
