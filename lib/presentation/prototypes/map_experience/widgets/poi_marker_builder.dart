@@ -12,6 +12,7 @@ class PoiMarkerBuilder {
     required CityPoiModel poi,
     required bool isSelected,
     required VoidCallback onTap,
+    required double size,
   }) {
     final isEvent = poi is EventPoiModel;
     final point = LatLng(
@@ -31,8 +32,6 @@ class PoiMarkerBuilder {
               isSelected: isSelected,
             ),
     );
-
-    final size = isEvent ? 104.0 : 72.0;
 
     return Marker(
       point: point,

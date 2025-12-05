@@ -69,6 +69,8 @@ class CityMapController implements Disposable {
   final selectedPoiStreamValue = StreamValue<CityPoiModel?>();
   final selectedEventStreamValue = StreamValue<EventModel?>();
   final mapNavigationTarget = StreamValue<MapNavigationTarget?>();
+  final StreamValue<double> zoomStreamValue =
+      StreamValue<double>(defaultValue: 16);
 
   final hoveredPoiIdStreamValue = StreamValue<String?>();
   final regionsStreamValue =
@@ -87,6 +89,7 @@ class CityMapController implements Disposable {
   bool _hasRequestedPois = false;
   bool _eventsLoaded = false;
   StreamSubscription<PoiUpdateEvent?>? _poiEventsSubscription;
+  StreamSubscription<MapEvent>? _mapEventSubscription;
   bool _filtersLoadFailed = false;
   String? _fallbackEventImage;
 
@@ -97,6 +100,12 @@ class CityMapController implements Disposable {
       loadRegions(),
       _loadFallbackAssets(),
     ]);
+    _mapEventSubscription = mapController.mapEventStream.listen((event) {
+      if (event is MapEventMove || event is MapEventRotate ||
+          event is MapEventFlingAnimation) {
+        zoomStreamValue.addValue(event.camera.zoom);
+      }
+    });
 
     if (!_eventsLoaded) {
       await _loadEventsForDate(_today);
@@ -661,6 +670,7 @@ class CityMapController implements Disposable {
     searchInputController.dispose();
     mapController.dispose();
     _poiEventsSubscription?.cancel();
+    _mapEventSubscription?.cancel();
   }
 
   void _setLoadingState() {

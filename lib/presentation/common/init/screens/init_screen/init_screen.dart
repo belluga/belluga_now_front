@@ -15,6 +15,8 @@ class InitScreen extends StatefulWidget {
 
 class _InitScreenState extends State<InitScreen> {
   final _controller = GetIt.I.get<InitScreenController>();
+  String? _errorMessage;
+  bool _isRetrying = false;
 
   @override
   void initState() {
@@ -25,12 +27,35 @@ class _InitScreenState extends State<InitScreen> {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final error = _errorMessage;
     final appData = GetIt.I.get<AppDataRepository>().appData;
     final iconUrl = (scheme.brightness == Brightness.dark
             ? appData.mainIconDarkUrl
             : appData.mainIconLightUrl)
         .value
         ?.toString();
+    final logo = iconUrl != null && iconUrl.isNotEmpty
+        ? Image.network(
+            iconUrl,
+            height: 96,
+            fit: BoxFit.contain,
+            errorBuilder: (_, __, ___) => Icon(
+              Icons.waves,
+              size: 72,
+              color: scheme.onPrimary,
+            ),
+          )
+        : Image.asset(
+            'assets/images/logo_profile.png',
+            height: 96,
+            fit: BoxFit.contain,
+            errorBuilder: (_, __, ___) => Icon(
+              Icons.waves,
+              size: 72,
+              color: scheme.onPrimary,
+            ),
+          );
+
     return Scaffold(
       key: WidgetKeys.splash.scaffold,
       body: Container(
@@ -38,27 +63,37 @@ class _InitScreenState extends State<InitScreen> {
         height: double.infinity,
         color: scheme.primary,
         child: Center(
-          child: iconUrl != null && iconUrl.isNotEmpty
-              ? Image.network(
-                  iconUrl,
-                  height: 96,
-                  fit: BoxFit.contain,
-                  errorBuilder: (_, __, ___) => Icon(
-                    Icons.waves,
-                    size: 72,
-                    color: scheme.onPrimary,
+          child: error != null
+              ? Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      logo,
+                      const SizedBox(height: 24),
+                      Text(
+                        error,
+                        style: Theme.of(context)
+                            .textTheme
+                            .bodyLarge
+                            ?.copyWith(color: scheme.onPrimary),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 16),
+                      FilledButton(
+                        onPressed: _isRetrying ? null : _init,
+                        child: _isRetrying
+                            ? const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : const Text('Tentar novamente'),
+                      ),
+                    ],
                   ),
                 )
-              : Image.asset(
-                  'assets/images/logo_profile.png',
-                  height: 96,
-                  fit: BoxFit.contain,
-                  errorBuilder: (_, __, ___) => Icon(
-                    Icons.waves,
-                    size: 72,
-                    color: scheme.onPrimary,
-                  ),
-                ),
+              : logo,
         ),
       ),
     );
@@ -66,7 +101,25 @@ class _InitScreenState extends State<InitScreen> {
 
   Future<void> _init() async {
     // Initialize through controller
-    await _controller.initialize();
+    setState(() {
+      _errorMessage = null;
+      _isRetrying = true;
+    });
+    try {
+      await _controller.initialize();
+    } catch (error, stackTrace) {
+      debugPrint('InitScreen failed: $error');
+      debugPrintStack(stackTrace: stackTrace);
+      setState(() {
+        _errorMessage =
+            'Não foi possível carregar o ambiente agora. Verifique sua conexão e tente novamente.';
+      });
+      return;
+    } finally {
+      setState(() {
+        _isRetrying = false;
+      });
+    }
 
     // Small delay for splash screen
     await Future.delayed(const Duration(milliseconds: 1000));

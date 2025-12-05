@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:belluga_now/domain/map/city_poi_category.dart';
 import 'package:belluga_now/infrastructure/repositories/poi_repository.dart';
+import 'package:belluga_now/application/icons/boora_icons.dart';
 import 'package:belluga_now/presentation/prototypes/map_experience/controllers/fab_menu_controller.dart';
 import 'package:belluga_now/presentation/tenant/map/screens/city_map_screen/widgets/shared/poi_category_theme.dart';
 import 'package:flutter/material.dart';
@@ -75,7 +76,7 @@ class _FabMenuState extends State<FabMenu> {
               const _FilterConfig(
                 mode: PoiFilterMode.events,
                 label: 'Eventos agora',
-                icon: Icons.local_activity,
+                icon: BooraIcons.audiotrack,
               ),
               const _FilterConfig(
                 mode: PoiFilterMode.restaurants,

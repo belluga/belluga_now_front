@@ -2,6 +2,7 @@ import 'package:belluga_now/domain/map/city_poi_model.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/presentation/prototypes/map_experience/controllers/map_screen_controller.dart';
 import 'package:belluga_now/presentation/prototypes/map_experience/widgets/poi_marker_builder.dart';
+import 'package:belluga_now/domain/map/event_poi_model.dart';
 import 'package:flutter/material.dart';
 import 'package:free_map/free_map.dart';
 import 'package:get_it/get_it.dart';
@@ -11,6 +12,9 @@ class PrototypeMapLayers extends StatelessWidget {
   PrototypeMapLayers({super.key})
       : _controller = GetIt.I.get<MapScreenController>(),
         _markerBuilder = const PoiMarkerBuilder();
+
+  static const double _minZoom = 14.5;
+  static const double _maxZoom = 17.0;
 
   final MapScreenController _controller;
   final PoiMarkerBuilder _markerBuilder;
@@ -31,33 +35,75 @@ class PrototypeMapLayers extends StatelessWidget {
             return StreamValueBuilder<CityCoordinate?>(
               streamValue: _controller.userLocationStreamValue,
               builder: (_, userCoordinate) {
-                final userPoint = userCoordinate == null
-                    ? null
-                    : LatLng(
-                        userCoordinate.latitude,
-                        userCoordinate.longitude,
-                      );
-                final poiMarkers = pois.map(
-                  (poi) => _markerBuilder.build(
-                    poi: poi,
-                    isSelected: selectedPoi?.id == poi.id,
-                    onTap: () => _controller.selectPoi(poi),
-                  ),
-                );
+                return StreamValueBuilder<double>(
+                  streamValue: _controller.zoomStreamValue,
+                  builder: (_, zoom) {
+                    final currentZoom = zoom;
+                    final poiSize = _scaledSize(
+                      currentZoom,
+                      minSize: 26,
+                      maxSize: 65,
+                    );
+                    final eventSize = _scaledSize(
+                      currentZoom,
+                      minSize: 70,
+                      maxSize: 100,
+                    );
+                    final userSize = _scaledSize(
+                      currentZoom,
+                      minSize: 36,
+                      maxSize: 52,
+                    );
 
-                final markers = <Marker>[
-                  if (userPoint != null) _buildUserMarker(userPoint),
-                  ...poiMarkers,
-                ];
+                    final userPoint = userCoordinate == null
+                        ? null
+                        : LatLng(
+                            userCoordinate.latitude,
+                            userCoordinate.longitude,
+                          );
+                    final poiMarkers = pois.map(
+                      (poi) => _markerBuilder.build(
+                        poi: poi,
+                        isSelected: selectedPoi?.id == poi.id,
+                        onTap: () => _controller.selectPoi(poi),
+                        size: poi is EventPoiModel ? eventSize : poiSize,
+                      ),
+                    );
 
-                return FmMap(
-                  mapController: _controller.mapController,
-                  mapOptions: MapOptions(
-                    initialCenter: defaultLatLng,
-                    initialZoom: 14,
-                    onTap: (_, __) => _controller.clearSelectedPoi(),
-                  ),
-                  markers: markers,
+                    final markers = <Marker>[
+                      if (userPoint != null)
+                        _buildUserMarker(userPoint, userSize),
+                      ...poiMarkers,
+                    ];
+
+                    return FmMap(
+                      mapController: _controller.mapController,
+                      mapOptions: MapOptions(
+                        initialCenter: defaultLatLng,
+                        initialZoom: 16,
+                        minZoom: _minZoom,
+                        maxZoom: _maxZoom,
+                        onMapEvent: (event) {
+                          final nextZoom = event.camera.zoom
+                              .clamp(MapScreenController.minZoom,
+                                  MapScreenController.maxZoom);
+                          _controller.zoomStreamValue.addValue(nextZoom);
+                        },
+                        interactionOptions: InteractionOptions(
+                          flags: InteractiveFlag.drag |
+                              InteractiveFlag.pinchZoom |
+                              InteractiveFlag.doubleTapZoom |
+                              InteractiveFlag.scrollWheelZoom,
+                          rotationWinGestures: MultiFingerGesture.none,
+                          enableMultiFingerGestureRace: false,
+                          cursorKeyboardRotationOptions:
+                              CursorKeyboardRotationOptions.disabled(),
+                        ),
+                        onTap: (_, __) => _controller.clearSelectedPoi(),
+                      ),
+                      markers: markers,
+                    );
+                  },
                 );
               },
             );
@@ -67,11 +113,11 @@ class PrototypeMapLayers extends StatelessWidget {
     );
   }
 
-  Marker _buildUserMarker(LatLng position) {
+  Marker _buildUserMarker(LatLng position, double size) {
     return Marker(
       point: position,
-      width: 48,
-      height: 48,
+      width: size,
+      height: size,
       child: DecoratedBox(
         decoration: BoxDecoration(
           color: Colors.white,
@@ -87,5 +133,14 @@ class PrototypeMapLayers extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  double _scaledSize(
+    double zoom, {
+    required double minSize,
+    required double maxSize,
+  }) {
+    final t = ((zoom - _minZoom) / (_maxZoom - _minZoom)).clamp(0.0, 1.0);
+    return minSize + (maxSize - minSize) * t;
   }
 }

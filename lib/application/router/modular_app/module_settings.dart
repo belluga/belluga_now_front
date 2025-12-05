@@ -28,6 +28,7 @@ import 'package:belluga_now/infrastructure/repositories/schedule_repository.dart
 import 'package:belluga_now/infrastructure/repositories/tenant_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/user_events_repository.dart';
 import 'package:belluga_now/infrastructure/dal/dao/app_data_backend_contract.dart';
+import 'package:belluga_now/infrastructure/dal/dao/local/app_data_local_info_source/app_data_local_info_source.dart';
 import 'package:belluga_now/infrastructure/dal/dao/backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/laravel_backend/app_data_backend/app_data_backend.dart';
 import 'package:belluga_now/infrastructure/dal/dao/mock_backend/mock_backend.dart';
@@ -118,7 +119,10 @@ class ModuleSettings extends ModuleSettingsContract {
 
   Future<void> _registerAppDataRepository() async {
     final appDataRepository = _registerIfAbsent<AppDataRepository>(
-      () => AppDataRepository(),
+      () => AppDataRepository(
+        backend: _appDataBackendBuilder(),
+        localInfoSource: AppDataLocalInfoSource(),
+      ),
     );
     await appDataRepository.init();
   }

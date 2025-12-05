@@ -15,6 +15,8 @@ import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value.dart';
 
 class MapScreenController implements Disposable {
+  static const double minZoom = 14.5;
+  static const double maxZoom = 17.0;
   MapScreenController({
     PoiRepository? poiRepository,
     UserLocationRepository? userLocationRepository,
@@ -33,6 +35,9 @@ class MapScreenController implements Disposable {
   final isLoading = StreamValue<bool>(defaultValue: false);
   final errorMessage = StreamValue<String?>();
   final searchTermStreamValue = StreamValue<String?>();
+  final zoomStreamValue = StreamValue<double>(defaultValue: 16);
+  Timer? _zoomThrottle;
+  double? _pendingZoom;
 
   StreamValue<CityCoordinate?> get userLocationStreamValue =>
       _userLocationRepository.userLocationStreamValue;
@@ -56,6 +61,7 @@ class MapScreenController implements Disposable {
 
   PoiQuery _currentQuery = const PoiQuery();
   bool _filtersLoadFailed = false;
+  StreamSubscription<MapEvent>? _mapEventSubscription;
 
   Future<void> init() async {
     await Future.wait([
@@ -65,6 +71,7 @@ class MapScreenController implements Disposable {
     ]);
     await _userLocationRepository.resolveUserLocation();
     await centerOnUser();
+    _attachZoomListener();
   }
 
   Future<void> loadFilters() async {
@@ -103,7 +110,8 @@ class MapScreenController implements Disposable {
 
     final target = LatLng(coordinate.latitude, coordinate.longitude);
     await ensureMapReady();
-    mapController.move(target, animate ? 16 : mapController.camera.zoom);
+    final targetZoom = animate ? 16.0 : mapController.camera.zoom;
+    mapController.move(target, _clampZoom(targetZoom));
 
     return null;
   }
@@ -171,8 +179,8 @@ class MapScreenController implements Disposable {
     await ensureMapReady();
     final coordinate = poi.coordinate;
     final target = LatLng(coordinate.latitude, coordinate.longitude);
-    final targetZoom = zoom ?? mapController.camera.zoom;
-    mapController.move(target, targetZoom);
+    final targetZoom = zoom ?? 16;
+    mapController.move(target, _clampZoom(targetZoom.toDouble()));
   }
 
   PoiQuery _composeQuery({
@@ -216,5 +224,47 @@ class MapScreenController implements Disposable {
   }
 
   @override
-  FutureOr onDispose() {}
+  FutureOr onDispose() async {
+    await _mapEventSubscription?.cancel();
+  }
+
+  void _attachZoomListener() {
+    try {
+      zoomStreamValue.addValue(_clampZoom(mapController.camera.zoom));
+    } catch (_) {
+      // ignore if camera not ready yet
+    }
+    _mapEventSubscription?.cancel();
+    _mapEventSubscription = mapController.mapEventStream.listen((event) {
+      final nextZoom = _clampZoom(event.camera.zoom);
+      _pushZoom(nextZoom);
+    });
+  }
+
+  void _pushZoom(double nextZoom) {
+    final current = zoomStreamValue.value;
+    if ((nextZoom - current).abs() < 0.01) {
+      return;
+    }
+
+    // Throttle zoom updates on web to reduce RAF pressure.
+    if (kIsWeb) {
+      _pendingZoom = nextZoom;
+      if (_zoomThrottle?.isActive ?? false) {
+        return;
+      }
+      _zoomThrottle = Timer(const Duration(milliseconds: 50), () {
+        final value = _pendingZoom;
+        _pendingZoom = null;
+        if (value != null) {
+          zoomStreamValue.addValue(value);
+        }
+      });
+      return;
+    }
+
+    zoomStreamValue.addValue(nextZoom);
+  }
+
+  double _clampZoom(double zoom) => zoom.clamp(minZoom, maxZoom);
 }

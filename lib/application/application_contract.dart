@@ -7,6 +7,7 @@ import 'package:belluga_now/infrastructure/repositories/app_data_repository.dart
 import 'package:get_it/get_it.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:intl/intl_standalone.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 
 abstract class ApplicationContract extends ModularAppContract {
@@ -33,6 +34,14 @@ abstract class ApplicationContract extends ModularAppContract {
   Future<void> init() async {
     await initialSettings();
     await initialSettingsPlatform();
+
+    // Log build info once to help verify the running version (web/mobile/desktop).
+    try {
+      final info = await PackageInfo.fromPlatform();
+      debugPrint('[BuildInfo] ${info.appName} ${info.version}+${info.buildNumber} (${info.packageName})');
+    } catch (_) {
+      // Ignore if package info is unavailable for this platform.
+    }
 
     await super.init();
   }

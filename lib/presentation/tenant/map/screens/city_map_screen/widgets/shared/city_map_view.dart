@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:belluga_now/domain/map/city_poi_model.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/presentation/tenant/map/screens/city_map_screen/controllers/city_map_controller.dart';
@@ -8,6 +10,7 @@ import 'package:belluga_now/presentation/tenant/map/screens/city_map_screen/widg
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:get_it/get_it.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:package_info_plus/package_info_plus.dart';
@@ -64,15 +67,25 @@ class CityMapView extends StatefulWidget {
 
 class _CityMapViewState extends State<CityMapView> {
   static const _fallbackPackageName = 'com.belluganow.app';
+  static const double _minZoom = 14.5;
+  static const double _maxZoom = 17.0;
 
   late final CityMapController _controller =
       widget.controller ?? GetIt.I.get<CityMapController>();
   String? _packageName;
+  late double _currentZoom;
+  StreamSubscription<MapEvent>? _mapEventSubscription;
+  Timer? _zoomThrottle;
+  double? _pendingZoom;
 
   @override
   void initState() {
     super.initState();
     _resolvePackageName();
+    _currentZoom = 16;
+    SchedulerBinding.instance.addPostFrameCallback((_) {
+      _attachZoomListener();
+    });
   }
 
   Future<void> _resolvePackageName() async {
@@ -110,8 +123,8 @@ class _CityMapViewState extends State<CityMapView> {
           priority: 110,
           marker: Marker(
             point: widget.userPosition!,
-            width: 48,
-            height: 48,
+            width: _scaledSize(_currentZoom, minSize: 36, maxSize: 52),
+            height: _scaledSize(_currentZoom, minSize: 36, maxSize: 52),
             child: const UserLocationMarker(),
           ),
         ),
@@ -133,8 +146,8 @@ class _CityMapViewState extends State<CityMapView> {
               poi.coordinate.latitude,
               poi.coordinate.longitude,
             ),
-            width: 52,
-            height: 52,
+            width: _scaledSize(_currentZoom, minSize: 26, maxSize: 65),
+            height: _scaledSize(_currentZoom, minSize: 26, maxSize: 65),
             child: GestureDetector(
               onTap: () => widget.onSelectPoi(poi),
               child: MouseRegion(
@@ -171,8 +184,8 @@ class _CityMapViewState extends State<CityMapView> {
               event.coordinate!.latitude,
               event.coordinate!.longitude,
             ),
-            width: 96,
-            height: 96,
+            width: _scaledSize(_currentZoom, minSize: 70, maxSize: 100),
+            height: _scaledSize(_currentZoom, minSize: 70, maxSize: 100),
             child: GestureDetector(
               onTap: () => widget.onSelectEvent(event),
               child: EventMarker(
@@ -201,10 +214,22 @@ class _CityMapViewState extends State<CityMapView> {
             options: MapOptions(
               initialCenter: initialCenter,
               initialZoom: 16,
-              minZoom: 14,
-              maxZoom: 18,
-              interactionOptions:
-                  const InteractionOptions(flags: InteractiveFlag.all),
+              minZoom: _minZoom,
+              maxZoom: _maxZoom,
+              onMapEvent: (event) {
+                _handleZoomEvent(event.camera.zoom);
+              },
+              interactionOptions: InteractionOptions(
+                // Restrict gestures to avoid unintended rotation/spin.
+                flags: InteractiveFlag.drag |
+                    InteractiveFlag.pinchZoom |
+                    InteractiveFlag.doubleTapZoom |
+                    InteractiveFlag.scrollWheelZoom,
+                rotationWinGestures: MultiFingerGesture.none,
+                enableMultiFingerGestureRace: false,
+                cursorKeyboardRotationOptions:
+                    CursorKeyboardRotationOptions.disabled(),
+              ),
             ),
             children: [
               TileLayer(
@@ -237,6 +262,53 @@ class _CityMapViewState extends State<CityMapView> {
       ),
     );
   }
+
+  @override
+  void dispose() {
+    _mapEventSubscription?.cancel();
+    super.dispose();
+  }
+
+  void _attachZoomListener() {
+    // MapController camera is only valid after the first frame.
+    final initialZoom = _controller.mapController.camera.zoom;
+    setState(() {
+      _currentZoom = initialZoom.clamp(_minZoom, _maxZoom);
+    });
+    _mapEventSubscription =
+        _controller.mapController.mapEventStream.listen((event) {
+      _clampAndUpdateZoom(event.camera.zoom);
+    });
+  }
+
+  void _clampAndUpdateZoom(double desiredZoom) {
+    final clampedZoom = desiredZoom.clamp(_minZoom, _maxZoom);
+    _handleZoomEvent(clampedZoom);
+  }
+
+  void _handleZoomEvent(double zoom) {
+    final clamped = zoom.clamp(_minZoom, _maxZoom);
+    if ((clamped - _currentZoom).abs() < 0.01) {
+      return;
+    }
+
+    if (kIsWeb) {
+      _pendingZoom = clamped;
+      if (_zoomThrottle?.isActive ?? false) {
+        return;
+      }
+      _zoomThrottle = Timer(const Duration(milliseconds: 50), () {
+        final next = _pendingZoom;
+        _pendingZoom = null;
+        if (next != null && mounted) {
+          setState(() => _currentZoom = next);
+        }
+      });
+      return;
+    }
+
+    setState(() => _currentZoom = clamped);
+  }
 }
 
 class _MarkerEntry {
@@ -244,6 +316,17 @@ class _MarkerEntry {
 
   final int priority;
   final Marker marker;
+}
+
+double _scaledSize(
+  double zoom, {
+  required double minSize,
+  required double maxSize,
+  double minZoom = _CityMapViewState._minZoom,
+  double maxZoom = _CityMapViewState._maxZoom,
+}) {
+  final t = ((zoom - minZoom) / (maxZoom - minZoom)).clamp(0, 1);
+  return minSize + (maxSize - minSize) * t;
 }
 
 int _priorityForEvent(EventModel event, DateTime now) {

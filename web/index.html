@@ -1,115 +1,142 @@
-<!DOCTYPE html><html><head>
+<!DOCTYPE html>
+<html>
+
+<head>
   <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
-  <!--
-    If you are serving your web app in a path other than the root, change the
-    href value below to reflect the base path you are serving from.
-
-    The path provided below has to start and end with a slash "/" in order for
-    it to work correctly.
-
-    For more details:
-    * https://developer.mozilla.org/en-US/docs/Web/HTML/Element/base
-
-    This is a placeholder for base href that will be replaced by the value of
-    the `--base-href` argument provided to `flutter build`.
-  -->
-  <base href="$FLUTTER_BASE_HREF">
-
+  <base href="/">
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="A new Flutter project.">
-
-  <!-- iOS meta tags & icons -->
+  <meta name="description" content="Guarappari web client">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
-  <meta name="apple-mobile-web-app-title" content="belluga_now">
-  <link rel="apple-touch-icon" href="icons/Icon-192.png">
-
-  <!-- Favicon -->
-  <link rel="icon" type="image/png" href="favicon.png">
-
-  <title>belluga_now</title>
+  <meta name="apple-mobile-web-app-title" content="belluga_learning">
+  <link id="apple-touch-icon" rel="apple-touch-icon" href="icon/icon-192x192.png">
+  <link id="favicon" rel="icon" type="image/png" href="favicon.png">
+  <title>Belluga Boilerplate</title>
   <link rel="manifest" href="manifest.json">
-  
-  
   <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport">
-  
-  
-  <style id="splash-screen-style">
-    html {
-      height: 100%
+
+  <style>
+    #splash-screen {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background-color: #ffffff;
     }
 
-    body {
-      margin: 0;
-      min-height: 100%;
-      background-color: #4fa0e3;
-          background-size: 100% 100%;
+    #splash-logo-container {
+      position: relative;
+      width: 200px;
+      height: 150px;
     }
 
-    .center {
-      margin: 0;
+    .splash-logo {
       position: absolute;
-      top: 50%;
-      left: 50%;
-      -ms-transform: translate(-50%, -50%);
-      transform: translate(-50%, -50%);
-    }
-
-    .contain {
-      display:block;
-      width:100%; height:100%;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
       object-fit: contain;
     }
 
-    .stretch {
-      display:block;
-      width:100%; height:100%;
+    #splash-logo-background {
+      opacity: 0.3;
     }
 
-    .cover {
-      display:block;
-      width:100%; height:100%;
-      object-fit: cover;
+    #splash-logo-foreground {
+      mask-image: linear-gradient(to right, transparent 20%, black 50%, transparent 80%);
+      mask-size: 200% 100%;
+      animation: shimmer-animation 2s infinite linear;
     }
 
-    .bottom {
-      position: absolute;
-      bottom: 0;
-      left: 50%;
-      -ms-transform: translate(-50%, 0);
-      transform: translate(-50%, 0);
-    }
+    @keyframes shimmer-animation {
+      from {
+        mask-position: 150% 0;
+      }
 
-    .bottomLeft {
-      position: absolute;
-      bottom: 0;
-      left: 0;
-    }
-
-    .bottomRight {
-      position: absolute;
-      bottom: 0;
-      right: 0;
+      to {
+        mask-position: -50% 0;
+      }
     }
   </style>
-  <script id="splash-screen-script">
-    function removeSplashFromWeb() {
-      document.getElementById("splash")?.remove();
-      document.getElementById("splash-branding")?.remove();
-      document.body.style.background = "transparent";
+
+<script>
+  window.addEventListener('DOMContentLoaded', (event) => {
+    const brandingCacheKey = 'tenantBrandingData';
+    let isBrandingDispatched = false;
+
+    const applyBranding = (branding) => {
+      if (isBrandingDispatched && branding) {
+      } else {
+        window.dispatchEvent(new CustomEvent('brandingReady', { detail: branding }));
+        isBrandingDispatched = true;
+      }
+      
+      if (!branding) return;
+
+      document.title = branding.name || document.title;
+      const backgroundColor = branding.theme_data_settings?.light_scheme_data?.primary_seed_color;
+      
+      if (backgroundColor) {
+        const splashScreen = document.getElementById('splash-screen');
+        if (splashScreen) {
+          splashScreen.style.backgroundColor = backgroundColor;
+        }
+      }
+    };
+
+    let cachedDataString = null;
+    try {
+      cachedDataString = localStorage.getItem(brandingCacheKey);
+      if (cachedDataString) {
+        const cachedBranding = JSON.parse(cachedDataString);
+        console.log('Branding loaded from cache.');
+        applyBranding(cachedBranding);
+      }
+    } catch (error) {
+      console.error('Failed to parse cached branding data.', error);
+      localStorage.removeItem(brandingCacheKey);
     }
-  </script>
+
+    (async function () {
+      try {
+        const response = await fetch('/environment');
+        if (response.ok) {
+          const freshBranding = await response.json();
+          const freshBrandingString = JSON.stringify(freshBranding);
+
+          if (freshBrandingString !== cachedDataString) {
+            applyBranding(freshBranding);
+            localStorage.setItem(brandingCacheKey, freshBrandingString);
+          }
+        } else {
+          console.warn('Branding API returned an error. Using cached or default state.');
+          applyBranding(null);
+        }
+      } catch (error) {
+        console.error("Network failure when fetching branding.", error);
+        applyBranding(null);
+      } finally {
+        // no-op: applyBranding already called in success/error paths
+      }
+    })();
+  });
+</script>
 </head>
+
 <body>
-  <picture id="splash">
-      <source srcset="splash/img/light-1x.png 1x, splash/img/light-2x.png 2x, splash/img/light-3x.png 3x, splash/img/light-4x.png 4x" media="(prefers-color-scheme: light)">
-      <source srcset="splash/img/dark-1x.png 1x, splash/img/dark-2x.png 2x, splash/img/dark-3x.png 3x, splash/img/dark-4x.png 4x" media="(prefers-color-scheme: dark)">
-      <img class="center" aria-hidden="true" src="splash/img/light-1x.png" alt="">
-  </picture>
-  
-  
-  <script src="flutter_bootstrap.js" async=""></script>
+  <div id="splash-screen" class="splash">
+    <div id="splash-logo-container">
+      <img id="splash-logo-background" src="logo-light.png" class="splash-logo" alt="Logo background" />
+      <img id="splash-logo-foreground" src="logo-light.png" class="splash-logo" alt="Logo foreground" />
+    </div>
+  </div>
+  <script src="flutter_bootstrap.js" async></script>
+</body>
 
-
-</body></html>
+</html>
