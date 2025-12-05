@@ -5,7 +5,8 @@ import 'package:belluga_now/infrastructure/dal/dao/local/app_data_local_info_sou
 import 'package:belluga_now/infrastructure/dal/dto/app_data_dto.dart';
 import 'dart:async';
 
-import 'package:flutter/widgets.dart';
+import 'package:flutter/material.dart';
+import 'package:stream_value/core/stream_value.dart';
 import 'package:get_it/get_it.dart';
 
 class AppDataRepository {
@@ -14,11 +15,14 @@ class AppDataRepository {
   final _backend = GetIt.I.get<AppDataBackendContract>();
 
   final _localInfoSource = AppDataLocalInfoSource();
+  final StreamValue<ThemeMode?> themeModeStreamValue =
+      StreamValue<ThemeMode?>(defaultValue: ThemeMode.system);
 
   Future<void> init() async {
     final localInfo = await _localInfoSource.getInfo();
 
     appData = await _fetchRemoteOrFallback(localInfo);
+    themeModeStreamValue.addValue(_resolveInitialThemeMode());
     await _precacheLogos();
 
     if (GetIt.I.isRegistered<AppData>()) {
@@ -26,6 +30,18 @@ class AppDataRepository {
     }
     GetIt.I.registerSingleton<AppData>(appData);
   }
+
+  ThemeMode get themeMode => themeModeStreamValue.value ?? ThemeMode.system;
+
+  Future<void> setThemeMode(ThemeMode mode) async {
+    // TODO(Delphi): Persist theme preference per user/per device via flutter_secure_storage (and sync backend) once contracts are defined.
+    themeModeStreamValue.addValue(mode);
+  }
+
+  ThemeMode _resolveInitialThemeMode() =>
+      appData.themeDataSettings.brightnessDefault == Brightness.dark
+          ? ThemeMode.dark
+          : ThemeMode.light;
 
   Future<AppData> _fetchRemoteOrFallback(Map<String, dynamic> localInfo) async {
     try {

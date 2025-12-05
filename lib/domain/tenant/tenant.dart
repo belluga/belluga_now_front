@@ -1,6 +1,6 @@
 import 'package:belluga_now/application/configurations/belluga_constants.dart';
 import 'package:belluga_now/infrastructure/tenant/dtos/tenant_dto.dart';
-import 'package:belluga_now/domain/app_data/app_data_stub.dart';
+import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/app_data/app_type.dart';
 import 'package:belluga_now/domain/tenant/value_objects/app_domain_value.dart';
 import 'package:belluga_now/domain/tenant/value_objects/domain_value.dart';
