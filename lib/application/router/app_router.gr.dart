@@ -176,6 +176,7 @@ class EventSearchRoute extends _i20.PageRouteInfo<EventSearchRouteArgs> {
     _i21.Key? key,
     bool startSearchActive = false,
     _i22.InviteFilter inviteFilter = _i22.InviteFilter.none,
+    bool startWithHistory = false,
     List<_i20.PageRouteInfo>? children,
   }) : super(
           EventSearchRoute.name,
@@ -183,6 +184,7 @@ class EventSearchRoute extends _i20.PageRouteInfo<EventSearchRouteArgs> {
             key: key,
             startSearchActive: startSearchActive,
             inviteFilter: inviteFilter,
+            startWithHistory: startWithHistory,
           ),
           initialChildren: children,
         );
@@ -199,6 +201,7 @@ class EventSearchRoute extends _i20.PageRouteInfo<EventSearchRouteArgs> {
         key: args.key,
         startSearchActive: args.startSearchActive,
         inviteFilter: args.inviteFilter,
+        startWithHistory: args.startWithHistory,
       );
     },
   );
@@ -209,6 +212,7 @@ class EventSearchRouteArgs {
     this.key,
     this.startSearchActive = false,
     this.inviteFilter = _i22.InviteFilter.none,
+    this.startWithHistory = false,
   });
 
   final _i21.Key? key;
@@ -216,10 +220,11 @@ class EventSearchRouteArgs {
   final bool startSearchActive;
 
   final _i22.InviteFilter inviteFilter;
+  final bool startWithHistory;
 
   @override
   String toString() {
-    return 'EventSearchRouteArgs{key: $key, startSearchActive: $startSearchActive, inviteFilter: $inviteFilter}';
+    return 'EventSearchRouteArgs{key: $key, startSearchActive: $startSearchActive, inviteFilter: $inviteFilter, startWithHistory: $startWithHistory}';
   }
 
   @override
@@ -228,12 +233,16 @@ class EventSearchRouteArgs {
     if (other is! EventSearchRouteArgs) return false;
     return key == other.key &&
         startSearchActive == other.startSearchActive &&
-        inviteFilter == other.inviteFilter;
+        inviteFilter == other.inviteFilter &&
+        startWithHistory == other.startWithHistory;
   }
 
   @override
   int get hashCode =>
-      key.hashCode ^ startSearchActive.hashCode ^ inviteFilter.hashCode;
+      key.hashCode ^
+      startSearchActive.hashCode ^
+      inviteFilter.hashCode ^
+      startWithHistory.hashCode;
 }
 
 /// generated route for

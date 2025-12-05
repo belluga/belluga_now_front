@@ -19,6 +19,9 @@ class MainLogo extends StatelessWidget {
     final logoUri = brightness == Brightness.dark
         ? appData.mainLogoDarkUrl.value
         : appData.mainLogoLightUrl.value;
+    debugPrint(
+      '[MainLogo] brightness=$brightness -> uri=${logoUri?.toString()}',
+    );
     return Image.network(
       logoUri!.toString(),
       width: width,

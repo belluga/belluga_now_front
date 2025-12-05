@@ -20,7 +20,10 @@ class AppDataBackend implements AppDataBackendContract {
       if (jsDetail != null) {
         final jsonString = stringify(jsDetail).toDart;
         final data = jsonDecode(jsonString) as Map<String, dynamic>;
-        completer.complete(AppDataDTO.fromJson(data));
+        final payload = (data['data'] is Map<String, dynamic>)
+            ? data['data'] as Map<String, dynamic>
+            : data;
+        completer.complete(AppDataDTO.fromJson(payload));
       } else {
         completer.completeError(
           Exception('Branding payload missing on brandingReady event'),

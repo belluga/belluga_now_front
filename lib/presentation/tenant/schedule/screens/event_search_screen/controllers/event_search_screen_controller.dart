@@ -48,8 +48,9 @@ class EventSearchScreenController implements Disposable {
   bool _isFetching = false;
   bool _hasMore = true;
 
-  Future<void> init() async {
+  Future<void> init({bool startWithHistory = false}) async {
     await _invitesRepository.init();
+    showHistoryStreamValue.addValue(startWithHistory);
     _attachScrollListener();
     _listenForStatusChanges();
     await _refresh();

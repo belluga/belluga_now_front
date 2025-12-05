@@ -23,7 +23,24 @@ class AppDataBackend implements AppDataBackendContract {
       final response = await _dio.get(
         '/environment?app_domain=${packageInfo.packageName}',
       );
-      return AppDataDTO.fromJson(response.data as Map<String, dynamic>);
+      final raw = response.data;
+      final Map<String, dynamic> json;
+      if (raw is Map<String, dynamic>) {
+        json = (raw['data'] is Map<String, dynamic>)
+            ? raw['data'] as Map<String, dynamic>
+            : raw;
+      } else {
+        throw Exception('Unexpected environment response shape');
+      }
+      // Debug: log which URLs are being parsed from the payload.
+      // Note: keep concise to avoid leaking sensitive data.
+      // ignore: avoid_print
+      print(
+        '[AppDataBackend] Branding payload -> light_logo: ${json['main_logo_light_url']}, '
+        'dark_logo: ${json['main_logo_dark_url']}, light_icon: ${json['main_icon_light_url']}, '
+        'dark_icon: ${json['main_icon_dark_url']}',
+      );
+      return AppDataDTO.fromJson(json);
     } on DioException catch (e) {
       throw Exception('Failed to load environment data: ${e.message}');
     } catch (e) {

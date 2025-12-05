@@ -11,10 +11,12 @@ class EventSearchRoute extends StatelessWidget {
     super.key,
     this.startSearchActive = false,
     this.inviteFilter = InviteFilter.none,
+    this.startWithHistory = false,
   });
 
   final bool startSearchActive;
   final InviteFilter inviteFilter;
+  final bool startWithHistory;
 
   @override
   Widget build(BuildContext context) {
@@ -22,6 +24,7 @@ class EventSearchRoute extends StatelessWidget {
       child: EventSearchScreen(
         startSearchActive: startSearchActive,
         inviteFilter: inviteFilter,
+        startWithHistory: startWithHistory,
       ),
     );
   }

@@ -46,6 +46,11 @@ class AppDataRepository {
   Future<AppData> _fetchRemoteOrFallback(Map<String, dynamic> localInfo) async {
     try {
       final dto = await _backend.fetch();
+      debugPrint(
+        '[AppDataRepository] Using logos -> '
+        'main_logo_light: ${dto.mainLogoLightUrl}, main_logo_dark: ${dto.mainLogoDarkUrl}, '
+        'main_icon_light: ${dto.mainIconLightUrl}, main_icon_dark: ${dto.mainIconDarkUrl}',
+      );
       return AppData.fromDto(dto: dto, localInfo: localInfo);
     } catch (error, stackTrace) {
       debugPrint(

@@ -16,10 +16,12 @@ class EventSearchScreen extends StatefulWidget {
     super.key,
     this.startSearchActive = false,
     this.inviteFilter = InviteFilter.none,
+    this.startWithHistory = false,
   });
 
   final bool startSearchActive;
   final InviteFilter inviteFilter;
+  final bool startWithHistory;
 
   @override
   State<EventSearchScreen> createState() => _EventSearchScreenState();
@@ -35,7 +37,7 @@ class _EventSearchScreenState extends State<EventSearchScreen> {
   @override
   void initState() {
     super.initState();
-    _controller.init();
+    _controller.init(startWithHistory: widget.startWithHistory);
     _controller.setSearchActive(widget.startSearchActive);
     _controller.setInviteFilter(widget.inviteFilter);
   }

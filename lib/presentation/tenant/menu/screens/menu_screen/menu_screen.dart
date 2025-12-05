@@ -1,13 +1,11 @@
 import 'package:auto_route/auto_route.dart';
-import 'package:belluga_now/presentation/common/widgets/main_logo.dart';
+import 'package:belluga_now/application/icons/boora_icons.dart';
+import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/presentation/tenant/menu/screens/menu_screen/models/menu_section.dart';
-import 'package:belluga_now/presentation/tenant/menu/screens/menu_screen/controllers/menu_screen_controller.dart';
-import 'package:belluga_now/presentation/tenant/menu/screens/menu_screen/widgets/menu_logout_tile.dart';
 import 'package:belluga_now/presentation/tenant/menu/screens/menu_screen/widgets/menu_section_card.dart';
+import 'package:belluga_now/presentation/tenant/schedule/screens/event_search_screen/models/invite_filter.dart';
 import 'package:belluga_now/presentation/tenant/widgets/belluga_bottom_navigation_bar.dart';
-import 'package:stream_value/core/stream_value_builder.dart';
 import 'package:flutter/material.dart';
-import 'package:get_it/get_it.dart';
 
 class MenuScreen extends StatefulWidget {
   const MenuScreen({super.key});
@@ -17,59 +15,46 @@ class MenuScreen extends StatefulWidget {
 }
 
 class _MenuScreenState extends State<MenuScreen> {
-  late final MenuScreenController _controller =
-      GetIt.I.get<MenuScreenController>();
   @override
   Widget build(BuildContext context) {
     final sections = <MenuSection>[
       MenuSection(
+        title: 'Agenda',
+        actions: [
+          MenuAction(
+            icon: Icons.event_available_outlined,
+            label: 'Meus eventos confirmados',
+            helper: 'Agenda filtrada só com eventos confirmados',
+            onTap: () => context.router.push(
+              EventSearchRoute(inviteFilter: InviteFilter.confirmedOnly),
+            ),
+          ),
+          MenuAction(
+            icon: Icons.history_toggle_off,
+            label: 'Eventos passados',
+            helper: 'Ver histórico de eventos encerrados',
+            onTap: () => context.router.push(
+              EventSearchRoute(startWithHistory: true),
+            ),
+          ),
+        ],
+      ),
+      MenuSection(
         title: 'Explorar',
         actions: [
           MenuAction(
-            icon: Icons.calendar_month_outlined,
-            label: 'Meus eventos',
-            helper: 'Veja tudo que você já confirmou',
-            onTap: () => context.router.pushPath('/agenda'),
-          ),
-        ],
-      ),
-      MenuSection(
-        title: 'Conta',
-        actions: [
-          MenuAction(
-            icon: Icons.person_outline,
-            label: 'Meu perfil',
-            helper: 'Dados pessoais, interesses e notificações',
-            onTap: () => context.router.pushPath('/profile'),
+            icon: Icons.explore_outlined,
+            label: 'Descobrir',
+            helper: 'Novas experiências e recomendações',
+            onTap: () => context.router.push(const CityMapRoute()),
           ),
           MenuAction(
-            icon: Icons.credit_card_outlined,
-            label: 'Pagamentos & parcerias',
-            helper: 'Cartões cadastrados e promo codes',
-            onTap: () => _showComingSoon(context),
-          ),
-          MenuAction(
-            icon: Icons.settings_outlined,
-            label: 'Configurações',
-            helper: 'Preferências, idioma e acessibilidade',
-            onTap: () => _showComingSoon(context),
-          ),
-        ],
-      ),
-      MenuSection(
-        title: 'Suporte',
-        actions: [
-          MenuAction(
-            icon: Icons.help_outline,
-            label: 'Central de ajuda',
-            helper: 'Perguntas frequentes e suporte em tempo real',
-            onTap: () => _showComingSoon(context),
-          ),
-          MenuAction(
-            icon: Icons.policy_outlined,
-            label: 'Políticas & privacidade',
-            helper: 'Termos, Privacidade e uso responsável',
-            onTap: () => _showComingSoon(context),
+            icon: BooraIcons.invite_outlined,
+            label: 'Convites recebidos',
+            helper: 'Eventos onde você foi convidado',
+            onTap: () => context.router.push(
+              EventSearchRoute(inviteFilter: InviteFilter.invitesAndConfirmed),
+            ),
           ),
         ],
       ),
@@ -77,48 +62,28 @@ class _MenuScreenState extends State<MenuScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        titleSpacing: 16,
-        title: const MainLogo(),
+        title: Text(
+          'Menu',
+          style: Theme.of(context).textTheme.titleLarge,
+        ),
       ),
       bottomNavigationBar: const BellugaBottomNavigationBar(currentIndex: 3),
       body: SafeArea(
         child: ListView.separated(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 140),
-          itemCount: sections.length + 3,
+          itemCount: sections.length + 1,
           separatorBuilder: (_, __) => const SizedBox(height: 24),
           itemBuilder: (context, index) {
             if (index == 0) {
               return _ProfileHero(
-                  onTapViewProfile: () => _showComingSoon(context));
-            }
-            if (index == 1) {
-              return StreamValueBuilder<ThemeMode?>(
-                streamValue: _controller.themeModeStreamValue,
-                builder: (context, mode) {
-                  final isDark = mode == ThemeMode.dark;
-                  return SwitchListTile.adaptive(
-                    value: isDark,
-                    onChanged: (value) => _controller
-                        .setThemeMode(value ? ThemeMode.dark : ThemeMode.light),
-                    title: const Text('Tema escuro'),
-                    subtitle: Text(
-                      isDark ? 'Usando tema escuro' : 'Usando tema claro',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color:
-                              Theme.of(context).colorScheme.onSurfaceVariant),
-                    ),
-                    secondary: Icon(
-                      isDark ? Icons.dark_mode : Icons.light_mode,
-                    ),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 4),
-                  );
-                },
+                onTapViewProfile: () =>
+                    context.router.push(const ProfileRoute()),
+                invitesSent: 0, // TODO(Delphi): Bind to convites enviados (pending/total).
+                invitesAccepted: 0, // TODO(Delphi): Bind to real social score metrics (convites aceitos).
+                presencesConfirmed: 0, // TODO(Delphi): Bind to real presence check-ins.
               );
             }
-            if (index == sections.length + 2) {
-              return MenuLogoutTile(onTap: () => _showComingSoon(context));
-            }
-            final section = sections[index - 2];
+            final section = sections[index - 1];
             return MenuSectionCard(section: section);
           },
         ),
@@ -126,19 +91,20 @@ class _MenuScreenState extends State<MenuScreen> {
     );
   }
 
-  static void _showComingSoon(BuildContext context) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Função disponível em breve.'),
-      ),
-    );
-  }
 }
 
 class _ProfileHero extends StatelessWidget {
-  const _ProfileHero({required this.onTapViewProfile});
+  const _ProfileHero({
+    required this.onTapViewProfile,
+    required this.invitesSent,
+    required this.invitesAccepted,
+    required this.presencesConfirmed,
+  });
 
   final VoidCallback onTapViewProfile;
+  final int invitesSent;
+  final int invitesAccepted;
+  final int presencesConfirmed;
 
   @override
   Widget build(BuildContext context) {
@@ -184,7 +150,7 @@ class _ProfileHero extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Complete seus dados e personalize notificações.',
+                  'Convites aceitos e presenças confirmadas valem mais que likes.',
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: colorScheme.onSurfaceVariant,
                   ),
@@ -192,17 +158,28 @@ class _ProfileHero extends StatelessWidget {
                 const SizedBox(height: 8),
                 Wrap(
                   spacing: 8,
-                  runSpacing: 6,
+                  runSpacing: 8,
                   children: [
-                    _ChipPill(
-                      label: 'Editar perfil',
-                      icon: Icons.edit_outlined,
-                      onTap: onTapViewProfile,
+                    _MetricPill(
+                      value: invitesSent,
+                      icon: BooraIcons.invite_outlined,
+                      iconColor: colorScheme.secondary,
+                      backgroundColor:
+                          colorScheme.secondary.withValues(alpha: 0.14),
                     ),
-                    _ChipPill(
-                      label: 'Notificações',
-                      icon: Icons.notifications_none,
-                      onTap: onTapViewProfile,
+                    _MetricPill(
+                      value: invitesAccepted,
+                      icon: BooraIcons.invite_solid,
+                      iconColor: colorScheme.primary,
+                      backgroundColor:
+                          colorScheme.primary.withValues(alpha: 0.14),
+                    ),
+                    _MetricPill(
+                      value: presencesConfirmed,
+                      icon: Icons.location_on_outlined,
+                      iconColor: colorScheme.primary,
+                      backgroundColor:
+                          colorScheme.primary.withValues(alpha: 0.14),
                     ),
                   ],
                 ),
@@ -221,43 +198,40 @@ class _ProfileHero extends StatelessWidget {
   }
 }
 
-class _ChipPill extends StatelessWidget {
-  const _ChipPill({
-    required this.label,
+class _MetricPill extends StatelessWidget {
+  const _MetricPill({
+    required this.value,
     required this.icon,
-    required this.onTap,
+    required this.iconColor,
+    required this.backgroundColor,
   });
 
-  final String label;
+  final int value;
   final IconData icon;
-  final VoidCallback onTap;
+  final Color iconColor;
+  final Color backgroundColor;
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    return Material(
-      color: colorScheme.surfaceContainerHighest,
-      borderRadius: BorderRadius.circular(999),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(999),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, size: 16, color: colorScheme.onSurfaceVariant),
-              const SizedBox(width: 6),
-              Text(
-                label,
-                style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                      color: colorScheme.onSurfaceVariant,
-                      fontWeight: FontWeight.w700,
-                    ),
-              ),
-            ],
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 16, color: iconColor),
+          const SizedBox(width: 6),
+          Text(
+            '$value',
+            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w800,
+                  color: Theme.of(context).colorScheme.onSurface,
+                ),
           ),
-        ),
+        ],
       ),
     );
   }
