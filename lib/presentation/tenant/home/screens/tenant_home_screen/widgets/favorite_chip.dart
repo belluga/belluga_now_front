@@ -89,8 +89,6 @@ class FavoriteChip extends StatelessWidget {
             width: 40,
             height: 40,
             fit: BoxFit.cover,
-            color: Colors.white,
-            colorBlendMode: BlendMode.srcIn,
             errorBuilder: (context, error, stackTrace) {
               // Fallback to badge icon if image fails to load
               if (badgeIcon != null) {

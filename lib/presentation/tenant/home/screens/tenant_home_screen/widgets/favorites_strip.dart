@@ -9,15 +9,17 @@ class FavoritesStrip extends StatefulWidget {
   const FavoritesStrip({
     super.key,
     required this.items,
-    this.pinFirst = false,
+    this.pinned,
     this.height = 118,
     this.spacing = 12,
+    this.onPinnedTap,
   });
 
   final List<FavoriteResume> items;
-  final bool pinFirst;
+  final FavoriteResume? pinned;
   final double height;
   final double spacing;
+  final VoidCallback? onPinnedTap;
 
   @override
   State<FavoritesStrip> createState() => _FavoritesStripState();
@@ -26,11 +28,8 @@ class FavoritesStrip extends StatefulWidget {
 class _FavoritesStripState extends State<FavoritesStrip> {
   @override
   Widget build(BuildContext context) {
-    final pinned =
-        widget.pinFirst && widget.items.isNotEmpty ? widget.items.first : null;
-    final scrollItems = pinned == null
-        ? widget.items
-        : widget.items.sublist(1); // omit pinned from list view
+    final pinned = widget.pinned;
+    final scrollItems = widget.items;
 
     return SizedBox(
       height: widget.height,
@@ -55,7 +54,7 @@ class _FavoritesStripState extends State<FavoritesStrip> {
               scrollDirection: Axis.horizontal,
               itemCount: scrollItems.length + 1,
               padding: EdgeInsets.only(
-                left: widget.pinFirst ? 0 : widget.spacing,
+                left: widget.pinned != null ? 0 : widget.spacing,
                 right: widget.spacing,
               ),
               separatorBuilder: (_, __) => SizedBox(width: widget.spacing),
@@ -104,8 +103,7 @@ class _FavoritesStripState extends State<FavoritesStrip> {
     // If it's the primary favorite (app owner), navigate to About screen
     // Otherwise, navigate to Partner Details
     if (favorite.isPrimary) {
-      // TODO: Navigate to About screen when implemented
-      // context.router.push(AboutRoute());
+      widget.onPinnedTap?.call();
       return;
     }
 
