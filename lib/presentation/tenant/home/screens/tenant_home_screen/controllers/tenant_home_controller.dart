@@ -153,6 +153,10 @@ class TenantHomeController implements Disposable {
 
       // 3. Merge
       final allFavorites = [...updatedLegacyFavorites, ...partnerResumes];
+      allFavorites.sort((a, b) {
+        if (a.isPrimary == b.isPrimary) return 0;
+        return a.isPrimary ? -1 : 1;
+      });
       favoritesStreamValue.addValue(allFavorites);
     } catch (_) {
       favoritesStreamValue.addValue(previousValue);

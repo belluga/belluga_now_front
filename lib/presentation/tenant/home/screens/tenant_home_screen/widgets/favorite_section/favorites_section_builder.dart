@@ -26,7 +26,7 @@ class FavoritesSectionBuilder extends StatelessWidget {
         return Row(
           children: [
             Expanded(
-              child: FavoritesStrip(items: items, pinFirst: false),
+              child: FavoritesStrip(items: items, pinFirst: true),
             ),
           ],
         );

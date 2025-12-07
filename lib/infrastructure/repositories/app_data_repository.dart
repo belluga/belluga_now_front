@@ -66,7 +66,10 @@ class AppDataRepository {
 
   AppData _buildLocalFallback(Map<String, dynamic> localInfo) {
     final href = localInfo['href'] as String? ?? '';
-    final origin = Uri.tryParse(href)?.origin ?? '';
+    final hostname = localInfo['hostname'] as String? ?? 'localhost';
+    // Prefer a sane host-based fallback instead of parsing the app name.
+    final originCandidate = href.contains('://') ? href : 'https://$hostname';
+    final origin = Uri.tryParse(originCandidate)?.origin ?? 'https://localhost';
     final fallbackData = {
       'name': 'Offline',
       'type': 'tenant',

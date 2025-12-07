@@ -79,6 +79,8 @@ class AppData {
                 'primary_seed_color'] as String?
             : null);
 
+    final mainDomain = DomainValue()..parse(DomainValue.coerceRaw(map['main_domain']));
+
     return AppData._(
       platformType: localInfo['platformType'] as PlatformTypeValue,
       port: localInfo['port'] as String?,
@@ -87,10 +89,15 @@ class AppData {
       device: localInfo['device'] as String,
       nameValue: EnvironmentNameValue()..parse(map['name']),
       themeDataSettings: ThemeDataSettings.fromJson(map['theme_data_settings']),
-      mainDomainValue: DomainValue(defaultValue: Uri.parse(map['main_domain'])),
+      mainDomainValue: mainDomain,
       typeValue: EnvironmentTypeValue()..parse(map['type']),
       domains: (map['domains'] as List<dynamic>?)
-              ?.map((domain) => DomainValue(defaultValue: Uri.parse(domain)))
+              ?.map((domain) {
+                final value = DomainValue();
+                final parsed = value.tryParse(DomainValue.coerceRaw(domain));
+                return parsed != null ? value : null;
+              })
+              .whereType<DomainValue>()
               .toList() ??
           [],
       appDomains: (map['app_domains'] as List<dynamic>?)
@@ -165,15 +172,17 @@ class AppData {
     required Map<String, dynamic> map,
   }) {
     final mainDomainRaw = map['main_domain'];
-    if (mainDomainRaw is! String || mainDomainRaw.isEmpty) {
+    final mainDomainStr = DomainValue.coerceRaw(mainDomainRaw);
+    if (mainDomainStr.isEmpty) {
       throw ArgumentError('Environment missing required main_domain');
     }
 
-    final uri = Uri.tryParse(mainDomainRaw);
-    if (uri == null || !uri.hasScheme || uri.host.isEmpty) {
+    final domainValue = DomainValue();
+    final parsed = domainValue.tryParse(mainDomainStr);
+    if (parsed == null) {
       throw ArgumentError('Invalid main_domain: $mainDomainRaw');
     }
 
-    return uri.origin;
+    return domainValue.value.origin;
   }
 }
