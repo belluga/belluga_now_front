@@ -40,26 +40,69 @@ class _TenantHomeScreenState extends State<TenantHomeScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        titleSpacing: 0,
-        title: SizedBox(
-          width: double.infinity,
-          child: Stack(
-            alignment: Alignment.centerLeft,
-            children: [
-              const Padding(
-                padding: EdgeInsets.only(left: 16),
-                child: MainLogo(),
+        toolbarHeight: 72,
+        titleSpacing: 16,
+        title: Row(
+          children: [
+            Expanded(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const MainLogo(),
+                  StreamValueBuilder<String?>(
+                    streamValue: _controller.userAddressStreamValue,
+                    builder: (context, address) {
+                      if (address == null || address.trim().isEmpty) {
+                        return const SizedBox.shrink();
+                      }
+                      return Padding(
+                        padding: const EdgeInsets.only(top: 2),
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(8),
+                          onTap: () => context.router.push(const CityMapRoute()),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.location_on_outlined,
+                                size: 14,
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onSurfaceVariant,
+                              ),
+                              const SizedBox(width: 4),
+                              Flexible(
+                                child: Text(
+                                  address,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .labelMedium
+                                      ?.copyWith(
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .onSurfaceVariant,
+                                      ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ],
               ),
-              Positioned(
-                right: 0,
-                child: AnimatedSearchButton(
-                  onTap: () {
-                    context.router.push(EventSearchRoute());
-                  },
-                ),
-              ),
-            ],
-          ),
+            ),
+            const SizedBox(width: 8),
+            AnimatedSearchButton(
+              onTap: () {
+                context.router.push(EventSearchRoute());
+              },
+            ),
+          ],
         ),
         actions: [
           IconButton(

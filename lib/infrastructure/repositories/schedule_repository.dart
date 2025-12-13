@@ -3,9 +3,12 @@ import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/schedule/paged_events_result.dart';
 import 'package:belluga_now/domain/schedule/schedule_summary_model.dart';
 import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
+import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
+import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_page_dto.dart';
 import 'package:belluga_now/infrastructure/services/schedule_backend_contract.dart';
+import 'dart:math' as math;
 import 'package:get_it/get_it.dart';
 
 class ScheduleRepository extends ScheduleRepositoryContract {
@@ -142,7 +145,9 @@ class ScheduleRepository extends ScheduleRepositoryContract {
 
     final listToMap = upcomingOrNow.isNotEmpty ? upcomingOrNow : events;
 
-    return listToMap
+    final sorted = _sortByDistanceIfAvailable(listToMap);
+
+    return sorted
         .map(
           (event) => VenueEventResume.fromScheduleEvent(
             event,
@@ -151,4 +156,53 @@ class ScheduleRepository extends ScheduleRepositoryContract {
         )
         .toList(growable: false);
   }
+
+  List<EventModel> _sortByDistanceIfAvailable(List<EventModel> input) {
+    if (!GetIt.I.isRegistered<UserLocationRepositoryContract>()) {
+      return input;
+    }
+
+    final userCoordinate =
+        GetIt.I.get<UserLocationRepositoryContract>().userLocationStreamValue.value;
+    if (userCoordinate == null) {
+      return input;
+    }
+
+    final withDistance = <(EventModel event, double distance)>[];
+    final withoutDistance = <EventModel>[];
+
+    for (final event in input) {
+      final coordinate = event.coordinate;
+      if (coordinate == null) {
+        withoutDistance.add(event);
+        continue;
+      }
+      withDistance.add((event, _distanceMeters(userCoordinate, coordinate)));
+    }
+
+    withDistance.sort((a, b) => a.$2.compareTo(b.$2));
+
+    return [
+      ...withDistance.map((e) => e.$1),
+      ...withoutDistance,
+    ];
+  }
+
+  double _distanceMeters(CityCoordinate a, CityCoordinate b) {
+    const earthRadiusMeters = 6371000.0;
+    final lat1 = _degToRad(a.latitude);
+    final lat2 = _degToRad(b.latitude);
+    final dLat = _degToRad(b.latitude - a.latitude);
+    final dLon = _degToRad(b.longitude - a.longitude);
+
+    final sinDLat = math.sin(dLat / 2);
+    final sinDLon = math.sin(dLon / 2);
+
+    final h = sinDLat * sinDLat +
+        math.cos(lat1) * math.cos(lat2) * sinDLon * sinDLon;
+    final c = 2 * math.atan2(math.sqrt(h), math.sqrt(1 - h));
+    return earthRadiusMeters * c;
+  }
+
+  double _degToRad(double deg) => deg * (math.pi / 180.0);
 }

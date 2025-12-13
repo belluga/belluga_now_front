@@ -2,11 +2,13 @@ import 'dart:async';
 
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
+import 'package:belluga_now/application/router/guards/any_location_route_guard.dart';
 import 'package:belluga_now/domain/repositories/city_map_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
 import 'package:belluga_now/infrastructure/repositories/city_map_repository.dart';
 import 'package:belluga_now/infrastructure/dal/datasources/mock_poi_database.dart';
 import 'package:belluga_now/infrastructure/services/http/mock_http_service.dart';
+import 'package:belluga_now/infrastructure/services/http/laravel_map_poi_http_service.dart';
 import 'package:belluga_now/infrastructure/services/networking/mock_web_socket_service.dart';
 import 'package:belluga_now/infrastructure/repositories/schedule_repository.dart';
 import 'package:belluga_now/presentation/tenant/map/screens/city_map_screen/controllers/city_map_controller.dart';
@@ -26,6 +28,9 @@ class MapModule extends ModuleContract {
     registerLazySingleton<MockHttpService>(
       () => MockHttpService(database: mockDatabase),
     );
+    registerLazySingleton<LaravelMapPoiHttpService>(
+      () => LaravelMapPoiHttpService(),
+    );
     registerLazySingleton<MockWebSocketService>(
       () => MockWebSocketService(),
     );
@@ -38,6 +43,7 @@ class MapModule extends ModuleContract {
       () => CityMapRepository(
         database: mockDatabase,
         httpService: GetIt.I<MockHttpService>(),
+        laravelHttpService: GetIt.I<LaravelMapPoiHttpService>(),
         webSocketService: GetIt.I<MockWebSocketService>(),
       ),
     );
@@ -59,10 +65,12 @@ class MapModule extends ModuleContract {
         AutoRoute(
           path: '/mapa',
           page: CityMapRoute.page,
+          guards: [AnyLocationRouteGuard()],
         ),
         AutoRoute(
           path: '/mapa/poi',
           page: PoiDetailsRoute.page,
+          guards: [AnyLocationRouteGuard()],
         ),
       ];
 }

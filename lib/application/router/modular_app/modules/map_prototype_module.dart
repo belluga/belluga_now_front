@@ -6,7 +6,6 @@ import 'package:belluga_now/domain/repositories/city_map_repository_contract.dar
 import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
 import 'package:belluga_now/infrastructure/repositories/city_map_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/schedule_repository.dart';
-import 'package:belluga_now/infrastructure/repositories/user_location_repository.dart';
 import 'package:belluga_now/infrastructure/dal/datasources/mock_poi_database.dart';
 import 'package:belluga_now/infrastructure/services/http/mock_http_service.dart';
 import 'package:belluga_now/infrastructure/services/networking/mock_web_socket_service.dart';
@@ -37,8 +36,6 @@ class MapPrototypeModule extends ModuleContract {
     registerLazySingleton<CityMapRepositoryContract>(() => CityMapRepository());
 
     registerLazySingleton<PoiRepository>(() => PoiRepository());
-
-    registerLazySingleton<UserLocationRepository>(() => UserLocationRepository());
   }
 
   void _registerController() {

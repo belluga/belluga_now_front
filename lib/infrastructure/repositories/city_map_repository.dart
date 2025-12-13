@@ -16,6 +16,7 @@ import 'package:belluga_now/infrastructure/dal/datasources/mock_poi_database.dar
 import 'package:belluga_now/infrastructure/dal/dto/mappers/map_dto_mapper.dart';
 import 'package:belluga_now/infrastructure/dal/datasources/poi_query.dart';
 import 'package:belluga_now/infrastructure/dal/dto/map/city_poi_dto.dart';
+import 'package:belluga_now/infrastructure/services/http/laravel_map_poi_http_service.dart';
 import 'package:belluga_now/infrastructure/services/http/mock_http_service.dart';
 import 'package:belluga_now/infrastructure/services/networking/mock_web_socket_service.dart';
 import 'package:stream_value/core/stream_value.dart';
@@ -24,9 +25,11 @@ class CityMapRepository extends CityMapRepositoryContract with MapDtoMapper {
   CityMapRepository({
     MockPoiDatabase? database,
     MockHttpService? httpService,
+    LaravelMapPoiHttpService? laravelHttpService,
     MockWebSocketService? webSocketService,
   })  : _httpService = httpService ??
             MockHttpService(database: database ?? MockPoiDatabase()),
+        _laravelHttpService = laravelHttpService ?? LaravelMapPoiHttpService(),
         _ownsWebSocketService = webSocketService == null,
         _webSocketService = webSocketService ?? MockWebSocketService(),
         _poiEvents = StreamValue<PoiUpdateEvent?>() {
@@ -36,13 +39,19 @@ class CityMapRepository extends CityMapRepositoryContract with MapDtoMapper {
 
   final bool _ownsWebSocketService;
   final MockHttpService _httpService;
+  final LaravelMapPoiHttpService _laravelHttpService;
   final MockWebSocketService _webSocketService;
   late final StreamSubscription<Map<String, dynamic>?> _webSocketSubscription;
   final StreamValue<PoiUpdateEvent?> _poiEvents;
 
   @override
   Future<List<CityPoiModel>> fetchPoints(PoiQuery query) async {
-    final List<CityPoiDTO> dtos = await _httpService.getPois(query);
+    List<CityPoiDTO> dtos;
+    try {
+      dtos = await _laravelHttpService.getPois(query);
+    } catch (_) {
+      dtos = await _httpService.getPois(query);
+    }
     return dtos.map(mapCityPoi).toList(growable: false);
   }
 

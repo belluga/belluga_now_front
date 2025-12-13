@@ -19,6 +19,7 @@ import 'package:belluga_now/domain/repositories/partners_repository_contract.dar
 import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_events_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
 import 'package:belluga_now/infrastructure/repositories/app_data_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/auth_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/friends_repository.dart';
@@ -27,6 +28,7 @@ import 'package:belluga_now/infrastructure/repositories/partners_repository.dart
 import 'package:belluga_now/infrastructure/repositories/schedule_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/tenant_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/user_events_repository.dart';
+import 'package:belluga_now/infrastructure/repositories/user_location_repository.dart';
 import 'package:belluga_now/infrastructure/dal/dao/app_data_backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/local/app_data_local_info_source/app_data_local_info_source.dart';
 import 'package:belluga_now/infrastructure/dal/dao/backend_contract.dart';
@@ -112,6 +114,9 @@ class ModuleSettings extends ModuleSettingsContract {
   }
 
   Future<void> _registerRepositories() async {
+    _registerIfAbsent<UserLocationRepositoryContract>(
+      () => UserLocationRepository(),
+    );
     await _registerAppDataRepository();
     await _registerTenantRepository();
     await _registerAuthRepository();

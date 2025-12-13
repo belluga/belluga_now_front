@@ -12,13 +12,16 @@ import 'package:belluga_now/infrastructure/repositories/app_data_repository.dart
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/partners_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
 
 import 'package:belluga_now/domain/repositories/user_events_repository_contract.dart';
 import 'package:belluga_now/domain/value_objects/asset_path_value.dart';
 import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
 import 'package:belluga_now/domain/value_objects/title_value.dart';
 import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
+import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:flutter/material.dart';
+import 'package:geocoding/geocoding.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value.dart';
 
@@ -29,6 +32,7 @@ class TenantHomeController implements Disposable {
     UserEventsRepositoryContract? userEventsRepository,
     required PartnersRepositoryContract partnersRepository,
     InvitesRepositoryContract? invitesRepository,
+    UserLocationRepositoryContract? userLocationRepository,
   })  : _favoriteRepository = favoriteRepository,
         _scheduleRepository =
             scheduleRepository ?? GetIt.I.get<ScheduleRepositoryContract>(),
@@ -36,13 +40,18 @@ class TenantHomeController implements Disposable {
             userEventsRepository ?? GetIt.I.get<UserEventsRepositoryContract>(),
         _partnersRepository = partnersRepository,
         _invitesRepository =
-            invitesRepository ?? GetIt.I.get<InvitesRepositoryContract>();
+            invitesRepository ?? GetIt.I.get<InvitesRepositoryContract>(),
+        _userLocationRepository = userLocationRepository ??
+            (GetIt.I.isRegistered<UserLocationRepositoryContract>()
+                ? GetIt.I.get<UserLocationRepositoryContract>()
+                : null);
 
   final FavoriteRepositoryContract _favoriteRepository;
   final ScheduleRepositoryContract _scheduleRepository;
   final UserEventsRepositoryContract _userEventsRepository;
   final PartnersRepositoryContract _partnersRepository;
   final InvitesRepositoryContract _invitesRepository;
+  final UserLocationRepositoryContract? _userLocationRepository;
 
   final StreamValue<List<FavoriteResume>?> favoritesStreamValue =
       StreamValue<List<FavoriteResume>?>();
@@ -53,6 +62,8 @@ class TenantHomeController implements Disposable {
   final StreamValue<List<VenueEventResume>> liveEventsStreamValue =
       StreamValue<List<VenueEventResume>>(defaultValue: []);
 
+  final StreamValue<String?> userAddressStreamValue = StreamValue<String?>();
+
   StreamValue<Set<String>> get confirmedIdsStream =>
       _userEventsRepository.confirmedEventIdsStream;
 
@@ -61,10 +72,17 @@ class TenantHomeController implements Disposable {
 
   StreamSubscription? _myEventsSubscription;
   StreamSubscription? _partnersSubscription;
+  StreamSubscription? _userLocationSubscription;
 
   Future<void> init() async {
     await loadFavorites();
     await loadMyEvents();
+
+    // Best-effort: use location for "nearby" sorting when already permitted,
+    // without triggering permission prompts from the Home screen.
+    await _userLocationRepository?.warmUpIfPermitted();
+    _listenUserLocation();
+
     await loadUpcomingEvents();
 
     // Listen for changes in favorite partners
@@ -78,6 +96,87 @@ class TenantHomeController implements Disposable {
         _userEventsRepository.confirmedEventIdsStream.stream.listen((_) {
       loadMyEvents();
     });
+  }
+
+  void _listenUserLocation() {
+    final repo = _userLocationRepository;
+    if (repo == null) return;
+
+    final cachedAddress = repo.lastKnownAddressStreamValue.value;
+    if (cachedAddress != null && cachedAddress.trim().isNotEmpty) {
+      userAddressStreamValue.addValue(cachedAddress);
+    }
+
+    unawaited(_updateUserAddress(repo.userLocationStreamValue.value));
+
+    _userLocationSubscription?.cancel();
+    _userLocationSubscription = repo.userLocationStreamValue.stream.listen(
+      (coordinate) {
+        unawaited(_updateUserAddress(coordinate));
+      },
+    );
+  }
+
+  Future<void> _updateUserAddress(CityCoordinate? coordinate) async {
+    if (coordinate == null) {
+      userAddressStreamValue.addValue(null);
+      return;
+    }
+
+    try {
+      final geocoderPresent = await isPresent();
+      if (!geocoderPresent) {
+        userAddressStreamValue.addValue(
+          'Localização detectada',
+        );
+        return;
+      }
+
+      try {
+        await setLocaleIdentifier('pt_BR');
+      } catch (_) {
+        // Non-fatal: platform may ignore locale overrides.
+      }
+
+      final placemarks = await placemarkFromCoordinates(
+        coordinate.latitude,
+        coordinate.longitude,
+      );
+      final first = placemarks.isNotEmpty ? placemarks.first : null;
+      final streetParts = <String>[
+        if ((first?.thoroughfare ?? '').trim().isNotEmpty) first!.thoroughfare!,
+        if ((first?.subThoroughfare ?? '').trim().isNotEmpty)
+          first!.subThoroughfare!,
+      ];
+      final streetLabel =
+          streetParts.isNotEmpty ? streetParts.join(', ') : null;
+
+      final parts = <String>[
+        if ((streetLabel ?? '').trim().isNotEmpty) streetLabel!,
+        if ((first?.subLocality ?? '').trim().isNotEmpty) first!.subLocality!,
+        if ((first?.locality ?? '').trim().isNotEmpty) first!.locality!,
+        if ((first?.administrativeArea ?? '').trim().isNotEmpty)
+          first!.administrativeArea!,
+      ];
+      final label = parts.isNotEmpty ? parts.join(', ') : null;
+      await _userLocationRepository?.setLastKnownAddress(label);
+      userAddressStreamValue.addValue(
+        (label == null || label.trim().isEmpty)
+            ? 'Localização detectada'
+            : label,
+      );
+    } catch (e, stackTrace) {
+      debugPrint('[TenantHomeController] reverse geocode failed: $e');
+      debugPrintStack(stackTrace: stackTrace);
+      final previous = userAddressStreamValue.value;
+      if (previous != null && previous.trim().isNotEmpty) {
+        return;
+      }
+      await _userLocationRepository?.setLastKnownAddress('Localização detectada');
+      userAddressStreamValue.addValue(
+        'Localização detectada',
+      );
+    }
   }
 
   Future<void> loadFavorites() async {
@@ -217,9 +316,11 @@ class TenantHomeController implements Disposable {
   void onDispose() {
     _myEventsSubscription?.cancel();
     _partnersSubscription?.cancel();
+    _userLocationSubscription?.cancel();
     favoritesStreamValue.dispose();
     myEventsStreamValue.dispose();
     upcomingEventsStreamValue.dispose();
     liveEventsStreamValue.dispose();
+    userAddressStreamValue.dispose();
   }
 }

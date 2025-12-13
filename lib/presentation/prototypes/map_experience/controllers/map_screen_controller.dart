@@ -6,8 +6,8 @@ import 'package:belluga_now/domain/map/filters/main_filter_option.dart';
 import 'package:belluga_now/domain/map/filters/poi_filter_options.dart';
 import 'package:belluga_now/domain/map/map_status.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
+import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
 import 'package:belluga_now/infrastructure/repositories/poi_repository.dart';
-import 'package:belluga_now/infrastructure/repositories/user_location_repository.dart';
 import 'package:belluga_now/infrastructure/dal/datasources/poi_query.dart';
 import 'package:free_map/free_map.dart';
 import 'package:flutter/foundation.dart';
@@ -19,13 +19,13 @@ class MapScreenController implements Disposable {
   static const double maxZoom = 17.0;
   MapScreenController({
     PoiRepository? poiRepository,
-    UserLocationRepository? userLocationRepository,
+    UserLocationRepositoryContract? userLocationRepository,
   })  : _poiRepository = poiRepository ?? GetIt.I.get<PoiRepository>(),
-        _userLocationRepository =
-            userLocationRepository ?? GetIt.I.get<UserLocationRepository>();
+        _userLocationRepository = userLocationRepository ??
+            GetIt.I.get<UserLocationRepositoryContract>();
 
   final PoiRepository _poiRepository;
-  final UserLocationRepository _userLocationRepository;
+  final UserLocationRepositoryContract _userLocationRepository;
 
   final mapController = MapController();
 
@@ -69,7 +69,6 @@ class MapScreenController implements Disposable {
       loadFilters(),
       loadPois(const PoiQuery()),
     ]);
-    await _userLocationRepository.resolveUserLocation();
     await centerOnUser();
     _attachZoomListener();
   }
@@ -101,8 +100,11 @@ class MapScreenController implements Disposable {
   }
 
   Future<String?> centerOnUser({bool animate = true}) async {
-    await _userLocationRepository.resolveUserLocation();
-    final coordinate = userLocationStreamValue.value;
+    var coordinate = userLocationStreamValue.value;
+    if (coordinate == null) {
+      await _userLocationRepository.resolveUserLocation();
+      coordinate = userLocationStreamValue.value;
+    }
 
     if (coordinate == null) {
       return Future.value('Não encontramos sua localização');
