@@ -25,11 +25,9 @@ class AppDataRepository {
 
   Future<void> init() async {
     final localInfo = await _localInfoSource.getInfo();
-
-    debugPrint('[AppDataRepository] Fetching branding for host ${localInfo['hostname']}');
     appData = await _fetchRemoteOrFail(localInfo);
-    debugPrint('[AppDataRepository] Branding resolved. main_logo_dark=${appData.mainLogoDarkUrl.value} main_icon_dark=${appData.mainIconDarkUrl.value}');
-    themeModeStreamValue.addValue(_resolveInitialThemeMode());
+    final initialThemeMode = _resolveInitialThemeMode();
+    themeModeStreamValue.addValue(initialThemeMode);
     await _precacheLogos();
 
     if (GetIt.I.isRegistered<AppData>()) {
@@ -51,15 +49,9 @@ class AppDataRepository {
   Future<AppData> _fetchRemoteOrFail(Map<String, dynamic> localInfo) async {
     try {
       final dto = await _backend.fetch();
-      debugPrint(
-        '[AppDataRepository] Using logos -> '
-        'main_logo_light: ${dto.mainLogoLightUrl}, main_logo_dark: ${dto.mainLogoDarkUrl}, '
-        'main_icon_light: ${dto.mainIconLightUrl}, main_icon_dark: ${dto.mainIconDarkUrl}',
-      );
       return AppData.fromDto(dto: dto, localInfo: localInfo);
-    } catch (error, stackTrace) {
-      debugPrint('AppDataRepository: remote fetch failed. Falling back to origin assets. $error');
-      debugPrintStack(stackTrace: stackTrace);
+    } catch (error) {
+      // Ignore remote bootstrap failures and fall back to a local initialization payload.
       return _buildLocalFallback(localInfo);
     }
   }

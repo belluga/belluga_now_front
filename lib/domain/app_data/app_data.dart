@@ -131,7 +131,8 @@ class AppData {
     );
   }
 
-  AppType get appType => platformType.value ?? AppType.mobile;
+  AppType get appType =>
+      platformType.value ?? platformType.defaultValue ?? AppType.mobile;
 
   IconUrlValue get iconUrl => mainIconDarkUrl;
 

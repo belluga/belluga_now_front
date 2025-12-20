@@ -4,4 +4,4 @@
 // - Web: listens for the `brandingReady` custom event emitted by the host
 //   page and parses the branding payload (`app_data_backend_web.dart`).
 export 'app_data_backend_stub.dart'
-    if (dart.library.html) 'app_data_backend_web.dart';
+    if (dart.library.js_interop) 'app_data_backend_web.dart';

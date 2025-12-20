@@ -32,14 +32,6 @@ class AppDataBackend implements AppDataBackendContract {
       } else {
         throw Exception('Unexpected environment response shape');
       }
-      // Debug: log which URLs are being parsed from the payload.
-      // Note: keep concise to avoid leaking sensitive data.
-      // ignore: avoid_print
-      print(
-        '[AppDataBackend] Branding payload -> light_logo: ${json['main_logo_light_url']}, '
-        'dark_logo: ${json['main_logo_dark_url']}, light_icon: ${json['main_icon_light_url']}, '
-        'dark_icon: ${json['main_icon_dark_url']}',
-      );
       return AppDataDTO.fromJson(json);
     } on DioException catch (e) {
       throw Exception('Failed to load environment data: ${e.message}');

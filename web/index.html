@@ -120,27 +120,38 @@
 
 <script>
   window.addEventListener('DOMContentLoaded', (event) => {
-    const brandingCacheKey = 'tenantBrandingData';
-    let isBrandingDispatched = false;
+    // Host-based routing safety (pre-Flutter).
+    // - Tenant hosts must never render landlord routes even via direct navigation.
+    // - Landlord host must never render tenant-only routes even via direct navigation.
+    // This protects against stale cached builds (where guards might not exist yet).
+    const landlordHost = 'belluga.app';
+    const hostname = window.location.hostname;
+    const pathname = window.location.pathname || '/';
+    const isTenantHost =
+      hostname.endsWith('.' + landlordHost) && hostname !== landlordHost;
+    const isLandlordHost = hostname === landlordHost;
+
+    if (isTenantHost && pathname.startsWith('/landlord')) {
+      window.location.replace('/');
+      return;
+    }
+
+    if (isLandlordHost && pathname.startsWith('/home')) {
+      window.location.replace('/landlord');
+      return;
+    }
 
     const applyBranding = (branding) => {
-      if (isBrandingDispatched && branding) {
-      } else {
-        window.dispatchEvent(new CustomEvent('brandingReady', { detail: branding }));
-        isBrandingDispatched = true;
-      }
-      
       if (!branding) return;
 
       document.title = branding.name || document.title;
-      const backgroundColor = branding.theme_data_settings?.light_scheme_data?.primary_seed_color;
-      const primarySeedColor = branding.theme_data_settings?.primary_seed_color
-        || branding.theme_data_settings?.light_scheme_data?.primary_seed_color;
+      const primarySeedColor = branding.theme_data_settings?.primary_seed_color;
       
-      if (backgroundColor) {
+      // Web splash should be full branding primary, matching the in-app splash behavior.
+      if (primarySeedColor) {
         const splashScreen = document.getElementById('splash-screen');
         if (splashScreen) {
-          splashScreen.style.backgroundColor = backgroundColor;
+          splashScreen.style.backgroundColor = primarySeedColor;
         }
       }
 
@@ -151,39 +162,24 @@
       }
     };
 
-    let cachedDataString = null;
-    try {
-      cachedDataString = localStorage.getItem(brandingCacheKey);
-      if (cachedDataString) {
-        const cachedBranding = JSON.parse(cachedDataString);
-        console.log('Branding loaded from cache.');
-        applyBranding(cachedBranding);
-      }
-    } catch (error) {
-      console.error('Failed to parse cached branding data.', error);
-      localStorage.removeItem(brandingCacheKey);
-    }
-
     (async function () {
+      // Cache disabled: always fetch fresh `/environment` data.
+      let resolvedBranding = null;
       try {
         const response = await fetch('/environment');
         if (response.ok) {
           const freshBranding = await response.json();
-          const freshBrandingString = JSON.stringify(freshBranding);
-
-          if (freshBrandingString !== cachedDataString) {
-            applyBranding(freshBranding);
-            localStorage.setItem(brandingCacheKey, freshBrandingString);
-          }
-        } else {
-          console.warn('Branding API returned an error. Using cached or default state.');
-          applyBranding(null);
+          resolvedBranding = freshBranding;
+          applyBranding(freshBranding);
         }
       } catch (error) {
-        console.error("Network failure when fetching branding.", error);
-        applyBranding(null);
+        // Ignore network failures; Flutter will fall back.
       } finally {
-        // no-op: applyBranding already called in success/error paths
+        // Persist the resolved payload on the global scope so Flutter can read it even if it
+        // attaches the `brandingReady` listener after this event is dispatched.
+        window.__brandingPayload = resolvedBranding;
+
+        window.dispatchEvent(new CustomEvent('brandingReady', { detail: resolvedBranding }));
       }
     })();
   });

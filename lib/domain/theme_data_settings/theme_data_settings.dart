@@ -23,7 +23,7 @@ class ThemeDataSettings {
     final TextTheme textTheme = _buildTextTheme(colorScheme);
 
     return ThemeData(
-      // useMaterial3: true,
+      useMaterial3: true,
       colorScheme: colorScheme,
       textTheme: textTheme,
       scaffoldBackgroundColor: colorScheme.surface,
@@ -123,23 +123,6 @@ class ThemeDataSettings {
     final brightnessDefaultValue = BrightnessValue()
       ..parse(json['brightness_default']);
 
-    if (json.containsKey('light_scheme_data') &&
-        json.containsKey('dark_scheme_data')) {
-      final darkSchemeData = ColorSchemeData.fromJson(
-        <String, dynamic>{"brightness": "dark", ...json['dark_scheme_data']},
-      );
-
-      final lightSchemeData = ColorSchemeData.fromJson(
-        <String, dynamic>{"brightness": "light", ...json['light_scheme_data']},
-      );
-
-      return ThemeDataSettings(
-        darkSchemeData: darkSchemeData,
-        lightSchemeData: lightSchemeData,
-        brightnessDefault: brightnessDefaultValue.value,
-      );
-    }
-
     final primarySeedColor = json['primary_seed_color'] as String? ?? '#4FA0E3';
     final secondarySeedColor =
         json['secondary_seed_color'] as String? ?? '#E80D5D';
@@ -167,7 +150,9 @@ class ThemeDataSettings {
 
   TextTheme _buildTextTheme(ColorScheme colorScheme) {
     final base = Typography.material2021();
-    return base.black.apply(
+    final themedBase =
+        colorScheme.brightness == Brightness.dark ? base.white : base.black;
+    return themedBase.apply(
       displayColor: colorScheme.onSurface,
       bodyColor: colorScheme.onSurfaceVariant,
     );

@@ -6,8 +6,10 @@ import 'package:web/web.dart' as web;
 class AppDataLocalInfoSource {
   Future<Map<String, dynamic>> getInfo() async {
     final location = web.window.location;
+    final platformTypeValue = PlatformTypeValue(defaultValue: AppType.web)
+      ..parse(AppType.web.name);
     return {
-      'platformType': PlatformTypeValue(defaultValue: AppType.web),
+      'platformType': platformTypeValue,
       'port': location.port,
       'hostname': location.hostname,
       'href': location.href,
