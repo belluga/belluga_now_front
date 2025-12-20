@@ -1,6 +1,5 @@
 import 'package:belluga_now/application/configurations/belluga_constants.dart';
 import 'package:belluga_now/domain/user/user_profile_contract.dart';
-import 'package:platform_device_id_plus/platform_device_id.dart';
 import 'package:value_object_pattern/domain/value_objects/mongo_id_value.dart';
 
 abstract class UserContract {
@@ -18,8 +17,9 @@ abstract class UserContract {
   }
 
   Future<void> _setDeviceId() async {
-    currentDeviceId =
-        "${BellugaConstants.settings.platform}_${PlatformDeviceId.getDeviceId}";
+    // NOTE: Avoid `platform_device_id_*` plugins to keep Flutter Web WASM builds compatible.
+    // A stable device identifier can be added later once a wasm-safe strategy is defined.
+    currentDeviceId = '${BellugaConstants.settings.platform}_unkn';
   }
 
   Future<void> updateCustomData(Map<String, Object?> newCustomData) {

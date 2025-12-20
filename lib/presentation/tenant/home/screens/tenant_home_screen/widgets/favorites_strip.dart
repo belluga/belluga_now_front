@@ -1,6 +1,5 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
-import 'package:belluga_now/domain/favorite/favorite_badge.dart';
 import 'package:belluga_now/domain/favorite/projections/favorite_resume.dart';
 import 'package:belluga_now/presentation/tenant/home/screens/tenant_home_screen/widgets/favorite_chip.dart';
 import 'package:flutter/material.dart';
@@ -42,7 +41,7 @@ class _FavoritesStripState extends State<FavoritesStrip> {
               child: FavoriteChip(
                 title: pinned.title,
                 imageUri: pinned.imageUri,
-                badge: _convertBadgeToIconData(pinned.badge),
+                badge: pinned.badge,
                 onTap: () => _onFavoriteTap(pinned),
                 isPrimary: pinned.isPrimary,
                 iconImageUrl: pinned.iconImageUrl,
@@ -70,7 +69,7 @@ class _FavoritesStripState extends State<FavoritesStrip> {
                 return FavoriteChip(
                   title: item.title,
                   imageUri: item.imageUri,
-                  badge: _convertBadgeToIconData(item.badge),
+                  badge: item.badge,
                   onTap: () => _onFavoriteTap(item),
                   isPrimary: item.isPrimary,
                   iconImageUrl: item.iconImageUrl,
@@ -81,17 +80,6 @@ class _FavoritesStripState extends State<FavoritesStrip> {
           ),
         ],
       ),
-    );
-  }
-
-  IconData? _convertBadgeToIconData(FavoriteBadge? badge) {
-    if (badge == null) return null;
-    final codePoint = badge.codePoint;
-    if (codePoint <= 0) return null;
-    return IconData(
-      codePoint,
-      fontFamily: badge.fontFamily,
-      fontPackage: badge.fontPackage,
     );
   }
 

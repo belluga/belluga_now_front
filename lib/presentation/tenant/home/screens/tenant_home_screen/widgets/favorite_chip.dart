@@ -1,3 +1,4 @@
+import 'package:belluga_now/domain/favorite/favorite_badge.dart';
 import 'package:flutter/material.dart';
 
 class FavoriteChip extends StatelessWidget {
@@ -13,7 +14,7 @@ class FavoriteChip extends StatelessWidget {
   });
 
   final String title;
-  final IconData? badge;
+  final FavoriteBadge? badge;
   final Uri? imageUri;
   final Function()? onTap;
   final bool isPrimary;
@@ -24,7 +25,7 @@ class FavoriteChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
 
-    final badgeIcon = _resolveBadgeIcon();
+    final badgeGlyph = _resolveBadgeGlyph();
 
     return SizedBox(
       width: 82,
@@ -41,18 +42,20 @@ class FavoriteChip extends StatelessWidget {
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                   ),
-                  child: _buildAvatar(context, colorScheme, badgeIcon),
+                  child: _buildAvatar(context, colorScheme, badgeGlyph),
                 ),
-                if (badgeIcon != null && !isPrimary)
+                if (badgeGlyph != null && !isPrimary)
                   Positioned(
                     right: -4,
                     bottom: -4,
                     child: CircleAvatar(
                       radius: 12,
                       backgroundColor: colorScheme.surface,
-                      child: Icon(
-                        badgeIcon,
+                      child: _BadgeGlyph(
+                        codePoint: badgeGlyph.codePoint,
+                        fontFamily: badgeGlyph.fontFamily,
                         size: 14,
+                        color: colorScheme.onSurface,
                       ),
                     ),
                   ),
@@ -75,7 +78,7 @@ class FavoriteChip extends StatelessWidget {
   }
 
   Widget _buildAvatar(
-      BuildContext context, ColorScheme colorScheme, IconData? badgeIcon) {
+      BuildContext context, ColorScheme colorScheme, FavoriteBadge? badgeGlyph) {
     // For app owner (primary), use colored background with icon image
     if (isPrimary && iconImageUrl != null) {
       final backgroundColor = primaryColor ?? colorScheme.primary;
@@ -91,9 +94,10 @@ class FavoriteChip extends StatelessWidget {
             fit: BoxFit.cover,
             errorBuilder: (context, error, stackTrace) {
               // Fallback to badge icon if image fails to load
-              if (badgeIcon != null) {
-                return Icon(
-                  badgeIcon,
+              if (badgeGlyph != null) {
+                return _BadgeGlyph(
+                  codePoint: badgeGlyph.codePoint,
+                  fontFamily: badgeGlyph.fontFamily,
                   size: 32,
                   color: Colors.white,
                 );
@@ -118,19 +122,38 @@ class FavoriteChip extends StatelessWidget {
     );
   }
 
-  IconData? _resolveBadgeIcon() {
-    final _badge = badge;
-    if (_badge == null) {
-      return null;
-    }
-    final codePoint = _badge.codePoint;
-    if (codePoint <= 0) {
-      return null;
-    }
-    return IconData(
-      codePoint,
-      fontFamily: _badge.fontFamily,
-      fontPackage: _badge.fontPackage,
+  FavoriteBadge? _resolveBadgeGlyph() {
+    final badgeData = badge;
+    if (badgeData == null) return null;
+    if (badgeData.codePoint <= 0) return null;
+    return badgeData;
+  }
+}
+
+class _BadgeGlyph extends StatelessWidget {
+  const _BadgeGlyph({
+    required this.codePoint,
+    required this.fontFamily,
+    required this.size,
+    required this.color,
+  });
+
+  final int codePoint;
+  final String? fontFamily;
+  final double size;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    if (codePoint <= 0) return const SizedBox.shrink();
+    return Text(
+      String.fromCharCode(codePoint),
+      style: TextStyle(
+        fontFamily: fontFamily,
+        fontSize: size,
+        color: color,
+        height: 1,
+      ),
     );
   }
 }
