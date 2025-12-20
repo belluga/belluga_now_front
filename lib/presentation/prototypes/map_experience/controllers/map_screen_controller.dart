@@ -69,6 +69,9 @@ class MapScreenController implements Disposable {
       loadFilters(),
       loadPois(const PoiQuery()),
     ]);
+    await _userLocationRepository.refreshIfPermitted(
+      minInterval: Duration.zero,
+    );
     await centerOnUser();
     _attachZoomListener();
   }

@@ -29,6 +29,11 @@ class _InitScreenState extends State<InitScreen> {
     final scheme = Theme.of(context).colorScheme;
     final error = _errorMessage;
     final appData = GetIt.I.get<AppDataRepository>().appData;
+    final backgroundColor = _tryParseHexColor(appData.mainColor.value) ?? scheme.primary;
+    final onBackgroundColor =
+        ThemeData.estimateBrightnessForColor(backgroundColor) == Brightness.dark
+            ? Colors.white
+            : Colors.black;
     final iconUrl = (scheme.brightness == Brightness.dark
             ? appData.mainIconDarkUrl
             : appData.mainIconLightUrl)
@@ -42,7 +47,7 @@ class _InitScreenState extends State<InitScreen> {
             errorBuilder: (_, __, ___) => Icon(
               Icons.waves,
               size: 72,
-              color: scheme.onPrimary,
+              color: onBackgroundColor,
             ),
           )
         : Image.asset(
@@ -52,7 +57,7 @@ class _InitScreenState extends State<InitScreen> {
             errorBuilder: (_, __, ___) => Icon(
               Icons.waves,
               size: 72,
-              color: scheme.onPrimary,
+              color: onBackgroundColor,
             ),
           );
 
@@ -61,7 +66,7 @@ class _InitScreenState extends State<InitScreen> {
       body: Container(
         width: double.infinity,
         height: double.infinity,
-        color: scheme.primary,
+        color: backgroundColor,
         child: Center(
           child: error != null
               ? Padding(
@@ -76,7 +81,7 @@ class _InitScreenState extends State<InitScreen> {
                         style: Theme.of(context)
                             .textTheme
                             .bodyLarge
-                            ?.copyWith(color: scheme.onPrimary),
+                            ?.copyWith(color: onBackgroundColor),
                         textAlign: TextAlign.center,
                       ),
                       const SizedBox(height: 16),
@@ -137,5 +142,15 @@ class _InitScreenState extends State<InitScreen> {
       if (initialRoute is InviteFlowRoute) const InviteFlowRoute(),
     ];
     context.router.replaceAll(routes);
+  }
+
+  Color? _tryParseHexColor(String raw) {
+    final normalized = raw.trim();
+    if (normalized.isEmpty) return null;
+    final hex = normalized.startsWith('#') ? normalized.substring(1) : normalized;
+    if (hex.length != 6) return null;
+    final value = int.tryParse('FF$hex', radix: 16);
+    if (value == null) return null;
+    return Color(value);
   }
 }

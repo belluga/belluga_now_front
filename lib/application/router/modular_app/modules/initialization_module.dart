@@ -10,7 +10,6 @@ import 'package:belluga_now/infrastructure/repositories/friends_repository.dart'
 import 'package:belluga_now/infrastructure/repositories/invites_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/user_events_repository.dart';
 import 'package:belluga_now/presentation/common/init/screens/init_screen/controllers/init_screen_controller.dart';
-import 'package:belluga_now/presentation/common/location_permission/controllers/location_permission_controller.dart';
 import 'package:get_it_modular_with_auto_route/get_it_modular_with_auto_route.dart';
 
 class InitializationModule extends ModuleContract {
@@ -29,10 +28,6 @@ class InitializationModule extends ModuleContract {
 
     registerLazySingleton<InitScreenController>(
       () => InitScreenController(),
-    );
-
-    registerFactory<LocationPermissionController>(
-      () => LocationPermissionController(),
     );
   }
 

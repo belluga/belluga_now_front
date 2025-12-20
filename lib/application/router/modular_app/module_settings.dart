@@ -38,6 +38,7 @@ import 'package:belluga_now/infrastructure/dal/dao/mock_backend/mock_schedule_ba
 import 'package:belluga_now/infrastructure/dal/dao/mock_backend/mock_tenant_backend.dart';
 import 'package:belluga_now/infrastructure/dal/dao/tenant_backend_contract.dart';
 import 'package:belluga_now/infrastructure/services/schedule_backend_contract.dart';
+import 'package:belluga_now/presentation/common/location_permission/controllers/location_permission_controller.dart';
 import 'package:flutter/foundation.dart';
 import 'package:get_it/get_it.dart';
 import 'package:get_it_modular_with_auto_route/get_it_modular_with_auto_route.dart';
@@ -67,6 +68,7 @@ class ModuleSettings extends ModuleSettingsContract {
 
   @override
   FutureOr<void> registerGlobalDependencies() async {
+    _registerControllerFactories();
     _registerBackend();
     await _registerRepositories();
   }
@@ -111,6 +113,14 @@ class ModuleSettings extends ModuleSettingsContract {
     _registerIfAbsent<InvitesRepositoryContract>(
       () => InvitesRepository(),
     );
+  }
+
+  void _registerControllerFactories() {
+    if (!GetIt.I.isRegistered<LocationPermissionController>()) {
+      GetIt.I.registerFactory<LocationPermissionController>(
+        () => LocationPermissionController(),
+      );
+    }
   }
 
   Future<void> _registerRepositories() async {

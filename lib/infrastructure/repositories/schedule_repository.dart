@@ -3,12 +3,11 @@ import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/schedule/paged_events_result.dart';
 import 'package:belluga_now/domain/schedule/schedule_summary_model.dart';
 import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
-import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
+import 'package:belluga_now/domain/map/geo_distance.dart';
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_page_dto.dart';
 import 'package:belluga_now/infrastructure/services/schedule_backend_contract.dart';
-import 'dart:math' as math;
 import 'package:get_it/get_it.dart';
 
 class ScheduleRepository extends ScheduleRepositoryContract {
@@ -127,6 +126,7 @@ class ScheduleRepository extends ScheduleRepositoryContract {
     final events = await getAllEvents();
     final now = DateTime.now();
     const assumedDuration = Duration(hours: 3);
+    const radiusMeters = 50000.0;
 
     bool isHappeningNow(EventModel e) {
       final start = e.dateTimeStart.value;
@@ -145,7 +145,8 @@ class ScheduleRepository extends ScheduleRepositoryContract {
 
     final listToMap = upcomingOrNow.isNotEmpty ? upcomingOrNow : events;
 
-    final sorted = _sortByDistanceIfAvailable(listToMap);
+    final sorted =
+        _filterWithinRadiusThenSortByTime(listToMap, radiusMeters: radiusMeters);
 
     return sorted
         .map(
@@ -157,52 +158,52 @@ class ScheduleRepository extends ScheduleRepositoryContract {
         .toList(growable: false);
   }
 
-  List<EventModel> _sortByDistanceIfAvailable(List<EventModel> input) {
+  List<EventModel> _filterWithinRadiusThenSortByTime(
+    List<EventModel> input, {
+    required double radiusMeters,
+  }) {
     if (!GetIt.I.isRegistered<UserLocationRepositoryContract>()) {
-      return input;
+      return _sortByStartTime(input);
     }
 
     final userCoordinate =
         GetIt.I.get<UserLocationRepositoryContract>().userLocationStreamValue.value;
     if (userCoordinate == null) {
-      return input;
+      return _sortByStartTime(input);
     }
 
-    final withDistance = <(EventModel event, double distance)>[];
-    final withoutDistance = <EventModel>[];
-
+    final withinRadius = <EventModel>[];
     for (final event in input) {
       final coordinate = event.coordinate;
       if (coordinate == null) {
-        withoutDistance.add(event);
         continue;
       }
-      withDistance.add((event, _distanceMeters(userCoordinate, coordinate)));
+      final distance = haversineDistanceMeters(
+        lat1: userCoordinate.latitude,
+        lon1: userCoordinate.longitude,
+        lat2: coordinate.latitude,
+        lon2: coordinate.longitude,
+      );
+      if (distance <= radiusMeters) {
+        withinRadius.add(event);
+      }
     }
 
-    withDistance.sort((a, b) => a.$2.compareTo(b.$2));
-
-    return [
-      ...withDistance.map((e) => e.$1),
-      ...withoutDistance,
-    ];
+    // Fallback: if nothing is inside the radius, keep the original list.
+    final filtered = withinRadius.isNotEmpty ? withinRadius : input;
+    return _sortByStartTime(filtered);
   }
 
-  double _distanceMeters(CityCoordinate a, CityCoordinate b) {
-    const earthRadiusMeters = 6371000.0;
-    final lat1 = _degToRad(a.latitude);
-    final lat2 = _degToRad(b.latitude);
-    final dLat = _degToRad(b.latitude - a.latitude);
-    final dLon = _degToRad(b.longitude - a.longitude);
-
-    final sinDLat = math.sin(dLat / 2);
-    final sinDLon = math.sin(dLon / 2);
-
-    final h = sinDLat * sinDLat +
-        math.cos(lat1) * math.cos(lat2) * sinDLon * sinDLon;
-    final c = 2 * math.atan2(math.sqrt(h), math.sqrt(1 - h));
-    return earthRadiusMeters * c;
+  List<EventModel> _sortByStartTime(List<EventModel> input) {
+    final sorted = [...input];
+    sorted.sort((a, b) {
+      final aStart = a.dateTimeStart.value;
+      final bStart = b.dateTimeStart.value;
+      if (aStart == null && bStart == null) return 0;
+      if (aStart == null) return 1;
+      if (bStart == null) return -1;
+      return aStart.compareTo(bStart);
+    });
+    return sorted;
   }
-
-  double _degToRad(double deg) => deg * (math.pi / 180.0);
 }

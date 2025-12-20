@@ -66,15 +66,6 @@ class EventDetailController implements Disposable {
         final isConfirmedLocally =
             _userEventsRepository.isEventConfirmed(event.id.value);
 
-        // DEBUG: Trace persistence
-        // ignore: avoid_print
-        print('EventDetailController: Loading event slug: "${event.slug}"');
-        // ignore: avoid_print
-        print(
-            'EventDetailController: Repository confirmed IDs: ${_userEventsRepository.confirmedEventIdsStream.value}');
-        // ignore: avoid_print
-        print('EventDetailController: isConfirmedLocally: $isConfirmedLocally');
-
         isConfirmedStreamValue
             .addValue(isConfirmedLocally || event.isConfirmedValue.value);
 

@@ -385,9 +385,12 @@ class MockPartnersDatabase {
       // Venue partner from event location/coords
       final venueSlug = _slugify(seed.location);
       if (!venueMap.containsKey(venueSlug)) {
+        final venueName = seed.location.trim().length < 5
+            ? '${seed.location.trim()} Guarapari'
+            : seed.location.trim();
         venueMap[venueSlug] = PartnerModel.fromPrimitives(
           id: MockScheduleBackend.generateMongoId(venueSlug),
-          name: seed.location,
+          name: venueName,
           slug: venueSlug,
           type: PartnerType.venue,
           avatarUrl: seed.thumbUrl,

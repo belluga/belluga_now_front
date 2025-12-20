@@ -8,6 +8,11 @@ import 'package:belluga_now/infrastructure/dal/dto/schedule/event_summary_item_d
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_type_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/thumb_dto.dart';
 import 'package:belluga_now/infrastructure/services/schedule_backend_contract.dart';
+import 'package:belluga_now/application/configurations/belluga_constants.dart';
+import 'package:belluga_now/domain/app_data/app_data.dart';
+import 'package:belluga_now/domain/map/geo_distance.dart';
+import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
+import 'package:get_it/get_it.dart';
 
 class MockScheduleBackend implements ScheduleBackendContract {
   MockScheduleBackend();
@@ -62,6 +67,7 @@ class MockScheduleBackend implements ScheduleBackendContract {
     final events = await _loadEvents();
     final now = DateTime.now();
     final query = searchQuery?.toLowerCase().trim();
+    const radiusMeters = 50000.0;
 
     bool isHappeningNow(EventDTO event) {
       final start = DateTime.parse(event.dateTimeStart);
@@ -70,7 +76,7 @@ class MockScheduleBackend implements ScheduleBackendContract {
           (now.isBefore(end) || now.isAtSameMomentAs(end));
     }
 
-    final filtered = events.where((event) {
+    final timeFiltered = events.where((event) {
       final start = DateTime.parse(event.dateTimeStart);
       final happeningNow = isHappeningNow(event);
 
@@ -91,7 +97,12 @@ class MockScheduleBackend implements ScheduleBackendContract {
       return titleMatch || contentMatch || artistMatch;
     }).toList();
 
-    filtered.sort((a, b) {
+    final locationFiltered = _filterWithinRadiusIfAvailable(
+      timeFiltered,
+      radiusMeters: radiusMeters,
+    );
+
+    locationFiltered.sort((a, b) {
       final aStart = DateTime.parse(a.dateTimeStart);
       final bStart = DateTime.parse(b.dateTimeStart);
       return showPastOnly ? bStart.compareTo(aStart) : aStart.compareTo(bStart);
@@ -100,15 +111,50 @@ class MockScheduleBackend implements ScheduleBackendContract {
     await Future.delayed(const Duration(seconds: 1));
 
     final startIndex = (page - 1) * pageSize;
-    if (startIndex >= filtered.length) {
+    if (startIndex >= locationFiltered.length) {
       return EventPageDTO(events: const [], hasMore: false);
     }
 
     final pageEvents =
-        filtered.skip(startIndex).take(pageSize).toList(growable: false);
-    final hasMore = startIndex + pageSize < filtered.length;
+        locationFiltered.skip(startIndex).take(pageSize).toList(growable: false);
+    final hasMore = startIndex + pageSize < locationFiltered.length;
 
     return EventPageDTO(events: pageEvents, hasMore: hasMore);
+  }
+
+  List<EventDTO> _filterWithinRadiusIfAvailable(
+    List<EventDTO> input, {
+    required double radiusMeters,
+  }) {
+    if (!GetIt.I.isRegistered<UserLocationRepositoryContract>()) {
+      return input;
+    }
+    final userCoordinate =
+        GetIt.I.get<UserLocationRepositoryContract>().userLocationStreamValue.value;
+    if (userCoordinate == null) {
+      return input;
+    }
+
+    final withinRadius = <EventDTO>[];
+    for (final event in input) {
+      final lat = event.latitude;
+      final lon = event.longitude;
+      if (lat == null || lon == null) {
+        continue;
+      }
+      final distance = haversineDistanceMeters(
+        lat1: userCoordinate.latitude,
+        lon1: userCoordinate.longitude,
+        lat2: lat,
+        lon2: lon,
+      );
+      if (distance <= radiusMeters) {
+        withinRadius.add(event);
+      }
+    }
+
+    // Fallback: if nothing is inside the radius, keep the original list.
+    return withinRadius.isNotEmpty ? withinRadius : input;
   }
 
   Future<List<EventDTO>> _loadEvents() async {
@@ -116,11 +162,12 @@ class MockScheduleBackend implements ScheduleBackendContract {
       return _cachedEvents!;
     }
 
+    final venues = _selectEventVenuesForCurrentTenant();
     final seeds = _buildSeedsWithPast();
     final events = List<EventDTO>.generate(
       seeds.length,
       (index) {
-        final venue = _eventVenues[index % _eventVenues.length];
+        final venue = venues[index % venues.length];
         return seeds[index].toDto(_today, venue);
       },
     )..sort((a, b) => DateTime.parse(a.dateTimeStart)
@@ -128,6 +175,39 @@ class MockScheduleBackend implements ScheduleBackendContract {
 
     _cachedEvents = events;
     return events;
+  }
+
+  List<EventVenue> _selectEventVenuesForCurrentTenant() {
+    String? hostname;
+    try {
+      hostname = GetIt.I.get<AppData>().hostname;
+    } catch (_) {
+      hostname = null;
+    }
+
+    final tenantSubdomain =
+        hostname != null ? _tenantSubdomainFromHostname(hostname) : null;
+
+    final List<EventVenue> selected;
+    if (tenantSubdomain == 'alfredochaves') {
+      selected = _eventVenues
+          .where((venue) => venue.id.startsWith('alfredo-'))
+          .toList(growable: false);
+    } else {
+      selected = _eventVenues
+          .where((venue) => !venue.id.startsWith('alfredo-'))
+          .toList(growable: false);
+    }
+
+    return selected.isNotEmpty ? selected : _eventVenues;
+  }
+
+  String? _tenantSubdomainFromHostname(String hostname) {
+    final landlord = BellugaConstants.landlordDomain;
+    if (hostname == landlord) return null;
+    final suffix = '.$landlord';
+    if (!hostname.endsWith(suffix)) return null;
+    return hostname.substring(0, hostname.length - suffix.length);
   }
 
   List<MockEventSeed> _buildSeedsWithPast() {
@@ -238,6 +318,48 @@ class MockScheduleBackend implements ScheduleBackendContract {
       address: 'Guarapari',
       latitude: -20.6600241,
       longitude: -40.502093,
+    ),
+    EventVenue(
+      id: 'alfredo-adega-restaurante',
+      name: 'Adega Restaurante',
+      address: 'Matilde, Alfredo Chaves - ES',
+      latitude: -20.555612,
+      longitude: -40.816068,
+    ),
+    EventVenue(
+      id: 'alfredo-restaurante-prainha',
+      name: 'Restaurante Prainha',
+      address: 'Matilde, Alfredo Chaves - ES',
+      latitude: -20.556303,
+      longitude: -40.81689,
+    ),
+    EventVenue(
+      id: 'alfredo-restaurante-boldrini',
+      name: 'Restaurante Boldrini',
+      address: 'Centro, Alfredo Chaves - ES',
+      latitude: -20.634608,
+      longitude: -40.751046,
+    ),
+    EventVenue(
+      id: 'alfredo-padaria-confeitaria-boldrini',
+      name: 'Padaria e Confeitaria Boldrini',
+      address: 'Centro, Alfredo Chaves - ES',
+      latitude: -20.634671,
+      longitude: -40.751134,
+    ),
+    EventVenue(
+      id: 'alfredo-padaria-ki-pao',
+      name: 'Padaria Ki-pão',
+      address: 'Centro, Alfredo Chaves - ES',
+      latitude: -20.634985,
+      longitude: -40.750269,
+    ),
+    EventVenue(
+      id: 'alfredo-sitio-recanto-das-videiras',
+      name: 'Sitio Recanto das Videiras',
+      address: 'Alfredo Chaves - ES',
+      latitude: -20.5524902,
+      longitude: -40.8487666,
     ),
     EventVenue(
       id: 'bolinhas-bar',
