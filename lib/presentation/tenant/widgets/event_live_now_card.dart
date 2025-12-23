@@ -43,13 +43,11 @@ class EventLiveNowCard extends StatelessWidget {
         return SizedBox(
           width: constraints.maxWidth,
           height: height,
-          child: GestureDetector(
-            onTap: onTap,
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(20),
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(20),
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
                   ImageFiltered(
                     imageFilter: ImageFilter.blur(sigmaX: 4, sigmaY: 4),
                     child: Image.network(
@@ -82,93 +80,101 @@ class EventLiveNowCard extends StatelessWidget {
                       ),
                     ),
                   ),
-                  Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: AnimatedSwitcher(
-                      duration: Duration.zero,
-                      child: isFullSize
-                          ? Column(
-                              key: const ValueKey('liveContent'),
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.end,
-                                  children: [
-                                    InviteStatusIcon(
-                                      isConfirmed: isConfirmed,
-                                      pendingInvitesCount: pendingInvitesCount,
-                                      size: 18,
-                                      backgroundColor: colorScheme.secondary
-                                          .withValues(alpha: 0.3),
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: AnimatedSwitcher(
+                    duration: Duration.zero,
+                    child: isFullSize
+                        ? Column(
+                            key: const ValueKey('liveContent'),
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.end,
+                                children: [
+                                  InviteStatusIcon(
+                                    isConfirmed: isConfirmed,
+                                    pendingInvitesCount: pendingInvitesCount,
+                                    size: 18,
+                                    backgroundColor: colorScheme.secondary
+                                        .withValues(alpha: 0.3),
+                                  ),
+                                  const SizedBox(width: 10),
+                                  DecoratedBox(
+                                    decoration: BoxDecoration(
+                                      color: colorScheme.error,
+                                      borderRadius: BorderRadius.circular(999),
                                     ),
-                                    const SizedBox(width: 10),
-                                    DecoratedBox(
-                                      decoration: BoxDecoration(
-                                        color: colorScheme.error,
-                                        borderRadius:
-                                            BorderRadius.circular(999),
+                                    child: Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 10,
+                                        vertical: 6,
                                       ),
-                                      child: Padding(
-                                        padding: const EdgeInsets.symmetric(
-                                            horizontal: 10, vertical: 6),
-                                        child: Text(
-                                          'AGORA',
-                                          style: theme.textTheme.labelMedium
-                                              ?.copyWith(
-                                            color: colorScheme.onError,
-                                            fontWeight: FontWeight.w800,
-                                            letterSpacing: 1.1,
-                                          ),
+                                      child: Text(
+                                        'AGORA',
+                                        style: theme.textTheme.labelMedium
+                                            ?.copyWith(
+                                          color: colorScheme.onError,
+                                          fontWeight: FontWeight.w800,
+                                          letterSpacing: 1.1,
                                         ),
                                       ),
                                     ),
-                                  ],
-                                ),
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Text(
-                                      event.title,
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
-                                      style:
-                                          theme.textTheme.titleMedium?.copyWith(
-                                        color: onOverlay,
-                                        fontWeight: FontWeight.w800,
-                                      ),
+                                  ),
+                                ],
+                              ),
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    event.title,
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    style:
+                                        theme.textTheme.titleMedium?.copyWith(
+                                      color: onOverlay,
+                                      fontWeight: FontWeight.w800,
                                     ),
-                                    const SizedBox(height: 10),
-                                    EventInfoRow(
-                                      icon: Icons.schedule,
-                                      label: timeRange,
-                                      color: onOverlay.withValues(alpha: 0.95),
-                                    ),
+                                  ),
+                                  const SizedBox(height: 10),
+                                  EventInfoRow(
+                                    icon: Icons.schedule,
+                                    label: timeRange,
+                                    color: onOverlay.withValues(alpha: 0.95),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  EventInfoRow(
+                                    icon: Icons.place_outlined,
+                                    label: event.location,
+                                    color: onOverlay.withValues(alpha: 0.9),
+                                  ),
+                                  if (distanceLabel != null) ...[
                                     const SizedBox(height: 6),
                                     EventInfoRow(
-                                      icon: Icons.place_outlined,
-                                      label: event.location,
+                                      icon: Icons.near_me_outlined,
+                                      label: distanceLabel!,
                                       color: onOverlay.withValues(alpha: 0.9),
                                     ),
-                                    if (distanceLabel != null) ...[
-                                      const SizedBox(height: 6),
-                                      EventInfoRow(
-                                        icon: Icons.near_me_outlined,
-                                        label: distanceLabel!,
-                                        color:
-                                            onOverlay.withValues(alpha: 0.9),
-                                      ),
-                                    ],
                                   ],
-                                ),
-                              ],
-                            )
-                          : const SizedBox.shrink(key: ValueKey('liveEmpty')),
+                                ],
+                              ),
+                            ],
+                          )
+                        : const SizedBox.shrink(key: ValueKey('liveEmpty')),
+                  ),
+                ),
+                Positioned.fill(
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: onTap,
+                      borderRadius: BorderRadius.circular(20),
                     ),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         );

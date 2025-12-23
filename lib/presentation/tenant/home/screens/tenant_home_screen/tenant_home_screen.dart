@@ -136,6 +136,7 @@ class _TenantHomeScreenState extends State<TenantHomeScreen> {
                         ),
                         empty: const SizedBox.shrink(),
                         onSeeAll: _openUpcomingEvents,
+                        onTitleTap: _openLiveNowEvent,
                         sectionPadding: const EdgeInsets.only(bottom: 16),
                         contentSpacing: EdgeInsets.zero,
                         cardBuilder: (event) {
@@ -180,6 +181,15 @@ class _TenantHomeScreenState extends State<TenantHomeScreen> {
 
   void _openEventDetailSlug(String slug) {
     context.router.push(ImmersiveEventDetailRoute(eventSlug: slug));
+  }
+
+  void _openLiveNowEvent() {
+    final liveEvents = _controller.liveEventsStreamValue.value;
+    if (liveEvents.isEmpty) {
+      _openUpcomingEvents();
+      return;
+    }
+    _openEventDetailSlug(liveEvents.first.slug);
   }
 
   void _openSearchWithFilter(InviteFilter filter) {

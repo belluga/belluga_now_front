@@ -10,6 +10,7 @@ class CarouselSection<T> extends StatefulWidget {
     required this.title,
     required this.streamValue,
     this.onSeeAll,
+    this.onTitleTap,
     this.loading,
     this.empty,
     this.headerPadding,
@@ -23,6 +24,7 @@ class CarouselSection<T> extends StatefulWidget {
   final String title;
   final StreamValue<List<T>> streamValue;
   final VoidCallback? onSeeAll;
+  final VoidCallback? onTitleTap;
   final Widget? loading;
   final Widget? empty;
   final EdgeInsetsGeometry? headerPadding;
@@ -70,6 +72,7 @@ class _CarouselSectionState<T> extends State<CarouselSection<T>> {
                 child: SectionHeader(
                   title: widget.title,
                   onPressed: widget.onSeeAll ?? () {},
+                  onTitleTap: widget.onTitleTap,
                 ),
               ),
               Padding(
@@ -79,6 +82,7 @@ class _CarouselSectionState<T> extends State<CarouselSection<T>> {
                   child: CarouselView(
                     itemExtent: cardWidth,
                     itemSnapping: true,
+                    enableSplash: false,
                     children: [
                       ...displayItems.map((item) => widget.cardBuilder(item)),
                       if (hasOverflow && widget.overflowTrailing != null)
