@@ -14,6 +14,7 @@ class EventLiveNowCard extends StatelessWidget {
     this.assumedDuration = const Duration(hours: 3),
     this.isConfirmed = false,
     this.pendingInvitesCount = 0,
+    this.distanceLabel,
   });
 
   final VenueEventResume event;
@@ -21,6 +22,7 @@ class EventLiveNowCard extends StatelessWidget {
   final Duration assumedDuration;
   final bool isConfirmed;
   final int pendingInvitesCount;
+  final String? distanceLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -149,6 +151,15 @@ class EventLiveNowCard extends StatelessWidget {
                                       label: event.location,
                                       color: onOverlay.withValues(alpha: 0.9),
                                     ),
+                                    if (distanceLabel != null) ...[
+                                      const SizedBox(height: 6),
+                                      EventInfoRow(
+                                        icon: Icons.near_me_outlined,
+                                        label: distanceLabel!,
+                                        color:
+                                            onOverlay.withValues(alpha: 0.9),
+                                      ),
+                                    ],
                                   ],
                                 ),
                               ],

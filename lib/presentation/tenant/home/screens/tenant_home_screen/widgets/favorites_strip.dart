@@ -95,10 +95,18 @@ class _FavoritesStripState extends State<FavoritesStrip> {
       return;
     }
 
-    // For partners, navigate to partner details using slug
-    final slug = favorite.slug;
-    if (slug != null && slug.isNotEmpty) {
-      context.router.push(PartnerDetailRoute(slug: slug));
-    }
+    _openAgendaForFavorite(favorite);
+  }
+
+  void _openAgendaForFavorite(FavoriteResume favorite) {
+    final query = favorite.title.trim();
+    context.router.replaceAll(
+      [
+        EventSearchRoute(
+          startSearchActive: true,
+          initialSearchQuery: query,
+        ),
+      ],
+    );
   }
 }

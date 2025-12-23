@@ -3,13 +3,11 @@ import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/presentation/common/widgets/main_logo.dart';
 import 'package:belluga_now/presentation/tenant/home/screens/tenant_home_screen/controllers/tenant_home_controller.dart';
 import 'package:belluga_now/presentation/tenant/home/screens/tenant_home_screen/widgets/favorite_section/favorites_section_builder.dart';
-import 'package:belluga_now/presentation/tenant/home/screens/tenant_home_screen/widgets/invites_banner_builder.dart';
 import 'package:belluga_now/presentation/tenant/home/screens/tenant_home_screen/widgets/upcoming_events_section.dart';
 import 'package:belluga_now/presentation/tenant/widgets/belluga_bottom_navigation_bar.dart';
 import 'package:belluga_now/presentation/tenant/widgets/carousel_section.dart';
 import 'package:belluga_now/presentation/tenant/widgets/event_live_now_card.dart';
 import 'package:belluga_now/presentation/tenant/widgets/section_header.dart';
-import 'package:belluga_now/presentation/tenant/widgets/animated_search_button.dart';
 import 'package:belluga_now/presentation/tenant/schedule/screens/event_search_screen/models/invite_filter.dart';
 import 'package:belluga_now/domain/invites/invite_model.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
@@ -96,12 +94,6 @@ class _TenantHomeScreenState extends State<TenantHomeScreen> {
                 ],
               ),
             ),
-            const SizedBox(width: 8),
-            AnimatedSearchButton(
-              onTap: () {
-                context.router.push(EventSearchRoute());
-              },
-            ),
           ],
         ),
         actions: [
@@ -125,11 +117,6 @@ class _TenantHomeScreenState extends State<TenantHomeScreen> {
                 onPressed: () {},
               ),
               FavoritesSectionBuilder(controller: _controller),
-              const SizedBox(height: 8),
-              InvitesBannerBuilder(
-                onPressed: _openInviteFlow,
-                margin: const EdgeInsets.only(bottom: 16),
-              ),
               StreamValueBuilder<Set<String>>(
                 streamValue: _controller.confirmedIdsStream,
                 builder: (context, confirmedIds) {
@@ -161,6 +148,7 @@ class _TenantHomeScreenState extends State<TenantHomeScreen> {
                             event: event,
                             isConfirmed: isConfirmed,
                             pendingInvitesCount: pendingCount,
+                            distanceLabel: _controller.distanceLabelFor(event),
                             onTap: () => _openEventDetailSlug(event.slug),
                           );
                         },
@@ -184,10 +172,6 @@ class _TenantHomeScreenState extends State<TenantHomeScreen> {
         ),
       ),
     );
-  }
-
-  void _openInviteFlow() {
-    context.router.push(const InviteFlowRoute());
   }
 
   void _openUpcomingEvents() {

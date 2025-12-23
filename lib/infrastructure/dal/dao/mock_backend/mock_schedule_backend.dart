@@ -90,11 +90,12 @@ class MockScheduleBackend implements ScheduleBackendContract {
 
       final titleMatch = event.title.toLowerCase().contains(query);
       final contentMatch = event.content.toLowerCase().contains(query);
+      final locationMatch = event.location.toLowerCase().contains(query);
       final artistMatch = event.artists.any(
         (artist) => artist.name.toLowerCase().contains(query),
       );
 
-      return titleMatch || contentMatch || artistMatch;
+      return titleMatch || contentMatch || locationMatch || artistMatch;
     }).toList();
 
     final locationFiltered = _filterWithinRadiusIfAvailable(

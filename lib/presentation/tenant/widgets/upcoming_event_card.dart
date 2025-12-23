@@ -15,6 +15,7 @@ class UpcomingEventCard extends StatelessWidget {
     this.pendingInvitesCount = 0,
     this.statusIconSize = 24,
     this.statusIconColor,
+    this.distanceLabel,
   });
 
   final VenueEventResume event;
@@ -23,6 +24,7 @@ class UpcomingEventCard extends StatelessWidget {
   final bool isConfirmed;
   final double statusIconSize;
   final Color? statusIconColor;
+  final String? distanceLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -81,6 +83,13 @@ class UpcomingEventCard extends StatelessWidget {
                         icon: Icons.place_outlined,
                         label: event.location,
                       ),
+                      if (distanceLabel != null) ...[
+                        const SizedBox(height: 6),
+                        EventInfoRow(
+                          icon: Icons.near_me_outlined,
+                          label: distanceLabel!,
+                        ),
+                      ],
                       const SizedBox(height: 6),
                       UpcomingEventParticipants(event: event),
                     ],

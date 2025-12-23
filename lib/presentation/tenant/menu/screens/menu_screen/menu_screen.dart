@@ -80,7 +80,6 @@ class _MenuScreenState extends State<MenuScreen> {
                     context.router.push(const ProfileRoute()),
                 invitesSent: 0, // TODO(Delphi): Bind to convites enviados (pending/total).
                 invitesAccepted: 0, // TODO(Delphi): Bind to real social score metrics (convites aceitos).
-                presencesConfirmed: 0, // TODO(Delphi): Bind to real presence check-ins.
               );
             }
             final section = sections[index - 1];
@@ -98,13 +97,11 @@ class _ProfileHero extends StatelessWidget {
     required this.onTapViewProfile,
     required this.invitesSent,
     required this.invitesAccepted,
-    required this.presencesConfirmed,
   });
 
   final VoidCallback onTapViewProfile;
   final int invitesSent;
   final int invitesAccepted;
-  final int presencesConfirmed;
 
   @override
   Widget build(BuildContext context) {
@@ -170,13 +167,6 @@ class _ProfileHero extends StatelessWidget {
                     _MetricPill(
                       value: invitesAccepted,
                       icon: BooraIcons.invite_solid,
-                      iconColor: colorScheme.primary,
-                      backgroundColor:
-                          colorScheme.primary.withValues(alpha: 0.14),
-                    ),
-                    _MetricPill(
-                      value: presencesConfirmed,
-                      icon: Icons.location_on_outlined,
                       iconColor: colorScheme.primary,
                       backgroundColor:
                           colorScheme.primary.withValues(alpha: 0.14),

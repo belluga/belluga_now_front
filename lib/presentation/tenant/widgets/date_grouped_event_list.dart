@@ -12,6 +12,7 @@ class DateGroupedEventList extends StatelessWidget {
     this.physics,
     this.isConfirmed,
     this.pendingInvitesCount,
+    this.distanceLabel,
     this.statusIconSize,
     this.highlightNowEvents = false,
     this.highlightTodayEvents = false,
@@ -28,6 +29,7 @@ class DateGroupedEventList extends StatelessWidget {
   final ScrollController? controller;
   final bool Function(VenueEventResume event)? isConfirmed;
   final int Function(VenueEventResume event)? pendingInvitesCount;
+  final String? Function(VenueEventResume event)? distanceLabel;
   final double? statusIconSize;
   final bool highlightNowEvents;
   final bool highlightTodayEvents;
@@ -241,6 +243,7 @@ class DateGroupedEventList extends StatelessWidget {
                     onTap: () => onEventSelected(event.slug),
                     isConfirmed: isConfirmed?.call(event) ?? false,
                     pendingInvitesCount: pendingInvitesCount?.call(event) ?? 0,
+                    distanceLabel: distanceLabel?.call(event),
                     statusIconSize: statusIconSize ?? 24,
                   ),
                 )),

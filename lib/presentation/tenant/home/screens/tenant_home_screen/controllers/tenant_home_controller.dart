@@ -6,6 +6,7 @@ import 'package:belluga_now/domain/favorite/value_objects/favorite_badge_font_fa
 import 'package:belluga_now/domain/favorite/value_objects/favorite_badge_font_package_value.dart';
 import 'package:belluga_now/domain/favorite/value_objects/favorite_badge_icon_value.dart';
 import 'package:belluga_now/domain/invites/invite_model.dart';
+import 'package:belluga_now/domain/map/geo_distance.dart';
 import 'package:belluga_now/domain/partners/partner_model.dart';
 import 'package:belluga_now/domain/repositories/favorite_repository_contract.dart';
 import 'package:belluga_now/infrastructure/repositories/app_data_repository.dart';
@@ -73,6 +74,7 @@ class TenantHomeController implements Disposable {
   StreamSubscription? _myEventsSubscription;
   StreamSubscription? _partnersSubscription;
   StreamSubscription? _userLocationSubscription;
+  List<PartnerModel> _favoritePartnersCache = const [];
 
   Future<void> init() async {
     await loadFavorites();
@@ -218,6 +220,7 @@ class TenantHomeController implements Disposable {
 
       // 2. Partner favorites
       final partnerFavorites = _partnersRepository.getFavoritePartners();
+      _favoritePartnersCache = partnerFavorites;
       final partnerResumes = partnerFavorites.map((p) {
         // Use placeholder if no avatar
         final hasAvatar = p.avatarUrl != null && p.avatarUrl!.isNotEmpty;
@@ -252,11 +255,7 @@ class TenantHomeController implements Disposable {
 
       // 3. Merge
       final allFavorites = [...updatedLegacyFavorites, ...partnerResumes];
-      allFavorites.sort((a, b) {
-        if (a.isPrimary == b.isPrimary) return 0;
-        return a.isPrimary ? -1 : 1;
-      });
-      favoritesStreamValue.addValue(allFavorites);
+      favoritesStreamValue.addValue(_sortFavorites(allFavorites));
     } catch (_) {
       favoritesStreamValue.addValue(previousValue);
     }
@@ -279,6 +278,7 @@ class TenantHomeController implements Disposable {
       final events = await _scheduleRepository.fetchUpcomingEvents();
       upcomingEventsStreamValue.addValue(events);
       liveEventsStreamValue.addValue(_filterLiveNow(events));
+      _resortFavoritesByUpcomingEvents();
     } catch (_) {
       // keep last value; StreamValue already holds previous state
     }
@@ -294,6 +294,119 @@ class TenantHomeController implements Disposable {
       final isNotEnded = now.isBefore(end);
       return isStarted && isNotEnded;
     }).toList();
+  }
+
+  void _resortFavoritesByUpcomingEvents() {
+    final current = favoritesStreamValue.value;
+    if (current == null || current.isEmpty) return;
+    favoritesStreamValue.addValue(_sortFavorites(List<FavoriteResume>.from(current)));
+  }
+
+  List<FavoriteResume> _sortFavorites(List<FavoriteResume> favorites) {
+    final events = upcomingEventsStreamValue.value;
+    final eventStartById = {
+      for (final event in events) event.id: event.startDateTime,
+    };
+    final partnerBySlug = {
+      for (final partner in _favoritePartnersCache) partner.slug: partner,
+    };
+    final normalizedEventMatches = {
+      for (final event in events)
+        event: _buildEventMatchKeys(event),
+    };
+
+    DateTime? nextDateFor(FavoriteResume favorite) {
+      final slug = favorite.slug;
+      final normalizedTitle = _normalizeMatchKey(favorite.title);
+      DateTime? earliest;
+
+      if (slug != null && slug.isNotEmpty) {
+        final partner = partnerBySlug[slug];
+        if (partner != null) {
+          final dates = partner.upcomingEventIds
+              .map((id) => eventStartById[id])
+              .whereType<DateTime>()
+              .toList()
+            ..sort();
+          if (dates.isNotEmpty) {
+            return dates.first;
+          }
+        }
+      }
+
+      for (final entry in normalizedEventMatches.entries) {
+        final matches = entry.value;
+        if (!matches.contains(normalizedTitle)) continue;
+        final start = entry.key.startDateTime;
+        if (earliest == null || start.isBefore(earliest)) {
+          earliest = start;
+        }
+      }
+
+      return earliest;
+    }
+
+    favorites.sort((a, b) {
+      if (a.isPrimary != b.isPrimary) {
+        return a.isPrimary ? -1 : 1;
+      }
+
+      final aDate = nextDateFor(a);
+      final bDate = nextDateFor(b);
+      if (aDate == null && bDate == null) {
+        return a.title.compareTo(b.title);
+      }
+      if (aDate == null) return 1;
+      if (bDate == null) return -1;
+      final dateCompare = aDate.compareTo(bDate);
+      if (dateCompare != 0) return dateCompare;
+      return a.title.compareTo(b.title);
+    });
+
+    return favorites;
+  }
+
+  String? distanceLabelFor(VenueEventResume event) {
+    final userCoordinate = _userLocationRepository?.userLocationStreamValue.value;
+    final eventCoordinate = event.coordinate;
+    if (userCoordinate == null || eventCoordinate == null) {
+      return null;
+    }
+    final distanceMeters = haversineDistanceMeters(
+      lat1: userCoordinate.latitude,
+      lon1: userCoordinate.longitude,
+      lat2: eventCoordinate.latitude,
+      lon2: eventCoordinate.longitude,
+    );
+    return _formatDistanceLabel(distanceMeters);
+  }
+
+  String _formatDistanceLabel(double meters) {
+    if (meters < 1000) {
+      return '${meters.round()} m';
+    }
+    return '${(meters / 1000).toStringAsFixed(1)} km';
+  }
+
+  String _normalizeMatchKey(String input) {
+    final lower = input.trim().toLowerCase();
+    return lower.replaceAll(RegExp(r'[^a-z0-9]+'), '-').replaceAll(
+          RegExp(r'^-+|-+$'),
+          '',
+        );
+  }
+
+  Set<String> _buildEventMatchKeys(VenueEventResume event) {
+    final keys = <String>{
+      _normalizeMatchKey(event.title),
+      _normalizeMatchKey(event.location),
+    };
+    if (event.hasArtists) {
+      for (final artist in event.artists) {
+        keys.add(_normalizeMatchKey(artist.displayName));
+      }
+    }
+    return keys.where((key) => key.isNotEmpty).toSet();
   }
 
   /// Get icon for partner type badge

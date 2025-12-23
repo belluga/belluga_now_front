@@ -15,11 +15,13 @@ class EventSearchScreen extends StatefulWidget {
   const EventSearchScreen({
     super.key,
     this.startSearchActive = false,
+    this.initialSearchQuery,
     this.inviteFilter = InviteFilter.none,
     this.startWithHistory = false,
   });
 
   final bool startSearchActive;
+  final String? initialSearchQuery;
   final InviteFilter inviteFilter;
   final bool startWithHistory;
 
@@ -33,11 +35,13 @@ class _EventSearchScreenState extends State<EventSearchScreen> {
   static final Uri _defaultEventImage = Uri.parse(
     'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?w=800',
   );
+  static const double _minRadiusKm = 1;
 
   @override
   void initState() {
     super.initState();
     _controller.init(startWithHistory: widget.startWithHistory);
+    _controller.setInitialSearchQuery(widget.initialSearchQuery);
     _controller.setSearchActive(widget.startSearchActive);
     _controller.setInviteFilter(widget.inviteFilter);
   }
@@ -101,30 +105,55 @@ class _EventSearchScreenState extends State<EventSearchScreen> {
                       color: colorScheme.onSurfaceVariant,
                     ),
                   ),
-                StreamValueBuilder<InviteFilter>(
-                  streamValue: _controller.inviteFilterStreamValue,
-                  builder: (context, filter) {
-                    final theme = Theme.of(context);
-                    return IconButton(
-                      tooltip: _inviteFilterTooltip(filter),
-                      onPressed: _controller.cycleInviteFilter,
-                      icon: _inviteFilterIcon(theme, filter),
-                    );
-                  },
-                ),
-                StreamValueBuilder<bool>(
-                  streamValue: _controller.showHistoryStreamValue,
-                  builder: (context, showHistory) {
-                    final isSelected = showHistory;
-                    return IconButton(
-                      onPressed: _controller.toggleHistory,
-                      tooltip: isSelected
-                          ? 'Ver futuros e em andamento'
-                          : 'Ver eventos passados',
-                      icon: _historyIcon(theme, isSelected),
-                    );
-                  },
-                ),
+                if (!isActive)
+                  StreamValueBuilder<double>(
+                    streamValue: _controller.maxRadiusMetersStreamValue,
+                    builder: (context, maxRadiusMeters) {
+                      return StreamValueBuilder<double>(
+                        streamValue: _controller.radiusMetersStreamValue,
+                        builder: (context, radiusMeters) {
+                          return IconButton(
+                            tooltip: 'Raio ${_formatRadiusLabel(radiusMeters)}',
+                            onPressed: () => _showRadiusSelector(
+                              context,
+                              radiusMeters,
+                              maxRadiusMeters,
+                            ),
+                            icon: Icon(
+                              Icons.my_location_outlined,
+                              color: colorScheme.onSurfaceVariant,
+                            ),
+                          );
+                        },
+                      );
+                    },
+                  ),
+                if (!isActive)
+                  StreamValueBuilder<InviteFilter>(
+                    streamValue: _controller.inviteFilterStreamValue,
+                    builder: (context, filter) {
+                      final theme = Theme.of(context);
+                      return IconButton(
+                        tooltip: _inviteFilterTooltip(filter),
+                        onPressed: _controller.cycleInviteFilter,
+                        icon: _inviteFilterIcon(theme, filter),
+                      );
+                    },
+                  ),
+                if (!isActive)
+                  StreamValueBuilder<bool>(
+                    streamValue: _controller.showHistoryStreamValue,
+                    builder: (context, showHistory) {
+                      final isSelected = showHistory;
+                      return IconButton(
+                        onPressed: _controller.toggleHistory,
+                        tooltip: isSelected
+                            ? 'Ver futuros e em andamento'
+                            : 'Ver eventos passados',
+                        icon: _historyIcon(theme, isSelected),
+                      );
+                    },
+                  ),
               ],
             );
           },
@@ -187,6 +216,7 @@ class _EventSearchScreenState extends State<EventSearchScreen> {
                               _controller.isEventConfirmed(event.id),
                           pendingInvitesCount: (event) =>
                               _controller.pendingInviteCount(event.id),
+                          distanceLabel: _controller.distanceLabelFor,
                           statusIconSize: 22,
                           highlightNowEvents: true,
                           highlightTodayEvents: true,
@@ -264,4 +294,69 @@ class _EventSearchScreenState extends State<EventSearchScreen> {
 
     return Icon(icon, color: color, size: 22);
   }
+
+  static String _formatRadiusLabel(double meters) {
+    if (meters < 1000) {
+      return '${meters.round()} m';
+    }
+    return '${(meters / 1000).toStringAsFixed(0)} km';
+  }
+
+  Future<void> _showRadiusSelector(
+    BuildContext context,
+    double selectedMeters,
+    double maxRadiusMeters,
+  ) async {
+    final theme = Theme.of(context);
+    final maxKm = (maxRadiusMeters / 1000) < _minRadiusKm
+        ? _minRadiusKm
+        : (maxRadiusMeters / 1000);
+    double currentKm = (selectedMeters / 1000).clamp(_minRadiusKm, maxKm);
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) {
+        return SafeArea(
+          child: StatefulBuilder(
+            builder: (context, setState) {
+              return Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.my_location_outlined,
+                      size: 28,
+                      color: theme.colorScheme.primary,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      '${currentKm.toStringAsFixed(0)} km',
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Slider(
+                      value: currentKm,
+                      min: _minRadiusKm,
+                      max: maxKm,
+                      divisions: (maxKm - _minRadiusKm).round().clamp(1, 200),
+                      onChanged: (value) {
+                        setState(() {
+                          currentKm = value;
+                        });
+                        _controller.setRadiusMeters(value * 1000);
+                      },
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        );
+      },
+    );
+  }
 }
+

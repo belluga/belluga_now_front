@@ -26,12 +26,14 @@ dependencies:
   get_it_modular_with_auto_route: ^2.2.0
   geolocator: ^14.0.2
   geocoding: ^4.0.0
+  image_picker: ^1.1.2
   intl: ^0.20.2
   latlong2: ^0.9.1
   map_launcher: ^4.4.2
   material_color_utilities: ^0.11.1
   meta: ^1.15.0
   package_info_plus: ^8.3.1
+  path_provider: ^2.1.5
   permission_handler: ^12.0.1
   sentry_flutter: ^9.7.0
   share_plus: ^12.0.1

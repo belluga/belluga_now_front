@@ -4,6 +4,7 @@ import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/infrastructure/dal/dao/app_data_backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/local/app_data_local_info_source/app_data_local_info_source.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value.dart';
 
@@ -20,14 +21,23 @@ class AppDataRepository {
   final AppDataLocalInfoSource _localInfoSource;
   final StreamValue<ThemeMode?> themeModeStreamValue =
       StreamValue<ThemeMode?>(defaultValue: ThemeMode.system);
+  final StreamValue<double> maxRadiusMetersStreamValue =
+      StreamValue<double>(defaultValue: 50000);
+  static const String _maxRadiusStorageKey = 'max_radius_meters';
+  static const FlutterSecureStorage _storage = FlutterSecureStorage();
 
   ThemeMode get themeMode => themeModeStreamValue.value ?? ThemeMode.system;
+  double get maxRadiusMeters => maxRadiusMetersStreamValue.value;
 
   Future<void> init() async {
     final localInfo = await _localInfoSource.getInfo();
     appData = await _fetchRemoteOrFail(localInfo);
     final initialThemeMode = _resolveInitialThemeMode();
     themeModeStreamValue.addValue(initialThemeMode);
+    final storedRadius = await _loadMaxRadiusMeters();
+    if (storedRadius != null) {
+      maxRadiusMetersStreamValue.addValue(storedRadius);
+    }
     await _precacheLogos();
 
     if (GetIt.I.isRegistered<AppData>()) {
@@ -39,6 +49,24 @@ class AppDataRepository {
   Future<void> setThemeMode(ThemeMode mode) async {
     // TODO(Delphi): Persist theme preference per user/per device via flutter_secure_storage (and sync backend) once contracts are defined.
     themeModeStreamValue.addValue(mode);
+  }
+
+  Future<void> setMaxRadiusMeters(double meters) async {
+    if (meters <= 0) return;
+    // TODO(Delphi): Persist radius preference per user/per device via flutter_secure_storage (and sync backend) once contracts are defined.
+    maxRadiusMetersStreamValue.addValue(meters);
+    await _storage.write(
+      key: _maxRadiusStorageKey,
+      value: meters.toString(),
+    );
+  }
+
+  Future<double?> _loadMaxRadiusMeters() async {
+    final stored = await _storage.read(key: _maxRadiusStorageKey);
+    if (stored == null || stored.trim().isEmpty) return null;
+    final parsed = double.tryParse(stored);
+    if (parsed == null || parsed <= 0) return null;
+    return parsed;
   }
 
   ThemeMode _resolveInitialThemeMode() =>

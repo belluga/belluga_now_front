@@ -1,9 +1,12 @@
+import 'dart:io';
+import 'dart:math' as math;
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/icons/boora_icons.dart';
 import 'package:belluga_now/domain/user/user_contract.dart';
 import 'package:belluga_now/presentation/tenant/profile/screens/profile_screen/controllers/profile_screen_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -21,6 +24,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   void initState() {
     super.initState();
     _controller.syncFromUser(_controller.userStreamValue.value);
+    _controller.loadAvatarPath();
   }
 
   @override
@@ -50,17 +54,27 @@ class _ProfileScreenState extends State<ProfileScreen> {
           builder: (context, user) {
             _controller.syncFromUser(user);
             final avatarUrl = user?.profile.pictureUrlValue?.value?.toString();
+            final hasPendingChanges = _controller.hasPendingChanges;
 
-            return ListView(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
-              children: [
-                _ProfileHeader(
-                  avatarUrl: avatarUrl,
-                  onChangeAvatar: _onChangeAvatar,
-                  invitesSent: 0, // TODO(Delphi): bind convites enviados.
-                  invitesAccepted: 0, // TODO(Delphi): bind convites aceitos.
-                  presencesConfirmed: 0, // TODO(Delphi): bind presenças confirmadas.
-                ),
+            return StreamValueBuilder<String?>(
+              streamValue: _controller.localAvatarPathStreamValue,
+              builder: (context, localPath) {
+                final avatarImage = _resolveAvatarImage(
+                  localPath: localPath,
+                  remoteUrl: avatarUrl,
+                );
+
+                return ListView(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+                  children: [
+                    _ProfileHeader(
+                      avatarImage: avatarImage,
+                      displayName: _controller.nameController.text,
+                      onChangeAvatar: _onChangeAvatar,
+                      invitesSent: 0, // TODO(Delphi): bind convites enviados.
+                      invitesAccepted: 0, // TODO(Delphi): bind convites aceitos.
+                      hasPendingChanges: hasPendingChanges,
+                    ),
                 const SizedBox(height: 16),
                 _SectionCard(
                   title: 'Seus dados',
@@ -142,26 +156,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         );
                       },
                     ),
-                    ListTile(
-                      leading: const Icon(Icons.language),
-                      title: const Text('Idioma'),
-                      subtitle: const Text('Português (Brasil)'),
-                      trailing: const Icon(Icons.chevron_right),
-                      onTap: () => _showComingSoon(context),
-                    ),
-                    ListTile(
-                      leading: const Icon(Icons.notifications_active_outlined),
-                      title: const Text('Notificações'),
-                      subtitle:
-                          const Text('Personalize push e email em breve'),
-                      trailing: const Icon(Icons.chevron_right),
-                      onTap: () => _showComingSoon(context),
+                    StreamValueBuilder<double>(
+                      streamValue: _controller.maxRadiusMetersStreamValue,
+                      builder: (context, radiusMeters) {
+                        return ListTile(
+                          leading: const Icon(Icons.my_location_outlined),
+                          title: const Text('Raio máximo'),
+                          subtitle: Text(_formatRadiusLabel(radiusMeters)),
+                          trailing: const Icon(Icons.chevron_right),
+                          onTap: () =>
+                              _openRadiusSelector(context, radiusMeters),
+                        );
+                      },
                     ),
                   ],
                 ),
                 const SizedBox(height: 12),
                 _SectionCard(
-                  title: 'Privacidade',
+                  title: 'Privacidade & segurança',
                   children: [
                     ListTile(
                       leading: const Icon(Icons.visibility_outlined),
@@ -173,21 +185,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                     ListTile(
                       leading: const Icon(Icons.shield_outlined),
-                      title: const Text('Segurança da conta'),
-                      subtitle: const Text('Atualize senha e sessões ativas'),
+                      title: const Text('Alterar senha'),
+                      subtitle: const Text('Atualize a senha da sua conta'),
                       trailing: const Icon(Icons.chevron_right),
                       onTap: () => _showComingSoon(context),
                     ),
                     ListTile(
                       leading: const Icon(Icons.policy_outlined),
-                      title: const Text('Políticas & privacidade'),
-                      subtitle: const Text('Termos e uso responsável'),
+                      title: const Text('Política de privacidade'),
+                      subtitle: const Text('Como tratamos seus dados'),
                       trailing: const Icon(Icons.chevron_right),
                       onTap: () => _showComingSoon(context),
                     ),
                   ],
                 ),
-              ],
+                  ],
+                );
+              },
             );
           },
         ),
@@ -206,11 +220,35 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   void _onChangeAvatar() {
     _controller.requestAvatarUpdate();
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Upload de avatar em breve'),
-        duration: Duration(seconds: 2),
-      ),
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (ctx) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.photo_camera_outlined),
+                title: const Text('Tirar foto'),
+                onTap: () async {
+                  Navigator.of(ctx).pop();
+                  await _controller.pickAvatar(ImageSource.camera);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.photo_library_outlined),
+                title: const Text('Escolher da galeria'),
+                onTap: () async {
+                  Navigator.of(ctx).pop();
+                  await _controller.pickAvatar(ImageSource.gallery);
+                },
+              ),
+              const SizedBox(height: 8),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -282,26 +320,141 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  static String _formatRadiusLabel(double meters) {
+    if (meters < 1000) {
+      return '${meters.round()} m';
+    }
+    return '${(meters / 1000).toStringAsFixed(0)} km';
+  }
+
+  static String _formatRadiusInputValue(double km) {
+    final normalized = km <= 0 ? 1 : km;
+    final rounded = normalized.roundToDouble();
+    if ((normalized - rounded).abs() < 0.01) {
+      return rounded.toStringAsFixed(0);
+    }
+    final roundedOneDecimal = (normalized * 10).roundToDouble() / 10;
+    return roundedOneDecimal.toStringAsFixed(1);
+  }
+
+  Future<void> _openRadiusSelector(
+    BuildContext context,
+    double selectedMeters,
+  ) async {
+    final theme = Theme.of(context);
+    double initialKm = math.max(1, selectedMeters / 1000);
+    final controller =
+        TextEditingController(text: _formatRadiusInputValue(initialKm));
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (ctx) {
+        return SafeArea(
+          child: SingleChildScrollView(
+            padding: EdgeInsets.only(
+              left: 16,
+              right: 16,
+              top: 8,
+              bottom: 16 + MediaQuery.of(ctx).viewInsets.bottom,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ListTile(
+                  title: Text(
+                    'Raio máximo',
+                    style: theme.textTheme.titleMedium,
+                  ),
+                  subtitle: Text(
+                    'Defina o raio em km',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+                TextField(
+                  controller: controller,
+                  autofocus: true,
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
+                  decoration: const InputDecoration(
+                    prefixIcon: Icon(Icons.my_location_outlined),
+                    labelText: 'Raio (km)',
+                    suffixText: 'km',
+                  ),
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton(
+                    onPressed: () {
+                      final parsed = double.tryParse(
+                        controller.text.replaceAll(',', '.'),
+                      );
+                      if (parsed == null) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Informe um valor válido'),
+                          ),
+                        );
+                        return;
+                      }
+                      final km = parsed < 1 ? 1 : parsed;
+                      _controller.setMaxRadiusMeters(km * 1000);
+                      Navigator.of(ctx).pop();
+                    },
+                    child: const Text('Salvar'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   @override
   void dispose() {
     super.dispose();
+  }
+
+  ImageProvider? _resolveAvatarImage({
+    required String? localPath,
+    required String? remoteUrl,
+  }) {
+    final local = localPath?.trim();
+    if (local != null && local.isNotEmpty) {
+      final file = File(local);
+      if (file.existsSync()) {
+        return FileImage(file);
+      }
+    }
+    if (remoteUrl != null && remoteUrl.trim().isNotEmpty) {
+      return NetworkImage(remoteUrl);
+    }
+    return null;
   }
 }
 
 class _ProfileHeader extends StatelessWidget {
   const _ProfileHeader({
-    this.avatarUrl,
+    this.avatarImage,
+    required this.displayName,
     required this.onChangeAvatar,
     required this.invitesSent,
     required this.invitesAccepted,
-    required this.presencesConfirmed,
+    required this.hasPendingChanges,
   });
 
-  final String? avatarUrl;
+  final ImageProvider? avatarImage;
+  final String displayName;
   final VoidCallback onChangeAvatar;
   final int invitesSent;
   final int invitesAccepted;
-  final int presencesConfirmed;
+  final bool hasPendingChanges;
 
   @override
   Widget build(BuildContext context) {
@@ -328,9 +481,8 @@ class _ProfileHeader extends StatelessWidget {
               CircleAvatar(
                 radius: 34,
                 backgroundColor: colorScheme.primary.withValues(alpha: 0.15),
-                backgroundImage:
-                    avatarUrl != null ? NetworkImage(avatarUrl!) : null,
-                child: avatarUrl == null
+                backgroundImage: avatarImage,
+                child: avatarImage == null
                     ? Icon(Icons.person, color: colorScheme.primary, size: 32)
                     : null,
               ),
@@ -364,15 +516,41 @@ class _ProfileHeader extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'Seu Perfil',
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w800,
-                  ),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        displayName.isNotEmpty ? displayName : 'Seu perfil',
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w800,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    if (hasPendingChanges)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: colorScheme.primary.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: Text(
+                          'Alterado',
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            color: colorScheme.primary,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Convites aceitos e presenças confirmadas valem mais que likes.',
+                  'Convites aceitos valem mais que likes.',
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: colorScheme.onSurfaceVariant,
                   ),
@@ -392,13 +570,6 @@ class _ProfileHeader extends StatelessWidget {
                     _MetricPill(
                       value: invitesAccepted,
                       icon: BooraIcons.invite_solid,
-                      iconColor: colorScheme.primary,
-                      backgroundColor:
-                          colorScheme.primary.withValues(alpha: 0.14),
-                    ),
-                    _MetricPill(
-                      value: presencesConfirmed,
-                      icon: Icons.location_on_outlined,
                       iconColor: colorScheme.primary,
                       backgroundColor:
                           colorScheme.primary.withValues(alpha: 0.14),

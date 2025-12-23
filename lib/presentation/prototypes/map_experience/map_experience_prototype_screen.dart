@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:auto_route/auto_route.dart';
+import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
 import 'package:belluga_now/presentation/prototypes/map_experience/controllers/map_screen_controller.dart';
 import 'package:belluga_now/presentation/prototypes/map_experience/widgets/fab_menu.dart';
@@ -54,71 +55,86 @@ class _MapExperiencePrototypeScreenState
       textTheme: base.textTheme.apply(fontFamily: 'Roboto'),
     );
 
+    final canPop = context.router.canPop();
+
     return Theme(
       data: theme,
-      child: Scaffold(
-        body: Stack(
-          children: [
-            Column(
-              children: [
-                Expanded(
-                  child: PrototypeMapLayers(),
-                ),
-              ],
-            ),
-            // SafeArea(
-            //   child: SizedBox(
-            //     height: 120,
-            //     child: Padding(
-            //       padding: const EdgeInsets.symmetric(horizontal: 16),
-            //       child: Column(
-            //         crossAxisAlignment: CrossAxisAlignment.stretch,
-            //         children: [
-            //           MapHeader(onSearch: _openSearchDialog),
-            //           const SizedBox(height: 8),
-            //           StatusBanner(),
-            //         ],
-            //       ),
-            //     ),
-            //   ),
-            // ),
-            SafeArea(
-              child: Align(
-                alignment: Alignment.topLeft,
-                child: Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: IconButton.filled(
-                    style: IconButton.styleFrom(
-                      backgroundColor: Colors.black54,
-                      foregroundColor: Colors.white,
-                    ),
-                    onPressed: () async {
-                      final router = context.router;
-                      if (router.canPop()) {
-                        await router.maybePop();
-                      }
-                    },
-                    icon: const Icon(Icons.arrow_back),
+      child: PopScope(
+        canPop: canPop,
+        onPopInvokedWithResult: (didPop, _) {
+          if (didPop) return;
+          if (!canPop) {
+            context.router.replaceAll([const TenantHomeRoute()]);
+          }
+        },
+        child: Scaffold(
+          body: Stack(
+            children: [
+              Column(
+                children: [
+                  Expanded(
+                    child: PrototypeMapLayers(),
+                  ),
+                ],
+              ),
+              // SafeArea(
+              //   child: SizedBox(
+              //     height: 120,
+              //     child: Padding(
+              //       padding: const EdgeInsets.symmetric(horizontal: 16),
+              //       child: Column(
+              //         crossAxisAlignment: CrossAxisAlignment.stretch,
+              //         children: [
+              //           MapHeader(onSearch: _openSearchDialog),
+              //           const SizedBox(height: 8),
+              //           StatusBanner(),
+              //         ],
+              //       ),
+              //     ),
+              //   ),
+              // ),
+              SafeArea(
+                child: Align(
+                  alignment: Alignment.topLeft,
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: canPop
+                        ? IconButton.filled(
+                            style: IconButton.styleFrom(
+                              backgroundColor: Colors.black54,
+                              foregroundColor: Colors.white,
+                            ),
+                            onPressed: () async {
+                              final router = context.router;
+                              if (router.canPop()) {
+                                await router.maybePop();
+                              } else {
+                                router.replaceAll([const TenantHomeRoute()]);
+                              }
+                            },
+                            icon: const Icon(Icons.arrow_back),
+                          )
+                        : const SizedBox.shrink(),
                   ),
                 ),
               ),
-            ),
-            Positioned(
-              left: 16,
-              right: 96,
-              bottom: 16,
-              child: SafeArea(
-                child: PoiDetailDeck(),
+              Positioned(
+                left: 16,
+                right: 96,
+                bottom: 16,
+                child: SafeArea(
+                  child: PoiDetailDeck(),
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
+          floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+          floatingActionButton: FabMenu(
+            onNavigateToUser: _centerOnUser,
+          ),
+          bottomNavigationBar:
+              const BellugaBottomNavigationBar(currentIndex: 2),
         ),
-        floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
-        floatingActionButton: FabMenu(
-          onNavigateToUser: _centerOnUser,
-        ),
-        bottomNavigationBar:
-            const BellugaBottomNavigationBar(currentIndex: 2),
       ),
     );
   }

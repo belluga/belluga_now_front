@@ -69,6 +69,7 @@ class UpcomingEventsSection extends StatelessWidget {
                           onTap: () => onEventSelected(event.slug),
                           isConfirmed: isConfirmed,
                           pendingInvitesCount: pendingCount,
+                          distanceLabel: controller.distanceLabelFor(event),
                         );
                       },
                     );
