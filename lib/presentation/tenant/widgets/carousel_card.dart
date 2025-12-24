@@ -9,10 +9,14 @@ class CarouselCard extends StatefulWidget {
     super.key,
     required this.imageUri,
     required this.contentOverlay,
+    this.overlayMode = CarouselCardOverlayMode.bottom,
+    this.overlayAlignment = Alignment.bottomLeft,
   });
 
   final Uri imageUri;
   final Widget contentOverlay;
+  final CarouselCardOverlayMode overlayMode;
+  final Alignment overlayAlignment;
 
   @override
   State<CarouselCard> createState() => _CarouselCardState();
@@ -82,7 +86,14 @@ class _CarouselCardState extends State<CarouselCard> {
       builder: (context, constraints) {
         final targetWidth = MediaQuery.of(context).size.width * 0.8;
         final isFullSize = constraints.maxWidth >= targetWidth * 0.8;
-        final height = constraints.maxWidth * 9 / 16 * 0.8; // 20% shorter
+        final height = constraints.maxWidth * 9 / 16;
+        final overlayChild = DefaultTextStyle.merge(
+          style: TextStyle(color: onOverlay),
+          child: IconTheme.merge(
+            data: IconThemeData(color: onOverlay),
+            child: widget.contentOverlay,
+          ),
+        );
 
         return SizedBox(
           width: constraints.maxWidth,
@@ -137,7 +148,9 @@ class _CarouselCardState extends State<CarouselCard> {
                 Positioned(
                   left: 0,
                   right: 0,
-                  bottom: 0,
+                  bottom:
+                      widget.overlayMode == CarouselCardOverlayMode.bottom ? 0 : null,
+                  top: widget.overlayMode == CarouselCardOverlayMode.fill ? 0 : null,
                   child: isFullSize
                       ? AnimatedSwitcher(
                           duration: const Duration(milliseconds: 250),
@@ -154,13 +167,13 @@ class _CarouselCardState extends State<CarouselCard> {
                           child: ConstrainedBox(
                             key: const ValueKey('details'),
                             constraints: const BoxConstraints(minWidth: 0),
-                            child: DefaultTextStyle.merge(
-                              style: TextStyle(color: onOverlay),
-                              child: IconTheme.merge(
-                                data: IconThemeData(color: onOverlay),
-                                child: widget.contentOverlay,
-                              ),
-                            ),
+                            child:
+                                widget.overlayMode == CarouselCardOverlayMode.fill
+                                    ? Align(
+                                        alignment: widget.overlayAlignment,
+                                        child: overlayChild,
+                                      )
+                                    : overlayChild,
                           ),
                         )
                       : const SizedBox.shrink(key: ValueKey('empty')),
@@ -172,4 +185,9 @@ class _CarouselCardState extends State<CarouselCard> {
       },
     );
   }
+}
+
+enum CarouselCardOverlayMode {
+  bottom,
+  fill,
 }

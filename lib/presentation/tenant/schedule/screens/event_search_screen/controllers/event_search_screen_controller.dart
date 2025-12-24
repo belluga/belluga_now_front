@@ -66,6 +66,7 @@ class EventSearchScreenController implements Disposable {
   int _currentPage = 1;
   bool _isFetching = false;
   bool _hasMore = true;
+  bool _isScrollListenerAttached = false;
 
   Future<void> init({bool startWithHistory = false}) async {
     await _invitesRepository.init();
@@ -80,6 +81,8 @@ class EventSearchScreenController implements Disposable {
   }
 
   void _attachScrollListener() {
+    if (_isScrollListenerAttached) return;
+    _isScrollListenerAttached = true;
     scrollController.addListener(() {
       if (!_hasMore ||
           _isFetching ||

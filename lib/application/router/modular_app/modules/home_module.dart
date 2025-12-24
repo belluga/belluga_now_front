@@ -17,6 +17,7 @@ import 'package:belluga_now/infrastructure/repositories/user_events_repository.d
 import 'package:belluga_now/presentation/landlord/home/screens/landlord_home_screen/controllers/landlord_home_screen_controller.dart';
 import 'package:belluga_now/presentation/tenant/home/screens/tenant_home_screen/controllers/invites_banner_builder_controller.dart';
 import 'package:belluga_now/presentation/tenant/home/screens/tenant_home_screen/controllers/tenant_home_controller.dart';
+import 'package:belluga_now/presentation/tenant/schedule/screens/event_search_screen/controllers/event_search_screen_controller.dart';
 import 'package:get_it/get_it.dart';
 import 'package:get_it_modular_with_auto_route/get_it_modular_with_auto_route.dart';
 
@@ -51,6 +52,10 @@ class HomeModule extends ModuleContract {
         partnersRepository: GetIt.I.get<PartnersRepositoryContract>(),
       ),
     );
+
+    if (!GetIt.I.isRegistered<EventSearchScreenController>()) {
+      registerLazySingleton(() => EventSearchScreenController());
+    }
 
     registerLazySingleton<LandlordHomeScreenController>(
       () => LandlordHomeScreenController(),

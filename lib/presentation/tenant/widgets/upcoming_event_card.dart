@@ -81,15 +81,8 @@ class UpcomingEventCard extends StatelessWidget {
                       const SizedBox(height: 6),
                       EventInfoRow(
                         icon: Icons.place_outlined,
-                        label: event.location,
+                        label: distanceLabel != null ? "${event.location} ($distanceLabel)"  : event.location,
                       ),
-                      if (distanceLabel != null) ...[
-                        const SizedBox(height: 6),
-                        EventInfoRow(
-                          icon: Icons.near_me_outlined,
-                          label: distanceLabel!,
-                        ),
-                      ],
                       const SizedBox(height: 6),
                       UpcomingEventParticipants(event: event),
                     ],
