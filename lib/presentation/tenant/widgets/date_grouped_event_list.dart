@@ -10,6 +10,7 @@ class DateGroupedEventList extends StatelessWidget {
     required this.onEventSelected,
     this.shrinkWrap = false,
     this.physics,
+    this.primary,
     this.isConfirmed,
     this.pendingInvitesCount,
     this.distanceLabel,
@@ -26,6 +27,7 @@ class DateGroupedEventList extends StatelessWidget {
   final ValueChanged<String> onEventSelected;
   final bool shrinkWrap;
   final ScrollPhysics? physics;
+  final bool? primary;
   final ScrollController? controller;
   final bool Function(VenueEventResume event)? isConfirmed;
   final int Function(VenueEventResume event)? pendingInvitesCount;
@@ -108,10 +110,11 @@ class DateGroupedEventList extends StatelessWidget {
     }
 
     return ListView.builder(
+      primary: primary,
       shrinkWrap: shrinkWrap,
       physics: physics,
       controller: controller,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
       itemCount: sections.length + (footer != null ? 1 : 0),
       itemBuilder: (context, index) {
         if (footer != null && index == sections.length) {

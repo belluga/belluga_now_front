@@ -4,9 +4,9 @@ import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
 import 'package:belluga_now/presentation/tenant/schedule/screens/event_search_screen/controllers/event_search_screen_controller.dart';
 import 'package:belluga_now/presentation/tenant/schedule/screens/event_search_screen/models/invite_filter.dart';
+import 'package:belluga_now/presentation/tenant/schedule/widgets/agenda_app_bar.dart';
 import 'package:belluga_now/presentation/tenant/widgets/belluga_bottom_navigation_bar.dart';
 import 'package:belluga_now/presentation/tenant/widgets/date_grouped_event_list.dart';
-import 'package:belluga_now/application/icons/boora_icons.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
@@ -35,7 +35,6 @@ class _EventSearchScreenState extends State<EventSearchScreen> {
   static final Uri _defaultEventImage = Uri.parse(
     'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?w=800',
   );
-  static const double _minRadiusKm = 1;
 
   @override
   void initState() {
@@ -47,6 +46,12 @@ class _EventSearchScreenState extends State<EventSearchScreen> {
   }
 
   @override
+  void dispose() {
+    _controller.onDispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
@@ -54,109 +59,19 @@ class _EventSearchScreenState extends State<EventSearchScreen> {
     return Scaffold(
       appBar: PreferredSize(
         preferredSize: const Size.fromHeight(kToolbarHeight),
-        child: StreamValueBuilder<bool>(
-          streamValue: _controller.searchActiveStreamValue,
-          builder: (context, isActive) {
-            return AppBar(
-              automaticallyImplyLeading: false,
-              leading: null,
-              leadingWidth: 0,
-              title: AnimatedSwitcher(
-                duration: const Duration(milliseconds: 200),
-                child: isActive
-                    ? TextField(
-                        key: const ValueKey('searchField'),
-                        controller: _controller.searchController,
-                        focusNode: _controller.focusNode,
-                        style: theme.textTheme.titleMedium,
-                        decoration: InputDecoration(
-                          hintText: 'Buscar eventos...',
-                          border: InputBorder.none,
-                          hintStyle: theme.textTheme.titleMedium?.copyWith(
-                            color: colorScheme.onSurfaceVariant
-                                .withAlpha((0.6 * 255).floor()),
-                          ),
-                          suffixIcon: IconButton(
-                            tooltip: 'Fechar busca',
-                            onPressed: _controller.toggleSearchMode,
-                            icon: Icon(
-                              Icons.close,
-                              color: colorScheme.onSurfaceVariant,
-                            ),
-                          ),
-                        ),
-                        onChanged: _controller.searchEvents,
-                        autofocus: true,
-                      )
-                    : Text(
-                        'Agenda',
-                        key: const ValueKey('searchLabel'),
-                        style: theme.textTheme.titleLarge,
-                      ),
-              ),
-              actionsPadding: const EdgeInsets.only(right: 8),
-              actions: [
-                if (!isActive)
-                  IconButton(
-                    tooltip: 'Buscar eventos',
-                    onPressed: _controller.toggleSearchMode,
-                    icon: Icon(
-                      Icons.search,
-                      color: colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                if (!isActive)
-                  StreamValueBuilder<double>(
-                    streamValue: _controller.maxRadiusMetersStreamValue,
-                    builder: (context, maxRadiusMeters) {
-                      return StreamValueBuilder<double>(
-                        streamValue: _controller.radiusMetersStreamValue,
-                        builder: (context, radiusMeters) {
-                          return IconButton(
-                            tooltip: 'Raio ${_formatRadiusLabel(radiusMeters)}',
-                            onPressed: () => _showRadiusSelector(
-                              context,
-                              radiusMeters,
-                              maxRadiusMeters,
-                            ),
-                            icon: Icon(
-                              Icons.my_location_outlined,
-                              color: colorScheme.onSurfaceVariant,
-                            ),
-                          );
-                        },
-                      );
-                    },
-                  ),
-                if (!isActive)
-                  StreamValueBuilder<InviteFilter>(
-                    streamValue: _controller.inviteFilterStreamValue,
-                    builder: (context, filter) {
-                      final theme = Theme.of(context);
-                      return IconButton(
-                        tooltip: _inviteFilterTooltip(filter),
-                        onPressed: _controller.cycleInviteFilter,
-                        icon: _inviteFilterIcon(theme, filter),
-                      );
-                    },
-                  ),
-                if (!isActive)
-                  StreamValueBuilder<bool>(
-                    streamValue: _controller.showHistoryStreamValue,
-                    builder: (context, showHistory) {
-                      final isSelected = showHistory;
-                      return IconButton(
-                        onPressed: _controller.toggleHistory,
-                        tooltip: isSelected
-                            ? 'Ver futuros e em andamento'
-                            : 'Ver eventos passados',
-                        icon: _historyIcon(theme, isSelected),
-                      );
-                    },
-                  ),
-              ],
-            );
-          },
+        child: AgendaAppBar(
+          searchActiveStreamValue: _controller.searchActiveStreamValue,
+          searchController: _controller.searchController,
+          focusNode: _controller.focusNode,
+          onToggleSearchMode: _controller.toggleSearchMode,
+          onSearchChanged: _controller.searchEvents,
+          maxRadiusMetersStreamValue: _controller.maxRadiusMetersStreamValue,
+          radiusMetersStreamValue: _controller.radiusMetersStreamValue,
+          onSetRadiusMeters: _controller.setRadiusMeters,
+          inviteFilterStreamValue: _controller.inviteFilterStreamValue,
+          onCycleInviteFilter: _controller.cycleInviteFilter,
+          showHistoryStreamValue: _controller.showHistoryStreamValue,
+          onToggleHistory: _controller.toggleHistory,
         ),
       ),
       body: SafeArea(
@@ -252,111 +167,5 @@ class _EventSearchScreenState extends State<EventSearchScreen> {
     );
   }
 
-  Icon _inviteFilterIcon(ThemeData theme, InviteFilter filter) {
-    switch (filter) {
-      case InviteFilter.none:
-        return Icon(
-          BooraIcons.invite_outlined,
-          color: theme.iconTheme.color,
-          size: 20,
-        );
-      case InviteFilter.invitesAndConfirmed:
-        return Icon(
-          BooraIcons.invite_outlined,
-          color: theme.colorScheme.tertiary,
-          size: 20,
-        );
-      case InviteFilter.confirmedOnly:
-        return Icon(
-          BooraIcons.invite_solid,
-          color: theme.colorScheme.primary,
-          size: 20,
-        );
-    }
-  }
-
-  String _inviteFilterTooltip(InviteFilter filter) {
-    switch (filter) {
-      case InviteFilter.none:
-        return 'Todos os eventos';
-      case InviteFilter.invitesAndConfirmed:
-        return 'Convites pendentes e confirmados';
-      case InviteFilter.confirmedOnly:
-        return 'Somente confirmados';
-    }
-  }
-
-  Widget _historyIcon(ThemeData theme, bool isSelected) {
-    final color = isSelected
-        ? theme.colorScheme.primary
-        : theme.colorScheme.onSurfaceVariant;
-    final icon = isSelected ? Icons.history : Icons.history_outlined;
-
-    return Icon(icon, color: color, size: 22);
-  }
-
-  static String _formatRadiusLabel(double meters) {
-    if (meters < 1000) {
-      return '${meters.round()} m';
-    }
-    return '${(meters / 1000).toStringAsFixed(0)} km';
-  }
-
-  Future<void> _showRadiusSelector(
-    BuildContext context,
-    double selectedMeters,
-    double maxRadiusMeters,
-  ) async {
-    final theme = Theme.of(context);
-    final maxKm = (maxRadiusMeters / 1000) < _minRadiusKm
-        ? _minRadiusKm
-        : (maxRadiusMeters / 1000);
-    double currentKm = (selectedMeters / 1000).clamp(_minRadiusKm, maxKm);
-    await showModalBottomSheet<void>(
-      context: context,
-      showDragHandle: true,
-      builder: (context) {
-        return SafeArea(
-          child: StatefulBuilder(
-            builder: (context, setState) {
-              return Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.my_location_outlined,
-                      size: 28,
-                      color: theme.colorScheme.primary,
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      '${currentKm.toStringAsFixed(0)} km',
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Slider(
-                      value: currentKm,
-                      min: _minRadiusKm,
-                      max: maxKm,
-                      divisions: (maxKm - _minRadiusKm).round().clamp(1, 200),
-                      onChanged: (value) {
-                        setState(() {
-                          currentKm = value;
-                        });
-                        _controller.setRadiusMeters(value * 1000);
-                      },
-                    ),
-                  ],
-                ),
-              );
-            },
-          ),
-        );
-      },
-    );
-  }
+  // AgendaAppBar handles icons/tooltips and radius modal.
 }
-

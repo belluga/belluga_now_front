@@ -1,11 +1,11 @@
 import 'dart:async';
 
+import 'package:belluga_now/domain/map/geo_distance.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
-import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_events_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
-import 'package:belluga_now/domain/map/geo_distance.dart';
 import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
 import 'package:belluga_now/infrastructure/repositories/app_data_repository.dart';
 import 'package:belluga_now/presentation/tenant/schedule/screens/event_search_screen/models/invite_filter.dart';
@@ -13,8 +13,8 @@ import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart' show Disposable, GetIt;
 import 'package:stream_value/core/stream_value.dart';
 
-class EventSearchScreenController implements Disposable {
-  EventSearchScreenController({
+class TenantHomeAgendaController implements Disposable {
+  TenantHomeAgendaController({
     ScheduleRepositoryContract? scheduleRepository,
     UserEventsRepositoryContract? userEventsRepository,
     InvitesRepositoryContract? invitesRepository,
@@ -31,9 +31,7 @@ class EventSearchScreenController implements Disposable {
                 ? GetIt.I.get<UserLocationRepositoryContract>()
                 : null),
         _appDataRepository =
-            appDataRepository ?? GetIt.I.get<AppDataRepository>() {
-    _initializeStateHolders();
-  }
+            appDataRepository ?? GetIt.I.get<AppDataRepository>();
 
   final ScheduleRepositoryContract _scheduleRepository;
   final UserEventsRepositoryContract _userEventsRepository;
@@ -44,18 +42,23 @@ class EventSearchScreenController implements Disposable {
   static const int _pageSize = 10;
   static const double _defaultRadiusMeters = 50000.0;
 
-  late TextEditingController searchController;
-  late FocusNode focusNode;
-  late ScrollController scrollController;
+  final searchController = TextEditingController();
+  final focusNode = FocusNode();
 
-  late StreamValue<List<EventModel>> displayedEventsStreamValue;
-  late StreamValue<bool> isInitialLoadingStreamValue;
-  late StreamValue<bool> isPageLoadingStreamValue;
-  late StreamValue<bool> hasMoreStreamValue;
-  late StreamValue<bool> showHistoryStreamValue;
-  late StreamValue<bool> searchActiveStreamValue;
-  late StreamValue<InviteFilter> inviteFilterStreamValue;
-  late StreamValue<double> radiusMetersStreamValue;
+  final displayedEventsStreamValue =
+      StreamValue<List<EventModel>>(defaultValue: const []);
+  final isInitialLoadingStreamValue = StreamValue<bool>(defaultValue: true);
+  final isPageLoadingStreamValue = StreamValue<bool>(defaultValue: false);
+  final hasMoreStreamValue = StreamValue<bool>(defaultValue: true);
+  final showHistoryStreamValue = StreamValue<bool>(defaultValue: false);
+  final searchActiveStreamValue = StreamValue<bool>(defaultValue: false);
+  final inviteFilterStreamValue =
+      StreamValue<InviteFilter>(defaultValue: InviteFilter.none);
+  final radiusMetersStreamValue =
+      StreamValue<double>(defaultValue: _defaultRadiusMeters);
+
+  StreamValue<double> get maxRadiusMetersStreamValue =>
+      _appDataRepository.maxRadiusMetersStreamValue;
 
   StreamSubscription? _confirmedEventsSubscription;
   StreamSubscription? _pendingInvitesSubscription;
@@ -65,68 +68,16 @@ class EventSearchScreenController implements Disposable {
   int _currentPage = 1;
   bool _isFetching = false;
   bool _hasMore = true;
-  bool _isScrollListenerAttached = false;
-  bool _isDisposed = false;
-
-  void _initializeStateHolders() {
-    searchController = TextEditingController();
-    focusNode = FocusNode();
-    scrollController = ScrollController();
-    displayedEventsStreamValue =
-        StreamValue<List<EventModel>>(defaultValue: const []);
-    isInitialLoadingStreamValue = StreamValue<bool>(defaultValue: true);
-    isPageLoadingStreamValue = StreamValue<bool>(defaultValue: false);
-    hasMoreStreamValue = StreamValue<bool>(defaultValue: true);
-    showHistoryStreamValue = StreamValue<bool>(defaultValue: false);
-    searchActiveStreamValue = StreamValue<bool>(defaultValue: false);
-    inviteFilterStreamValue =
-        StreamValue<InviteFilter>(defaultValue: InviteFilter.none);
-    radiusMetersStreamValue =
-        StreamValue<double>(defaultValue: _defaultRadiusMeters);
-    _isScrollListenerAttached = false;
-  }
-
-  void _resetInternalState() {
-    _fetchedEvents.clear();
-    _currentPage = 1;
-    _isFetching = false;
-    _hasMore = true;
-  }
 
   Future<void> init({bool startWithHistory = false}) async {
-    if (_isDisposed) {
-      _initializeStateHolders();
-      _isDisposed = false;
-    }
     await _invitesRepository.init();
-    _resetInternalState();
     showHistoryStreamValue.addValue(startWithHistory);
     final maxRadius = _appDataRepository.maxRadiusMeters;
     radiusMetersStreamValue.addValue(maxRadius);
-    _attachScrollListener();
     _listenForStatusChanges();
     _listenForLocationChanges();
     _listenForRadiusChanges();
     await _refresh();
-  }
-
-  void _attachScrollListener() {
-    if (_isScrollListenerAttached) return;
-    _isScrollListenerAttached = true;
-    scrollController.addListener(() {
-      if (!_hasMore ||
-          _isFetching ||
-          isInitialLoadingStreamValue.value ||
-          !hasMoreStreamValue.value) {
-        return;
-      }
-
-      final position = scrollController.position;
-      const threshold = 320.0;
-      if (position.pixels + threshold >= position.maxScrollExtent) {
-        loadNextPage();
-      }
-    });
   }
 
   Future<void> _refresh() async {
@@ -236,7 +187,7 @@ class EventSearchScreenController implements Disposable {
     searchController.text = normalized;
     searchController.selection =
         TextSelection.fromPosition(TextPosition(offset: normalized.length));
-    unawaited(_refresh());
+    _refresh();
   }
 
   Future<void> searchEvents(String query) async {
@@ -299,8 +250,6 @@ class EventSearchScreenController implements Disposable {
           .where((invite) => invite.eventId == eventId)
           .length;
 
-  bool hasPendingInvite(String eventId) => pendingInviteCount(eventId) > 0;
-
   String? distanceLabelFor(VenueEventResume event) {
     final userCoordinate = _userLocationRepository?.userLocationStreamValue.value;
     final eventCoordinate = event.coordinate;
@@ -357,12 +306,8 @@ class EventSearchScreenController implements Disposable {
     });
   }
 
-  StreamValue<double> get maxRadiusMetersStreamValue =>
-      _appDataRepository.maxRadiusMetersStreamValue;
-
   @override
   void onDispose() {
-    _isDisposed = true;
     displayedEventsStreamValue.dispose();
     isInitialLoadingStreamValue.dispose();
     isPageLoadingStreamValue.dispose();
@@ -377,6 +322,5 @@ class EventSearchScreenController implements Disposable {
     _radiusSubscription?.cancel();
     focusNode.dispose();
     searchController.dispose();
-    scrollController.dispose();
   }
 }

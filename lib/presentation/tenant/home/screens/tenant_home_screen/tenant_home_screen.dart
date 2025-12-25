@@ -116,7 +116,7 @@ class _TenantHomeScreenState extends State<TenantHomeScreen> {
                 title: 'Seus Favoritos',
                 onPressed: () {},
               ),
-              FavoritesSectionBuilder(controller: _controller),
+              const FavoritesSectionBuilder(),
               StreamValueBuilder<Set<String>>(
                 streamValue: _controller.confirmedIdsStream,
                 builder: (context, confirmedIds) {
