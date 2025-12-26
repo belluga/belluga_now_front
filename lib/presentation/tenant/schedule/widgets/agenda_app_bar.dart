@@ -1,40 +1,18 @@
 import 'package:belluga_now/application/icons/boora_icons.dart';
+import 'package:belluga_now/presentation/tenant/schedule/screens/event_search_screen/models/agenda_app_bar_controller.dart';
 import 'package:belluga_now/presentation/tenant/schedule/screens/event_search_screen/models/invite_filter.dart';
 import 'package:flutter/material.dart';
-import 'package:stream_value/core/stream_value.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 
 class AgendaAppBar extends StatelessWidget {
   const AgendaAppBar({
     super.key,
-    required this.searchActiveStreamValue,
-    required this.searchController,
-    required this.focusNode,
-    required this.onToggleSearchMode,
-    required this.onSearchChanged,
-    required this.maxRadiusMetersStreamValue,
-    required this.radiusMetersStreamValue,
-    required this.onSetRadiusMeters,
-    required this.inviteFilterStreamValue,
-    required this.onCycleInviteFilter,
-    required this.showHistoryStreamValue,
-    required this.onToggleHistory,
+    required this.controller,
     this.onBack,
     this.actions = const AgendaAppBarActions(),
   });
 
-  final StreamValue<bool> searchActiveStreamValue;
-  final TextEditingController searchController;
-  final FocusNode focusNode;
-  final VoidCallback onToggleSearchMode;
-  final ValueChanged<String> onSearchChanged;
-  final StreamValue<double> maxRadiusMetersStreamValue;
-  final StreamValue<double> radiusMetersStreamValue;
-  final ValueChanged<double> onSetRadiusMeters;
-  final StreamValue<InviteFilter> inviteFilterStreamValue;
-  final VoidCallback onCycleInviteFilter;
-  final StreamValue<bool> showHistoryStreamValue;
-  final VoidCallback onToggleHistory;
+  final AgendaAppBarController controller;
   final VoidCallback? onBack;
   final AgendaAppBarActions actions;
 
@@ -44,7 +22,7 @@ class AgendaAppBar extends StatelessWidget {
     final colorScheme = theme.colorScheme;
 
     return StreamValueBuilder<bool>(
-      streamValue: searchActiveStreamValue,
+      streamValue: controller.searchActiveStreamValue,
       builder: (context, isActive) {
         final showBack = actions.showBack;
         return AppBar(
@@ -67,8 +45,8 @@ class AgendaAppBar extends StatelessWidget {
             child: isActive
                 ? TextField(
                     key: const ValueKey('searchField'),
-                    controller: searchController,
-                    focusNode: focusNode,
+                    controller: controller.searchController,
+                    focusNode: controller.focusNode,
                     style: theme.textTheme.titleMedium,
                     decoration: InputDecoration(
                       hintText: 'Buscar eventos...',
@@ -79,14 +57,14 @@ class AgendaAppBar extends StatelessWidget {
                       ),
                       suffixIcon: IconButton(
                         tooltip: 'Fechar busca',
-                        onPressed: onToggleSearchMode,
+                        onPressed: controller.toggleSearchMode,
                         icon: Icon(
                           Icons.close,
                           color: colorScheme.onSurfaceVariant,
                         ),
                       ),
                     ),
-                    onChanged: onSearchChanged,
+                    onChanged: controller.searchEvents,
                     autofocus: true,
                   )
                 : Text(
@@ -100,7 +78,7 @@ class AgendaAppBar extends StatelessWidget {
             if (!isActive && actions.showSearch)
               IconButton(
                 tooltip: 'Buscar eventos',
-                onPressed: onToggleSearchMode,
+                onPressed: controller.toggleSearchMode,
                 icon: Icon(
                   Icons.search,
                   color: colorScheme.onSurfaceVariant,
@@ -108,10 +86,10 @@ class AgendaAppBar extends StatelessWidget {
               ),
             if (!isActive && actions.showRadius)
               StreamValueBuilder<double>(
-                streamValue: maxRadiusMetersStreamValue,
+                streamValue: controller.maxRadiusMetersStreamValue,
                 builder: (context, maxRadiusMeters) {
                   return StreamValueBuilder<double>(
-                    streamValue: radiusMetersStreamValue,
+                    streamValue: controller.radiusMetersStreamValue,
                     builder: (context, radiusMeters) {
                       return IconButton(
                         tooltip: 'Raio ${_formatRadiusLabel(radiusMeters)}',
@@ -131,22 +109,22 @@ class AgendaAppBar extends StatelessWidget {
               ),
             if (!isActive && actions.showInviteFilter)
               StreamValueBuilder<InviteFilter>(
-                streamValue: inviteFilterStreamValue,
+                streamValue: controller.inviteFilterStreamValue,
                 builder: (context, filter) {
                   return IconButton(
                     tooltip: _inviteFilterTooltip(filter),
-                    onPressed: onCycleInviteFilter,
+                    onPressed: controller.cycleInviteFilter,
                     icon: _inviteFilterIcon(theme, filter),
                   );
                 },
               ),
             if (!isActive && actions.showHistory)
               StreamValueBuilder<bool>(
-                streamValue: showHistoryStreamValue,
+                streamValue: controller.showHistoryStreamValue,
                 builder: (context, showHistory) {
                   final isSelected = showHistory;
                   return IconButton(
-                    onPressed: onToggleHistory,
+                    onPressed: controller.toggleHistory,
                     tooltip: isSelected
                         ? 'Ver futuros e em andamento'
                         : 'Ver eventos passados',
@@ -255,7 +233,7 @@ class AgendaAppBar extends StatelessWidget {
                         setState(() {
                           currentKm = value;
                         });
-                        onSetRadiusMeters(value * 1000);
+                        controller.setRadiusMeters(value * 1000);
                       },
                     ),
                   ],

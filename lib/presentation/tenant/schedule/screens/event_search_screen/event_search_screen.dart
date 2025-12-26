@@ -67,18 +67,7 @@ class _EventSearchScreenState extends State<EventSearchScreen> {
         appBar: PreferredSize(
           preferredSize: const Size.fromHeight(kToolbarHeight),
           child: AgendaAppBar(
-            searchActiveStreamValue: _controller.searchActiveStreamValue,
-            searchController: _controller.searchController,
-            focusNode: _controller.focusNode,
-            onToggleSearchMode: _controller.toggleSearchMode,
-            onSearchChanged: _controller.searchEvents,
-            maxRadiusMetersStreamValue: _controller.maxRadiusMetersStreamValue,
-            radiusMetersStreamValue: _controller.radiusMetersStreamValue,
-            onSetRadiusMeters: _controller.setRadiusMeters,
-            inviteFilterStreamValue: _controller.inviteFilterStreamValue,
-            onCycleInviteFilter: _controller.cycleInviteFilter,
-            showHistoryStreamValue: _controller.showHistoryStreamValue,
-            onToggleHistory: _controller.toggleHistory,
+            controller: _controller,
             onBack: _handleBack,
             actions: const AgendaAppBarActions(
               showBack: true,

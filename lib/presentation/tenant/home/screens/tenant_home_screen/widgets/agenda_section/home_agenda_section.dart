@@ -50,7 +50,7 @@ class _HomeAgendaSectionState extends State<HomeAgendaSection> {
           delegate: _PinnedHeaderDelegate(
             minHeight: kToolbarHeight,
             maxHeight: kToolbarHeight,
-            child: HomeAgendaAppBar(controller: _controller),
+            child: const HomeAgendaAppBar(),
           ),
         ),
         body: HomeAgendaBody(controller: _controller),
