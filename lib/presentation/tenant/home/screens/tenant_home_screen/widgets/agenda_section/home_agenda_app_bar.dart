@@ -1,4 +1,4 @@
-import 'package:belluga_now/presentation/tenant/home/screens/tenant_home_provisional_screen/widgets/agenda_section/controllers/tenant_home_agenda_controller.dart';
+import 'package:belluga_now/presentation/tenant/home/screens/tenant_home_screen/widgets/agenda_section/controllers/tenant_home_agenda_controller.dart';
 import 'package:belluga_now/presentation/tenant/schedule/widgets/agenda_app_bar.dart';
 import 'package:flutter/material.dart';
 

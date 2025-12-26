@@ -19,6 +19,7 @@ class AgendaAppBar extends StatelessWidget {
     required this.onCycleInviteFilter,
     required this.showHistoryStreamValue,
     required this.onToggleHistory,
+    this.onBack,
     this.actions = const AgendaAppBarActions(),
   });
 
@@ -34,6 +35,7 @@ class AgendaAppBar extends StatelessWidget {
   final VoidCallback onCycleInviteFilter;
   final StreamValue<bool> showHistoryStreamValue;
   final VoidCallback onToggleHistory;
+  final VoidCallback? onBack;
   final AgendaAppBarActions actions;
 
   @override
@@ -44,12 +46,22 @@ class AgendaAppBar extends StatelessWidget {
     return StreamValueBuilder<bool>(
       streamValue: searchActiveStreamValue,
       builder: (context, isActive) {
+        final showBack = actions.showBack;
         return AppBar(
           primary: false,
           toolbarHeight: kToolbarHeight,
           automaticallyImplyLeading: false,
-          leading: null,
-          leadingWidth: 0,
+          leading: showBack
+              ? IconButton(
+                  tooltip: 'Voltar',
+                  onPressed: onBack ?? () => Navigator.of(context).maybePop(),
+                  icon: Icon(
+                    Icons.arrow_back,
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                )
+              : null,
+          leadingWidth: showBack ? null : 0,
           title: AnimatedSwitcher(
             duration: const Duration(milliseconds: 200),
             child: isActive
@@ -259,12 +271,14 @@ class AgendaAppBar extends StatelessWidget {
 
 class AgendaAppBarActions {
   const AgendaAppBarActions({
+    this.showBack = false,
     this.showSearch = true,
     this.showRadius = true,
     this.showInviteFilter = true,
     this.showHistory = true,
   });
 
+  final bool showBack;
   final bool showSearch;
   final bool showRadius;
   final bool showInviteFilter;

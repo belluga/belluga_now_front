@@ -5,7 +5,6 @@ import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.da
 import 'package:belluga_now/presentation/tenant/schedule/screens/event_search_screen/controllers/event_search_screen_controller.dart';
 import 'package:belluga_now/presentation/tenant/schedule/screens/event_search_screen/models/invite_filter.dart';
 import 'package:belluga_now/presentation/tenant/schedule/widgets/agenda_app_bar.dart';
-import 'package:belluga_now/presentation/tenant/widgets/belluga_bottom_navigation_bar.dart';
 import 'package:belluga_now/presentation/tenant/widgets/date_grouped_event_list.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
@@ -56,116 +55,142 @@ class _EventSearchScreenState extends State<EventSearchScreen> {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
-    return Scaffold(
-      appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(kToolbarHeight),
-        child: AgendaAppBar(
-          searchActiveStreamValue: _controller.searchActiveStreamValue,
-          searchController: _controller.searchController,
-          focusNode: _controller.focusNode,
-          onToggleSearchMode: _controller.toggleSearchMode,
-          onSearchChanged: _controller.searchEvents,
-          maxRadiusMetersStreamValue: _controller.maxRadiusMetersStreamValue,
-          radiusMetersStreamValue: _controller.radiusMetersStreamValue,
-          onSetRadiusMeters: _controller.setRadiusMeters,
-          inviteFilterStreamValue: _controller.inviteFilterStreamValue,
-          onCycleInviteFilter: _controller.cycleInviteFilter,
-          showHistoryStreamValue: _controller.showHistoryStreamValue,
-          onToggleHistory: _controller.toggleHistory,
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) {
+          return;
+        }
+        context.router.replaceAll([TenantHomeRoute()]);
+      },
+      child: Scaffold(
+        appBar: PreferredSize(
+          preferredSize: const Size.fromHeight(kToolbarHeight),
+          child: AgendaAppBar(
+            searchActiveStreamValue: _controller.searchActiveStreamValue,
+            searchController: _controller.searchController,
+            focusNode: _controller.focusNode,
+            onToggleSearchMode: _controller.toggleSearchMode,
+            onSearchChanged: _controller.searchEvents,
+            maxRadiusMetersStreamValue: _controller.maxRadiusMetersStreamValue,
+            radiusMetersStreamValue: _controller.radiusMetersStreamValue,
+            onSetRadiusMeters: _controller.setRadiusMeters,
+            inviteFilterStreamValue: _controller.inviteFilterStreamValue,
+            onCycleInviteFilter: _controller.cycleInviteFilter,
+            showHistoryStreamValue: _controller.showHistoryStreamValue,
+            onToggleHistory: _controller.toggleHistory,
+            onBack: _handleBack,
+            actions: const AgendaAppBarActions(
+              showBack: true,
+              showSearch: true,
+              showRadius: true,
+              showInviteFilter: true,
+              showHistory: true,
+            ),
+          ),
         ),
-      ),
-      body: SafeArea(
-        top: false,
-        child: StreamValueBuilder<bool>(
-          streamValue: _controller.isInitialLoadingStreamValue,
-          builder: (context, isInitialLoading) {
-            return StreamValueBuilder<List<EventModel>>(
-              streamValue: _controller.displayedEventsStreamValue,
-              builder: (context, events) {
-                return StreamValueBuilder<bool>(
-                  streamValue: _controller.isPageLoadingStreamValue,
-                  builder: (context, isPageLoading) {
-                    if (isInitialLoading && events.isEmpty) {
-                      return const Center(
-                        child: CircularProgressIndicator(),
-                      );
-                    }
-
-                    if (events.isEmpty) {
-                      return Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.search_off,
-                              size: 64,
-                              color: colorScheme.onSurfaceVariant
-                                  .withAlpha((0.5 * 255).floor()),
-                            ),
-                            const SizedBox(height: 16),
-                            Text(
-                              'Nenhum resultado encontrado',
-                              style: theme.textTheme.titleMedium?.copyWith(
-                                color: colorScheme.onSurfaceVariant,
-                              ),
-                            ),
-                          ],
-                        ),
-                      );
-                    }
-
-                    final resumes = events
-                        .map((e) => VenueEventResume.fromScheduleEvent(
-                              e,
-                              _defaultEventImage,
-                            ))
-                        .toList();
-
-                    return StreamValueBuilder<bool>(
-                      streamValue: _controller.showHistoryStreamValue,
-                      builder: (context, showHistory) {
-                        return DateGroupedEventList(
-                          controller: _controller.scrollController,
-                          events: resumes,
-                          isConfirmed: (event) =>
-                              _controller.isEventConfirmed(event.id),
-                          pendingInvitesCount: (event) =>
-                              _controller.pendingInviteCount(event.id),
-                          distanceLabel: _controller.distanceLabelFor,
-                          statusIconSize: 22,
-                          highlightNowEvents: true,
-                          highlightTodayEvents: true,
-                          sortDescending: showHistory,
-                          footer: isPageLoading
-                              ? const Padding(
-                                  padding: EdgeInsets.symmetric(vertical: 16),
-                                  child: Center(
-                                    child: SizedBox(
-                                      width: 24,
-                                      height: 24,
-                                      child: CircularProgressIndicator(),
-                                    ),
-                                  ),
-                                )
-                              : null,
-                          onEventSelected: (slug) {
-                            context.router.push(
-                              ImmersiveEventDetailRoute(eventSlug: slug),
-                            );
-                          },
+        body: SafeArea(
+          top: false,
+          child: StreamValueBuilder<bool>(
+            streamValue: _controller.isInitialLoadingStreamValue,
+            builder: (context, isInitialLoading) {
+              return StreamValueBuilder<List<EventModel>>(
+                streamValue: _controller.displayedEventsStreamValue,
+                builder: (context, events) {
+                  return StreamValueBuilder<bool>(
+                    streamValue: _controller.isPageLoadingStreamValue,
+                    builder: (context, isPageLoading) {
+                      if (isInitialLoading && events.isEmpty) {
+                        return const Center(
+                          child: CircularProgressIndicator(),
                         );
-                      },
-                    );
-                  },
-                );
-              },
-            );
-          },
+                      }
+
+                      if (events.isEmpty) {
+                        return Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.search_off,
+                                size: 64,
+                                color: colorScheme.onSurfaceVariant
+                                    .withAlpha((0.5 * 255).floor()),
+                              ),
+                              const SizedBox(height: 16),
+                              Text(
+                                'Nenhum resultado encontrado',
+                                style: theme.textTheme.titleMedium?.copyWith(
+                                  color: colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }
+
+                      final resumes = events
+                          .map((e) => VenueEventResume.fromScheduleEvent(
+                                e,
+                                _defaultEventImage,
+                              ))
+                          .toList();
+
+                      return StreamValueBuilder<bool>(
+                        streamValue: _controller.showHistoryStreamValue,
+                        builder: (context, showHistory) {
+                          return DateGroupedEventList(
+                            controller: _controller.scrollController,
+                            events: resumes,
+                            isConfirmed: (event) =>
+                                _controller.isEventConfirmed(event.id),
+                            pendingInvitesCount: (event) =>
+                                _controller.pendingInviteCount(event.id),
+                            distanceLabel: _controller.distanceLabelFor,
+                            statusIconSize: 22,
+                            highlightNowEvents: true,
+                            highlightTodayEvents: true,
+                            sortDescending: showHistory,
+                            footer: isPageLoading
+                                ? const Padding(
+                                    padding:
+                                        EdgeInsets.symmetric(vertical: 16),
+                                    child: Center(
+                                      child: SizedBox(
+                                        width: 24,
+                                        height: 24,
+                                        child: CircularProgressIndicator(),
+                                      ),
+                                    ),
+                                  )
+                                : null,
+                            onEventSelected: (slug) {
+                              context.router.push(
+                                ImmersiveEventDetailRoute(eventSlug: slug),
+                              );
+                            },
+                          );
+                        },
+                      );
+                    },
+                  );
+                },
+              );
+            },
+          ),
         ),
       ),
-      bottomNavigationBar: const BellugaBottomNavigationBar(currentIndex: 1),
     );
   }
 
   // AgendaAppBar handles icons/tooltips and radius modal.
+
+  void _handleBack() {
+    final router = context.router;
+    if (router.canPop()) {
+      router.pop();
+    } else {
+      router.replaceAll([const ProfileRoute()]);
+    }
+  }
 }

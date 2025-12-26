@@ -2,13 +2,15 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:auto_route/auto_route.dart';
-import 'package:belluga_now/presentation/tenant/home/screens/tenant_home_provisional_screen/controllers/tenant_home_provisional_controller.dart';
-import 'package:belluga_now/presentation/tenant/home/screens/tenant_home_provisional_screen/tenant_home_provisional_screen.dart';
-import 'package:belluga_now/presentation/tenant/home/screens/tenant_home_provisional_screen/widgets/agenda_section/controllers/tenant_home_agenda_controller.dart';
-import 'package:belluga_now/presentation/tenant/home/screens/tenant_home_provisional_screen/widgets/my_events_carousel_card.dart';
+import 'package:belluga_now/presentation/tenant/home/screens/tenant_home_screen/controllers/tenant_home_controller.dart';
+import 'package:belluga_now/presentation/tenant/home/screens/tenant_home_screen/tenant_home_screen.dart';
+import 'package:belluga_now/presentation/tenant/home/screens/tenant_home_screen/widgets/agenda_section/controllers/tenant_home_agenda_controller.dart';
+import 'package:belluga_now/presentation/tenant/home/screens/tenant_home_screen/widgets/my_events_carousel_card.dart';
 import 'package:belluga_now/presentation/tenant/home/screens/tenant_home_screen/widgets/favorite_section/controllers/favorites_section_controller.dart';
+import 'package:belluga_now/presentation/tenant/home/screens/tenant_home_screen/widgets/invites_banner/controllers/invites_banner_builder_controller.dart';
 import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
 import 'package:belluga_now/domain/favorite/projections/favorite_resume.dart';
+import 'package:belluga_now/domain/invites/invite_model.dart';
 import 'package:belluga_now/infrastructure/repositories/app_data_repository.dart';
 import 'package:belluga_now/presentation/tenant/schedule/screens/event_search_screen/models/invite_filter.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
@@ -29,37 +31,43 @@ import 'package:mockito/annotations.dart';
 import 'package:mockito/mockito.dart' as mockito;
 import 'package:stream_value/core/stream_value.dart';
 
-import 'tenant_home_provisional_screen_test.mocks.dart';
+import 'tenant_home_screen_test.mocks.dart';
 
 @GenerateNiceMocks([
-  MockSpec<TenantHomeProvisionalController>(),
+  MockSpec<TenantHomeController>(),
   MockSpec<TenantHomeAgendaController>(),
   MockSpec<FavoritesSectionController>(),
+  MockSpec<InvitesBannerBuilderController>(),
   MockSpec<StackRouter>(),
   MockSpec<AppDataRepository>(),
   MockSpec<AppData>(),
 ])
 void main() {
-  late MockTenantHomeProvisionalController mockController;
+  late MockTenantHomeController mockController;
   late MockTenantHomeAgendaController mockAgendaController;
   late MockFavoritesSectionController mockFavoritesController;
+  late MockInvitesBannerBuilderController mockInvitesBannerController;
   late MockAppDataRepository mockAppDataRepository;
   late MockAppData mockAppData;
+  late ScrollController testScrollController;
 
   setUpAll(() {
     HttpOverrides.global = _TestHttpOverrides();
   });
 
   setUp(() {
-    mockController = MockTenantHomeProvisionalController();
+    mockController = MockTenantHomeController();
     mockAgendaController = MockTenantHomeAgendaController();
     mockFavoritesController = MockFavoritesSectionController();
+    mockInvitesBannerController = MockInvitesBannerBuilderController();
     mockAppDataRepository = MockAppDataRepository();
     mockAppData = MockAppData();
+    testScrollController = ScrollController();
 
-    GetIt.I.registerSingleton<TenantHomeProvisionalController>(mockController);
+    GetIt.I.registerSingleton<TenantHomeController>(mockController);
     GetIt.I.registerSingleton<TenantHomeAgendaController>(mockAgendaController);
     GetIt.I.registerSingleton<FavoritesSectionController>(mockFavoritesController);
+    GetIt.I.registerSingleton<InvitesBannerBuilderController>(mockInvitesBannerController);
     GetIt.I.registerSingleton<AppDataRepository>(mockAppDataRepository);
     GetIt.I.registerSingleton<AppData>(mockAppData);
 
@@ -89,14 +97,20 @@ void main() {
         isPrimary: true,
       ),
     );
+    mockito
+        .when(mockInvitesBannerController.pendingInvitesStreamValue)
+        .thenReturn(StreamValue<List<InviteModel>>(defaultValue: const []));
 
-    // Stub Provisional Controller
+    // Stub Home Controller
     mockito.when(mockController.userAddressStreamValue).thenReturn(
       StreamValue<String?>(defaultValue: 'Rua Teste, 123'),
     );
     mockito
         .when(mockController.myEventsFilteredStreamValue)
         .thenReturn(StreamValue<List<VenueEventResume>>(defaultValue: []));
+    mockito
+        .when(mockController.scrollController)
+        .thenReturn(testScrollController);
     
     // Callbacks
     mockito.when(mockController.distanceLabelForMyEvent(mockito.any)).thenReturn('1km');
@@ -135,10 +149,11 @@ void main() {
   });
 
   tearDown(() {
+    testScrollController.dispose();
     GetIt.I.reset();
   });
 
-  testWidgets('TenantHomeProvisionalScreen renders correctly', (tester) async {
+  testWidgets('TenantHomeScreen renders correctly', (tester) async {
     final now = DateTime.now();
     final event = VenueEventResume(
       id: 'event-1',
@@ -161,7 +176,7 @@ void main() {
     
     await tester.pumpWidget(
       const MaterialApp(
-        home: TenantHomeProvisionalScreen(),
+        home: TenantHomeScreen(),
       ),
     );
     await tester.pump();
@@ -204,7 +219,7 @@ void main() {
         controller: mockRouter,
         stateHash: 0,
         child: const MaterialApp(
-          home: TenantHomeProvisionalScreen(),
+          home: TenantHomeScreen(),
         ),
       ),
     );
@@ -261,7 +276,7 @@ class _TestHttpClient implements HttpClient {
   }
 
   @override
-  noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+  Object? noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 class _TestHttpClientRequest implements HttpClientRequest {
@@ -275,7 +290,7 @@ class _TestHttpClientRequest implements HttpClientRequest {
   }
 
   @override
-  noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+  Object? noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 class _TestHttpClientResponse extends Stream<List<int>>
@@ -313,5 +328,5 @@ class _TestHttpClientResponse extends Stream<List<int>>
   }
 
   @override
-  noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+  Object? noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

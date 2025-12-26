@@ -1,103 +1,80 @@
 import 'dart:async';
 
-import 'package:belluga_now/domain/favorite/favorite_badge.dart';
-import 'package:belluga_now/domain/favorite/projections/favorite_resume.dart';
-import 'package:belluga_now/domain/favorite/value_objects/favorite_badge_font_family_value.dart';
-import 'package:belluga_now/domain/favorite/value_objects/favorite_badge_font_package_value.dart';
-import 'package:belluga_now/domain/favorite/value_objects/favorite_badge_icon_value.dart';
-import 'package:belluga_now/domain/invites/invite_model.dart';
 import 'package:belluga_now/domain/map/geo_distance.dart';
-import 'package:belluga_now/domain/partners/partner_model.dart';
-import 'package:belluga_now/domain/repositories/favorite_repository_contract.dart';
-import 'package:belluga_now/infrastructure/repositories/app_data_repository.dart';
-import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
-import 'package:belluga_now/domain/repositories/partners_repository_contract.dart';
-import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
-import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
-
-import 'package:belluga_now/domain/repositories/user_events_repository_contract.dart';
-import 'package:belluga_now/domain/value_objects/asset_path_value.dart';
-import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
-import 'package:belluga_now/domain/value_objects/title_value.dart';
-import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
+import 'package:belluga_now/domain/repositories/user_events_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
+import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
 import 'package:flutter/material.dart';
 import 'package:geocoding/geocoding.dart';
-import 'package:get_it/get_it.dart';
+import 'package:get_it/get_it.dart' show Disposable, GetIt;
 import 'package:stream_value/core/stream_value.dart';
 
 class TenantHomeController implements Disposable {
   TenantHomeController({
-    required FavoriteRepositoryContract favoriteRepository,
-    ScheduleRepositoryContract? scheduleRepository,
     UserEventsRepositoryContract? userEventsRepository,
-    required PartnersRepositoryContract partnersRepository,
-    InvitesRepositoryContract? invitesRepository,
     UserLocationRepositoryContract? userLocationRepository,
-  })  : _favoriteRepository = favoriteRepository,
-        _scheduleRepository =
-            scheduleRepository ?? GetIt.I.get<ScheduleRepositoryContract>(),
-        _userEventsRepository =
+  })  : _userEventsRepository =
             userEventsRepository ?? GetIt.I.get<UserEventsRepositoryContract>(),
-        _partnersRepository = partnersRepository,
-        _invitesRepository =
-            invitesRepository ?? GetIt.I.get<InvitesRepositoryContract>(),
         _userLocationRepository = userLocationRepository ??
             (GetIt.I.isRegistered<UserLocationRepositoryContract>()
                 ? GetIt.I.get<UserLocationRepositoryContract>()
                 : null);
 
-  final FavoriteRepositoryContract _favoriteRepository;
-  final ScheduleRepositoryContract _scheduleRepository;
-  final UserEventsRepositoryContract _userEventsRepository;
-  final PartnersRepositoryContract _partnersRepository;
-  final InvitesRepositoryContract _invitesRepository;
-  final UserLocationRepositoryContract? _userLocationRepository;
+  static const Duration _assumedEventDuration = Duration(hours: 3);
 
-  final StreamValue<List<FavoriteResume>?> favoritesStreamValue =
-      StreamValue<List<FavoriteResume>?>();
-  final StreamValue<List<VenueEventResume>> myEventsStreamValue =
-      StreamValue<List<VenueEventResume>>(defaultValue: []);
-  final StreamValue<List<VenueEventResume>> upcomingEventsStreamValue =
-      StreamValue<List<VenueEventResume>>(defaultValue: []);
-  final StreamValue<List<VenueEventResume>> liveEventsStreamValue =
-      StreamValue<List<VenueEventResume>>(defaultValue: []);
+  final UserEventsRepositoryContract _userEventsRepository;
+  final UserLocationRepositoryContract? _userLocationRepository;
+  final ScrollController _scrollController = ScrollController();
 
   final StreamValue<String?> userAddressStreamValue = StreamValue<String?>();
+  final StreamValue<List<VenueEventResume>> myEventsFilteredStreamValue =
+      StreamValue<List<VenueEventResume>>(defaultValue: const []);
 
-  StreamValue<Set<String>> get confirmedIdsStream =>
+  ScrollController get scrollController => _scrollController;
+
+  StreamValue<Set<String>> get confirmedIdsStreamValue =>
       _userEventsRepository.confirmedEventIdsStream;
 
-  StreamValue<List<InviteModel>> get pendingInvitesStreamValue =>
-      _invitesRepository.pendingInvitesStreamValue;
-
-  StreamSubscription? _myEventsSubscription;
-  StreamSubscription? _partnersSubscription;
+  StreamSubscription? _confirmedEventsSubscription;
   StreamSubscription? _userLocationSubscription;
-  List<PartnerModel> _favoritePartnersCache = const [];
+  bool _isDisposed = false;
+  bool _initialized = false;
 
   Future<void> init() async {
-    await loadFavorites();
+    if (_initialized) return;
+    _initialized = true;
+
     await loadMyEvents();
 
-    // Best-effort: use location for "nearby" sorting when already permitted,
-    // without triggering permission prompts from the Home screen.
     await _userLocationRepository?.warmUpIfPermitted();
     _listenUserLocation();
+    _listenConfirmedEvents();
+  }
 
-    await loadUpcomingEvents();
+  Future<void> loadMyEvents() async {
+    final previousValue = myEventsFilteredStreamValue.value;
+    try {
+      final events = await _userEventsRepository.fetchMyEvents();
+      if (_isDisposed) return;
+      _updateMyEvents(events);
+    } catch (_) {
+      if (_isDisposed) return;
+      myEventsFilteredStreamValue.addValue(previousValue);
+    }
+  }
 
-    // Listen for changes in favorite partners
-    _partnersSubscription =
-        _partnersRepository.favoritePartnerIdsStreamValue.stream.listen((_) {
-      loadFavorites();
-    });
-
-    // Listen for changes in confirmed events
-    _myEventsSubscription =
+  void _listenConfirmedEvents() {
+    _confirmedEventsSubscription?.cancel();
+    _confirmedEventsSubscription =
         _userEventsRepository.confirmedEventIdsStream.stream.listen((_) {
-      loadMyEvents();
+      unawaited(loadMyEvents());
     });
+  }
+
+  void _updateMyEvents(List<VenueEventResume> events) {
+    if (_isDisposed) return;
+    myEventsFilteredStreamValue.addValue(_filterConfirmedUpcoming(events));
   }
 
   void _listenUserLocation() {
@@ -106,6 +83,7 @@ class TenantHomeController implements Disposable {
 
     final cachedAddress = repo.lastKnownAddressStreamValue.value;
     if (cachedAddress != null && cachedAddress.trim().isNotEmpty) {
+      if (_isDisposed) return;
       userAddressStreamValue.addValue(cachedAddress);
     }
 
@@ -120,7 +98,9 @@ class TenantHomeController implements Disposable {
   }
 
   Future<void> _updateUserAddress(CityCoordinate? coordinate) async {
+    if (_isDisposed) return;
     if (coordinate == null) {
+      if (_isDisposed) return;
       userAddressStreamValue.addValue(null);
       return;
     }
@@ -128,9 +108,8 @@ class TenantHomeController implements Disposable {
     try {
       final geocoderPresent = await isPresent();
       if (!geocoderPresent) {
-        userAddressStreamValue.addValue(
-          'Localização detectada',
-        );
+        if (_isDisposed) return;
+        userAddressStreamValue.addValue('Localizacao detectada');
         return;
       }
 
@@ -162,9 +141,10 @@ class TenantHomeController implements Disposable {
       ];
       final label = parts.isNotEmpty ? parts.join(', ') : null;
       await _userLocationRepository?.setLastKnownAddress(label);
+      if (_isDisposed) return;
       userAddressStreamValue.addValue(
         (label == null || label.trim().isEmpty)
-            ? 'Localização detectada'
+            ? 'Localizacao detectada'
             : label,
       );
     } catch (e, stackTrace) {
@@ -174,199 +154,34 @@ class TenantHomeController implements Disposable {
       if (previous != null && previous.trim().isNotEmpty) {
         return;
       }
-      await _userLocationRepository?.setLastKnownAddress('Localização detectada');
-      userAddressStreamValue.addValue(
-        'Localização detectada',
-      );
+      await _userLocationRepository?.setLastKnownAddress('Localizacao detectada');
+      if (_isDisposed) return;
+      userAddressStreamValue.addValue('Localizacao detectada');
     }
   }
 
-  Future<void> loadFavorites() async {
-    final previousValue = favoritesStreamValue.value;
-    // Don't set to null here to avoid flashing loading state on updates
-    // favoritesStreamValue.addValue(null);
-    try {
-      // 1. Legacy favorites (App Manager)
-      final legacyFavorites = await _favoriteRepository.fetchFavoriteResumes();
-
-      // Get app data for app owner
-      final appData = GetIt.I.get<AppDataRepository>().appData;
-      final iconUrl = appData.iconUrl.value?.toString();
-      final colorHex = appData.mainColor.value;
-
-      Color? primaryColor;
-      if (colorHex.isNotEmpty) {
-        // Parse hex color (e.g., "#4FA0E3")
-        final hexColor = colorHex.replaceAll('#', '');
-        primaryColor = Color(int.parse('FF$hexColor', radix: 16));
-      }
-
-      // Update legacy favorites (app owner) with app data
-      final updatedLegacyFavorites = legacyFavorites.map((fav) {
-        if (fav.isPrimary) {
-          return FavoriteResume(
-            titleValue: fav.titleValue,
-            slug: fav.slug,
-            imageUriValue: fav.imageUriValue,
-            assetPathValue: fav.assetPathValue,
-            badge: fav.badge,
-            isPrimary: fav.isPrimary,
-            iconImageUrl: iconUrl,
-            primaryColor: primaryColor,
-          );
-        }
-        return fav;
-      }).toList();
-
-      // 2. Partner favorites
-      final partnerFavorites = _partnersRepository.getFavoritePartners();
-      _favoritePartnersCache = partnerFavorites;
-      final partnerResumes = partnerFavorites.map((p) {
-        // Use placeholder if no avatar
-        final hasAvatar = p.avatarUrl != null && p.avatarUrl!.isNotEmpty;
-
-        // Create category badge based on partner type
-        final badgeIcon = _getPartnerTypeIcon(p.type);
-        final badge = FavoriteBadge(
-          iconValue: FavoriteBadgeIconValue()
-            ..parse(badgeIcon.codePoint.toString()),
-          fontFamilyValue: badgeIcon.fontFamily != null
-              ? (FavoriteBadgeFontFamilyValue()..parse(badgeIcon.fontFamily!))
-              : null,
-          fontPackageValue: badgeIcon.fontPackage != null
-              ? (FavoriteBadgeFontPackageValue()..parse(badgeIcon.fontPackage!))
-              : null,
-        );
-
-        return FavoriteResume(
-          titleValue: TitleValue()..parse(p.name),
-          slug: p.slug,
-          imageUriValue: hasAvatar
-              ? (ThumbUriValue(defaultValue: Uri.parse(p.avatarUrl!)))
-              : null,
-          assetPathValue: !hasAvatar
-              ? (AssetPathValue()
-                ..parse('assets/images/placeholder_avatar.png'))
-              : null,
-          badge: badge,
-          isPrimary: false,
-        );
-      }).toList();
-
-      // 3. Merge
-      final allFavorites = [...updatedLegacyFavorites, ...partnerResumes];
-      favoritesStreamValue.addValue(_sortFavorites(allFavorites));
-    } catch (_) {
-      favoritesStreamValue.addValue(previousValue);
-    }
-  }
-
-  Future<void> loadMyEvents() async {
-    final previousValue = myEventsStreamValue.value;
-    // Don't set to null here to avoid flashing loading state on updates
-    // myEventsStreamValue.addValue(null);
-    try {
-      final events = await _userEventsRepository.fetchMyEvents();
-      myEventsStreamValue.addValue(events);
-    } catch (_) {
-      myEventsStreamValue.addValue(previousValue);
-    }
-  }
-
-  Future<void> loadUpcomingEvents() async {
-    try {
-      final events = await _scheduleRepository.fetchUpcomingEvents();
-      upcomingEventsStreamValue.addValue(events);
-      liveEventsStreamValue.addValue(_filterLiveNow(events));
-      _resortFavoritesByUpcomingEvents();
-    } catch (_) {
-      // keep last value; StreamValue already holds previous state
-    }
-  }
-
-  List<VenueEventResume> _filterLiveNow(List<VenueEventResume> events) {
-    const assumedDuration = Duration(hours: 3);
+  List<VenueEventResume> _filterConfirmedUpcoming(
+    List<VenueEventResume> events,
+  ) {
     final now = DateTime.now();
     return events.where((event) {
       final start = event.startDateTime;
-      final end = start.add(assumedDuration);
-      final isStarted = !now.isBefore(start);
-      final isNotEnded = now.isBefore(end);
-      return isStarted && isNotEnded;
+      if (!start.isAfter(now)) {
+        final end = start.add(_assumedEventDuration);
+        return now.isBefore(end);
+      }
+      return true;
     }).toList();
   }
 
-  void _resortFavoritesByUpcomingEvents() {
-    final current = favoritesStreamValue.value;
-    if (current == null || current.isEmpty) return;
-    favoritesStreamValue.addValue(_sortFavorites(List<FavoriteResume>.from(current)));
+  String? firstMyEventSlug() {
+    final events = myEventsFilteredStreamValue.value;
+    if (events.isEmpty) return null;
+    return events.first.slug;
   }
 
-  List<FavoriteResume> _sortFavorites(List<FavoriteResume> favorites) {
-    final events = upcomingEventsStreamValue.value;
-    final eventStartById = {
-      for (final event in events) event.id: event.startDateTime,
-    };
-    final partnerBySlug = {
-      for (final partner in _favoritePartnersCache) partner.slug: partner,
-    };
-    final normalizedEventMatches = {
-      for (final event in events)
-        event: _buildEventMatchKeys(event),
-    };
-
-    DateTime? nextDateFor(FavoriteResume favorite) {
-      final slug = favorite.slug;
-      final normalizedTitle = _normalizeMatchKey(favorite.title);
-      DateTime? earliest;
-
-      if (slug != null && slug.isNotEmpty) {
-        final partner = partnerBySlug[slug];
-        if (partner != null) {
-          final dates = partner.upcomingEventIds
-              .map((id) => eventStartById[id])
-              .whereType<DateTime>()
-              .toList()
-            ..sort();
-          if (dates.isNotEmpty) {
-            return dates.first;
-          }
-        }
-      }
-
-      for (final entry in normalizedEventMatches.entries) {
-        final matches = entry.value;
-        if (!matches.contains(normalizedTitle)) continue;
-        final start = entry.key.startDateTime;
-        if (earliest == null || start.isBefore(earliest)) {
-          earliest = start;
-        }
-      }
-
-      return earliest;
-    }
-
-    favorites.sort((a, b) {
-      if (a.isPrimary != b.isPrimary) {
-        return a.isPrimary ? -1 : 1;
-      }
-
-      final aDate = nextDateFor(a);
-      final bDate = nextDateFor(b);
-      if (aDate == null && bDate == null) {
-        return a.title.compareTo(b.title);
-      }
-      if (aDate == null) return 1;
-      if (bDate == null) return -1;
-      final dateCompare = aDate.compareTo(bDate);
-      if (dateCompare != 0) return dateCompare;
-      return a.title.compareTo(b.title);
-    });
-
-    return favorites;
-  }
-
-  String? distanceLabelFor(VenueEventResume event) {
+  String? distanceLabelForMyEvent(VenueEventResume event) {
+    if (_isDisposed) return null;
     final userCoordinate = _userLocationRepository?.userLocationStreamValue.value;
     final eventCoordinate = event.coordinate;
     if (userCoordinate == null || eventCoordinate == null) {
@@ -388,52 +203,13 @@ class TenantHomeController implements Disposable {
     return '${(meters / 1000).toStringAsFixed(1)} km';
   }
 
-  String _normalizeMatchKey(String input) {
-    final lower = input.trim().toLowerCase();
-    return lower.replaceAll(RegExp(r'[^a-z0-9]+'), '-').replaceAll(
-          RegExp(r'^-+|-+$'),
-          '',
-        );
-  }
-
-  Set<String> _buildEventMatchKeys(VenueEventResume event) {
-    final keys = <String>{
-      _normalizeMatchKey(event.title),
-      _normalizeMatchKey(event.location),
-    };
-    if (event.hasArtists) {
-      for (final artist in event.artists) {
-        keys.add(_normalizeMatchKey(artist.displayName));
-      }
-    }
-    return keys.where((key) => key.isNotEmpty).toSet();
-  }
-
-  /// Get icon for partner type badge
-  IconData _getPartnerTypeIcon(PartnerType type) {
-    switch (type) {
-      case PartnerType.artist:
-        return Icons.person;
-      case PartnerType.venue:
-        return Icons.place;
-      case PartnerType.experienceProvider:
-        return Icons.local_activity;
-      case PartnerType.influencer:
-        return Icons.camera_alt;
-      case PartnerType.curator:
-        return Icons.verified_user;
-    }
-  }
-
   @override
   void onDispose() {
-    _myEventsSubscription?.cancel();
-    _partnersSubscription?.cancel();
+    _isDisposed = true;
+    _confirmedEventsSubscription?.cancel();
     _userLocationSubscription?.cancel();
-    favoritesStreamValue.dispose();
-    myEventsStreamValue.dispose();
-    upcomingEventsStreamValue.dispose();
-    liveEventsStreamValue.dispose();
+    _scrollController.dispose();
+    myEventsFilteredStreamValue.dispose();
     userAddressStreamValue.dispose();
   }
 }

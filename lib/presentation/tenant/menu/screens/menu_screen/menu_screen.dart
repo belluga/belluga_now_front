@@ -60,31 +60,40 @@ class _MenuScreenState extends State<MenuScreen> {
       ),
     ];
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          'Menu',
-          style: Theme.of(context).textTheme.titleLarge,
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) {
+          return;
+        }
+        context.router.replaceAll([TenantHomeRoute()]);
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text(
+            'Menu',
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
         ),
-      ),
-      bottomNavigationBar: const BellugaBottomNavigationBar(currentIndex: 3),
-      body: SafeArea(
-        child: ListView.separated(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 140),
-          itemCount: sections.length + 1,
-          separatorBuilder: (_, __) => const SizedBox(height: 24),
-          itemBuilder: (context, index) {
-            if (index == 0) {
-              return _ProfileHero(
-                onTapViewProfile: () =>
-                    context.router.push(const ProfileRoute()),
-                invitesSent: 0, // TODO(Delphi): Bind to convites enviados (pending/total).
-                invitesAccepted: 0, // TODO(Delphi): Bind to real social score metrics (convites aceitos).
-              );
-            }
-            final section = sections[index - 1];
-            return MenuSectionCard(section: section);
-          },
+        bottomNavigationBar: const BellugaBottomNavigationBar(currentIndex: 2),
+        body: SafeArea(
+          child: ListView.separated(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 140),
+            itemCount: sections.length + 1,
+            separatorBuilder: (_, __) => const SizedBox(height: 24),
+            itemBuilder: (context, index) {
+              if (index == 0) {
+                return _ProfileHero(
+                  onTapViewProfile: () =>
+                      context.router.push(const ProfileRoute()),
+                  invitesSent: 0, // TODO(Delphi): Bind to convites enviados (pending/total).
+                  invitesAccepted: 0, // TODO(Delphi): Bind to real social score metrics (convites aceitos).
+                );
+              }
+              final section = sections[index - 1];
+              return MenuSectionCard(section: section);
+            },
+          ),
         ),
       ),
     );
