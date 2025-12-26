@@ -49,11 +49,6 @@ class BellugaBottomNavigationBar extends StatelessWidget {
             label: 'Inicio',
           ),
           NavigationDestination(
-            icon: Icon(Icons.calendar_month_outlined),
-            selectedIcon: Icon(Icons.calendar_month),
-            label: 'Agenda',
-          ),
-          NavigationDestination(
             icon: Icon(Icons.map_outlined),
             selectedIcon: Icon(Icons.map),
             label: 'Mapa',
@@ -75,10 +70,8 @@ class BellugaBottomNavigationBar extends StatelessWidget {
         break;
       default:
         if (index == 1) {
-          context.router.replaceAll([EventSearchRoute()]);
-        } else if (index == 2) {
           context.router.replaceAll([CityMapRoute()]);
-        } else if (index == 3) {
+        } else if (index == 2) {
           context.router.replaceAll([TenantMenuRoute()]);
         }
     }

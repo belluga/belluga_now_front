@@ -10,6 +10,8 @@
 
 // import 'package:belluga_now/main.dart';
 
+void main() {}
+
 // void main() {
 //   testWidgets('Counter increments smoke test', (WidgetTester tester) async {
 //     // Build our app and trigger a frame.

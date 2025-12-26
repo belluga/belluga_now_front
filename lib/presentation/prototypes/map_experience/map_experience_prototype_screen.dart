@@ -55,17 +55,15 @@ class _MapExperiencePrototypeScreenState
       textTheme: base.textTheme.apply(fontFamily: 'Roboto'),
     );
 
-    final canPop = context.router.canPop();
-
     return Theme(
       data: theme,
       child: PopScope(
-        canPop: canPop,
-        onPopInvokedWithResult: (didPop, _) {
-          if (didPop) return;
-          if (!canPop) {
-            context.router.replaceAll([const TenantHomeRoute()]);
+        canPop: false,
+        onPopInvokedWithResult: (didPop, result) {
+          if (didPop) {
+            return;
           }
+          context.router.replaceAll([const TenantHomeRoute()]);
         },
         child: Scaffold(
           body: Stack(
@@ -98,23 +96,16 @@ class _MapExperiencePrototypeScreenState
                   alignment: Alignment.topLeft,
                   child: Padding(
                     padding: const EdgeInsets.all(12),
-                    child: canPop
-                        ? IconButton.filled(
-                            style: IconButton.styleFrom(
-                              backgroundColor: Colors.black54,
-                              foregroundColor: Colors.white,
-                            ),
-                            onPressed: () async {
-                              final router = context.router;
-                              if (router.canPop()) {
-                                await router.maybePop();
-                              } else {
-                                router.replaceAll([const TenantHomeRoute()]);
-                              }
-                            },
-                            icon: const Icon(Icons.arrow_back),
-                          )
-                        : const SizedBox.shrink(),
+                    child: IconButton.filled(
+                      style: IconButton.styleFrom(
+                        backgroundColor: Colors.black54,
+                        foregroundColor: Colors.white,
+                      ),
+                      onPressed: () {
+                        context.router.replaceAll([const TenantHomeRoute()]);
+                      },
+                      icon: const Icon(Icons.arrow_back),
+                    ),
                   ),
                 ),
               ),
@@ -133,7 +124,7 @@ class _MapExperiencePrototypeScreenState
             onNavigateToUser: _centerOnUser,
           ),
           bottomNavigationBar:
-              const BellugaBottomNavigationBar(currentIndex: 2),
+              const BellugaBottomNavigationBar(currentIndex: 1),
         ),
       ),
     );

@@ -9,11 +9,11 @@
 // coverage:ignore-file
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
-import 'package:auto_route/auto_route.dart' as _i22;
+import 'package:auto_route/auto_route.dart' as _i21;
 import 'package:belluga_now/application/router/guards/location_permission_state.dart'
-    as _i26;
-import 'package:belluga_now/domain/invites/invite_model.dart' as _i25;
-import 'package:belluga_now/domain/map/city_poi_model.dart' as _i27;
+    as _i25;
+import 'package:belluga_now/domain/invites/invite_model.dart' as _i24;
+import 'package:belluga_now/domain/map/city_poi_model.dart' as _i26;
 import 'package:belluga_now/presentation/common/auth/routes/auth_create_new_password_route.dart'
     as _i1;
 import 'package:belluga_now/presentation/common/auth/routes/auth_login_route.dart'
@@ -55,20 +55,18 @@ import 'package:belluga_now/presentation/tenant/schedule/routes/event_search_rou
 import 'package:belluga_now/presentation/tenant/schedule/routes/immersive_event_detail_route.dart'
     as _i7;
 import 'package:belluga_now/presentation/tenant/schedule/screens/event_search_screen/models/invite_filter.dart'
-    as _i24;
-import 'package:belluga_now/presentation/tenant/tabs/tenant_tabs_route.dart'
-    as _i21;
-import 'package:flutter/material.dart' as _i23;
+    as _i23;
+import 'package:flutter/material.dart' as _i22;
 
 /// generated route for
 /// [_i1.AuthCreateNewPasswordRoutePage]
-class AuthCreateNewPasswordRoute extends _i22.PageRouteInfo<void> {
-  const AuthCreateNewPasswordRoute({List<_i22.PageRouteInfo>? children})
+class AuthCreateNewPasswordRoute extends _i21.PageRouteInfo<void> {
+  const AuthCreateNewPasswordRoute({List<_i21.PageRouteInfo>? children})
       : super(AuthCreateNewPasswordRoute.name, initialChildren: children);
 
   static const String name = 'AuthCreateNewPasswordRoute';
 
-  static _i22.PageInfo page = _i22.PageInfo(
+  static _i21.PageInfo page = _i21.PageInfo(
     name,
     builder: (data) {
       return const _i1.AuthCreateNewPasswordRoutePage();
@@ -78,13 +76,13 @@ class AuthCreateNewPasswordRoute extends _i22.PageRouteInfo<void> {
 
 /// generated route for
 /// [_i2.AuthLoginRoutePage]
-class AuthLoginRoute extends _i22.PageRouteInfo<void> {
-  const AuthLoginRoute({List<_i22.PageRouteInfo>? children})
+class AuthLoginRoute extends _i21.PageRouteInfo<void> {
+  const AuthLoginRoute({List<_i21.PageRouteInfo>? children})
       : super(AuthLoginRoute.name, initialChildren: children);
 
   static const String name = 'AuthLoginRoute';
 
-  static _i22.PageInfo page = _i22.PageInfo(
+  static _i21.PageInfo page = _i21.PageInfo(
     name,
     builder: (data) {
       return const _i2.AuthLoginRoutePage();
@@ -94,13 +92,13 @@ class AuthLoginRoute extends _i22.PageRouteInfo<void> {
 
 /// generated route for
 /// [_i3.CityMapRoutePage]
-class CityMapRoute extends _i22.PageRouteInfo<void> {
-  const CityMapRoute({List<_i22.PageRouteInfo>? children})
+class CityMapRoute extends _i21.PageRouteInfo<void> {
+  const CityMapRoute({List<_i21.PageRouteInfo>? children})
       : super(CityMapRoute.name, initialChildren: children);
 
   static const String name = 'CityMapRoute';
 
-  static _i22.PageInfo page = _i22.PageInfo(
+  static _i21.PageInfo page = _i21.PageInfo(
     name,
     builder: (data) {
       return const _i3.CityMapRoutePage();
@@ -110,13 +108,13 @@ class CityMapRoute extends _i22.PageRouteInfo<void> {
 
 /// generated route for
 /// [_i4.DiscoveryRoute]
-class DiscoveryRoute extends _i22.PageRouteInfo<void> {
-  const DiscoveryRoute({List<_i22.PageRouteInfo>? children})
+class DiscoveryRoute extends _i21.PageRouteInfo<void> {
+  const DiscoveryRoute({List<_i21.PageRouteInfo>? children})
       : super(DiscoveryRoute.name, initialChildren: children);
 
   static const String name = 'DiscoveryRoute';
 
-  static _i22.PageInfo page = _i22.PageInfo(
+  static _i21.PageInfo page = _i21.PageInfo(
     name,
     builder: (data) {
       return const _i4.DiscoveryRoute();
@@ -126,11 +124,11 @@ class DiscoveryRoute extends _i22.PageRouteInfo<void> {
 
 /// generated route for
 /// [_i5.EventDetailRoutePage]
-class EventDetailRoute extends _i22.PageRouteInfo<EventDetailRouteArgs> {
+class EventDetailRoute extends _i21.PageRouteInfo<EventDetailRouteArgs> {
   EventDetailRoute({
-    _i23.Key? key,
+    _i22.Key? key,
     required String slug,
-    List<_i22.PageRouteInfo>? children,
+    List<_i21.PageRouteInfo>? children,
   }) : super(
           EventDetailRoute.name,
           args: EventDetailRouteArgs(key: key, slug: slug),
@@ -140,7 +138,7 @@ class EventDetailRoute extends _i22.PageRouteInfo<EventDetailRouteArgs> {
 
   static const String name = 'EventDetailRoute';
 
-  static _i22.PageInfo page = _i22.PageInfo(
+  static _i21.PageInfo page = _i21.PageInfo(
     name,
     builder: (data) {
       final pathParams = data.inheritedPathParams;
@@ -155,7 +153,7 @@ class EventDetailRoute extends _i22.PageRouteInfo<EventDetailRouteArgs> {
 class EventDetailRouteArgs {
   const EventDetailRouteArgs({this.key, required this.slug});
 
-  final _i23.Key? key;
+  final _i22.Key? key;
 
   final String slug;
 
@@ -177,14 +175,14 @@ class EventDetailRouteArgs {
 
 /// generated route for
 /// [_i6.EventSearchRoute]
-class EventSearchRoute extends _i22.PageRouteInfo<EventSearchRouteArgs> {
+class EventSearchRoute extends _i21.PageRouteInfo<EventSearchRouteArgs> {
   EventSearchRoute({
-    _i23.Key? key,
+    _i22.Key? key,
     bool startSearchActive = false,
     String? initialSearchQuery,
-    _i24.InviteFilter inviteFilter = _i24.InviteFilter.none,
+    _i23.InviteFilter inviteFilter = _i23.InviteFilter.none,
     bool startWithHistory = false,
-    List<_i22.PageRouteInfo>? children,
+    List<_i21.PageRouteInfo>? children,
   }) : super(
           EventSearchRoute.name,
           args: EventSearchRouteArgs(
@@ -199,7 +197,7 @@ class EventSearchRoute extends _i22.PageRouteInfo<EventSearchRouteArgs> {
 
   static const String name = 'EventSearchRoute';
 
-  static _i22.PageInfo page = _i22.PageInfo(
+  static _i21.PageInfo page = _i21.PageInfo(
     name,
     builder: (data) {
       final args = data.argsAs<EventSearchRouteArgs>(
@@ -221,17 +219,17 @@ class EventSearchRouteArgs {
     this.key,
     this.startSearchActive = false,
     this.initialSearchQuery,
-    this.inviteFilter = _i24.InviteFilter.none,
+    this.inviteFilter = _i23.InviteFilter.none,
     this.startWithHistory = false,
   });
 
-  final _i23.Key? key;
+  final _i22.Key? key;
 
   final bool startSearchActive;
 
   final String? initialSearchQuery;
 
-  final _i24.InviteFilter inviteFilter;
+  final _i23.InviteFilter inviteFilter;
 
   final bool startWithHistory;
 
@@ -263,11 +261,11 @@ class EventSearchRouteArgs {
 /// generated route for
 /// [_i7.ImmersiveEventDetailRoutePage]
 class ImmersiveEventDetailRoute
-    extends _i22.PageRouteInfo<ImmersiveEventDetailRouteArgs> {
+    extends _i21.PageRouteInfo<ImmersiveEventDetailRouteArgs> {
   ImmersiveEventDetailRoute({
-    _i23.Key? key,
+    _i22.Key? key,
     required String eventSlug,
-    List<_i22.PageRouteInfo>? children,
+    List<_i21.PageRouteInfo>? children,
   }) : super(
           ImmersiveEventDetailRoute.name,
           args: ImmersiveEventDetailRouteArgs(key: key, eventSlug: eventSlug),
@@ -277,7 +275,7 @@ class ImmersiveEventDetailRoute
 
   static const String name = 'ImmersiveEventDetailRoute';
 
-  static _i22.PageInfo page = _i22.PageInfo(
+  static _i21.PageInfo page = _i21.PageInfo(
     name,
     builder: (data) {
       final pathParams = data.inheritedPathParams;
@@ -297,7 +295,7 @@ class ImmersiveEventDetailRoute
 class ImmersiveEventDetailRouteArgs {
   const ImmersiveEventDetailRouteArgs({this.key, required this.eventSlug});
 
-  final _i23.Key? key;
+  final _i22.Key? key;
 
   final String eventSlug;
 
@@ -319,13 +317,13 @@ class ImmersiveEventDetailRouteArgs {
 
 /// generated route for
 /// [_i8.InitRoutePage]
-class InitRoute extends _i22.PageRouteInfo<void> {
-  const InitRoute({List<_i22.PageRouteInfo>? children})
+class InitRoute extends _i21.PageRouteInfo<void> {
+  const InitRoute({List<_i21.PageRouteInfo>? children})
       : super(InitRoute.name, initialChildren: children);
 
   static const String name = 'InitRoute';
 
-  static _i22.PageInfo page = _i22.PageInfo(
+  static _i21.PageInfo page = _i21.PageInfo(
     name,
     builder: (data) {
       return const _i8.InitRoutePage();
@@ -335,13 +333,13 @@ class InitRoute extends _i22.PageRouteInfo<void> {
 
 /// generated route for
 /// [_i9.InviteFlowRoutePage]
-class InviteFlowRoute extends _i22.PageRouteInfo<void> {
-  const InviteFlowRoute({List<_i22.PageRouteInfo>? children})
+class InviteFlowRoute extends _i21.PageRouteInfo<void> {
+  const InviteFlowRoute({List<_i21.PageRouteInfo>? children})
       : super(InviteFlowRoute.name, initialChildren: children);
 
   static const String name = 'InviteFlowRoute';
 
-  static _i22.PageInfo page = _i22.PageInfo(
+  static _i21.PageInfo page = _i21.PageInfo(
     name,
     builder: (data) {
       return const _i9.InviteFlowRoutePage();
@@ -351,11 +349,11 @@ class InviteFlowRoute extends _i22.PageRouteInfo<void> {
 
 /// generated route for
 /// [_i10.InviteShareRoutePage]
-class InviteShareRoute extends _i22.PageRouteInfo<InviteShareRouteArgs> {
+class InviteShareRoute extends _i21.PageRouteInfo<InviteShareRouteArgs> {
   InviteShareRoute({
-    _i23.Key? key,
-    required _i25.InviteModel invite,
-    List<_i22.PageRouteInfo>? children,
+    _i22.Key? key,
+    required _i24.InviteModel invite,
+    List<_i21.PageRouteInfo>? children,
   }) : super(
           InviteShareRoute.name,
           args: InviteShareRouteArgs(key: key, invite: invite),
@@ -364,7 +362,7 @@ class InviteShareRoute extends _i22.PageRouteInfo<InviteShareRouteArgs> {
 
   static const String name = 'InviteShareRoute';
 
-  static _i22.PageInfo page = _i22.PageInfo(
+  static _i21.PageInfo page = _i21.PageInfo(
     name,
     builder: (data) {
       final args = data.argsAs<InviteShareRouteArgs>();
@@ -376,9 +374,9 @@ class InviteShareRoute extends _i22.PageRouteInfo<InviteShareRouteArgs> {
 class InviteShareRouteArgs {
   const InviteShareRouteArgs({this.key, required this.invite});
 
-  final _i23.Key? key;
+  final _i22.Key? key;
 
-  final _i25.InviteModel invite;
+  final _i24.InviteModel invite;
 
   @override
   String toString() {
@@ -398,13 +396,13 @@ class InviteShareRouteArgs {
 
 /// generated route for
 /// [_i11.LandlordHomeRoutePage]
-class LandlordHomeRoute extends _i22.PageRouteInfo<void> {
-  const LandlordHomeRoute({List<_i22.PageRouteInfo>? children})
+class LandlordHomeRoute extends _i21.PageRouteInfo<void> {
+  const LandlordHomeRoute({List<_i21.PageRouteInfo>? children})
       : super(LandlordHomeRoute.name, initialChildren: children);
 
   static const String name = 'LandlordHomeRoute';
 
-  static _i22.PageInfo page = _i22.PageInfo(
+  static _i21.PageInfo page = _i21.PageInfo(
     name,
     builder: (data) {
       return const _i11.LandlordHomeRoutePage();
@@ -415,13 +413,13 @@ class LandlordHomeRoute extends _i22.PageRouteInfo<void> {
 /// generated route for
 /// [_i12.LocationNotLiveRoutePage]
 class LocationNotLiveRoute
-    extends _i22.PageRouteInfo<LocationNotLiveRouteArgs> {
+    extends _i21.PageRouteInfo<LocationNotLiveRouteArgs> {
   LocationNotLiveRoute({
-    _i23.Key? key,
-    required _i26.LocationPermissionState blockerState,
+    _i22.Key? key,
+    required _i25.LocationPermissionState blockerState,
     String? addressLabel,
     DateTime? capturedAt,
-    List<_i22.PageRouteInfo>? children,
+    List<_i21.PageRouteInfo>? children,
   }) : super(
           LocationNotLiveRoute.name,
           args: LocationNotLiveRouteArgs(
@@ -435,7 +433,7 @@ class LocationNotLiveRoute
 
   static const String name = 'LocationNotLiveRoute';
 
-  static _i22.PageInfo page = _i22.PageInfo(
+  static _i21.PageInfo page = _i21.PageInfo(
     name,
     builder: (data) {
       final args = data.argsAs<LocationNotLiveRouteArgs>();
@@ -457,9 +455,9 @@ class LocationNotLiveRouteArgs {
     this.capturedAt,
   });
 
-  final _i23.Key? key;
+  final _i22.Key? key;
 
-  final _i26.LocationPermissionState blockerState;
+  final _i25.LocationPermissionState blockerState;
 
   final String? addressLabel;
 
@@ -491,11 +489,11 @@ class LocationNotLiveRouteArgs {
 /// generated route for
 /// [_i13.LocationPermissionRoutePage]
 class LocationPermissionRoute
-    extends _i22.PageRouteInfo<LocationPermissionRouteArgs> {
+    extends _i21.PageRouteInfo<LocationPermissionRouteArgs> {
   LocationPermissionRoute({
-    _i23.Key? key,
-    required _i26.LocationPermissionState initialState,
-    List<_i22.PageRouteInfo>? children,
+    _i22.Key? key,
+    required _i25.LocationPermissionState initialState,
+    List<_i21.PageRouteInfo>? children,
   }) : super(
           LocationPermissionRoute.name,
           args: LocationPermissionRouteArgs(
@@ -507,7 +505,7 @@ class LocationPermissionRoute
 
   static const String name = 'LocationPermissionRoute';
 
-  static _i22.PageInfo page = _i22.PageInfo(
+  static _i21.PageInfo page = _i21.PageInfo(
     name,
     builder: (data) {
       final args = data.argsAs<LocationPermissionRouteArgs>();
@@ -522,9 +520,9 @@ class LocationPermissionRoute
 class LocationPermissionRouteArgs {
   const LocationPermissionRouteArgs({this.key, required this.initialState});
 
-  final _i23.Key? key;
+  final _i22.Key? key;
 
-  final _i26.LocationPermissionState initialState;
+  final _i25.LocationPermissionState initialState;
 
   @override
   String toString() {
@@ -544,13 +542,13 @@ class LocationPermissionRouteArgs {
 
 /// generated route for
 /// [_i14.MapExperiencePrototypeRoutePage]
-class MapExperiencePrototypeRoute extends _i22.PageRouteInfo<void> {
-  const MapExperiencePrototypeRoute({List<_i22.PageRouteInfo>? children})
+class MapExperiencePrototypeRoute extends _i21.PageRouteInfo<void> {
+  const MapExperiencePrototypeRoute({List<_i21.PageRouteInfo>? children})
       : super(MapExperiencePrototypeRoute.name, initialChildren: children);
 
   static const String name = 'MapExperiencePrototypeRoute';
 
-  static _i22.PageInfo page = _i22.PageInfo(
+  static _i21.PageInfo page = _i21.PageInfo(
     name,
     builder: (data) {
       return const _i14.MapExperiencePrototypeRoutePage();
@@ -560,11 +558,11 @@ class MapExperiencePrototypeRoute extends _i22.PageRouteInfo<void> {
 
 /// generated route for
 /// [_i15.PartnerDetailRoute]
-class PartnerDetailRoute extends _i22.PageRouteInfo<PartnerDetailRouteArgs> {
+class PartnerDetailRoute extends _i21.PageRouteInfo<PartnerDetailRouteArgs> {
   PartnerDetailRoute({
-    _i23.Key? key,
+    _i22.Key? key,
     required String slug,
-    List<_i22.PageRouteInfo>? children,
+    List<_i21.PageRouteInfo>? children,
   }) : super(
           PartnerDetailRoute.name,
           args: PartnerDetailRouteArgs(key: key, slug: slug),
@@ -574,7 +572,7 @@ class PartnerDetailRoute extends _i22.PageRouteInfo<PartnerDetailRouteArgs> {
 
   static const String name = 'PartnerDetailRoute';
 
-  static _i22.PageInfo page = _i22.PageInfo(
+  static _i21.PageInfo page = _i21.PageInfo(
     name,
     builder: (data) {
       final pathParams = data.inheritedPathParams;
@@ -590,7 +588,7 @@ class PartnerDetailRoute extends _i22.PageRouteInfo<PartnerDetailRouteArgs> {
 class PartnerDetailRouteArgs {
   const PartnerDetailRouteArgs({this.key, required this.slug});
 
-  final _i23.Key? key;
+  final _i22.Key? key;
 
   final String slug;
 
@@ -612,11 +610,11 @@ class PartnerDetailRouteArgs {
 
 /// generated route for
 /// [_i16.PoiDetailsRoutePage]
-class PoiDetailsRoute extends _i22.PageRouteInfo<PoiDetailsRouteArgs> {
+class PoiDetailsRoute extends _i21.PageRouteInfo<PoiDetailsRouteArgs> {
   PoiDetailsRoute({
-    _i23.Key? key,
-    required _i27.CityPoiModel poi,
-    List<_i22.PageRouteInfo>? children,
+    _i22.Key? key,
+    required _i26.CityPoiModel poi,
+    List<_i21.PageRouteInfo>? children,
   }) : super(
           PoiDetailsRoute.name,
           args: PoiDetailsRouteArgs(key: key, poi: poi),
@@ -625,7 +623,7 @@ class PoiDetailsRoute extends _i22.PageRouteInfo<PoiDetailsRouteArgs> {
 
   static const String name = 'PoiDetailsRoute';
 
-  static _i22.PageInfo page = _i22.PageInfo(
+  static _i21.PageInfo page = _i21.PageInfo(
     name,
     builder: (data) {
       final args = data.argsAs<PoiDetailsRouteArgs>();
@@ -637,9 +635,9 @@ class PoiDetailsRoute extends _i22.PageRouteInfo<PoiDetailsRouteArgs> {
 class PoiDetailsRouteArgs {
   const PoiDetailsRouteArgs({this.key, required this.poi});
 
-  final _i23.Key? key;
+  final _i22.Key? key;
 
-  final _i27.CityPoiModel poi;
+  final _i26.CityPoiModel poi;
 
   @override
   String toString() {
@@ -659,13 +657,13 @@ class PoiDetailsRouteArgs {
 
 /// generated route for
 /// [_i17.ProfileRoutePage]
-class ProfileRoute extends _i22.PageRouteInfo<void> {
-  const ProfileRoute({List<_i22.PageRouteInfo>? children})
+class ProfileRoute extends _i21.PageRouteInfo<void> {
+  const ProfileRoute({List<_i21.PageRouteInfo>? children})
       : super(ProfileRoute.name, initialChildren: children);
 
   static const String name = 'ProfileRoute';
 
-  static _i22.PageInfo page = _i22.PageInfo(
+  static _i21.PageInfo page = _i21.PageInfo(
     name,
     builder: (data) {
       return const _i17.ProfileRoutePage();
@@ -676,11 +674,11 @@ class ProfileRoute extends _i22.PageRouteInfo<void> {
 /// generated route for
 /// [_i18.RecoveryPasswordRoutePage]
 class RecoveryPasswordRoute
-    extends _i22.PageRouteInfo<RecoveryPasswordRouteArgs> {
+    extends _i21.PageRouteInfo<RecoveryPasswordRouteArgs> {
   RecoveryPasswordRoute({
-    _i23.Key? key,
+    _i22.Key? key,
     String? initialEmmail,
-    List<_i22.PageRouteInfo>? children,
+    List<_i21.PageRouteInfo>? children,
   }) : super(
           RecoveryPasswordRoute.name,
           args: RecoveryPasswordRouteArgs(
@@ -692,7 +690,7 @@ class RecoveryPasswordRoute
 
   static const String name = 'RecoveryPasswordRoute';
 
-  static _i22.PageInfo page = _i22.PageInfo(
+  static _i21.PageInfo page = _i21.PageInfo(
     name,
     builder: (data) {
       final args = data.argsAs<RecoveryPasswordRouteArgs>(
@@ -709,7 +707,7 @@ class RecoveryPasswordRoute
 class RecoveryPasswordRouteArgs {
   const RecoveryPasswordRouteArgs({this.key, this.initialEmmail});
 
-  final _i23.Key? key;
+  final _i22.Key? key;
 
   final String? initialEmmail;
 
@@ -731,13 +729,13 @@ class RecoveryPasswordRouteArgs {
 
 /// generated route for
 /// [_i19.TenantHomeRoutePage]
-class TenantHomeRoute extends _i22.PageRouteInfo<void> {
-  const TenantHomeRoute({List<_i22.PageRouteInfo>? children})
+class TenantHomeRoute extends _i21.PageRouteInfo<void> {
+  const TenantHomeRoute({List<_i21.PageRouteInfo>? children})
       : super(TenantHomeRoute.name, initialChildren: children);
 
   static const String name = 'TenantHomeRoute';
 
-  static _i22.PageInfo page = _i22.PageInfo(
+  static _i21.PageInfo page = _i21.PageInfo(
     name,
     builder: (data) {
       return const _i19.TenantHomeRoutePage();
@@ -747,32 +745,16 @@ class TenantHomeRoute extends _i22.PageRouteInfo<void> {
 
 /// generated route for
 /// [_i20.TenantMenuRoutePage]
-class TenantMenuRoute extends _i22.PageRouteInfo<void> {
-  const TenantMenuRoute({List<_i22.PageRouteInfo>? children})
+class TenantMenuRoute extends _i21.PageRouteInfo<void> {
+  const TenantMenuRoute({List<_i21.PageRouteInfo>? children})
       : super(TenantMenuRoute.name, initialChildren: children);
 
   static const String name = 'TenantMenuRoute';
 
-  static _i22.PageInfo page = _i22.PageInfo(
+  static _i21.PageInfo page = _i21.PageInfo(
     name,
     builder: (data) {
       return const _i20.TenantMenuRoutePage();
-    },
-  );
-}
-
-/// generated route for
-/// [_i21.TenantTabsRoutePage]
-class TenantTabsRoute extends _i22.PageRouteInfo<void> {
-  const TenantTabsRoute({List<_i22.PageRouteInfo>? children})
-      : super(TenantTabsRoute.name, initialChildren: children);
-
-  static const String name = 'TenantTabsRoute';
-
-  static _i22.PageInfo page = _i22.PageInfo(
-    name,
-    builder: (data) {
-      return const _i21.TenantTabsRoutePage();
     },
   );
 }
