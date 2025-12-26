@@ -24,7 +24,7 @@ class MockPartnerContentRepository {
         },
       PartnerType.venue => {
           ProfileModuleId.locationInfo: _mockLocation(partner),
-          ProfileModuleId.richText: _mockRichText(),
+          ProfileModuleId.richText: partner.bio ?? _mockRichText(),
           ProfileModuleId.agendaList: _mockEvents(partner),
           ProfileModuleId.supportedEntities: _mockSupportedEntities(),
           ProfileModuleId.productGrid: _mockProducts(),

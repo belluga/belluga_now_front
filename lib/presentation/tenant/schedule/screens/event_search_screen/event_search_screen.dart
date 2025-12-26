@@ -54,6 +54,7 @@ class _EventSearchScreenState extends State<EventSearchScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final topPadding = MediaQuery.of(context).padding.top;
 
     return PopScope(
       canPop: false,
@@ -65,16 +66,19 @@ class _EventSearchScreenState extends State<EventSearchScreen> {
       },
       child: Scaffold(
         appBar: PreferredSize(
-          preferredSize: const Size.fromHeight(kToolbarHeight),
-          child: AgendaAppBar(
-            controller: _controller,
-            onBack: _handleBack,
-            actions: const AgendaAppBarActions(
-              showBack: true,
-              showSearch: true,
-              showRadius: true,
-              showInviteFilter: true,
-              showHistory: true,
+          preferredSize: Size.fromHeight(kToolbarHeight + topPadding),
+          child: Padding(
+            padding: EdgeInsets.only(top: topPadding),
+            child: AgendaAppBar(
+              controller: _controller,
+              onBack: _handleBack,
+              actions: const AgendaAppBarActions(
+                showBack: true,
+                showSearch: true,
+                showRadius: true,
+                showInviteFilter: true,
+                showHistory: true,
+              ),
             ),
           ),
         ),

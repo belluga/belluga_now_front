@@ -163,10 +163,10 @@
     };
 
     (async function () {
-      // Cache disabled: always fetch fresh `/environment` data.
+      // Cache disabled: always fetch fresh `/api/v1/environment` data.
       let resolvedBranding = null;
       try {
-        const response = await fetch('/environment');
+        const response = await fetch('/api/v1/environment');
         if (response.ok) {
           const freshBranding = await response.json();
           resolvedBranding = freshBranding;

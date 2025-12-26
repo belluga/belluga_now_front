@@ -758,6 +758,7 @@ class MockEventSeed {
         .add(Duration(hours: startHour, minutes: durationMinutes))
         .toIso8601String();
 
+    final venueSlug = MockScheduleBackend._slugify(venue.name);
     return EventDTO(
       id: MockScheduleBackend.generateMongoId(id),
       slug: id,
@@ -769,6 +770,14 @@ class MockEventSeed {
       location: location.isNotEmpty ? location : venue.name,
       latitude: latitude,
       longitude: longitude,
+      venue: {
+        'id': MockScheduleBackend.generateMongoId(venueSlug),
+        'display_name': venue.name,
+        'tagline': venue.address,
+        'slug': venueSlug,
+        'logo_url': thumbUrl,
+        'hero_image_url': thumbUrl,
+      },
       thumb: ThumbDTO(
         type: 'image',
         data: {'url': thumbUrl},

@@ -49,32 +49,34 @@ class _LocationPermissionScreenState extends State<LocationPermissionScreen> {
         title: Text(title),
         automaticallyImplyLeading: false,
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              title,
-              style: Theme.of(context).textTheme.headlineSmall,
-            ),
-            const SizedBox(height: 12),
-            Text(
-              description,
-              style: Theme.of(context).textTheme.bodyLarge,
-            ),
-            const Spacer(),
-            ButtonLoading(
-              label: primaryLabel,
-              loadingStatusStreamValue: _controller.loading,
-              onPressed: _onPrimaryPressed,
-            ),
-            const SizedBox(height: 12),
-            OutlinedButton(
-              onPressed: _onNotNowPressed,
-              child: const Text('Agora não'),
-            ),
-          ],
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                title,
+                style: Theme.of(context).textTheme.headlineSmall,
+              ),
+              const SizedBox(height: 12),
+              Text(
+                description,
+                style: Theme.of(context).textTheme.bodyLarge,
+              ),
+              const Spacer(),
+              ButtonLoading(
+                label: primaryLabel,
+                loadingStatusStreamValue: _controller.loading,
+                onPressed: _onPrimaryPressed,
+              ),
+              const SizedBox(height: 12),
+              OutlinedButton(
+                onPressed: _onNotNowPressed,
+                child: const Text('Agora não'),
+              ),
+            ],
+          ),
         ),
       ),
     );

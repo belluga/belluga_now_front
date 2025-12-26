@@ -21,7 +21,7 @@ class AppDataBackend implements AppDataBackendContract {
 
     try {
       final response = await _dio.get(
-        '/environment?app_domain=${packageInfo.packageName}',
+        '/api/v1/environment?app_domain=${packageInfo.packageName}',
       );
       final raw = response.data;
       final Map<String, dynamic> json;

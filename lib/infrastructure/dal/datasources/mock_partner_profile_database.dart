@@ -28,29 +28,35 @@ class MockPartnerProfileDatabase {
           ],
         );
       case PartnerType.venue:
+        final hasBio = partner.bio != null && partner.bio!.trim().isNotEmpty;
+        final tabs = <ProfileTabConfig>[];
+        if (hasBio) {
+          tabs.add(
+            ProfileTabConfig(
+              title: 'Sobre',
+              modules: [
+                ProfileModuleConfig(id: ProfileModuleId.richText),
+              ],
+            ),
+          );
+        }
+        tabs.addAll([
+          ProfileTabConfig(
+            title: 'Como Chegar',
+            modules: [
+              ProfileModuleConfig(id: ProfileModuleId.locationInfo),
+            ],
+          ),
+          ProfileTabConfig(
+            title: 'Eventos',
+            modules: [
+              ProfileModuleConfig(id: ProfileModuleId.agendaList),
+            ],
+          ),
+        ]);
         return PartnerProfileConfig(
           partner: partner,
-          tabs: [
-            ProfileTabConfig(
-              title: 'O Local',
-              modules: [
-                ProfileModuleConfig(id: ProfileModuleId.locationInfo),
-                ProfileModuleConfig(id: ProfileModuleId.richText, title: 'O Ambiente'),
-              ],
-            ),
-            ProfileTabConfig(
-              title: 'Eventos',
-              modules: [
-                ProfileModuleConfig(id: ProfileModuleId.agendaList),
-              ],
-            ),
-            ProfileTabConfig(
-              title: 'Residentes',
-              modules: [
-                ProfileModuleConfig(id: ProfileModuleId.supportedEntities, title: 'Nossos DJs Residentes'),
-              ],
-            ),
-          ],
+          tabs: tabs,
         );
       case PartnerType.experienceProvider:
         return PartnerProfileConfig(

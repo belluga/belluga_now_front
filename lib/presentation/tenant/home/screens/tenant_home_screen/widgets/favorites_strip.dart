@@ -1,8 +1,11 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/domain/favorite/projections/favorite_resume.dart';
+import 'package:belluga_now/domain/partners/partner_model.dart';
+import 'package:belluga_now/domain/repositories/partners_repository_contract.dart';
 import 'package:belluga_now/presentation/tenant/home/screens/tenant_home_screen/widgets/favorite_chip.dart';
 import 'package:flutter/material.dart';
+import 'package:get_it/get_it.dart';
 
 class FavoritesStrip extends StatefulWidget {
   const FavoritesStrip({
@@ -87,7 +90,7 @@ class _FavoritesStripState extends State<FavoritesStrip> {
     context.router.push(DiscoveryRoute());
   }
 
-  void _onFavoriteTap(FavoriteResume favorite) {
+  Future<void> _onFavoriteTap(FavoriteResume favorite) async {
     // If it's the primary favorite (app owner), navigate to About screen
     // Otherwise, navigate to Partner Details
     if (favorite.isPrimary) {
@@ -95,7 +98,28 @@ class _FavoritesStripState extends State<FavoritesStrip> {
       return;
     }
 
+    final slug = favorite.slug;
+    if (slug != null && slug.isNotEmpty) {
+      final partner = await _loadPartnerBySlug(slug);
+      if (partner != null && partner.type == PartnerType.venue) {
+        _openPartnerProfile(partner.slug);
+        return;
+      }
+    }
+
     _openAgendaForFavorite(favorite);
+  }
+
+  Future<PartnerModel?> _loadPartnerBySlug(String slug) async {
+    final getIt = GetIt.I;
+    if (!getIt.isRegistered<PartnersRepositoryContract>()) {
+      return null;
+    }
+    return getIt.get<PartnersRepositoryContract>().getPartnerBySlug(slug);
+  }
+
+  void _openPartnerProfile(String slug) {
+    context.router.push(PartnerDetailRoute(slug: slug));
   }
 
   void _openAgendaForFavorite(FavoriteResume favorite) {

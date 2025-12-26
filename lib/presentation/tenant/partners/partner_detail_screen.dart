@@ -482,6 +482,17 @@ class _PartnerDetailScreenState extends State<PartnerDetailScreen> {
             ),
             child: const Center(child: Icon(Icons.map)),
           ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: () {
+                // TODO: Open navigation with venue coordinates.
+              },
+              icon: const Icon(Icons.navigation),
+              label: const Text('Traçar rota'),
+            ),
+          ),
         ],
       ),
     );

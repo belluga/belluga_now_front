@@ -1,3 +1,5 @@
+import 'package:auto_route/auto_route.dart';
+import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:flutter/material.dart';
 
@@ -11,6 +13,7 @@ class LocationSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final venueSlug = event.venue?.slug;
     return SingleChildScrollView(
       physics: const NeverScrollableScrollPhysics(),
       padding: const EdgeInsets.all(16).copyWith(bottom: 100),
@@ -38,6 +41,19 @@ class LocationSection extends StatelessWidget {
               child: Text('Mapa (TODO)'),
             ),
           ),
+          if (venueSlug != null && venueSlug.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () {
+                  context.router.push(PartnerDetailRoute(slug: venueSlug));
+                },
+                icon: const Icon(Icons.storefront_outlined),
+                label: const Text('Ver perfil do local'),
+              ),
+            ),
+          ],
         ],
       ),
     );

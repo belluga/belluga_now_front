@@ -70,6 +70,7 @@ class TenantHomeAgendaController
   int _currentPage = 1;
   bool _isFetching = false;
   bool _hasMore = true;
+  bool _isAutoPaging = false;
 
   Future<void> init({bool startWithHistory = false}) async {
     await _invitesRepository.init();
@@ -242,6 +243,32 @@ class TenantHomeAgendaController
     final inviteFiltered = _applyInviteFilter(_fetchedEvents);
     final radiusFiltered = _applyRadiusFilter(inviteFiltered);
     displayedEventsStreamValue.addValue(radiusFiltered);
+    _maybeAutoPage(radiusFiltered);
+  }
+
+  void _maybeAutoPage(List<EventModel> filtered) {
+    if (filtered.isNotEmpty || !_hasMore || _isAutoPaging) {
+      return;
+    }
+    unawaited(_autoPageToFirstMatch());
+  }
+
+  Future<void> _autoPageToFirstMatch() async {
+    _isAutoPaging = true;
+    try {
+      while (_hasMore) {
+        await _waitForOngoingFetch();
+        if (!_hasMore) {
+          break;
+        }
+        await _fetchPage(page: _currentPage + 1);
+        if (displayedEventsStreamValue.value.isNotEmpty || !_hasMore) {
+          break;
+        }
+      }
+    } finally {
+      _isAutoPaging = false;
+    }
   }
 
   bool isEventConfirmed(String eventId) =>

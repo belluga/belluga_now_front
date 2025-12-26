@@ -1,5 +1,11 @@
 import 'package:belluga_now/application/application.dart';
 import 'package:belluga_now/application/application_contract.dart';
+import 'package:belluga_now/domain/app_data/platform_type.dart';
+import 'package:belluga_now/domain/app_data/value_object/platform_type_value.dart';
+import 'package:belluga_now/infrastructure/dal/dao/app_data_backend_contract.dart';
+import 'package:belluga_now/infrastructure/dal/dao/local/app_data_local_info_source/app_data_local_info_source_stub.dart';
+import 'package:belluga_now/infrastructure/dal/dto/app_data_dto.dart';
+import 'package:belluga_now/infrastructure/repositories/app_data_repository.dart';
 import 'package:belluga_now/presentation/prototypes/map_experience/map_experience_prototype_screen.dart';
 import 'package:belluga_now/presentation/tenant/schedule/widgets/agenda_app_bar.dart';
 import 'package:flutter/material.dart';
@@ -60,6 +66,15 @@ void main() {
       if (GetIt.I.isRegistered<ApplicationContract>()) {
         GetIt.I.unregister<ApplicationContract>();
       }
+      if (GetIt.I.isRegistered<AppDataRepository>()) {
+        GetIt.I.unregister<AppDataRepository>();
+      }
+      GetIt.I.registerSingleton<AppDataRepository>(
+        AppDataRepository(
+          backend: FakeAppDataBackend(),
+          localInfoSource: FakeAppDataLocalInfoSource(),
+        ),
+      );
       final app = Application();
       GetIt.I.registerSingleton<ApplicationContract>(app);
       await app.init();
@@ -96,4 +111,36 @@ void main() {
       expect(find.text('Seus Favoritos'), findsOneWidget);
     },
   );
+}
+
+class FakeAppDataBackend implements AppDataBackendContract {
+  @override
+  Future<AppDataDTO> fetch() async {
+    return AppDataDTO(
+      name: 'Test',
+      type: 'tenant',
+      mainDomain: 'example.com',
+      themeDataSettings: const {
+        'primary_seed_color': '#4FA0E3',
+        'secondary_seed_color': '#E80D5D',
+        'brightness_default': 'light',
+      },
+    );
+  }
+}
+
+class FakeAppDataLocalInfoSource extends AppDataLocalInfoSource {
+  @override
+  Future<Map<String, dynamic>> getInfo() async {
+    final platformTypeValue = PlatformTypeValue(
+      defaultValue: PlatformType.mobile,
+    )..parse(PlatformType.mobile.name);
+    return {
+      'platformType': platformTypeValue,
+      'port': '0.0.0',
+      'hostname': 'example.com',
+      'href': 'https://example.com',
+      'device': 'test_device',
+    };
+  }
 }
