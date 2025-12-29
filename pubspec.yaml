@@ -11,11 +11,12 @@ dependencies:
     sdk: flutter
   flutter_web_plugins:
     sdk: flutter
-  auto_route: ^10.2.0
+  auto_route: ^11.1.0
   card_stack_swiper: ^1.0.2
   cupertino_icons: ^1.0.8
   dio: ^5.9.0
   equatable: ^2.0.7
+  event_tracker_handler: ^0.1.1
   flutter_contacts: ^1.1.9+2
   flutter_html: ^3.0.0
   flutter_map: ^8.2.2
@@ -23,7 +24,7 @@ dependencies:
   flutter_secure_storage: ^10.0.0
   flutter_svg: ^2.2.1
   get_it: ^9.0.5
-  get_it_modular_with_auto_route: ^2.2.0
+  get_it_modular_with_auto_route: ^2.2.1
   geolocator: ^14.0.2
   geocoding: ^4.0.0
   image_picker: ^1.1.2
@@ -31,10 +32,9 @@ dependencies:
   latlong2: ^0.9.1
   map_launcher: ^4.4.2
   material_color_utilities: ^0.11.1
-  meta: ^1.15.0
-  package_info_plus: ^8.3.1
   path_provider: ^2.1.5
   permission_handler: ^12.0.1
+  push_handler: ^0.1.0
   sentry_flutter: ^9.9.1
   share_plus: ^12.0.1
   stream_value: ^0.0.6
