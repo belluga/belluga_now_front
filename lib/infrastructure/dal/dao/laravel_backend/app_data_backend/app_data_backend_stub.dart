@@ -18,11 +18,11 @@ class AppDataBackend implements AppDataBackendContract {
   @override
   Future<AppDataDTO> fetch() async {
     final packageInfo = await PackageInfo.fromPlatform();
+    final url =
+        '/api/v1/environment?app_domain=${Uri.encodeComponent(packageInfo.packageName)}';
 
     try {
-      final response = await _dio.get(
-        '/api/v1/environment?app_domain=${packageInfo.packageName}',
-      );
+      final response = await _dio.get(url);
       final raw = response.data;
       final Map<String, dynamic> json;
       if (raw is Map<String, dynamic>) {
@@ -30,13 +30,29 @@ class AppDataBackend implements AppDataBackendContract {
             ? raw['data'] as Map<String, dynamic>
             : raw;
       } else {
-        throw Exception('Unexpected environment response shape');
+        throw Exception(
+          'Unexpected environment response shape for ${response.requestOptions.baseUrl}$url',
+        );
       }
       return AppDataDTO.fromJson(json);
     } on DioException catch (e) {
-      throw Exception('Failed to load environment data: ${e.message}');
+      final statusCode = e.response?.statusCode;
+      final data = e.response?.data;
+      throw Exception(
+        'Failed to load environment data '
+        '[${responseLabel(statusCode)}] '
+        '(${e.requestOptions.uri}): '
+        '${data ?? e.message}',
+      );
     } catch (e) {
-      throw Exception('Could not retrieve branding data.');
+      throw Exception(
+        'Could not retrieve branding data for ${_dio.options.baseUrl}$url: $e',
+      );
     }
   }
+}
+
+String responseLabel(int? statusCode) {
+  if (statusCode == null) return 'status=unknown';
+  return 'status=$statusCode';
 }

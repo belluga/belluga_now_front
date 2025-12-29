@@ -157,7 +157,7 @@ class EventSearchScreenController implements Disposable, AgendaAppBarController 
   Future<void> _fetchPage({required int page}) async {
     if (_isFetching) return;
     _isFetching = true;
-    if (page > 1) {
+    if (page > 1 && !_isDisposed) {
       isPageLoadingStreamValue.addValue(true);
     }
 
@@ -169,6 +169,7 @@ class EventSearchScreenController implements Disposable, AgendaAppBarController 
         searchQuery: searchController.text,
       );
 
+      if (_isDisposed) return;
       if (page == 1) {
         _fetchedEvents
           ..clear()
@@ -183,7 +184,9 @@ class EventSearchScreenController implements Disposable, AgendaAppBarController 
       _applyFiltersAndPublish();
     } finally {
       _isFetching = false;
-      isPageLoadingStreamValue.addValue(false);
+      if (!_isDisposed) {
+        isPageLoadingStreamValue.addValue(false);
+      }
     }
   }
 
@@ -288,6 +291,7 @@ class EventSearchScreenController implements Disposable, AgendaAppBarController 
   }
 
   void _applyFiltersAndPublish() {
+    if (_isDisposed) return;
     final inviteFiltered = _applyInviteFilter(_fetchedEvents);
     final radiusFiltered = _applyRadiusFilter(inviteFiltered);
     displayedEventsStreamValue.addValue(radiusFiltered);
