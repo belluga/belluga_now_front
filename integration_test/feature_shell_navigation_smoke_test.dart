@@ -42,7 +42,9 @@ void main() {
         return;
       }
     }
-    throw TestFailure('Timed out waiting for ${finder.description}.');
+    throw TestFailure(
+      'Timed out waiting for ${finder.describeMatch(Plurality.one)}.',
+    );
   }
 
   Future<bool> _waitForMaybeFinder(

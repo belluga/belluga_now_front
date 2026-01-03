@@ -5,24 +5,32 @@ import 'package:belluga_now/infrastructure/dal/dao/backend_contract.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/main.dart';
+import 'package:uuid/uuid.dart';
 
 final class AuthRepository extends AuthRepositoryContract<UserBelluga> {
   AuthRepository() {
     _userTokenStreamValue.stream.listen(_onUpdateUserTokenOnLocalStorage);
   }
 
+  static const String _userTokenStorageKey = 'user_token';
+  static const String _deviceIdStorageKey = 'device_id';
+  static const Uuid _uuid = Uuid();
+
   @override
   BackendContract get backend => GetIt.I.get<BackendContract>();
 
   @override
-  String get userToken => _userTokenStreamValue.value!;
+  String get userToken => _userTokenStreamValue.value ?? '';
 
   final StreamValue<String?> _userTokenStreamValue = StreamValue<String?>();
 
   static FlutterSecureStorage get storage => FlutterSecureStorage();
 
-  void userTokenUpdate(String token) => _userTokenStreamValue.addValue(token);
-  void userTokenDelete() => _userTokenStreamValue.addValue(null);
+  @override
+  void setUserToken(String? token) => _userTokenStreamValue.addValue(token);
+
+  void userTokenUpdate(String token) => setUserToken(token);
+  void userTokenDelete() => setUserToken(null);
 
   @override
   bool get isUserLoggedIn {
@@ -42,7 +50,7 @@ final class AuthRepository extends AuthRepositoryContract<UserBelluga> {
 
   @override
   Future<void> autoLogin() async {
-    final token = await storage.read(key: "user_token");
+    final token = await storage.read(key: _userTokenStorageKey);
 
     if (token == null) {
       return;
@@ -106,17 +114,35 @@ final class AuthRepository extends AuthRepositoryContract<UserBelluga> {
   }
 
   Future<void> _deleteUserTokenOnLocalStorage() async {
-    await AuthRepository.storage.delete(key: "user_token");
+    await AuthRepository.storage.delete(key: _userTokenStorageKey);
   }
 
   Future<void> _saveUserTokenOnLocalStorage(String token) async {
-    await AuthRepository.storage.write(key: "user_token", value: token);
+    await AuthRepository.storage.write(
+      key: _userTokenStorageKey,
+      value: token,
+    );
   }
 
   Future<void> _getUserTokenFromLocalStorage() async {
-    final token = await AuthRepository.storage.read(key: "user_token");
+    final token = await AuthRepository.storage.read(key: _userTokenStorageKey);
     _userTokenStreamValue.addValue(token);
   }
+
+  @override
+  Future<String> getDeviceId() async => _ensureDeviceId();
+
+  static Future<String> _ensureDeviceId() async {
+    final stored = await storage.read(key: _deviceIdStorageKey);
+    if (stored != null && stored.isNotEmpty) {
+      return stored;
+    }
+    final generated = _uuid.v4();
+    await storage.write(key: _deviceIdStorageKey, value: generated);
+    return generated;
+  }
+
+  static Future<String> ensureDeviceId() async => _ensureDeviceId();
 
   @override
   Future<void> sendTokenRecoveryPassword(

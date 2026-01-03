@@ -45,7 +45,9 @@ class EventSearchScreenController implements Disposable, AgendaAppBarController 
   static const int _pageSize = 10;
   static const double _defaultRadiusMeters = 50000.0;
 
+  @override
   late TextEditingController searchController;
+  @override
   late FocusNode focusNode;
   late ScrollController scrollController;
 
@@ -53,9 +55,13 @@ class EventSearchScreenController implements Disposable, AgendaAppBarController 
   late StreamValue<bool> isInitialLoadingStreamValue;
   late StreamValue<bool> isPageLoadingStreamValue;
   late StreamValue<bool> hasMoreStreamValue;
+  @override
   late StreamValue<bool> showHistoryStreamValue;
+  @override
   late StreamValue<bool> searchActiveStreamValue;
+  @override
   late StreamValue<InviteFilter> inviteFilterStreamValue;
+  @override
   late StreamValue<double> radiusMetersStreamValue;
 
   StreamSubscription? _confirmedEventsSubscription;
@@ -190,6 +196,7 @@ class EventSearchScreenController implements Disposable, AgendaAppBarController 
     }
   }
 
+  @override
   void toggleHistory() {
     final currentValue = showHistoryStreamValue.value;
     showHistoryStreamValue.addValue(!currentValue);
@@ -201,6 +208,7 @@ class EventSearchScreenController implements Disposable, AgendaAppBarController 
     _applyFiltersAndPublish();
   }
 
+  @override
   void cycleInviteFilter() {
     final current = inviteFilterStreamValue.value;
     switch (current) {
@@ -225,10 +233,12 @@ class EventSearchScreenController implements Disposable, AgendaAppBarController 
     }
   }
 
+  @override
   void toggleSearchMode() {
     setSearchActive(!searchActiveStreamValue.value);
   }
 
+  @override
   void setRadiusMeters(double meters) {
     if (meters <= 0) return;
     radiusMetersStreamValue.addValue(meters);
@@ -244,6 +254,7 @@ class EventSearchScreenController implements Disposable, AgendaAppBarController 
     unawaited(_refresh());
   }
 
+  @override
   Future<void> searchEvents(String query) async {
     await _refresh();
   }
@@ -389,6 +400,7 @@ class EventSearchScreenController implements Disposable, AgendaAppBarController 
     });
   }
 
+  @override
   StreamValue<double> get maxRadiusMetersStreamValue =>
       _appDataRepository.maxRadiusMetersStreamValue;
 

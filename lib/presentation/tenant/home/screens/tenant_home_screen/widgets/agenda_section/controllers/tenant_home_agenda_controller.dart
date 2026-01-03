@@ -44,7 +44,9 @@ class TenantHomeAgendaController
   static const int _pageSize = 10;
   static const double _defaultRadiusMeters = 50000.0;
 
+  @override
   final searchController = TextEditingController();
+  @override
   final focusNode = FocusNode();
 
   final displayedEventsStreamValue =
@@ -52,13 +54,18 @@ class TenantHomeAgendaController
   final isInitialLoadingStreamValue = StreamValue<bool>(defaultValue: true);
   final isPageLoadingStreamValue = StreamValue<bool>(defaultValue: false);
   final hasMoreStreamValue = StreamValue<bool>(defaultValue: true);
+  @override
   final showHistoryStreamValue = StreamValue<bool>(defaultValue: false);
+  @override
   final searchActiveStreamValue = StreamValue<bool>(defaultValue: false);
+  @override
   final inviteFilterStreamValue =
       StreamValue<InviteFilter>(defaultValue: InviteFilter.none);
+  @override
   final radiusMetersStreamValue =
       StreamValue<double>(defaultValue: _defaultRadiusMeters);
 
+  @override
   StreamValue<double> get maxRadiusMetersStreamValue =>
       _appDataRepository.maxRadiusMetersStreamValue;
 
@@ -139,6 +146,7 @@ class TenantHomeAgendaController
     }
   }
 
+  @override
   void toggleHistory() {
     final currentValue = showHistoryStreamValue.value;
     showHistoryStreamValue.addValue(!currentValue);
@@ -150,6 +158,7 @@ class TenantHomeAgendaController
     _applyFiltersAndPublish();
   }
 
+  @override
   void cycleInviteFilter() {
     final current = inviteFilterStreamValue.value;
     switch (current) {
@@ -174,10 +183,12 @@ class TenantHomeAgendaController
     }
   }
 
+  @override
   void toggleSearchMode() {
     setSearchActive(!searchActiveStreamValue.value);
   }
 
+  @override
   void setRadiusMeters(double meters) {
     if (meters <= 0) return;
     radiusMetersStreamValue.addValue(meters);
@@ -193,6 +204,7 @@ class TenantHomeAgendaController
     _refresh();
   }
 
+  @override
   Future<void> searchEvents(String query) async {
     await _refresh();
   }

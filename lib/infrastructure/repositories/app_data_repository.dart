@@ -24,6 +24,7 @@ class AppDataRepository {
   final StreamValue<double> maxRadiusMetersStreamValue =
       StreamValue<double>(defaultValue: 50000);
   static const String _maxRadiusStorageKey = 'max_radius_meters';
+  static const String _apiBaseUrlStorageKey = 'api_base_url';
   static const FlutterSecureStorage _storage = FlutterSecureStorage();
 
   ThemeMode get themeMode => themeModeStreamValue.value ?? ThemeMode.system;
@@ -39,6 +40,7 @@ class AppDataRepository {
       maxRadiusMetersStreamValue.addValue(storedRadius);
     }
     await _precacheLogos();
+    await _persistRuntimeMetadata();
 
     if (GetIt.I.isRegistered<AppData>()) {
       GetIt.I.unregister<AppData>();
@@ -124,5 +126,14 @@ class AppDataRepository {
     );
     stream.addListener(listener);
     return completer.future;
+  }
+
+  Future<void> _persistRuntimeMetadata() async {
+    final apiBaseUrl =
+        '${appData.schema}://${appData.hostname}/api';
+    await _storage.write(
+      key: _apiBaseUrlStorageKey,
+      value: apiBaseUrl,
+    );
   }
 }

@@ -3,8 +3,10 @@ import 'dart:async';
 import 'package:belluga_now/domain/invites/invite_decision.dart';
 import 'package:belluga_now/domain/invites/invite_model.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_events_repository_contract.dart';
 import 'package:card_stack_swiper/card_stack_swiper.dart';
+import 'package:event_tracker_handler/event_tracker_handler.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value.dart';
 
@@ -12,15 +14,19 @@ class InviteFlowScreenController with Disposable {
   InviteFlowScreenController({
     InvitesRepositoryContract? repository,
     UserEventsRepositoryContract? userEventsRepository,
+    TelemetryRepositoryContract? telemetryRepository,
     CardStackSwiperController? cardStackSwiperController,
   })  : _repository = repository ?? GetIt.I.get<InvitesRepositoryContract>(),
         _userEventsRepository =
             userEventsRepository ?? GetIt.I.get<UserEventsRepositoryContract>(),
+        _telemetryRepository =
+            telemetryRepository ?? GetIt.I.get<TelemetryRepositoryContract>(),
         swiperController =
             cardStackSwiperController ?? CardStackSwiperController();
 
   final InvitesRepositoryContract _repository;
   final UserEventsRepositoryContract _userEventsRepository;
+  final TelemetryRepositoryContract _telemetryRepository;
 
   final CardStackSwiperController swiperController;
 
@@ -41,6 +47,8 @@ class InviteFlowScreenController with Disposable {
 
   final confirmingPresenceStreamValue = StreamValue<bool>(defaultValue: false);
   final topCardIndexStreamValue = StreamValue<int>(defaultValue: 0);
+  final Set<String> _seenInviteIds = <String>{};
+  final Set<String> _openedInviteIds = <String>{};
 
   Future<void> init() async {
     await fetchPendingInvites();
@@ -48,8 +56,10 @@ class InviteFlowScreenController with Disposable {
 
   Future<void> fetchPendingInvites() async {
     final _invites = await _repository.fetchInvites();
+    await _trackInviteReceived(_invites);
     pendingInvitesStreamValue.addValue(_invites);
     _ensureTopIndexBounds(_invites.length);
+    await _trackInviteOpened(_invites);
   }
 
   void removeInvite() {
@@ -94,11 +104,32 @@ class InviteFlowScreenController with Disposable {
 
     if (decision == InviteDecision.accepted) {
       await _userEventsRepository.confirmEventAttendance(current.eventId);
+      await _telemetryRepository.logEvent(
+        EventTrackerEvents.inviteAcceptSelectedInviter,
+        eventName: 'invite_accept_selected_inviter',
+        properties: {
+          'event_id': current.eventId,
+        },
+      );
+      await _telemetryRepository.logEvent(
+        EventTrackerEvents.inviteAccepted,
+        eventName: 'invite_accepted',
+        properties: {
+          'event_id': current.eventId,
+        },
+      );
       return current;
     }
 
     // Decline: remove immediately
     removeInvite();
+    await _telemetryRepository.logEvent(
+      EventTrackerEvents.inviteDeclined,
+      eventName: 'invite_declined',
+      properties: {
+        'event_id': current.eventId,
+      },
+    );
     return null;
   }
 
@@ -155,6 +186,34 @@ class InviteFlowScreenController with Disposable {
     final clamped = current.clamp(0, invitesLength - 1);
     if (clamped != current) {
       topCardIndexStreamValue.addValue(clamped);
+    }
+  }
+
+  Future<void> _trackInviteReceived(List<InviteModel> invites) async {
+    for (final invite in invites) {
+      if (_seenInviteIds.add(invite.id)) {
+        await _telemetryRepository.logEvent(
+          EventTrackerEvents.inviteReceived,
+          eventName: 'invite_received',
+          properties: {
+            'event_id': invite.eventId,
+          },
+        );
+      }
+    }
+  }
+
+  Future<void> _trackInviteOpened(List<InviteModel> invites) async {
+    if (invites.isEmpty) return;
+    final current = invites.first;
+    if (_openedInviteIds.add(current.id)) {
+      await _telemetryRepository.logEvent(
+        EventTrackerEvents.inviteOpened,
+        eventName: 'invite_opened',
+        properties: {
+          'event_id': current.eventId,
+        },
+      );
     }
   }
 

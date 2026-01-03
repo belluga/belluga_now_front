@@ -18,6 +18,7 @@ import 'package:belluga_now/domain/repositories/invites_repository_contract.dart
 import 'package:belluga_now/domain/repositories/partners_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_events_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
 import 'package:belluga_now/infrastructure/repositories/app_data_repository.dart';
@@ -27,6 +28,7 @@ import 'package:belluga_now/infrastructure/repositories/invites_repository.dart'
 import 'package:belluga_now/infrastructure/repositories/partners_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/schedule_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/tenant_repository.dart';
+import 'package:belluga_now/infrastructure/repositories/telemetry_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/user_events_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/user_location_repository.dart';
 import 'package:belluga_now/infrastructure/dal/dao/app_data_backend_contract.dart';
@@ -38,11 +40,12 @@ import 'package:belluga_now/infrastructure/dal/dao/mock_backend/mock_schedule_ba
 import 'package:belluga_now/infrastructure/dal/dao/mock_backend/mock_tenant_backend.dart';
 import 'package:belluga_now/infrastructure/dal/dao/tenant_backend_contract.dart';
 import 'package:belluga_now/infrastructure/services/schedule_backend_contract.dart';
+import 'package:belluga_now/application/application_contract.dart';
 import 'package:belluga_now/presentation/common/location_permission/controllers/location_permission_controller.dart';
 import 'package:flutter/foundation.dart';
 import 'package:get_it/get_it.dart';
 import 'package:get_it_modular_with_auto_route/get_it_modular_with_auto_route.dart';
-import 'package:meta/meta.dart';
+import 'package:push_handler/push_handler.dart';
 
 class ModuleSettings extends ModuleSettingsContract {
   ModuleSettings({
@@ -71,6 +74,7 @@ class ModuleSettings extends ModuleSettingsContract {
     _registerControllerFactories();
     _registerBackend();
     await _registerRepositories();
+    _registerPushDependencies();
   }
 
   @override
@@ -101,14 +105,8 @@ class ModuleSettings extends ModuleSettingsContract {
       _scheduleBackendBuilder,
     );
     _registerIfAbsent<ScheduleRepositoryContract>(() => ScheduleRepository());
-    _registerIfAbsent<UserEventsRepositoryContract>(
-      () => UserEventsRepository(),
-    );
     _registerIfAbsent<FriendsRepositoryContract>(
       () => FriendsRepository(),
-    );
-    _registerIfAbsent<PartnersRepositoryContract>(
-      () => PartnersRepository(),
     );
     _registerIfAbsent<InvitesRepositoryContract>(
       () => InvitesRepository(),
@@ -123,11 +121,114 @@ class ModuleSettings extends ModuleSettingsContract {
     }
   }
 
+  void _registerPushDependencies() {}
+
+  PushNavigationResolver buildPushNavigationResolver() {
+    return _buildNavigationResolver();
+  }
+
+  PushNavigationResolver _buildNavigationResolver() {
+    return (request) async {
+      final resolvedPath = _resolvePushRoutePath(request);
+      if (resolvedPath == null || resolvedPath.isEmpty) {
+        debugPrint('[Push] Unmapped route request: ${request.routeKey ?? request.route}');
+        return;
+      }
+      final appRouter = GetIt.I.get<ApplicationContract>().appRouter;
+      final baseUri = Uri.parse(resolvedPath);
+      final queryParameters =
+          Map<String, String>.from(baseUri.queryParameters);
+      if (request.itemKey != null && request.itemKey!.isNotEmpty) {
+        queryParameters['itemIDString'] = request.itemKey!;
+      }
+      final resolvedUri = baseUri.replace(
+        queryParameters: queryParameters.isEmpty ? null : queryParameters,
+      );
+
+      await appRouter.pushPath(resolvedUri.toString());
+    };
+  }
+
+  String? _resolvePushRoutePath(PushRouteRequest request) {
+    final routeKey = request.routeKey;
+    if (routeKey != null && routeKey.isNotEmpty) {
+      switch (routeKey) {
+        case 'event_detail':
+          return _applyPathParameters(
+            '/agenda/evento/:slug',
+            request.pathParameters,
+          );
+        case 'event_immersive':
+          return _applyPathParameters(
+            '/agenda/evento-imersivo/:slug',
+            request.pathParameters,
+          );
+        case 'map':
+          return '/mapa';
+        default:
+          return null;
+      }
+    }
+    if (request.route.isEmpty) return null;
+    return _applyPathParameters(request.route, request.pathParameters) ??
+        request.route;
+  }
+
+  String? _applyPathParameters(
+    String path,
+    Map<String, String> parameters,
+  ) {
+    final pattern = RegExp(r':([A-Za-z0-9_]+)');
+    final matches = pattern.allMatches(path).toList();
+    if (matches.isEmpty) {
+      return path;
+    }
+    var resolved = path;
+    for (final match in matches) {
+      final key = match.group(1);
+      if (key == null || key.isEmpty) {
+        return null;
+      }
+      final value = _resolveRouteParameter(parameters, key);
+      if (value == null || value.isEmpty) {
+        return null;
+      }
+      resolved = resolved.replaceFirst(':$key', value);
+    }
+    return resolved;
+  }
+
+  String? _resolveRouteParameter(
+    Map<String, String> parameters,
+    String key,
+  ) {
+    final direct = parameters[key];
+    if (direct != null && direct.isNotEmpty) {
+      return direct;
+    }
+    if (key == 'slug') {
+      final eventId = parameters['event_id'];
+      if (eventId != null && eventId.isNotEmpty) {
+        return eventId;
+      }
+    }
+    return null;
+  }
+
   Future<void> _registerRepositories() async {
     _registerIfAbsent<UserLocationRepositoryContract>(
       () => UserLocationRepository(),
     );
     await _registerAppDataRepository();
+    _registerIfAbsent<TelemetryRepositoryContract>(
+      () => TelemetryRepository(),
+    );
+    _registerIfAbsent<PartnersRepositoryContract>(
+      () => PartnersRepository(),
+    );
+    _registerIfAbsent<UserEventsRepositoryContract>(
+      () => UserEventsRepository(),
+    );
     await _registerTenantRepository();
     await _registerAuthRepository();
   }

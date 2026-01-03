@@ -1,7 +1,9 @@
 import 'package:belluga_now/domain/schedule/event_model.dart';
+import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
 import 'package:belluga_now/presentation/common/widgets/image_palette_theme.dart';
 import 'package:belluga_now/presentation/tenant/schedule/screens/event_detail_screen/controllers/event_detail_controller.dart';
 import 'package:belluga_now/presentation/tenant/schedule/screens/event_detail_screen/event_detail_screen.dart';
+import 'package:event_tracker_handler/event_tracker_handler.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 
@@ -22,13 +24,25 @@ class EventDetailLoader extends StatefulWidget {
 class _EventDetailLoaderState extends State<EventDetailLoader> {
   late final EventDetailController _controller =
       widget.controller ?? GetIt.I.get<EventDetailController>();
+  final TelemetryRepositoryContract _telemetryRepository =
+      GetIt.I.get<TelemetryRepositoryContract>();
   late Future<EventModel?> _eventFuture;
 
   @override
   void initState() {
     super.initState();
     _eventFuture = _controller.loadEventBySlug(widget.slug).then((_) {
-      return _controller.eventStreamValue.value;
+      final event = _controller.eventStreamValue.value;
+      if (event != null) {
+        _telemetryRepository.logEvent(
+          EventTrackerEvents.eventOpened,
+          eventName: 'event_opened',
+          properties: {
+            'event_id': event.id.value,
+          },
+        );
+      }
+      return event;
     });
   }
 
