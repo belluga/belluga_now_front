@@ -1,7 +1,11 @@
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/user/user_belluga.dart';
+import 'dart:convert';
+
 import 'package:belluga_now/infrastructure/user/dtos/user_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dao/backend_contract.dart';
+import 'package:crypto/crypto.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/main.dart';
@@ -46,6 +50,7 @@ final class AuthRepository extends AuthRepositoryContract<UserBelluga> {
   Future<void> init() async {
     await _getUserTokenFromLocalStorage();
     await autoLogin();
+    await _ensureAnonymousIdentityToken();
   }
 
   @override
@@ -127,6 +132,58 @@ final class AuthRepository extends AuthRepositoryContract<UserBelluga> {
   Future<void> _getUserTokenFromLocalStorage() async {
     final token = await AuthRepository.storage.read(key: _userTokenStorageKey);
     _userTokenStreamValue.addValue(token);
+  }
+
+  Future<void> _ensureAnonymousIdentityToken() async {
+    if (userToken.isNotEmpty) {
+      return;
+    }
+    final deviceId = await getDeviceId();
+    final fingerprintHash = _hashFingerprint(deviceId);
+    final deviceName = _buildDeviceName(deviceId);
+    try {
+      final token = await backend.auth.issueAnonymousIdentity(
+        deviceName: deviceName,
+        fingerprintHash: fingerprintHash,
+      );
+      if (token.isNotEmpty) {
+        userTokenUpdate(token);
+      }
+    } catch (_) {
+      // Anonymous identity is best-effort; push init will retry on auth updates.
+    }
+  }
+
+  String _hashFingerprint(String deviceId) {
+    final platformLabel = _resolvePlatformLabel();
+    final bytes = utf8.encode('$deviceId:$platformLabel');
+    return sha256.convert(bytes).toString();
+  }
+
+  String _buildDeviceName(String deviceId) {
+    final platformLabel = _resolvePlatformLabel();
+    final shortId = deviceId.length > 8 ? deviceId.substring(0, 8) : deviceId;
+    return 'boora-$platformLabel-$shortId';
+  }
+
+  String _resolvePlatformLabel() {
+    if (kIsWeb) {
+      return 'web';
+    }
+    switch (defaultTargetPlatform) {
+      case TargetPlatform.android:
+        return 'android';
+      case TargetPlatform.iOS:
+        return 'ios';
+      case TargetPlatform.fuchsia:
+        return 'fuchsia';
+      case TargetPlatform.linux:
+        return 'linux';
+      case TargetPlatform.macOS:
+        return 'macos';
+      case TargetPlatform.windows:
+        return 'windows';
+    }
   }
 
   @override

@@ -1,6 +1,7 @@
 import 'package:belluga_now/domain/auth/errors/belluga_auth_errors.dart';
 import 'package:belluga_now/infrastructure/dal/dao/auth_backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/mock_backend/helpers/mock_functions.dart';
+import 'package:belluga_now/infrastructure/dal/dao/laravel_backend/auth_backend/auth_backend.dart';
 import 'package:belluga_now/infrastructure/user/dtos/user_dto.dart';
 import 'package:belluga_now/infrastructure/user/dtos/user_profile_dto.dart';
 
@@ -26,6 +27,27 @@ class MockAuthBackend extends AuthBackendContract with MockFunctions {
 
   @override
   Future<void> logout() async {}
+
+  @override
+  Future<String> issueAnonymousIdentity({
+    required String deviceName,
+    required String fingerprintHash,
+    String? userAgent,
+    String? locale,
+    Map<String, dynamic>? metadata,
+  }) async {
+    try {
+      return await LaravelAuthBackend().issueAnonymousIdentity(
+        deviceName: deviceName,
+        fingerprintHash: fingerprintHash,
+        userAgent: userAgent,
+        locale: locale,
+        metadata: metadata,
+      );
+    } catch (_) {
+      return 'anon-token-$fakeMongoId';
+    }
+  }
 
   String get _fakePassword => "765432e1";
 

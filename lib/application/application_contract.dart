@@ -13,6 +13,7 @@ import 'package:intl/intl_standalone.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 import 'package:push_handler/push_handler.dart';
+import 'package:belluga_now/infrastructure/services/push/push_transport_configurator.dart';
 
 abstract class ApplicationContract extends ModularAppContract {
   ApplicationContract({super.key}) : _appRouter = AppRouter();
@@ -54,12 +55,8 @@ abstract class ApplicationContract extends ModularAppContract {
 
   Future<void> _initializePushHandler() async {
     final authRepository = GetIt.I.get<AuthRepositoryContract>();
-    final transportConfig = PushTransportConfig(
-      baseUrl: BellugaConstants.api.baseUrl,
-      tokenProvider: () async =>
-          authRepository.userToken.isEmpty ? null : authRepository.userToken,
-      deviceIdProvider: authRepository.getDeviceId,
-    );
+    final transportConfig =
+        PushTransportConfigurator.build(authRepository: authRepository);
     final navigationResolver = moduleSettings.buildPushNavigationResolver();
     final repository = PushHandlerRepositoryDefault(
       transportConfig: transportConfig,
