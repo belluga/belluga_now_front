@@ -22,12 +22,14 @@ import 'package:belluga_now/infrastructure/services/push/push_transport_configur
 import 'package:flutter/foundation.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
+import 'package:belluga_now/infrastructure/services/push/push_presentation_gate.dart';
 
 typedef PushHandlerRepositoryFactory = PushHandlerRepositoryContract Function({
   required PushTransportConfig transportConfig,
   required BuildContext? Function() contextProvider,
   required PushNavigationResolver navigationResolver,
   required Future<void> Function(RemoteMessage) onBackgroundMessage,
+  Future<void> Function()? presentationGate,
   required Stream<dynamic>? authChangeStream,
   required String Function() platformResolver,
 });
@@ -111,6 +113,7 @@ abstract class ApplicationContract extends ModularAppContract {
           required BuildContext? Function() contextProvider,
           required PushNavigationResolver navigationResolver,
           required Future<void> Function(RemoteMessage) onBackgroundMessage,
+          Future<void> Function()? presentationGate,
           required Stream<dynamic>? authChangeStream,
           required String Function() platformResolver,
         }) {
@@ -119,6 +122,7 @@ abstract class ApplicationContract extends ModularAppContract {
             contextProvider: contextProvider,
             navigationResolver: navigationResolver,
             onBackgroundMessage: onBackgroundMessage,
+            presentationGate: presentationGate,
             authChangeStream: authChangeStream,
             platformResolver: platformResolver,
           );
@@ -128,6 +132,16 @@ abstract class ApplicationContract extends ModularAppContract {
       contextProvider: () => appRouter.navigatorKey.currentContext,
       navigationResolver: navigationResolver,
       onBackgroundMessage: (message) async {},
+      presentationGate: () async {
+        if (!GetIt.I.isRegistered<PushPresentationGate>()) {
+          return;
+        }
+        final gate = GetIt.I.get<PushPresentationGate>();
+        if (gate.isReady) {
+          return;
+        }
+        await gate.waitUntilReady();
+      },
       authChangeStream: authRepository.userStreamValue.stream,
       platformResolver: () => BellugaConstants.settings.platform,
     );

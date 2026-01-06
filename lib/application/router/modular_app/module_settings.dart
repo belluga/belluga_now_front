@@ -42,6 +42,7 @@ import 'package:belluga_now/infrastructure/dal/dao/tenant_backend_contract.dart'
 import 'package:belluga_now/infrastructure/services/schedule_backend_contract.dart';
 import 'package:belluga_now/application/application_contract.dart';
 import 'package:belluga_now/presentation/common/location_permission/controllers/location_permission_controller.dart';
+import 'package:belluga_now/infrastructure/services/push/push_presentation_gate.dart';
 import 'package:flutter/foundation.dart';
 import 'package:get_it/get_it.dart';
 import 'package:get_it_modular_with_auto_route/get_it_modular_with_auto_route.dart';
@@ -121,7 +122,11 @@ class ModuleSettings extends ModuleSettingsContract {
     }
   }
 
-  void _registerPushDependencies() {}
+  void _registerPushDependencies() {
+    _registerLazySingletonIfAbsent<PushPresentationGate>(
+      () => PushPresentationGate(),
+    );
+  }
 
   PushNavigationResolver buildPushNavigationResolver() {
     return _buildNavigationResolver();

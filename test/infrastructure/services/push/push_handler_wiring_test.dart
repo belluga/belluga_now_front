@@ -122,6 +122,7 @@ class _RepositoryCapture {
     required BuildContext? Function() contextProvider,
     required PushNavigationResolver navigationResolver,
     required Future<void> Function(RemoteMessage) onBackgroundMessage,
+    Future<void> Function()? presentationGate,
     required Stream<dynamic>? authChangeStream,
     required String Function() platformResolver,
   }) {
@@ -133,6 +134,7 @@ class _RepositoryCapture {
       contextProvider: contextProvider,
       navigationResolver: navigationResolver,
       onBackgroundMessage: onBackgroundMessage,
+      presentationGate: presentationGate,
       authChangeStream: authChangeStream,
       platformResolver: platformResolver,
       onInit: () => initCalled = true,
@@ -146,6 +148,7 @@ class _FakePushHandlerRepository extends PushHandlerRepositoryContract {
     required super.contextProvider,
     required super.navigationResolver,
     required super.onBackgroundMessage,
+    super.presentationGate,
     required super.authChangeStream,
     required super.platformResolver,
     required this.onInit,
