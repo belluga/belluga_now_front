@@ -135,6 +135,14 @@ class ModuleSettings extends ModuleSettingsContract {
         return;
       }
       final appRouter = GetIt.I.get<ApplicationContract>().appRouter;
+      final currentPath = appRouter.currentPath;
+      if (_shouldSkipDuplicateNavigation(
+        request: request,
+        currentPath: currentPath,
+        resolvedPath: resolvedPath,
+      )) {
+        return;
+      }
       final baseUri = Uri.parse(resolvedPath);
       final queryParameters =
           Map<String, String>.from(baseUri.queryParameters);
@@ -153,6 +161,12 @@ class ModuleSettings extends ModuleSettingsContract {
     final routeKey = request.routeKey;
     if (routeKey != null && routeKey.isNotEmpty) {
       switch (routeKey) {
+        case 'invite_flow':
+          final inviteId = _resolveInviteId(request);
+          if (inviteId == null || inviteId.isEmpty) {
+            return '/convites';
+          }
+          return '/convites?invite=$inviteId';
         case 'event_detail':
           return _applyPathParameters(
             '/agenda/evento/:slug',
@@ -173,6 +187,36 @@ class ModuleSettings extends ModuleSettingsContract {
     return _applyPathParameters(request.route, request.pathParameters) ??
         request.route;
   }
+
+  bool _shouldSkipDuplicateNavigation({
+    required PushRouteRequest request,
+    required String currentPath,
+    required String resolvedPath,
+  }) {
+    if (!_isEventRouteRequest(request)) {
+      return false;
+    }
+    return currentPath == resolvedPath;
+  }
+
+  bool _isEventRouteRequest(PushRouteRequest request) {
+    final routeKey = request.routeKey;
+    return routeKey == 'event_detail' || routeKey == 'event_immersive';
+  }
+
+  String? _resolveInviteId(PushRouteRequest request) {
+    final itemKey = request.itemKey;
+    if (itemKey != null && itemKey.isNotEmpty) {
+      return itemKey;
+    }
+    final param =
+        request.pathParameters['invite'] ?? request.pathParameters['invite_id'];
+    if (param != null && param.isNotEmpty) {
+      return param;
+    }
+    return null;
+  }
+
 
   String? _applyPathParameters(
     String path,
