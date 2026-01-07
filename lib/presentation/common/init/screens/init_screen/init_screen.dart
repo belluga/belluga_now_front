@@ -5,6 +5,7 @@ import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/presentation/common/init/screens/init_screen/controllers/init_screen_controller.dart';
 import 'package:get_it/get_it.dart';
 import 'package:belluga_now/infrastructure/repositories/app_data_repository.dart';
+import 'package:belluga_now/infrastructure/services/push/push_presentation_gate.dart';
 
 class InitScreen extends StatefulWidget {
   const InitScreen({super.key});
@@ -141,7 +142,16 @@ class _InitScreenState extends State<InitScreen> {
       const TenantHomeRoute(),
       if (initialRoute is InviteFlowRoute) const InviteFlowRoute(),
     ];
+    debugPrint(
+      '[Push] Init stack ready (home + invite=${initialRoute is InviteFlowRoute}).',
+    );
     context.router.replaceAll(routes);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (GetIt.I.isRegistered<PushPresentationGate>()) {
+        debugPrint('[Push] Init stack presented; releasing push gate.');
+        GetIt.I.get<PushPresentationGate>().markReady();
+      }
+    });
   }
 
   Color? _tryParseHexColor(String raw) {

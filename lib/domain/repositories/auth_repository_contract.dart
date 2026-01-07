@@ -11,6 +11,10 @@ abstract class AuthRepositoryContract<T extends UserContract> {
 
   String get userToken;
 
+  void setUserToken(String? token);
+
+  Future<String> getDeviceId();
+
   bool get isUserLoggedIn;
 
   bool get isAuthorized;

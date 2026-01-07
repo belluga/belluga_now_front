@@ -7,4 +7,11 @@ abstract class AuthBackendContract {
   );
   Future<void> logout();
   Future<UserDto> loginCheck();
+  Future<String> issueAnonymousIdentity({
+    required String deviceName,
+    required String fingerprintHash,
+    String? userAgent,
+    String? locale,
+    Map<String, dynamic>? metadata,
+  });
 }

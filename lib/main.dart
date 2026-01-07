@@ -26,21 +26,4 @@ Future<void> main() async {
       }
     },
   );
-
-  // final _pushHandler =
-  //     PushHandler(onbackgroundStartMessage: _onBackgroundMessage)
 }
-
-// void _initApp() {
-
-//   runApp(
-//     Application(
-// pushHandler: _pushHandler,
-// authRepository: _authRepository,
-// bellugaApp: _bellugaApp,
-//         ),
-//   );
-// }
-
-// Future<void> _onBackgroundMessage(message) async =>
-//     await PushHandler.onBackgroundMessage(message);

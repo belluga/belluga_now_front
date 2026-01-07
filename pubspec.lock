@@ -210,7 +210,7 @@ packages:
     source: hosted
     version: "0.3.5+1"
   crypto:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: crypto
       sha256: c8ea0233063ba03258fbcf2ca4d6dadfefe14f02fab57702265467a19f27fadf
@@ -317,10 +317,10 @@ packages:
     dependency: "direct main"
     description:
       name: event_tracker_handler
-      sha256: da4bf933ece3548b6df50e66b65b2a86a9e40356851c6d63928899f8148f0a8a
+      sha256: fb9cbdbfb9330829a09975e63bc6b37fb0257f5517c3062b482d2da7bcabe4e9
       url: "https://pub.dev"
     source: hosted
-    version: "0.1.1"
+    version: "0.1.2"
   fake_async:
     dependency: transitive
     description:
@@ -402,7 +402,7 @@ packages:
     source: hosted
     version: "0.6.1+1"
   firebase_core:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: firebase_core
       sha256: "29cfa93c771d8105484acac340b5ea0835be371672c91405a300303986f4eba9"
@@ -426,7 +426,7 @@ packages:
     source: hosted
     version: "3.3.1"
   firebase_messaging:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: firebase_messaging
       sha256: "1ad663fbb6758acec09d7e84a2e6478265f0a517f40ef77c573efd5e0089f400"
@@ -683,7 +683,7 @@ packages:
     source: hosted
     version: "0.2.3"
   geolocator_platform_interface:
-    dependency: transitive
+    dependency: "direct dev"
     description:
       name: geolocator_platform_interface
       sha256: "30cb64f0b9adcc0fb36f628b4ebf4f731a2961a0ebd849f4b56200205056fe67"
@@ -1000,7 +1000,7 @@ packages:
     source: hosted
     version: "0.11.1"
   meta:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: meta
       sha256: "23f08335362185a5ea2ad3a4e597f1375e78bce8a040df5c600c8d3552ef2394"
@@ -1048,7 +1048,7 @@ packages:
     source: hosted
     version: "2.2.0"
   package_info_plus:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: package_info_plus
       sha256: "16eee997588c60225bda0488b6dcfac69280a6b7a3cf02c741895dd370a02968"
@@ -1258,11 +1258,10 @@ packages:
   push_handler:
     dependency: "direct main"
     description:
-      name: push_handler
-      sha256: "745f7e70730452812b13c19baf9e5b67a450b832f746786c6e7ee94a40ec2f48"
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.1.0"
+      path: "/home/elton/Dev/repos/flutter-packages/push_handler"
+      relative: false
+    source: path
+    version: "0.1.2"
   rational:
     dependency: transitive
     description:
@@ -1557,7 +1556,7 @@ packages:
     source: hosted
     version: "3.1.5"
   uuid:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: uuid
       sha256: a11b666489b1954e01d992f3d601b1804a33937b5a8fe677bd26b8a9f96f96e8

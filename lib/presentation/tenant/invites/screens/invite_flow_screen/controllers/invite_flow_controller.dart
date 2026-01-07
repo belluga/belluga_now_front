@@ -3,8 +3,11 @@ import 'dart:async';
 import 'package:belluga_now/domain/invites/invite_decision.dart';
 import 'package:belluga_now/domain/invites/invite_model.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_events_repository_contract.dart';
+import 'package:belluga_now/infrastructure/services/telemetry/telemetry_queue.dart';
 import 'package:card_stack_swiper/card_stack_swiper.dart';
+import 'package:event_tracker_handler/event_tracker_handler.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value.dart';
 
@@ -12,17 +15,22 @@ class InviteFlowScreenController with Disposable {
   InviteFlowScreenController({
     InvitesRepositoryContract? repository,
     UserEventsRepositoryContract? userEventsRepository,
+    TelemetryRepositoryContract? telemetryRepository,
     CardStackSwiperController? cardStackSwiperController,
   })  : _repository = repository ?? GetIt.I.get<InvitesRepositoryContract>(),
         _userEventsRepository =
             userEventsRepository ?? GetIt.I.get<UserEventsRepositoryContract>(),
+        _telemetryRepository =
+            telemetryRepository ?? GetIt.I.get<TelemetryRepositoryContract>(),
         swiperController =
             cardStackSwiperController ?? CardStackSwiperController();
 
   final InvitesRepositoryContract _repository;
   final UserEventsRepositoryContract _userEventsRepository;
+  final TelemetryRepositoryContract _telemetryRepository;
 
   final CardStackSwiperController swiperController;
+  final TelemetryQueue _inviteQueue = TelemetryQueue();
 
   InviteModel? get currentInvite => pendingInvitesStreamValue.value.isNotEmpty
       ? pendingInvitesStreamValue.value.first
@@ -41,15 +49,35 @@ class InviteFlowScreenController with Disposable {
 
   final confirmingPresenceStreamValue = StreamValue<bool>(defaultValue: false);
   final topCardIndexStreamValue = StreamValue<int>(defaultValue: 0);
+  final Set<String> _seenInviteIds = <String>{};
+  final Set<String> _openedInviteIds = <String>{};
 
-  Future<void> init() async {
+  Future<void> init({String? prioritizeInviteId}) async {
     await fetchPendingInvites();
+    if (prioritizeInviteId != null && prioritizeInviteId.isNotEmpty) {
+      _prioritizeInvite(prioritizeInviteId);
+    }
   }
 
   Future<void> fetchPendingInvites() async {
     final _invites = await _repository.fetchInvites();
+    await _trackInviteReceived(_invites);
     pendingInvitesStreamValue.addValue(_invites);
     _ensureTopIndexBounds(_invites.length);
+    await _trackInviteOpened(_invites);
+  }
+
+  void _prioritizeInvite(String inviteId) {
+    final invites = List<InviteModel>.from(pendingInvitesStreamValue.value);
+    final index = invites.indexWhere((invite) => invite.id == inviteId);
+    if (index <= 0) {
+      return;
+    }
+    final invite = invites.removeAt(index);
+    invites.insert(0, invite);
+    pendingInvitesStreamValue.addValue(invites);
+    _ensureTopIndexBounds(invites.length);
+    unawaited(_trackInviteOpened(invites));
   }
 
   void removeInvite() {
@@ -73,15 +101,17 @@ class InviteFlowScreenController with Disposable {
     _ensureTopIndexBounds(_pendingInvites.length);
   }
 
-  Future<InviteModel?> applyDecision(InviteDecision decision) async {
-    final invite = await _finalizeDecision(decision);
+  Future<InviteDecisionResult?> applyDecision(InviteDecision decision) async {
+    final result = await _finalizeDecision(decision);
     if (decision != InviteDecision.accepted) {
       resetConfirmPresence();
     }
-    return invite;
+    return result;
   }
 
-  Future<InviteModel?> _finalizeDecision(InviteDecision decision) async {
+  Future<InviteDecisionResult?> _finalizeDecision(
+    InviteDecision decision,
+  ) async {
     final _pendingInvites = pendingInvitesStreamValue.value;
 
     final current = _pendingInvites.isEmpty ? null : _pendingInvites.first;
@@ -93,13 +123,44 @@ class InviteFlowScreenController with Disposable {
     decisionsStreamValue.addValue(Map.unmodifiable(_decisions));
 
     if (decision == InviteDecision.accepted) {
-      await _userEventsRepository.confirmEventAttendance(current.eventId);
-      return current;
+      var queued = false;
+      try {
+        await _userEventsRepository.confirmEventAttendance(current.eventId);
+      } catch (_) {
+        queued = true;
+        await _inviteQueue.enqueue(
+          () => _userEventsRepository.confirmEventAttendance(current.eventId),
+        );
+      }
+      if (!queued) {
+        await _telemetryRepository.logEvent(
+          EventTrackerEvents.inviteAcceptSelectedInviter,
+          eventName: 'invite_accept_selected_inviter',
+          properties: {
+            'event_id': current.eventId,
+          },
+        );
+        await _telemetryRepository.logEvent(
+          EventTrackerEvents.inviteAccepted,
+          eventName: 'invite_accepted',
+          properties: {
+            'event_id': current.eventId,
+          },
+        );
+      }
+      return InviteDecisionResult(invite: current, queued: queued);
     }
 
     // Decline: remove immediately
     removeInvite();
-    return null;
+    await _telemetryRepository.logEvent(
+      EventTrackerEvents.inviteDeclined,
+      eventName: 'invite_declined',
+      properties: {
+        'event_id': current.eventId,
+      },
+    );
+    return const InviteDecisionResult(invite: null, queued: false);
   }
 
   void rewindInvite(InviteModel invite) {
@@ -158,6 +219,34 @@ class InviteFlowScreenController with Disposable {
     }
   }
 
+  Future<void> _trackInviteReceived(List<InviteModel> invites) async {
+    for (final invite in invites) {
+      if (_seenInviteIds.add(invite.id)) {
+        await _telemetryRepository.logEvent(
+          EventTrackerEvents.inviteReceived,
+          eventName: 'invite_received',
+          properties: {
+            'event_id': invite.eventId,
+          },
+        );
+      }
+    }
+  }
+
+  Future<void> _trackInviteOpened(List<InviteModel> invites) async {
+    if (invites.isEmpty) return;
+    final current = invites.first;
+    if (_openedInviteIds.add(current.id)) {
+      await _telemetryRepository.logEvent(
+        EventTrackerEvents.inviteOpened,
+        eventName: 'invite_opened',
+        properties: {
+          'event_id': current.eventId,
+        },
+      );
+    }
+  }
+
   void syncTopCardIndex(int invitesLength) {
     _ensureTopIndexBounds(invitesLength);
   }
@@ -169,4 +258,14 @@ class InviteFlowScreenController with Disposable {
     confirmingPresenceStreamValue.dispose();
     topCardIndexStreamValue.dispose();
   }
+}
+
+class InviteDecisionResult {
+  const InviteDecisionResult({
+    required this.invite,
+    required this.queued,
+  });
+
+  final InviteModel? invite;
+  final bool queued;
 }

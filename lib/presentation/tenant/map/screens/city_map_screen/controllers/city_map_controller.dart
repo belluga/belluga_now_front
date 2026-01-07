@@ -16,9 +16,11 @@ import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
 import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
 import 'package:belluga_now/domain/repositories/city_map_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/share/share_payload.dart';
 import 'package:belluga_now/infrastructure/dal/datasources/poi_query.dart';
+import 'package:event_tracker_handler/event_tracker_handler.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter/services.dart';
@@ -33,9 +35,12 @@ class CityMapController implements Disposable {
   CityMapController({
     CityMapRepositoryContract? repository,
     ScheduleRepositoryContract? scheduleRepository,
+    TelemetryRepositoryContract? telemetryRepository,
   })  : _repository = repository ?? GetIt.I.get<CityMapRepositoryContract>(),
         _scheduleRepository =
             scheduleRepository ?? GetIt.I.get<ScheduleRepositoryContract>(),
+        _telemetryRepository =
+            telemetryRepository ?? GetIt.I.get<TelemetryRepositoryContract>(),
         eventsStreamValue =
             StreamValue<List<EventModel>>(defaultValue: const []) {
     _poiEventsSubscription = _repository.poiEvents.listen(_handlePoiEvent);
@@ -43,6 +48,7 @@ class CityMapController implements Disposable {
 
   final CityMapRepositoryContract _repository;
   final ScheduleRepositoryContract _scheduleRepository;
+  final TelemetryRepositoryContract _telemetryRepository;
 
   final StreamValue<List<EventModel>> eventsStreamValue;
 
@@ -88,6 +94,7 @@ class CityMapController implements Disposable {
 
   bool _hasRequestedPois = false;
   bool _eventsLoaded = false;
+  bool _mapOpenedTracked = false;
   StreamSubscription<PoiUpdateEvent?>? _poiEventsSubscription;
   StreamSubscription<MapEvent>? _mapEventSubscription;
   bool _filtersLoadFailed = false;
@@ -111,6 +118,8 @@ class CityMapController implements Disposable {
       await _loadEventsForDate(_today);
       _eventsLoaded = true;
     }
+
+    await _trackMapOpened();
   }
 
   Future<void> loadFilters() async {
@@ -201,6 +210,15 @@ class CityMapController implements Disposable {
 
   void selectPoi(CityPoiModel? poi) {
     selectedPoiStreamValue.addValue(poi);
+    if (poi != null) {
+      _telemetryRepository.logEvent(
+        EventTrackerEvents.poiOpened,
+        eventName: 'poi_opened',
+        properties: {
+          'poi_id': poi.id,
+        },
+      );
+    }
   }
 
   void selectEvent(EventModel? event) {
@@ -724,6 +742,15 @@ class CityMapController implements Disposable {
 
   void _setMapMessage(String? message) {
     statusMessageStreamValue.addValue(message);
+  }
+
+  Future<void> _trackMapOpened() async {
+    if (_mapOpenedTracked) return;
+    _mapOpenedTracked = true;
+    await _telemetryRepository.logEvent(
+      EventTrackerEvents.mapOpened,
+      eventName: 'map_opened',
+    );
   }
 
   PoiQuery _buildQueryForMainFilter(MainFilterOption option) {

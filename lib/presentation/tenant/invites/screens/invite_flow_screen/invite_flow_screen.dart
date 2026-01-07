@@ -24,7 +24,8 @@ class _InviteFlowScreenState extends State<InviteFlowScreen> {
   @override
   void initState() {
     super.initState();
-    _controller.init();
+    final inviteId = context.routeData.queryParams.get('invite');
+    _controller.init(prioritizeInviteId: inviteId);
   }
 
   @override
@@ -70,8 +71,11 @@ class _InviteFlowScreenState extends State<InviteFlowScreen> {
     if (!mounted) return;
 
     if (decision == InviteDecision.accepted) {
-      if (result != null) {
-        await context.router.push(InviteShareRoute(invite: result));
+      if (result?.queued == true) {
+        _showOfflineAcceptToast(result?.invite);
+      }
+      if (result?.invite != null) {
+        await context.router.push(InviteShareRoute(invite: result!.invite!));
       }
       // Remove only after returning from share to avoid flashing next card mid-navigation.
       _controller.removeInvite();
@@ -83,6 +87,21 @@ class _InviteFlowScreenState extends State<InviteFlowScreen> {
 
   void _openEventDetails(InviteModel invite) {
     context.router.push(ImmersiveEventDetailRoute(eventSlug: invite.eventId));
+  }
+
+  void _showOfflineAcceptToast(InviteModel? invite) {
+    final messenger = ScaffoldMessenger.of(context);
+    final inviter = invite?.inviterName ?? invite?.hostName;
+    final eventName = invite?.eventName;
+    final label = (inviter != null && inviter.isNotEmpty && eventName != null)
+        ? 'Aceitamos seu convite com $inviter para $eventName.'
+        : 'Aceitamos seu convite. Vamos sincronizar quando a rede voltar.';
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(label),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
   }
 
   void _precacheNextInvites(List<InviteModel> invites) {
