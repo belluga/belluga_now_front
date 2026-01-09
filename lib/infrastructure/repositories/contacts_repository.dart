@@ -1,11 +1,13 @@
 import 'package:belluga_now/domain/contacts/contact_model.dart';
 import 'package:belluga_now/domain/repositories/contacts_repository_contract.dart';
 import 'package:flutter_contacts/flutter_contacts.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 class ContactsRepository implements ContactsRepositoryContract {
   @override
   Future<bool> requestPermission() async {
-    return await FlutterContacts.requestPermission();
+    final status = await Permission.contacts.request();
+    return status.isGranted;
   }
 
   @override

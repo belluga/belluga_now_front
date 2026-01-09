@@ -5,7 +5,12 @@ import 'package:belluga_now/application/configurations/belluga_constants.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/app_data/platform_type.dart';
 import 'package:belluga_now/domain/app_data/value_object/platform_type_value.dart';
+import 'package:belluga_now/domain/contacts/contact_model.dart';
+import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/contacts_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
 import 'package:belluga_now/domain/tenant/tenant.dart';
 import 'package:belluga_now/domain/user/user_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/auth_backend_contract.dart';
@@ -18,6 +23,7 @@ import 'package:belluga_now/infrastructure/dal/dto/schedule/event_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_page_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_summary_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/venue_event/venue_event_preview_dto.dart';
+import 'package:belluga_now/presentation/common/push/controllers/push_options_controller.dart';
 import 'package:belluga_now/infrastructure/services/push/push_transport_configurator.dart';
 import 'package:belluga_now/infrastructure/services/schedule_backend_contract.dart';
 import 'package:belluga_now/infrastructure/user/dtos/user_dto.dart';
@@ -25,8 +31,10 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:event_tracker_handler/event_tracker_handler.dart';
 import 'package:get_it/get_it.dart';
 import 'package:push_handler/push_handler.dart';
+import 'package:stream_value/core/stream_value.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -34,6 +42,16 @@ void main() {
   setUp(() async {
     await GetIt.I.reset();
     GetIt.I.registerSingleton<AppData>(_buildTestAppData());
+    GetIt.I.registerSingleton<TelemetryRepositoryContract>(
+      _FakeTelemetryRepository(),
+    );
+    GetIt.I.registerSingleton<UserLocationRepositoryContract>(
+      _FakeUserLocationRepository(),
+    );
+    GetIt.I.registerSingleton<ContactsRepositoryContract>(
+      _FakeContactsRepository(),
+    );
+    GetIt.I.registerSingleton<PushOptionsController>(PushOptionsController());
   });
 
   tearDown(() async {
@@ -125,6 +143,11 @@ class _RepositoryCapture {
     Future<void> Function()? presentationGate,
     required Stream<dynamic>? authChangeStream,
     required String Function() platformResolver,
+    Future<bool> Function(StepData step)? gatekeeper,
+    Future<List<OptionItem>> Function(OptionSource source)? optionsBuilder,
+    Future<void> Function(AnswerPayload answer, StepData step)? onStepSubmit,
+    Future<void> Function(ButtonData button, StepData step)? onCustomAction,
+    void Function(PushEvent event)? onPushEvent,
   }) {
     factoryCalled = true;
     this.transportConfig = transportConfig;
@@ -137,6 +160,11 @@ class _RepositoryCapture {
       presentationGate: presentationGate,
       authChangeStream: authChangeStream,
       platformResolver: platformResolver,
+      gatekeeper: gatekeeper,
+      optionsBuilder: optionsBuilder,
+      onStepSubmit: onStepSubmit,
+      onCustomAction: onCustomAction,
+      onPushEvent: onPushEvent,
       onInit: () => initCalled = true,
     );
   }
@@ -149,6 +177,11 @@ class _FakePushHandlerRepository extends PushHandlerRepositoryContract {
     required super.navigationResolver,
     required super.onBackgroundMessage,
     super.presentationGate,
+    super.gatekeeper,
+    super.optionsBuilder,
+    super.onStepSubmit,
+    super.onCustomAction,
+    super.onPushEvent,
     required super.authChangeStream,
     required super.platformResolver,
     required this.onInit,
@@ -160,6 +193,57 @@ class _FakePushHandlerRepository extends PushHandlerRepositoryContract {
   Future<void> init() async {
     onInit();
   }
+}
+
+class _FakeUserLocationRepository implements UserLocationRepositoryContract {
+  @override
+  final StreamValue<CityCoordinate?> userLocationStreamValue =
+      StreamValue<CityCoordinate?>(defaultValue: null);
+
+  @override
+  final StreamValue<CityCoordinate?> lastKnownLocationStreamValue =
+      StreamValue<CityCoordinate?>(defaultValue: null);
+
+  @override
+  final StreamValue<DateTime?> lastKnownCapturedAtStreamValue =
+      StreamValue<DateTime?>(defaultValue: null);
+
+  @override
+  final StreamValue<String?> lastKnownAddressStreamValue =
+      StreamValue<String?>(defaultValue: null);
+
+  @override
+  Future<void> ensureLoaded() async {}
+
+  @override
+  Future<void> setLastKnownAddress(String? address) async {
+    lastKnownAddressStreamValue.addValue(address);
+  }
+
+  @override
+  Future<bool> warmUpIfPermitted() async => false;
+
+  @override
+  Future<bool> refreshIfPermitted({Duration minInterval = const Duration(seconds: 30)}) async =>
+      false;
+
+  @override
+  Future<String?> resolveUserLocation() async => null;
+
+  @override
+  Future<bool> startTracking({LocationTrackingMode mode = LocationTrackingMode.mapForeground}) async =>
+      false;
+
+  @override
+  Future<void> stopTracking() async {}
+}
+
+class _FakeContactsRepository implements ContactsRepositoryContract {
+  @override
+  Future<bool> requestPermission() async => false;
+
+  @override
+  Future<List<ContactModel>> getContacts() async => const [];
 }
 
 class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
@@ -222,6 +306,17 @@ class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
   @override
   Future<void> updateUser(Map<String, Object?> data) =>
       throw UnimplementedError();
+}
+
+class _FakeTelemetryRepository implements TelemetryRepositoryContract {
+  @override
+  Future<bool> logEvent(
+    EventTrackerEvents event, {
+    String? eventName,
+    Map<String, dynamic>? properties,
+  }) async {
+    return true;
+  }
 }
 
 class _NoopBackend extends BackendContract {

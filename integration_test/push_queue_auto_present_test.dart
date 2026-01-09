@@ -24,9 +24,11 @@ void main() {
         'title': 'Push Title',
         'body': 'Push body copy',
         'layoutType': 'fullScreen',
-        'allowDismiss': true,
+        'closeOnLastStepAction': true,
         'steps': [
           {
+            'slug': 'step-1',
+            'type': 'copy',
             'title': 'Step 1',
             'body': 'Step body',
           },
@@ -73,13 +75,7 @@ void main() {
 
     expect(find.byType(PushScreenFull), findsOneWidget);
 
-    final closeButton = find.byIcon(Icons.close);
-    final skipButton = find.text('Pular');
-    if (closeButton.evaluate().isNotEmpty) {
-      await tester.tap(closeButton.first);
-    } else {
-      await tester.tap(skipButton.first);
-    }
+    await tester.tap(find.text('Continuar').first);
     await tester.pumpAndSettle();
 
     expect(find.byType(PushScreenFull), findsNothing);

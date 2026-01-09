@@ -13,6 +13,7 @@ import 'package:belluga_now/application/router/modular_app/modules/profile_modul
 import 'package:belluga_now/application/router/modular_app/modules/schedule_module.dart';
 
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/contacts_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/friends_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/partners_repository_contract.dart';
@@ -23,6 +24,7 @@ import 'package:belluga_now/domain/repositories/user_events_repository_contract.
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
 import 'package:belluga_now/infrastructure/repositories/app_data_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/auth_repository.dart';
+import 'package:belluga_now/infrastructure/repositories/contacts_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/friends_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/invites_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/partners_repository.dart';
@@ -42,6 +44,7 @@ import 'package:belluga_now/infrastructure/dal/dao/tenant_backend_contract.dart'
 import 'package:belluga_now/infrastructure/services/schedule_backend_contract.dart';
 import 'package:belluga_now/application/application_contract.dart';
 import 'package:belluga_now/presentation/common/location_permission/controllers/location_permission_controller.dart';
+import 'package:belluga_now/presentation/common/push/controllers/push_options_controller.dart';
 import 'package:belluga_now/infrastructure/services/push/push_presentation_gate.dart';
 import 'package:flutter/foundation.dart';
 import 'package:get_it/get_it.dart';
@@ -118,6 +121,11 @@ class ModuleSettings extends ModuleSettingsContract {
     if (!GetIt.I.isRegistered<LocationPermissionController>()) {
       GetIt.I.registerFactory<LocationPermissionController>(
         () => LocationPermissionController(),
+      );
+    }
+    if (!GetIt.I.isRegistered<PushOptionsController>()) {
+      GetIt.I.registerLazySingleton<PushOptionsController>(
+        () => PushOptionsController(),
       );
     }
   }
@@ -267,6 +275,9 @@ class ModuleSettings extends ModuleSettingsContract {
   Future<void> _registerRepositories() async {
     _registerIfAbsent<UserLocationRepositoryContract>(
       () => UserLocationRepository(),
+    );
+    _registerIfAbsent<ContactsRepositoryContract>(
+      () => ContactsRepository(),
     );
     await _registerAppDataRepository();
     _registerIfAbsent<TelemetryRepositoryContract>(

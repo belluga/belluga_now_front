@@ -19,6 +19,11 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 import 'package:push_handler/push_handler.dart';
 import 'package:belluga_now/infrastructure/services/push/push_transport_configurator.dart';
+import 'package:belluga_now/infrastructure/services/push/push_gatekeeper.dart';
+import 'package:belluga_now/infrastructure/services/push/push_answer_persistence.dart';
+import 'package:belluga_now/infrastructure/services/push/push_action_dispatcher.dart';
+import 'package:belluga_now/infrastructure/services/push/push_telemetry_forwarder.dart';
+import 'package:belluga_now/presentation/common/push/controllers/push_options_controller.dart';
 import 'package:flutter/foundation.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
@@ -32,6 +37,11 @@ typedef PushHandlerRepositoryFactory = PushHandlerRepositoryContract Function({
   Future<void> Function()? presentationGate,
   required Stream<dynamic>? authChangeStream,
   required String Function() platformResolver,
+  Future<bool> Function(StepData step)? gatekeeper,
+  Future<List<OptionItem>> Function(OptionSource source)? optionsBuilder,
+  Future<void> Function(AnswerPayload answer, StepData step)? onStepSubmit,
+  Future<void> Function(ButtonData button, StepData step)? onCustomAction,
+  void Function(PushEvent event)? onPushEvent,
 });
 
 abstract class ApplicationContract extends ModularAppContract {
@@ -40,6 +50,7 @@ abstract class ApplicationContract extends ModularAppContract {
   final AppRouter _appRouter;
   final _moduleSettings = ModuleSettings();
   StreamSubscription<RemoteMessage>? _pushMessageSubscription;
+  PushHandlerRepositoryContract? _pushRepository;
 
   Future<void> initialSettingsPlatform();
 
@@ -107,6 +118,18 @@ abstract class ApplicationContract extends ModularAppContract {
     final transportConfig =
         PushTransportConfigurator.build(authRepository: authRepository);
     final navigationResolver = moduleSettings.buildPushNavigationResolver();
+    final answerPersistence = PushAnswerPersistence();
+    final gatekeeper = PushGatekeeper(
+      contextProvider: () => appRouter.navigatorKey.currentContext,
+      answerPersistence: answerPersistence,
+    );
+    final optionsController = GetIt.I.get<PushOptionsController>();
+    final telemetryForwarder = PushTelemetryForwarder();
+    final actionDispatcher = PushActionDispatcher(
+      contextProvider: () => appRouter.navigatorKey.currentContext,
+      optionsBuilder: optionsController.resolve,
+      answerPersistence: answerPersistence,
+    );
     final factory = repositoryFactory ??
         ({
           required PushTransportConfig transportConfig,
@@ -116,6 +139,11 @@ abstract class ApplicationContract extends ModularAppContract {
           Future<void> Function()? presentationGate,
           required Stream<dynamic>? authChangeStream,
           required String Function() platformResolver,
+          Future<bool> Function(StepData step)? gatekeeper,
+          Future<List<OptionItem>> Function(OptionSource source)? optionsBuilder,
+          Future<void> Function(AnswerPayload answer, StepData step)? onStepSubmit,
+          Future<void> Function(ButtonData button, StepData step)? onCustomAction,
+          void Function(PushEvent event)? onPushEvent,
         }) {
           return PushHandlerRepositoryDefault(
             transportConfig: transportConfig,
@@ -125,6 +153,11 @@ abstract class ApplicationContract extends ModularAppContract {
             presentationGate: presentationGate,
             authChangeStream: authChangeStream,
             platformResolver: platformResolver,
+            gatekeeper: gatekeeper,
+            optionsBuilder: optionsBuilder,
+            onStepSubmit: onStepSubmit,
+            onCustomAction: onCustomAction,
+            onPushEvent: onPushEvent,
           );
         };
     final repository = factory(
@@ -144,8 +177,20 @@ abstract class ApplicationContract extends ModularAppContract {
       },
       authChangeStream: authRepository.userStreamValue.stream,
       platformResolver: () => BellugaConstants.settings.platform,
+      gatekeeper: gatekeeper.check,
+      optionsBuilder: optionsController.resolve,
+      onStepSubmit: (answer, step) =>
+          answerPersistence.persist(answer: answer, step: step),
+      onCustomAction: (button, step) => actionDispatcher.dispatch(
+        button: button,
+        step: step,
+      ),
+      onPushEvent: (event) {
+        unawaited(telemetryForwarder.forward(event));
+      },
     );
     await repository.init();
+    _pushRepository = repository;
     _listenForInvitePushUpdates(repository);
   }
 
@@ -164,6 +209,11 @@ abstract class ApplicationContract extends ModularAppContract {
             .applyInvitePushPayload(message.data);
       }
     });
+  }
+
+  @visibleForTesting
+  Future<void> debugPresentPushMessage(String messageId) async {
+    await _pushRepository?.debugInjectMessageId(messageId);
   }
   Future<void> _initializeFirebaseIfAvailable() async {
     final settings = GetIt.I.get<AppDataRepository>().appData.firebaseSettings;
