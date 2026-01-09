@@ -398,7 +398,7 @@ class _EventPoiDetailCard extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
               IconButton(
-                tooltip: 'Traçar rota',
+                tooltip: 'Tracar rota',
                 onPressed: onRoute,
                 icon: const Icon(Icons.directions_outlined),
               ),
@@ -414,4 +414,5 @@ class _EventPoiDetailCard extends StatelessWidget {
       ),
     );
   }
+
 }

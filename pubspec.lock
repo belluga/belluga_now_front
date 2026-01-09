@@ -1258,10 +1258,10 @@ packages:
   push_handler:
     dependency: "direct main"
     description:
-      path: "/home/elton/Dev/repos/flutter-packages/push_handler"
+      path: "C:/Unifast/belluga/flutter-packages/push_handler"
       relative: false
     source: path
-    version: "0.1.2"
+    version: "0.1.3"
   rational:
     dependency: transitive
     description:

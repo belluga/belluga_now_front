@@ -67,7 +67,7 @@ dev_dependencies:
 
 dependency_overrides:
   push_handler:
-    path: /home/elton/Dev/repos/flutter-packages/push_handler
+    path: "C:/Unifast/belluga/flutter-packages/push_handler"
 
 flutter:
   uses-material-design: true

@@ -111,7 +111,7 @@ class _MapExperiencePrototypeScreenState
               ),
               Positioned(
                 left: 16,
-                right: 96,
+                right: 16,
                 bottom: 16,
                 child: SafeArea(
                   child: PoiDetailDeck(),
