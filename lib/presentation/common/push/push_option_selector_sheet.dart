@@ -8,6 +8,7 @@ class PushOptionSelectorSheet extends StatefulWidget {
     required this.body,
     required this.layout,
     required this.gridColumns,
+    required this.selectionMode,
     required this.options,
     required this.minSelected,
     required this.maxSelected,
@@ -18,6 +19,7 @@ class PushOptionSelectorSheet extends StatefulWidget {
   final String body;
   final String layout;
   final int gridColumns;
+  final String selectionMode;
   final List<OptionItem> options;
   final int minSelected;
   final int maxSelected;
@@ -29,6 +31,7 @@ class PushOptionSelectorSheet extends StatefulWidget {
     required String body,
     required String layout,
     required int gridColumns,
+    required String selectionMode,
     required List<OptionItem> options,
     required int minSelected,
     required int maxSelected,
@@ -46,6 +49,7 @@ class PushOptionSelectorSheet extends StatefulWidget {
             body: body,
             layout: layout,
             gridColumns: gridColumns,
+            selectionMode: selectionMode,
             options: options,
             minSelected: minSelected,
             maxSelected: maxSelected,
@@ -71,6 +75,7 @@ class _PushOptionSelectorSheetState extends State<PushOptionSelectorSheet> {
         ? widget.title
         : 'Selecione seus favoritos';
     final bodyText = widget.body;
+    final canContinue = _isSelectionValid();
 
     return Scaffold(
       appBar: AppBar(
@@ -106,8 +111,8 @@ class _PushOptionSelectorSheetState extends State<PushOptionSelectorSheet> {
               child: SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: _closeSheet,
-                  child: const Text('Salvar'),
+                  onPressed: canContinue ? _closeSheet : null,
+                  child: const Text('Continuar'),
                 ),
               ),
             ),
@@ -238,8 +243,21 @@ class _PushOptionSelectorSheetState extends State<PushOptionSelectorSheet> {
   }
 
   void _toggle(OptionItem option) {
-    final max = widget.maxSelected;
     final isSelected = _selectedValues.contains(option.value);
+    final selectionMode = widget.selectionMode;
+    if (selectionMode == 'single') {
+      setState(() {
+        if (isSelected) {
+          _selectedValues.remove(option.value);
+          return;
+        }
+        _selectedValues
+          ..clear()
+          ..add(option.value);
+      });
+      return;
+    }
+    final max = widget.maxSelected;
     if (!isSelected && max > 0 && _selectedValues.length >= max) {
       return;
     }
@@ -250,6 +268,22 @@ class _PushOptionSelectorSheetState extends State<PushOptionSelectorSheet> {
         _selectedValues.add(option.value);
       }
     });
+  }
+
+  bool _isSelectionValid() {
+    final selectionMode = widget.selectionMode;
+    if (selectionMode == 'single') {
+      return _selectedValues.length == 1;
+    }
+    final min = widget.minSelected;
+    final max = widget.maxSelected;
+    if (max > 0 && _selectedValues.length > max) {
+      return false;
+    }
+    if (min <= 0) {
+      return true;
+    }
+    return _selectedValues.length >= min;
   }
 
   void _closeSheet() {

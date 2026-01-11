@@ -146,6 +146,7 @@ class _RepositoryCapture {
     Future<bool> Function(StepData step)? gatekeeper,
     Future<List<OptionItem>> Function(OptionSource source)? optionsBuilder,
     Future<void> Function(AnswerPayload answer, StepData step)? onStepSubmit,
+    String? Function(StepData step, String? value)? stepValidator,
     Future<void> Function(ButtonData button, StepData step)? onCustomAction,
     void Function(PushEvent event)? onPushEvent,
   }) {
@@ -163,6 +164,7 @@ class _RepositoryCapture {
       gatekeeper: gatekeeper,
       optionsBuilder: optionsBuilder,
       onStepSubmit: onStepSubmit,
+      stepValidator: stepValidator,
       onCustomAction: onCustomAction,
       onPushEvent: onPushEvent,
       onInit: () => initCalled = true,
@@ -180,6 +182,7 @@ class _FakePushHandlerRepository extends PushHandlerRepositoryContract {
     super.gatekeeper,
     super.optionsBuilder,
     super.onStepSubmit,
+    super.stepValidator,
     super.onCustomAction,
     super.onPushEvent,
     required super.authChangeStream,

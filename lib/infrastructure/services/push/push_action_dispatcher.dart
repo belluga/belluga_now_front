@@ -34,8 +34,6 @@ class PushActionDispatcher {
     }
 
     switch (action) {
-      case 'noop':
-        return;
       case 'request_location_permission':
       case 'request_location':
         await _userLocationRepository.resolveUserLocation();
@@ -108,6 +106,7 @@ class PushActionDispatcher {
       body: step.body.value,
       layout: config.layout ?? 'list',
       gridColumns: config.gridColumns ?? 2,
+      selectionMode: config.selectionMode ?? 'single',
       options: options,
       minSelected: config.minSelected ?? 0,
       maxSelected: config.maxSelected ?? 0,

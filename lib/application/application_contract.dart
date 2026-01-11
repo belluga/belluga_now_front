@@ -22,8 +22,10 @@ import 'package:belluga_now/infrastructure/services/push/push_transport_configur
 import 'package:belluga_now/infrastructure/services/push/push_gatekeeper.dart';
 import 'package:belluga_now/infrastructure/services/push/push_answer_persistence.dart';
 import 'package:belluga_now/infrastructure/services/push/push_action_dispatcher.dart';
+import 'package:belluga_now/infrastructure/services/push/push_message_instance_tracker.dart';
 import 'package:belluga_now/infrastructure/services/push/push_telemetry_forwarder.dart';
 import 'package:belluga_now/presentation/common/push/controllers/push_options_controller.dart';
+import 'package:belluga_now/presentation/common/push/push_step_validator.dart';
 import 'package:flutter/foundation.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
@@ -40,6 +42,7 @@ typedef PushHandlerRepositoryFactory = PushHandlerRepositoryContract Function({
   Future<bool> Function(StepData step)? gatekeeper,
   Future<List<OptionItem>> Function(OptionSource source)? optionsBuilder,
   Future<void> Function(AnswerPayload answer, StepData step)? onStepSubmit,
+  String? Function(StepData step, String? value)? stepValidator,
   Future<void> Function(ButtonData button, StepData step)? onCustomAction,
   void Function(PushEvent event)? onPushEvent,
 });
@@ -118,13 +121,17 @@ abstract class ApplicationContract extends ModularAppContract {
     final transportConfig =
         PushTransportConfigurator.build(authRepository: authRepository);
     final navigationResolver = moduleSettings.buildPushNavigationResolver();
-    final answerPersistence = PushAnswerPersistence();
+    final messageInstanceTracker = PushMessageInstanceTracker();
+    final answerPersistence = PushAnswerPersistence(
+      messageInstanceIdProvider: () => messageInstanceTracker.currentId,
+    );
     final gatekeeper = PushGatekeeper(
       contextProvider: () => appRouter.navigatorKey.currentContext,
       answerPersistence: answerPersistence,
     );
     final optionsController = GetIt.I.get<PushOptionsController>();
     final telemetryForwarder = PushTelemetryForwarder();
+    final stepValidator = PushStepValidator();
     final actionDispatcher = PushActionDispatcher(
       contextProvider: () => appRouter.navigatorKey.currentContext,
       optionsBuilder: optionsController.resolve,
@@ -142,6 +149,7 @@ abstract class ApplicationContract extends ModularAppContract {
           Future<bool> Function(StepData step)? gatekeeper,
           Future<List<OptionItem>> Function(OptionSource source)? optionsBuilder,
           Future<void> Function(AnswerPayload answer, StepData step)? onStepSubmit,
+          String? Function(StepData step, String? value)? stepValidator,
           Future<void> Function(ButtonData button, StepData step)? onCustomAction,
           void Function(PushEvent event)? onPushEvent,
         }) {
@@ -156,6 +164,7 @@ abstract class ApplicationContract extends ModularAppContract {
             gatekeeper: gatekeeper,
             optionsBuilder: optionsBuilder,
             onStepSubmit: onStepSubmit,
+            stepValidator: stepValidator,
             onCustomAction: onCustomAction,
             onPushEvent: onPushEvent,
           );
@@ -181,11 +190,13 @@ abstract class ApplicationContract extends ModularAppContract {
       optionsBuilder: optionsController.resolve,
       onStepSubmit: (answer, step) =>
           answerPersistence.persist(answer: answer, step: step),
+      stepValidator: stepValidator.validate,
       onCustomAction: (button, step) => actionDispatcher.dispatch(
         button: button,
         step: step,
       ),
       onPushEvent: (event) {
+        messageInstanceTracker.update(event);
         unawaited(telemetryForwarder.forward(event));
       },
     );

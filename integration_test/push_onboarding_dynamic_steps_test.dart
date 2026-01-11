@@ -27,7 +27,7 @@ void main() {
         'steps': [
           {
             'slug': 'choose-one',
-            'type': 'question',
+            'type': 'selector',
             'title': 'Pick one',
             'body': 'Select your favorite',
             'onSubmit': {
@@ -35,9 +35,9 @@ void main() {
               'store_key': 'preferences.favorite',
             },
             'config': {
-              'question_type': 'single_select',
+              'selection_ui': 'inline',
+              'selection_mode': 'single',
               'layout': 'list',
-              'min_selected': 1,
               'options': [
                 {'id': 'a', 'label': 'Option A'},
                 {'id': 'b', 'label': 'Option B'},
@@ -50,6 +50,8 @@ void main() {
             'title': 'Select items',
             'body': 'Choose as many as you want',
             'config': {
+              'selection_ui': 'inline',
+              'selection_mode': 'multi',
               'layout': 'tags',
               'option_source': {
                 'type': 'method',
