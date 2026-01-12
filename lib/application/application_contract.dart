@@ -24,6 +24,7 @@ import 'package:belluga_now/infrastructure/services/push/push_answer_handler.dar
 import 'package:belluga_now/infrastructure/services/push/push_answer_resolver.dart';
 import 'package:belluga_now/infrastructure/services/push/push_action_dispatcher.dart';
 import 'package:belluga_now/infrastructure/services/push/push_telemetry_forwarder.dart';
+import 'package:belluga_now/infrastructure/services/telemetry/telemetry_route_observer.dart';
 import 'package:belluga_now/presentation/common/push/controllers/push_options_controller.dart';
 import 'package:belluga_now/presentation/common/push/push_step_validator.dart';
 import 'package:flutter/foundation.dart';
@@ -334,7 +335,9 @@ class _ApplicationContractState extends State<ApplicationContract> {
           theme: widget.getLightThemeData(),
           darkTheme: widget.getDarkThemeData(),
           scrollBehavior: CustomScrollBehavior(),
-          routerConfig: widget.appRouter.config(),
+          routerConfig: widget.appRouter.config(
+            navigatorObservers: () => [TelemetryRouteObserver()],
+          ),
         );
       },
     );

@@ -94,7 +94,6 @@ class CityMapController implements Disposable {
 
   bool _hasRequestedPois = false;
   bool _eventsLoaded = false;
-  bool _mapOpenedTracked = false;
   StreamSubscription<PoiUpdateEvent?>? _poiEventsSubscription;
   StreamSubscription<MapEvent>? _mapEventSubscription;
   bool _filtersLoadFailed = false;
@@ -119,7 +118,6 @@ class CityMapController implements Disposable {
       _eventsLoaded = true;
     }
 
-    await _trackMapOpened();
   }
 
   Future<void> loadFilters() async {
@@ -237,15 +235,40 @@ class CityMapController implements Disposable {
 
   Future<void> searchPois(String query) async {
     final nextQuery = _composeQuery(searchTerm: query);
+    _logMapTelemetry(
+      EventTrackerEvents.search,
+      eventName: 'map_search_submitted',
+      properties: {
+        'query_len': query.trim().length,
+        'active_filter_count': activeFilterCount.value,
+      },
+    );
     await loadPois(nextQuery, loadingMessage: 'Buscando pontos...');
   }
 
   Future<void> clearSearch() async {
+    final previousQueryLen = currentSearchTerm?.trim().length ?? 0;
+    _logMapTelemetry(
+      EventTrackerEvents.buttonClick,
+      eventName: 'map_search_cleared',
+      properties: {
+        'previous_query_len': previousQueryLen,
+      },
+    );
     final query = _composeQuery(searchTerm: '');
     await loadPois(query, loadingMessage: 'Carregando pontos...');
   }
 
   Future<void> goToRegion(MapRegionDefinition region) async {
+    _logMapTelemetry(
+      EventTrackerEvents.selectItem,
+      eventName: 'map_region_selected',
+      properties: {
+        'region_id': region.id,
+        'region_label': region.label,
+        'zoom': region.zoom,
+      },
+    );
     final delta = region.boundsDelta;
     final ne = CityCoordinate(
       latitudeValue: LatitudeValue()
@@ -279,6 +302,7 @@ class CityMapController implements Disposable {
     try {
       final serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
+        _trackLocationFallback('services_disabled');
         _setMapStatus(MapStatus.error);
         _setMapMessage(
             'Ative os servicos de localizacao para ver sua posicao. Exibindo pontos padrao da cidade.');
@@ -293,6 +317,11 @@ class CityMapController implements Disposable {
 
       if (permission == LocationPermission.deniedForever ||
           permission == LocationPermission.denied) {
+        _trackLocationFallback(
+          permission == LocationPermission.deniedForever
+              ? 'permission_denied_forever'
+              : 'permission_denied',
+        );
         _setMapStatus(MapStatus.error);
         _setMapMessage(
             'Permita o acesso a localizacao para localizar pontos proximos. Exibindo pontos padrao da cidade.');
@@ -312,6 +341,13 @@ class CityMapController implements Disposable {
       );
 
       userLocationStreamValue.addValue(coordinate);
+      _logMapTelemetry(
+        EventTrackerEvents.viewContent,
+        eventName: 'map_location_resolved',
+        properties: {
+          'status': 'success',
+        },
+      );
 
       await loadPois(
         _queryForOrigin(coordinate),
@@ -323,11 +359,13 @@ class CityMapController implements Disposable {
         MapNavigationTarget(center: coordinate, zoom: 16),
       );
     } on PlatformException catch (error) {
+      _trackLocationFallback('error');
       _setMapStatus(MapStatus.error);
       _setMapMessage(
           'Nao foi possivel obter a localizacao (${error.code}). Exibindo pontos padrao da cidade.');
       await _fallbackLoadPois();
     } catch (_) {
+      _trackLocationFallback('error');
       _setMapStatus(MapStatus.error);
       _setMapMessage(
           'Nao foi possivel obter a localizacao. Exibindo pontos padrao da cidade.');
@@ -339,6 +377,7 @@ class CityMapController implements Disposable {
     final currentCategories = Set<CityPoiCategory>.from(
       selectedCategories.value,
     );
+    final wasSelected = currentCategories.contains(category);
     if (currentCategories.contains(category)) {
       currentCategories.remove(category);
     } else {
@@ -354,6 +393,17 @@ class CityMapController implements Disposable {
     )..removeWhere((tag) => !allowedTags.contains(tag));
     selectedTags.addValue(Set<String>.unmodifiable(nextTags));
     _updateActiveFilterCount();
+    final activeCount = normalized.length + nextTags.length;
+    _logMapTelemetry(
+      EventTrackerEvents.selectItem,
+      eventName: 'map_filter_category_toggled',
+      properties: {
+        'filter_type': 'category',
+        'category': category.name,
+        'selected': !wasSelected,
+        'active_filter_count': activeCount,
+      },
+    );
 
     unawaited(
       _applyFilters(normalized, nextTags),
@@ -371,6 +421,7 @@ class CityMapController implements Disposable {
     final currentTags = Set<String>.from(
       selectedTags.value,
     );
+    final wasSelected = currentTags.contains(tag);
     if (currentTags.contains(tag)) {
       currentTags.remove(tag);
     } else {
@@ -380,6 +431,17 @@ class CityMapController implements Disposable {
     final normalized = Set<String>.unmodifiable(currentTags);
     selectedTags.addValue(normalized);
     _updateActiveFilterCount();
+    final activeCount = selectedCategories.value.length + normalized.length;
+    _logMapTelemetry(
+      EventTrackerEvents.selectItem,
+      eventName: 'map_filter_tag_toggled',
+      properties: {
+        'filter_type': 'tag',
+        'tag': tag,
+        'selected': !wasSelected,
+        'active_filter_count': activeCount,
+      },
+    );
     unawaited(
       _applyFilters(
         selectedCategories.value,
@@ -397,6 +459,15 @@ class CityMapController implements Disposable {
   Future<void> applyMainFilter(MainFilterOption option) async {
     if (option.opensPanel) {
       activeMainFilterStreamValue.addValue(option);
+      _logMapTelemetry(
+        EventTrackerEvents.buttonClick,
+        eventName: 'map_main_filter_panel_opened',
+        properties: {
+          'filter_id': option.id,
+          'filter_label': option.label,
+          'filter_type': option.type.name,
+        },
+      );
       return;
     }
 
@@ -435,6 +506,18 @@ class CityMapController implements Disposable {
     }
 
     _updateActiveFilterCount();
+    final activeCount = selectedCategories.value.length +
+        selectedTags.value.length;
+    _logMapTelemetry(
+      EventTrackerEvents.selectItem,
+      eventName: 'map_main_filter_applied',
+      properties: {
+        'filter_id': option.id,
+        'filter_label': option.label,
+        'filter_type': option.type.name,
+        'active_filter_count': activeCount,
+      },
+    );
     final query = _buildQueryForMainFilter(option);
     await loadPois(query, loadingMessage: 'Carregando pontos...');
   }
@@ -445,6 +528,10 @@ class CityMapController implements Disposable {
     }
 
     activeMainFilterStreamValue.addValue(null);
+    _logMapTelemetry(
+      EventTrackerEvents.buttonClick,
+      eventName: 'map_main_filter_cleared',
+    );
 
     if (_previousSelectedCategories != null) {
       selectedCategories.addValue(
@@ -481,6 +568,10 @@ class CityMapController implements Disposable {
       Set<String>.unmodifiable(<String>{}),
     );
     _updateActiveFilterCount();
+    _logMapTelemetry(
+      EventTrackerEvents.buttonClick,
+      eventName: 'map_filters_cleared',
+    );
     await _applyFilters(const <CityPoiCategory>{}, const <String>{});
   }
 
@@ -520,6 +611,14 @@ class CityMapController implements Disposable {
   }
 
   Future<DirectionsInfo?> preparePoiDirections(CityPoiModel poi) {
+    _logMapTelemetry(
+      EventTrackerEvents.viewContent,
+      eventName: 'map_directions_opened',
+      properties: {
+        'source': 'poi',
+        'poi_id': poi.id,
+      },
+    );
     return _buildDirectionsInfo(
       coordinate: poi.coordinate,
       destinationName: poi.name,
@@ -532,6 +631,14 @@ class CityMapController implements Disposable {
       return Future.value(null);
     }
 
+    _logMapTelemetry(
+      EventTrackerEvents.viewContent,
+      eventName: 'map_directions_opened',
+      properties: {
+        'source': 'event',
+        'event_id': event.id,
+      },
+    );
     return _buildDirectionsInfo(
       coordinate: coordinate,
       destinationName: event.title.value,
@@ -744,15 +851,6 @@ class CityMapController implements Disposable {
     statusMessageStreamValue.addValue(message);
   }
 
-  Future<void> _trackMapOpened() async {
-    if (_mapOpenedTracked) return;
-    _mapOpenedTracked = true;
-    await _telemetryRepository.logEvent(
-      EventTrackerEvents.mapOpened,
-      eventName: 'map_opened',
-    );
-  }
-
   PoiQuery _buildQueryForMainFilter(MainFilterOption option) {
     final baseQuery = _currentQuery;
     final categorySet = option.categories;
@@ -928,6 +1026,13 @@ class CityMapController implements Disposable {
   }
 
   Future<bool> launchRideShareOption(RideShareOption option) {
+    _logMapTelemetry(
+      EventTrackerEvents.buttonClick,
+      eventName: 'map_ride_share_clicked',
+      properties: {
+        'provider': option.provider.name,
+      },
+    );
     return _launchFirstSupportedUri(option.uris, option.label);
   }
 
@@ -973,5 +1078,30 @@ class CityMapController implements Disposable {
     final categoryCount = selectedCategories.value.length;
     final tagCount = selectedTags.value.length;
     activeFilterCount.addValue(categoryCount + tagCount);
+  }
+
+  void _trackLocationFallback(String reason) {
+    _logMapTelemetry(
+      EventTrackerEvents.viewContent,
+      eventName: 'map_location_resolved',
+      properties: {
+        'status': 'fallback',
+        'reason': reason,
+      },
+    );
+  }
+
+  void _logMapTelemetry(
+    EventTrackerEvents event, {
+    required String eventName,
+    Map<String, dynamic>? properties,
+  }) {
+    unawaited(
+      _telemetryRepository.logEvent(
+        event,
+        eventName: eventName,
+        properties: properties,
+      ),
+    );
   }
 }
