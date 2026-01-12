@@ -1,3 +1,5 @@
+import 'package:auto_route/auto_route.dart';
+import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/domain/map/city_poi_model.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/presentation/prototypes/map_experience/controllers/map_screen_controller.dart';
@@ -65,7 +67,12 @@ class PrototypeMapLayers extends StatelessWidget {
                       (poi) => _markerBuilder.build(
                         poi: poi,
                         isSelected: selectedPoi?.id == poi.id,
-                        onTap: () => _controller.selectPoi(poi),
+                        onTap: () {
+                          _controller.selectPoi(poi);
+                          if (poi is EventPoiModel) {
+                            _openEventDetails(context, poi.event.slug);
+                          }
+                        },
                         size: poi is EventPoiModel ? eventSize : poiSize,
                       ),
                     );
@@ -142,5 +149,12 @@ class PrototypeMapLayers extends StatelessWidget {
   }) {
     final t = ((zoom - _minZoom) / (_maxZoom - _minZoom)).clamp(0.0, 1.0);
     return minSize + (maxSize - minSize) * t;
+  }
+
+  void _openEventDetails(BuildContext context, String slug) {
+    if (slug.isEmpty) {
+      return;
+    }
+    context.router.push(ImmersiveEventDetailRoute(eventSlug: slug));
   }
 }

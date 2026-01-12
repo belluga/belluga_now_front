@@ -29,12 +29,6 @@ class MarkerCore extends StatelessWidget {
 
     final decoration = BoxDecoration(
       shape: BoxShape.circle,
-      border: Border.all(
-        color: state == CityEventTemporalState.past
-            ? Colors.grey.shade500
-            : activeColor,
-        width: 2.8,
-      ),
       boxShadow: [
         BoxShadow(
           color: Colors.black.withValues(alpha: 0.16),

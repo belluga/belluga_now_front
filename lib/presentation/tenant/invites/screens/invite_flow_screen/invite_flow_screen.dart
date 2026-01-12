@@ -79,19 +79,10 @@ class _InviteFlowScreenState extends State<InviteFlowScreen> {
       }
       // Remove only after returning from share to avoid flashing next card mid-navigation.
       _controller.removeInvite();
-      _maybeExitIfNoInvites();
       return;
     }
 
     // Decline path: removal already handled in controller.
-    _maybeExitIfNoInvites();
-  }
-
-  void _maybeExitIfNoInvites() {
-    final noInvites = _controller.pendingInvitesStreamValue.value.isEmpty;
-    if (noInvites && mounted) {
-      context.router.maybePop();
-    }
   }
 
   void _openEventDetails(InviteModel invite) {

@@ -35,14 +35,14 @@ class PoiDetailDeck extends StatefulWidget {
 class _PoiDetailDeckState extends State<PoiDetailDeck>
     with TickerProviderStateMixin {
   final _controller = GetIt.I.get<MapScreenController>();
-  final PageController _pageController = PageController(viewportFraction: 0.88);
+  final PageController _pageController = PageController(viewportFraction: 0.8);
   final PoiDetailCardBuilder _cardBuilder = const PoiDetailCardBuilder();
   int _pageIndex = 0;
   PoiFilterMode? _lastFilterMode;
   final Map<String, double> _poiHeights = <String, double>{};
 
-  static const double _defaultCardHeight = 260;
-  static const double _minCardHeight = 190;
+  static const double _defaultCardHeight = 320;
+  static const double _minCardHeight = 220;
 
   @override
   void dispose() {
@@ -146,12 +146,11 @@ class _PoiDetailDeckState extends State<PoiDetailDeck>
 
   void _handlePoiAction(CityPoiModel poi) {
     if (poi is EventPoiModel) {
-      final slug = _resolveEventSlug(poi);
-      if (slug != null) {
-        if (!mounted) return;
-        context.router.push(EventDetailRoute(slug: slug));
-        return;
+      final slug = poi.event.slug;
+      if (slug.isNotEmpty && mounted) {
+        context.router.push(ImmersiveEventDetailRoute(eventSlug: slug));
       }
+      return;
     }
     if (!mounted) return;
     ScaffoldMessenger.of(context)
@@ -182,21 +181,6 @@ class _PoiDetailDeckState extends State<PoiDetailDeck>
     await _presentDirectionsOptions(info);
   }
 
-  String? _resolveEventSlug(EventPoiModel poi) {
-    final id = poi.event.id.value;
-    if (id.isNotEmpty) {
-      return id;
-    }
-    final title = poi.event.title.value;
-    if (title.isEmpty) {
-      return null;
-    }
-    final normalized =
-        title.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), '-');
-    return normalized
-        .replaceAll(RegExp(r'-{2,}'), '-')
-        .replaceAll(RegExp(r'^-+|-+$'), '');
-  }
 
   Future<DirectionsInfo?> _prepareDirections(CityPoiModel poi) async {
     final coordinate = poi.coordinate;
@@ -629,6 +613,7 @@ class _FilteredDeck extends StatelessWidget {
           height: deckHeight,
           child: PageView.builder(
             controller: pageController,
+            padEnds: false,
             itemCount: pois.length,
             onPageChanged: onChanged,
             itemBuilder: (context, index) {

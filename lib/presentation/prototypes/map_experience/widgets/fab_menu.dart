@@ -29,6 +29,10 @@ class _FabMenuState extends State<FabMenu> {
   bool _condensed = false;
   bool? _lastExpanded;
   Timer? _condenseTimer;
+  PoiFilterMode _previousFilterMode = PoiFilterMode.none;
+  PoiFilterMode? _lastFilterMode;
+  bool _revertedOnClose = false;
+  bool _ignoreNextFilterChange = false;
 
   @override
   void dispose() {
@@ -44,6 +48,7 @@ class _FabMenuState extends State<FabMenu> {
       }
       return;
     }
+    _revertedOnClose = false;
     if (_condensed) {
       setState(() => _condensed = false);
     }
@@ -72,6 +77,17 @@ class _FabMenuState extends State<FabMenu> {
         return StreamValueBuilder<PoiFilterMode>(
           streamValue: _fabController.filterModeStreamValue,
           builder: (_, mode) {
+            if (_lastFilterMode != mode) {
+              if (_ignoreNextFilterChange) {
+                _ignoreNextFilterChange = false;
+              } else {
+                if (_lastFilterMode != null) {
+                  _previousFilterMode = _lastFilterMode!;
+                }
+                _revertedOnClose = false;
+              }
+              _lastFilterMode = mode;
+            }
             final filterConfigs = [
               const _FilterConfig(
                 mode: PoiFilterMode.events,
@@ -133,7 +149,8 @@ class _FabMenuState extends State<FabMenu> {
                 ],
                 FloatingActionButton(
                   heroTag: 'map-fab-main',
-                  onPressed: _fabController.toggleExpanded,
+                  onPressed: () =>
+                      _handleMainFabPressed(mode, expanded),
                   child: Icon(expanded ? Icons.close : Icons.tune),
                 ),
               ],
@@ -142,6 +159,22 @@ class _FabMenuState extends State<FabMenu> {
         );
       },
     );
+  }
+
+  void _handleMainFabPressed(PoiFilterMode mode, bool expanded) {
+    if (!expanded) {
+      _fabController.toggleExpanded();
+      return;
+    }
+
+    if (!_revertedOnClose && mode != _previousFilterMode) {
+      _ignoreNextFilterChange = true;
+      _fabController.toggleFilterMode(_previousFilterMode);
+      setState(() => _revertedOnClose = true);
+      return;
+    }
+
+    _fabController.toggleExpanded();
   }
 }
 

@@ -133,10 +133,10 @@ packages:
     dependency: "direct main"
     description:
       name: card_stack_swiper
-      sha256: "1274aec8797d8330332a03de80ae8579f27533c55df6398ca720a1f878a2c9ad"
+      sha256: "06850692e6567035932ca840d00029fc96363f0e7f9dd324c987f9d27b2eb208"
       url: "https://pub.dev"
     source: hosted
-    version: "1.0.3"
+    version: "1.1.1"
   characters:
     dependency: transitive
     description:
@@ -173,10 +173,10 @@ packages:
     dependency: transitive
     description:
       name: code_builder
-      sha256: "11654819532ba94c34de52ff5feb52bd81cba1de00ef2ed622fd50295f9d4243"
+      sha256: "6a6cab2ba4680d6423f34a9b972a4c9a94ebe1b62ecec4e1a1f2cba91fd1319d"
       url: "https://pub.dev"
     source: hosted
-    version: "4.11.0"
+    version: "4.11.1"
   collection:
     dependency: transitive
     description:
@@ -309,10 +309,10 @@ packages:
     dependency: "direct main"
     description:
       name: equatable
-      sha256: "567c64b3cb4cf82397aac55f4f0cbd3ca20d77c6c03bedbc4ceaddc08904aef7"
+      sha256: "3e0141505477fd8ad55d6eb4e7776d3fe8430be8e497ccb1521370c3f21a3e2b"
       url: "https://pub.dev"
     source: hosted
-    version: "2.0.7"
+    version: "2.0.8"
   event_tracker_handler:
     dependency: "direct main"
     description:
@@ -332,10 +332,10 @@ packages:
     dependency: transitive
     description:
       name: ffi
-      sha256: "289279317b4b16eb2bb7e271abccd4bf84ec9bdcbe999e278a94b804f5630418"
+      sha256: d07d37192dbf97461359c1518788f203b0c9102cfd2c35a716b823741219542c
       url: "https://pub.dev"
     source: hosted
-    version: "2.1.4"
+    version: "2.1.5"
   file:
     dependency: transitive
     description:
@@ -1202,10 +1202,10 @@ packages:
     dependency: transitive
     description:
       name: phone_numbers_parser
-      sha256: "95fe667ce10b46c31fba50da3df4dd15272b0febd37091575e5135c087032e37"
+      sha256: ca0e0ddbea2876b6df7efadd1d79a92cb9fd574170c807a6be31a19457b1b120
       url: "https://pub.dev"
     source: hosted
-    version: "9.0.17"
+    version: "9.0.18"
   platform:
     dependency: transitive
     description:
@@ -1289,18 +1289,18 @@ packages:
     dependency: transitive
     description:
       name: sentry
-      sha256: "9b2fe138df1a104f6e41d8ebf2b1e4fe39d4370d2200eb4eea29913d38b8b33b"
+      sha256: b6020007d35199f2be3170443c01243c8533232261fcd54237e38710788cebd0
       url: "https://pub.dev"
     source: hosted
-    version: "9.9.1"
+    version: "9.9.2"
   sentry_flutter:
     dependency: "direct main"
     description:
       name: sentry_flutter
-      sha256: "698e0d47c0cf7362ad3b8034f6af5e9f3b2175d7a0cf58f78a967c29b43072b7"
+      sha256: "9bc083608f406921f45836d409abf8713bc307486276a129e3fdd6a8df88b171"
       url: "https://pub.dev"
     source: hosted
-    version: "9.9.1"
+    version: "9.9.2"
   share_plus:
     dependency: "direct main"
     description:
@@ -1638,10 +1638,10 @@ packages:
     dependency: transitive
     description:
       name: video_player_avfoundation
-      sha256: e4d33b79a064498c6eb3a6a492b6a5012573d4943c28d566caf1a6c0840fe78d
+      sha256: d1eb970495a76abb35e5fa93ee3c58bd76fb6839e2ddf2fbb636674f2b971dd4
       url: "https://pub.dev"
     source: hosted
-    version: "2.8.8"
+    version: "2.8.9"
   video_player_platform_interface:
     dependency: transitive
     description:

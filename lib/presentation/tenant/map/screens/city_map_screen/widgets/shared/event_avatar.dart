@@ -21,10 +21,6 @@ class EventAvatar extends StatelessWidget {
       height: 60,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        border: Border.all(
-          color: isPast ? Colors.grey.shade500 : fallbackColor,
-          width: 2.8,
-        ),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.14),
