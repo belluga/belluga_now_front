@@ -24,7 +24,7 @@ void main() {
         'title': 'Push Title',
         'body': 'Push body copy',
         'layoutType': 'fullScreen',
-        'closeOnLastStepAction': true,
+        'closeBehavior': 'after_action',
         'steps': [
           {
             'slug': 'step-1',

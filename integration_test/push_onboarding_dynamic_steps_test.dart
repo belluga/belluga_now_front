@@ -23,7 +23,7 @@ void main() {
         'title': 'Onboarding',
         'body': 'Start here',
         'layoutType': 'fullScreen',
-        'closeOnLastStepAction': true,
+        'closeBehavior': 'after_action',
         'steps': [
           {
             'slug': 'choose-one',
@@ -99,7 +99,7 @@ void main() {
         'title': 'Gate Flow',
         'body': 'Test gate skip',
         'layoutType': 'fullScreen',
-        'closeOnLastStepAction': true,
+        'closeBehavior': 'after_action',
         'steps': gateFirst
             ? [steps[1], steps[2]]
             : [steps[0], steps[1], steps[2]],
@@ -260,7 +260,7 @@ void main() {
         'title': 'Back Flow',
         'body': 'Test system back',
         'layoutType': 'fullScreen',
-        'closeOnLastStepAction': true,
+        'closeBehavior': 'after_action',
         'steps': [
           {
             'slug': 'step-1',

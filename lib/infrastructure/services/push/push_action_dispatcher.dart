@@ -1,5 +1,4 @@
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
-import 'package:belluga_now/infrastructure/services/push/push_answer_persistence.dart';
 import 'package:belluga_now/presentation/common/push/push_option_selector_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
@@ -10,19 +9,19 @@ class PushActionDispatcher {
   PushActionDispatcher({
     BuildContext? Function()? contextProvider,
     UserLocationRepositoryContract? userLocationRepository,
-    PushAnswerPersistence? answerPersistence,
     Future<List<OptionItem>> Function(OptionSource source)? optionsBuilder,
+    Future<void> Function(AnswerPayload answer, StepData step)? onStepSubmit,
   })  : _userLocationRepository =
             userLocationRepository ??
                 GetIt.I.get<UserLocationRepositoryContract>(),
         _contextProvider = contextProvider,
-        _answerPersistence = answerPersistence ?? PushAnswerPersistence(),
-        _optionsBuilder = optionsBuilder;
+        _optionsBuilder = optionsBuilder,
+        _onStepSubmit = onStepSubmit;
 
   final UserLocationRepositoryContract _userLocationRepository;
   final BuildContext? Function()? _contextProvider;
-  final PushAnswerPersistence _answerPersistence;
   final Future<List<OptionItem>> Function(OptionSource source)? _optionsBuilder;
+  final Future<void> Function(AnswerPayload answer, StepData step)? _onStepSubmit;
 
   Future<void> dispatch({
     required ButtonData button,
@@ -44,6 +43,7 @@ class PushActionDispatcher {
         await _handleContactsPermission(step);
         return;
       case 'open_favorites_selector':
+      case 'open_selector':
         await _openFavoritesSelector(step);
         return;
       case 'open_app_settings':
@@ -96,7 +96,12 @@ class PushActionDispatcher {
       return;
     }
 
-    final initialSelected = await _loadSelectedValues(config.storeKey);
+    final selectionMode = config.selectionMode ?? 'single';
+    final maxSelected = selectionMode == 'single' ? 1 : config.maxSelected;
+    final initialSelected = _selectedFromOptions(
+      options,
+      maxSelected: maxSelected,
+    );
     if (!context.mounted) {
       return;
     }
@@ -106,10 +111,10 @@ class PushActionDispatcher {
       body: step.body.value,
       layout: config.layout ?? 'list',
       gridColumns: config.gridColumns ?? 2,
-      selectionMode: config.selectionMode ?? 'single',
+      selectionMode: selectionMode,
       options: options,
       minSelected: config.minSelected ?? 0,
-      maxSelected: config.maxSelected ?? 0,
+      maxSelected: maxSelected ?? 0,
       initialSelected: initialSelected,
     );
     if (selectedValues == null) {
@@ -121,7 +126,10 @@ class PushActionDispatcher {
       value: selectedValues,
       metadata: const {'source': 'custom_action'},
     );
-    await _answerPersistence.persist(answer: answer, step: step);
+    final handler = _onStepSubmit;
+    if (handler != null) {
+      await handler(answer, step);
+    }
   }
 
   Future<List<OptionItem>> _resolveOptions(StepConfig config) async {
@@ -136,16 +144,21 @@ class PushActionDispatcher {
     return config.options;
   }
 
-  Future<List<dynamic>> _loadSelectedValues(String? storeKey) async {
-    if (storeKey == null || storeKey.isEmpty) {
+  List<dynamic> _selectedFromOptions(
+    List<OptionItem> options, {
+    int? maxSelected,
+  }) {
+    final selected = options
+        .where((option) => option.isSelected)
+        .map((option) => option.value)
+        .toList();
+    if (selected.isEmpty) {
       return const [];
     }
-    final stored = await _answerPersistence.read(storeKey);
-    final value = stored?['value'];
-    if (value is List) {
-      return List<dynamic>.from(value);
+    if (maxSelected != null && maxSelected > 0 && selected.length > maxSelected) {
+      return selected.take(maxSelected).toList();
     }
-    return const [];
+    return selected;
   }
 
   void _showToast(String? message) {

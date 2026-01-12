@@ -1,5 +1,5 @@
 import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:belluga_now/infrastructure/services/push/push_answer_persistence.dart';
+import 'package:belluga_now/infrastructure/services/push/push_answer_resolver.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -8,12 +8,12 @@ import 'package:push_handler/push_handler.dart';
 class PushGatekeeper {
   PushGatekeeper({
     required BuildContext? Function() contextProvider,
-    PushAnswerPersistence? answerPersistence,
+    PushAnswerResolver? answerResolver,
   })  : _contextProvider = contextProvider,
-        _answerPersistence = answerPersistence ?? PushAnswerPersistence();
+        _answerResolver = answerResolver;
 
   final BuildContext? Function() _contextProvider;
-  final PushAnswerPersistence _answerPersistence;
+  final PushAnswerResolver? _answerResolver;
 
   Future<bool> check(StepData step) async {
     final gate = step.gate;
@@ -79,12 +79,12 @@ class PushGatekeeper {
   }
 
   Future<bool> _checkMinSelected(StepData step) async {
-    final storeKey = step.onSubmit?.storeKey ?? step.config?.storeKey;
-    if (storeKey == null || storeKey.isEmpty) {
+    final resolver = _answerResolver;
+    if (resolver == null) {
       return false;
     }
-    final stored = await _answerPersistence.read(storeKey);
-    final value = stored?['value'];
+    final stored = await resolver.resolve(step);
+    final value = stored?.value;
     final count = value is List ? value.length : value == null ? 0 : 1;
     final minSelected = step.config?.minSelected ?? 1;
     return count >= minSelected;

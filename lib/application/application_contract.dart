@@ -20,9 +20,9 @@ import 'package:stream_value/core/stream_value_builder.dart';
 import 'package:push_handler/push_handler.dart';
 import 'package:belluga_now/infrastructure/services/push/push_transport_configurator.dart';
 import 'package:belluga_now/infrastructure/services/push/push_gatekeeper.dart';
-import 'package:belluga_now/infrastructure/services/push/push_answer_persistence.dart';
+import 'package:belluga_now/infrastructure/services/push/push_answer_handler.dart';
+import 'package:belluga_now/infrastructure/services/push/push_answer_resolver.dart';
 import 'package:belluga_now/infrastructure/services/push/push_action_dispatcher.dart';
-import 'package:belluga_now/infrastructure/services/push/push_message_instance_tracker.dart';
 import 'package:belluga_now/infrastructure/services/push/push_telemetry_forwarder.dart';
 import 'package:belluga_now/presentation/common/push/controllers/push_options_controller.dart';
 import 'package:belluga_now/presentation/common/push/push_step_validator.dart';
@@ -121,13 +121,12 @@ abstract class ApplicationContract extends ModularAppContract {
     final transportConfig =
         PushTransportConfigurator.build(authRepository: authRepository);
     final navigationResolver = moduleSettings.buildPushNavigationResolver();
-    final messageInstanceTracker = PushMessageInstanceTracker();
-    final answerPersistence = PushAnswerPersistence(
-      messageInstanceIdProvider: () => messageInstanceTracker.currentId,
-    );
+    final answerResolver = GetIt.I.isRegistered<PushAnswerResolver>()
+        ? GetIt.I.get<PushAnswerResolver>()
+        : null;
     final gatekeeper = PushGatekeeper(
       contextProvider: () => appRouter.navigatorKey.currentContext,
-      answerPersistence: answerPersistence,
+      answerResolver: answerResolver,
     );
     final optionsController = GetIt.I.get<PushOptionsController>();
     final telemetryForwarder = PushTelemetryForwarder();
@@ -135,7 +134,9 @@ abstract class ApplicationContract extends ModularAppContract {
     final actionDispatcher = PushActionDispatcher(
       contextProvider: () => appRouter.navigatorKey.currentContext,
       optionsBuilder: optionsController.resolve,
-      answerPersistence: answerPersistence,
+      onStepSubmit: (answer, step) async {
+        await _handlePushAnswer(answer, step);
+      },
     );
     final factory = repositoryFactory ??
         ({
@@ -188,15 +189,13 @@ abstract class ApplicationContract extends ModularAppContract {
       platformResolver: () => BellugaConstants.settings.platform,
       gatekeeper: gatekeeper.check,
       optionsBuilder: optionsController.resolve,
-      onStepSubmit: (answer, step) =>
-          answerPersistence.persist(answer: answer, step: step),
+      onStepSubmit: (answer, step) => _handlePushAnswer(answer, step),
       stepValidator: stepValidator.validate,
       onCustomAction: (button, step) => actionDispatcher.dispatch(
         button: button,
         step: step,
       ),
       onPushEvent: (event) {
-        messageInstanceTracker.update(event);
         unawaited(telemetryForwarder.forward(event));
       },
     );
@@ -220,6 +219,16 @@ abstract class ApplicationContract extends ModularAppContract {
             .applyInvitePushPayload(message.data);
       }
     });
+  }
+
+  Future<void> _handlePushAnswer(
+    AnswerPayload answer,
+    StepData step,
+  ) async {
+    if (GetIt.I.isRegistered<PushAnswerHandler>()) {
+      final handler = GetIt.I.get<PushAnswerHandler>();
+      await handler.handle(answer, step);
+    }
   }
 
   @visibleForTesting

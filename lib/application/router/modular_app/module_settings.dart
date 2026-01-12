@@ -45,6 +45,9 @@ import 'package:belluga_now/infrastructure/services/schedule_backend_contract.da
 import 'package:belluga_now/application/application_contract.dart';
 import 'package:belluga_now/presentation/common/location_permission/controllers/location_permission_controller.dart';
 import 'package:belluga_now/presentation/common/push/controllers/push_options_controller.dart';
+import 'package:belluga_now/infrastructure/services/push/push_answer_handler.dart';
+import 'package:belluga_now/infrastructure/services/push/push_answer_relay.dart';
+import 'package:belluga_now/infrastructure/services/push/push_answer_resolver.dart';
 import 'package:belluga_now/infrastructure/services/push/push_presentation_gate.dart';
 import 'package:flutter/foundation.dart';
 import 'package:get_it/get_it.dart';
@@ -134,6 +137,9 @@ class ModuleSettings extends ModuleSettingsContract {
     _registerLazySingletonIfAbsent<PushPresentationGate>(
       () => PushPresentationGate(),
     );
+    final relay = _registerIfAbsent<PushAnswerRelay>(() => PushAnswerRelay());
+    _registerLazySingletonIfAbsent<PushAnswerHandler>(() => relay);
+    _registerLazySingletonIfAbsent<PushAnswerResolver>(() => relay);
   }
 
   PushNavigationResolver buildPushNavigationResolver() {

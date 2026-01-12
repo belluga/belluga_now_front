@@ -95,4 +95,36 @@ void main() {
     expect(firstTile.value, isFalse);
     expect(secondTile.value, isTrue);
   });
+
+  testWidgets('uses OptionItem.isSelected as initial selection', (tester) async {
+    final options = [
+      OptionItem(value: 'a', label: 'A'),
+      OptionItem(value: 'b', label: 'B', isSelected: true),
+    ];
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: PushOptionSelectorSheet(
+          title: 'Select',
+          body: '',
+          layout: 'list',
+          gridColumns: 2,
+          selectionMode: 'single',
+          options: options,
+          minSelected: 0,
+          maxSelected: 0,
+          initialSelected: const [],
+        ),
+      ),
+    );
+
+    var firstTile = tester.widget<CheckboxListTile>(
+      find.widgetWithText(CheckboxListTile, 'A'),
+    );
+    var secondTile = tester.widget<CheckboxListTile>(
+      find.widgetWithText(CheckboxListTile, 'B'),
+    );
+    expect(firstTile.value, isFalse);
+    expect(secondTile.value, isTrue);
+  });
 }

@@ -66,8 +66,26 @@ class PushOptionSelectorSheet extends StatefulWidget {
 }
 
 class _PushOptionSelectorSheetState extends State<PushOptionSelectorSheet> {
-  late final Set<dynamic> _selectedValues =
-      widget.initialSelected.toSet();
+  late final Set<dynamic> _selectedValues = _resolveInitialSelection();
+
+  Set<dynamic> _resolveInitialSelection() {
+    final selected = <dynamic>[];
+    selected.addAll(widget.initialSelected);
+    selected.addAll(
+      widget.options.where((option) => option.isSelected).map((option) => option.value),
+    );
+    if (selected.isEmpty) {
+      return <dynamic>{};
+    }
+    if (widget.selectionMode == 'single') {
+      return {selected.first};
+    }
+    final max = widget.maxSelected;
+    if (max > 0 && selected.length > max) {
+      return selected.take(max).toSet();
+    }
+    return selected.toSet();
+  }
 
   @override
   Widget build(BuildContext context) {
