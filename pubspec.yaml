@@ -68,6 +68,8 @@ dev_dependencies:
 dependency_overrides:
   push_handler:
     path: /home/elton/Dev/repos/flutter-packages/push_handler
+  event_tracker_handler:
+    path: /home/elton/Dev/repos/flutter-packages/event_tracker_handler
 
 flutter:
   uses-material-design: true

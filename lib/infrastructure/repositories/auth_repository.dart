@@ -18,6 +18,7 @@ final class AuthRepository extends AuthRepositoryContract<UserBelluga> {
 
   static const String _userTokenStorageKey = 'user_token';
   static const String _deviceIdStorageKey = 'device_id';
+  static const String _anonymousUserIdStorageKey = 'anonymous_user_id';
   static const Uuid _uuid = Uuid();
 
   @override
@@ -27,6 +28,8 @@ final class AuthRepository extends AuthRepositoryContract<UserBelluga> {
   String get userToken => _userTokenStreamValue.value ?? '';
 
   final StreamValue<String?> _userTokenStreamValue = StreamValue<String?>();
+  final StreamValue<String?> _anonymousUserIdStreamValue =
+      StreamValue<String?>();
 
   static FlutterSecureStorage get storage => FlutterSecureStorage();
 
@@ -49,6 +52,7 @@ final class AuthRepository extends AuthRepositoryContract<UserBelluga> {
   @override
   Future<void> init() async {
     await _getUserTokenFromLocalStorage();
+    await _getAnonymousUserIdFromLocalStorage();
     await autoLogin();
     await _ensureAnonymousIdentityToken();
   }
@@ -134,6 +138,36 @@ final class AuthRepository extends AuthRepositoryContract<UserBelluga> {
     _userTokenStreamValue.addValue(token);
   }
 
+  @override
+  Future<String?> getAnonymousUserId() async {
+    final current = _anonymousUserIdStreamValue.value;
+    if (current != null && current.isNotEmpty) {
+      return current;
+    }
+    final stored =
+        await AuthRepository.storage.read(key: _anonymousUserIdStorageKey);
+    _anonymousUserIdStreamValue.addValue(stored);
+    return stored;
+  }
+
+  Future<void> _getAnonymousUserIdFromLocalStorage() async {
+    final stored =
+        await AuthRepository.storage.read(key: _anonymousUserIdStorageKey);
+    _anonymousUserIdStreamValue.addValue(stored);
+  }
+
+  Future<void> _setAnonymousUserId(String? userId) async {
+    _anonymousUserIdStreamValue.addValue(userId);
+    if (userId == null || userId.isEmpty) {
+      await AuthRepository.storage.delete(key: _anonymousUserIdStorageKey);
+      return;
+    }
+    await AuthRepository.storage.write(
+      key: _anonymousUserIdStorageKey,
+      value: userId,
+    );
+  }
+
   Future<void> _ensureAnonymousIdentityToken() async {
     if (userToken.isNotEmpty) {
       return;
@@ -142,12 +176,15 @@ final class AuthRepository extends AuthRepositoryContract<UserBelluga> {
     final fingerprintHash = _hashFingerprint(deviceId);
     final deviceName = _buildDeviceName(deviceId);
     try {
-      final token = await backend.auth.issueAnonymousIdentity(
+      final response = await backend.auth.issueAnonymousIdentity(
         deviceName: deviceName,
         fingerprintHash: fingerprintHash,
       );
-      if (token.isNotEmpty) {
-        userTokenUpdate(token);
+      if (response.token.isNotEmpty) {
+        userTokenUpdate(response.token);
+      }
+      if (response.userId != null && response.userId!.isNotEmpty) {
+        await _setAnonymousUserId(response.userId);
       }
     } catch (_) {
       // Anonymous identity is best-effort; push init will retry on auth updates.

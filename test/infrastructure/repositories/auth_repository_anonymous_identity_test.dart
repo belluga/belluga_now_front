@@ -30,7 +30,10 @@ void main() {
   });
 
   test('init issues anonymous token when none exists', () async {
-    final authBackend = _FakeAuthBackend(tokenToReturn: 'anon-token-1');
+    final authBackend = _FakeAuthBackend(
+      tokenToReturn: 'anon-token-1',
+      userIdToReturn: 'anon-user-1',
+    );
     GetIt.I.registerSingleton<BackendContract>(
       _FakeBackend(auth: authBackend),
     );
@@ -44,11 +47,17 @@ void main() {
 
     final stored = await AuthRepository.storage.read(key: 'user_token');
     expect(stored, 'anon-token-1');
+    final anonStored =
+        await AuthRepository.storage.read(key: 'anonymous_user_id');
+    expect(anonStored, 'anon-user-1');
   });
 
   test('init skips anonymous token when stored token exists', () async {
     FlutterSecureStorage.setMockInitialValues({'user_token': 'stored-token'});
-    final authBackend = _FakeAuthBackend(tokenToReturn: 'anon-token-2');
+    final authBackend = _FakeAuthBackend(
+      tokenToReturn: 'anon-token-2',
+      userIdToReturn: 'anon-user-2',
+    );
     GetIt.I.registerSingleton<BackendContract>(
       _FakeBackend(auth: authBackend),
     );
@@ -82,13 +91,17 @@ class _FakeBackend extends BackendContract {
 }
 
 class _FakeAuthBackend extends AuthBackendContract {
-  _FakeAuthBackend({required this.tokenToReturn});
+  _FakeAuthBackend({
+    required this.tokenToReturn,
+    required this.userIdToReturn,
+  });
 
   final String tokenToReturn;
+  final String userIdToReturn;
   int issueCount = 0;
 
   @override
-  Future<String> issueAnonymousIdentity({
+  Future<AnonymousIdentityResponse> issueAnonymousIdentity({
     required String deviceName,
     required String fingerprintHash,
     String? userAgent,
@@ -96,7 +109,11 @@ class _FakeAuthBackend extends AuthBackendContract {
     Map<String, dynamic>? metadata,
   }) async {
     issueCount += 1;
-    return tokenToReturn;
+    return AnonymousIdentityResponse(
+      token: tokenToReturn,
+      userId: userIdToReturn,
+      identityState: 'anonymous',
+    );
   }
 
   @override

@@ -29,6 +29,7 @@ import 'package:belluga_now/presentation/common/push/push_step_validator.dart';
 import 'package:flutter/foundation.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
 import 'package:belluga_now/infrastructure/services/push/push_presentation_gate.dart';
 
 typedef PushHandlerRepositoryFactory = PushHandlerRepositoryContract Function({
@@ -53,6 +54,7 @@ abstract class ApplicationContract extends ModularAppContract {
   final AppRouter _appRouter;
   final _moduleSettings = ModuleSettings();
   StreamSubscription<RemoteMessage>? _pushMessageSubscription;
+  StreamSubscription<dynamic>? _telemetryIdentitySubscription;
   PushHandlerRepositoryContract? _pushRepository;
 
   Future<void> initialSettingsPlatform();
@@ -85,6 +87,7 @@ abstract class ApplicationContract extends ModularAppContract {
     await super.init();
     await _initializeFirebaseIfAvailable();
     await _initializePushHandler();
+    _initializeTelemetryIdentityListener();
   }
 
   Future<void> _initializePushHandler() async {
@@ -219,6 +222,49 @@ abstract class ApplicationContract extends ModularAppContract {
             .applyInvitePushPayload(message.data);
       }
     });
+  }
+
+  void _initializeTelemetryIdentityListener() {
+    if (!GetIt.I.isRegistered<AuthRepositoryContract>() ||
+        !GetIt.I.isRegistered<TelemetryRepositoryContract>()) {
+      return;
+    }
+    final authRepository = GetIt.I.get<AuthRepositoryContract>();
+    final telemetryRepository = GetIt.I.get<TelemetryRepositoryContract>();
+    _telemetryIdentitySubscription?.cancel();
+    _telemetryIdentitySubscription =
+        authRepository.userStreamValue.stream.listen((user) async {
+      if (user == null) {
+        return;
+      }
+      final anonymousUserId = await authRepository.getAnonymousUserId();
+      if (anonymousUserId == null || anonymousUserId.isEmpty) {
+        return;
+      }
+      await telemetryRepository.mergeIdentity(
+        previousUserId: anonymousUserId,
+      );
+    });
+    final currentUser = authRepository.userStreamValue.value;
+    if (currentUser != null) {
+      unawaited(_handleTelemetryIdentityMerge(
+        authRepository: authRepository,
+        telemetryRepository: telemetryRepository,
+      ));
+    }
+  }
+
+  Future<void> _handleTelemetryIdentityMerge({
+    required AuthRepositoryContract authRepository,
+    required TelemetryRepositoryContract telemetryRepository,
+  }) async {
+    final anonymousUserId = await authRepository.getAnonymousUserId();
+    if (anonymousUserId == null || anonymousUserId.isEmpty) {
+      return;
+    }
+    await telemetryRepository.mergeIdentity(
+      previousUserId: anonymousUserId,
+    );
   }
 
   Future<void> _handlePushAnswer(

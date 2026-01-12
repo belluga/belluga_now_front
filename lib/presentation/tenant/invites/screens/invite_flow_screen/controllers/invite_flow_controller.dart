@@ -49,7 +49,6 @@ class InviteFlowScreenController with Disposable {
 
   final confirmingPresenceStreamValue = StreamValue<bool>(defaultValue: false);
   final topCardIndexStreamValue = StreamValue<int>(defaultValue: 0);
-  final Set<String> _seenInviteIds = <String>{};
   final Set<String> _openedInviteIds = <String>{};
 
   Future<void> init({String? prioritizeInviteId}) async {
@@ -61,7 +60,6 @@ class InviteFlowScreenController with Disposable {
 
   Future<void> fetchPendingInvites() async {
     final _invites = await _repository.fetchInvites();
-    await _trackInviteReceived(_invites);
     pendingInvitesStreamValue.addValue(_invites);
     _ensureTopIndexBounds(_invites.length);
     await _trackInviteOpened(_invites);
@@ -216,20 +214,6 @@ class InviteFlowScreenController with Disposable {
     final clamped = current.clamp(0, invitesLength - 1);
     if (clamped != current) {
       topCardIndexStreamValue.addValue(clamped);
-    }
-  }
-
-  Future<void> _trackInviteReceived(List<InviteModel> invites) async {
-    for (final invite in invites) {
-      if (_seenInviteIds.add(invite.id)) {
-        await _telemetryRepository.logEvent(
-          EventTrackerEvents.inviteReceived,
-          eventName: 'invite_received',
-          properties: {
-            'event_id': invite.eventId,
-          },
-        );
-      }
     }
   }
 

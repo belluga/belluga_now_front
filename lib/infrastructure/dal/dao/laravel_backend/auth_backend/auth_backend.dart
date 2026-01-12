@@ -33,7 +33,7 @@ class LaravelAuthBackend extends AuthBackendContract {
   }
 
   @override
-  Future<String> issueAnonymousIdentity({
+  Future<AnonymousIdentityResponse> issueAnonymousIdentity({
     required String deviceName,
     required String fingerprintHash,
     String? userAgent,
@@ -61,7 +61,12 @@ class LaravelAuthBackend extends AuthBackendContract {
         if (data is Map<String, dynamic>) {
           final token = data['token']?.toString() ?? '';
           if (token.isNotEmpty) {
-            return token;
+            return AnonymousIdentityResponse(
+              token: token,
+              userId: data['user_id']?.toString(),
+              identityState: data['identity_state']?.toString(),
+              expiresAt: data['expires_at']?.toString(),
+            );
           }
         }
         throw Exception(

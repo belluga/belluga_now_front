@@ -29,7 +29,7 @@ class MockAuthBackend extends AuthBackendContract with MockFunctions {
   Future<void> logout() async {}
 
   @override
-  Future<String> issueAnonymousIdentity({
+  Future<AnonymousIdentityResponse> issueAnonymousIdentity({
     required String deviceName,
     required String fingerprintHash,
     String? userAgent,
@@ -45,7 +45,11 @@ class MockAuthBackend extends AuthBackendContract with MockFunctions {
         metadata: metadata,
       );
     } catch (_) {
-      return 'anon-token-$fakeMongoId';
+      return AnonymousIdentityResponse(
+        token: 'anon-token-$fakeMongoId',
+        userId: fakeMongoId,
+        identityState: 'anonymous',
+      );
     }
   }
 

@@ -6,4 +6,8 @@ abstract class TelemetryRepositoryContract {
     String? eventName,
     Map<String, dynamic>? properties,
   });
+
+  Future<bool> mergeIdentity({
+    required String previousUserId,
+  });
 }

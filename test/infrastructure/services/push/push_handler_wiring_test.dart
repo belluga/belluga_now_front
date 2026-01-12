@@ -272,6 +272,9 @@ class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
   Future<String> getDeviceId() async => deviceId;
 
   @override
+  Future<String?> getAnonymousUserId() async => null;
+
+  @override
   bool get isUserLoggedIn => userTokenValue.isNotEmpty;
 
   @override
@@ -320,6 +323,11 @@ class _FakeTelemetryRepository implements TelemetryRepositoryContract {
   }) async {
     return true;
   }
+
+  @override
+  Future<bool> mergeIdentity({required String previousUserId}) async {
+    return true;
+  }
 }
 
 class _NoopBackend extends BackendContract {
@@ -341,7 +349,7 @@ class _NoopBackend extends BackendContract {
 
 class _NoopAuthBackend extends AuthBackendContract {
   @override
-  Future<String> issueAnonymousIdentity({
+  Future<AnonymousIdentityResponse> issueAnonymousIdentity({
     required String deviceName,
     required String fingerprintHash,
     String? userAgent,

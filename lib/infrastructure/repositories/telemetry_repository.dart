@@ -3,6 +3,7 @@ import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/infrastructure/repositories/app_data_repository.dart';
 import 'package:belluga_now/infrastructure/services/telemetry/telemetry_queue.dart';
 import 'package:event_tracker_handler/event_tracker_handler.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:get_it/get_it.dart';
 
 class TelemetryRepository implements TelemetryRepositoryContract {
@@ -16,6 +17,8 @@ class TelemetryRepository implements TelemetryRepositoryContract {
   final AppDataRepository _appDataRepository;
   final TelemetryQueue _queue;
   final Set<String> _idempotencyKeys = <String>{};
+  static const FlutterSecureStorage _storage = FlutterSecureStorage();
+  static const String _identityMergePrefix = 'telemetry_identity_merge';
 
   EventTrackerHandler? _handler;
 
@@ -44,10 +47,14 @@ class TelemetryRepository implements TelemetryRepositoryContract {
 
     final authRepository = GetIt.I.get<AuthRepositoryContract>();
     final deviceId = await authRepository.getDeviceId();
+    final anonymousUserId = await authRepository.getAnonymousUserId();
     final user = authRepository.userStreamValue.value;
     final tenantId = _appDataRepository.appData.tenantIdValue.value;
-    final userId = user?.uuidValue.value;
-    final userData = await _buildUserData(deviceId);
+    final userId = user?.uuidValue.value ?? anonymousUserId;
+    final userData = await _buildUserData(
+      deviceId,
+      anonymousUserId: anonymousUserId,
+    );
     final payload = EventTrackerData(
       eventName: eventName,
       customData: {
@@ -65,12 +72,15 @@ class TelemetryRepository implements TelemetryRepositoryContract {
     });
   }
 
-  Future<EventTrackerUserData> _buildUserData(String deviceId) async {
+  Future<EventTrackerUserData> _buildUserData(
+    String deviceId, {
+    String? anonymousUserId,
+  }) async {
     final user = GetIt.I.get<AuthRepositoryContract>().userStreamValue.value;
     final fullName = user?.profile.nameValue?.value;
     final firstName = fullName?.split(' ').first;
     final email = user?.profile.emailValue?.value;
-    final userId = user?.uuidValue.value;
+    final userId = user?.uuidValue.value ?? anonymousUserId;
 
     return EventTrackerUserData(
       uuid: userId ?? deviceId,
@@ -81,5 +91,41 @@ class TelemetryRepository implements TelemetryRepositoryContract {
       firebaseUuid: null,
       isAnonymous: user == null,
     );
+  }
+
+  @override
+  Future<bool> mergeIdentity({
+    required String previousUserId,
+  }) async {
+    final handler = _trackerHandler;
+    if (handler == null || previousUserId.isEmpty) {
+      return false;
+    }
+    final authRepository = GetIt.I.get<AuthRepositoryContract>();
+    final user = authRepository.userStreamValue.value;
+    if (user == null) {
+      return false;
+    }
+    final userId = user.uuidValue.value;
+    if (userId.isEmpty) {
+      return false;
+    }
+    final storageKey = '$_identityMergePrefix:$previousUserId:$userId';
+    final stored = await _storage.read(key: storageKey);
+    if (stored == '1') {
+      return true;
+    }
+    final deviceId = await authRepository.getDeviceId();
+    final userData = await _buildUserData(
+      deviceId,
+      anonymousUserId: previousUserId,
+    );
+    return _queue.enqueue(() async {
+      await handler.mergeIdentity(
+        previousUserId: previousUserId,
+        userData: userData,
+      );
+      await _storage.write(key: storageKey, value: '1');
+    });
   }
 }

@@ -15,6 +15,8 @@ abstract class AuthRepositoryContract<T extends UserContract> {
 
   Future<String> getDeviceId();
 
+  Future<String?> getAnonymousUserId();
+
   bool get isUserLoggedIn;
 
   bool get isAuthorized;
