@@ -32,6 +32,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
 import 'package:belluga_now/infrastructure/services/push/push_presentation_gate.dart';
+import 'package:event_tracker_handler/event_tracker_handler.dart';
 
 typedef PushHandlerRepositoryFactory = PushHandlerRepositoryContract Function({
   required PushTransportConfig transportConfig,
@@ -322,7 +323,70 @@ abstract class ApplicationContract extends ModularAppContract {
   State<ApplicationContract> createState() => _ApplicationContractState();
 }
 
-class _ApplicationContractState extends State<ApplicationContract> {
+class _ApplicationContractState extends State<ApplicationContract>
+    with WidgetsBindingObserver {
+  bool _didTrackAppInit = false;
+  AppLifecycleState? _lastLifecycleState;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _trackAppInit();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    if (_lastLifecycleState == state) {
+      return;
+    }
+    _lastLifecycleState = state;
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.detached) {
+      _trackAppBackground(state);
+    }
+  }
+
+  void _trackAppInit() {
+    if (_didTrackAppInit) {
+      return;
+    }
+    _didTrackAppInit = true;
+    if (!GetIt.I.isRegistered<TelemetryRepositoryContract>()) {
+      return;
+    }
+    final telemetry = GetIt.I.get<TelemetryRepositoryContract>();
+    unawaited(
+      telemetry.logEvent(
+        EventTrackerEvents.openApp,
+        eventName: 'app_init',
+      ),
+    );
+  }
+
+  void _trackAppBackground(AppLifecycleState state) {
+    if (!GetIt.I.isRegistered<TelemetryRepositoryContract>()) {
+      return;
+    }
+    final telemetry = GetIt.I.get<TelemetryRepositoryContract>();
+    unawaited(
+      telemetry.logEvent(
+        EventTrackerEvents.appBackground,
+        eventName: 'app_background',
+        properties: {
+          'state': state.name,
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final appDataRepository = GetIt.I.get<AppDataRepository>();

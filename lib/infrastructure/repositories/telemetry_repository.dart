@@ -57,6 +57,7 @@ class TelemetryRepository implements TelemetryRepositoryContract {
     );
     final payload = EventTrackerData(
       eventName: eventName,
+      insertId: idempotencyKey,
       customData: {
         if (tenantId.isNotEmpty) 'tenant_id': tenantId,
         if (userId != null) 'user_id': userId,
@@ -65,7 +66,12 @@ class TelemetryRepository implements TelemetryRepositoryContract {
     );
 
     return _queue.enqueue(() async {
-      await handler.logEvent(type: event, userData: userData, data: payload);
+      final outcomes =
+          await handler.logEvent(type: event, userData: userData, data: payload);
+      final hasFailures = outcomes.any((outcome) => outcome.isFailure);
+      if (hasFailures) {
+        throw Exception('Telemetry delivery failed');
+      }
       if (idempotencyKey != null) {
         _idempotencyKeys.add(idempotencyKey);
       }

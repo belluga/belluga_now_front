@@ -3,17 +3,18 @@
 // Do not manually edit this file.
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
-import 'dart:async' as _i19;
-import 'dart:ui' as _i27;
+import 'dart:async' as _i21;
+import 'dart:ui' as _i29;
 
 import 'package:auto_route/auto_route.dart' as _i5;
 import 'package:auto_route/src/matcher/route_matcher.dart' as _i6;
 import 'package:auto_route/src/router/controller/navigation_history/navigation_history_base.dart'
     as _i7;
 import 'package:belluga_now/domain/app_data/app_data.dart' as _i8;
-import 'package:belluga_now/domain/app_data/platform_type.dart' as _i29;
+import 'package:belluga_now/domain/app_data/platform_type.dart' as _i31;
+import 'package:belluga_now/domain/app_data/telemetry_settings.dart' as _i15;
 import 'package:belluga_now/domain/app_data/value_object/domain_value.dart'
-    as _i13;
+    as _i14;
 import 'package:belluga_now/domain/app_data/value_object/environment_name_value.dart'
     as _i10;
 import 'package:belluga_now/domain/app_data/value_object/environment_type_value.dart'
@@ -22,33 +23,35 @@ import 'package:belluga_now/domain/app_data/value_object/platform_type_value.dar
     as _i9;
 import 'package:belluga_now/domain/favorite/projections/favorite_resume.dart'
     as _i4;
-import 'package:belluga_now/domain/invites/invite_model.dart' as _i25;
-import 'package:belluga_now/domain/schedule/event_model.dart' as _i21;
+import 'package:belluga_now/domain/invites/invite_model.dart' as _i27;
+import 'package:belluga_now/domain/schedule/event_model.dart' as _i23;
 import 'package:belluga_now/domain/tenant/value_objects/icon_url_value.dart'
-    as _i14;
-import 'package:belluga_now/domain/tenant/value_objects/main_color_value.dart'
-    as _i15;
-import 'package:belluga_now/domain/tenant/value_objects/main_logo_url_value.dart'
     as _i16;
+import 'package:belluga_now/domain/tenant/value_objects/main_color_value.dart'
+    as _i17;
+import 'package:belluga_now/domain/tenant/value_objects/main_logo_url_value.dart'
+    as _i18;
+import 'package:belluga_now/domain/tenant/value_objects/tenant_id_value.dart'
+    as _i13;
 import 'package:belluga_now/domain/theme_data_settings/theme_data_settings.dart'
     as _i12;
 import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart'
-    as _i18;
-import 'package:belluga_now/infrastructure/repositories/app_data_repository.dart'
-    as _i28;
-import 'package:belluga_now/presentation/tenant/home/screens/tenant_home_screen/controllers/tenant_home_controller.dart'
-    as _i17;
-import 'package:belluga_now/presentation/tenant/home/screens/tenant_home_screen/widgets/agenda_section/controllers/tenant_home_agenda_controller.dart'
     as _i20;
-import 'package:belluga_now/presentation/tenant/home/screens/tenant_home_screen/widgets/favorite_section/controllers/favorites_section_controller.dart'
-    as _i23;
-import 'package:belluga_now/presentation/tenant/home/screens/tenant_home_screen/widgets/invites_banner/controllers/invites_banner_builder_controller.dart'
-    as _i24;
-import 'package:belluga_now/presentation/tenant/schedule/screens/event_search_screen/models/invite_filter.dart'
+import 'package:belluga_now/infrastructure/repositories/app_data_repository.dart'
+    as _i30;
+import 'package:belluga_now/presentation/tenant/home/screens/tenant_home_screen/controllers/tenant_home_controller.dart'
+    as _i19;
+import 'package:belluga_now/presentation/tenant/home/screens/tenant_home_screen/widgets/agenda_section/controllers/tenant_home_agenda_controller.dart'
     as _i22;
+import 'package:belluga_now/presentation/tenant/home/screens/tenant_home_screen/widgets/favorite_section/controllers/favorites_section_controller.dart'
+    as _i25;
+import 'package:belluga_now/presentation/tenant/home/screens/tenant_home_screen/widgets/invites_banner/controllers/invites_banner_builder_controller.dart'
+    as _i26;
+import 'package:belluga_now/presentation/tenant/schedule/screens/event_search_screen/models/invite_filter.dart'
+    as _i24;
 import 'package:flutter/material.dart' as _i3;
 import 'package:mockito/mockito.dart' as _i1;
-import 'package:mockito/src/dummies.dart' as _i26;
+import 'package:mockito/src/dummies.dart' as _i28;
 import 'package:stream_value/core/stream_value.dart' as _i2;
 
 // ignore_for_file: type=lint
@@ -327,8 +330,9 @@ class _FakeThemeDataSettings_23 extends _i1.SmartFake
         );
 }
 
-class _FakeDomainValue_24 extends _i1.SmartFake implements _i13.DomainValue {
-  _FakeDomainValue_24(
+class _FakeTenantIdValue_24 extends _i1.SmartFake
+    implements _i13.TenantIdValue {
+  _FakeTenantIdValue_24(
     Object parent,
     Invocation parentInvocation,
   ) : super(
@@ -337,8 +341,8 @@ class _FakeDomainValue_24 extends _i1.SmartFake implements _i13.DomainValue {
         );
 }
 
-class _FakeIconUrlValue_25 extends _i1.SmartFake implements _i14.IconUrlValue {
-  _FakeIconUrlValue_25(
+class _FakeDomainValue_25 extends _i1.SmartFake implements _i14.DomainValue {
+  _FakeDomainValue_25(
     Object parent,
     Invocation parentInvocation,
   ) : super(
@@ -347,9 +351,9 @@ class _FakeIconUrlValue_25 extends _i1.SmartFake implements _i14.IconUrlValue {
         );
 }
 
-class _FakeMainColorValue_26 extends _i1.SmartFake
-    implements _i15.MainColorValue {
-  _FakeMainColorValue_26(
+class _FakeTelemetrySettings_26 extends _i1.SmartFake
+    implements _i15.TelemetrySettings {
+  _FakeTelemetrySettings_26(
     Object parent,
     Invocation parentInvocation,
   ) : super(
@@ -358,9 +362,30 @@ class _FakeMainColorValue_26 extends _i1.SmartFake
         );
 }
 
-class _FakeMainLogoUrlValue_27 extends _i1.SmartFake
-    implements _i16.MainLogoUrlValue {
-  _FakeMainLogoUrlValue_27(
+class _FakeIconUrlValue_27 extends _i1.SmartFake implements _i16.IconUrlValue {
+  _FakeIconUrlValue_27(
+    Object parent,
+    Invocation parentInvocation,
+  ) : super(
+          parent,
+          parentInvocation,
+        );
+}
+
+class _FakeMainColorValue_28 extends _i1.SmartFake
+    implements _i17.MainColorValue {
+  _FakeMainColorValue_28(
+    Object parent,
+    Invocation parentInvocation,
+  ) : super(
+          parent,
+          parentInvocation,
+        );
+}
+
+class _FakeMainLogoUrlValue_29 extends _i1.SmartFake
+    implements _i18.MainLogoUrlValue {
+  _FakeMainLogoUrlValue_29(
     Object parent,
     Invocation parentInvocation,
   ) : super(
@@ -373,7 +398,7 @@ class _FakeMainLogoUrlValue_27 extends _i1.SmartFake
 ///
 /// See the documentation for Mockito's code generation for more information.
 class MockTenantHomeController extends _i1.Mock
-    implements _i17.TenantHomeController {
+    implements _i19.TenantHomeController {
   @override
   _i2.StreamValue<String?> get userAddressStreamValue => (super.noSuchMethod(
         Invocation.getter(#userAddressStreamValue),
@@ -388,19 +413,19 @@ class MockTenantHomeController extends _i1.Mock
       ) as _i2.StreamValue<String?>);
 
   @override
-  _i2.StreamValue<List<_i18.VenueEventResume>>
+  _i2.StreamValue<List<_i20.VenueEventResume>>
       get myEventsFilteredStreamValue => (super.noSuchMethod(
             Invocation.getter(#myEventsFilteredStreamValue),
-            returnValue: _FakeStreamValue_0<List<_i18.VenueEventResume>>(
+            returnValue: _FakeStreamValue_0<List<_i20.VenueEventResume>>(
               this,
               Invocation.getter(#myEventsFilteredStreamValue),
             ),
             returnValueForMissingStub:
-                _FakeStreamValue_0<List<_i18.VenueEventResume>>(
+                _FakeStreamValue_0<List<_i20.VenueEventResume>>(
               this,
               Invocation.getter(#myEventsFilteredStreamValue),
             ),
-          ) as _i2.StreamValue<List<_i18.VenueEventResume>>);
+          ) as _i2.StreamValue<List<_i20.VenueEventResume>>);
 
   @override
   _i3.ScrollController get scrollController => (super.noSuchMethod(
@@ -430,27 +455,27 @@ class MockTenantHomeController extends _i1.Mock
       ) as _i2.StreamValue<Set<String>>);
 
   @override
-  _i19.Future<void> init() => (super.noSuchMethod(
+  _i21.Future<void> init() => (super.noSuchMethod(
         Invocation.method(
           #init,
           [],
         ),
-        returnValue: _i19.Future<void>.value(),
-        returnValueForMissingStub: _i19.Future<void>.value(),
-      ) as _i19.Future<void>);
+        returnValue: _i21.Future<void>.value(),
+        returnValueForMissingStub: _i21.Future<void>.value(),
+      ) as _i21.Future<void>);
 
   @override
-  _i19.Future<void> loadMyEvents() => (super.noSuchMethod(
+  _i21.Future<void> loadMyEvents() => (super.noSuchMethod(
         Invocation.method(
           #loadMyEvents,
           [],
         ),
-        returnValue: _i19.Future<void>.value(),
-        returnValueForMissingStub: _i19.Future<void>.value(),
-      ) as _i19.Future<void>);
+        returnValue: _i21.Future<void>.value(),
+        returnValueForMissingStub: _i21.Future<void>.value(),
+      ) as _i21.Future<void>);
 
   @override
-  String? distanceLabelForMyEvent(_i18.VenueEventResume? event) =>
+  String? distanceLabelForMyEvent(_i20.VenueEventResume? event) =>
       (super.noSuchMethod(
         Invocation.method(
           #distanceLabelForMyEvent,
@@ -473,7 +498,7 @@ class MockTenantHomeController extends _i1.Mock
 ///
 /// See the documentation for Mockito's code generation for more information.
 class MockTenantHomeAgendaController extends _i1.Mock
-    implements _i20.TenantHomeAgendaController {
+    implements _i22.TenantHomeAgendaController {
   @override
   _i3.TextEditingController get searchController => (super.noSuchMethod(
         Invocation.getter(#searchController),
@@ -501,18 +526,18 @@ class MockTenantHomeAgendaController extends _i1.Mock
       ) as _i3.FocusNode);
 
   @override
-  _i2.StreamValue<List<_i21.EventModel>> get displayedEventsStreamValue =>
+  _i2.StreamValue<List<_i23.EventModel>> get displayedEventsStreamValue =>
       (super.noSuchMethod(
         Invocation.getter(#displayedEventsStreamValue),
-        returnValue: _FakeStreamValue_0<List<_i21.EventModel>>(
+        returnValue: _FakeStreamValue_0<List<_i23.EventModel>>(
           this,
           Invocation.getter(#displayedEventsStreamValue),
         ),
-        returnValueForMissingStub: _FakeStreamValue_0<List<_i21.EventModel>>(
+        returnValueForMissingStub: _FakeStreamValue_0<List<_i23.EventModel>>(
           this,
           Invocation.getter(#displayedEventsStreamValue),
         ),
-      ) as _i2.StreamValue<List<_i21.EventModel>>);
+      ) as _i2.StreamValue<List<_i23.EventModel>>);
 
   @override
   _i2.StreamValue<bool> get isInitialLoadingStreamValue => (super.noSuchMethod(
@@ -580,18 +605,18 @@ class MockTenantHomeAgendaController extends _i1.Mock
       ) as _i2.StreamValue<bool>);
 
   @override
-  _i2.StreamValue<_i22.InviteFilter> get inviteFilterStreamValue =>
+  _i2.StreamValue<_i24.InviteFilter> get inviteFilterStreamValue =>
       (super.noSuchMethod(
         Invocation.getter(#inviteFilterStreamValue),
-        returnValue: _FakeStreamValue_0<_i22.InviteFilter>(
+        returnValue: _FakeStreamValue_0<_i24.InviteFilter>(
           this,
           Invocation.getter(#inviteFilterStreamValue),
         ),
-        returnValueForMissingStub: _FakeStreamValue_0<_i22.InviteFilter>(
+        returnValueForMissingStub: _FakeStreamValue_0<_i24.InviteFilter>(
           this,
           Invocation.getter(#inviteFilterStreamValue),
         ),
-      ) as _i2.StreamValue<_i22.InviteFilter>);
+      ) as _i2.StreamValue<_i24.InviteFilter>);
 
   @override
   _i2.StreamValue<double> get radiusMetersStreamValue => (super.noSuchMethod(
@@ -620,26 +645,26 @@ class MockTenantHomeAgendaController extends _i1.Mock
       ) as _i2.StreamValue<double>);
 
   @override
-  _i19.Future<void> init({bool? startWithHistory = false}) =>
+  _i21.Future<void> init({bool? startWithHistory = false}) =>
       (super.noSuchMethod(
         Invocation.method(
           #init,
           [],
           {#startWithHistory: startWithHistory},
         ),
-        returnValue: _i19.Future<void>.value(),
-        returnValueForMissingStub: _i19.Future<void>.value(),
-      ) as _i19.Future<void>);
+        returnValue: _i21.Future<void>.value(),
+        returnValueForMissingStub: _i21.Future<void>.value(),
+      ) as _i21.Future<void>);
 
   @override
-  _i19.Future<void> loadNextPage() => (super.noSuchMethod(
+  _i21.Future<void> loadNextPage() => (super.noSuchMethod(
         Invocation.method(
           #loadNextPage,
           [],
         ),
-        returnValue: _i19.Future<void>.value(),
-        returnValueForMissingStub: _i19.Future<void>.value(),
-      ) as _i19.Future<void>);
+        returnValue: _i21.Future<void>.value(),
+        returnValueForMissingStub: _i21.Future<void>.value(),
+      ) as _i21.Future<void>);
 
   @override
   void toggleHistory() => super.noSuchMethod(
@@ -651,7 +676,7 @@ class MockTenantHomeAgendaController extends _i1.Mock
       );
 
   @override
-  void setInviteFilter(_i22.InviteFilter? filter) => super.noSuchMethod(
+  void setInviteFilter(_i24.InviteFilter? filter) => super.noSuchMethod(
         Invocation.method(
           #setInviteFilter,
           [filter],
@@ -705,14 +730,14 @@ class MockTenantHomeAgendaController extends _i1.Mock
       );
 
   @override
-  _i19.Future<void> searchEvents(String? query) => (super.noSuchMethod(
+  _i21.Future<void> searchEvents(String? query) => (super.noSuchMethod(
         Invocation.method(
           #searchEvents,
           [query],
         ),
-        returnValue: _i19.Future<void>.value(),
-        returnValueForMissingStub: _i19.Future<void>.value(),
-      ) as _i19.Future<void>);
+        returnValue: _i21.Future<void>.value(),
+        returnValueForMissingStub: _i21.Future<void>.value(),
+      ) as _i21.Future<void>);
 
   @override
   bool isEventConfirmed(String? eventId) => (super.noSuchMethod(
@@ -735,7 +760,7 @@ class MockTenantHomeAgendaController extends _i1.Mock
       ) as int);
 
   @override
-  String? distanceLabelFor(_i18.VenueEventResume? event) => (super.noSuchMethod(
+  String? distanceLabelFor(_i20.VenueEventResume? event) => (super.noSuchMethod(
         Invocation.method(
           #distanceLabelFor,
           [event],
@@ -757,7 +782,7 @@ class MockTenantHomeAgendaController extends _i1.Mock
 ///
 /// See the documentation for Mockito's code generation for more information.
 class MockFavoritesSectionController extends _i1.Mock
-    implements _i23.FavoritesSectionController {
+    implements _i25.FavoritesSectionController {
   @override
   _i2.StreamValue<List<_i4.FavoriteResume>?> get favoritesStreamValue =>
       (super.noSuchMethod(
@@ -774,14 +799,14 @@ class MockFavoritesSectionController extends _i1.Mock
       ) as _i2.StreamValue<List<_i4.FavoriteResume>?>);
 
   @override
-  _i19.Future<void> init() => (super.noSuchMethod(
+  _i21.Future<void> init() => (super.noSuchMethod(
         Invocation.method(
           #init,
           [],
         ),
-        returnValue: _i19.Future<void>.value(),
-        returnValueForMissingStub: _i19.Future<void>.value(),
-      ) as _i19.Future<void>);
+        returnValue: _i21.Future<void>.value(),
+        returnValueForMissingStub: _i21.Future<void>.value(),
+      ) as _i21.Future<void>);
 
   @override
   _i4.FavoriteResume buildPinnedFavorite() => (super.noSuchMethod(
@@ -819,20 +844,20 @@ class MockFavoritesSectionController extends _i1.Mock
 ///
 /// See the documentation for Mockito's code generation for more information.
 class MockInvitesBannerBuilderController extends _i1.Mock
-    implements _i24.InvitesBannerBuilderController {
+    implements _i26.InvitesBannerBuilderController {
   @override
-  _i2.StreamValue<List<_i25.InviteModel>> get pendingInvitesStreamValue =>
+  _i2.StreamValue<List<_i27.InviteModel>> get pendingInvitesStreamValue =>
       (super.noSuchMethod(
         Invocation.getter(#pendingInvitesStreamValue),
-        returnValue: _FakeStreamValue_0<List<_i25.InviteModel>>(
+        returnValue: _FakeStreamValue_0<List<_i27.InviteModel>>(
           this,
           Invocation.getter(#pendingInvitesStreamValue),
         ),
-        returnValueForMissingStub: _FakeStreamValue_0<List<_i25.InviteModel>>(
+        returnValueForMissingStub: _FakeStreamValue_0<List<_i27.InviteModel>>(
           this,
           Invocation.getter(#pendingInvitesStreamValue),
         ),
-      ) as _i2.StreamValue<List<_i25.InviteModel>>);
+      ) as _i2.StreamValue<List<_i27.InviteModel>>);
 
   @override
   bool get hasPendingInvites => (super.noSuchMethod(
@@ -1055,11 +1080,11 @@ class MockStackRouter extends _i1.Mock implements _i5.StackRouter {
   @override
   String get currentPath => (super.noSuchMethod(
         Invocation.getter(#currentPath),
-        returnValue: _i26.dummyValue<String>(
+        returnValue: _i28.dummyValue<String>(
           this,
           Invocation.getter(#currentPath),
         ),
-        returnValueForMissingStub: _i26.dummyValue<String>(
+        returnValueForMissingStub: _i28.dummyValue<String>(
           this,
           Invocation.getter(#currentPath),
         ),
@@ -1068,11 +1093,11 @@ class MockStackRouter extends _i1.Mock implements _i5.StackRouter {
   @override
   String get currentUrl => (super.noSuchMethod(
         Invocation.getter(#currentUrl),
-        returnValue: _i26.dummyValue<String>(
+        returnValue: _i28.dummyValue<String>(
           this,
           Invocation.getter(#currentUrl),
         ),
-        returnValueForMissingStub: _i26.dummyValue<String>(
+        returnValueForMissingStub: _i28.dummyValue<String>(
           this,
           Invocation.getter(#currentUrl),
         ),
@@ -1199,14 +1224,14 @@ class MockStackRouter extends _i1.Mock implements _i5.StackRouter {
       );
 
   @override
-  _i19.Future<void> reevaluateGuards() => (super.noSuchMethod(
+  _i21.Future<void> reevaluateGuards() => (super.noSuchMethod(
         Invocation.method(
           #reevaluateGuards,
           [],
         ),
-        returnValue: _i19.Future<void>.value(),
-        returnValueForMissingStub: _i19.Future<void>.value(),
-      ) as _i19.Future<void>);
+        returnValue: _i21.Future<void>.value(),
+        returnValueForMissingStub: _i21.Future<void>.value(),
+      ) as _i21.Future<void>);
 
   @override
   bool canPop({
@@ -1229,7 +1254,7 @@ class MockStackRouter extends _i1.Mock implements _i5.StackRouter {
       ) as bool);
 
   @override
-  _i19.Future<T?> pushWidget<T extends Object?>(
+  _i21.Future<T?> pushWidget<T extends Object?>(
     _i3.Widget? widget, {
     _i3.RouteTransitionsBuilder? transitionBuilder,
     bool? fullscreenDialog = false,
@@ -1247,45 +1272,36 @@ class MockStackRouter extends _i1.Mock implements _i5.StackRouter {
             #opaque: opaque,
           },
         ),
-        returnValue: _i19.Future<T?>.value(),
-        returnValueForMissingStub: _i19.Future<T?>.value(),
-      ) as _i19.Future<T?>);
+        returnValue: _i21.Future<T?>.value(),
+        returnValueForMissingStub: _i21.Future<T?>.value(),
+      ) as _i21.Future<T?>);
 
   @override
-  _i19.Future<T?> pushNativeRoute<T extends Object?>(_i3.Route<T>? route) =>
+  _i21.Future<T?> pushNativeRoute<T extends Object?>(_i3.Route<T>? route) =>
       (super.noSuchMethod(
         Invocation.method(
           #pushNativeRoute,
           [route],
         ),
-        returnValue: _i19.Future<T?>.value(),
-        returnValueForMissingStub: _i19.Future<T?>.value(),
-      ) as _i19.Future<T?>);
+        returnValue: _i21.Future<T?>.value(),
+        returnValueForMissingStub: _i21.Future<T?>.value(),
+      ) as _i21.Future<T?>);
 
   @override
-  _i19.Future<bool> maybePop<T extends Object?>([T? result]) =>
+  _i21.Future<bool> maybePop<T extends Object?>([T? result]) =>
       (super.noSuchMethod(
         Invocation.method(
           #maybePop,
           [result],
         ),
-        returnValue: _i19.Future<bool>.value(false),
-        returnValueForMissingStub: _i19.Future<bool>.value(false),
-      ) as _i19.Future<bool>);
+        returnValue: _i21.Future<bool>.value(false),
+        returnValueForMissingStub: _i21.Future<bool>.value(false),
+      ) as _i21.Future<bool>);
 
   @override
   void pop<T extends Object?>([T? result]) => super.noSuchMethod(
         Invocation.method(
           #pop,
-          [result],
-        ),
-        returnValueForMissingStub: null,
-      );
-
-  @override
-  void popForced<T extends Object?>([T? result]) => super.noSuchMethod(
-        Invocation.method(
-          #popForced,
           [result],
         ),
         returnValueForMissingStub: null,
@@ -1325,7 +1341,7 @@ class MockStackRouter extends _i1.Mock implements _i5.StackRouter {
       );
 
   @override
-  _i19.Future<T?> push<T extends Object?>(
+  _i21.Future<T?> push<T extends Object?>(
     _i5.PageRouteInfo<Object?>? route, {
     _i5.OnNavigationFailure? onFailure,
   }) =>
@@ -1335,12 +1351,12 @@ class MockStackRouter extends _i1.Mock implements _i5.StackRouter {
           [route],
           {#onFailure: onFailure},
         ),
-        returnValue: _i19.Future<T?>.value(),
-        returnValueForMissingStub: _i19.Future<T?>.value(),
-      ) as _i19.Future<T?>);
+        returnValue: _i21.Future<T?>.value(),
+        returnValueForMissingStub: _i21.Future<T?>.value(),
+      ) as _i21.Future<T?>);
 
   @override
-  _i19.Future<void> insert(
+  _i21.Future<void> insert(
     _i5.PageRouteInfo<Object?>? route, {
     int? index = 0,
     _i5.OnNavigationFailure? onFailure,
@@ -1354,12 +1370,12 @@ class MockStackRouter extends _i1.Mock implements _i5.StackRouter {
             #onFailure: onFailure,
           },
         ),
-        returnValue: _i19.Future<void>.value(),
-        returnValueForMissingStub: _i19.Future<void>.value(),
-      ) as _i19.Future<void>);
+        returnValue: _i21.Future<void>.value(),
+        returnValueForMissingStub: _i21.Future<void>.value(),
+      ) as _i21.Future<void>);
 
   @override
-  _i19.Future<T?> replace<T extends Object?>(
+  _i21.Future<T?> replace<T extends Object?>(
     _i5.PageRouteInfo<Object?>? route, {
     _i5.OnNavigationFailure? onFailure,
   }) =>
@@ -1369,12 +1385,12 @@ class MockStackRouter extends _i1.Mock implements _i5.StackRouter {
           [route],
           {#onFailure: onFailure},
         ),
-        returnValue: _i19.Future<T?>.value(),
-        returnValueForMissingStub: _i19.Future<T?>.value(),
-      ) as _i19.Future<T?>);
+        returnValue: _i21.Future<T?>.value(),
+        returnValueForMissingStub: _i21.Future<T?>.value(),
+      ) as _i21.Future<T?>);
 
   @override
-  _i19.Future<void> pushAll(
+  _i21.Future<void> pushAll(
     List<_i5.PageRouteInfo<Object?>>? routes, {
     _i5.OnNavigationFailure? onFailure,
   }) =>
@@ -1384,12 +1400,12 @@ class MockStackRouter extends _i1.Mock implements _i5.StackRouter {
           [routes],
           {#onFailure: onFailure},
         ),
-        returnValue: _i19.Future<void>.value(),
-        returnValueForMissingStub: _i19.Future<void>.value(),
-      ) as _i19.Future<void>);
+        returnValue: _i21.Future<void>.value(),
+        returnValueForMissingStub: _i21.Future<void>.value(),
+      ) as _i21.Future<void>);
 
   @override
-  _i19.Future<void> popAndPushAll(
+  _i21.Future<void> popAndPushAll(
     List<_i5.PageRouteInfo<Object?>>? routes, {
     dynamic onFailure,
   }) =>
@@ -1399,12 +1415,12 @@ class MockStackRouter extends _i1.Mock implements _i5.StackRouter {
           [routes],
           {#onFailure: onFailure},
         ),
-        returnValue: _i19.Future<void>.value(),
-        returnValueForMissingStub: _i19.Future<void>.value(),
-      ) as _i19.Future<void>);
+        returnValue: _i21.Future<void>.value(),
+        returnValueForMissingStub: _i21.Future<void>.value(),
+      ) as _i21.Future<void>);
 
   @override
-  _i19.Future<void> replaceAll(
+  _i21.Future<void> replaceAll(
     List<_i5.PageRouteInfo<Object?>>? routes, {
     _i5.OnNavigationFailure? onFailure,
     bool? updateExistingRoutes = true,
@@ -1418,9 +1434,9 @@ class MockStackRouter extends _i1.Mock implements _i5.StackRouter {
             #updateExistingRoutes: updateExistingRoutes,
           },
         ),
-        returnValue: _i19.Future<void>.value(),
-        returnValueForMissingStub: _i19.Future<void>.value(),
-      ) as _i19.Future<void>);
+        returnValue: _i21.Future<void>.value(),
+        returnValueForMissingStub: _i21.Future<void>.value(),
+      ) as _i21.Future<void>);
 
   @override
   void popUntilRoot() => super.noSuchMethod(
@@ -1432,7 +1448,7 @@ class MockStackRouter extends _i1.Mock implements _i5.StackRouter {
       );
 
   @override
-  _i19.Future<T?> popAndPush<T extends Object?, TO extends Object?>(
+  _i21.Future<T?> popAndPush<T extends Object?, TO extends Object?>(
     _i5.PageRouteInfo<Object?>? route, {
     TO? result,
     _i5.OnNavigationFailure? onFailure,
@@ -1446,9 +1462,9 @@ class MockStackRouter extends _i1.Mock implements _i5.StackRouter {
             #onFailure: onFailure,
           },
         ),
-        returnValue: _i19.Future<T?>.value(),
-        returnValueForMissingStub: _i19.Future<T?>.value(),
-      ) as _i19.Future<T?>);
+        returnValue: _i21.Future<T?>.value(),
+        returnValueForMissingStub: _i21.Future<T?>.value(),
+      ) as _i21.Future<T?>);
 
   @override
   bool removeUntil(
@@ -1505,7 +1521,7 @@ class MockStackRouter extends _i1.Mock implements _i5.StackRouter {
       );
 
   @override
-  _i19.Future<void> navigateAll(
+  _i21.Future<void> navigateAll(
     List<_i5.RouteMatch<dynamic>>? routes, {
     _i5.OnNavigationFailure? onFailure,
   }) =>
@@ -1515,12 +1531,12 @@ class MockStackRouter extends _i1.Mock implements _i5.StackRouter {
           [routes],
           {#onFailure: onFailure},
         ),
-        returnValue: _i19.Future<void>.value(),
-        returnValueForMissingStub: _i19.Future<void>.value(),
-      ) as _i19.Future<void>);
+        returnValue: _i21.Future<void>.value(),
+        returnValueForMissingStub: _i21.Future<void>.value(),
+      ) as _i21.Future<void>);
 
   @override
-  _i19.Future<T?> pushAndPopUntil<T extends Object?>(
+  _i21.Future<T?> pushAndPopUntil<T extends Object?>(
     _i5.PageRouteInfo<Object?>? route, {
     required _i3.RoutePredicate? predicate,
     bool? scopedPopUntil = true,
@@ -1536,12 +1552,12 @@ class MockStackRouter extends _i1.Mock implements _i5.StackRouter {
             #onFailure: onFailure,
           },
         ),
-        returnValue: _i19.Future<T?>.value(),
-        returnValueForMissingStub: _i19.Future<T?>.value(),
-      ) as _i19.Future<T?>);
+        returnValue: _i21.Future<T?>.value(),
+        returnValueForMissingStub: _i21.Future<T?>.value(),
+      ) as _i21.Future<T?>);
 
   @override
-  _i19.Future<T?> replacePath<T extends Object?>(
+  _i21.Future<T?> replacePath<T extends Object?>(
     String? path, {
     bool? includePrefixMatches = false,
     _i5.OnNavigationFailure? onFailure,
@@ -1555,31 +1571,12 @@ class MockStackRouter extends _i1.Mock implements _i5.StackRouter {
             #onFailure: onFailure,
           },
         ),
-        returnValue: _i19.Future<T?>.value(),
-        returnValueForMissingStub: _i19.Future<T?>.value(),
-      ) as _i19.Future<T?>);
+        returnValue: _i21.Future<T?>.value(),
+        returnValueForMissingStub: _i21.Future<T?>.value(),
+      ) as _i21.Future<T?>);
 
   @override
-  _i19.Future<T?> replaceNamed<T extends Object?>(
-    String? path, {
-    bool? includePrefixMatches = false,
-    _i5.OnNavigationFailure? onFailure,
-  }) =>
-      (super.noSuchMethod(
-        Invocation.method(
-          #replaceNamed,
-          [path],
-          {
-            #includePrefixMatches: includePrefixMatches,
-            #onFailure: onFailure,
-          },
-        ),
-        returnValue: _i19.Future<T?>.value(),
-        returnValueForMissingStub: _i19.Future<T?>.value(),
-      ) as _i19.Future<T?>);
-
-  @override
-  _i19.Future<T?> pushPath<T extends Object?>(
+  _i21.Future<T?> pushPath<T extends Object?>(
     String? path, {
     bool? includePrefixMatches = false,
     _i5.OnNavigationFailure? onFailure,
@@ -1593,28 +1590,9 @@ class MockStackRouter extends _i1.Mock implements _i5.StackRouter {
             #onFailure: onFailure,
           },
         ),
-        returnValue: _i19.Future<T?>.value(),
-        returnValueForMissingStub: _i19.Future<T?>.value(),
-      ) as _i19.Future<T?>);
-
-  @override
-  _i19.Future<T?> pushNamed<T extends Object?>(
-    String? path, {
-    bool? includePrefixMatches = false,
-    _i5.OnNavigationFailure? onFailure,
-  }) =>
-      (super.noSuchMethod(
-        Invocation.method(
-          #pushNamed,
-          [path],
-          {
-            #includePrefixMatches: includePrefixMatches,
-            #onFailure: onFailure,
-          },
-        ),
-        returnValue: _i19.Future<T?>.value(),
-        returnValueForMissingStub: _i19.Future<T?>.value(),
-      ) as _i19.Future<T?>);
+        returnValue: _i21.Future<T?>.value(),
+        returnValueForMissingStub: _i21.Future<T?>.value(),
+      ) as _i21.Future<T?>);
 
   @override
   void popUntilRouteWithName(
@@ -1744,7 +1722,7 @@ class MockStackRouter extends _i1.Mock implements _i5.StackRouter {
       ) as _i5.RouteMatch<dynamic>?);
 
   @override
-  _i19.Future<dynamic> navigate(
+  _i21.Future<dynamic> navigate(
     _i5.PageRouteInfo<Object?>? route, {
     _i5.OnNavigationFailure? onFailure,
   }) =>
@@ -1754,12 +1732,12 @@ class MockStackRouter extends _i1.Mock implements _i5.StackRouter {
           [route],
           {#onFailure: onFailure},
         ),
-        returnValue: _i19.Future<dynamic>.value(),
-        returnValueForMissingStub: _i19.Future<dynamic>.value(),
-      ) as _i19.Future<dynamic>);
+        returnValue: _i21.Future<dynamic>.value(),
+        returnValueForMissingStub: _i21.Future<dynamic>.value(),
+      ) as _i21.Future<dynamic>);
 
   @override
-  _i19.Future<void> navigatePath(
+  _i21.Future<void> navigatePath(
     String? path, {
     bool? includePrefixMatches = false,
     _i5.OnNavigationFailure? onFailure,
@@ -1773,28 +1751,9 @@ class MockStackRouter extends _i1.Mock implements _i5.StackRouter {
             #onFailure: onFailure,
           },
         ),
-        returnValue: _i19.Future<void>.value(),
-        returnValueForMissingStub: _i19.Future<void>.value(),
-      ) as _i19.Future<void>);
-
-  @override
-  _i19.Future<void> navigateNamed(
-    String? path, {
-    bool? includePrefixMatches = false,
-    _i5.OnNavigationFailure? onFailure,
-  }) =>
-      (super.noSuchMethod(
-        Invocation.method(
-          #navigateNamed,
-          [path],
-          {
-            #includePrefixMatches: includePrefixMatches,
-            #onFailure: onFailure,
-          },
-        ),
-        returnValue: _i19.Future<void>.value(),
-        returnValueForMissingStub: _i19.Future<void>.value(),
-      ) as _i19.Future<void>);
+        returnValue: _i21.Future<void>.value(),
+        returnValueForMissingStub: _i21.Future<void>.value(),
+      ) as _i21.Future<void>);
 
   @override
   void back() => super.noSuchMethod(
@@ -1860,15 +1819,15 @@ class MockStackRouter extends _i1.Mock implements _i5.StackRouter {
       ) as T?);
 
   @override
-  _i19.Future<bool> maybePopTop<T extends Object?>([T? result]) =>
+  _i21.Future<bool> maybePopTop<T extends Object?>([T? result]) =>
       (super.noSuchMethod(
         Invocation.method(
           #maybePopTop,
           [result],
         ),
-        returnValue: _i19.Future<bool>.value(false),
-        returnValueForMissingStub: _i19.Future<bool>.value(false),
-      ) as _i19.Future<bool>);
+        returnValue: _i21.Future<bool>.value(false),
+        returnValueForMissingStub: _i21.Future<bool>.value(false),
+      ) as _i21.Future<bool>);
 
   @override
   void popTop<T extends Object?>([T? result]) => super.noSuchMethod(
@@ -1932,7 +1891,7 @@ class MockStackRouter extends _i1.Mock implements _i5.StackRouter {
       ) as List<_i5.PageRouteInfo<Object?>>?);
 
   @override
-  void addListener(_i27.VoidCallback? listener) => super.noSuchMethod(
+  void addListener(_i29.VoidCallback? listener) => super.noSuchMethod(
         Invocation.method(
           #addListener,
           [listener],
@@ -1941,7 +1900,7 @@ class MockStackRouter extends _i1.Mock implements _i5.StackRouter {
       );
 
   @override
-  void removeListener(_i27.VoidCallback? listener) => super.noSuchMethod(
+  void removeListener(_i29.VoidCallback? listener) => super.noSuchMethod(
         Invocation.method(
           #removeListener,
           [listener],
@@ -1962,7 +1921,7 @@ class MockStackRouter extends _i1.Mock implements _i5.StackRouter {
 /// A class which mocks [AppDataRepository].
 ///
 /// See the documentation for Mockito's code generation for more information.
-class MockAppDataRepository extends _i1.Mock implements _i28.AppDataRepository {
+class MockAppDataRepository extends _i1.Mock implements _i30.AppDataRepository {
   @override
   _i8.AppData get appData => (super.noSuchMethod(
         Invocation.getter(#appData),
@@ -2027,34 +1986,34 @@ class MockAppDataRepository extends _i1.Mock implements _i28.AppDataRepository {
       );
 
   @override
-  _i19.Future<void> init() => (super.noSuchMethod(
+  _i21.Future<void> init() => (super.noSuchMethod(
         Invocation.method(
           #init,
           [],
         ),
-        returnValue: _i19.Future<void>.value(),
-        returnValueForMissingStub: _i19.Future<void>.value(),
-      ) as _i19.Future<void>);
+        returnValue: _i21.Future<void>.value(),
+        returnValueForMissingStub: _i21.Future<void>.value(),
+      ) as _i21.Future<void>);
 
   @override
-  _i19.Future<void> setThemeMode(_i3.ThemeMode? mode) => (super.noSuchMethod(
+  _i21.Future<void> setThemeMode(_i3.ThemeMode? mode) => (super.noSuchMethod(
         Invocation.method(
           #setThemeMode,
           [mode],
         ),
-        returnValue: _i19.Future<void>.value(),
-        returnValueForMissingStub: _i19.Future<void>.value(),
-      ) as _i19.Future<void>);
+        returnValue: _i21.Future<void>.value(),
+        returnValueForMissingStub: _i21.Future<void>.value(),
+      ) as _i21.Future<void>);
 
   @override
-  _i19.Future<void> setMaxRadiusMeters(double? meters) => (super.noSuchMethod(
+  _i21.Future<void> setMaxRadiusMeters(double? meters) => (super.noSuchMethod(
         Invocation.method(
           #setMaxRadiusMeters,
           [meters],
         ),
-        returnValue: _i19.Future<void>.value(),
-        returnValueForMissingStub: _i19.Future<void>.value(),
-      ) as _i19.Future<void>);
+        returnValue: _i21.Future<void>.value(),
+        returnValueForMissingStub: _i21.Future<void>.value(),
+      ) as _i21.Future<void>);
 }
 
 /// A class which mocks [AppData].
@@ -2077,11 +2036,11 @@ class MockAppData extends _i1.Mock implements _i8.AppData {
   @override
   String get hostname => (super.noSuchMethod(
         Invocation.getter(#hostname),
-        returnValue: _i26.dummyValue<String>(
+        returnValue: _i28.dummyValue<String>(
           this,
           Invocation.getter(#hostname),
         ),
-        returnValueForMissingStub: _i26.dummyValue<String>(
+        returnValueForMissingStub: _i28.dummyValue<String>(
           this,
           Invocation.getter(#hostname),
         ),
@@ -2090,11 +2049,11 @@ class MockAppData extends _i1.Mock implements _i8.AppData {
   @override
   String get href => (super.noSuchMethod(
         Invocation.getter(#href),
-        returnValue: _i26.dummyValue<String>(
+        returnValue: _i28.dummyValue<String>(
           this,
           Invocation.getter(#href),
         ),
-        returnValueForMissingStub: _i26.dummyValue<String>(
+        returnValueForMissingStub: _i28.dummyValue<String>(
           this,
           Invocation.getter(#href),
         ),
@@ -2103,11 +2062,11 @@ class MockAppData extends _i1.Mock implements _i8.AppData {
   @override
   String get device => (super.noSuchMethod(
         Invocation.getter(#device),
-        returnValue: _i26.dummyValue<String>(
+        returnValue: _i28.dummyValue<String>(
           this,
           Invocation.getter(#device),
         ),
-        returnValueForMissingStub: _i26.dummyValue<String>(
+        returnValueForMissingStub: _i28.dummyValue<String>(
           this,
           Invocation.getter(#device),
         ),
@@ -2153,131 +2112,157 @@ class MockAppData extends _i1.Mock implements _i8.AppData {
       ) as _i12.ThemeDataSettings);
 
   @override
-  _i13.DomainValue get mainDomainValue => (super.noSuchMethod(
+  _i13.TenantIdValue get tenantIdValue => (super.noSuchMethod(
+        Invocation.getter(#tenantIdValue),
+        returnValue: _FakeTenantIdValue_24(
+          this,
+          Invocation.getter(#tenantIdValue),
+        ),
+        returnValueForMissingStub: _FakeTenantIdValue_24(
+          this,
+          Invocation.getter(#tenantIdValue),
+        ),
+      ) as _i13.TenantIdValue);
+
+  @override
+  _i14.DomainValue get mainDomainValue => (super.noSuchMethod(
         Invocation.getter(#mainDomainValue),
-        returnValue: _FakeDomainValue_24(
+        returnValue: _FakeDomainValue_25(
           this,
           Invocation.getter(#mainDomainValue),
         ),
-        returnValueForMissingStub: _FakeDomainValue_24(
+        returnValueForMissingStub: _FakeDomainValue_25(
           this,
           Invocation.getter(#mainDomainValue),
         ),
-      ) as _i13.DomainValue);
+      ) as _i14.DomainValue);
 
   @override
-  List<_i13.DomainValue> get domains => (super.noSuchMethod(
+  List<_i14.DomainValue> get domains => (super.noSuchMethod(
         Invocation.getter(#domains),
-        returnValue: <_i13.DomainValue>[],
-        returnValueForMissingStub: <_i13.DomainValue>[],
-      ) as List<_i13.DomainValue>);
+        returnValue: <_i14.DomainValue>[],
+        returnValueForMissingStub: <_i14.DomainValue>[],
+      ) as List<_i14.DomainValue>);
 
   @override
-  _i14.IconUrlValue get mainIconLightUrl => (super.noSuchMethod(
+  _i15.TelemetrySettings get telemetrySettings => (super.noSuchMethod(
+        Invocation.getter(#telemetrySettings),
+        returnValue: _FakeTelemetrySettings_26(
+          this,
+          Invocation.getter(#telemetrySettings),
+        ),
+        returnValueForMissingStub: _FakeTelemetrySettings_26(
+          this,
+          Invocation.getter(#telemetrySettings),
+        ),
+      ) as _i15.TelemetrySettings);
+
+  @override
+  _i16.IconUrlValue get mainIconLightUrl => (super.noSuchMethod(
         Invocation.getter(#mainIconLightUrl),
-        returnValue: _FakeIconUrlValue_25(
+        returnValue: _FakeIconUrlValue_27(
           this,
           Invocation.getter(#mainIconLightUrl),
         ),
-        returnValueForMissingStub: _FakeIconUrlValue_25(
+        returnValueForMissingStub: _FakeIconUrlValue_27(
           this,
           Invocation.getter(#mainIconLightUrl),
         ),
-      ) as _i14.IconUrlValue);
+      ) as _i16.IconUrlValue);
 
   @override
-  _i14.IconUrlValue get mainIconDarkUrl => (super.noSuchMethod(
+  _i16.IconUrlValue get mainIconDarkUrl => (super.noSuchMethod(
         Invocation.getter(#mainIconDarkUrl),
-        returnValue: _FakeIconUrlValue_25(
+        returnValue: _FakeIconUrlValue_27(
           this,
           Invocation.getter(#mainIconDarkUrl),
         ),
-        returnValueForMissingStub: _FakeIconUrlValue_25(
+        returnValueForMissingStub: _FakeIconUrlValue_27(
           this,
           Invocation.getter(#mainIconDarkUrl),
         ),
-      ) as _i14.IconUrlValue);
+      ) as _i16.IconUrlValue);
 
   @override
-  _i15.MainColorValue get mainColor => (super.noSuchMethod(
+  _i17.MainColorValue get mainColor => (super.noSuchMethod(
         Invocation.getter(#mainColor),
-        returnValue: _FakeMainColorValue_26(
+        returnValue: _FakeMainColorValue_28(
           this,
           Invocation.getter(#mainColor),
         ),
-        returnValueForMissingStub: _FakeMainColorValue_26(
+        returnValueForMissingStub: _FakeMainColorValue_28(
           this,
           Invocation.getter(#mainColor),
         ),
-      ) as _i15.MainColorValue);
+      ) as _i17.MainColorValue);
 
   @override
-  _i16.MainLogoUrlValue get mainLogoLightUrl => (super.noSuchMethod(
+  _i18.MainLogoUrlValue get mainLogoLightUrl => (super.noSuchMethod(
         Invocation.getter(#mainLogoLightUrl),
-        returnValue: _FakeMainLogoUrlValue_27(
+        returnValue: _FakeMainLogoUrlValue_29(
           this,
           Invocation.getter(#mainLogoLightUrl),
         ),
-        returnValueForMissingStub: _FakeMainLogoUrlValue_27(
+        returnValueForMissingStub: _FakeMainLogoUrlValue_29(
           this,
           Invocation.getter(#mainLogoLightUrl),
         ),
-      ) as _i16.MainLogoUrlValue);
+      ) as _i18.MainLogoUrlValue);
 
   @override
-  _i16.MainLogoUrlValue get mainLogoDarkUrl => (super.noSuchMethod(
+  _i18.MainLogoUrlValue get mainLogoDarkUrl => (super.noSuchMethod(
         Invocation.getter(#mainLogoDarkUrl),
-        returnValue: _FakeMainLogoUrlValue_27(
+        returnValue: _FakeMainLogoUrlValue_29(
           this,
           Invocation.getter(#mainLogoDarkUrl),
         ),
-        returnValueForMissingStub: _FakeMainLogoUrlValue_27(
+        returnValueForMissingStub: _FakeMainLogoUrlValue_29(
           this,
           Invocation.getter(#mainLogoDarkUrl),
         ),
-      ) as _i16.MainLogoUrlValue);
+      ) as _i18.MainLogoUrlValue);
 
   @override
-  _i29.PlatformType get appType => (super.noSuchMethod(
+  _i31.PlatformType get appType => (super.noSuchMethod(
         Invocation.getter(#appType),
-        returnValue: _i29.PlatformType.web,
-        returnValueForMissingStub: _i29.PlatformType.web,
-      ) as _i29.PlatformType);
+        returnValue: _i31.PlatformType.web,
+        returnValueForMissingStub: _i31.PlatformType.web,
+      ) as _i31.PlatformType);
 
   @override
-  _i14.IconUrlValue get iconUrl => (super.noSuchMethod(
+  _i16.IconUrlValue get iconUrl => (super.noSuchMethod(
         Invocation.getter(#iconUrl),
-        returnValue: _FakeIconUrlValue_25(
+        returnValue: _FakeIconUrlValue_27(
           this,
           Invocation.getter(#iconUrl),
         ),
-        returnValueForMissingStub: _FakeIconUrlValue_25(
+        returnValueForMissingStub: _FakeIconUrlValue_27(
           this,
           Invocation.getter(#iconUrl),
         ),
-      ) as _i14.IconUrlValue);
+      ) as _i16.IconUrlValue);
 
   @override
-  _i16.MainLogoUrlValue get mainLogoUrl => (super.noSuchMethod(
+  _i18.MainLogoUrlValue get mainLogoUrl => (super.noSuchMethod(
         Invocation.getter(#mainLogoUrl),
-        returnValue: _FakeMainLogoUrlValue_27(
+        returnValue: _FakeMainLogoUrlValue_29(
           this,
           Invocation.getter(#mainLogoUrl),
         ),
-        returnValueForMissingStub: _FakeMainLogoUrlValue_27(
+        returnValueForMissingStub: _FakeMainLogoUrlValue_29(
           this,
           Invocation.getter(#mainLogoUrl),
         ),
-      ) as _i16.MainLogoUrlValue);
+      ) as _i18.MainLogoUrlValue);
 
   @override
   String get schema => (super.noSuchMethod(
         Invocation.getter(#schema),
-        returnValue: _i26.dummyValue<String>(
+        returnValue: _i28.dummyValue<String>(
           this,
           Invocation.getter(#schema),
         ),
-        returnValueForMissingStub: _i26.dummyValue<String>(
+        returnValueForMissingStub: _i28.dummyValue<String>(
           this,
           Invocation.getter(#schema),
         ),

@@ -10,9 +10,9 @@ import 'package:belluga_now/domain/map/ride_share_option.dart';
 import 'package:belluga_now/domain/map/ride_share_provider.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/infrastructure/repositories/poi_repository.dart';
-import 'package:belluga_now/presentation/prototypes/map_experience/controllers/map_screen_controller.dart';
-import 'package:belluga_now/presentation/prototypes/map_experience/widgets/poi_detail_card_builder.dart';
-import 'package:belluga_now/presentation/tenant/map/screens/city_map_screen/widgets/shared/poi_category_theme.dart';
+import 'package:belluga_now/presentation/tenant/map/screens/map_screen/controllers/map_screen_controller.dart';
+import 'package:belluga_now/presentation/tenant/map/screens/map_screen/widgets/poi_detail_card_builder.dart';
+import 'package:belluga_now/presentation/tenant/map/screens/map_screen/widgets/shared/poi_category_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -172,13 +172,14 @@ class _PoiDetailDeckState extends State<PoiDetailDeck>
   }
 
   Future<void> _handleRoute(CityPoiModel poi) async {
+    _controller.logDirectionsOpened(poi);
     final info = await _prepareDirections(poi);
     if (info == null) {
       _showMessage('Localização indisponível para ${poi.name}.');
       return;
     }
     if (!mounted) return;
-    await _presentDirectionsOptions(info);
+    await _presentDirectionsOptions(info, poi);
   }
 
 
@@ -291,7 +292,10 @@ class _PoiDetailDeckState extends State<PoiDetailDeck>
     return options;
   }
 
-  Future<void> _presentDirectionsOptions(DirectionsInfo info) async {
+  Future<void> _presentDirectionsOptions(
+    DirectionsInfo info,
+    CityPoiModel poi,
+  ) async {
     final maps = info.availableMaps;
     final rideShares = info.rideShareOptions;
     final totalOptions = maps.length + rideShares.length;
@@ -308,7 +312,7 @@ class _PoiDetailDeckState extends State<PoiDetailDeck>
           destinationTitle: info.destinationName,
         );
       } else {
-        final success = await _launchRideShareOption(rideShares.first);
+        final success = await _launchRideShareOption(rideShares.first, poi);
         if (!success) {
           await _launchFallbackDirections(info);
         }
@@ -364,7 +368,7 @@ class _PoiDetailDeckState extends State<PoiDetailDeck>
                   title: Text(option.label),
                   onTap: () async {
                     Navigator.of(sheetContext).pop();
-                    final success = await _launchRideShareOption(option);
+                    final success = await _launchRideShareOption(option, poi);
                     if (!success) {
                       await _launchFallbackDirections(info);
                     }
@@ -389,7 +393,14 @@ class _PoiDetailDeckState extends State<PoiDetailDeck>
     }
   }
 
-  Future<bool> _launchRideShareOption(RideShareOption option) {
+  Future<bool> _launchRideShareOption(
+    RideShareOption option,
+    CityPoiModel poi,
+  ) {
+    _controller.logRideShareClicked(
+      provider: option.provider,
+      poiId: poi.id,
+    );
     return _launchFirstSupportedUri(option.uris, option.label);
   }
 

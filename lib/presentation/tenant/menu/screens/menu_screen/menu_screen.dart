@@ -43,9 +43,9 @@ class _MenuScreenState extends State<MenuScreen> {
         title: 'Explorar',
         actions: [
           MenuAction(
-            icon: Icons.explore_outlined,
-            label: 'Descobrir',
-            helper: 'Novas experiências e recomendações',
+            icon: Icons.map_outlined,
+            label: 'Mapa',
+            helper: 'Explorar pontos e eventos no mapa',
             onTap: () => context.router.push(const CityMapRoute()),
           ),
           MenuAction(

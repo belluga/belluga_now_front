@@ -7,7 +7,6 @@ import 'package:belluga_now/application/router/modular_app/modules/initializatio
 import 'package:belluga_now/application/router/modular_app/modules/invites_module.dart';
 import 'package:belluga_now/application/router/modular_app/modules/landlord_module.dart';
 import 'package:belluga_now/application/router/modular_app/modules/map_module.dart';
-import 'package:belluga_now/application/router/modular_app/modules/map_prototype_module.dart';
 import 'package:belluga_now/application/router/modular_app/modules/menu_module.dart';
 import 'package:belluga_now/application/router/modular_app/modules/profile_module.dart';
 import 'package:belluga_now/application/router/modular_app/modules/schedule_module.dart';
@@ -96,7 +95,6 @@ class ModuleSettings extends ModuleSettingsContract {
     await registerSubModule(MapModule());
     await registerSubModule(DiscoveryModule());
     await registerSubModule(MenuModule());
-    await registerSubModule(MapPrototypeModule());
   }
 
   void _registerBackend() {

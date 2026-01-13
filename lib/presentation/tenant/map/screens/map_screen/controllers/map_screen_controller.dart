@@ -5,10 +5,13 @@ import 'package:belluga_now/domain/map/city_poi_model.dart';
 import 'package:belluga_now/domain/map/filters/main_filter_option.dart';
 import 'package:belluga_now/domain/map/filters/poi_filter_options.dart';
 import 'package:belluga_now/domain/map/map_status.dart';
+import 'package:belluga_now/domain/map/ride_share_provider.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
+import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
 import 'package:belluga_now/infrastructure/repositories/poi_repository.dart';
 import 'package:belluga_now/infrastructure/dal/datasources/poi_query.dart';
+import 'package:event_tracker_handler/event_tracker_handler.dart';
 import 'package:free_map/free_map.dart';
 import 'package:flutter/foundation.dart';
 import 'package:get_it/get_it.dart';
@@ -20,12 +23,16 @@ class MapScreenController implements Disposable {
   MapScreenController({
     PoiRepository? poiRepository,
     UserLocationRepositoryContract? userLocationRepository,
+    TelemetryRepositoryContract? telemetryRepository,
   })  : _poiRepository = poiRepository ?? GetIt.I.get<PoiRepository>(),
         _userLocationRepository = userLocationRepository ??
-            GetIt.I.get<UserLocationRepositoryContract>();
+            GetIt.I.get<UserLocationRepositoryContract>(),
+        _telemetryRepository =
+            telemetryRepository ?? GetIt.I.get<TelemetryRepositoryContract>();
 
   final PoiRepository _poiRepository;
   final UserLocationRepositoryContract _userLocationRepository;
+  final TelemetryRepositoryContract _telemetryRepository;
 
   final mapController = MapController();
 
@@ -110,6 +117,14 @@ class MapScreenController implements Disposable {
     }
 
     if (coordinate == null) {
+      _logMapTelemetry(
+        EventTrackerEvents.viewContent,
+        eventName: 'map_location_resolved',
+        properties: const {
+          'status': 'fallback',
+          'reason': 'not_found',
+        },
+      );
       return Future.value('Não encontramos sua localização');
     }
 
@@ -117,6 +132,13 @@ class MapScreenController implements Disposable {
     await ensureMapReady();
     final targetZoom = animate ? 16.0 : mapController.camera.zoom;
     mapController.move(target, _clampZoom(targetZoom));
+    _logMapTelemetry(
+      EventTrackerEvents.viewContent,
+      eventName: 'map_location_resolved',
+      properties: const {
+        'status': 'success',
+      },
+    );
 
     return null;
   }
@@ -133,13 +155,31 @@ class MapScreenController implements Disposable {
   }
 
   Future<void> searchPois(String query) async {
+    final trimmed = query.trim();
     final nextQuery = _composeQuery(searchTerm: query);
+    _logMapTelemetry(
+      EventTrackerEvents.search,
+      eventName: 'map_search_submitted',
+      properties: {
+        'query_len': trimmed.length,
+        'filter_mode': filterModeStreamValue.value.name,
+      },
+    );
     statusMessageStreamValue.addValue('Buscando pontos...');
     await loadPois(nextQuery);
     statusMessageStreamValue.addValue(null);
   }
 
   Future<void> clearSearch() async {
+    final previousQueryLen = _currentQuery.searchTerm?.trim().length ?? 0;
+    _logMapTelemetry(
+      EventTrackerEvents.buttonClick,
+      eventName: 'map_search_cleared',
+      properties: {
+        'previous_query_len': previousQueryLen,
+        'filter_mode': filterModeStreamValue.value.name,
+      },
+    );
     final query = _composeQuery(searchTerm: '');
     statusMessageStreamValue.addValue('Carregando pontos...');
     await loadPois(query, loadingMessage: 'Carregando pontos...');
@@ -171,14 +211,77 @@ class MapScreenController implements Disposable {
     }
   }
 
-  void selectPoi(CityPoiModel? poi) => _poiRepository.selectPoi(poi);
+  void selectPoi(CityPoiModel? poi) {
+    _poiRepository.selectPoi(poi);
+    if (poi != null) {
+      _logMapTelemetry(
+        EventTrackerEvents.poiOpened,
+        eventName: 'poi_opened',
+        properties: {
+          'poi_id': poi.id,
+        },
+      );
+    }
+  }
 
   void clearSelectedPoi() => _poiRepository.clearSelection();
 
-  void applyFilterMode(PoiFilterMode mode) =>
-      _poiRepository.applyFilterMode(mode);
+  void applyFilterMode(PoiFilterMode mode) {
+    final current = filterModeStreamValue.value;
+    if (current == mode) {
+      clearFilters();
+      return;
+    }
+    if (mode == PoiFilterMode.none) {
+      clearFilters();
+      return;
+    }
+    _poiRepository.applyFilterMode(mode);
+    _logMapTelemetry(
+      EventTrackerEvents.selectItem,
+      eventName: 'map_main_filter_applied',
+      properties: {
+        'filter_mode': mode.name,
+      },
+    );
+  }
 
-  void clearFilters() => _poiRepository.clearFilters();
+  void clearFilters() {
+    final wasFiltered = filterModeStreamValue.value != PoiFilterMode.none;
+    _poiRepository.clearFilters();
+    if (!wasFiltered) {
+      return;
+    }
+    _logMapTelemetry(
+      EventTrackerEvents.buttonClick,
+      eventName: 'map_main_filter_cleared',
+    );
+  }
+
+  void logDirectionsOpened(CityPoiModel poi) {
+    _logMapTelemetry(
+      EventTrackerEvents.viewContent,
+      eventName: 'map_directions_opened',
+      properties: {
+        'source': 'poi',
+        'poi_id': poi.id,
+      },
+    );
+  }
+
+  void logRideShareClicked({
+    required RideShareProvider provider,
+    String? poiId,
+  }) {
+    _logMapTelemetry(
+      EventTrackerEvents.buttonClick,
+      eventName: 'map_ride_share_clicked',
+      properties: {
+        'provider': provider.name,
+        if (poiId != null) 'poi_id': poiId,
+      },
+    );
+  }
 
   Future<void> focusOnPoi(CityPoiModel poi, {double? zoom}) async {
     await ensureMapReady();
@@ -272,4 +375,18 @@ class MapScreenController implements Disposable {
   }
 
   double _clampZoom(double zoom) => zoom.clamp(minZoom, maxZoom);
+
+  void _logMapTelemetry(
+    EventTrackerEvents event, {
+    required String eventName,
+    Map<String, dynamic>? properties,
+  }) {
+    unawaited(
+      _telemetryRepository.logEvent(
+        event,
+        eventName: eventName,
+        properties: properties,
+      ),
+    );
+  }
 }

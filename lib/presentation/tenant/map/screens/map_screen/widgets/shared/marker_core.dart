@@ -1,6 +1,6 @@
 import 'package:belluga_now/domain/schedule/event_model.dart';
-import 'package:belluga_now/presentation/tenant/map/screens/city_map_screen/widgets/shared/event_temporal_state.dart';
-import 'package:belluga_now/presentation/tenant/map/screens/city_map_screen/widgets/shared/marker_fallback_icon.dart';
+import 'package:belluga_now/presentation/tenant/map/screens/map_screen/widgets/shared/event_temporal_state.dart';
+import 'package:belluga_now/presentation/tenant/map/screens/map_screen/widgets/shared/marker_fallback_icon.dart';
 import 'package:flutter/material.dart';
 
 class MarkerCore extends StatelessWidget {

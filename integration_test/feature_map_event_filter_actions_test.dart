@@ -9,8 +9,8 @@ import 'package:belluga_now/infrastructure/repositories/app_data_repository.dart
 import 'package:belluga_now/presentation/common/location_permission/screens/location_not_live_screen/location_not_live_screen.dart';
 import 'package:belluga_now/presentation/common/location_permission/screens/location_permission_screen/location_permission_screen.dart';
 import 'package:belluga_now/presentation/common/widgets/button_loading.dart';
-import 'package:belluga_now/presentation/prototypes/map_experience/map_experience_prototype_screen.dart';
-import 'package:belluga_now/presentation/tenant/map/screens/city_map_screen/widgets/shared/marker_core.dart';
+import 'package:belluga_now/presentation/tenant/map/screens/map_screen/map_screen.dart';
+import 'package:belluga_now/presentation/tenant/map/screens/map_screen/widgets/shared/marker_core.dart';
 import 'package:belluga_now/presentation/tenant/schedule/screens/schedule_screen/widgets/event_bottom_sheet.dart';
 import 'package:belluga_now/presentation/tenant/widgets/carousel_card.dart';
 import 'package:flutter/material.dart';
@@ -141,7 +141,7 @@ void main() {
       await tester.tap(find.widgetWithText(NavigationDestination, 'Mapa'));
       await _pumpFor(tester, const Duration(seconds: 1));
       await _dismissLocationGateIfNeeded(tester);
-      await _waitForFinder(tester, find.byType(MapExperiencePrototypeScreen));
+      await _waitForFinder(tester, find.byType(MapScreen));
       await _waitForFinder(tester, _mainFabFinder());
 
       final eventFilterIcon = find.byIcon(BooraIcons.audiotrack);

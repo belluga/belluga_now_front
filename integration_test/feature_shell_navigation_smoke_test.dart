@@ -6,7 +6,7 @@ import 'package:geolocator_platform_interface/geolocator_platform_interface.dart
 import 'package:belluga_now/infrastructure/dal/dao/laravel_backend/app_data_backend/app_data_backend_stub.dart';
 import 'package:belluga_now/infrastructure/dal/dao/local/app_data_local_info_source/app_data_local_info_source_stub.dart';
 import 'package:belluga_now/infrastructure/repositories/app_data_repository.dart';
-import 'package:belluga_now/presentation/prototypes/map_experience/map_experience_prototype_screen.dart';
+import 'package:belluga_now/presentation/tenant/map/screens/map_screen/map_screen.dart';
 import 'package:belluga_now/presentation/tenant/schedule/widgets/agenda_app_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -138,7 +138,7 @@ void main() {
       await tester.tap(find.widgetWithText(NavigationDestination, 'Mapa'));
       await _pumpFor(tester, const Duration(seconds: 1));
       await _dismissLocationGateIfNeeded(tester);
-      await _waitForFinder(tester, find.byType(MapExperiencePrototypeScreen));
+      await _waitForFinder(tester, find.byType(MapScreen));
 
       await tester.tap(find.byIcon(Icons.arrow_back));
       await _pumpFor(tester, const Duration(seconds: 1));

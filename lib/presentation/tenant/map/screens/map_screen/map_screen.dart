@@ -3,24 +3,22 @@ import 'dart:async';
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
-import 'package:belluga_now/presentation/prototypes/map_experience/controllers/map_screen_controller.dart';
-import 'package:belluga_now/presentation/prototypes/map_experience/widgets/fab_menu.dart';
-import 'package:belluga_now/presentation/prototypes/map_experience/widgets/poi_details_deck.dart';
-import 'package:belluga_now/presentation/prototypes/map_experience/widgets/prototype_map_layers.dart';
+import 'package:belluga_now/presentation/tenant/map/screens/map_screen/controllers/map_screen_controller.dart';
+import 'package:belluga_now/presentation/tenant/map/screens/map_screen/widgets/fab_menu.dart';
+import 'package:belluga_now/presentation/tenant/map/screens/map_screen/widgets/map_layers.dart';
+import 'package:belluga_now/presentation/tenant/map/screens/map_screen/widgets/poi_details_deck.dart';
 import 'package:belluga_now/presentation/tenant/widgets/belluga_bottom_navigation_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 
-class MapExperiencePrototypeScreen extends StatefulWidget {
-  const MapExperiencePrototypeScreen({super.key});
+class MapScreen extends StatefulWidget {
+  const MapScreen({super.key});
 
   @override
-  State<MapExperiencePrototypeScreen> createState() =>
-      _MapExperiencePrototypeScreenState();
+  State<MapScreen> createState() => _MapScreenState();
 }
 
-class _MapExperiencePrototypeScreenState
-    extends State<MapExperiencePrototypeScreen> {
+class _MapScreenState extends State<MapScreen> {
   final _controller = GetIt.I.get<MapScreenController>();
   final _locationRepository = GetIt.I.get<UserLocationRepositoryContract>();
 
@@ -71,7 +69,7 @@ class _MapExperiencePrototypeScreenState
               Column(
                 children: [
                   Expanded(
-                    child: PrototypeMapLayers(),
+                    child: MapLayers(),
                   ),
                 ],
               ),

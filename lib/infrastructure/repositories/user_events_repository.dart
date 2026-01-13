@@ -1,8 +1,6 @@
 import 'package:belluga_now/domain/repositories/user_events_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
-import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
 import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
-import 'package:event_tracker_handler/event_tracker_handler.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value.dart';
 
@@ -11,14 +9,10 @@ import 'package:stream_value/core/stream_value.dart';
 class UserEventsRepository implements UserEventsRepositoryContract {
   UserEventsRepository({
     ScheduleRepositoryContract? scheduleRepository,
-    TelemetryRepositoryContract? telemetryRepository,
   }) : _scheduleRepository =
-            scheduleRepository ?? GetIt.I.get<ScheduleRepositoryContract>(),
-        _telemetryRepository =
-            telemetryRepository ?? GetIt.I.get<TelemetryRepositoryContract>();
+            scheduleRepository ?? GetIt.I.get<ScheduleRepositoryContract>();
 
   final ScheduleRepositoryContract _scheduleRepository;
-  final TelemetryRepositoryContract _telemetryRepository;
 
   /// Stream of confirmed event IDs
   @override
@@ -49,13 +43,6 @@ class UserEventsRepository implements UserEventsRepositoryContract {
   Future<void> confirmEventAttendance(String eventId) async {
     final newSet = Set<String>.from(_confirmedEventIds)..add(eventId);
     confirmedEventIdsStream.addValue(newSet);
-    await _telemetryRepository.logEvent(
-      EventTrackerEvents.eventConfirmedPresence,
-      eventName: 'event_confirmed_presence',
-      properties: {
-        'event_id': eventId,
-      },
-    );
     // TODO: Call backend API when available
   }
 

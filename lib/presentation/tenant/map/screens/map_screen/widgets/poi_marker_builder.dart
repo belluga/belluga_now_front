@@ -1,7 +1,7 @@
 import 'package:belluga_now/domain/map/city_poi_model.dart';
 import 'package:belluga_now/domain/map/event_poi_model.dart';
-import 'package:belluga_now/presentation/tenant/map/screens/city_map_screen/widgets/shared/event_marker.dart';
-import 'package:belluga_now/presentation/tenant/map/screens/city_map_screen/widgets/shared/poi_marker.dart';
+import 'package:belluga_now/presentation/tenant/map/screens/map_screen/widgets/shared/event_marker.dart';
+import 'package:belluga_now/presentation/tenant/map/screens/map_screen/widgets/shared/poi_marker.dart';
 import 'package:free_map/free_map.dart';
 import 'package:flutter/material.dart';
 

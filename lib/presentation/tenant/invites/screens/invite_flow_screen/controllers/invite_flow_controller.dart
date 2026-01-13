@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:belluga_now/domain/invites/invite_decision.dart';
+import 'package:belluga_now/domain/invites/invite_inviter_type.dart';
 import 'package:belluga_now/domain/invites/invite_model.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
@@ -130,34 +131,11 @@ class InviteFlowScreenController with Disposable {
           () => _userEventsRepository.confirmEventAttendance(current.eventId),
         );
       }
-      if (!queued) {
-        await _telemetryRepository.logEvent(
-          EventTrackerEvents.inviteAcceptSelectedInviter,
-          eventName: 'invite_accept_selected_inviter',
-          properties: {
-            'event_id': current.eventId,
-          },
-        );
-        await _telemetryRepository.logEvent(
-          EventTrackerEvents.inviteAccepted,
-          eventName: 'invite_accepted',
-          properties: {
-            'event_id': current.eventId,
-          },
-        );
-      }
       return InviteDecisionResult(invite: current, queued: queued);
     }
 
     // Decline: remove immediately
     removeInvite();
-    await _telemetryRepository.logEvent(
-      EventTrackerEvents.inviteDeclined,
-      eventName: 'invite_declined',
-      properties: {
-        'event_id': current.eventId,
-      },
-    );
     return const InviteDecisionResult(invite: null, queued: false);
   }
 
@@ -224,11 +202,27 @@ class InviteFlowScreenController with Disposable {
       await _telemetryRepository.logEvent(
         EventTrackerEvents.inviteOpened,
         eventName: 'invite_opened',
-        properties: {
-          'event_id': current.eventId,
-        },
+        properties: _buildInviteTelemetryProperties(current),
       );
     }
+  }
+
+  Map<String, dynamic> _buildInviteTelemetryProperties(InviteModel invite) {
+    final properties = <String, dynamic>{
+      'event_id': invite.eventId,
+      'source': 'invite_flow',
+    };
+
+    final inviterPrincipal = invite.inviterPrincipal;
+    if (inviterPrincipal != null) {
+      properties['inviter_kind'] = inviterPrincipal.type.name;
+      properties['inviter_id'] = inviterPrincipal.id;
+      if (inviterPrincipal.type == InviteInviterType.partner) {
+        properties['partner_id'] = inviterPrincipal.id;
+      }
+    }
+
+    return properties;
   }
 
   void syncTopCardIndex(int invitesLength) {
