@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:collection';
 
+import 'package:flutter/foundation.dart';
+
 class TelemetryQueue {
   TelemetryQueue({
     List<Duration>? retryDelays,
@@ -31,6 +33,8 @@ class TelemetryQueue {
       final job = _jobs.removeFirst();
       var success = false;
 
+      Object? lastError;
+      StackTrace? lastStackTrace;
       for (final delay in _retryDelays) {
         if (delay > Duration.zero) {
           await Future<void>.delayed(delay);
@@ -39,9 +43,18 @@ class TelemetryQueue {
           await job.task();
           success = true;
           break;
-        } catch (_) {
+        } catch (error, stackTrace) {
+          lastError = error;
+          lastStackTrace = stackTrace;
           success = false;
         }
+      }
+
+      if (!success && kIsWeb && lastError != null) {
+        // ignore: avoid_print
+        print(
+          '[Telemetry][Web][Queue] job failed | $lastError\n$lastStackTrace',
+        );
       }
 
       if (!job.completer.isCompleted) {

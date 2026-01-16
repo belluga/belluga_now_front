@@ -20,6 +20,10 @@ class _FakeUserLocationRepository implements UserLocationRepositoryContract {
       StreamValue<DateTime?>(defaultValue: null);
 
   @override
+  final StreamValue<double?> lastKnownAccuracyStreamValue =
+      StreamValue<double?>(defaultValue: null);
+
+  @override
   final StreamValue<String?> lastKnownAddressStreamValue =
       StreamValue<String?>(defaultValue: null);
 

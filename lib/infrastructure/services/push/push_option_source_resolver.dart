@@ -1,6 +1,6 @@
 import 'dart:convert';
 
-import 'package:belluga_now/application/configurations/belluga_constants.dart';
+import 'package:belluga_now/infrastructure/dal/dao/backend_context.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:dio/dio.dart';
 import 'package:get_it/get_it.dart';
@@ -8,14 +8,30 @@ import 'package:push_handler/push_handler.dart';
 
 class PushOptionSourceResolver {
   PushOptionSourceResolver({
+    BackendContext? context,
     Dio? dio,
     AuthRepositoryContract? authRepository,
-  })  : _dio = dio ?? Dio(BaseOptions(baseUrl: BellugaConstants.api.baseUrl)),
+  })  : _context = context,
+        _dio = dio ?? Dio(BaseOptions(baseUrl: _resolveBaseUrl(context))),
         _authRepository = authRepository ?? GetIt.I.get<AuthRepositoryContract>();
 
+  final BackendContext? _context;
   final Dio _dio;
   final AuthRepositoryContract _authRepository;
   final Map<String, _CachedOptions> _cache = {};
+
+  static String _resolveBaseUrl(BackendContext? context) {
+    final resolved = context ??
+        (GetIt.I.isRegistered<BackendContext>()
+            ? GetIt.I.get<BackendContext>()
+            : null);
+    if (resolved == null) {
+      throw StateError(
+        'BackendContext is not registered for PushOptionSourceResolver.',
+      );
+    }
+    return resolved.baseUrl;
+  }
 
   Future<List<OptionItem>> resolve(OptionSource source) async {
     if (source.type == 'static') {
@@ -72,7 +88,7 @@ class PushOptionSourceResolver {
     if (path == null || path.isEmpty) {
       return null;
     }
-    final baseUri = Uri.parse(BellugaConstants.api.baseUrl);
+    final baseUri = Uri.parse(_resolveBaseUrl(_context));
     return baseUri.resolve(path);
   }
 

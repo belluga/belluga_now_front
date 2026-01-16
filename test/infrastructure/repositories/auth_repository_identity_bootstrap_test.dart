@@ -29,10 +29,10 @@ void main() {
     await GetIt.I.reset();
   });
 
-  test('init issues anonymous token when none exists', () async {
+  test('init issues identity token when none exists', () async {
     final authBackend = _FakeAuthBackend(
-      tokenToReturn: 'anon-token-1',
-      userIdToReturn: 'anon-user-1',
+      tokenToReturn: 'identity-token-1',
+      userIdToReturn: 'user-1',
     );
     GetIt.I.registerSingleton<BackendContract>(
       _FakeBackend(auth: authBackend),
@@ -43,20 +43,20 @@ void main() {
     await Future<void>.delayed(const Duration(milliseconds: 10));
 
     expect(authBackend.issueCount, 1);
-    expect(repository.userToken, 'anon-token-1');
+    expect(repository.userToken, 'identity-token-1');
 
     final stored = await AuthRepository.storage.read(key: 'user_token');
-    expect(stored, 'anon-token-1');
-    final anonStored =
-        await AuthRepository.storage.read(key: 'anonymous_user_id');
-    expect(anonStored, 'anon-user-1');
+    expect(stored, 'identity-token-1');
+    final storedUserId =
+        await AuthRepository.storage.read(key: 'user_id');
+    expect(storedUserId, 'user-1');
   });
 
-  test('init skips anonymous token when stored token exists', () async {
+  test('init skips identity token when stored token exists', () async {
     FlutterSecureStorage.setMockInitialValues({'user_token': 'stored-token'});
     final authBackend = _FakeAuthBackend(
-      tokenToReturn: 'anon-token-2',
-      userIdToReturn: 'anon-user-2',
+      tokenToReturn: 'identity-token-2',
+      userIdToReturn: 'user-2',
     );
     GetIt.I.registerSingleton<BackendContract>(
       _FakeBackend(auth: authBackend),
@@ -129,8 +129,8 @@ class _FakeAuthBackend extends AuthBackendContract {
     return UserDto(
       id: '507f1f77bcf86cd799439011',
       profile: UserProfileDto(
-        name: 'Anonymous User',
-        email: 'anon@example.com',
+        name: 'Test User',
+        email: 'user@example.com',
         birthday: '',
         pictureUrl: null,
       ),

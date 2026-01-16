@@ -2,6 +2,7 @@
 
 import 'dart:async';
 
+import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/configurations/custom_scroll_behavior.dart';
 import 'package:belluga_now/application/configurations/belluga_constants.dart';
 import 'package:belluga_now/application/router/app_router.dart';
@@ -239,12 +240,12 @@ abstract class ApplicationContract extends ModularAppContract {
       if (user == null) {
         return;
       }
-      final anonymousUserId = await authRepository.getAnonymousUserId();
-      if (anonymousUserId == null || anonymousUserId.isEmpty) {
+      final storedUserId = await authRepository.getUserId();
+      if (storedUserId == null || storedUserId.isEmpty) {
         return;
       }
       await telemetryRepository.mergeIdentity(
-        previousUserId: anonymousUserId,
+        previousUserId: storedUserId,
       );
     });
     final currentUser = authRepository.userStreamValue.value;
@@ -260,12 +261,12 @@ abstract class ApplicationContract extends ModularAppContract {
     required AuthRepositoryContract authRepository,
     required TelemetryRepositoryContract telemetryRepository,
   }) async {
-    final anonymousUserId = await authRepository.getAnonymousUserId();
-    if (anonymousUserId == null || anonymousUserId.isEmpty) {
+    final storedUserId = await authRepository.getUserId();
+    if (storedUserId == null || storedUserId.isEmpty) {
       return;
     }
     await telemetryRepository.mergeIdentity(
-      previousUserId: anonymousUserId,
+      previousUserId: storedUserId,
     );
   }
 
@@ -326,19 +327,210 @@ abstract class ApplicationContract extends ModularAppContract {
 class _ApplicationContractState extends State<ApplicationContract>
     with WidgetsBindingObserver {
   bool _didTrackAppInit = false;
+  bool _appInitInFlight = false;
   AppLifecycleState? _lastLifecycleState;
+  EventTrackerLifecycleObserver? _telemetryLifecycleObserver;
+  EventTrackerTimedEventHandle? _routerTimedEvent;
+  String? _lastRouterSignature;
+  Future<void> _routerTrackPending = Future.value();
+  VoidCallback? _routerListener;
+  final List<AppLifecycleState> _lifecycleStateBuffer = [];
+  Timer? _lifecycleDebounceTimer;
+  static const Duration _lifecycleDebounceWindow =
+      Duration(milliseconds: 400);
+  static const int _appInitMaxRetries = 10;
+  static const Duration _appInitRetryDelay = Duration(milliseconds: 500);
+  int _appInitRetryCount = 0;
+  Timer? _appInitRetryTimer;
+
+  void _debugWebTelemetry(String message, [Object? details]) {
+    if (kIsWeb) {
+      final payload = details == null ? message : '$message | $details';
+      // ignore: avoid_print
+      print('[Telemetry][Web][AppRouter] $payload');
+    }
+  }
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _trackAppInit();
+    _registerTelemetryLifecycleObserver();
+    _registerRouterTelemetryObserver();
+    unawaited(_trackAppInit());
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    if (_telemetryLifecycleObserver != null) {
+      WidgetsBinding.instance.removeObserver(_telemetryLifecycleObserver!);
+      _telemetryLifecycleObserver = null;
+    }
+    if (_routerListener != null) {
+      widget.appRouter.removeListener(_routerListener!);
+      _routerListener = null;
+    }
+    _appInitRetryTimer?.cancel();
+    _lifecycleDebounceTimer?.cancel();
     super.dispose();
+  }
+
+  void _registerRouterTelemetryObserver() {
+    if (!kIsWeb || _routerListener != null) {
+      return;
+    }
+    _routerListener = () {
+      _debugWebTelemetry(
+        'listener fired',
+        {
+          'route': widget.appRouter.topRoute.name,
+          'match': widget.appRouter.topRoute.match,
+        },
+      );
+      _enqueueRouterTrack(widget.appRouter.topRoute);
+    };
+    widget.appRouter.addListener(_routerListener!);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _debugWebTelemetry(
+        'post frame enqueue',
+        {
+          'route': widget.appRouter.topRoute.name,
+          'match': widget.appRouter.topRoute.match,
+        },
+      );
+      _enqueueRouterTrack(widget.appRouter.topRoute);
+    });
+  }
+
+  void _enqueueRouterTrack(RouteData routeData) {
+    _debugWebTelemetry(
+      'enqueue track',
+      {
+        'route': routeData.name,
+        'match': routeData.match,
+      },
+    );
+    _routerTrackPending = _routerTrackPending
+        .then((_) => _trackRouterRoute(routeData))
+        .catchError((_) {});
+  }
+
+  Future<void> _trackRouterRoute(RouteData routeData) async {
+    if (!GetIt.I.isRegistered<TelemetryRepositoryContract>()) {
+      return;
+    }
+    final signature = _buildRouterSignature(routeData);
+    if (signature == _lastRouterSignature) {
+      _debugWebTelemetry('skip (same signature)', signature);
+      return;
+    }
+    _lastRouterSignature = signature;
+    _finishRouterTimedEvent();
+    final telemetry = GetIt.I.get<TelemetryRepositoryContract>();
+    final screenContext = _buildRouterScreenContext(routeData);
+    telemetry.setScreenContext(screenContext);
+    _routerTimedEvent = await telemetry.startTimedEvent(
+      EventTrackerEvents.viewContent,
+      eventName: 'screen_view',
+      properties: {
+        'screen_context': screenContext,
+      },
+    );
+    _debugWebTelemetry(
+      'timed event started',
+      {
+        'route': routeData.name,
+        'handle': _routerTimedEvent?.id,
+      },
+    );
+  }
+
+  void _finishRouterTimedEvent() {
+    final handle = _routerTimedEvent;
+    if (handle == null) {
+      return;
+    }
+    _routerTimedEvent = null;
+    final telemetry = GetIt.I.get<TelemetryRepositoryContract>();
+    _debugWebTelemetry('timed event finish', handle.id);
+    unawaited(telemetry.finishTimedEvent(handle));
+  }
+
+  String _buildRouterSignature(RouteData routeData) {
+    return '${routeData.name}|${routeData.match}|'
+        '${routeData.params.rawMap}|${routeData.queryParams.rawMap}';
+  }
+
+  Map<String, dynamic> _buildRouterScreenContext(RouteData routeData) {
+    final params = {
+      ...routeData.params.rawMap,
+      ...routeData.queryParams.rawMap,
+    };
+    final sanitized = _sanitizeRouteParams(params);
+    return {
+      'route_name': routeData.name,
+      'route_type': routeData.type.runtimeType.toString(),
+      'is_overlay': false,
+      if (sanitized != null && sanitized.isNotEmpty) 'route_params': sanitized,
+    };
+  }
+
+  Map<String, dynamic>? _sanitizeRouteParams(
+    Map<String, dynamic> params,
+  ) {
+    if (params.isEmpty) {
+      return null;
+    }
+    final sanitized = <String, dynamic>{};
+    params.forEach((key, value) {
+      final safeValue = _sanitizeJsonValue(value);
+      if (safeValue != null) {
+        sanitized[key.toString()] = safeValue;
+      }
+    });
+    return sanitized.isEmpty ? null : sanitized;
+  }
+
+  Object? _sanitizeJsonValue(Object? value) {
+    if (value == null ||
+        value is String ||
+        value is num ||
+        value is bool) {
+      return value;
+    }
+    if (value is Map) {
+      final sanitized = <String, dynamic>{};
+      value.forEach((key, nested) {
+        final safeValue = _sanitizeJsonValue(nested);
+        if (safeValue != null) {
+          sanitized[key.toString()] = safeValue;
+        }
+      });
+      return sanitized.isEmpty ? null : sanitized;
+    }
+    if (value is Iterable) {
+      final sanitized = value
+          .map(_sanitizeJsonValue)
+          .where((item) => item != null)
+          .toList();
+      return sanitized.isEmpty ? null : sanitized;
+    }
+    return null;
+  }
+
+  void _registerTelemetryLifecycleObserver() {
+    if (!GetIt.I.isRegistered<TelemetryRepositoryContract>()) {
+      return;
+    }
+    final telemetry = GetIt.I.get<TelemetryRepositoryContract>();
+    final observer = telemetry.buildLifecycleObserver();
+    if (observer == null) {
+      return;
+    }
+    _telemetryLifecycleObserver = observer;
+    WidgetsBinding.instance.addObserver(observer);
   }
 
   @override
@@ -347,18 +539,90 @@ class _ApplicationContractState extends State<ApplicationContract>
     if (_lastLifecycleState == state) {
       return;
     }
+    final previousState = _lastLifecycleState;
     _lastLifecycleState = state;
-    if (state == AppLifecycleState.paused ||
-        state == AppLifecycleState.detached) {
-      _trackAppBackground(state);
+    if (!kIsWeb) {
+      _bufferAppLifecycle(state);
+    }
+    if (state == AppLifecycleState.resumed &&
+        (previousState == AppLifecycleState.paused ||
+            previousState == AppLifecycleState.detached)) {
+      _didTrackAppInit = false;
+      _appInitRetryCount = 0;
+      _appInitRetryTimer?.cancel();
+      unawaited(_trackAppInit());
     }
   }
 
-  void _trackAppInit() {
-    if (_didTrackAppInit) {
+  Future<void> _trackAppInit() async {
+    if (_didTrackAppInit || _appInitInFlight) {
       return;
     }
-    _didTrackAppInit = true;
+    if (!GetIt.I.isRegistered<TelemetryRepositoryContract>()) {
+      _scheduleAppInitRetry();
+      return;
+    }
+    if (!GetIt.I.isRegistered<AuthRepositoryContract>()) {
+      _scheduleAppInitRetry();
+      return;
+    }
+
+    _appInitInFlight = true;
+    _appInitRetryTimer?.cancel();
+    final telemetry = GetIt.I.get<TelemetryRepositoryContract>();
+    var success = false;
+    try {
+      success = await telemetry.logEvent(
+        EventTrackerEvents.openApp,
+        eventName: 'app_init',
+      );
+    } catch (_) {
+      success = false;
+    }
+    _appInitInFlight = false;
+    if (success) {
+      _didTrackAppInit = true;
+      _appInitRetryTimer?.cancel();
+    } else {
+      _scheduleAppInitRetry();
+    }
+  }
+
+  void _scheduleAppInitRetry() {
+    if (_appInitRetryTimer != null ||
+        _appInitRetryCount >= _appInitMaxRetries) {
+      return;
+    }
+    _appInitRetryCount += 1;
+    _appInitRetryTimer = Timer(_appInitRetryDelay, () {
+      _appInitRetryTimer = null;
+      if (!mounted) return;
+      unawaited(_trackAppInit());
+    });
+  }
+
+  void _bufferAppLifecycle(AppLifecycleState state) {
+    _lifecycleStateBuffer.add(state);
+    _lifecycleDebounceTimer?.cancel();
+    _lifecycleDebounceTimer = Timer(_lifecycleDebounceWindow, () {
+      _lifecycleDebounceTimer = null;
+      if (!mounted || _lifecycleStateBuffer.isEmpty) {
+        _lifecycleStateBuffer.clear();
+        return;
+      }
+      final sequence = _lifecycleStateBuffer
+          .map((item) => item.name)
+          .toList(growable: false);
+      final finalState = _lifecycleStateBuffer.last;
+      _lifecycleStateBuffer.clear();
+      _trackAppLifecycle(finalState, sequence);
+    });
+  }
+
+  void _trackAppLifecycle(
+    AppLifecycleState finalState,
+    List<String> sequence,
+  ) {
     if (!GetIt.I.isRegistered<TelemetryRepositoryContract>()) {
       return;
     }
@@ -366,22 +630,10 @@ class _ApplicationContractState extends State<ApplicationContract>
     unawaited(
       telemetry.logEvent(
         EventTrackerEvents.openApp,
-        eventName: 'app_init',
-      ),
-    );
-  }
-
-  void _trackAppBackground(AppLifecycleState state) {
-    if (!GetIt.I.isRegistered<TelemetryRepositoryContract>()) {
-      return;
-    }
-    final telemetry = GetIt.I.get<TelemetryRepositoryContract>();
-    unawaited(
-      telemetry.logEvent(
-        EventTrackerEvents.appBackground,
-        eventName: 'app_background',
+        eventName: 'app_lifecycle',
         properties: {
-          'state': state.name,
+          'state': finalState.name,
+          'sequence': sequence,
         },
       ),
     );
@@ -400,7 +652,8 @@ class _ApplicationContractState extends State<ApplicationContract>
           darkTheme: widget.getDarkThemeData(),
           scrollBehavior: CustomScrollBehavior(),
           routerConfig: widget.appRouter.config(
-            navigatorObservers: () => [TelemetryRouteObserver()],
+            navigatorObservers: () =>
+                kIsWeb ? const [] : [TelemetryRouteObserver()],
           ),
         );
       },

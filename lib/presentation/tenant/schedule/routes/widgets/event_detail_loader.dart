@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
 import 'package:belluga_now/presentation/common/widgets/image_palette_theme.dart';
@@ -27,14 +29,15 @@ class _EventDetailLoaderState extends State<EventDetailLoader> {
   final TelemetryRepositoryContract _telemetryRepository =
       GetIt.I.get<TelemetryRepositoryContract>();
   late Future<EventModel?> _eventFuture;
+  Future<EventTrackerTimedEventHandle?>? _eventOpenedHandleFuture;
 
   @override
   void initState() {
     super.initState();
-    _eventFuture = _controller.loadEventBySlug(widget.slug).then((_) {
+    _eventFuture = _controller.loadEventBySlug(widget.slug).then((_) async {
       final event = _controller.eventStreamValue.value;
-      if (event != null) {
-        _telemetryRepository.logEvent(
+      if (event != null && mounted) {
+        _eventOpenedHandleFuture = _telemetryRepository.startTimedEvent(
           EventTrackerEvents.eventOpened,
           eventName: 'event_opened',
           properties: {
@@ -44,6 +47,21 @@ class _EventDetailLoaderState extends State<EventDetailLoader> {
       }
       return event;
     });
+  }
+
+  @override
+  void dispose() {
+    final handleFuture = _eventOpenedHandleFuture;
+    if (handleFuture != null) {
+      _eventOpenedHandleFuture = null;
+      unawaited(() async {
+        final handle = await handleFuture;
+        if (handle != null) {
+          await _telemetryRepository.finishTimedEvent(handle);
+        }
+      }());
+    }
+    super.dispose();
   }
 
   @override

@@ -13,6 +13,7 @@ abstract class UserLocationRepositoryContract {
   StreamValue<CityCoordinate?> get userLocationStreamValue;
   StreamValue<CityCoordinate?> get lastKnownLocationStreamValue;
   StreamValue<DateTime?> get lastKnownCapturedAtStreamValue;
+  StreamValue<double?> get lastKnownAccuracyStreamValue;
   StreamValue<String?> get lastKnownAddressStreamValue;
 
   Future<void> ensureLoaded();

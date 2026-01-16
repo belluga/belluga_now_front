@@ -445,6 +445,8 @@ class _TestUserLocationRepository implements UserLocationRepositoryContract {
       StreamValue<CityCoordinate?>(defaultValue: null);
   final StreamValue<DateTime?> _nullDateStream =
       StreamValue<DateTime?>(defaultValue: null);
+  final StreamValue<double?> _nullDoubleStream =
+      StreamValue<double?>(defaultValue: null);
   final StreamValue<String?> _nullStringStream =
       StreamValue<String?>(defaultValue: null);
 
@@ -453,6 +455,9 @@ class _TestUserLocationRepository implements UserLocationRepositoryContract {
 
   @override
   StreamValue<DateTime?> get lastKnownCapturedAtStreamValue => _nullDateStream;
+
+  @override
+  StreamValue<double?> get lastKnownAccuracyStreamValue => _nullDoubleStream;
 
   @override
   StreamValue<CityCoordinate?> get lastKnownLocationStreamValue =>

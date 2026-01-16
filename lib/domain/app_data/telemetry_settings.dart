@@ -10,6 +10,13 @@ class TelemetrySettings {
   bool get isEnabled => trackers.isNotEmpty;
 
   static TelemetrySettings fromRaw(Object? raw) {
+    if (raw is Map) {
+      final map = raw is Map<String, dynamic>
+          ? raw
+          : Map<String, dynamic>.from(raw);
+      return TelemetrySettings.fromRaw(map['trackers']);
+    }
+
     if (raw is! List) {
       return const TelemetrySettings(trackers: <EventTrackerSettingsModel>[]);
     }

@@ -1,6 +1,7 @@
 import 'package:belluga_now/domain/app_data/app_type.dart';
 import 'package:belluga_now/domain/app_data/firebase_settings.dart';
 import 'package:belluga_now/domain/app_data/push_settings.dart';
+import 'package:belluga_now/domain/app_data/telemetry_context_settings.dart';
 import 'package:belluga_now/domain/app_data/telemetry_settings.dart';
 import 'package:belluga_now/domain/app_data/value_object/app_domain_value.dart';
 import 'package:belluga_now/domain/app_data/value_object/domain_value.dart';
@@ -30,6 +31,7 @@ class AppData {
   final List<DomainValue> domains;
   final List<AppDomainValue>? appDomains;
   final TelemetrySettings telemetrySettings;
+  final TelemetryContextSettings telemetryContextSettings;
   final FirebaseSettings? firebaseSettings;
   final PushSettings? pushSettings;
 
@@ -54,6 +56,7 @@ class AppData {
     required this.domains,
     required this.appDomains,
     required this.telemetrySettings,
+    required this.telemetryContextSettings,
     required this.firebaseSettings,
     required this.pushSettings,
     required this.mainIconLightUrl,
@@ -80,6 +83,7 @@ class AppData {
             'main_color': remoteData.mainColor,
             'tenant_id': remoteData.tenantId,
             'telemetry': remoteData.telemetry,
+            'telemetry_context': remoteData.telemetryContext,
             'firebase': remoteData.firebase,
             'push': remoteData.push,
           };
@@ -99,7 +103,12 @@ class AppData {
         DomainValue()..parse(DomainValue.coerceRaw(map['main_domain']));
     final tenantIdValue = TenantIdValue()
       ..parse(map['tenant_id']?.toString());
-    final telemetrySettings = TelemetrySettings.fromRaw(map['telemetry']);
+    final telemetryRaw = map['telemetry'];
+    final telemetrySettings = TelemetrySettings.fromRaw(telemetryRaw);
+    final telemetryContextRaw =
+        telemetryRaw is Map ? telemetryRaw : map['telemetry_context'];
+    final telemetryContextSettings =
+        TelemetryContextSettings.fromRaw(telemetryContextRaw);
     final firebaseSettings =
         FirebaseSettings.tryFromMap(map['firebase'] as Map<String, dynamic>?);
     final pushSettings =
@@ -138,6 +147,7 @@ class AppData {
           ?.map((appDomain) => AppDomainValue()..parse(appDomain))
           .toList(),
       telemetrySettings: telemetrySettings,
+      telemetryContextSettings: telemetryContextSettings,
       firebaseSettings: firebaseSettings,
       pushSettings: pushSettings,
       mainIconLightUrl: _parseRequired(

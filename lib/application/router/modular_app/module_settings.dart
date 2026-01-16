@@ -35,10 +35,11 @@ import 'package:belluga_now/infrastructure/repositories/user_location_repository
 import 'package:belluga_now/infrastructure/dal/dao/app_data_backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/local/app_data_local_info_source/app_data_local_info_source.dart';
 import 'package:belluga_now/infrastructure/dal/dao/backend_contract.dart';
+import 'package:belluga_now/infrastructure/dal/dao/backend_context.dart';
 import 'package:belluga_now/infrastructure/dal/dao/laravel_backend/app_data_backend/app_data_backend.dart';
-import 'package:belluga_now/infrastructure/dal/dao/mock_backend/mock_backend.dart';
 import 'package:belluga_now/infrastructure/dal/dao/mock_backend/mock_schedule_backend.dart';
 import 'package:belluga_now/infrastructure/dal/dao/mock_backend/mock_tenant_backend.dart';
+import 'package:belluga_now/infrastructure/dal/dao/production_backend/production_backend.dart';
 import 'package:belluga_now/infrastructure/dal/dao/tenant_backend_contract.dart';
 import 'package:belluga_now/infrastructure/services/schedule_backend_contract.dart';
 import 'package:belluga_now/application/application_contract.dart';
@@ -62,7 +63,7 @@ class ModuleSettings extends ModuleSettingsContract {
     TenantBackendContract Function()? tenantBackendBuilderForTest,
     @visibleForTesting
     ScheduleBackendContract Function()? scheduleBackendBuilderForTest,
-  })  : _backendBuilder = backendBuilderForTest ?? (() => MockBackend()),
+  })  : _backendBuilder = backendBuilderForTest ?? (() => ProductionBackend()),
         _appDataBackendBuilder =
             appDataBackendBuilderForTest ?? (() => AppDataBackend()),
         _tenantBackendBuilder =
@@ -98,7 +99,7 @@ class ModuleSettings extends ModuleSettingsContract {
   }
 
   void _registerBackend() {
-    // Composite backend (mock) for repositories still depending on BackendContract
+    // Composite backend for repositories still depending on BackendContract.
     _registerLazySingletonIfAbsent<BackendContract>(_backendBuilder);
     _registerLazySingletonIfAbsent<AppDataBackendContract>(
       _appDataBackendBuilder,
@@ -284,6 +285,7 @@ class ModuleSettings extends ModuleSettingsContract {
       () => ContactsRepository(),
     );
     await _registerAppDataRepository();
+    _registerBackendContext();
     _registerIfAbsent<TelemetryRepositoryContract>(
       () => TelemetryRepository(),
     );
@@ -305,6 +307,16 @@ class ModuleSettings extends ModuleSettingsContract {
       ),
     );
     await appDataRepository.init();
+  }
+
+  void _registerBackendContext() {
+    if (GetIt.I.isRegistered<BackendContext>()) {
+      return;
+    }
+    final appData = GetIt.I.get<AppDataRepository>().appData;
+    GetIt.I.registerSingleton<BackendContext>(
+      BackendContext.fromAppData(appData),
+    );
   }
 
   Future<void> _registerTenantRepository() async {

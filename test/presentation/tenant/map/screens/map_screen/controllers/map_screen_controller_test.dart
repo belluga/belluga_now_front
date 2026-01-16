@@ -42,8 +42,24 @@ class _LoggedEvent {
   final Map<String, dynamic>? properties;
 }
 
+class _TimedEvent {
+  _TimedEvent({
+    required this.handle,
+    required this.event,
+    required this.eventName,
+    required this.properties,
+  });
+
+  final EventTrackerTimedEventHandle handle;
+  final EventTrackerEvents event;
+  final String? eventName;
+  final Map<String, dynamic>? properties;
+}
+
 class _FakeTelemetryRepository implements TelemetryRepositoryContract {
   final List<_LoggedEvent> events = [];
+  final List<_TimedEvent> activeTimedEvents = [];
+  int _handleSeed = 0;
 
   @override
   Future<bool> logEvent(
@@ -62,7 +78,55 @@ class _FakeTelemetryRepository implements TelemetryRepositoryContract {
   }
 
   @override
+  Future<EventTrackerTimedEventHandle?> startTimedEvent(
+    EventTrackerEvents event, {
+    String? eventName,
+    Map<String, dynamic>? properties,
+  }) async {
+    final handle = EventTrackerTimedEventHandle('handle-${_handleSeed++}');
+    activeTimedEvents.add(
+      _TimedEvent(
+        handle: handle,
+        event: event,
+        eventName: eventName,
+        properties: properties,
+      ),
+    );
+    return handle;
+  }
+
+  @override
+  Future<bool> finishTimedEvent(EventTrackerTimedEventHandle handle) async {
+    final index = activeTimedEvents.indexWhere(
+      (entry) => entry.handle.id == handle.id,
+    );
+    if (index == -1) {
+      return true;
+    }
+    final entry = activeTimedEvents.removeAt(index);
+    events.add(
+      _LoggedEvent(
+        event: entry.event,
+        eventName: entry.eventName,
+        properties: entry.properties,
+      ),
+    );
+    return true;
+  }
+
+  @override
+  Future<bool> flushTimedEvents() async {
+    return true;
+  }
+
+  @override
   Future<bool> mergeIdentity({required String previousUserId}) async => true;
+
+  @override
+  void setScreenContext(Map<String, dynamic>? screenContext) {}
+
+  @override
+  EventTrackerLifecycleObserver? buildLifecycleObserver() => null;
 }
 
 class _FakeUserLocationRepository implements UserLocationRepositoryContract {
@@ -77,6 +141,10 @@ class _FakeUserLocationRepository implements UserLocationRepositoryContract {
   @override
   final StreamValue<DateTime?> lastKnownCapturedAtStreamValue =
       StreamValue<DateTime?>();
+
+  @override
+  final StreamValue<double?> lastKnownAccuracyStreamValue =
+      StreamValue<double?>();
 
   @override
   final StreamValue<String?> lastKnownAddressStreamValue =
@@ -242,6 +310,8 @@ void main() {
       final poi = _buildPoi(id: 'poi-123');
 
       controller.selectPoi(poi);
+      await _flushMicrotasks();
+      controller.clearSelectedPoi();
       await _flushMicrotasks();
 
       expect(telemetry.events, hasLength(1));

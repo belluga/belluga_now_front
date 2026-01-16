@@ -18,7 +18,7 @@ final class AuthRepository extends AuthRepositoryContract<UserBelluga> {
 
   static const String _userTokenStorageKey = 'user_token';
   static const String _deviceIdStorageKey = 'device_id';
-  static const String _anonymousUserIdStorageKey = 'anonymous_user_id';
+  static const String _userIdStorageKey = 'user_id';
   static const Uuid _uuid = Uuid();
 
   @override
@@ -28,8 +28,7 @@ final class AuthRepository extends AuthRepositoryContract<UserBelluga> {
   String get userToken => _userTokenStreamValue.value ?? '';
 
   final StreamValue<String?> _userTokenStreamValue = StreamValue<String?>();
-  final StreamValue<String?> _anonymousUserIdStreamValue =
-      StreamValue<String?>();
+  final StreamValue<String?> _userIdStreamValue = StreamValue<String?>();
 
   static FlutterSecureStorage get storage => FlutterSecureStorage();
 
@@ -52,9 +51,9 @@ final class AuthRepository extends AuthRepositoryContract<UserBelluga> {
   @override
   Future<void> init() async {
     await _getUserTokenFromLocalStorage();
-    await _getAnonymousUserIdFromLocalStorage();
+    await _getUserIdFromLocalStorage();
     await autoLogin();
-    await _ensureAnonymousIdentityToken();
+    await _ensureIdentityToken();
   }
 
   @override
@@ -69,7 +68,9 @@ final class AuthRepository extends AuthRepositoryContract<UserBelluga> {
 
     final user = await backend.auth.loginCheck();
 
-    userStreamValue.addValue(UserBelluga.fromDto(user));
+    final loggedUser = UserBelluga.fromDto(user);
+    userStreamValue.addValue(loggedUser);
+    await _setUserId(loggedUser.uuidValue.value);
 
     return Future.value();
   }
@@ -83,7 +84,9 @@ final class AuthRepository extends AuthRepositoryContract<UserBelluga> {
     );
 
     _userTokenStreamValue.addValue(_token);
-    userStreamValue.addValue(UserBelluga.fromDto(_user));
+    final user = UserBelluga.fromDto(_user);
+    userStreamValue.addValue(user);
+    await _setUserId(user.uuidValue.value);
 
     return Future.value();
   }
@@ -94,6 +97,7 @@ final class AuthRepository extends AuthRepositoryContract<UserBelluga> {
 
     userStreamValue.addValue(null);
     _userTokenStreamValue.addValue(null);
+    await _setUserId(null);
 
     return Future.value();
   }
@@ -139,55 +143,56 @@ final class AuthRepository extends AuthRepositoryContract<UserBelluga> {
   }
 
   @override
-  Future<String?> getAnonymousUserId() async {
-    final current = _anonymousUserIdStreamValue.value;
+  Future<String?> getUserId() async {
+    final current = _userIdStreamValue.value;
     if (current != null && current.isNotEmpty) {
       return current;
     }
-    final stored =
-        await AuthRepository.storage.read(key: _anonymousUserIdStorageKey);
-    _anonymousUserIdStreamValue.addValue(stored);
-    return stored;
+    final stored = await AuthRepository.storage.read(key: _userIdStorageKey);
+    if (stored != null && stored.isNotEmpty) {
+      _userIdStreamValue.addValue(stored);
+      return stored;
+    }
+    return null;
   }
 
-  Future<void> _getAnonymousUserIdFromLocalStorage() async {
-    final stored =
-        await AuthRepository.storage.read(key: _anonymousUserIdStorageKey);
-    _anonymousUserIdStreamValue.addValue(stored);
+  Future<void> _getUserIdFromLocalStorage() async {
+    final stored = await AuthRepository.storage.read(key: _userIdStorageKey);
+    if (stored != null && stored.isNotEmpty) {
+      _userIdStreamValue.addValue(stored);
+      return;
+    }
+    _userIdStreamValue.addValue(null);
   }
 
-  Future<void> _setAnonymousUserId(String? userId) async {
-    _anonymousUserIdStreamValue.addValue(userId);
+  Future<void> _setUserId(String? userId) async {
+    _userIdStreamValue.addValue(userId);
     if (userId == null || userId.isEmpty) {
-      await AuthRepository.storage.delete(key: _anonymousUserIdStorageKey);
+      await AuthRepository.storage.delete(key: _userIdStorageKey);
       return;
     }
     await AuthRepository.storage.write(
-      key: _anonymousUserIdStorageKey,
+      key: _userIdStorageKey,
       value: userId,
     );
   }
 
-  Future<void> _ensureAnonymousIdentityToken() async {
+  Future<void> _ensureIdentityToken() async {
     if (userToken.isNotEmpty) {
       return;
     }
     final deviceId = await getDeviceId();
     final fingerprintHash = _hashFingerprint(deviceId);
     final deviceName = _buildDeviceName(deviceId);
-    try {
-      final response = await backend.auth.issueAnonymousIdentity(
-        deviceName: deviceName,
-        fingerprintHash: fingerprintHash,
-      );
-      if (response.token.isNotEmpty) {
-        userTokenUpdate(response.token);
-      }
-      if (response.userId != null && response.userId!.isNotEmpty) {
-        await _setAnonymousUserId(response.userId);
-      }
-    } catch (_) {
-      // Anonymous identity is best-effort; push init will retry on auth updates.
+    final response = await backend.auth.issueAnonymousIdentity(
+      deviceName: deviceName,
+      fingerprintHash: fingerprintHash,
+    );
+    if (response.token.isNotEmpty) {
+      userTokenUpdate(response.token);
+    }
+    if (response.userId != null && response.userId!.isNotEmpty) {
+      await _setUserId(response.userId);
     }
   }
 

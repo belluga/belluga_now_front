@@ -15,6 +15,7 @@ import 'package:belluga_now/domain/tenant/tenant.dart';
 import 'package:belluga_now/domain/user/user_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/auth_backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/backend_contract.dart';
+import 'package:belluga_now/infrastructure/dal/dao/backend_context.dart';
 import 'package:belluga_now/infrastructure/dal/dao/favorite_backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/tenant_backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/venue_event_backend_contract.dart';
@@ -41,7 +42,11 @@ void main() {
 
   setUp(() async {
     await GetIt.I.reset();
-    GetIt.I.registerSingleton<AppData>(_buildTestAppData());
+    final appData = _buildTestAppData();
+    GetIt.I.registerSingleton<AppData>(appData);
+    GetIt.I.registerSingleton<BackendContext>(
+      BackendContext.fromAppData(appData),
+    );
     GetIt.I.registerSingleton<TelemetryRepositoryContract>(
       _FakeTelemetryRepository(),
     );
@@ -212,6 +217,10 @@ class _FakeUserLocationRepository implements UserLocationRepositoryContract {
       StreamValue<DateTime?>(defaultValue: null);
 
   @override
+  final StreamValue<double?> lastKnownAccuracyStreamValue =
+      StreamValue<double?>(defaultValue: null);
+
+  @override
   final StreamValue<String?> lastKnownAddressStreamValue =
       StreamValue<String?>(defaultValue: null);
 
@@ -272,7 +281,7 @@ class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
   Future<String> getDeviceId() async => deviceId;
 
   @override
-  Future<String?> getAnonymousUserId() async => null;
+  Future<String?> getUserId() async => null;
 
   @override
   bool get isUserLoggedIn => userTokenValue.isNotEmpty;
@@ -323,6 +332,31 @@ class _FakeTelemetryRepository implements TelemetryRepositoryContract {
   }) async {
     return true;
   }
+
+  @override
+  Future<EventTrackerTimedEventHandle?> startTimedEvent(
+    EventTrackerEvents event, {
+    String? eventName,
+    Map<String, dynamic>? properties,
+  }) async {
+    return null;
+  }
+
+  @override
+  Future<bool> finishTimedEvent(EventTrackerTimedEventHandle handle) async {
+    return true;
+  }
+
+  @override
+  Future<bool> flushTimedEvents() async {
+    return true;
+  }
+
+  @override
+  void setScreenContext(Map<String, dynamic>? screenContext) {}
+
+  @override
+  EventTrackerLifecycleObserver? buildLifecycleObserver() => null;
 
   @override
   Future<bool> mergeIdentity({required String previousUserId}) async {
@@ -428,7 +462,7 @@ AppData _buildTestAppData() {
       },
       'main_color': '#4FA0E3',
       'tenant_id': 'tenant-1',
-      'telemetry': [],
+      'telemetry': {'trackers': []},
     },
     localInfo: {
       'platformType': platformType,

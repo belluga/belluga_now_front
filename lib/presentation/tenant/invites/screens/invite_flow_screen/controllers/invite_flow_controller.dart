@@ -51,8 +51,12 @@ class InviteFlowScreenController with Disposable {
   final confirmingPresenceStreamValue = StreamValue<bool>(defaultValue: false);
   final topCardIndexStreamValue = StreamValue<int>(defaultValue: 0);
   final Set<String> _openedInviteIds = <String>{};
+  Future<EventTrackerTimedEventHandle?>? _activeInviteTimedEventFuture;
+  String? _activeInviteId;
+  StreamSubscription<List<InviteModel>>? _pendingInvitesSubscription;
 
   Future<void> init({String? prioritizeInviteId}) async {
+    _ensureInviteTrackingSubscription();
     await fetchPendingInvites();
     if (prioritizeInviteId != null && prioritizeInviteId.isNotEmpty) {
       _prioritizeInvite(prioritizeInviteId);
@@ -63,7 +67,6 @@ class InviteFlowScreenController with Disposable {
     final _invites = await _repository.fetchInvites();
     pendingInvitesStreamValue.addValue(_invites);
     _ensureTopIndexBounds(_invites.length);
-    await _trackInviteOpened(_invites);
   }
 
   void _prioritizeInvite(String inviteId) {
@@ -76,7 +79,6 @@ class InviteFlowScreenController with Disposable {
     invites.insert(0, invite);
     pendingInvitesStreamValue.addValue(invites);
     _ensureTopIndexBounds(invites.length);
-    unawaited(_trackInviteOpened(invites));
   }
 
   void removeInvite() {
@@ -118,6 +120,7 @@ class InviteFlowScreenController with Disposable {
       return null;
     }
 
+    _finishActiveInviteTimedEvent(expectedInviteId: current.id);
     _decisions[current.id] = decision;
     decisionsStreamValue.addValue(Map.unmodifiable(_decisions));
 
@@ -195,15 +198,36 @@ class InviteFlowScreenController with Disposable {
     }
   }
 
+  void _ensureInviteTrackingSubscription() {
+    if (_pendingInvitesSubscription != null) {
+      return;
+    }
+    _pendingInvitesSubscription =
+        pendingInvitesStreamValue.stream.listen(_handleInviteStreamUpdate);
+    _handleInviteStreamUpdate(pendingInvitesStreamValue.value);
+  }
+
+  void _handleInviteStreamUpdate(List<InviteModel> invites) {
+    if (invites.isEmpty) {
+      _finishActiveInviteTimedEvent();
+      return;
+    }
+    unawaited(_trackInviteOpened(invites));
+  }
+
   Future<void> _trackInviteOpened(List<InviteModel> invites) async {
     if (invites.isEmpty) return;
     final current = invites.first;
+    if (_activeInviteId != null && _activeInviteId != current.id) {
+      _finishActiveInviteTimedEvent();
+    }
     if (_openedInviteIds.add(current.id)) {
-      await _telemetryRepository.logEvent(
+      _activeInviteTimedEventFuture = _telemetryRepository.startTimedEvent(
         EventTrackerEvents.inviteOpened,
         eventName: 'invite_opened',
         properties: _buildInviteTelemetryProperties(current),
       );
+      _activeInviteId = current.id;
     }
   }
 
@@ -230,11 +254,33 @@ class InviteFlowScreenController with Disposable {
   }
 
   @override
-  FutureOr<void> onDispose() async {
+  FutureOr<void> onDispose() {
+    _pendingInvitesSubscription?.cancel();
+    _pendingInvitesSubscription = null;
+    _finishActiveInviteTimedEvent();
     decisionsStreamValue.dispose();
     swiperController.dispose();
     confirmingPresenceStreamValue.dispose();
     topCardIndexStreamValue.dispose();
+  }
+
+  void _finishActiveInviteTimedEvent({
+    String? expectedInviteId,
+  }) {
+    final handleFuture = _activeInviteTimedEventFuture;
+    if (handleFuture == null) {
+      return;
+    }
+    if (expectedInviteId != null && _activeInviteId != expectedInviteId) {
+      return;
+    }
+    _activeInviteTimedEventFuture = null;
+    _activeInviteId = null;
+    unawaited(handleFuture.then<void>((handle) async {
+      if (handle != null) {
+        await _telemetryRepository.finishTimedEvent(handle);
+      }
+    }));
   }
 }
 

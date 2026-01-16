@@ -287,6 +287,8 @@ class FakeUserLocationRepository implements UserLocationRepositoryContract {
       StreamValue<CityCoordinate?>(defaultValue: null);
   final StreamValue<DateTime?> _lastKnownCapturedAtStreamValue =
       StreamValue<DateTime?>(defaultValue: null);
+  final StreamValue<double?> _lastKnownAccuracyStreamValue =
+      StreamValue<double?>(defaultValue: null);
   final StreamValue<String?> _lastKnownAddressStreamValue =
       StreamValue<String?>(defaultValue: null);
 
@@ -297,6 +299,10 @@ class FakeUserLocationRepository implements UserLocationRepositoryContract {
   @override
   StreamValue<DateTime?> get lastKnownCapturedAtStreamValue =>
       _lastKnownCapturedAtStreamValue;
+
+  @override
+  StreamValue<double?> get lastKnownAccuracyStreamValue =>
+      _lastKnownAccuracyStreamValue;
 
   @override
   StreamValue<CityCoordinate?> get lastKnownLocationStreamValue =>

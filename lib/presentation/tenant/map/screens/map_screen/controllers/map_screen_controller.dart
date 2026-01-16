@@ -45,6 +45,8 @@ class MapScreenController implements Disposable {
   final zoomStreamValue = StreamValue<double>(defaultValue: 16);
   Timer? _zoomThrottle;
   double? _pendingZoom;
+  Future<EventTrackerTimedEventHandle?>? _activePoiTimedEventFuture;
+  String? _activePoiId;
 
   StreamValue<CityCoordinate?> get userLocationStreamValue =>
       _userLocationRepository.userLocationStreamValue;
@@ -213,18 +215,20 @@ class MapScreenController implements Disposable {
 
   void selectPoi(CityPoiModel? poi) {
     _poiRepository.selectPoi(poi);
-    if (poi != null) {
-      _logMapTelemetry(
-        EventTrackerEvents.poiOpened,
-        eventName: 'poi_opened',
-        properties: {
-          'poi_id': poi.id,
-        },
-      );
+    if (poi == null) {
+      _finishPoiTimedEvent();
+      return;
     }
+    if (_activePoiId != null && _activePoiId != poi.id) {
+      _finishPoiTimedEvent();
+    }
+    unawaited(_startPoiTimedEvent(poi));
   }
 
-  void clearSelectedPoi() => _poiRepository.clearSelection();
+  void clearSelectedPoi() {
+    _poiRepository.clearSelection();
+    _finishPoiTimedEvent();
+  }
 
   void applyFilterMode(PoiFilterMode mode) {
     final current = filterModeStreamValue.value;
@@ -333,6 +337,7 @@ class MapScreenController implements Disposable {
 
   @override
   FutureOr onDispose() async {
+    _finishPoiTimedEvent();
     await _mapEventSubscription?.cancel();
   }
 
@@ -388,5 +393,30 @@ class MapScreenController implements Disposable {
         properties: properties,
       ),
     );
+  }
+
+  Future<void> _startPoiTimedEvent(CityPoiModel poi) async {
+    _activePoiTimedEventFuture = _telemetryRepository.startTimedEvent(
+      EventTrackerEvents.poiOpened,
+      eventName: 'poi_opened',
+      properties: {
+        'poi_id': poi.id,
+      },
+    );
+    _activePoiId = poi.id;
+  }
+
+  void _finishPoiTimedEvent() {
+    final handleFuture = _activePoiTimedEventFuture;
+    if (handleFuture == null) {
+      return;
+    }
+    _activePoiTimedEventFuture = null;
+    _activePoiId = null;
+    unawaited(handleFuture.then<void>((handle) async {
+      if (handle != null) {
+        await _telemetryRepository.finishTimedEvent(handle);
+      }
+    }));
   }
 }
