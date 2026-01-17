@@ -3,6 +3,7 @@ import 'package:belluga_now/domain/user/user_belluga.dart';
 import 'dart:convert';
 
 import 'package:belluga_now/infrastructure/user/dtos/user_dto.dart';
+import 'package:belluga_now/infrastructure/dal/dao/auth_backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/backend_contract.dart';
 import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
@@ -20,6 +21,13 @@ final class AuthRepository extends AuthRepositoryContract<UserBelluga> {
   static const String _deviceIdStorageKey = 'device_id';
   static const String _userIdStorageKey = 'user_id';
   static const Uuid _uuid = Uuid();
+  @visibleForTesting
+  static const int anonymousIdentityMaxAttempts = 3;
+  @visibleForTesting
+  static const List<Duration> anonymousIdentityRetryDelays = [
+    Duration(milliseconds: 200),
+    Duration(milliseconds: 800),
+  ];
 
   @override
   BackendContract get backend => GetIt.I.get<BackendContract>();
@@ -184,7 +192,7 @@ final class AuthRepository extends AuthRepositoryContract<UserBelluga> {
     final deviceId = await getDeviceId();
     final fingerprintHash = _hashFingerprint(deviceId);
     final deviceName = _buildDeviceName(deviceId);
-    final response = await backend.auth.issueAnonymousIdentity(
+    final response = await _issueAnonymousIdentityWithRetry(
       deviceName: deviceName,
       fingerprintHash: fingerprintHash,
     );
@@ -194,6 +202,31 @@ final class AuthRepository extends AuthRepositoryContract<UserBelluga> {
     if (response.userId != null && response.userId!.isNotEmpty) {
       await _setUserId(response.userId);
     }
+  }
+
+  Future<AnonymousIdentityResponse> _issueAnonymousIdentityWithRetry({
+    required String deviceName,
+    required String fingerprintHash,
+  }) async {
+    for (var attempt = 0; attempt < anonymousIdentityMaxAttempts; attempt++) {
+      try {
+        return await backend.auth.issueAnonymousIdentity(
+          deviceName: deviceName,
+          fingerprintHash: fingerprintHash,
+        );
+      } catch (_) {
+        if (attempt >= anonymousIdentityMaxAttempts - 1) rethrow;
+        if (anonymousIdentityRetryDelays.isNotEmpty) {
+          final delay = attempt < anonymousIdentityRetryDelays.length
+              ? anonymousIdentityRetryDelays[attempt]
+              : anonymousIdentityRetryDelays.last;
+          if (delay > Duration.zero) {
+            await Future<void>.delayed(delay);
+          }
+        }
+      }
+    }
+    throw Exception('Anonymous identity bootstrap failed.');
   }
 
   String _hashFingerprint(String deviceId) {

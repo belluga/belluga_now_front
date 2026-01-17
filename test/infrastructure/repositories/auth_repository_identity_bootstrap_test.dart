@@ -69,6 +69,41 @@ void main() {
     expect(repository.userToken, 'stored-token');
     expect(authBackend.issueCount, 0);
   });
+
+  test('init retries issuing identity token on transient failures', () async {
+    final authBackend = _FlakyAuthBackend(
+      failuresBeforeSuccess: 2,
+      tokenToReturn: 'identity-token-3',
+      userIdToReturn: 'user-3',
+    );
+    GetIt.I.registerSingleton<BackendContract>(
+      _FakeBackend(auth: authBackend),
+    );
+
+    final repository = AuthRepository();
+    await repository.init();
+
+    expect(authBackend.issueCount, 3);
+    expect(repository.userToken, 'identity-token-3');
+  });
+
+  test('init fails after exhausting identity retries', () async {
+    final authBackend = _FlakyAuthBackend(
+      failuresBeforeSuccess: 99,
+      tokenToReturn: 'identity-token-never',
+      userIdToReturn: 'user-never',
+    );
+    GetIt.I.registerSingleton<BackendContract>(
+      _FakeBackend(auth: authBackend),
+    );
+
+    final repository = AuthRepository();
+    await expectLater(repository.init(), throwsException);
+    expect(
+      authBackend.issueCount,
+      AuthRepository.anonymousIdentityMaxAttempts,
+    );
+  });
 }
 
 class _FakeBackend extends BackendContract {
@@ -109,6 +144,63 @@ class _FakeAuthBackend extends AuthBackendContract {
     Map<String, dynamic>? metadata,
   }) async {
     issueCount += 1;
+    return AnonymousIdentityResponse(
+      token: tokenToReturn,
+      userId: userIdToReturn,
+      identityState: 'anonymous',
+    );
+  }
+
+  @override
+  Future<(UserDto, String)> loginWithEmailPassword(
+    String email,
+    String password,
+  ) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<UserDto> loginCheck() async {
+    return UserDto(
+      id: '507f1f77bcf86cd799439011',
+      profile: UserProfileDto(
+        name: 'Test User',
+        email: 'user@example.com',
+        birthday: '',
+        pictureUrl: null,
+      ),
+      customData: const {},
+    );
+  }
+
+  @override
+  Future<void> logout() async {}
+}
+
+class _FlakyAuthBackend extends AuthBackendContract {
+  _FlakyAuthBackend({
+    required this.failuresBeforeSuccess,
+    required this.tokenToReturn,
+    required this.userIdToReturn,
+  });
+
+  final int failuresBeforeSuccess;
+  final String tokenToReturn;
+  final String userIdToReturn;
+  int issueCount = 0;
+
+  @override
+  Future<AnonymousIdentityResponse> issueAnonymousIdentity({
+    required String deviceName,
+    required String fingerprintHash,
+    String? userAgent,
+    String? locale,
+    Map<String, dynamic>? metadata,
+  }) async {
+    issueCount += 1;
+    if (issueCount <= failuresBeforeSuccess) {
+      throw Exception('Transient identity failure');
+    }
     return AnonymousIdentityResponse(
       token: tokenToReturn,
       userId: userIdToReturn,

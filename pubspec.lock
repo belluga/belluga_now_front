@@ -316,10 +316,11 @@ packages:
   event_tracker_handler:
     dependency: "direct main"
     description:
-      path: "/home/elton/Dev/repos/flutter-packages/event_tracker_handler"
-      relative: false
-    source: path
-    version: "0.1.2"
+      name: event_tracker_handler
+      sha256: "3f2022465fbc0915e2632f5cd85e34b6b8384ec282ae7a92981dfe3dffc33fe6"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.2.0"
   fake_async:
     dependency: transitive
     description:
@@ -1273,9 +1274,10 @@ packages:
   push_handler:
     dependency: "direct main"
     description:
-      path: "/home/elton/Dev/repos/flutter-packages/push_handler"
-      relative: false
-    source: path
+      name: push_handler
+      sha256: b9deb3906420003bb4b073cc7d5ce10342fbdbea6e185b864c35082e0c5318e5
+      url: "https://pub.dev"
+    source: hosted
     version: "0.2.0"
   rational:
     dependency: transitive

@@ -17,7 +17,7 @@ dependencies:
   crypto: ^3.0.5
   dio: ^5.9.0
   equatable: ^2.0.7
-  event_tracker_handler: ^0.1.2
+  event_tracker_handler: ^0.2.0
   firebase_core: ^4.3.0
   firebase_messaging: ^16.1.0
   flutter_contacts: ^1.1.9+2
@@ -39,7 +39,7 @@ dependencies:
   package_info_plus: ^8.3.1
   path_provider: ^2.1.5
   permission_handler: ^12.0.1
-  push_handler: ^0.1.2
+  push_handler: ^0.2.0
   sentry_flutter: ^9.9.1
   share_plus: ^12.0.1
   stream_value: ^0.0.6
@@ -64,12 +64,6 @@ dev_dependencies:
   flutter_launcher_icons: ^0.14.4
   flutter_lints: ^6.0.0
   mockito: ^5.4.4
-
-dependency_overrides:
-  push_handler:
-    path: /home/elton/Dev/repos/flutter-packages/push_handler
-  event_tracker_handler:
-    path: /home/elton/Dev/repos/flutter-packages/event_tracker_handler
 
 flutter:
   uses-material-design: true
