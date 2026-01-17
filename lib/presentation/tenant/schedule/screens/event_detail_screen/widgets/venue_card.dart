@@ -1,3 +1,5 @@
+import 'package:auto_route/auto_route.dart';
+import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/domain/partner/partner_resume.dart';
 import 'package:flutter/material.dart';
 
@@ -10,6 +12,8 @@ class VenueCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
+    final slug = venue.slug;
+    final canOpen = slug != null && slug.isNotEmpty;
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -70,6 +74,13 @@ class VenueCard extends StatelessWidget {
               ],
             ),
           ),
+          if (canOpen)
+            TextButton(
+              onPressed: () {
+                context.router.push(PartnerDetailRoute(slug: slug));
+              },
+              child: const Text('Ver perfil'),
+            ),
         ],
       ),
     );

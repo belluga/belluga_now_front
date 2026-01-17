@@ -1,5 +1,19 @@
 import 'package:belluga_now/infrastructure/user/dtos/user_dto.dart';
 
+class AnonymousIdentityResponse {
+  const AnonymousIdentityResponse({
+    required this.token,
+    this.userId,
+    this.identityState,
+    this.expiresAt,
+  });
+
+  final String token;
+  final String? userId;
+  final String? identityState;
+  final String? expiresAt;
+}
+
 abstract class AuthBackendContract {
   Future<(UserDto, String)> loginWithEmailPassword(
     String email,
@@ -7,4 +21,11 @@ abstract class AuthBackendContract {
   );
   Future<void> logout();
   Future<UserDto> loginCheck();
+  Future<AnonymousIdentityResponse> issueAnonymousIdentity({
+    required String deviceName,
+    required String fingerprintHash,
+    String? userAgent,
+    String? locale,
+    Map<String, dynamic>? metadata,
+  });
 }

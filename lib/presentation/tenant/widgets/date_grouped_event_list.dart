@@ -10,8 +10,10 @@ class DateGroupedEventList extends StatelessWidget {
     required this.onEventSelected,
     this.shrinkWrap = false,
     this.physics,
+    this.primary,
     this.isConfirmed,
     this.pendingInvitesCount,
+    this.distanceLabel,
     this.statusIconSize,
     this.highlightNowEvents = false,
     this.highlightTodayEvents = false,
@@ -25,9 +27,11 @@ class DateGroupedEventList extends StatelessWidget {
   final ValueChanged<String> onEventSelected;
   final bool shrinkWrap;
   final ScrollPhysics? physics;
+  final bool? primary;
   final ScrollController? controller;
   final bool Function(VenueEventResume event)? isConfirmed;
   final int Function(VenueEventResume event)? pendingInvitesCount;
+  final String? Function(VenueEventResume event)? distanceLabel;
   final double? statusIconSize;
   final bool highlightNowEvents;
   final bool highlightTodayEvents;
@@ -106,10 +110,11 @@ class DateGroupedEventList extends StatelessWidget {
     }
 
     return ListView.builder(
+      primary: primary,
       shrinkWrap: shrinkWrap,
       physics: physics,
       controller: controller,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
       itemCount: sections.length + (footer != null ? 1 : 0),
       itemBuilder: (context, index) {
         if (footer != null && index == sections.length) {
@@ -241,6 +246,7 @@ class DateGroupedEventList extends StatelessWidget {
                     onTap: () => onEventSelected(event.slug),
                     isConfirmed: isConfirmed?.call(event) ?? false,
                     pendingInvitesCount: pendingInvitesCount?.call(event) ?? 0,
+                    distanceLabel: distanceLabel?.call(event),
                     statusIconSize: statusIconSize ?? 24,
                   ),
                 )),

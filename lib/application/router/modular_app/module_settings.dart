@@ -7,42 +7,52 @@ import 'package:belluga_now/application/router/modular_app/modules/initializatio
 import 'package:belluga_now/application/router/modular_app/modules/invites_module.dart';
 import 'package:belluga_now/application/router/modular_app/modules/landlord_module.dart';
 import 'package:belluga_now/application/router/modular_app/modules/map_module.dart';
-import 'package:belluga_now/application/router/modular_app/modules/map_prototype_module.dart';
 import 'package:belluga_now/application/router/modular_app/modules/menu_module.dart';
 import 'package:belluga_now/application/router/modular_app/modules/profile_module.dart';
 import 'package:belluga_now/application/router/modular_app/modules/schedule_module.dart';
 
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/contacts_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/friends_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/partners_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_events_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
 import 'package:belluga_now/infrastructure/repositories/app_data_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/auth_repository.dart';
+import 'package:belluga_now/infrastructure/repositories/contacts_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/friends_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/invites_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/partners_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/schedule_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/tenant_repository.dart';
+import 'package:belluga_now/infrastructure/repositories/telemetry_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/user_events_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/user_location_repository.dart';
 import 'package:belluga_now/infrastructure/dal/dao/app_data_backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/local/app_data_local_info_source/app_data_local_info_source.dart';
 import 'package:belluga_now/infrastructure/dal/dao/backend_contract.dart';
+import 'package:belluga_now/infrastructure/dal/dao/backend_context.dart';
 import 'package:belluga_now/infrastructure/dal/dao/laravel_backend/app_data_backend/app_data_backend.dart';
-import 'package:belluga_now/infrastructure/dal/dao/mock_backend/mock_backend.dart';
 import 'package:belluga_now/infrastructure/dal/dao/mock_backend/mock_schedule_backend.dart';
 import 'package:belluga_now/infrastructure/dal/dao/mock_backend/mock_tenant_backend.dart';
+import 'package:belluga_now/infrastructure/dal/dao/production_backend/production_backend.dart';
 import 'package:belluga_now/infrastructure/dal/dao/tenant_backend_contract.dart';
 import 'package:belluga_now/infrastructure/services/schedule_backend_contract.dart';
+import 'package:belluga_now/application/application_contract.dart';
 import 'package:belluga_now/presentation/common/location_permission/controllers/location_permission_controller.dart';
+import 'package:belluga_now/presentation/common/push/controllers/push_options_controller.dart';
+import 'package:belluga_now/infrastructure/services/push/push_answer_handler.dart';
+import 'package:belluga_now/infrastructure/services/push/push_answer_relay.dart';
+import 'package:belluga_now/infrastructure/services/push/push_answer_resolver.dart';
+import 'package:belluga_now/infrastructure/services/push/push_presentation_gate.dart';
 import 'package:flutter/foundation.dart';
 import 'package:get_it/get_it.dart';
 import 'package:get_it_modular_with_auto_route/get_it_modular_with_auto_route.dart';
-import 'package:meta/meta.dart';
+import 'package:push_handler/push_handler.dart';
 
 class ModuleSettings extends ModuleSettingsContract {
   ModuleSettings({
@@ -53,7 +63,7 @@ class ModuleSettings extends ModuleSettingsContract {
     TenantBackendContract Function()? tenantBackendBuilderForTest,
     @visibleForTesting
     ScheduleBackendContract Function()? scheduleBackendBuilderForTest,
-  })  : _backendBuilder = backendBuilderForTest ?? (() => MockBackend()),
+  })  : _backendBuilder = backendBuilderForTest ?? (() => ProductionBackend()),
         _appDataBackendBuilder =
             appDataBackendBuilderForTest ?? (() => AppDataBackend()),
         _tenantBackendBuilder =
@@ -71,6 +81,7 @@ class ModuleSettings extends ModuleSettingsContract {
     _registerControllerFactories();
     _registerBackend();
     await _registerRepositories();
+    _registerPushDependencies();
   }
 
   @override
@@ -85,11 +96,10 @@ class ModuleSettings extends ModuleSettingsContract {
     await registerSubModule(MapModule());
     await registerSubModule(DiscoveryModule());
     await registerSubModule(MenuModule());
-    await registerSubModule(MapPrototypeModule());
   }
 
   void _registerBackend() {
-    // Composite backend (mock) for repositories still depending on BackendContract
+    // Composite backend for repositories still depending on BackendContract.
     _registerLazySingletonIfAbsent<BackendContract>(_backendBuilder);
     _registerLazySingletonIfAbsent<AppDataBackendContract>(
       _appDataBackendBuilder,
@@ -101,14 +111,8 @@ class ModuleSettings extends ModuleSettingsContract {
       _scheduleBackendBuilder,
     );
     _registerIfAbsent<ScheduleRepositoryContract>(() => ScheduleRepository());
-    _registerIfAbsent<UserEventsRepositoryContract>(
-      () => UserEventsRepository(),
-    );
     _registerIfAbsent<FriendsRepositoryContract>(
       () => FriendsRepository(),
-    );
-    _registerIfAbsent<PartnersRepositoryContract>(
-      () => PartnersRepository(),
     );
     _registerIfAbsent<InvitesRepositoryContract>(
       () => InvitesRepository(),
@@ -121,13 +125,176 @@ class ModuleSettings extends ModuleSettingsContract {
         () => LocationPermissionController(),
       );
     }
+    if (!GetIt.I.isRegistered<PushOptionsController>()) {
+      GetIt.I.registerLazySingleton<PushOptionsController>(
+        () => PushOptionsController(),
+      );
+    }
+  }
+
+  void _registerPushDependencies() {
+    _registerLazySingletonIfAbsent<PushPresentationGate>(
+      () => PushPresentationGate(),
+    );
+    final relay = _registerIfAbsent<PushAnswerRelay>(() => PushAnswerRelay());
+    _registerLazySingletonIfAbsent<PushAnswerHandler>(() => relay);
+    _registerLazySingletonIfAbsent<PushAnswerResolver>(() => relay);
+  }
+
+  PushNavigationResolver buildPushNavigationResolver() {
+    return _buildNavigationResolver();
+  }
+
+  PushNavigationResolver _buildNavigationResolver() {
+    return (request) async {
+      final resolvedPath = _resolvePushRoutePath(request);
+      if (resolvedPath == null || resolvedPath.isEmpty) {
+        debugPrint('[Push] Unmapped route request: ${request.routeKey ?? request.route}');
+        return;
+      }
+      final appRouter = GetIt.I.get<ApplicationContract>().appRouter;
+      final currentPath = appRouter.currentPath;
+      if (_shouldSkipDuplicateNavigation(
+        request: request,
+        currentPath: currentPath,
+        resolvedPath: resolvedPath,
+      )) {
+        return;
+      }
+      final baseUri = Uri.parse(resolvedPath);
+      final queryParameters =
+          Map<String, String>.from(baseUri.queryParameters);
+      if (request.itemKey != null && request.itemKey!.isNotEmpty) {
+        queryParameters['itemIDString'] = request.itemKey!;
+      }
+      final resolvedUri = baseUri.replace(
+        queryParameters: queryParameters.isEmpty ? null : queryParameters,
+      );
+
+      await appRouter.pushPath(resolvedUri.toString());
+    };
+  }
+
+  String? _resolvePushRoutePath(PushRouteRequest request) {
+    final routeKey = request.routeKey;
+    if (routeKey != null && routeKey.isNotEmpty) {
+      switch (routeKey) {
+        case 'invite_flow':
+          final inviteId = _resolveInviteId(request);
+          if (inviteId == null || inviteId.isEmpty) {
+            return '/convites';
+          }
+          return '/convites?invite=$inviteId';
+        case 'event_detail':
+          return _applyPathParameters(
+            '/agenda/evento/:slug',
+            request.pathParameters,
+          );
+        case 'event_immersive':
+          return _applyPathParameters(
+            '/agenda/evento-imersivo/:slug',
+            request.pathParameters,
+          );
+        case 'map':
+          return '/mapa';
+        default:
+          return null;
+      }
+    }
+    if (request.route.isEmpty) return null;
+    return _applyPathParameters(request.route, request.pathParameters) ??
+        request.route;
+  }
+
+  bool _shouldSkipDuplicateNavigation({
+    required PushRouteRequest request,
+    required String currentPath,
+    required String resolvedPath,
+  }) {
+    if (!_isEventRouteRequest(request)) {
+      return false;
+    }
+    return currentPath == resolvedPath;
+  }
+
+  bool _isEventRouteRequest(PushRouteRequest request) {
+    final routeKey = request.routeKey;
+    return routeKey == 'event_detail' || routeKey == 'event_immersive';
+  }
+
+  String? _resolveInviteId(PushRouteRequest request) {
+    final itemKey = request.itemKey;
+    if (itemKey != null && itemKey.isNotEmpty) {
+      return itemKey;
+    }
+    final param =
+        request.pathParameters['invite'] ?? request.pathParameters['invite_id'];
+    if (param != null && param.isNotEmpty) {
+      return param;
+    }
+    return null;
+  }
+
+
+  String? _applyPathParameters(
+    String path,
+    Map<String, String> parameters,
+  ) {
+    final pattern = RegExp(r':([A-Za-z0-9_]+)');
+    final matches = pattern.allMatches(path).toList();
+    if (matches.isEmpty) {
+      return path;
+    }
+    var resolved = path;
+    for (final match in matches) {
+      final key = match.group(1);
+      if (key == null || key.isEmpty) {
+        return null;
+      }
+      final value = _resolveRouteParameter(parameters, key);
+      if (value == null || value.isEmpty) {
+        return null;
+      }
+      resolved = resolved.replaceFirst(':$key', value);
+    }
+    return resolved;
+  }
+
+  String? _resolveRouteParameter(
+    Map<String, String> parameters,
+    String key,
+  ) {
+    final direct = parameters[key];
+    if (direct != null && direct.isNotEmpty) {
+      return direct;
+    }
+    if (key == 'slug') {
+      final eventId = parameters['event_id'];
+      if (eventId != null && eventId.isNotEmpty) {
+        return eventId;
+      }
+    }
+    return null;
   }
 
   Future<void> _registerRepositories() async {
     _registerIfAbsent<UserLocationRepositoryContract>(
       () => UserLocationRepository(),
     );
+    _registerIfAbsent<ContactsRepositoryContract>(
+      () => ContactsRepository(),
+    );
     await _registerAppDataRepository();
+    _registerBackendContext();
+    _registerIfAbsent<TelemetryRepositoryContract>(
+      () => TelemetryRepository(),
+    );
+    _registerIfAbsent<PartnersRepositoryContract>(
+      () => PartnersRepository(),
+    );
+    _registerIfAbsent<UserEventsRepositoryContract>(
+      () => UserEventsRepository(),
+    );
     await _registerTenantRepository();
     await _registerAuthRepository();
   }
@@ -140,6 +307,16 @@ class ModuleSettings extends ModuleSettingsContract {
       ),
     );
     await appDataRepository.init();
+  }
+
+  void _registerBackendContext() {
+    if (GetIt.I.isRegistered<BackendContext>()) {
+      return;
+    }
+    final appData = GetIt.I.get<AppDataRepository>().appData;
+    GetIt.I.registerSingleton<BackendContext>(
+      BackendContext.fromAppData(appData),
+    );
   }
 
   Future<void> _registerTenantRepository() async {

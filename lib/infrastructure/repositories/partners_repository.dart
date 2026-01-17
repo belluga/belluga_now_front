@@ -1,13 +1,20 @@
 import 'package:belluga_now/domain/partners/partner_model.dart';
 import 'package:belluga_now/domain/repositories/partners_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
 import 'package:belluga_now/infrastructure/dal/datasources/mock_partners_database.dart';
+import 'package:event_tracker_handler/event_tracker_handler.dart';
+import 'package:get_it/get_it.dart';
 
 class PartnersRepository extends PartnersRepositoryContract {
   PartnersRepository({
     MockPartnersDatabase? database,
-  }) : _database = database ?? MockPartnersDatabase();
+    TelemetryRepositoryContract? telemetryRepository,
+  })  : _database = database ?? MockPartnersDatabase(),
+        _telemetryRepository =
+            telemetryRepository ?? GetIt.I.get<TelemetryRepositoryContract>();
 
   final MockPartnersDatabase _database;
+  final TelemetryRepositoryContract _telemetryRepository;
 
   @override
   Future<void> init() async {
@@ -46,9 +53,18 @@ class PartnersRepository extends PartnersRepositoryContract {
 
   @override
   Future<void> toggleFavorite(String partnerId) async {
+    final wasFavorite = _database.favoritePartnerIds.contains(partnerId);
     _database.toggleFavorite(partnerId);
     favoritePartnerIdsStreamValue.addValue(
       Set<String>.from(_database.favoritePartnerIds),
+    );
+    await _telemetryRepository.logEvent(
+      EventTrackerEvents.favoriteArtistToggled,
+      eventName: 'favorite_artist_toggled',
+      properties: {
+        'partner_id': partnerId,
+        'is_favorite': !wasFavorite,
+      },
     );
   }
 

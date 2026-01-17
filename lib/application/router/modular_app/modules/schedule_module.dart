@@ -17,7 +17,7 @@ class ScheduleModule extends ModuleContract {
   }
 
   void _registerControllers() {
-    registerLazySingleton(() => EventSearchScreenController());
+    registerFactory(() => EventSearchScreenController());
 
     registerFactory(() => EventDetailController());
     registerFactory(() => ImmersiveEventDetailController());

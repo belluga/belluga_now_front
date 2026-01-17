@@ -3,6 +3,7 @@
 
 <head>
   <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+  <script src="/assets/packages/mixpanel_flutter/assets/mixpanel.js"></script>
   <base href="/">
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
@@ -163,10 +164,10 @@
     };
 
     (async function () {
-      // Cache disabled: always fetch fresh `/environment` data.
+      // Cache disabled: always fetch fresh `/api/v1/environment` data.
       let resolvedBranding = null;
       try {
-        const response = await fetch('/environment');
+        const response = await fetch('/api/v1/environment');
         if (response.ok) {
           const freshBranding = await response.json();
           resolvedBranding = freshBranding;

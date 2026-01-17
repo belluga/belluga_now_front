@@ -16,6 +16,7 @@ import 'package:belluga_now/application/icons/boora_icons.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class PartnerDetailScreen extends StatefulWidget {
   const PartnerDetailScreen({
@@ -463,6 +464,7 @@ class _PartnerDetailScreenState extends State<PartnerDetailScreen> {
   }
 
   Widget _locationInfo(ProfileLocationDTO? location) {
+    final mapPreviewUri = _buildMapPreviewUri(location);
     return Padding(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -470,21 +472,125 @@ class _PartnerDetailScreenState extends State<PartnerDetailScreen> {
         children: [
           ListTile(
             leading: const Icon(Icons.place),
-            title: Text(location?.address ?? 'Endereço não informado'),
+            title: Text(location?.address ?? 'Endere??o n??o informado'),
             subtitle: Text(location?.status ?? ''),
           ),
           const SizedBox(height: 12),
-          Container(
-            height: 180,
-            decoration: BoxDecoration(
-              color: Colors.grey.shade200,
-              borderRadius: BorderRadius.circular(12),
+          GestureDetector(
+            onTap: () => _openMaps(location),
+            child: Container(
+              height: 180,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+                color: Colors.grey.shade200,
+              ),
+              clipBehavior: Clip.antiAlias,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  if (mapPreviewUri != null)
+                    Image.network(
+                      mapPreviewUri.toString(),
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) =>
+                          _buildMapFallback(location),
+                    )
+                  else
+                    _buildMapFallback(location),
+                  Positioned(
+                    right: 12,
+                    top: 12,
+                    child: Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.9),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: const Icon(Icons.open_in_new, size: 18),
+                    ),
+                  ),
+                ],
+              ),
             ),
-            child: const Center(child: Icon(Icons.map)),
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: () => _openMaps(location),
+              icon: const Icon(Icons.navigation),
+              label: const Text('Tra??ar rota'),
+            ),
           ),
         ],
       ),
     );
+  }
+
+  Widget _buildMapFallback(ProfileLocationDTO? location) {
+    final address = location?.address;
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            Colors.blueGrey.shade200,
+            Colors.blueGrey.shade100,
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+      ),
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.map_outlined, size: 32),
+            const SizedBox(height: 6),
+            Text(
+              address?.isNotEmpty == true ? address! : 'Mapa do local',
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 12),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Uri? _buildMapPreviewUri(ProfileLocationDTO? location) {
+    if (location == null) return null;
+    final lat = double.tryParse(location.lat ?? '');
+    final lng = double.tryParse(location.lng ?? '');
+    if (lat == null || lng == null) return null;
+    return Uri.https(
+      'staticmap.openstreetmap.de',
+      '/staticmap.php',
+      {
+        'center': '$lat,$lng',
+        'zoom': '15',
+        'size': '640x360',
+        'markers': '$lat,$lng,red-pushpin',
+      },
+    );
+  }
+
+  Future<void> _openMaps(ProfileLocationDTO? location) async {
+    if (location == null) return;
+    final lat = double.tryParse(location.lat ?? '');
+    final lng = double.tryParse(location.lng ?? '');
+    final hasCoords = lat != null && lng != null;
+    final destination = hasCoords
+        ? '$lat,$lng'
+        : (location.address.isNotEmpty ? location.address : null);
+    if (destination == null) return;
+
+    final uri = Uri.parse(
+      'https://www.google.com/maps/dir/?api=1&destination=${Uri.encodeComponent(destination)}',
+    );
+    if (!await canLaunchUrl(uri)) return;
+    await launchUrl(uri, mode: LaunchMode.externalApplication);
   }
 
   Widget _experienceCards(List<Map<String, String>>? experiences) {

@@ -1,24 +1,42 @@
-import 'package:belluga_now/application/configurations/belluga_constants.dart';
+import 'package:belluga_now/infrastructure/dal/dao/backend_context.dart';
 import 'package:belluga_now/infrastructure/dal/datasources/poi_query.dart';
 import 'package:belluga_now/infrastructure/dal/dto/map/city_poi_dto.dart';
 import 'package:dio/dio.dart';
+import 'package:get_it/get_it.dart';
 
 class LaravelMapPoiHttpService {
-  LaravelMapPoiHttpService({Dio? dio})
-      : _dio = dio ??
+  LaravelMapPoiHttpService({
+    BackendContext? context,
+    Dio? dio,
+  })  : _context = context,
+        _dio = dio ??
             Dio(
               BaseOptions(
-                baseUrl: 'https://localhost',
+                baseUrl: _resolveBaseUrl(context),
                 connectTimeout: const Duration(seconds: 2),
                 receiveTimeout: const Duration(seconds: 4),
                 sendTimeout: const Duration(seconds: 4),
               ),
             );
 
+  final BackendContext? _context;
   final Dio _dio;
 
+  static String _resolveBaseUrl(BackendContext? context) {
+    final resolved = context ??
+        (GetIt.I.isRegistered<BackendContext>()
+            ? GetIt.I.get<BackendContext>()
+            : null);
+    if (resolved == null) {
+      throw StateError(
+        'BackendContext is not registered for LaravelMapPoiHttpService.',
+      );
+    }
+    return resolved.baseUrl;
+  }
+
   Future<List<CityPoiDTO>> getPois(PoiQuery query) async {
-    final baseUrl = BellugaConstants.api.baseUrl;
+    final baseUrl = _resolveBaseUrl(_context);
     final url = baseUrl.endsWith('/')
         ? '${baseUrl}v1/app/map/pois'
         : '$baseUrl/v1/app/map/pois';

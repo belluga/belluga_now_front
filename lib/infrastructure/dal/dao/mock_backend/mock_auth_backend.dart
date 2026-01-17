@@ -1,23 +1,36 @@
 import 'package:belluga_now/domain/auth/errors/belluga_auth_errors.dart';
 import 'package:belluga_now/infrastructure/dal/dao/auth_backend_contract.dart';
-import 'package:belluga_now/infrastructure/dal/dao/mock_backend/helpers/mock_functions.dart';
 import 'package:belluga_now/infrastructure/user/dtos/user_dto.dart';
 import 'package:belluga_now/infrastructure/user/dtos/user_profile_dto.dart';
 
-class MockAuthBackend extends AuthBackendContract with MockFunctions {
+class MockAuthBackend extends AuthBackendContract {
+  static const String _mockUserId = '507f1f77bcf86cd799439011';
+  static const String _mockPassword = '765432e1';
+  static const String _mockToken = 'mock-token';
+
+  UserDto get _mockUser => UserDto(
+        id: _mockUserId,
+        profile: UserProfileDto(
+          name: 'John Doe',
+          email: 'email@mock.com',
+          birthday: '',
+          pictureUrl: 'https://example.com/avatar.png',
+        ),
+        customData: const {},
+      );
+
   @override
   Future<(UserDto, String)> loginWithEmailPassword(
     String email,
     String password,
   ) async {
-    if (password == _fakePassword && email == _mockUser.profile.email) {
-      final _token = "123";
-      return (_mockUser, _token);
+    if (password == _mockPassword && email == _mockUser.profile.email) {
+      return (_mockUser, _mockToken);
     }
 
     throw BellugaAuthError.fromCode(
       errorCode: 403,
-      message: "As credenciais fornecidas estão incorretas.",
+      message: 'As credenciais fornecidas estão incorretas.',
     );
   }
 
@@ -27,16 +40,18 @@ class MockAuthBackend extends AuthBackendContract with MockFunctions {
   @override
   Future<void> logout() async {}
 
-  String get _fakePassword => "765432e1";
-
-  UserDto get _mockUser => UserDto(
-        id: fakeMongoId,
-        profile: UserProfileDto(
-          name: "John Doe",
-          email: "email@mock.com",
-          birthday: "",
-          pictureUrl: "https://example.com/avatar.png",
-        ),
-        customData: {},
-      );
+  @override
+  Future<AnonymousIdentityResponse> issueAnonymousIdentity({
+    required String deviceName,
+    required String fingerprintHash,
+    String? userAgent,
+    String? locale,
+    Map<String, dynamic>? metadata,
+  }) async {
+    return const AnonymousIdentityResponse(
+      token: _mockToken,
+      userId: _mockUserId,
+      identityState: 'anonymous',
+    );
+  }
 }

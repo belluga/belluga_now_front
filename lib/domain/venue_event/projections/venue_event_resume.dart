@@ -1,5 +1,6 @@
 import 'package:belluga_now/domain/artist/artist_resume.dart';
 import 'package:belluga_now/domain/gamification/mission_resume.dart';
+import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/value_objects/description_value.dart';
 import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
@@ -16,6 +17,7 @@ class VenueEventResume {
     required this.locationValue,
     required this.artists,
     required this.tags,
+    this.coordinate,
     this.mission,
   });
 
@@ -27,6 +29,7 @@ class VenueEventResume {
   final DescriptionValue locationValue;
   final List<ArtistResume> artists;
   final List<String> tags;
+  final CityCoordinate? coordinate;
   final MissionResume? mission;
 
   String get title => titleValue.value;
@@ -40,6 +43,7 @@ class VenueEventResume {
   }
 
   String get location => locationValue.value;
+  CityCoordinate? get coordinateValue => coordinate;
   bool get hasArtists => artists.isNotEmpty;
   ArtistResume? get primaryArtist => hasArtists ? artists.first : null;
   String get artistNamesLabel =>
@@ -91,6 +95,7 @@ class VenueEventResume {
       locationValue: event.location,
       artists: event.artists,
       tags: event.taxonomyTags,
+      coordinate: event.coordinate,
       mission: null, // TODO: Map from EventModel when available
     );
   }

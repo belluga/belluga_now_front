@@ -1,15 +1,26 @@
+import 'dart:async';
+
+import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
 import 'package:belluga_now/presentation/common/widgets/immersive_detail_screen/models/immersive_tab_item.dart';
+import 'package:event_tracker_handler/event_tracker_handler.dart';
 import 'package:flutter/material.dart';
+import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value.dart';
 
 class ImmersiveDetailScreenController {
   ImmersiveDetailScreenController({
     required this.tabItems,
     int initialTabIndex = 0,
-  })  : scrollController = ScrollController(),
+    TelemetryRepositoryContract? telemetryRepository,
+  })  : _telemetryRepository = telemetryRepository ??
+            (GetIt.I.isRegistered<TelemetryRepositoryContract>()
+                ? GetIt.I.get<TelemetryRepositoryContract>()
+                : null),
+        scrollController = ScrollController(),
         currentTabIndexStreamValue =
             StreamValue<int>(defaultValue: initialTabIndex);
 
+  final TelemetryRepositoryContract? _telemetryRepository;
   late final ScrollController scrollController;
   List<ImmersiveTabItem> tabItems;
 
@@ -20,6 +31,9 @@ class ImmersiveDetailScreenController {
 
   double _topPadding = 0;
   bool _isProgrammaticScroll = false;
+  int? _lastSectionViewedIndex;
+  Future<EventTrackerTimedEventHandle?>? _activeSectionTimedEventFuture;
+  int? _activeSectionIndex;
 
   // Track visibility of each tab
   final Map<int, double> _tabVisibility = {};
@@ -29,14 +43,15 @@ class ImmersiveDetailScreenController {
   void updateTabs(List<ImmersiveTabItem> updatedTabs) {
     tabItems = updatedTabs;
     _tabVisibility.removeWhere((index, _) => index >= tabItems.length);
+    _lastSectionViewedIndex = null;
 
     if (tabItems.isEmpty) {
-      currentTabIndexStreamValue.addValue(0);
+      _setCurrentTabIndex(0, track: false);
       return;
     }
 
     if (currentTabIndexStreamValue.value >= tabItems.length) {
-      currentTabIndexStreamValue.addValue(tabItems.length - 1);
+      _setCurrentTabIndex(tabItems.length - 1, track: false);
     }
   }
 
@@ -62,7 +77,7 @@ class ImmersiveDetailScreenController {
     // Switch to the most visible tab if it's different from current
     if (mostVisibleTab != null &&
         mostVisibleTab != currentTabIndexStreamValue.value) {
-      currentTabIndexStreamValue.addValue(mostVisibleTab!);
+      _setCurrentTabIndex(mostVisibleTab!, track: true);
     }
   }
 
@@ -72,7 +87,7 @@ class ImmersiveDetailScreenController {
     _tabVisibility
       ..clear()
       ..[index] = 1.0;
-    currentTabIndexStreamValue.addValue(index);
+    _setCurrentTabIndex(index, track: true);
 
     final nestedState = nestedScrollViewKey.currentState;
     if (nestedState == null) return;
@@ -125,7 +140,61 @@ class ImmersiveDetailScreenController {
   }
 
   void dispose() {
+    _finishSectionTimedEvent();
     scrollController.dispose();
     currentTabIndexStreamValue.dispose();
+  }
+
+  void _setCurrentTabIndex(int index, {required bool track}) {
+    currentTabIndexStreamValue.addValue(index);
+    if (track) {
+      _trackSectionViewed(index);
+    }
+  }
+
+  void _trackSectionViewed(int index) {
+    if (_telemetryRepository == null || index >= tabItems.length) {
+      return;
+    }
+    if (_lastSectionViewedIndex == index) {
+      return;
+    }
+    if (_activeSectionIndex != null && _activeSectionIndex != index) {
+      _finishSectionTimedEvent();
+    }
+    _lastSectionViewedIndex = index;
+    final title = tabItems[index].title;
+    unawaited(_startSectionTimedEvent(index, title));
+  }
+
+  Future<void> _startSectionTimedEvent(int index, String title) async {
+    final telemetry = _telemetryRepository;
+    if (telemetry == null) {
+      return;
+    }
+    _activeSectionTimedEventFuture = telemetry.startTimedEvent(
+      EventTrackerEvents.viewContent,
+      eventName: 'section_viewed',
+      properties: {
+        'section_title': title,
+        'position_index': index,
+      },
+    );
+    _activeSectionIndex = index;
+  }
+
+  void _finishSectionTimedEvent() {
+    final telemetry = _telemetryRepository;
+    final handleFuture = _activeSectionTimedEventFuture;
+    if (telemetry == null || handleFuture == null) {
+      return;
+    }
+    _activeSectionTimedEventFuture = null;
+    _activeSectionIndex = null;
+    unawaited(handleFuture.then<void>((handle) async {
+      if (handle != null) {
+        await telemetry.finishTimedEvent(handle);
+      }
+    }));
   }
 }

@@ -48,64 +48,66 @@ class _LocationNotLiveScreenState extends State<LocationNotLiveScreen> {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Localização')),
-      body: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              title,
-              style: Theme.of(context).textTheme.headlineSmall,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              subtitle,
-              style: Theme.of(context).textTheme.bodyLarge,
-            ),
-            if (ageLabel != null) ...[
-              const SizedBox(height: 6),
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
               Text(
-                'Última localização conhecida: $ageLabel (pode estar desatualizada).',
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                title,
+                style: Theme.of(context).textTheme.headlineSmall,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                subtitle,
+                style: Theme.of(context).textTheme.bodyLarge,
+              ),
+              if (ageLabel != null) ...[
+                const SizedBox(height: 6),
+                Text(
+                  'Última localização conhecida: $ageLabel (pode estar desatualizada).',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                ),
+              ],
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.info_outline,
                       color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        'Ative a localização ao vivo para mostrar lugares próximos e ordenar por distância com mais precisão.',
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Spacer(),
+              ButtonLoading(
+                label: primaryLabel,
+                loadingStatusStreamValue: _loading,
+                onPressed: _onEnablePressed,
+              ),
+              const SizedBox(height: 12),
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(true),
+                child: const Text('Continuar sem localização ao vivo'),
               ),
             ],
-            const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.info_outline,
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      'Ative a localização ao vivo para mostrar lugares próximos e ordenar por distância com mais precisão.',
-                      style: Theme.of(context).textTheme.bodyMedium,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const Spacer(),
-            ButtonLoading(
-              label: primaryLabel,
-              loadingStatusStreamValue: _loading,
-              onPressed: _onEnablePressed,
-            ),
-            const SizedBox(height: 12),
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('Continuar sem localização ao vivo'),
-            ),
-          ],
+          ),
         ),
       ),
     );

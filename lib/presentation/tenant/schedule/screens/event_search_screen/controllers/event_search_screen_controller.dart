@@ -2,61 +2,125 @@ import 'dart:async';
 
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_events_repository_contract.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
+import 'package:belluga_now/domain/map/geo_distance.dart';
+import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
+import 'package:belluga_now/infrastructure/repositories/app_data_repository.dart';
+import 'package:belluga_now/presentation/tenant/schedule/screens/event_search_screen/models/agenda_app_bar_controller.dart';
 import 'package:belluga_now/presentation/tenant/schedule/screens/event_search_screen/models/invite_filter.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart' show Disposable, GetIt;
 import 'package:stream_value/core/stream_value.dart';
 
-class EventSearchScreenController implements Disposable {
+class EventSearchScreenController implements Disposable, AgendaAppBarController {
   EventSearchScreenController({
     ScheduleRepositoryContract? scheduleRepository,
     UserEventsRepositoryContract? userEventsRepository,
     InvitesRepositoryContract? invitesRepository,
+    UserLocationRepositoryContract? userLocationRepository,
+    AppDataRepository? appDataRepository,
   })  : _scheduleRepository =
             scheduleRepository ?? GetIt.I.get<ScheduleRepositoryContract>(),
         _userEventsRepository =
             userEventsRepository ?? GetIt.I.get<UserEventsRepositoryContract>(),
         _invitesRepository =
-            invitesRepository ?? GetIt.I.get<InvitesRepositoryContract>();
+            invitesRepository ?? GetIt.I.get<InvitesRepositoryContract>(),
+        _userLocationRepository = userLocationRepository ??
+            (GetIt.I.isRegistered<UserLocationRepositoryContract>()
+                ? GetIt.I.get<UserLocationRepositoryContract>()
+                : null),
+        _appDataRepository =
+            appDataRepository ?? GetIt.I.get<AppDataRepository>() {
+    _initializeStateHolders();
+  }
 
   final ScheduleRepositoryContract _scheduleRepository;
   final UserEventsRepositoryContract _userEventsRepository;
   final InvitesRepositoryContract _invitesRepository;
+  final UserLocationRepositoryContract? _userLocationRepository;
+  final AppDataRepository _appDataRepository;
 
   static const int _pageSize = 10;
+  static const double _defaultRadiusMeters = 50000.0;
 
-  final searchController = TextEditingController();
-  final focusNode = FocusNode();
-  final scrollController = ScrollController();
+  @override
+  late TextEditingController searchController;
+  @override
+  late FocusNode focusNode;
+  late ScrollController scrollController;
 
-  final displayedEventsStreamValue =
-      StreamValue<List<EventModel>>(defaultValue: const []);
-  final isInitialLoadingStreamValue = StreamValue<bool>(defaultValue: true);
-  final isPageLoadingStreamValue = StreamValue<bool>(defaultValue: false);
-  final hasMoreStreamValue = StreamValue<bool>(defaultValue: true);
-  final showHistoryStreamValue = StreamValue<bool>(defaultValue: false);
-  final searchActiveStreamValue = StreamValue<bool>(defaultValue: false);
-  final inviteFilterStreamValue =
-      StreamValue<InviteFilter>(defaultValue: InviteFilter.none);
+  late StreamValue<List<EventModel>> displayedEventsStreamValue;
+  late StreamValue<bool> isInitialLoadingStreamValue;
+  late StreamValue<bool> isPageLoadingStreamValue;
+  late StreamValue<bool> hasMoreStreamValue;
+  @override
+  late StreamValue<bool> showHistoryStreamValue;
+  @override
+  late StreamValue<bool> searchActiveStreamValue;
+  @override
+  late StreamValue<InviteFilter> inviteFilterStreamValue;
+  @override
+  late StreamValue<double> radiusMetersStreamValue;
 
   StreamSubscription? _confirmedEventsSubscription;
   StreamSubscription? _pendingInvitesSubscription;
+  StreamSubscription? _userLocationSubscription;
+  StreamSubscription? _radiusSubscription;
   final List<EventModel> _fetchedEvents = [];
   int _currentPage = 1;
   bool _isFetching = false;
   bool _hasMore = true;
+  bool _isScrollListenerAttached = false;
+  bool _isDisposed = false;
+  bool _isAutoPaging = false;
+
+  void _initializeStateHolders() {
+    searchController = TextEditingController();
+    focusNode = FocusNode();
+    scrollController = ScrollController();
+    displayedEventsStreamValue =
+        StreamValue<List<EventModel>>(defaultValue: const []);
+    isInitialLoadingStreamValue = StreamValue<bool>(defaultValue: true);
+    isPageLoadingStreamValue = StreamValue<bool>(defaultValue: false);
+    hasMoreStreamValue = StreamValue<bool>(defaultValue: true);
+    showHistoryStreamValue = StreamValue<bool>(defaultValue: false);
+    searchActiveStreamValue = StreamValue<bool>(defaultValue: false);
+    inviteFilterStreamValue =
+        StreamValue<InviteFilter>(defaultValue: InviteFilter.none);
+    radiusMetersStreamValue =
+        StreamValue<double>(defaultValue: _defaultRadiusMeters);
+    _isScrollListenerAttached = false;
+  }
+
+  void _resetInternalState() {
+    _fetchedEvents.clear();
+    _currentPage = 1;
+    _isFetching = false;
+    _hasMore = true;
+  }
 
   Future<void> init({bool startWithHistory = false}) async {
+    if (_isDisposed) {
+      _initializeStateHolders();
+      _isDisposed = false;
+    }
     await _invitesRepository.init();
+    _resetInternalState();
     showHistoryStreamValue.addValue(startWithHistory);
+    final maxRadius = _appDataRepository.maxRadiusMeters;
+    radiusMetersStreamValue.addValue(maxRadius);
     _attachScrollListener();
     _listenForStatusChanges();
+    _listenForLocationChanges();
+    _listenForRadiusChanges();
     await _refresh();
   }
 
   void _attachScrollListener() {
+    if (_isScrollListenerAttached) return;
+    _isScrollListenerAttached = true;
     scrollController.addListener(() {
       if (!_hasMore ||
           _isFetching ||
@@ -99,7 +163,7 @@ class EventSearchScreenController implements Disposable {
   Future<void> _fetchPage({required int page}) async {
     if (_isFetching) return;
     _isFetching = true;
-    if (page > 1) {
+    if (page > 1 && !_isDisposed) {
       isPageLoadingStreamValue.addValue(true);
     }
 
@@ -111,6 +175,7 @@ class EventSearchScreenController implements Disposable {
         searchQuery: searchController.text,
       );
 
+      if (_isDisposed) return;
       if (page == 1) {
         _fetchedEvents
           ..clear()
@@ -122,13 +187,16 @@ class EventSearchScreenController implements Disposable {
       _hasMore = result.hasMore;
       hasMoreStreamValue.addValue(_hasMore);
       _currentPage = page;
-      _applyInviteFilterAndPublish();
+      _applyFiltersAndPublish();
     } finally {
       _isFetching = false;
-      isPageLoadingStreamValue.addValue(false);
+      if (!_isDisposed) {
+        isPageLoadingStreamValue.addValue(false);
+      }
     }
   }
 
+  @override
   void toggleHistory() {
     final currentValue = showHistoryStreamValue.value;
     showHistoryStreamValue.addValue(!currentValue);
@@ -137,9 +205,10 @@ class EventSearchScreenController implements Disposable {
 
   void setInviteFilter(InviteFilter filter) {
     inviteFilterStreamValue.addValue(filter);
-    _applyInviteFilterAndPublish();
+    _applyFiltersAndPublish();
   }
 
+  @override
   void cycleInviteFilter() {
     final current = inviteFilterStreamValue.value;
     switch (current) {
@@ -164,10 +233,28 @@ class EventSearchScreenController implements Disposable {
     }
   }
 
+  @override
   void toggleSearchMode() {
     setSearchActive(!searchActiveStreamValue.value);
   }
 
+  @override
+  void setRadiusMeters(double meters) {
+    if (meters <= 0) return;
+    radiusMetersStreamValue.addValue(meters);
+    _applyFiltersAndPublish();
+  }
+
+  void setInitialSearchQuery(String? query) {
+    final normalized = query?.trim() ?? '';
+    if (normalized.isEmpty) return;
+    searchController.text = normalized;
+    searchController.selection =
+        TextSelection.fromPosition(TextPosition(offset: normalized.length));
+    unawaited(_refresh());
+  }
+
+  @override
   Future<void> searchEvents(String query) async {
     await _refresh();
   }
@@ -197,8 +284,54 @@ class EventSearchScreenController implements Disposable {
     }).toList();
   }
 
-  void _applyInviteFilterAndPublish() {
-    displayedEventsStreamValue.addValue(_applyInviteFilter(_fetchedEvents));
+  List<EventModel> _applyRadiusFilter(List<EventModel> events) {
+    final userCoordinate = _userLocationRepository?.userLocationStreamValue.value;
+    if (userCoordinate == null) return events;
+    final radiusMeters = radiusMetersStreamValue.value;
+    return events.where((event) {
+      final eventCoordinate = event.coordinate;
+      if (eventCoordinate == null) return false;
+      final distanceMeters = haversineDistanceMeters(
+        lat1: userCoordinate.latitude,
+        lon1: userCoordinate.longitude,
+        lat2: eventCoordinate.latitude,
+        lon2: eventCoordinate.longitude,
+      );
+      return distanceMeters <= radiusMeters;
+    }).toList();
+  }
+
+  void _applyFiltersAndPublish() {
+    if (_isDisposed) return;
+    final inviteFiltered = _applyInviteFilter(_fetchedEvents);
+    final radiusFiltered = _applyRadiusFilter(inviteFiltered);
+    displayedEventsStreamValue.addValue(radiusFiltered);
+    _maybeAutoPage(radiusFiltered);
+  }
+
+  void _maybeAutoPage(List<EventModel> filtered) {
+    if (filtered.isNotEmpty || !_hasMore || _isAutoPaging) {
+      return;
+    }
+    unawaited(_autoPageToFirstMatch());
+  }
+
+  Future<void> _autoPageToFirstMatch() async {
+    _isAutoPaging = true;
+    try {
+      while (_hasMore) {
+        await _waitForOngoingFetch();
+        if (!_hasMore) {
+          break;
+        }
+        await _fetchPage(page: _currentPage + 1);
+        if (displayedEventsStreamValue.value.isNotEmpty || !_hasMore) {
+          break;
+        }
+      }
+    } finally {
+      _isAutoPaging = false;
+    }
   }
 
   bool isEventConfirmed(String eventId) =>
@@ -211,22 +344,69 @@ class EventSearchScreenController implements Disposable {
 
   bool hasPendingInvite(String eventId) => pendingInviteCount(eventId) > 0;
 
+  String? distanceLabelFor(VenueEventResume event) {
+    final userCoordinate = _userLocationRepository?.userLocationStreamValue.value;
+    final eventCoordinate = event.coordinate;
+    if (userCoordinate == null || eventCoordinate == null) {
+      return null;
+    }
+    final distanceMeters = haversineDistanceMeters(
+      lat1: userCoordinate.latitude,
+      lon1: userCoordinate.longitude,
+      lat2: eventCoordinate.latitude,
+      lon2: eventCoordinate.longitude,
+    );
+    return _formatDistanceLabel(distanceMeters);
+  }
+
+  String _formatDistanceLabel(double meters) {
+    if (meters < 1000) {
+      return '${meters.round()} m';
+    }
+    return '${(meters / 1000).toStringAsFixed(1)} km';
+  }
+
   void _listenForStatusChanges() {
     _confirmedEventsSubscription?.cancel();
     _pendingInvitesSubscription?.cancel();
 
     _confirmedEventsSubscription =
         _userEventsRepository.confirmedEventIdsStream.stream.listen((_) {
-      _applyInviteFilterAndPublish();
+      _applyFiltersAndPublish();
     });
     _pendingInvitesSubscription =
         _invitesRepository.pendingInvitesStreamValue.stream.listen((_) {
-      _applyInviteFilterAndPublish();
+      _applyFiltersAndPublish();
+    });
+  }
+
+  void _listenForLocationChanges() {
+    final repo = _userLocationRepository;
+    if (repo == null) return;
+    _userLocationSubscription?.cancel();
+    _userLocationSubscription = repo.userLocationStreamValue.stream.listen((_) {
+      _applyFiltersAndPublish();
+    });
+  }
+
+  void _listenForRadiusChanges() {
+    _radiusSubscription?.cancel();
+    _radiusSubscription =
+        _appDataRepository.maxRadiusMetersStreamValue.stream.listen((meters) {
+      final current = radiusMetersStreamValue.value;
+      final clamped = current > meters ? meters : current;
+      radiusMetersStreamValue.addValue(clamped);
+      _applyFiltersAndPublish();
     });
   }
 
   @override
+  StreamValue<double> get maxRadiusMetersStreamValue =>
+      _appDataRepository.maxRadiusMetersStreamValue;
+
+  @override
   void onDispose() {
+    _isDisposed = true;
     displayedEventsStreamValue.dispose();
     isInitialLoadingStreamValue.dispose();
     isPageLoadingStreamValue.dispose();
@@ -234,8 +414,11 @@ class EventSearchScreenController implements Disposable {
     showHistoryStreamValue.dispose();
     searchActiveStreamValue.dispose();
     inviteFilterStreamValue.dispose();
+    radiusMetersStreamValue.dispose();
     _confirmedEventsSubscription?.cancel();
     _pendingInvitesSubscription?.cancel();
+    _userLocationSubscription?.cancel();
+    _radiusSubscription?.cancel();
     focusNode.dispose();
     searchController.dispose();
     scrollController.dispose();

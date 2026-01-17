@@ -54,6 +54,7 @@ class MockInvitesDatabase {
 
       // Use the same ID generation logic as MockScheduleBackend to match IDs
       final eventId = MockScheduleBackend.generateMongoId(seed.id);
+      final inviterId = MockScheduleBackend.generateMongoId('inviter-${seed.id}');
 
       return InviteDto(
         id: 'invite-${seed.id}',
@@ -69,6 +70,8 @@ class MockInvitesDatabase {
         inviterAvatarUrl:
             'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=200',
         additionalInviters: const ['João', 'Maria'],
+        inviterPrincipalKind: 'user',
+        inviterPrincipalId: inviterId,
       );
     }).toList();
   }

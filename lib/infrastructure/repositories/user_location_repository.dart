@@ -20,6 +20,7 @@ class UserLocationRepository implements UserLocationRepositoryContract {
   static const _keyLat = 'last_location_lat';
   static const _keyLng = 'last_location_lng';
   static const _keyCapturedAt = 'last_location_captured_at';
+  static const _keyAccuracy = 'last_location_accuracy';
   static const _keyAddress = 'last_location_address';
 
   static const FlutterSecureStorage _storage = FlutterSecureStorage();
@@ -40,6 +41,9 @@ class UserLocationRepository implements UserLocationRepositoryContract {
 
   @override
   final lastKnownCapturedAtStreamValue = StreamValue<DateTime?>();
+
+  @override
+  final lastKnownAccuracyStreamValue = StreamValue<double?>();
 
   @override
   final lastKnownAddressStreamValue = StreamValue<String?>();
@@ -227,16 +231,24 @@ class UserLocationRepository implements UserLocationRepositoryContract {
 
     _hasLiveFix = true;
     userLocationStreamValue.addValue(coordinate);
+    lastKnownAccuracyStreamValue.addValue(position.accuracy);
 
     if (shouldPersist) {
-      await _persistLastKnownLocation(coordinate);
+      await _persistLastKnownLocation(
+        coordinate,
+        position.accuracy,
+      );
     }
   }
 
-  Future<void> _persistLastKnownLocation(CityCoordinate coordinate) async {
+  Future<void> _persistLastKnownLocation(
+    CityCoordinate coordinate,
+    double? accuracy,
+  ) async {
     lastKnownLocationStreamValue.addValue(coordinate);
     final now = DateTime.now();
     lastKnownCapturedAtStreamValue.addValue(now);
+    lastKnownAccuracyStreamValue.addValue(accuracy);
 
     _lastPersistedAt = now;
     _lastPersistedCoordinate = coordinate;
@@ -245,6 +257,11 @@ class UserLocationRepository implements UserLocationRepositoryContract {
       _storage.write(key: _keyLat, value: coordinate.latitude.toString()),
       _storage.write(key: _keyLng, value: coordinate.longitude.toString()),
       _storage.write(key: _keyCapturedAt, value: now.toIso8601String()),
+      if (accuracy != null)
+        _storage.write(
+          key: _keyAccuracy,
+          value: accuracy.toString(),
+        ),
     ]);
   }
 
@@ -254,6 +271,7 @@ class UserLocationRepository implements UserLocationRepositoryContract {
         _storage.read(key: _keyLat),
         _storage.read(key: _keyLng),
         _storage.read(key: _keyCapturedAt),
+        _storage.read(key: _keyAccuracy),
         _storage.read(key: _keyAddress),
       ]);
       final lat = double.tryParse(values[0] ?? '');
@@ -272,8 +290,12 @@ class UserLocationRepository implements UserLocationRepositoryContract {
       final capturedAt =
           capturedAtRaw != null ? DateTime.tryParse(capturedAtRaw) : null;
       lastKnownCapturedAtStreamValue.addValue(capturedAt);
+      final accuracyRaw = values[3];
+      final accuracy =
+          accuracyRaw != null ? double.tryParse(accuracyRaw) : null;
+      lastKnownAccuracyStreamValue.addValue(accuracy);
 
-      final address = values[3];
+      final address = values[4];
       lastKnownAddressStreamValue.addValue(address);
 
       // Provide a best-effort default for consumers that use only `userLocationStreamValue`.

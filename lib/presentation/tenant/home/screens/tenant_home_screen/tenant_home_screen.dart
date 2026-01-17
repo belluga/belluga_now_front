@@ -1,21 +1,17 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
-import 'package:belluga_now/presentation/common/widgets/main_logo.dart';
 import 'package:belluga_now/presentation/tenant/home/screens/tenant_home_screen/controllers/tenant_home_controller.dart';
+import 'package:belluga_now/presentation/tenant/home/screens/tenant_home_screen/widgets/agenda_section/home_agenda_section.dart';
+import 'package:belluga_now/presentation/tenant/home/screens/tenant_home_screen/widgets/home_app_bar.dart';
+import 'package:belluga_now/presentation/tenant/home/screens/tenant_home_screen/widgets/home_my_events_carousel.dart';
 import 'package:belluga_now/presentation/tenant/home/screens/tenant_home_screen/widgets/favorite_section/favorites_section_builder.dart';
-import 'package:belluga_now/presentation/tenant/home/screens/tenant_home_screen/widgets/invites_banner_builder.dart';
-import 'package:belluga_now/presentation/tenant/home/screens/tenant_home_screen/widgets/upcoming_events_section.dart';
-import 'package:belluga_now/presentation/tenant/widgets/belluga_bottom_navigation_bar.dart';
-import 'package:belluga_now/presentation/tenant/widgets/carousel_section.dart';
-import 'package:belluga_now/presentation/tenant/widgets/event_live_now_card.dart';
-import 'package:belluga_now/presentation/tenant/widgets/section_header.dart';
-import 'package:belluga_now/presentation/tenant/widgets/animated_search_button.dart';
+import 'package:belluga_now/presentation/tenant/home/screens/tenant_home_screen/widgets/invites_banner/invites_banner_builder.dart';
 import 'package:belluga_now/presentation/tenant/schedule/screens/event_search_screen/models/invite_filter.dart';
-import 'package:belluga_now/domain/invites/invite_model.dart';
-import 'package:stream_value/core/stream_value_builder.dart';
+import 'package:belluga_now/presentation/tenant/widgets/belluga_bottom_navigation_bar.dart';
+import 'package:belluga_now/presentation/tenant/widgets/section_header.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get_it/get_it.dart';
-import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
 
 class TenantHomeScreen extends StatefulWidget {
   const TenantHomeScreen({super.key});
@@ -25,7 +21,7 @@ class TenantHomeScreen extends StatefulWidget {
 }
 
 class _TenantHomeScreenState extends State<TenantHomeScreen> {
-  late final TenantHomeController _controller =
+  final TenantHomeController _controller =
       GetIt.I.get<TenantHomeController>();
 
   @override
@@ -36,213 +32,106 @@ class _TenantHomeScreenState extends State<TenantHomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final width = MediaQuery.of(context).size.width;
-
-    return Scaffold(
-      appBar: AppBar(
-        toolbarHeight: 72,
-        titleSpacing: 16,
-        title: Row(
-          children: [
-            Expanded(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const MainLogo(),
-                  StreamValueBuilder<String?>(
-                    streamValue: _controller.userAddressStreamValue,
-                    builder: (context, address) {
-                      if (address == null || address.trim().isEmpty) {
-                        return const SizedBox.shrink();
-                      }
-                      return Padding(
-                        padding: const EdgeInsets.only(top: 2),
-                        child: InkWell(
-                          borderRadius: BorderRadius.circular(8),
-                          onTap: () => context.router.push(const CityMapRoute()),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                Icons.location_on_outlined,
-                                size: 14,
-                                color: Theme.of(context)
-                                    .colorScheme
-                                    .onSurfaceVariant,
-                              ),
-                              const SizedBox(width: 4),
-                              Flexible(
-                                child: Text(
-                                  address,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .labelMedium
-                                      ?.copyWith(
-                                        color: Theme.of(context)
-                                            .colorScheme
-                                            .onSurfaceVariant,
-                                      ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    },
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) {
+          return;
+        }
+        _handleBackPressed();
+      },
+      child: Scaffold(
+        bottomNavigationBar: const BellugaBottomNavigationBar(currentIndex: 0),
+        body: SafeArea(
+          top: false,
+          child: HomeAgendaSection(
+            builder: (context, slots) {
+              return NestedScrollView(
+                controller: _controller.scrollController,
+                headerSliverBuilder: (context, innerBoxIsScrolled) => [
+                  HomeAppBar(
+                    userAddressStreamValue: _controller.userAddressStreamValue,
                   ),
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          SectionHeader(
+                            title: 'Seus Favoritos',
+                            onPressed: () {},
+                          ),
+                          const FavoritesSectionBuilder(),
+                          InvitesBannerBuilder(
+                            margin: const EdgeInsets.only(top: 12),
+                            onPressed: () {
+                              context.router.push(const InviteFlowRoute());
+                            },
+                          ),
+                          const SizedBox(height: 12),
+                          HomeMyEventsCarousel(
+                            myEventsFilteredStreamValue:
+                                _controller.myEventsFilteredStreamValue,
+                            onSeeAll: _openConfirmedAgenda,
+                            distanceLabelProvider:
+                                _controller.distanceLabelForMyEvent,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  slots.header,
                 ],
-              ),
-            ),
-            const SizedBox(width: 8),
-            AnimatedSearchButton(
-              onTap: () {
-                context.router.push(EventSearchRoute());
-              },
-            ),
-          ],
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.notifications_none),
-            onPressed: () {},
-            tooltip: 'Notificações',
+                body: slots.body,
+              );
+            },
           ),
-          const SizedBox(width: 8),
-        ],
+        ),
       ),
-      bottomNavigationBar: const BellugaBottomNavigationBar(currentIndex: 0),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 150),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              SectionHeader(
-                title: 'Seus Favoritos',
-                onPressed: () {},
+    );
+  }
+
+  void _openConfirmedAgenda() {
+    context.router.push(
+      EventSearchRoute(inviteFilter: InviteFilter.confirmedOnly),
+    );
+  }
+
+  Future<bool> _handleBackPressed() async {
+    final scrollController = _controller.scrollController;
+    if (scrollController.hasClients && scrollController.offset > 0) {
+      await scrollController.animateTo(
+        0,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOutCubic,
+      );
+      return false;
+    }
+
+    final shouldExit = await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Sair do app?'),
+            content: const Text('Deseja fechar o aplicativo agora?'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: const Text('Cancelar'),
               ),
-              FavoritesSectionBuilder(controller: _controller),
-              const SizedBox(height: 8),
-              InvitesBannerBuilder(
-                onPressed: _openInviteFlow,
-                margin: const EdgeInsets.only(bottom: 16),
-              ),
-              StreamValueBuilder<Set<String>>(
-                streamValue: _controller.confirmedIdsStream,
-                builder: (context, confirmedIds) {
-                  return StreamValueBuilder<List<InviteModel>>(
-                    streamValue: _controller.pendingInvitesStreamValue,
-                    builder: (context, pendingInvites) {
-                      return CarouselSection<VenueEventResume>(
-                        title: 'Acontecendo Agora',
-                        streamValue: _controller.liveEventsStreamValue,
-                        maxItems: 5,
-                        overflowTrailing:
-                            _SeeMoreLiveCard(onTap: _openUpcomingEvents),
-                        loading: SizedBox(
-                          height: width * 0.8 * 9 / 16,
-                          child:
-                              const Center(child: CircularProgressIndicator()),
-                        ),
-                        empty: const SizedBox.shrink(),
-                        onSeeAll: _openUpcomingEvents,
-                        sectionPadding: const EdgeInsets.only(bottom: 16),
-                        contentSpacing: EdgeInsets.zero,
-                        cardBuilder: (event) {
-                          final isConfirmed = confirmedIds.contains(event.id);
-                          final pendingCount = pendingInvites
-                              .where((invite) =>
-                                  invite.eventIdValue.value == event.id)
-                              .length;
-                          return EventLiveNowCard(
-                            event: event,
-                            isConfirmed: isConfirmed,
-                            pendingInvitesCount: pendingCount,
-                            onTap: () => _openEventDetailSlug(event.slug),
-                          );
-                        },
-                      );
-                    },
-                  );
-                },
-              ),
-              SectionHeader(
-                title: 'Próximos Eventos',
-                onPressed: _openUpcomingEvents,
-              ),
-              const SizedBox(height: 8),
-              UpcomingEventsSection(
-                controller: _controller,
-                onExplore: _openUpcomingEvents,
-                onEventSelected: _openEventDetailSlug,
+              ElevatedButton(
+                onPressed: () => Navigator.of(context).pop(true),
+                child: const Text('Sair'),
               ),
             ],
           ),
-        ),
-      ),
-    );
-  }
+        ) ??
+        false;
 
-  void _openInviteFlow() {
-    context.router.push(const InviteFlowRoute());
-  }
+    if (shouldExit) {
+      await SystemNavigator.pop();
+    }
 
-  void _openUpcomingEvents() {
-    _openSearchWithFilter(InviteFilter.none);
-  }
-
-  void _openEventDetailSlug(String slug) {
-    context.router.push(ImmersiveEventDetailRoute(eventSlug: slug));
-  }
-
-  void _openSearchWithFilter(InviteFilter filter) {
-    context.router.push(
-      EventSearchRoute(
-        inviteFilter: filter,
-        startSearchActive: false,
-      ),
-    );
-  }
-}
-
-class _SeeMoreLiveCard extends StatelessWidget {
-  const _SeeMoreLiveCard({required this.onTap});
-
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    return Card(
-      color: colorScheme.surfaceContainerHighest,
-      elevation: 0,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(20),
-        onTap: onTap,
-        child: Center(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.more_horiz, color: colorScheme.primary),
-                const SizedBox(width: 8),
-                Text(
-                  'Ver mais',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        color: colorScheme.primary,
-                        fontWeight: FontWeight.w800,
-                      ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
+    return false;
   }
 }

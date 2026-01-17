@@ -90,11 +90,12 @@ class MockScheduleBackend implements ScheduleBackendContract {
 
       final titleMatch = event.title.toLowerCase().contains(query);
       final contentMatch = event.content.toLowerCase().contains(query);
+      final locationMatch = event.location.toLowerCase().contains(query);
       final artistMatch = event.artists.any(
         (artist) => artist.name.toLowerCase().contains(query),
       );
 
-      return titleMatch || contentMatch || artistMatch;
+      return titleMatch || contentMatch || locationMatch || artistMatch;
     }).toList();
 
     final locationFiltered = _filterWithinRadiusIfAvailable(
@@ -757,6 +758,7 @@ class MockEventSeed {
         .add(Duration(hours: startHour, minutes: durationMinutes))
         .toIso8601String();
 
+    final venueSlug = MockScheduleBackend._slugify(venue.name);
     return EventDTO(
       id: MockScheduleBackend.generateMongoId(id),
       slug: id,
@@ -768,6 +770,14 @@ class MockEventSeed {
       location: location.isNotEmpty ? location : venue.name,
       latitude: latitude,
       longitude: longitude,
+      venue: {
+        'id': MockScheduleBackend.generateMongoId(venueSlug),
+        'display_name': venue.name,
+        'tagline': venue.address,
+        'slug': venueSlug,
+        'logo_url': thumbUrl,
+        'hero_image_url': thumbUrl,
+      },
       thumb: ThumbDTO(
         type: 'image',
         data: {'url': thumbUrl},

@@ -11,6 +11,8 @@ class InviteDto {
   final String? inviterName;
   final String? inviterAvatarUrl;
   final List<String> additionalInviters;
+  final String? inviterPrincipalKind;
+  final String? inviterPrincipalId;
 
   InviteDto({
     required this.id,
@@ -25,9 +27,14 @@ class InviteDto {
     this.inviterName,
     this.inviterAvatarUrl,
     required this.additionalInviters,
+    this.inviterPrincipalKind,
+    this.inviterPrincipalId,
   });
 
   factory InviteDto.fromJson(Map<String, dynamic> json) {
+    final inviterPrincipal = json['inviter_principal'];
+    final inviterPrincipalMap =
+        inviterPrincipal is Map<String, dynamic> ? inviterPrincipal : null;
     return InviteDto(
       id: json['id'] as String,
       eventId: json['event_id'] as String,
@@ -46,10 +53,18 @@ class InviteDto {
               ?.map((e) => e as String)
               .toList() ??
           [],
+      inviterPrincipalKind: inviterPrincipalMap?['kind'] as String?,
+      inviterPrincipalId: inviterPrincipalMap?['id'] as String?,
     );
   }
 
   Map<String, dynamic> toJson() {
+    final inviterPrincipal = inviterPrincipalId == null
+        ? null
+        : {
+            'kind': inviterPrincipalKind,
+            'id': inviterPrincipalId,
+          };
     return {
       'id': id,
       'event_id': eventId,
@@ -63,6 +78,7 @@ class InviteDto {
       'inviter_name': inviterName,
       'inviter_avatar_url': inviterAvatarUrl,
       'additional_inviters': additionalInviters,
+      if (inviterPrincipal != null) 'inviter_principal': inviterPrincipal,
     };
   }
 }
