@@ -1,5 +1,3 @@
-import 'package:belluga_now/domain/schedule/event_action_types.dart';
-import 'package:belluga_now/infrastructure/dal/dto/schedule/event_action_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_artist_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_page_dto.dart';
@@ -632,9 +630,6 @@ class MockScheduleBackend implements ScheduleBackendContract {
               highlight: true,
             ),
           ],
-          actionLabel: 'Reservar mesa',
-          actionUrl: 'https://example.com/$id',
-          actionColor: '#FFE80D5D',
           tags: [venue.name.toLowerCase()],
         ));
       }
@@ -682,9 +677,6 @@ class MockEventSeed {
     required this.startHour,
     this.durationMinutes = 90,
     required this.artists,
-    required this.actionLabel,
-    required this.actionUrl,
-    required this.actionColor,
     this.isConfirmed = false,
     this.totalConfirmed = 0,
     this.receivedInvites = const [],
@@ -705,9 +697,6 @@ class MockEventSeed {
   final int startHour;
   final int durationMinutes;
   final List<MockArtistSeed> artists;
-  final String actionLabel;
-  final String actionUrl;
-  final String actionColor;
   final bool isConfirmed;
   final int totalConfirmed;
   final List<Map<String, dynamic>> receivedInvites;
@@ -736,9 +725,6 @@ class MockEventSeed {
       startHour: startHour ?? this.startHour,
       durationMinutes: durationMinutes ?? this.durationMinutes,
       artists: artists,
-      actionLabel: actionLabel,
-      actionUrl: actionUrl,
-      actionColor: actionColor,
       isConfirmed: isConfirmed,
       totalConfirmed: totalConfirmed,
       receivedInvites: receivedInvites ?? this.receivedInvites,
@@ -783,14 +769,6 @@ class MockEventSeed {
         data: {'url': thumbUrl},
       ),
       artists: artists.map((a) => a.toDto()).toList(),
-      actions: [
-        EventActionDTO(
-          label: actionLabel,
-          openIn: EventActionTypes.external.name,
-          externalUrl: actionUrl,
-          color: actionColor,
-        ),
-      ],
       isConfirmed: isConfirmed,
       totalConfirmed: totalConfirmed,
       friendsGoing: friendsGoing,

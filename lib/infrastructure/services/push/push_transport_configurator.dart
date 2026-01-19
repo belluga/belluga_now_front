@@ -12,6 +12,7 @@ class PushTransportConfigurator {
   }) {
     return PushTransportConfig(
       baseUrl: _resolveBaseUrl(),
+      apiPrefix: '/v1/',
       tokenProvider: () async {
         final token = authRepository.userToken;
         return token.isEmpty ? null : token;

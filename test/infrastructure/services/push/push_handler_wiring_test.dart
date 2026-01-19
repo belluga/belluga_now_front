@@ -70,7 +70,10 @@ void main() {
     final config =
         PushTransportConfigurator.build(authRepository: authRepository);
 
-    expect(config.baseUrl, BellugaConstants.api.baseUrl);
+    final baseUrl = BellugaConstants.api.baseUrl;
+    final expectedBaseUrl =
+        baseUrl.endsWith('/') ? '${baseUrl}v1/' : '$baseUrl/v1/';
+    expect(config.resolvedBaseUrl, expectedBaseUrl);
     expect(await config.tokenProvider?.call(), 'token-123');
     expect(await config.deviceIdProvider?.call(), 'device-1');
     expect(config.enableDebugLogs, kDebugMode);

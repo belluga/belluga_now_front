@@ -6,7 +6,7 @@ import 'package:belluga_now/domain/partner/value_objects/invite_partner_name_val
 import 'package:belluga_now/domain/partner/value_objects/invite_partner_tagline_value.dart';
 import 'package:value_object_pattern/domain/value_objects/mongo_id_value.dart';
 
-/// Lightweight Partner projection for event contexts (venue, participants)
+/// Lightweight Partner projection for event contexts (venue, artists)
 /// Similar to InvitePartnerSummary but for events
 class PartnerResume {
   PartnerResume({

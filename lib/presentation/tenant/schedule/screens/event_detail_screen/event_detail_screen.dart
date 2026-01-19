@@ -11,7 +11,6 @@ import 'package:belluga_now/presentation/tenant/schedule/screens/event_detail_sc
 import 'package:belluga_now/presentation/tenant/schedule/screens/event_detail_screen/widgets/event_detail_header.dart';
 import 'package:belluga_now/presentation/tenant/schedule/screens/event_detail_screen/widgets/event_detail_info_card.dart';
 import 'package:belluga_now/presentation/tenant/schedule/screens/event_detail_screen/widgets/event_hint_list.dart';
-import 'package:belluga_now/presentation/tenant/schedule/screens/event_detail_screen/widgets/event_participant_pill.dart';
 import 'package:belluga_now/presentation/tenant/schedule/screens/event_detail_screen/widgets/swipeable_invite_widget.dart';
 import 'package:belluga_now/presentation/tenant/schedule/screens/event_detail_screen/widgets/invite_status_section.dart';
 import 'package:belluga_now/presentation/tenant/schedule/screens/event_detail_screen/widgets/quick_actions_grid.dart';
@@ -156,27 +155,8 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                     const SizedBox(height: 16),
                     VenueCard(venue: widget.event.venue!),
                   ],
-                  // Participants or Artists
-                  if (widget.event.participants.isNotEmpty) ...[
-                    const SizedBox(height: 24),
-                    Text(
-                      'Participantes',
-                      style: theme.titleMedium
-                          ?.copyWith(fontWeight: FontWeight.w700),
-                    ),
-                    const SizedBox(height: 12),
-                    Wrap(
-                      spacing: 12,
-                      runSpacing: 12,
-                      children: widget.event.participants
-                          .map((p) => EventParticipantPill(
-                                name: p.partner.displayName,
-                                role: p.role.value,
-                                isHighlight: p.isHighlight,
-                              ))
-                          .toList(growable: false),
-                    ),
-                  ] else if (widget.event.artists.isNotEmpty) ...[
+                  // Artists
+                  if (widget.event.artists.isNotEmpty) ...[
                     const SizedBox(height: 24),
                     Text(
                       'Line-up & Convidados',

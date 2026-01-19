@@ -1,14 +1,12 @@
 import 'package:belluga_now/domain/artist/artist_resume.dart';
 import 'package:belluga_now/domain/thumb/thumb_model.dart';
 import 'package:belluga_now/domain/partner/partner_resume.dart';
-import 'package:belluga_now/domain/schedule/event_participant.dart';
 import 'package:belluga_now/domain/schedule/friend_resume.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
 import 'package:belluga_now/domain/invites/invite_model.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
 import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
-import 'package:belluga_now/domain/schedule/event_action_model/event_action_model.dart';
 import 'package:belluga_now/domain/schedule/event_type_model.dart';
 import 'package:belluga_now/domain/value_objects/description_value.dart';
 import 'package:belluga_now/domain/value_objects/title_value.dart';
@@ -37,8 +35,6 @@ class EventModel {
   final DateTimeValue dateTimeStart;
   final DateTimeValue? dateTimeEnd;
   final List<ArtistResume> artists; // Keep for backward compatibility
-  final List<EventParticipant> participants; // New: all participants with roles
-  final List<EventActionModel> actions;
   final CityCoordinate? coordinate;
   final List<String> tags;
 
@@ -88,8 +84,6 @@ class EventModel {
     required this.dateTimeStart,
     required this.dateTimeEnd,
     required this.artists,
-    required this.participants,
-    required this.actions,
     required this.coordinate,
     required this.tags,
     required this.isConfirmedValue,
@@ -123,11 +117,6 @@ class EventModel {
             ),
         )
         .toList();
-    final participants = dto.participants
-            ?.map((e) => EventParticipant.fromDto(e))
-            .toList() ??
-        [];
-
     return EventModel(
       id: MongoIDValue()..parse(dto.id),
       slugValue: SlugValue()..parse(dto.slug), // Map slug
@@ -151,8 +140,6 @@ class EventModel {
           : null,
       venue: dto.venue != null ? PartnerResume.fromDto(dto.venue!) : null,
       artists: artists,
-      participants: participants,
-      actions: dto.actions.map((e) => EventActionModel.fromDto(e)).toList(),
       coordinate: coordinate,
       tags: dto.tags,
       isConfirmedValue: EventIsConfirmedValue()

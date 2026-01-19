@@ -1,4 +1,3 @@
-import 'package:belluga_now/infrastructure/dal/dto/schedule/event_action_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_artist_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_type_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/thumb_dto.dart';
@@ -18,8 +17,6 @@ class EventDTO {
     required this.dateTimeStart,
     this.dateTimeEnd,
     required this.artists,
-    this.participants,
-    required this.actions,
     this.isConfirmed = false,
     this.totalConfirmed = 0,
     this.receivedInvites,
@@ -41,8 +38,6 @@ class EventDTO {
   final String dateTimeStart;
   final String? dateTimeEnd;
   final List<EventArtistDTO> artists;
-  final List<Map<String, dynamic>>? participants;
-  final List<EventActionDTO> actions;
   final bool isConfirmed;
   final int totalConfirmed;
   final List<Map<String, dynamic>>? receivedInvites;
@@ -83,16 +78,6 @@ class EventDTO {
               name: artist['name'] as String? ?? '',
               avatarUrl: artist['avatar_url'] as String?,
               highlight: artist['highlight'] as bool?,
-            ),
-          )
-          .toList(),
-      participants: (json['participants'] as List<dynamic>?)
-          ?.map((e) => e as Map<String, dynamic>)
-          .toList(),
-      actions: (json['actions'] as List<dynamic>? ?? [])
-          .map(
-            (action) => EventActionDTO.fromJson(
-              action as Map<String, dynamic>,
             ),
           )
           .toList(),
@@ -150,8 +135,6 @@ class EventDTO {
             },
           )
           .toList(),
-      'participants': participants,
-      'actions': actions.map((action) => action.toJson()).toList(),
       'is_confirmed': isConfirmed,
       'total_confirmed': totalConfirmed,
       'received_invites': receivedInvites,

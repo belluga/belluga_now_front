@@ -11,7 +11,7 @@ import 'package:belluga_now/presentation/common/location_permission/screens/loca
 import 'package:belluga_now/presentation/common/widgets/button_loading.dart';
 import 'package:belluga_now/presentation/tenant/map/screens/map_screen/map_screen.dart';
 import 'package:belluga_now/presentation/tenant/map/screens/map_screen/widgets/shared/marker_core.dart';
-import 'package:belluga_now/presentation/tenant/schedule/screens/schedule_screen/widgets/event_bottom_sheet.dart';
+import 'package:belluga_now/presentation/tenant/schedule/screens/immersive_event_detail/immersive_event_detail_screen.dart';
 import 'package:belluga_now/presentation/tenant/widgets/carousel_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -156,7 +156,7 @@ void main() {
       await _waitForFinder(tester, detailsButton);
       await tester.tap(detailsButton.first);
       await _pumpFor(tester, const Duration(seconds: 1));
-      expect(find.byType(EventBottomSheet), findsOneWidget);
+      await _waitForFinder(tester, find.byType(ImmersiveEventDetailScreen));
 
       final barrier = find.byType(ModalBarrier);
       if (barrier.evaluate().isNotEmpty) {

@@ -3,7 +3,6 @@ import 'package:belluga_now/domain/partners/partner_model.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/infrastructure/dal/dao/mock_backend/mock_schedule_backend.dart';
 import 'package:belluga_now/infrastructure/dal/datasources/mock_partner_profile_database.dart';
-import 'package:belluga_now/infrastructure/dal/dto/schedule/event_action_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_artist_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_type_dto.dart';
@@ -59,7 +58,6 @@ void main() {
           .add(const Duration(hours: 2))
           .toIso8601String(),
       artists: <EventArtistDTO>[],
-      actions: <EventActionDTO>[],
       tags: const [],
     );
     final event = EventModel.fromDto(dto);
