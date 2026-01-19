@@ -148,9 +148,12 @@ class _CarouselCardState extends State<CarouselCard> {
                 Positioned(
                   left: 0,
                   right: 0,
-                  bottom:
-                      widget.overlayMode == CarouselCardOverlayMode.bottom ? 0 : null,
                   top: widget.overlayMode == CarouselCardOverlayMode.fill ? 0 : null,
+                  bottom: widget.overlayMode == CarouselCardOverlayMode.bottom
+                      ? 0
+                      : (widget.overlayMode == CarouselCardOverlayMode.fill
+                          ? 0
+                          : null),
                   child: isFullSize
                       ? AnimatedSwitcher(
                           duration: const Duration(milliseconds: 250),

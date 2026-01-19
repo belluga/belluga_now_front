@@ -205,7 +205,12 @@ abstract class ApplicationContract extends ModularAppContract {
         unawaited(telemetryForwarder.forward(event));
       },
     );
-    await repository.init();
+    try {
+      await repository.init();
+    } catch (e) {
+      debugPrint('[Push] Init failed: $e');
+      return;
+    }
     _pushRepository = repository;
     _listenForInvitePushUpdates(repository);
   }

@@ -40,7 +40,7 @@ class DynamicFooter extends StatelessWidget {
     }
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       decoration: BoxDecoration(
         color: colorScheme.surfaceContainerHighest,
         boxShadow: [
@@ -55,10 +55,18 @@ class DynamicFooter extends StatelessWidget {
         top: false,
         child: Row(
           children: [
-            if (leftContent != null) Expanded(child: leftContent),
+            if (leftContent != null)
+              Expanded(flex: 4, child: leftContent),
             if (leftContent != null && rightContent != null)
               const SizedBox(width: 12),
-            if (rightContent != null) Expanded(child: rightContent),
+            if (rightContent != null)
+              Expanded(
+                flex: 3,
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: rightContent,
+                ),
+              ),
           ],
         ),
       ),
@@ -107,6 +115,9 @@ class DynamicFooter extends StatelessWidget {
                 Text(
                   leftSubtitle!,
                   style: subtitleStyle,
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
+                  softWrap: true,
                 ),
               ],
             ],
@@ -131,23 +142,31 @@ class DynamicFooter extends StatelessWidget {
       style: ElevatedButton.styleFrom(
         backgroundColor: background,
         foregroundColor: foreground,
-        padding: const EdgeInsets.symmetric(vertical: 14),
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 10),
+        minimumSize: const Size(0, 52),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(8),
         ),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
         children: [
           if (buttonIcon != null) ...[
             Icon(buttonIcon, size: 18),
             const SizedBox(width: 8),
           ],
-          Text(
-            buttonText!,
-            style: const TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: 14,
+          Flexible(
+            child: Text(
+              buttonText!,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              softWrap: true,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 14,
+              ),
             ),
           ),
         ],
