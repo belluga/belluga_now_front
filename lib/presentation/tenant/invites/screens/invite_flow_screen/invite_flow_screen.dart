@@ -105,6 +105,22 @@ class _InviteFlowScreenState extends State<InviteFlowScreen> {
     router.replaceAll([const TenantHomeRoute()]);
   }
 
+  void _showOfflineAcceptToast(InviteModel? invite) {
+    if (!mounted) return;
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.hideCurrentSnackBar();
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(
+          invite == null
+              ? 'Invite accepted offline. It will sync when you reconnect.'
+              : 'Invite accepted for ${invite.eventName}. Syncing when online.',
+        ),
+        duration: const Duration(seconds: 3),
+      ),
+    );
+  }
+
   void _precacheNextInvites(List<InviteModel> invites) {
     if (!mounted) return;
     final ctx = context;

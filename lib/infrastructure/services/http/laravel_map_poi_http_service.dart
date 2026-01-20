@@ -1,3 +1,4 @@
+import 'package:belluga_now/infrastructure/dal/dao/backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/backend_context.dart';
 import 'package:belluga_now/infrastructure/dal/datasources/poi_query.dart';
 import 'package:belluga_now/infrastructure/dal/dto/map/city_poi_dto.dart';
@@ -24,12 +25,12 @@ class LaravelMapPoiHttpService {
 
   static String _resolveBaseUrl(BackendContext? context) {
     final resolved = context ??
-        (GetIt.I.isRegistered<BackendContext>()
-            ? GetIt.I.get<BackendContext>()
+        (GetIt.I.isRegistered<BackendContract>()
+            ? GetIt.I.get<BackendContract>().context
             : null);
     if (resolved == null) {
       throw StateError(
-        'BackendContext is not registered for LaravelMapPoiHttpService.',
+        'BackendContext is not available via BackendContract for LaravelMapPoiHttpService.',
       );
     }
     return resolved.baseUrl;

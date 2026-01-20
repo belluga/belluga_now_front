@@ -19,7 +19,8 @@ class AppDataDTO {
     Map<String, dynamic>? telemetryContext,
     Map<String, dynamic>? firebase,
     Map<String, dynamic>? push,
-  })  : domains = List.unmodifiable(domains ?? const []),
+  })  : profileTypes = List.unmodifiable(profileTypes ?? const []),
+        domains = List.unmodifiable(domains ?? const []),
         appDomains = List.unmodifiable(appDomains ?? const []),
         telemetry = telemetry == null ? null : Map.unmodifiable(telemetry),
         telemetryContext =

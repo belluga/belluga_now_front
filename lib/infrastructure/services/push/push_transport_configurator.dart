@@ -1,4 +1,4 @@
-import 'package:belluga_now/infrastructure/dal/dao/backend_context.dart';
+import 'package:belluga_now/infrastructure/dal/dao/backend_contract.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:flutter/foundation.dart';
 import 'package:get_it/get_it.dart';
@@ -23,11 +23,14 @@ class PushTransportConfigurator {
   }
 
   static String _resolveBaseUrl() {
-    if (GetIt.I.isRegistered<BackendContext>()) {
-      return GetIt.I.get<BackendContext>().baseUrl;
+    if (GetIt.I.isRegistered<BackendContract>()) {
+      final context = GetIt.I.get<BackendContract>().context;
+      if (context != null) {
+        return context.baseUrl;
+      }
     }
     throw StateError(
-      'BackendContext is not registered for PushTransportConfigurator.',
+      'BackendContext is not available via BackendContract for PushTransportConfigurator.',
     );
   }
 }

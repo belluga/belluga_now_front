@@ -4,11 +4,16 @@ import 'package:belluga_now/infrastructure/services/push/push_option_source_reso
 import 'package:belluga_now/infrastructure/services/push/push_transport_configurator.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/user/user_contract.dart';
+import 'package:belluga_now/domain/partners/partner_model.dart';
+import 'package:belluga_now/infrastructure/dal/dao/app_data_backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/auth_backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/favorite_backend_contract.dart';
+import 'package:belluga_now/infrastructure/dal/dao/partners_backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/tenant_backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/venue_event_backend_contract.dart';
+import 'package:belluga_now/infrastructure/dal/dao/backend_context.dart';
+import 'package:belluga_now/infrastructure/dal/dto/app_data_dto.dart';
 import 'package:belluga_now/infrastructure/services/schedule_backend_contract.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
@@ -116,11 +121,27 @@ class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
 }
 
 class _NoopBackend extends BackendContract {
+  BackendContext? _context;
+
+  @override
+  BackendContext? get context => _context;
+
+  @override
+  void setContext(BackendContext context) {
+    _context = context;
+  }
+
+  @override
+  AppDataBackendContract get appData => _NoopAppDataBackend();
+
   @override
   AuthBackendContract get auth => throw UnimplementedError();
 
   @override
   TenantBackendContract get tenant => throw UnimplementedError();
+
+  @override
+  PartnersBackendContract get partners => _NoopPartnersBackend();
 
   @override
   FavoriteBackendContract get favorites => throw UnimplementedError();
@@ -130,4 +151,25 @@ class _NoopBackend extends BackendContract {
 
   @override
   ScheduleBackendContract get schedule => throw UnimplementedError();
+}
+
+class _NoopAppDataBackend extends AppDataBackendContract {
+  @override
+  Future<AppDataDTO> fetch() => throw UnimplementedError();
+}
+
+class _NoopPartnersBackend implements PartnersBackendContract {
+  @override
+  Future<List<PartnerModel>> fetchPartners() => throw UnimplementedError();
+
+  @override
+  Future<List<PartnerModel>> searchPartners({
+    String? query,
+    PartnerType? typeFilter,
+  }) =>
+      throw UnimplementedError();
+
+  @override
+  Future<PartnerModel?> fetchPartnerBySlug(String slug) =>
+      throw UnimplementedError();
 }

@@ -19,6 +19,7 @@ import 'package:belluga_now/domain/repositories/city_map_repository_contract.dar
 import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
+import 'package:belluga_now/domain/schedule/event_delta_model.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/schedule/paged_events_result.dart';
 import 'package:belluga_now/domain/schedule/schedule_summary_model.dart';
@@ -225,7 +226,13 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
   }
 
   @override
-  Future<List<EventModel>> getEventsByDate(DateTime date) async => const [];
+  Future<List<EventModel>> getEventsByDate(
+    DateTime date, {
+    double? originLat,
+    double? originLng,
+    double? maxDistanceMeters,
+  }) async =>
+      const [];
 
   @override
   Future<List<EventModel>> getAllEvents() async => const [];
@@ -239,6 +246,13 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
     required int pageSize,
     required bool showPastOnly,
     String searchQuery = '',
+    List<String>? categories,
+    List<String>? tags,
+    List<Map<String, String>>? taxonomy,
+    bool confirmedOnly = false,
+    double? originLat,
+    double? originLng,
+    double? maxDistanceMeters,
   }) async {
     return const PagedEventsResult(events: [], hasMore: false);
   }
@@ -249,6 +263,21 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
 
   @override
   Future<List<VenueEventResume>> fetchUpcomingEvents() async => const [];
+
+  @override
+  Stream<EventDeltaModel> watchEventsStream({
+    String searchQuery = '',
+    List<String>? categories,
+    List<String>? tags,
+    List<Map<String, String>>? taxonomy,
+    bool confirmedOnly = false,
+    double? originLat,
+    double? originLng,
+    double? maxDistanceMeters,
+    String? lastEventId,
+    bool showPastOnly = false,
+  }) =>
+      const Stream.empty();
 }
 
 CityPoiModel _buildPoi({String id = 'poi-1'}) {

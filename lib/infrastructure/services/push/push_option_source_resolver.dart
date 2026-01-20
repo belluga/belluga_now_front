@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:belluga_now/infrastructure/dal/dao/backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/backend_context.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:dio/dio.dart';
@@ -22,12 +23,12 @@ class PushOptionSourceResolver {
 
   static String _resolveBaseUrl(BackendContext? context) {
     final resolved = context ??
-        (GetIt.I.isRegistered<BackendContext>()
-            ? GetIt.I.get<BackendContext>()
+        (GetIt.I.isRegistered<BackendContract>()
+            ? GetIt.I.get<BackendContract>().context
             : null);
     if (resolved == null) {
       throw StateError(
-        'BackendContext is not registered for PushOptionSourceResolver.',
+        'BackendContext is not available via BackendContract for PushOptionSourceResolver.',
       );
     }
     return resolved.baseUrl;

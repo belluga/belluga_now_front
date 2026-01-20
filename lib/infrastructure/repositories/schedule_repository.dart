@@ -6,6 +6,7 @@ import 'package:belluga_now/domain/schedule/schedule_summary_model.dart';
 import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
 import 'package:belluga_now/domain/map/geo_distance.dart';
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
+import 'package:belluga_now/infrastructure/dal/dao/backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_delta_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_page_dto.dart';
@@ -17,8 +18,12 @@ class ScheduleRepository extends ScheduleRepositoryContract {
     'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?w=800',
   );
 
-  ScheduleRepository({ScheduleBackendContract? backend})
-      : _backend = backend ?? GetIt.I.get<ScheduleBackendContract>();
+  ScheduleRepository({
+    ScheduleBackendContract? backend,
+    BackendContract? backendContract,
+  }) : _backend =
+            backend ?? (backendContract ?? GetIt.I.get<BackendContract>())
+                .schedule;
 
   final ScheduleBackendContract _backend;
   List<EventDTO>? _cachedEvents;

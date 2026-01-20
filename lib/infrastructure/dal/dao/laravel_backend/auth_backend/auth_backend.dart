@@ -1,4 +1,5 @@
 import 'package:belluga_now/infrastructure/dal/dao/auth_backend_contract.dart';
+import 'package:belluga_now/infrastructure/dal/dao/backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/backend_context.dart';
 import 'package:belluga_now/infrastructure/user/dtos/user_dto.dart';
 import 'package:belluga_now/infrastructure/user/dtos/user_profile_dto.dart';
@@ -24,16 +25,16 @@ class LaravelAuthBackend extends AuthBackendContract {
     if (_dio != null) {
       return _dio!;
     }
-    final context = _context ??
-        (GetIt.I.isRegistered<BackendContext>()
-            ? GetIt.I.get<BackendContext>()
+    final resolvedContext = _context ??
+        (GetIt.I.isRegistered<BackendContract>()
+            ? GetIt.I.get<BackendContract>().context
             : null);
-    if (context == null) {
+    if (resolvedContext == null) {
       throw StateError(
-        'BackendContext is not registered for LaravelAuthBackend.',
+        'BackendContext is not available via BackendContract for LaravelAuthBackend.',
       );
     }
-    _dio = context.dio;
+    _dio = resolvedContext.dio;
     return _dio!;
   }
 

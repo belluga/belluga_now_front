@@ -8,16 +8,20 @@ import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
 import 'package:belluga_now/domain/tenant/tenant.dart';
 import 'package:belluga_now/domain/user/user_contract.dart';
+import 'package:belluga_now/domain/partners/partner_model.dart';
 import 'package:belluga_now/infrastructure/dal/dao/app_data_backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/auth_backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/backend_contract.dart';
+import 'package:belluga_now/infrastructure/dal/dao/backend_context.dart';
 import 'package:belluga_now/infrastructure/dal/dao/favorite_backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/local/app_data_local_info_source/app_data_local_info_source.dart';
+import 'package:belluga_now/infrastructure/dal/dao/partners_backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/tenant_backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/venue_event_backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dto/app_data_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/favorite/favorite_preview_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_dto.dart';
+import 'package:belluga_now/infrastructure/dal/dto/schedule/event_delta_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_page_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_summary_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/venue_event/venue_event_preview_dto.dart';
@@ -210,11 +214,27 @@ class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
 }
 
 class _NoopBackend extends BackendContract {
+  BackendContext? _context;
+
+  @override
+  BackendContext? get context => _context;
+
+  @override
+  void setContext(BackendContext context) {
+    _context = context;
+  }
+
+  @override
+  AppDataBackendContract get appData => _FakeAppDataBackend();
+
   @override
   AuthBackendContract get auth => _NoopAuthBackend();
 
   @override
   TenantBackendContract get tenant => _NoopTenantBackend();
+
+  @override
+  PartnersBackendContract get partners => _NoopPartnersBackend();
 
   @override
   FavoriteBackendContract get favorites => _NoopFavoriteBackend();
@@ -224,6 +244,22 @@ class _NoopBackend extends BackendContract {
 
   @override
   ScheduleBackendContract get schedule => _NoopScheduleBackend();
+}
+
+class _NoopPartnersBackend implements PartnersBackendContract {
+  @override
+  Future<List<PartnerModel>> fetchPartners() => throw UnimplementedError();
+
+  @override
+  Future<List<PartnerModel>> searchPartners({
+    String? query,
+    PartnerType? typeFilter,
+  }) =>
+      throw UnimplementedError();
+
+  @override
+  Future<PartnerModel?> fetchPartnerBySlug(String slug) =>
+      throw UnimplementedError();
 }
 
 class _NoopAuthBackend extends AuthBackendContract {
@@ -280,13 +316,39 @@ class _NoopScheduleBackend extends ScheduleBackendContract {
   Future<List<EventDTO>> fetchEvents() => throw UnimplementedError();
 
   @override
+  Future<EventDTO?> fetchEventDetail({required String eventIdOrSlug}) =>
+      throw UnimplementedError();
+
+  @override
   Future<EventPageDTO> fetchEventsPage({
     required int page,
     required int pageSize,
     required bool showPastOnly,
     String? searchQuery,
+    List<String>? categories,
+    List<String>? tags,
+    List<Map<String, String>>? taxonomy,
+    bool confirmedOnly = false,
+    double? originLat,
+    double? originLng,
+    double? maxDistanceMeters,
   }) =>
       throw UnimplementedError();
+
+  @override
+  Stream<EventDeltaDTO> watchEventsStream({
+    String? searchQuery,
+    List<String>? categories,
+    List<String>? tags,
+    List<Map<String, String>>? taxonomy,
+    bool confirmedOnly = false,
+    double? originLat,
+    double? originLng,
+    double? maxDistanceMeters,
+    String? lastEventId,
+    bool showPastOnly = false,
+  }) =>
+      const Stream.empty();
 }
 
 class _FakeAppDataBackend implements AppDataBackendContract {

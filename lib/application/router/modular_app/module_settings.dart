@@ -32,16 +32,10 @@ import 'package:belluga_now/infrastructure/repositories/tenant_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/telemetry_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/user_events_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/user_location_repository.dart';
-import 'package:belluga_now/infrastructure/dal/dao/app_data_backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/local/app_data_local_info_source/app_data_local_info_source.dart';
 import 'package:belluga_now/infrastructure/dal/dao/backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/backend_context.dart';
-import 'package:belluga_now/infrastructure/dal/dao/laravel_backend/app_data_backend/app_data_backend.dart';
-import 'package:belluga_now/infrastructure/dal/dao/mock_backend/mock_schedule_backend.dart';
-import 'package:belluga_now/infrastructure/dal/dao/mock_backend/mock_tenant_backend.dart';
 import 'package:belluga_now/infrastructure/dal/dao/production_backend/production_backend.dart';
-import 'package:belluga_now/infrastructure/dal/dao/tenant_backend_contract.dart';
-import 'package:belluga_now/infrastructure/services/schedule_backend_contract.dart';
 import 'package:belluga_now/application/application_contract.dart';
 import 'package:belluga_now/presentation/common/location_permission/controllers/location_permission_controller.dart';
 import 'package:belluga_now/presentation/common/push/controllers/push_options_controller.dart';
@@ -57,25 +51,11 @@ import 'package:push_handler/push_handler.dart';
 class ModuleSettings extends ModuleSettingsContract {
   ModuleSettings({
     @visibleForTesting BackendContract Function()? backendBuilderForTest,
-    @visibleForTesting
-    AppDataBackendContract Function()? appDataBackendBuilderForTest,
-    @visibleForTesting
-    TenantBackendContract Function()? tenantBackendBuilderForTest,
-    @visibleForTesting
-    ScheduleBackendContract Function()? scheduleBackendBuilderForTest,
   })  : _backendBuilder = backendBuilderForTest ?? (() => ProductionBackend()),
-        _appDataBackendBuilder =
-            appDataBackendBuilderForTest ?? (() => AppDataBackend()),
-        _tenantBackendBuilder =
-            tenantBackendBuilderForTest ?? (() => MockTenantBackend()),
-        _scheduleBackendBuilder =
-            scheduleBackendBuilderForTest ??
-                (() => GetIt.I.get<BackendContract>().schedule);
+        _appDataLocalInfoSource = AppDataLocalInfoSource();
 
   final BackendContract Function() _backendBuilder;
-  final AppDataBackendContract Function() _appDataBackendBuilder;
-  final TenantBackendContract Function() _tenantBackendBuilder;
-  final ScheduleBackendContract Function() _scheduleBackendBuilder;
+  final AppDataLocalInfoSource _appDataLocalInfoSource;
 
   @override
   FutureOr<void> registerGlobalDependencies() async {
@@ -102,23 +82,6 @@ class ModuleSettings extends ModuleSettingsContract {
   void _registerBackend() {
     // Composite backend for repositories still depending on BackendContract.
     _registerLazySingletonIfAbsent<BackendContract>(_backendBuilder);
-    _registerLazySingletonIfAbsent<AppDataBackendContract>(
-      _appDataBackendBuilder,
-    );
-    _registerLazySingletonIfAbsent<BackendContract>(_backendBuilder);
-    _registerLazySingletonIfAbsent<TenantBackendContract>(
-      _tenantBackendBuilder,
-    );
-    _registerLazySingletonIfAbsent<ScheduleBackendContract>(
-      _scheduleBackendBuilder,
-    );
-    _registerIfAbsent<ScheduleRepositoryContract>(() => ScheduleRepository());
-    _registerIfAbsent<FriendsRepositoryContract>(
-      () => FriendsRepository(),
-    );
-    _registerIfAbsent<InvitesRepositoryContract>(
-      () => InvitesRepository(),
-    );
   }
 
 
@@ -287,8 +250,14 @@ class ModuleSettings extends ModuleSettingsContract {
     _registerIfAbsent<ContactsRepositoryContract>(
       () => ContactsRepository(),
     );
+    _registerIfAbsent<ScheduleRepositoryContract>(() => ScheduleRepository());
+    _registerIfAbsent<FriendsRepositoryContract>(
+      () => FriendsRepository(),
+    );
+    _registerIfAbsent<InvitesRepositoryContract>(
+      () => InvitesRepository(),
+    );
     await _registerAppDataRepository();
-    _registerBackendContext();
     _registerIfAbsent<TelemetryRepositoryContract>(
       () => TelemetryRepository(),
     );
@@ -305,21 +274,14 @@ class ModuleSettings extends ModuleSettingsContract {
   Future<void> _registerAppDataRepository() async {
     final appDataRepository = _registerIfAbsent<AppDataRepository>(
       () => AppDataRepository(
-        backend: _appDataBackendBuilder(),
-        localInfoSource: AppDataLocalInfoSource(),
+        backendContract: GetIt.I.get<BackendContract>(),
+        localInfoSource: _appDataLocalInfoSource,
       ),
     );
     await appDataRepository.init();
-  }
-
-  void _registerBackendContext() {
-    if (GetIt.I.isRegistered<BackendContext>()) {
-      return;
-    }
-    final appData = GetIt.I.get<AppDataRepository>().appData;
-    GetIt.I.registerSingleton<BackendContext>(
-      BackendContext.fromAppData(appData),
-    );
+    GetIt.I
+        .get<BackendContract>()
+        .setContext(BackendContext.fromAppData(appDataRepository.appData));
   }
 
   Future<void> _registerTenantRepository() async {

@@ -103,9 +103,31 @@ class AppData {
                 'primary_seed_color'] as String?
             : null);
 
-    final mainDomain = DomainValue()..parse(DomainValue.coerceRaw(map['main_domain']));
+    final mainDomain =
+        DomainValue()..parse(DomainValue.coerceRaw(map['main_domain']));
+    final tenantIdValue = TenantIdValue()
+      ..parse(map['tenant_id']?.toString());
     final profileTypeRegistry =
         ProfileTypeRegistry.fromJsonList(map['profile_types'] as List<dynamic>?);
+    final telemetryRaw = map['telemetry'];
+    final telemetrySettings = TelemetrySettings.fromRaw(telemetryRaw);
+    final telemetryContextRaw =
+        telemetryRaw is Map ? telemetryRaw : map['telemetry_context'];
+    final telemetryContextSettings =
+        TelemetryContextSettings.fromRaw(telemetryContextRaw);
+    final firebaseSettings =
+        FirebaseSettings.tryFromMap(map['firebase'] as Map<String, dynamic>?);
+    final pushSettings =
+        PushSettings.tryFromMap(map['push'] as Map<String, dynamic>?);
+
+    final platformType = localInfo['platformType'] as PlatformTypeValue;
+    final resolvedPlatform =
+        platformType.value ?? platformType.defaultValue ?? AppType.mobile;
+    final isWeb = resolvedPlatform == AppType.web;
+    final resolvedHostname =
+        isWeb ? localInfo['hostname'] as String : mainDomain.value.host;
+    final resolvedHref =
+        isWeb ? localInfo['href'] as String : mainDomain.value.toString();
 
     return AppData._(
       platformType: platformType,

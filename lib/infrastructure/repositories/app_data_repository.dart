@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/infrastructure/dal/dao/app_data_backend_contract.dart';
+import 'package:belluga_now/infrastructure/dal/dao/backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/local/app_data_local_info_source/app_data_local_info_source.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -10,9 +11,12 @@ import 'package:stream_value/core/stream_value.dart';
 
 class AppDataRepository {
   AppDataRepository({
-    required AppDataBackendContract backend,
+    AppDataBackendContract? backend,
+    BackendContract? backendContract,
     required AppDataLocalInfoSource localInfoSource,
-  })  : _backend = backend,
+  })  : _backend =
+            backend ?? (backendContract ?? GetIt.I.get<BackendContract>())
+                .appData,
         _localInfoSource = localInfoSource;
 
   late AppData appData;
