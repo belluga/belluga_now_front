@@ -10,11 +10,14 @@ import 'package:belluga_now/application/router/modular_app/modules/map_module.da
 import 'package:belluga_now/application/router/modular_app/modules/menu_module.dart';
 import 'package:belluga_now/application/router/modular_app/modules/profile_module.dart';
 import 'package:belluga_now/application/router/modular_app/modules/schedule_module.dart';
+import 'package:belluga_now/application/router/modular_app/modules/tenant_admin_module.dart';
 
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/admin_mode_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/contacts_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/friends_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/landlord_auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/partners_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_repository_contract.dart';
@@ -22,10 +25,12 @@ import 'package:belluga_now/domain/repositories/telemetry_repository_contract.da
 import 'package:belluga_now/domain/repositories/user_events_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
 import 'package:belluga_now/infrastructure/repositories/app_data_repository.dart';
+import 'package:belluga_now/infrastructure/repositories/admin_mode_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/auth_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/contacts_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/friends_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/invites_repository.dart';
+import 'package:belluga_now/infrastructure/repositories/landlord_auth_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/partners_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/schedule_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/tenant_repository.dart';
@@ -90,6 +95,7 @@ class ModuleSettings extends ModuleSettingsContract {
     await registerSubModule(HomeModule());
     await registerSubModule(AuthModule());
     await registerSubModule(LandlordModule());
+    await registerSubModule(TenantAdminModule());
     await registerSubModule(ProfileModule());
     await registerSubModule(InvitesModule());
     await registerSubModule(ScheduleModule());
@@ -281,6 +287,9 @@ class ModuleSettings extends ModuleSettingsContract {
     _registerIfAbsent<UserLocationRepositoryContract>(
       () => UserLocationRepository(),
     );
+    _registerIfAbsent<AdminModeRepositoryContract>(
+      () => AdminModeRepository(),
+    );
     _registerIfAbsent<ContactsRepositoryContract>(
       () => ContactsRepository(),
     );
@@ -297,6 +306,10 @@ class ModuleSettings extends ModuleSettingsContract {
     );
     await _registerTenantRepository();
     await _registerAuthRepository();
+    await _registerLandlordAuthRepository();
+    final adminModeRepository =
+        GetIt.I.get<AdminModeRepositoryContract>();
+    await adminModeRepository.init();
   }
 
   Future<void> _registerAppDataRepository() async {
@@ -331,6 +344,13 @@ class ModuleSettings extends ModuleSettingsContract {
       () => AuthRepository(),
     );
     await _authRepository.init();
+  }
+
+  Future<void> _registerLandlordAuthRepository() async {
+    final landlordAuth = _registerIfAbsent<LandlordAuthRepositoryContract>(
+      () => LandlordAuthRepository(),
+    );
+    await landlordAuth.init();
   }
 
   T _registerIfAbsent<T extends Object>(T Function() builder) {

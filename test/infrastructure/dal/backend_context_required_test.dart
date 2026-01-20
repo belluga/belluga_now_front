@@ -91,7 +91,11 @@ class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
   Future<void> loginWithEmailPassword(String email, String password) async {}
 
   @override
-  Future<void> signUpWithEmailPassword(String email, String password) async {}
+  Future<void> signUpWithEmailPassword(
+    String name,
+    String email,
+    String password,
+  ) async {}
 
   @override
   Future<void> sendTokenRecoveryPassword(

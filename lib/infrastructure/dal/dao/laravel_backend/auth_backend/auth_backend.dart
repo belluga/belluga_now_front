@@ -3,6 +3,7 @@ import 'package:belluga_now/infrastructure/dal/dao/backend_context.dart';
 import 'package:belluga_now/infrastructure/user/dtos/user_dto.dart';
 import 'package:belluga_now/infrastructure/user/dtos/user_profile_dto.dart';
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:get_it/get_it.dart';
 
@@ -19,6 +20,7 @@ class LaravelAuthBackend extends AuthBackendContract {
   Dio? _dio;
   final FlutterSecureStorage _storage;
   static const String _userTokenStorageKey = 'user_token';
+  static const String _deviceIdStorageKey = 'device_id';
 
   Dio _resolveDio() {
     if (_dio != null) {
@@ -41,13 +43,67 @@ class LaravelAuthBackend extends AuthBackendContract {
   Future<(UserDto, String)> loginWithEmailPassword(
     String email,
     String password,
-  ) {
-    throw UnimplementedError('Login is not wired for LaravelAuthBackend.');
+  ) async {
+    final payload = {
+      'email': email,
+      'password': password,
+      'device_name': await _resolveDeviceName(),
+    };
+    try {
+      final response = await _resolveDio().post(
+        '/v1/auth/login',
+        data: payload,
+      );
+      final raw = response.data;
+      if (raw is Map<String, dynamic>) {
+        final data = raw['data'];
+        if (data is Map<String, dynamic>) {
+          final token = data['token']?.toString() ?? '';
+          final user = data['user'];
+          if (user is Map<String, dynamic>) {
+            return (_userDtoFromUserResource(user), token);
+          }
+        }
+      }
+      throw Exception(
+        'Unexpected login response shape for ${response.requestOptions.uri}.',
+      );
+    } on DioException catch (e) {
+      final statusCode = e.response?.statusCode;
+      final data = e.response?.data;
+      throw Exception(
+        'Failed to login '
+        '[${_responseLabel(statusCode)}] '
+        '(${e.requestOptions.uri}): '
+        '${data ?? e.message}',
+      );
+    }
   }
 
   @override
   Future<void> logout() async {
-    throw UnimplementedError('Logout is not wired for LaravelAuthBackend.');
+    final token = await _storage.read(key: _userTokenStorageKey);
+    if (token == null || token.isEmpty) {
+      return;
+    }
+    try {
+      await _resolveDio().post(
+        '/v1/auth/logout',
+        data: {'device': await _resolveDeviceName()},
+        options: Options(
+          headers: {'Authorization': 'Bearer $token'},
+        ),
+      );
+    } on DioException catch (e) {
+      final statusCode = e.response?.statusCode;
+      final data = e.response?.data;
+      throw Exception(
+        'Failed to logout '
+        '[${_responseLabel(statusCode)}] '
+        '(${e.requestOptions.uri}): '
+        '${data ?? e.message}',
+      );
+    }
   }
 
   @override
@@ -86,6 +142,59 @@ class LaravelAuthBackend extends AuthBackendContract {
       final data = e.response?.data;
       throw Exception(
         'Failed to validate auth token '
+        '[${_responseLabel(statusCode)}] '
+        '(${e.requestOptions.uri}): '
+        '${data ?? e.message}',
+      );
+    }
+  }
+
+  @override
+  Future<AuthRegistrationResponse> registerWithEmailPassword({
+    required String name,
+    required String email,
+    required String password,
+    List<String>? anonymousUserIds,
+  }) async {
+    final payload = <String, dynamic>{
+      'name': name,
+      'email': email,
+      'password': password,
+      if (anonymousUserIds != null && anonymousUserIds.isNotEmpty)
+        'anonymous_user_ids': anonymousUserIds,
+    };
+    try {
+      final response = await _resolveDio().post(
+        '/v1/auth/register/password',
+        data: payload,
+      );
+      final raw = response.data;
+      if (raw is Map<String, dynamic>) {
+        final data = raw['data'];
+        if (data is Map<String, dynamic>) {
+          final token = data['token']?.toString() ?? '';
+          if (token.isNotEmpty) {
+            return AuthRegistrationResponse(
+              token: token,
+              userId: data['user_id']?.toString(),
+              identityState: data['identity_state']?.toString(),
+              expiresAt: data['expires_at']?.toString(),
+            );
+          }
+        }
+        throw Exception(
+          'Registration token missing for ${response.requestOptions.uri}.',
+        );
+      }
+      throw Exception(
+        'Unexpected registration response shape '
+        'for ${response.requestOptions.uri}.',
+      );
+    } on DioException catch (e) {
+      final statusCode = e.response?.statusCode;
+      final data = e.response?.data;
+      throw Exception(
+        'Failed to register '
         '[${_responseLabel(statusCode)}] '
         '(${e.requestOptions.uri}): '
         '${data ?? e.message}',
@@ -149,6 +258,36 @@ class LaravelAuthBackend extends AuthBackendContract {
       );
     }
   }
+
+  Future<String> _resolveDeviceName() async {
+    final deviceId = await _storage.read(key: _deviceIdStorageKey);
+    if (deviceId == null || deviceId.isEmpty) {
+      return 'device';
+    }
+    final platformLabel = _resolvePlatformLabel();
+    final shortId = deviceId.length > 8 ? deviceId.substring(0, 8) : deviceId;
+    return 'boora-$platformLabel-$shortId';
+  }
+
+  String _resolvePlatformLabel() {
+    if (kIsWeb) {
+      return 'web';
+    }
+    switch (defaultTargetPlatform) {
+      case TargetPlatform.android:
+        return 'android';
+      case TargetPlatform.iOS:
+        return 'ios';
+      case TargetPlatform.fuchsia:
+        return 'fuchsia';
+      case TargetPlatform.linux:
+        return 'linux';
+      case TargetPlatform.macOS:
+        return 'macos';
+      case TargetPlatform.windows:
+        return 'windows';
+    }
+  }
 }
 
 UserDto _userDtoFromTokenValidation(Map<String, dynamic> user) {
@@ -167,6 +306,23 @@ UserDto _userDtoFromTokenValidation(Map<String, dynamic> user) {
     customData: user['custom_data'] is Map<String, dynamic>
         ? user['custom_data'] as Map<String, dynamic>
         : null,
+  );
+}
+
+UserDto _userDtoFromUserResource(Map<String, dynamic> user) {
+  final id = user['id']?.toString();
+  if (id == null || id.isEmpty) {
+    throw Exception('Login user id missing.');
+  }
+  return UserDto(
+    id: id,
+    profile: UserProfileDto(
+      name: user['name']?.toString(),
+      email: _extractEmail(user['emails']),
+      pictureUrl: null,
+      birthday: null,
+    ),
+    customData: null,
   );
 }
 

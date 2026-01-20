@@ -185,7 +185,11 @@ class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
   Future<void> loginWithEmailPassword(String email, String password) async {}
 
   @override
-  Future<void> signUpWithEmailPassword(String email, String password) async {}
+  Future<void> signUpWithEmailPassword(
+    String name,
+    String email,
+    String password,
+  ) async {}
 
   @override
   Future<void> sendTokenRecoveryPassword(
@@ -249,6 +253,15 @@ class _NoopAuthBackend extends AuthBackendContract {
 
   @override
   Future<void> logout() => throw UnimplementedError();
+
+  @override
+  Future<AuthRegistrationResponse> registerWithEmailPassword({
+    required String name,
+    required String email,
+    required String password,
+    List<String>? anonymousUserIds,
+  }) =>
+      throw UnimplementedError();
 }
 
 class _NoopTenantBackend extends TenantBackendContract {

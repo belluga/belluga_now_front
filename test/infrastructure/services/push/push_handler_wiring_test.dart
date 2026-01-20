@@ -303,7 +303,11 @@ class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
       throw UnimplementedError();
 
   @override
-  Future<void> signUpWithEmailPassword(String email, String password) =>
+  Future<void> signUpWithEmailPassword(
+    String name,
+    String email,
+    String password,
+  ) =>
       throw UnimplementedError();
 
   @override
@@ -409,6 +413,15 @@ class _NoopAuthBackend extends AuthBackendContract {
 
   @override
   Future<void> logout() => throw UnimplementedError();
+
+  @override
+  Future<AuthRegistrationResponse> registerWithEmailPassword({
+    required String name,
+    required String email,
+    required String password,
+    List<String>? anonymousUserIds,
+  }) =>
+      throw UnimplementedError();
 }
 
 class _NoopTenantBackend extends TenantBackendContract {

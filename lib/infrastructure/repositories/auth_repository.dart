@@ -3,6 +3,7 @@ import 'package:belluga_now/domain/user/user_belluga.dart';
 import 'dart:convert';
 
 import 'package:belluga_now/infrastructure/user/dtos/user_dto.dart';
+import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/auth_backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/backend_contract.dart';
 import 'package:crypto/crypto.dart';
@@ -85,18 +86,18 @@ final class AuthRepository extends AuthRepositoryContract<UserBelluga> {
 
   @override
   Future<void> loginWithEmailPassword(String email, String password) async {
+    final previousUserId = await getUserId();
     var (UserDto _user, String _token) =
         await backend.auth.loginWithEmailPassword(
       email,
       password,
     );
 
-    _userTokenStreamValue.addValue(_token);
-    final user = UserBelluga.fromDto(_user);
-    userStreamValue.addValue(user);
-    await _setUserId(user.uuidValue.value);
-
-    return Future.value();
+    await _finalizeAuthenticatedUser(
+      _user,
+      _token,
+      previousUserId: previousUserId,
+    );
   }
 
   @override
@@ -111,8 +112,45 @@ final class AuthRepository extends AuthRepositoryContract<UserBelluga> {
   }
 
   @override
-  Future<void> signUpWithEmailPassword(String email, String password) {
-    throw UnimplementedError();
+  Future<void> signUpWithEmailPassword(
+    String name,
+    String email,
+    String password,
+  ) async {
+    final previousUserId = await getUserId();
+    final anonymousIds = (previousUserId != null && previousUserId.isNotEmpty)
+        ? [previousUserId]
+        : null;
+    final response = await backend.auth.registerWithEmailPassword(
+      name: name,
+      email: email,
+      password: password,
+      anonymousUserIds: anonymousIds,
+    );
+    if (response.token.isNotEmpty) {
+      _userTokenStreamValue.addValue(response.token);
+    }
+
+    UserDto? userDto;
+    try {
+      userDto = await backend.auth.loginCheck();
+    } catch (_) {
+      userDto = null;
+    }
+
+    if (userDto != null) {
+      await _finalizeAuthenticatedUser(
+        userDto,
+        response.token,
+        previousUserId: previousUserId,
+        overrideUserId: response.userId,
+      );
+      return;
+    }
+
+    if (response.userId != null && response.userId!.isNotEmpty) {
+      await _setUserId(response.userId);
+    }
   }
 
   @override
@@ -202,6 +240,32 @@ final class AuthRepository extends AuthRepositoryContract<UserBelluga> {
     if (response.userId != null && response.userId!.isNotEmpty) {
       await _setUserId(response.userId);
     }
+  }
+
+  Future<void> _finalizeAuthenticatedUser(
+    UserDto userDto,
+    String token, {
+    String? previousUserId,
+    String? overrideUserId,
+  }) async {
+    if (token.isNotEmpty) {
+      _userTokenStreamValue.addValue(token);
+    }
+    final user = UserBelluga.fromDto(userDto);
+    userStreamValue.addValue(user);
+    await _mergeTelemetryIdentity(previousUserId);
+    await _setUserId(overrideUserId ?? user.uuidValue.value);
+  }
+
+  Future<void> _mergeTelemetryIdentity(String? previousUserId) async {
+    if (previousUserId == null || previousUserId.isEmpty) {
+      return;
+    }
+    if (!GetIt.I.isRegistered<TelemetryRepositoryContract>()) {
+      return;
+    }
+    final telemetry = GetIt.I.get<TelemetryRepositoryContract>();
+    await telemetry.mergeIdentity(previousUserId: previousUserId);
   }
 
   Future<AnonymousIdentityResponse> _issueAnonymousIdentityWithRetry({

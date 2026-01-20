@@ -2,7 +2,11 @@ import 'dart:io';
 import 'dart:math' as math;
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/icons/boora_icons.dart';
+import 'package:belluga_now/application/router/app_router.gr.dart';
+import 'package:belluga_now/domain/repositories/admin_mode_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/landlord_auth_repository_contract.dart';
 import 'package:belluga_now/domain/user/user_contract.dart';
+import 'package:belluga_now/presentation/landlord/auth/widgets/landlord_login_sheet.dart';
 import 'package:belluga_now/presentation/tenant/profile/screens/profile_screen/controllers/profile_screen_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
@@ -41,10 +45,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
         leading: const BackButton(),
         actions: [
-          IconButton(
-            tooltip: 'Sair',
-            onPressed: _logout,
-            icon: const Icon(Icons.exit_to_app),
+          StreamValueBuilder<UserContract?>(
+            streamValue: _controller.userStreamValue,
+            builder: (context, user) {
+              if (user == null) {
+                return const SizedBox.shrink();
+              }
+              return IconButton(
+                tooltip: 'Sair',
+                onPressed: _logout,
+                icon: const Icon(Icons.exit_to_app),
+              );
+            },
           ),
         ],
       ),
@@ -53,7 +65,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
           streamValue: _controller.userStreamValue,
           builder: (context, user) {
             _controller.syncFromUser(user);
-            final avatarUrl = user?.profile.pictureUrlValue?.value?.toString();
+            if (user == null) {
+              return ListView(
+                padding: const EdgeInsets.fromLTRB(16, 24, 16, 24),
+                children: [
+                  _AnonymousProfileCard(
+                    onTapLogin: () =>
+                        context.router.push(const AuthLoginRoute()),
+                  ),
+                ],
+              );
+            }
+            final avatarUrl = user.profile.pictureUrlValue?.value?.toString();
             final hasPendingChanges = _controller.hasPendingChanges;
 
             return StreamValueBuilder<String?>(
@@ -168,6 +191,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               _openRadiusSelector(context, radiusMeters),
                         );
                       },
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                _SectionCard(
+                  title: 'Modo',
+                  children: [
+                    ListTile(
+                      leading: const Icon(Icons.person_outline),
+                      title: const Text('Modo Usuario'),
+                      subtitle: const Text('Experiencia do app'),
+                      trailing: const Icon(Icons.check_circle),
+                      onTap: () => _switchToUserMode(context),
+                    ),
+                    ListTile(
+                      leading: const Icon(Icons.shield_outlined),
+                      title: const Text('Modo Admin'),
+                      subtitle: const Text('Acesso landlord'),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () => _switchToAdminMode(context),
                     ),
                   ],
                 ),
@@ -320,6 +363,27 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  Future<void> _switchToUserMode(BuildContext context) async {
+    final adminMode = GetIt.I.get<AdminModeRepositoryContract>();
+    await adminMode.setUserMode();
+    context.router.replaceAll([TenantHomeRoute()]);
+  }
+
+  Future<void> _switchToAdminMode(BuildContext context) async {
+    final adminMode = GetIt.I.get<AdminModeRepositoryContract>();
+    final landlordAuth =
+        GetIt.I.get<LandlordAuthRepositoryContract>();
+    var canEnter = landlordAuth.hasValidSession;
+    if (!canEnter) {
+      canEnter = await showLandlordLoginSheet(context);
+    }
+    if (!canEnter) {
+      return;
+    }
+    await adminMode.setLandlordMode();
+    context.router.replaceAll([TenantAdminShellRoute()]);
+  }
+
   static String _formatRadiusLabel(double meters) {
     if (meters < 1000) {
       return '${meters.round()} m';
@@ -436,6 +500,61 @@ class _ProfileScreenState extends State<ProfileScreen> {
       return NetworkImage(remoteUrl);
     }
     return null;
+  }
+}
+
+class _AnonymousProfileCard extends StatelessWidget {
+  const _AnonymousProfileCard({
+    required this.onTapLogin,
+  });
+
+  final VoidCallback onTapLogin;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            colorScheme.primary.withValues(alpha: 0.08),
+            colorScheme.secondary.withValues(alpha: 0.1),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Entre para ativar seu perfil',
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Suas preferencias e favoritos anonimos sao preservados '
+            'quando voce cria a conta.',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton(
+              onPressed: onTapLogin,
+              child: const Text('Entrar / Criar conta'),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 

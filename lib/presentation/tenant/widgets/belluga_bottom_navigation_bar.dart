@@ -54,9 +54,9 @@ class BellugaBottomNavigationBar extends StatelessWidget {
             label: 'Mapa',
           ),
           NavigationDestination(
-            icon: Icon(Icons.menu_outlined),
-            selectedIcon: Icon(Icons.menu),
-            label: 'Menu',
+            icon: Icon(Icons.person_outline),
+            selectedIcon: Icon(Icons.person),
+            label: 'Perfil',
           ),
         ],
       ),
@@ -72,7 +72,7 @@ class BellugaBottomNavigationBar extends StatelessWidget {
         if (index == 1) {
           context.router.replaceAll([CityMapRoute()]);
         } else if (index == 2) {
-          context.router.replaceAll([TenantMenuRoute()]);
+          context.router.replaceAll([ProfileRoute()]);
         }
     }
   }
