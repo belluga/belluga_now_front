@@ -1,0 +1,62 @@
+import 'package:belluga_now/domain/partners/partner_model.dart';
+import 'package:belluga_now/domain/partners/profile_type_definition.dart';
+
+class ProfileTypeRegistry {
+  ProfileTypeRegistry({
+    required List<ProfileTypeDefinition> types,
+  }) : _typesByKey = {
+          for (final type in types) type.type: type,
+        };
+
+  final Map<String, ProfileTypeDefinition> _typesByKey;
+
+  bool get isEmpty => _typesByKey.isEmpty;
+
+  List<ProfileTypeDefinition> get types =>
+      List<ProfileTypeDefinition>.unmodifiable(_typesByKey.values);
+
+  bool contains(String type) => _typesByKey.containsKey(type);
+
+  ProfileTypeDefinition? byType(String type) => _typesByKey[type];
+
+  bool isFavoritable(String type) =>
+      _typesByKey[type]?.capabilities.isFavoritable ?? false;
+
+  bool isEnabledFor(PartnerType type) => contains(_registryKeyFor(type));
+
+  bool isFavoritableFor(PartnerType type) =>
+      isFavoritable(_registryKeyFor(type));
+
+  List<PartnerType> enabledPartnerTypes() => PartnerType.values
+      .where((type) => isEnabledFor(type))
+      .toList(growable: false);
+
+  static ProfileTypeRegistry fromJsonList(List<dynamic>? raw) {
+    if (raw == null || raw.isEmpty) {
+      return ProfileTypeRegistry(types: const []);
+    }
+    final entries = raw
+        .whereType<Map>()
+        .map((entry) => ProfileTypeDefinition.fromJson(
+              Map<String, dynamic>.from(entry),
+            ))
+        .where((entry) => entry.type.trim().isNotEmpty)
+        .toList(growable: false);
+    return ProfileTypeRegistry(types: entries);
+  }
+
+  String _registryKeyFor(PartnerType type) {
+    switch (type) {
+      case PartnerType.artist:
+        return 'artist';
+      case PartnerType.venue:
+        return 'venue';
+      case PartnerType.experienceProvider:
+        return 'experience_provider';
+      case PartnerType.influencer:
+        return 'influencer';
+      case PartnerType.curator:
+        return 'curator';
+    }
+  }
+}

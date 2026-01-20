@@ -7,12 +7,14 @@ class DiscoveryPartnerGrid extends StatelessWidget {
     super.key,
     required this.partners,
     required this.favorites,
+    required this.isFavoritable,
     required this.onFavoriteTap,
     required this.onPartnerTap,
   });
 
   final List<PartnerModel> partners;
   final Set<String> favorites;
+  final bool Function(PartnerModel) isFavoritable;
   final ValueChanged<String> onFavoriteTap;
   final ValueChanged<PartnerModel> onPartnerTap;
 
@@ -31,6 +33,7 @@ class DiscoveryPartnerGrid extends StatelessWidget {
           return DiscoveryPartnerCard(
             partner: partner,
             isFavorite: favorites.contains(partner.id),
+            isFavoritable: isFavoritable(partner),
             onFavoriteTap: () => onFavoriteTap(partner.id),
             onTap: () => onPartnerTap(partner),
           );

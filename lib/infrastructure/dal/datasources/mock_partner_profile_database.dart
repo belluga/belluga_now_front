@@ -8,24 +8,29 @@ class MockPartnerProfileDatabase {
   PartnerProfileConfig buildConfig(PartnerModel partner) {
     switch (partner.type) {
       case PartnerType.artist:
+        final hasBio = partner.bio != null && partner.bio!.trim().isNotEmpty;
+        final tabs = <ProfileTabConfig>[];
+        if (hasBio) {
+          tabs.add(
+            ProfileTabConfig(
+              title: 'Sobre',
+              modules: [
+                ProfileModuleConfig(id: ProfileModuleId.richText),
+              ],
+            ),
+          );
+        }
+        tabs.add(
+          ProfileTabConfig(
+            title: 'Agenda',
+            modules: [
+              ProfileModuleConfig(id: ProfileModuleId.agendaList),
+            ],
+          ),
+        );
         return PartnerProfileConfig(
           partner: partner,
-          tabs: [
-            ProfileTabConfig(
-              title: 'Destaques',
-              modules: [
-                ProfileModuleConfig(id: ProfileModuleId.agendaCarousel),
-                ProfileModuleConfig(id: ProfileModuleId.musicPlayer),
-              ],
-            ),
-            ProfileTabConfig(
-              title: 'Loja & Extras',
-              modules: [
-                ProfileModuleConfig(id: ProfileModuleId.productGrid),
-                ProfileModuleConfig(id: ProfileModuleId.externalLinks),
-              ],
-            ),
-          ],
+          tabs: tabs,
         );
       case PartnerType.venue:
         final hasBio = partner.bio != null && partner.bio!.trim().isNotEmpty;

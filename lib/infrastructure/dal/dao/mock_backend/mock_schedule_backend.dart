@@ -1,5 +1,6 @@
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_artist_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_dto.dart';
+import 'package:belluga_now/infrastructure/dal/dto/schedule/event_delta_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_page_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_summary_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_summary_item_dto.dart';
@@ -56,16 +57,35 @@ class MockScheduleBackend implements ScheduleBackendContract {
   }
 
   @override
+  Future<EventDTO?> fetchEventDetail({required String eventIdOrSlug}) async {
+    final events = await _loadEvents();
+    final normalized = _slugify(eventIdOrSlug);
+    for (final event in events) {
+      if (event.id == eventIdOrSlug) return event;
+      if (event.slug == eventIdOrSlug) return event;
+      if (_slugify(event.title) == normalized) return event;
+    }
+    return null;
+  }
+
+  @override
   Future<EventPageDTO> fetchEventsPage({
     required int page,
     required int pageSize,
     required bool showPastOnly,
     String? searchQuery,
+    List<String>? categories,
+    List<String>? tags,
+    List<Map<String, String>>? taxonomy,
+    bool confirmedOnly = false,
+    double? originLat,
+    double? originLng,
+    double? maxDistanceMeters,
   }) async {
     final events = await _loadEvents();
     final now = DateTime.now();
     final query = searchQuery?.toLowerCase().trim();
-    const radiusMeters = 50000.0;
+    final radiusMeters = maxDistanceMeters ?? 50000.0;
 
     bool isHappeningNow(EventDTO event) {
       final start = DateTime.parse(event.dateTimeStart);
@@ -96,12 +116,21 @@ class MockScheduleBackend implements ScheduleBackendContract {
       return titleMatch || contentMatch || locationMatch || artistMatch;
     }).toList();
 
+    final filteredByCategory = _filterByCategories(timeFiltered, categories);
+    final filteredByTags = _filterByTags(filteredByCategory, tags);
+
     final locationFiltered = _filterWithinRadiusIfAvailable(
-      timeFiltered,
+      filteredByTags,
       radiusMeters: radiusMeters,
+      originLat: originLat,
+      originLng: originLng,
     );
 
-    locationFiltered.sort((a, b) {
+    final confirmedFiltered = confirmedOnly
+        ? locationFiltered.where((event) => event.isConfirmed).toList()
+        : locationFiltered;
+
+    confirmedFiltered.sort((a, b) {
       final aStart = DateTime.parse(a.dateTimeStart);
       final bStart = DateTime.parse(b.dateTimeStart);
       return showPastOnly ? bStart.compareTo(aStart) : aStart.compareTo(bStart);
@@ -110,13 +139,13 @@ class MockScheduleBackend implements ScheduleBackendContract {
     await Future.delayed(const Duration(seconds: 1));
 
     final startIndex = (page - 1) * pageSize;
-    if (startIndex >= locationFiltered.length) {
+    if (startIndex >= confirmedFiltered.length) {
       return EventPageDTO(events: const [], hasMore: false);
     }
 
     final pageEvents =
-        locationFiltered.skip(startIndex).take(pageSize).toList(growable: false);
-    final hasMore = startIndex + pageSize < locationFiltered.length;
+        confirmedFiltered.skip(startIndex).take(pageSize).toList(growable: false);
+    final hasMore = startIndex + pageSize < confirmedFiltered.length;
 
     return EventPageDTO(events: pageEvents, hasMore: hasMore);
   }
@@ -124,7 +153,17 @@ class MockScheduleBackend implements ScheduleBackendContract {
   List<EventDTO> _filterWithinRadiusIfAvailable(
     List<EventDTO> input, {
     required double radiusMeters,
+    double? originLat,
+    double? originLng,
   }) {
+    if (originLat != null && originLng != null) {
+      return _filterWithinRadius(
+        input,
+        radiusMeters: radiusMeters,
+        originLat: originLat,
+        originLng: originLng,
+      );
+    }
     if (!GetIt.I.isRegistered<UserLocationRepositoryContract>()) {
       return input;
     }
@@ -134,6 +173,20 @@ class MockScheduleBackend implements ScheduleBackendContract {
       return input;
     }
 
+    return _filterWithinRadius(
+      input,
+      radiusMeters: radiusMeters,
+      originLat: userCoordinate.latitude,
+      originLng: userCoordinate.longitude,
+    );
+  }
+
+  List<EventDTO> _filterWithinRadius(
+    List<EventDTO> input, {
+    required double radiusMeters,
+    required double originLat,
+    required double originLng,
+  }) {
     final withinRadius = <EventDTO>[];
     for (final event in input) {
       final lat = event.latitude;
@@ -142,8 +195,8 @@ class MockScheduleBackend implements ScheduleBackendContract {
         continue;
       }
       final distance = haversineDistanceMeters(
-        lat1: userCoordinate.latitude,
-        lon1: userCoordinate.longitude,
+        lat1: originLat,
+        lon1: originLng,
         lat2: lat,
         lon2: lon,
       );
@@ -154,6 +207,49 @@ class MockScheduleBackend implements ScheduleBackendContract {
 
     // Fallback: if nothing is inside the radius, keep the original list.
     return withinRadius.isNotEmpty ? withinRadius : input;
+  }
+
+  List<EventDTO> _filterByCategories(
+    List<EventDTO> input,
+    List<String>? categories,
+  ) {
+    if (categories == null || categories.isEmpty) return input;
+    final normalized =
+        categories.map((c) => c.toLowerCase().trim()).toSet();
+    return input
+        .where((event) => normalized.contains(event.type.slug.toLowerCase()))
+        .toList();
+  }
+
+  List<EventDTO> _filterByTags(
+    List<EventDTO> input,
+    List<String>? tags,
+  ) {
+    if (tags == null || tags.isEmpty) return input;
+    final normalized = tags.map((t) => t.toLowerCase().trim()).toSet();
+    return input
+        .where(
+          (event) => event.tags.any(
+            (tag) => normalized.contains(tag.toLowerCase()),
+          ),
+        )
+        .toList();
+  }
+
+  @override
+  Stream<EventDeltaDTO> watchEventsStream({
+    String? searchQuery,
+    List<String>? categories,
+    List<String>? tags,
+    List<Map<String, String>>? taxonomy,
+    bool confirmedOnly = false,
+    double? originLat,
+    double? originLng,
+    double? maxDistanceMeters,
+    String? lastEventId,
+    bool showPastOnly = false,
+  }) {
+    return const Stream<EventDeltaDTO>.empty();
   }
 
   Future<List<EventDTO>> _loadEvents() async {

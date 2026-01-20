@@ -17,6 +17,7 @@ class MockPartnerContentRepository {
       PartnerType.artist => {
           ProfileModuleId.agendaCarousel: _mockEvents(partner),
           ProfileModuleId.agendaList: _mockEvents(partner),
+          ProfileModuleId.richText: partner.bio ?? _mockRichText(),
           ProfileModuleId.musicPlayer: _mockTracks(),
           ProfileModuleId.productGrid: _mockProducts(),
           ProfileModuleId.externalLinks: _mockLinks(),

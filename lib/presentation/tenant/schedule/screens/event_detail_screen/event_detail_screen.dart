@@ -309,7 +309,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                     isConfirmed: isConfirmed && receivedInvites.isEmpty,
                     onPressed: receivedInvites.isNotEmpty
                         ? () => _handleAcceptInvite(receivedInvites.first.id)
-                        : (isConfirmed ? null : _handleBooraAction),
+                        : (isConfirmed ? null : _handleInviteAction),
                     text: _getCTAButtonText(),
                   ),
                 ),
@@ -331,14 +331,11 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     final isConfirmed = _controller.isConfirmedStreamValue.value;
     if (receivedInvites.isNotEmpty) return 'Aceitar convite';
     if (isConfirmed) return 'Confirmado ✓';
-    return 'Bóora!';
+    return 'Convidar amigos';
   }
 
-  Future<void> _handleBooraAction() async {
-    await _controller.confirmAttendance();
-    if (mounted) {
-      _openInviteFlow();
-    }
+  Future<void> _handleInviteAction() async {
+    await _openInviteFlow();
   }
 
   Future<void> _handleAcceptInvite(String inviteId) async {

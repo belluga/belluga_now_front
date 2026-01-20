@@ -69,7 +69,8 @@ class ModuleSettings extends ModuleSettingsContract {
         _tenantBackendBuilder =
             tenantBackendBuilderForTest ?? (() => MockTenantBackend()),
         _scheduleBackendBuilder =
-            scheduleBackendBuilderForTest ?? (() => MockScheduleBackend());
+            scheduleBackendBuilderForTest ??
+                (() => GetIt.I.get<BackendContract>().schedule);
 
   final BackendContract Function() _backendBuilder;
   final AppDataBackendContract Function() _appDataBackendBuilder;
@@ -104,6 +105,7 @@ class ModuleSettings extends ModuleSettingsContract {
     _registerLazySingletonIfAbsent<AppDataBackendContract>(
       _appDataBackendBuilder,
     );
+    _registerLazySingletonIfAbsent<BackendContract>(_backendBuilder);
     _registerLazySingletonIfAbsent<TenantBackendContract>(
       _tenantBackendBuilder,
     );
@@ -118,6 +120,7 @@ class ModuleSettings extends ModuleSettingsContract {
       () => InvitesRepository(),
     );
   }
+
 
   void _registerControllerFactories() {
     if (!GetIt.I.isRegistered<LocationPermissionController>()) {

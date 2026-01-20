@@ -1,10 +1,12 @@
 import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
+import 'package:belluga_now/domain/schedule/event_delta_model.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/schedule/paged_events_result.dart';
 import 'package:belluga_now/domain/schedule/schedule_summary_model.dart';
 import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
 import 'package:belluga_now/domain/map/geo_distance.dart';
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
+import 'package:belluga_now/infrastructure/dal/dto/schedule/event_delta_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_page_dto.dart';
 import 'package:belluga_now/infrastructure/services/schedule_backend_contract.dart';
@@ -37,21 +39,51 @@ class ScheduleRepository extends ScheduleRepositoryContract {
   }
 
   @override
-  Future<List<EventModel>> getEventsByDate(DateTime date) async {
-    final events = await getAllEvents();
-    return events.where((event) {
-      final eventDate = event.dateTimeStart.value;
-      if (eventDate == null) {
-        return false;
-      }
-      return eventDate.year == date.year &&
-          eventDate.month == date.month &&
-          eventDate.day == date.day;
-    }).toList();
+  Future<List<EventModel>> getEventsByDate(
+    DateTime date, {
+    double? originLat,
+    double? originLng,
+    double? maxDistanceMeters,
+  }) async {
+    final normalizedDate = DateTime(date.year, date.month, date.day);
+    final today = DateTime.now();
+    final todayDate = DateTime(today.year, today.month, today.day);
+    final includePast = normalizedDate.isBefore(todayDate) ||
+        normalizedDate.isAtSameMomentAs(todayDate);
+
+    final upcoming = await _fetchEventsForDate(
+      normalizedDate,
+      showPastOnly: false,
+      originLat: originLat,
+      originLng: originLng,
+      maxDistanceMeters: maxDistanceMeters,
+    );
+
+    if (!includePast) {
+      return upcoming;
+    }
+
+    final past = await _fetchEventsForDate(
+      normalizedDate,
+      showPastOnly: true,
+      originLat: originLat,
+      originLng: originLng,
+      maxDistanceMeters: maxDistanceMeters,
+    );
+
+    final merged = <String, EventModel>{};
+    for (final event in [...upcoming, ...past]) {
+      merged[event.id.value] = event;
+    }
+    return merged.values.toList();
   }
 
   @override
   Future<EventModel?> getEventBySlug(String slug) async {
+    final dto = await _backend.fetchEventDetail(eventIdOrSlug: slug);
+    if (dto != null) {
+      return EventModel.fromDto(dto);
+    }
     final normalizedSlug = _normalizeSlug(slug);
     final events = await getAllEvents();
     for (final event in events) {
@@ -90,12 +122,26 @@ class ScheduleRepository extends ScheduleRepositoryContract {
     required int pageSize,
     required bool showPastOnly,
     String searchQuery = '',
+    List<String>? categories,
+    List<String>? tags,
+    List<Map<String, String>>? taxonomy,
+    bool confirmedOnly = false,
+    double? originLat,
+    double? originLng,
+    double? maxDistanceMeters,
   }) async {
     final EventPageDTO pageDto = await _backend.fetchEventsPage(
       page: page,
       pageSize: pageSize,
       showPastOnly: showPastOnly,
       searchQuery: searchQuery,
+      categories: categories,
+      tags: tags,
+      taxonomy: taxonomy,
+      confirmedOnly: confirmedOnly,
+      originLat: originLat,
+      originLng: originLng,
+      maxDistanceMeters: maxDistanceMeters,
     );
 
     final events = pageDto.events
@@ -205,5 +251,115 @@ class ScheduleRepository extends ScheduleRepositoryContract {
       return aStart.compareTo(bStart);
     });
     return sorted;
+  }
+
+  @override
+  Stream<EventDeltaModel> watchEventsStream({
+    String searchQuery = '',
+    List<String>? categories,
+    List<String>? tags,
+    List<Map<String, String>>? taxonomy,
+    bool confirmedOnly = false,
+    double? originLat,
+    double? originLng,
+    double? maxDistanceMeters,
+    String? lastEventId,
+    bool showPastOnly = false,
+  }) {
+    return _backend
+        .watchEventsStream(
+          searchQuery: searchQuery,
+          categories: categories,
+          tags: tags,
+          taxonomy: taxonomy,
+          confirmedOnly: confirmedOnly,
+          originLat: originLat,
+          originLng: originLng,
+          maxDistanceMeters: maxDistanceMeters,
+          lastEventId: lastEventId,
+          showPastOnly: showPastOnly,
+        )
+        .map(_mapDelta);
+  }
+
+  EventDeltaModel _mapDelta(EventDeltaDTO dto) {
+    return EventDeltaModel(
+      eventId: dto.eventId,
+      type: _parseDeltaType(dto.type),
+      updatedAt: dto.updatedAt,
+      lastEventId: dto.lastEventId,
+    );
+  }
+
+  EventDeltaType _parseDeltaType(String type) {
+    switch (type) {
+      case 'event.created':
+        return EventDeltaType.created;
+      case 'event.updated':
+        return EventDeltaType.updated;
+      case 'event.deleted':
+        return EventDeltaType.deleted;
+      default:
+        return EventDeltaType.unknown;
+    }
+  }
+
+  Future<List<EventModel>> _fetchEventsForDate(
+    DateTime date, {
+    required bool showPastOnly,
+    double? originLat,
+    double? originLng,
+    double? maxDistanceMeters,
+  }) async {
+    final matches = <EventModel>[];
+    var page = 1;
+    var hasMore = true;
+    const pageSize = 25;
+
+    while (hasMore && page <= 8) {
+      final pageDto = await _backend.fetchEventsPage(
+        page: page,
+        pageSize: pageSize,
+        showPastOnly: showPastOnly,
+        originLat: originLat,
+        originLng: originLng,
+        maxDistanceMeters: maxDistanceMeters,
+      );
+
+      for (final event in pageDto.events) {
+        final parsed = EventModel.fromDto(event);
+        final start = parsed.dateTimeStart.value;
+        if (start == null) continue;
+        if (_isSameDate(start, date)) {
+          matches.add(parsed);
+        }
+      }
+
+      hasMore = pageDto.hasMore;
+      if (pageDto.events.isEmpty) break;
+      final lastDate = _parseDate(pageDto.events.last);
+      if (lastDate != null) {
+        if (!showPastOnly && lastDate.isAfter(date)) {
+          break;
+        }
+        if (showPastOnly && lastDate.isBefore(date)) {
+          break;
+        }
+      }
+      page += 1;
+    }
+
+    return matches;
+  }
+
+
+  DateTime? _parseDate(EventDTO event) {
+    final parsed = DateTime.tryParse(event.dateTimeStart);
+    if (parsed == null) return null;
+    return DateTime(parsed.year, parsed.month, parsed.day);
+  }
+
+  bool _isSameDate(DateTime a, DateTime b) {
+    return a.year == b.year && a.month == b.month && a.day == b.day;
   }
 }

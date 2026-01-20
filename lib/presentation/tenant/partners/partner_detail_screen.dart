@@ -73,14 +73,17 @@ class _PartnerDetailScreenState extends State<PartnerDetailScreen> {
                         streamValue: _controller.favoriteIdsStream,
                         builder: (context, favorites) {
                           final isFav = favorites.contains(partner.id);
+                          final isFavoritable =
+                              _controller.isFavoritable(partner);
                           final configTabs =
                               _buildTabsFromConfig(config, moduleData);
                           final screen = ImmersiveDetailScreen(
-                            heroContent: _buildHero(partner, isFav),
+                            heroContent:
+                                _buildHero(partner, isFav, isFavoritable),
                             title: partner.name,
                             tabs: configTabs,
                             betweenHeroAndTabs: _buildBetweenHero(partner),
-                            footer: _buildFooter(partner, isFav),
+                            footer: _buildFooter(partner, isFav, isFavoritable),
                           );
                           return Stack(
                             children: [
@@ -101,7 +104,7 @@ class _PartnerDetailScreenState extends State<PartnerDetailScreen> {
     );
   }
 
-  Widget _buildHero(PartnerModel partner, bool isFav) {
+  Widget _buildHero(PartnerModel partner, bool isFav, bool isFavoritable) {
     final colorScheme = Theme.of(context).colorScheme;
     return Stack(
       fit: StackFit.expand,
@@ -130,16 +133,18 @@ class _PartnerDetailScreenState extends State<PartnerDetailScreen> {
         Positioned(
           right: 16,
           top: 16,
-          child: CircleAvatar(
-            backgroundColor: Colors.black.withValues(alpha: 0.6),
-            child: IconButton(
-              icon: Icon(
-                isFav ? Icons.favorite : Icons.favorite_border,
-                color: isFav ? Colors.red : Colors.white,
-              ),
-              onPressed: () => _controller.toggleFavorite(partner.id),
-            ),
-          ),
+          child: isFavoritable
+              ? CircleAvatar(
+                  backgroundColor: Colors.black.withValues(alpha: 0.6),
+                  child: IconButton(
+                    icon: Icon(
+                      isFav ? Icons.favorite : Icons.favorite_border,
+                      color: isFav ? Colors.red : Colors.white,
+                    ),
+                    onPressed: () => _controller.toggleFavorite(partner.id),
+                  ),
+                )
+              : const SizedBox.shrink(),
         ),
         Positioned(
           left: 16,
@@ -240,7 +245,8 @@ class _PartnerDetailScreenState extends State<PartnerDetailScreen> {
         .toList();
   }
 
-  Widget _buildFooter(PartnerModel partner, bool isFav) {
+  Widget _buildFooter(PartnerModel partner, bool isFav, bool isFavoritable) {
+    if (!isFavoritable) return const SizedBox.shrink();
     return _actionFooter(isFav ? 'Favoritado' : 'Seguir');
   }
 

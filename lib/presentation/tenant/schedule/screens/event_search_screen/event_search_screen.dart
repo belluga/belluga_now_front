@@ -93,6 +93,19 @@ class _EventSearchScreenState extends State<EventSearchScreen> {
                   return StreamValueBuilder<bool>(
                     streamValue: _controller.isPageLoadingStreamValue,
                     builder: (context, isPageLoading) {
+                      final hasSearchQuery =
+                          _controller.searchController.text.trim().isNotEmpty;
+                      final hasInviteFilter =
+                          _controller.inviteFilterStreamValue.value !=
+                              InviteFilter.none;
+                      final showHistory =
+                          _controller.showHistoryStreamValue.value;
+                      final hasActiveFilters =
+                          hasSearchQuery || hasInviteFilter || showHistory;
+                      final emptyLabel = hasActiveFilters
+                          ? 'Nenhum resultado encontrado'
+                          : 'Nenhum evento disponível no momento';
+
                       if (isInitialLoading && events.isEmpty) {
                         return const Center(
                           child: CircularProgressIndicator(),
@@ -112,7 +125,7 @@ class _EventSearchScreenState extends State<EventSearchScreen> {
                               ),
                               const SizedBox(height: 16),
                               Text(
-                                'Nenhum resultado encontrado',
+                                emptyLabel,
                                 style: theme.textTheme.titleMedium?.copyWith(
                                   color: colorScheme.onSurfaceVariant,
                                 ),

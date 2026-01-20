@@ -4,6 +4,7 @@ class AppDataDTO {
     required this.name,
     required this.type,
     required this.mainDomain,
+    List<Map<String, dynamic>>? profileTypes,
     List<String>? domains,
     List<String>? appDomains,
     required this.themeDataSettings,
@@ -30,6 +31,7 @@ class AppDataDTO {
   final String name;
   final String type;
   final String mainDomain;
+  final List<Map<String, dynamic>> profileTypes;
   final List<String> domains;
   final List<String> appDomains;
   final Map<String, dynamic> themeDataSettings;
@@ -51,12 +53,17 @@ class AppDataDTO {
       (json['theme_data_settings'] as Map<String, dynamic>? ??
           const <String, dynamic>{}),
     );
+    final profileTypes = (json['profile_types'] as List<dynamic>? ?? const [])
+        .whereType<Map>()
+        .map((entry) => Map<String, dynamic>.from(entry))
+        .toList();
 
     return AppDataDTO(
       tenantId: json['tenant_id'] as String?,
       name: json['name'] as String? ?? '',
       type: json['type'] as String? ?? '',
       mainDomain: json['main_domain'] as String? ?? '',
+      profileTypes: profileTypes,
       domains: (json['domains'] as List<dynamic>? ?? const [])
           .map((e) => e.toString())
           .toList(),
@@ -91,6 +98,7 @@ class AppDataDTO {
       'name': name,
       'type': type,
       'main_domain': mainDomain,
+      'profile_types': profileTypes,
       'domains': domains,
       'app_domains': appDomains,
       'theme_data_settings': themeDataSettings,

@@ -1,4 +1,5 @@
 import 'package:belluga_now/domain/partners/partner_model.dart';
+import 'package:belluga_now/domain/partners/profile_type_registry.dart';
 import 'package:belluga_now/domain/repositories/partners_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
 import 'package:belluga_now/infrastructure/dal/datasources/mock_partners_database.dart';
@@ -31,7 +32,7 @@ class PartnersRepository extends PartnersRepositoryContract {
   Future<List<PartnerModel>> fetchAllPartners() async {
     // Simulate network delay
     await Future.delayed(const Duration(milliseconds: 100));
-    return _database.allPartners;
+    return _filterByRegistry(_database.allPartners);
   }
 
   @override
@@ -41,14 +42,17 @@ class PartnersRepository extends PartnersRepositoryContract {
   }) async {
     // Simulate network delay
     await Future.delayed(const Duration(milliseconds: 50));
-    return _database.searchPartners(query: query, typeFilter: typeFilter);
+    final results = _database.searchPartners(query: query, typeFilter: typeFilter);
+    return _filterByRegistry(results);
   }
 
   @override
   Future<PartnerModel?> getPartnerBySlug(String slug) async {
     // Simulate network delay
     await Future.delayed(const Duration(milliseconds: 50));
-    return _database.getPartnerBySlug(slug);
+    final partner = _database.getPartnerBySlug(slug);
+    if (partner == null) return null;
+    return _isPartnerTypeEnabled(partner) ? partner : null;
   }
 
   @override
@@ -81,5 +85,36 @@ class PartnersRepository extends PartnersRepositoryContract {
     return allPartners
         .where((partner) => favoriteIds.contains(partner.id))
         .toList();
+  }
+
+  List<PartnerModel> _filterByRegistry(List<PartnerModel> partners) {
+    final registry = _resolveRegistry();
+    if (registry == null || registry.isEmpty) {
+      debugPrint('Profile type registry missing; hiding partner lists.');
+      return const [];
+    }
+    return partners
+        .where((partner) => _isPartnerTypeEnabled(partner))
+        .toList(growable: false);
+  }
+
+  bool _isPartnerTypeEnabled(PartnerModel partner) {
+    final registry = _resolveRegistry();
+    return registry?.isEnabledFor(partner.type) ?? false;
+  }
+
+  bool _canFavoritePartner(PartnerModel partner) {
+    final registry = _resolveRegistry();
+    if (registry == null || registry.isEmpty) {
+      return false;
+    }
+    return registry.isFavoritableFor(partner.type);
+  }
+
+  ProfileTypeRegistry? _resolveRegistry() {
+    if (!GetIt.I.isRegistered<AppData>()) {
+      return null;
+    }
+    return GetIt.I.get<AppData>().profileTypeRegistry;
   }
 }

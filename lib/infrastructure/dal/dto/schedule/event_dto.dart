@@ -59,8 +59,12 @@ class EventDTO {
       ),
       title: json['title'] as String? ?? '',
       content: json['content'] as String? ?? '',
-      location: json['location'] as String? ?? '',
       venue: json['venue'] as Map<String, dynamic>?,
+      location: json['location'] as String? ??
+          (json['venue'] is Map<String, dynamic>
+              ? (json['venue'] as Map<String, dynamic>)['display_name'] as String?
+              : null) ??
+          '',
       latitude: (json['latitude'] as num?)?.toDouble(),
       longitude: (json['longitude'] as num?)?.toDouble(),
       thumb: json['thumb'] != null
@@ -75,7 +79,9 @@ class EventDTO {
           .map(
             (artist) => EventArtistDTO(
               id: artist['id'] as String,
-              name: artist['name'] as String? ?? '',
+              name: artist['display_name'] as String? ??
+                  artist['name'] as String? ??
+                  '',
               avatarUrl: artist['avatar_url'] as String?,
               highlight: artist['highlight'] as bool?,
             ),

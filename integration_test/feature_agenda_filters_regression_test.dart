@@ -7,6 +7,7 @@ import 'package:belluga_now/domain/repositories/invites_repository_contract.dart
 import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_events_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
+import 'package:belluga_now/domain/schedule/event_delta_model.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/schedule/paged_events_result.dart';
 import 'package:belluga_now/domain/schedule/schedule_summary_model.dart';
@@ -339,7 +340,13 @@ class _TestScheduleRepository implements ScheduleRepositoryContract {
   }
 
   @override
-  Future<List<EventModel>> getEventsByDate(DateTime date) async => [];
+  Future<List<EventModel>> getEventsByDate(
+    DateTime date, {
+    double? originLat,
+    double? originLng,
+    double? maxDistanceMeters,
+  }) async =>
+      [];
 
   @override
   Future<PagedEventsResult> getEventsPage({
@@ -347,6 +354,13 @@ class _TestScheduleRepository implements ScheduleRepositoryContract {
     required int pageSize,
     required bool showPastOnly,
     String searchQuery = '',
+    List<String>? categories,
+    List<String>? tags,
+    List<Map<String, String>>? taxonomy,
+    bool confirmedOnly = false,
+    double? originLat,
+    double? originLng,
+    double? maxDistanceMeters,
   }) async {
     final now = DateTime.now();
     final query = searchQuery.trim().toLowerCase();
@@ -381,6 +395,22 @@ class _TestScheduleRepository implements ScheduleRepositoryContract {
 
   @override
   Future<List<VenueEventResume>> fetchUpcomingEvents() async => const [];
+
+  @override
+  Stream<EventDeltaModel> watchEventsStream({
+    String searchQuery = '',
+    List<String>? categories,
+    List<String>? tags,
+    List<Map<String, String>>? taxonomy,
+    bool confirmedOnly = false,
+    double? originLat,
+    double? originLng,
+    double? maxDistanceMeters,
+    String? lastEventId,
+    bool showPastOnly = false,
+  }) {
+    return const Stream<EventDeltaModel>.empty();
+  }
 }
 
 class _TestUserEventsRepository implements UserEventsRepositoryContract {

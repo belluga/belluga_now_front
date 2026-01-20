@@ -126,6 +126,11 @@ class TenantHomeAgendaController
         pageSize: _pageSize,
         showPastOnly: showHistoryStreamValue.value,
         searchQuery: searchController.text,
+        confirmedOnly:
+            inviteFilterStreamValue.value == InviteFilter.confirmedOnly,
+        originLat: _userLocationRepository?.userLocationStreamValue.value?.latitude,
+        originLng: _userLocationRepository?.userLocationStreamValue.value?.longitude,
+        maxDistanceMeters: radiusMetersStreamValue.value,
       );
 
       if (page == 1) {

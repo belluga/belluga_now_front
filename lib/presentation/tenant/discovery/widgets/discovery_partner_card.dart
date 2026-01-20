@@ -8,6 +8,7 @@ class DiscoveryPartnerCard extends StatefulWidget {
     super.key,
     required this.partner,
     required this.isFavorite,
+    required this.isFavoritable,
     required this.onFavoriteTap,
     required this.onTap,
     this.showDetails = true,
@@ -15,6 +16,7 @@ class DiscoveryPartnerCard extends StatefulWidget {
 
   final PartnerModel partner;
   final bool isFavorite;
+  final bool isFavoritable;
   final VoidCallback onFavoriteTap;
   final VoidCallback onTap;
   final bool showDetails;
@@ -134,25 +136,26 @@ class _DiscoveryPartnerCardState extends State<DiscoveryPartnerCard>
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
-                            CircleAvatar(
-                              radius: 18,
-                              backgroundColor:
-                                  Colors.black.withValues(alpha: 0.5),
-                              child: IconButton(
-                                padding: EdgeInsets.zero,
-                                iconSize: 22,
-                                icon: Icon(
-                                  widget.isFavorite
-                                      ? Icons.favorite
-                                      : Icons.favorite_border,
-                                  color: widget.isFavorite
-                                      ? Colors.red
-                                      : Colors.white,
+                            if (widget.isFavoritable)
+                              CircleAvatar(
+                                radius: 18,
+                                backgroundColor:
+                                    Colors.black.withValues(alpha: 0.5),
+                                child: IconButton(
+                                  padding: EdgeInsets.zero,
+                                  iconSize: 22,
+                                  icon: Icon(
+                                    widget.isFavorite
+                                        ? Icons.favorite
+                                        : Icons.favorite_border,
+                                    color: widget.isFavorite
+                                        ? Colors.red
+                                        : Colors.white,
+                                  ),
+                                  onPressed: widget.onFavoriteTap,
                                 ),
-                                onPressed: widget.onFavoriteTap,
                               ),
-                            ),
-                            const SizedBox(height: 8),
+                            if (widget.isFavoritable) const SizedBox(height: 8),
                             _buildMetricChip(
                               BooraIcons.invite_solid,
                               widget.partner.acceptedInvites.toString(),

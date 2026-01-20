@@ -6,8 +6,8 @@ import 'package:belluga_now/domain/invites/invite_model.dart';
 import 'package:belluga_now/presentation/tenant/invites/screens/invite_flow_screen/controllers/invite_flow_controller.dart';
 import 'package:belluga_now/presentation/tenant/invites/screens/invite_flow_screen/widgets/invite_hero_card.dart';
 import 'package:flutter/material.dart';
-import 'package:get_it/get_it.dart';
 import 'package:flutter/scheduler.dart';
+import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 
 class InviteFlowScreen extends StatefulWidget {
@@ -30,38 +30,45 @@ class _InviteFlowScreenState extends State<InviteFlowScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: StreamValueBuilder<List<InviteModel>>(
-        streamValue: _controller.pendingInvitesStreamValue,
-        onNullWidget: const Center(child: CircularProgressIndicator()),
-        builder: (context, invites) {
-          _precacheNextInvites(invites);
+    return PopScope(
+      canPop: context.router.canPop(),
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        _exitInviteFlow();
+      },
+      child: Scaffold(
+        body: StreamValueBuilder<List<InviteModel>>(
+          streamValue: _controller.pendingInvitesStreamValue,
+          onNullWidget: const Center(child: CircularProgressIndicator()),
+          builder: (context, invites) {
+            _precacheNextInvites(invites);
 
-          if (invites.isEmpty) {
-            // Avoid flashing empty state: pop back to previous screen.
-            SchedulerBinding.instance.addPostFrameCallback((_) {
-              if (mounted) context.router.maybePop();
-            });
-            return const SizedBox.shrink();
-          }
+            if (invites.isEmpty) {
+              // Avoid flashing empty state: leave the flow when there's no invite.
+              SchedulerBinding.instance.addPostFrameCallback((_) {
+                if (mounted) _exitInviteFlow();
+              });
+              return const SizedBox.shrink();
+            }
 
-          final invite = invites.first;
-          final remaining = invites.length - 1;
-          final isReady = _loadedImages.contains(invite.eventImageUrl);
+            final invite = invites.first;
+            final remaining = invites.length - 1;
+            final isReady = _loadedImages.contains(invite.eventImageUrl);
 
-          if (!isReady) {
-            return const Center(child: CircularProgressIndicator());
-          }
+            if (!isReady) {
+              return const Center(child: CircularProgressIndicator());
+            }
 
-          return InviteHeroCard(
-            invite: invite,
-            onAccept: () => _handleDecision(InviteDecision.accepted),
-            onDecline: () => _handleDecision(InviteDecision.declined),
-            onViewDetails: () => _openEventDetails(invite),
-            onClose: () => context.router.maybePop(),
-            remainingCount: remaining,
-          );
-        },
+            return InviteHeroCard(
+              invite: invite,
+              onAccept: () => _handleDecision(InviteDecision.accepted),
+              onDecline: () => _handleDecision(InviteDecision.declined),
+              onViewDetails: () => _openEventDetails(invite),
+              onClose: _exitInviteFlow,
+              remainingCount: remaining,
+            );
+          },
+        ),
       ),
     );
   }
@@ -89,19 +96,13 @@ class _InviteFlowScreenState extends State<InviteFlowScreen> {
     context.router.push(ImmersiveEventDetailRoute(eventSlug: invite.eventId));
   }
 
-  void _showOfflineAcceptToast(InviteModel? invite) {
-    final messenger = ScaffoldMessenger.of(context);
-    final inviter = invite?.inviterName ?? invite?.hostName;
-    final eventName = invite?.eventName;
-    final label = (inviter != null && inviter.isNotEmpty && eventName != null)
-        ? 'Aceitamos seu convite com $inviter para $eventName.'
-        : 'Aceitamos seu convite. Vamos sincronizar quando a rede voltar.';
-    messenger.showSnackBar(
-      SnackBar(
-        content: Text(label),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+  void _exitInviteFlow() {
+    final router = context.router;
+    if (router.canPop()) {
+      router.pop();
+      return;
+    }
+    router.replaceAll([const TenantHomeRoute()]);
   }
 
   void _precacheNextInvites(List<InviteModel> invites) {

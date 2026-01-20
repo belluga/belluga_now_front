@@ -1,6 +1,8 @@
 import 'package:belluga_now/domain/partners/engagement_data.dart';
 import 'package:belluga_now/domain/partners/partner_model.dart';
+import 'package:belluga_now/domain/partners/profile_type_registry.dart';
 import 'package:belluga_now/domain/repositories/partners_repository_contract.dart';
+import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/presentation/tenant/discovery/models/curator_content.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
@@ -19,6 +21,8 @@ class DiscoveryScreenController implements Disposable {
 
   final searchQueryStreamValue = StreamValue<String>(defaultValue: '');
   final selectedTypeFilterStreamValue = StreamValue<PartnerType?>();
+  final availableTypesStreamValue =
+      StreamValue<List<PartnerType>>(defaultValue: const []);
   final filteredPartnersStreamValue =
       StreamValue<List<PartnerModel>>(defaultValue: const []);
   final isLoadingStreamValue = StreamValue<bool>(defaultValue: false);
@@ -45,6 +49,7 @@ class DiscoveryScreenController implements Disposable {
     isLoadingStreamValue.addValue(true);
     try {
       _allPartners = await _partnersRepository.fetchAllPartners();
+      _updateAvailableTypes();
       _buildSections();
       _applyFilters();
       hasLoadedStreamValue.addValue(true);
@@ -151,6 +156,33 @@ class DiscoveryScreenController implements Disposable {
     filteredPartnersStreamValue.addValue(results);
   }
 
+  void _updateAvailableTypes() {
+    final registry = _resolveRegistry();
+    if (registry == null || registry.isEmpty) {
+      availableTypesStreamValue.addValue(const []);
+      return;
+    }
+    final presentTypes = _allPartners.map((p) => p.type).toSet();
+    final allowed = registry
+        .enabledPartnerTypes()
+        .where(presentTypes.contains)
+        .toList(growable: false);
+    availableTypesStreamValue.addValue(allowed);
+  }
+
+  bool isPartnerFavoritable(PartnerModel partner) {
+    final registry = _resolveRegistry();
+    if (registry == null || registry.isEmpty) return false;
+    return registry.isFavoritableFor(partner.type);
+  }
+
+  ProfileTypeRegistry? _resolveRegistry() {
+    if (!GetIt.I.isRegistered<AppData>()) {
+      return null;
+    }
+    return GetIt.I.get<AppData>().profileTypeRegistry;
+  }
+
   bool _isLiveNow(PartnerModel p) {
     if (p.type != PartnerType.artist || p.engagementData == null) return false;
     final engagement = p.engagementData;
@@ -164,6 +196,7 @@ class DiscoveryScreenController implements Disposable {
   void onDispose() {
     searchQueryStreamValue.dispose();
     selectedTypeFilterStreamValue.dispose();
+    availableTypesStreamValue.dispose();
     filteredPartnersStreamValue.dispose();
     hasLoadedStreamValue.dispose();
     isSearchingStreamValue.dispose();

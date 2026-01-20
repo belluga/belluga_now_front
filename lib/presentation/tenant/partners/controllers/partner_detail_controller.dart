@@ -1,5 +1,7 @@
 import 'package:belluga_now/domain/partners/partner_model.dart';
+import 'package:belluga_now/domain/partners/profile_type_registry.dart';
 import 'package:belluga_now/domain/repositories/partners_repository_contract.dart';
+import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/infrastructure/dal/datasources/mock_partner_profile_database.dart';
 import 'package:belluga_now/infrastructure/dal/datasources/mock_partner_content_repository.dart';
 import 'package:belluga_now/presentation/tenant/partners/models/partner_profile_config.dart';
@@ -61,6 +63,19 @@ class PartnerDetailController implements Disposable {
 
   bool isFavorite(String partnerId) {
     return _partnersRepository.isFavorite(partnerId);
+  }
+
+  bool isFavoritable(PartnerModel partner) {
+    final registry = _resolveRegistry();
+    if (registry == null || registry.isEmpty) return false;
+    return registry.isFavoritableFor(partner.type);
+  }
+
+  ProfileTypeRegistry? _resolveRegistry() {
+    if (!GetIt.I.isRegistered<AppData>()) {
+      return null;
+    }
+    return GetIt.I.get<AppData>().profileTypeRegistry;
   }
 
   @override

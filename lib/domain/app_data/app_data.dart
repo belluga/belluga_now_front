@@ -8,6 +8,7 @@ import 'package:belluga_now/domain/app_data/value_object/domain_value.dart';
 import 'package:belluga_now/domain/app_data/value_object/environment_name_value.dart';
 import 'package:belluga_now/domain/app_data/value_object/environment_type_value.dart';
 import 'package:belluga_now/domain/app_data/value_object/platform_type_value.dart';
+import 'package:belluga_now/domain/partners/profile_type_registry.dart';
 import 'package:belluga_now/domain/tenant/value_objects/icon_url_value.dart';
 import 'package:belluga_now/domain/tenant/value_objects/main_color_value.dart';
 import 'package:belluga_now/domain/tenant/value_objects/main_logo_url_value.dart';
@@ -27,6 +28,7 @@ class AppData {
   final EnvironmentTypeValue typeValue;
   final ThemeDataSettings themeDataSettings;
   final TenantIdValue tenantIdValue;
+  final ProfileTypeRegistry profileTypeRegistry;
   final DomainValue mainDomainValue;
   final List<DomainValue> domains;
   final List<AppDomainValue>? appDomains;
@@ -52,6 +54,7 @@ class AppData {
     required this.typeValue,
     required this.themeDataSettings,
     required this.tenantIdValue,
+    required this.profileTypeRegistry,
     required this.mainDomainValue,
     required this.domains,
     required this.appDomains,
@@ -77,6 +80,7 @@ class AppData {
             'name': remoteData.name,
             'type': remoteData.type,
             'main_domain': remoteData.mainDomain,
+            'profile_types': remoteData.profileTypes,
             'domains': remoteData.domains,
             'app_domains': remoteData.appDomains,
             'theme_data_settings': remoteData.themeDataSettings,
@@ -99,29 +103,9 @@ class AppData {
                 'primary_seed_color'] as String?
             : null);
 
-    final mainDomain =
-        DomainValue()..parse(DomainValue.coerceRaw(map['main_domain']));
-    final tenantIdValue = TenantIdValue()
-      ..parse(map['tenant_id']?.toString());
-    final telemetryRaw = map['telemetry'];
-    final telemetrySettings = TelemetrySettings.fromRaw(telemetryRaw);
-    final telemetryContextRaw =
-        telemetryRaw is Map ? telemetryRaw : map['telemetry_context'];
-    final telemetryContextSettings =
-        TelemetryContextSettings.fromRaw(telemetryContextRaw);
-    final firebaseSettings =
-        FirebaseSettings.tryFromMap(map['firebase'] as Map<String, dynamic>?);
-    final pushSettings =
-        PushSettings.tryFromMap(map['push'] as Map<String, dynamic>?);
-
-    final platformType = localInfo['platformType'] as PlatformTypeValue;
-    final resolvedPlatform =
-        platformType.value ?? platformType.defaultValue ?? AppType.mobile;
-    final isWeb = resolvedPlatform == AppType.web;
-    final resolvedHostname =
-        isWeb ? localInfo['hostname'] as String : mainDomain.value.host;
-    final resolvedHref =
-        isWeb ? localInfo['href'] as String : mainDomain.value.toString();
+    final mainDomain = DomainValue()..parse(DomainValue.coerceRaw(map['main_domain']));
+    final profileTypeRegistry =
+        ProfileTypeRegistry.fromJsonList(map['profile_types'] as List<dynamic>?);
 
     return AppData._(
       platformType: platformType,
@@ -132,6 +116,7 @@ class AppData {
       nameValue: EnvironmentNameValue()..parse(map['name']),
       themeDataSettings: ThemeDataSettings.fromJson(map['theme_data_settings']),
       tenantIdValue: tenantIdValue,
+      profileTypeRegistry: profileTypeRegistry,
       mainDomainValue: mainDomain,
       typeValue: EnvironmentTypeValue()..parse(map['type']),
       domains: (map['domains'] as List<dynamic>?)

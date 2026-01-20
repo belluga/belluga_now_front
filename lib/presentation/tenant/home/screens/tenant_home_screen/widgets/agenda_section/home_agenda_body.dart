@@ -3,6 +3,7 @@ import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
 import 'package:belluga_now/presentation/tenant/home/screens/tenant_home_screen/widgets/agenda_section/controllers/tenant_home_agenda_controller.dart';
+import 'package:belluga_now/presentation/tenant/schedule/screens/event_search_screen/models/invite_filter.dart';
 import 'package:belluga_now/presentation/tenant/widgets/date_grouped_event_list.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
@@ -35,6 +36,10 @@ class _HomeAgendaBodyState extends State<HomeAgendaBody> {
     return StreamValueBuilder<bool>(
       streamValue: controller.isInitialLoadingStreamValue,
       builder: (context, isInitialLoading) {
+        final hasActiveFilters =
+            controller.searchController.text.trim().isNotEmpty ||
+                controller.inviteFilterStreamValue.value != InviteFilter.none ||
+                controller.showHistoryStreamValue.value;
         return StreamValueBuilder<List<EventModel>>(
           streamValue: controller.displayedEventsStreamValue,
           builder: (context, events) {
@@ -56,6 +61,9 @@ class _HomeAgendaBodyState extends State<HomeAgendaBody> {
                 }
 
                 if (resumes.isEmpty) {
+                  final emptyLabel = hasActiveFilters
+                      ? 'Nenhum resultado encontrado'
+                      : 'Nenhum evento disponível no momento';
                   return Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -68,7 +76,7 @@ class _HomeAgendaBodyState extends State<HomeAgendaBody> {
                         ),
                         const SizedBox(height: 16),
                         Text(
-                          'Nenhum resultado encontrado',
+                          emptyLabel,
                           style: theme.textTheme.titleMedium?.copyWith(
                             color: colorScheme.onSurfaceVariant,
                           ),

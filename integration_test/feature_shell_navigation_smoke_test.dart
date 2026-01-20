@@ -2,7 +2,7 @@ import 'dart:developer' as developer;
 
 import 'package:belluga_now/application/application.dart';
 import 'package:belluga_now/application/application_contract.dart';
-import 'package:geolocator_platform_interface/geolocator_platform_interface.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:belluga_now/infrastructure/dal/dao/laravel_backend/app_data_backend/app_data_backend_stub.dart';
 import 'package:belluga_now/infrastructure/dal/dao/local/app_data_local_info_source/app_data_local_info_source_stub.dart';
 import 'package:belluga_now/infrastructure/repositories/app_data_repository.dart';
