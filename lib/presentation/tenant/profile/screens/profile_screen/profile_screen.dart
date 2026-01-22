@@ -43,7 +43,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
             fontWeight: FontWeight.w700,
           ),
         ),
-        leading: const BackButton(),
+        leading: BackButton(
+          onPressed: () {
+            if (context.router.canPop()) {
+              context.router.pop();
+              return;
+            }
+            context.router.replaceAll([TenantHomeRoute()]);
+          },
+        ),
         actions: [
           StreamValueBuilder<UserContract?>(
             streamValue: _controller.userStreamValue,

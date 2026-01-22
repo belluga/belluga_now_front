@@ -16,7 +16,7 @@ class AdminModeRepository implements AdminModeRepositoryContract {
   StreamValue<AdminMode> get modeStreamValue => _modeStreamValue;
 
   @override
-  AdminMode get mode => _modeStreamValue.value ?? AdminMode.user;
+  AdminMode get mode => _modeStreamValue.value;
 
   @override
   bool get isLandlordMode => mode == AdminMode.landlord;

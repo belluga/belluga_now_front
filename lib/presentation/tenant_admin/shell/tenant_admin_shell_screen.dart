@@ -1,11 +1,20 @@
 import 'package:auto_route/auto_route.dart';
+import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/domain/repositories/admin_mode_repository_contract.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 
-class TenantAdminShellScreen extends StatelessWidget {
+class TenantAdminShellScreen extends StatefulWidget {
   const TenantAdminShellScreen({super.key});
+
+  @override
+  State<TenantAdminShellScreen> createState() =>
+      _TenantAdminShellScreenState();
+}
+
+class _TenantAdminShellScreenState extends State<TenantAdminShellScreen> {
+  bool _showAdminBanner = true;
 
   @override
   Widget build(BuildContext context) {
@@ -16,22 +25,28 @@ class TenantAdminShellScreen extends StatelessWidget {
         final isAdmin = mode == AdminMode.landlord;
         return Scaffold(
           appBar: AppBar(
-            title: const Text('Admin'),
-            actions: const [
-              Padding(
-                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                child: Chip(label: Text('Admin')),
+            title: const Text('MODO ADMINISTRADOR'),
+            actions: [
+              TextButton(
+                onPressed: () async {
+                  await adminMode.setUserMode();
+                  if (!context.mounted) return;
+                  context.router.replaceAll([const ProfileRoute()]);
+                },
+                child: const Text('Perfil'),
               ),
             ],
           ),
           body: Column(
             children: [
-              if (isAdmin)
+              if (isAdmin && _showAdminBanner)
                 MaterialBanner(
                   content: const Text('Modo Admin ativo'),
                   actions: [
                     TextButton(
-                      onPressed: () {},
+                      onPressed: () {
+                        setState(() => _showAdminBanner = false);
+                      },
                       child: const Text('Ok'),
                     ),
                   ],

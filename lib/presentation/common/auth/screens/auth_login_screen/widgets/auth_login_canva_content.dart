@@ -191,7 +191,7 @@ class _AuthLoginCanvaContentState extends State<AuthLoginCanvaContent>
     if (didLogin && context.mounted) {
       final adminMode = GetIt.I.get<AdminModeRepositoryContract>();
       await adminMode.setLandlordMode();
-      context.router.replace(const TenantAdminShellRoute());
+      context.router.replaceAll([const TenantAdminShellRoute()]);
     }
   }
 

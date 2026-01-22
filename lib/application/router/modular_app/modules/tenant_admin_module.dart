@@ -11,7 +11,7 @@ class TenantAdminModule extends ModuleContract {
 
   @override
   List<AutoRoute> get routes => [
-        AutoRoute(
+      AutoRoute(
           path: '/admin',
           page: TenantAdminShellRoute.page,
           guards: [LandlordRouteGuard()],
@@ -20,6 +20,42 @@ class TenantAdminModule extends ModuleContract {
               path: '',
               page: TenantAdminDashboardRoute.page,
               initial: true,
+            ),
+            AutoRoute(
+              path: 'accounts',
+              page: TenantAdminAccountsListRoute.page,
+            ),
+            AutoRoute(
+              path: 'accounts/create',
+              page: TenantAdminAccountCreateRoute.page,
+            ),
+            AutoRoute(
+              path: 'accounts/:accountSlug',
+              page: TenantAdminAccountDetailRoute.page,
+            ),
+            AutoRoute(
+              path: 'accounts/:accountSlug/profiles',
+              page: TenantAdminAccountProfilesListRoute.page,
+            ),
+            AutoRoute(
+              path: 'accounts/:accountSlug/profiles/create',
+              page: TenantAdminAccountProfileCreateRoute.page,
+            ),
+            AutoRoute(
+              path: 'profiles/:accountProfileId',
+              page: TenantAdminAccountProfileDetailRoute.page,
+            ),
+            AutoRoute(
+              path: 'organizations',
+              page: TenantAdminOrganizationsListRoute.page,
+            ),
+            AutoRoute(
+              path: 'organizations/create',
+              page: TenantAdminOrganizationCreateRoute.page,
+            ),
+            AutoRoute(
+              path: 'organizations/:organizationId',
+              page: TenantAdminOrganizationDetailRoute.page,
             ),
           ],
         ),
