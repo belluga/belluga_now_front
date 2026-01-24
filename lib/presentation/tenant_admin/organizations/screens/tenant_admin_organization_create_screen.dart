@@ -31,12 +31,15 @@ class _TenantAdminOrganizationCreateScreenState
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            TextButton.icon(
-              onPressed: () => context.router.pop(),
-              icon: const Icon(Icons.arrow_back),
-              label: const Text('Back'),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: IconButton(
+                icon: const Icon(Icons.arrow_back),
+                onPressed: () => context.router.maybePop(),
+                tooltip: 'Voltar',
+              ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 4),
             const Text(
               'Criar Organização',
               style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),

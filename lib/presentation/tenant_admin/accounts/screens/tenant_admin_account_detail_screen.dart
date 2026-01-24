@@ -16,22 +16,25 @@ class TenantAdminAccountDetailScreen extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          TextButton.icon(
-            onPressed: () => context.router.pop(),
-            icon: const Icon(Icons.arrow_back),
-            label: const Text('Back'),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: IconButton(
+              icon: const Icon(Icons.arrow_back),
+              onPressed: () => context.router.maybePop(),
+              tooltip: 'Voltar',
+            ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 4),
           Text(
-            'Account: $accountSlug',
+            'Conta: $accountSlug',
             style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: 16),
-          const Text('Status: Tenant owned'),
+          const Text('Status: pertence ao tenant'),
           const SizedBox(height: 8),
-          const Text('Document: pending'),
+          const Text('Documento: pendente'),
           const SizedBox(height: 8),
-          const Text('Organization: none'),
+          const Text('Organização: nenhuma'),
         ],
       ),
     );

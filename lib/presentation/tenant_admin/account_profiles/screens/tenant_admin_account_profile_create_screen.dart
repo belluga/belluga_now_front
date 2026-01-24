@@ -32,73 +32,84 @@ class _TenantAdminAccountProfileCreateScreenState
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Form(
-        key: _formKey,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            TextButton.icon(
-              onPressed: () => context.router.pop(),
-              icon: const Icon(Icons.arrow_back),
-              label: const Text('Voltar'),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Criar Perfil - ${widget.accountSlug}',
-              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
-            ),
-            const SizedBox(height: 16),
-            TextFormField(
-              controller: _profileTypeController,
-              decoration: const InputDecoration(labelText: 'Tipo de perfil'),
-              validator: (value) {
-                if (value == null || value.trim().isEmpty) {
-                  return 'Tipo de perfil é obrigatório.';
-                }
-                return null;
-              },
-            ),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: _displayNameController,
-              decoration: const InputDecoration(labelText: 'Nome de exibição'),
-              validator: (value) {
-                if (value == null || value.trim().isEmpty) {
-                  return 'Nome de exibição é obrigatório.';
-                }
-                return null;
-              },
-            ),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: _locationController,
-              decoration: const InputDecoration(labelText: 'Localização'),
-              validator: (value) {
-                final profileType = _profileTypeController.text.trim();
-                final requiresLocation = profileType == 'venue';
-                if (requiresLocation && (value == null || value.isEmpty)) {
-                  return 'Localização é obrigatória para o tipo de perfil.';
-                }
-                return null;
-              },
-            ),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: () {
-                final form = _formKey.currentState;
-                if (form == null || !form.validate()) {
-                  return;
-                }
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Perfil salvo.')),
-                );
-              },
-              child: const Text('Salvar Perfil'),
-            ),
-          ],
+      padding: EdgeInsets.fromLTRB(
+        16,
+        16,
+        16,
+        16 + MediaQuery.of(context).viewInsets.bottom,
+      ),
+      child: SingleChildScrollView(
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Align(
+                alignment: Alignment.centerLeft,
+                child: IconButton(
+                  icon: const Icon(Icons.arrow_back),
+                  onPressed: () => context.router.maybePop(),
+                  tooltip: 'Voltar',
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Criar Perfil - ${widget.accountSlug}',
+                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _profileTypeController,
+                decoration: const InputDecoration(labelText: 'Tipo de perfil'),
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return 'Tipo de perfil é obrigatório.';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _displayNameController,
+                decoration: const InputDecoration(labelText: 'Nome de exibição'),
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return 'Nome de exibição é obrigatório.';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _locationController,
+                decoration: const InputDecoration(labelText: 'Localiza????o'),
+                validator: (value) {
+                  final profileType = _profileTypeController.text.trim();
+                  final requiresLocation = profileType == 'venue';
+                  if (requiresLocation && (value == null || value.isEmpty)) {
+                    return 'Localização é obrigatória para o tipo de perfil.';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 20),
+              ElevatedButton(
+                onPressed: () {
+                  final form = _formKey.currentState;
+                  if (form == null || !form.validate()) {
+                    return;
+                  }
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Perfil salvo.')),
+                  );
+                },
+                child: const Text('Salvar Perfil'),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 }
+

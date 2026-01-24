@@ -22,14 +22,17 @@ class TenantAdminAccountProfilesListScreen extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          TextButton.icon(
-            onPressed: () => context.router.pop(),
-            icon: const Icon(Icons.arrow_back),
-            label: const Text('Back'),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: IconButton(
+              icon: const Icon(Icons.arrow_back),
+              onPressed: () => context.router.maybePop(),
+              tooltip: 'Voltar',
+            ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 4),
           Text(
-            'Profiles - $accountSlug',
+            'Perfis - $accountSlug',
             style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: 12),
@@ -41,7 +44,7 @@ class TenantAdminAccountProfilesListScreen extends StatelessWidget {
                   TenantAdminAccountProfileCreateRoute(accountSlug: accountSlug),
                 );
               },
-              child: const Text('Create'),
+              child: const Text('Criar'),
             ),
           ),
           const SizedBox(height: 12),
@@ -75,7 +78,7 @@ class TenantAdminAccountProfilesListScreen extends StatelessWidget {
 
   Widget _buildEmptyState() {
     return const Center(
-      child: Text('No profiles for this account yet.'),
+      child: Text('Nenhum perfil para esta conta ainda.'),
     );
   }
 }

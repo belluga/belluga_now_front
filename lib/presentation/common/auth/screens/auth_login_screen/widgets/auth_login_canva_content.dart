@@ -106,7 +106,9 @@ class _AuthLoginCanvaContentState extends State<AuthLoginCanvaContent>
 
   Future<void> tryLoginWithEmailPassword() async {
     await _controller.tryLoginWithEmailPassword();
-    _navigateToAuthorizedPage();
+    if (_controller.isAuthorized) {
+      _navigateToAuthorizedPage();
+    }
   }
 
   Future<void> _navigateToAuthorizedPage() async =>
@@ -223,7 +225,15 @@ class _AuthLoginCanvaContentState extends State<AuthLoginCanvaContent>
         Navigator.of(ctx).pop();
       }
       if (context.mounted) {
-        context.router.replace(const TenantHomeRoute());
+        if (authRepository.isAuthorized) {
+          context.router.replace(const TenantHomeRoute());
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Falha ao autenticar apÃ³s o cadastro.'),
+            ),
+          );
+        }
       }
     } catch (e) {
       if (!ctx.mounted) {

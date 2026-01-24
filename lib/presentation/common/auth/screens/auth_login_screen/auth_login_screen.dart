@@ -53,8 +53,8 @@ class _AuthLoginScreenState extends State<AuthLoginScreen>
               background: AuthHeaderExpandedContent(),
             ),
           ),
-          PinnedHeaderSliver(child: AuthHeaderHeadline()),
-          PinnedHeaderSliver(
+          SliverToBoxAdapter(child: AuthHeaderHeadline()),
+          SliverToBoxAdapter(
             child: Center(
               child: Padding(
                 padding: EdgeInsets.symmetric(horizontal: 24.0, vertical: 24),

@@ -17,11 +17,20 @@ class TenantAdminOrganizationsListScreen extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Align(
+            alignment: Alignment.centerLeft,
+            child: IconButton(
+              icon: const Icon(Icons.arrow_back),
+              onPressed: () => context.router.maybePop(),
+              tooltip: 'Voltar',
+            ),
+          ),
+          const SizedBox(height: 4),
           Row(
             children: [
               const Expanded(
                 child: Text(
-                  'Organizations',
+                  'Organizações',
                   style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
                 ),
               ),
@@ -29,7 +38,7 @@ class TenantAdminOrganizationsListScreen extends StatelessWidget {
                 onPressed: () {
                   context.router.push(const TenantAdminOrganizationCreateRoute());
                 },
-                child: const Text('Create'),
+                child: const Text('Criar'),
               ),
             ],
           ),
@@ -65,7 +74,7 @@ class TenantAdminOrganizationsListScreen extends StatelessWidget {
 
   Widget _buildEmptyState() {
     return const Center(
-      child: Text('No organizations yet.'),
+      child: Text('Nenhuma organização ainda.'),
     );
   }
 }

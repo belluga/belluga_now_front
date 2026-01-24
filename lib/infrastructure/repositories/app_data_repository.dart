@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:belluga_now/domain/app_data/app_data.dart';
+import 'package:belluga_now/application/configurations/app_environment_fallback.dart';
 import 'package:belluga_now/infrastructure/dal/dao/app_data_backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/local/app_data_local_info_source/app_data_local_info_source.dart';
 import 'package:flutter/material.dart';
@@ -77,8 +78,15 @@ class AppDataRepository {
           : ThemeMode.light;
 
   Future<AppData> _fetchRemoteOrFail(Map<String, dynamic> localInfo) async {
-    final dto = await _backend.fetch();
-    return AppData.fromDto(dto: dto, localInfo: localInfo);
+    try {
+      final dto = await _backend.fetch();
+      return AppData.fromDto(dto: dto, localInfo: localInfo);
+    } catch (_) {
+      return AppData.fromInitialization(
+        remoteData: kLocalEnvironmentFallback,
+        localInfo: localInfo,
+      );
+    }
   }
 
   Future<void> _precacheLogos() async {

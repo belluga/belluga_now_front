@@ -24,7 +24,7 @@ class PushTransportConfigurator {
 
   static String _resolveBaseUrl() {
     if (GetIt.I.isRegistered<BackendContext>()) {
-      return GetIt.I.get<BackendContext>().baseUrl;
+      return GetIt.I.get<BackendContext>().adminUrl;
     }
     throw StateError(
       'BackendContext is not registered for PushTransportConfigurator.',

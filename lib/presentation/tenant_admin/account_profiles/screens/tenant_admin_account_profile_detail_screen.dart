@@ -16,22 +16,25 @@ class TenantAdminAccountProfileDetailScreen extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          TextButton.icon(
-            onPressed: () => context.router.pop(),
-            icon: const Icon(Icons.arrow_back),
-            label: const Text('Back'),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: IconButton(
+              icon: const Icon(Icons.arrow_back),
+              onPressed: () => context.router.maybePop(),
+              tooltip: 'Voltar',
+            ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 4),
           Text(
-            'Profile: $accountProfileId',
+            'Perfil: $accountProfileId',
             style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: 16),
-          const Text('Type: artist'),
+          const Text('Tipo: artista'),
           const SizedBox(height: 8),
-          const Text('Display name: Example profile'),
+          const Text('Nome de exibição: Perfil de exemplo'),
           const SizedBox(height: 8),
-          const Text('Capabilities: favoritable'),
+          const Text('Capacidades: favoritável'),
         ],
       ),
     );

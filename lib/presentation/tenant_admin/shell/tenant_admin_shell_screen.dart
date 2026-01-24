@@ -14,17 +14,15 @@ class TenantAdminShellScreen extends StatefulWidget {
 }
 
 class _TenantAdminShellScreenState extends State<TenantAdminShellScreen> {
-  bool _showAdminBanner = true;
-
   @override
   Widget build(BuildContext context) {
     final adminMode = GetIt.I.get<AdminModeRepositoryContract>();
     return StreamValueBuilder<AdminMode>(
       streamValue: adminMode.modeStreamValue,
       builder: (context, mode) {
-        final isAdmin = mode == AdminMode.landlord;
         return Scaffold(
           appBar: AppBar(
+            automaticallyImplyLeading: false,
             title: const Text('MODO ADMINISTRADOR'),
             actions: [
               TextButton(
@@ -39,19 +37,11 @@ class _TenantAdminShellScreenState extends State<TenantAdminShellScreen> {
           ),
           body: Column(
             children: [
-              if (isAdmin && _showAdminBanner)
-                MaterialBanner(
-                  content: const Text('Modo Admin ativo'),
-                  actions: [
-                    TextButton(
-                      onPressed: () {
-                        setState(() => _showAdminBanner = false);
-                      },
-                      child: const Text('Ok'),
-                    ),
-                  ],
+              Expanded(
+                child: AutoRouter(
+                  key: const ValueKey('tenant-admin-shell-router'),
                 ),
-              const Expanded(child: AutoRouter()),
+              ),
             ],
           ),
         );

@@ -22,7 +22,7 @@ class LaravelAuthBackend extends AuthBackendContract {
   static const String _userTokenStorageKey = 'user_token';
   static const String _deviceIdStorageKey = 'device_id';
 
-  Dio _resolveDio() {
+  Dio _resolveAdminDio() {
     if (_dio != null) {
       return _dio!;
     }
@@ -35,8 +35,45 @@ class LaravelAuthBackend extends AuthBackendContract {
         'BackendContext is not registered for LaravelAuthBackend.',
       );
     }
-    _dio = context.dio;
+    _dio = Dio(
+      BaseOptions(
+        baseUrl: context.adminUrl,
+      ),
+    );
     return _dio!;
+  }
+
+  Dio _resolvePublicDio() {
+    final context = _context ??
+        (GetIt.I.isRegistered<BackendContext>()
+            ? GetIt.I.get<BackendContext>()
+            : null);
+    if (context == null) {
+      throw StateError(
+        'BackendContext is not registered for LaravelAuthBackend.',
+      );
+    }
+    return Dio(
+      BaseOptions(
+        baseUrl: context.baseUrl,
+      ),
+    );
+  }
+
+  Future<Response<dynamic>> _withLegacyFallback(
+    Future<Response<dynamic>> Function(Dio dio) request,
+  ) async {
+    final publicDio = _resolvePublicDio();
+    try {
+      return await request(publicDio);
+    } on DioException catch (e) {
+      final statusCode = e.response?.statusCode;
+      if (statusCode != 404) {
+        rethrow;
+      }
+      final adminDio = _resolveAdminDio();
+      return request(adminDio);
+    }
   }
 
   @override
@@ -50,9 +87,11 @@ class LaravelAuthBackend extends AuthBackendContract {
       'device_name': await _resolveDeviceName(),
     };
     try {
-      final response = await _resolveDio().post(
-        '/v1/auth/login',
-        data: payload,
+      final response = await _withLegacyFallback(
+        (dio) => dio.post(
+          '/v1/auth/login',
+          data: payload,
+        ),
       );
       final raw = response.data;
       if (raw is Map<String, dynamic>) {
@@ -86,12 +125,15 @@ class LaravelAuthBackend extends AuthBackendContract {
     if (token == null || token.isEmpty) {
       return;
     }
+    final deviceName = await _resolveDeviceName();
     try {
-      await _resolveDio().post(
-        '/v1/auth/logout',
-        data: {'device': await _resolveDeviceName()},
-        options: Options(
-          headers: {'Authorization': 'Bearer $token'},
+      await _withLegacyFallback(
+        (dio) => dio.post(
+          '/v1/auth/logout',
+          data: {'device': deviceName},
+          options: Options(
+            headers: {'Authorization': 'Bearer $token'},
+          ),
         ),
       );
     } on DioException catch (e) {
@@ -113,10 +155,12 @@ class LaravelAuthBackend extends AuthBackendContract {
       throw Exception('Auth token missing for login check.');
     }
     try {
-      final response = await _resolveDio().get(
-        '/v1/auth/token_validate',
-        options: Options(
-          headers: {'Authorization': 'Bearer $token'},
+      final response = await _withLegacyFallback(
+        (dio) => dio.get(
+          '/v1/auth/token_validate',
+          options: Options(
+            headers: {'Authorization': 'Bearer $token'},
+          ),
         ),
       );
       final raw = response.data;
@@ -164,9 +208,11 @@ class LaravelAuthBackend extends AuthBackendContract {
         'anonymous_user_ids': anonymousUserIds,
     };
     try {
-      final response = await _resolveDio().post(
-        '/v1/auth/register/password',
-        data: payload,
+      final response = await _withLegacyFallback(
+        (dio) => dio.post(
+          '/v1/auth/register/password',
+          data: payload,
+        ),
       );
       final raw = response.data;
       if (raw is Map<String, dynamic>) {
@@ -221,9 +267,11 @@ class LaravelAuthBackend extends AuthBackendContract {
     };
 
     try {
-      final response = await _resolveDio().post(
-        '/v1/anonymous/identities',
-        data: payload,
+      final response = await _withLegacyFallback(
+        (dio) => dio.post(
+          '/v1/anonymous/identities',
+          data: payload,
+        ),
       );
       final raw = response.data;
       if (raw is Map<String, dynamic>) {

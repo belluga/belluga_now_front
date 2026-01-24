@@ -30,7 +30,7 @@ class PushOptionSourceResolver {
         'BackendContext is not registered for PushOptionSourceResolver.',
       );
     }
-    return resolved.baseUrl;
+    return resolved.adminUrl;
   }
 
   Future<List<OptionItem>> resolve(OptionSource source) async {

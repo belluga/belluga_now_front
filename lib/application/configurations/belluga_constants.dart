@@ -4,7 +4,8 @@ import 'package:flutter/foundation.dart';
 import 'package:get_it/get_it.dart';
 
 class BellugaConstants {
-  static final landlordDomain = "belluga.app";
+  static const String landlordDomain =
+      String.fromEnvironment('LANDLORD_DOMAIN', defaultValue: 'belluga.app');
   static final settings = _SettingsConstants();
   static final api = _ApiConstants();
   static final sentry = _SentryConstants();

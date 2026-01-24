@@ -1,10 +1,9 @@
 import 'package:belluga_now/domain/repositories/landlord_auth_repository_contract.dart';
-import 'package:belluga_now/infrastructure/dal/dao/backend_context.dart';
+import 'package:belluga_now/application/configurations/belluga_constants.dart';
 import 'package:belluga_now/infrastructure/repositories/auth_repository.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:get_it/get_it.dart';
 import 'package:stream_value/main.dart';
 
 class LandlordAuthRepository implements LandlordAuthRepositoryContract {
@@ -29,8 +28,11 @@ class LandlordAuthRepository implements LandlordAuthRepositoryContract {
     if (_dio != null) {
       return _dio!;
     }
-    final context = GetIt.I.get<BackendContext>();
-    _dio = Dio(BaseOptions(baseUrl: context.adminUrl));
+    _dio = Dio(
+      BaseOptions(
+        baseUrl: 'https://${BellugaConstants.landlordDomain}/admin/api',
+      ),
+    );
     return _dio!;
   }
 

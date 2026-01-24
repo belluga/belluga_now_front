@@ -44,11 +44,20 @@ class _TenantAdminAccountsListScreenState
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Align(
+            alignment: Alignment.centerLeft,
+            child: IconButton(
+              icon: const Icon(Icons.arrow_back),
+              onPressed: () => context.router.maybePop(),
+              tooltip: 'Voltar',
+            ),
+          ),
+          const SizedBox(height: 4),
           Row(
             children: [
               const Expanded(
                 child: Text(
-                  'Accounts',
+                  'Contas',
                   style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
                 ),
               ),
@@ -56,7 +65,7 @@ class _TenantAdminAccountsListScreenState
                 onPressed: () {
                   context.router.push(const TenantAdminAccountCreateRoute());
                 },
-                child: const Text('Create'),
+                child: const Text('Criar'),
               ),
             ],
           ),
@@ -112,13 +121,13 @@ class _TenantAdminAccountsListScreenState
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Text('No accounts for this segment yet.'),
+          const Text('Nenhuma conta neste segmento ainda.'),
           const SizedBox(height: 12),
           ElevatedButton(
             onPressed: () {
               context.router.push(const TenantAdminAccountCreateRoute());
             },
-            child: const Text('Create Account'),
+            child: const Text('Criar Conta'),
           ),
         ],
       ),
@@ -130,11 +139,11 @@ class _TenantAdminAccountsListScreenState
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Text('Unable to load accounts right now.'),
+          const Text('Não foi possível carregar as contas agora.'),
           const SizedBox(height: 12),
           TextButton(
             onPressed: () {},
-            child: const Text('Try again'),
+            child: const Text('Tentar novamente'),
           ),
         ],
       ),
@@ -143,9 +152,9 @@ class _TenantAdminAccountsListScreenState
 }
 
 enum OwnershipState {
-  tenantOwned('Tenant owned', 'tenant_owned'),
-  unmanaged('Unmanaged', 'unmanaged'),
-  userOwned('User owned', 'user_owned');
+  tenantOwned('Do tenant', 'tenant_owned'),
+  unmanaged('Não gerenciadas', 'unmanaged'),
+  userOwned('Do usuário', 'user_owned');
 
   const OwnershipState(this.label, this.subtitle);
 

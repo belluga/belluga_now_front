@@ -16,22 +16,22 @@ class TenantAdminDashboardScreen extends StatelessWidget {
         ),
         const SizedBox(height: 12),
         ListTile(
-          title: const Text('Accounts'),
+          title: const Text('Contas'),
           trailing: const Icon(Icons.chevron_right),
           onTap: () {
             context.router.push(const TenantAdminAccountsListRoute());
           },
         ),
         ListTile(
-          title: const Text('Account Profiles'),
-          subtitle: const Text('Select an account first'),
+          title: const Text('Perfis de Conta'),
+          subtitle: const Text('Selecione uma conta primeiro'),
           trailing: const Icon(Icons.chevron_right),
           onTap: () {
             context.router.push(const TenantAdminAccountsListRoute());
           },
         ),
         ListTile(
-          title: const Text('Organizations'),
+          title: const Text('Organizações'),
           trailing: const Icon(Icons.chevron_right),
           onTap: () {
             context.router.push(const TenantAdminOrganizationsListRoute());
@@ -39,8 +39,8 @@ class TenantAdminDashboardScreen extends StatelessWidget {
         ),
         const Divider(),
         const ListTile(
-          title: Text('Events'),
-          subtitle: Text('Coming soon'),
+          title: Text('Eventos'),
+          subtitle: Text('Em breve'),
           trailing: Icon(Icons.lock_outline),
           enabled: false,
         ),

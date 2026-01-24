@@ -90,7 +90,9 @@ Future<bool> showLandlordLoginSheet(BuildContext context) async {
     },
   );
 
-  emailController.dispose();
-  passwordController.dispose();
+  Future<void>.delayed(const Duration(milliseconds: 300), () {
+    emailController.dispose();
+    passwordController.dispose();
+  });
   return didLogin;
 }
