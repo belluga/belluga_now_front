@@ -1,5 +1,7 @@
 import 'package:auto_route/auto_route.dart';
+import 'package:belluga_now/infrastructure/repositories/tenant_admin_store.dart';
 import 'package:flutter/material.dart';
+import 'package:get_it/get_it.dart';
 
 class TenantAdminAccountProfileCreateScreen extends StatefulWidget {
   const TenantAdminAccountProfileCreateScreen({
@@ -20,6 +22,7 @@ class _TenantAdminAccountProfileCreateScreenState
   final _profileTypeController = TextEditingController();
   final _displayNameController = TextEditingController();
   final _locationController = TextEditingController();
+  final _store = GetIt.I.get<TenantAdminStore>();
 
   @override
   void dispose() {
@@ -99,9 +102,16 @@ class _TenantAdminAccountProfileCreateScreenState
                   if (form == null || !form.validate()) {
                     return;
                   }
+                  _store.addAccountProfile(
+                    accountSlug: widget.accountSlug,
+                    profileType: _profileTypeController.text.trim(),
+                    displayName: _displayNameController.text.trim(),
+                    location: _locationController.text.trim(),
+                  );
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text('Perfil salvo.')),
                   );
+                  context.router.maybePop();
                 },
                 child: const Text('Salvar Perfil'),
               ),
