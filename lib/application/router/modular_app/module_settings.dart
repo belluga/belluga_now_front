@@ -273,7 +273,6 @@ class ModuleSettings extends ModuleSettingsContract {
     _registerIfAbsent<PartnersRepositoryContract>(
       () => PartnersRepository(),
     );
-    _registerIfAbsent<TenantAdminStore>(() => TenantAdminStore());
     _registerIfAbsent<UserEventsRepositoryContract>(
       () => UserEventsRepository(),
     );

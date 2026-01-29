@@ -51,11 +51,10 @@ class LaravelAuthBackend extends AuthBackendContract {
       'device_name': await _resolveDeviceName(),
     };
     try {
-      final response = await _withLegacyFallback(
-        (dio) => dio.post(
-          '/v1/auth/login',
-          data: payload,
-        ),
+      final dio = _resolveAdminDio();
+      final response = await dio.post(
+        '/v1/auth/login',
+        data: payload,
       );
       final raw = response.data;
       if (raw is Map<String, dynamic>) {
@@ -91,13 +90,12 @@ class LaravelAuthBackend extends AuthBackendContract {
     }
     final deviceName = await _resolveDeviceName();
     try {
-      await _withLegacyFallback(
-        (dio) => dio.post(
-          '/v1/auth/logout',
-          data: {'device': deviceName},
-          options: Options(
-            headers: {'Authorization': 'Bearer $token'},
-          ),
+      final dio = _resolveAdminDio();
+      await dio.post(
+        '/v1/auth/logout',
+        data: {'device': deviceName},
+        options: Options(
+          headers: {'Authorization': 'Bearer $token'},
         ),
       );
     } on DioException catch (e) {
@@ -119,12 +117,11 @@ class LaravelAuthBackend extends AuthBackendContract {
       throw Exception('Auth token missing for login check.');
     }
     try {
-      final response = await _withLegacyFallback(
-        (dio) => dio.get(
-          '/v1/auth/token_validate',
-          options: Options(
-            headers: {'Authorization': 'Bearer $token'},
-          ),
+      final dio = _resolveAdminDio();
+      final response = await dio.get(
+        '/v1/auth/token_validate',
+        options: Options(
+          headers: {'Authorization': 'Bearer $token'},
         ),
       );
       final raw = response.data;
@@ -172,11 +169,10 @@ class LaravelAuthBackend extends AuthBackendContract {
         'anonymous_user_ids': anonymousUserIds,
     };
     try {
-      final response = await _withLegacyFallback(
-        (dio) => dio.post(
-          '/v1/auth/register/password',
-          data: payload,
-        ),
+      final dio = _resolveAdminDio();
+      final response = await dio.post(
+        '/v1/auth/register/password',
+        data: payload,
       );
       final raw = response.data;
       if (raw is Map<String, dynamic>) {
@@ -231,11 +227,10 @@ class LaravelAuthBackend extends AuthBackendContract {
     };
 
     try {
-      final response = await _withLegacyFallback(
-        (dio) => dio.post(
-          '/v1/anonymous/identities',
-          data: payload,
-        ),
+      final dio = _resolveAdminDio();
+      final response = await dio.post(
+        '/v1/anonymous/identities',
+        data: payload,
       );
       final raw = response.data;
       if (raw is Map<String, dynamic>) {

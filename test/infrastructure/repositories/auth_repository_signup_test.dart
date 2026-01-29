@@ -1,13 +1,19 @@
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
+import 'package:belluga_now/domain/partners/partner_model.dart';
 import 'package:belluga_now/domain/user/user_contract.dart';
+import 'package:belluga_now/infrastructure/dal/dao/app_data_backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/auth_backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/backend_contract.dart';
+import 'package:belluga_now/infrastructure/dal/dao/backend_context.dart';
 import 'package:belluga_now/infrastructure/dal/dao/favorite_backend_contract.dart';
+import 'package:belluga_now/infrastructure/dal/dao/partners_backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/tenant_backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/venue_event_backend_contract.dart';
+import 'package:belluga_now/infrastructure/dal/dto/app_data_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/favorite/favorite_preview_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_dto.dart';
+import 'package:belluga_now/infrastructure/dal/dto/schedule/event_delta_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_page_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_summary_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/venue_event/venue_event_preview_dto.dart';
@@ -111,13 +117,30 @@ class _CaptureTelemetryRepository implements TelemetryRepositoryContract {
 }
 
 class _FakeBackend extends BackendContract {
-  _FakeBackend({required this.auth});
+  _FakeBackend({required this.auth, BackendContext? context})
+      : _context = context;
 
   @override
   final AuthBackendContract auth;
 
+  BackendContext? _context;
+
+  @override
+  BackendContext? get context => _context;
+
+  @override
+  void setContext(BackendContext context) {
+    _context = context;
+  }
+
+  @override
+  AppDataBackendContract get appData => _UnsupportedAppDataBackend();
+
   @override
   TenantBackendContract get tenant => _UnsupportedTenantBackend();
+
+  @override
+  PartnersBackendContract get partners => _UnsupportedPartnersBackend();
 
   @override
   FavoriteBackendContract get favorites => _UnsupportedFavoriteBackend();
@@ -191,6 +214,27 @@ class _UnsupportedTenantBackend extends TenantBackendContract {
   Future<Tenant> getTenant() => throw UnimplementedError();
 }
 
+class _UnsupportedAppDataBackend extends AppDataBackendContract {
+  @override
+  Future<AppDataDTO> fetch() => throw UnimplementedError();
+}
+
+class _UnsupportedPartnersBackend extends PartnersBackendContract {
+  @override
+  Future<PartnerModel?> fetchPartnerBySlug(String slug) =>
+      throw UnimplementedError();
+
+  @override
+  Future<List<PartnerModel>> fetchPartners() => throw UnimplementedError();
+
+  @override
+  Future<List<PartnerModel>> searchPartners({
+    String? query,
+    PartnerType? typeFilter,
+  }) =>
+      throw UnimplementedError();
+}
+
 class _UnsupportedFavoriteBackend extends FavoriteBackendContract {
   @override
   Future<List<FavoritePreviewDTO>> fetchFavorites() =>
@@ -215,11 +259,37 @@ class _UnsupportedScheduleBackend extends ScheduleBackendContract {
   Future<List<EventDTO>> fetchEvents() => throw UnimplementedError();
 
   @override
+  Future<EventDTO?> fetchEventDetail({required String eventIdOrSlug}) =>
+      throw UnimplementedError();
+
+  @override
   Future<EventPageDTO> fetchEventsPage({
     required int page,
     required int pageSize,
     required bool showPastOnly,
     String? searchQuery,
+    List<String>? categories,
+    List<String>? tags,
+    List<Map<String, String>>? taxonomy,
+    bool confirmedOnly = false,
+    double? originLat,
+    double? originLng,
+    double? maxDistanceMeters,
+  }) =>
+      throw UnimplementedError();
+
+  @override
+  Stream<EventDeltaDTO> watchEventsStream({
+    String? searchQuery,
+    List<String>? categories,
+    List<String>? tags,
+    List<Map<String, String>>? taxonomy,
+    bool confirmedOnly = false,
+    double? originLat,
+    double? originLng,
+    double? maxDistanceMeters,
+    String? lastEventId,
+    bool showPastOnly = false,
   }) =>
       throw UnimplementedError();
 }
