@@ -1,6 +1,11 @@
+import 'dart:async';
+
 import 'package:belluga_now/domain/schedule/event_model.dart';
+import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
+import 'package:belluga_now/presentation/common/widgets/image_palette_theme.dart';
 import 'package:belluga_now/presentation/tenant/schedule/screens/event_detail_screen/controllers/event_detail_controller.dart';
 import 'package:belluga_now/presentation/tenant/schedule/screens/event_detail_screen/event_detail_screen.dart';
+import 'package:event_tracker_handler/event_tracker_handler.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 
@@ -21,14 +26,42 @@ class EventDetailLoader extends StatefulWidget {
 class _EventDetailLoaderState extends State<EventDetailLoader> {
   late final EventDetailController _controller =
       widget.controller ?? GetIt.I.get<EventDetailController>();
-  late final Future<EventModel?> _eventFuture;
+  final TelemetryRepositoryContract _telemetryRepository =
+      GetIt.I.get<TelemetryRepositoryContract>();
+  late Future<EventModel?> _eventFuture;
+  Future<EventTrackerTimedEventHandle?>? _eventOpenedHandleFuture;
 
   @override
   void initState() {
     super.initState();
-    _eventFuture = _controller.loadEventBySlug(widget.slug).then((_) {
-      return _controller.eventStreamValue.value;
+    _eventFuture = _controller.loadEventBySlug(widget.slug).then((_) async {
+      final event = _controller.eventStreamValue.value;
+      if (event != null && mounted) {
+        _eventOpenedHandleFuture = _telemetryRepository.startTimedEvent(
+          EventTrackerEvents.eventOpened,
+          eventName: 'event_opened',
+          properties: {
+            'event_id': event.id.value,
+          },
+        );
+      }
+      return event;
     });
+  }
+
+  @override
+  void dispose() {
+    final handleFuture = _eventOpenedHandleFuture;
+    if (handleFuture != null) {
+      _eventOpenedHandleFuture = null;
+      unawaited(() async {
+        final handle = await handleFuture;
+        if (handle != null) {
+          await _telemetryRepository.finishTimedEvent(handle);
+        }
+      }());
+    }
+    super.dispose();
   }
 
   @override
@@ -52,7 +85,20 @@ class _EventDetailLoaderState extends State<EventDetailLoader> {
           );
         }
 
-        return EventDetailScreen(event: event);
+        final thumb = event.thumb?.thumbUri.value;
+        if (thumb == null) {
+          return EventDetailScreen(event: event);
+        }
+
+        return ImagePaletteTheme(
+          imageProvider: NetworkImage(thumb.toString()),
+          builder: (context, scheme) {
+            return EventDetailScreen(
+              event: event,
+              colorScheme: scheme,
+            );
+          },
+        );
       },
     );
   }

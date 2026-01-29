@@ -1,7 +1,6 @@
-import 'package:belluga_now/application/configurations/belluga_constants.dart';
 import 'package:belluga_now/domain/user/user_profile_contract.dart';
-import 'package:platform_device_id_plus/platform_device_id.dart';
 import 'package:value_object_pattern/domain/value_objects/mongo_id_value.dart';
+import 'package:belluga_now/infrastructure/repositories/auth_repository.dart';
 
 abstract class UserContract {
   final MongoIDValue uuidValue;
@@ -18,8 +17,7 @@ abstract class UserContract {
   }
 
   Future<void> _setDeviceId() async {
-    currentDeviceId =
-        "${BellugaConstants.settings.platform}_${PlatformDeviceId.getDeviceId}";
+    currentDeviceId = await AuthRepository.ensureDeviceId();
   }
 
   Future<void> updateCustomData(Map<String, Object?> newCustomData) {

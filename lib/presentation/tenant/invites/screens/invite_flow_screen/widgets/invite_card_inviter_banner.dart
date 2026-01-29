@@ -1,17 +1,11 @@
-import 'package:belluga_now/application/router/modular_app/modules/mercado_module.dart';
 import 'package:belluga_now/domain/invites/invite_inviter.dart';
 import 'package:belluga_now/domain/invites/invite_inviter_type.dart';
 import 'package:belluga_now/domain/invites/invite_model.dart';
 import 'package:belluga_now/domain/invites/invite_partner_summary.dart';
-import 'package:belluga_now/domain/invites/invite_partner_type.dart';
 import 'package:belluga_now/presentation/tenant/invites/screens/invite_flow_screen/widgets/invite_summary_avatar.dart';
 import 'package:belluga_now/presentation/tenant/invites/screens/invite_flow_screen/widgets/inviter_name_label.dart';
 import 'package:belluga_now/presentation/tenant/invites/screens/invite_flow_screen/widgets/partner_fallback.dart';
-import 'package:belluga_now/presentation/tenant/mercado/data/mock_data/mock_mercado_data.dart';
-import 'package:belluga_now/presentation/tenant/mercado/models/mercado_producer.dart';
-import 'package:belluga_now/presentation/tenant/mercado/screens/producer_store_screen/producer_store_screen.dart';
 import 'package:flutter/material.dart';
-import 'package:get_it_modular_with_auto_route/get_it_modular_with_auto_route.dart';
 
 class InviteCardInviterBanner extends StatelessWidget {
   const InviteCardInviterBanner({
@@ -178,17 +172,7 @@ class InviteCardInviterBanner extends StatelessWidget {
     BuildContext context,
     InvitePartnerSummary partner,
   ) async {
-    Widget sheetContent;
-    switch (partner.type) {
-      case InvitePartnerType.mercadoProducer:
-        final producer = _findMercadoProducer(partner.id);
-        sheetContent = producer != null
-            ? ModuleScope<MercadoModule>(
-                child: ProducerStoreScreen(producer: producer),
-              )
-            : PartnerFallbackView(name: partner.name);
-        break;
-    }
+    Widget sheetContent = PartnerFallbackView(name: partner.name);
 
     await showModalBottomSheet<void>(
       context: context,
@@ -218,13 +202,6 @@ class InviteCardInviterBanner extends StatelessWidget {
           ),
         ),
       ),
-    );
-  }
-
-  MercadoProducer? _findMercadoProducer(String partnerId) {
-    return mockMercadoProducers.firstWhere(
-      (producer) => producer.id == partnerId,
-      orElse: () => mockMercadoProducers.first,
     );
   }
 }

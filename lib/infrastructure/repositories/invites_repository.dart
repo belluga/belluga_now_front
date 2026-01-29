@@ -8,10 +8,13 @@ import 'package:belluga_now/domain/user/friend.dart';
 import 'package:belluga_now/domain/user/value_objects/user_avatar_value.dart';
 import 'package:belluga_now/domain/user/value_objects/user_display_name_value.dart';
 import 'package:belluga_now/domain/user/value_objects/user_id_value.dart';
-import 'package:belluga_now/infrastructure/services/dal/datasources/mock_invites_database.dart';
+import 'package:belluga_now/infrastructure/dal/datasources/mock_invites_database.dart';
+import 'package:belluga_now/infrastructure/repositories/push/push_payload_upsert_mixin.dart';
 import 'package:get_it/get_it.dart';
 
-class InvitesRepository extends InvitesRepositoryContract {
+class InvitesRepository extends InvitesRepositoryContract
+    with PushPayloadUpsertMixin<InviteModel>, PushInvitePayloadMixin
+    implements PushInvitePayloadAware {
   InvitesRepository({
     MockInvitesDatabase? database,
     FriendsRepositoryContract? friendsRepository,
@@ -75,5 +78,15 @@ class InvitesRepository extends InvitesRepositoryContract {
       avatarUrlValue: UserAvatarValue()
         ..parse(friend.avatarValue.value?.toString() ?? ''),
     );
+  }
+
+  @override
+  void applyInvitePushPayload(Map<String, dynamic> payload) {
+    final current = pendingInvitesStreamValue.value;
+    final next = mergeInvitePayload(current: current, payload: payload);
+    if (identical(current, next)) {
+      return;
+    }
+    pendingInvitesStreamValue.addValue(next);
   }
 }

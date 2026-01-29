@@ -28,6 +28,7 @@ class InviteEventHero extends StatelessWidget {
               ? invite.locationValue.value
               : 'Local a definir'),
         artists: const [],
+        tags: const [],
       )),
     );
   }

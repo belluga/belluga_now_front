@@ -50,9 +50,10 @@ app.*.map.json
 
 /android/keystores/
 
-# DELPHI AI
+# DELPHI-AI
 AGENTS.md
+scripts
 delphi-ai
 foundation_documentation
-scripts
-.agent/
+!.agent/
+!.agent/**

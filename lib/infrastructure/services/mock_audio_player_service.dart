@@ -1,4 +1,4 @@
-import 'package:belluga_now/infrastructure/services/dal/dto/profile/profile_media_dto.dart';
+import 'package:belluga_now/infrastructure/dal/dto/profile/profile_media_dto.dart';
 import 'package:stream_value/core/stream_value.dart';
 
 /// Simple mock audio player service with persistent state across screens.

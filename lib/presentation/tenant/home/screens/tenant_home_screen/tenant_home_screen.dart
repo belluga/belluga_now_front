@@ -1,19 +1,17 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
-import 'package:belluga_now/presentation/common/widgets/main_logo.dart';
 import 'package:belluga_now/presentation/tenant/home/screens/tenant_home_screen/controllers/tenant_home_controller.dart';
+import 'package:belluga_now/presentation/tenant/home/screens/tenant_home_screen/widgets/agenda_section/home_agenda_section.dart';
+import 'package:belluga_now/presentation/tenant/home/screens/tenant_home_screen/widgets/home_app_bar.dart';
+import 'package:belluga_now/presentation/tenant/home/screens/tenant_home_screen/widgets/home_my_events_carousel.dart';
 import 'package:belluga_now/presentation/tenant/home/screens/tenant_home_screen/widgets/favorite_section/favorites_section_builder.dart';
-import 'package:belluga_now/presentation/tenant/home/screens/tenant_home_screen/widgets/featured_events_section.dart';
-import 'package:belluga_now/presentation/tenant/home/screens/tenant_home_screen/widgets/invites_banner_builder.dart';
-import 'package:belluga_now/presentation/tenant/home/screens/tenant_home_screen/widgets/upcoming_events_section.dart';
+import 'package:belluga_now/presentation/tenant/home/screens/tenant_home_screen/widgets/invites_banner/invites_banner_builder.dart';
+import 'package:belluga_now/presentation/tenant/schedule/screens/event_search_screen/models/invite_filter.dart';
 import 'package:belluga_now/presentation/tenant/widgets/belluga_bottom_navigation_bar.dart';
-import 'package:belluga_now/presentation/tenant/widgets/floating_action_button_custom.dart';
 import 'package:belluga_now/presentation/tenant/widgets/section_header.dart';
-import 'package:belluga_now/presentation/tenant/widgets/animated_search_button.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get_it/get_it.dart';
-import 'package:stream_value/core/stream_value_builder.dart';
-import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
 
 class TenantHomeScreen extends StatefulWidget {
   const TenantHomeScreen({super.key});
@@ -23,7 +21,7 @@ class TenantHomeScreen extends StatefulWidget {
 }
 
 class _TenantHomeScreenState extends State<TenantHomeScreen> {
-  late final TenantHomeController _controller =
+  final TenantHomeController _controller =
       GetIt.I.get<TenantHomeController>();
 
   @override
@@ -34,101 +32,106 @@ class _TenantHomeScreenState extends State<TenantHomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        titleSpacing: 0,
-        title: SizedBox(
-          width: double.infinity,
-          child: Stack(
-            alignment: Alignment.centerLeft,
-            children: [
-              const Padding(
-                padding: EdgeInsets.only(left: 16),
-                child: MainLogo(),
-              ),
-              Positioned(
-                right: 0,
-                child: AnimatedSearchButton(
-                  onTap: () {
-                    context.router.push(const EventSearchRoute());
-                  },
-                ),
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.notifications_none),
-            onPressed: () {},
-            tooltip: 'Notificações',
-          ),
-          const SizedBox(width: 8),
-        ],
-      ),
-      floatingActionButton: const FloatingActionButtonCustom(),
-      bottomNavigationBar: const BellugaBottomNavigationBar(currentIndex: 0),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 150),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              SectionHeader(
-                title: 'Seus Favoritos',
-                onPressed: () {},
-              ),
-              FavoritesSectionBuilder(controller: _controller),
-              const SizedBox(height: 8),
-              InvitesBannerBuilder(
-                onPressed: _openInviteFlow,
-                margin: const EdgeInsets.only(bottom: 16),
-              ),
-              StreamValueBuilder<List<VenueEventResume>>(
-                streamValue: _controller.myEventsStreamValue,
-                builder: (context, events) {
-                  if (events.isEmpty) {
-                    return const SizedBox.shrink();
-                  }
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      SectionHeader(
-                        title: 'Seus Eventos',
-                        onPressed: _openMyEvents,
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) {
+          return;
+        }
+        _handleBackPressed();
+      },
+      child: Scaffold(
+        bottomNavigationBar: const BellugaBottomNavigationBar(currentIndex: 0),
+        body: SafeArea(
+          top: false,
+          child: HomeAgendaSection(
+            builder: (context, slots) {
+              return NestedScrollView(
+                controller: _controller.scrollController,
+                headerSliverBuilder: (context, innerBoxIsScrolled) => [
+                  HomeAppBar(
+                    userAddressStreamValue: _controller.userAddressStreamValue,
+                  ),
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          SectionHeader(
+                            title: 'Seus Favoritos',
+                            onPressed: () {},
+                          ),
+                          const FavoritesSectionBuilder(),
+                          InvitesBannerBuilder(
+                            margin: const EdgeInsets.only(top: 12),
+                            onPressed: () {
+                              context.router.push(const InviteFlowRoute());
+                            },
+                          ),
+                          const SizedBox(height: 12),
+                          HomeMyEventsCarousel(
+                            myEventsFilteredStreamValue:
+                                _controller.myEventsFilteredStreamValue,
+                            onSeeAll: _openConfirmedAgenda,
+                            distanceLabelProvider:
+                                _controller.distanceLabelForMyEvent,
+                          ),
+                        ],
                       ),
-                      FeaturedEventsSection(controller: _controller),
-                      const SizedBox(height: 16),
-                    ],
-                  );
-                },
-              ),
-              SectionHeader(
-                title: 'Próximos Eventos',
-                onPressed: _openMyEvents,
-              ),
-              const SizedBox(height: 16),
-              UpcomingEventsSection(
-                controller: _controller,
-                onExplore: _openMyEvents,
-                onEventSelected: _openEventDetailSlug,
-              ),
-            ],
+                    ),
+                  ),
+                  slots.header,
+                ],
+                body: slots.body,
+              );
+            },
           ),
         ),
       ),
     );
   }
 
-  void _openInviteFlow() {
-    context.router.push(const InviteFlowRoute());
+  void _openConfirmedAgenda() {
+    context.router.push(
+      EventSearchRoute(inviteFilter: InviteFilter.confirmedOnly),
+    );
   }
 
-  void _openMyEvents() {
-    context.router.push(const ScheduleRoute());
-  }
+  Future<bool> _handleBackPressed() async {
+    final scrollController = _controller.scrollController;
+    if (scrollController.hasClients && scrollController.offset > 0) {
+      await scrollController.animateTo(
+        0,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOutCubic,
+      );
+      return false;
+    }
 
-  void _openEventDetailSlug(String slug) {
-    context.router.push(ImmersiveEventDetailRoute(eventSlug: slug));
+    final shouldExit = await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Sair do app?'),
+            content: const Text('Deseja fechar o aplicativo agora?'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: const Text('Cancelar'),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.of(context).pop(true),
+                child: const Text('Sair'),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+
+    if (shouldExit) {
+      await SystemNavigator.pop();
+    }
+
+    return false;
   }
 }

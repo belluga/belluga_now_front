@@ -1,23 +1,27 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
-import 'package:belluga_now/domain/favorite/favorite_badge.dart';
 import 'package:belluga_now/domain/favorite/projections/favorite_resume.dart';
+import 'package:belluga_now/domain/partners/partner_model.dart';
+import 'package:belluga_now/domain/repositories/partners_repository_contract.dart';
 import 'package:belluga_now/presentation/tenant/home/screens/tenant_home_screen/widgets/favorite_chip.dart';
 import 'package:flutter/material.dart';
+import 'package:get_it/get_it.dart';
 
 class FavoritesStrip extends StatefulWidget {
   const FavoritesStrip({
     super.key,
     required this.items,
-    this.pinFirst = false,
+    this.pinned,
     this.height = 118,
     this.spacing = 12,
+    this.onPinnedTap,
   });
 
   final List<FavoriteResume> items;
-  final bool pinFirst;
+  final FavoriteResume? pinned;
   final double height;
   final double spacing;
+  final VoidCallback? onPinnedTap;
 
   @override
   State<FavoritesStrip> createState() => _FavoritesStripState();
@@ -26,11 +30,8 @@ class FavoritesStrip extends StatefulWidget {
 class _FavoritesStripState extends State<FavoritesStrip> {
   @override
   Widget build(BuildContext context) {
-    final pinned =
-        widget.pinFirst && widget.items.isNotEmpty ? widget.items.first : null;
-    final scrollItems = pinned == null
-        ? widget.items
-        : widget.items.sublist(1); // omit pinned from list view
+    final pinned = widget.pinned;
+    final scrollItems = widget.items;
 
     return SizedBox(
       height: widget.height,
@@ -43,7 +44,7 @@ class _FavoritesStripState extends State<FavoritesStrip> {
               child: FavoriteChip(
                 title: pinned.title,
                 imageUri: pinned.imageUri,
-                badge: _convertBadgeToIconData(pinned.badge),
+                badge: pinned.badge,
                 onTap: () => _onFavoriteTap(pinned),
                 isPrimary: pinned.isPrimary,
                 iconImageUrl: pinned.iconImageUrl,
@@ -55,7 +56,7 @@ class _FavoritesStripState extends State<FavoritesStrip> {
               scrollDirection: Axis.horizontal,
               itemCount: scrollItems.length + 1,
               padding: EdgeInsets.only(
-                left: widget.pinFirst ? 0 : widget.spacing,
+                left: widget.pinned != null ? 0 : widget.spacing,
                 right: widget.spacing,
               ),
               separatorBuilder: (_, __) => SizedBox(width: widget.spacing),
@@ -71,7 +72,7 @@ class _FavoritesStripState extends State<FavoritesStrip> {
                 return FavoriteChip(
                   title: item.title,
                   imageUri: item.imageUri,
-                  badge: _convertBadgeToIconData(item.badge),
+                  badge: item.badge,
                   onTap: () => _onFavoriteTap(item),
                   isPrimary: item.isPrimary,
                   iconImageUrl: item.iconImageUrl,
@@ -85,34 +86,51 @@ class _FavoritesStripState extends State<FavoritesStrip> {
     );
   }
 
-  IconData? _convertBadgeToIconData(FavoriteBadge? badge) {
-    if (badge == null) return null;
-    final codePoint = badge.codePoint;
-    if (codePoint <= 0) return null;
-    return IconData(
-      codePoint,
-      fontFamily: badge.fontFamily,
-      fontPackage: badge.fontPackage,
-    );
-  }
-
   void _onSearchTap() {
     context.router.push(DiscoveryRoute());
   }
 
-  void _onFavoriteTap(FavoriteResume favorite) {
+  Future<void> _onFavoriteTap(FavoriteResume favorite) async {
     // If it's the primary favorite (app owner), navigate to About screen
     // Otherwise, navigate to Partner Details
     if (favorite.isPrimary) {
-      // TODO: Navigate to About screen when implemented
-      // context.router.push(AboutRoute());
+      widget.onPinnedTap?.call();
       return;
     }
 
-    // For partners, navigate to partner details using slug
     final slug = favorite.slug;
     if (slug != null && slug.isNotEmpty) {
-      context.router.push(PartnerDetailRoute(slug: slug));
+      final partner = await _loadPartnerBySlug(slug);
+      if (partner != null && partner.type == PartnerType.venue) {
+        _openPartnerProfile(partner.slug);
+        return;
+      }
     }
+
+    _openAgendaForFavorite(favorite);
+  }
+
+  Future<PartnerModel?> _loadPartnerBySlug(String slug) async {
+    final getIt = GetIt.I;
+    if (!getIt.isRegistered<PartnersRepositoryContract>()) {
+      return null;
+    }
+    return getIt.get<PartnersRepositoryContract>().getPartnerBySlug(slug);
+  }
+
+  void _openPartnerProfile(String slug) {
+    context.router.push(PartnerDetailRoute(slug: slug));
+  }
+
+  void _openAgendaForFavorite(FavoriteResume favorite) {
+    final query = favorite.title.trim();
+    context.router.replaceAll(
+      [
+        EventSearchRoute(
+          startSearchActive: true,
+          initialSearchQuery: query,
+        ),
+      ],
+    );
   }
 }

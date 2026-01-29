@@ -1,4 +1,6 @@
+import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:flutter/material.dart';
+import 'package:get_it/get_it.dart';
 
 class MainLogo extends StatelessWidget {
   const MainLogo({
@@ -12,8 +14,16 @@ class MainLogo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Image.asset(
-      'assets/images/logo_horizontal.png',
+    final appData = GetIt.I.get<AppData>();
+    final brightness = Theme.of(context).brightness;
+    final logoUri = brightness == Brightness.dark
+        ? appData.mainLogoDarkUrl.value
+        : appData.mainLogoLightUrl.value;
+    debugPrint(
+      '[MainLogo] brightness=$brightness -> uri=${logoUri?.toString()}',
+    );
+    return Image.network(
+      logoUri!.toString(),
       width: width,
       height: height,
       fit: BoxFit.contain,

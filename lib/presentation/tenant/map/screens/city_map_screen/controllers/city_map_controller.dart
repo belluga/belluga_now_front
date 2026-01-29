@@ -18,7 +18,8 @@ import 'package:belluga_now/domain/repositories/city_map_repository_contract.dar
 import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/share/share_payload.dart';
-import 'package:belluga_now/infrastructure/services/dal/datasources/poi_query.dart';
+import 'package:belluga_now/infrastructure/dal/datasources/poi_query.dart';
+import 'package:belluga_now/infrastructure/repositories/app_data_repository.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter/services.dart';
@@ -33,9 +34,12 @@ class CityMapController implements Disposable {
   CityMapController({
     CityMapRepositoryContract? repository,
     ScheduleRepositoryContract? scheduleRepository,
+    AppDataRepository? appDataRepository,
   })  : _repository = repository ?? GetIt.I.get<CityMapRepositoryContract>(),
         _scheduleRepository =
             scheduleRepository ?? GetIt.I.get<ScheduleRepositoryContract>(),
+        _appDataRepository =
+            appDataRepository ?? GetIt.I.get<AppDataRepository>(),
         eventsStreamValue =
             StreamValue<List<EventModel>>(defaultValue: const []) {
     _poiEventsSubscription = _repository.poiEvents.listen(_handlePoiEvent);
@@ -43,6 +47,7 @@ class CityMapController implements Disposable {
 
   final CityMapRepositoryContract _repository;
   final ScheduleRepositoryContract _scheduleRepository;
+  final AppDataRepository _appDataRepository;
 
   final StreamValue<List<EventModel>> eventsStreamValue;
 
@@ -69,6 +74,8 @@ class CityMapController implements Disposable {
   final selectedPoiStreamValue = StreamValue<CityPoiModel?>();
   final selectedEventStreamValue = StreamValue<EventModel?>();
   final mapNavigationTarget = StreamValue<MapNavigationTarget?>();
+  final StreamValue<double> zoomStreamValue =
+      StreamValue<double>(defaultValue: 16);
 
   final hoveredPoiIdStreamValue = StreamValue<String?>();
   final regionsStreamValue =
@@ -87,6 +94,8 @@ class CityMapController implements Disposable {
   bool _hasRequestedPois = false;
   bool _eventsLoaded = false;
   StreamSubscription<PoiUpdateEvent?>? _poiEventsSubscription;
+  StreamSubscription<MapEvent>? _mapEventSubscription;
+  StreamSubscription<CityCoordinate?>? _userLocationSubscription;
   bool _filtersLoadFailed = false;
   String? _fallbackEventImage;
 
@@ -97,11 +106,21 @@ class CityMapController implements Disposable {
       loadRegions(),
       _loadFallbackAssets(),
     ]);
+    _mapEventSubscription = mapController.mapEventStream.listen((event) {
+      if (event is MapEventMove || event is MapEventRotate ||
+          event is MapEventFlingAnimation) {
+        zoomStreamValue.addValue(event.camera.zoom);
+      }
+    });
 
     if (!_eventsLoaded) {
       await _loadEventsForDate(_today);
       _eventsLoaded = true;
     }
+
+    _userLocationSubscription?.cancel();
+    _userLocationSubscription =
+        userLocationStreamValue.stream.listen((_) => _loadEventsForDate(_today));
   }
 
   Future<void> loadFilters() async {
@@ -514,8 +533,16 @@ class CityMapController implements Disposable {
   Future<void> _loadEventsForDate(DateTime date) async {
     try {
       selectedEventStreamValue.addValue(null);
-      final events = await _scheduleRepository.getEventsByDate(date);
-      eventsStreamValue.addValue(events);
+      final coordinate = userLocationStreamValue.value;
+      final radius = _appDataRepository.maxRadiusMeters;
+      final events = await _scheduleRepository.getEventsByDate(
+        date,
+        originLat: coordinate?.latitude,
+        originLng: coordinate?.longitude,
+        maxDistanceMeters: radius,
+      );
+      final filtered = events.where((event) => event.coordinate != null).toList();
+      eventsStreamValue.addValue(filtered);
       _eventsLoaded = true;
     } catch (_) {
       eventsStreamValue.addValue(const []);
@@ -661,6 +688,8 @@ class CityMapController implements Disposable {
     searchInputController.dispose();
     mapController.dispose();
     _poiEventsSubscription?.cancel();
+    _mapEventSubscription?.cancel();
+    _userLocationSubscription?.cancel();
   }
 
   void _setLoadingState() {

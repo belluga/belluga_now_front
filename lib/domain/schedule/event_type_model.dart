@@ -1,4 +1,4 @@
-import 'package:belluga_now/domain/courses/value_objects/slug_value.dart';
+import 'package:belluga_now/domain/value_objects/slug_value.dart';
 import 'package:belluga_now/domain/value_objects/color_value.dart';
 import 'package:belluga_now/domain/value_objects/description_value.dart';
 import 'package:belluga_now/domain/value_objects/title_value.dart';

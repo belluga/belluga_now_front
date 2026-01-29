@@ -1,5 +1,6 @@
 import 'package:belluga_now/domain/partners/engagement_data.dart';
 import 'package:belluga_now/domain/partners/partner_model.dart';
+import 'package:belluga_now/application/icons/boora_icons.dart';
 import 'package:flutter/material.dart';
 
 class DiscoveryPartnerCard extends StatefulWidget {
@@ -7,6 +8,7 @@ class DiscoveryPartnerCard extends StatefulWidget {
     super.key,
     required this.partner,
     required this.isFavorite,
+    required this.isFavoritable,
     required this.onFavoriteTap,
     required this.onTap,
     this.showDetails = true,
@@ -14,6 +16,7 @@ class DiscoveryPartnerCard extends StatefulWidget {
 
   final PartnerModel partner;
   final bool isFavorite;
+  final bool isFavoritable;
   final VoidCallback onFavoriteTap;
   final VoidCallback onTap;
   final bool showDetails;
@@ -133,38 +136,39 @@ class _DiscoveryPartnerCardState extends State<DiscoveryPartnerCard>
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
-                            CircleAvatar(
-                              radius: 18,
-                              backgroundColor:
-                                  Colors.black.withValues(alpha: 0.5),
-                              child: IconButton(
-                                padding: EdgeInsets.zero,
-                                iconSize: 22,
-                                icon: Icon(
-                                  widget.isFavorite
-                                      ? Icons.favorite
-                                      : Icons.favorite_border,
-                                  color: widget.isFavorite
-                                      ? Colors.red
-                                      : Colors.white,
+                            if (widget.isFavoritable)
+                              CircleAvatar(
+                                radius: 18,
+                                backgroundColor:
+                                    Colors.black.withValues(alpha: 0.5),
+                                child: IconButton(
+                                  padding: EdgeInsets.zero,
+                                  iconSize: 22,
+                                  icon: Icon(
+                                    widget.isFavorite
+                                        ? Icons.favorite
+                                        : Icons.favorite_border,
+                                    color: widget.isFavorite
+                                        ? Colors.red
+                                        : Colors.white,
+                                  ),
+                                  onPressed: widget.onFavoriteTap,
+                                ),
+                              ),
+                            if (widget.isFavoritable) const SizedBox(height: 8),
+                            _buildMetricChip(
+                              BooraIcons.invite_solid,
+                              widget.partner.acceptedInvites.toString(),
+                              'Convites aceitos',
+                            ),
+                            if (widget.partner.engagementData != null)
+                              ..._buildOptionalMetric(
+                                  widget.partner.engagementData!),
+                          ],
                         ),
-                        onPressed: widget.onFavoriteTap,
-                      ),
+                      ],
                     ),
-                    const SizedBox(height: 8),
-                    _buildMetricChip(
-                      Icons.rocket_launch,
-                      widget.partner.acceptedInvites.toString(),
-                      'Convites aceitos',
-                    ),
-                    if (widget.partner.engagementData != null)
-                      ..._buildOptionalMetric(
-                          widget.partner.engagementData!),
-                  ],
-                ),
-              ],
-            ),
-          ),
+                  ),
                   Positioned(
                     left: 0,
                     right: 0,
@@ -235,8 +239,7 @@ class _DiscoveryPartnerCardState extends State<DiscoveryPartnerCard>
             if (isLiveNow) ...[
               const SizedBox(width: 8),
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
                   color: Colors.red.withValues(alpha: 0.9),
                   borderRadius: BorderRadius.circular(8),
@@ -344,7 +347,7 @@ class _DiscoveryPartnerCardState extends State<DiscoveryPartnerCard>
   Widget _buildMetricRow() {
     final chips = <Widget>[
       _buildMetricChip(
-        Icons.rocket_launch,
+        BooraIcons.invite_solid,
         widget.partner.acceptedInvites.toString(),
         'Convites aceitos',
       ),

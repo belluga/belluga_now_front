@@ -1,4 +1,4 @@
-import 'package:belluga_now/infrastructure/services/dal/dto/schedule/event_summary_item_dto.dart';
+import 'package:belluga_now/infrastructure/dal/dto/schedule/event_summary_item_dto.dart';
 
 class ScheduleSummaryItemModel {
   final String? color;

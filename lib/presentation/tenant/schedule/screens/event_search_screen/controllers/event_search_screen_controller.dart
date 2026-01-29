@@ -1,112 +1,499 @@
+import 'dart:async';
+
+import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/user_events_repository_contract.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
+import 'package:belluga_now/domain/map/geo_distance.dart';
+import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
+import 'package:belluga_now/infrastructure/repositories/app_data_repository.dart';
+import 'package:belluga_now/presentation/tenant/schedule/screens/event_search_screen/models/agenda_app_bar_controller.dart';
+import 'package:belluga_now/presentation/tenant/schedule/screens/event_search_screen/models/invite_filter.dart';
 import 'package:flutter/material.dart';
-import 'package:get_it/get_it.dart';
+import 'package:get_it/get_it.dart' show Disposable, GetIt;
 import 'package:stream_value/core/stream_value.dart';
 
-class EventSearchScreenController implements Disposable {
+class EventSearchScreenController implements Disposable, AgendaAppBarController {
   EventSearchScreenController({
     ScheduleRepositoryContract? scheduleRepository,
-  }) : _scheduleRepository =
-            scheduleRepository ?? GetIt.I.get<ScheduleRepositoryContract>();
+    UserEventsRepositoryContract? userEventsRepository,
+    InvitesRepositoryContract? invitesRepository,
+    UserLocationRepositoryContract? userLocationRepository,
+    AppDataRepository? appDataRepository,
+  })  : _scheduleRepository =
+            scheduleRepository ?? GetIt.I.get<ScheduleRepositoryContract>(),
+        _userEventsRepository =
+            userEventsRepository ?? GetIt.I.get<UserEventsRepositoryContract>(),
+        _invitesRepository =
+            invitesRepository ?? GetIt.I.get<InvitesRepositoryContract>(),
+        _userLocationRepository = userLocationRepository ??
+            (GetIt.I.isRegistered<UserLocationRepositoryContract>()
+                ? GetIt.I.get<UserLocationRepositoryContract>()
+                : null),
+        _appDataRepository =
+            appDataRepository ?? GetIt.I.get<AppDataRepository>() {
+    _initializeStateHolders();
+  }
 
   final ScheduleRepositoryContract _scheduleRepository;
+  final UserEventsRepositoryContract _userEventsRepository;
+  final InvitesRepositoryContract _invitesRepository;
+  final UserLocationRepositoryContract? _userLocationRepository;
+  final AppDataRepository _appDataRepository;
 
-  final searchController = TextEditingController();
-  final focusNode = FocusNode();
+  static const int _pageSize = 10;
+  static const double _defaultRadiusMeters = 50000.0;
 
-  final allEventsStreamValue = StreamValue<List<EventModel>?>();
-  final availableEventsStreamValue = StreamValue<List<EventModel>?>();
-  final searchResultsStreamValue = StreamValue<List<EventModel>?>();
-  final showHistoryStreamValue = StreamValue<bool>(defaultValue: false);
+  @override
+  late TextEditingController searchController;
+  @override
+  late FocusNode focusNode;
+  late ScrollController scrollController;
 
-  Future<void> init() async {
-    await _populateAllEvents();
-    _updateAvailableEvents();
+  late StreamValue<List<EventModel>> displayedEventsStreamValue;
+  late StreamValue<bool> isInitialLoadingStreamValue;
+  late StreamValue<bool> isPageLoadingStreamValue;
+  late StreamValue<bool> hasMoreStreamValue;
+  @override
+  late StreamValue<bool> showHistoryStreamValue;
+  @override
+  late StreamValue<bool> searchActiveStreamValue;
+  @override
+  late StreamValue<InviteFilter> inviteFilterStreamValue;
+  @override
+  late StreamValue<double> radiusMetersStreamValue;
+
+  StreamSubscription? _confirmedEventsSubscription;
+  StreamSubscription? _pendingInvitesSubscription;
+  StreamSubscription? _userLocationSubscription;
+  StreamSubscription? _radiusSubscription;
+  StreamSubscription? _eventsStreamSubscription;
+  bool _isStreamRefreshing = false;
+  String? _lastEventStreamId;
+  final List<EventModel> _fetchedEvents = [];
+  int _currentPage = 1;
+  bool _isFetching = false;
+  bool _hasMore = true;
+  bool _isScrollListenerAttached = false;
+  bool _isDisposed = false;
+  bool _isAutoPaging = false;
+
+  void _initializeStateHolders() {
+    searchController = TextEditingController();
+    focusNode = FocusNode();
+    scrollController = ScrollController();
+    displayedEventsStreamValue =
+        StreamValue<List<EventModel>>(defaultValue: const []);
+    isInitialLoadingStreamValue = StreamValue<bool>(defaultValue: true);
+    isPageLoadingStreamValue = StreamValue<bool>(defaultValue: false);
+    hasMoreStreamValue = StreamValue<bool>(defaultValue: true);
+    showHistoryStreamValue = StreamValue<bool>(defaultValue: false);
+    searchActiveStreamValue = StreamValue<bool>(defaultValue: false);
+    inviteFilterStreamValue =
+        StreamValue<InviteFilter>(defaultValue: InviteFilter.none);
+    radiusMetersStreamValue =
+        StreamValue<double>(defaultValue: _defaultRadiusMeters);
+    _isScrollListenerAttached = false;
   }
 
-  Future<void> _populateAllEvents() async {
-    final List<EventModel> _allEvents =
-        await _scheduleRepository.getAllEvents();
-    _allEvents.sort(
-        (a, b) => a.dateTimeStart.value!.compareTo(b.dateTimeStart.value!));
-    allEventsStreamValue.addValue(_allEvents);
+  void _resetInternalState() {
+    _fetchedEvents.clear();
+    _currentPage = 1;
+    _isFetching = false;
+    _hasMore = true;
   }
 
+  Future<void> init({bool startWithHistory = false}) async {
+    if (_isDisposed) {
+      _initializeStateHolders();
+      _isDisposed = false;
+    }
+    await _invitesRepository.init();
+    _resetInternalState();
+    showHistoryStreamValue.addValue(startWithHistory);
+    final maxRadius = _appDataRepository.maxRadiusMeters;
+    radiusMetersStreamValue.addValue(maxRadius);
+    _attachScrollListener();
+    _listenForStatusChanges();
+    _listenForLocationChanges();
+    _listenForRadiusChanges();
+    await _refresh();
+    _restartEventStream();
+  }
+
+  void _attachScrollListener() {
+    if (_isScrollListenerAttached) return;
+    _isScrollListenerAttached = true;
+    scrollController.addListener(() {
+      if (!_hasMore ||
+          _isFetching ||
+          isInitialLoadingStreamValue.value ||
+          !hasMoreStreamValue.value) {
+        return;
+      }
+
+      final position = scrollController.position;
+      const threshold = 320.0;
+      if (position.pixels + threshold >= position.maxScrollExtent) {
+        loadNextPage();
+      }
+    });
+  }
+
+  Future<void> _refresh() async {
+    await _waitForOngoingFetch();
+    _currentPage = 1;
+    _hasMore = true;
+    hasMoreStreamValue.addValue(true);
+    _fetchedEvents.clear();
+    displayedEventsStreamValue.addValue(const []);
+    isInitialLoadingStreamValue.addValue(true);
+    await _fetchPage(page: 1);
+    isInitialLoadingStreamValue.addValue(false);
+  }
+
+  Future<void> _waitForOngoingFetch() async {
+    while (_isFetching) {
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+    }
+  }
+
+  Future<void> loadNextPage() async {
+    if (!_hasMore || _isFetching) return;
+    await _fetchPage(page: _currentPage + 1);
+  }
+
+  Future<void> _fetchPage({required int page}) async {
+    if (_isFetching) return;
+    _isFetching = true;
+    if (page > 1 && !_isDisposed) {
+      isPageLoadingStreamValue.addValue(true);
+    }
+
+    try {
+      final result = await _scheduleRepository.getEventsPage(
+        page: page,
+        pageSize: _pageSize,
+        showPastOnly: showHistoryStreamValue.value,
+        searchQuery: searchController.text,
+        confirmedOnly:
+            inviteFilterStreamValue.value == InviteFilter.confirmedOnly,
+        originLat: _userLocationRepository?.userLocationStreamValue.value?.latitude,
+        originLng: _userLocationRepository?.userLocationStreamValue.value?.longitude,
+        maxDistanceMeters: radiusMetersStreamValue.value,
+      );
+
+      if (_isDisposed) return;
+      if (page == 1) {
+        _fetchedEvents
+          ..clear()
+          ..addAll(result.events);
+      } else {
+        _fetchedEvents.addAll(result.events);
+      }
+
+      _hasMore = result.hasMore;
+      hasMoreStreamValue.addValue(_hasMore);
+      _currentPage = page;
+      _applyFiltersAndPublish();
+    } finally {
+      _isFetching = false;
+      if (!_isDisposed) {
+        isPageLoadingStreamValue.addValue(false);
+      }
+    }
+  }
+
+  @override
   void toggleHistory() {
     final currentValue = showHistoryStreamValue.value;
     showHistoryStreamValue.addValue(!currentValue);
-    _updateAvailableEvents();
+    _refresh();
+    _restartEventStream();
   }
 
-  void _updateAvailableEvents() {
-    final _showHistory = showHistoryStreamValue.value;
+  void setInviteFilter(InviteFilter filter) {
+    inviteFilterStreamValue.addValue(filter);
+    _applyFiltersAndPublish();
+    _restartEventStream();
+  }
 
-    if (_showHistory) {
-      _makeAllEventsAvailable();
-    } else {
-      _makeOnlyFutureAvailable();
+  @override
+  void cycleInviteFilter() {
+    final current = inviteFilterStreamValue.value;
+    switch (current) {
+      case InviteFilter.none:
+        setInviteFilter(InviteFilter.invitesAndConfirmed);
+        break;
+      case InviteFilter.invitesAndConfirmed:
+        setInviteFilter(InviteFilter.confirmedOnly);
+        break;
+      case InviteFilter.confirmedOnly:
+        setInviteFilter(InviteFilter.none);
+        break;
     }
+  }
 
-    if (searchController.text.isNotEmpty) {
-      _performSearch();
+  void setSearchActive(bool active) {
+    searchActiveStreamValue.addValue(active);
+    if (active) {
+      focusNode.requestFocus();
     } else {
-      searchResultsStreamValue.addValue(availableEventsStreamValue.value);
+      focusNode.unfocus();
     }
   }
 
-  void _makeAllEventsAvailable() {
-    availableEventsStreamValue.addValue(allEventsStreamValue.value);
+  @override
+  void toggleSearchMode() {
+    setSearchActive(!searchActiveStreamValue.value);
   }
 
-  void _makeOnlyFutureAvailable() {
-    final now = DateTime.now();
-
-    final filteredEvents = allEventsStreamValue.value
-        ?.where((event) =>
-            event.dateTimeStart.value!.isAfter(now) ||
-            event.dateTimeStart.value!.isAtSameMomentAs(now))
-        .toList();
-
-    availableEventsStreamValue.addValue(filteredEvents);
+  @override
+  void setRadiusMeters(double meters) {
+    if (meters <= 0) return;
+    radiusMetersStreamValue.addValue(meters);
+    _applyFiltersAndPublish();
+    _restartEventStream();
   }
 
-  void searchEvents(String query) {
-    if (query.isEmpty) {
-      searchResultsStreamValue.addValue([]);
+  void setInitialSearchQuery(String? query) {
+    final normalized = query?.trim() ?? '';
+    if (normalized.isEmpty) return;
+    searchController.text = normalized;
+    searchController.selection =
+        TextSelection.fromPosition(TextPosition(offset: normalized.length));
+    unawaited(_refresh());
+    _restartEventStream();
+  }
+
+  @override
+  Future<void> searchEvents(String query) async {
+    await _refresh();
+    _restartEventStream();
+  }
+
+  List<EventModel> _applyInviteFilter(List<EventModel> events) {
+    final filter = inviteFilterStreamValue.value;
+    if (filter == InviteFilter.none) return events;
+
+    final confirmedIds = _userEventsRepository.confirmedEventIdsStream.value;
+    final pendingIds = _invitesRepository.pendingInvitesStreamValue.value
+        .map((invite) => invite.eventId)
+        .toSet();
+
+    bool isConfirmed(String id) => confirmedIds.contains(id);
+    bool hasPending(String id) => pendingIds.contains(id);
+
+    return events.where((event) {
+      final id = event.id.value;
+      switch (filter) {
+        case InviteFilter.none:
+          return true;
+        case InviteFilter.invitesAndConfirmed:
+          return isConfirmed(id) || hasPending(id);
+        case InviteFilter.confirmedOnly:
+          return isConfirmed(id);
+      }
+    }).toList();
+  }
+
+  List<EventModel> _applyRadiusFilter(List<EventModel> events) {
+    final userCoordinate = _userLocationRepository?.userLocationStreamValue.value;
+    if (userCoordinate == null) return events;
+    final radiusMeters = radiusMetersStreamValue.value;
+    return events.where((event) {
+      final eventCoordinate = event.coordinate;
+      if (eventCoordinate == null) return false;
+      final distanceMeters = haversineDistanceMeters(
+        lat1: userCoordinate.latitude,
+        lon1: userCoordinate.longitude,
+        lat2: eventCoordinate.latitude,
+        lon2: eventCoordinate.longitude,
+      );
+      return distanceMeters <= radiusMeters;
+    }).toList();
+  }
+
+  void _applyFiltersAndPublish() {
+    if (_isDisposed) return;
+    final inviteFiltered = _applyInviteFilter(_fetchedEvents);
+    final radiusFiltered = _applyRadiusFilter(inviteFiltered);
+    displayedEventsStreamValue.addValue(radiusFiltered);
+    _maybeAutoPage(radiusFiltered);
+  }
+
+  void _maybeAutoPage(List<EventModel> filtered) {
+    if (filtered.isNotEmpty || !_hasMore || _isAutoPaging) {
       return;
     }
-
-    _performSearch();
+    unawaited(_autoPageToFirstMatch());
   }
 
-  void _performSearch() {
-    final _availableEvents = availableEventsStreamValue.value;
+  Future<void> _autoPageToFirstMatch() async {
+    _isAutoPaging = true;
+    try {
+      while (_hasMore) {
+        await _waitForOngoingFetch();
+        if (!_hasMore) {
+          break;
+        }
+        await _fetchPage(page: _currentPage + 1);
+        if (displayedEventsStreamValue.value.isNotEmpty || !_hasMore) {
+          break;
+        }
+      }
+    } finally {
+      _isAutoPaging = false;
+    }
+  }
 
-    final lowercaseQuery = searchController.text.toLowerCase();
+  bool isEventConfirmed(String eventId) =>
+      _userEventsRepository.isEventConfirmed(eventId);
 
-    final filteredEvents = _availableEvents?.where((event) {
-      final titleMatch =
-          event.title.value.toLowerCase().contains(lowercaseQuery);
-      final contentMatch =
-          (event.content.value ?? "").toLowerCase().contains(lowercaseQuery);
-      final artistMatch = event.artists.any(
-        (artist) => artist.displayName.toLowerCase().contains(lowercaseQuery),
-      );
+  int pendingInviteCount(String eventId) =>
+      _invitesRepository.pendingInvitesStreamValue.value
+          .where((invite) => invite.eventId == eventId)
+          .length;
 
-      return titleMatch || contentMatch || artistMatch;
-    }).toList();
+  bool hasPendingInvite(String eventId) => pendingInviteCount(eventId) > 0;
 
-    searchResultsStreamValue.addValue(filteredEvents);
+  String? distanceLabelFor(VenueEventResume event) {
+    final userCoordinate = _userLocationRepository?.userLocationStreamValue.value;
+    final eventCoordinate = event.coordinate;
+    if (userCoordinate == null || eventCoordinate == null) {
+      return null;
+    }
+    final distanceMeters = haversineDistanceMeters(
+      lat1: userCoordinate.latitude,
+      lon1: userCoordinate.longitude,
+      lat2: eventCoordinate.latitude,
+      lon2: eventCoordinate.longitude,
+    );
+    return _formatDistanceLabel(distanceMeters);
+  }
+
+  String _formatDistanceLabel(double meters) {
+    if (meters < 1000) {
+      return '${meters.round()} m';
+    }
+    return '${(meters / 1000).toStringAsFixed(1)} km';
+  }
+
+  void _listenForStatusChanges() {
+    _confirmedEventsSubscription?.cancel();
+    _pendingInvitesSubscription?.cancel();
+
+    _confirmedEventsSubscription =
+        _userEventsRepository.confirmedEventIdsStream.stream.listen((_) {
+      _applyFiltersAndPublish();
+    });
+    _pendingInvitesSubscription =
+        _invitesRepository.pendingInvitesStreamValue.stream.listen((_) {
+      _applyFiltersAndPublish();
+    });
+  }
+
+  void _listenForLocationChanges() {
+    final repo = _userLocationRepository;
+    if (repo == null) return;
+    _userLocationSubscription?.cancel();
+    _userLocationSubscription = repo.userLocationStreamValue.stream.listen((_) {
+      _applyFiltersAndPublish();
+      _restartEventStream();
+    });
+  }
+
+  void _listenForRadiusChanges() {
+    _radiusSubscription?.cancel();
+    _radiusSubscription =
+        _appDataRepository.maxRadiusMetersStreamValue.stream.listen((meters) {
+      final current = radiusMetersStreamValue.value;
+      final clamped = current > meters ? meters : current;
+      radiusMetersStreamValue.addValue(clamped);
+      _applyFiltersAndPublish();
+      _restartEventStream();
+    });
+  }
+
+  @override
+  StreamValue<double> get maxRadiusMetersStreamValue =>
+      _appDataRepository.maxRadiusMetersStreamValue;
+
+  void _restartEventStream() {
+    if (_isDisposed) return;
+    _eventsStreamSubscription?.cancel();
+    _eventsStreamSubscription = _scheduleRepository
+        .watchEventsStream(
+          searchQuery: searchController.text,
+          confirmedOnly:
+              inviteFilterStreamValue.value == InviteFilter.confirmedOnly,
+          originLat: _userLocationRepository?.userLocationStreamValue.value?.latitude,
+          originLng: _userLocationRepository?.userLocationStreamValue.value?.longitude,
+          maxDistanceMeters: radiusMetersStreamValue.value,
+          lastEventId: _lastEventStreamId,
+          showPastOnly: showHistoryStreamValue.value,
+        )
+        .listen(
+          (delta) {
+            if (delta.lastEventId != null && delta.lastEventId!.isNotEmpty) {
+              _lastEventStreamId = delta.lastEventId;
+            }
+            _refreshFromStream();
+          },
+          onError: (_) {
+            _lastEventStreamId = null;
+            _refreshFromStream();
+            _scheduleStreamReconnect();
+          },
+          onDone: () {
+            _lastEventStreamId = null;
+            _refreshFromStream();
+            _scheduleStreamReconnect();
+          },
+        );
+
+    if (_lastEventStreamId == null) {
+      _refreshFromStream();
+    }
+  }
+
+  Future<void> _refreshFromStream() async {
+    if (_isStreamRefreshing || _isDisposed) return;
+    _isStreamRefreshing = true;
+    try {
+      await _refresh();
+    } finally {
+      _isStreamRefreshing = false;
+    }
+  }
+
+  void _scheduleStreamReconnect() {
+    if (_isDisposed) return;
+    Future<void>.delayed(const Duration(seconds: 2), () {
+      if (_isDisposed) return;
+      _restartEventStream();
+    });
   }
 
   @override
   void onDispose() {
-    allEventsStreamValue.dispose();
-    availableEventsStreamValue.dispose();
-    searchResultsStreamValue.dispose();
+    _isDisposed = true;
+    displayedEventsStreamValue.dispose();
+    isInitialLoadingStreamValue.dispose();
+    isPageLoadingStreamValue.dispose();
+    hasMoreStreamValue.dispose();
     showHistoryStreamValue.dispose();
+    searchActiveStreamValue.dispose();
+    inviteFilterStreamValue.dispose();
+    radiusMetersStreamValue.dispose();
+    _confirmedEventsSubscription?.cancel();
+    _pendingInvitesSubscription?.cancel();
+    _userLocationSubscription?.cancel();
+    _radiusSubscription?.cancel();
+    _eventsStreamSubscription?.cancel();
     focusNode.dispose();
     searchController.dispose();
+    scrollController.dispose();
   }
 }

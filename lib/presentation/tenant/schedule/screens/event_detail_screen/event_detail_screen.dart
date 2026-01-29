@@ -11,7 +11,6 @@ import 'package:belluga_now/presentation/tenant/schedule/screens/event_detail_sc
 import 'package:belluga_now/presentation/tenant/schedule/screens/event_detail_screen/widgets/event_detail_header.dart';
 import 'package:belluga_now/presentation/tenant/schedule/screens/event_detail_screen/widgets/event_detail_info_card.dart';
 import 'package:belluga_now/presentation/tenant/schedule/screens/event_detail_screen/widgets/event_hint_list.dart';
-import 'package:belluga_now/presentation/tenant/schedule/screens/event_detail_screen/widgets/event_participant_pill.dart';
 import 'package:belluga_now/presentation/tenant/schedule/screens/event_detail_screen/widgets/swipeable_invite_widget.dart';
 import 'package:belluga_now/presentation/tenant/schedule/screens/event_detail_screen/widgets/invite_status_section.dart';
 import 'package:belluga_now/presentation/tenant/schedule/screens/event_detail_screen/widgets/quick_actions_grid.dart';
@@ -28,9 +27,11 @@ class EventDetailScreen extends StatefulWidget {
   const EventDetailScreen({
     super.key,
     required this.event,
+    this.colorScheme,
   });
 
   final EventModel event;
+  final ColorScheme? colorScheme;
 
   @override
   State<EventDetailScreen> createState() => _EventDetailScreenState();
@@ -68,7 +69,8 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
+    final effectiveScheme = widget.colorScheme ?? Theme.of(context).colorScheme;
+    final colorScheme = effectiveScheme;
     final theme = Theme.of(context).textTheme;
     final DateTime startDate =
         widget.event.dateTimeStart.value ?? DateTime.now();
@@ -78,7 +80,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
         coverUri?.toString() ?? EventDetailScreen._fallbackImage;
     final EventTypeModel type = widget.event.type;
 
-    return Scaffold(
+    final content = Scaffold(
       backgroundColor: colorScheme.surface,
       body: CustomScrollView(
         slivers: [
@@ -153,27 +155,8 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                     const SizedBox(height: 16),
                     VenueCard(venue: widget.event.venue!),
                   ],
-                  // Participants or Artists
-                  if (widget.event.participants.isNotEmpty) ...[
-                    const SizedBox(height: 24),
-                    Text(
-                      'Participantes',
-                      style: theme.titleMedium
-                          ?.copyWith(fontWeight: FontWeight.w700),
-                    ),
-                    const SizedBox(height: 12),
-                    Wrap(
-                      spacing: 12,
-                      runSpacing: 12,
-                      children: widget.event.participants
-                          .map((p) => EventParticipantPill(
-                                name: p.partner.displayName,
-                                role: p.role.value,
-                                isHighlight: p.isHighlight,
-                              ))
-                          .toList(growable: false),
-                    ),
-                  ] else if (widget.event.artists.isNotEmpty) ...[
+                  // Artists
+                  if (widget.event.artists.isNotEmpty) ...[
                     const SizedBox(height: 24),
                     Text(
                       'Line-up & Convidados',
@@ -326,7 +309,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                     isConfirmed: isConfirmed && receivedInvites.isEmpty,
                     onPressed: receivedInvites.isNotEmpty
                         ? () => _handleAcceptInvite(receivedInvites.first.id)
-                        : (isConfirmed ? null : _handleBooraAction),
+                        : (isConfirmed ? null : _handleInviteAction),
                     text: _getCTAButtonText(),
                   ),
                 ),
@@ -336,6 +319,11 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
         },
       ),
     );
+
+    return Theme(
+      data: Theme.of(context).copyWith(colorScheme: effectiveScheme),
+      child: content,
+    );
   }
 
   String _getCTAButtonText() {
@@ -343,14 +331,11 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     final isConfirmed = _controller.isConfirmedStreamValue.value;
     if (receivedInvites.isNotEmpty) return 'Aceitar convite';
     if (isConfirmed) return 'Confirmado ✓';
-    return 'Bóora!';
+    return 'Convidar amigos';
   }
 
-  Future<void> _handleBooraAction() async {
-    await _controller.confirmAttendance();
-    if (mounted) {
-      _openInviteFlow();
-    }
+  Future<void> _handleInviteAction() async {
+    await _openInviteFlow();
   }
 
   Future<void> _handleAcceptInvite(String inviteId) async {

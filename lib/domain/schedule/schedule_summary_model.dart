@@ -1,5 +1,5 @@
 import 'package:belluga_now/domain/schedule/schedule_summary_item_model.dart';
-import 'package:belluga_now/infrastructure/services/dal/dto/schedule/event_summary_dto.dart';
+import 'package:belluga_now/infrastructure/dal/dto/schedule/event_summary_dto.dart';
 
 class ScheduleSummaryModel {
   final List<ScheduleSummaryItemModel> items;

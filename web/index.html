@@ -1,115 +1,233 @@
-<!DOCTYPE html><html><head>
+<!DOCTYPE html>
+<html>
+
+<head>
   <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
-  <!--
-    If you are serving your web app in a path other than the root, change the
-    href value below to reflect the base path you are serving from.
-
-    The path provided below has to start and end with a slash "/" in order for
-    it to work correctly.
-
-    For more details:
-    * https://developer.mozilla.org/en-US/docs/Web/HTML/Element/base
-
-    This is a placeholder for base href that will be replaced by the value of
-    the `--base-href` argument provided to `flutter build`.
-  -->
-  <base href="$FLUTTER_BASE_HREF">
-
+  <script src="/assets/packages/mixpanel_flutter/assets/mixpanel.js"></script>
+  <base href="/">
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="A new Flutter project.">
-
-  <!-- iOS meta tags & icons -->
+  <meta name="description" content="Guarappari web client">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
-  <meta name="apple-mobile-web-app-title" content="belluga_now">
-  <link rel="apple-touch-icon" href="icons/Icon-192.png">
-
-  <!-- Favicon -->
-  <link rel="icon" type="image/png" href="favicon.png">
-
-  <title>belluga_now</title>
+  <meta name="apple-mobile-web-app-title" content="belluga_learning">
+  <link id="apple-touch-icon" rel="apple-touch-icon" href="icon/icon-192x192.png">
+  <link id="favicon" rel="icon" type="image/png" href="favicon.png">
+  <title>Belluga Boilerplate</title>
   <link rel="manifest" href="manifest.json">
-  
-  
   <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport">
-  
-  
-  <style id="splash-screen-style">
-    html {
-      height: 100%
+
+  <style>
+    #splash-screen {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background-color: #ffffff;
     }
 
-    body {
-      margin: 0;
-      min-height: 100%;
-      background-color: #4fa0e3;
-          background-size: 100% 100%;
+    #splash-content {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
     }
 
-    .center {
-      margin: 0;
+    #splash-logo-container {
+      position: relative;
+      width: 220px;
+      height: 160px;
+    }
+
+    .splash-logo {
       position: absolute;
-      top: 50%;
-      left: 50%;
-      -ms-transform: translate(-50%, -50%);
-      transform: translate(-50%, -50%);
-    }
-
-    .contain {
-      display:block;
-      width:100%; height:100%;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
       object-fit: contain;
     }
 
-    .stretch {
-      display:block;
-      width:100%; height:100%;
+    #splash-logo-background {
+      opacity: 0.3;
     }
 
-    .cover {
-      display:block;
-      width:100%; height:100%;
-      object-fit: cover;
+    #splash-logo-foreground {
+      mask-image: linear-gradient(to right, transparent 20%, black 50%, transparent 80%);
+      mask-size: 200% 100%;
+      animation: shimmer-animation 2s infinite linear;
     }
 
-    .bottom {
+    @keyframes shimmer-animation {
+      from {
+        mask-position: 150% 0;
+      }
+
+      to {
+        mask-position: -50% 0;
+      }
+    }
+
+    :root {
+      --branding-primary: #4fa0e3;
+      --branding-shadow: rgba(79, 160, 227, 0.45);
+    }
+
+    #progress-wrapper {
+      margin-top: 32px;
+      width: 240px;
+    }
+
+    .progress-bar__container {
+      width: 100%;
+      height: 1.5rem;
+      border-radius: 0.5rem;
+      position: relative;
+      overflow: hidden;
+      transition: all 0.5s;
+      will-change: transform;
+      box-shadow: 0 0 5px var(--branding-shadow);
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    .progress-bar {
       position: absolute;
-      bottom: 0;
-      left: 50%;
-      -ms-transform: translate(-50%, 0);
-      transform: translate(-50%, 0);
-    }
-
-    .bottomLeft {
-      position: absolute;
+      height: 100%;
+      width: 100%;
+      content: "";
+      background-color: var(--branding-primary);
+      top: 0;
       bottom: 0;
       left: 0;
+      border-radius: inherit;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      color: white;
+      font-family: sans-serif;
+      transform: translateX(-100%);
+      transition: transform 0.6s ease-in-out;
     }
 
-    .bottomRight {
-      position: absolute;
-      bottom: 0;
-      right: 0;
+    .progress-bar__text {
+      font-size: 0.85rem;
+      font-weight: 600;
     }
   </style>
-  <script id="splash-screen-script">
-    function removeSplashFromWeb() {
-      document.getElementById("splash")?.remove();
-      document.getElementById("splash-branding")?.remove();
-      document.body.style.background = "transparent";
+
+<script>
+  window.addEventListener('DOMContentLoaded', (event) => {
+    // Host-based routing safety (pre-Flutter).
+    // - Tenant hosts must never render landlord routes even via direct navigation.
+    // - Landlord host must never render tenant-only routes even via direct navigation.
+    // This protects against stale cached builds (where guards might not exist yet).
+    const landlordHost = 'belluga.app';
+    const hostname = window.location.hostname;
+    const pathname = window.location.pathname || '/';
+    const isTenantHost =
+      hostname.endsWith('.' + landlordHost) && hostname !== landlordHost;
+    const isLandlordHost = hostname === landlordHost;
+
+    if (isTenantHost && pathname.startsWith('/landlord')) {
+      window.location.replace('/');
+      return;
     }
-  </script>
+
+    if (isLandlordHost && pathname.startsWith('/home')) {
+      window.location.replace('/landlord');
+      return;
+    }
+
+    const applyBranding = (branding) => {
+      if (!branding) return;
+
+      document.title = branding.name || document.title;
+      const primarySeedColor = branding.theme_data_settings?.primary_seed_color;
+      
+      // Web splash should be full branding primary, matching the in-app splash behavior.
+      if (primarySeedColor) {
+        const splashScreen = document.getElementById('splash-screen');
+        if (splashScreen) {
+          splashScreen.style.backgroundColor = primarySeedColor;
+        }
+      }
+
+      if (primarySeedColor) {
+        const root = document.documentElement;
+        root.style.setProperty('--branding-primary', primarySeedColor);
+        root.style.setProperty('--branding-shadow', primarySeedColor + '66');
+      }
+    };
+
+    (async function () {
+      // Cache disabled: always fetch fresh `/api/v1/environment` data.
+      let resolvedBranding = null;
+      try {
+        const response = await fetch('/api/v1/environment');
+        if (response.ok) {
+          const freshBranding = await response.json();
+          resolvedBranding = freshBranding;
+          applyBranding(freshBranding);
+        }
+      } catch (error) {
+        // Ignore network failures; Flutter will fall back.
+      } finally {
+        // Persist the resolved payload on the global scope so Flutter can read it even if it
+        // attaches the `brandingReady` listener after this event is dispatched.
+        window.__brandingPayload = resolvedBranding;
+
+        window.dispatchEvent(new CustomEvent('brandingReady', { detail: resolvedBranding }));
+      }
+    })();
+  });
+</script>
 </head>
+
 <body>
-  <picture id="splash">
-      <source srcset="splash/img/light-1x.png 1x, splash/img/light-2x.png 2x, splash/img/light-3x.png 3x, splash/img/light-4x.png 4x" media="(prefers-color-scheme: light)">
-      <source srcset="splash/img/dark-1x.png 1x, splash/img/dark-2x.png 2x, splash/img/dark-3x.png 3x, splash/img/dark-4x.png 4x" media="(prefers-color-scheme: dark)">
-      <img class="center" aria-hidden="true" src="splash/img/light-1x.png" alt="">
-  </picture>
-  
-  
-  <script src="flutter_bootstrap.js" async=""></script>
+  <div id="splash-screen" class="splash">
+    <div id="splash-content">
+      <div id="splash-logo-container">
+        <img id="splash-logo-background" src="logo-light.png" class="splash-logo" alt="Logo background" />
+        <img id="splash-logo-foreground" src="logo-light.png" class="splash-logo" alt="Logo foreground" />
+      </div>
+      <div id="progress-wrapper">
+          <div class="progress-bar__container">
+            <div class="progress-bar" id="progress-bar">
+              <span class="progress-bar__text" id="progress-text">Iniciando...</span>
+            </div>
+          </div>
+      </div>
+    </div>
+  </div>
 
+  <script>
+    (function () {
+      const progressBar = document.getElementById('progress-bar');
+      const progressText = document.getElementById('progress-text');
 
-</body></html>
+      function updateProgress(percent) {
+        if (!progressBar) return;
+        const clamped = Math.max(0, Math.min(100, percent));
+        const translate = clamped - 100; // start at -100%, end at 0%
+        progressBar.style.transform = `translateX(${translate}%)`;
+      }
+
+      function setProgressLabel(label) {
+        if (progressText) {
+          progressText.textContent = label;
+        }
+      }
+
+      window.__appProgressUpdate = updateProgress;
+      window.__appProgressLabel = setProgressLabel;
+    })();
+  </script>
+
+  <script src="flutter_bootstrap.js" async></script>
+</body>
+
+</html>

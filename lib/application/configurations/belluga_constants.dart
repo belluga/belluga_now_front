@@ -2,9 +2,11 @@ import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart';
 import 'package:get_it/get_it.dart';
+import 'package:belluga_now/infrastructure/dal/dao/backend_routing_policy.dart';
 
 class BellugaConstants {
-  static final landlordDomain = "belluga.space";
+  static final landlordDomain = "belluga.app";
+  static const backendRoutingPolicy = BackendRoutingPolicy();
   static final settings = _SettingsConstants();
   static final api = _ApiConstants();
   static final sentry = _SentryConstants();

@@ -7,6 +7,7 @@ import 'package:belluga_now/domain/schedule/invite_status.dart';
 import 'package:belluga_now/presentation/common/widgets/immersive_detail_screen/models/immersive_tab_item.dart';
 import 'package:belluga_now/presentation/common/widgets/immersive_detail_screen/immersive_detail_screen.dart';
 import 'package:belluga_now/presentation/tenant/schedule/screens/immersive_event_detail/controllers/immersive_event_detail_controller.dart';
+import 'package:belluga_now/application/icons/boora_icons.dart';
 import 'package:belluga_now/presentation/tenant/schedule/screens/immersive_event_detail/widgets/dynamic_footer.dart';
 import 'package:belluga_now/presentation/tenant/schedule/screens/immersive_event_detail/widgets/event_info_section.dart';
 import 'package:belluga_now/presentation/tenant/schedule/screens/immersive_event_detail/widgets/immersive_hero.dart';
@@ -26,10 +27,12 @@ import 'package:stream_value/core/stream_value_builder.dart';
 class ImmersiveEventDetailScreen extends StatefulWidget {
   const ImmersiveEventDetailScreen({
     required this.event,
+    this.colorScheme,
     super.key,
   });
 
   final EventModel event;
+  final ColorScheme? colorScheme;
 
   @override
   State<ImmersiveEventDetailScreen> createState() =>
@@ -60,6 +63,8 @@ class _ImmersiveEventDetailScreenState
         return StreamValueBuilder<bool>(
           streamValue: _controller.isConfirmedStreamValue,
           builder: (context, isConfirmed) {
+            final colorScheme =
+                widget.colorScheme ?? Theme.of(context).colorScheme;
             return StreamValueBuilder<List<InviteModel>>(
               streamValue: _controller.receivedInvitesStreamValue,
               builder: (context, receivedInvites) {
@@ -93,7 +98,7 @@ class _ImmersiveEventDetailScreenState
                             ? DynamicFooter(
                                 buttonText: 'Seguir todos os artistas',
                                 buttonIcon: Icons.star,
-                                buttonColor: const Color(0xFF6A1B9A),
+                                buttonColor: colorScheme.secondary,
                                 onActionPressed: () {
                                   // TODO: follow all artists
                                 },
@@ -107,7 +112,7 @@ class _ImmersiveEventDetailScreenState
                             ? DynamicFooter(
                                 buttonText: 'Traçar Rota agora',
                                 buttonIcon: Icons.navigation,
-                                buttonColor: const Color(0xFF00ACC1),
+                                buttonColor: colorScheme.secondary,
                                 onActionPressed: () {
                                   // TODO: open maps
                                 },
@@ -137,22 +142,27 @@ class _ImmersiveEventDetailScreenState
 
                     final footer = isConfirmed
                         ? _buildInviteFooter(
-                            () => _openInviteFlow(event), sentForEvent)
+                            context, () => _openInviteFlow(event), sentForEvent)
                         : DynamicFooter(
-                            buttonText: 'Bóora! Confirmar Presença!',
-                            buttonIcon: Icons.celebration,
-                            buttonColor: const Color(0xFF9C27B0),
-                            onActionPressed: _controller.confirmAttendance,
+                            buttonText: 'Convidar amigos',
+                            buttonIcon: BooraIcons.invite_solid,
+                            buttonColor: colorScheme.primary,
+                            onActionPressed: () => _openInviteFlow(event),
                           );
 
-                    return ImmersiveDetailScreen(
-                      heroContent: ImmersiveHero(event: event),
-                      title: event.title.value,
-                      betweenHeroAndTabs: topBanner,
-                      tabs: tabs,
-                      // Don't auto-navigate, let user scroll naturally
-                      // initialTabIndex defaults to 0
-                      footer: footer,
+                    return Theme(
+                      data: Theme.of(context).copyWith(
+                        colorScheme: colorScheme,
+                      ),
+                      child: ImmersiveDetailScreen(
+                        heroContent: ImmersiveHero(event: event),
+                        title: event.title.value,
+                        betweenHeroAndTabs: topBanner,
+                        tabs: tabs,
+                        // Don't auto-navigate, let user scroll naturally
+                        // initialTabIndex defaults to 0
+                        footer: footer,
+                      ),
                     );
                   },
                 );
@@ -172,7 +182,11 @@ class _ImmersiveEventDetailScreenState
   InviteModel _buildInviteFromEvent(EventModel event) {
     final eventName = event.title.value;
     final eventDate = event.dateTimeStart.value ?? DateTime.now();
-    final inviteCoverUri = event.thumb?.thumbUri.value;
+    // Prefer event thumb; then first artist avatar; then hardcoded fallback.
+    final inviteCoverUri = event.thumb?.thumbUri.value ??
+        event.artists
+            .map((a) => a.avatarUri)
+            .firstWhere((uri) => uri != null, orElse: () => null);
     const fallbackImage =
         'https://images.unsplash.com/photo-1489515217757-5fd1be406fef?w=1200';
     final imageUrl = inviteCoverUri?.toString() ?? fallbackImage;
@@ -181,12 +195,7 @@ class _ImmersiveEventDetailScreenState
         ? event.artists.first.displayName
         : 'Belluga Now';
     final description = _stripHtml(event.content.value ?? '').trim();
-    final slug = event.type.slug.value;
-    final typeLabel = event.type.name.value;
-    final tags = <String>[
-      if (slug.isNotEmpty) slug,
-      if (typeLabel.isNotEmpty && typeLabel != slug) typeLabel,
-    ];
+    final tags = event.taxonomyTags;
     final eventId = event.id.value;
     final inviteId = eventId.isNotEmpty ? eventId : eventName;
     return InviteModel.fromPrimitives(
@@ -208,10 +217,17 @@ class _ImmersiveEventDetailScreenState
 }
 
 Widget _buildInviteFooter(
+  BuildContext context,
   VoidCallback onInviteFriends,
   List<SentInviteStatus> sentInvites,
 ) {
   final hasInvites = sentInvites.isNotEmpty;
+  final theme = Theme.of(context);
+  final colorScheme = theme.colorScheme;
+  final subtleOnSurface = colorScheme.onSurface.withValues(alpha: 0.12);
+  final textColorMuted = colorScheme.onSurface.withValues(alpha: 0.8);
+  final primary = colorScheme.primary;
+
   return DynamicFooter(
     leftWidget: !hasInvites
         ? Row(
@@ -219,20 +235,21 @@ Widget _buildInviteFooter(
             children: [
               CircleAvatar(
                 radius: 16,
-                backgroundColor: Colors.purple.withValues(alpha: 0.12),
-                child: const Icon(
+                backgroundColor: subtleOnSurface,
+                child: Icon(
                   Icons.rocket_launch,
-                  color: Colors.purple,
+                  color: primary,
                   size: 18,
                 ),
               ),
               const SizedBox(width: 8),
-              const Flexible(
+              Flexible(
                 child: Text(
                   'Convide sua galera para ir com você.',
-                  style: TextStyle(
+                  style: theme.textTheme.bodyMedium?.copyWith(
                     fontSize: 14,
                     fontWeight: FontWeight.w700,
+                    color: colorScheme.onSurface,
                   ),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
@@ -250,9 +267,10 @@ Widget _buildInviteFooter(
                 constraints: const BoxConstraints(maxWidth: 220),
                 child: Text(
                   _inviteSummary(sentInvites),
-                  style: const TextStyle(
+                  style: theme.textTheme.bodySmall?.copyWith(
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
+                    color: textColorMuted,
                   ),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
@@ -261,8 +279,8 @@ Widget _buildInviteFooter(
             ],
           ),
     buttonText: 'BORA? Agitar a galera!',
-    buttonIcon: Icons.rocket_launch,
-    buttonColor: const Color(0xFF9C27B0),
+    buttonIcon: BooraIcons.invite_solid,
+    buttonColor: primary,
     onActionPressed: onInviteFriends,
   );
 }
@@ -380,10 +398,12 @@ class _PlusAvatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final baseOnSurface = colorScheme.onSurface;
     final bgColor = isEmptySlot
-        ? Colors.grey.withValues(alpha: 0.1)
-        : Colors.grey.withValues(alpha: 0.2);
-    final borderColor = Colors.grey.withValues(alpha: 0.5);
+        ? baseOnSurface.withValues(alpha: 0.08)
+        : baseOnSurface.withValues(alpha: 0.16);
+    final borderColor = baseOnSurface.withValues(alpha: 0.28);
 
     return CircleAvatar(
       radius: 16,
@@ -399,11 +419,11 @@ class _PlusAvatar extends StatelessWidget {
         child: Center(
           child: isEmptySlot
               ? Icon(Icons.person_outline,
-                  size: 16, color: Colors.grey.withValues(alpha: 0.8))
+                  size: 16, color: baseOnSurface.withValues(alpha: 0.65))
               : Text(
                   '+$count',
                   style: TextStyle(
-                    color: Colors.grey.shade800,
+                    color: baseOnSurface,
                     fontWeight: FontWeight.w700,
                     fontSize: 11,
                   ),

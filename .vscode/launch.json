@@ -16,6 +16,19 @@
             ]
         },
         {
+            // O nome que vai aparecer no menu do VS Code
+            "name": "Alfredo Chaves (Debug)",
+            "request": "launch",
+            "type": "dart",
+            "flutterMode": "debug",
+            // Aqui está a mágica: os argumentos que você usava no terminal
+            "args": [
+                "--flavor",
+                "alfredochaves",
+                "--dart-define=FLAVOR=alfredochaves"
+            ]
+        },
+        {
             // Exemplo para um segundo flavor
             "name": "Belluga (Debug)",
             "request": "launch",

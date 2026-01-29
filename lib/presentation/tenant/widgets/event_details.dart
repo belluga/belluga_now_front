@@ -4,14 +4,21 @@ import 'package:belluga_now/presentation/tenant/widgets/event_info_row.dart';
 import 'package:flutter/material.dart';
 
 class EventDetails extends StatelessWidget {
-  const EventDetails({super.key, required this.event});
+  const EventDetails({
+    super.key,
+    required this.event,
+    this.textColor,
+  });
 
   final VenueEventResume event;
+  final Color? textColor;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final onPrimary = theme.colorScheme.onPrimary;
+    final baseColor = textColor ??
+        DefaultTextStyle.of(context).style.color ??
+        theme.colorScheme.onPrimary;
 
     return Container(
       key: const ValueKey('details'),
@@ -36,27 +43,27 @@ class EventDetails extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: theme.textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w700,
-                    color: onPrimary,
+                    color: baseColor,
                   ),
                 ),
                 const SizedBox(height: 10),
                 EventInfoRow(
                   icon: Icons.place_outlined,
                   label: event.location,
-                  color: onPrimary.withValues(alpha: 0.9),
+                  color: baseColor.withValues(alpha: 0.9),
                 ),
                 const SizedBox(height: 6),
                 if (event.hasArtists)
                   EventInfoRow(
                     icon: Icons.music_note_outlined,
                     label: event.artistNamesLabel,
-                    color: onPrimary.withValues(alpha: 0.9),
+                    color: baseColor.withValues(alpha: 0.9),
                   )
                 else
                   EventInfoRow(
                     icon: Icons.groups_outlined,
                     label: 'Curadoria em definição',
-                    color: onPrimary.withValues(alpha: 0.9),
+                    color: baseColor.withValues(alpha: 0.9),
                   ),
               ],
             ),

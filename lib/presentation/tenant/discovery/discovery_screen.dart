@@ -81,6 +81,9 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                         final showSections = !isSearching &&
                             selectedType == null &&
                             query.isEmpty;
+                        final emptyLabel = showSections
+                            ? 'Nenhum perfil disponível no momento.'
+                            : 'Nenhum resultado para os filtros.';
                         return StreamValueBuilder<Set<String>>(
                           streamValue: _controller.favoriteIdsStream,
                           builder: (context, favorites) {
@@ -108,10 +111,20 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                                             cardBuilder: (partner) =>
                                                 DiscoveryPartnerCard(
                                               partner: partner,
+                                              isFavoritable: _controller
+                                                  .isPartnerFavoritable(partner),
                                               isFavorite:
                                                   favorites.contains(partner.id),
-                                              onFavoriteTap: () => _controller
-                                                  .toggleFavorite(partner.id),
+                                              onFavoriteTap: () {
+                                                if (_controller
+                                                    .isPartnerFavoritable(
+                                                  partner,
+                                                )) {
+                                                  _controller.toggleFavorite(
+                                                    partner.id,
+                                                  );
+                                                }
+                                              },
                                               onTap: () => context.router.push(
                                                 PartnerDetailRoute(
                                                     slug: partner.slug),
@@ -137,10 +150,20 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                                             cardBuilder: (partner) =>
                                                 DiscoveryPartnerCard(
                                               partner: partner,
+                                              isFavoritable: _controller
+                                                  .isPartnerFavoritable(partner),
                                               isFavorite:
                                                   favorites.contains(partner.id),
-                                              onFavoriteTap: () => _controller
-                                                  .toggleFavorite(partner.id),
+                                              onFavoriteTap: () {
+                                                if (_controller
+                                                    .isPartnerFavoritable(
+                                                  partner,
+                                                )) {
+                                                  _controller.toggleFavorite(
+                                                    partner.id,
+                                                  );
+                                                }
+                                              },
                                               onTap: () => context.router.push(
                                                 PartnerDetailRoute(
                                                     slug: partner.slug),
@@ -169,6 +192,8 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                                             DiscoveryFilterChips(
                                           selectedTypeStream: _controller
                                               .selectedTypeFilterStreamValue,
+                                          availableTypesStream: _controller
+                                              .availableTypesStreamValue,
                                           onSelectType:
                                               _controller.setTypeFilter,
                                         ),
@@ -189,12 +214,10 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                                                 ),
                                               );
                                             }
-                                            return const Padding(
-                                              padding: EdgeInsets.all(24.0),
+                                            return Padding(
+                                              padding: const EdgeInsets.all(24.0),
                                               child: Center(
-                                                child: Text(
-                                                  'Nenhum resultado para os filtros.',
-                                                ),
+                                                child: Text(emptyLabel),
                                               ),
                                             );
                                           },
@@ -207,8 +230,21 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                                         sliver: DiscoveryPartnerGrid(
                                           partners: partners,
                                           favorites: favorites,
+                                          isFavoritable:
+                                              _controller.isPartnerFavoritable,
                                           onFavoriteTap:
-                                              _controller.toggleFavorite,
+                                              (partnerId) {
+                                            if (partners.isEmpty) return;
+                                            final partner = partners.firstWhere(
+                                              (item) => item.id == partnerId,
+                                              orElse: () => partners.first,
+                                            );
+                                            if (_controller
+                                                .isPartnerFavoritable(partner)) {
+                                              _controller
+                                                  .toggleFavorite(partnerId);
+                                            }
+                                          },
                                           onPartnerTap: (partner) =>
                                               context.router.push(
                                             PartnerDetailRoute(

@@ -2,7 +2,7 @@ import 'package:belluga_now/domain/artist/value_objects/artist_avatar_value.dart
 import 'package:belluga_now/domain/artist/value_objects/artist_id_value.dart';
 import 'package:belluga_now/domain/artist/value_objects/artist_is_highlight_value.dart';
 import 'package:belluga_now/domain/artist/value_objects/artist_name_value.dart';
-import 'package:belluga_now/infrastructure/artist/dtos/artist_resume_dto.dart';
+import 'package:belluga_now/infrastructure/dal/dto/artist/artist_resume_dto.dart';
 
 class ArtistResume {
   ArtistResume({
@@ -10,12 +10,14 @@ class ArtistResume {
     required this.nameValue,
     required this.avatarValue,
     required this.isHighlightValue,
+    required this.genres,
   });
 
   final ArtistIdValue idValue;
   final ArtistNameValue nameValue;
   final ArtistAvatarValue avatarValue;
   final ArtistIsHighlightValue isHighlightValue;
+  final List<String> genres;
 
   String get id => idValue.value;
   String get displayName => nameValue.value;
@@ -29,6 +31,7 @@ class ArtistResume {
       avatarValue: ArtistAvatarValue()..parse(dto.avatarUrl ?? ''),
       isHighlightValue: ArtistIsHighlightValue()
         ..parse(dto.isHighlight.toString()),
+      genres: dto.genres,
     );
   }
 }

@@ -3,14 +3,26 @@ import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
 import 'package:belluga_now/presentation/tenant/schedule/screens/event_search_screen/controllers/event_search_screen_controller.dart';
-import 'package:belluga_now/presentation/tenant/widgets/back_button_belluga.dart';
+import 'package:belluga_now/presentation/tenant/schedule/screens/event_search_screen/models/invite_filter.dart';
+import 'package:belluga_now/presentation/tenant/schedule/widgets/agenda_app_bar.dart';
 import 'package:belluga_now/presentation/tenant/widgets/date_grouped_event_list.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 
 class EventSearchScreen extends StatefulWidget {
-  const EventSearchScreen({super.key});
+  const EventSearchScreen({
+    super.key,
+    this.startSearchActive = false,
+    this.initialSearchQuery,
+    this.inviteFilter = InviteFilter.none,
+    this.startWithHistory = false,
+  });
+
+  final bool startSearchActive;
+  final String? initialSearchQuery;
+  final InviteFilter inviteFilter;
+  final bool startWithHistory;
 
   @override
   State<EventSearchScreen> createState() => _EventSearchScreenState();
@@ -26,107 +38,165 @@ class _EventSearchScreenState extends State<EventSearchScreen> {
   @override
   void initState() {
     super.initState();
-    _controller.init();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _controller.focusNode.requestFocus();
-    });
+    _controller.init(startWithHistory: widget.startWithHistory);
+    _controller.setInitialSearchQuery(widget.initialSearchQuery);
+    _controller.setSearchActive(widget.startSearchActive);
+    _controller.setInviteFilter(widget.inviteFilter);
+  }
+
+  @override
+  void dispose() {
+    _controller.onDispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final topPadding = MediaQuery.of(context).padding.top;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: TextField(
-          controller: _controller.searchController,
-          focusNode: _controller.focusNode,
-          style: theme.textTheme.titleMedium,
-          decoration: InputDecoration(
-            hintText: 'Buscar eventos...',
-            border: InputBorder.none,
-            hintStyle: theme.textTheme.titleMedium?.copyWith(
-              color:
-                  colorScheme.onSurfaceVariant.withAlpha((0.6 * 255).floor()),
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) {
+          return;
+        }
+        context.router.replaceAll([TenantHomeRoute()]);
+      },
+      child: Scaffold(
+        appBar: PreferredSize(
+          preferredSize: Size.fromHeight(kToolbarHeight + topPadding),
+          child: Padding(
+            padding: EdgeInsets.only(top: topPadding),
+            child: AgendaAppBar(
+              controller: _controller,
+              onBack: _handleBack,
+              actions: const AgendaAppBarActions(
+                showBack: true,
+                showSearch: true,
+                showRadius: true,
+                showInviteFilter: true,
+                showHistory: true,
+              ),
             ),
           ),
-          onChanged: _controller.searchEvents,
         ),
-        automaticallyImplyLeading: false,
-        leading: const BackButtonBelluga(),
-        actionsPadding: const EdgeInsets.only(right: 8),
-        actions: [
-          StreamValueBuilder<bool>(
-            streamValue: _controller.showHistoryStreamValue,
-            builder: (context, showHistory) {
-              final isSelected = showHistory;
-              return IconButton(
-                onPressed: _controller.toggleHistory,
-                tooltip: isSelected
-                    ? 'Ocultar eventos já finalizados'
-                    : 'Mostrar eventos já finalizados',
-                icon: Icon(
-                  Icons.history,
-                  color: isSelected
-                      ? colorScheme.primary
-                      : colorScheme.onSurfaceVariant,
-                ),
+        body: SafeArea(
+          top: false,
+          child: StreamValueBuilder<bool>(
+            streamValue: _controller.isInitialLoadingStreamValue,
+            builder: (context, isInitialLoading) {
+              return StreamValueBuilder<List<EventModel>>(
+                streamValue: _controller.displayedEventsStreamValue,
+                builder: (context, events) {
+                  return StreamValueBuilder<bool>(
+                    streamValue: _controller.isPageLoadingStreamValue,
+                    builder: (context, isPageLoading) {
+                      final hasSearchQuery =
+                          _controller.searchController.text.trim().isNotEmpty;
+                      final hasInviteFilter =
+                          _controller.inviteFilterStreamValue.value !=
+                              InviteFilter.none;
+                      final showHistory =
+                          _controller.showHistoryStreamValue.value;
+                      final hasActiveFilters =
+                          hasSearchQuery || hasInviteFilter || showHistory;
+                      final emptyLabel = hasActiveFilters
+                          ? 'Nenhum resultado encontrado'
+                          : 'Nenhum evento disponível no momento';
+
+                      if (isInitialLoading && events.isEmpty) {
+                        return const Center(
+                          child: CircularProgressIndicator(),
+                        );
+                      }
+
+                      if (events.isEmpty) {
+                        return Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.search_off,
+                                size: 64,
+                                color: colorScheme.onSurfaceVariant
+                                    .withAlpha((0.5 * 255).floor()),
+                              ),
+                              const SizedBox(height: 16),
+                              Text(
+                                emptyLabel,
+                                style: theme.textTheme.titleMedium?.copyWith(
+                                  color: colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }
+
+                      final resumes = events
+                          .map((e) => VenueEventResume.fromScheduleEvent(
+                                e,
+                                _defaultEventImage,
+                              ))
+                          .toList();
+
+                      return StreamValueBuilder<bool>(
+                        streamValue: _controller.showHistoryStreamValue,
+                        builder: (context, showHistory) {
+                          return DateGroupedEventList(
+                            controller: _controller.scrollController,
+                            events: resumes,
+                            isConfirmed: (event) =>
+                                _controller.isEventConfirmed(event.id),
+                            pendingInvitesCount: (event) =>
+                                _controller.pendingInviteCount(event.id),
+                            distanceLabel: _controller.distanceLabelFor,
+                            statusIconSize: 22,
+                            highlightNowEvents: true,
+                            highlightTodayEvents: true,
+                            sortDescending: showHistory,
+                            footer: isPageLoading
+                                ? const Padding(
+                                    padding:
+                                        EdgeInsets.symmetric(vertical: 16),
+                                    child: Center(
+                                      child: SizedBox(
+                                        width: 24,
+                                        height: 24,
+                                        child: CircularProgressIndicator(),
+                                      ),
+                                    ),
+                                  )
+                                : null,
+                            onEventSelected: (slug) {
+                              context.router.push(
+                                ImmersiveEventDetailRoute(eventSlug: slug),
+                              );
+                            },
+                          );
+                        },
+                      );
+                    },
+                  );
+                },
               );
             },
           ),
-        ],
-      ),
-      body: SafeArea(
-        top: false,
-        child: StreamValueBuilder<List<EventModel>?>(
-          streamValue: _controller.searchResultsStreamValue,
-          onNullWidget: const Center(
-            child: CircularProgressIndicator(),
-          ),
-          builder: (context, events) {
-            final data = events ?? [];
-
-            if (data.isEmpty) {
-              return Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.search_off,
-                      size: 64,
-                      color: colorScheme.onSurfaceVariant
-                          .withAlpha((0.5 * 255).floor()),
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      'Nenhum resultado encontrado',
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        color: colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            }
-
-            // Convert EventModel to VenueEventResume
-            final resumes = data
-                .map((e) => VenueEventResume.fromScheduleEvent(
-                      e,
-                      _defaultEventImage,
-                    ))
-                .toList();
-
-            return DateGroupedEventList(
-              events: resumes,
-              onEventSelected: (slug) {
-                context.router.push(ImmersiveEventDetailRoute(eventSlug: slug));
-              },
-            );
-          },
         ),
       ),
     );
+  }
+
+  // AgendaAppBar handles icons/tooltips and radius modal.
+
+  void _handleBack() {
+    final router = context.router;
+    if (router.canPop()) {
+      router.pop();
+    } else {
+      router.replaceAll([const ProfileRoute()]);
+    }
   }
 }

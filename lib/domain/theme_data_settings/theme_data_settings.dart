@@ -1,17 +1,21 @@
 import 'package:belluga_now/domain/theme_data_settings/color_scheme_data.dart';
+import 'package:belluga_now/domain/theme_data_settings/value_objects/brightness_value.dart';
 import 'package:flutter/material.dart';
 
 class ThemeDataSettings {
   final ColorSchemeData lightSchemeData;
   final ColorSchemeData darkSchemeData;
+  final Brightness brightnessDefault;
 
   ThemeDataSettings({
     required this.darkSchemeData,
     required this.lightSchemeData,
+    required this.brightnessDefault,
   });
 
-  ThemeData themeData(Brightness brightness) {
-    final ColorScheme colorScheme = switch (brightness) {
+  ThemeData themeData([Brightness? brightness]) {
+    final resolvedBrightness = brightness ?? brightnessDefault;
+    final ColorScheme colorScheme = switch (resolvedBrightness) {
       Brightness.dark => darkSchemeData.colorScheme,
       Brightness.light => lightSchemeData.colorScheme,
     };
@@ -19,7 +23,7 @@ class ThemeDataSettings {
     final TextTheme textTheme = _buildTextTheme(colorScheme);
 
     return ThemeData(
-      // useMaterial3: true,
+      useMaterial3: true,
       colorScheme: colorScheme,
       textTheme: textTheme,
       scaffoldBackgroundColor: colorScheme.surface,
@@ -116,21 +120,39 @@ class ThemeDataSettings {
   }
 
   factory ThemeDataSettings.fromJson(Map<String, dynamic> json) {
-    final _darkSchemeData = ColorSchemeData.fromJson(
-        <String, dynamic>{"brightness": "dark", ...json['dark_scheme_data']});
+    final brightnessDefaultValue = BrightnessValue()
+      ..parse(json['brightness_default']);
 
-    final _lightSchemeData = ColorSchemeData.fromJson(
-        <String, dynamic>{"brightness": "light", ...json['light_scheme_data']});
+    final primarySeedColor = json['primary_seed_color'] as String? ?? '#4FA0E3';
+    final secondarySeedColor =
+        json['secondary_seed_color'] as String? ?? '#E80D5D';
+
+    final darkSchemeData = ColorSchemeData.fromJson({
+      'brightness': 'dark',
+      'primary_seed_color': primarySeedColor,
+      'secondary_seed_color': secondarySeedColor,
+    });
+
+    final lightSchemeData = ColorSchemeData.fromJson({
+      'brightness': 'light',
+      'primary_seed_color': primarySeedColor,
+      'secondary_seed_color': secondarySeedColor,
+    });
 
     return ThemeDataSettings(
-      darkSchemeData: _darkSchemeData,
-      lightSchemeData: _lightSchemeData,
+      darkSchemeData: darkSchemeData,
+      lightSchemeData: lightSchemeData,
+      brightnessDefault: brightnessDefaultValue.value == Brightness.dark
+          ? Brightness.dark
+          : Brightness.light,
     );
   }
 
   TextTheme _buildTextTheme(ColorScheme colorScheme) {
     final base = Typography.material2021();
-    return base.black.apply(
+    final themedBase =
+        colorScheme.brightness == Brightness.dark ? base.white : base.black;
+    return themedBase.apply(
       displayColor: colorScheme.onSurface,
       bodyColor: colorScheme.onSurfaceVariant,
     );

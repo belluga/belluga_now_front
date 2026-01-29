@@ -1,5 +1,5 @@
 import 'package:belluga_now/domain/user/user_contract.dart';
-import 'package:belluga_now/infrastructure/services/dal/dao/backend_contract.dart';
+import 'package:belluga_now/infrastructure/dal/dao/backend_contract.dart';
 import 'package:stream_value/core/stream_value.dart';
 
 abstract class AuthRepositoryContract<T extends UserContract> {
@@ -10,6 +10,12 @@ abstract class AuthRepositoryContract<T extends UserContract> {
   T get user => userStreamValue.value!;
 
   String get userToken;
+
+  void setUserToken(String? token);
+
+  Future<String> getDeviceId();
+
+  Future<String?> getUserId();
 
   bool get isUserLoggedIn;
 
