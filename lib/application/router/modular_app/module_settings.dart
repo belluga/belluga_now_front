@@ -35,6 +35,7 @@ import 'package:belluga_now/infrastructure/repositories/partners_repository.dart
 import 'package:belluga_now/infrastructure/repositories/schedule_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/tenant_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/telemetry_repository.dart';
+import 'package:belluga_now/infrastructure/repositories/tenant_admin_store.dart';
 import 'package:belluga_now/infrastructure/repositories/user_events_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/user_location_repository.dart';
 import 'package:belluga_now/infrastructure/dal/dao/local/app_data_local_info_source/app_data_local_info_source.dart';
@@ -256,6 +257,7 @@ class ModuleSettings extends ModuleSettingsContract {
     _registerIfAbsent<AdminModeRepositoryContract>(
       () => AdminModeRepository(),
     );
+    _registerIfAbsent<TenantAdminStore>(() => TenantAdminStore());
     _registerIfAbsent<ContactsRepositoryContract>(
       () => ContactsRepository(),
     );
