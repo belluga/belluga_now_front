@@ -190,11 +190,13 @@ class _AuthLoginCanvaContentState extends State<AuthLoginCanvaContent>
 
   Future<void> _openLandlordLogin() async {
     final didLogin = await showLandlordLoginSheet(context);
-    if (didLogin && context.mounted) {
-      final adminMode = GetIt.I.get<AdminModeRepositoryContract>();
-      await adminMode.setLandlordMode();
-      context.router.replaceAll([const TenantAdminShellRoute()]);
+    if (!mounted || !didLogin) {
+      return;
     }
+    final adminMode = GetIt.I.get<AdminModeRepositoryContract>();
+    await adminMode.setLandlordMode();
+    if (!mounted) return;
+    context.router.replaceAll([const TenantAdminShellRoute()]);
   }
 
   Future<void> _submitSignup(
@@ -221,19 +223,17 @@ class _AuthLoginCanvaContentState extends State<AuthLoginCanvaContent>
         normalizedEmail,
         password,
       );
-      if (ctx.mounted) {
-        Navigator.of(ctx).pop();
-      }
-      if (context.mounted) {
-        if (authRepository.isAuthorized) {
-          context.router.replace(const TenantHomeRoute());
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Falha ao autenticar apÃ³s o cadastro.'),
-            ),
-          );
-        }
+      if (!ctx.mounted) return;
+      Navigator.of(ctx).pop();
+      if (!mounted) return;
+      if (authRepository.isAuthorized) {
+        context.router.replace(const TenantHomeRoute());
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Falha ao autenticar apÃ³s o cadastro.'),
+          ),
+        );
       }
     } catch (e) {
       if (!ctx.mounted) {

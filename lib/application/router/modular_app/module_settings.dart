@@ -22,6 +22,9 @@ import 'package:belluga_now/domain/repositories/partners_repository_contract.dar
 import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/tenant_admin_account_profiles_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/tenant_admin_accounts_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/tenant_admin_organizations_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_events_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
 import 'package:belluga_now/infrastructure/repositories/app_data_repository.dart';
@@ -35,7 +38,9 @@ import 'package:belluga_now/infrastructure/repositories/partners_repository.dart
 import 'package:belluga_now/infrastructure/repositories/schedule_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/tenant_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/telemetry_repository.dart';
-import 'package:belluga_now/infrastructure/repositories/tenant_admin_store.dart';
+import 'package:belluga_now/infrastructure/repositories/tenant_admin/tenant_admin_account_profiles_repository.dart';
+import 'package:belluga_now/infrastructure/repositories/tenant_admin/tenant_admin_accounts_repository.dart';
+import 'package:belluga_now/infrastructure/repositories/tenant_admin/tenant_admin_organizations_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/user_events_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/user_location_repository.dart';
 import 'package:belluga_now/infrastructure/dal/dao/local/app_data_local_info_source/app_data_local_info_source.dart';
@@ -45,6 +50,10 @@ import 'package:belluga_now/infrastructure/dal/dao/production_backend/production
 import 'package:belluga_now/application/application_contract.dart';
 import 'package:belluga_now/presentation/common/location_permission/controllers/location_permission_controller.dart';
 import 'package:belluga_now/presentation/common/push/controllers/push_options_controller.dart';
+import 'package:belluga_now/presentation/tenant_admin/account_profiles/controllers/tenant_admin_account_profiles_controller.dart';
+import 'package:belluga_now/presentation/tenant_admin/accounts/controllers/tenant_admin_accounts_controller.dart';
+import 'package:belluga_now/presentation/tenant_admin/organizations/controllers/tenant_admin_organizations_controller.dart';
+import 'package:belluga_now/presentation/tenant_admin/profile_types/controllers/tenant_admin_profile_types_controller.dart';
 import 'package:belluga_now/infrastructure/services/push/push_answer_handler.dart';
 import 'package:belluga_now/infrastructure/services/push/push_answer_relay.dart';
 import 'package:belluga_now/infrastructure/services/push/push_answer_resolver.dart';
@@ -101,6 +110,26 @@ class ModuleSettings extends ModuleSettingsContract {
     if (!GetIt.I.isRegistered<PushOptionsController>()) {
       GetIt.I.registerLazySingleton<PushOptionsController>(
         () => PushOptionsController(),
+      );
+    }
+    if (!GetIt.I.isRegistered<TenantAdminAccountsController>()) {
+      GetIt.I.registerFactory<TenantAdminAccountsController>(
+        () => TenantAdminAccountsController(),
+      );
+    }
+    if (!GetIt.I.isRegistered<TenantAdminAccountProfilesController>()) {
+      GetIt.I.registerFactory<TenantAdminAccountProfilesController>(
+        () => TenantAdminAccountProfilesController(),
+      );
+    }
+    if (!GetIt.I.isRegistered<TenantAdminOrganizationsController>()) {
+      GetIt.I.registerFactory<TenantAdminOrganizationsController>(
+        () => TenantAdminOrganizationsController(),
+      );
+    }
+    if (!GetIt.I.isRegistered<TenantAdminProfileTypesController>()) {
+      GetIt.I.registerFactory<TenantAdminProfileTypesController>(
+        () => TenantAdminProfileTypesController(),
       );
     }
   }
@@ -257,7 +286,15 @@ class ModuleSettings extends ModuleSettingsContract {
     _registerIfAbsent<AdminModeRepositoryContract>(
       () => AdminModeRepository(),
     );
-    _registerIfAbsent<TenantAdminStore>(() => TenantAdminStore());
+    _registerIfAbsent<TenantAdminAccountsRepositoryContract>(
+      () => TenantAdminAccountsRepository(),
+    );
+    _registerIfAbsent<TenantAdminAccountProfilesRepositoryContract>(
+      () => TenantAdminAccountProfilesRepository(),
+    );
+    _registerIfAbsent<TenantAdminOrganizationsRepositoryContract>(
+      () => TenantAdminOrganizationsRepository(),
+    );
     _registerIfAbsent<ContactsRepositoryContract>(
       () => ContactsRepository(),
     );

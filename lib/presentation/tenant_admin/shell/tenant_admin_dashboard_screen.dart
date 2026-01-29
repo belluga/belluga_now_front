@@ -23,18 +23,17 @@ class TenantAdminDashboardScreen extends StatelessWidget {
           },
         ),
         ListTile(
-          title: const Text('Perfis de Conta'),
-          subtitle: const Text('Selecione uma conta primeiro'),
-          trailing: const Icon(Icons.chevron_right),
-          onTap: () {
-            context.router.push(const TenantAdminAccountsListRoute());
-          },
-        ),
-        ListTile(
           title: const Text('Organizações'),
           trailing: const Icon(Icons.chevron_right),
           onTap: () {
             context.router.push(const TenantAdminOrganizationsListRoute());
+          },
+        ),
+        ListTile(
+          title: const Text('Tipos de Perfil'),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () {
+            context.router.push(const TenantAdminProfileTypesListRoute());
           },
         ),
         const Divider(),

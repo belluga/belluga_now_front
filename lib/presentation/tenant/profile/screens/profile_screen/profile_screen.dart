@@ -374,6 +374,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> _switchToUserMode(BuildContext context) async {
     final adminMode = GetIt.I.get<AdminModeRepositoryContract>();
     await adminMode.setUserMode();
+    if (!context.mounted) return;
     context.router.replaceAll([TenantHomeRoute()]);
   }
 
@@ -389,6 +390,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       return;
     }
     await adminMode.setLandlordMode();
+    if (!context.mounted) return;
     context.router.replaceAll([TenantAdminShellRoute()]);
   }
 

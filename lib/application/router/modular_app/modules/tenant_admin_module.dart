@@ -57,6 +57,18 @@ class TenantAdminModule extends ModuleContract {
               path: 'organizations/:organizationId',
               page: TenantAdminOrganizationDetailRoute.page,
             ),
+            AutoRoute(
+              path: 'profile-types',
+              page: TenantAdminProfileTypesListRoute.page,
+            ),
+            AutoRoute(
+              path: 'profile-types/create',
+              page: TenantAdminProfileTypeCreateRoute.page,
+            ),
+            AutoRoute(
+              path: 'profile-types/:profileType/edit',
+              page: TenantAdminProfileTypeEditRoute.page,
+            ),
           ],
         ),
       ];

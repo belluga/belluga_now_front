@@ -15,9 +15,9 @@ class BellugaConstants {
 class _ApiConstants {
   AppData get _appData => GetIt.I.get<AppData>();
 
-  String get adminUrl => '${_appData.schema}://${_appData.hostname}/admin/api';
+  String get adminUrl => '${_appData.mainDomainValue.value.origin}/admin/api';
 
-  String get baseUrl => '${_appData.schema}://${_appData.hostname}/api';
+  String get baseUrl => '${_appData.mainDomainValue.value.origin}/api';
 }
 
 class _SettingsConstants {

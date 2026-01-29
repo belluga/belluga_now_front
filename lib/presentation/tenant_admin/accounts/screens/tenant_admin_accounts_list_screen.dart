@@ -1,8 +1,10 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
-import 'package:belluga_now/infrastructure/repositories/tenant_admin_store.dart';
+import 'package:belluga_now/domain/tenant_admin/ownership_state.dart';
+import 'package:belluga_now/presentation/tenant_admin/accounts/controllers/tenant_admin_accounts_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
+import 'package:stream_value/core/stream_value_builder.dart';
 
 class TenantAdminAccountsListScreen extends StatefulWidget {
   const TenantAdminAccountsListScreen({super.key});
@@ -14,9 +16,22 @@ class TenantAdminAccountsListScreen extends StatefulWidget {
 
 class _TenantAdminAccountsListScreenState
     extends State<TenantAdminAccountsListScreen> {
-  OwnershipState _selected = OwnershipState.tenantOwned;
+  TenantAdminOwnershipState _selected = TenantAdminOwnershipState.tenantOwned;
   final bool _hasError = false;
-  final _store = GetIt.I.get<TenantAdminStore>();
+  late final TenantAdminAccountsController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = GetIt.I.get<TenantAdminAccountsController>();
+    _controller.init();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -24,11 +39,11 @@ class _TenantAdminAccountsListScreenState
       return _buildErrorState(context);
     }
 
-    return AnimatedBuilder(
-      animation: _store,
-      builder: (context, _) {
-        final filteredAccounts = _store.accounts
-            .where((account) => account.ownership == _selected)
+    return StreamValueBuilder(
+      streamValue: _controller.accountsStreamValue,
+      builder: (context, accounts) {
+        final filteredAccounts = accounts
+            .where((account) => account.ownershipState == _selected)
             .toList(growable: false);
 
         return Padding(
@@ -62,16 +77,16 @@ class _TenantAdminAccountsListScreenState
                 ],
               ),
               const SizedBox(height: 12),
-              SegmentedButton<OwnershipState>(
-                segments: OwnershipState.values
+              SegmentedButton<TenantAdminOwnershipState>(
+                segments: TenantAdminOwnershipState.values
                     .map(
-                      (state) => ButtonSegment<OwnershipState>(
+                      (state) => ButtonSegment<TenantAdminOwnershipState>(
                         value: state,
                         label: Text(state.label),
                       ),
                     )
                     .toList(growable: false),
-                selected: <OwnershipState>{_selected},
+                selected: <TenantAdminOwnershipState>{_selected},
                 onSelectionChanged: (selection) {
                   if (selection.isEmpty) {
                     return;
@@ -90,7 +105,7 @@ class _TenantAdminAccountsListScreenState
                           final account = filteredAccounts[index];
                           return ListTile(
                             title: Text(account.slug),
-                            subtitle: Text(account.ownership.subtitle),
+                            subtitle: Text(account.ownershipState.subtitle),
                             trailing: const Icon(Icons.chevron_right),
                             onTap: () {
                               context.router.push(

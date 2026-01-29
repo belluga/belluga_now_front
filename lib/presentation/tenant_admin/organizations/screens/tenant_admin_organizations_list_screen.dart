@@ -1,21 +1,40 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
-import 'package:belluga_now/infrastructure/repositories/tenant_admin_store.dart';
+import 'package:belluga_now/presentation/tenant_admin/organizations/controllers/tenant_admin_organizations_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
+import 'package:stream_value/core/stream_value_builder.dart';
 
-class TenantAdminOrganizationsListScreen extends StatelessWidget {
+class TenantAdminOrganizationsListScreen extends StatefulWidget {
   const TenantAdminOrganizationsListScreen({super.key});
 
   @override
+  State<TenantAdminOrganizationsListScreen> createState() =>
+      _TenantAdminOrganizationsListScreenState();
+}
+
+class _TenantAdminOrganizationsListScreenState
+    extends State<TenantAdminOrganizationsListScreen> {
+  late final TenantAdminOrganizationsController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = GetIt.I.get<TenantAdminOrganizationsController>();
+    _controller.loadOrganizations();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final store = GetIt.I.get<TenantAdminStore>();
-
-    return AnimatedBuilder(
-      animation: store,
-      builder: (context, _) {
-        final organizations = store.organizations;
-
+    return StreamValueBuilder(
+      streamValue: _controller.organizationsStreamValue,
+      builder: (context, organizations) {
         return Padding(
           padding: const EdgeInsets.all(16),
           child: Column(
