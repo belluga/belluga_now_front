@@ -5,7 +5,7 @@ class AssetsConstants {
 }
 
 class _LoginAssets {
-  String get headerArt => "assets/images/login_header_art.png";
+  String get headerArt => "assets/images/logo_horizontal.png";
 
-  String get headerBackground => "assets/images/login_header_background.jpg";
+  String get headerBackground => "assets/images/logo_profile.png";
 }

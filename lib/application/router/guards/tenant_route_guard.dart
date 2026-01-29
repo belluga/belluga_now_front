@@ -10,7 +10,7 @@ class TenantRouteGuard extends AutoRouteGuard {
     final appData = GetIt.I.get<AppData>();
     final envType = appData.typeValue.value;
 
-    // The `/api/v1/environment` bootstrap is the source of truth for web tenant routing.
+    // The `/api/v1/environment` bootstrap (main domain) is the source of truth for web tenant routing.
     if (envType == EnvironmentType.tenant) {
       resolver.next(true);
       return;

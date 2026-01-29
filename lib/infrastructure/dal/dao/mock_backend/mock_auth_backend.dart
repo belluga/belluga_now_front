@@ -54,4 +54,18 @@ class MockAuthBackend extends AuthBackendContract {
       identityState: 'anonymous',
     );
   }
+
+  @override
+  Future<AuthRegistrationResponse> registerWithEmailPassword({
+    required String name,
+    required String email,
+    required String password,
+    List<String>? anonymousUserIds,
+  }) async {
+    return const AuthRegistrationResponse(
+      token: _mockToken,
+      userId: _mockUserId,
+      identityState: 'authenticated',
+    );
+  }
 }

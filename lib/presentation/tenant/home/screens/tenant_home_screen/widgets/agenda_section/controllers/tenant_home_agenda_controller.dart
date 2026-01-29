@@ -78,12 +78,18 @@ class TenantHomeAgendaController
   bool _isFetching = false;
   bool _hasMore = true;
   bool _isAutoPaging = false;
+  bool _isDisposed = false;
+
+  void _setValue<T>(StreamValue<T> stream, T value) {
+    if (_isDisposed) return;
+    stream.addValue(value);
+  }
 
   Future<void> init({bool startWithHistory = false}) async {
     await _invitesRepository.init();
-    showHistoryStreamValue.addValue(startWithHistory);
+    _setValue(showHistoryStreamValue, startWithHistory);
     final maxRadius = _appDataRepository.maxRadiusMeters;
-    radiusMetersStreamValue.addValue(maxRadius);
+    _setValue(radiusMetersStreamValue, maxRadius);
     _listenForStatusChanges();
     _listenForLocationChanges();
     _listenForRadiusChanges();
@@ -94,12 +100,12 @@ class TenantHomeAgendaController
     await _waitForOngoingFetch();
     _currentPage = 1;
     _hasMore = true;
-    hasMoreStreamValue.addValue(true);
+    _setValue(hasMoreStreamValue, true);
     _fetchedEvents.clear();
-    displayedEventsStreamValue.addValue(const []);
-    isInitialLoadingStreamValue.addValue(true);
+    _setValue(displayedEventsStreamValue, const <EventModel>[]);
+    _setValue(isInitialLoadingStreamValue, true);
     await _fetchPage(page: 1);
-    isInitialLoadingStreamValue.addValue(false);
+    _setValue(isInitialLoadingStreamValue, false);
   }
 
   Future<void> _waitForOngoingFetch() async {
@@ -117,7 +123,7 @@ class TenantHomeAgendaController
     if (_isFetching) return;
     _isFetching = true;
     if (page > 1) {
-      isPageLoadingStreamValue.addValue(true);
+      _setValue(isPageLoadingStreamValue, true);
     }
 
     try {
@@ -142,24 +148,24 @@ class TenantHomeAgendaController
       }
 
       _hasMore = result.hasMore;
-      hasMoreStreamValue.addValue(_hasMore);
+      _setValue(hasMoreStreamValue, _hasMore);
       _currentPage = page;
       _applyFiltersAndPublish();
     } finally {
       _isFetching = false;
-      isPageLoadingStreamValue.addValue(false);
+      _setValue(isPageLoadingStreamValue, false);
     }
   }
 
   @override
   void toggleHistory() {
     final currentValue = showHistoryStreamValue.value;
-    showHistoryStreamValue.addValue(!currentValue);
+    _setValue(showHistoryStreamValue, !currentValue);
     _refresh();
   }
 
   void setInviteFilter(InviteFilter filter) {
-    inviteFilterStreamValue.addValue(filter);
+    _setValue(inviteFilterStreamValue, filter);
     _applyFiltersAndPublish();
   }
 
@@ -180,7 +186,7 @@ class TenantHomeAgendaController
   }
 
   void setSearchActive(bool active) {
-    searchActiveStreamValue.addValue(active);
+    _setValue(searchActiveStreamValue, active);
     if (active) {
       focusNode.requestFocus();
     } else {
@@ -196,7 +202,7 @@ class TenantHomeAgendaController
   @override
   void setRadiusMeters(double meters) {
     if (meters <= 0) return;
-    radiusMetersStreamValue.addValue(meters);
+    _setValue(radiusMetersStreamValue, meters);
     _applyFiltersAndPublish();
   }
 
@@ -259,7 +265,7 @@ class TenantHomeAgendaController
   void _applyFiltersAndPublish() {
     final inviteFiltered = _applyInviteFilter(_fetchedEvents);
     final radiusFiltered = _applyRadiusFilter(inviteFiltered);
-    displayedEventsStreamValue.addValue(radiusFiltered);
+    _setValue(displayedEventsStreamValue, radiusFiltered);
     _maybeAutoPage(radiusFiltered);
   }
 
@@ -347,13 +353,14 @@ class TenantHomeAgendaController
         _appDataRepository.maxRadiusMetersStreamValue.stream.listen((meters) {
       final current = radiusMetersStreamValue.value;
       final clamped = current > meters ? meters : current;
-      radiusMetersStreamValue.addValue(clamped);
+      _setValue(radiusMetersStreamValue, clamped);
       _applyFiltersAndPublish();
     });
   }
 
   @override
   void onDispose() {
+    _isDisposed = true;
     displayedEventsStreamValue.dispose();
     isInitialLoadingStreamValue.dispose();
     isPageLoadingStreamValue.dispose();

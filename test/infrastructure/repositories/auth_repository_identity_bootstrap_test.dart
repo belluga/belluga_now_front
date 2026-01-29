@@ -218,6 +218,15 @@ class _FakeAuthBackend extends AuthBackendContract {
 
   @override
   Future<void> logout() async {}
+
+  @override
+  Future<AuthRegistrationResponse> registerWithEmailPassword({
+    required String name,
+    required String email,
+    required String password,
+    List<String>? anonymousUserIds,
+  }) =>
+      throw UnimplementedError();
 }
 
 class _FlakyAuthBackend extends AuthBackendContract {
@@ -275,6 +284,15 @@ class _FlakyAuthBackend extends AuthBackendContract {
 
   @override
   Future<void> logout() async {}
+
+  @override
+  Future<AuthRegistrationResponse> registerWithEmailPassword({
+    required String name,
+    required String email,
+    required String password,
+    List<String>? anonymousUserIds,
+  }) =>
+      throw UnimplementedError();
 }
 
 class _UnsupportedTenantBackend extends TenantBackendContract {

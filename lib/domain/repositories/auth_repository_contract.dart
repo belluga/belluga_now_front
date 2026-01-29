@@ -27,7 +27,11 @@ abstract class AuthRepositoryContract<T extends UserContract> {
 
   Future<void> loginWithEmailPassword(String email, String password);
 
-  Future<void> signUpWithEmailPassword(String email, String password);
+  Future<void> signUpWithEmailPassword(
+    String name,
+    String email,
+    String password,
+  );
 
   Future<void> sendTokenRecoveryPassword(String email, String codigoEnviado);
 

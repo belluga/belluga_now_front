@@ -31,7 +31,7 @@ class PushOptionSourceResolver {
         'BackendContext is not available via BackendContract for PushOptionSourceResolver.',
       );
     }
-    return resolved.baseUrl;
+    return resolved.adminUrl;
   }
 
   Future<List<OptionItem>> resolve(OptionSource source) async {
