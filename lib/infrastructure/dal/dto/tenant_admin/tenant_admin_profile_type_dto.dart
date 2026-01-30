@@ -27,8 +27,8 @@ class TenantAdminProfileTypeDTO {
     bool isFavoritable = false;
     bool isPoiEnabled = false;
     if (capabilities is Map<String, dynamic>) {
-      isFavoritable = capabilities['is_favoritable'] == true;
-      isPoiEnabled = capabilities['is_poi_enabled'] == true;
+      isFavoritable = _parseBool(capabilities['is_favoritable']);
+      isPoiEnabled = _parseBool(capabilities['is_poi_enabled']);
     }
     return TenantAdminProfileTypeDTO(
       type: json['type']?.toString() ?? '',
@@ -37,5 +37,15 @@ class TenantAdminProfileTypeDTO {
       isFavoritable: isFavoritable,
       isPoiEnabled: isPoiEnabled,
     );
+  }
+
+  static bool _parseBool(dynamic value) {
+    if (value == true) return true;
+    if (value is num) return value != 0;
+    if (value is String) {
+      final normalized = value.trim().toLowerCase();
+      return normalized == 'true' || normalized == '1' || normalized == 'yes';
+    }
+    return false;
   }
 }

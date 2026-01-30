@@ -232,6 +232,7 @@ class TenantAdminAccountProfilesRepository
     TenantAdminProfileTypeCapabilities? capabilities,
   }) async {
     try {
+      final encodedType = Uri.encodeComponent(type);
       final payload = <String, dynamic>{};
       if (label != null) {
         payload['label'] = label;
@@ -246,7 +247,7 @@ class TenantAdminAccountProfilesRepository
         };
       }
       final response = await _dio.patch(
-        '$_apiBaseUrl/v1/account_profile_types/$type',
+        '$_apiBaseUrl/v1/account_profile_types/$encodedType',
         data: payload,
         options: Options(headers: _buildHeaders()),
       );
@@ -260,8 +261,9 @@ class TenantAdminAccountProfilesRepository
   @override
   Future<void> deleteProfileType(String type) async {
     try {
+      final encodedType = Uri.encodeComponent(type);
       await _dio.delete(
-        '$_apiBaseUrl/v1/account_profile_types/$type',
+        '$_apiBaseUrl/v1/account_profile_types/$encodedType',
         options: Options(headers: _buildHeaders()),
       );
     } on DioException catch (error) {
