@@ -1,7 +1,15 @@
 import 'package:auto_route/auto_route.dart';
+import 'package:belluga_now/application/router/app_router.gr.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_account.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
+import 'package:belluga_now/presentation/tenant_admin/account_profiles/controllers/tenant_admin_account_profiles_controller.dart';
+import 'package:belluga_now/presentation/tenant_admin/account_profiles/screens/tenant_admin_account_profile_edit_screen.dart';
 import 'package:flutter/material.dart';
+import 'package:get_it/get_it.dart';
+import 'package:stream_value/core/stream_value_builder.dart';
 
-class TenantAdminAccountDetailScreen extends StatelessWidget {
+class TenantAdminAccountDetailScreen extends StatefulWidget {
   const TenantAdminAccountDetailScreen({
     super.key,
     required this.accountSlug,
@@ -10,33 +18,255 @@ class TenantAdminAccountDetailScreen extends StatelessWidget {
   final String accountSlug;
 
   @override
+  State<TenantAdminAccountDetailScreen> createState() =>
+      _TenantAdminAccountDetailScreenState();
+}
+
+class _TenantAdminAccountDetailScreenState
+    extends State<TenantAdminAccountDetailScreen> {
+  late final TenantAdminAccountProfilesController _profilesController;
+  TenantAdminAccount? _account;
+  TenantAdminAccountProfile? _profile;
+  String? _errorMessage;
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _profilesController = GetIt.I.get<TenantAdminAccountProfilesController>();
+    _load();
+  }
+
+  Future<void> _load() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+    try {
+      await _profilesController.loadProfileTypes();
+      final account =
+          await _profilesController.resolveAccountBySlug(widget.accountSlug);
+      final profile =
+          await _profilesController.fetchProfileForAccount(account.id);
+      if (!mounted) return;
+      _account = account;
+      _profile = profile;
+    } catch (error) {
+      _errorMessage = error.toString();
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _profilesController.dispose();
+    super.dispose();
+  }
+
+  String _profileTypeLabel(List<TenantAdminProfileTypeDefinition> types) {
+    final profile = _profile;
+    if (profile == null) return '-';
+    for (final type in types) {
+      if (type.type == profile.profileType) {
+        return type.label;
+      }
+    }
+    return profile.profileType;
+  }
+
+  Future<void> _openCreate() async {
+    final router = context.router;
+    await router.push(
+      TenantAdminAccountProfileCreateRoute(
+        accountSlug: widget.accountSlug,
+      ),
+    );
+    await _load();
+  }
+
+  Future<void> _openEdit() async {
+    final profile = _profile;
+    if (profile == null) {
+      return;
+    }
+    final navigator = Navigator.of(context);
+    await navigator.push(
+      MaterialPageRoute(
+        builder: (_) => TenantAdminAccountProfileEditScreen(
+          accountProfileId: profile.id,
+        ),
+      ),
+    );
+    await _load();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Align(
-            alignment: Alignment.centerLeft,
-            child: IconButton(
-              icon: const Icon(Icons.arrow_back),
-              onPressed: () => context.router.maybePop(),
-              tooltip: 'Voltar',
+    final account = _account;
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Conta: ${widget.accountSlug}'),
+        actions: [
+          if (_profile != null)
+            TextButton(
+              onPressed: _isLoading ? null : _openEdit,
+              child: const Text('Editar'),
             ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            'Conta: $accountSlug',
-            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
-          ),
-          const SizedBox(height: 16),
-          const Text('Status: pertence ao tenant'),
-          const SizedBox(height: 8),
-          const Text('Documento: pendente'),
-          const SizedBox(height: 8),
-          const Text('Organização: nenhuma'),
         ],
       ),
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: _isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : _errorMessage != null
+                ? Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        _errorMessage!,
+                        style: const TextStyle(color: Colors.red),
+                      ),
+                      const SizedBox(height: 12),
+                      TextButton(
+                        onPressed: _load,
+                        child: const Text('Tentar novamente'),
+                      ),
+                    ],
+                  )
+                : StreamValueBuilder(
+                    streamValue: _profilesController.profileTypesStreamValue,
+                    builder: (context, types) {
+                      return ListView(
+                        children: [
+                          _buildRow('Slug', account?.slug ?? '-'),
+                          const SizedBox(height: 8),
+                          _buildRow(
+                            'Documento',
+                            account?.document.number ?? '-',
+                          ),
+                          const SizedBox(height: 16),
+                          if (_profile == null) ...[
+                            const Text(
+                              'Nenhum perfil associado a esta conta.',
+                            ),
+                            const SizedBox(height: 12),
+                            ElevatedButton(
+                              onPressed: _openCreate,
+                              child: const Text('Criar Perfil'),
+                            ),
+                          ] else ...[
+                            const Text(
+                              'Perfil da conta',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            if (_profile?.coverUrl != null &&
+                                _profile!.coverUrl!.isNotEmpty)
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(12),
+                                child: Image.network(
+                                  _profile!.coverUrl!,
+                                  height: 160,
+                                  fit: BoxFit.cover,
+                                ),
+                              )
+                            else
+                              Container(
+                                height: 160,
+                                decoration: BoxDecoration(
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .surfaceContainerHighest,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: const Center(
+                                  child: Icon(Icons.image_outlined),
+                                ),
+                              ),
+                            const SizedBox(height: 16),
+                            Row(
+                              children: [
+                                if (_profile?.avatarUrl != null &&
+                                    _profile!.avatarUrl!.isNotEmpty)
+                                  ClipRRect(
+                                    borderRadius: BorderRadius.circular(36),
+                                    child: Image.network(
+                                      _profile!.avatarUrl!,
+                                      width: 72,
+                                      height: 72,
+                                      fit: BoxFit.cover,
+                                    ),
+                                  )
+                                else
+                                  Container(
+                                    width: 72,
+                                    height: 72,
+                                    decoration: BoxDecoration(
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .surfaceContainerHighest,
+                                      borderRadius: BorderRadius.circular(36),
+                                    ),
+                                    child: const Icon(Icons.person_outline),
+                                  ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Text(
+                                    _profile?.displayName ?? '-',
+                                    style:
+                                        Theme.of(context).textTheme.titleMedium,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 16),
+                            _buildRow('Tipo', _profileTypeLabel(types)),
+                            const SizedBox(height: 8),
+                            if (_profile?.location != null)
+                              _buildRow(
+                                'Localização',
+                                '${_profile!.location!.latitude.toStringAsFixed(6)}, '
+                                '${_profile!.location!.longitude.toStringAsFixed(6)}',
+                              ),
+                            const SizedBox(height: 12),
+                            Align(
+                              alignment: Alignment.centerRight,
+                              child: OutlinedButton.icon(
+                                onPressed: _openEdit,
+                                icon: const Icon(Icons.edit_outlined),
+                                label: const Text('Editar Perfil'),
+                              ),
+                            ),
+                          ],
+                        ],
+                      );
+                    },
+                  ),
+      ),
+    );
+  }
+
+  Widget _buildRow(String label, String value) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: 110,
+          child: Text(
+            label,
+            style: const TextStyle(fontWeight: FontWeight.w600),
+          ),
+        ),
+        Expanded(child: Text(value)),
+      ],
     );
   }
 }

@@ -3,6 +3,7 @@ import 'package:belluga_now/domain/repositories/tenant_admin_accounts_repository
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
 import 'package:get_it/get_it.dart' show Disposable, GetIt;
 import 'package:stream_value/core/stream_value.dart';
@@ -32,6 +33,21 @@ class TenantAdminAccountProfilesController implements Disposable {
 
   Future<TenantAdminAccount> resolveAccountBySlug(String slug) async {
     return _accountsRepository.fetchAccountBySlug(slug);
+  }
+
+  Future<TenantAdminAccountProfile> fetchProfile(String accountProfileId) async {
+    return _profilesRepository.fetchAccountProfile(accountProfileId);
+  }
+
+  Future<TenantAdminAccountProfile?> fetchProfileForAccount(
+    String accountId,
+  ) async {
+    final profiles =
+        await _profilesRepository.fetchAccountProfiles(accountId: accountId);
+    if (profiles.isEmpty) {
+      return null;
+    }
+    return profiles.first;
   }
 
   Future<void> loadProfiles(String accountId) async {
@@ -74,14 +90,38 @@ class TenantAdminAccountProfilesController implements Disposable {
     required String profileType,
     required String displayName,
     TenantAdminLocation? location,
+    TenantAdminMediaUpload? avatarUpload,
+    TenantAdminMediaUpload? coverUpload,
   }) async {
     final profile = await _profilesRepository.createAccountProfile(
       accountId: accountId,
       profileType: profileType,
       displayName: displayName,
       location: location,
+      avatarUpload: avatarUpload,
+      coverUpload: coverUpload,
     );
     await loadProfiles(accountId);
+    return profile;
+  }
+
+  Future<TenantAdminAccountProfile> updateProfile({
+    required String accountProfileId,
+    String? profileType,
+    String? displayName,
+    TenantAdminLocation? location,
+    TenantAdminMediaUpload? avatarUpload,
+    TenantAdminMediaUpload? coverUpload,
+  }) async {
+    final profile = await _profilesRepository.updateAccountProfile(
+      accountProfileId: accountProfileId,
+      profileType: profileType,
+      displayName: displayName,
+      location: location,
+      avatarUpload: avatarUpload,
+      coverUpload: coverUpload,
+    );
+    await loadProfiles(profile.accountId);
     return profile;
   }
 

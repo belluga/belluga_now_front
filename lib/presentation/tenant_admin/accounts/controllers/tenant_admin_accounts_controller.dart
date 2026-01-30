@@ -6,6 +6,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_account.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_document.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:get_it/get_it.dart' show Disposable, GetIt;
 import 'package:stream_value/core/stream_value.dart';
 
@@ -83,6 +84,8 @@ class TenantAdminAccountsController implements Disposable {
     required String profileType,
     required String displayName,
     TenantAdminLocation? location,
+    TenantAdminMediaUpload? avatarUpload,
+    TenantAdminMediaUpload? coverUpload,
   }) async {
     final account = await _accountsRepository.createAccount(
       name: name,
@@ -96,6 +99,8 @@ class TenantAdminAccountsController implements Disposable {
       profileType: profileType,
       displayName: displayName,
       location: location,
+      avatarUpload: avatarUpload,
+      coverUpload: coverUpload,
     );
     await loadAccounts();
     return account;

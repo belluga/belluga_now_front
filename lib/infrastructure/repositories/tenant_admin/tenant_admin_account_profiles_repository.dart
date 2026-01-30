@@ -4,12 +4,14 @@ import 'package:belluga_now/domain/repositories/tenant_admin_account_profiles_re
 import 'package:belluga_now/domain/tenant_admin/ownership_state.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
 import 'package:belluga_now/infrastructure/dal/dto/tenant_admin/tenant_admin_account_profile_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/tenant_admin/tenant_admin_profile_type_dto.dart';
 import 'package:dio/dio.dart';
 import 'package:get_it/get_it.dart';
+import 'package:http_parser/http_parser.dart';
 
 class TenantAdminAccountProfilesRepository
     implements TenantAdminAccountProfilesRepositoryContract {
@@ -70,6 +72,8 @@ class TenantAdminAccountProfilesRepository
     String? bio,
     String? avatarUrl,
     String? coverUrl,
+    TenantAdminMediaUpload? avatarUpload,
+    TenantAdminMediaUpload? coverUpload,
   }) async {
     try {
       final payload = <String, dynamic>{
@@ -89,9 +93,14 @@ class TenantAdminAccountProfilesRepository
         if (avatarUrl != null) 'avatar_url': avatarUrl,
         if (coverUrl != null) 'cover_url': coverUrl,
       };
+      final uploadPayload = _buildMultipartPayload(
+        payload,
+        avatarUpload: avatarUpload,
+        coverUpload: coverUpload,
+      );
       final response = await _dio.post(
         '$_apiBaseUrl/v1/account_profiles',
-        data: payload,
+        data: uploadPayload ?? payload,
         options: Options(headers: _buildHeaders()),
       );
       final item = _extractItem(response.data);
@@ -111,6 +120,8 @@ class TenantAdminAccountProfilesRepository
     String? bio,
     String? avatarUrl,
     String? coverUrl,
+    TenantAdminMediaUpload? avatarUpload,
+    TenantAdminMediaUpload? coverUpload,
   }) async {
     try {
       final payload = <String, dynamic>{};
@@ -130,9 +141,14 @@ class TenantAdminAccountProfilesRepository
       if (bio != null) payload['bio'] = bio;
       if (avatarUrl != null) payload['avatar_url'] = avatarUrl;
       if (coverUrl != null) payload['cover_url'] = coverUrl;
+      final uploadPayload = _buildMultipartPayload(
+        payload,
+        avatarUpload: avatarUpload,
+        coverUpload: coverUpload,
+      );
       final response = await _dio.patch(
         '$_apiBaseUrl/v1/account_profiles/$accountProfileId',
-        data: payload,
+        data: uploadPayload ?? payload,
         options: Options(headers: _buildHeaders()),
       );
       final item = _extractItem(response.data);
@@ -337,6 +353,63 @@ class TenantAdminAccountProfilesRepository
         isPoiEnabled: dto.isPoiEnabled,
       ),
     );
+  }
+
+  FormData? _buildMultipartPayload(
+    Map<String, dynamic> payload, {
+    TenantAdminMediaUpload? avatarUpload,
+    TenantAdminMediaUpload? coverUpload,
+  }) {
+    if (avatarUpload == null && coverUpload == null) {
+      return null;
+    }
+
+    final formData = FormData.fromMap(payload, ListFormat.multiCompatible);
+    if (avatarUpload != null) {
+      formData.files.add(
+        MapEntry(
+          'avatar',
+          MultipartFile.fromBytes(
+            avatarUpload.bytes,
+            filename: avatarUpload.fileName,
+            contentType: _resolveMediaType(avatarUpload),
+          ),
+        ),
+      );
+    }
+    if (coverUpload != null) {
+      formData.files.add(
+        MapEntry(
+          'cover',
+          MultipartFile.fromBytes(
+            coverUpload.bytes,
+            filename: coverUpload.fileName,
+            contentType: _resolveMediaType(coverUpload),
+          ),
+        ),
+      );
+    }
+    return formData;
+  }
+
+  MediaType _resolveMediaType(TenantAdminMediaUpload upload) {
+    final mimeType = upload.mimeType ?? _inferMimeType(upload.fileName);
+    if (mimeType == null) {
+      return MediaType('application', 'octet-stream');
+    }
+    final parts = mimeType.split('/');
+    if (parts.length != 2) {
+      return MediaType('application', 'octet-stream');
+    }
+    return MediaType(parts[0], parts[1]);
+  }
+
+  String? _inferMimeType(String fileName) {
+    final lower = fileName.toLowerCase();
+    if (lower.endsWith('.png')) return 'image/png';
+    if (lower.endsWith('.jpg') || lower.endsWith('.jpeg')) return 'image/jpeg';
+    if (lower.endsWith('.webp')) return 'image/webp';
+    return null;
   }
 
   Exception _wrapError(DioException error, String label) {

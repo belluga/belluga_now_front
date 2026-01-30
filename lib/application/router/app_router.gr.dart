@@ -60,10 +60,6 @@ import 'package:belluga_now/presentation/tenant/schedule/screens/event_search_sc
     as _i37;
 import 'package:belluga_now/presentation/tenant_admin/account_profiles/routes/tenant_admin_account_profile_create_route.dart'
     as _i20;
-import 'package:belluga_now/presentation/tenant_admin/account_profiles/routes/tenant_admin_account_profile_detail_route.dart'
-    as _i21;
-import 'package:belluga_now/presentation/tenant_admin/account_profiles/routes/tenant_admin_account_profiles_list_route.dart'
-    as _i22;
 import 'package:belluga_now/presentation/tenant_admin/accounts/routes/tenant_admin_account_create_route.dart'
     as _i18;
 import 'package:belluga_now/presentation/tenant_admin/accounts/routes/tenant_admin_account_detail_route.dart'
@@ -866,120 +862,6 @@ class TenantAdminAccountProfileCreateRouteArgs {
   bool operator ==(Object other) {
     if (identical(this, other)) return true;
     if (other is! TenantAdminAccountProfileCreateRouteArgs) return false;
-    return key == other.key && accountSlug == other.accountSlug;
-  }
-
-  @override
-  int get hashCode => key.hashCode ^ accountSlug.hashCode;
-}
-
-/// generated route for
-/// [_i21.TenantAdminAccountProfileDetailRoutePage]
-class TenantAdminAccountProfileDetailRoute
-    extends _i35.PageRouteInfo<TenantAdminAccountProfileDetailRouteArgs> {
-  TenantAdminAccountProfileDetailRoute({
-    _i36.Key? key,
-    required String accountProfileId,
-    List<_i35.PageRouteInfo>? children,
-  }) : super(
-          TenantAdminAccountProfileDetailRoute.name,
-          args: TenantAdminAccountProfileDetailRouteArgs(
-            key: key,
-            accountProfileId: accountProfileId,
-          ),
-          initialChildren: children,
-        );
-
-  static const String name = 'TenantAdminAccountProfileDetailRoute';
-
-  static _i35.PageInfo page = _i35.PageInfo(
-    name,
-    builder: (data) {
-      final args = data.argsAs<TenantAdminAccountProfileDetailRouteArgs>();
-      return _i21.TenantAdminAccountProfileDetailRoutePage(
-        key: args.key,
-        accountProfileId: args.accountProfileId,
-      );
-    },
-  );
-}
-
-class TenantAdminAccountProfileDetailRouteArgs {
-  const TenantAdminAccountProfileDetailRouteArgs({
-    this.key,
-    required this.accountProfileId,
-  });
-
-  final _i36.Key? key;
-
-  final String accountProfileId;
-
-  @override
-  String toString() {
-    return 'TenantAdminAccountProfileDetailRouteArgs{key: $key, accountProfileId: $accountProfileId}';
-  }
-
-  @override
-  bool operator ==(Object other) {
-    if (identical(this, other)) return true;
-    if (other is! TenantAdminAccountProfileDetailRouteArgs) return false;
-    return key == other.key && accountProfileId == other.accountProfileId;
-  }
-
-  @override
-  int get hashCode => key.hashCode ^ accountProfileId.hashCode;
-}
-
-/// generated route for
-/// [_i22.TenantAdminAccountProfilesListRoutePage]
-class TenantAdminAccountProfilesListRoute
-    extends _i35.PageRouteInfo<TenantAdminAccountProfilesListRouteArgs> {
-  TenantAdminAccountProfilesListRoute({
-    _i36.Key? key,
-    required String accountSlug,
-    List<_i35.PageRouteInfo>? children,
-  }) : super(
-          TenantAdminAccountProfilesListRoute.name,
-          args: TenantAdminAccountProfilesListRouteArgs(
-            key: key,
-            accountSlug: accountSlug,
-          ),
-          initialChildren: children,
-        );
-
-  static const String name = 'TenantAdminAccountProfilesListRoute';
-
-  static _i35.PageInfo page = _i35.PageInfo(
-    name,
-    builder: (data) {
-      final args = data.argsAs<TenantAdminAccountProfilesListRouteArgs>();
-      return _i22.TenantAdminAccountProfilesListRoutePage(
-        key: args.key,
-        accountSlug: args.accountSlug,
-      );
-    },
-  );
-}
-
-class TenantAdminAccountProfilesListRouteArgs {
-  const TenantAdminAccountProfilesListRouteArgs({
-    this.key,
-    required this.accountSlug,
-  });
-
-  final _i36.Key? key;
-
-  final String accountSlug;
-
-  @override
-  String toString() {
-    return 'TenantAdminAccountProfilesListRouteArgs{key: $key, accountSlug: $accountSlug}';
-  }
-
-  @override
-  bool operator ==(Object other) {
-    if (identical(this, other)) return true;
-    if (other is! TenantAdminAccountProfilesListRouteArgs) return false;
     return key == other.key && accountSlug == other.accountSlug;
   }
 

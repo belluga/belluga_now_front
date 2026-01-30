@@ -2,50 +2,85 @@ import 'dart:io';
 
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
-import 'package:belluga_now/presentation/tenant_admin/accounts/controllers/tenant_admin_accounts_controller.dart';
+import 'package:belluga_now/presentation/tenant_admin/account_profiles/controllers/tenant_admin_account_profiles_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 
-class TenantAdminAccountCreateScreen extends StatefulWidget {
-  const TenantAdminAccountCreateScreen({super.key});
+class TenantAdminAccountProfileEditScreen extends StatefulWidget {
+  const TenantAdminAccountProfileEditScreen({
+    super.key,
+    required this.accountProfileId,
+  });
+
+  final String accountProfileId;
 
   @override
-  State<TenantAdminAccountCreateScreen> createState() =>
-      _TenantAdminAccountCreateScreenState();
+  State<TenantAdminAccountProfileEditScreen> createState() =>
+      _TenantAdminAccountProfileEditScreenState();
 }
 
-class _TenantAdminAccountCreateScreenState
-    extends State<TenantAdminAccountCreateScreen> {
+class _TenantAdminAccountProfileEditScreenState
+    extends State<TenantAdminAccountProfileEditScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _nameController = TextEditingController();
-  final _documentTypeController = TextEditingController();
-  final _documentNumberController = TextEditingController();
-  final _profileDisplayNameController = TextEditingController();
+  final _displayNameController = TextEditingController();
   final _latitudeController = TextEditingController();
   final _longitudeController = TextEditingController();
   XFile? _avatarFile;
   XFile? _coverFile;
   String? _selectedProfileType;
-  late final TenantAdminAccountsController _controller;
+  TenantAdminAccountProfile? _profile;
+  String? _errorMessage;
+  bool _isLoading = true;
+  late final TenantAdminAccountProfilesController _controller;
 
   @override
   void initState() {
     super.initState();
-    _controller = GetIt.I.get<TenantAdminAccountsController>();
-    _controller.loadProfileTypes();
+    _controller = GetIt.I.get<TenantAdminAccountProfilesController>();
+    _load();
+  }
+
+  Future<void> _load() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+    try {
+      await _controller.loadProfileTypes();
+      final profile = await _controller.fetchProfile(widget.accountProfileId);
+      if (!mounted) return;
+      _profile = profile;
+      _selectedProfileType = profile.profileType;
+      _displayNameController.text = profile.displayName;
+      if (profile.location != null) {
+        _latitudeController.text =
+            profile.location!.latitude.toStringAsFixed(6);
+        _longitudeController.text =
+            profile.location!.longitude.toStringAsFixed(6);
+      } else {
+        _latitudeController.clear();
+        _longitudeController.clear();
+      }
+    } catch (error) {
+      _errorMessage = error.toString();
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
   }
 
   @override
   void dispose() {
-    _nameController.dispose();
-    _documentTypeController.dispose();
-    _documentNumberController.dispose();
-    _profileDisplayNameController.dispose();
+    _displayNameController.dispose();
     _latitudeController.dispose();
     _longitudeController.dispose();
     _controller.dispose();
@@ -73,15 +108,14 @@ class _TenantAdminAccountCreateScreenState
   String? _validateLatitude(String? value) {
     final trimmed = value?.trim() ?? '';
     final other = _longitudeController.text.trim();
-    final requires = _requiresLocation();
-    if (requires && trimmed.isEmpty && other.isEmpty) {
-      return 'Localização é obrigatória para este perfil.';
-    }
     if (trimmed.isNotEmpty && double.tryParse(trimmed) == null) {
       return 'Latitude inválida.';
     }
-    if (requires && trimmed.isEmpty && other.isNotEmpty) {
+    if (_requiresLocation() && trimmed.isEmpty && other.isNotEmpty) {
       return 'Latitude é obrigatória.';
+    }
+    if (_requiresLocation() && trimmed.isEmpty && other.isEmpty) {
+      return 'Localização é obrigatória para este perfil.';
     }
     return null;
   }
@@ -89,14 +123,27 @@ class _TenantAdminAccountCreateScreenState
   String? _validateLongitude(String? value) {
     final trimmed = value?.trim() ?? '';
     final other = _latitudeController.text.trim();
-    final requires = _requiresLocation();
     if (trimmed.isNotEmpty && double.tryParse(trimmed) == null) {
       return 'Longitude inválida.';
     }
-    if (requires && trimmed.isEmpty && other.isNotEmpty) {
+    if (_requiresLocation() && trimmed.isEmpty && other.isNotEmpty) {
       return 'Longitude é obrigatória.';
     }
     return null;
+  }
+
+  TenantAdminLocation? _currentLocation() {
+    final latText = _latitudeController.text.trim();
+    final lngText = _longitudeController.text.trim();
+    if (latText.isEmpty || lngText.isEmpty) {
+      return null;
+    }
+    final lat = double.tryParse(latText);
+    final lng = double.tryParse(lngText);
+    if (lat == null || lng == null) {
+      return null;
+    }
+    return TenantAdminLocation(latitude: lat, longitude: lng);
   }
 
   Future<void> _openMapPicker() async {
@@ -112,18 +159,45 @@ class _TenantAdminAccountCreateScreenState
     setState(() {});
   }
 
-  TenantAdminLocation? _currentLocation() {
-    final latText = _latitudeController.text.trim();
-    final lngText = _longitudeController.text.trim();
-    if (latText.isEmpty || lngText.isEmpty) {
-      return null;
+  Future<void> _autoSaveImages() async {
+    final profile = _profile;
+    if (profile == null) {
+      return;
     }
-    final lat = double.tryParse(latText);
-    final lng = double.tryParse(lngText);
-    if (lat == null || lng == null) {
-      return null;
+    final messenger = ScaffoldMessenger.of(context);
+    final avatarUpload = await _buildUpload(_avatarFile);
+    final coverUpload = await _buildUpload(_coverFile);
+    if (avatarUpload == null && coverUpload == null) {
+      return;
     }
-    return TenantAdminLocation(latitude: lat, longitude: lng);
+    setState(() {
+      _isLoading = true;
+    });
+    try {
+      final updated = await _controller.updateProfile(
+        accountProfileId: profile.id,
+        avatarUpload: avatarUpload,
+        coverUpload: coverUpload,
+      );
+      if (!mounted) return;
+      setState(() {
+        _profile = updated;
+        _avatarFile = null;
+        _coverFile = null;
+        _isLoading = false;
+      });
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Imagem atualizada.')),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+      });
+      messenger.showSnackBar(
+        SnackBar(content: Text('Falha ao salvar imagem: $error')),
+      );
+    }
   }
 
   Future<void> _pickImage({required bool isAvatar}) async {
@@ -142,6 +216,7 @@ class _TenantAdminAccountCreateScreenState
         _coverFile = selected;
       }
     });
+    await _autoSaveImages();
   }
 
   void _clearImage({required bool isAvatar}) {
@@ -188,130 +263,73 @@ class _TenantAdminAccountCreateScreenState
                 ),
               ),
               const SizedBox(height: 4),
-              const Text(
-                'Criar Conta',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _nameController,
-                decoration: const InputDecoration(labelText: 'Nome'),
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'Nome é obrigatório.';
-                  }
-                  return null;
-                },
+              Text(
+                'Editar Perfil',
+                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
               ),
               const SizedBox(height: 12),
-              TextFormField(
-                controller: _documentTypeController,
-                decoration: const InputDecoration(labelText: 'Tipo do documento'),
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'Tipo do documento é obrigatório.';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 12),
-              StreamValueBuilder<bool>(
-                streamValue: _controller.isLoadingStreamValue,
-                builder: (context, isLoading) {
-                  return StreamValueBuilder<String?>(
-                    streamValue: _controller.errorStreamValue,
-                    builder: (context, error) {
-                      return StreamValueBuilder(
-                        streamValue: _controller.profileTypesStreamValue,
-                        builder: (context, types) {
-                          final hasTypes = types.isNotEmpty;
-                          return Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              if (isLoading) const LinearProgressIndicator(),
-                              if (error != null)
-                                Padding(
-                                  padding: const EdgeInsets.only(top: 8),
-                                  child: Row(
-                                    children: [
-                                      Expanded(
-                                        child: Text(
-                                          error,
-                                          style: const TextStyle(color: Colors.red),
-                                        ),
-                                      ),
-                                      TextButton(
-                                        onPressed: _controller.loadProfileTypes,
-                                        child: const Text('Tentar novamente'),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              const SizedBox(height: 8),
-                              DropdownButtonFormField<String>(
-                                key: ValueKey(_selectedProfileType),
-                                initialValue: _selectedProfileType,
-                                decoration: const InputDecoration(
-                                  labelText: 'Tipo de perfil',
-                                ),
-                                items: types
-                                    .map(
-                                      (type) => DropdownMenuItem<String>(
-                                        value: type.type,
-                                        child: Text(type.label),
-                                      ),
-                                    )
-                                    .toList(growable: false),
-                                onChanged: hasTypes
-                                    ? (value) {
-                                        setState(() {
-                                          _selectedProfileType = value;
-                                          if (!_requiresLocation()) {
-                                            _latitudeController.clear();
-                                            _longitudeController.clear();
-                                          }
-                                        });
-                                      }
-                                    : null,
-                                validator: (value) {
-                                  if (value == null || value.trim().isEmpty) {
-                                    return 'Tipo de perfil é obrigatório.';
-                                  }
-                                  return null;
-                                },
-                              ),
-                              if (!isLoading && error == null && !hasTypes)
-                                const Padding(
-                                  padding: EdgeInsets.only(top: 8),
-                                  child: Text('Nenhum tipo disponível para este tenant.'),
-                                ),
-                            ],
-                          );
-                        },
-                      );
+              if (_isLoading) const LinearProgressIndicator(),
+              if (_errorMessage != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          _errorMessage!,
+                          style: const TextStyle(color: Colors.red),
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: _load,
+                        child: const Text('Tentar novamente'),
+                      ),
+                    ],
+                  ),
+                ),
+              const SizedBox(height: 8),
+              StreamValueBuilder(
+                streamValue: _controller.profileTypesStreamValue,
+                builder: (context, types) {
+                  return DropdownButtonFormField<String>(
+                    key: ValueKey(_selectedProfileType),
+                    initialValue: _selectedProfileType,
+                    decoration: const InputDecoration(
+                      labelText: 'Tipo de perfil',
+                    ),
+                    items: types
+                        .map(
+                          (type) => DropdownMenuItem<String>(
+                            value: type.type,
+                            child: Text(type.label),
+                          ),
+                        )
+                        .toList(growable: false),
+                    onChanged: (value) {
+                      setState(() {
+                        _selectedProfileType = value;
+                        if (!_requiresLocation()) {
+                          _latitudeController.clear();
+                          _longitudeController.clear();
+                        }
+                      });
+                    },
+                    validator: (value) {
+                      if (value == null || value.trim().isEmpty) {
+                        return 'Tipo de perfil é obrigatório.';
+                      }
+                      return null;
                     },
                   );
                 },
               ),
               const SizedBox(height: 12),
               TextFormField(
-                controller: _profileDisplayNameController,
-                decoration:
-                    const InputDecoration(labelText: 'Nome de exibição'),
+                controller: _displayNameController,
+                decoration: const InputDecoration(labelText: 'Nome de exibição'),
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
                     return 'Nome de exibição é obrigatório.';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _documentNumberController,
-                decoration: const InputDecoration(labelText: 'Número do documento'),
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'Número do documento é obrigatório.';
                   }
                   return null;
                 },
@@ -334,6 +352,17 @@ class _TenantAdminAccountCreateScreenState
                         fit: BoxFit.cover,
                       ),
                     )
+                  else if (_profile?.avatarUrl != null &&
+                      _profile!.avatarUrl!.isNotEmpty)
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(36),
+                      child: Image.network(
+                        _profile!.avatarUrl!,
+                        width: 72,
+                        height: 72,
+                        fit: BoxFit.cover,
+                      ),
+                    )
                   else
                     Container(
                       width: 72,
@@ -350,7 +379,10 @@ class _TenantAdminAccountCreateScreenState
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          _avatarFile?.name ?? 'Nenhuma imagem selecionada',
+                          _avatarFile?.name ??
+                              (_profile?.avatarUrl?.isNotEmpty ?? false
+                                  ? 'Imagem atual'
+                                  : 'Nenhuma imagem selecionada'),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -384,6 +416,17 @@ class _TenantAdminAccountCreateScreenState
                   borderRadius: BorderRadius.circular(12),
                   child: Image.file(
                     File(_coverFile!.path),
+                    width: double.infinity,
+                    height: 140,
+                    fit: BoxFit.cover,
+                  ),
+                )
+              else if (_profile?.coverUrl != null &&
+                  _profile!.coverUrl!.isNotEmpty)
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: Image.network(
+                    _profile!.coverUrl!,
                     width: double.infinity,
                     height: 140,
                     fit: BoxFit.cover,
@@ -439,32 +482,35 @@ class _TenantAdminAccountCreateScreenState
               ],
               const SizedBox(height: 20),
               ElevatedButton(
-                onPressed: () async {
-                  final form = _formKey.currentState;
-                  if (form == null || !form.validate()) {
-                    return;
-                  }
-                  final selectedType = _selectedProfileType ?? '';
-                  final location = _currentLocation();
-                  final avatarUpload = await _buildUpload(_avatarFile);
-                  final coverUpload = await _buildUpload(_coverFile);
-                  await _controller.createAccountWithProfile(
-                    name: _nameController.text.trim(),
-                    documentType: _documentTypeController.text.trim(),
-                    documentNumber: _documentNumberController.text.trim(),
-                    profileType: selectedType,
-                    displayName: _profileDisplayNameController.text.trim(),
-                    location: location,
-                    avatarUpload: avatarUpload,
-                    coverUpload: coverUpload,
-                  );
-                  if (!context.mounted) return;
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Conta e perfil salvos.')),
-                  );
-                  context.router.maybePop();
-                },
-                child: const Text('Salvar Conta'),
+                onPressed: _isLoading
+                    ? null
+                    : () async {
+                        final form = _formKey.currentState;
+                        if (form == null || !form.validate()) {
+                          return;
+                        }
+                        final messenger = ScaffoldMessenger.of(context);
+                        final avatarUpload = await _buildUpload(_avatarFile);
+                        final coverUpload = await _buildUpload(_coverFile);
+                        final updated = await _controller.updateProfile(
+                          accountProfileId: widget.accountProfileId,
+                          profileType: _selectedProfileType,
+                          displayName: _displayNameController.text.trim(),
+                          location: requiresLocation ? _currentLocation() : null,
+                          avatarUpload: avatarUpload,
+                          coverUpload: coverUpload,
+                        );
+                        if (!mounted) return;
+                        setState(() {
+                          _profile = updated;
+                          _avatarFile = null;
+                          _coverFile = null;
+                        });
+                        messenger.showSnackBar(
+                          const SnackBar(content: Text('Perfil atualizado.')),
+                        );
+                      },
+                child: const Text('Atualizar Perfil'),
               ),
             ],
           ),

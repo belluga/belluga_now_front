@@ -1,5 +1,6 @@
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
 
@@ -17,6 +18,8 @@ abstract class TenantAdminAccountProfilesRepositoryContract {
     String? bio,
     String? avatarUrl,
     String? coverUrl,
+    TenantAdminMediaUpload? avatarUpload,
+    TenantAdminMediaUpload? coverUpload,
   });
   Future<TenantAdminAccountProfile> updateAccountProfile({
     required String accountProfileId,
@@ -27,6 +30,8 @@ abstract class TenantAdminAccountProfilesRepositoryContract {
     String? bio,
     String? avatarUrl,
     String? coverUrl,
+    TenantAdminMediaUpload? avatarUpload,
+    TenantAdminMediaUpload? coverUpload,
   });
   Future<void> deleteAccountProfile(String accountProfileId);
   Future<TenantAdminAccountProfile> restoreAccountProfile(String accountProfileId);

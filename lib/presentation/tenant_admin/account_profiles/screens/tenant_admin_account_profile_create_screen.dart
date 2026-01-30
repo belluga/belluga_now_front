@@ -1,10 +1,14 @@
+import 'dart:io';
+
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
 import 'package:belluga_now/presentation/tenant_admin/account_profiles/controllers/tenant_admin_account_profiles_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 
 class TenantAdminAccountProfileCreateScreen extends StatefulWidget {
@@ -26,6 +30,8 @@ class _TenantAdminAccountProfileCreateScreenState
   final _displayNameController = TextEditingController();
   final _latitudeController = TextEditingController();
   final _longitudeController = TextEditingController();
+  XFile? _avatarFile;
+  XFile? _coverFile;
   String? _selectedProfileType;
   late final TenantAdminAccountProfilesController _controller;
   String? _accountId;
@@ -128,37 +134,107 @@ class _TenantAdminAccountProfileCreateScreenState
     return TenantAdminLocation(latitude: lat, longitude: lng);
   }
 
+  Future<void> _pickImage({required bool isAvatar}) async {
+    final picker = ImagePicker();
+    final selected = await picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 85,
+    );
+    if (selected == null) {
+      return;
+    }
+    setState(() {
+      if (isAvatar) {
+        _avatarFile = selected;
+      } else {
+        _coverFile = selected;
+      }
+    });
+  }
+
+  void _clearImage({required bool isAvatar}) {
+    setState(() {
+      if (isAvatar) {
+        _avatarFile = null;
+      } else {
+        _coverFile = null;
+      }
+    });
+  }
+
+  Future<TenantAdminMediaUpload?> _buildUpload(XFile? file) async {
+    if (file == null) return null;
+    final bytes = await file.readAsBytes();
+    return TenantAdminMediaUpload(
+      bytes: bytes,
+      fileName: file.name,
+    );
+  }
+
+  Future<void> _submit() async {
+    final form = _formKey.currentState;
+    if (form == null || !form.validate()) {
+      return;
+    }
+    final messenger = ScaffoldMessenger.of(context);
+    final router = context.router;
+    if (_accountId == null) {
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Conta inválida.')),
+      );
+      return;
+    }
+    final selectedType = _selectedProfileType ?? '';
+    final location = _currentLocation();
+    final avatarUpload = await _buildUpload(_avatarFile);
+    final coverUpload = await _buildUpload(_coverFile);
+    await _controller.createProfile(
+      accountId: _accountId!,
+      profileType: selectedType,
+      displayName: _displayNameController.text.trim(),
+      location: location,
+      avatarUpload: avatarUpload,
+      coverUpload: coverUpload,
+    );
+    if (!context.mounted) return;
+    messenger.showSnackBar(
+      const SnackBar(content: Text('Perfil salvo.')),
+    );
+    router.maybePop();
+  }
+
   @override
   Widget build(BuildContext context) {
     final requiresLocation = _requiresLocation();
-    return Padding(
-      padding: EdgeInsets.fromLTRB(
-        16,
-        16,
-        16,
-        16 + MediaQuery.of(context).viewInsets.bottom,
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Criar Perfil - ${widget.accountSlug}'),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => context.router.maybePop(),
+          tooltip: 'Voltar',
+        ),
+        actions: [
+          TextButton(
+            onPressed: _submit,
+            child: const Text('Salvar'),
+          ),
+        ],
       ),
-      child: SingleChildScrollView(
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Align(
-                alignment: Alignment.centerLeft,
-                child: IconButton(
-                  icon: const Icon(Icons.arrow_back),
-                  onPressed: () => context.router.maybePop(),
-                  tooltip: 'Voltar',
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                'Criar Perfil - ${widget.accountSlug}',
-                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
-              ),
-              const SizedBox(height: 16),
-              StreamValueBuilder<bool>(
+      body: Padding(
+        padding: EdgeInsets.fromLTRB(
+          16,
+          16,
+          16,
+          16 + MediaQuery.of(context).viewInsets.bottom,
+        ),
+        child: SingleChildScrollView(
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                StreamValueBuilder<bool>(
                 streamValue: _controller.isLoadingStreamValue,
                 builder: (context, isLoading) {
                   return StreamValueBuilder<String?>(
@@ -207,7 +283,13 @@ class _TenantAdminAccountProfileCreateScreenState
                                     .toList(growable: false),
                                 onChanged: hasTypes
                                     ? (value) {
-                                        setState(() => _selectedProfileType = value);
+                                        setState(() {
+                                          _selectedProfileType = value;
+                                          if (!_requiresLocation()) {
+                                            _latitudeController.clear();
+                                            _longitudeController.clear();
+                                          }
+                                        });
                                       }
                                     : null,
                                 validator: (value) {
@@ -241,27 +323,120 @@ class _TenantAdminAccountProfileCreateScreenState
                   return null;
                 },
               ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _latitudeController,
-                decoration: InputDecoration(
-                  labelText:
-                      requiresLocation ? 'Latitude' : 'Latitude (opcional)',
-                ),
-                keyboardType: TextInputType.number,
-                validator: _validateLatitude,
+              const SizedBox(height: 16),
+              Text(
+                'Imagem de perfil',
+                style: Theme.of(context).textTheme.titleSmall,
               ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _longitudeController,
-                decoration: InputDecoration(
-                  labelText:
-                      requiresLocation ? 'Longitude' : 'Longitude (opcional)',
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  if (_avatarFile != null)
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(36),
+                      child: Image.file(
+                        File(_avatarFile!.path),
+                        width: 72,
+                        height: 72,
+                        fit: BoxFit.cover,
+                      ),
+                    )
+                  else
+                    Container(
+                      width: 72,
+                      height: 72,
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                        borderRadius: BorderRadius.circular(36),
+                      ),
+                      child: const Icon(Icons.person_outline),
+                    ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _avatarFile?.name ?? 'Nenhuma imagem selecionada',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        Row(
+                          children: [
+                            TextButton.icon(
+                              onPressed: () => _pickImage(isAvatar: true),
+                              icon: const Icon(Icons.photo_library_outlined),
+                              label: const Text('Selecionar'),
+                            ),
+                            if (_avatarFile != null)
+                              TextButton(
+                                onPressed: () => _clearImage(isAvatar: true),
+                                child: const Text('Remover'),
+                              ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Capa',
+                style: Theme.of(context).textTheme.titleSmall,
+              ),
+              const SizedBox(height: 8),
+              if (_coverFile != null)
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: Image.file(
+                    File(_coverFile!.path),
+                    width: double.infinity,
+                    height: 140,
+                    fit: BoxFit.cover,
+                  ),
+                )
+              else
+                Container(
+                  width: double.infinity,
+                  height: 140,
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Center(
+                    child: Icon(Icons.image_outlined),
+                  ),
                 ),
-                keyboardType: TextInputType.number,
-                validator: _validateLongitude,
+              Row(
+                children: [
+                  TextButton.icon(
+                    onPressed: () => _pickImage(isAvatar: false),
+                    icon: const Icon(Icons.photo_library_outlined),
+                    label: const Text('Selecionar capa'),
+                  ),
+                  if (_coverFile != null)
+                    TextButton(
+                      onPressed: () => _clearImage(isAvatar: false),
+                      child: const Text('Remover'),
+                    ),
+                ],
               ),
               if (requiresLocation) ...[
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _latitudeController,
+                  decoration: const InputDecoration(labelText: 'Latitude'),
+                  keyboardType: TextInputType.number,
+                  validator: _validateLatitude,
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _longitudeController,
+                  decoration: const InputDecoration(labelText: 'Longitude'),
+                  keyboardType: TextInputType.number,
+                  validator: _validateLongitude,
+                ),
                 const SizedBox(height: 8),
                 TextButton.icon(
                   onPressed: _openMapPicker,
@@ -270,35 +445,15 @@ class _TenantAdminAccountProfileCreateScreenState
                 ),
               ],
               const SizedBox(height: 20),
-              ElevatedButton(
-                onPressed: () async {
-                  final form = _formKey.currentState;
-                  if (form == null || !form.validate()) {
-                    return;
-                  }
-                  if (_accountId == null) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Conta inválida.')),
-                    );
-                    return;
-                  }
-                  final selectedType = _selectedProfileType ?? '';
-                  final location = _currentLocation();
-                  await _controller.createProfile(
-                    accountId: _accountId!,
-                    profileType: selectedType,
-                    displayName: _displayNameController.text.trim(),
-                    location: location,
-                  );
-                  if (!context.mounted) return;
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Perfil salvo.')),
-                  );
-                  context.router.maybePop();
-                },
-                child: const Text('Salvar Perfil'),
-              ),
-            ],
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: _submit,
+                    child: const Text('Salvar Perfil'),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),

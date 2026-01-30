@@ -10,6 +10,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_account.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_document.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
 import 'package:belluga_now/infrastructure/dal/dao/laravel_backend/app_data_backend/app_data_backend_stub.dart';
@@ -269,6 +270,8 @@ class _FakeAccountProfilesRepository
     String? bio,
     String? avatarUrl,
     String? coverUrl,
+    TenantAdminMediaUpload? avatarUpload,
+    TenantAdminMediaUpload? coverUpload,
   }) async {
     return TenantAdminAccountProfile(
       id: 'profile-1',
@@ -308,6 +311,8 @@ class _FakeAccountProfilesRepository
     String? bio,
     String? avatarUrl,
     String? coverUrl,
+    TenantAdminMediaUpload? avatarUpload,
+    TenantAdminMediaUpload? coverUpload,
   }) async {
     return const TenantAdminAccountProfile(
       id: 'profile-1',
