@@ -1,6 +1,6 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
-import 'package:belluga_now/domain/partners/partner_model.dart';
+import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/presentation/tenant/discovery/controllers/discovery_screen_controller.dart';
 import 'package:belluga_now/presentation/tenant/discovery/widgets/discovery_partner_card.dart';
 import 'package:belluga_now/presentation/tenant/discovery/widgets/discovery_curator_content_section.dart';
@@ -72,7 +72,7 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
             return StreamValueBuilder<bool>(
               streamValue: _controller.isSearchingStreamValue,
               builder: (context, isSearching) {
-                return StreamValueBuilder<PartnerType?>(
+                return StreamValueBuilder<String?>(
                   streamValue: _controller.selectedTypeFilterStreamValue,
                   builder: (context, selectedType) {
                     return StreamValueBuilder<String>(
@@ -87,7 +87,7 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                         return StreamValueBuilder<Set<String>>(
                           streamValue: _controller.favoriteIdsStream,
                           builder: (context, favorites) {
-                            return StreamValueBuilder<List<PartnerModel>>(
+                            return StreamValueBuilder<List<AccountProfileModel>>(
                               streamValue:
                                   _controller.filteredPartnersStreamValue,
                               builder: (context, partners) {
@@ -97,7 +97,7 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                                       SliverToBoxAdapter(
                                         child: Padding(
                                           padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                                          child: CarouselSection<PartnerModel>(
+                                          child: CarouselSection<AccountProfileModel>(
                                             title: 'Tocando agora',
                                             streamValue:
                                                 _controller.liveNowStreamValue,
@@ -129,6 +129,8 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                                                 PartnerDetailRoute(
                                                     slug: partner.slug),
                                               ),
+                                              typeLabel: _controller
+                                                  .labelForAccountProfileType(partner.type),
                                             ),
                                           ),
                                         ),
@@ -136,7 +138,7 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                                       SliverToBoxAdapter(
                                         child: Padding(
                                           padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                                          child: CarouselSection<PartnerModel>(
+                                          child: CarouselSection<AccountProfileModel>(
                                             title: 'Perto de você',
                                             streamValue:
                                                 _controller.nearbyStreamValue,
@@ -168,6 +170,8 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                                                 PartnerDetailRoute(
                                                     slug: partner.slug),
                                               ),
+                                              typeLabel: _controller
+                                                  .labelForAccountProfileType(partner.type),
                                             ),
                                           ),
                                         ),
@@ -196,6 +200,8 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                                               .availableTypesStreamValue,
                                           onSelectType:
                                               _controller.setTypeFilter,
+                                          labelForType:
+                                              _controller.labelForAccountProfileType,
                                         ),
                                       ),
                                     ),
@@ -250,6 +256,9 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                                             PartnerDetailRoute(
                                                 slug: partner.slug),
                                           ),
+                                          typeLabelForPartner: (partner) =>
+                                              _controller.labelForAccountProfileType(
+                                                  partner.type),
                                         ),
                                       ),
                                   ],

@@ -1,4 +1,5 @@
 import 'package:auto_route/auto_route.dart';
+import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
 import 'package:belluga_now/presentation/tenant_admin/account_profiles/controllers/tenant_admin_account_profiles_controller.dart';
@@ -53,8 +54,83 @@ class _TenantAdminAccountProfileCreateScreenState
     super.dispose();
   }
 
+  TenantAdminProfileTypeDefinition? _selectedProfileTypeDefinition() {
+    final selectedType = _selectedProfileType;
+    if (selectedType == null || selectedType.isEmpty) {
+      return null;
+    }
+    for (final definition in _controller.profileTypesStreamValue.value) {
+      if (definition.type == selectedType) {
+        return definition;
+      }
+    }
+    return null;
+  }
+
+  bool _requiresLocation() {
+    final definition = _selectedProfileTypeDefinition();
+    return definition?.capabilities.isPoiEnabled ?? false;
+  }
+
+  String? _validateLatitude(String? value) {
+    final trimmed = value?.trim() ?? '';
+    final other = _longitudeController.text.trim();
+    final requires = _requiresLocation();
+    if (requires && trimmed.isEmpty && other.isEmpty) {
+      return 'Localização é obrigatória para este perfil.';
+    }
+    if (trimmed.isNotEmpty && double.tryParse(trimmed) == null) {
+      return 'Latitude inválida.';
+    }
+    if (requires && trimmed.isEmpty && other.isNotEmpty) {
+      return 'Latitude é obrigatória.';
+    }
+    return null;
+  }
+
+  String? _validateLongitude(String? value) {
+    final trimmed = value?.trim() ?? '';
+    final other = _latitudeController.text.trim();
+    final requires = _requiresLocation();
+    if (trimmed.isNotEmpty && double.tryParse(trimmed) == null) {
+      return 'Longitude inválida.';
+    }
+    if (requires && trimmed.isEmpty && other.isNotEmpty) {
+      return 'Longitude é obrigatória.';
+    }
+    return null;
+  }
+
+  Future<void> _openMapPicker() async {
+    final currentLocation = _currentLocation();
+    final selected = await context.router.push<TenantAdminLocation?>(
+      TenantAdminLocationPickerRoute(initialLocation: currentLocation),
+    );
+    if (selected == null) {
+      return;
+    }
+    _latitudeController.text = selected.latitude.toStringAsFixed(6);
+    _longitudeController.text = selected.longitude.toStringAsFixed(6);
+    setState(() {});
+  }
+
+  TenantAdminLocation? _currentLocation() {
+    final latText = _latitudeController.text.trim();
+    final lngText = _longitudeController.text.trim();
+    if (latText.isEmpty || lngText.isEmpty) {
+      return null;
+    }
+    final lat = double.tryParse(latText);
+    final lng = double.tryParse(lngText);
+    if (lat == null || lng == null) {
+      return null;
+    }
+    return TenantAdminLocation(latitude: lat, longitude: lng);
+  }
+
   @override
   Widget build(BuildContext context) {
+    final requiresLocation = _requiresLocation();
     return Padding(
       padding: EdgeInsets.fromLTRB(
         16,
@@ -168,16 +244,31 @@ class _TenantAdminAccountProfileCreateScreenState
               const SizedBox(height: 12),
               TextFormField(
                 controller: _latitudeController,
-                decoration: const InputDecoration(labelText: 'Latitude (opcional)'),
+                decoration: InputDecoration(
+                  labelText:
+                      requiresLocation ? 'Latitude' : 'Latitude (opcional)',
+                ),
                 keyboardType: TextInputType.number,
+                validator: _validateLatitude,
               ),
               const SizedBox(height: 12),
               TextFormField(
                 controller: _longitudeController,
-                decoration:
-                    const InputDecoration(labelText: 'Longitude (opcional)'),
+                decoration: InputDecoration(
+                  labelText:
+                      requiresLocation ? 'Longitude' : 'Longitude (opcional)',
+                ),
                 keyboardType: TextInputType.number,
+                validator: _validateLongitude,
               ),
+              if (requiresLocation) ...[
+                const SizedBox(height: 8),
+                TextButton.icon(
+                  onPressed: _openMapPicker,
+                  icon: const Icon(Icons.map_outlined),
+                  label: const Text('Selecionar no mapa'),
+                ),
+              ],
               const SizedBox(height: 20),
               ElevatedButton(
                 onPressed: () async {
@@ -192,38 +283,7 @@ class _TenantAdminAccountProfileCreateScreenState
                     return;
                   }
                   final selectedType = _selectedProfileType ?? '';
-                  final latText = _latitudeController.text.trim();
-                  final lngText = _longitudeController.text.trim();
-                  TenantAdminLocation? location;
-                  if (latText.isNotEmpty || lngText.isNotEmpty) {
-                    final lat = double.tryParse(latText);
-                    final lng = double.tryParse(lngText);
-                    if (lat == null || lng == null) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Latitude/Longitude inválidas.')),
-                      );
-                      return;
-                    }
-                    location = TenantAdminLocation(latitude: lat, longitude: lng);
-                  }
-                  final definitions = _controller.profileTypesStreamValue.value;
-                  TenantAdminProfileTypeDefinition? typeDefinition;
-                  for (final def in definitions) {
-                    if (def.type == selectedType) {
-                      typeDefinition = def;
-                      break;
-                    }
-                  }
-                  if (typeDefinition != null &&
-                      typeDefinition.capabilities.isPoiEnabled &&
-                      location == null) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Localização é obrigatória para este perfil.'),
-                      ),
-                    );
-                    return;
-                  }
+                  final location = _currentLocation();
                   await _controller.createProfile(
                     accountId: _accountId!,
                     profileType: selectedType,

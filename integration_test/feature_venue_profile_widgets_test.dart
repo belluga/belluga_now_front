@@ -1,5 +1,5 @@
 import 'package:belluga_now/domain/partner/partner_resume.dart';
-import 'package:belluga_now/domain/partners/partner_model.dart';
+import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/infrastructure/dal/dao/mock_backend/mock_schedule_backend.dart';
 import 'package:belluga_now/infrastructure/dal/datasources/mock_partner_profile_database.dart';
@@ -16,11 +16,11 @@ void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
   testWidgets('Venue profile config uses reduced tabs', (tester) async {
-    final partner = PartnerModel.fromPrimitives(
+    final partner = AccountProfileModel.fromPrimitives(
       id: MockScheduleBackend.generateMongoId('venue-1'),
       name: 'Test Venue',
       slug: 'test-venue',
-      type: PartnerType.venue,
+      type: 'venue',
       bio: 'Bio for venue',
     );
     final config = MockPartnerProfileDatabase().buildConfig(partner);

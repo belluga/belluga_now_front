@@ -30,6 +30,10 @@ class TenantAdminModule extends ModuleContract {
               page: TenantAdminAccountCreateRoute.page,
             ),
             AutoRoute(
+              path: 'accounts/location-picker',
+              page: TenantAdminLocationPickerRoute.page,
+            ),
+            AutoRoute(
               path: 'accounts/:accountSlug',
               page: TenantAdminAccountDetailRoute.page,
             ),

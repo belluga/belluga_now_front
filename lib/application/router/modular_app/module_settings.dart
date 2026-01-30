@@ -18,7 +18,7 @@ import 'package:belluga_now/domain/repositories/contacts_repository_contract.dar
 import 'package:belluga_now/domain/repositories/friends_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/landlord_auth_repository_contract.dart';
-import 'package:belluga_now/domain/repositories/partners_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/account_profiles_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
@@ -34,7 +34,7 @@ import 'package:belluga_now/infrastructure/repositories/contacts_repository.dart
 import 'package:belluga_now/infrastructure/repositories/friends_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/invites_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/landlord_auth_repository.dart';
-import 'package:belluga_now/infrastructure/repositories/partners_repository.dart';
+import 'package:belluga_now/infrastructure/repositories/account_profiles_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/schedule_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/tenant_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/telemetry_repository.dart';
@@ -52,6 +52,7 @@ import 'package:belluga_now/presentation/common/location_permission/controllers/
 import 'package:belluga_now/presentation/common/push/controllers/push_options_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/account_profiles/controllers/tenant_admin_account_profiles_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/accounts/controllers/tenant_admin_accounts_controller.dart';
+import 'package:belluga_now/presentation/tenant_admin/accounts/controllers/tenant_admin_location_picker_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/organizations/controllers/tenant_admin_organizations_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/profile_types/controllers/tenant_admin_profile_types_controller.dart';
 import 'package:belluga_now/infrastructure/services/push/push_answer_handler.dart';
@@ -115,6 +116,11 @@ class ModuleSettings extends ModuleSettingsContract {
     if (!GetIt.I.isRegistered<TenantAdminAccountsController>()) {
       GetIt.I.registerFactory<TenantAdminAccountsController>(
         () => TenantAdminAccountsController(),
+      );
+    }
+    if (!GetIt.I.isRegistered<TenantAdminLocationPickerController>()) {
+      GetIt.I.registerFactory<TenantAdminLocationPickerController>(
+        () => TenantAdminLocationPickerController(),
       );
     }
     if (!GetIt.I.isRegistered<TenantAdminAccountProfilesController>()) {
@@ -309,8 +315,8 @@ class ModuleSettings extends ModuleSettingsContract {
     _registerIfAbsent<TelemetryRepositoryContract>(
       () => TelemetryRepository(),
     );
-    _registerIfAbsent<PartnersRepositoryContract>(
-      () => PartnersRepository(),
+    _registerIfAbsent<AccountProfilesRepositoryContract>(
+      () => AccountProfilesRepository(),
     );
     _registerIfAbsent<UserEventsRepositoryContract>(
       () => UserEventsRepository(),

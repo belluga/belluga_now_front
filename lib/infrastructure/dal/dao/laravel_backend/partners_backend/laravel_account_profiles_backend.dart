@@ -1,12 +1,12 @@
 import 'package:belluga_now/domain/app_data/app_data.dart';
-import 'package:belluga_now/domain/partners/partner_model.dart';
+import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
-import 'package:belluga_now/infrastructure/dal/dao/partners_backend_contract.dart';
+import 'package:belluga_now/infrastructure/dal/dao/account_profiles_backend_contract.dart';
 import 'package:dio/dio.dart';
 import 'package:get_it/get_it.dart';
 
-class LaravelPartnersBackend implements PartnersBackendContract {
-  LaravelPartnersBackend({Dio? dio}) : _dio = dio ?? Dio();
+class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
+  LaravelAccountProfilesBackend({Dio? dio}) : _dio = dio ?? Dio();
 
   final Dio _dio;
 
@@ -23,7 +23,7 @@ class LaravelPartnersBackend implements PartnersBackendContract {
   }
 
   @override
-  Future<List<PartnerModel>> fetchPartners() async {
+  Future<List<AccountProfileModel>> fetchAccountProfiles() async {
     try {
       final response = await _dio.get(
         '$_apiBaseUrl/v1/account_profiles',
@@ -51,16 +51,16 @@ class LaravelPartnersBackend implements PartnersBackendContract {
   }
 
   @override
-  Future<List<PartnerModel>> searchPartners({
+  Future<List<AccountProfileModel>> searchAccountProfiles({
     String? query,
-    PartnerType? typeFilter,
+    String? typeFilter,
   }) async {
-    final partners = await fetchPartners();
+    final partners = await fetchAccountProfiles();
     final trimmed = query?.trim().toLowerCase();
     var filtered = partners;
     if (typeFilter != null) {
       filtered =
-          filtered.where((partner) => partner.type == typeFilter).toList();
+          filtered.where((partner) => partner.profileType == typeFilter).toList();
     }
     if (trimmed != null && trimmed.isNotEmpty) {
       filtered = filtered.where((partner) {
@@ -74,17 +74,17 @@ class LaravelPartnersBackend implements PartnersBackendContract {
   }
 
   @override
-  Future<PartnerModel?> fetchPartnerBySlug(String slug) async {
-    final partners = await fetchPartners();
+  Future<AccountProfileModel?> fetchAccountProfileBySlug(String slug) async {
+    final profiles = await fetchAccountProfiles();
     try {
-      return partners.firstWhere((partner) => partner.slug == slug);
+      return profiles.firstWhere((profile) => profile.slug == slug);
     } catch (_) {
       return null;
     }
   }
 
-  List<PartnerModel> _parseProfiles(List<dynamic> raw) {
-    final partners = <PartnerModel>[];
+  List<AccountProfileModel> _parseProfiles(List<dynamic> raw) {
+    final profiles = <AccountProfileModel>[];
     for (final entry in raw) {
       if (entry is! Map) continue;
       final json = Map<String, dynamic>.from(entry);
@@ -95,15 +95,15 @@ class LaravelPartnersBackend implements PartnersBackendContract {
       if (id == null || name == null || slug == null || typeRaw == null) {
         continue;
       }
-      final mappedType = _mapProfileType(typeRaw);
-      if (mappedType == null) continue;
+      final trimmedType = typeRaw.trim();
+      if (trimmedType.isEmpty) continue;
       final tags = _extractTags(json['taxonomy_terms']);
-      partners.add(
-        PartnerModel.fromPrimitives(
+      profiles.add(
+        AccountProfileModel.fromPrimitives(
           id: id,
           name: name,
           slug: slug,
-          type: mappedType,
+          type: trimmedType,
           avatarUrl: json['avatar_url']?.toString(),
           coverUrl: json['cover_url']?.toString(),
           bio: json['bio']?.toString(),
@@ -111,7 +111,7 @@ class LaravelPartnersBackend implements PartnersBackendContract {
         ),
       );
     }
-    return partners;
+    return profiles;
   }
 
   List<String> _extractTags(dynamic raw) {
@@ -128,19 +128,4 @@ class LaravelPartnersBackend implements PartnersBackendContract {
     return tags;
   }
 
-  PartnerType? _mapProfileType(String raw) {
-    switch (raw) {
-      case 'artist':
-        return PartnerType.artist;
-      case 'venue':
-        return PartnerType.venue;
-      case 'experience_provider':
-        return PartnerType.experienceProvider;
-      case 'influencer':
-        return PartnerType.influencer;
-      case 'curator':
-        return PartnerType.curator;
-    }
-    return null;
-  }
 }

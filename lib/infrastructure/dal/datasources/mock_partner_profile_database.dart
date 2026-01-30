@@ -1,13 +1,13 @@
-import 'package:belluga_now/domain/partners/partner_model.dart';
+import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/presentation/tenant/partners/models/partner_profile_config.dart';
 
 /// Mock database providing profile module data keyed by partner slug.
 class MockPartnerProfileDatabase {
   MockPartnerProfileDatabase();
 
-  PartnerProfileConfig buildConfig(PartnerModel partner) {
+  PartnerProfileConfig buildConfig(AccountProfileModel partner) {
     switch (partner.type) {
-      case PartnerType.artist:
+      case 'artist':
         final hasBio = partner.bio != null && partner.bio!.trim().isNotEmpty;
         final tabs = <ProfileTabConfig>[];
         if (hasBio) {
@@ -32,7 +32,7 @@ class MockPartnerProfileDatabase {
           partner: partner,
           tabs: tabs,
         );
-      case PartnerType.venue:
+      case 'venue':
         final hasBio = partner.bio != null && partner.bio!.trim().isNotEmpty;
         final tabs = <ProfileTabConfig>[];
         if (hasBio) {
@@ -63,7 +63,7 @@ class MockPartnerProfileDatabase {
           partner: partner,
           tabs: tabs,
         );
-      case PartnerType.experienceProvider:
+      case 'experience_provider':
         return PartnerProfileConfig(
           partner: partner,
           tabs: [
@@ -87,7 +87,7 @@ class MockPartnerProfileDatabase {
             ),
           ],
         );
-      case PartnerType.curator:
+      case 'curator':
         return PartnerProfileConfig(
           partner: partner,
           tabs: [
@@ -108,7 +108,7 @@ class MockPartnerProfileDatabase {
             ),
           ],
         );
-      case PartnerType.influencer:
+      case 'influencer':
         return PartnerProfileConfig(
           partner: partner,
           tabs: [
@@ -131,6 +131,11 @@ class MockPartnerProfileDatabase {
               ],
             ),
           ],
+        );
+      default:
+        return PartnerProfileConfig(
+          partner: partner,
+          tabs: const [],
         );
     }
   }

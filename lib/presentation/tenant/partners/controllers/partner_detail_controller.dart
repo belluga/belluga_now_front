@@ -1,6 +1,6 @@
-import 'package:belluga_now/domain/partners/partner_model.dart';
+import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/domain/partners/profile_type_registry.dart';
-import 'package:belluga_now/domain/repositories/partners_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/account_profiles_repository_contract.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/infrastructure/dal/datasources/mock_partner_profile_database.dart';
 import 'package:belluga_now/infrastructure/dal/datasources/mock_partner_content_repository.dart';
@@ -11,12 +11,12 @@ import 'package:stream_value/core/stream_value.dart';
 
 class PartnerDetailController implements Disposable {
   PartnerDetailController({
-    PartnersRepositoryContract? partnersRepository,
+    AccountProfilesRepositoryContract? partnersRepository,
     MockPartnerProfileDatabase? profileDatabase,
     MockPartnerContentRepository? contentRepository,
     MockAudioPlayerService? audioPlayerService,
   })  : _partnersRepository =
-            partnersRepository ?? GetIt.I.get<PartnersRepositoryContract>(),
+            partnersRepository ?? GetIt.I.get<AccountProfilesRepositoryContract>(),
         _profileDatabase = profileDatabase ?? MockPartnerProfileDatabase(),
         _contentRepository = contentRepository ?? MockPartnerContentRepository(),
         _audioPlayerService = audioPlayerService ??
@@ -25,15 +25,15 @@ class PartnerDetailController implements Disposable {
                 : GetIt.I.registerSingleton<MockAudioPlayerService>(
                     MockAudioPlayerService()));
 
-  final PartnersRepositoryContract _partnersRepository;
+  final AccountProfilesRepositoryContract _partnersRepository;
   final MockPartnerProfileDatabase _profileDatabase;
   final MockPartnerContentRepository _contentRepository;
   final MockAudioPlayerService _audioPlayerService;
 
-  final partnerStreamValue = StreamValue<PartnerModel?>();
+  final partnerStreamValue = StreamValue<AccountProfileModel?>();
   final isLoadingStreamValue = StreamValue<bool>(defaultValue: false);
   StreamValue<Set<String>> get favoriteIdsStream =>
-      _partnersRepository.favoritePartnerIdsStreamValue;
+      _partnersRepository.favoriteAccountProfileIdsStreamValue;
   final profileConfigStreamValue =
       StreamValue<PartnerProfileConfig?>(defaultValue: null);
   final moduleDataStreamValue =
@@ -43,7 +43,7 @@ class PartnerDetailController implements Disposable {
   Future<void> loadPartner(String slug) async {
     isLoadingStreamValue.addValue(true);
     try {
-      final partner = await _partnersRepository.getPartnerBySlug(slug);
+      final partner = await _partnersRepository.getAccountProfileBySlug(slug);
       partnerStreamValue.addValue(partner);
       if (partner != null) {
         profileConfigStreamValue
@@ -65,7 +65,7 @@ class PartnerDetailController implements Disposable {
     return _partnersRepository.isFavorite(partnerId);
   }
 
-  bool isFavoritable(PartnerModel partner) {
+  bool isFavoritable(AccountProfileModel partner) {
     final registry = _resolveRegistry();
     if (registry == null || registry.isEmpty) return false;
     return registry.isFavoritableFor(partner.type);

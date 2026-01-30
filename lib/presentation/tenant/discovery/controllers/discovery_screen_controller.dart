@@ -1,7 +1,7 @@
 import 'package:belluga_now/domain/partners/engagement_data.dart';
-import 'package:belluga_now/domain/partners/partner_model.dart';
+import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/domain/partners/profile_type_registry.dart';
-import 'package:belluga_now/domain/repositories/partners_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/account_profiles_repository_contract.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/presentation/tenant/discovery/models/curator_content.dart';
 import 'package:flutter/material.dart';
@@ -10,30 +10,30 @@ import 'package:stream_value/core/stream_value.dart';
 
 class DiscoveryScreenController implements Disposable {
   DiscoveryScreenController({
-    PartnersRepositoryContract? partnersRepository,
-  }) : _partnersRepository =
-            partnersRepository ?? GetIt.I.get<PartnersRepositoryContract>();
+    AccountProfilesRepositoryContract? accountProfilesRepository,
+  }) : _partnersRepository = accountProfilesRepository ??
+            GetIt.I.get<AccountProfilesRepositoryContract>();
 
-  final PartnersRepositoryContract _partnersRepository;
+  final AccountProfilesRepositoryContract _partnersRepository;
 
   // Cached dataset
-  List<PartnerModel> _allPartners = const [];
+  List<AccountProfileModel> _allAccountProfiles = const [];
 
   final searchQueryStreamValue = StreamValue<String>(defaultValue: '');
-  final selectedTypeFilterStreamValue = StreamValue<PartnerType?>();
+  final selectedTypeFilterStreamValue = StreamValue<String?>();
   final availableTypesStreamValue =
-      StreamValue<List<PartnerType>>(defaultValue: const []);
+      StreamValue<List<String>>(defaultValue: const []);
   final filteredPartnersStreamValue =
-      StreamValue<List<PartnerModel>>(defaultValue: const []);
+      StreamValue<List<AccountProfileModel>>(defaultValue: const []);
   final isLoadingStreamValue = StreamValue<bool>(defaultValue: false);
   final hasLoadedStreamValue = StreamValue<bool>(defaultValue: false);
   final isSearchingStreamValue = StreamValue<bool>(defaultValue: false);
   final TextEditingController searchController = TextEditingController();
 
   // Highlighted sections
-  final liveNowStreamValue = StreamValue<List<PartnerModel>>(defaultValue: const []);
-  final nearbyStreamValue = StreamValue<List<PartnerModel>>(defaultValue: const []);
-  final curatorStreamValue = StreamValue<List<PartnerModel>>(defaultValue: const []);
+  final liveNowStreamValue = StreamValue<List<AccountProfileModel>>(defaultValue: const []);
+  final nearbyStreamValue = StreamValue<List<AccountProfileModel>>(defaultValue: const []);
+  final curatorStreamValue = StreamValue<List<AccountProfileModel>>(defaultValue: const []);
   final curatorContentStreamValue =
       StreamValue<List<CuratorContent>>(defaultValue: const []);
 
@@ -48,7 +48,7 @@ class DiscoveryScreenController implements Disposable {
   Future<void> _loadPartners() async {
     isLoadingStreamValue.addValue(true);
     try {
-      _allPartners = await _partnersRepository.fetchAllPartners();
+      _allAccountProfiles = await _partnersRepository.fetchAllAccountProfiles();
       _updateAvailableTypes();
       _buildSections();
       _applyFilters();
@@ -63,7 +63,7 @@ class DiscoveryScreenController implements Disposable {
     _applyFilters();
   }
 
-  void setTypeFilter(PartnerType? type) {
+  void setTypeFilter(String? type) {
     selectedTypeFilterStreamValue.addValue(type);
     _applyFilters();
   }
@@ -77,20 +77,20 @@ class DiscoveryScreenController implements Disposable {
     }
   }
 
-  void toggleFavorite(String partnerId) {
-    _partnersRepository.toggleFavorite(partnerId);
+  void toggleFavorite(String accountProfileId) {
+    _partnersRepository.toggleFavorite(accountProfileId);
   }
 
-  bool isFavorite(String partnerId) {
-    return _partnersRepository.isFavorite(partnerId);
+  bool isFavorite(String accountProfileId) {
+    return _partnersRepository.isFavorite(accountProfileId);
   }
 
   StreamValue<Set<String>> get favoriteIdsStream =>
-      _partnersRepository.favoritePartnerIdsStreamValue;
+      _partnersRepository.favoriteAccountProfileIdsStreamValue;
 
   void _buildSections() {
     // Tocando agora: artistas com status ativo ou próximo, ordenados por distância quando existir
-    final live = _allPartners.where(_isLiveNow).toList()
+    final live = _allAccountProfiles.where(_isLiveNow).toList()
       ..sort((a, b) {
         final aDist = a.distanceMeters ?? double.infinity;
         final bDist = b.distanceMeters ?? double.infinity;
@@ -99,8 +99,8 @@ class DiscoveryScreenController implements Disposable {
     liveNowStreamValue.addValue(live.take(10).toList());
 
     // Perto de você: venues/experiências ordenando por distância quando disponível
-    final nearby = _allPartners
-        .where((p) => p.type == PartnerType.venue || p.type == PartnerType.experienceProvider)
+    final nearby = _allAccountProfiles
+        .where((p) => p.type == 'venue' || p.type == 'experience_provider')
         .toList()
       ..sort((a, b) {
         final aDist = a.distanceMeters ?? double.infinity;
@@ -110,8 +110,8 @@ class DiscoveryScreenController implements Disposable {
     nearbyStreamValue.addValue(nearby.take(10).toList());
 
     // Curadores
-    final curators = _allPartners
-        .where((p) => p.type == PartnerType.curator)
+    final curators = _allAccountProfiles
+        .where((p) => p.type == 'curator')
         .toList()
       ..sort((a, b) => (b.acceptedInvites).compareTo(a.acceptedInvites));
     curatorStreamValue.addValue(curators.take(10).toList());
@@ -139,7 +139,7 @@ class DiscoveryScreenController implements Disposable {
     final query = searchQueryStreamValue.value.trim().toLowerCase();
     final type = selectedTypeFilterStreamValue.value;
 
-    var results = _allPartners;
+    var results = _allAccountProfiles;
 
     if (type != null) {
       results = results.where((p) => p.type == type).toList();
@@ -162,18 +162,26 @@ class DiscoveryScreenController implements Disposable {
       availableTypesStreamValue.addValue(const []);
       return;
     }
-    final presentTypes = _allPartners.map((p) => p.type).toSet();
+    final presentTypes = _allAccountProfiles.map((p) => p.type).toSet();
     final allowed = registry
-        .enabledPartnerTypes()
+        .enabledAccountProfileTypes()
         .where(presentTypes.contains)
         .toList(growable: false);
     availableTypesStreamValue.addValue(allowed);
   }
 
-  bool isPartnerFavoritable(PartnerModel partner) {
+  bool isPartnerFavoritable(AccountProfileModel partner) {
     final registry = _resolveRegistry();
     if (registry == null || registry.isEmpty) return false;
     return registry.isFavoritableFor(partner.type);
+  }
+
+  String labelForAccountProfileType(String type) {
+    final registry = _resolveRegistry();
+    if (registry == null || registry.isEmpty) {
+      return _fallbackLabelForType(type);
+    }
+    return registry.labelForType(type);
   }
 
   ProfileTypeRegistry? _resolveRegistry() {
@@ -183,8 +191,24 @@ class DiscoveryScreenController implements Disposable {
     return GetIt.I.get<AppData>().profileTypeRegistry;
   }
 
-  bool _isLiveNow(PartnerModel p) {
-    if (p.type != PartnerType.artist || p.engagementData == null) return false;
+  String _fallbackLabelForType(String type) {
+    switch (type) {
+      case 'artist':
+        return 'Artista';
+      case 'venue':
+        return 'Local';
+      case 'experience_provider':
+        return 'Experiência';
+      case 'influencer':
+        return 'Influenciador';
+      case 'curator':
+        return 'Curador';
+    }
+    return type;
+  }
+
+  bool _isLiveNow(AccountProfileModel p) {
+    if (p.type != 'artist' || p.engagementData == null) return false;
     final engagement = p.engagementData;
     if (engagement is ArtistEngagementData) {
       return engagement.status.toLowerCase().contains('agora');

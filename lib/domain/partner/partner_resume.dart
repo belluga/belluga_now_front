@@ -24,7 +24,7 @@ class PartnerResume {
   final MongoIDValue idValue;
   final InvitePartnerNameValue nameValue;
   final SlugValue? slugValue;
-  final InvitePartnerType type;
+  final InviteAccountProfileType type;
   final InvitePartnerTaglineValue taglineValue;
   final InvitePartnerHeroImageValue heroImageValue;
   final InvitePartnerLogoImageValue logoImageValue;
@@ -52,7 +52,7 @@ class PartnerResume {
       idValue: MongoIDValue()..parse(dto['id'] ?? ''),
       nameValue: InvitePartnerNameValue()..parse(dto['display_name'] ?? ''),
       slugValue: slugValue,
-      type: InvitePartnerType
+      type: InviteAccountProfileType
           .mercadoProducer, // TODO: Expand enum or use string when Partner types are defined
       taglineValue: dto['tagline'] != null
           ? (InvitePartnerTaglineValue()..parse(dto['tagline']))

@@ -8,7 +8,7 @@ import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/app_data/app_type.dart';
 import 'package:belluga_now/domain/app_data/value_object/platform_type_value.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
-import 'package:belluga_now/domain/partners/partner_model.dart';
+import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
 import 'package:belluga_now/domain/tenant/tenant.dart';
 import 'package:belluga_now/domain/user/user_contract.dart';
@@ -16,7 +16,7 @@ import 'package:belluga_now/infrastructure/dal/dao/app_data_backend_contract.dar
 import 'package:belluga_now/infrastructure/dal/dao/auth_backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/backend_context.dart';
-import 'package:belluga_now/infrastructure/dal/dao/partners_backend_contract.dart';
+import 'package:belluga_now/infrastructure/dal/dao/account_profiles_backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/favorite_backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/local/app_data_local_info_source/app_data_local_info_source.dart';
 import 'package:belluga_now/infrastructure/dal/dao/tenant_backend_contract.dart';
@@ -302,7 +302,7 @@ class _NoopBackend extends BackendContract {
   TenantBackendContract get tenant => _NoopTenantBackend();
 
   @override
-  PartnersBackendContract get partners => _NoopPartnersBackend();
+  AccountProfilesBackendContract get accountProfiles => _NoopAccountProfilesBackend();
 
   @override
   FavoriteBackendContract get favorites => _NoopFavoriteBackend();
@@ -314,19 +314,19 @@ class _NoopBackend extends BackendContract {
   ScheduleBackendContract get schedule => _NoopScheduleBackend();
 }
 
-class _NoopPartnersBackend implements PartnersBackendContract {
+class _NoopAccountProfilesBackend implements AccountProfilesBackendContract {
   @override
-  Future<List<PartnerModel>> fetchPartners() => throw UnimplementedError();
+  Future<List<AccountProfileModel>> fetchAccountProfiles() => throw UnimplementedError();
 
   @override
-  Future<List<PartnerModel>> searchPartners({
+  Future<List<AccountProfileModel>> searchAccountProfiles({
     String? query,
-    PartnerType? typeFilter,
+    String? typeFilter,
   }) =>
       throw UnimplementedError();
 
   @override
-  Future<PartnerModel?> fetchPartnerBySlug(String slug) =>
+  Future<AccountProfileModel?> fetchAccountProfileBySlug(String slug) =>
       throw UnimplementedError();
 }
 

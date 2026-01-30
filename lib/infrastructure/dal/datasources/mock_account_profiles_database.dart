@@ -1,39 +1,40 @@
 import 'package:belluga_now/domain/partners/engagement_data.dart';
-import 'package:belluga_now/domain/partners/partner_model.dart';
+import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/infrastructure/dal/dao/mock_backend/mock_schedule_backend.dart';
 
-class MockPartnersDatabase {
-  MockPartnersDatabase();
+class MockAccountProfilesDatabase {
+  MockAccountProfilesDatabase();
 
-  /// Get all partners (artists + venues)
-  List<PartnerModel> get allPartners => _partners;
+  /// Get all account profiles (artists + venues)
+  List<AccountProfileModel> get allAccountProfiles => _accountProfiles;
 
   /// Persisted favorites in-memory to emulate storage
-  final Set<String> _favoritePartnerIds = {_appManagerId};
+  final Set<String> _favoriteAccountProfileIds = {_appManagerId};
 
   /// App manager is always favorited by default
   static const String _appManagerId = 'app-manager';
 
-  static final List<PartnerModel> _partners = _generatePartners();
+  static final List<AccountProfileModel> _accountProfiles =
+      _generateAccountProfiles();
 
   /// Expose favorites
-  Set<String> get favoritePartnerIds => _favoritePartnerIds;
+  Set<String> get favoriteAccountProfileIds => _favoriteAccountProfileIds;
 
   /// Toggle favorite and persist in-memory
-  void toggleFavorite(String partnerId) {
-    if (partnerId == _appManagerId) {
+  void toggleFavorite(String accountProfileId) {
+    if (accountProfileId == _appManagerId) {
       // App manager cannot be unfavorited
       return;
     }
-    if (_favoritePartnerIds.contains(partnerId)) {
-      _favoritePartnerIds.remove(partnerId);
+    if (_favoriteAccountProfileIds.contains(accountProfileId)) {
+      _favoriteAccountProfileIds.remove(accountProfileId);
     } else {
-      _favoritePartnerIds.add(partnerId);
+      _favoriteAccountProfileIds.add(accountProfileId);
     }
   }
 
-  static List<PartnerModel> _generatePartners() {
-    final partners = <PartnerModel>[];
+  static List<AccountProfileModel> _generateAccountProfiles() {
+    final profiles = <AccountProfileModel>[];
 
     // Extract artists from event seeds
     // NOTE: Commented out to show only rich mock data with engagement metrics
@@ -47,7 +48,7 @@ class MockPartnersDatabase {
       }
     }
 
-    // Convert artists to PartnerModel
+    // Convert artists to AccountProfileModel
     for (final artist in artistsMap.values) {
       final artistId = MockScheduleBackend.generateMongoId(artist.id);
 
@@ -59,12 +60,12 @@ class MockPartnersDatabase {
         }
       }
 
-      partners.add(
-        PartnerModel.fromPrimitives(
+      profiles.add(
+        AccountProfileModel.fromPrimitives(
           id: artistId,
           name: artist.name,
           slug: artist.id,
-          type: PartnerType.artist,
+          type: 'artist',
           avatarUrl: artist.avatarUrl,
           coverUrl: null, // Artists don't have cover images in current data
           bio: 'Artista talentoso apresentando shows incríveis em Guarapari.',
@@ -78,18 +79,18 @@ class MockPartnersDatabase {
     // Extract venues from MockScheduleBackend
     // Note: _eventVenues is private, so we'll need to expose it or use a different approach
     // For now, let's create some mock venues based on the events
-    // We'll create venue partners from the location data in events
+    // We'll create venue profiles from the location data in events
     // This is a simplified approach since we can't access _eventVenues directly
     // --- RICH MOCK DATA INJECTION ---
 
     // 1. Partners (B2B)
 
     // Restaurante "Beach Club" (Full Config)
-    partners.add(PartnerModel.fromPrimitives(
+    profiles.add(AccountProfileModel.fromPrimitives(
       id: MockScheduleBackend.generateMongoId('beach-club'),
       name: 'Beach Club Guarapari',
       slug: 'beach-club',
-      type: PartnerType.venue,
+      type: 'venue',
       avatarUrl:
           'https://images.unsplash.com/photo-1578474843222-9593bc5c30b0?w=400',
       coverUrl:
@@ -105,11 +106,11 @@ class MockPartnersDatabase {
     ));
 
     // Bistrô Pequeno (Minimal Config)
-    partners.add(PartnerModel.fromPrimitives(
+    profiles.add(AccountProfileModel.fromPrimitives(
       id: MockScheduleBackend.generateMongoId('bistro-pequeno'),
       name: 'Le Petit Bistrô',
       slug: 'le-petit-bistro',
-      type: PartnerType.venue,
+      type: 'venue',
       avatarUrl:
           'https://images.unsplash.com/photo-1559339352-11d035aa65de?w=400',
       coverUrl:
@@ -124,11 +125,11 @@ class MockPartnersDatabase {
     ));
 
     // Músico (DJ Residente)
-    partners.add(PartnerModel.fromPrimitives(
+    profiles.add(AccountProfileModel.fromPrimitives(
       id: MockScheduleBackend.generateMongoId('dj-residente'),
       name: 'DJ Alex Beat',
       slug: 'dj-alex-beat',
-      type: PartnerType.artist,
+      type: 'artist',
       avatarUrl:
           'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=400',
       coverUrl:
@@ -141,11 +142,11 @@ class MockPartnersDatabase {
       distanceMeters: 1800,
     ));
 
-    partners.add(PartnerModel.fromPrimitives(
+    profiles.add(AccountProfileModel.fromPrimitives(
       id: MockScheduleBackend.generateMongoId('band-alt'),
       name: 'Banda Mar Aberto',
       slug: 'banda-mar-aberto',
-      type: PartnerType.artist,
+      type: 'artist',
       avatarUrl:
           'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=400',
       coverUrl:
@@ -158,11 +159,11 @@ class MockPartnersDatabase {
       distanceMeters: 3100,
     ));
 
-    partners.add(PartnerModel.fromPrimitives(
+    profiles.add(AccountProfileModel.fromPrimitives(
       id: MockScheduleBackend.generateMongoId('dj-night'),
       name: 'DJ Nightwave',
       slug: 'dj-nightwave',
-      type: PartnerType.artist,
+      type: 'artist',
       avatarUrl:
           'https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91?w=400',
       coverUrl:
@@ -176,11 +177,11 @@ class MockPartnersDatabase {
     ));
 
     // Guia (Experience Provider)
-    partners.add(PartnerModel.fromPrimitives(
+    profiles.add(AccountProfileModel.fromPrimitives(
       id: MockScheduleBackend.generateMongoId('guia-local'),
       name: 'Guarapari Adventures',
       slug: 'guarapari-adventures',
-      type: PartnerType.experienceProvider,
+      type: 'experience_provider',
       avatarUrl:
           'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400',
       coverUrl:
@@ -196,11 +197,11 @@ class MockPartnersDatabase {
     // 2. Users (B2C+)
 
     // Influencer (Nível 2)
-    partners.add(PartnerModel.fromPrimitives(
+    profiles.add(AccountProfileModel.fromPrimitives(
       id: MockScheduleBackend.generateMongoId('influencer-top'),
       name: 'Bella Lifestyle',
       slug: 'bella-lifestyle',
-      type: PartnerType.influencer,
+      type: 'influencer',
       avatarUrl:
           'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400',
       coverUrl:
@@ -215,11 +216,11 @@ class MockPartnersDatabase {
     ));
 
     // Curator (Nível 3)
-    partners.add(PartnerModel.fromPrimitives(
+    profiles.add(AccountProfileModel.fromPrimitives(
       id: MockScheduleBackend.generateMongoId('curadoria-local'),
       name: 'Agenda Cultural ES',
       slug: 'agenda-cultural-es',
-      type: PartnerType.curator,
+      type: 'curator',
       avatarUrl:
           'https://images.unsplash.com/photo-1542206395-9feb3edaa68d?w=400',
       coverUrl:
@@ -234,7 +235,7 @@ class MockPartnersDatabase {
     ));
 
     // Basic User (Nível 1 - usually not public, but added for completeness if needed)
-    // partners.add(...)
+    // profiles.add(...)
 
     // Add generic venues from before to maintain volume
     final mockVenues = [
@@ -254,12 +255,12 @@ class MockPartnersDatabase {
       final venueId =
           MockScheduleBackend.generateMongoId(venue['id'] as String);
 
-      partners.add(
-        PartnerModel.fromPrimitives(
+      profiles.add(
+        AccountProfileModel.fromPrimitives(
           id: venueId,
           name: venue['name'] as String,
           slug: venue['id'] as String,
-          type: PartnerType.venue,
+          type: 'venue',
           avatarUrl:
               'https://images.unsplash.com/photo-1514933651103-005eec06c04b?w=400',
           coverUrl:
@@ -315,35 +316,37 @@ class MockPartnersDatabase {
 
     for (var i = 0; i < fillerCount; i++) {
       final type = switch (i % 5) {
-        0 => PartnerType.venue,
-        1 => PartnerType.experienceProvider,
-        2 => PartnerType.artist,
-        3 => PartnerType.influencer,
-        _ => PartnerType.curator,
+        0 => 'venue',
+        1 => 'experience_provider',
+        2 => 'artist',
+        3 => 'influencer',
+        _ => 'curator',
       };
       final slug = 'mock-partner-$i';
       final name = switch (type) {
-        PartnerType.venue =>
+        'venue' =>
             '${venueNames[i % venueNames.length]} ${i ~/ venueNames.length + 1}',
-        PartnerType.experienceProvider =>
+        'experience_provider' =>
             '${experienceNames[i % experienceNames.length]} ${i ~/ experienceNames.length + 1}',
-        PartnerType.artist =>
+        'artist' =>
             '${artistNames[i % artistNames.length]} ${i ~/ artistNames.length + 1}',
-        PartnerType.influencer =>
+        'influencer' =>
             '${influencerNames[i % influencerNames.length]} ${i ~/ influencerNames.length + 1}',
-        PartnerType.curator =>
+        'curator' =>
             '${curatorNames[i % curatorNames.length]} ${i ~/ curatorNames.length + 1}',
+        _ => 'Perfil $i',
       };
       final tags = switch (type) {
-        PartnerType.venue => ['local', 'gastronomia'],
-        PartnerType.experienceProvider => ['praia', 'aventura'],
-        PartnerType.artist => ['show', 'música'],
-        PartnerType.influencer => ['lifestyle', 'baladas'],
-        PartnerType.curator => ['história', 'causos'],
+        'venue' => ['local', 'gastronomia'],
+        'experience_provider' => ['praia', 'aventura'],
+        'artist' => ['show', 'música'],
+        'influencer' => ['lifestyle', 'baladas'],
+        'curator' => ['história', 'causos'],
+        _ => const <String>[],
       };
 
-      partners.add(
-        PartnerModel.fromPrimitives(
+      profiles.add(
+        AccountProfileModel.fromPrimitives(
           id: MockScheduleBackend.generateMongoId(slug),
           name: name,
           slug: slug,
@@ -353,21 +356,21 @@ class MockPartnersDatabase {
           coverUrl:
               'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=1200&sig=${i + 20}',
           bio: 'Perfil de teste para discovery.',
-          tags: type == PartnerType.influencer && i.isEven
+          tags: type == 'influencer' && i.isEven
               ? [...tags, 'baladas', 'foodie']
-              : type == PartnerType.artist && i.isOdd
+              : type == 'artist' && i.isOdd
                   ? [...tags, 'rock', 'samba']
-                  : type == PartnerType.venue && i % 3 == 0
+                  : type == 'venue' && i % 3 == 0
                       ? [...tags, 'vista-mar', 'romântico']
                       : tags,
           upcomingEventIds: const [],
-          engagementData: type == PartnerType.artist
+          engagementData: type == 'artist'
               ? const ArtistEngagementData(status: 'COMEÇA EM BREVE')
-              : type == PartnerType.venue
+              : type == 'venue'
                   ? VenueEngagementData(presenceCount: 15 + (i % 30))
-                  : type == PartnerType.experienceProvider
+                  : type == 'experience_provider'
                       ? ExperienceEngagementData(experienceCount: 3 + (i % 10))
-                      : type == PartnerType.influencer
+                      : type == 'influencer'
                           ? InfluencerEngagementData(inviteCount: 10 + (i % 20))
                           : CuratorEngagementData(
                               articleCount: 5 + (i % 12),
@@ -380,7 +383,7 @@ class MockPartnersDatabase {
     }
 
     // Sync venues and artists from schedule events
-    final venueMap = <String, PartnerModel>{};
+    final venueMap = <String, AccountProfileModel>{};
     for (final seed in MockScheduleBackend.eventSeeds) {
       // Venue partner from event location/coords
       final venueSlug = _slugify(seed.location);
@@ -388,11 +391,11 @@ class MockPartnersDatabase {
         final venueName = seed.location.trim().length < 5
             ? '${seed.location.trim()} Guarapari'
             : seed.location.trim();
-        venueMap[venueSlug] = PartnerModel.fromPrimitives(
+        venueMap[venueSlug] = AccountProfileModel.fromPrimitives(
           id: MockScheduleBackend.generateMongoId(venueSlug),
           name: venueName,
           slug: venueSlug,
-          type: PartnerType.venue,
+          type: 'venue',
           avatarUrl: seed.thumbUrl,
           coverUrl: seed.thumbUrl,
           tags: const ['evento', 'local'],
@@ -402,12 +405,12 @@ class MockPartnersDatabase {
       // Artists
       for (final artist in seed.artists) {
         final artistSlug = _slugify(artist.name);
-        partners.add(
-          PartnerModel.fromPrimitives(
+        profiles.add(
+          AccountProfileModel.fromPrimitives(
             id: MockScheduleBackend.generateMongoId(artist.id),
             name: artist.name,
             slug: artistSlug,
-            type: PartnerType.artist,
+            type: 'artist',
             avatarUrl: artist.avatarUrl,
             coverUrl: seed.thumbUrl,
             tags: const ['show', 'artista'],
@@ -419,17 +422,17 @@ class MockPartnersDatabase {
       }
     }
 
-    partners.addAll(venueMap.values);
+    profiles.addAll(venueMap.values);
 
-    return partners;
+    return profiles;
   }
 
-  /// Search partners by name or tags
-  List<PartnerModel> searchPartners({
+  /// Search profiles by name or tags
+  List<AccountProfileModel> searchAccountProfiles({
     String? query,
-    PartnerType? typeFilter,
+    String? typeFilter,
   }) {
-    var results = allPartners;
+    var results = allAccountProfiles;
 
     // Filter by type
     if (typeFilter != null) {
@@ -449,9 +452,9 @@ class MockPartnersDatabase {
   }
 
   /// Get partner by slug
-  PartnerModel? getPartnerBySlug(String slug) {
+  AccountProfileModel? getAccountProfileBySlug(String slug) {
     try {
-      return allPartners.firstWhere((p) => p.slug == slug);
+      return allAccountProfiles.firstWhere((p) => p.slug == slug);
     } catch (e) {
       return null;
     }

@@ -1,4 +1,3 @@
-import 'package:belluga_now/domain/partners/partner_model.dart';
 import 'package:belluga_now/domain/partners/profile_type_definition.dart';
 
 class ProfileTypeRegistry {
@@ -22,14 +21,14 @@ class ProfileTypeRegistry {
   bool isFavoritable(String type) =>
       _typesByKey[type]?.capabilities.isFavoritable ?? false;
 
-  bool isEnabledFor(PartnerType type) => contains(_registryKeyFor(type));
+  bool isEnabledFor(String type) => contains(type);
 
-  bool isFavoritableFor(PartnerType type) =>
-      isFavoritable(_registryKeyFor(type));
+  bool isFavoritableFor(String type) => isFavoritable(type);
 
-  List<PartnerType> enabledPartnerTypes() => PartnerType.values
-      .where((type) => isEnabledFor(type))
-      .toList(growable: false);
+  String labelForType(String type) => _typesByKey[type]?.label ?? type;
+
+  List<String> enabledAccountProfileTypes() =>
+      List<String>.unmodifiable(_typesByKey.keys);
 
   static ProfileTypeRegistry fromJsonList(List<dynamic>? raw) {
     if (raw == null || raw.isEmpty) {
@@ -45,18 +44,4 @@ class ProfileTypeRegistry {
     return ProfileTypeRegistry(types: entries);
   }
 
-  String _registryKeyFor(PartnerType type) {
-    switch (type) {
-      case PartnerType.artist:
-        return 'artist';
-      case PartnerType.venue:
-        return 'venue';
-      case PartnerType.experienceProvider:
-        return 'experience_provider';
-      case PartnerType.influencer:
-        return 'influencer';
-      case PartnerType.curator:
-        return 'curator';
-    }
-  }
 }

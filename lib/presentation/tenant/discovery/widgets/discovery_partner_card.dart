@@ -1,5 +1,5 @@
 import 'package:belluga_now/domain/partners/engagement_data.dart';
-import 'package:belluga_now/domain/partners/partner_model.dart';
+import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/application/icons/boora_icons.dart';
 import 'package:flutter/material.dart';
 
@@ -11,14 +11,16 @@ class DiscoveryPartnerCard extends StatefulWidget {
     required this.isFavoritable,
     required this.onFavoriteTap,
     required this.onTap,
+    required this.typeLabel,
     this.showDetails = true,
   });
 
-  final PartnerModel partner;
+  final AccountProfileModel partner;
   final bool isFavorite;
   final bool isFavoritable;
   final VoidCallback onFavoriteTap;
   final VoidCallback onTap;
+  final String typeLabel;
   final bool showDetails;
 
   @override
@@ -222,6 +224,9 @@ class _DiscoveryPartnerCardState extends State<DiscoveryPartnerCard>
   }
 
   Widget _buildDetails(bool isLiveNow) {
+    final label = widget.typeLabel.trim().isEmpty
+        ? _getPartnerLabel(widget.partner.type)
+        : widget.typeLabel;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
@@ -229,7 +234,7 @@ class _DiscoveryPartnerCardState extends State<DiscoveryPartnerCard>
         Row(
           children: [
             Text(
-              _getPartnerLabel(widget.partner.type),
+              label,
               style: const TextStyle(
                 fontSize: 11,
                 color: Colors.white70,
@@ -433,32 +438,36 @@ class _DiscoveryPartnerCardState extends State<DiscoveryPartnerCard>
   }
 }
 
-IconData _getPartnerIcon(PartnerType type) {
+IconData _getPartnerIcon(String type) {
   switch (type) {
-    case PartnerType.artist:
+    case 'artist':
       return Icons.person;
-    case PartnerType.venue:
+    case 'venue':
       return Icons.place;
-    case PartnerType.experienceProvider:
+    case 'experience_provider':
       return Icons.local_activity;
-    case PartnerType.influencer:
+    case 'influencer':
       return Icons.camera_alt;
-    case PartnerType.curator:
+    case 'curator':
       return Icons.verified_user;
+    default:
+      return Icons.account_circle;
   }
 }
 
-String _getPartnerLabel(PartnerType type) {
+String _getPartnerLabel(String type) {
   switch (type) {
-    case PartnerType.artist:
+    case 'artist':
       return 'Artista';
-    case PartnerType.venue:
+    case 'venue':
       return 'Local';
-    case PartnerType.experienceProvider:
+    case 'experience_provider':
       return 'Experiência';
-    case PartnerType.influencer:
+    case 'influencer':
       return 'Influenciador';
-    case PartnerType.curator:
+    case 'curator':
       return 'Curador';
+    default:
+      return type;
   }
 }

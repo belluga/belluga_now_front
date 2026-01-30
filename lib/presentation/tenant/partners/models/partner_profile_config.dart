@@ -1,4 +1,4 @@
-import 'package:belluga_now/domain/partners/partner_model.dart';
+import 'package:belluga_now/domain/partners/account_profile_model.dart';
 
 /// Module identifiers aligned with perfil_other_module.md
 enum ProfileModuleId {
@@ -37,7 +37,7 @@ class PartnerProfileConfig {
     required this.tabs,
   });
 
-  final PartnerModel partner;
+  final AccountProfileModel partner;
   final List<ProfileTabConfig> tabs;
 }
 

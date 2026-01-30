@@ -180,33 +180,45 @@ class LaravelScheduleBackend implements ScheduleBackendContract {
     String? lastEventId,
     bool showPastOnly = false,
   }) {
-    final params = <String, dynamic>{
-      'past_only': showPastOnly ? 1 : 0,
-      'confirmed_only': confirmedOnly ? 1 : 0,
-    };
+    final queryParts = <String>[];
+    void addParam(String key, String value) {
+      queryParts.add(
+        '${Uri.encodeQueryComponent(key)}='
+        '${Uri.encodeQueryComponent(value)}',
+      );
+    }
+
+    addParam('past_only', showPastOnly ? '1' : '0');
+    addParam('confirmed_only', confirmedOnly ? '1' : '0');
     final trimmedQuery = searchQuery?.trim();
     if (trimmedQuery != null && trimmedQuery.isNotEmpty) {
-      params['search'] = trimmedQuery;
+      addParam('search', trimmedQuery);
     }
     if (categories != null && categories.isNotEmpty) {
-      params['categories'] = categories;
+      for (final category in categories) {
+        addParam('categories[]', category.toString());
+      }
     }
     if (tags != null && tags.isNotEmpty) {
-      params['tags'] = tags;
+      for (final tag in tags) {
+        addParam('tags[]', tag.toString());
+      }
     }
     if (taxonomy != null && taxonomy.isNotEmpty) {
-      params['taxonomy'] = taxonomy;
+      addParam('taxonomy', jsonEncode(taxonomy));
     }
     if (originLat != null && originLng != null) {
-      params['origin_lat'] = originLat;
-      params['origin_lng'] = originLng;
+      addParam('origin_lat', originLat.toString());
+      addParam('origin_lng', originLng.toString());
       if (maxDistanceMeters != null) {
-        params['max_distance_meters'] = maxDistanceMeters;
+        addParam('max_distance_meters', maxDistanceMeters.toString());
       }
     }
 
-    final uri = Uri.parse('$_apiBaseUrl/v1/events/stream')
-        .replace(queryParameters: params);
+    final uri = Uri.parse(
+      '$_apiBaseUrl/v1/events/stream'
+      '${queryParts.isEmpty ? '' : '?${queryParts.join('&')}'}',
+    );
 
     return _sseClient
         .connect(

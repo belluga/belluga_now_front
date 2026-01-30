@@ -1,23 +1,15 @@
-import 'package:belluga_now/domain/value_objects/slug_value.dart';
 import 'package:belluga_now/domain/partners/engagement_data.dart';
 import 'package:belluga_now/domain/value_objects/description_value.dart';
+import 'package:belluga_now/domain/value_objects/slug_value.dart';
 import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
 import 'package:belluga_now/domain/value_objects/title_value.dart';
 import 'package:value_object_pattern/domain/value_objects/mongo_id_value.dart';
 
-enum PartnerType {
-  artist,
-  venue,
-  experienceProvider,
-  influencer,
-  curator,
-}
-
-class PartnerModel {
+class AccountProfileModel {
   final MongoIDValue idValue;
   final TitleValue nameValue;
   final SlugValue slugValue;
-  final PartnerType type;
+  final String profileType;
   final ThumbUriValue? avatarValue;
   final ThumbUriValue? coverValue;
   final DescriptionValue? bioValue;
@@ -28,11 +20,11 @@ class PartnerModel {
   final int acceptedInvites; // Universal metric for all partners
   final double? distanceMeters;
 
-  PartnerModel({
+  AccountProfileModel({
     required this.idValue,
     required this.nameValue,
     required this.slugValue,
-    required this.type,
+    required this.profileType,
     this.avatarValue,
     this.coverValue,
     this.bioValue,
@@ -48,17 +40,18 @@ class PartnerModel {
   String get id => idValue.value;
   String get name => nameValue.value;
   String get slug => slugValue.value;
+  String get type => profileType;
   Uri? get avatarUri => avatarValue?.value;
   String? get avatarUrl => avatarUri?.toString();
   Uri? get coverUri => coverValue?.value;
   String? get coverUrl => coverUri?.toString();
   String? get bio => bioValue?.value;
 
-  factory PartnerModel.fromPrimitives({
+  factory AccountProfileModel.fromPrimitives({
     required String id,
     required String name,
     required String slug,
-    required PartnerType type,
+    required String type,
     String? avatarUrl,
     String? coverUrl,
     String? bio,
@@ -86,11 +79,11 @@ class PartnerModel {
       bioValue = DescriptionValue()..parse(bio);
     }
 
-    return PartnerModel(
+    return AccountProfileModel(
       idValue: MongoIDValue()..parse(id),
       nameValue: TitleValue()..parse(name),
       slugValue: SlugValue()..parse(slug),
-      type: type,
+      profileType: type,
       avatarValue: avatarValue,
       coverValue: coverValue,
       bioValue: bioValue,
@@ -103,11 +96,11 @@ class PartnerModel {
     );
   }
 
-  PartnerModel copyWith({
+  AccountProfileModel copyWith({
     MongoIDValue? idValue,
     TitleValue? nameValue,
     SlugValue? slugValue,
-    PartnerType? type,
+    String? profileType,
     ThumbUriValue? avatarValue,
     ThumbUriValue? coverValue,
     DescriptionValue? bioValue,
@@ -118,11 +111,11 @@ class PartnerModel {
     int? acceptedInvites,
     double? distanceMeters,
   }) {
-    return PartnerModel(
+    return AccountProfileModel(
       idValue: idValue ?? this.idValue,
       nameValue: nameValue ?? this.nameValue,
       slugValue: slugValue ?? this.slugValue,
-      type: type ?? this.type,
+      profileType: profileType ?? this.profileType,
       avatarValue: avatarValue ?? this.avatarValue,
       coverValue: coverValue ?? this.coverValue,
       bioValue: bioValue ?? this.bioValue,

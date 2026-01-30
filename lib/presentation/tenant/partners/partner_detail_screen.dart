@@ -1,4 +1,4 @@
-import 'package:belluga_now/domain/partners/partner_model.dart';
+import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/presentation/tenant/partners/controllers/partner_detail_controller.dart';
 import 'package:belluga_now/presentation/common/widgets/immersive_detail_screen/immersive_detail_screen.dart';
 import 'package:belluga_now/presentation/common/widgets/immersive_detail_screen/models/immersive_tab_item.dart';
@@ -54,7 +54,7 @@ class _PartnerDetailScreenState extends State<PartnerDetailScreen> {
           if (isLoading) {
             return const Center(child: CircularProgressIndicator());
           }
-          return StreamValueBuilder<PartnerModel?>(
+          return StreamValueBuilder<AccountProfileModel?>(
             streamValue: _controller.partnerStreamValue,
             builder: (context, partner) {
               if (partner == null) {
@@ -104,7 +104,7 @@ class _PartnerDetailScreenState extends State<PartnerDetailScreen> {
     );
   }
 
-  Widget _buildHero(PartnerModel partner, bool isFav, bool isFavoritable) {
+  Widget _buildHero(AccountProfileModel partner, bool isFav, bool isFavoritable) {
     final colorScheme = Theme.of(context).colorScheme;
     return Stack(
       fit: StackFit.expand,
@@ -192,7 +192,7 @@ class _PartnerDetailScreenState extends State<PartnerDetailScreen> {
     );
   }
 
-  Widget? _buildBetweenHero(PartnerModel partner) {
+  Widget? _buildBetweenHero(AccountProfileModel partner) {
     if (partner.tags.isEmpty && partner.engagementData == null) return null;
     final colorScheme = Theme.of(context).colorScheme;
     return Container(
@@ -245,38 +245,42 @@ class _PartnerDetailScreenState extends State<PartnerDetailScreen> {
         .toList();
   }
 
-  Widget _buildFooter(PartnerModel partner, bool isFav, bool isFavoritable) {
+  Widget _buildFooter(AccountProfileModel partner, bool isFav, bool isFavoritable) {
     if (!isFavoritable) return const SizedBox.shrink();
     return _actionFooter(isFav ? 'Favoritado' : 'Seguir');
   }
 
-  IconData _iconForType(PartnerType type) {
+  IconData _iconForType(String type) {
     switch (type) {
-      case PartnerType.artist:
+      case 'artist':
         return Icons.music_note;
-      case PartnerType.venue:
+      case 'venue':
         return Icons.place;
-      case PartnerType.experienceProvider:
+      case 'experience_provider':
         return Icons.explore;
-      case PartnerType.influencer:
+      case 'influencer':
         return Icons.person;
-      case PartnerType.curator:
+      case 'curator':
         return Icons.bookmark;
+      default:
+        return Icons.account_circle;
     }
   }
 
-  String _labelForType(PartnerType type) {
+  String _labelForType(String type) {
     switch (type) {
-      case PartnerType.artist:
+      case 'artist':
         return 'Artista';
-      case PartnerType.venue:
+      case 'venue':
         return 'Local';
-      case PartnerType.experienceProvider:
+      case 'experience_provider':
         return 'Experiência';
-      case PartnerType.influencer:
+      case 'influencer':
         return 'Conector';
-      case PartnerType.curator:
+      case 'curator':
         return 'Curador';
+      default:
+        return type;
     }
   }
 

@@ -1,4 +1,4 @@
-import 'package:belluga_now/domain/partners/partner_model.dart';
+import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/infrastructure/dal/dto/profile/profile_event_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/profile/profile_faq_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/profile/profile_link_dto.dart';
@@ -12,9 +12,9 @@ import 'package:belluga_now/presentation/tenant/partners/models/partner_profile_
 class MockPartnerContentRepository {
   MockPartnerContentRepository();
 
-  Map<ProfileModuleId, dynamic> loadModulesForPartner(PartnerModel partner) {
+  Map<ProfileModuleId, dynamic> loadModulesForPartner(AccountProfileModel partner) {
     return switch (partner.type) {
-      PartnerType.artist => {
+      'artist' => {
           ProfileModuleId.agendaCarousel: _mockEvents(partner),
           ProfileModuleId.agendaList: _mockEvents(partner),
           ProfileModuleId.richText: partner.bio ?? _mockRichText(),
@@ -23,7 +23,7 @@ class MockPartnerContentRepository {
           ProfileModuleId.externalLinks: _mockLinks(),
           ProfileModuleId.socialScore: _mockScore(),
         },
-      PartnerType.venue => {
+      'venue' => {
           ProfileModuleId.locationInfo: _mockLocation(partner),
           ProfileModuleId.richText: partner.bio ?? _mockRichText(),
           ProfileModuleId.agendaList: _mockEvents(partner),
@@ -31,25 +31,26 @@ class MockPartnerContentRepository {
           ProfileModuleId.productGrid: _mockProducts(),
           ProfileModuleId.socialScore: _mockScore(),
         },
-      PartnerType.experienceProvider => {
+      'experience_provider' => {
           ProfileModuleId.experienceCards: _mockExperiences(),
           ProfileModuleId.richText: _mockRichText(),
           ProfileModuleId.faq: _mockFaq(),
           ProfileModuleId.socialScore: _mockScore(),
         },
-      PartnerType.curator => {
+      'curator' => {
           ProfileModuleId.videoGallery: _mockVideos(),
           ProfileModuleId.richText: _mockRichText(),
           ProfileModuleId.externalLinks: _mockLinks(),
           ProfileModuleId.sponsorBanner: _mockSponsor(),
           ProfileModuleId.socialScore: _mockScore(),
         },
-      PartnerType.influencer => {
+      'influencer' => {
           ProfileModuleId.photoGallery: _mockPhotos(),
           ProfileModuleId.affinityCarousels: _mockRecommendations(),
           ProfileModuleId.agendaList: _mockEvents(partner),
           ProfileModuleId.socialScore: _mockScore(),
         },
+      _ => const <ProfileModuleId, dynamic>{},
     };
   }
 
@@ -58,7 +59,7 @@ class MockPartnerContentRepository {
 
   String _mockRichText() => 'Conteúdo institucional e história do parceiro.';
 
-  List<ProfileEventDTO> _mockEvents(PartnerModel partner) {
+  List<ProfileEventDTO> _mockEvents(AccountProfileModel partner) {
     return List.generate(
       5,
       (i) => ProfileEventDTO(
@@ -138,7 +139,7 @@ class MockPartnerContentRepository {
             question: 'Idade mínima?', answer: '12 anos acompanhados.'),
       ];
 
-  ProfileLocationDTO _mockLocation(PartnerModel partner) => ProfileLocationDTO(
+  ProfileLocationDTO _mockLocation(AccountProfileModel partner) => ProfileLocationDTO(
         address: 'Rua Central, 123 - Guarapari',
         status: 'Aberto agora • Fecha às 23h',
         lat: (partner.distanceMeters ?? 0).toString(),

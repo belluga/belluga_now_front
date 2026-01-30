@@ -1,8 +1,8 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/domain/favorite/projections/favorite_resume.dart';
-import 'package:belluga_now/domain/partners/partner_model.dart';
-import 'package:belluga_now/domain/repositories/partners_repository_contract.dart';
+import 'package:belluga_now/domain/partners/account_profile_model.dart';
+import 'package:belluga_now/domain/repositories/account_profiles_repository_contract.dart';
 import 'package:belluga_now/presentation/tenant/home/screens/tenant_home_screen/widgets/favorite_chip.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
@@ -101,7 +101,7 @@ class _FavoritesStripState extends State<FavoritesStrip> {
     final slug = favorite.slug;
     if (slug != null && slug.isNotEmpty) {
       final partner = await _loadPartnerBySlug(slug);
-      if (partner != null && partner.type == PartnerType.venue) {
+      if (partner != null) {
         _openPartnerProfile(partner.slug);
         return;
       }
@@ -110,12 +110,12 @@ class _FavoritesStripState extends State<FavoritesStrip> {
     _openAgendaForFavorite(favorite);
   }
 
-  Future<PartnerModel?> _loadPartnerBySlug(String slug) async {
+  Future<AccountProfileModel?> _loadPartnerBySlug(String slug) async {
     final getIt = GetIt.I;
-    if (!getIt.isRegistered<PartnersRepositoryContract>()) {
+    if (!getIt.isRegistered<AccountProfilesRepositoryContract>()) {
       return null;
     }
-    return getIt.get<PartnersRepositoryContract>().getPartnerBySlug(slug);
+    return getIt.get<AccountProfilesRepositoryContract>().getAccountProfileBySlug(slug);
   }
 
   void _openPartnerProfile(String slug) {
