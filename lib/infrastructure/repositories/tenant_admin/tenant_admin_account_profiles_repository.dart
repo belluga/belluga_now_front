@@ -146,11 +146,20 @@ class TenantAdminAccountProfilesRepository
         avatarUpload: avatarUpload,
         coverUpload: coverUpload,
       );
-      final response = await _dio.patch(
-        '$_apiBaseUrl/v1/account_profiles/$accountProfileId',
-        data: uploadPayload ?? payload,
-        options: Options(headers: _buildHeaders()),
-      );
+      final response = uploadPayload == null
+          ? await _dio.patch(
+              '$_apiBaseUrl/v1/account_profiles/$accountProfileId',
+              data: payload,
+              options: Options(headers: _buildHeaders()),
+            )
+          : await _dio.post(
+              '$_apiBaseUrl/v1/account_profiles/$accountProfileId',
+              data: uploadPayload..fields.add(const MapEntry('_method', 'PATCH')),
+              options: Options(
+                headers: _buildHeaders(),
+                contentType: 'multipart/form-data',
+              ),
+            );
       final item = _extractItem(response.data);
       return _mapProfile(item);
     } on DioException catch (error) {

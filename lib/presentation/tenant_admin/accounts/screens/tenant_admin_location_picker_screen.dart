@@ -116,38 +116,29 @@ class _TenantAdminLocationPickerScreenState
                 alignment: Alignment.bottomCenter,
                 child: SafeArea(
                   top: false,
-                  child: Container(
+                  child: Card(
                     margin: const EdgeInsets.all(16),
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.surface,
-                      borderRadius: BorderRadius.circular(16),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.12),
-                          blurRadius: 12,
-                          offset: const Offset(0, 6),
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            location == null
-                                ? 'Toque no mapa para selecionar.'
-                                : 'Lat ${location.latitude.toStringAsFixed(6)} · Lng ${location.longitude.toStringAsFixed(6)}',
-                            style: Theme.of(context).textTheme.bodyMedium,
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              location == null
+                                  ? 'Toque no mapa para selecionar.'
+                                  : 'Lat ${location.latitude.toStringAsFixed(6)} · Lng ${location.longitude.toStringAsFixed(6)}',
+                              style: Theme.of(context).textTheme.bodyMedium,
+                            ),
                           ),
-                        ),
-                        const SizedBox(width: 12),
-                        ElevatedButton(
-                          onPressed: location == null
-                              ? null
-                              : () => context.router.pop(location),
-                          child: const Text('Confirmar'),
-                        ),
-                      ],
+                          const SizedBox(width: 12),
+                          FilledButton(
+                            onPressed: location == null
+                                ? null
+                                : () => context.router.pop(location),
+                            child: const Text('Confirmar'),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),

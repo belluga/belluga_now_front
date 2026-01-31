@@ -214,12 +214,6 @@ class _TenantAdminAccountProfileCreateScreenState
           onPressed: () => context.router.maybePop(),
           tooltip: 'Voltar',
         ),
-        actions: [
-          TextButton(
-            onPressed: _submit,
-            child: const Text('Salvar'),
-          ),
-        ],
       ),
       body: Padding(
         padding: EdgeInsets.fromLTRB(
@@ -234,227 +228,287 @@ class _TenantAdminAccountProfileCreateScreenState
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                StreamValueBuilder<bool>(
-                streamValue: _controller.isLoadingStreamValue,
-                builder: (context, isLoading) {
-                  return StreamValueBuilder<String?>(
-                    streamValue: _controller.errorStreamValue,
-                    builder: (context, error) {
-                      return StreamValueBuilder(
-                        streamValue: _controller.profileTypesStreamValue,
-                        builder: (context, types) {
-                          final hasTypes = types.isNotEmpty;
-                          return Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              if (isLoading) const LinearProgressIndicator(),
-                              if (error != null)
-                                Padding(
-                                  padding: const EdgeInsets.only(top: 8),
-                                  child: Row(
-                                    children: [
-                                      Expanded(
-                                        child: Text(
-                                          error,
-                                          style: const TextStyle(color: Colors.red),
-                                        ),
-                                      ),
-                                      TextButton(
-                                        onPressed: _controller.loadProfileTypes,
-                                        child: const Text('Tentar novamente'),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              const SizedBox(height: 8),
-                              DropdownButtonFormField<String>(
-                                key: ValueKey(_selectedProfileType),
-                                initialValue: _selectedProfileType,
-                                decoration: const InputDecoration(
-                                  labelText: 'Tipo de perfil',
-                                ),
-                                items: types
-                                    .map(
-                                      (type) => DropdownMenuItem<String>(
-                                        value: type.type,
-                                        child: Text(type.label),
-                                      ),
-                                    )
-                                    .toList(growable: false),
-                                onChanged: hasTypes
-                                    ? (value) {
-                                        setState(() {
-                                          _selectedProfileType = value;
-                                          if (!_requiresLocation()) {
-                                            _latitudeController.clear();
-                                            _longitudeController.clear();
-                                          }
-                                        });
-                                      }
-                                    : null,
-                                validator: (value) {
-                                  if (value == null || value.trim().isEmpty) {
-                                    return 'Tipo de perfil é obrigatório.';
-                                  }
-                                  return null;
-                                },
-                              ),
-                              if (!isLoading && error == null && !hasTypes)
-                                const Padding(
-                                  padding: EdgeInsets.only(top: 8),
-                                  child: Text('Nenhum tipo disponível para este tenant.'),
-                                ),
-                            ],
-                          );
-                        },
-                      );
-                    },
-                  );
-                },
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _displayNameController,
-                decoration: const InputDecoration(labelText: 'Nome de exibição'),
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'Nome de exibição é obrigatório.';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'Imagem de perfil',
-                style: Theme.of(context).textTheme.titleSmall,
-              ),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  if (_avatarFile != null)
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(36),
-                      child: Image.file(
-                        File(_avatarFile!.path),
-                        width: 72,
-                        height: 72,
-                        fit: BoxFit.cover,
-                      ),
-                    )
-                  else
-                    Container(
-                      width: 72,
-                      height: 72,
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                        borderRadius: BorderRadius.circular(36),
-                      ),
-                      child: const Icon(Icons.person_outline),
-                    ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          _avatarFile?.name ?? 'Nenhuma imagem selecionada',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        Row(
-                          children: [
-                            TextButton.icon(
-                              onPressed: () => _pickImage(isAvatar: true),
-                              icon: const Icon(Icons.photo_library_outlined),
-                              label: const Text('Selecionar'),
-                            ),
-                            if (_avatarFile != null)
-                              TextButton(
-                                onPressed: () => _clearImage(isAvatar: true),
-                                child: const Text('Remover'),
-                              ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
+                _buildProfileSection(context),
+                const SizedBox(height: 16),
+                _buildMediaSection(context),
+                if (requiresLocation) ...[
+                  const SizedBox(height: 16),
+                  _buildLocationSection(context),
                 ],
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'Capa',
-                style: Theme.of(context).textTheme.titleSmall,
-              ),
-              const SizedBox(height: 8),
-              if (_coverFile != null)
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-                  child: Image.file(
-                    File(_coverFile!.path),
-                    width: double.infinity,
-                    height: 140,
-                    fit: BoxFit.cover,
-                  ),
-                )
-              else
-                Container(
-                  width: double.infinity,
-                  height: 140,
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Center(
-                    child: Icon(Icons.image_outlined),
-                  ),
-                ),
-              Row(
-                children: [
-                  TextButton.icon(
-                    onPressed: () => _pickImage(isAvatar: false),
-                    icon: const Icon(Icons.photo_library_outlined),
-                    label: const Text('Selecionar capa'),
-                  ),
-                  if (_coverFile != null)
-                    TextButton(
-                      onPressed: () => _clearImage(isAvatar: false),
-                      child: const Text('Remover'),
-                    ),
-                ],
-              ),
-              if (requiresLocation) ...[
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: _latitudeController,
-                  decoration: const InputDecoration(labelText: 'Latitude'),
-                  keyboardType: TextInputType.number,
-                  validator: _validateLatitude,
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: _longitudeController,
-                  decoration: const InputDecoration(labelText: 'Longitude'),
-                  keyboardType: TextInputType.number,
-                  validator: _validateLongitude,
-                ),
-                const SizedBox(height: 8),
-                TextButton.icon(
-                  onPressed: _openMapPicker,
-                  icon: const Icon(Icons.map_outlined),
-                  label: const Text('Selecionar no mapa'),
-                ),
-              ],
-              const SizedBox(height: 20),
+                const SizedBox(height: 24),
                 SizedBox(
                   width: double.infinity,
-                  child: ElevatedButton(
+                  child: FilledButton(
                     onPressed: _submit,
-                    child: const Text('Salvar Perfil'),
+                    child: const Text('Salvar perfil'),
                   ),
                 ),
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildProfileSection(BuildContext context) {
+    return Card(
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Dados do perfil',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 12),
+            StreamValueBuilder<bool>(
+              streamValue: _controller.isLoadingStreamValue,
+              builder: (context, isLoading) {
+                return StreamValueBuilder<String?>(
+                  streamValue: _controller.errorStreamValue,
+                  builder: (context, error) {
+                    return StreamValueBuilder(
+                      streamValue: _controller.profileTypesStreamValue,
+                      builder: (context, types) {
+                        final hasTypes = types.isNotEmpty;
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if (isLoading) const LinearProgressIndicator(),
+                            if (error != null)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 8),
+                                child: Row(
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        error,
+                                        style: TextStyle(
+                                          color:
+                                              Theme.of(context).colorScheme.error,
+                                        ),
+                                      ),
+                                    ),
+                                    TextButton(
+                                      onPressed: _controller.loadProfileTypes,
+                                      child: const Text('Tentar novamente'),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            const SizedBox(height: 8),
+                            DropdownButtonFormField<String>(
+                              key: ValueKey(_selectedProfileType),
+                              initialValue: _selectedProfileType,
+                              decoration: const InputDecoration(
+                                labelText: 'Tipo de perfil',
+                              ),
+                              items: types
+                                  .map(
+                                    (type) => DropdownMenuItem<String>(
+                                      value: type.type,
+                                      child: Text(type.label),
+                                    ),
+                                  )
+                                  .toList(growable: false),
+                              onChanged: hasTypes
+                                  ? (value) {
+                                      setState(() {
+                                        _selectedProfileType = value;
+                                        if (!_requiresLocation()) {
+                                          _latitudeController.clear();
+                                          _longitudeController.clear();
+                                        }
+                                      });
+                                    }
+                                  : null,
+                              validator: (value) {
+                                if (value == null || value.trim().isEmpty) {
+                                  return 'Tipo de perfil e obrigatorio.';
+                                }
+                                return null;
+                              },
+                            ),
+                            if (!isLoading && error == null && !hasTypes)
+                              const Padding(
+                                padding: EdgeInsets.only(top: 8),
+                                child: Text(
+                                  'Nenhum tipo disponivel para este tenant.',
+                                ),
+                              ),
+                          ],
+                        );
+                      },
+                    );
+                  },
+                );
+              },
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: _displayNameController,
+              decoration: const InputDecoration(labelText: 'Nome de exibicao'),
+              validator: (value) {
+                if (value == null || value.trim().isEmpty) {
+                  return 'Nome de exibicao e obrigatorio.';
+                }
+                return null;
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMediaSection(BuildContext context) {
+    return Card(
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Imagens do perfil',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                if (_avatarFile != null)
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(36),
+                    child: Image.file(
+                      File(_avatarFile!.path),
+                      width: 72,
+                      height: 72,
+                      fit: BoxFit.cover,
+                    ),
+                  )
+                else
+                  Container(
+                    width: 72,
+                    height: 72,
+                    decoration: BoxDecoration(
+                      color:
+                          Theme.of(context).colorScheme.surfaceContainerHighest,
+                      borderRadius: BorderRadius.circular(36),
+                    ),
+                    child: const Icon(Icons.person_outline),
+                  ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        _avatarFile?.name ?? 'Nenhuma imagem selecionada',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      Row(
+                        children: [
+                          FilledButton.tonalIcon(
+                            onPressed: () => _pickImage(isAvatar: true),
+                            icon: const Icon(Icons.photo_library_outlined),
+                            label: const Text('Selecionar'),
+                          ),
+                          const SizedBox(width: 8),
+                          if (_avatarFile != null)
+                            TextButton(
+                              onPressed: () => _clearImage(isAvatar: true),
+                              child: const Text('Remover'),
+                            ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            if (_coverFile != null)
+              ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: Image.file(
+                  File(_coverFile!.path),
+                  width: double.infinity,
+                  height: 140,
+                  fit: BoxFit.cover,
+                ),
+              )
+            else
+              Container(
+                width: double.infinity,
+                height: 140,
+                decoration: BoxDecoration(
+                  color:
+                      Theme.of(context).colorScheme.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Center(
+                  child: Icon(Icons.image_outlined),
+                ),
+              ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                FilledButton.tonalIcon(
+                  onPressed: () => _pickImage(isAvatar: false),
+                  icon: const Icon(Icons.photo_library_outlined),
+                  label: const Text('Selecionar capa'),
+                ),
+                const SizedBox(width: 8),
+                if (_coverFile != null)
+                  TextButton(
+                    onPressed: () => _clearImage(isAvatar: false),
+                    child: const Text('Remover'),
+                  ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLocationSection(BuildContext context) {
+    return Card(
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Localizacao',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: _latitudeController,
+              decoration: const InputDecoration(labelText: 'Latitude'),
+              keyboardType: TextInputType.number,
+              validator: _validateLatitude,
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: _longitudeController,
+              decoration: const InputDecoration(labelText: 'Longitude'),
+              keyboardType: TextInputType.number,
+              validator: _validateLongitude,
+            ),
+            const SizedBox(height: 8),
+            FilledButton.tonalIcon(
+              onPressed: _openMapPicker,
+              icon: const Icon(Icons.map_outlined),
+              label: const Text('Selecionar no mapa'),
+            ),
+          ],
         ),
       ),
     );

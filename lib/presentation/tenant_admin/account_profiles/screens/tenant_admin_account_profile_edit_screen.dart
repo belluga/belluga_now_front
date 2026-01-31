@@ -33,6 +33,14 @@ class _TenantAdminAccountProfileEditScreenState
   final _longitudeController = TextEditingController();
   XFile? _avatarFile;
   XFile? _coverFile;
+  String? _avatarRemoteUrl;
+  String? _coverRemoteUrl;
+  bool _avatarRemoteReady = false;
+  bool _coverRemoteReady = false;
+  bool _avatarRemoteError = false;
+  bool _coverRemoteError = false;
+  String? _avatarPreloadUrl;
+  String? _coverPreloadUrl;
   String? _selectedProfileType;
   TenantAdminAccountProfile? _profile;
   String? _errorMessage;
@@ -58,6 +66,7 @@ class _TenantAdminAccountProfileEditScreenState
       _profile = profile;
       _selectedProfileType = profile.profileType;
       _displayNameController.text = profile.displayName;
+      _syncRemoteState(profile);
       if (profile.location != null) {
         _latitudeController.text =
             profile.location!.latitude.toStringAsFixed(6);
@@ -98,6 +107,16 @@ class _TenantAdminAccountProfileEditScreenState
       }
     }
     return null;
+  }
+
+  List<TenantAdminProfileTypeDefinition> _uniqueProfileTypes(
+    List<TenantAdminProfileTypeDefinition> types,
+  ) {
+    final seen = <String, TenantAdminProfileTypeDefinition>{};
+    for (final definition in types) {
+      seen.putIfAbsent(definition.type, () => definition);
+    }
+    return seen.values.toList(growable: false);
   }
 
   bool _requiresLocation() {
@@ -182,8 +201,7 @@ class _TenantAdminAccountProfileEditScreenState
       if (!mounted) return;
       setState(() {
         _profile = updated;
-        _avatarFile = null;
-        _coverFile = null;
+        _syncRemoteState(updated);
         _isLoading = false;
       });
       messenger.showSnackBar(
@@ -209,11 +227,39 @@ class _TenantAdminAccountProfileEditScreenState
     if (selected == null) {
       return;
     }
+    final lowerName = selected.name.toLowerCase();
+    const allowed = ['.jpg', '.jpeg', '.png', '.webp'];
+    if (!allowed.any(lowerName.endsWith)) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Formato de imagem invalido. Use JPG, PNG ou WEBP.'),
+        ),
+      );
+      return;
+    }
+    final size = await selected.length();
+    const maxBytes = 5 * 1024 * 1024;
+    if (size > maxBytes) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Imagem muito grande. Maximo 5MB.'),
+        ),
+      );
+      return;
+    }
     setState(() {
       if (isAvatar) {
         _avatarFile = selected;
+        _avatarRemoteReady = false;
+        _avatarRemoteError = false;
+        _avatarPreloadUrl = null;
       } else {
         _coverFile = selected;
+        _coverRemoteReady = false;
+        _coverRemoteError = false;
+        _coverPreloadUrl = null;
       }
     });
     await _autoSaveImages();
@@ -223,8 +269,10 @@ class _TenantAdminAccountProfileEditScreenState
     setState(() {
       if (isAvatar) {
         _avatarFile = null;
+        _avatarRemoteError = false;
       } else {
         _coverFile = null;
+        _coverRemoteError = false;
       }
     });
   }
@@ -238,282 +286,555 @@ class _TenantAdminAccountProfileEditScreenState
     );
   }
 
+  void _syncRemoteState(TenantAdminAccountProfile updated) {
+    final avatarUrl = updated.avatarUrl;
+    final coverUrl = updated.coverUrl;
+
+    if (avatarUrl != _avatarRemoteUrl) {
+      _avatarRemoteUrl = avatarUrl;
+      _avatarRemoteReady = false;
+      _avatarRemoteError = false;
+      _avatarPreloadUrl = null;
+    }
+    if (coverUrl != _coverRemoteUrl) {
+      _coverRemoteUrl = coverUrl;
+      _coverRemoteReady = false;
+      _coverRemoteError = false;
+      _coverPreloadUrl = null;
+    }
+  }
+
+  void _preloadRemoteImage({
+    required String url,
+    required bool isAvatar,
+  }) {
+    if (isAvatar) {
+      if (_avatarPreloadUrl == url) return;
+      _avatarPreloadUrl = url;
+    } else {
+      if (_coverPreloadUrl == url) return;
+      _coverPreloadUrl = url;
+    }
+
+    final stream = NetworkImage(url).resolve(const ImageConfiguration());
+    late final ImageStreamListener listener;
+    listener = ImageStreamListener(
+      (_, __) {
+        if (!mounted) return;
+        setState(() {
+          if (isAvatar) {
+            _avatarRemoteReady = true;
+            _avatarRemoteError = false;
+            _avatarFile = null;
+          } else {
+            _coverRemoteReady = true;
+            _coverRemoteError = false;
+            _coverFile = null;
+          }
+        });
+        stream.removeListener(listener);
+      },
+      onError: (_, __) {
+        if (!mounted) return;
+        setState(() {
+          if (isAvatar) {
+            _avatarRemoteError = true;
+          } else {
+            _coverRemoteError = true;
+          }
+        });
+        stream.removeListener(listener);
+      },
+    );
+    stream.addListener(listener);
+  }
+
   @override
   Widget build(BuildContext context) {
     final requiresLocation = _requiresLocation();
-    return Padding(
-      padding: EdgeInsets.fromLTRB(
-        16,
-        16,
-        16,
-        16 + MediaQuery.of(context).viewInsets.bottom,
+    if (_errorMessage != null) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('Editar Perfil'),
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () => context.router.maybePop(),
+            tooltip: 'Voltar',
+          ),
+        ),
+        body: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Card(
+            margin: EdgeInsets.zero,
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    _errorMessage!,
+                    style: TextStyle(color: Theme.of(context).colorScheme.error),
+                  ),
+                  const SizedBox(height: 12),
+                  TextButton(
+                    onPressed: _load,
+                    child: const Text('Tentar novamente'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    if (_profile == null && _isLoading) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('Editar Perfil'),
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () => context.router.maybePop(),
+            tooltip: 'Voltar',
+          ),
+        ),
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Editar Perfil'),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => context.router.maybePop(),
+          tooltip: 'Voltar',
+        ),
       ),
-      child: SingleChildScrollView(
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Align(
-                alignment: Alignment.centerLeft,
-                child: IconButton(
-                  icon: const Icon(Icons.arrow_back),
-                  onPressed: () => context.router.maybePop(),
-                  tooltip: 'Voltar',
+      body: Padding(
+        padding: EdgeInsets.fromLTRB(
+          16,
+          16,
+          16,
+          16 + MediaQuery.of(context).viewInsets.bottom,
+        ),
+        child: SingleChildScrollView(
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (_isLoading) const LinearProgressIndicator(),
+                if (_isLoading) const SizedBox(height: 12),
+                _buildProfileSection(context),
+                const SizedBox(height: 16),
+                _buildMediaSection(context),
+                if (requiresLocation) ...[
+                  const SizedBox(height: 16),
+                  _buildLocationSection(context),
+                ],
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton(
+                    onPressed: _isLoading
+                        ? null
+                        : () async {
+                            final form = _formKey.currentState;
+                            if (form == null || !form.validate()) {
+                              return;
+                            }
+                            final messenger = ScaffoldMessenger.of(context);
+                            final avatarUpload = await _buildUpload(_avatarFile);
+                            final coverUpload = await _buildUpload(_coverFile);
+                            final updated = await _controller.updateProfile(
+                              accountProfileId: widget.accountProfileId,
+                              profileType: _selectedProfileType,
+                              displayName: _displayNameController.text.trim(),
+                              location:
+                                  requiresLocation ? _currentLocation() : null,
+                              avatarUpload: avatarUpload,
+                              coverUpload: coverUpload,
+                            );
+                            if (!mounted) return;
+                            setState(() {
+                              _profile = updated;
+                              _syncRemoteState(updated);
+                            });
+                            messenger.showSnackBar(
+                              const SnackBar(content: Text('Perfil atualizado.')),
+                            );
+                          },
+                    child: const Text('Salvar alteracoes'),
+                  ),
                 ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                'Editar Perfil',
-                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
-              ),
-              const SizedBox(height: 12),
-              if (_isLoading) const LinearProgressIndicator(),
-              if (_errorMessage != null)
-                Padding(
-                  padding: const EdgeInsets.only(top: 8),
-                  child: Row(
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildProfileSection(BuildContext context) {
+    return Card(
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Dados do perfil',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 12),
+            StreamValueBuilder(
+              streamValue: _controller.profileTypesStreamValue,
+              builder: (context, types) {
+                final uniqueTypes = _uniqueProfileTypes(types);
+                final hasSelected = uniqueTypes
+                    .any((definition) => definition.type == _selectedProfileType);
+                final effectiveSelected =
+                    hasSelected ? _selectedProfileType : null;
+                if (!hasSelected && _selectedProfileType != null) {
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (!mounted) return;
+                    setState(() {
+                      _selectedProfileType = null;
+                    });
+                  });
+                }
+                return DropdownButtonFormField<String>(
+                  key: ValueKey(effectiveSelected),
+                  initialValue: effectiveSelected,
+                  decoration: const InputDecoration(
+                    labelText: 'Tipo de perfil',
+                  ),
+                  items: uniqueTypes
+                      .map(
+                        (type) => DropdownMenuItem<String>(
+                          value: type.type,
+                          child: Text(type.label),
+                        ),
+                      )
+                      .toList(growable: false),
+                  onChanged: (value) {
+                    setState(() {
+                      _selectedProfileType = value;
+                      if (!_requiresLocation()) {
+                        _latitudeController.clear();
+                        _longitudeController.clear();
+                      }
+                    });
+                  },
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return 'Tipo de perfil e obrigatorio.';
+                    }
+                    return null;
+                  },
+                );
+              },
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: _displayNameController,
+              decoration: const InputDecoration(labelText: 'Nome de exibicao'),
+              validator: (value) {
+                if (value == null || value.trim().isEmpty) {
+                  return 'Nome de exibicao e obrigatorio.';
+                }
+                return null;
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMediaSection(BuildContext context) {
+    final avatarUrl = _avatarRemoteUrl;
+    final hasAvatarUrl = avatarUrl != null && avatarUrl.isNotEmpty;
+    final coverUrl = _coverRemoteUrl;
+    final hasCoverUrl = coverUrl != null && coverUrl.isNotEmpty;
+
+    if (_avatarFile != null && hasAvatarUrl && !_avatarRemoteReady) {
+      _preloadRemoteImage(url: avatarUrl, isAvatar: true);
+    }
+    if (_coverFile != null && hasCoverUrl && !_coverRemoteReady) {
+      _preloadRemoteImage(url: coverUrl, isAvatar: false);
+    }
+
+    return Card(
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Imagens do perfil',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                if (_avatarFile != null)
+                  Stack(
+                    alignment: Alignment.bottomRight,
                     children: [
-                      Expanded(
-                        child: Text(
-                          _errorMessage!,
-                          style: const TextStyle(color: Colors.red),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(36),
+                        child: Image.file(
+                          File(_avatarFile!.path),
+                          width: 72,
+                          height: 72,
+                          fit: BoxFit.cover,
                         ),
                       ),
-                      TextButton(
-                        onPressed: _load,
-                        child: const Text('Tentar novamente'),
+                      if (_avatarRemoteError)
+                        Container(
+                          margin: const EdgeInsets.all(2),
+                          decoration: BoxDecoration(
+                            color: Theme.of(context)
+                                .colorScheme
+                                .errorContainer,
+                            shape: BoxShape.circle,
+                          ),
+                          padding: const EdgeInsets.all(4),
+                          child: Icon(
+                            Icons.warning_amber_rounded,
+                            size: 16,
+                            color:
+                                Theme.of(context).colorScheme.onErrorContainer,
+                          ),
+                        ),
+                    ],
+                  )
+                else if (hasAvatarUrl)
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(36),
+                    child: Image.network(
+                      avatarUrl,
+                      width: 72,
+                      height: 72,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        WidgetsBinding.instance.addPostFrameCallback((_) {
+                          if (!mounted) return;
+                          if (_avatarRemoteError) return;
+                          setState(() {
+                            _avatarRemoteError = true;
+                          });
+                        });
+                        return _buildAvatarError(context);
+                      },
+                    ),
+                  )
+                else if (_avatarRemoteError)
+                  _buildAvatarError(context)
+                else
+                  Container(
+                    width: 72,
+                    height: 72,
+                    decoration: BoxDecoration(
+                      color:
+                          Theme.of(context).colorScheme.surfaceContainerHighest,
+                      borderRadius: BorderRadius.circular(36),
+                    ),
+                    child: const Icon(Icons.person_outline),
+                  ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        _avatarFile?.name ??
+                            (_profile?.avatarUrl?.isNotEmpty ?? false
+                                ? 'Imagem atual'
+                                : 'Nenhuma imagem selecionada'),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      Row(
+                        children: [
+                          FilledButton.tonalIcon(
+                            onPressed: () => _pickImage(isAvatar: true),
+                            icon: const Icon(Icons.photo_library_outlined),
+                            label: const Text('Selecionar'),
+                          ),
+                          const SizedBox(width: 8),
+                          if (_avatarFile != null)
+                            TextButton(
+                              onPressed: () => _clearImage(isAvatar: true),
+                              child: const Text('Remover'),
+                            ),
+                        ],
                       ),
                     ],
                   ),
                 ),
-              const SizedBox(height: 8),
-              StreamValueBuilder(
-                streamValue: _controller.profileTypesStreamValue,
-                builder: (context, types) {
-                  return DropdownButtonFormField<String>(
-                    key: ValueKey(_selectedProfileType),
-                    initialValue: _selectedProfileType,
-                    decoration: const InputDecoration(
-                      labelText: 'Tipo de perfil',
-                    ),
-                    items: types
-                        .map(
-                          (type) => DropdownMenuItem<String>(
-                            value: type.type,
-                            child: Text(type.label),
-                          ),
-                        )
-                        .toList(growable: false),
-                    onChanged: (value) {
-                      setState(() {
-                        _selectedProfileType = value;
-                        if (!_requiresLocation()) {
-                          _latitudeController.clear();
-                          _longitudeController.clear();
-                        }
-                      });
-                    },
-                    validator: (value) {
-                      if (value == null || value.trim().isEmpty) {
-                        return 'Tipo de perfil é obrigatório.';
-                      }
-                      return null;
-                    },
-                  );
-                },
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _displayNameController,
-                decoration: const InputDecoration(labelText: 'Nome de exibição'),
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'Nome de exibição é obrigatório.';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'Imagem de perfil',
-                style: Theme.of(context).textTheme.titleSmall,
-              ),
-              const SizedBox(height: 8),
-              Row(
+              ],
+            ),
+            const SizedBox(height: 16),
+            if (_coverFile != null)
+              Stack(
+                alignment: Alignment.topRight,
                 children: [
-                  if (_avatarFile != null)
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(36),
-                      child: Image.file(
-                        File(_avatarFile!.path),
-                        width: 72,
-                        height: 72,
-                        fit: BoxFit.cover,
-                      ),
-                    )
-                  else if (_profile?.avatarUrl != null &&
-                      _profile!.avatarUrl!.isNotEmpty)
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(36),
-                      child: Image.network(
-                        _profile!.avatarUrl!,
-                        width: 72,
-                        height: 72,
-                        fit: BoxFit.cover,
-                      ),
-                    )
-                  else
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: Image.file(
+                      File(_coverFile!.path),
+                      width: double.infinity,
+                      height: 140,
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                  if (_coverRemoteError)
                     Container(
-                      width: 72,
-                      height: 72,
+                      margin: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                        borderRadius: BorderRadius.circular(36),
+                        color:
+                            Theme.of(context).colorScheme.errorContainer,
+                        shape: BoxShape.circle,
                       ),
-                      child: const Icon(Icons.person_outline),
+                      padding: const EdgeInsets.all(6),
+                      child: Icon(
+                        Icons.warning_amber_rounded,
+                        size: 18,
+                        color: Theme.of(context)
+                            .colorScheme
+                            .onErrorContainer,
+                      ),
                     ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          _avatarFile?.name ??
-                              (_profile?.avatarUrl?.isNotEmpty ?? false
-                                  ? 'Imagem atual'
-                                  : 'Nenhuma imagem selecionada'),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        Row(
-                          children: [
-                            TextButton.icon(
-                              onPressed: () => _pickImage(isAvatar: true),
-                              icon: const Icon(Icons.photo_library_outlined),
-                              label: const Text('Selecionar'),
-                            ),
-                            if (_avatarFile != null)
-                              TextButton(
-                                onPressed: () => _clearImage(isAvatar: true),
-                                child: const Text('Remover'),
-                              ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
                 ],
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'Capa',
-                style: Theme.of(context).textTheme.titleSmall,
-              ),
-              const SizedBox(height: 8),
-              if (_coverFile != null)
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-                  child: Image.file(
-                    File(_coverFile!.path),
-                    width: double.infinity,
-                    height: 140,
-                    fit: BoxFit.cover,
-                  ),
-                )
-              else if (_profile?.coverUrl != null &&
-                  _profile!.coverUrl!.isNotEmpty)
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-                  child: Image.network(
-                    _profile!.coverUrl!,
-                    width: double.infinity,
-                    height: 140,
-                    fit: BoxFit.cover,
-                  ),
-                )
-              else
-                Container(
+              )
+            else if (hasCoverUrl)
+              ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: Image.network(
+                  coverUrl,
                   width: double.infinity,
                   height: 140,
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Center(
-                    child: Icon(Icons.image_outlined),
-                  ),
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) {
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      if (!mounted) return;
+                      if (_coverRemoteError) return;
+                      setState(() {
+                        _coverRemoteError = true;
+                      });
+                    });
+                    return _buildCoverError(context);
+                  },
                 ),
-              Row(
-                children: [
-                  TextButton.icon(
-                    onPressed: () => _pickImage(isAvatar: false),
-                    icon: const Icon(Icons.photo_library_outlined),
-                    label: const Text('Selecionar capa'),
-                  ),
-                  if (_coverFile != null)
-                    TextButton(
-                      onPressed: () => _clearImage(isAvatar: false),
-                      child: const Text('Remover'),
-                    ),
-                ],
+              )
+            else if (_coverRemoteError)
+              _buildCoverError(context)
+            else
+              Container(
+                width: double.infinity,
+                height: 140,
+                decoration: BoxDecoration(
+                  color:
+                      Theme.of(context).colorScheme.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Center(
+                  child: Icon(Icons.image_outlined),
+                ),
               ),
-              if (requiresLocation) ...[
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: _latitudeController,
-                  decoration: const InputDecoration(labelText: 'Latitude'),
-                  keyboardType: TextInputType.number,
-                  validator: _validateLatitude,
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                FilledButton.tonalIcon(
+                  onPressed: () => _pickImage(isAvatar: false),
+                  icon: const Icon(Icons.photo_library_outlined),
+                  label: const Text('Selecionar capa'),
                 ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: _longitudeController,
-                  decoration: const InputDecoration(labelText: 'Longitude'),
-                  keyboardType: TextInputType.number,
-                  validator: _validateLongitude,
-                ),
-                const SizedBox(height: 8),
-                TextButton.icon(
-                  onPressed: _openMapPicker,
-                  icon: const Icon(Icons.map_outlined),
-                  label: const Text('Selecionar no mapa'),
-                ),
+                const SizedBox(width: 8),
+                if (_coverFile != null)
+                  TextButton(
+                    onPressed: () => _clearImage(isAvatar: false),
+                    child: const Text('Remover'),
+                  ),
               ],
-              const SizedBox(height: 20),
-              ElevatedButton(
-                onPressed: _isLoading
-                    ? null
-                    : () async {
-                        final form = _formKey.currentState;
-                        if (form == null || !form.validate()) {
-                          return;
-                        }
-                        final messenger = ScaffoldMessenger.of(context);
-                        final avatarUpload = await _buildUpload(_avatarFile);
-                        final coverUpload = await _buildUpload(_coverFile);
-                        final updated = await _controller.updateProfile(
-                          accountProfileId: widget.accountProfileId,
-                          profileType: _selectedProfileType,
-                          displayName: _displayNameController.text.trim(),
-                          location: requiresLocation ? _currentLocation() : null,
-                          avatarUpload: avatarUpload,
-                          coverUpload: coverUpload,
-                        );
-                        if (!mounted) return;
-                        setState(() {
-                          _profile = updated;
-                          _avatarFile = null;
-                          _coverFile = null;
-                        });
-                        messenger.showSnackBar(
-                          const SnackBar(content: Text('Perfil atualizado.')),
-                        );
-                      },
-                child: const Text('Atualizar Perfil'),
-              ),
-            ],
-          ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAvatarError(BuildContext context) {
+    return Container(
+      width: 72,
+      height: 72,
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.errorContainer,
+        borderRadius: BorderRadius.circular(36),
+      ),
+      child: Icon(
+        Icons.broken_image_outlined,
+        color: Theme.of(context).colorScheme.onErrorContainer,
+      ),
+    );
+  }
+
+  Widget _buildCoverError(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      height: 140,
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.errorContainer,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Center(
+        child: Icon(
+          Icons.broken_image_outlined,
+          color: Theme.of(context).colorScheme.onErrorContainer,
+          size: 32,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLocationSection(BuildContext context) {
+    return Card(
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Localizacao',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: _latitudeController,
+              decoration: const InputDecoration(labelText: 'Latitude'),
+              keyboardType: TextInputType.number,
+              validator: _validateLatitude,
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: _longitudeController,
+              decoration: const InputDecoration(labelText: 'Longitude'),
+              keyboardType: TextInputType.number,
+              validator: _validateLongitude,
+            ),
+            const SizedBox(height: 8),
+            FilledButton.tonalIcon(
+              onPressed: _openMapPicker,
+              icon: const Icon(Icons.map_outlined),
+              label: const Text('Selecionar no mapa'),
+            ),
+          ],
         ),
       ),
     );

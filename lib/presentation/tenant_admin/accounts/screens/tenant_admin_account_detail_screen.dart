@@ -113,9 +113,10 @@ class _TenantAdminAccountDetailScreenState
         title: Text('Conta: ${widget.accountSlug}'),
         actions: [
           if (_profile != null)
-            TextButton(
+            FilledButton.tonalIcon(
               onPressed: _isLoading ? null : _openEdit,
-              child: const Text('Editar'),
+              icon: const Icon(Icons.edit_outlined),
+              label: const Text('Editar'),
             ),
         ],
       ),
@@ -143,106 +144,187 @@ class _TenantAdminAccountDetailScreenState
                     builder: (context, types) {
                       return ListView(
                         children: [
-                          _buildRow('Slug', account?.slug ?? '-'),
-                          const SizedBox(height: 8),
-                          _buildRow(
-                            'Documento',
-                            account?.document.number ?? '-',
-                          ),
-                          const SizedBox(height: 16),
-                          if (_profile == null) ...[
-                            const Text(
-                              'Nenhum perfil associado a esta conta.',
-                            ),
-                            const SizedBox(height: 12),
-                            ElevatedButton(
-                              onPressed: _openCreate,
-                              child: const Text('Criar Perfil'),
-                            ),
-                          ] else ...[
-                            const Text(
-                              'Perfil da conta',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-                            if (_profile?.coverUrl != null &&
-                                _profile!.coverUrl!.isNotEmpty)
-                              ClipRRect(
-                                borderRadius: BorderRadius.circular(12),
-                                child: Image.network(
-                                  _profile!.coverUrl!,
-                                  height: 160,
-                                  fit: BoxFit.cover,
-                                ),
-                              )
-                            else
-                              Container(
-                                height: 160,
-                                decoration: BoxDecoration(
-                                  color: Theme.of(context)
-                                      .colorScheme
-                                      .surfaceContainerHighest,
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: const Center(
-                                  child: Icon(Icons.image_outlined),
-                                ),
-                              ),
-                            const SizedBox(height: 16),
-                            Row(
-                              children: [
-                                if (_profile?.avatarUrl != null &&
-                                    _profile!.avatarUrl!.isNotEmpty)
-                                  ClipRRect(
-                                    borderRadius: BorderRadius.circular(36),
-                                    child: Image.network(
-                                      _profile!.avatarUrl!,
-                                      width: 72,
-                                      height: 72,
-                                      fit: BoxFit.cover,
-                                    ),
-                                  )
-                                else
-                                  Container(
-                                    width: 72,
-                                    height: 72,
-                                    decoration: BoxDecoration(
-                                      color: Theme.of(context)
-                                          .colorScheme
-                                          .surfaceContainerHighest,
-                                      borderRadius: BorderRadius.circular(36),
-                                    ),
-                                    child: const Icon(Icons.person_outline),
-                                  ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Text(
-                                    _profile?.displayName ?? '-',
+                          Card(
+                            margin: EdgeInsets.zero,
+                            child: Padding(
+                              padding: const EdgeInsets.all(16),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Detalhes da conta',
                                     style:
                                         Theme.of(context).textTheme.titleMedium,
                                   ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 16),
-                            _buildRow('Tipo', _profileTypeLabel(types)),
-                            const SizedBox(height: 8),
-                            if (_profile?.location != null)
-                              _buildRow(
-                                'Localização',
-                                '${_profile!.location!.latitude.toStringAsFixed(6)}, '
-                                '${_profile!.location!.longitude.toStringAsFixed(6)}',
+                                  const SizedBox(height: 12),
+                                  _buildRow('Slug', account?.slug ?? '-'),
+                                  const SizedBox(height: 8),
+                                  _buildRow(
+                                    'Documento',
+                                    account?.document.number ?? '-',
+                                  ),
+                                ],
                               ),
-                            const SizedBox(height: 12),
-                            Align(
-                              alignment: Alignment.centerRight,
-                              child: OutlinedButton.icon(
-                                onPressed: _openEdit,
-                                icon: const Icon(Icons.edit_outlined),
-                                label: const Text('Editar Perfil'),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          if (_profile == null) ...[
+                            Card(
+                              margin: EdgeInsets.zero,
+                              child: Padding(
+                                padding: const EdgeInsets.all(16),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Perfil da conta',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .titleMedium,
+                                    ),
+                                    const SizedBox(height: 8),
+                                    const Text(
+                                      'Nenhum perfil associado a esta conta.',
+                                    ),
+                                    const SizedBox(height: 12),
+                                    FilledButton(
+                                      onPressed: _openCreate,
+                                      child: const Text('Criar Perfil'),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ] else ...[
+                            Card(
+                              margin: EdgeInsets.zero,
+                              child: Padding(
+                                padding: const EdgeInsets.all(16),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Perfil da conta',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .titleMedium,
+                                    ),
+                                    const SizedBox(height: 12),
+                                    if (_profile?.coverUrl != null &&
+                                        _profile!.coverUrl!.isNotEmpty)
+                                      ClipRRect(
+                                        borderRadius: BorderRadius.circular(12),
+                                        child: Image.network(
+                                          _profile!.coverUrl!,
+                                          height: 160,
+                                          fit: BoxFit.cover,
+                                          errorBuilder:
+                                              (context, error, stackTrace) {
+                                            return Container(
+                                              height: 160,
+                                              decoration: BoxDecoration(
+                                                color: Theme.of(context)
+                                                    .colorScheme
+                                                    .surfaceContainerHighest,
+                                              ),
+                                              child: const Center(
+                                                child: Icon(
+                                                  Icons.image_not_supported,
+                                                ),
+                                              ),
+                                            );
+                                          },
+                                        ),
+                                      )
+                                    else
+                                      Container(
+                                        height: 160,
+                                        decoration: BoxDecoration(
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .surfaceContainerHighest,
+                                          borderRadius: BorderRadius.circular(12),
+                                        ),
+                                        child: const Center(
+                                          child: Icon(Icons.image_outlined),
+                                        ),
+                                      ),
+                                    const SizedBox(height: 16),
+                                    Row(
+                                      children: [
+                                        if (_profile?.avatarUrl != null &&
+                                            _profile!.avatarUrl!.isNotEmpty)
+                                          ClipRRect(
+                                            borderRadius:
+                                                BorderRadius.circular(36),
+                                            child: Image.network(
+                                              _profile!.avatarUrl!,
+                                              width: 72,
+                                              height: 72,
+                                              fit: BoxFit.cover,
+                                              errorBuilder:
+                                                  (context, error, stackTrace) {
+                                                return Container(
+                                                  width: 72,
+                                                  height: 72,
+                                                  decoration: BoxDecoration(
+                                                    color: Theme.of(context)
+                                                        .colorScheme
+                                                        .surfaceContainerHighest,
+                                                  ),
+                                                  child: const Icon(
+                                                    Icons.person_off_outlined,
+                                                  ),
+                                                );
+                                              },
+                                            ),
+                                          )
+                                        else
+                                          Container(
+                                            width: 72,
+                                            height: 72,
+                                            decoration: BoxDecoration(
+                                              color: Theme.of(context)
+                                                  .colorScheme
+                                                  .surfaceContainerHighest,
+                                              borderRadius:
+                                                  BorderRadius.circular(36),
+                                            ),
+                                            child: const Icon(
+                                              Icons.person_outline,
+                                            ),
+                                          ),
+                                        const SizedBox(width: 12),
+                                        Expanded(
+                                          child: Text(
+                                            _profile?.displayName ?? '-',
+                                            style: Theme.of(context)
+                                                .textTheme
+                                                .titleMedium,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 16),
+                                    _buildRow('Tipo', _profileTypeLabel(types)),
+                                    const SizedBox(height: 8),
+                                    if (_profile?.location != null)
+                                      _buildRow(
+                                        'Localização',
+                                        '${_profile!.location!.latitude.toStringAsFixed(6)}, '
+                                        '${_profile!.location!.longitude.toStringAsFixed(6)}',
+                                      ),
+                                    const SizedBox(height: 12),
+                                    Align(
+                                      alignment: Alignment.centerRight,
+                                      child: OutlinedButton.icon(
+                                        onPressed: _openEdit,
+                                        icon: const Icon(Icons.edit_outlined),
+                                        label: const Text('Editar Perfil'),
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
                           ],

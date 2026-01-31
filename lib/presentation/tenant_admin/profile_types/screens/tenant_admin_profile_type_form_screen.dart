@@ -101,80 +101,118 @@ class _TenantAdminProfileTypeFormScreenState
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.fromLTRB(
-        16,
-        16,
-        16,
-        16 + MediaQuery.of(context).viewInsets.bottom,
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(_isEdit ? 'Editar Tipo' : 'Criar Tipo'),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => context.router.maybePop(),
+          tooltip: 'Voltar',
+        ),
       ),
-      child: SingleChildScrollView(
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Align(
-                alignment: Alignment.centerLeft,
-                child: IconButton(
-                  icon: const Icon(Icons.arrow_back),
-                  onPressed: () => context.router.maybePop(),
-                  tooltip: 'Voltar',
+      body: Padding(
+        padding: EdgeInsets.fromLTRB(
+          16,
+          16,
+          16,
+          16 + MediaQuery.of(context).viewInsets.bottom,
+        ),
+        child: SingleChildScrollView(
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Card(
+                  margin: EdgeInsets.zero,
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Informacoes do tipo',
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                        const SizedBox(height: 12),
+                        TextFormField(
+                          controller: _typeController,
+                          decoration:
+                              const InputDecoration(labelText: 'Tipo (slug)'),
+                          enabled: !_isEdit,
+                          validator: (value) {
+                            if (!_isEdit &&
+                                (value == null || value.trim().isEmpty)) {
+                              return 'Tipo e obrigatorio.';
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 12),
+                        TextFormField(
+                          controller: _labelController,
+                          decoration: const InputDecoration(labelText: 'Label'),
+                          validator: (value) {
+                            if (value == null || value.trim().isEmpty) {
+                              return 'Label e obrigatorio.';
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 12),
+                        TextFormField(
+                          controller: _taxonomiesController,
+                          decoration: const InputDecoration(
+                            labelText: 'Taxonomias (separadas por virgula)',
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                _isEdit ? 'Editar Tipo' : 'Criar Tipo',
-                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _typeController,
-                decoration: const InputDecoration(labelText: 'Tipo (slug)'),
-                enabled: !_isEdit,
-                validator: (value) {
-                  if (!_isEdit && (value == null || value.trim().isEmpty)) {
-                    return 'Tipo é obrigatório.';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _labelController,
-                decoration: const InputDecoration(labelText: 'Label'),
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'Label é obrigatório.';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _taxonomiesController,
-                decoration: const InputDecoration(
-                  labelText: 'Taxonomias (separadas por vírgula)',
+                const SizedBox(height: 16),
+                Card(
+                  margin: EdgeInsets.zero,
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Capacidades',
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                        const SizedBox(height: 12),
+                        SwitchListTile(
+                          contentPadding: EdgeInsets.zero,
+                          title: const Text('Favoritavel'),
+                          value: _isFavoritable,
+                          onChanged: (value) =>
+                              setState(() => _isFavoritable = value),
+                        ),
+                        SwitchListTile(
+                          contentPadding: EdgeInsets.zero,
+                          title: const Text('POI habilitado'),
+                          subtitle:
+                              const Text('Requer localizacao no perfil'),
+                          value: _isPoiEnabled,
+                          onChanged: (value) =>
+                              setState(() => _isPoiEnabled = value),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
-              ),
-              const SizedBox(height: 12),
-              SwitchListTile(
-                title: const Text('Favoritável'),
-                value: _isFavoritable,
-                onChanged: (value) => setState(() => _isFavoritable = value),
-              ),
-              SwitchListTile(
-                title: const Text('POI habilitado'),
-                subtitle: const Text('Requer localização no perfil'),
-                value: _isPoiEnabled,
-                onChanged: (value) => setState(() => _isPoiEnabled = value),
-              ),
-              const SizedBox(height: 20),
-              ElevatedButton(
-                onPressed: _save,
-                child: Text(_isEdit ? 'Salvar' : 'Criar'),
-              ),
-            ],
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton(
+                    onPressed: _save,
+                    child: Text(_isEdit ? 'Salvar' : 'Criar'),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),

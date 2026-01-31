@@ -73,108 +73,118 @@ class _TenantAdminProfileTypesListScreenState
             return StreamValueBuilder(
               streamValue: _controller.typesStreamValue,
               builder: (context, types) {
-                return Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Align(
-                        alignment: Alignment.centerLeft,
-                        child: IconButton(
-                          icon: const Icon(Icons.arrow_back),
-                          onPressed: () => context.router.maybePop(),
-                          tooltip: 'Voltar',
+                return Scaffold(
+                  floatingActionButton: FloatingActionButton.extended(
+                    onPressed: () async {
+                      await context.router.push(
+                        const TenantAdminProfileTypeCreateRoute(),
+                      );
+                      if (!mounted) return;
+                      await _controller.loadTypes();
+                    },
+                    icon: const Icon(Icons.add),
+                    label: const Text('Criar tipo'),
+                  ),
+                  body: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Tipos cadastrados',
+                          style: Theme.of(context).textTheme.titleMedium,
                         ),
-                      ),
-                      const SizedBox(height: 4),
-                      Row(
-                        children: [
-                          const Expanded(
-                            child: Text(
-                              'Tipos de Perfil',
-                              style:
-                                  TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
+                        const SizedBox(height: 12),
+                        if (isLoading) const LinearProgressIndicator(),
+                        if (error != null)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 8),
+                            child: Card(
+                              margin: EdgeInsets.zero,
+                              child: Padding(
+                                padding: const EdgeInsets.all(12),
+                                child: Row(
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        error,
+                                        style: TextStyle(
+                                          color:
+                                              Theme.of(context).colorScheme.error,
+                                        ),
+                                      ),
+                                    ),
+                                    TextButton(
+                                      onPressed: _controller.loadTypes,
+                                      child: const Text('Tentar novamente'),
+                                    ),
+                                  ],
+                                ),
+                              ),
                             ),
                           ),
-                          ElevatedButton(
-                            onPressed: () async {
-                              await context.router.push(
-                                const TenantAdminProfileTypeCreateRoute(),
-                              );
-                              if (!mounted) return;
-                              await _controller.loadTypes();
-                            },
-                            child: const Text('Criar'),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      if (isLoading) const LinearProgressIndicator(),
-                      if (error != null)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 8),
-                          child: Text(
-                            error,
-                            style: const TextStyle(color: Colors.red),
-                          ),
-                        ),
-                      const SizedBox(height: 8),
-                      Expanded(
-                        child: types.isEmpty
-                            ? const Center(
-                                child: Text('Nenhum tipo cadastrado ainda.'),
-                              )
-                            : ListView.separated(
-                                itemCount: types.length,
-                                separatorBuilder: (_, __) =>
-                                    const Divider(height: 1),
-                                itemBuilder: (context, index) {
-                                  final type = types[index];
-                                  final subtitle = [
-                                    if (type.capabilities.isPoiEnabled)
-                                      'POI habilitado',
-                                    if (type.capabilities.isFavoritable)
-                                      'Favoritável',
-                                    if (type.allowedTaxonomies.isNotEmpty)
-                                      'Taxonomias: ${type.allowedTaxonomies.join(', ')}',
-                                  ].join(' • ');
-                                  return ListTile(
-                                    title: Text(type.label),
-                                    subtitle: Text(
-                                      subtitle.isEmpty ? type.type : subtitle,
-                                    ),
-                                    trailing: PopupMenuButton<String>(
-                                      onSelected: (value) async {
-                                        if (value == 'edit') {
-                                          await context.router.push(
-                                            TenantAdminProfileTypeEditRoute(
-                                              profileType: type.type,
-                                              definition: type,
+                        const SizedBox(height: 8),
+                        Expanded(
+                          child: types.isEmpty
+                              ? _buildEmptyState(context)
+                              : ListView.separated(
+                                  itemCount: types.length,
+                                  separatorBuilder: (_, __) =>
+                                      const SizedBox(height: 12),
+                                  itemBuilder: (context, index) {
+                                    final type = types[index];
+                                    final subtitle = [
+                                      if (type.capabilities.isPoiEnabled)
+                                        'POI habilitado',
+                                      if (type.capabilities.isFavoritable)
+                                        'Favoritavel',
+                                      if (type.allowedTaxonomies.isNotEmpty)
+                                        'Taxonomias: ${type.allowedTaxonomies.join(', ')}',
+                                    ].join(' • ');
+                                    return Card(
+                                      clipBehavior: Clip.antiAlias,
+                                      child: ListTile(
+                                        title: Text(type.label),
+                                        subtitle: Text(
+                                          subtitle.isEmpty ? type.type : subtitle,
+                                        ),
+                                        trailing: PopupMenuButton<String>(
+                                          onSelected: (value) async {
+                                            if (value == 'edit') {
+                                              await context.router.push(
+                                                TenantAdminProfileTypeEditRoute(
+                                                  profileType: type.type,
+                                                  definition: type,
+                                                ),
+                                              );
+                                              if (!mounted) return;
+                                              await _controller.loadTypes();
+                                            }
+                                            if (value == 'delete') {
+                                              await _confirmDelete(
+                                                type.type,
+                                                type.label,
+                                              );
+                                            }
+                                          },
+                                          itemBuilder: (context) => [
+                                            const PopupMenuItem(
+                                              value: 'edit',
+                                              child: Text('Editar'),
                                             ),
-                                          );
-                                          if (!mounted) return;
-                                          await _controller.loadTypes();
-                                        }
-                                        if (value == 'delete') {
-                                          await _confirmDelete(type.type, type.label);
-                                        }
-                                      },
-                                      itemBuilder: (context) => [
-                                        const PopupMenuItem(
-                                          value: 'edit',
-                                          child: Text('Editar'),
+                                            const PopupMenuItem(
+                                              value: 'delete',
+                                              child: Text('Remover'),
+                                            ),
+                                          ],
                                         ),
-                                        const PopupMenuItem(
-                                          value: 'delete',
-                                          child: Text('Remover'),
-                                        ),
-                                      ],
-                                    ),
-                                  );
-                                },
-                              ),
-                      ),
-                    ],
+                                      ),
+                                    );
+                                  },
+                                ),
+                        ),
+                      ],
+                    ),
                   ),
                 );
               },
@@ -182,6 +192,31 @@ class _TenantAdminProfileTypesListScreenState
           },
         );
       },
+    );
+  }
+
+  Widget _buildEmptyState(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            'Nenhum tipo cadastrado ainda.',
+            style: Theme.of(context).textTheme.bodyLarge,
+          ),
+          const SizedBox(height: 16),
+          FilledButton(
+            onPressed: () async {
+              await context.router.push(
+                const TenantAdminProfileTypeCreateRoute(),
+              );
+              if (!mounted) return;
+              await _controller.loadTypes();
+            },
+            child: const Text('Criar tipo'),
+          ),
+        ],
+      ),
     );
   }
 }

@@ -34,70 +34,87 @@ class _TenantAdminOrganizationCreateScreenState
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.fromLTRB(
-        16,
-        16,
-        16,
-        16 + MediaQuery.of(context).viewInsets.bottom,
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Criar Organizacao'),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => context.router.maybePop(),
+          tooltip: 'Voltar',
+        ),
       ),
-      child: SingleChildScrollView(
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Align(
-                alignment: Alignment.centerLeft,
-                child: IconButton(
-                  icon: const Icon(Icons.arrow_back),
-                  onPressed: () => context.router.maybePop(),
-                  tooltip: 'Voltar',
-                ),
-              ),
-              const SizedBox(height: 4),
-              const Text(
-                'Criar Organização',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _nameController,
-                decoration: const InputDecoration(labelText: 'Nome'),
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'Nome é obrigatório.';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _descriptionController,
-                decoration: const InputDecoration(labelText: 'Descrição (opcional)'),
-              ),
-              const SizedBox(height: 20),
-              ElevatedButton(
-                onPressed: () async {
-                  final form = _formKey.currentState;
-                  if (form == null || !form.validate()) {
-                    return;
-                  }
-                  await _controller.createOrganization(
-                    name: _nameController.text.trim(),
-                    description: _descriptionController.text.trim(),
-                  );
-                  if (!context.mounted) return;
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Organização salva.'),
+      body: Padding(
+        padding: EdgeInsets.fromLTRB(
+          16,
+          16,
+          16,
+          16 + MediaQuery.of(context).viewInsets.bottom,
+        ),
+        child: SingleChildScrollView(
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Card(
+                  margin: EdgeInsets.zero,
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Dados da organizacao',
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                        const SizedBox(height: 12),
+                        TextFormField(
+                          controller: _nameController,
+                          decoration: const InputDecoration(labelText: 'Nome'),
+                          validator: (value) {
+                            if (value == null || value.trim().isEmpty) {
+                              return 'Nome e obrigatorio.';
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 12),
+                        TextFormField(
+                          controller: _descriptionController,
+                          decoration: const InputDecoration(
+                            labelText: 'Descricao (opcional)',
+                          ),
+                        ),
+                      ],
                     ),
-                  );
-                  context.router.maybePop();
-                },
-                child: const Text('Salvar'),
-              ),
-            ],
+                  ),
+                ),
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton(
+                    onPressed: () async {
+                      final form = _formKey.currentState;
+                      if (form == null || !form.validate()) {
+                        return;
+                      }
+                      await _controller.createOrganization(
+                        name: _nameController.text.trim(),
+                        description: _descriptionController.text.trim(),
+                      );
+                      if (!context.mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Organizacao salva.'),
+                        ),
+                      );
+                      context.router.maybePop();
+                    },
+                    child: const Text('Salvar'),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),

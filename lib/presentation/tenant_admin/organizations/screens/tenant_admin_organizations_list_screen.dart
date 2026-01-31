@@ -35,70 +35,77 @@ class _TenantAdminOrganizationsListScreenState
     return StreamValueBuilder(
       streamValue: _controller.organizationsStreamValue,
       builder: (context, organizations) {
-        return Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Align(
-                alignment: Alignment.centerLeft,
-                child: IconButton(
-                  icon: const Icon(Icons.arrow_back),
-                  onPressed: () => context.router.maybePop(),
-                  tooltip: 'Voltar',
+        return Scaffold(
+          floatingActionButton: FloatingActionButton.extended(
+            onPressed: () {
+              context.router.push(const TenantAdminOrganizationCreateRoute());
+            },
+            icon: const Icon(Icons.add),
+            label: const Text('Criar organizacao'),
+          ),
+          body: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Organizacoes cadastradas',
+                  style: Theme.of(context).textTheme.titleMedium,
                 ),
-              ),
-              const SizedBox(height: 4),
-              Row(
-                children: [
-                  const Expanded(
-                    child: Text(
-                      'Organizações',
-                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
-                    ),
-                  ),
-                  ElevatedButton(
-                    onPressed: () {
-                      context.router.push(const TenantAdminOrganizationCreateRoute());
-                    },
-                    child: const Text('Criar'),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Expanded(
-                child: organizations.isEmpty
-                    ? _buildEmptyState()
-                    : ListView.separated(
-                        itemCount: organizations.length,
-                        separatorBuilder: (_, __) => const Divider(height: 1),
-                        itemBuilder: (context, index) {
-                          final org = organizations[index];
-                          return ListTile(
-                            title: Text(org.name),
-                            subtitle: Text(org.id),
-                            trailing: const Icon(Icons.chevron_right),
-                            onTap: () {
-                              context.router.push(
-                                TenantAdminOrganizationDetailRoute(
-                                  organizationId: org.id,
-                                ),
-                              );
-                            },
-                          );
-                        },
-                      ),
-              ),
-            ],
+                const SizedBox(height: 12),
+                Expanded(
+                  child: organizations.isEmpty
+                      ? _buildEmptyState(context)
+                      : ListView.separated(
+                          itemCount: organizations.length,
+                          separatorBuilder: (_, __) =>
+                              const SizedBox(height: 12),
+                          itemBuilder: (context, index) {
+                            final org = organizations[index];
+                            return Card(
+                              clipBehavior: Clip.antiAlias,
+                              child: ListTile(
+                                title: Text(org.name),
+                                subtitle: Text(org.id),
+                                trailing: const Icon(Icons.chevron_right),
+                                onTap: () {
+                                  context.router.push(
+                                    TenantAdminOrganizationDetailRoute(
+                                      organizationId: org.id,
+                                    ),
+                                  );
+                                },
+                              ),
+                            );
+                          },
+                        ),
+                ),
+              ],
+            ),
           ),
         );
       },
     );
   }
 
-  Widget _buildEmptyState() {
-    return const Center(
-      child: Text('Nenhuma organização ainda.'),
+  Widget _buildEmptyState(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            'Nenhuma organizacao ainda.',
+            style: Theme.of(context).textTheme.bodyLarge,
+          ),
+          const SizedBox(height: 16),
+          FilledButton(
+            onPressed: () {
+              context.router.push(const TenantAdminOrganizationCreateRoute());
+            },
+            child: const Text('Criar organizacao'),
+          ),
+        ],
+      ),
     );
   }
 }
