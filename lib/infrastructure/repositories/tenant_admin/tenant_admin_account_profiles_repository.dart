@@ -238,6 +238,11 @@ class TenantAdminAccountProfilesRepository
           'capabilities': {
             'is_favoritable': capabilities.isFavoritable,
             'is_poi_enabled': capabilities.isPoiEnabled,
+            'has_bio': capabilities.hasBio,
+            'has_taxonomies': capabilities.hasTaxonomies,
+            'has_avatar': capabilities.hasAvatar,
+            'has_cover': capabilities.hasCover,
+            'has_events': capabilities.hasEvents,
           },
         },
         options: Options(headers: _buildHeaders()),
@@ -269,6 +274,11 @@ class TenantAdminAccountProfilesRepository
         payload['capabilities'] = {
           'is_favoritable': capabilities.isFavoritable,
           'is_poi_enabled': capabilities.isPoiEnabled,
+          'has_bio': capabilities.hasBio,
+          'has_taxonomies': capabilities.hasTaxonomies,
+          'has_avatar': capabilities.hasAvatar,
+          'has_cover': capabilities.hasCover,
+          'has_events': capabilities.hasEvents,
         };
       }
       final response = await _dio.patch(
@@ -360,6 +370,11 @@ class TenantAdminAccountProfilesRepository
       capabilities: TenantAdminProfileTypeCapabilities(
         isFavoritable: dto.isFavoritable,
         isPoiEnabled: dto.isPoiEnabled,
+        hasBio: dto.hasBio,
+        hasTaxonomies: dto.hasTaxonomies,
+        hasAvatar: dto.hasAvatar,
+        hasCover: dto.hasCover,
+        hasEvents: dto.hasEvents,
       ),
     );
   }

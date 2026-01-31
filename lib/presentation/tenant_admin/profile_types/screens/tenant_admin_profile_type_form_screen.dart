@@ -26,6 +26,11 @@ class _TenantAdminProfileTypeFormScreenState
   late final TextEditingController _taxonomiesController;
   bool _isFavoritable = false;
   bool _isPoiEnabled = false;
+  bool _hasBio = false;
+  bool _hasTaxonomies = false;
+  bool _hasAvatar = false;
+  bool _hasCover = false;
+  bool _hasEvents = false;
 
   bool get _isEdit => widget.definition != null;
 
@@ -41,6 +46,11 @@ class _TenantAdminProfileTypeFormScreenState
     );
     _isFavoritable = widget.definition?.capabilities.isFavoritable ?? false;
     _isPoiEnabled = widget.definition?.capabilities.isPoiEnabled ?? false;
+    _hasBio = widget.definition?.capabilities.hasBio ?? false;
+    _hasTaxonomies = widget.definition?.capabilities.hasTaxonomies ?? false;
+    _hasAvatar = widget.definition?.capabilities.hasAvatar ?? false;
+    _hasCover = widget.definition?.capabilities.hasCover ?? false;
+    _hasEvents = widget.definition?.capabilities.hasEvents ?? false;
   }
 
   @override
@@ -53,6 +63,9 @@ class _TenantAdminProfileTypeFormScreenState
   }
 
   List<String> _parseTaxonomies() {
+    if (!_hasTaxonomies) {
+      return const [];
+    }
     return _taxonomiesController.text
         .split(',')
         .map((value) => value.trim())
@@ -69,6 +82,11 @@ class _TenantAdminProfileTypeFormScreenState
     final capabilities = TenantAdminProfileTypeCapabilities(
       isFavoritable: _isFavoritable,
       isPoiEnabled: _isPoiEnabled,
+      hasBio: _hasBio,
+      hasTaxonomies: _hasTaxonomies,
+      hasAvatar: _hasAvatar,
+      hasCover: _hasCover,
+      hasEvents: _hasEvents,
     );
 
     if (_isEdit) {
@@ -165,6 +183,7 @@ class _TenantAdminProfileTypeFormScreenState
                           decoration: const InputDecoration(
                             labelText: 'Taxonomias (separadas por virgula)',
                           ),
+                          enabled: _hasTaxonomies,
                         ),
                       ],
                     ),
@@ -198,6 +217,46 @@ class _TenantAdminProfileTypeFormScreenState
                           value: _isPoiEnabled,
                           onChanged: (value) =>
                               setState(() => _isPoiEnabled = value),
+                        ),
+                        SwitchListTile(
+                          contentPadding: EdgeInsets.zero,
+                          title: const Text('Bio habilitada'),
+                          subtitle:
+                              const Text('Exibe campo de descricao no perfil'),
+                          value: _hasBio,
+                          onChanged: (value) =>
+                              setState(() => _hasBio = value),
+                        ),
+                        SwitchListTile(
+                          contentPadding: EdgeInsets.zero,
+                          title: const Text('Taxonomias habilitadas'),
+                          subtitle:
+                              const Text('Exibe categorias/etiquetas do tipo'),
+                          value: _hasTaxonomies,
+                          onChanged: (value) =>
+                              setState(() => _hasTaxonomies = value),
+                        ),
+                        SwitchListTile(
+                          contentPadding: EdgeInsets.zero,
+                          title: const Text('Avatar habilitado'),
+                          value: _hasAvatar,
+                          onChanged: (value) =>
+                              setState(() => _hasAvatar = value),
+                        ),
+                        SwitchListTile(
+                          contentPadding: EdgeInsets.zero,
+                          title: const Text('Capa habilitada'),
+                          value: _hasCover,
+                          onChanged: (value) =>
+                              setState(() => _hasCover = value),
+                        ),
+                        SwitchListTile(
+                          contentPadding: EdgeInsets.zero,
+                          title: const Text('Agenda habilitada'),
+                          subtitle: const Text('Mostra "Proximos Eventos"'),
+                          value: _hasEvents,
+                          onChanged: (value) =>
+                              setState(() => _hasEvents = value),
                         ),
                       ],
                     ),

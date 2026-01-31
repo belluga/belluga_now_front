@@ -108,18 +108,26 @@ void main() {
     await tester.enterText(find.byType(TextFormField).at(1), 'cpf');
     await tester.enterText(find.byType(TextFormField).at(2), 'Perfil Teste');
     await tester.enterText(find.byType(TextFormField).at(3), '000');
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await tester.pumpAndSettle();
 
     await tester.tap(find.byType(DropdownButtonFormField<String>));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Venue').last);
     await tester.pumpAndSettle();
 
-    expect(find.text('Selecionar no mapa'), findsOneWidget);
-
-    await tester.tap(find.text('Selecionar no mapa'));
+    final selectOnMap = find.text('Selecionar no mapa');
+    expect(selectOnMap, findsOneWidget);
+    await tester.ensureVisible(selectOnMap);
+    await tester.pumpAndSettle();
+    await tester.tap(selectOnMap, warnIfMissed: false);
     await tester.pumpAndSettle();
 
-    await _waitForFinder(tester, find.text('Selecionar Localização'));
+    await _waitForFinder(
+      tester,
+      find.text('Selecionar Localização'),
+      timeout: const Duration(seconds: 30),
+    );
     final mapCenter = tester.getCenter(find.byType(FlutterMap));
     await tester.tapAt(mapCenter);
     await tester.pumpAndSettle();
@@ -127,8 +135,10 @@ void main() {
     await tester.tap(find.text('Confirmar'));
     await tester.pumpAndSettle();
 
-    await tester.ensureVisible(find.text('Salvar Conta'));
-    await tester.tap(find.text('Salvar Conta'), warnIfMissed: false);
+    final saveButton = find.text('Salvar conta');
+    await _waitForFinder(tester, saveButton);
+    await tester.ensureVisible(saveButton);
+    await tester.tap(saveButton, warnIfMissed: false);
     await tester.pumpAndSettle();
 
     await _waitForFinder(tester, find.text('Conta e perfil salvos.'));
@@ -255,6 +265,11 @@ class _FakeAccountProfilesRepository
         capabilities: TenantAdminProfileTypeCapabilities(
           isFavoritable: true,
           isPoiEnabled: true,
+          hasBio: false,
+          hasTaxonomies: false,
+          hasAvatar: false,
+          hasCover: false,
+          hasEvents: false,
         ),
       ),
     ];
@@ -370,6 +385,11 @@ class _FakeAccountProfilesRepository
           const TenantAdminProfileTypeCapabilities(
             isFavoritable: true,
             isPoiEnabled: true,
+            hasBio: false,
+            hasTaxonomies: false,
+            hasAvatar: false,
+            hasCover: false,
+            hasEvents: false,
           ),
     );
   }

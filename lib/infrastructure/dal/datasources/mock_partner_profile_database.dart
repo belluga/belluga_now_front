@@ -1,11 +1,55 @@
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
+import 'package:belluga_now/domain/partners/profile_type_capabilities.dart';
 import 'package:belluga_now/presentation/tenant/partners/models/partner_profile_config.dart';
 
 /// Mock database providing profile module data keyed by partner slug.
 class MockPartnerProfileDatabase {
   MockPartnerProfileDatabase();
 
-  PartnerProfileConfig buildConfig(AccountProfileModel partner) {
+  PartnerProfileConfig buildConfig(
+    AccountProfileModel partner, {
+    ProfileTypeCapabilities? capabilities,
+  }) {
+    if (capabilities != null) {
+      final tabs = <ProfileTabConfig>[];
+      if (capabilities.hasBio &&
+          partner.bio != null &&
+          partner.bio!.trim().isNotEmpty) {
+        tabs.add(
+          ProfileTabConfig(
+            title: 'Sobre',
+            modules: [
+              ProfileModuleConfig(id: ProfileModuleId.richText),
+            ],
+          ),
+        );
+      }
+      if (capabilities.isPoiEnabled) {
+        tabs.add(
+          ProfileTabConfig(
+            title: 'Como Chegar',
+            modules: [
+              ProfileModuleConfig(id: ProfileModuleId.locationInfo),
+            ],
+          ),
+        );
+      }
+      if (capabilities.hasEvents) {
+        tabs.add(
+          ProfileTabConfig(
+            title: 'Próximos Eventos',
+            modules: [
+              ProfileModuleConfig(id: ProfileModuleId.agendaList),
+            ],
+          ),
+        );
+      }
+      return PartnerProfileConfig(
+        partner: partner,
+        tabs: tabs,
+      );
+    }
+
     switch (partner.type) {
       case 'artist':
         final hasBio = partner.bio != null && partner.bio!.trim().isNotEmpty;

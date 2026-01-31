@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:belluga_now/domain/repositories/tenant_admin_account_profiles_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_accounts_repository_contract.dart';
 import 'package:belluga_now/domain/tenant_admin/ownership_state.dart';
@@ -13,6 +15,7 @@ import 'package:belluga_now/presentation/tenant_admin/accounts/screens/tenant_ad
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
+import 'package:image_picker_platform_interface/image_picker_platform_interface.dart';
 
 class _FakeAccountsRepository implements TenantAdminAccountsRepositoryContract {
   @override
@@ -92,6 +95,11 @@ class _FakeAccountProfilesRepository
         capabilities: TenantAdminProfileTypeCapabilities(
           isFavoritable: true,
           isPoiEnabled: true,
+          hasBio: false,
+          hasTaxonomies: false,
+          hasAvatar: false,
+          hasCover: false,
+          hasEvents: false,
         ),
       ),
     ];
@@ -188,6 +196,11 @@ class _FakeAccountProfilesRepository
           const TenantAdminProfileTypeCapabilities(
             isFavoritable: true,
             isPoiEnabled: true,
+            hasBio: false,
+            hasTaxonomies: false,
+            hasAvatar: false,
+            hasCover: false,
+            hasEvents: false,
           ),
     );
   }
@@ -217,6 +230,8 @@ class _FakeAccountProfilesRepository
 }
 
 void main() {
+  final originalImagePicker = ImagePickerPlatform.instance;
+
   setUp(() async {
     await GetIt.I.reset();
     GetIt.I.registerSingleton<TenantAdminAccountsRepositoryContract>(
@@ -232,6 +247,7 @@ void main() {
 
   tearDown(() async {
     await GetIt.I.reset();
+    ImagePickerPlatform.instance = originalImagePicker;
   });
 
   testWidgets(
@@ -269,10 +285,15 @@ void main() {
     await tester.tap(find.text('Venue').last);
     await tester.pumpAndSettle();
 
-    expect(find.text('Selecionar no mapa'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('tenant_admin_account_create_map_pick')),
+      findsOneWidget,
+    );
 
-    await tester.ensureVisible(find.text('Salvar Conta'));
-    await tester.tap(find.text('Salvar Conta'), warnIfMissed: false);
+    final saveButton =
+        find.byKey(const ValueKey('tenant_admin_account_create_save'));
+    await tester.ensureVisible(saveButton);
+    await tester.tap(saveButton, warnIfMissed: false);
     await tester.pumpAndSettle();
 
     expect(
@@ -280,4 +301,75 @@ void main() {
       findsOneWidget,
     );
   });
+
+  testWidgets('shows selected avatar and allows clear', (tester) async {
+    final avatarFile = _createTempImageFile('avatar.png');
+    final coverFile = _createTempImageFile('cover.png');
+    ImagePickerPlatform.instance = _FakeImagePickerPlatform([
+      avatarFile,
+      coverFile,
+    ]);
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: TenantAdminAccountCreateScreen(),
+        ),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+
+    expect(find.byIcon(Icons.person_outline), findsOneWidget);
+    expect(find.text('Remover'), findsNothing);
+
+    final avatarPick =
+        find.byKey(const ValueKey('tenant_admin_account_create_avatar_pick'));
+    await tester.ensureVisible(avatarPick);
+    await tester.tap(avatarPick);
+    await tester.pumpAndSettle();
+
+    expect(find.byIcon(Icons.person_outline), findsNothing);
+    expect(find.text('Remover'), findsOneWidget);
+
+    final avatarRemove = find.byKey(
+      const ValueKey('tenant_admin_account_create_avatar_remove'),
+    );
+    await tester.tap(avatarRemove);
+    await tester.pumpAndSettle();
+
+    expect(find.byIcon(Icons.person_outline), findsOneWidget);
+    expect(find.text('Remover'), findsNothing);
+
+    final coverPick =
+        find.byKey(const ValueKey('tenant_admin_account_create_cover_pick'));
+    await tester.ensureVisible(coverPick);
+    await tester.tap(coverPick);
+    await tester.pumpAndSettle();
+
+    expect(find.byIcon(Icons.image_outlined), findsNothing);
+    expect(find.text('Remover'), findsOneWidget);
+  });
+}
+
+XFile _createTempImageFile(String name) {
+  final dir = Directory.systemTemp.createTempSync('belluga_test_');
+  final file = File('${dir.path}/$name');
+  file.writeAsBytesSync([0, 1, 2, 3, 4]);
+  return XFile(file.path, name: name, mimeType: 'image/png');
+}
+
+class _FakeImagePickerPlatform extends ImagePickerPlatform {
+  _FakeImagePickerPlatform(this._queue);
+
+  final List<XFile> _queue;
+
+  @override
+  Future<XFile?> getImageFromSource({
+    required ImageSource source,
+    ImagePickerOptions options = const ImagePickerOptions(),
+  }) async {
+    if (_queue.isEmpty) return null;
+    return _queue.removeAt(0);
+  }
 }

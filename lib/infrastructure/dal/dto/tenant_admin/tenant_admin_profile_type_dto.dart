@@ -5,6 +5,11 @@ class TenantAdminProfileTypeDTO {
     required this.allowedTaxonomies,
     required this.isFavoritable,
     required this.isPoiEnabled,
+    required this.hasBio,
+    required this.hasTaxonomies,
+    required this.hasAvatar,
+    required this.hasCover,
+    required this.hasEvents,
   });
 
   final String type;
@@ -12,6 +17,11 @@ class TenantAdminProfileTypeDTO {
   final List<String> allowedTaxonomies;
   final bool isFavoritable;
   final bool isPoiEnabled;
+  final bool hasBio;
+  final bool hasTaxonomies;
+  final bool hasAvatar;
+  final bool hasCover;
+  final bool hasEvents;
 
   factory TenantAdminProfileTypeDTO.fromJson(Map<String, dynamic> json) {
     final allowed = <String>[];
@@ -26,9 +36,19 @@ class TenantAdminProfileTypeDTO {
     final capabilities = json['capabilities'];
     bool isFavoritable = false;
     bool isPoiEnabled = false;
+    bool hasBio = false;
+    bool hasTaxonomies = false;
+    bool hasAvatar = false;
+    bool hasCover = false;
+    bool hasEvents = false;
     if (capabilities is Map<String, dynamic>) {
       isFavoritable = _parseBool(capabilities['is_favoritable']);
       isPoiEnabled = _parseBool(capabilities['is_poi_enabled']);
+      hasBio = _parseBool(capabilities['has_bio']);
+      hasTaxonomies = _parseBool(capabilities['has_taxonomies']);
+      hasAvatar = _parseBool(capabilities['has_avatar']);
+      hasCover = _parseBool(capabilities['has_cover']);
+      hasEvents = _parseBool(capabilities['has_events']);
     }
     return TenantAdminProfileTypeDTO(
       type: json['type']?.toString() ?? '',
@@ -36,6 +56,11 @@ class TenantAdminProfileTypeDTO {
       allowedTaxonomies: allowed,
       isFavoritable: isFavoritable,
       isPoiEnabled: isPoiEnabled,
+      hasBio: hasBio,
+      hasTaxonomies: hasTaxonomies,
+      hasAvatar: hasAvatar,
+      hasCover: hasCover,
+      hasEvents: hasEvents,
     );
   }
 

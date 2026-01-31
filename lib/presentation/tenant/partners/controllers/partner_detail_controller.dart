@@ -46,8 +46,14 @@ class PartnerDetailController implements Disposable {
       final partner = await _partnersRepository.getAccountProfileBySlug(slug);
       partnerStreamValue.addValue(partner);
       if (partner != null) {
-        profileConfigStreamValue
-            .addValue(_profileDatabase.buildConfig(partner));
+        final capabilities =
+            _resolveRegistry()?.capabilitiesFor(partner.type);
+        profileConfigStreamValue.addValue(
+          _profileDatabase.buildConfig(
+            partner,
+            capabilities: capabilities,
+          ),
+        );
         moduleDataStreamValue.addValue(
           _contentRepository.loadModulesForPartner(partner),
         );

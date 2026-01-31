@@ -7,7 +7,7 @@ import 'package:belluga_now/infrastructure/dal/dao/laravel_backend/app_data_back
 import 'package:belluga_now/infrastructure/dal/dao/local/app_data_local_info_source/app_data_local_info_source_stub.dart';
 import 'package:belluga_now/infrastructure/repositories/app_data_repository.dart';
 import 'package:belluga_now/presentation/tenant/map/screens/map_screen/map_screen.dart';
-import 'package:belluga_now/presentation/tenant/schedule/widgets/agenda_app_bar.dart';
+import 'package:belluga_now/presentation/tenant/profile/screens/profile_screen/profile_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
@@ -102,7 +102,7 @@ void main() {
   }
 
   testWidgets(
-    'Home to Map to Home to Menu to Agenda navigation',
+    'Home to Map to Home to Profile navigation',
     (tester) async {
       debugPrint('Shell nav test: start');
       if (GetIt.I.isRegistered<ApplicationContract>()) {
@@ -149,20 +149,11 @@ void main() {
         find.text('Seus Favoritos', skipOffstage: false),
       );
 
-      await tester.tap(find.widgetWithText(NavigationDestination, 'Menu'));
+      await tester.tap(find.widgetWithText(NavigationDestination, 'Perfil'));
       await _pumpFor(tester, const Duration(seconds: 1));
-      await _waitForFinder(tester, find.text('Seu Perfil'));
-
-      await tester.tap(find.text('Meus eventos confirmados'));
-      await _pumpFor(tester, const Duration(seconds: 1));
-      expect(find.byType(AgendaAppBar), findsOneWidget);
-      expect(find.text('Agenda'), findsOneWidget);
+      await _waitForFinder(tester, find.byType(ProfileScreen));
 
       await tester.tap(find.byIcon(Icons.arrow_back));
-      await _pumpFor(tester, const Duration(seconds: 1));
-      await _waitForFinder(tester, find.text('Seu Perfil'));
-
-      await tester.tap(find.widgetWithText(NavigationDestination, 'Inicio'));
       await _pumpFor(tester, const Duration(seconds: 1));
       await _waitForFinder(
         tester,

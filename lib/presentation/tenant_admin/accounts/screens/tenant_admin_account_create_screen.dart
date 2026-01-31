@@ -199,6 +199,7 @@ class _TenantAdminAccountCreateScreenState
                 SizedBox(
                   width: double.infinity,
                   child: FilledButton(
+                    key: const ValueKey('tenant_admin_account_create_save'),
                     onPressed: () async {
                       final form = _formKey.currentState;
                       if (form == null || !form.validate()) {
@@ -287,22 +288,56 @@ class _TenantAdminAccountCreateScreenState
                             if (error != null)
                               Padding(
                                 padding: const EdgeInsets.only(top: 8),
-                                child: Row(
-                                  children: [
-                                    Expanded(
-                                      child: Text(
-                                        error,
-                                        style: TextStyle(
-                                          color:
-                                              Theme.of(context).colorScheme.error,
+                                child: Card(
+                                  key: const ValueKey(
+                                    'tenant_admin_account_create_profile_types_error',
+                                  ),
+                                  margin: EdgeInsets.zero,
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .errorContainer,
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(12),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          'Falha ao carregar tipos de perfil',
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .titleSmall
+                                              ?.copyWith(
+                                                color: Theme.of(context)
+                                                    .colorScheme
+                                                    .onErrorContainer,
+                                              ),
                                         ),
-                                      ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          'Sua sessao de admin pode ter expirado. Tente novamente.',
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .bodySmall
+                                              ?.copyWith(
+                                                color: Theme.of(context)
+                                                    .colorScheme
+                                                    .onErrorContainer,
+                                              ),
+                                        ),
+                                        const SizedBox(height: 8),
+                                        Align(
+                                          alignment: Alignment.centerLeft,
+                                          child: TextButton(
+                                            onPressed:
+                                                _controller.loadProfileTypes,
+                                            child:
+                                                const Text('Tentar novamente'),
+                                          ),
+                                        ),
+                                      ],
                                     ),
-                                    TextButton(
-                                      onPressed: _controller.loadProfileTypes,
-                                      child: const Text('Tentar novamente'),
-                                    ),
-                                  ],
+                                  ),
                                 ),
                               ),
                             const SizedBox(height: 8),
@@ -430,6 +465,9 @@ class _TenantAdminAccountCreateScreenState
                       Row(
                         children: [
                           FilledButton.tonalIcon(
+                            key: const ValueKey(
+                              'tenant_admin_account_create_avatar_pick',
+                            ),
                             onPressed: () => _pickImage(isAvatar: true),
                             icon: const Icon(Icons.photo_library_outlined),
                             label: const Text('Selecionar'),
@@ -437,6 +475,9 @@ class _TenantAdminAccountCreateScreenState
                           const SizedBox(width: 8),
                           if (_avatarFile != null)
                             TextButton(
+                              key: const ValueKey(
+                                'tenant_admin_account_create_avatar_remove',
+                              ),
                               onPressed: () => _clearImage(isAvatar: true),
                               child: const Text('Remover'),
                             ),
@@ -475,6 +516,9 @@ class _TenantAdminAccountCreateScreenState
             Row(
               children: [
                 FilledButton.tonalIcon(
+                  key: const ValueKey(
+                    'tenant_admin_account_create_cover_pick',
+                  ),
                   onPressed: () => _pickImage(isAvatar: false),
                   icon: const Icon(Icons.photo_library_outlined),
                   label: const Text('Selecionar capa'),
@@ -482,6 +526,9 @@ class _TenantAdminAccountCreateScreenState
                 const SizedBox(width: 8),
                 if (_coverFile != null)
                   TextButton(
+                    key: const ValueKey(
+                      'tenant_admin_account_create_cover_remove',
+                    ),
                     onPressed: () => _clearImage(isAvatar: false),
                     child: const Text('Remover'),
                   ),
@@ -520,11 +567,14 @@ class _TenantAdminAccountCreateScreenState
               validator: _validateLongitude,
             ),
             const SizedBox(height: 8),
-            FilledButton.tonalIcon(
-              onPressed: _openMapPicker,
-              icon: const Icon(Icons.map_outlined),
-              label: const Text('Selecionar no mapa'),
-            ),
+                  FilledButton.tonalIcon(
+                    key: const ValueKey(
+                      'tenant_admin_account_create_map_pick',
+                    ),
+                    onPressed: _openMapPicker,
+                    icon: const Icon(Icons.map_outlined),
+                    label: const Text('Selecionar no mapa'),
+                  ),
           ],
         ),
       ),

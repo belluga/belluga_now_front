@@ -5,6 +5,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dar
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
 import 'package:get_it/get_it.dart' show Disposable, GetIt;
 import 'package:stream_value/core/stream_value.dart';
 
@@ -90,6 +91,8 @@ class TenantAdminAccountProfilesController implements Disposable {
     required String profileType,
     required String displayName,
     TenantAdminLocation? location,
+    List<TenantAdminTaxonomyTerm> taxonomyTerms = const [],
+    String? bio,
     TenantAdminMediaUpload? avatarUpload,
     TenantAdminMediaUpload? coverUpload,
   }) async {
@@ -98,6 +101,8 @@ class TenantAdminAccountProfilesController implements Disposable {
       profileType: profileType,
       displayName: displayName,
       location: location,
+      taxonomyTerms: taxonomyTerms,
+      bio: bio,
       avatarUpload: avatarUpload,
       coverUpload: coverUpload,
     );
@@ -110,6 +115,8 @@ class TenantAdminAccountProfilesController implements Disposable {
     String? profileType,
     String? displayName,
     TenantAdminLocation? location,
+    List<TenantAdminTaxonomyTerm>? taxonomyTerms,
+    String? bio,
     TenantAdminMediaUpload? avatarUpload,
     TenantAdminMediaUpload? coverUpload,
   }) async {
@@ -118,6 +125,8 @@ class TenantAdminAccountProfilesController implements Disposable {
       profileType: profileType,
       displayName: displayName,
       location: location,
+      taxonomyTerms: taxonomyTerms,
+      bio: bio,
       avatarUpload: avatarUpload,
       coverUpload: coverUpload,
     );

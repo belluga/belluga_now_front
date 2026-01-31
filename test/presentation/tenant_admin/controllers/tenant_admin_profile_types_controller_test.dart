@@ -50,6 +50,11 @@ class _FakeAccountProfilesRepository
           const TenantAdminProfileTypeCapabilities(
             isFavoritable: true,
             isPoiEnabled: false,
+            hasBio: false,
+            hasTaxonomies: false,
+            hasAvatar: false,
+            hasCover: false,
+            hasEvents: false,
           ),
     );
   }
@@ -151,6 +156,11 @@ void main() {
       capabilities: const TenantAdminProfileTypeCapabilities(
         isFavoritable: true,
         isPoiEnabled: true,
+        hasBio: false,
+        hasTaxonomies: false,
+        hasAvatar: false,
+        hasCover: false,
+        hasEvents: false,
       ),
     );
 
@@ -166,6 +176,11 @@ void main() {
         capabilities: TenantAdminProfileTypeCapabilities(
           isFavoritable: true,
           isPoiEnabled: true,
+          hasBio: false,
+          hasTaxonomies: false,
+          hasAvatar: false,
+          hasCover: false,
+          hasEvents: false,
         ),
       ),
     ]);

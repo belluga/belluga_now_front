@@ -138,6 +138,16 @@ class _TenantAdminProfileTypesListScreenState
                                         'POI habilitado',
                                       if (type.capabilities.isFavoritable)
                                         'Favoritavel',
+                                      if (type.capabilities.hasBio)
+                                        'Bio',
+                                      if (type.capabilities.hasTaxonomies)
+                                        'Taxonomias',
+                                      if (type.capabilities.hasAvatar)
+                                        'Avatar',
+                                      if (type.capabilities.hasCover)
+                                        'Capa',
+                                      if (type.capabilities.hasEvents)
+                                        'Agenda',
                                       if (type.allowedTaxonomies.isNotEmpty)
                                         'Taxonomias: ${type.allowedTaxonomies.join(', ')}',
                                     ].join(' • ');

@@ -1,3 +1,4 @@
+import 'package:belluga_now/domain/partners/profile_type_capabilities.dart';
 import 'package:belluga_now/domain/partners/profile_type_definition.dart';
 
 class ProfileTypeRegistry {
@@ -20,6 +21,9 @@ class ProfileTypeRegistry {
 
   bool isFavoritable(String type) =>
       _typesByKey[type]?.capabilities.isFavoritable ?? false;
+
+  ProfileTypeCapabilities? capabilitiesFor(String type) =>
+      _typesByKey[type]?.capabilities;
 
   bool isEnabledFor(String type) => contains(type);
 

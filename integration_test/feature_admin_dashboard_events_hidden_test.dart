@@ -6,6 +6,7 @@ import 'package:belluga_now/domain/repositories/landlord_auth_repository_contrac
 import 'package:belluga_now/infrastructure/dal/dao/laravel_backend/app_data_backend/app_data_backend_stub.dart';
 import 'package:belluga_now/infrastructure/dal/dao/local/app_data_local_info_source/app_data_local_info_source_stub.dart';
 import 'package:belluga_now/infrastructure/repositories/app_data_repository.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
 import 'package:integration_test/integration_test.dart';
@@ -63,71 +64,67 @@ void main() {
       ),
     );
     GetIt.I.registerSingleton<AdminModeRepositoryContract>(
-      _FakeAdminModeRepository(AdminMode.landlord),
-    );
-    GetIt.I.registerSingleton<LandlordAuthRepositoryContract>(
-      _FakeLandlordAuthRepository(hasValidSession: true),
+      _InMemoryAdminModeRepository(),
     );
 
     final app = Application();
     GetIt.I.registerSingleton<ApplicationContract>(app);
     await app.init();
 
+    await tester.runAsync(() async {
+      final adminModeRepo = GetIt.I<AdminModeRepositoryContract>();
+      await adminModeRepo.setLandlordMode();
+      final authRepo = GetIt.I<LandlordAuthRepositoryContract>();
+      await authRepo.loginWithEmailPassword(
+        'admin@bellugasolutions.com.br',
+        '765432e1',
+      );
+    });
+
     app.appRouter.replaceAll([const TenantAdminShellRoute()]);
 
     await tester.pumpWidget(app);
     await _pumpFor(tester, const Duration(seconds: 2));
 
-    await _waitForFinder(tester, find.text('Admin Dashboard'));
-    await _waitForFinder(tester, find.text('Events'));
-    await _waitForFinder(tester, find.text('Coming soon'));
+    await _waitForFinder(
+      tester,
+      find.byKey(const ValueKey('tenant-admin-shell-router')),
+    );
+    await _waitForFinder(tester, find.text('Eventos'));
+    await _waitForFinder(tester, find.text('Em breve'));
 
-    await tester.tap(find.text('Events'));
+    await tester.tap(find.text('Eventos'));
     await _pumpFor(tester, const Duration(seconds: 1));
-    await _waitForFinder(tester, find.text('Admin Dashboard'));
+    await _waitForFinder(
+      tester,
+      find.byKey(const ValueKey('tenant-admin-shell-router')),
+    );
   });
 }
 
-class _FakeAdminModeRepository implements AdminModeRepositoryContract {
-  _FakeAdminModeRepository(this._mode);
-
-  final AdminMode _mode;
-
-  @override
-  StreamValue<AdminMode> get modeStreamValue =>
-      StreamValue<AdminMode>(defaultValue: _mode);
+class _InMemoryAdminModeRepository implements AdminModeRepositoryContract {
+  final StreamValue<AdminMode> _modeStreamValue =
+      StreamValue<AdminMode>(defaultValue: AdminMode.user);
 
   @override
-  AdminMode get mode => _mode;
+  StreamValue<AdminMode> get modeStreamValue => _modeStreamValue;
 
   @override
-  bool get isLandlordMode => _mode == AdminMode.landlord;
+  AdminMode get mode => _modeStreamValue.value;
+
+  @override
+  bool get isLandlordMode => mode == AdminMode.landlord;
 
   @override
   Future<void> init() async {}
 
   @override
-  Future<void> setLandlordMode() async {}
+  Future<void> setLandlordMode() async {
+    _modeStreamValue.addValue(AdminMode.landlord);
+  }
 
   @override
-  Future<void> setUserMode() async {}
-}
-
-class _FakeLandlordAuthRepository implements LandlordAuthRepositoryContract {
-  _FakeLandlordAuthRepository({required this.hasValidSession});
-
-  @override
-  final bool hasValidSession;
-
-  @override
-  String get token => hasValidSession ? 'token' : '';
-
-  @override
-  Future<void> init() async {}
-
-  @override
-  Future<void> loginWithEmailPassword(String email, String password) async {}
-
-  @override
-  Future<void> logout() async {}
+  Future<void> setUserMode() async {
+    _modeStreamValue.addValue(AdminMode.user);
+  }
 }

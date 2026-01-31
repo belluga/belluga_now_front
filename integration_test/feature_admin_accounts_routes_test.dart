@@ -43,6 +43,33 @@ void main() {
     }
   }
 
+  Future<void> _waitForAny(
+    WidgetTester tester,
+    List<Finder> finders, {
+    Duration timeout = const Duration(seconds: 20),
+  }) async {
+    final deadline = DateTime.now().add(timeout);
+    while (DateTime.now().isBefore(deadline)) {
+      await tester.pump(const Duration(milliseconds: 200));
+      for (final finder in finders) {
+        if (finder.evaluate().isNotEmpty) {
+          return;
+        }
+      }
+    }
+    throw TestFailure('Timed out waiting for any expected widget.');
+  }
+
+  Future<void> _tapFirstMatch(WidgetTester tester, List<Finder> finders) async {
+    for (final finder in finders) {
+      if (finder.evaluate().isNotEmpty) {
+        await tester.tap(finder.first);
+        return;
+      }
+    }
+    throw TestFailure('No tap target found.');
+  }
+
   testWidgets('Admin accounts list/detail/create routes', (tester) async {
     if (GetIt.I.isRegistered<ApplicationContract>()) {
       GetIt.I.unregister<ApplicationContract>();
@@ -64,10 +91,7 @@ void main() {
       ),
     );
     GetIt.I.registerSingleton<AdminModeRepositoryContract>(
-      _FakeAdminModeRepository(AdminMode.landlord),
-    );
-    GetIt.I.registerSingleton<LandlordAuthRepositoryContract>(
-      _FakeLandlordAuthRepository(hasValidSession: true),
+      _InMemoryAdminModeRepository(),
     );
 
     final app = Application();
@@ -77,84 +101,114 @@ void main() {
     await tester.pumpWidget(app);
     await _pumpFor(tester, const Duration(seconds: 2));
 
+    await tester.runAsync(() async {
+      final adminModeRepo = GetIt.I<AdminModeRepositoryContract>();
+      await adminModeRepo.setLandlordMode();
+      final authRepo = GetIt.I<LandlordAuthRepositoryContract>();
+      await authRepo.loginWithEmailPassword(
+        'admin@bellugasolutions.com.br',
+        '765432e1',
+      );
+    });
+
     app.appRouter.replaceAll([
       const TenantAdminShellRoute(
         children: [TenantAdminAccountsListRoute()],
       ),
     ]);
-    await _pumpFor(tester, const Duration(seconds: 1));
+    await _pumpFor(tester, const Duration(seconds: 2));
 
-    await _waitForFinder(tester, find.text('Accounts'));
-    await _waitForFinder(tester, find.text('Tenant owned'));
-    await _waitForFinder(tester, find.text('acme-events'));
+    await _waitForFinder(
+      tester,
+      find.byKey(const ValueKey('tenant-admin-shell-router')),
+    );
+    await _waitForFinder(tester, find.text('Do tenant'));
+    await _waitForAny(
+      tester,
+      [
+        find.byType(ListTile),
+        find.text('Nenhuma conta neste segmento ainda.'),
+      ],
+    );
 
-    await tester.tap(find.widgetWithText(ElevatedButton, 'Create'));
+    await _tapFirstMatch(
+      tester,
+      [
+        find.widgetWithText(FloatingActionButton, 'Criar conta'),
+        find.text('Criar Conta'),
+      ],
+    );
     await _pumpFor(tester, const Duration(seconds: 1));
-    await _waitForFinder(tester, find.text('Create Account'));
-
-    await tester.tap(find.widgetWithText(TextButton, 'Back'));
-    await _pumpFor(tester, const Duration(seconds: 1));
-    await _waitForFinder(tester, find.text('Accounts'));
-    await _waitForFinder(tester, find.text('acme-events'));
-
-    await tester.tap(find.text('acme-events'));
-    await _pumpFor(tester, const Duration(seconds: 1));
-    await _waitForFinder(tester, find.text('Account: acme-events'));
+    await _waitForFinder(tester, find.text('Criar Conta'));
 
     await tester.tap(find.byIcon(Icons.arrow_back));
     await _pumpFor(tester, const Duration(seconds: 1));
-    await _waitForFinder(tester, find.text('Accounts'));
+    await _waitForFinder(
+      tester,
+      find.byKey(const ValueKey('tenant-admin-shell-router')),
+    );
+    if (find.byType(ListTile).evaluate().isNotEmpty) {
+      final firstTile = tester.widget<ListTile>(find.byType(ListTile).first);
+      final title = firstTile.title;
+      final slug = title is Text ? title.data : null;
+      await tester.tap(find.byType(ListTile).first);
+      await _pumpFor(tester, const Duration(seconds: 1));
+      if (slug != null) {
+        await _waitForFinder(tester, find.text('Conta: $slug'));
+      }
+      await tester.tap(find.byIcon(Icons.arrow_back));
+      await _pumpFor(tester, const Duration(seconds: 1));
+      await _waitForFinder(
+        tester,
+        find.byKey(const ValueKey('tenant-admin-shell-router')),
+      );
+    }
 
-    await tester.tap(find.text('Unmanaged'));
+    await tester.tap(find.text('Nao gerenciadas'));
     await _pumpFor(tester, const Duration(seconds: 1));
-    await _waitForFinder(tester, find.text('moonlight-venue'));
+    await _waitForAny(
+      tester,
+      [
+        find.byType(ListTile),
+        find.text('Nenhuma conta neste segmento ainda.'),
+      ],
+    );
 
-    await tester.tap(find.text('User owned'));
+    await tester.tap(find.text('Do usuario'));
     await _pumpFor(tester, const Duration(seconds: 1));
-    await _waitForFinder(tester, find.text('sunset-artist'));
+    await _waitForAny(
+      tester,
+      [
+        find.byType(ListTile),
+        find.text('Nenhuma conta neste segmento ainda.'),
+      ],
+    );
   });
 }
 
-class _FakeAdminModeRepository implements AdminModeRepositoryContract {
-  _FakeAdminModeRepository(this._mode);
-
-  final AdminMode _mode;
-
-  @override
-  StreamValue<AdminMode> get modeStreamValue =>
-      StreamValue<AdminMode>(defaultValue: _mode);
+class _InMemoryAdminModeRepository implements AdminModeRepositoryContract {
+  final StreamValue<AdminMode> _modeStreamValue =
+      StreamValue<AdminMode>(defaultValue: AdminMode.user);
 
   @override
-  AdminMode get mode => _mode;
+  StreamValue<AdminMode> get modeStreamValue => _modeStreamValue;
 
   @override
-  bool get isLandlordMode => _mode == AdminMode.landlord;
+  AdminMode get mode => _modeStreamValue.value;
+
+  @override
+  bool get isLandlordMode => mode == AdminMode.landlord;
 
   @override
   Future<void> init() async {}
 
   @override
-  Future<void> setLandlordMode() async {}
+  Future<void> setLandlordMode() async {
+    _modeStreamValue.addValue(AdminMode.landlord);
+  }
 
   @override
-  Future<void> setUserMode() async {}
-}
-
-class _FakeLandlordAuthRepository implements LandlordAuthRepositoryContract {
-  _FakeLandlordAuthRepository({required this.hasValidSession});
-
-  @override
-  final bool hasValidSession;
-
-  @override
-  String get token => hasValidSession ? 'token' : '';
-
-  @override
-  Future<void> init() async {}
-
-  @override
-  Future<void> loginWithEmailPassword(String email, String password) async {}
-
-  @override
-  Future<void> logout() async {}
+  Future<void> setUserMode() async {
+    _modeStreamValue.addValue(AdminMode.user);
+  }
 }

@@ -111,7 +111,10 @@ void main() {
     await tester.tap(find.widgetWithText(FilledButton, 'Entrar'));
     await _pumpFor(tester, const Duration(seconds: 3));
 
-    await _waitForFinder(tester, find.text('MODO ADMINISTRADOR'));
+    final adminShellRouter =
+        find.byKey(const ValueKey('tenant-admin-shell-router'));
+    await _waitForFinder(tester, adminShellRouter);
+    await _waitForFinder(tester, find.text('Admin'));
   });
 }
 
