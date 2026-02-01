@@ -15,17 +15,17 @@ class SentInviteStatus {
   final DateTime sentAt;
   final DateTime? respondedAt;
 
-  /// Create from DTO
-  factory SentInviteStatus.fromDto(Map<String, dynamic> json) {
+  factory SentInviteStatus.fromPrimitives({
+    required EventFriendResume friend,
+    required String status,
+    required DateTime sentAt,
+    DateTime? respondedAt,
+  }) {
     return SentInviteStatus(
-      friend: EventFriendResume.fromDto(
-        json['friend'] as Map<String, dynamic>? ?? {},
-      ),
-      status: _parseStatus(json['status'] as String?),
-      sentAt: DateTime.parse(json['sent_at'] as String),
-      respondedAt: json['responded_at'] != null
-          ? DateTime.parse(json['responded_at'] as String)
-          : null,
+      friend: friend,
+      status: _parseStatus(status),
+      sentAt: sentAt,
+      respondedAt: respondedAt,
     );
   }
 

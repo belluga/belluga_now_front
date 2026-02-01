@@ -16,6 +16,12 @@ import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.da
 import 'package:belluga_now/infrastructure/dal/dao/app_data_backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/local/app_data_local_info_source/app_data_local_info_source_stub.dart';
 import 'package:belluga_now/infrastructure/dal/dto/app_data_dto.dart';
+import 'package:belluga_now/infrastructure/dal/dto/mappers/artist_dto_mapper.dart';
+import 'package:belluga_now/infrastructure/dal/dto/mappers/invite_dto_mapper.dart';
+import 'package:belluga_now/infrastructure/dal/dto/mappers/invite_status_dto_mapper.dart';
+import 'package:belluga_now/infrastructure/dal/dto/mappers/partner_dto_mapper.dart';
+import 'package:belluga_now/infrastructure/dal/dto/mappers/schedule_dto_mapper.dart';
+import 'package:belluga_now/infrastructure/dal/dto/mappers/thumb_dto_mapper.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_artist_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_type_dto.dart';
@@ -585,6 +591,8 @@ List<InviteModel> _buildInvites() {
   ];
 }
 
+final _scheduleDtoMapper = _TestScheduleDtoMapper();
+
 EventModel _buildEvent({
   required String id,
   required String title,
@@ -614,7 +622,7 @@ EventModel _buildEvent({
       ),
     ],
   );
-  return EventModel.fromDto(dto);
+  return _scheduleDtoMapper.mapEventDto(dto);
 }
 
 String _mongoIdForSeed(String seed) {
@@ -716,6 +724,15 @@ class _TestHttpClient implements HttpClient {
   @override
   Object? noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
+
+class _TestScheduleDtoMapper
+    with
+        InviteDtoMapper,
+        ThumbDtoMapper,
+        ArtistDtoMapper,
+        PartnerDtoMapper,
+        InviteStatusDtoMapper,
+        ScheduleDtoMapper {}
 
 class _TestHttpClientRequest implements HttpClientRequest {
   _TestHttpClientRequest(this._imageBytes);

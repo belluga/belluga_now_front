@@ -93,7 +93,7 @@ class AppDataRepository implements AppDataRepositoryContract {
   Future<AppData> _fetchRemoteOrFail(Map<String, dynamic> localInfo) async {
     try {
       final dto = await _backend.fetch();
-      return AppData.fromDto(dto: dto, localInfo: localInfo);
+      return AppData.fromInitialization(remoteData: dto, localInfo: localInfo);
     } catch (_) {
       return AppData.fromInitialization(
         remoteData: kLocalEnvironmentFallback,

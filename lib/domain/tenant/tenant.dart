@@ -1,5 +1,4 @@
 import 'package:belluga_now/application/configurations/belluga_constants.dart';
-import 'package:belluga_now/infrastructure/tenant/dtos/tenant_dto.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/app_data/app_type.dart';
 import 'package:belluga_now/domain/tenant/value_objects/app_domain_value.dart';
@@ -30,19 +29,23 @@ class Tenant {
     this.appDomains,
   });
 
-  factory Tenant.fromDto(TenantDto dto) {
+  factory Tenant.fromPrimitives({
+    required String name,
+    required String subdomain,
+    required String mainLogoUrl,
+    String? iconUrl,
+    String? mainColor,
+    List<String>? domains,
+    List<String>? appDomains,
+  }) {
     return Tenant(
-      name: TenantNameValue()..parse(dto.name),
-      subdomain: SubdomainValue()..parse(dto.subdomain),
-      mainLogoUrl: MainLogoUrlValue()..parse(dto.mainLogoUrl),
-      iconUrl:
-          dto.iconUrl != null ? (IconUrlValue()..parse(dto.iconUrl!)) : null,
-      mainColor: dto.mainColor != null
-          ? (MainColorValue()..parse(dto.mainColor!))
-          : null,
-      domains: dto.domains?.map((d) => DomainValue()..parse(d)).toList(),
-      appDomains:
-          dto.appDomains?.map((d) => AppDomainValue()..parse(d)).toList(),
+      name: TenantNameValue()..parse(name),
+      subdomain: SubdomainValue()..parse(subdomain),
+      mainLogoUrl: MainLogoUrlValue()..parse(mainLogoUrl),
+      iconUrl: iconUrl != null ? (IconUrlValue()..parse(iconUrl)) : null,
+      mainColor: mainColor != null ? (MainColorValue()..parse(mainColor)) : null,
+      domains: domains?.map((d) => DomainValue()..parse(d)).toList(),
+      appDomains: appDomains?.map((d) => AppDomainValue()..parse(d)).toList(),
     );
   }
 

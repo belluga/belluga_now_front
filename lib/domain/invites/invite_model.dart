@@ -1,20 +1,17 @@
 import 'package:belluga_now/domain/invites/invite_inviter.dart';
 import 'package:belluga_now/domain/invites/invite_inviter_principal.dart';
-import 'package:belluga_now/domain/invites/invite_inviter_type.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_additional_inviter_name_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_event_date_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_event_id_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_host_name_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_id_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_inviter_avatar_value.dart';
-import 'package:belluga_now/domain/invites/value_objects/invite_inviter_id_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_inviter_name_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_location_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_message_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_tag_value.dart';
 import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
 import 'package:belluga_now/domain/value_objects/title_value.dart';
-import 'package:belluga_now/infrastructure/dal/dto/invites/invite_dto.dart';
 import 'package:value_object_pattern/domain/exceptions/value_exceptions.dart';
 
 class InviteModel {
@@ -135,48 +132,4 @@ class InviteModel {
     );
   }
 
-  factory InviteModel.fromDto(InviteDto dto) {
-    InviteInviterPrincipal? inviterPrincipal;
-    final inviterKind = dto.inviterPrincipalKind?.trim();
-    final inviterId = dto.inviterPrincipalId?.trim();
-    if (inviterKind != null &&
-        inviterKind.isNotEmpty &&
-        inviterId != null &&
-        inviterId.isNotEmpty) {
-      final normalizedKind = inviterKind.toLowerCase();
-      if (normalizedKind == 'user' || normalizedKind == 'partner') {
-        inviterPrincipal = InviteInviterPrincipal(
-          type: normalizedKind == 'partner'
-              ? InviteInviterType.partner
-              : InviteInviterType.user,
-          idValue: InviteInviterIdValue()..parse(inviterId),
-        );
-      }
-    }
-
-    return InviteModel(
-      idValue: InviteIdValue()..parse(dto.id),
-      eventIdValue: InviteEventIdValue()..parse(dto.eventId),
-      eventNameValue: TitleValue()..parse(dto.eventName),
-      eventDateValue: InviteEventDateValue(isRequired: true)
-        ..parse(dto.eventDate),
-      eventImageValue: ThumbUriValue(
-          isRequired: true, defaultValue: Uri.parse(dto.eventImageUrl))
-        ..parse(dto.eventImageUrl),
-      locationValue: InviteLocationValue()..parse(dto.location),
-      hostNameValue: InviteHostNameValue()..parse(dto.hostName),
-      messageValue: InviteMessageValue()..parse(dto.message),
-      tagValues: dto.tags.map((t) => InviteTagValue()..parse(t)).toList(),
-      inviterNameValue: dto.inviterName != null
-          ? (InviteInviterNameValue()..parse(dto.inviterName!))
-          : null,
-      inviterAvatarValue: dto.inviterAvatarUrl != null
-          ? (InviteInviterAvatarValue()..parse(dto.inviterAvatarUrl!))
-          : null,
-      inviterPrincipal: inviterPrincipal,
-      additionalInviterValues: dto.additionalInviters
-          .map((i) => InviteAdditionalInviterNameValue()..parse(i))
-          .toList(),
-    );
-  }
 }

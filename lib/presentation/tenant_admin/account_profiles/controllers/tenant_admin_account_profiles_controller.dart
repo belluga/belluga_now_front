@@ -96,15 +96,23 @@ class TenantAdminAccountProfilesController implements Disposable {
     TenantAdminMediaUpload? avatarUpload,
     TenantAdminMediaUpload? coverUpload,
   }) async {
-    final profile = await _profilesRepository.createAccountProfile(
-      accountId: accountId,
+    final filtered = _filterCapabilities(
       profileType: profileType,
-      displayName: displayName,
       location: location,
       taxonomyTerms: taxonomyTerms,
       bio: bio,
       avatarUpload: avatarUpload,
       coverUpload: coverUpload,
+    );
+    final profile = await _profilesRepository.createAccountProfile(
+      accountId: accountId,
+      profileType: profileType,
+      displayName: displayName,
+      location: filtered.location,
+      taxonomyTerms: filtered.taxonomyTerms,
+      bio: filtered.bio,
+      avatarUpload: filtered.avatarUpload,
+      coverUpload: filtered.coverUpload,
     );
     await loadProfiles(accountId);
     return profile;
@@ -120,18 +128,79 @@ class TenantAdminAccountProfilesController implements Disposable {
     TenantAdminMediaUpload? avatarUpload,
     TenantAdminMediaUpload? coverUpload,
   }) async {
+    final filtered = profileType == null
+        ? _CapabilityFilter(
+            location: location,
+            taxonomyTerms: taxonomyTerms ?? const [],
+            bio: bio,
+            avatarUpload: avatarUpload,
+            coverUpload: coverUpload,
+          )
+        : _filterCapabilities(
+            profileType: profileType,
+            location: location,
+            taxonomyTerms: taxonomyTerms ?? const [],
+            bio: bio,
+            avatarUpload: avatarUpload,
+            coverUpload: coverUpload,
+          );
     final profile = await _profilesRepository.updateAccountProfile(
       accountProfileId: accountProfileId,
       profileType: profileType,
       displayName: displayName,
-      location: location,
-      taxonomyTerms: taxonomyTerms,
-      bio: bio,
-      avatarUpload: avatarUpload,
-      coverUpload: coverUpload,
+      location: filtered.location,
+      taxonomyTerms: taxonomyTerms == null ? null : filtered.taxonomyTerms,
+      bio: filtered.bio,
+      avatarUpload: filtered.avatarUpload,
+      coverUpload: filtered.coverUpload,
     );
     await loadProfiles(profile.accountId);
     return profile;
+  }
+
+  TenantAdminProfileTypeDefinition? _resolveProfileType(
+    String profileType,
+  ) {
+    for (final definition in profileTypesStreamValue.value) {
+      if (definition.type == profileType) {
+        return definition;
+      }
+    }
+    return null;
+  }
+
+  _CapabilityFilter _filterCapabilities({
+    required String profileType,
+    required TenantAdminLocation? location,
+    required List<TenantAdminTaxonomyTerm> taxonomyTerms,
+    required String? bio,
+    required TenantAdminMediaUpload? avatarUpload,
+    required TenantAdminMediaUpload? coverUpload,
+  }) {
+    final definition = _resolveProfileType(profileType);
+    if (definition == null) {
+      return _CapabilityFilter(
+        location: location,
+        taxonomyTerms: taxonomyTerms,
+        bio: bio,
+        avatarUpload: avatarUpload,
+        coverUpload: coverUpload,
+      );
+    }
+    final capabilities = definition.capabilities;
+    final allowedTaxonomies = definition.allowedTaxonomies.toSet();
+    final filteredTerms = capabilities.hasTaxonomies
+        ? taxonomyTerms
+            .where((term) => allowedTaxonomies.contains(term.type))
+            .toList(growable: false)
+        : const <TenantAdminTaxonomyTerm>[];
+    return _CapabilityFilter(
+      location: capabilities.isPoiEnabled ? location : null,
+      taxonomyTerms: filteredTerms,
+      bio: capabilities.hasBio ? bio : null,
+      avatarUpload: capabilities.hasAvatar ? avatarUpload : null,
+      coverUpload: capabilities.hasCover ? coverUpload : null,
+    );
   }
 
   void dispose() {
@@ -146,4 +215,20 @@ class TenantAdminAccountProfilesController implements Disposable {
   void onDispose() {
     dispose();
   }
+}
+
+class _CapabilityFilter {
+  const _CapabilityFilter({
+    required this.location,
+    required this.taxonomyTerms,
+    required this.bio,
+    required this.avatarUpload,
+    required this.coverUpload,
+  });
+
+  final TenantAdminLocation? location;
+  final List<TenantAdminTaxonomyTerm> taxonomyTerms;
+  final String? bio;
+  final TenantAdminMediaUpload? avatarUpload;
+  final TenantAdminMediaUpload? coverUpload;
 }

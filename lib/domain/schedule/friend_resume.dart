@@ -18,15 +18,15 @@ class EventFriendResume {
   String get displayName => displayNameValue.value;
   String? get avatarUrl => avatarUrlValue.value?.toString();
 
-  /// Create from DTO
-  factory EventFriendResume.fromDto(Map<String, dynamic> json) {
+  factory EventFriendResume.fromPrimitives({
+    required String id,
+    required String displayName,
+    String? avatarUrl,
+  }) {
     return EventFriendResume(
-      idValue: UserIdValue()..parse(json['id'] as String? ?? ''),
-      displayNameValue: UserDisplayNameValue()
-        ..parse(
-            json['display_name'] as String? ?? json['name'] as String? ?? ''),
-      avatarUrlValue: UserAvatarValue()
-        ..parse(json['avatar_url'] as String? ?? ''),
+      idValue: UserIdValue()..parse(id),
+      displayNameValue: UserDisplayNameValue()..parse(displayName),
+      avatarUrlValue: UserAvatarValue()..parse(avatarUrl ?? ''),
     );
   }
 

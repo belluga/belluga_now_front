@@ -439,6 +439,34 @@ class TenantAdminAccountProfilesRepository
   Exception _wrapError(DioException error, String label) {
     final status = error.response?.statusCode;
     final data = error.response?.data;
+    if (status == 422 && data is Map) {
+      final message = data['message']?.toString().trim();
+      final errors = data['errors'];
+      final buffer = StringBuffer();
+      if (message != null && message.isNotEmpty) {
+        buffer.write(message);
+      } else {
+        buffer.write('Validation failed.');
+      }
+      if (errors is Map) {
+        for (final entry in errors.entries) {
+          final field = entry.key?.toString();
+          final value = entry.value;
+          if (field == null || field.isEmpty) continue;
+          if (value is List && value.isNotEmpty) {
+            buffer.write(' ');
+            buffer.write('$field: ${value.first}');
+          } else if (value != null) {
+            buffer.write(' ');
+            buffer.write('$field: $value');
+          }
+        }
+      }
+      return Exception(
+        'Failed to $label [status=$status] (${error.requestOptions.uri}): '
+        '${buffer.toString()}',
+      );
+    }
     return Exception(
       'Failed to $label [status=$status] (${error.requestOptions.uri}): '
       '${data ?? error.message}',

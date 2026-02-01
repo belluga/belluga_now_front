@@ -230,6 +230,28 @@ class _TenantAdminAccountProfileCreateScreenState
     if (selected == null) {
       return;
     }
+    final lowerName = selected.name.toLowerCase();
+    const allowed = ['.jpg', '.jpeg', '.png', '.webp'];
+    if (!allowed.any(lowerName.endsWith)) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Formato de imagem invalido. Use JPG, PNG ou WEBP.'),
+        ),
+      );
+      return;
+    }
+    final size = await selected.length();
+    const maxBytes = 5 * 1024 * 1024;
+    if (size > maxBytes) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Imagem muito grande. Maximo 5MB.'),
+        ),
+      );
+      return;
+    }
     setState(() {
       if (isAvatar) {
         _avatarFile = selected;

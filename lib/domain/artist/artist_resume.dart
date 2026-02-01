@@ -2,7 +2,6 @@ import 'package:belluga_now/domain/artist/value_objects/artist_avatar_value.dart
 import 'package:belluga_now/domain/artist/value_objects/artist_id_value.dart';
 import 'package:belluga_now/domain/artist/value_objects/artist_is_highlight_value.dart';
 import 'package:belluga_now/domain/artist/value_objects/artist_name_value.dart';
-import 'package:belluga_now/infrastructure/dal/dto/artist/artist_resume_dto.dart';
 
 class ArtistResume {
   ArtistResume({
@@ -24,14 +23,20 @@ class ArtistResume {
   Uri? get avatarUri => avatarValue.value;
   bool get isHighlight => isHighlightValue.value;
 
-  factory ArtistResume.fromDto(ArtistResumeDto dto) {
+  factory ArtistResume.fromPrimitives({
+    required String id,
+    required String name,
+    String? avatarUrl,
+    bool isHighlight = false,
+    List<String> genres = const [],
+  }) {
     return ArtistResume(
-      idValue: ArtistIdValue()..parse(dto.id),
-      nameValue: ArtistNameValue()..parse(dto.name),
-      avatarValue: ArtistAvatarValue()..parse(dto.avatarUrl ?? ''),
+      idValue: ArtistIdValue()..parse(id),
+      nameValue: ArtistNameValue()..parse(name),
+      avatarValue: ArtistAvatarValue()..parse(avatarUrl ?? ''),
       isHighlightValue: ArtistIsHighlightValue()
-        ..parse(dto.isHighlight.toString()),
-      genres: dto.genres,
+        ..parse(isHighlight.toString()),
+      genres: genres,
     );
   }
 }
