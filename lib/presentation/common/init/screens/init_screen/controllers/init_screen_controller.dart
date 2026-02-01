@@ -31,6 +31,10 @@ final class InitScreenController extends BellugaInitScreenControllerContract {
   final loadingStatusStreamValue = StreamValue<String>(
     defaultValue: "Carregando",
   );
+  final StreamValue<InitScreenUiState> uiStateStreamValue =
+      StreamValue<InitScreenUiState>(
+    defaultValue: InitScreenUiState.initial(),
+  );
 
   PageRouteInfo? _determinedRoute;
 
@@ -38,6 +42,22 @@ final class InitScreenController extends BellugaInitScreenControllerContract {
   PageRouteInfo get initialRoute => _determinedRoute ?? const TenantHomeRoute();
 
   AppData get appData => _appDataRepository.appData;
+
+  void resetUiState() {
+    _updateUiState(InitScreenUiState.initial());
+  }
+
+  void setRetrying(bool isRetrying) {
+    _updateUiState(
+      uiStateStreamValue.value.copyWith(isRetrying: isRetrying),
+    );
+  }
+
+  void setErrorMessage(String? message) {
+    _updateUiState(
+      uiStateStreamValue.value.copyWith(errorMessage: message),
+    );
+  }
 
   void markPushReady() {
     _pushPresentationGate?.markReady();
@@ -57,6 +77,10 @@ final class InitScreenController extends BellugaInitScreenControllerContract {
     // await _initializeBehavior();
   }
 
+  void _updateUiState(InitScreenUiState state) {
+    uiStateStreamValue.addValue(state);
+  }
+
   // _initializeBehavior() async {
   //   await _behaviorController.init();
   // }
@@ -64,4 +88,31 @@ final class InitScreenController extends BellugaInitScreenControllerContract {
   // openAPPEvent() {
   //   _behaviorController.saveEvent(type: EventTrackingTypes.openApp);
   // }
+}
+
+class InitScreenUiState {
+  static const _unset = Object();
+
+  const InitScreenUiState({
+    required this.errorMessage,
+    required this.isRetrying,
+  });
+
+  factory InitScreenUiState.initial() =>
+      const InitScreenUiState(errorMessage: null, isRetrying: false);
+
+  final String? errorMessage;
+  final bool isRetrying;
+
+  InitScreenUiState copyWith({
+    Object? errorMessage = _unset,
+    bool? isRetrying,
+  }) {
+    final nextErrorMessage =
+        errorMessage == _unset ? this.errorMessage : errorMessage as String?;
+    return InitScreenUiState(
+      errorMessage: nextErrorMessage,
+      isRetrying: isRetrying ?? this.isRetrying,
+    );
+  }
 }

@@ -28,45 +28,16 @@ class TenantAdminAccountDetailScreen extends StatefulWidget {
 class _TenantAdminAccountDetailScreenState
     extends State<TenantAdminAccountDetailScreen> {
   late final TenantAdminAccountProfilesController _profilesController;
-  TenantAdminAccount? _account;
-  TenantAdminAccountProfile? _profile;
-  String? _errorMessage;
-  bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
     _profilesController = widget.profilesController;
-    _load();
-  }
-
-  Future<void> _load() async {
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
-    try {
-      await _profilesController.loadProfileTypes();
-      final account =
-          await _profilesController.resolveAccountBySlug(widget.accountSlug);
-      final profile =
-          await _profilesController.fetchProfileForAccount(account.id);
-      if (!mounted) return;
-      _account = account;
-      _profile = profile;
-    } catch (error) {
-      _errorMessage = error.toString();
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
-    }
+    _profilesController.loadAccountDetail(widget.accountSlug);
   }
 
   String _profileTypeLabel(List<TenantAdminProfileTypeDefinition> types) {
-    final profile = _profile;
+    final profile = _profilesController.accountProfileStreamValue.value;
     if (profile == null) return '-';
     for (final type in types) {
       if (type.type == profile.profileType) {
@@ -83,11 +54,11 @@ class _TenantAdminAccountDetailScreenState
         accountSlug: widget.accountSlug,
       ),
     );
-    await _load();
+    await _profilesController.loadAccountDetail(widget.accountSlug);
   }
 
   Future<void> _openEdit() async {
-    final profile = _profile;
+    final profile = _profilesController.accountProfileStreamValue.value;
     if (profile == null) {
       return;
     }
@@ -96,47 +67,74 @@ class _TenantAdminAccountDetailScreenState
         accountProfileId: profile.id,
       ),
     );
-    await _load();
+    await _profilesController.loadAccountDetail(widget.accountSlug);
+  }
+
+  @override
+  void dispose() {
+    _profilesController.resetAccountDetail();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final account = _account;
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Conta: ${widget.accountSlug}'),
-        actions: [
-          if (_profile != null)
-            FilledButton.tonalIcon(
-              onPressed: _isLoading ? null : _openEdit,
-              icon: const Icon(Icons.edit_outlined),
-              label: const Text('Editar'),
-            ),
-        ],
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: _isLoading
-            ? const Center(child: CircularProgressIndicator())
-            : _errorMessage != null
-                ? Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        _errorMessage!,
-                        style: const TextStyle(color: Colors.red),
+    return StreamValueBuilder<bool>(
+      streamValue: _profilesController.accountDetailLoadingStreamValue,
+      builder: (context, isLoading) {
+        return StreamValueBuilder<String?>(
+          streamValue: _profilesController.accountDetailErrorStreamValue,
+          builder: (context, errorMessage) {
+            return StreamValueBuilder<TenantAdminAccount?>(
+              streamValue: _profilesController.accountStreamValue,
+              builder: (context, account) {
+                return StreamValueBuilder<TenantAdminAccountProfile?>(
+                  streamValue: _profilesController.accountProfileStreamValue,
+                  builder: (context, profile) {
+                    final coverUrl = profile?.coverUrl;
+                    final avatarUrl = profile?.avatarUrl;
+                    final location = profile?.location;
+
+                    return Scaffold(
+                      appBar: AppBar(
+                        title: Text('Conta: ${widget.accountSlug}'),
+                        actions: [
+                          if (profile != null)
+                            FilledButton.tonalIcon(
+                              onPressed: isLoading ? null : _openEdit,
+                              icon: const Icon(Icons.edit_outlined),
+                              label: const Text('Editar'),
+                            ),
+                        ],
                       ),
-                      const SizedBox(height: 12),
-                      TextButton(
-                        onPressed: _load,
-                        child: const Text('Tentar novamente'),
-                      ),
-                    ],
-                  )
-                : StreamValueBuilder(
-                    streamValue: _profilesController.profileTypesStreamValue,
-                    builder: (context, types) {
-                      return ListView(
+                      body: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: isLoading
+                            ? const Center(child: CircularProgressIndicator())
+                            : errorMessage != null
+                                ? Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        errorMessage,
+                                        style:
+                                            const TextStyle(color: Colors.red),
+                                      ),
+                                      const SizedBox(height: 12),
+                                      TextButton(
+                                        onPressed: () => _profilesController
+                                            .loadAccountDetail(
+                                          widget.accountSlug,
+                                        ),
+                                        child: const Text('Tentar novamente'),
+                                      ),
+                                    ],
+                                  )
+                                : StreamValueBuilder(
+                                    streamValue: _profilesController
+                                        .profileTypesStreamValue,
+                                    builder: (context, types) {
+                                      return ListView(
                         children: [
                           Card(
                             margin: EdgeInsets.zero,
@@ -161,8 +159,8 @@ class _TenantAdminAccountDetailScreenState
                               ),
                             ),
                           ),
-                          const SizedBox(height: 16),
-                          if (_profile == null) ...[
+                                  const SizedBox(height: 16),
+                                  if (profile == null) ...[
                             Card(
                               margin: EdgeInsets.zero,
                               child: Padding(
@@ -204,12 +202,11 @@ class _TenantAdminAccountDetailScreenState
                                           .titleMedium,
                                     ),
                                     const SizedBox(height: 12),
-                                    if (_profile?.coverUrl != null &&
-                                        _profile!.coverUrl!.isNotEmpty)
+                                    if (coverUrl != null && coverUrl.isNotEmpty)
                                       ClipRRect(
                                         borderRadius: BorderRadius.circular(12),
                                         child: Image.network(
-                                          _profile!.coverUrl!,
+                                          coverUrl,
                                           height: 160,
                                           fit: BoxFit.cover,
                                           errorBuilder:
@@ -246,13 +243,13 @@ class _TenantAdminAccountDetailScreenState
                                     const SizedBox(height: 16),
                                     Row(
                                       children: [
-                                        if (_profile?.avatarUrl != null &&
-                                            _profile!.avatarUrl!.isNotEmpty)
+                                        if (avatarUrl != null &&
+                                            avatarUrl.isNotEmpty)
                                           ClipRRect(
                                             borderRadius:
                                                 BorderRadius.circular(36),
                                             child: Image.network(
-                                              _profile!.avatarUrl!,
+                                              avatarUrl,
                                               width: 72,
                                               height: 72,
                                               fit: BoxFit.cover,
@@ -289,24 +286,24 @@ class _TenantAdminAccountDetailScreenState
                                             ),
                                           ),
                                         const SizedBox(width: 12),
-                                        Expanded(
-                                          child: Text(
-                                            _profile?.displayName ?? '-',
-                                            style: Theme.of(context)
-                                                .textTheme
-                                                .titleMedium,
-                                          ),
-                                        ),
+                                    Expanded(
+                                      child: Text(
+                                        profile.displayName,
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .titleMedium,
+                                      ),
+                                    ),
                                       ],
                                     ),
                                     const SizedBox(height: 16),
                                     _buildRow('Tipo', _profileTypeLabel(types)),
                                     const SizedBox(height: 8),
-                                    if (_profile?.location != null)
+                                    if (location != null)
                                       _buildRow(
                                         'Localização',
-                                        '${_profile!.location!.latitude.toStringAsFixed(6)}, '
-                                        '${_profile!.location!.longitude.toStringAsFixed(6)}',
+                                        '${location.latitude.toStringAsFixed(6)}, '
+                                        '${location.longitude.toStringAsFixed(6)}',
                                       ),
                                     const SizedBox(height: 12),
                                     Align(
@@ -324,9 +321,17 @@ class _TenantAdminAccountDetailScreenState
                           ],
                         ],
                       );
-                    },
-                  ),
-      ),
+                                    },
+                                  ),
+                      ),
+                    );
+                  },
+                );
+              },
+            );
+          },
+        );
+      },
     );
   }
 

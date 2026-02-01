@@ -15,9 +15,59 @@ class TenantAdminProfileTypesController implements Disposable {
       StreamValue<List<TenantAdminProfileTypeDefinition>>(defaultValue: const []);
   final StreamValue<bool> isLoadingStreamValue =
       StreamValue<bool>(defaultValue: false);
+  static const TenantAdminProfileTypeCapabilities _emptyCapabilities =
+      TenantAdminProfileTypeCapabilities(
+    isFavoritable: false,
+    isPoiEnabled: false,
+    hasBio: false,
+    hasTaxonomies: false,
+    hasAvatar: false,
+    hasCover: false,
+    hasEvents: false,
+  );
   final StreamValue<String?> errorStreamValue = StreamValue<String?>();
+  final StreamValue<TenantAdminProfileTypeCapabilities>
+      capabilitiesStreamValue =
+      StreamValue<TenantAdminProfileTypeCapabilities>(
+    defaultValue: _emptyCapabilities,
+  );
 
   bool _isDisposed = false;
+
+  TenantAdminProfileTypeCapabilities get currentCapabilities =>
+      capabilitiesStreamValue.value;
+
+  void initForm(TenantAdminProfileTypeDefinition? definition) {
+    final capabilities = definition?.capabilities ?? _emptyCapabilities;
+    capabilitiesStreamValue.addValue(capabilities);
+  }
+
+  void resetFormState() {
+    capabilitiesStreamValue.addValue(_emptyCapabilities);
+  }
+
+  void updateCapabilities({
+    bool? isFavoritable,
+    bool? isPoiEnabled,
+    bool? hasBio,
+    bool? hasTaxonomies,
+    bool? hasAvatar,
+    bool? hasCover,
+    bool? hasEvents,
+  }) {
+    final current = currentCapabilities;
+    capabilitiesStreamValue.addValue(
+      TenantAdminProfileTypeCapabilities(
+        isFavoritable: isFavoritable ?? current.isFavoritable,
+        isPoiEnabled: isPoiEnabled ?? current.isPoiEnabled,
+        hasBio: hasBio ?? current.hasBio,
+        hasTaxonomies: hasTaxonomies ?? current.hasTaxonomies,
+        hasAvatar: hasAvatar ?? current.hasAvatar,
+        hasCover: hasCover ?? current.hasCover,
+        hasEvents: hasEvents ?? current.hasEvents,
+      ),
+    );
+  }
 
   Future<void> loadTypes() async {
     isLoadingStreamValue.addValue(true);
@@ -78,6 +128,7 @@ class TenantAdminProfileTypesController implements Disposable {
     typesStreamValue.dispose();
     isLoadingStreamValue.dispose();
     errorStreamValue.dispose();
+    capabilitiesStreamValue.dispose();
   }
 
   @override

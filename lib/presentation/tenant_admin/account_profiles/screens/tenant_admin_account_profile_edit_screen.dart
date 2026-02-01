@@ -2,7 +2,6 @@ import 'dart:io';
 
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
-import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
@@ -38,62 +37,13 @@ class _TenantAdminAccountProfileEditScreenState
   final _latitudeController = TextEditingController();
   final _longitudeController = TextEditingController();
   final Map<String, TextEditingController> _taxonomyControllers = {};
-  XFile? _avatarFile;
-  XFile? _coverFile;
-  String? _avatarRemoteUrl;
-  String? _coverRemoteUrl;
-  bool _avatarRemoteReady = false;
-  bool _coverRemoteReady = false;
-  bool _avatarRemoteError = false;
-  bool _coverRemoteError = false;
-  String? _avatarPreloadUrl;
-  String? _coverPreloadUrl;
-  String? _selectedProfileType;
-  TenantAdminAccountProfile? _profile;
-  String? _errorMessage;
-  bool _isLoading = true;
   late final TenantAdminAccountProfilesController _controller;
 
   @override
   void initState() {
     super.initState();
     _controller = widget.controller;
-    _load();
-  }
-
-  Future<void> _load() async {
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
-    try {
-      await _controller.loadProfileTypes();
-      final profile = await _controller.fetchProfile(widget.accountProfileId);
-      if (!mounted) return;
-      _profile = profile;
-      _selectedProfileType = profile.profileType;
-      _displayNameController.text = profile.displayName;
-      _bioController.text = profile.bio ?? '';
-      _syncRemoteState(profile);
-      _syncTaxonomyControllers(profile);
-      if (profile.location != null) {
-        _latitudeController.text =
-            profile.location!.latitude.toStringAsFixed(6);
-        _longitudeController.text =
-            profile.location!.longitude.toStringAsFixed(6);
-      } else {
-        _latitudeController.clear();
-        _longitudeController.clear();
-      }
-    } catch (error) {
-      _errorMessage = error.toString();
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
-    }
+    _controller.loadEditProfile(widget.accountProfileId);
   }
 
   @override
@@ -105,11 +55,13 @@ class _TenantAdminAccountProfileEditScreenState
     for (final controller in _taxonomyControllers.values) {
       controller.dispose();
     }
+    _controller.resetEditState();
     super.dispose();
   }
 
-  TenantAdminProfileTypeDefinition? _selectedProfileTypeDefinition() {
-    final selectedType = _selectedProfileType;
+  TenantAdminProfileTypeDefinition? _selectedProfileTypeDefinition(
+    String? selectedType,
+  ) {
     if (selectedType == null || selectedType.isEmpty) {
       return null;
     }
@@ -131,38 +83,41 @@ class _TenantAdminAccountProfileEditScreenState
     return seen.values.toList(growable: false);
   }
 
-  bool _requiresLocation() {
-    final definition = _selectedProfileTypeDefinition();
+  bool _requiresLocation(String? selectedType) {
+    final definition = _selectedProfileTypeDefinition(selectedType);
     return definition?.capabilities.isPoiEnabled ?? false;
   }
 
-  bool _hasBio() {
-    final definition = _selectedProfileTypeDefinition();
+  bool _hasBio(String? selectedType) {
+    final definition = _selectedProfileTypeDefinition(selectedType);
     return definition?.capabilities.hasBio ?? false;
   }
 
-  bool _hasTaxonomies() {
-    final definition = _selectedProfileTypeDefinition();
+  bool _hasTaxonomies(String? selectedType) {
+    final definition = _selectedProfileTypeDefinition(selectedType);
     return definition?.capabilities.hasTaxonomies ?? false;
   }
 
-  bool _hasAvatar() {
-    final definition = _selectedProfileTypeDefinition();
+  bool _hasAvatar(String? selectedType) {
+    final definition = _selectedProfileTypeDefinition(selectedType);
     return definition?.capabilities.hasAvatar ?? false;
   }
 
-  bool _hasCover() {
-    final definition = _selectedProfileTypeDefinition();
+  bool _hasCover(String? selectedType) {
+    final definition = _selectedProfileTypeDefinition(selectedType);
     return definition?.capabilities.hasCover ?? false;
   }
 
-  List<String> _allowedTaxonomies() {
-    final definition = _selectedProfileTypeDefinition();
+  List<String> _allowedTaxonomies(String? selectedType) {
+    final definition = _selectedProfileTypeDefinition(selectedType);
     return definition?.allowedTaxonomies ?? const [];
   }
 
-  void _syncTaxonomyControllers(TenantAdminAccountProfile profile) {
-    final allowed = _allowedTaxonomies().toSet();
+  void _syncTaxonomyControllers({
+    required List<String> allowedTaxonomies,
+    required List<TenantAdminTaxonomyTerm> terms,
+  }) {
+    final allowed = allowedTaxonomies.toSet();
     _taxonomyControllers.removeWhere((key, controller) {
       if (allowed.contains(key)) return false;
       controller.dispose();
@@ -173,17 +128,17 @@ class _TenantAdminAccountProfileEditScreenState
         taxonomy,
         () => TextEditingController(),
       );
-      final values = profile.taxonomyTerms
+      final values = terms
           .where((term) => term.type == taxonomy)
           .map((term) => term.value)
           .where((value) => value.trim().isNotEmpty)
-          .toList();
+          .toList(growable: false);
       controller.text = values.join(', ');
     }
   }
 
-  List<TenantAdminTaxonomyTerm> _buildTaxonomyTerms() {
-    if (!_hasTaxonomies()) {
+  List<TenantAdminTaxonomyTerm> _buildTaxonomyTerms(String? selectedType) {
+    if (!_hasTaxonomies(selectedType)) {
       return const [];
     }
     final terms = <TenantAdminTaxonomyTerm>[];
@@ -207,10 +162,14 @@ class _TenantAdminAccountProfileEditScreenState
     if (trimmed.isNotEmpty && double.tryParse(trimmed) == null) {
       return 'Latitude inválida.';
     }
-    if (_requiresLocation() && trimmed.isEmpty && other.isNotEmpty) {
+    if (_requiresLocation(_controller.editStateStreamValue.value.selectedProfileType) &&
+        trimmed.isEmpty &&
+        other.isNotEmpty) {
       return 'Latitude é obrigatória.';
     }
-    if (_requiresLocation() && trimmed.isEmpty && other.isEmpty) {
+    if (_requiresLocation(_controller.editStateStreamValue.value.selectedProfileType) &&
+        trimmed.isEmpty &&
+        other.isEmpty) {
       return 'Localização é obrigatória para este perfil.';
     }
     return null;
@@ -222,7 +181,9 @@ class _TenantAdminAccountProfileEditScreenState
     if (trimmed.isNotEmpty && double.tryParse(trimmed) == null) {
       return 'Longitude inválida.';
     }
-    if (_requiresLocation() && trimmed.isEmpty && other.isNotEmpty) {
+    if (_requiresLocation(_controller.editStateStreamValue.value.selectedProfileType) &&
+        trimmed.isEmpty &&
+        other.isNotEmpty) {
       return 'Longitude é obrigatória.';
     }
     return null;
@@ -255,25 +216,23 @@ class _TenantAdminAccountProfileEditScreenState
     }
     _latitudeController.text = selected.latitude.toStringAsFixed(6);
     _longitudeController.text = selected.longitude.toStringAsFixed(6);
-    setState(() {});
   }
 
   Future<void> _autoSaveImages() async {
-    final profile = _profile;
+    final profile = _controller.editStateStreamValue.value.profile;
     if (profile == null) {
       return;
     }
     final messenger = ScaffoldMessenger.of(context);
+    final state = _controller.editStateStreamValue.value;
     final avatarUpload =
-        _hasAvatar() ? await _buildUpload(_avatarFile) : null;
+        _hasAvatar(state.selectedProfileType) ? await _buildUpload(state.avatarFile) : null;
     final coverUpload =
-        _hasCover() ? await _buildUpload(_coverFile) : null;
+        _hasCover(state.selectedProfileType) ? await _buildUpload(state.coverFile) : null;
     if (avatarUpload == null && coverUpload == null) {
       return;
     }
-    setState(() {
-      _isLoading = true;
-    });
+    _controller.updateEditLoading(true);
     try {
       final updated = await _controller.updateProfile(
         accountProfileId: profile.id,
@@ -281,19 +240,14 @@ class _TenantAdminAccountProfileEditScreenState
         coverUpload: coverUpload,
       );
       if (!mounted) return;
-      setState(() {
-        _profile = updated;
-        _syncRemoteState(updated);
-        _isLoading = false;
-      });
+      _controller.updateEditProfile(updated);
+      _controller.updateEditLoading(false);
       messenger.showSnackBar(
         const SnackBar(content: Text('Imagem atualizada.')),
       );
     } catch (error) {
       if (!mounted) return;
-      setState(() {
-        _isLoading = false;
-      });
+      _controller.updateEditLoading(false);
       messenger.showSnackBar(
         SnackBar(content: Text('Falha ao salvar imagem: $error')),
       );
@@ -331,32 +285,22 @@ class _TenantAdminAccountProfileEditScreenState
       );
       return;
     }
-    setState(() {
-      if (isAvatar) {
-        _avatarFile = selected;
-        _avatarRemoteReady = false;
-        _avatarRemoteError = false;
-        _avatarPreloadUrl = null;
-      } else {
-        _coverFile = selected;
-        _coverRemoteReady = false;
-        _coverRemoteError = false;
-        _coverPreloadUrl = null;
-      }
-    });
+    if (isAvatar) {
+      _controller.updateAvatarFile(selected);
+    } else {
+      _controller.updateCoverFile(selected);
+    }
     await _autoSaveImages();
   }
 
   void _clearImage({required bool isAvatar}) {
-    setState(() {
-      if (isAvatar) {
-        _avatarFile = null;
-        _avatarRemoteError = false;
-      } else {
-        _coverFile = null;
-        _coverRemoteError = false;
-      }
-    });
+    if (isAvatar) {
+      _controller.updateAvatarFile(null);
+      _controller.updateAvatarRemoteError(false);
+    } else {
+      _controller.updateCoverFile(null);
+      _controller.updateCoverRemoteError(false);
+    }
   }
 
   Future<TenantAdminMediaUpload?> _buildUpload(XFile? file) async {
@@ -368,34 +312,17 @@ class _TenantAdminAccountProfileEditScreenState
     );
   }
 
-  void _syncRemoteState(TenantAdminAccountProfile updated) {
-    final avatarUrl = updated.avatarUrl;
-    final coverUrl = updated.coverUrl;
-
-    if (avatarUrl != _avatarRemoteUrl) {
-      _avatarRemoteUrl = avatarUrl;
-      _avatarRemoteReady = false;
-      _avatarRemoteError = false;
-      _avatarPreloadUrl = null;
-    }
-    if (coverUrl != _coverRemoteUrl) {
-      _coverRemoteUrl = coverUrl;
-      _coverRemoteReady = false;
-      _coverRemoteError = false;
-      _coverPreloadUrl = null;
-    }
-  }
-
   void _preloadRemoteImage({
     required String url,
     required bool isAvatar,
   }) {
+    final state = _controller.editStateStreamValue.value;
     if (isAvatar) {
-      if (_avatarPreloadUrl == url) return;
-      _avatarPreloadUrl = url;
+      if (state.avatarPreloadUrl == url) return;
+      _controller.updateAvatarPreloadUrl(url);
     } else {
-      if (_coverPreloadUrl == url) return;
-      _coverPreloadUrl = url;
+      if (state.coverPreloadUrl == url) return;
+      _controller.updateCoverPreloadUrl(url);
     }
 
     final stream = NetworkImage(url).resolve(const ImageConfiguration());
@@ -403,28 +330,24 @@ class _TenantAdminAccountProfileEditScreenState
     listener = ImageStreamListener(
       (_, __) {
         if (!mounted) return;
-        setState(() {
-          if (isAvatar) {
-            _avatarRemoteReady = true;
-            _avatarRemoteError = false;
-            _avatarFile = null;
-          } else {
-            _coverRemoteReady = true;
-            _coverRemoteError = false;
-            _coverFile = null;
-          }
-        });
+        if (isAvatar) {
+          _controller.updateAvatarRemoteError(false);
+          _controller.updateAvatarFile(null);
+          _controller.markAvatarRemoteReady(true);
+        } else {
+          _controller.updateCoverRemoteError(false);
+          _controller.updateCoverFile(null);
+          _controller.markCoverRemoteReady(true);
+        }
         stream.removeListener(listener);
       },
       onError: (_, __) {
         if (!mounted) return;
-        setState(() {
-          if (isAvatar) {
-            _avatarRemoteError = true;
-          } else {
-            _coverRemoteError = true;
-          }
-        });
+        if (isAvatar) {
+          _controller.updateAvatarRemoteError(true);
+        } else {
+          _controller.updateCoverRemoteError(true);
+        }
         stream.removeListener(listener);
       },
     );
@@ -433,145 +356,192 @@ class _TenantAdminAccountProfileEditScreenState
 
   @override
   Widget build(BuildContext context) {
-    final requiresLocation = _requiresLocation();
-    final hasMedia = _hasAvatar() || _hasCover();
-    final hasContent = _hasBio() || _hasTaxonomies();
-    if (_errorMessage != null) {
-      return Scaffold(
-        appBar: AppBar(
-          title: const Text('Editar Perfil'),
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back),
-            onPressed: () => context.router.maybePop(),
-            tooltip: 'Voltar',
-          ),
-        ),
-        body: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Card(
-            margin: EdgeInsets.zero,
-            child: Padding(
+    return StreamValueBuilder<TenantAdminAccountProfileEditState>(
+      streamValue: _controller.editStateStreamValue,
+      builder: (context, state) {
+        final requiresLocation = _requiresLocation(state.selectedProfileType);
+        final hasMedia =
+            _hasAvatar(state.selectedProfileType) || _hasCover(state.selectedProfileType);
+        final hasContent =
+            _hasBio(state.selectedProfileType) || _hasTaxonomies(state.selectedProfileType);
+        final profile = state.profile;
+
+        if (state.errorMessage != null) {
+          return Scaffold(
+            appBar: AppBar(
+              title: const Text('Editar Perfil'),
+              leading: IconButton(
+                icon: const Icon(Icons.arrow_back),
+                onPressed: () => context.router.maybePop(),
+                tooltip: 'Voltar',
+              ),
+            ),
+            body: Padding(
               padding: const EdgeInsets.all(16),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    _errorMessage!,
-                    style: TextStyle(color: Theme.of(context).colorScheme.error),
+              child: Card(
+                margin: EdgeInsets.zero,
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        state.errorMessage!,
+                        style:
+                            TextStyle(color: Theme.of(context).colorScheme.error),
+                      ),
+                      const SizedBox(height: 12),
+                      TextButton(
+                        onPressed: () =>
+                            _controller.loadEditProfile(widget.accountProfileId),
+                        child: const Text('Tentar novamente'),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 12),
-                  TextButton(
-                    onPressed: _load,
-                    child: const Text('Tentar novamente'),
-                  ),
-                ],
+                ),
+              ),
+            ),
+          );
+        }
+
+        if (profile == null && state.isLoading) {
+          return Scaffold(
+            appBar: AppBar(
+              title: const Text('Editar Perfil'),
+              leading: IconButton(
+                icon: const Icon(Icons.arrow_back),
+                onPressed: () => context.router.maybePop(),
+                tooltip: 'Voltar',
+              ),
+            ),
+            body: const Center(child: CircularProgressIndicator()),
+          );
+        }
+
+        if (profile != null) {
+          if (_displayNameController.text != profile.displayName) {
+            _displayNameController.text = profile.displayName;
+          }
+          if (_bioController.text != (profile.bio ?? '')) {
+            _bioController.text = profile.bio ?? '';
+          }
+          if (profile.location != null) {
+            final lat = profile.location!.latitude.toStringAsFixed(6);
+            final lng = profile.location!.longitude.toStringAsFixed(6);
+            if (_latitudeController.text != lat) {
+              _latitudeController.text = lat;
+            }
+            if (_longitudeController.text != lng) {
+              _longitudeController.text = lng;
+            }
+          }
+          _syncTaxonomyControllers(
+            allowedTaxonomies: _allowedTaxonomies(state.selectedProfileType),
+            terms: profile.taxonomyTerms,
+          );
+        }
+
+        return Scaffold(
+          appBar: AppBar(
+            title: const Text('Editar Perfil'),
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back),
+              onPressed: () => context.router.maybePop(),
+              tooltip: 'Voltar',
+            ),
+          ),
+          body: Padding(
+            padding: EdgeInsets.fromLTRB(
+              16,
+              16,
+              16,
+              16 + MediaQuery.of(context).viewInsets.bottom,
+            ),
+            child: SingleChildScrollView(
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (state.isLoading) const LinearProgressIndicator(),
+                    if (state.isLoading) const SizedBox(height: 12),
+                    _buildProfileSection(context, state),
+                    if (hasContent) ...[
+                      const SizedBox(height: 16),
+                      _buildContentSection(context, state),
+                    ],
+                    if (hasMedia) ...[
+                      const SizedBox(height: 16),
+                      _buildMediaSection(context, state),
+                    ],
+                    if (requiresLocation) ...[
+                      const SizedBox(height: 16),
+                      _buildLocationSection(context),
+                    ],
+                    const SizedBox(height: 24),
+                    SizedBox(
+                      width: double.infinity,
+                      child: FilledButton(
+                        onPressed: state.isLoading
+                            ? null
+                            : () async {
+                                final form = _formKey.currentState;
+                                if (form == null || !form.validate()) {
+                                  return;
+                                }
+                                final messenger =
+                                    ScaffoldMessenger.of(context);
+                                final avatarUpload =
+                                    _hasAvatar(state.selectedProfileType)
+                                        ? await _buildUpload(state.avatarFile)
+                                        : null;
+                                final coverUpload =
+                                    _hasCover(state.selectedProfileType)
+                                        ? await _buildUpload(state.coverFile)
+                                        : null;
+                                final updated = await _controller.updateProfile(
+                                  accountProfileId: widget.accountProfileId,
+                                  profileType: state.selectedProfileType,
+                                  displayName:
+                                      _displayNameController.text.trim(),
+                                  bio: _hasBio(state.selectedProfileType)
+                                      ? _bioController.text.trim()
+                                      : null,
+                                  taxonomyTerms: _hasTaxonomies(
+                                          state.selectedProfileType)
+                                      ? _buildTaxonomyTerms(
+                                          state.selectedProfileType)
+                                      : null,
+                                  location: requiresLocation
+                                      ? _currentLocation()
+                                      : null,
+                                  avatarUpload: avatarUpload,
+                                  coverUpload: coverUpload,
+                                );
+                                if (!mounted) return;
+                                _controller.updateEditProfile(updated);
+                                messenger.showSnackBar(
+                                  const SnackBar(
+                                      content: Text('Perfil atualizado.')),
+                                );
+                              },
+                        child: const Text('Salvar alteracoes'),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
-        ),
-      );
-    }
-
-    if (_profile == null && _isLoading) {
-      return Scaffold(
-        appBar: AppBar(
-          title: const Text('Editar Perfil'),
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back),
-            onPressed: () => context.router.maybePop(),
-            tooltip: 'Voltar',
-          ),
-        ),
-        body: const Center(child: CircularProgressIndicator()),
-      );
-    }
-
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Editar Perfil'),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.router.maybePop(),
-          tooltip: 'Voltar',
-        ),
-      ),
-      body: Padding(
-        padding: EdgeInsets.fromLTRB(
-          16,
-          16,
-          16,
-          16 + MediaQuery.of(context).viewInsets.bottom,
-        ),
-        child: SingleChildScrollView(
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (_isLoading) const LinearProgressIndicator(),
-                if (_isLoading) const SizedBox(height: 12),
-                _buildProfileSection(context),
-                if (hasContent) ...[
-                  const SizedBox(height: 16),
-                  _buildContentSection(context),
-                ],
-                if (hasMedia) ...[
-                  const SizedBox(height: 16),
-                  _buildMediaSection(context),
-                ],
-                if (requiresLocation) ...[
-                  const SizedBox(height: 16),
-                  _buildLocationSection(context),
-                ],
-                const SizedBox(height: 24),
-                SizedBox(
-                  width: double.infinity,
-                  child: FilledButton(
-                    onPressed: _isLoading
-                        ? null
-                        : () async {
-                            final form = _formKey.currentState;
-                            if (form == null || !form.validate()) {
-                              return;
-                            }
-                            final messenger = ScaffoldMessenger.of(context);
-                            final avatarUpload =
-                                _hasAvatar() ? await _buildUpload(_avatarFile) : null;
-                            final coverUpload =
-                                _hasCover() ? await _buildUpload(_coverFile) : null;
-                            final updated = await _controller.updateProfile(
-                              accountProfileId: widget.accountProfileId,
-                              profileType: _selectedProfileType,
-                              displayName: _displayNameController.text.trim(),
-                              bio: _hasBio() ? _bioController.text.trim() : null,
-                              taxonomyTerms:
-                                  _hasTaxonomies() ? _buildTaxonomyTerms() : null,
-                              location:
-                                  requiresLocation ? _currentLocation() : null,
-                              avatarUpload: avatarUpload,
-                              coverUpload: coverUpload,
-                            );
-                            if (!mounted) return;
-                            setState(() {
-                              _profile = updated;
-                              _syncRemoteState(updated);
-                            });
-                            messenger.showSnackBar(
-                              const SnackBar(content: Text('Perfil atualizado.')),
-                            );
-                          },
-                    child: const Text('Salvar alteracoes'),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
+        );
+      },
     );
   }
 
-  Widget _buildProfileSection(BuildContext context) {
+  Widget _buildProfileSection(
+    BuildContext context,
+    TenantAdminAccountProfileEditState state,
+  ) {
     return Card(
       margin: EdgeInsets.zero,
       child: Padding(
@@ -589,15 +559,13 @@ class _TenantAdminAccountProfileEditScreenState
               builder: (context, types) {
                 final uniqueTypes = _uniqueProfileTypes(types);
                 final hasSelected = uniqueTypes
-                    .any((definition) => definition.type == _selectedProfileType);
+                    .any((definition) => definition.type == state.selectedProfileType);
                 final effectiveSelected =
-                    hasSelected ? _selectedProfileType : null;
-                if (!hasSelected && _selectedProfileType != null) {
+                    hasSelected ? state.selectedProfileType : null;
+                if (!hasSelected && state.selectedProfileType != null) {
                   WidgetsBinding.instance.addPostFrameCallback((_) {
                     if (!mounted) return;
-                    setState(() {
-                      _selectedProfileType = null;
-                    });
+                    _controller.updateSelectedProfileType(null);
                   });
                 }
                 return DropdownButtonFormField<String>(
@@ -615,24 +583,20 @@ class _TenantAdminAccountProfileEditScreenState
                       )
                       .toList(growable: false),
                   onChanged: (value) {
-                    setState(() {
-                      _selectedProfileType = value;
-                      if (_profile != null) {
-                        _syncTaxonomyControllers(_profile!);
+                    _controller.updateSelectedProfileType(value);
+                    if (!mounted) return;
+                    if (!_requiresLocation(value)) {
+                      _latitudeController.clear();
+                      _longitudeController.clear();
+                    }
+                    if (!_hasBio(value)) {
+                      _bioController.clear();
+                    }
+                    if (!_hasTaxonomies(value)) {
+                      for (final controller in _taxonomyControllers.values) {
+                        controller.clear();
                       }
-                      if (!_requiresLocation()) {
-                        _latitudeController.clear();
-                        _longitudeController.clear();
-                      }
-                      if (!_hasBio()) {
-                        _bioController.clear();
-                      }
-                      if (!_hasTaxonomies()) {
-                        for (final controller in _taxonomyControllers.values) {
-                          controller.clear();
-                        }
-                      }
-                    });
+                    }
                   },
                   validator: (value) {
                     if (value == null || value.trim().isEmpty) {
@@ -660,9 +624,12 @@ class _TenantAdminAccountProfileEditScreenState
     );
   }
 
-  Widget _buildContentSection(BuildContext context) {
-    final hasBio = _hasBio();
-    final allowedTaxonomies = _allowedTaxonomies();
+  Widget _buildContentSection(
+    BuildContext context,
+    TenantAdminAccountProfileEditState state,
+  ) {
+    final hasBio = _hasBio(state.selectedProfileType);
+    final allowedTaxonomies = _allowedTaxonomies(state.selectedProfileType);
     return Card(
       margin: EdgeInsets.zero,
       child: Padding(
@@ -683,7 +650,7 @@ class _TenantAdminAccountProfileEditScreenState
                 minLines: 2,
               ),
             ],
-            if (_hasTaxonomies()) ...[
+            if (_hasTaxonomies(state.selectedProfileType)) ...[
               const SizedBox(height: 12),
               Text(
                 'Taxonomias',
@@ -708,18 +675,21 @@ class _TenantAdminAccountProfileEditScreenState
     );
   }
 
-  Widget _buildMediaSection(BuildContext context) {
-    final avatarUrl = _avatarRemoteUrl;
+  Widget _buildMediaSection(
+    BuildContext context,
+    TenantAdminAccountProfileEditState state,
+  ) {
+    final avatarUrl = state.avatarRemoteUrl;
     final hasAvatarUrl = avatarUrl != null && avatarUrl.isNotEmpty;
-    final coverUrl = _coverRemoteUrl;
+    final coverUrl = state.coverRemoteUrl;
     final hasCoverUrl = coverUrl != null && coverUrl.isNotEmpty;
-    final hasAvatar = _hasAvatar();
-    final hasCover = _hasCover();
+    final hasAvatar = _hasAvatar(state.selectedProfileType);
+    final hasCover = _hasCover(state.selectedProfileType);
 
-    if (_avatarFile != null && hasAvatarUrl && !_avatarRemoteReady) {
+    if (state.avatarFile != null && hasAvatarUrl && !state.avatarRemoteReady) {
       _preloadRemoteImage(url: avatarUrl, isAvatar: true);
     }
-    if (_coverFile != null && hasCoverUrl && !_coverRemoteReady) {
+    if (state.coverFile != null && hasCoverUrl && !state.coverRemoteReady) {
       _preloadRemoteImage(url: coverUrl, isAvatar: false);
     }
 
@@ -738,20 +708,20 @@ class _TenantAdminAccountProfileEditScreenState
             if (hasAvatar) ...[
               Row(
                 children: [
-                  if (_avatarFile != null)
+                  if (state.avatarFile != null)
                     Stack(
                       alignment: Alignment.bottomRight,
                       children: [
                         ClipRRect(
                           borderRadius: BorderRadius.circular(36),
                           child: Image.file(
-                            File(_avatarFile!.path),
+                            File(state.avatarFile!.path),
                             width: 72,
                             height: 72,
                             fit: BoxFit.cover,
                           ),
                         ),
-                        if (_avatarRemoteError)
+                        if (state.avatarRemoteError)
                           Container(
                             margin: const EdgeInsets.all(2),
                             decoration: BoxDecoration(
@@ -781,16 +751,14 @@ class _TenantAdminAccountProfileEditScreenState
                         errorBuilder: (context, error, stackTrace) {
                           WidgetsBinding.instance.addPostFrameCallback((_) {
                             if (!mounted) return;
-                            if (_avatarRemoteError) return;
-                            setState(() {
-                              _avatarRemoteError = true;
-                            });
+                            if (state.avatarRemoteError) return;
+                            _controller.updateAvatarRemoteError(true);
                           });
                           return _buildAvatarError(context);
                         },
                       ),
                     )
-                  else if (_avatarRemoteError)
+                  else if (state.avatarRemoteError)
                     _buildAvatarError(context)
                   else
                     Container(
@@ -809,8 +777,8 @@ class _TenantAdminAccountProfileEditScreenState
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          _avatarFile?.name ??
-                              (_profile?.avatarUrl?.isNotEmpty ?? false
+                          state.avatarFile?.name ??
+                              (state.profile?.avatarUrl?.isNotEmpty ?? false
                                   ? 'Imagem atual'
                                   : 'Nenhuma imagem selecionada'),
                           maxLines: 1,
@@ -824,7 +792,7 @@ class _TenantAdminAccountProfileEditScreenState
                               label: const Text('Selecionar'),
                             ),
                             const SizedBox(width: 8),
-                            if (_avatarFile != null)
+                            if (state.avatarFile != null)
                               TextButton(
                                 onPressed: () => _clearImage(isAvatar: true),
                                 child: const Text('Remover'),
@@ -839,20 +807,20 @@ class _TenantAdminAccountProfileEditScreenState
             ],
             if (hasAvatar && hasCover) const SizedBox(height: 16),
             if (hasCover) ...[
-              if (_coverFile != null)
+              if (state.coverFile != null)
                 Stack(
                   alignment: Alignment.topRight,
                   children: [
                     ClipRRect(
                       borderRadius: BorderRadius.circular(12),
                       child: Image.file(
-                        File(_coverFile!.path),
+                        File(state.coverFile!.path),
                         width: double.infinity,
                         height: 140,
                         fit: BoxFit.cover,
                       ),
                     ),
-                    if (_coverRemoteError)
+                    if (state.coverRemoteError)
                       Container(
                         margin: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
@@ -882,16 +850,14 @@ class _TenantAdminAccountProfileEditScreenState
                     errorBuilder: (context, error, stackTrace) {
                       WidgetsBinding.instance.addPostFrameCallback((_) {
                         if (!mounted) return;
-                        if (_coverRemoteError) return;
-                        setState(() {
-                          _coverRemoteError = true;
-                        });
+                        if (state.coverRemoteError) return;
+                        _controller.updateCoverRemoteError(true);
                       });
                       return _buildCoverError(context);
                     },
                   ),
                 )
-              else if (_coverRemoteError)
+              else if (state.coverRemoteError)
                 _buildCoverError(context)
               else
                 Container(
@@ -915,7 +881,7 @@ class _TenantAdminAccountProfileEditScreenState
                     label: const Text('Selecionar capa'),
                   ),
                   const SizedBox(width: 8),
-                  if (_coverFile != null)
+                  if (state.coverFile != null)
                     TextButton(
                       onPressed: () => _clearImage(isAvatar: false),
                       child: const Text('Remover'),

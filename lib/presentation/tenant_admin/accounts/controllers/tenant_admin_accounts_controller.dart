@@ -7,7 +7,9 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_document.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
+import 'package:belluga_now/domain/tenant_admin/ownership_state.dart';
 import 'package:get_it/get_it.dart' show Disposable, GetIt;
+import 'package:image_picker/image_picker.dart';
 import 'package:stream_value/core/stream_value.dart';
 
 class TenantAdminAccountsController implements Disposable {
@@ -30,6 +32,14 @@ class TenantAdminAccountsController implements Disposable {
   final StreamValue<bool> isLoadingStreamValue =
       StreamValue<bool>(defaultValue: false);
   final StreamValue<String?> errorStreamValue = StreamValue<String?>();
+  final StreamValue<TenantAdminOwnershipState> selectedOwnershipStreamValue =
+      StreamValue<TenantAdminOwnershipState>(
+    defaultValue: TenantAdminOwnershipState.tenantOwned,
+  );
+  final StreamValue<TenantAdminAccountCreateState> createStateStreamValue =
+      StreamValue<TenantAdminAccountCreateState>(
+    defaultValue: TenantAdminAccountCreateState.initial(),
+  );
 
   bool _isDisposed = false;
   bool _initialized = false;
@@ -77,6 +87,28 @@ class TenantAdminAccountsController implements Disposable {
     }
   }
 
+  void updateSelectedOwnership(TenantAdminOwnershipState ownershipState) {
+    selectedOwnershipStreamValue.addValue(ownershipState);
+  }
+
+  void updateCreateSelectedProfileType(String? profileType) {
+    _updateCreateState(
+      createStateStreamValue.value.copyWith(selectedProfileType: profileType),
+    );
+  }
+
+  void updateCreateAvatarFile(XFile? file) {
+    _updateCreateState(createStateStreamValue.value.copyWith(avatarFile: file));
+  }
+
+  void updateCreateCoverFile(XFile? file) {
+    _updateCreateState(createStateStreamValue.value.copyWith(coverFile: file));
+  }
+
+  void resetCreateState() {
+    _updateCreateState(TenantAdminAccountCreateState.initial());
+  }
+
   Future<TenantAdminAccount> createAccountWithProfile({
     required String name,
     required String documentType,
@@ -112,10 +144,60 @@ class TenantAdminAccountsController implements Disposable {
     profileTypesStreamValue.dispose();
     isLoadingStreamValue.dispose();
     errorStreamValue.dispose();
+    selectedOwnershipStreamValue.dispose();
+    createStateStreamValue.dispose();
   }
 
   @override
   void onDispose() {
     dispose();
+  }
+}
+
+class TenantAdminAccountCreateState {
+  static const _unset = Object();
+
+  const TenantAdminAccountCreateState({
+    required this.selectedProfileType,
+    required this.avatarFile,
+    required this.coverFile,
+  });
+
+  factory TenantAdminAccountCreateState.initial() =>
+      const TenantAdminAccountCreateState(
+        selectedProfileType: null,
+        avatarFile: null,
+        coverFile: null,
+      );
+
+  final String? selectedProfileType;
+  final XFile? avatarFile;
+  final XFile? coverFile;
+
+  TenantAdminAccountCreateState copyWith({
+    Object? selectedProfileType = _unset,
+    Object? avatarFile = _unset,
+    Object? coverFile = _unset,
+  }) {
+    final nextSelectedProfileType = selectedProfileType == _unset
+        ? this.selectedProfileType
+        : selectedProfileType as String?;
+    final nextAvatarFile =
+        avatarFile == _unset ? this.avatarFile : avatarFile as XFile?;
+    final nextCoverFile =
+        coverFile == _unset ? this.coverFile : coverFile as XFile?;
+
+    return TenantAdminAccountCreateState(
+      selectedProfileType: nextSelectedProfileType,
+      avatarFile: nextAvatarFile,
+      coverFile: nextCoverFile,
+    );
+  }
+}
+
+extension on TenantAdminAccountsController {
+  void _updateCreateState(TenantAdminAccountCreateState state) {
+    if (_isDisposed) return;
+    createStateStreamValue.addValue(state);
   }
 }

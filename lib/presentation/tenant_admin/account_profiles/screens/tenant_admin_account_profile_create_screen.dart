@@ -37,9 +37,6 @@ class _TenantAdminAccountProfileCreateScreenState
   final _latitudeController = TextEditingController();
   final _longitudeController = TextEditingController();
   final Map<String, TextEditingController> _taxonomyControllers = {};
-  XFile? _avatarFile;
-  XFile? _coverFile;
-  String? _selectedProfileType;
   late final TenantAdminAccountProfilesController _controller;
   String? _accountId;
 
@@ -47,6 +44,7 @@ class _TenantAdminAccountProfileCreateScreenState
   void initState() {
     super.initState();
     _controller = widget.controller;
+    _controller.resetCreateState();
     _load();
   }
 
@@ -67,11 +65,13 @@ class _TenantAdminAccountProfileCreateScreenState
     for (final controller in _taxonomyControllers.values) {
       controller.dispose();
     }
+    _controller.resetCreateState();
     super.dispose();
   }
 
-  TenantAdminProfileTypeDefinition? _selectedProfileTypeDefinition() {
-    final selectedType = _selectedProfileType;
+  TenantAdminProfileTypeDefinition? _profileTypeDefinition(
+    String? selectedType,
+  ) {
     if (selectedType == null || selectedType.isEmpty) {
       return null;
     }
@@ -83,38 +83,38 @@ class _TenantAdminAccountProfileCreateScreenState
     return null;
   }
 
-  bool _requiresLocation() {
-    final definition = _selectedProfileTypeDefinition();
+  bool _requiresLocation(String? selectedType) {
+    final definition = _profileTypeDefinition(selectedType);
     return definition?.capabilities.isPoiEnabled ?? false;
   }
 
-  bool _hasBio() {
-    final definition = _selectedProfileTypeDefinition();
+  bool _hasBio(String? selectedType) {
+    final definition = _profileTypeDefinition(selectedType);
     return definition?.capabilities.hasBio ?? false;
   }
 
-  bool _hasTaxonomies() {
-    final definition = _selectedProfileTypeDefinition();
+  bool _hasTaxonomies(String? selectedType) {
+    final definition = _profileTypeDefinition(selectedType);
     return definition?.capabilities.hasTaxonomies ?? false;
   }
 
-  bool _hasAvatar() {
-    final definition = _selectedProfileTypeDefinition();
+  bool _hasAvatar(String? selectedType) {
+    final definition = _profileTypeDefinition(selectedType);
     return definition?.capabilities.hasAvatar ?? false;
   }
 
-  bool _hasCover() {
-    final definition = _selectedProfileTypeDefinition();
+  bool _hasCover(String? selectedType) {
+    final definition = _profileTypeDefinition(selectedType);
     return definition?.capabilities.hasCover ?? false;
   }
 
-  List<String> _allowedTaxonomies() {
-    final definition = _selectedProfileTypeDefinition();
+  List<String> _allowedTaxonomies(String? selectedType) {
+    final definition = _profileTypeDefinition(selectedType);
     return definition?.allowedTaxonomies ?? const [];
   }
 
-  void _syncTaxonomyControllers() {
-    final allowed = _allowedTaxonomies().toSet();
+  void _syncTaxonomyControllers(List<String> allowedTaxonomies) {
+    final allowed = allowedTaxonomies.toSet();
     _taxonomyControllers.removeWhere((key, controller) {
       if (allowed.contains(key)) return false;
       controller.dispose();
@@ -128,29 +128,29 @@ class _TenantAdminAccountProfileCreateScreenState
     }
   }
 
-  void _clearCapabilityFields() {
-    if (!_hasBio()) {
+  void _clearCapabilityFields(String? selectedType) {
+    if (!_hasBio(selectedType)) {
       _bioController.clear();
     }
-    if (!_hasTaxonomies()) {
+    if (!_hasTaxonomies(selectedType)) {
       for (final controller in _taxonomyControllers.values) {
         controller.clear();
       }
     }
-    if (!_hasAvatar()) {
-      _avatarFile = null;
+    if (!_hasAvatar(selectedType)) {
+      _controller.updateCreateAvatarFile(null);
     }
-    if (!_hasCover()) {
-      _coverFile = null;
+    if (!_hasCover(selectedType)) {
+      _controller.updateCreateCoverFile(null);
     }
-    if (!_requiresLocation()) {
+    if (!_requiresLocation(selectedType)) {
       _latitudeController.clear();
       _longitudeController.clear();
     }
   }
 
-  List<TenantAdminTaxonomyTerm> _buildTaxonomyTerms() {
-    if (!_hasTaxonomies()) {
+  List<TenantAdminTaxonomyTerm> _buildTaxonomyTerms(String? selectedType) {
+    if (!_hasTaxonomies(selectedType)) {
       return const [];
     }
     final terms = <TenantAdminTaxonomyTerm>[];
@@ -171,7 +171,9 @@ class _TenantAdminAccountProfileCreateScreenState
   String? _validateLatitude(String? value) {
     final trimmed = value?.trim() ?? '';
     final other = _longitudeController.text.trim();
-    final requires = _requiresLocation();
+    final requires = _requiresLocation(
+      _controller.createStateStreamValue.value.selectedProfileType,
+    );
     if (requires && trimmed.isEmpty && other.isEmpty) {
       return 'Localização é obrigatória para este perfil.';
     }
@@ -187,7 +189,9 @@ class _TenantAdminAccountProfileCreateScreenState
   String? _validateLongitude(String? value) {
     final trimmed = value?.trim() ?? '';
     final other = _latitudeController.text.trim();
-    final requires = _requiresLocation();
+    final requires = _requiresLocation(
+      _controller.createStateStreamValue.value.selectedProfileType,
+    );
     if (trimmed.isNotEmpty && double.tryParse(trimmed) == null) {
       return 'Longitude inválida.';
     }
@@ -210,7 +214,6 @@ class _TenantAdminAccountProfileCreateScreenState
     }
     _latitudeController.text = selected.latitude.toStringAsFixed(6);
     _longitudeController.text = selected.longitude.toStringAsFixed(6);
-    setState(() {});
   }
 
   TenantAdminLocation? _currentLocation() {
@@ -258,23 +261,19 @@ class _TenantAdminAccountProfileCreateScreenState
       );
       return;
     }
-    setState(() {
-      if (isAvatar) {
-        _avatarFile = selected;
-      } else {
-        _coverFile = selected;
-      }
-    });
+    if (isAvatar) {
+      _controller.updateCreateAvatarFile(selected);
+    } else {
+      _controller.updateCreateCoverFile(selected);
+    }
   }
 
   void _clearImage({required bool isAvatar}) {
-    setState(() {
-      if (isAvatar) {
-        _avatarFile = null;
-      } else {
-        _coverFile = null;
-      }
-    });
+    if (isAvatar) {
+      _controller.updateCreateAvatarFile(null);
+    } else {
+      _controller.updateCreateCoverFile(null);
+    }
   }
 
   Future<TenantAdminMediaUpload?> _buildUpload(XFile? file) async {
@@ -299,19 +298,25 @@ class _TenantAdminAccountProfileCreateScreenState
       );
       return;
     }
-    final selectedType = _selectedProfileType ?? '';
-    final location = _requiresLocation() ? _currentLocation() : null;
+    final state = _controller.createStateStreamValue.value;
+    final selectedType = state.selectedProfileType ?? '';
+    final location =
+        _requiresLocation(state.selectedProfileType) ? _currentLocation() : null;
     final avatarUpload =
-        _hasAvatar() ? await _buildUpload(_avatarFile) : null;
+        _hasAvatar(state.selectedProfileType)
+            ? await _buildUpload(state.avatarFile)
+            : null;
     final coverUpload =
-        _hasCover() ? await _buildUpload(_coverFile) : null;
+        _hasCover(state.selectedProfileType)
+            ? await _buildUpload(state.coverFile)
+            : null;
     await _controller.createProfile(
       accountId: _accountId!,
       profileType: selectedType,
       displayName: _displayNameController.text.trim(),
       location: location,
-      bio: _hasBio() ? _bioController.text.trim() : null,
-      taxonomyTerms: _buildTaxonomyTerms(),
+      bio: _hasBio(state.selectedProfileType) ? _bioController.text.trim() : null,
+      taxonomyTerms: _buildTaxonomyTerms(state.selectedProfileType),
       avatarUpload: avatarUpload,
       coverUpload: coverUpload,
     );
@@ -324,61 +329,71 @@ class _TenantAdminAccountProfileCreateScreenState
 
   @override
   Widget build(BuildContext context) {
-    final requiresLocation = _requiresLocation();
-    final hasMedia = _hasAvatar() || _hasCover();
-    final hasContent = _hasBio() || _hasTaxonomies();
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Criar Perfil - ${widget.accountSlug}'),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.router.maybePop(),
-          tooltip: 'Voltar',
-        ),
-      ),
-      body: Padding(
-        padding: EdgeInsets.fromLTRB(
-          16,
-          16,
-          16,
-          16 + MediaQuery.of(context).viewInsets.bottom,
-        ),
-        child: SingleChildScrollView(
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildProfileSection(context),
-                if (hasContent) ...[
-                  const SizedBox(height: 16),
-                  _buildContentSection(context),
-                ],
-                if (hasMedia) ...[
-                  const SizedBox(height: 16),
-                  _buildMediaSection(context),
-                ],
-                if (requiresLocation) ...[
-                  const SizedBox(height: 16),
-                  _buildLocationSection(context),
-                ],
-                const SizedBox(height: 24),
-                SizedBox(
-                  width: double.infinity,
-                  child: FilledButton(
-                    onPressed: _submit,
-                    child: const Text('Salvar perfil'),
-                  ),
-                ),
-              ],
+    return StreamValueBuilder<TenantAdminAccountProfileCreateState>(
+      streamValue: _controller.createStateStreamValue,
+      builder: (context, state) {
+        final requiresLocation = _requiresLocation(state.selectedProfileType);
+        final hasMedia =
+            _hasAvatar(state.selectedProfileType) || _hasCover(state.selectedProfileType);
+        final hasContent =
+            _hasBio(state.selectedProfileType) || _hasTaxonomies(state.selectedProfileType);
+        return Scaffold(
+          appBar: AppBar(
+            title: Text('Criar Perfil - ${widget.accountSlug}'),
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back),
+              onPressed: () => context.router.maybePop(),
+              tooltip: 'Voltar',
             ),
           ),
-        ),
-      ),
+          body: Padding(
+            padding: EdgeInsets.fromLTRB(
+              16,
+              16,
+              16,
+              16 + MediaQuery.of(context).viewInsets.bottom,
+            ),
+            child: SingleChildScrollView(
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildProfileSection(context, state),
+                    if (hasContent) ...[
+                      const SizedBox(height: 16),
+                      _buildContentSection(context, state),
+                    ],
+                    if (hasMedia) ...[
+                      const SizedBox(height: 16),
+                      _buildMediaSection(context, state),
+                    ],
+                    if (requiresLocation) ...[
+                      const SizedBox(height: 16),
+                      _buildLocationSection(context),
+                    ],
+                    const SizedBox(height: 24),
+                    SizedBox(
+                      width: double.infinity,
+                      child: FilledButton(
+                        onPressed: _submit,
+                        child: const Text('Salvar perfil'),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 
-  Widget _buildProfileSection(BuildContext context) {
+  Widget _buildProfileSection(
+    BuildContext context,
+    TenantAdminAccountProfileCreateState state,
+  ) {
     return Card(
       margin: EdgeInsets.zero,
       child: Padding(
@@ -428,8 +443,8 @@ class _TenantAdminAccountProfileCreateScreenState
                               ),
                             const SizedBox(height: 8),
                             DropdownButtonFormField<String>(
-                              key: ValueKey(_selectedProfileType),
-                              initialValue: _selectedProfileType,
+                              key: ValueKey(state.selectedProfileType),
+                              initialValue: state.selectedProfileType,
                               decoration: const InputDecoration(
                                 labelText: 'Tipo de perfil',
                               ),
@@ -443,11 +458,12 @@ class _TenantAdminAccountProfileCreateScreenState
                                   .toList(growable: false),
                               onChanged: hasTypes
                                   ? (value) {
-                                      setState(() {
-                                        _selectedProfileType = value;
-                                        _syncTaxonomyControllers();
-                                        _clearCapabilityFields();
-                                      });
+                                      _controller
+                                          .updateCreateSelectedProfileType(value);
+                                      _syncTaxonomyControllers(
+                                        _allowedTaxonomies(value),
+                                      );
+                                      _clearCapabilityFields(value);
                                     }
                                   : null,
                               validator: (value) {
@@ -489,11 +505,14 @@ class _TenantAdminAccountProfileCreateScreenState
     );
   }
 
-  Widget _buildContentSection(BuildContext context) {
-    final hasBio = _hasBio();
-    final allowedTaxonomies = _allowedTaxonomies();
-    if (_hasTaxonomies()) {
-      _syncTaxonomyControllers();
+  Widget _buildContentSection(
+    BuildContext context,
+    TenantAdminAccountProfileCreateState state,
+  ) {
+    final hasBio = _hasBio(state.selectedProfileType);
+    final allowedTaxonomies = _allowedTaxonomies(state.selectedProfileType);
+    if (_hasTaxonomies(state.selectedProfileType)) {
+      _syncTaxonomyControllers(allowedTaxonomies);
     }
     return Card(
       margin: EdgeInsets.zero,
@@ -515,7 +534,7 @@ class _TenantAdminAccountProfileCreateScreenState
                 minLines: 2,
               ),
             ],
-            if (_hasTaxonomies()) ...[
+            if (_hasTaxonomies(state.selectedProfileType)) ...[
               const SizedBox(height: 12),
               Text(
                 'Taxonomias',
@@ -540,9 +559,12 @@ class _TenantAdminAccountProfileCreateScreenState
     );
   }
 
-  Widget _buildMediaSection(BuildContext context) {
-    final hasAvatar = _hasAvatar();
-    final hasCover = _hasCover();
+  Widget _buildMediaSection(
+    BuildContext context,
+    TenantAdminAccountProfileCreateState state,
+  ) {
+    final hasAvatar = _hasAvatar(state.selectedProfileType);
+    final hasCover = _hasCover(state.selectedProfileType);
     return Card(
       margin: EdgeInsets.zero,
       child: Padding(
@@ -558,11 +580,11 @@ class _TenantAdminAccountProfileCreateScreenState
             if (hasAvatar) ...[
               Row(
                 children: [
-                  if (_avatarFile != null)
+                  if (state.avatarFile != null)
                     ClipRRect(
                       borderRadius: BorderRadius.circular(36),
                       child: Image.file(
-                        File(_avatarFile!.path),
+                        File(state.avatarFile!.path),
                         width: 72,
                         height: 72,
                         fit: BoxFit.cover,
@@ -585,7 +607,7 @@ class _TenantAdminAccountProfileCreateScreenState
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          _avatarFile?.name ?? 'Nenhuma imagem selecionada',
+                          state.avatarFile?.name ?? 'Nenhuma imagem selecionada',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -597,7 +619,7 @@ class _TenantAdminAccountProfileCreateScreenState
                               label: const Text('Selecionar'),
                             ),
                             const SizedBox(width: 8),
-                            if (_avatarFile != null)
+                            if (state.avatarFile != null)
                               TextButton(
                                 onPressed: () => _clearImage(isAvatar: true),
                                 child: const Text('Remover'),
@@ -612,11 +634,11 @@ class _TenantAdminAccountProfileCreateScreenState
             ],
             if (hasAvatar && hasCover) const SizedBox(height: 16),
             if (hasCover) ...[
-              if (_coverFile != null)
+              if (state.coverFile != null)
                 ClipRRect(
                   borderRadius: BorderRadius.circular(12),
                   child: Image.file(
-                    File(_coverFile!.path),
+                    File(state.coverFile!.path),
                     width: double.infinity,
                     height: 140,
                     fit: BoxFit.cover,
@@ -644,7 +666,7 @@ class _TenantAdminAccountProfileCreateScreenState
                     label: const Text('Selecionar capa'),
                   ),
                   const SizedBox(width: 8),
-                  if (_coverFile != null)
+                  if (state.coverFile != null)
                     TextButton(
                       onPressed: () => _clearImage(isAvatar: false),
                       child: const Text('Remover'),

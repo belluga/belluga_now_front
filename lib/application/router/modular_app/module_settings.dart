@@ -15,11 +15,14 @@ import 'package:belluga_now/application/router/modular_app/modules/tenant_admin_
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/admin_mode_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/city_map_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/contacts_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/favorite_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/friends_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/landlord_auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/account_profiles_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/poi_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
@@ -33,11 +36,14 @@ import 'package:belluga_now/domain/user/profile_avatar_storage_contract.dart';
 import 'package:belluga_now/infrastructure/repositories/app_data_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/admin_mode_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/auth_repository.dart';
+import 'package:belluga_now/infrastructure/repositories/city_map_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/contacts_repository.dart';
+import 'package:belluga_now/infrastructure/repositories/favorite_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/friends_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/invites_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/landlord_auth_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/account_profiles_repository.dart';
+import 'package:belluga_now/infrastructure/repositories/poi_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/schedule_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/tenant_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/telemetry_repository.dart';
@@ -46,10 +52,14 @@ import 'package:belluga_now/infrastructure/repositories/tenant_admin/tenant_admi
 import 'package:belluga_now/infrastructure/repositories/tenant_admin/tenant_admin_organizations_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/user_events_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/user_location_repository.dart';
+import 'package:belluga_now/infrastructure/dal/datasources/mock_poi_database.dart';
 import 'package:belluga_now/infrastructure/dal/dao/local/app_data_local_info_source/app_data_local_info_source.dart';
 import 'package:belluga_now/infrastructure/dal/dao/backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/backend_context.dart';
 import 'package:belluga_now/infrastructure/dal/dao/production_backend/production_backend.dart';
+import 'package:belluga_now/infrastructure/services/http/laravel_map_poi_http_service.dart';
+import 'package:belluga_now/infrastructure/services/http/mock_http_service.dart';
+import 'package:belluga_now/infrastructure/services/networking/mock_web_socket_service.dart';
 import 'package:belluga_now/application/application_contract.dart';
 import 'package:belluga_now/presentation/common/location_permission/controllers/location_permission_controller.dart';
 import 'package:belluga_now/presentation/common/push/controllers/push_options_controller.dart';
@@ -437,6 +447,9 @@ class ModuleSettings extends ModuleSettingsContract {
     _registerIfAbsent<ContactsRepositoryContract>(
       () => ContactsRepository(),
     );
+    _registerIfAbsent<FavoriteRepositoryContract>(
+      () => FavoriteRepository(),
+    );
     _registerIfAbsent<ScheduleRepositoryContract>(() => ScheduleRepository());
     _registerIfAbsent<FriendsRepositoryContract>(
       () => FriendsRepository(),
@@ -445,6 +458,26 @@ class ModuleSettings extends ModuleSettingsContract {
       () => InvitesRepository(),
     );
     await _registerAppDataRepository();
+    final mockPoiDatabase =
+        _registerIfAbsent<MockPoiDatabase>(() => MockPoiDatabase());
+    _registerIfAbsent<MockHttpService>(
+      () => MockHttpService(database: mockPoiDatabase),
+    );
+    _registerIfAbsent<LaravelMapPoiHttpService>(
+      () => LaravelMapPoiHttpService(),
+    );
+    _registerIfAbsent<MockWebSocketService>(
+      () => MockWebSocketService(),
+    );
+    _registerIfAbsent<CityMapRepositoryContract>(
+      () => CityMapRepository(
+        database: mockPoiDatabase,
+        httpService: GetIt.I.get<MockHttpService>(),
+        laravelHttpService: GetIt.I.get<LaravelMapPoiHttpService>(),
+        webSocketService: GetIt.I.get<MockWebSocketService>(),
+      ),
+    );
+    _registerIfAbsent<PoiRepositoryContract>(() => PoiRepository());
     _registerIfAbsent<ProfileAvatarStorageContract>(
       () => ProfileAvatarStorage(),
     );

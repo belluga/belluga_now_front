@@ -35,15 +35,13 @@ class _TenantAdminAccountCreateScreenState
   final _profileDisplayNameController = TextEditingController();
   final _latitudeController = TextEditingController();
   final _longitudeController = TextEditingController();
-  XFile? _avatarFile;
-  XFile? _coverFile;
-  String? _selectedProfileType;
   late final TenantAdminAccountsController _controller;
 
   @override
   void initState() {
     super.initState();
     _controller = widget.controller;
+    _controller.resetCreateState();
     _controller.loadProfileTypes();
   }
 
@@ -55,11 +53,13 @@ class _TenantAdminAccountCreateScreenState
     _profileDisplayNameController.dispose();
     _latitudeController.dispose();
     _longitudeController.dispose();
+    _controller.resetCreateState();
     super.dispose();
   }
 
-  TenantAdminProfileTypeDefinition? _selectedProfileTypeDefinition() {
-    final selectedType = _selectedProfileType;
+  TenantAdminProfileTypeDefinition? _profileTypeDefinition(
+    String? selectedType,
+  ) {
     if (selectedType == null || selectedType.isEmpty) {
       return null;
     }
@@ -71,15 +71,17 @@ class _TenantAdminAccountCreateScreenState
     return null;
   }
 
-  bool _requiresLocation() {
-    final definition = _selectedProfileTypeDefinition();
+  bool _requiresLocation(String? selectedType) {
+    final definition = _profileTypeDefinition(selectedType);
     return definition?.capabilities.isPoiEnabled ?? false;
   }
 
   String? _validateLatitude(String? value) {
     final trimmed = value?.trim() ?? '';
     final other = _longitudeController.text.trim();
-    final requires = _requiresLocation();
+    final requires = _requiresLocation(
+      _controller.createStateStreamValue.value.selectedProfileType,
+    );
     if (requires && trimmed.isEmpty && other.isEmpty) {
       return 'Localização é obrigatória para este perfil.';
     }
@@ -95,7 +97,9 @@ class _TenantAdminAccountCreateScreenState
   String? _validateLongitude(String? value) {
     final trimmed = value?.trim() ?? '';
     final other = _latitudeController.text.trim();
-    final requires = _requiresLocation();
+    final requires = _requiresLocation(
+      _controller.createStateStreamValue.value.selectedProfileType,
+    );
     if (trimmed.isNotEmpty && double.tryParse(trimmed) == null) {
       return 'Longitude inválida.';
     }
@@ -118,7 +122,6 @@ class _TenantAdminAccountCreateScreenState
     }
     _latitudeController.text = selected.latitude.toStringAsFixed(6);
     _longitudeController.text = selected.longitude.toStringAsFixed(6);
-    setState(() {});
   }
 
   TenantAdminLocation? _currentLocation() {
@@ -144,23 +147,19 @@ class _TenantAdminAccountCreateScreenState
     if (selected == null) {
       return;
     }
-    setState(() {
-      if (isAvatar) {
-        _avatarFile = selected;
-      } else {
-        _coverFile = selected;
-      }
-    });
+    if (isAvatar) {
+      _controller.updateCreateAvatarFile(selected);
+    } else {
+      _controller.updateCreateCoverFile(selected);
+    }
   }
 
   void _clearImage({required bool isAvatar}) {
-    setState(() {
-      if (isAvatar) {
-        _avatarFile = null;
-      } else {
-        _coverFile = null;
-      }
-    });
+    if (isAvatar) {
+      _controller.updateCreateAvatarFile(null);
+    } else {
+      _controller.updateCreateCoverFile(null);
+    }
   }
 
   Future<TenantAdminMediaUpload?> _buildUpload(XFile? file) async {
@@ -174,78 +173,92 @@ class _TenantAdminAccountCreateScreenState
 
   @override
   Widget build(BuildContext context) {
-    final requiresLocation = _requiresLocation();
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Criar Conta'),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.router.maybePop(),
-          tooltip: 'Voltar',
-        ),
-      ),
-      body: Padding(
-        padding: EdgeInsets.fromLTRB(
-          16,
-          16,
-          16,
-          16 + MediaQuery.of(context).viewInsets.bottom,
-        ),
-        child: SingleChildScrollView(
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildAccountSection(context),
-                const SizedBox(height: 16),
-                _buildMediaSection(context),
-                if (requiresLocation) ...[
-                  const SizedBox(height: 16),
-                  _buildLocationSection(context),
-                ],
-                const SizedBox(height: 24),
-                SizedBox(
-                  width: double.infinity,
-                  child: FilledButton(
-                    key: const ValueKey('tenant_admin_account_create_save'),
-                    onPressed: () async {
-                      final form = _formKey.currentState;
-                      if (form == null || !form.validate()) {
-                        return;
-                      }
-                      final selectedType = _selectedProfileType ?? '';
-                      final location = _currentLocation();
-                      final avatarUpload = await _buildUpload(_avatarFile);
-                      final coverUpload = await _buildUpload(_coverFile);
-                      await _controller.createAccountWithProfile(
-                        name: _nameController.text.trim(),
-                        documentType: _documentTypeController.text.trim(),
-                        documentNumber: _documentNumberController.text.trim(),
-                        profileType: selectedType,
-                        displayName: _profileDisplayNameController.text.trim(),
-                        location: location,
-                        avatarUpload: avatarUpload,
-                        coverUpload: coverUpload,
-                      );
-                      if (!context.mounted) return;
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Conta e perfil salvos.')),
-                      );
-                      context.router.maybePop();
-                    },
-                    child: const Text('Salvar conta'),
-                  ),
-                ),
-              ],
+    return StreamValueBuilder<TenantAdminAccountCreateState>(
+      streamValue: _controller.createStateStreamValue,
+      builder: (context, state) {
+        final requiresLocation = _requiresLocation(state.selectedProfileType);
+        return Scaffold(
+          appBar: AppBar(
+            title: const Text('Criar Conta'),
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back),
+              onPressed: () => context.router.maybePop(),
+              tooltip: 'Voltar',
             ),
           ),
-        ),
-      ),
+          body: Padding(
+            padding: EdgeInsets.fromLTRB(
+              16,
+              16,
+              16,
+              16 + MediaQuery.of(context).viewInsets.bottom,
+            ),
+            child: SingleChildScrollView(
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildAccountSection(context, state),
+                    const SizedBox(height: 16),
+                    _buildMediaSection(context, state),
+                    if (requiresLocation) ...[
+                      const SizedBox(height: 16),
+                      _buildLocationSection(context),
+                    ],
+                    const SizedBox(height: 24),
+                    SizedBox(
+                      width: double.infinity,
+                      child: FilledButton(
+                        key: const ValueKey('tenant_admin_account_create_save'),
+                        onPressed: () async {
+                          final form = _formKey.currentState;
+                          if (form == null || !form.validate()) {
+                            return;
+                          }
+                          final selectedType = state.selectedProfileType ?? '';
+                          final location = _currentLocation();
+                          final avatarUpload =
+                              await _buildUpload(state.avatarFile);
+                          final coverUpload =
+                              await _buildUpload(state.coverFile);
+                          await _controller.createAccountWithProfile(
+                            name: _nameController.text.trim(),
+                            documentType: _documentTypeController.text.trim(),
+                            documentNumber:
+                                _documentNumberController.text.trim(),
+                            profileType: selectedType,
+                            displayName:
+                                _profileDisplayNameController.text.trim(),
+                            location: location,
+                            avatarUpload: avatarUpload,
+                            coverUpload: coverUpload,
+                          );
+                          if (!context.mounted) return;
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Conta e perfil salvos.'),
+                            ),
+                          );
+                          context.router.maybePop();
+                        },
+                        child: const Text('Salvar conta'),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 
-  Widget _buildAccountSection(BuildContext context) {
+  Widget _buildAccountSection(
+    BuildContext context,
+    TenantAdminAccountCreateState state,
+  ) {
     return Card(
       margin: EdgeInsets.zero,
       child: Padding(
@@ -351,8 +364,8 @@ class _TenantAdminAccountCreateScreenState
                               ),
                             const SizedBox(height: 8),
                             DropdownButtonFormField<String>(
-                              key: ValueKey(_selectedProfileType),
-                              initialValue: _selectedProfileType,
+                              key: ValueKey(state.selectedProfileType),
+                              initialValue: state.selectedProfileType,
                               decoration: const InputDecoration(
                                 labelText: 'Tipo de perfil',
                               ),
@@ -366,13 +379,12 @@ class _TenantAdminAccountCreateScreenState
                                   .toList(growable: false),
                               onChanged: hasTypes
                                   ? (value) {
-                                      setState(() {
-                                        _selectedProfileType = value;
-                                        if (!_requiresLocation()) {
-                                          _latitudeController.clear();
-                                          _longitudeController.clear();
-                                        }
-                                      });
+                                      _controller
+                                          .updateCreateSelectedProfileType(value);
+                                      if (!_requiresLocation(value)) {
+                                        _latitudeController.clear();
+                                        _longitudeController.clear();
+                                      }
                                     }
                                   : null,
                               validator: (value) {
@@ -425,7 +437,10 @@ class _TenantAdminAccountCreateScreenState
     );
   }
 
-  Widget _buildMediaSection(BuildContext context) {
+  Widget _buildMediaSection(
+    BuildContext context,
+    TenantAdminAccountCreateState state,
+  ) {
     return Card(
       margin: EdgeInsets.zero,
       child: Padding(
@@ -440,11 +455,11 @@ class _TenantAdminAccountCreateScreenState
             const SizedBox(height: 12),
             Row(
               children: [
-                if (_avatarFile != null)
+                if (state.avatarFile != null)
                   ClipRRect(
                     borderRadius: BorderRadius.circular(36),
                     child: Image.file(
-                      File(_avatarFile!.path),
+                      File(state.avatarFile!.path),
                       width: 72,
                       height: 72,
                       fit: BoxFit.cover,
@@ -467,7 +482,7 @@ class _TenantAdminAccountCreateScreenState
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        _avatarFile?.name ?? 'Nenhuma imagem selecionada',
+                        state.avatarFile?.name ?? 'Nenhuma imagem selecionada',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -480,13 +495,13 @@ class _TenantAdminAccountCreateScreenState
                             onPressed: () => _pickImage(isAvatar: true),
                             icon: const Icon(Icons.photo_library_outlined),
                             label: const Text('Selecionar'),
-                          ),
-                          const SizedBox(width: 8),
-                          if (_avatarFile != null)
-                            TextButton(
-                              key: const ValueKey(
-                                'tenant_admin_account_create_avatar_remove',
-                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            if (state.avatarFile != null)
+                              TextButton(
+                                key: const ValueKey(
+                                  'tenant_admin_account_create_avatar_remove',
+                                ),
                               onPressed: () => _clearImage(isAvatar: true),
                               child: const Text('Remover'),
                             ),
@@ -495,14 +510,14 @@ class _TenantAdminAccountCreateScreenState
                     ],
                   ),
                 ),
-              ],
-            ),
+            ],
+          ),
             const SizedBox(height: 16),
-            if (_coverFile != null)
+            if (state.coverFile != null)
               ClipRRect(
                 borderRadius: BorderRadius.circular(12),
                 child: Image.file(
-                  File(_coverFile!.path),
+                  File(state.coverFile!.path),
                   width: double.infinity,
                   height: 140,
                   fit: BoxFit.cover,
@@ -533,7 +548,7 @@ class _TenantAdminAccountCreateScreenState
                   label: const Text('Selecionar capa'),
                 ),
                 const SizedBox(width: 8),
-                if (_coverFile != null)
+                if (state.coverFile != null)
                   TextButton(
                     key: const ValueKey(
                       'tenant_admin_account_create_cover_remove',

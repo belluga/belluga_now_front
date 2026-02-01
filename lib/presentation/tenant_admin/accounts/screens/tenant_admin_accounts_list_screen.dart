@@ -20,7 +20,6 @@ class TenantAdminAccountsListScreen extends StatefulWidget {
 
 class _TenantAdminAccountsListScreenState
     extends State<TenantAdminAccountsListScreen> {
-  TenantAdminOwnershipState _selected = TenantAdminOwnershipState.tenantOwned;
   final bool _hasError = false;
   late final TenantAdminAccountsController _controller;
 
@@ -38,88 +37,97 @@ class _TenantAdminAccountsListScreenState
       return _buildErrorState(context);
     }
 
-    return StreamValueBuilder(
-      streamValue: _controller.accountsStreamValue,
-      builder: (context, accounts) {
-        final filteredAccounts = accounts
-            .where((account) => account.ownershipState == _selected)
-            .toList(growable: false);
+    return StreamValueBuilder<TenantAdminOwnershipState>(
+      streamValue: _controller.selectedOwnershipStreamValue,
+      builder: (context, selected) {
+        return StreamValueBuilder(
+          streamValue: _controller.accountsStreamValue,
+          builder: (context, accounts) {
+            final filteredAccounts = accounts
+                .where((account) => account.ownershipState == selected)
+                .toList(growable: false);
 
-        return Scaffold(
-          floatingActionButton: FloatingActionButton.extended(
-            onPressed: () {
-              context.router.push(const TenantAdminAccountCreateRoute());
-            },
-            icon: const Icon(Icons.add),
-            label: const Text('Criar conta'),
-          ),
-          body: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Segmento',
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-                const SizedBox(height: 8),
-                Card(
-                  margin: EdgeInsets.zero,
-                  child: Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: SegmentedButton<TenantAdminOwnershipState>(
-                      segments: TenantAdminOwnershipState.values
-                          .map(
-                            (state) => ButtonSegment<TenantAdminOwnershipState>(
-                              value: state,
-                              label: Text(state.label),
-                            ),
-                          )
-                          .toList(growable: false),
-                      selected: <TenantAdminOwnershipState>{_selected},
-                      onSelectionChanged: (selection) {
-                        if (selection.isEmpty) {
-                          return;
-                        }
-                        setState(() => _selected = selection.first);
-                      },
+            return Scaffold(
+              floatingActionButton: FloatingActionButton.extended(
+                onPressed: () {
+                  context.router.push(const TenantAdminAccountCreateRoute());
+                },
+                icon: const Icon(Icons.add),
+                label: const Text('Criar conta'),
+              ),
+              body: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Segmento',
+                      style: Theme.of(context).textTheme.titleMedium,
                     ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Expanded(
-                  child: filteredAccounts.isEmpty
-                      ? _buildEmptyState(context)
-                      : ListView.separated(
-                          itemCount: filteredAccounts.length,
-                          separatorBuilder: (_, __) =>
-                              const SizedBox(height: 12),
-                          itemBuilder: (context, index) {
-                            final account = filteredAccounts[index];
-                            return Card(
-                              clipBehavior: Clip.antiAlias,
-                              child: ListTile(
-                                leading: const CircleAvatar(
-                                  child: Icon(Icons.account_circle_outlined),
+                    const SizedBox(height: 8),
+                    Card(
+                      margin: EdgeInsets.zero,
+                      child: Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: SegmentedButton<TenantAdminOwnershipState>(
+                          segments: TenantAdminOwnershipState.values
+                              .map(
+                                (state) =>
+                                    ButtonSegment<TenantAdminOwnershipState>(
+                                  value: state,
+                                  label: Text(state.label),
                                 ),
-                                title: Text(account.slug),
-                                subtitle: Text(account.ownershipState.subtitle),
-                                trailing: const Icon(Icons.chevron_right),
-                                onTap: () {
-                                  context.router.push(
-                                    TenantAdminAccountDetailRoute(
-                                      accountSlug: account.slug,
-                                    ),
-                                  );
-                                },
-                              ),
-                            );
+                              )
+                              .toList(growable: false),
+                          selected: <TenantAdminOwnershipState>{selected},
+                          onSelectionChanged: (selection) {
+                            if (selection.isEmpty) {
+                              return;
+                            }
+                            _controller
+                                .updateSelectedOwnership(selection.first);
                           },
                         ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Expanded(
+                      child: filteredAccounts.isEmpty
+                          ? _buildEmptyState(context)
+                          : ListView.separated(
+                              itemCount: filteredAccounts.length,
+                              separatorBuilder: (_, __) =>
+                                  const SizedBox(height: 12),
+                              itemBuilder: (context, index) {
+                                final account = filteredAccounts[index];
+                                return Card(
+                                  clipBehavior: Clip.antiAlias,
+                                  child: ListTile(
+                                    leading: const CircleAvatar(
+                                      child:
+                                          Icon(Icons.account_circle_outlined),
+                                    ),
+                                    title: Text(account.slug),
+                                    subtitle:
+                                        Text(account.ownershipState.subtitle),
+                                    trailing: const Icon(Icons.chevron_right),
+                                    onTap: () {
+                                      context.router.push(
+                                        TenantAdminAccountDetailRoute(
+                                          accountSlug: account.slug,
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                );
+                              },
+                            ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-          ),
+              ),
+            );
+          },
         );
       },
     );
