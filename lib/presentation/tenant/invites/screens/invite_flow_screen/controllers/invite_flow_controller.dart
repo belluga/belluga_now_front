@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:collection';
 
 import 'package:belluga_now/domain/invites/invite_decision.dart';
 import 'package:belluga_now/domain/invites/invite_inviter_type.dart';
@@ -6,7 +7,6 @@ import 'package:belluga_now/domain/invites/invite_model.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_events_repository_contract.dart';
-import 'package:belluga_now/infrastructure/services/telemetry/telemetry_queue.dart';
 import 'package:card_stack_swiper/card_stack_swiper.dart';
 import 'package:event_tracker_handler/event_tracker_handler.dart';
 import 'package:get_it/get_it.dart';
@@ -31,7 +31,7 @@ class InviteFlowScreenController with Disposable {
   final TelemetryRepositoryContract _telemetryRepository;
 
   final CardStackSwiperController swiperController;
-  final TelemetryQueue _inviteQueue = TelemetryQueue();
+  final _RetryQueue _inviteQueue = _RetryQueue();
 
   InviteModel? get currentInvite => pendingInvitesStreamValue.value.isNotEmpty
       ? pendingInvitesStreamValue.value.first
@@ -282,6 +282,68 @@ class InviteFlowScreenController with Disposable {
       }
     }));
   }
+}
+
+class _RetryQueue {
+  _RetryQueue({
+    List<Duration>? retryDelays,
+  }) : _retryDelays = retryDelays ??
+            const [
+              Duration.zero,
+              Duration(seconds: 2),
+              Duration(seconds: 4),
+              Duration(seconds: 4),
+            ];
+
+  final List<Duration> _retryDelays;
+  final Queue<_RetryJob> _jobs = Queue<_RetryJob>();
+  bool _processing = false;
+
+  Future<bool> enqueue(Future<void> Function() task) {
+    final completer = Completer<bool>();
+    _jobs.add(_RetryJob(task: task, completer: completer));
+    _process();
+    return completer.future;
+  }
+
+  Future<void> _process() async {
+    if (_processing) return;
+    _processing = true;
+
+    while (_jobs.isNotEmpty) {
+      final job = _jobs.removeFirst();
+      var success = false;
+
+      for (final delay in _retryDelays) {
+        if (delay > Duration.zero) {
+          await Future<void>.delayed(delay);
+        }
+        try {
+          await job.task();
+          success = true;
+          break;
+        } catch (_) {
+          success = false;
+        }
+      }
+
+      if (!job.completer.isCompleted) {
+        job.completer.complete(success);
+      }
+    }
+
+    _processing = false;
+  }
+}
+
+class _RetryJob {
+  _RetryJob({
+    required this.task,
+    required this.completer,
+  });
+
+  final Future<void> Function() task;
+  final Completer<bool> completer;
 }
 
 class InviteDecisionResult {

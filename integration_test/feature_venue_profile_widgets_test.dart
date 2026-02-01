@@ -1,8 +1,8 @@
 import 'package:belluga_now/domain/partner/partner_resume.dart';
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
+import 'package:belluga_now/domain/partners/services/partner_profile_config_builder.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/infrastructure/dal/dao/mock_backend/mock_schedule_backend.dart';
-import 'package:belluga_now/infrastructure/dal/datasources/mock_partner_profile_database.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_artist_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_type_dto.dart';
@@ -23,7 +23,7 @@ void main() {
       type: 'venue',
       bio: 'Bio for venue',
     );
-    final config = MockPartnerProfileDatabase().buildConfig(partner);
+    final config = PartnerProfileConfigBuilder().build(partner);
 
     expect(config.tabs.map((t) => t.title).toList(), [
       'Sobre',

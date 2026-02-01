@@ -7,11 +7,12 @@ import 'package:belluga_now/application/configurations/custom_scroll_behavior.da
 import 'package:belluga_now/application/configurations/belluga_constants.dart';
 import 'package:belluga_now/application/router/app_router.dart';
 import 'package:belluga_now/application/router/modular_app/module_settings.dart';
+import 'package:belluga_now/domain/push/push_presentation_gate_contract.dart';
+import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:get_it_modular_with_auto_route/get_it_modular_with_auto_route.dart';
-import 'package:belluga_now/infrastructure/repositories/app_data_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/push/push_payload_upsert_mixin.dart';
 import 'package:get_it/get_it.dart';
 import 'package:intl/date_symbol_data_local.dart';
@@ -32,7 +33,6 @@ import 'package:flutter/foundation.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
-import 'package:belluga_now/infrastructure/services/push/push_presentation_gate.dart';
 import 'package:event_tracker_handler/event_tracker_handler.dart';
 
 typedef PushHandlerRepositoryFactory = PushHandlerRepositoryContract Function({
@@ -182,10 +182,10 @@ abstract class ApplicationContract extends ModularAppContract {
       navigationResolver: navigationResolver,
       onBackgroundMessage: (message) async {},
       presentationGate: () async {
-        if (!GetIt.I.isRegistered<PushPresentationGate>()) {
+        if (!GetIt.I.isRegistered<PushPresentationGateContract>()) {
           return;
         }
-        final gate = GetIt.I.get<PushPresentationGate>();
+        final gate = GetIt.I.get<PushPresentationGateContract>();
         if (gate.isReady) {
           return;
         }
@@ -290,7 +290,8 @@ abstract class ApplicationContract extends ModularAppContract {
     await _pushRepository?.debugInjectMessageId(messageId);
   }
   Future<void> _initializeFirebaseIfAvailable() async {
-    final settings = GetIt.I.get<AppDataRepository>().appData.firebaseSettings;
+    final settings =
+        GetIt.I.get<AppDataRepositoryContract>().appData.firebaseSettings;
     if (settings == null) {
       debugPrint('[Push] Firebase settings missing; skipping init.');
       return;
@@ -308,22 +309,26 @@ abstract class ApplicationContract extends ModularAppContract {
     );
   }
 
-  ThemeData getThemeData() =>
-      GetIt.I.get<AppDataRepository>().appData.themeDataSettings.themeData();
+  ThemeData getThemeData() => GetIt.I
+      .get<AppDataRepositoryContract>()
+      .appData
+      .themeDataSettings
+      .themeData();
 
   ThemeData getLightThemeData() => GetIt.I
-      .get<AppDataRepository>()
+      .get<AppDataRepositoryContract>()
       .appData
       .themeDataSettings
       .themeData(Brightness.light);
 
   ThemeData getDarkThemeData() => GetIt.I
-      .get<AppDataRepository>()
+      .get<AppDataRepositoryContract>()
       .appData
       .themeDataSettings
       .themeData(Brightness.dark);
 
-  ThemeMode get themeMode => GetIt.I.get<AppDataRepository>().themeMode;
+  ThemeMode get themeMode =>
+      GetIt.I.get<AppDataRepositoryContract>().themeMode;
 
   @override
   State<ApplicationContract> createState() => _ApplicationContractState();
@@ -646,7 +651,7 @@ class _ApplicationContractState extends State<ApplicationContract>
 
   @override
   Widget build(BuildContext context) {
-    final appDataRepository = GetIt.I.get<AppDataRepository>();
+    final appDataRepository = GetIt.I.get<AppDataRepositoryContract>();
     return StreamValueBuilder<ThemeMode?>(
       streamValue: appDataRepository.themeModeStreamValue,
       builder: (context, themeMode) {

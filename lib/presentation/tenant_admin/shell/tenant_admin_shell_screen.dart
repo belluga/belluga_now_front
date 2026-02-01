@@ -1,6 +1,6 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
-import 'package:belluga_now/domain/repositories/admin_mode_repository_contract.dart';
+import 'package:belluga_now/presentation/tenant_admin/shell/controllers/tenant_admin_shell_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
@@ -97,10 +97,10 @@ class _TenantAdminShellScreenState extends State<TenantAdminShellScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final adminMode = GetIt.I.get<AdminModeRepositoryContract>();
-    return StreamValueBuilder<AdminMode>(
-      streamValue: adminMode.modeStreamValue,
-      builder: (context, mode) {
+    final controller = GetIt.I.get<TenantAdminShellController>();
+    return StreamValueBuilder(
+      streamValue: controller.modeStreamValue,
+      builder: (context, _) {
         final router = context.router;
         final currentName = router.topRoute.name;
         final selectedIndex = _selectedIndex(currentName);
@@ -135,7 +135,7 @@ class _TenantAdminShellScreenState extends State<TenantAdminShellScreen> {
                   tooltip: 'Perfil',
                   icon: const Icon(Icons.person_outline),
                   onPressed: () async {
-                    await adminMode.setUserMode();
+                    await controller.switchToUserMode();
                     if (!context.mounted) return;
                     router.replaceAll([const ProfileRoute()]);
                   },
@@ -155,7 +155,7 @@ class _TenantAdminShellScreenState extends State<TenantAdminShellScreen> {
                       actions: [
                         TextButton.icon(
                           onPressed: () async {
-                            await adminMode.setUserMode();
+                            await controller.switchToUserMode();
                             if (!context.mounted) return;
                             router.replaceAll([const ProfileRoute()]);
                           },

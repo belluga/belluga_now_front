@@ -3,11 +3,16 @@ import 'dart:async';
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/application/router/guards/landlord_route_guard.dart';
+import 'package:belluga_now/presentation/tenant_admin/shell/controllers/tenant_admin_shell_controller.dart';
 import 'package:get_it_modular_with_auto_route/get_it_modular_with_auto_route.dart';
 
 class TenantAdminModule extends ModuleContract {
   @override
-  FutureOr<void> registerDependencies() async {}
+  FutureOr<void> registerDependencies() async {
+    registerLazySingleton<TenantAdminShellController>(
+      () => TenantAdminShellController(),
+    );
+  }
 
   @override
   List<AutoRoute> get routes => [

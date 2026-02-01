@@ -4,8 +4,6 @@ import 'package:belluga_now/application/configurations/widget_keys.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/presentation/common/init/screens/init_screen/controllers/init_screen_controller.dart';
 import 'package:get_it/get_it.dart';
-import 'package:belluga_now/infrastructure/repositories/app_data_repository.dart';
-import 'package:belluga_now/infrastructure/services/push/push_presentation_gate.dart';
 
 class InitScreen extends StatefulWidget {
   const InitScreen({super.key});
@@ -29,7 +27,7 @@ class _InitScreenState extends State<InitScreen> {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final error = _errorMessage;
-    final appData = GetIt.I.get<AppDataRepository>().appData;
+    final appData = _controller.appData;
     final backgroundColor = _tryParseHexColor(appData.mainColor.value) ?? scheme.primary;
     final onBackgroundColor =
         ThemeData.estimateBrightnessForColor(backgroundColor) == Brightness.dark
@@ -147,10 +145,8 @@ class _InitScreenState extends State<InitScreen> {
     );
     context.router.replaceAll(routes);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (GetIt.I.isRegistered<PushPresentationGate>()) {
-        debugPrint('[Push] Init stack presented; releasing push gate.');
-        GetIt.I.get<PushPresentationGate>().markReady();
-      }
+      debugPrint('[Push] Init stack presented; releasing push gate.');
+      _controller.markPushReady();
     });
   }
 

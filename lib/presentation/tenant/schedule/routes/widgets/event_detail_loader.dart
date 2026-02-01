@@ -1,11 +1,9 @@
 import 'dart:async';
 
 import 'package:belluga_now/domain/schedule/event_model.dart';
-import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
 import 'package:belluga_now/presentation/common/widgets/image_palette_theme.dart';
 import 'package:belluga_now/presentation/tenant/schedule/screens/event_detail_screen/controllers/event_detail_controller.dart';
 import 'package:belluga_now/presentation/tenant/schedule/screens/event_detail_screen/event_detail_screen.dart';
-import 'package:event_tracker_handler/event_tracker_handler.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 
@@ -26,10 +24,7 @@ class EventDetailLoader extends StatefulWidget {
 class _EventDetailLoaderState extends State<EventDetailLoader> {
   late final EventDetailController _controller =
       widget.controller ?? GetIt.I.get<EventDetailController>();
-  final TelemetryRepositoryContract _telemetryRepository =
-      GetIt.I.get<TelemetryRepositoryContract>();
   late Future<EventModel?> _eventFuture;
-  Future<EventTrackerTimedEventHandle?>? _eventOpenedHandleFuture;
 
   @override
   void initState() {
@@ -37,13 +32,7 @@ class _EventDetailLoaderState extends State<EventDetailLoader> {
     _eventFuture = _controller.loadEventBySlug(widget.slug).then((_) async {
       final event = _controller.eventStreamValue.value;
       if (event != null && mounted) {
-        _eventOpenedHandleFuture = _telemetryRepository.startTimedEvent(
-          EventTrackerEvents.eventOpened,
-          eventName: 'event_opened',
-          properties: {
-            'event_id': event.id.value,
-          },
-        );
+        await _controller.startEventTelemetry(event);
       }
       return event;
     });
@@ -51,16 +40,7 @@ class _EventDetailLoaderState extends State<EventDetailLoader> {
 
   @override
   void dispose() {
-    final handleFuture = _eventOpenedHandleFuture;
-    if (handleFuture != null) {
-      _eventOpenedHandleFuture = null;
-      unawaited(() async {
-        final handle = await handleFuture;
-        if (handle != null) {
-          await _telemetryRepository.finishTimedEvent(handle);
-        }
-      }());
-    }
+    unawaited(_controller.finishEventTelemetry());
     super.dispose();
   }
 

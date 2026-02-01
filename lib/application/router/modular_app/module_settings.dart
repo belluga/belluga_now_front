@@ -14,6 +14,7 @@ import 'package:belluga_now/application/router/modular_app/modules/tenant_admin_
 
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/admin_mode_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/contacts_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/friends_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
@@ -27,6 +28,8 @@ import 'package:belluga_now/domain/repositories/tenant_admin_accounts_repository
 import 'package:belluga_now/domain/repositories/tenant_admin_organizations_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_events_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
+import 'package:belluga_now/domain/push/push_presentation_gate_contract.dart';
+import 'package:belluga_now/domain/user/profile_avatar_storage_contract.dart';
 import 'package:belluga_now/infrastructure/repositories/app_data_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/admin_mode_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/auth_repository.dart';
@@ -59,6 +62,7 @@ import 'package:belluga_now/infrastructure/services/push/push_answer_handler.dar
 import 'package:belluga_now/infrastructure/services/push/push_answer_relay.dart';
 import 'package:belluga_now/infrastructure/services/push/push_answer_resolver.dart';
 import 'package:belluga_now/infrastructure/services/push/push_presentation_gate.dart';
+import 'package:belluga_now/infrastructure/services/user/profile_avatar_storage.dart';
 import 'package:flutter/foundation.dart';
 import 'package:get_it/get_it.dart';
 import 'package:get_it_modular_with_auto_route/get_it_modular_with_auto_route.dart';
@@ -141,7 +145,7 @@ class ModuleSettings extends ModuleSettingsContract {
   }
 
   void _registerPushDependencies() {
-    _registerLazySingletonIfAbsent<PushPresentationGate>(
+    _registerLazySingletonIfAbsent<PushPresentationGateContract>(
       () => PushPresentationGate(),
     );
     final relay = _registerIfAbsent<PushAnswerRelay>(() => PushAnswerRelay());
@@ -312,6 +316,9 @@ class ModuleSettings extends ModuleSettingsContract {
       () => InvitesRepository(),
     );
     await _registerAppDataRepository();
+    _registerIfAbsent<ProfileAvatarStorageContract>(
+      () => ProfileAvatarStorage(),
+    );
     _registerIfAbsent<TelemetryRepositoryContract>(
       () => TelemetryRepository(),
     );
@@ -330,7 +337,7 @@ class ModuleSettings extends ModuleSettingsContract {
   }
 
   Future<void> _registerAppDataRepository() async {
-    final appDataRepository = _registerIfAbsent<AppDataRepository>(
+    final appDataRepository = _registerIfAbsent<AppDataRepositoryContract>(
       () => AppDataRepository(
         backendContract: GetIt.I.get<BackendContract>(),
         localInfoSource: _appDataLocalInfoSource,

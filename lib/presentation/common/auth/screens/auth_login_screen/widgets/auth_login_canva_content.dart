@@ -2,8 +2,6 @@ import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/presentation/common/auth/screens/auth_login_screen/widgets/auth_login_form.dart';
 import 'package:belluga_now/presentation/common/widgets/button_loading.dart';
-import 'package:belluga_now/domain/repositories/admin_mode_repository_contract.dart';
-import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/presentation/landlord/auth/widgets/landlord_login_sheet.dart';
 import 'package:belluga_now/presentation/tenant/auth/login/controllers/auth_login_controller_contract.dart';
 import 'package:flutter/material.dart';
@@ -193,9 +191,6 @@ class _AuthLoginCanvaContentState extends State<AuthLoginCanvaContent>
     if (!mounted || !didLogin) {
       return;
     }
-    final adminMode = GetIt.I.get<AdminModeRepositoryContract>();
-    await adminMode.setLandlordMode();
-    if (!mounted) return;
     context.router.replaceAll([const TenantAdminShellRoute()]);
   }
 
@@ -216,9 +211,8 @@ class _AuthLoginCanvaContentState extends State<AuthLoginCanvaContent>
       return;
     }
 
-    final authRepository = GetIt.I.get<AuthRepositoryContract>();
     try {
-      await authRepository.signUpWithEmailPassword(
+      final isAuthorized = await _controller.signUpWithEmailPassword(
         normalizedName,
         normalizedEmail,
         password,
@@ -226,7 +220,7 @@ class _AuthLoginCanvaContentState extends State<AuthLoginCanvaContent>
       if (!ctx.mounted) return;
       Navigator.of(ctx).pop();
       if (!mounted) return;
-      if (authRepository.isAuthorized) {
+      if (isAuthorized) {
         context.router.replace(const TenantHomeRoute());
       } else {
         ScaffoldMessenger.of(context).showSnackBar(

@@ -1,4 +1,4 @@
-import 'package:belluga_now/domain/repositories/landlord_auth_repository_contract.dart';
+import 'package:belluga_now/presentation/landlord/auth/controllers/landlord_login_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 
@@ -61,9 +61,9 @@ Future<bool> showLandlordLoginSheet(BuildContext context) async {
                       return;
                     }
                     final landlordAuth =
-                        GetIt.I.get<LandlordAuthRepositoryContract>();
+                        GetIt.I.get<LandlordLoginController>();
                     try {
-                      await landlordAuth.loginWithEmailPassword(
+                      await landlordAuth.enterAdminModeWithCredentials(
                         email,
                         password,
                       );

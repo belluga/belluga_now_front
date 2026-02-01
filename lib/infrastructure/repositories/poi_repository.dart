@@ -4,19 +4,19 @@ import 'package:belluga_now/domain/map/event_poi_model.dart';
 import 'package:belluga_now/domain/map/events/poi_update_event.dart';
 import 'package:belluga_now/domain/map/filters/main_filter_option.dart';
 import 'package:belluga_now/domain/map/filters/poi_filter_options.dart';
+import 'package:belluga_now/domain/map/filters/poi_filter_mode.dart';
 import 'package:belluga_now/domain/map/map_region_definition.dart';
+import 'package:belluga_now/domain/map/queries/poi_query.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/domain/repositories/city_map_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/poi_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
-import 'package:belluga_now/infrastructure/dal/datasources/poi_query.dart';
 import 'package:flutter/foundation.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value.dart';
 
-enum PoiFilterMode { none, events, restaurants, beaches, lodging }
-
-class PoiRepository {
+class PoiRepository implements PoiRepositoryContract {
   PoiRepository({
     CityMapRepositoryContract? dataSource,
     ScheduleRepositoryContract? scheduleRepository,
@@ -29,18 +29,24 @@ class PoiRepository {
 
   final allPoisStreamValue =
       StreamValue<List<CityPoiModel>>(defaultValue: const <CityPoiModel>[]);
+  @override
   final filteredPoisStreamValue =
       StreamValue<List<CityPoiModel>>(defaultValue: const <CityPoiModel>[]);
+  @override
   final selectedPoiStreamValue = StreamValue<CityPoiModel?>();
+  @override
   final filterModeStreamValue =
       StreamValue<PoiFilterMode>(defaultValue: PoiFilterMode.none);
   PoiFilterMode _filterMode = PoiFilterMode.none;
 
+  @override
   final filterOptionsStreamValue = StreamValue<PoiFilterOptions?>();
 
+  @override
   final mainFilterOptionsStreamValue = StreamValue<List<MainFilterOption>>(
       defaultValue: const <MainFilterOption>[]);
 
+  @override
   Future<List<CityPoiModel>> fetchPoints(PoiQuery query) async {
     final cityPoisFuture = _dataSource.fetchPoints(query);
     final eventPoisFuture = _fetchEventPois(query);
@@ -61,12 +67,14 @@ class PoiRepository {
     return snapshot;
   }
 
+  @override
   Future<PoiFilterOptions> fetchFilters() async {
     final filters = await _dataSource.fetchFilters();
     filterOptionsStreamValue.addValue(filters);
     return filters;
   }
 
+  @override
   Future<List<MainFilterOption>> fetchMainFilters() =>
       _dataSource.fetchMainFilters().then((filters) {
         mainFilterOptionsStreamValue.addValue(
@@ -83,14 +91,18 @@ class PoiRepository {
 
   Stream<PoiUpdateEvent?> get poiEvents => _dataSource.poiEvents;
 
+  @override
   CityCoordinate get defaultCenter => _dataSource.defaultCenter();
 
+  @override
   void selectPoi(CityPoiModel? poi) {
     selectedPoiStreamValue.addValue(poi);
   }
 
+  @override
   void clearSelection() => selectPoi(null);
 
+  @override
   void applyFilterMode(PoiFilterMode mode) {
     if (_filterMode == mode) {
       return;
@@ -103,6 +115,7 @@ class PoiRepository {
     }
   }
 
+  @override
   void clearFilters() => applyFilterMode(PoiFilterMode.none);
 
   void _setAllPois(List<CityPoiModel> pois) {

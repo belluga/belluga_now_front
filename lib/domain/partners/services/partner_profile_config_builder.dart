@@ -1,12 +1,12 @@
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/domain/partners/profile_type_capabilities.dart';
-import 'package:belluga_now/presentation/tenant/partners/models/partner_profile_config.dart';
+import 'package:belluga_now/domain/partners/projections/partner_profile_config.dart';
 
-/// Mock database providing profile module data keyed by partner slug.
-class MockPartnerProfileDatabase {
-  MockPartnerProfileDatabase();
+/// Builds profile module configuration based on partner type and capabilities.
+class PartnerProfileConfigBuilder {
+  PartnerProfileConfigBuilder();
 
-  PartnerProfileConfig buildConfig(
+  PartnerProfileConfig build(
     AccountProfileModel partner, {
     ProfileTypeCapabilities? capabilities,
   }) {
@@ -120,7 +120,10 @@ class MockPartnerProfileDatabase {
             ProfileTabConfig(
               title: 'Sobre o Guia',
               modules: [
-                ProfileModuleConfig(id: ProfileModuleId.richText, title: 'Quem Somos'),
+                ProfileModuleConfig(
+                  id: ProfileModuleId.richText,
+                  title: 'Quem Somos',
+                ),
               ],
             ),
             ProfileTabConfig(
@@ -139,7 +142,10 @@ class MockPartnerProfileDatabase {
               title: 'Acervo',
               modules: [
                 ProfileModuleConfig(id: ProfileModuleId.videoGallery),
-                ProfileModuleConfig(id: ProfileModuleId.richText, title: 'Artigos Recentes'),
+                ProfileModuleConfig(
+                  id: ProfileModuleId.richText,
+                  title: 'Artigos Recentes',
+                ),
               ],
             ),
             ProfileTabConfig(

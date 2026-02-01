@@ -1,4 +1,4 @@
-import 'package:belluga_now/infrastructure/repositories/poi_repository.dart';
+import 'package:belluga_now/domain/map/filters/poi_filter_mode.dart';
 import 'package:belluga_now/presentation/tenant/map/screens/map_screen/controllers/map_screen_controller.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value.dart';

@@ -79,23 +79,6 @@ void main() {
     }
   }
 
-  Future<void> _waitForAny(
-    WidgetTester tester,
-    List<Finder> finders, {
-    Duration timeout = const Duration(seconds: 30),
-  }) async {
-    final deadline = DateTime.now().add(timeout);
-    while (DateTime.now().isBefore(deadline)) {
-      await tester.pump(const Duration(milliseconds: 300));
-      for (final finder in finders) {
-        if (finder.evaluate().isNotEmpty) {
-          return;
-        }
-      }
-    }
-    throw TestFailure('Timed out waiting for any expected widget.');
-  }
-
   Future<void> _dismissInviteOverlayIfNeeded(WidgetTester tester) async {
     final closeButton = find.byTooltip('Fechar');
     if (await _waitForMaybeFinder(tester, closeButton)) {

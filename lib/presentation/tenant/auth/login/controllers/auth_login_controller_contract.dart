@@ -90,6 +90,30 @@ abstract class AuthLoginControllerContract extends Object with Disposable {
     fieldEnabled.addValue(true);
   }
 
+  Future<bool> signUpWithEmailPassword(
+    String name,
+    String email,
+    String password,
+  ) async {
+    buttonLoadingValue.addValue(true);
+    fieldEnabled.addValue(false);
+    _cleanAllErrors();
+
+    try {
+      await _authRepository.signUpWithEmailPassword(name, email, password);
+      return _authRepository.isAuthorized;
+    } on BellugaAuthError catch (e) {
+      generalErrorStreamValue.addValue(e.message);
+      return false;
+    } catch (e) {
+      generalErrorStreamValue.addValue("Erro desconhecido");
+      return false;
+    } finally {
+      buttonLoadingValue.addValue(false);
+      fieldEnabled.addValue(true);
+    }
+  }
+
   @override
   void onDispose() {
     authEmailFieldController.dispose();

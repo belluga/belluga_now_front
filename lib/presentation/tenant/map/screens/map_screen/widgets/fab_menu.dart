@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:belluga_now/domain/map/city_poi_category.dart';
-import 'package:belluga_now/infrastructure/repositories/poi_repository.dart';
+import 'package:belluga_now/domain/map/filters/poi_filter_mode.dart';
 import 'package:belluga_now/application/icons/boora_icons.dart';
 import 'package:belluga_now/presentation/tenant/map/screens/map_screen/controllers/fab_menu_controller.dart';
 import 'package:belluga_now/presentation/tenant/map/screens/map_screen/widgets/shared/poi_category_theme.dart';

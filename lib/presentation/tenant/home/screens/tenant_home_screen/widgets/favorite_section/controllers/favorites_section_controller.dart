@@ -8,12 +8,12 @@ import 'package:belluga_now/domain/favorite/value_objects/favorite_badge_icon_va
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/domain/repositories/favorite_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/account_profiles_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
 import 'package:belluga_now/domain/value_objects/asset_path_value.dart';
 import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
 import 'package:belluga_now/domain/value_objects/title_value.dart';
 import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
-import 'package:belluga_now/infrastructure/repositories/app_data_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart' show Disposable, GetIt;
 import 'package:stream_value/core/stream_value.dart';
@@ -23,7 +23,7 @@ class FavoritesSectionController implements Disposable {
     FavoriteRepositoryContract? favoriteRepository,
     AccountProfilesRepositoryContract? partnersRepository,
     ScheduleRepositoryContract? scheduleRepository,
-    AppDataRepository? appDataRepository,
+    AppDataRepositoryContract? appDataRepository,
   })  : _favoriteRepository =
             favoriteRepository ?? GetIt.I.get<FavoriteRepositoryContract>(),
         _partnersRepository =
@@ -31,12 +31,12 @@ class FavoritesSectionController implements Disposable {
         _scheduleRepository =
             scheduleRepository ?? GetIt.I.get<ScheduleRepositoryContract>(),
         _appDataRepository =
-            appDataRepository ?? GetIt.I.get<AppDataRepository>();
+            appDataRepository ?? GetIt.I.get<AppDataRepositoryContract>();
 
   final FavoriteRepositoryContract _favoriteRepository;
   final AccountProfilesRepositoryContract _partnersRepository;
   final ScheduleRepositoryContract _scheduleRepository;
-  final AppDataRepository _appDataRepository;
+  final AppDataRepositoryContract _appDataRepository;
 
   final StreamValue<List<FavoriteResume>?> favoritesStreamValue =
       StreamValue<List<FavoriteResume>?>();
@@ -144,6 +144,24 @@ class FavoritesSectionController implements Disposable {
       primaryColor: primaryColor,
       isPrimary: true,
     );
+  }
+
+  Future<FavoriteNavigationTarget> resolveNavigationTarget(
+    FavoriteResume favorite,
+  ) async {
+    if (favorite.isPrimary) {
+      return const FavoriteNavigationPrimary();
+    }
+
+    final slug = favorite.slug;
+    if (slug != null && slug.isNotEmpty) {
+      final partner = await _partnersRepository.getAccountProfileBySlug(slug);
+      if (partner != null) {
+        return FavoriteNavigationPartner(slug: partner.slug);
+      }
+    }
+
+    return FavoriteNavigationSearch(query: favorite.title.trim());
   }
 
   void _resortFavoritesByUpcomingEvents() {
@@ -270,4 +288,24 @@ class FavoritesSectionController implements Disposable {
     _partnersSubscription?.cancel();
     favoritesStreamValue.dispose();
   }
+}
+
+sealed class FavoriteNavigationTarget {
+  const FavoriteNavigationTarget();
+}
+
+class FavoriteNavigationPrimary extends FavoriteNavigationTarget {
+  const FavoriteNavigationPrimary();
+}
+
+class FavoriteNavigationPartner extends FavoriteNavigationTarget {
+  const FavoriteNavigationPartner({required this.slug});
+
+  final String slug;
+}
+
+class FavoriteNavigationSearch extends FavoriteNavigationTarget {
+  const FavoriteNavigationSearch({required this.query});
+
+  final String query;
 }

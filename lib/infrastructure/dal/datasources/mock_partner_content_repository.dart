@@ -1,18 +1,16 @@
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
-import 'package:belluga_now/infrastructure/dal/dto/profile/profile_event_dto.dart';
-import 'package:belluga_now/infrastructure/dal/dto/profile/profile_faq_dto.dart';
-import 'package:belluga_now/infrastructure/dal/dto/profile/profile_link_dto.dart';
-import 'package:belluga_now/infrastructure/dal/dto/profile/profile_location_dto.dart';
-import 'package:belluga_now/infrastructure/dal/dto/profile/profile_media_dto.dart';
-import 'package:belluga_now/infrastructure/dal/dto/profile/profile_product_dto.dart';
-import 'package:belluga_now/infrastructure/dal/dto/profile/profile_score_dto.dart';
-import 'package:belluga_now/infrastructure/dal/dto/profile/profile_supported_entity_dto.dart';
-import 'package:belluga_now/presentation/tenant/partners/models/partner_profile_config.dart';
+import 'package:belluga_now/domain/partners/projections/partner_profile_config.dart';
+import 'package:belluga_now/domain/partners/projections/partner_profile_module_data.dart';
+import 'package:belluga_now/domain/repositories/partner_profile_content_repository_contract.dart';
 
-class MockPartnerContentRepository {
+class MockPartnerContentRepository
+    implements PartnerProfileContentRepositoryContract {
   MockPartnerContentRepository();
 
-  Map<ProfileModuleId, dynamic> loadModulesForPartner(AccountProfileModel partner) {
+  @override
+  Map<ProfileModuleId, Object?> loadModulesForPartner(
+    AccountProfileModel partner,
+  ) {
     return switch (partner.type) {
       'artist' => {
           ProfileModuleId.agendaCarousel: _mockEvents(partner),
@@ -54,15 +52,19 @@ class MockPartnerContentRepository {
     };
   }
 
-  List<ProfileMediaDTO> _mockTracks() =>
-      [ProfileMediaDTO(url: 'https://open.spotify.com/track/mock', title: 'Vento Sul')];
+  List<PartnerMediaView> _mockTracks() => const [
+        PartnerMediaView(
+          url: 'https://open.spotify.com/track/mock',
+          title: 'Vento Sul',
+        ),
+      ];
 
   String _mockRichText() => 'Conteúdo institucional e história do parceiro.';
 
-  List<ProfileEventDTO> _mockEvents(AccountProfileModel partner) {
+  List<PartnerEventView> _mockEvents(AccountProfileModel partner) {
     return List.generate(
       5,
-      (i) => ProfileEventDTO(
+      (i) => PartnerEventView(
         title: 'Evento ${i + 1}',
         date: '15 JAN • 20h',
         location: partner.tags.isNotEmpty ? partner.tags.first : 'Guarapari',
@@ -70,109 +72,127 @@ class MockPartnerContentRepository {
     );
   }
 
-  List<ProfileProductDTO> _mockProducts() {
+  List<PartnerProductView> _mockProducts() {
     return [
-      ProfileProductDTO(
+      PartnerProductView(
         title: 'Camiseta Tour',
         price: 'R\$ 80',
-        image:
+        imageUrl:
             'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=400',
       ),
-      ProfileProductDTO(
+      PartnerProductView(
         title: 'Workshop VIP',
         price: 'R\$ 250',
-        image:
+        imageUrl:
             'https://images.unsplash.com/photo-1515165562835-c3b8c1c7c3c4?w=400',
       ),
-      ProfileProductDTO(
+      PartnerProductView(
         title: 'Livro Autografado',
         price: 'R\$ 60',
-        image:
+        imageUrl:
             'https://images.unsplash.com/photo-1524995997946-a1c2e315a42f?w=400',
       ),
-      ProfileProductDTO(
+      PartnerProductView(
         title: 'Aula Particular',
         price: 'R\$ 180',
-        image:
+        imageUrl:
             'https://images.unsplash.com/photo-1448932223592-d1fc686e76ea?w=400',
       ),
     ];
   }
 
-  List<ProfileMediaDTO> _mockPhotos() => List.generate(
+  List<PartnerMediaView> _mockPhotos() => List.generate(
         12,
-        (i) => ProfileMediaDTO(
+        (i) => PartnerMediaView(
           url:
               'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?w=400&sig=$i',
         ),
       );
 
-  List<ProfileMediaDTO> _mockVideos() => List.generate(
+  List<PartnerMediaView> _mockVideos() => List.generate(
         6,
-        (i) => ProfileMediaDTO(
+        (i) => PartnerMediaView(
           title: 'Vídeo ${i + 1}',
           url:
               'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=400&sig=$i',
         ),
       );
 
-  List<Map<String, String>> _mockExperiences() {
-    return [
-      {
-        'title': 'Batismo de Mergulho',
-        'duration': '4h',
-        'price': 'R\$ 250'
-      },
-      {'title': 'Trilha da Pesca', 'duration': '2h', 'price': 'R\$ 80'},
-      {'title': 'Passeio de Barco', 'duration': '3h', 'price': 'R\$ 150'},
+  List<PartnerExperienceView> _mockExperiences() {
+    return const [
+      PartnerExperienceView(
+        title: 'Batismo de Mergulho',
+        duration: '4h',
+        price: 'R\$ 250',
+      ),
+      PartnerExperienceView(
+        title: 'Trilha da Pesca',
+        duration: '2h',
+        price: 'R\$ 80',
+      ),
+      PartnerExperienceView(
+        title: 'Passeio de Barco',
+        duration: '3h',
+        price: 'R\$ 150',
+      ),
     ];
   }
 
-  List<ProfileFaqDTO> _mockFaq() => [
-        ProfileFaqDTO(
+  List<PartnerFaqView> _mockFaq() => [
+        PartnerFaqView(
             question: 'Preciso saber nadar?',
             answer: 'Não, temos coletes e guias.'),
-        ProfileFaqDTO(
+        PartnerFaqView(
             question: 'Equipamentos inclusos?',
             answer: 'Sim, tudo incluso.'),
-        ProfileFaqDTO(
+        PartnerFaqView(
             question: 'Idade mínima?', answer: '12 anos acompanhados.'),
       ];
 
-  ProfileLocationDTO _mockLocation(AccountProfileModel partner) => ProfileLocationDTO(
+  PartnerLocationView _mockLocation(AccountProfileModel partner) =>
+      PartnerLocationView(
         address: 'Rua Central, 123 - Guarapari',
         status: 'Aberto agora • Fecha às 23h',
         lat: (partner.distanceMeters ?? 0).toString(),
         lng: (partner.distanceMeters ?? 0).toString(),
       );
 
-  List<ProfileLinkDTO> _mockLinks() => [
-        ProfileLinkDTO(
+  List<PartnerLinkView> _mockLinks() => [
+        PartnerLinkView(
           title: 'Comprar livro',
           subtitle: 'Link externo',
           icon: 'book',
         ),
-        ProfileLinkDTO(
+        PartnerLinkView(
           title: 'Apoiar via PIX',
           subtitle: 'Contribua com o criador',
           icon: 'pix',
         ),
       ];
 
-  List<Map<String, String>> _mockRecommendations() => [
-        {'title': 'Cantinho da Moqueca', 'type': 'Restaurante'},
-        {'title': 'Melhores Praias', 'type': 'Guia'},
-        {'title': 'Trilhas e Mirantes', 'type': 'Passeio'},
+  List<PartnerRecommendationView> _mockRecommendations() => const [
+        PartnerRecommendationView(
+          title: 'Cantinho da Moqueca',
+          type: 'Restaurante',
+        ),
+        PartnerRecommendationView(
+          title: 'Melhores Praias',
+          type: 'Guia',
+        ),
+        PartnerRecommendationView(
+          title: 'Trilhas e Mirantes',
+          type: 'Passeio',
+        ),
       ];
 
-  List<ProfileSupportedEntityDTO> _mockSupportedEntities() => [
-        ProfileSupportedEntityDTO(title: 'DJ Alex Beat'),
-        ProfileSupportedEntityDTO(title: 'Curadoria ES'),
-        ProfileSupportedEntityDTO(title: 'Agenda Cultural'),
+  List<PartnerSupportedEntityView> _mockSupportedEntities() => [
+        PartnerSupportedEntityView(title: 'DJ Alex Beat'),
+        PartnerSupportedEntityView(title: 'Curadoria ES'),
+        PartnerSupportedEntityView(title: 'Agenda Cultural'),
       ];
 
   String _mockSponsor() => 'Cantinho da Moqueca';
 
-  ProfileScoreDTO _mockScore() =>
-      ProfileScoreDTO(invites: '1.5k', presences: '850');
+  PartnerScoreView _mockScore() =>
+      const PartnerScoreView(invites: '1.5k', presences: '850');
 }

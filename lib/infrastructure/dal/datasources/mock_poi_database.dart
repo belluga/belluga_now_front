@@ -8,7 +8,7 @@ import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
 import 'package:belluga_now/domain/map/value_objects/map_region_id_value.dart';
 import 'package:belluga_now/domain/map/value_objects/map_region_label_value.dart';
 import 'package:belluga_now/domain/map/value_objects/map_zoom_value.dart';
-import 'package:belluga_now/infrastructure/dal/datasources/poi_query.dart';
+import 'package:belluga_now/domain/map/queries/poi_query.dart';
 import 'package:belluga_now/infrastructure/dal/datasources/pois_google_data.dart';
 import 'package:belluga_now/infrastructure/dal/dto/map/city_poi_dto.dart';
 

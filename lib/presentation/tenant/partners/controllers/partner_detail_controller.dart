@@ -1,34 +1,37 @@
+import 'dart:async';
+
+import 'package:belluga_now/domain/media/audio_player_service_contract.dart';
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
+import 'package:belluga_now/domain/partners/projections/partner_profile_config.dart';
+import 'package:belluga_now/domain/partners/projections/partner_profile_module_data.dart';
 import 'package:belluga_now/domain/partners/profile_type_registry.dart';
+import 'package:belluga_now/domain/partners/services/partner_profile_config_builder.dart';
 import 'package:belluga_now/domain/repositories/account_profiles_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/partner_profile_content_repository_contract.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
-import 'package:belluga_now/infrastructure/dal/datasources/mock_partner_profile_database.dart';
-import 'package:belluga_now/infrastructure/dal/datasources/mock_partner_content_repository.dart';
-import 'package:belluga_now/presentation/tenant/partners/models/partner_profile_config.dart';
-import 'package:belluga_now/infrastructure/services/mock_audio_player_service.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value.dart';
 
 class PartnerDetailController implements Disposable {
   PartnerDetailController({
     AccountProfilesRepositoryContract? partnersRepository,
-    MockPartnerProfileDatabase? profileDatabase,
-    MockPartnerContentRepository? contentRepository,
-    MockAudioPlayerService? audioPlayerService,
+    PartnerProfileConfigBuilder? profileConfigBuilder,
+    PartnerProfileContentRepositoryContract? contentRepository,
+    AudioPlayerServiceContract? audioPlayerService,
   })  : _partnersRepository =
             partnersRepository ?? GetIt.I.get<AccountProfilesRepositoryContract>(),
-        _profileDatabase = profileDatabase ?? MockPartnerProfileDatabase(),
-        _contentRepository = contentRepository ?? MockPartnerContentRepository(),
-        _audioPlayerService = audioPlayerService ??
-            (GetIt.I.isRegistered<MockAudioPlayerService>()
-                ? GetIt.I.get<MockAudioPlayerService>()
-                : GetIt.I.registerSingleton<MockAudioPlayerService>(
-                    MockAudioPlayerService()));
+        _profileConfigBuilder =
+            profileConfigBuilder ?? GetIt.I.get<PartnerProfileConfigBuilder>(),
+        _contentRepository =
+            contentRepository ?? GetIt.I.get<PartnerProfileContentRepositoryContract>(),
+        _audioPlayerService =
+            audioPlayerService ?? GetIt.I.get<AudioPlayerServiceContract>();
 
   final AccountProfilesRepositoryContract _partnersRepository;
-  final MockPartnerProfileDatabase _profileDatabase;
-  final MockPartnerContentRepository _contentRepository;
-  final MockAudioPlayerService _audioPlayerService;
+  final PartnerProfileConfigBuilder _profileConfigBuilder;
+  final PartnerProfileContentRepositoryContract _contentRepository;
+  final AudioPlayerServiceContract _audioPlayerService;
+  StreamSubscription<PartnerMediaView?>? _audioSubscription;
 
   final partnerStreamValue = StreamValue<AccountProfileModel?>();
   final isLoadingStreamValue = StreamValue<bool>(defaultValue: false);
@@ -37,10 +40,22 @@ class PartnerDetailController implements Disposable {
   final profileConfigStreamValue =
       StreamValue<PartnerProfileConfig?>(defaultValue: null);
   final moduleDataStreamValue =
-      StreamValue<Map<ProfileModuleId, dynamic>>(defaultValue: const {});
-  MockAudioPlayerService get audioPlayerService => _audioPlayerService;
+      StreamValue<Map<ProfileModuleId, Object?>>(defaultValue: const {});
+  final currentTrackStreamValue = StreamValue<PartnerMediaView?>();
+
+  StreamValue<bool> get isPlayingStreamValue =>
+      _audioPlayerService.isPlayingStream;
+
+  void playTrack(PartnerMediaView track) {
+    _audioPlayerService.play(track);
+  }
+
+  void togglePlayback() {
+    _audioPlayerService.toggle();
+  }
 
   Future<void> loadPartner(String slug) async {
+    _attachAudioListener();
     isLoadingStreamValue.addValue(true);
     try {
       final partner = await _partnersRepository.getAccountProfileBySlug(slug);
@@ -49,14 +64,13 @@ class PartnerDetailController implements Disposable {
         final capabilities =
             _resolveRegistry()?.capabilitiesFor(partner.type);
         profileConfigStreamValue.addValue(
-          _profileDatabase.buildConfig(
+          _profileConfigBuilder.build(
             partner,
             capabilities: capabilities,
           ),
         );
-        moduleDataStreamValue.addValue(
-          _contentRepository.loadModulesForPartner(partner),
-        );
+        final rawModules = _contentRepository.loadModulesForPartner(partner);
+        moduleDataStreamValue.addValue(rawModules);
       }
     } finally {
       isLoadingStreamValue.addValue(false);
@@ -84,11 +98,20 @@ class PartnerDetailController implements Disposable {
     return GetIt.I.get<AppData>().profileTypeRegistry;
   }
 
+  void _attachAudioListener() {
+    _audioSubscription ??=
+        _audioPlayerService.currentTrackStream.stream.listen((track) {
+      currentTrackStreamValue.addValue(track);
+    });
+  }
+
   @override
   void onDispose() {
     partnerStreamValue.dispose();
     isLoadingStreamValue.dispose();
     profileConfigStreamValue.dispose();
     moduleDataStreamValue.dispose();
+    currentTrackStreamValue.dispose();
+    _audioSubscription?.cancel();
   }
 }

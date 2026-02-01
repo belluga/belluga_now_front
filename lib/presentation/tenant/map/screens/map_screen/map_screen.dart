@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
-import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
 import 'package:belluga_now/presentation/tenant/map/screens/map_screen/controllers/map_screen_controller.dart';
 import 'package:belluga_now/presentation/tenant/map/screens/map_screen/widgets/fab_menu.dart';
 import 'package:belluga_now/presentation/tenant/map/screens/map_screen/widgets/map_layers.dart';
@@ -20,22 +19,17 @@ class MapScreen extends StatefulWidget {
 
 class _MapScreenState extends State<MapScreen> {
   final _controller = GetIt.I.get<MapScreenController>();
-  final _locationRepository = GetIt.I.get<UserLocationRepositoryContract>();
 
   @override
   void initState() {
     super.initState();
-    unawaited(
-      _locationRepository.startTracking(
-        mode: LocationTrackingMode.mapForeground,
-      ),
-    );
+    unawaited(_controller.startTracking());
     _initializeController();
   }
 
   @override
   void dispose() {
-    unawaited(_locationRepository.stopTracking());
+    unawaited(_controller.stopTracking());
     super.dispose();
   }
 

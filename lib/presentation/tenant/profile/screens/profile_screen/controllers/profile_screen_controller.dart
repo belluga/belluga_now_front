@@ -1,9 +1,11 @@
 import 'dart:io';
 
+import 'package:belluga_now/domain/repositories/admin_mode_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/user/user_contract.dart';
-import 'package:belluga_now/infrastructure/repositories/auth_repository.dart';
-import 'package:belluga_now/infrastructure/repositories/app_data_repository.dart';
+import 'package:belluga_now/domain/user/profile_avatar_storage_contract.dart';
+import 'package:belluga_now/presentation/landlord/auth/controllers/landlord_login_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:image_picker/image_picker.dart';
@@ -13,14 +15,26 @@ import 'package:stream_value/core/stream_value.dart';
 class ProfileScreenController implements Disposable {
   ProfileScreenController({
     AuthRepositoryContract? authRepository,
-    AppDataRepository? appDataRepository,
+    AppDataRepositoryContract? appDataRepository,
+    AdminModeRepositoryContract? adminModeRepository,
+    LandlordLoginController? landlordLoginController,
+    ProfileAvatarStorageContract? avatarStorage,
   })  : _authRepository =
             authRepository ?? GetIt.I.get<AuthRepositoryContract>(),
         _appDataRepository =
-            appDataRepository ?? GetIt.I.get<AppDataRepository>();
+            appDataRepository ?? GetIt.I.get<AppDataRepositoryContract>(),
+        _adminModeRepository =
+            adminModeRepository ?? GetIt.I.get<AdminModeRepositoryContract>(),
+        _landlordLoginController =
+            landlordLoginController ?? GetIt.I.get<LandlordLoginController>(),
+        _avatarStorage =
+            avatarStorage ?? GetIt.I.get<ProfileAvatarStorageContract>();
 
   final AuthRepositoryContract _authRepository;
-  final AppDataRepository _appDataRepository;
+  final AppDataRepositoryContract _appDataRepository;
+  final AdminModeRepositoryContract _adminModeRepository;
+  final LandlordLoginController _landlordLoginController;
+  final ProfileAvatarStorageContract _avatarStorage;
 
   final TextEditingController nameController = TextEditingController();
   final TextEditingController descriptionController = TextEditingController();
@@ -61,14 +75,14 @@ class ProfileScreenController implements Disposable {
   }
 
   Future<void> loadAvatarPath() async {
-    final stored = await AuthRepository.storage.read(key: _avatarStorageKey);
+    final stored = await _avatarStorage.readAvatarPath();
     if (stored == null || stored.trim().isEmpty) {
       localAvatarPathStreamValue.addValue(null);
       return;
     }
     final file = File(stored);
     if (!await file.exists()) {
-      await AuthRepository.storage.delete(key: _avatarStorageKey);
+      await _avatarStorage.clearAvatarPath();
       localAvatarPathStreamValue.addValue(null);
       return;
     }
@@ -112,10 +126,7 @@ class ProfileScreenController implements Disposable {
       }
     }
 
-    await AuthRepository.storage.write(
-      key: _avatarStorageKey,
-      value: saved.path,
-    );
+    await _avatarStorage.writeAvatarPath(saved.path);
     localAvatarPathStreamValue.addValue(saved.path);
   }
 
@@ -130,6 +141,10 @@ class ProfileScreenController implements Disposable {
 
   Future<void> logout() => _authRepository.logout();
 
+  Future<void> switchToUserMode() => _adminModeRepository.setUserMode();
+
+  Future<bool> ensureAdminMode() => _landlordLoginController.ensureAdminMode();
+
   @override
   void onDispose() {
     nameController.dispose();
@@ -139,5 +154,3 @@ class ProfileScreenController implements Disposable {
     localAvatarPathStreamValue.dispose();
   }
 }
-
-const String _avatarStorageKey = 'profile_avatar_path';

@@ -1,6 +1,9 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/domain/controllers/belluga_init_screen_controller_contract.dart';
+import 'package:belluga_now/domain/app_data/app_data.dart';
+import 'package:belluga_now/domain/push/push_presentation_gate_contract.dart';
+import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:stream_value/core/stream_value.dart';
 
 import 'package:get_it/get_it.dart';
@@ -9,10 +12,20 @@ import 'package:belluga_now/domain/repositories/invites_repository_contract.dart
 final class InitScreenController extends BellugaInitScreenControllerContract {
   InitScreenController({
     InvitesRepositoryContract? invitesRepository,
-  }) : _invitesRepository =
-            invitesRepository ?? GetIt.I.get<InvitesRepositoryContract>();
+    AppDataRepositoryContract? appDataRepository,
+    PushPresentationGateContract? pushPresentationGate,
+  })  : _invitesRepository =
+            invitesRepository ?? GetIt.I.get<InvitesRepositoryContract>(),
+        _appDataRepository =
+            appDataRepository ?? GetIt.I.get<AppDataRepositoryContract>(),
+        _pushPresentationGate = pushPresentationGate ??
+            (GetIt.I.isRegistered<PushPresentationGateContract>()
+                ? GetIt.I.get<PushPresentationGateContract>()
+                : null);
 
   final InvitesRepositoryContract _invitesRepository;
+  final AppDataRepositoryContract _appDataRepository;
+  final PushPresentationGateContract? _pushPresentationGate;
 
   @override
   final loadingStatusStreamValue = StreamValue<String>(
@@ -23,6 +36,12 @@ final class InitScreenController extends BellugaInitScreenControllerContract {
 
   @override
   PageRouteInfo get initialRoute => _determinedRoute ?? const TenantHomeRoute();
+
+  AppData get appData => _appDataRepository.appData;
+
+  void markPushReady() {
+    _pushPresentationGate?.markReady();
+  }
 
   @override
   Future<void> initialize() async {

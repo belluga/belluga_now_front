@@ -3,14 +3,15 @@ import 'dart:async';
 import 'package:belluga_now/domain/map/city_poi_category.dart';
 import 'package:belluga_now/domain/map/city_poi_model.dart';
 import 'package:belluga_now/domain/map/filters/main_filter_option.dart';
+import 'package:belluga_now/domain/map/filters/poi_filter_mode.dart';
 import 'package:belluga_now/domain/map/filters/poi_filter_options.dart';
 import 'package:belluga_now/domain/map/map_status.dart';
+import 'package:belluga_now/domain/map/queries/poi_query.dart';
 import 'package:belluga_now/domain/map/ride_share_provider.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
+import 'package:belluga_now/domain/repositories/poi_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
-import 'package:belluga_now/infrastructure/repositories/poi_repository.dart';
-import 'package:belluga_now/infrastructure/dal/datasources/poi_query.dart';
 import 'package:event_tracker_handler/event_tracker_handler.dart';
 import 'package:free_map/free_map.dart';
 import 'package:flutter/foundation.dart';
@@ -21,16 +22,16 @@ class MapScreenController implements Disposable {
   static const double minZoom = 14.5;
   static const double maxZoom = 17.0;
   MapScreenController({
-    PoiRepository? poiRepository,
+    PoiRepositoryContract? poiRepository,
     UserLocationRepositoryContract? userLocationRepository,
     TelemetryRepositoryContract? telemetryRepository,
-  })  : _poiRepository = poiRepository ?? GetIt.I.get<PoiRepository>(),
+  })  : _poiRepository = poiRepository ?? GetIt.I.get<PoiRepositoryContract>(),
         _userLocationRepository = userLocationRepository ??
             GetIt.I.get<UserLocationRepositoryContract>(),
         _telemetryRepository =
             telemetryRepository ?? GetIt.I.get<TelemetryRepositoryContract>();
 
-  final PoiRepository _poiRepository;
+  final PoiRepositoryContract _poiRepository;
   final UserLocationRepositoryContract _userLocationRepository;
   final TelemetryRepositoryContract _telemetryRepository;
 
@@ -83,6 +84,16 @@ class MapScreenController implements Disposable {
     );
     await centerOnUser();
     _attachZoomListener();
+  }
+
+  Future<void> startTracking({
+    LocationTrackingMode mode = LocationTrackingMode.mapForeground,
+  }) async {
+    await _userLocationRepository.startTracking(mode: mode);
+  }
+
+  Future<void> stopTracking() async {
+    await _userLocationRepository.stopTracking();
   }
 
   Future<void> loadFilters() async {

@@ -8,7 +8,6 @@ import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/schedule/friend_resume.dart';
 
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
-import 'package:belluga_now/infrastructure/repositories/user_events_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value.dart';
@@ -17,15 +16,8 @@ class ImmersiveEventDetailController implements Disposable {
   ImmersiveEventDetailController({
     UserEventsRepositoryContract? userEventsRepository,
     InvitesRepositoryContract? invitesRepository,
-  })  : _userEventsRepository = userEventsRepository ??
-            (() {
-              if (!GetIt.I.isRegistered<UserEventsRepositoryContract>()) {
-                GetIt.I.registerLazySingleton<UserEventsRepositoryContract>(
-                  () => UserEventsRepository(),
-                );
-              }
-              return GetIt.I.get<UserEventsRepositoryContract>();
-            }()),
+  })  : _userEventsRepository =
+            userEventsRepository ?? GetIt.I.get<UserEventsRepositoryContract>(),
         _invitesRepository =
             invitesRepository ?? GetIt.I.get<InvitesRepositoryContract>();
 

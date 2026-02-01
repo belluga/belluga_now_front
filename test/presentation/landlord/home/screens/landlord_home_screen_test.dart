@@ -11,9 +11,6 @@ void main() {
 
   setUp(() async {
     await GetIt.I.reset();
-    GetIt.I.registerSingleton<LandlordHomeScreenController>(
-      LandlordHomeScreenController(),
-    );
   });
 
   tearDown(() async {
@@ -23,6 +20,9 @@ void main() {
   testWidgets('shows admin banner and badge in landlord mode', (tester) async {
     GetIt.I.registerSingleton<AdminModeRepositoryContract>(
       _FakeAdminModeRepository(isLandlordMode: true),
+    );
+    GetIt.I.registerSingleton<LandlordHomeScreenController>(
+      LandlordHomeScreenController(),
     );
 
     await tester.pumpWidget(

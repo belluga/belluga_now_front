@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:belluga_now/domain/app_data/app_data.dart';
+import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/application/configurations/app_environment_fallback.dart';
 import 'package:belluga_now/infrastructure/dal/dao/app_data_backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/backend_contract.dart';
@@ -10,7 +11,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value.dart';
 
-class AppDataRepository {
+class AppDataRepository implements AppDataRepositoryContract {
   AppDataRepository({
     AppDataBackendContract? backend,
     BackendContract? backendContract,
@@ -20,21 +21,27 @@ class AppDataRepository {
                 .appData,
         _localInfoSource = localInfoSource;
 
+  @override
   late AppData appData;
 
   final AppDataBackendContract _backend;
   final AppDataLocalInfoSource _localInfoSource;
+  @override
   final StreamValue<ThemeMode?> themeModeStreamValue =
       StreamValue<ThemeMode?>(defaultValue: ThemeMode.system);
+  @override
   final StreamValue<double> maxRadiusMetersStreamValue =
       StreamValue<double>(defaultValue: 50000);
   static const String _maxRadiusStorageKey = 'max_radius_meters';
   static const String _apiBaseUrlStorageKey = 'api_base_url';
   static const FlutterSecureStorage _storage = FlutterSecureStorage();
 
+  @override
   ThemeMode get themeMode => themeModeStreamValue.value ?? ThemeMode.system;
+  @override
   double get maxRadiusMeters => maxRadiusMetersStreamValue.value;
 
+  @override
   Future<void> init() async {
     final localInfo = await _localInfoSource.getInfo();
     appData = await _fetchRemoteOrFail(localInfo);
@@ -53,11 +60,13 @@ class AppDataRepository {
     GetIt.I.registerSingleton<AppData>(appData);
   }
 
+  @override
   Future<void> setThemeMode(ThemeMode mode) async {
     // TODO(Delphi): Persist theme preference per user/per device via flutter_secure_storage (and sync backend) once contracts are defined.
     themeModeStreamValue.addValue(mode);
   }
 
+  @override
   Future<void> setMaxRadiusMeters(double meters) async {
     if (meters <= 0) return;
     // TODO(Delphi): Persist radius preference per user/per device via flutter_secure_storage (and sync backend) once contracts are defined.

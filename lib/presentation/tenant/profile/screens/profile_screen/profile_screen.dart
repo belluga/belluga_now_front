@@ -3,8 +3,6 @@ import 'dart:math' as math;
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/icons/boora_icons.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
-import 'package:belluga_now/domain/repositories/admin_mode_repository_contract.dart';
-import 'package:belluga_now/domain/repositories/landlord_auth_repository_contract.dart';
 import 'package:belluga_now/domain/user/user_contract.dart';
 import 'package:belluga_now/presentation/landlord/auth/widgets/landlord_login_sheet.dart';
 import 'package:belluga_now/presentation/tenant/profile/screens/profile_screen/controllers/profile_screen_controller.dart';
@@ -372,24 +370,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _switchToUserMode(BuildContext context) async {
-    final adminMode = GetIt.I.get<AdminModeRepositoryContract>();
-    await adminMode.setUserMode();
+    await _controller.switchToUserMode();
     if (!context.mounted) return;
     context.router.replaceAll([TenantHomeRoute()]);
   }
 
   Future<void> _switchToAdminMode(BuildContext context) async {
-    final adminMode = GetIt.I.get<AdminModeRepositoryContract>();
-    final landlordAuth =
-        GetIt.I.get<LandlordAuthRepositoryContract>();
-    var canEnter = landlordAuth.hasValidSession;
+    var canEnter = await _controller.ensureAdminMode();
+    if (!context.mounted) return;
     if (!canEnter) {
       canEnter = await showLandlordLoginSheet(context);
+      if (!context.mounted) return;
     }
     if (!canEnter) {
       return;
     }
-    await adminMode.setLandlordMode();
     if (!context.mounted) return;
     context.router.replaceAll([TenantAdminShellRoute()]);
   }

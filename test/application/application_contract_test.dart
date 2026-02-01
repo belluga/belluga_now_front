@@ -8,6 +8,7 @@ import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/app_data/app_type.dart';
 import 'package:belluga_now/domain/app_data/value_object/platform_type_value.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
 import 'package:belluga_now/domain/tenant/tenant.dart';
@@ -50,7 +51,7 @@ void main() {
 
   testWidgets(
       'app init retries until telemetry logging succeeds', (tester) async {
-    GetIt.I.registerSingleton<AppDataRepository>(
+    GetIt.I.registerSingleton<AppDataRepositoryContract>(
       _FakeAppDataRepository(appData: _buildAppData()),
     );
     final telemetry = _FakeTelemetryRepository(
@@ -76,7 +77,7 @@ void main() {
   });
 
   testWidgets('app init fires again after resume', (tester) async {
-    GetIt.I.registerSingleton<AppDataRepository>(
+    GetIt.I.registerSingleton<AppDataRepositoryContract>(
       _FakeAppDataRepository(appData: _buildAppData()),
     );
     final telemetry = _FakeTelemetryRepository(
