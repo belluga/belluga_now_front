@@ -3,19 +3,15 @@ import 'package:belluga_now/presentation/common/auth/screens/auth_create_new_pas
 import 'package:belluga_now/presentation/common/auth/screens/auth_create_new_password_screen/widgets/new_password_box_widget.dart';
 import 'package:belluga_now/presentation/tenant/auth/login/controllers/create_password_controller_contract.dart';
 import 'package:flutter/material.dart';
-import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 
 class CreateNewPasswordWidget extends StatefulWidget {
-  const CreateNewPasswordWidget({super.key}) : controller = null;
-
-  @visibleForTesting
-  const CreateNewPasswordWidget.withController(
-    this.controller, {
+  const CreateNewPasswordWidget({
     super.key,
+    required this.controller,
   });
 
-  final CreatePasswordControllerContract? controller;
+  final CreatePasswordControllerContract controller;
 
   @override
   State<CreateNewPasswordWidget> createState() =>
@@ -23,8 +19,7 @@ class CreateNewPasswordWidget extends StatefulWidget {
 }
 
 class _CreateNewPasswordWidgetState extends State<CreateNewPasswordWidget> {
-  CreatePasswordControllerContract get _controller =>
-      widget.controller ?? GetIt.I.get<CreatePasswordControllerContract>();
+  CreatePasswordControllerContract get _controller => widget.controller;
 
   @override
   Widget build(BuildContext context) {

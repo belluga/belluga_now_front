@@ -7,20 +7,23 @@ import 'package:belluga_now/domain/user/user_contract.dart';
 import 'package:belluga_now/presentation/landlord/auth/widgets/landlord_login_sheet.dart';
 import 'package:belluga_now/presentation/tenant/profile/screens/profile_screen/controllers/profile_screen_controller.dart';
 import 'package:flutter/material.dart';
-import 'package:get_it/get_it.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 
 class ProfileScreen extends StatefulWidget {
-  const ProfileScreen({super.key});
+  const ProfileScreen({
+    super.key,
+    required this.controller,
+  });
+
+  final ProfileScreenController controller;
 
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  late final ProfileScreenController _controller =
-      GetIt.I.get<ProfileScreenController>();
+  ProfileScreenController get _controller => widget.controller;
 
   @override
   void initState() {
@@ -379,7 +382,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
     var canEnter = await _controller.ensureAdminMode();
     if (!context.mounted) return;
     if (!canEnter) {
-      canEnter = await showLandlordLoginSheet(context);
+      canEnter = await showLandlordLoginSheet(
+        context,
+        controller: _controller.landlordLoginController,
+      );
       if (!context.mounted) return;
     }
     if (!canEnter) {

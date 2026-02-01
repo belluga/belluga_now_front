@@ -2,11 +2,15 @@ import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/presentation/tenant_admin/organizations/controllers/tenant_admin_organizations_controller.dart';
 import 'package:flutter/material.dart';
-import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 
 class TenantAdminOrganizationsListScreen extends StatefulWidget {
-  const TenantAdminOrganizationsListScreen({super.key});
+  const TenantAdminOrganizationsListScreen({
+    super.key,
+    required this.controller,
+  });
+
+  final TenantAdminOrganizationsController controller;
 
   @override
   State<TenantAdminOrganizationsListScreen> createState() =>
@@ -20,14 +24,8 @@ class _TenantAdminOrganizationsListScreenState
   @override
   void initState() {
     super.initState();
-    _controller = GetIt.I.get<TenantAdminOrganizationsController>();
+    _controller = widget.controller;
     _controller.loadOrganizations();
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
   }
 
   @override

@@ -1,19 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:belluga_now/presentation/tenant/auth/login/controllers/recovery_password_token_controller_contract.dart';
-import 'package:get_it/get_it.dart';
 
 class RecoveryPasswordScreen extends StatefulWidget {
   final String? initialEmmail;
 
-  const RecoveryPasswordScreen({super.key, this.initialEmmail});
+  const RecoveryPasswordScreen({
+    super.key,
+    this.initialEmmail,
+    required this.controller,
+  });
+
+  final AuthRecoveryPasswordControllerContract controller;
 
   @override
   State<RecoveryPasswordScreen> createState() => _RecoveryPasswordScreenState();
 }
 
 class _RecoveryPasswordScreenState extends State<RecoveryPasswordScreen> {
-  late final AuthRecoveryPasswordControllerContract _controller =
-      GetIt.I.get<AuthRecoveryPasswordControllerContract>();
+  AuthRecoveryPasswordControllerContract get _controller =>
+      widget.controller;
 
   @override
   void initState() {

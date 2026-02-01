@@ -7,12 +7,13 @@ import 'package:belluga_now/presentation/tenant/map/screens/map_screen/controlle
 import 'package:belluga_now/presentation/tenant/map/screens/map_screen/widgets/poi_marker_builder.dart';
 import 'package:flutter/material.dart';
 import 'package:free_map/free_map.dart';
-import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 
 class MapLayers extends StatelessWidget {
-  MapLayers({super.key})
-      : _controller = GetIt.I.get<MapScreenController>(),
+  const MapLayers({
+    super.key,
+    required MapScreenController controller,
+  })  : _controller = controller,
         _markerBuilder = const PoiMarkerBuilder();
 
   static const double _minZoom = 14.5;

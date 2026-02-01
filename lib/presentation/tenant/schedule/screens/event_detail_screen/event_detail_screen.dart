@@ -19,7 +19,6 @@ import 'package:belluga_now/presentation/tenant/schedule/screens/event_detail_sc
 import 'package:belluga_now/presentation/tenant/schedule/screens/event_detail_screen/controllers/event_detail_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_html/flutter_html.dart';
-import 'package:get_it/get_it.dart';
 import 'package:intl/intl.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 
@@ -27,10 +26,12 @@ class EventDetailScreen extends StatefulWidget {
   const EventDetailScreen({
     super.key,
     required this.event,
+    required this.controller,
     this.colorScheme,
   });
 
   final EventModel event;
+  final EventDetailController controller;
   final ColorScheme? colorScheme;
 
   @override
@@ -52,7 +53,7 @@ class EventDetailScreen extends StatefulWidget {
 }
 
 class _EventDetailScreenState extends State<EventDetailScreen> {
-  final EventDetailController _controller = GetIt.I<EventDetailController>();
+  EventDetailController get _controller => widget.controller;
 
   @override
   void initState() {
@@ -306,6 +307,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                 child: SizedBox(
                   width: double.infinity,
                   child: AnimatedBooraButton(
+                    controller: _controller,
                     isConfirmed: isConfirmed && receivedInvites.isEmpty,
                     onPressed: receivedInvites.isNotEmpty
                         ? () => _handleAcceptInvite(receivedInvites.first.id)

@@ -57,4 +57,5 @@ delphi-ai
 foundation_documentation
 !.agent/
 !.agent/**
+.agent/test-run-progress.md
 .codex

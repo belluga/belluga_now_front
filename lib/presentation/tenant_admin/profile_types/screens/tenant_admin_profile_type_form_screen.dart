@@ -2,15 +2,16 @@ import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
 import 'package:belluga_now/presentation/tenant_admin/profile_types/controllers/tenant_admin_profile_types_controller.dart';
 import 'package:flutter/material.dart';
-import 'package:get_it/get_it.dart';
 
 class TenantAdminProfileTypeFormScreen extends StatefulWidget {
   const TenantAdminProfileTypeFormScreen({
     super.key,
     this.definition,
+    required this.controller,
   });
 
   final TenantAdminProfileTypeDefinition? definition;
+  final TenantAdminProfileTypesController controller;
 
   @override
   State<TenantAdminProfileTypeFormScreen> createState() =>
@@ -37,7 +38,7 @@ class _TenantAdminProfileTypeFormScreenState
   @override
   void initState() {
     super.initState();
-    _controller = GetIt.I.get<TenantAdminProfileTypesController>();
+    _controller = widget.controller;
     _typeController = TextEditingController(text: widget.definition?.type ?? '');
     _labelController =
         TextEditingController(text: widget.definition?.label ?? '');
@@ -58,7 +59,6 @@ class _TenantAdminProfileTypeFormScreenState
     _typeController.dispose();
     _labelController.dispose();
     _taxonomiesController.dispose();
-    _controller.dispose();
     super.dispose();
   }
 

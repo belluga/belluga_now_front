@@ -1,19 +1,22 @@
 import 'package:belluga_now/application/configurations/belluga_constants.dart';
 import 'package:belluga_now/presentation/landlord/home/screens/landlord_home_screen/controllers/landlord_home_screen_controller.dart';
 import 'package:flutter/material.dart';
-import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 
 class LandlordHomeScreen extends StatefulWidget {
-  const LandlordHomeScreen({super.key});
+  const LandlordHomeScreen({
+    super.key,
+    required this.controller,
+  });
+
+  final LandlordHomeScreenController controller;
 
   @override
   State<LandlordHomeScreen> createState() => _LandlordHomeScreenState();
 }
 
 class _LandlordHomeScreenState extends State<LandlordHomeScreen> {
-  late final LandlordHomeScreenController _controller =
-      GetIt.I.get<LandlordHomeScreenController>();
+  late final LandlordHomeScreenController _controller = widget.controller;
 
   @override
   void initState() {

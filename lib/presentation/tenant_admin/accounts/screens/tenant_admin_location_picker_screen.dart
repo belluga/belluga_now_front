@@ -3,7 +3,6 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/presentation/tenant_admin/accounts/controllers/tenant_admin_location_picker_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
-import 'package:get_it/get_it.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 
@@ -12,9 +11,11 @@ class TenantAdminLocationPickerScreen extends StatefulWidget {
   const TenantAdminLocationPickerScreen({
     super.key,
     this.initialLocation,
+    required this.controller,
   });
 
   final TenantAdminLocation? initialLocation;
+  final TenantAdminLocationPickerController controller;
 
   @override
   State<TenantAdminLocationPickerScreen> createState() =>
@@ -32,13 +33,12 @@ class _TenantAdminLocationPickerScreenState
   @override
   void initState() {
     super.initState();
-    _controller = GetIt.I.get<TenantAdminLocationPickerController>();
+    _controller = widget.controller;
     _controller.setInitialLocation(widget.initialLocation);
   }
 
   @override
   void dispose() {
-    _controller.dispose();
     _mapController.dispose();
     super.dispose();
   }

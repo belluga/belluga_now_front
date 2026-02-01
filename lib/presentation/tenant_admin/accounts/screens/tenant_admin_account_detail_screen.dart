@@ -5,17 +5,21 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dar
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
 import 'package:belluga_now/presentation/tenant_admin/account_profiles/controllers/tenant_admin_account_profiles_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/account_profiles/screens/tenant_admin_account_profile_edit_screen.dart';
+import 'package:belluga_now/presentation/tenant_admin/accounts/controllers/tenant_admin_location_picker_controller.dart';
 import 'package:flutter/material.dart';
-import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 
 class TenantAdminAccountDetailScreen extends StatefulWidget {
   const TenantAdminAccountDetailScreen({
     super.key,
     required this.accountSlug,
+    required this.profilesController,
+    required this.locationPickerController,
   });
 
   final String accountSlug;
+  final TenantAdminAccountProfilesController profilesController;
+  final TenantAdminLocationPickerController locationPickerController;
 
   @override
   State<TenantAdminAccountDetailScreen> createState() =>
@@ -33,7 +37,7 @@ class _TenantAdminAccountDetailScreenState
   @override
   void initState() {
     super.initState();
-    _profilesController = GetIt.I.get<TenantAdminAccountProfilesController>();
+    _profilesController = widget.profilesController;
     _load();
   }
 
@@ -60,12 +64,6 @@ class _TenantAdminAccountDetailScreenState
         });
       }
     }
-  }
-
-  @override
-  void dispose() {
-    _profilesController.dispose();
-    super.dispose();
   }
 
   String _profileTypeLabel(List<TenantAdminProfileTypeDefinition> types) {
@@ -99,6 +97,8 @@ class _TenantAdminAccountDetailScreenState
       MaterialPageRoute(
         builder: (_) => TenantAdminAccountProfileEditScreen(
           accountProfileId: profile.id,
+          controller: _profilesController,
+          locationPickerController: widget.locationPickerController,
         ),
       ),
     );

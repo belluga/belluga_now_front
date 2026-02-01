@@ -58,6 +58,7 @@ void main() {
       MaterialApp(
         home: Scaffold(
           body: HomeAgendaSection(
+            controller: harness.homeController,
             builder: (context, slots) {
               return NestedScrollView(
                 headerSliverBuilder: (context, innerBoxIsScrolled) => [
@@ -143,8 +144,10 @@ void main() {
     harness.register(forAgendaScreen: true);
 
     await tester.pumpWidget(
-      const MaterialApp(
-        home: EventSearchScreen(),
+      MaterialApp(
+        home: EventSearchScreen(
+          controller: harness.agendaController,
+        ),
       ),
     );
 

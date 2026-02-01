@@ -2,11 +2,15 @@ import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/presentation/tenant_admin/profile_types/controllers/tenant_admin_profile_types_controller.dart';
 import 'package:flutter/material.dart';
-import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 
 class TenantAdminProfileTypesListScreen extends StatefulWidget {
-  const TenantAdminProfileTypesListScreen({super.key});
+  const TenantAdminProfileTypesListScreen({
+    super.key,
+    required this.controller,
+  });
+
+  final TenantAdminProfileTypesController controller;
 
   @override
   State<TenantAdminProfileTypesListScreen> createState() =>
@@ -20,14 +24,8 @@ class _TenantAdminProfileTypesListScreenState
   @override
   void initState() {
     super.initState();
-    _controller = GetIt.I.get<TenantAdminProfileTypesController>();
+    _controller = widget.controller;
     _controller.loadTypes();
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
   }
 
   Future<void> _confirmDelete(String type, String label) async {

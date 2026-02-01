@@ -1,8 +1,10 @@
 import 'package:belluga_now/presentation/landlord/auth/controllers/landlord_login_controller.dart';
 import 'package:flutter/material.dart';
-import 'package:get_it/get_it.dart';
 
-Future<bool> showLandlordLoginSheet(BuildContext context) async {
+Future<bool> showLandlordLoginSheet(
+  BuildContext context, {
+  required LandlordLoginController controller,
+}) async {
   final emailController = TextEditingController();
   final passwordController = TextEditingController();
   var didLogin = false;
@@ -60,10 +62,8 @@ Future<bool> showLandlordLoginSheet(BuildContext context) async {
                       );
                       return;
                     }
-                    final landlordAuth =
-                        GetIt.I.get<LandlordLoginController>();
                     try {
-                      await landlordAuth.enterAdminModeWithCredentials(
+                      await controller.enterAdminModeWithCredentials(
                         email,
                         password,
                       );

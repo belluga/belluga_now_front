@@ -6,13 +6,20 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
 import 'package:belluga_now/presentation/tenant_admin/accounts/controllers/tenant_admin_accounts_controller.dart';
+import 'package:belluga_now/presentation/tenant_admin/accounts/controllers/tenant_admin_location_picker_controller.dart';
 import 'package:flutter/material.dart';
-import 'package:get_it/get_it.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 
 class TenantAdminAccountCreateScreen extends StatefulWidget {
-  const TenantAdminAccountCreateScreen({super.key});
+  const TenantAdminAccountCreateScreen({
+    super.key,
+    required this.controller,
+    required this.locationPickerController,
+  });
+
+  final TenantAdminAccountsController controller;
+  final TenantAdminLocationPickerController locationPickerController;
 
   @override
   State<TenantAdminAccountCreateScreen> createState() =>
@@ -36,7 +43,7 @@ class _TenantAdminAccountCreateScreenState
   @override
   void initState() {
     super.initState();
-    _controller = GetIt.I.get<TenantAdminAccountsController>();
+    _controller = widget.controller;
     _controller.loadProfileTypes();
   }
 
@@ -48,7 +55,6 @@ class _TenantAdminAccountCreateScreenState
     _profileDisplayNameController.dispose();
     _latitudeController.dispose();
     _longitudeController.dispose();
-    _controller.dispose();
     super.dispose();
   }
 
@@ -102,7 +108,10 @@ class _TenantAdminAccountCreateScreenState
   Future<void> _openMapPicker() async {
     final currentLocation = _currentLocation();
     final selected = await context.router.push<TenantAdminLocation?>(
-      TenantAdminLocationPickerRoute(initialLocation: currentLocation),
+      TenantAdminLocationPickerRoute(
+        initialLocation: currentLocation,
+        controller: widget.locationPickerController,
+      ),
     );
     if (selected == null) {
       return;

@@ -1,5 +1,6 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
+import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/presentation/common/widgets/main_logo.dart';
 import 'package:flutter/material.dart';
 import 'package:stream_value/core/stream_value.dart';
@@ -8,9 +9,11 @@ import 'package:stream_value/core/stream_value_builder.dart';
 class HomeAppBar extends StatelessWidget {
   const HomeAppBar({
     super.key,
+    required this.appData,
     required this.userAddressStreamValue,
   });
 
+  final AppData appData;
   final StreamValue<String?> userAddressStreamValue;
 
   @override
@@ -27,7 +30,7 @@ class HomeAppBar extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const MainLogo(),
+                MainLogo(appData: appData),
                 StreamValueBuilder<String?>(
                   streamValue: userAddressStreamValue,
                   builder: (context, address) {

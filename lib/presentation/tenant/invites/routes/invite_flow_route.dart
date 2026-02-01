@@ -1,7 +1,9 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/modular_app/modules/invites_module.dart';
+import 'package:belluga_now/presentation/tenant/invites/screens/invite_flow_screen/controllers/invite_flow_controller.dart';
 import 'package:belluga_now/presentation/tenant/invites/screens/invite_flow_screen/invite_flow_screen.dart';
 import 'package:flutter/material.dart';
+import 'package:get_it/get_it.dart';
 import 'package:get_it_modular_with_auto_route/get_it_modular_with_auto_route.dart';
 
 @RoutePage(name: 'InviteFlowRoute')
@@ -10,8 +12,10 @@ class InviteFlowRoutePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const ModuleScope<InvitesModule>(
-      child: InviteFlowScreen(),
+    return ModuleScope<InvitesModule>(
+      child: InviteFlowScreen(
+        controller: GetIt.I.get<InviteFlowScreenController>(),
+      ),
     );
   }
 }

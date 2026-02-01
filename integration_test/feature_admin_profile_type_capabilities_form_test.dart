@@ -8,7 +8,9 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/domain/tenant_admin/ownership_state.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
+import 'package:belluga_now/presentation/tenant_admin/account_profiles/controllers/tenant_admin_account_profiles_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/account_profiles/screens/tenant_admin_account_profile_create_screen.dart';
+import 'package:belluga_now/presentation/tenant_admin/accounts/controllers/tenant_admin_location_picker_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
@@ -33,11 +35,19 @@ void main() {
       _FakeTenantAdminAccountProfilesRepository(),
     );
 
+    final controller = TenantAdminAccountProfilesController(
+      profilesRepository: getIt.get<TenantAdminAccountProfilesRepositoryContract>(),
+      accountsRepository: getIt.get<TenantAdminAccountsRepositoryContract>(),
+    );
+    final locationPickerController = TenantAdminLocationPickerController();
+
     await tester.pumpWidget(
-      const MaterialApp(
+      MaterialApp(
         home: Scaffold(
           body: TenantAdminAccountProfileCreateScreen(
             accountSlug: 'account-1',
+            controller: controller,
+            locationPickerController: locationPickerController,
           ),
         ),
       ),

@@ -36,6 +36,9 @@ class ProfileScreenController implements Disposable {
   final LandlordLoginController _landlordLoginController;
   final ProfileAvatarStorageContract _avatarStorage;
 
+  LandlordLoginController get landlordLoginController =>
+      _landlordLoginController;
+
   final TextEditingController nameController = TextEditingController();
   final TextEditingController descriptionController = TextEditingController();
   final TextEditingController emailController = TextEditingController();

@@ -1,7 +1,9 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/modular_app/modules/tenant_admin_module.dart';
+import 'package:belluga_now/presentation/tenant_admin/shell/controllers/tenant_admin_shell_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/shell/tenant_admin_shell_screen.dart';
 import 'package:flutter/material.dart';
+import 'package:get_it/get_it.dart';
 import 'package:get_it_modular_with_auto_route/get_it_modular_with_auto_route.dart';
 
 @RoutePage(name: 'TenantAdminShellRoute')
@@ -10,8 +12,10 @@ class TenantAdminShellRoutePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const ModuleScope<TenantAdminModule>(
-      child: TenantAdminShellScreen(),
+    return ModuleScope<TenantAdminModule>(
+      child: TenantAdminShellScreen(
+        controller: GetIt.I.get<TenantAdminShellController>(),
+      ),
     );
   }
 }

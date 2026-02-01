@@ -2,13 +2,17 @@ import 'dart:async';
 
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
-import 'package:belluga_now/presentation/tenant/auth/login/controllers/create_password_controller_contract.dart';
 import 'package:belluga_now/presentation/common/auth/screens/auth_create_new_password_screen/widgets/create_new_password_widget.dart';
+import 'package:belluga_now/presentation/tenant/auth/login/controllers/create_password_controller_contract.dart';
 import 'package:flutter/material.dart';
-import 'package:get_it/get_it.dart';
 
 class AuthCreateNewPasswordScreen extends StatefulWidget {
-  const AuthCreateNewPasswordScreen({super.key});
+  const AuthCreateNewPasswordScreen({
+    super.key,
+    required this.controller,
+  });
+
+  final CreatePasswordControllerContract controller;
 
   @override
   State<AuthCreateNewPasswordScreen> createState() =>
@@ -17,8 +21,7 @@ class AuthCreateNewPasswordScreen extends StatefulWidget {
 
 class _AuthCreateNewPasswordScreenState
     extends State<AuthCreateNewPasswordScreen> {
-  late final CreatePasswordControllerContract _controller =
-      GetIt.I.get<CreatePasswordControllerContract>();
+  CreatePasswordControllerContract get _controller => widget.controller;
   StreamSubscription<String?>? _generalErrorSubscription;
 
   @override
@@ -57,7 +60,7 @@ class _AuthCreateNewPasswordScreenState
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                        const CreateNewPasswordWidget(),
+                        CreateNewPasswordWidget(controller: _controller),
                       ],
                     ),
                   ),
@@ -107,7 +110,6 @@ class _AuthCreateNewPasswordScreenState
   @override
   void dispose() {
     _generalErrorSubscription?.cancel();
-    _controller.onDispose();
     super.dispose();
   }
 }

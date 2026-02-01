@@ -2,16 +2,26 @@ import 'dart:async';
 
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
-import 'package:belluga_now/presentation/tenant/auth/login/controllers/auth_login_controller_contract.dart';
-import 'package:belluga_now/presentation/common/widgets/main_logo.dart';
-import 'package:flutter/material.dart';
+import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/presentation/common/auth/screens/auth_login_screen/widgets/auth_header_expanded_content.dart';
 import 'package:belluga_now/presentation/common/auth/screens/auth_login_screen/widgets/auth_header_headline.dart';
 import 'package:belluga_now/presentation/common/auth/screens/auth_login_screen/widgets/auth_login_canva_content.dart';
-import 'package:get_it/get_it.dart';
+import 'package:belluga_now/presentation/common/widgets/main_logo.dart';
+import 'package:belluga_now/presentation/landlord/auth/controllers/landlord_login_controller.dart';
+import 'package:belluga_now/presentation/tenant/auth/login/controllers/auth_login_controller_contract.dart';
+import 'package:flutter/material.dart';
 
 class AuthLoginScreen extends StatefulWidget {
-  const AuthLoginScreen({super.key});
+  const AuthLoginScreen({
+    super.key,
+    required this.controller,
+    required this.landlordLoginController,
+    required this.appData,
+  });
+
+  final AuthLoginControllerContract controller;
+  final LandlordLoginController landlordLoginController;
+  final AppData appData;
 
   @override
   State<AuthLoginScreen> createState() => _AuthLoginScreenState();
@@ -19,8 +29,7 @@ class AuthLoginScreen extends StatefulWidget {
 
 class _AuthLoginScreenState extends State<AuthLoginScreen>
     with WidgetsBindingObserver {
-  late final AuthLoginControllerContract _controller =
-      GetIt.I.get<AuthLoginControllerContract>();
+  AuthLoginControllerContract get _controller => widget.controller;
   StreamSubscription<String?>? _generalErrorSubscription;
 
   @override
@@ -47,7 +56,7 @@ class _AuthLoginScreenState extends State<AuthLoginScreen>
                 _controller.sliverAppBarController.expandedBarHeight,
             pinned: true,
             backgroundColor: Theme.of(context).primaryColor,
-            title: MainLogo(),
+            title: MainLogo(appData: widget.appData),
             flexibleSpace: FlexibleSpaceBar(
               collapseMode: CollapseMode.parallax,
               background: AuthHeaderExpandedContent(),
@@ -60,6 +69,8 @@ class _AuthLoginScreenState extends State<AuthLoginScreen>
                 padding: EdgeInsets.symmetric(horizontal: 24.0, vertical: 24),
                 child: AuthLoginCanvaContent(
                   navigateToPasswordRecover: _navigateToPasswordRecover,
+                  controller: _controller,
+                  landlordLoginController: widget.landlordLoginController,
                 ),
               ),
             ),

@@ -38,9 +38,8 @@ void main() {
     if (getIt.isRegistered<LocationPermissionController>()) {
       getIt.unregister<LocationPermissionController>();
     }
-    getIt.registerSingleton<LocationPermissionController>(
-      LocationPermissionController(),
-    );
+    final controller = LocationPermissionController();
+    getIt.registerSingleton<LocationPermissionController>(controller);
     addTearDown(() {
       if (getIt.isRegistered<LocationPermissionController>()) {
         getIt.unregister<LocationPermissionController>();
@@ -48,9 +47,10 @@ void main() {
     });
 
     await tester.pumpWidget(
-      const MaterialApp(
+      MaterialApp(
         home: LocationPermissionScreen(
           initialState: LocationPermissionState.denied,
+          controller: controller,
         ),
       ),
     );
@@ -94,10 +94,12 @@ void main() {
     );
 
     await tester.pumpWidget(
-      const MediaQuery(
+      MediaQuery(
         data: MediaQueryData(padding: EdgeInsets.only(top: 24)),
         child: MaterialApp(
-          home: EventSearchScreen(),
+          home: EventSearchScreen(
+            controller: getIt.get<EventSearchScreenController>(),
+          ),
         ),
       ),
     );
@@ -130,6 +132,7 @@ void main() {
       MaterialApp(
         home: Scaffold(
           body: HomeAgendaSection(
+            controller: controller,
             builder: (context, slots) {
               return CustomScrollView(
                 slivers: [

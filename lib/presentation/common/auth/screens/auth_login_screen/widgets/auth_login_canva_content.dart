@@ -2,27 +2,23 @@ import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/presentation/common/auth/screens/auth_login_screen/widgets/auth_login_form.dart';
 import 'package:belluga_now/presentation/common/widgets/button_loading.dart';
+import 'package:belluga_now/presentation/landlord/auth/controllers/landlord_login_controller.dart';
 import 'package:belluga_now/presentation/landlord/auth/widgets/landlord_login_sheet.dart';
 import 'package:belluga_now/presentation/tenant/auth/login/controllers/auth_login_controller_contract.dart';
 import 'package:flutter/material.dart';
-import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 
 class AuthLoginCanvaContent extends StatefulWidget {
   const AuthLoginCanvaContent({
     super.key,
     required this.navigateToPasswordRecover,
-  }) : controller = null;
-
-  @visibleForTesting
-  const AuthLoginCanvaContent.withController(
-    this.controller, {
-    super.key,
-    required this.navigateToPasswordRecover,
+    required this.controller,
+    required this.landlordLoginController,
   });
 
   final Future<void> Function() navigateToPasswordRecover;
-  final AuthLoginControllerContract? controller;
+  final AuthLoginControllerContract controller;
+  final LandlordLoginController landlordLoginController;
 
   @override
   State<AuthLoginCanvaContent> createState() => _AuthLoginCanvaContentState();
@@ -30,8 +26,7 @@ class AuthLoginCanvaContent extends StatefulWidget {
 
 class _AuthLoginCanvaContentState extends State<AuthLoginCanvaContent>
     with WidgetsBindingObserver {
-  AuthLoginControllerContract get _controller =>
-      widget.controller ?? GetIt.I.get<AuthLoginControllerContract>();
+  AuthLoginControllerContract get _controller => widget.controller;
 
   @override
   void initState() {
@@ -60,7 +55,7 @@ class _AuthLoginCanvaContentState extends State<AuthLoginCanvaContent>
             );
           },
         ),
-        AuthLoginForm(),
+        AuthLoginForm(controller: _controller),
         Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -187,7 +182,10 @@ class _AuthLoginCanvaContentState extends State<AuthLoginCanvaContent>
   }
 
   Future<void> _openLandlordLogin() async {
-    final didLogin = await showLandlordLoginSheet(context);
+    final didLogin = await showLandlordLoginSheet(
+      context,
+      controller: widget.landlordLoginController,
+    );
     if (!mounted || !didLogin) {
       return;
     }

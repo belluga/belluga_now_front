@@ -5,25 +5,23 @@ import 'package:belluga_now/presentation/common/widgets/image_palette_theme.dart
 import 'package:belluga_now/presentation/tenant/schedule/screens/event_detail_screen/controllers/event_detail_controller.dart';
 import 'package:belluga_now/presentation/tenant/schedule/screens/event_detail_screen/event_detail_screen.dart';
 import 'package:flutter/material.dart';
-import 'package:get_it/get_it.dart';
 
 class EventDetailLoader extends StatefulWidget {
   const EventDetailLoader({
     super.key,
     required this.slug,
-    this.controller,
+    required this.controller,
   });
 
   final String slug;
-  final EventDetailController? controller;
+  final EventDetailController controller;
 
   @override
   State<EventDetailLoader> createState() => _EventDetailLoaderState();
 }
 
 class _EventDetailLoaderState extends State<EventDetailLoader> {
-  late final EventDetailController _controller =
-      widget.controller ?? GetIt.I.get<EventDetailController>();
+  EventDetailController get _controller => widget.controller;
   late Future<EventModel?> _eventFuture;
 
   @override
@@ -67,7 +65,10 @@ class _EventDetailLoaderState extends State<EventDetailLoader> {
 
         final thumb = event.thumb?.thumbUri.value;
         if (thumb == null) {
-          return EventDetailScreen(event: event);
+          return EventDetailScreen(
+            event: event,
+            controller: _controller,
+          );
         }
 
         return ImagePaletteTheme(
@@ -75,6 +76,7 @@ class _EventDetailLoaderState extends State<EventDetailLoader> {
           builder: (context, scheme) {
             return EventDetailScreen(
               event: event,
+              controller: _controller,
               colorScheme: scheme,
             );
           },

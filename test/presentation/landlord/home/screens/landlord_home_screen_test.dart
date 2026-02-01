@@ -21,13 +21,15 @@ void main() {
     GetIt.I.registerSingleton<AdminModeRepositoryContract>(
       _FakeAdminModeRepository(isLandlordMode: true),
     );
-    GetIt.I.registerSingleton<LandlordHomeScreenController>(
-      LandlordHomeScreenController(),
+    final controller = LandlordHomeScreenController(
+      adminModeRepository: GetIt.I.get<AdminModeRepositoryContract>(),
     );
 
     await tester.pumpWidget(
-      const MaterialApp(
-        home: LandlordHomeScreen(),
+      MaterialApp(
+        home: LandlordHomeScreen(
+          controller: controller,
+        ),
       ),
     );
 

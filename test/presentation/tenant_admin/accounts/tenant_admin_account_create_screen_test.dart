@@ -11,6 +11,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
 import 'package:belluga_now/presentation/tenant_admin/accounts/controllers/tenant_admin_accounts_controller.dart';
+import 'package:belluga_now/presentation/tenant_admin/accounts/controllers/tenant_admin_location_picker_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/accounts/screens/tenant_admin_account_create_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -253,10 +254,15 @@ void main() {
   testWidgets(
       'requires location and shows map pick for POI-enabled profile type',
       (tester) async {
+    final controller = TenantAdminAccountsController();
+    final locationPickerController = TenantAdminLocationPickerController();
     await tester.pumpWidget(
-      const MaterialApp(
+      MaterialApp(
         home: Scaffold(
-          body: TenantAdminAccountCreateScreen(),
+          body: TenantAdminAccountCreateScreen(
+            controller: controller,
+            locationPickerController: locationPickerController,
+          ),
         ),
       ),
     );
@@ -309,11 +315,16 @@ void main() {
       avatarFile,
       coverFile,
     ]);
+    final controller = TenantAdminAccountsController();
+    final locationPickerController = TenantAdminLocationPickerController();
 
     await tester.pumpWidget(
-      const MaterialApp(
+      MaterialApp(
         home: Scaffold(
-          body: TenantAdminAccountCreateScreen(),
+          body: TenantAdminAccountCreateScreen(
+            controller: controller,
+            locationPickerController: locationPickerController,
+          ),
         ),
       ),
     );

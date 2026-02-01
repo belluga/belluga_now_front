@@ -1,10 +1,14 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/presentation/tenant_admin/organizations/controllers/tenant_admin_organizations_controller.dart';
 import 'package:flutter/material.dart';
-import 'package:get_it/get_it.dart';
 
 class TenantAdminOrganizationCreateScreen extends StatefulWidget {
-  const TenantAdminOrganizationCreateScreen({super.key});
+  const TenantAdminOrganizationCreateScreen({
+    super.key,
+    required this.controller,
+  });
+
+  final TenantAdminOrganizationsController controller;
 
   @override
   State<TenantAdminOrganizationCreateScreen> createState() =>
@@ -21,14 +25,13 @@ class _TenantAdminOrganizationCreateScreenState
   @override
   void initState() {
     super.initState();
-    _controller = GetIt.I.get<TenantAdminOrganizationsController>();
+    _controller = widget.controller;
   }
 
   @override
   void dispose() {
     _nameController.dispose();
     _descriptionController.dispose();
-    _controller.dispose();
     super.dispose();
   }
 

@@ -175,8 +175,14 @@ void main() {
     // Navigation pushes might fail if not properly set up, but rendering should work.
     
     await tester.pumpWidget(
-      const MaterialApp(
-        home: TenantHomeScreen(),
+      MaterialApp(
+        home: TenantHomeScreen(
+          controller: mockController,
+          favoritesController: mockFavoritesController,
+          invitesBannerController: mockInvitesBannerController,
+          homeAgendaController: mockAgendaController,
+          appData: mockAppData,
+        ),
       ),
     );
     await tester.pump();
@@ -218,8 +224,14 @@ void main() {
       StackRouterScope(
         controller: mockRouter,
         stateHash: 0,
-        child: const MaterialApp(
-          home: TenantHomeScreen(),
+        child: MaterialApp(
+          home: TenantHomeScreen(
+            controller: mockController,
+            favoritesController: mockFavoritesController,
+            invitesBannerController: mockInvitesBannerController,
+            homeAgendaController: mockAgendaController,
+            appData: mockAppData,
+          ),
         ),
       ),
     );

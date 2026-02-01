@@ -7,7 +7,6 @@ import 'package:belluga_now/domain/partners/projections/partner_profile_config.d
 import 'package:belluga_now/domain/partners/projections/partner_profile_module_data.dart';
 import 'package:belluga_now/application/icons/boora_icons.dart';
 import 'package:flutter/material.dart';
-import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -15,16 +14,18 @@ class PartnerDetailScreen extends StatefulWidget {
   const PartnerDetailScreen({
     super.key,
     required this.slug,
+    required this.controller,
   });
 
   final String slug;
+  final PartnerDetailController controller;
 
   @override
   State<PartnerDetailScreen> createState() => _PartnerDetailScreenState();
 }
 
 class _PartnerDetailScreenState extends State<PartnerDetailScreen> {
-  final _controller = GetIt.I.get<PartnerDetailController>();
+  PartnerDetailController get _controller => widget.controller;
 
   @override
   void initState() {

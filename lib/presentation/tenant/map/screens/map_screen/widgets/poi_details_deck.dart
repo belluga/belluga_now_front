@@ -16,7 +16,6 @@ import 'package:belluga_now/presentation/tenant/map/screens/map_screen/widgets/s
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:get_it/get_it.dart';
 import 'package:intl/intl.dart';
 import 'package:map_launcher/map_launcher.dart';
 import 'package:share_plus/share_plus.dart';
@@ -26,7 +25,12 @@ import 'package:url_launcher/url_launcher.dart';
 const double _kDeckMeasurementPadding = 32;
 
 class PoiDetailDeck extends StatefulWidget {
-  const PoiDetailDeck({super.key});
+  const PoiDetailDeck({
+    super.key,
+    required this.controller,
+  });
+
+  final MapScreenController controller;
 
   @override
   State<PoiDetailDeck> createState() => _PoiDetailDeckState();
@@ -34,7 +38,7 @@ class PoiDetailDeck extends StatefulWidget {
 
 class _PoiDetailDeckState extends State<PoiDetailDeck>
     with TickerProviderStateMixin {
-  final _controller = GetIt.I.get<MapScreenController>();
+  late final MapScreenController _controller = widget.controller;
   final PageController _pageController = PageController(viewportFraction: 0.8);
   final PoiDetailCardBuilder _cardBuilder = const PoiDetailCardBuilder();
   int _pageIndex = 0;

@@ -7,18 +7,22 @@ import 'package:belluga_now/presentation/tenant/invites/screens/invite_flow_scre
 import 'package:belluga_now/presentation/tenant/invites/screens/invite_flow_screen/widgets/invite_hero_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
-import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 
 class InviteFlowScreen extends StatefulWidget {
-  const InviteFlowScreen({super.key});
+  const InviteFlowScreen({
+    super.key,
+    required this.controller,
+  });
+
+  final InviteFlowScreenController controller;
 
   @override
   State<InviteFlowScreen> createState() => _InviteFlowScreenState();
 }
 
 class _InviteFlowScreenState extends State<InviteFlowScreen> {
-  final _controller = GetIt.I.get<InviteFlowScreenController>();
+  late final InviteFlowScreenController _controller = widget.controller;
   final Set<String> _loadedImages = <String>{};
 
   @override

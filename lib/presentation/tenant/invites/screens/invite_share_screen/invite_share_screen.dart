@@ -7,7 +7,6 @@ import 'package:belluga_now/presentation/tenant/invites/screens/invite_share_scr
 import 'package:belluga_now/presentation/tenant/invites/screens/invite_share_screen/widgets/invite_event_hero.dart';
 import 'package:belluga_now/application/icons/boora_icons.dart';
 import 'package:flutter/material.dart';
-import 'package:get_it/get_it.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 
@@ -15,16 +14,18 @@ class InviteShareScreen extends StatefulWidget {
   const InviteShareScreen({
     super.key,
     required this.invite,
+    required this.controller,
   });
 
   final InviteModel invite;
+  final InviteShareScreenController controller;
 
   @override
   State<InviteShareScreen> createState() => _InviteShareScreenState();
 }
 
 class _InviteShareScreenState extends State<InviteShareScreen> {
-  final _controller = GetIt.I.get<InviteShareScreenController>();
+  late final InviteShareScreenController _controller = widget.controller;
 
   @override
   void initState() {

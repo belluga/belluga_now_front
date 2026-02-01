@@ -2,17 +2,18 @@ import 'package:belluga_now/application/icons/boora_icons.dart';
 import 'package:belluga_now/domain/invites/invite_model.dart';
 import 'package:belluga_now/presentation/tenant/home/screens/tenant_home_screen/widgets/invites_banner/controllers/invites_banner_builder_controller.dart';
 import 'package:flutter/material.dart';
-import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 
 class InvitesBannerBuilder extends StatefulWidget {
   const InvitesBannerBuilder({
     super.key,
     required this.onPressed,
+    required this.controller,
     this.margin,
   });
 
   final VoidCallback onPressed;
+  final InvitesBannerBuilderController controller;
   final EdgeInsets? margin;
 
   @override
@@ -20,8 +21,7 @@ class InvitesBannerBuilder extends StatefulWidget {
 }
 
 class _InvitesBannerBuilderState extends State<InvitesBannerBuilder> {
-  final InvitesBannerBuilderController _controller =
-      GetIt.I.get<InvitesBannerBuilderController>();
+  InvitesBannerBuilderController get _controller => widget.controller;
 
   @override
   Widget build(BuildContext context) {

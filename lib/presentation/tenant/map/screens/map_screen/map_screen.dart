@@ -2,23 +2,30 @@ import 'dart:async';
 
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
+import 'package:belluga_now/presentation/tenant/map/screens/map_screen/controllers/fab_menu_controller.dart';
 import 'package:belluga_now/presentation/tenant/map/screens/map_screen/controllers/map_screen_controller.dart';
 import 'package:belluga_now/presentation/tenant/map/screens/map_screen/widgets/fab_menu.dart';
 import 'package:belluga_now/presentation/tenant/map/screens/map_screen/widgets/map_layers.dart';
 import 'package:belluga_now/presentation/tenant/map/screens/map_screen/widgets/poi_details_deck.dart';
 import 'package:belluga_now/presentation/tenant/widgets/belluga_bottom_navigation_bar.dart';
 import 'package:flutter/material.dart';
-import 'package:get_it/get_it.dart';
 
 class MapScreen extends StatefulWidget {
-  const MapScreen({super.key});
+  const MapScreen({
+    super.key,
+    required this.controller,
+    required this.fabMenuController,
+  });
+
+  final MapScreenController controller;
+  final FabMenuController fabMenuController;
 
   @override
   State<MapScreen> createState() => _MapScreenState();
 }
 
 class _MapScreenState extends State<MapScreen> {
-  final _controller = GetIt.I.get<MapScreenController>();
+  late final MapScreenController _controller = widget.controller;
 
   @override
   void initState() {
@@ -63,7 +70,7 @@ class _MapScreenState extends State<MapScreen> {
               Column(
                 children: [
                   Expanded(
-                    child: MapLayers(),
+                    child: MapLayers(controller: _controller),
                   ),
                 ],
               ),
@@ -106,7 +113,7 @@ class _MapScreenState extends State<MapScreen> {
                 right: 16,
                 bottom: 16,
                 child: SafeArea(
-                  child: PoiDetailDeck(),
+                  child: PoiDetailDeck(controller: _controller),
                 ),
               ),
             ],
@@ -114,6 +121,7 @@ class _MapScreenState extends State<MapScreen> {
           floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
           floatingActionButton: FabMenu(
             onNavigateToUser: _centerOnUser,
+            controller: widget.fabMenuController,
           ),
           bottomNavigationBar:
               const BellugaBottomNavigationBar(currentIndex: 1),

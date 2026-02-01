@@ -6,16 +6,17 @@ import 'package:belluga_now/application/icons/boora_icons.dart';
 import 'package:belluga_now/presentation/tenant/map/screens/map_screen/controllers/fab_menu_controller.dart';
 import 'package:belluga_now/presentation/tenant/map/screens/map_screen/widgets/shared/poi_category_theme.dart';
 import 'package:flutter/material.dart';
-import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 
 class FabMenu extends StatefulWidget {
   const FabMenu({
     super.key,
     required this.onNavigateToUser,
+    required this.controller,
   });
 
   final Future<void> Function() onNavigateToUser;
+  final FabMenuController controller;
 
   @override
   State<FabMenu> createState() => _FabMenuState();
@@ -24,7 +25,7 @@ class FabMenu extends StatefulWidget {
 class _FabMenuState extends State<FabMenu> {
   static const _condenseDelay = Duration(seconds: 2);
 
-  final _fabController = GetIt.I.get<FabMenuController>();
+  late final FabMenuController _fabController = widget.controller;
 
   bool _condensed = false;
   bool? _lastExpanded;

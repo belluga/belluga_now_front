@@ -25,7 +25,7 @@ import 'package:belluga_now/domain/app_data/value_object/platform_type_value.dar
     as _i9;
 import 'package:belluga_now/domain/favorite/projections/favorite_resume.dart'
     as _i4;
-import 'package:belluga_now/domain/invites/invite_model.dart' as _i29;
+import 'package:belluga_now/domain/invites/invite_model.dart' as _i30;
 import 'package:belluga_now/domain/partners/profile_type_registry.dart' as _i14;
 import 'package:belluga_now/domain/schedule/event_model.dart' as _i25;
 import 'package:belluga_now/domain/tenant/value_objects/icon_url_value.dart'
@@ -49,12 +49,12 @@ import 'package:belluga_now/presentation/tenant/home/screens/tenant_home_screen/
 import 'package:belluga_now/presentation/tenant/home/screens/tenant_home_screen/widgets/favorite_section/controllers/favorites_section_controller.dart'
     as _i27;
 import 'package:belluga_now/presentation/tenant/home/screens/tenant_home_screen/widgets/invites_banner/controllers/invites_banner_builder_controller.dart'
-    as _i28;
+    as _i29;
 import 'package:belluga_now/presentation/tenant/schedule/screens/event_search_screen/models/invite_filter.dart'
     as _i26;
 import 'package:flutter/material.dart' as _i3;
 import 'package:mockito/mockito.dart' as _i1;
-import 'package:mockito/src/dummies.dart' as _i30;
+import 'package:mockito/src/dummies.dart' as _i28;
 import 'package:stream_value/core/stream_value.dart' as _i2;
 
 // ignore_for_file: type=lint
@@ -856,6 +856,33 @@ class MockFavoritesSectionController extends _i1.Mock
       ) as _i4.FavoriteResume);
 
   @override
+  _i23.Future<_i27.FavoriteNavigationTarget> resolveNavigationTarget(
+          _i4.FavoriteResume? favorite) =>
+      (super.noSuchMethod(
+        Invocation.method(
+          #resolveNavigationTarget,
+          [favorite],
+        ),
+        returnValue: _i23.Future<_i27.FavoriteNavigationTarget>.value(
+            _i28.dummyValue<_i27.FavoriteNavigationTarget>(
+          this,
+          Invocation.method(
+            #resolveNavigationTarget,
+            [favorite],
+          ),
+        )),
+        returnValueForMissingStub:
+            _i23.Future<_i27.FavoriteNavigationTarget>.value(
+                _i28.dummyValue<_i27.FavoriteNavigationTarget>(
+          this,
+          Invocation.method(
+            #resolveNavigationTarget,
+            [favorite],
+          ),
+        )),
+      ) as _i23.Future<_i27.FavoriteNavigationTarget>);
+
+  @override
   void onDispose() => super.noSuchMethod(
         Invocation.method(
           #onDispose,
@@ -869,20 +896,20 @@ class MockFavoritesSectionController extends _i1.Mock
 ///
 /// See the documentation for Mockito's code generation for more information.
 class MockInvitesBannerBuilderController extends _i1.Mock
-    implements _i28.InvitesBannerBuilderController {
+    implements _i29.InvitesBannerBuilderController {
   @override
-  _i2.StreamValue<List<_i29.InviteModel>> get pendingInvitesStreamValue =>
+  _i2.StreamValue<List<_i30.InviteModel>> get pendingInvitesStreamValue =>
       (super.noSuchMethod(
         Invocation.getter(#pendingInvitesStreamValue),
-        returnValue: _FakeStreamValue_0<List<_i29.InviteModel>>(
+        returnValue: _FakeStreamValue_0<List<_i30.InviteModel>>(
           this,
           Invocation.getter(#pendingInvitesStreamValue),
         ),
-        returnValueForMissingStub: _FakeStreamValue_0<List<_i29.InviteModel>>(
+        returnValueForMissingStub: _FakeStreamValue_0<List<_i30.InviteModel>>(
           this,
           Invocation.getter(#pendingInvitesStreamValue),
         ),
-      ) as _i2.StreamValue<List<_i29.InviteModel>>);
+      ) as _i2.StreamValue<List<_i30.InviteModel>>);
 
   @override
   bool get hasPendingInvites => (super.noSuchMethod(
@@ -1105,11 +1132,11 @@ class MockStackRouter extends _i1.Mock implements _i5.StackRouter {
   @override
   String get currentPath => (super.noSuchMethod(
         Invocation.getter(#currentPath),
-        returnValue: _i30.dummyValue<String>(
+        returnValue: _i28.dummyValue<String>(
           this,
           Invocation.getter(#currentPath),
         ),
-        returnValueForMissingStub: _i30.dummyValue<String>(
+        returnValueForMissingStub: _i28.dummyValue<String>(
           this,
           Invocation.getter(#currentPath),
         ),
@@ -1118,11 +1145,11 @@ class MockStackRouter extends _i1.Mock implements _i5.StackRouter {
   @override
   String get currentUrl => (super.noSuchMethod(
         Invocation.getter(#currentUrl),
-        returnValue: _i30.dummyValue<String>(
+        returnValue: _i28.dummyValue<String>(
           this,
           Invocation.getter(#currentUrl),
         ),
-        returnValueForMissingStub: _i30.dummyValue<String>(
+        returnValueForMissingStub: _i28.dummyValue<String>(
           this,
           Invocation.getter(#currentUrl),
         ),
@@ -2061,11 +2088,11 @@ class MockAppData extends _i1.Mock implements _i8.AppData {
   @override
   String get hostname => (super.noSuchMethod(
         Invocation.getter(#hostname),
-        returnValue: _i30.dummyValue<String>(
+        returnValue: _i28.dummyValue<String>(
           this,
           Invocation.getter(#hostname),
         ),
-        returnValueForMissingStub: _i30.dummyValue<String>(
+        returnValueForMissingStub: _i28.dummyValue<String>(
           this,
           Invocation.getter(#hostname),
         ),
@@ -2074,11 +2101,11 @@ class MockAppData extends _i1.Mock implements _i8.AppData {
   @override
   String get href => (super.noSuchMethod(
         Invocation.getter(#href),
-        returnValue: _i30.dummyValue<String>(
+        returnValue: _i28.dummyValue<String>(
           this,
           Invocation.getter(#href),
         ),
-        returnValueForMissingStub: _i30.dummyValue<String>(
+        returnValueForMissingStub: _i28.dummyValue<String>(
           this,
           Invocation.getter(#href),
         ),
@@ -2087,11 +2114,11 @@ class MockAppData extends _i1.Mock implements _i8.AppData {
   @override
   String get device => (super.noSuchMethod(
         Invocation.getter(#device),
-        returnValue: _i30.dummyValue<String>(
+        returnValue: _i28.dummyValue<String>(
           this,
           Invocation.getter(#device),
         ),
-        returnValueForMissingStub: _i30.dummyValue<String>(
+        returnValueForMissingStub: _i28.dummyValue<String>(
           this,
           Invocation.getter(#device),
         ),
@@ -2310,11 +2337,11 @@ class MockAppData extends _i1.Mock implements _i8.AppData {
   @override
   String get schema => (super.noSuchMethod(
         Invocation.getter(#schema),
-        returnValue: _i30.dummyValue<String>(
+        returnValue: _i28.dummyValue<String>(
           this,
           Invocation.getter(#schema),
         ),
-        returnValueForMissingStub: _i30.dummyValue<String>(
+        returnValueForMissingStub: _i28.dummyValue<String>(
           this,
           Invocation.getter(#schema),
         ),
