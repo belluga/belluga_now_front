@@ -47,6 +47,10 @@ class TenantAdminModule extends ModuleContract {
               page: TenantAdminAccountProfileCreateRoute.page,
             ),
             AutoRoute(
+              path: 'accounts/:accountSlug/profiles/:accountProfileId/edit',
+              page: TenantAdminAccountProfileEditRoute.page,
+            ),
+            AutoRoute(
               path: 'organizations',
               page: TenantAdminOrganizationsListRoute.page,
             ),

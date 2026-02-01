@@ -1,3 +1,4 @@
+import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/guards/location_permission_state.dart';
 import 'package:belluga_now/presentation/common/widgets/button_loading.dart';
 import 'package:flutter/material.dart';
@@ -103,7 +104,7 @@ class _LocationNotLiveScreenState extends State<LocationNotLiveScreen> {
               ),
               const SizedBox(height: 12),
               TextButton(
-                onPressed: () => Navigator.of(context).pop(true),
+                onPressed: () => context.router.pop(true),
                 child: const Text('Continuar sem localização ao vivo'),
               ),
             ],
@@ -135,7 +136,7 @@ class _LocationNotLiveScreenState extends State<LocationNotLiveScreen> {
       if (!granted) return;
 
       if (!mounted) return;
-      Navigator.of(context).pop(true);
+      context.router.pop(true);
     } finally {
       _loading.addValue(false);
     }

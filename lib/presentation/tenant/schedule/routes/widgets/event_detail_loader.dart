@@ -5,6 +5,7 @@ import 'package:belluga_now/presentation/common/widgets/image_palette_theme.dart
 import 'package:belluga_now/presentation/tenant/schedule/screens/event_detail_screen/controllers/event_detail_controller.dart';
 import 'package:belluga_now/presentation/tenant/schedule/screens/event_detail_screen/event_detail_screen.dart';
 import 'package:flutter/material.dart';
+import 'package:stream_value/core/stream_value_builder.dart';
 
 class EventDetailLoader extends StatefulWidget {
   const EventDetailLoader({
@@ -22,38 +23,40 @@ class EventDetailLoader extends StatefulWidget {
 
 class _EventDetailLoaderState extends State<EventDetailLoader> {
   EventDetailController get _controller => widget.controller;
-  late Future<EventModel?> _eventFuture;
+  StreamSubscription<EventModel?>? _eventSubscription;
+  bool _telemetryStarted = false;
 
   @override
   void initState() {
     super.initState();
-    _eventFuture = _controller.loadEventBySlug(widget.slug).then((_) async {
-      final event = _controller.eventStreamValue.value;
-      if (event != null && mounted) {
-        await _controller.startEventTelemetry(event);
-      }
-      return event;
+    _eventSubscription = _controller.eventStreamValue.stream.listen((event) {
+      if (event == null || _telemetryStarted) return;
+      _telemetryStarted = true;
+      unawaited(_controller.startEventTelemetry(event));
     });
+    unawaited(_controller.loadEventBySlug(widget.slug));
   }
 
   @override
   void dispose() {
+    _eventSubscription?.cancel();
     unawaited(_controller.finishEventTelemetry());
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<EventModel?>(
-      future: _eventFuture,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState != ConnectionState.done) {
+    return StreamValueBuilder<EventModel?>(
+      streamValue: _controller.eventStreamValue,
+      builder: (context, _) {
+        if (_controller.isLoadingStreamValue.value &&
+            _controller.eventStreamValue.value == null) {
           return const Scaffold(
             body: Center(child: CircularProgressIndicator()),
           );
         }
 
-        final event = snapshot.data;
+        final event = _controller.eventStreamValue.value;
         if (event == null) {
           return Scaffold(
             appBar: AppBar(title: const Text('Evento')),

@@ -1,3 +1,4 @@
+import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:push_handler/push_handler.dart';
 
@@ -305,6 +306,6 @@ class _PushOptionSelectorSheetState extends State<PushOptionSelectorSheet> {
   }
 
   void _closeSheet() {
-    Navigator.of(context).pop(_selectedValues.toList());
+    context.router.pop(_selectedValues.toList());
   }
 }

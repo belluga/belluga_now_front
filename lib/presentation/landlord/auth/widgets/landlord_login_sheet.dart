@@ -1,3 +1,4 @@
+import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/presentation/landlord/auth/controllers/landlord_login_controller.dart';
 import 'package:flutter/material.dart';
 
@@ -69,7 +70,7 @@ Future<bool> showLandlordLoginSheet(
                       );
                       didLogin = true;
                       if (ctx.mounted) {
-                        Navigator.of(ctx).pop();
+                        ctx.router.pop();
                       }
                     } catch (e) {
                       if (!ctx.mounted) {

@@ -1,3 +1,4 @@
+import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/guards/location_permission_state.dart';
 import 'package:belluga_now/presentation/common/location_permission/controllers/location_permission_controller.dart';
 import 'package:belluga_now/presentation/common/widgets/button_loading.dart';
@@ -87,10 +88,10 @@ class _LocationPermissionScreenState extends State<LocationPermissionScreen> {
       initialState: widget.initialState,
     );
     if (!mounted) return;
-    Navigator.of(context).pop(granted);
+    context.router.pop(granted);
   }
 
   void _onNotNowPressed() {
-    Navigator.of(context).pop(false);
+    context.router.pop(false);
   }
 }

@@ -1,5 +1,6 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
+import 'package:belluga_now/presentation/tenant_admin/shell/widgets/tenant_admin_dashboard_card.dart';
 import 'package:flutter/material.dart';
 
 class TenantAdminDashboardScreen extends StatelessWidget {
@@ -15,7 +16,7 @@ class TenantAdminDashboardScreen extends StatelessWidget {
           style: Theme.of(context).textTheme.headlineSmall,
         ),
         const SizedBox(height: 16),
-        _DashboardCard(
+        TenantAdminDashboardCard(
           icon: Icons.account_box_outlined,
           title: 'Contas',
           description: 'Gerencie contas e o perfil associado.',
@@ -24,7 +25,7 @@ class TenantAdminDashboardScreen extends StatelessWidget {
           },
         ),
         const SizedBox(height: 12),
-        _DashboardCard(
+        TenantAdminDashboardCard(
           icon: Icons.apartment_outlined,
           title: 'Organizações',
           description: 'Controle organizações do tenant.',
@@ -33,7 +34,7 @@ class TenantAdminDashboardScreen extends StatelessWidget {
           },
         ),
         const SizedBox(height: 12),
-        _DashboardCard(
+        TenantAdminDashboardCard(
           icon: Icons.category_outlined,
           title: 'Tipos de Perfil',
           description: 'Defina tipos e capacidades.',
@@ -52,34 +53,6 @@ class TenantAdminDashboardScreen extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-}
-
-class _DashboardCard extends StatelessWidget {
-  const _DashboardCard({
-    required this.icon,
-    required this.title,
-    required this.description,
-    required this.onTap,
-  });
-
-  final IconData icon;
-  final String title;
-  final String description;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      child: ListTile(
-        leading: Icon(icon),
-        title: Text(title),
-        subtitle: Text(description),
-        trailing: const Icon(Icons.chevron_right),
-        onTap: onTap,
-      ),
     );
   }
 }

@@ -4,7 +4,6 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_account.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
 import 'package:belluga_now/presentation/tenant_admin/account_profiles/controllers/tenant_admin_account_profiles_controller.dart';
-import 'package:belluga_now/presentation/tenant_admin/account_profiles/screens/tenant_admin_account_profile_edit_screen.dart';
 import 'package:belluga_now/presentation/tenant_admin/accounts/controllers/tenant_admin_location_picker_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
@@ -92,14 +91,9 @@ class _TenantAdminAccountDetailScreenState
     if (profile == null) {
       return;
     }
-    final navigator = Navigator.of(context);
-    await navigator.push(
-      MaterialPageRoute(
-        builder: (_) => TenantAdminAccountProfileEditScreen(
-          accountProfileId: profile.id,
-          controller: _profilesController,
-          locationPickerController: widget.locationPickerController,
-        ),
+    await context.router.push(
+      TenantAdminAccountProfileEditRoute(
+        accountProfileId: profile.id,
       ),
     );
     await _load();

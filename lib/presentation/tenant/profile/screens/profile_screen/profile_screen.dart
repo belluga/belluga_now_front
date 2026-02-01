@@ -1,11 +1,14 @@
 import 'dart:io';
 import 'dart:math' as math;
 import 'package:auto_route/auto_route.dart';
-import 'package:belluga_now/application/icons/boora_icons.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/domain/user/user_contract.dart';
 import 'package:belluga_now/presentation/landlord/auth/widgets/landlord_login_sheet.dart';
 import 'package:belluga_now/presentation/tenant/profile/screens/profile_screen/controllers/profile_screen_controller.dart';
+import 'package:belluga_now/presentation/tenant/profile/screens/profile_screen/widgets/anonymous_profile_card.dart';
+import 'package:belluga_now/presentation/tenant/profile/screens/profile_screen/widgets/profile_editable_tile.dart';
+import 'package:belluga_now/presentation/tenant/profile/screens/profile_screen/widgets/profile_header.dart';
+import 'package:belluga_now/presentation/tenant/profile/screens/profile_screen/widgets/profile_section_card.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
@@ -78,7 +81,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               return ListView(
                 padding: const EdgeInsets.fromLTRB(16, 24, 16, 24),
                 children: [
-                  _AnonymousProfileCard(
+                  AnonymousProfileCard(
                     onTapLogin: () =>
                         context.router.push(const AuthLoginRoute()),
                   ),
@@ -99,7 +102,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 return ListView(
                   padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
                   children: [
-                    _ProfileHeader(
+                    ProfileHeader(
                       avatarImage: avatarImage,
                       displayName: _controller.nameController.text,
                       onChangeAvatar: _onChangeAvatar,
@@ -108,10 +111,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       hasPendingChanges: hasPendingChanges,
                     ),
                 const SizedBox(height: 16),
-                _SectionCard(
+                ProfileSectionCard(
                   title: 'Seus dados',
                   children: [
-                    _EditableTile(
+                    ProfileEditableTile(
                       label: 'Nome',
                       value: _controller.nameController.text,
                       icon: Icons.person_outline,
@@ -122,7 +125,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         keyboardType: TextInputType.name,
                       ),
                     ),
-                    _EditableTile(
+                    ProfileEditableTile(
                       label: 'Descrição',
                       value: _controller.descriptionController.text,
                       icon: Icons.short_text,
@@ -134,7 +137,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         maxLines: 3,
                       ),
                     ),
-                    _EditableTile(
+                    ProfileEditableTile(
                       label: 'E-mail',
                       value: _controller.emailController.text,
                       icon: Icons.email_outlined,
@@ -145,7 +148,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         keyboardType: TextInputType.emailAddress,
                       ),
                     ),
-                    _EditableTile(
+                    ProfileEditableTile(
                       label: 'Telefone',
                       value: _controller.phoneController.text,
                       icon: Icons.phone_outlined,
@@ -159,7 +162,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ],
                 ),
                 const SizedBox(height: 12),
-                _SectionCard(
+                ProfileSectionCard(
                   title: 'Preferências',
                   children: [
                     StreamValueBuilder<ThemeMode?>(
@@ -204,7 +207,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ],
                 ),
                 const SizedBox(height: 12),
-                _SectionCard(
+                ProfileSectionCard(
                   title: 'Modo',
                   children: [
                     ListTile(
@@ -224,7 +227,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ],
                 ),
                 const SizedBox(height: 12),
-                _SectionCard(
+                ProfileSectionCard(
                   title: 'Privacidade & segurança',
                   children: [
                     ListTile(
@@ -284,7 +287,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 leading: const Icon(Icons.photo_camera_outlined),
                 title: const Text('Tirar foto'),
                 onTap: () async {
-                  Navigator.of(ctx).pop();
+                  ctx.router.pop();
                   await _controller.pickAvatar(ImageSource.camera);
                 },
               ),
@@ -292,7 +295,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 leading: const Icon(Icons.photo_library_outlined),
                 title: const Text('Escolher da galeria'),
                 onTap: () async {
-                  Navigator.of(ctx).pop();
+                  ctx.router.pop();
                   await _controller.pickAvatar(ImageSource.gallery);
                 },
               ),
@@ -341,14 +344,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
                   TextButton(
-                    onPressed: () => Navigator.of(ctx).pop(),
+                    onPressed: () => ctx.router.pop(),
                     child: const Text('Cancelar'),
                   ),
                   const SizedBox(width: 8),
                   FilledButton(
                     onPressed: () {
                       controller.text = tempController.text;
-                      Navigator.of(ctx).pop();
+                      ctx.router.pop();
                       setState(() {});
                     },
                     child: const Text('Salvar'),
@@ -478,7 +481,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       }
                       final km = parsed < 1 ? 1 : parsed;
                       _controller.setMaxRadiusMeters(km * 1000);
-                      Navigator.of(ctx).pop();
+                      ctx.router.pop();
                     },
                     child: const Text('Salvar'),
                   ),
@@ -511,318 +514,5 @@ class _ProfileScreenState extends State<ProfileScreen> {
       return NetworkImage(remoteUrl);
     }
     return null;
-  }
-}
-
-class _AnonymousProfileCard extends StatelessWidget {
-  const _AnonymousProfileCard({
-    required this.onTapLogin,
-  });
-
-  final VoidCallback onTapLogin;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            colorScheme.primary.withValues(alpha: 0.08),
-            colorScheme.secondary.withValues(alpha: 0.1),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Entre para ativar seu perfil',
-            style: theme.textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Suas preferencias e favoritos anonimos sao preservados '
-            'quando voce cria a conta.',
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: colorScheme.onSurfaceVariant,
-            ),
-          ),
-          const SizedBox(height: 16),
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton(
-              onPressed: onTapLogin,
-              child: const Text('Entrar / Criar conta'),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ProfileHeader extends StatelessWidget {
-  const _ProfileHeader({
-    this.avatarImage,
-    required this.displayName,
-    required this.onChangeAvatar,
-    required this.invitesSent,
-    required this.invitesAccepted,
-    required this.hasPendingChanges,
-  });
-
-  final ImageProvider? avatarImage;
-  final String displayName;
-  final VoidCallback onChangeAvatar;
-  final int invitesSent;
-  final int invitesAccepted;
-  final bool hasPendingChanges;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            colorScheme.primary.withValues(alpha: 0.08),
-            colorScheme.secondary.withValues(alpha: 0.08),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      padding: const EdgeInsets.all(16),
-      child: Row(
-        children: [
-          Stack(
-            clipBehavior: Clip.none,
-            children: [
-              CircleAvatar(
-                radius: 34,
-                backgroundColor: colorScheme.primary.withValues(alpha: 0.15),
-                backgroundImage: avatarImage,
-                child: avatarImage == null
-                    ? Icon(Icons.person, color: colorScheme.primary, size: 32)
-                    : null,
-              ),
-              Positioned(
-                right: -4,
-                bottom: -4,
-                child: Material(
-                  color: colorScheme.surface,
-                  shape: const CircleBorder(),
-                  elevation: 2,
-                  child: IconButton(
-                    visualDensity: VisualDensity.compact,
-                    iconSize: 18,
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints.tightFor(
-                      width: 32,
-                      height: 32,
-                    ),
-                    onPressed: onChangeAvatar,
-                    icon: Icon(
-                      Icons.photo_camera_outlined,
-                      color: colorScheme.primary,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        displayName.isNotEmpty ? displayName : 'Seu perfil',
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w800,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    if (hasPendingChanges)
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: colorScheme.primary.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(999),
-                        ),
-                        child: Text(
-                          'Alterado',
-                          style: theme.textTheme.labelSmall?.copyWith(
-                            color: colorScheme.primary,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Convites aceitos valem mais que likes.',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: colorScheme.onSurfaceVariant,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    _MetricPill(
-                      value: invitesSent,
-                      icon: BooraIcons.invite_outlined,
-                      iconColor: colorScheme.secondary,
-                      backgroundColor:
-                          colorScheme.secondary.withValues(alpha: 0.14),
-                    ),
-                    _MetricPill(
-                      value: invitesAccepted,
-                      icon: BooraIcons.invite_solid,
-                      iconColor: colorScheme.primary,
-                      backgroundColor:
-                          colorScheme.primary.withValues(alpha: 0.14),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _MetricPill extends StatelessWidget {
-  const _MetricPill({
-    required this.value,
-    required this.icon,
-    required this.iconColor,
-    required this.backgroundColor,
-  });
-
-  final int value;
-  final IconData icon;
-  final Color iconColor;
-  final Color backgroundColor;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      decoration: BoxDecoration(
-        color: backgroundColor,
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 16, color: iconColor),
-          const SizedBox(width: 6),
-          Text(
-            '$value',
-            style: theme.textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.w800,
-                ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _SectionCard extends StatelessWidget {
-  const _SectionCard({
-    required this.title,
-    required this.children,
-  });
-
-  final String title;
-  final List<Widget> children;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Card(
-      elevation: 0,
-      margin: EdgeInsets.zero,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 4),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-              child: Text(
-                title,
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-            ),
-            const Divider(height: 1),
-            ...children,
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _EditableTile extends StatelessWidget {
-  const _EditableTile({
-    required this.label,
-    required this.value,
-    required this.icon,
-    required this.onTap,
-  });
-
-  final String label;
-  final String value;
-  final IconData icon;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-    return ListTile(
-      leading: Icon(icon, color: colorScheme.onSurfaceVariant),
-      title: Text(label),
-      subtitle: Text(
-        value.isEmpty ? 'Toque para preencher' : value,
-        style: theme.textTheme.bodyMedium?.copyWith(
-          color: value.isEmpty
-              ? colorScheme.onSurfaceVariant.withAlpha((0.7 * 255).toInt())
-              : colorScheme.onSurface,
-        ),
-      ),
-      trailing: const Icon(Icons.chevron_right),
-      onTap: onTap,
-    );
   }
 }

@@ -60,6 +60,8 @@ import 'package:belluga_now/presentation/tenant/schedule/screens/event_search_sc
     as _i35;
 import 'package:belluga_now/presentation/tenant_admin/account_profiles/routes/tenant_admin_account_profile_create_route.dart'
     as _i20;
+import 'package:belluga_now/presentation/tenant_admin/account_profiles/routes/tenant_admin_account_profile_edit_route.dart'
+    as _i42;
 import 'package:belluga_now/presentation/tenant_admin/accounts/controllers/tenant_admin_location_picker_controller.dart'
     as _i40;
 import 'package:belluga_now/presentation/tenant_admin/accounts/routes/tenant_admin_account_create_route.dart'
@@ -869,6 +871,63 @@ class TenantAdminAccountProfileCreateRouteArgs {
 
   @override
   int get hashCode => key.hashCode ^ accountSlug.hashCode;
+}
+
+/// generated route for
+/// [_i42.TenantAdminAccountProfileEditRoutePage]
+class TenantAdminAccountProfileEditRoute
+    extends _i33.PageRouteInfo<TenantAdminAccountProfileEditRouteArgs> {
+  TenantAdminAccountProfileEditRoute({
+    _i34.Key? key,
+    required String accountProfileId,
+    List<_i33.PageRouteInfo>? children,
+  }) : super(
+          TenantAdminAccountProfileEditRoute.name,
+          args: TenantAdminAccountProfileEditRouteArgs(
+            key: key,
+            accountProfileId: accountProfileId,
+          ),
+          initialChildren: children,
+        );
+
+  static const String name = 'TenantAdminAccountProfileEditRoute';
+
+  static _i33.PageInfo page = _i33.PageInfo(
+    name,
+    builder: (data) {
+      final args = data.argsAs<TenantAdminAccountProfileEditRouteArgs>();
+      return _i42.TenantAdminAccountProfileEditRoutePage(
+        key: args.key,
+        accountProfileId: args.accountProfileId,
+      );
+    },
+  );
+}
+
+class TenantAdminAccountProfileEditRouteArgs {
+  const TenantAdminAccountProfileEditRouteArgs({
+    this.key,
+    required this.accountProfileId,
+  });
+
+  final _i34.Key? key;
+
+  final String accountProfileId;
+
+  @override
+  String toString() {
+    return 'TenantAdminAccountProfileEditRouteArgs{key: $key, accountProfileId: $accountProfileId}';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    if (other is! TenantAdminAccountProfileEditRouteArgs) return false;
+    return key == other.key && accountProfileId == other.accountProfileId;
+  }
+
+  @override
+  int get hashCode => key.hashCode ^ accountProfileId.hashCode;
 }
 
 /// generated route for

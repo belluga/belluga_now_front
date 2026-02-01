@@ -1,4 +1,5 @@
 import 'package:belluga_now/domain/favorite/favorite_badge.dart';
+import 'package:belluga_now/presentation/tenant/home/screens/tenant_home_screen/widgets/favorite_badge_glyph.dart';
 import 'package:flutter/material.dart';
 
 class FavoriteChip extends StatelessWidget {
@@ -51,7 +52,7 @@ class FavoriteChip extends StatelessWidget {
                     child: CircleAvatar(
                       radius: 12,
                       backgroundColor: colorScheme.surface,
-                      child: _BadgeGlyph(
+                      child: FavoriteBadgeGlyph(
                         codePoint: badgeGlyph.codePoint,
                         fontFamily: badgeGlyph.fontFamily,
                         size: 14,
@@ -95,7 +96,7 @@ class FavoriteChip extends StatelessWidget {
             errorBuilder: (context, error, stackTrace) {
               // Fallback to badge icon if image fails to load
               if (badgeGlyph != null) {
-                return _BadgeGlyph(
+                return FavoriteBadgeGlyph(
                   codePoint: badgeGlyph.codePoint,
                   fontFamily: badgeGlyph.fontFamily,
                   size: 32,
@@ -127,33 +128,5 @@ class FavoriteChip extends StatelessWidget {
     if (badgeData == null) return null;
     if (badgeData.codePoint <= 0) return null;
     return badgeData;
-  }
-}
-
-class _BadgeGlyph extends StatelessWidget {
-  const _BadgeGlyph({
-    required this.codePoint,
-    required this.fontFamily,
-    required this.size,
-    required this.color,
-  });
-
-  final int codePoint;
-  final String? fontFamily;
-  final double size;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    if (codePoint <= 0) return const SizedBox.shrink();
-    return Text(
-      String.fromCharCode(codePoint),
-      style: TextStyle(
-        fontFamily: fontFamily,
-        fontSize: size,
-        color: color,
-        height: 1,
-      ),
-    );
   }
 }

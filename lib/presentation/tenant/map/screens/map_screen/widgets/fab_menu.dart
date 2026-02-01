@@ -4,6 +4,7 @@ import 'package:belluga_now/domain/map/city_poi_category.dart';
 import 'package:belluga_now/domain/map/filters/poi_filter_mode.dart';
 import 'package:belluga_now/application/icons/boora_icons.dart';
 import 'package:belluga_now/presentation/tenant/map/screens/map_screen/controllers/fab_menu_controller.dart';
+import 'package:belluga_now/presentation/tenant/map/screens/map_screen/widgets/fab_action_button.dart';
 import 'package:belluga_now/presentation/tenant/map/screens/map_screen/widgets/shared/poi_category_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
@@ -117,7 +118,7 @@ class _FabMenuState extends State<FabMenu> {
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 if (expanded) ...[
-                  _ActionButton(
+                  FabActionButton(
                     label: 'Ir para você',
                     icon: Icons.my_location,
                     backgroundColor: scheme.secondaryContainer,
@@ -134,7 +135,7 @@ class _FabMenuState extends State<FabMenu> {
                         : scheme.onSurfaceVariant;
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 8),
-                      child: _ActionButton(
+                      child: FabActionButton(
                         label: config.label,
                         icon: config.icon,
                         backgroundColor:
@@ -176,47 +177,6 @@ class _FabMenuState extends State<FabMenu> {
     }
 
     _fabController.toggleExpanded();
-  }
-}
-
-class _ActionButton extends StatelessWidget {
-  const _ActionButton({
-    required this.label,
-    required this.icon,
-    required this.backgroundColor,
-    required this.foregroundColor,
-    required this.onTap,
-    required this.condensed,
-  });
-
-  final String label;
-  final IconData icon;
-  final Color backgroundColor;
-  final Color foregroundColor;
-  final VoidCallback onTap;
-  final bool condensed;
-
-  @override
-  Widget build(BuildContext context) {
-    if (condensed) {
-      return FloatingActionButton.small(
-        heroTag: 'condensed-${label.hashCode}-${icon.codePoint}',
-        backgroundColor: backgroundColor,
-        foregroundColor: foregroundColor,
-        elevation: 0.5,
-        onPressed: onTap,
-        child: Icon(icon),
-      );
-    }
-    return FloatingActionButton.extended(
-      heroTag: 'expanded-${label.hashCode}-${icon.codePoint}',
-      backgroundColor: backgroundColor,
-      foregroundColor: foregroundColor,
-      elevation: 0.5,
-      onPressed: onTap,
-      icon: Icon(icon),
-      label: Text(label),
-    );
   }
 }
 

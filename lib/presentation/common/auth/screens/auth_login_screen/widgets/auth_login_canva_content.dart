@@ -216,7 +216,7 @@ class _AuthLoginCanvaContentState extends State<AuthLoginCanvaContent>
         password,
       );
       if (!ctx.mounted) return;
-      Navigator.of(ctx).pop();
+      ctx.router.pop();
       if (!mounted) return;
       if (isAuthorized) {
         context.router.replace(const TenantHomeRoute());

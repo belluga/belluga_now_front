@@ -137,11 +137,11 @@ class _TenantHomeScreenState extends State<TenantHomeScreen> {
             content: const Text('Deseja fechar o aplicativo agora?'),
             actions: [
               TextButton(
-                onPressed: () => Navigator.of(context).pop(false),
+                onPressed: () => context.router.pop(false),
                 child: const Text('Cancelar'),
               ),
               ElevatedButton(
-                onPressed: () => Navigator.of(context).pop(true),
+                onPressed: () => context.router.pop(true),
                 child: const Text('Sair'),
               ),
             ],

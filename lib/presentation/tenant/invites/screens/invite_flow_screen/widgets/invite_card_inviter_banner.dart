@@ -1,3 +1,4 @@
+import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/domain/invites/invite_inviter.dart';
 import 'package:belluga_now/domain/invites/invite_inviter_type.dart';
 import 'package:belluga_now/domain/invites/invite_model.dart';
@@ -93,6 +94,7 @@ class InviteCardInviterBanner extends StatelessWidget {
       return;
     }
 
+    final router = context.router;
     await showDialog<void>(
       context: context,
       builder: (dialogContext) => AlertDialog(
@@ -120,7 +122,7 @@ class InviteCardInviterBanner extends StatelessWidget {
                   contentPadding: const EdgeInsets.symmetric(vertical: 4),
                   onTap: summary.partner != null && !isPreview
                       ? () {
-                          Navigator.of(dialogContext).pop();
+                          router.pop();
                           _showPartnerSheet(context, summary.partner!);
                         }
                       : null,
@@ -131,7 +133,7 @@ class InviteCardInviterBanner extends StatelessWidget {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
+            onPressed: () => router.pop(),
             child: const Text('Fechar'),
           ),
         ],
@@ -173,6 +175,7 @@ class InviteCardInviterBanner extends StatelessWidget {
     InvitePartnerSummary partner,
   ) async {
     Widget sheetContent = PartnerFallbackView(name: partner.name);
+    final router = context.router;
 
     await showModalBottomSheet<void>(
       context: context,
@@ -190,13 +193,13 @@ class InviteCardInviterBanner extends StatelessWidget {
                 Positioned(
                   top: 8,
                   right: 8,
-                  child: SafeArea(
-                    child: IconButton(
-                      icon: const Icon(Icons.close),
-                      onPressed: () => Navigator.of(sheetContext).pop(),
+                    child: SafeArea(
+                      child: IconButton(
+                        icon: const Icon(Icons.close),
+                        onPressed: () => router.pop(),
+                      ),
                     ),
                   ),
-                ),
               ],
             ),
           ),
