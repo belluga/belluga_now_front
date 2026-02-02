@@ -41,6 +41,9 @@ void main() {
       _FakeTenantAdminAccountProfilesRepository(),
     );
 
+    getIt.registerSingleton<TenantAdminLocationPickerController>(
+      TenantAdminLocationPickerController(),
+    );
     getIt.registerSingleton<TenantAdminAccountProfilesController>(
       TenantAdminAccountProfilesController(
         profilesRepository:
@@ -48,9 +51,6 @@ void main() {
         accountsRepository:
             getIt.get<TenantAdminAccountsRepositoryContract>(),
       ),
-    );
-    getIt.registerSingleton<TenantAdminLocationPickerController>(
-      TenantAdminLocationPickerController(),
     );
 
     await tester.pumpWidget(

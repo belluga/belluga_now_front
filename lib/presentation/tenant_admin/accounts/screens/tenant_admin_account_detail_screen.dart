@@ -1,4 +1,5 @@
 import 'package:auto_route/auto_route.dart';
+import 'package:belluga_now/presentation/common/widgets/belluga_network_image.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
@@ -200,28 +201,24 @@ class _TenantAdminAccountDetailScreenState
                                     ),
                                     const SizedBox(height: 12),
                                     if (coverUrl != null && coverUrl.isNotEmpty)
-                                      ClipRRect(
-                                        borderRadius: BorderRadius.circular(12),
-                                        child: Image.network(
-                                          coverUrl,
+                                      BellugaNetworkImage(
+                                        coverUrl,
+                                        height: 160,
+                                        fit: BoxFit.cover,
+                                        clipBorderRadius:
+                                            BorderRadius.circular(12),
+                                        errorWidget: Container(
                                           height: 160,
-                                          fit: BoxFit.cover,
-                                          errorBuilder:
-                                              (context, error, stackTrace) {
-                                            return Container(
-                                              height: 160,
-                                              decoration: BoxDecoration(
-                                                color: Theme.of(context)
-                                                    .colorScheme
-                                                    .surfaceContainerHighest,
-                                              ),
-                                              child: const Center(
-                                                child: Icon(
-                                                  Icons.image_not_supported,
-                                                ),
-                                              ),
-                                            );
-                                          },
+                                          decoration: BoxDecoration(
+                                            color: Theme.of(context)
+                                                .colorScheme
+                                                .surfaceContainerHighest,
+                                          ),
+                                          child: const Center(
+                                            child: Icon(
+                                              Icons.image_not_supported,
+                                            ),
+                                          ),
                                         ),
                                       )
                                     else
@@ -242,29 +239,24 @@ class _TenantAdminAccountDetailScreenState
                                       children: [
                                         if (avatarUrl != null &&
                                             avatarUrl.isNotEmpty)
-                                          ClipRRect(
-                                            borderRadius:
+                                          BellugaNetworkImage(
+                                            avatarUrl,
+                                            width: 72,
+                                            height: 72,
+                                            fit: BoxFit.cover,
+                                            clipBorderRadius:
                                                 BorderRadius.circular(36),
-                                            child: Image.network(
-                                              avatarUrl,
+                                            errorWidget: Container(
                                               width: 72,
                                               height: 72,
-                                              fit: BoxFit.cover,
-                                              errorBuilder:
-                                                  (context, error, stackTrace) {
-                                                return Container(
-                                                  width: 72,
-                                                  height: 72,
-                                                  decoration: BoxDecoration(
-                                                    color: Theme.of(context)
-                                                        .colorScheme
-                                                        .surfaceContainerHighest,
-                                                  ),
-                                                  child: const Icon(
-                                                    Icons.person_off_outlined,
-                                                  ),
-                                                );
-                                              },
+                                              decoration: BoxDecoration(
+                                                color: Theme.of(context)
+                                                    .colorScheme
+                                                    .surfaceContainerHighest,
+                                              ),
+                                              child: const Icon(
+                                                Icons.person_off_outlined,
+                                              ),
                                             ),
                                           )
                                         else

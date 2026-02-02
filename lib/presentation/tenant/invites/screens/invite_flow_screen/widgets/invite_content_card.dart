@@ -1,4 +1,5 @@
 import 'package:belluga_now/application/icons/boora_icons.dart';
+import 'package:belluga_now/presentation/common/widgets/belluga_network_image.dart';
 import 'package:belluga_now/presentation/tenant/invites/screens/invite_flow_screen/widgets/invite_info_row.dart';
 import 'package:belluga_now/presentation/tenant/invites/screens/invite_flow_screen/widgets/inviter_pill.dart';
 import 'package:flutter/material.dart';
@@ -40,11 +41,12 @@ class InviteContentCard extends StatelessWidget {
       child: Stack(
         fit: StackFit.expand,
         children: [
-          Image.network(
+          BellugaNetworkImage(
             heroImage,
             fit: BoxFit.cover,
-            errorBuilder: (_, __, ___) =>
-                Container(color: theme.colorScheme.surfaceContainerHighest),
+            errorWidget: Container(
+              color: theme.colorScheme.surfaceContainerHighest,
+            ),
           ),
           DecoratedBox(
             decoration: BoxDecoration(

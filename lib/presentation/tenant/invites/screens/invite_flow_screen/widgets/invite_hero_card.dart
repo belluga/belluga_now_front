@@ -1,6 +1,7 @@
 import 'dart:ui';
 
 import 'package:belluga_now/domain/invites/invite_model.dart';
+import 'package:belluga_now/presentation/common/widgets/belluga_network_image.dart';
 import 'package:belluga_now/presentation/common/widgets/swipeable_card/swipeable_card.dart';
 import 'package:belluga_now/presentation/tenant/invites/screens/invite_flow_screen/widgets/invite_content_card.dart';
 import 'package:flutter/material.dart';
@@ -43,10 +44,10 @@ class InviteHeroCard extends StatelessWidget {
         Positioned.fill(
           child: ImageFiltered(
             imageFilter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
-            child: Image.network(
+            child: BellugaNetworkImage(
               heroImage,
               fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => Container(
+              errorWidget: Container(
                 color: theme.colorScheme.surfaceContainerHighest,
               ),
             ),

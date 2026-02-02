@@ -1,4 +1,5 @@
 import 'package:belluga_now/domain/favorite/favorite_badge.dart';
+import 'package:belluga_now/presentation/common/widgets/belluga_network_image.dart';
 import 'package:belluga_now/presentation/tenant/home/screens/tenant_home_screen/widgets/favorite_badge_glyph.dart';
 import 'package:flutter/material.dart';
 
@@ -88,27 +89,23 @@ class FavoriteChip extends StatelessWidget {
         radius: 32,
         backgroundColor: backgroundColor,
         child: ClipOval(
-          child: Image.network(
+          child: BellugaNetworkImage(
             iconImageUrl!,
             width: 40,
             height: 40,
             fit: BoxFit.cover,
-            errorBuilder: (context, error, stackTrace) {
-              // Fallback to badge icon if image fails to load
-              if (badgeGlyph != null) {
-                return FavoriteBadgeGlyph(
-                  codePoint: badgeGlyph.codePoint,
-                  fontFamily: badgeGlyph.fontFamily,
-                  size: 32,
-                  color: Colors.white,
-                );
-              }
-              return Icon(
-                Icons.location_city,
-                size: 32,
-                color: Colors.white,
-              );
-            },
+            errorWidget: badgeGlyph != null
+                ? FavoriteBadgeGlyph(
+                    codePoint: badgeGlyph.codePoint,
+                    fontFamily: badgeGlyph.fontFamily,
+                    size: 32,
+                    color: Colors.white,
+                  )
+                : const Icon(
+                    Icons.location_city,
+                    size: 32,
+                    color: Colors.white,
+                  ),
           ),
         ),
       );

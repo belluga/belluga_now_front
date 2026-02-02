@@ -1,4 +1,5 @@
 import 'package:belluga_now/domain/app_data/app_data.dart';
+import 'package:belluga_now/presentation/common/widgets/belluga_network_image.dart';
 import 'package:flutter/material.dart';
 
 class MainLogo extends StatelessWidget {
@@ -22,7 +23,7 @@ class MainLogo extends StatelessWidget {
     debugPrint(
       '[MainLogo] brightness=$brightness -> uri=${logoUri?.toString()}',
     );
-    return Image.network(
+    return BellugaNetworkImage(
       logoUri!.toString(),
       width: width,
       height: height,

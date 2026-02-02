@@ -734,6 +734,20 @@ class _TenantAdminAccountProfileEditScreenState
                         width: 72,
                         height: 72,
                         fit: BoxFit.cover,
+                        loadingBuilder: (context, child, loadingProgress) {
+                          if (loadingProgress == null) return child;
+                          return Container(
+                            width: 72,
+                            height: 72,
+                            decoration: BoxDecoration(
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .surfaceContainerHighest,
+                              borderRadius: BorderRadius.circular(36),
+                            ),
+                            child: const Icon(Icons.person_outline),
+                          );
+                        },
                         errorBuilder: (context, error, stackTrace) {
                           if (!state.avatarRemoteError) {
                             _controller.updateAvatarRemoteError(true);
@@ -831,6 +845,20 @@ class _TenantAdminAccountProfileEditScreenState
                     width: double.infinity,
                     height: 140,
                     fit: BoxFit.cover,
+                    loadingBuilder: (context, child, loadingProgress) {
+                      if (loadingProgress == null) return child;
+                      return Container(
+                        width: double.infinity,
+                        height: 140,
+                        decoration: BoxDecoration(
+                          color: Theme.of(context)
+                              .colorScheme
+                              .surfaceContainerHighest,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(Icons.image_outlined),
+                      );
+                    },
                     errorBuilder: (context, error, stackTrace) {
                       if (!state.coverRemoteError) {
                         _controller.updateCoverRemoteError(true);

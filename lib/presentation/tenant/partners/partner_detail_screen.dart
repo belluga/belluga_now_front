@@ -1,5 +1,6 @@
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/presentation/tenant/partners/controllers/partner_detail_controller.dart';
+import 'package:belluga_now/presentation/common/widgets/belluga_network_image.dart';
 import 'package:belluga_now/presentation/common/widgets/immersive_detail_screen/immersive_detail_screen.dart';
 import 'package:belluga_now/presentation/common/widgets/immersive_detail_screen/models/immersive_tab_item.dart';
 import 'package:belluga_now/domain/partners/engagement_data.dart';
@@ -103,10 +104,10 @@ class _PartnerDetailScreenState extends State<PartnerDetailScreen> {
       fit: StackFit.expand,
       children: [
         partner.coverUrl != null
-            ? Image.network(
+            ? BellugaNetworkImage(
                 partner.coverUrl!,
                 fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => Container(
+                errorWidget: Container(
                   color: colorScheme.surfaceContainerHighest,
                   child: Icon(
                     _iconForType(partner.type),
@@ -492,11 +493,10 @@ class _PartnerDetailScreenState extends State<PartnerDetailScreen> {
                 fit: StackFit.expand,
                 children: [
                   if (mapPreviewUri != null)
-                    Image.network(
+                    BellugaNetworkImage(
                       mapPreviewUri.toString(),
                       fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) =>
-                          _buildMapFallback(location),
+                      errorWidget: _buildMapFallback(location),
                     )
                   else
                     _buildMapFallback(location),
@@ -881,11 +881,10 @@ class _PartnerDetailScreenState extends State<PartnerDetailScreen> {
                             borderRadius: BorderRadius.circular(10),
                           ),
                           child: entity.thumb != null
-                              ? Image.network(
+                              ? BellugaNetworkImage(
                                   entity.thumb!,
                                   fit: BoxFit.cover,
-                                  errorBuilder: (_, __, ___) =>
-                                      const SizedBox(),
+                                  errorWidget: const SizedBox(),
                                 )
                               : null,
                         ),

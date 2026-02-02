@@ -1,8 +1,9 @@
 import 'package:auto_route/auto_route.dart';
-import 'package:flutter/material.dart';
 import 'package:belluga_now/application/configurations/widget_keys.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/presentation/common/init/screens/init_screen/controllers/init_screen_controller.dart';
+import 'package:belluga_now/presentation/common/widgets/belluga_network_image.dart';
+import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 
@@ -47,11 +48,11 @@ class _InitScreenState extends State<InitScreen> {
             .value
             ?.toString();
         final logo = iconUrl != null && iconUrl.isNotEmpty
-            ? Image.network(
+            ? BellugaNetworkImage(
                 iconUrl,
                 height: 96,
                 fit: BoxFit.contain,
-                errorBuilder: (_, __, ___) => Icon(
+                errorWidget: Icon(
                   Icons.waves,
                   size: 72,
                   color: onBackgroundColor,

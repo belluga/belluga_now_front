@@ -1,6 +1,7 @@
 import 'package:belluga_now/domain/partners/engagement_data.dart';
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/application/icons/boora_icons.dart';
+import 'package:belluga_now/presentation/common/widgets/belluga_network_image.dart';
 import 'package:flutter/material.dart';
 
 class DiscoveryPartnerCard extends StatefulWidget {
@@ -75,19 +76,17 @@ class _DiscoveryPartnerCardState extends State<DiscoveryPartnerCard>
                 fit: StackFit.expand,
                 children: [
                   if (widget.partner.avatarUrl != null)
-                    Image.network(
+                    BellugaNetworkImage(
                       widget.partner.avatarUrl!,
                       fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        return Container(
-                          color: colorScheme.surfaceContainerHighest,
-                          child: Icon(
-                            _getPartnerIcon(widget.partner.type),
-                            size: 48,
-                            color: colorScheme.onSurfaceVariant,
-                          ),
-                        );
-                      },
+                      errorWidget: Container(
+                        color: colorScheme.surfaceContainerHighest,
+                        child: Icon(
+                          _getPartnerIcon(widget.partner.type),
+                          size: 48,
+                          color: colorScheme.onSurfaceVariant,
+                        ),
+                      ),
                     )
                   else
                     Container(

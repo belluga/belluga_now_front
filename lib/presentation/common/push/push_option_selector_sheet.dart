@@ -1,5 +1,6 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/presentation/common/push/controllers/push_option_selector_controller.dart';
+import 'package:belluga_now/presentation/common/widgets/belluga_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:push_handler/push_handler.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
@@ -214,13 +215,11 @@ class _PushOptionSelectorSheetState extends State<PushOptionSelectorSheet> {
               children: [
                 Expanded(
                   child: option.image != null && option.image!.isNotEmpty
-                      ? ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
-                          child: Image.network(
-                            option.image!,
-                            width: double.infinity,
-                            fit: BoxFit.cover,
-                          ),
+                      ? BellugaNetworkImage(
+                          option.image!,
+                          width: double.infinity,
+                          fit: BoxFit.cover,
+                          clipBorderRadius: BorderRadius.circular(8),
                         )
                       : const SizedBox.shrink(),
                 ),
