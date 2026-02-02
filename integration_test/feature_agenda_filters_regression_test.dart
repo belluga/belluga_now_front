@@ -145,9 +145,7 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
-        home: EventSearchScreen(
-          controller: harness.agendaController,
-        ),
+        home: EventSearchScreen(),
       ),
     );
 

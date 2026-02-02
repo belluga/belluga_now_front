@@ -1,5 +1,6 @@
 import 'package:belluga_now/domain/repositories/admin_mode_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/landlord_auth_repository_contract.dart';
+import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 
 class LandlordLoginController implements Disposable {
@@ -13,6 +14,9 @@ class LandlordLoginController implements Disposable {
 
   final LandlordAuthRepositoryContract _landlordAuthRepository;
   final AdminModeRepositoryContract _adminModeRepository;
+
+  final TextEditingController emailController = TextEditingController();
+  final TextEditingController passwordController = TextEditingController();
 
   bool get hasValidSession => _landlordAuthRepository.hasValidSession;
 
@@ -42,5 +46,13 @@ class LandlordLoginController implements Disposable {
   }
 
   @override
-  void onDispose() {}
+  void onDispose() {
+    emailController.dispose();
+    passwordController.dispose();
+  }
+
+  void resetForm() {
+    emailController.clear();
+    passwordController.clear();
+  }
 }

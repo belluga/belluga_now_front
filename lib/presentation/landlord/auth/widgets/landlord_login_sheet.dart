@@ -6,8 +6,7 @@ Future<bool> showLandlordLoginSheet(
   BuildContext context, {
   required LandlordLoginController controller,
 }) async {
-  final emailController = TextEditingController();
-  final passwordController = TextEditingController();
+  controller.resetForm();
   var didLogin = false;
 
   await showModalBottomSheet<void>(
@@ -32,7 +31,7 @@ Future<bool> showLandlordLoginSheet(
               ),
               const SizedBox(height: 12),
               TextField(
-                controller: emailController,
+                controller: controller.emailController,
                 keyboardType: TextInputType.emailAddress,
                 textInputAction: TextInputAction.next,
                 decoration: const InputDecoration(
@@ -42,7 +41,7 @@ Future<bool> showLandlordLoginSheet(
               ),
               const SizedBox(height: 12),
               TextField(
-                controller: passwordController,
+                controller: controller.passwordController,
                 obscureText: true,
                 textInputAction: TextInputAction.done,
                 decoration: const InputDecoration(
@@ -55,8 +54,8 @@ Future<bool> showLandlordLoginSheet(
                 width: double.infinity,
                 child: FilledButton(
                   onPressed: () async {
-                    final email = emailController.text.trim();
-                    final password = passwordController.text.trim();
+                    final email = controller.emailController.text.trim();
+                    final password = controller.passwordController.text.trim();
                     if (email.isEmpty || password.isEmpty) {
                       ScaffoldMessenger.of(ctx).showSnackBar(
                         const SnackBar(content: Text('Informe e-mail e senha.')),
@@ -91,9 +90,5 @@ Future<bool> showLandlordLoginSheet(
     },
   );
 
-  Future<void>.delayed(const Duration(milliseconds: 300), () {
-    emailController.dispose();
-    passwordController.dispose();
-  });
   return didLogin;
 }

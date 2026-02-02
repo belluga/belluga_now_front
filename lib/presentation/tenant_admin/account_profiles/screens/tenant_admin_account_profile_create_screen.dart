@@ -27,7 +27,6 @@ class TenantAdminAccountProfileCreateScreen extends StatefulWidget {
 
 class _TenantAdminAccountProfileCreateScreenState
     extends State<TenantAdminAccountProfileCreateScreen> {
-  final _formKey = GlobalKey<FormState>();
   final TenantAdminAccountProfilesController _controller =
       GetIt.I.get<TenantAdminAccountProfilesController>();
   String? _accountId;
@@ -268,7 +267,7 @@ class _TenantAdminAccountProfileCreateScreenState
   }
 
   Future<void> _submit() async {
-    final form = _formKey.currentState;
+    final form = _controller.createFormKey.currentState;
     if (form == null || !form.validate()) {
       return;
     }
@@ -337,7 +336,7 @@ class _TenantAdminAccountProfileCreateScreenState
             ),
             child: SingleChildScrollView(
               child: Form(
-                key: _formKey,
+                key: _controller.createFormKey,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [

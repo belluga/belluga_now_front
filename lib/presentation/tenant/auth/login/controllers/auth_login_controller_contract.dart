@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/auth/errors/belluga_auth_errors.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/user/user_belluga.dart';
@@ -25,11 +26,13 @@ abstract class AuthLoginControllerContract extends Object with Disposable {
   }
 
   final AuthRepositoryContract _authRepository;
+  final AppData _appData = GetIt.I.get<AppData>();
 
   final sliverAppBarController = SliverAppBarController();
 
   StreamValue<UserBelluga> get userBelluga =>
       _authRepository.userStreamValue as StreamValue<UserBelluga>;
+  AppData get appData => _appData;
 
   final loginFormKey = GlobalKey<FormState>();
 
@@ -45,6 +48,11 @@ abstract class AuthLoginControllerContract extends Object with Disposable {
 
   late FormFieldControllerPasswordLogin passwordController;
 
+  final TextEditingController signupNameController = TextEditingController();
+  final TextEditingController signupEmailController = TextEditingController();
+  final TextEditingController signupPasswordController =
+      TextEditingController();
+
   final generalErrorStreamValue = StreamValue<String?>();
 
   void cleanEmailError(Object? _) => authEmailFieldController.cleanError();
@@ -57,6 +65,12 @@ abstract class AuthLoginControllerContract extends Object with Disposable {
   }
 
   bool validate() => loginFormKey.currentState?.validate() ?? false;
+
+  void resetSignupControllers() {
+    signupNameController.clear();
+    signupEmailController.clear();
+    signupPasswordController.clear();
+  }
 
   Future<void> tryLoginWithEmailPassword() async {
     buttonLoadingValue.addValue(true);
@@ -118,6 +132,9 @@ abstract class AuthLoginControllerContract extends Object with Disposable {
   void onDispose() {
     authEmailFieldController.dispose();
     passwordController.dispose();
+    signupNameController.dispose();
+    signupEmailController.dispose();
+    signupPasswordController.dispose();
     generalErrorStreamValue.dispose();
     buttonLoadingValue.dispose();
   }

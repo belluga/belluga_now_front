@@ -47,6 +47,8 @@ class TenantAdminAccountProfilesController implements Disposable {
       createStateStreamValue = StreamValue<TenantAdminAccountProfileCreateState>(
     defaultValue: TenantAdminAccountProfileCreateState.initial(),
   );
+  final GlobalKey<FormState> createFormKey = GlobalKey<FormState>();
+  final GlobalKey<FormState> editFormKey = GlobalKey<FormState>();
   final TextEditingController displayNameController = TextEditingController();
   final TextEditingController bioController = TextEditingController();
   final TextEditingController latitudeController = TextEditingController();

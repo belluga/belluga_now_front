@@ -79,10 +79,15 @@ class _AuthLoginCanvaContentState extends State<AuthLoginCanvaContent>
           ],
         ),
         const SizedBox(height: 20),
-        ButtonLoading(
-          onPressed: tryLoginWithEmailPassword,
-          loadingStatusStreamValue: _controller.buttonLoadingValue,
-          label: 'Entrar',
+        StreamValueBuilder<bool>(
+          streamValue: _controller.buttonLoadingValue,
+          builder: (context, isLoading) {
+            return ButtonLoading(
+              onPressed: tryLoginWithEmailPassword,
+              isLoading: isLoading,
+              label: 'Entrar',
+            );
+          },
         ),
         const SizedBox(height: 16),
         TextButton(
@@ -108,9 +113,7 @@ class _AuthLoginCanvaContentState extends State<AuthLoginCanvaContent>
       context.router.replace(const TenantHomeRoute());
 
   Future<void> _openSignupSheet() async {
-    final nameController = TextEditingController();
-    final emailController = TextEditingController();
-    final passwordController = TextEditingController();
+    _controller.resetSignupControllers();
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -133,7 +136,7 @@ class _AuthLoginCanvaContentState extends State<AuthLoginCanvaContent>
                 ),
                 const SizedBox(height: 12),
                 TextField(
-                  controller: nameController,
+                  controller: _controller.signupNameController,
                   textInputAction: TextInputAction.next,
                   decoration: const InputDecoration(
                     labelText: 'Nome',
@@ -142,7 +145,7 @@ class _AuthLoginCanvaContentState extends State<AuthLoginCanvaContent>
                 ),
                 const SizedBox(height: 12),
                 TextField(
-                  controller: emailController,
+                  controller: _controller.signupEmailController,
                   keyboardType: TextInputType.emailAddress,
                   textInputAction: TextInputAction.next,
                   decoration: const InputDecoration(
@@ -152,7 +155,7 @@ class _AuthLoginCanvaContentState extends State<AuthLoginCanvaContent>
                 ),
                 const SizedBox(height: 12),
                 TextField(
-                  controller: passwordController,
+                  controller: _controller.signupPasswordController,
                   obscureText: true,
                   textInputAction: TextInputAction.done,
                   decoration: const InputDecoration(
@@ -166,9 +169,9 @@ class _AuthLoginCanvaContentState extends State<AuthLoginCanvaContent>
                   child: FilledButton(
                     onPressed: () => _submitSignup(
                       ctx,
-                      nameController.text,
-                      emailController.text,
-                      passwordController.text,
+                      _controller.signupNameController.text,
+                      _controller.signupEmailController.text,
+                      _controller.signupPasswordController.text,
                     ),
                     child: const Text('Criar conta'),
                   ),

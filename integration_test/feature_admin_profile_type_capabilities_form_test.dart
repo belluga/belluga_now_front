@@ -27,6 +27,12 @@ void main() {
     if (getIt.isRegistered<TenantAdminAccountProfilesRepositoryContract>()) {
       getIt.unregister<TenantAdminAccountProfilesRepositoryContract>();
     }
+    if (getIt.isRegistered<TenantAdminAccountProfilesController>()) {
+      getIt.unregister<TenantAdminAccountProfilesController>();
+    }
+    if (getIt.isRegistered<TenantAdminLocationPickerController>()) {
+      getIt.unregister<TenantAdminLocationPickerController>();
+    }
 
     getIt.registerSingleton<TenantAdminAccountsRepositoryContract>(
       _FakeTenantAdminAccountsRepository(),
@@ -35,19 +41,23 @@ void main() {
       _FakeTenantAdminAccountProfilesRepository(),
     );
 
-    final controller = TenantAdminAccountProfilesController(
-      profilesRepository: getIt.get<TenantAdminAccountProfilesRepositoryContract>(),
-      accountsRepository: getIt.get<TenantAdminAccountsRepositoryContract>(),
+    getIt.registerSingleton<TenantAdminAccountProfilesController>(
+      TenantAdminAccountProfilesController(
+        profilesRepository:
+            getIt.get<TenantAdminAccountProfilesRepositoryContract>(),
+        accountsRepository:
+            getIt.get<TenantAdminAccountsRepositoryContract>(),
+      ),
     );
-    final locationPickerController = TenantAdminLocationPickerController();
+    getIt.registerSingleton<TenantAdminLocationPickerController>(
+      TenantAdminLocationPickerController(),
+    );
 
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
           body: TenantAdminAccountProfileCreateScreen(
             accountSlug: 'account-1',
-            controller: controller,
-            locationPickerController: locationPickerController,
           ),
         ),
       ),

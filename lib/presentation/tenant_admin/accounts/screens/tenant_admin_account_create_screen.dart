@@ -21,7 +21,6 @@ class TenantAdminAccountCreateScreen extends StatefulWidget {
 
 class _TenantAdminAccountCreateScreenState
     extends State<TenantAdminAccountCreateScreen> {
-  final _formKey = GlobalKey<FormState>();
   final TenantAdminAccountsController _controller =
       GetIt.I.get<TenantAdminAccountsController>();
 
@@ -176,7 +175,7 @@ class _TenantAdminAccountCreateScreenState
             ),
             child: SingleChildScrollView(
               child: Form(
-                key: _formKey,
+                key: _controller.createFormKey,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -193,7 +192,7 @@ class _TenantAdminAccountCreateScreenState
                       child: FilledButton(
                         key: const ValueKey('tenant_admin_account_create_save'),
                         onPressed: () async {
-                          final form = _formKey.currentState;
+                          final form = _controller.createFormKey.currentState;
                           if (form == null || !form.validate()) {
                             return;
                           }

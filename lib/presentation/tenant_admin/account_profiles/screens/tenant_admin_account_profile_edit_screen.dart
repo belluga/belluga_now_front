@@ -27,7 +27,6 @@ class TenantAdminAccountProfileEditScreen extends StatefulWidget {
 
 class _TenantAdminAccountProfileEditScreenState
     extends State<TenantAdminAccountProfileEditScreen> {
-  final _formKey = GlobalKey<FormState>();
   final TenantAdminAccountProfilesController _controller =
       GetIt.I.get<TenantAdminAccountProfilesController>();
 
@@ -442,7 +441,7 @@ class _TenantAdminAccountProfileEditScreenState
             ),
             child: SingleChildScrollView(
               child: Form(
-                key: _formKey,
+                key: _controller.editFormKey,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -468,7 +467,8 @@ class _TenantAdminAccountProfileEditScreenState
                         onPressed: state.isLoading
                             ? null
                             : () async {
-                                final form = _formKey.currentState;
+                                final form =
+                                    _controller.editFormKey.currentState;
                                 if (form == null || !form.validate()) {
                                   return;
                                 }

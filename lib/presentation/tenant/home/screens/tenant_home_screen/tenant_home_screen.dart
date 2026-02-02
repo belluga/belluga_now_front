@@ -1,6 +1,5 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
-import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/presentation/tenant/home/screens/tenant_home_screen/controllers/tenant_home_controller.dart';
 import 'package:belluga_now/presentation/tenant/home/screens/tenant_home_screen/widgets/agenda_section/controllers/tenant_home_agenda_controller.dart';
 import 'package:belluga_now/presentation/tenant/home/screens/tenant_home_screen/widgets/agenda_section/home_agenda_section.dart';
@@ -14,8 +13,8 @@ import 'package:belluga_now/presentation/tenant/schedule/screens/event_search_sc
 import 'package:belluga_now/presentation/tenant/widgets/belluga_bottom_navigation_bar.dart';
 import 'package:belluga_now/presentation/tenant/widgets/section_header.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:get_it/get_it.dart';
+import 'package:stream_value/core/stream_value_builder.dart';
  
 
 class TenantHomeScreen extends StatefulWidget {
@@ -34,7 +33,6 @@ class _TenantHomeScreenState extends State<TenantHomeScreen> {
       GetIt.I.get<InvitesBannerBuilderController>();
   final TenantHomeAgendaController _homeAgendaController =
       GetIt.I.get<TenantHomeAgendaController>();
-  final AppData _appData = GetIt.I.get<AppData>();
 
   @override
   void initState() {
@@ -62,9 +60,10 @@ class _TenantHomeScreenState extends State<TenantHomeScreen> {
               return NestedScrollView(
                 controller: _controller.scrollController,
                 headerSliverBuilder: (context, innerBoxIsScrolled) => [
-                  HomeAppBar(
-                    appData: _appData,
-                    userAddressStreamValue: _controller.userAddressStreamValue,
+                  StreamValueBuilder<String>(
+                    streamValue: _controller.userAddressStreamValue,
+                    onNullWidget: _buildHomeAppBar(null),
+                    builder: (context, address) => _buildHomeAppBar(address),
                   ),
                   SliverToBoxAdapter(
                     child: Padding(
@@ -87,12 +86,16 @@ class _TenantHomeScreenState extends State<TenantHomeScreen> {
                             controller: _invitesBannerController,
                           ),
                           const SizedBox(height: 12),
-                          HomeMyEventsCarousel(
-                            myEventsFilteredStreamValue:
-                                _controller.myEventsFilteredStreamValue,
-                            onSeeAll: _openConfirmedAgenda,
-                            distanceLabelProvider:
-                                _controller.distanceLabelForMyEvent,
+                          StreamValueBuilder(
+                            streamValue: _controller.myEventsFilteredStreamValue,
+                            builder: (context, events) {
+                              return HomeMyEventsCarousel(
+                                events: events,
+                                onSeeAll: _openConfirmedAgenda,
+                                distanceLabelProvider:
+                                    _controller.distanceLabelForMyEvent,
+                              );
+                            },
                           ),
                         ],
                       ),
@@ -112,6 +115,13 @@ class _TenantHomeScreenState extends State<TenantHomeScreen> {
   void _openConfirmedAgenda() {
     context.router.push(
       EventSearchRoute(inviteFilter: InviteFilter.confirmedOnly),
+    );
+  }
+
+  Widget _buildHomeAppBar(String? address) {
+    return HomeAppBar(
+      appData: _controller.appData,
+      userAddress: address,
     );
   }
 
@@ -146,9 +156,13 @@ class _TenantHomeScreenState extends State<TenantHomeScreen> {
         false;
 
     if (shouldExit) {
-      await SystemNavigator.pop();
+      _performExitNavigation();
     }
 
     return false;
+  }
+
+  void _performExitNavigation() {
+    context.router.pop();
   }
 }

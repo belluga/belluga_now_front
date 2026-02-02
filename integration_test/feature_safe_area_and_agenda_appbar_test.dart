@@ -50,7 +50,6 @@ void main() {
       MaterialApp(
         home: LocationPermissionScreen(
           initialState: LocationPermissionState.denied,
-          controller: controller,
         ),
       ),
     );
@@ -60,6 +59,18 @@ void main() {
   });
 
   testWidgets('LocationNotLiveScreen uses SafeArea', (tester) async {
+    final getIt = GetIt.I;
+    if (getIt.isRegistered<LocationPermissionController>()) {
+      getIt.unregister<LocationPermissionController>();
+    }
+    final controller = LocationPermissionController();
+    getIt.registerSingleton<LocationPermissionController>(controller);
+    addTearDown(() {
+      if (getIt.isRegistered<LocationPermissionController>()) {
+        getIt.unregister<LocationPermissionController>();
+      }
+    });
+
     await tester.pumpWidget(
       MaterialApp(
         home: LocationNotLiveScreen(
@@ -97,9 +108,7 @@ void main() {
       MediaQuery(
         data: MediaQueryData(padding: EdgeInsets.only(top: 24)),
         child: MaterialApp(
-          home: EventSearchScreen(
-            controller: getIt.get<EventSearchScreenController>(),
-          ),
+          home: EventSearchScreen(),
         ),
       ),
     );

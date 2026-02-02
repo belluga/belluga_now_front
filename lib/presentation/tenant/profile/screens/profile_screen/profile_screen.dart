@@ -328,7 +328,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     TextInputType? keyboardType,
     int maxLines = 1,
   }) async {
-    final tempController = TextEditingController(text: controller.text);
+    _controller.editFieldController.text = controller.text;
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -344,7 +344,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               TextField(
-                controller: tempController,
+                controller: _controller.editFieldController,
                 keyboardType: keyboardType,
                 maxLines: maxLines,
                 decoration: InputDecoration(
@@ -364,7 +364,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   const SizedBox(width: 8),
                   FilledButton(
                     onPressed: () {
-                      controller.text = tempController.text;
+                      controller.text = _controller.editFieldController.text;
                       ctx.router.pop();
                       _controller.bumpFormVersion();
                     },
@@ -435,8 +435,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
   ) async {
     final theme = Theme.of(context);
     double initialKm = math.max(1, selectedMeters / 1000);
-    final controller =
-        TextEditingController(text: _formatRadiusInputValue(initialKm));
+    _controller.radiusKmController.text =
+        _formatRadiusInputValue(initialKm);
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -466,7 +466,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                 ),
                 TextField(
-                  controller: controller,
+                  controller: _controller.radiusKmController,
                   autofocus: true,
                   keyboardType: const TextInputType.numberWithOptions(
                     decimal: true,
@@ -480,11 +480,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 const SizedBox(height: 12),
                 SizedBox(
                   width: double.infinity,
-                  child: FilledButton(
-                    onPressed: () {
-                      final parsed = double.tryParse(
-                        controller.text.replaceAll(',', '.'),
-                      );
+                    child: FilledButton(
+                      onPressed: () {
+                        final parsed = double.tryParse(
+                          _controller.radiusKmController.text
+                              .replaceAll(',', '.'),
+                        );
                       if (parsed == null) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(

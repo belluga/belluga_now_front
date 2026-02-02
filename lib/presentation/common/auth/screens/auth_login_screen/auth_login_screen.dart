@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
-import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/presentation/common/auth/screens/auth_login_screen/widgets/auth_header_expanded_content.dart';
 import 'package:belluga_now/presentation/common/auth/screens/auth_login_screen/widgets/auth_header_headline.dart';
 import 'package:belluga_now/presentation/common/auth/screens/auth_login_screen/widgets/auth_login_canva_content.dart';
@@ -27,7 +26,6 @@ class _AuthLoginScreenState extends State<AuthLoginScreen>
       GetIt.I.get<AuthLoginControllerContract>();
   final LandlordLoginController _landlordLoginController =
       GetIt.I.get<LandlordLoginController>();
-  final AppData _appData = GetIt.I.get<AppData>();
   StreamSubscription<String?>? _generalErrorSubscription;
 
   @override
@@ -54,7 +52,7 @@ class _AuthLoginScreenState extends State<AuthLoginScreen>
                 _controller.sliverAppBarController.expandedBarHeight,
             pinned: true,
             backgroundColor: Theme.of(context).primaryColor,
-            title: MainLogo(appData: _appData),
+            title: MainLogo(appData: _controller.appData),
             flexibleSpace: FlexibleSpaceBar(
               collapseMode: CollapseMode.parallax,
               background: AuthHeaderExpandedContent(),

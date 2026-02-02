@@ -19,10 +19,13 @@ class _StatusBannerState extends State<StatusBanner> {
   @override
   Widget build(BuildContext context) {
     final baseStyle = Theme.of(context).textTheme.bodySmall;
-    return StreamValueBuilder<String>(
+    return StreamValueBuilder<String?>(
       streamValue: _controller.statusMessageStreamValue,
       onNullWidget: SizedBox.shrink(),
       builder: (_, message) {
+        if (message == null) {
+          return const SizedBox.shrink();
+        }
         return Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           decoration: BoxDecoration(

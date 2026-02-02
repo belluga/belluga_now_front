@@ -41,6 +41,7 @@ class TenantAdminAccountsController implements Disposable {
       StreamValue<TenantAdminAccountCreateState>(
     defaultValue: TenantAdminAccountCreateState.initial(),
   );
+  final GlobalKey<FormState> createFormKey = GlobalKey<FormState>();
   final TextEditingController nameController = TextEditingController();
   final TextEditingController documentTypeController = TextEditingController();
   final TextEditingController documentNumberController = TextEditingController();

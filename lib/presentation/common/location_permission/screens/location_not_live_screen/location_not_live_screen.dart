@@ -1,9 +1,10 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/guards/location_permission_state.dart';
+import 'package:belluga_now/presentation/common/location_permission/controllers/location_permission_controller.dart';
 import 'package:belluga_now/presentation/common/widgets/button_loading.dart';
 import 'package:flutter/material.dart';
-import 'package:geolocator/geolocator.dart';
-import 'package:stream_value/core/stream_value.dart';
+import 'package:get_it/get_it.dart';
+import 'package:stream_value/core/stream_value_builder.dart';
 
 class LocationNotLiveScreen extends StatefulWidget {
   const LocationNotLiveScreen({
@@ -22,13 +23,8 @@ class LocationNotLiveScreen extends StatefulWidget {
 }
 
 class _LocationNotLiveScreenState extends State<LocationNotLiveScreen> {
-  final _loading = StreamValue<bool>(defaultValue: false);
-
-  @override
-  void dispose() {
-    _loading.dispose();
-    super.dispose();
-  }
+  final LocationPermissionController _controller =
+      GetIt.I.get<LocationPermissionController>();
 
   @override
   Widget build(BuildContext context) {
@@ -97,10 +93,15 @@ class _LocationNotLiveScreenState extends State<LocationNotLiveScreen> {
                 ),
               ),
               const Spacer(),
-              ButtonLoading(
-                label: primaryLabel,
-                loadingStatusStreamValue: _loading,
-                onPressed: _onEnablePressed,
+              StreamValueBuilder(
+                streamValue: _controller.loading,
+                builder: (context, isLoading) {
+                  return ButtonLoading(
+                    label: primaryLabel,
+                    isLoading: isLoading,
+                    onPressed: _onEnablePressed,
+                  );
+                },
               ),
               const SizedBox(height: 12),
               TextButton(
@@ -115,31 +116,11 @@ class _LocationNotLiveScreenState extends State<LocationNotLiveScreen> {
   }
 
   Future<void> _onEnablePressed() async {
-    _loading.addValue(true);
-    try {
-      switch (widget.blockerState) {
-        case LocationPermissionState.serviceDisabled:
-          await Geolocator.openLocationSettings();
-          break;
-        case LocationPermissionState.denied:
-          await Geolocator.requestPermission();
-          break;
-        case LocationPermissionState.deniedForever:
-          await Geolocator.openAppSettings();
-          break;
-      }
-      final serviceEnabled = await Geolocator.isLocationServiceEnabled();
-      if (!serviceEnabled) return;
-      final permission = await Geolocator.checkPermission();
-      final granted = permission == LocationPermission.always ||
-          permission == LocationPermission.whileInUse;
-      if (!granted) return;
-
-      if (!mounted) return;
-      context.router.pop(true);
-    } finally {
-      _loading.addValue(false);
-    }
+    final granted = await _controller.ensureReady(
+      initialState: widget.blockerState,
+    );
+    if (!mounted || !granted) return;
+    context.router.pop(true);
   }
 
   String _relativeAge(DateTime capturedAt) {

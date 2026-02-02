@@ -3,6 +3,7 @@ import 'package:belluga_now/application/router/guards/location_permission_state.
 import 'package:belluga_now/presentation/common/location_permission/controllers/location_permission_controller.dart';
 import 'package:belluga_now/presentation/common/widgets/button_loading.dart';
 import 'package:flutter/material.dart';
+import 'package:stream_value/core/stream_value_builder.dart';
 import 'package:get_it/get_it.dart';
 
 class LocationPermissionScreen extends StatefulWidget {
@@ -66,10 +67,15 @@ class _LocationPermissionScreenState extends State<LocationPermissionScreen> {
                 style: Theme.of(context).textTheme.bodyLarge,
               ),
               const Spacer(),
-              ButtonLoading(
-                label: primaryLabel,
-                loadingStatusStreamValue: _controller.loading,
-                onPressed: _onPrimaryPressed,
+              StreamValueBuilder(
+                streamValue: _controller.loading,
+                builder: (context, isLoading) {
+                  return ButtonLoading(
+                    label: primaryLabel,
+                    isLoading: isLoading,
+                    onPressed: _onPrimaryPressed,
+                  );
+                },
               ),
               const SizedBox(height: 12),
               OutlinedButton(

@@ -32,6 +32,7 @@ class TenantAdminProfileTypesController implements Disposable {
       StreamValue<TenantAdminProfileTypeCapabilities>(
     defaultValue: _emptyCapabilities,
   );
+  final GlobalKey<FormState> formKey = GlobalKey<FormState>();
   final TextEditingController typeController = TextEditingController();
   final TextEditingController labelController = TextEditingController();
   final TextEditingController taxonomiesController = TextEditingController();

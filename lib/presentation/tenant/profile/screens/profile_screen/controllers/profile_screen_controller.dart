@@ -43,6 +43,8 @@ class ProfileScreenController implements Disposable {
   final TextEditingController descriptionController = TextEditingController();
   final TextEditingController emailController = TextEditingController();
   final TextEditingController phoneController = TextEditingController();
+  final TextEditingController editFieldController = TextEditingController();
+  final TextEditingController radiusKmController = TextEditingController();
   final StreamValue<String?> localAvatarPathStreamValue =
       StreamValue<String?>();
   final StreamValue<int> formVersionStreamValue =
@@ -160,6 +162,8 @@ class ProfileScreenController implements Disposable {
     descriptionController.dispose();
     emailController.dispose();
     phoneController.dispose();
+    editFieldController.dispose();
+    radiusKmController.dispose();
     localAvatarPathStreamValue.dispose();
     formVersionStreamValue.dispose();
   }
