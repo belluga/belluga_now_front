@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/presentation/common/auth/screens/auth_login_screen/widgets/auth_login_form.dart';
@@ -36,80 +38,96 @@ class _AuthLoginCanvaContentState extends State<AuthLoginCanvaContent>
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        StreamValueBuilder(
-          streamValue: _controller.sliverAppBarController.keyboardIsOpened,
-          builder: (context, isOpened) {
-            if (isOpened) {
-              return const SizedBox.shrink();
-            }
-
+    return StreamValueBuilder<bool?>(
+      streamValue: _controller.loginResultStreamValue,
+      builder: (context, loginResult) {
+        _handleLoginResult(loginResult);
+        return StreamValueBuilder<bool?>(
+          streamValue: _controller.signUpResultStreamValue,
+          builder: (context, signUpResult) {
+            _handleSignUpResult(signUpResult);
             return Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text('Entrar', style: TextTheme.of(context).titleLarge),
+                StreamValueBuilder(
+                  streamValue:
+                      _controller.sliverAppBarController.keyboardIsOpened,
+                  builder: (context, isOpened) {
+                    if (isOpened) {
+                      return const SizedBox.shrink();
+                    }
+
+                    return Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'Entrar',
+                          style: TextTheme.of(context).titleLarge,
+                        ),
+                        const SizedBox(height: 20),
+                      ],
+                    );
+                  },
+                ),
+                AuthLoginForm(controller: _controller),
+                Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const SizedBox(height: 20),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Text(
+                          'Esqueci minha senha.',
+                          style: TextStyle(fontSize: 12),
+                        ),
+                        TextButton(
+                          onPressed: widget.navigateToPasswordRecover,
+                          child: const Text(
+                            'Recuperar agora',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
                 const SizedBox(height: 20),
-              ],
-            );
-          },
-        ),
-        AuthLoginForm(controller: _controller),
-        Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const SizedBox(height: 20),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Text(
-                  'Esqueci minha senha.',
-                  style: TextStyle(fontSize: 12),
+                StreamValueBuilder<bool>(
+                  streamValue: _controller.buttonLoadingValue,
+                  builder: (context, isLoading) {
+                    return ButtonLoading(
+                      onPressed: tryLoginWithEmailPassword,
+                      isLoading: isLoading,
+                      label: 'Entrar',
+                    );
+                  },
+                ),
+                const SizedBox(height: 16),
+                TextButton(
+                  onPressed: _openSignupSheet,
+                  child: const Text('Criar conta'),
                 ),
                 TextButton(
-                  onPressed: widget.navigateToPasswordRecover,
-                  child: const Text(
-                    'Recuperar agora',
-                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-                  ),
+                  onPressed: _openLandlordLogin,
+                  child: const Text('Entrar como Admin'),
                 ),
               ],
-            ),
-          ],
-        ),
-        const SizedBox(height: 20),
-        StreamValueBuilder<bool>(
-          streamValue: _controller.buttonLoadingValue,
-          builder: (context, isLoading) {
-            return ButtonLoading(
-              onPressed: tryLoginWithEmailPassword,
-              isLoading: isLoading,
-              label: 'Entrar',
             );
           },
-        ),
-        const SizedBox(height: 16),
-        TextButton(
-          onPressed: _openSignupSheet,
-          child: const Text('Criar conta'),
-        ),
-        TextButton(
-          onPressed: _openLandlordLogin,
-          child: const Text('Entrar como Admin'),
-        ),
-      ],
+        );
+      },
     );
   }
 
-  Future<void> tryLoginWithEmailPassword() async {
-    await _controller.tryLoginWithEmailPassword();
-    if (_controller.isAuthorized) {
-      _navigateToAuthorizedPage();
-    }
+  void tryLoginWithEmailPassword() {
+    unawaited(_controller.tryLoginWithEmailPassword());
   }
 
-  Future<void> _navigateToAuthorizedPage() async =>
+  void _navigateToAuthorizedPage() =>
       context.router.replace(const TenantHomeRoute());
 
   Future<void> _openSignupSheet() async {
@@ -185,59 +203,58 @@ class _AuthLoginCanvaContentState extends State<AuthLoginCanvaContent>
   }
 
   Future<void> _openLandlordLogin() async {
+    final router = context.router;
     final didLogin = await showLandlordLoginSheet(
       context,
       controller: widget.landlordLoginController,
     );
-    if (!mounted || !didLogin) {
+    if (!didLogin) {
       return;
     }
-    context.router.replaceAll([const TenantAdminShellRoute()]);
+    router.replaceAll([const TenantAdminShellRoute()]);
   }
 
-  Future<void> _submitSignup(
+  void _submitSignup(
     BuildContext ctx,
     String name,
     String email,
     String password,
-  ) async {
+  ) {
+    final messenger = ScaffoldMessenger.of(ctx);
     final normalizedName = name.trim();
     final normalizedEmail = email.trim();
     if (normalizedName.isEmpty ||
         normalizedEmail.isEmpty ||
         password.trim().isEmpty) {
-      ScaffoldMessenger.of(ctx).showSnackBar(
+      messenger.showSnackBar(
         const SnackBar(content: Text('Preencha todos os campos.')),
       );
       return;
     }
-
-    try {
-      final isAuthorized = await _controller.signUpWithEmailPassword(
+    unawaited(
+      _controller.signUpWithEmailPassword(
         normalizedName,
         normalizedEmail,
         password,
-      );
-      if (!ctx.mounted) return;
-      ctx.router.pop();
-      if (!mounted) return;
-      if (isAuthorized) {
-        context.router.replace(const TenantHomeRoute());
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Falha ao autenticar apÃ³s o cadastro.'),
-          ),
-        );
-      }
-    } catch (e) {
-      if (!ctx.mounted) {
-        return;
-      }
-      ScaffoldMessenger.of(ctx).showSnackBar(
-        SnackBar(content: Text('Falha ao criar conta: $e')),
-      );
+      ),
+    );
+  }
+
+  void _handleLoginResult(bool? authorized) {
+    if (authorized == null) return;
+    if (authorized) {
+      _navigateToAuthorizedPage();
     }
+    _controller.clearLoginResult();
+  }
+
+  void _handleSignUpResult(bool? authorized) {
+    if (authorized == null) return;
+    if (authorized) {
+      Navigator.of(context).maybePop();
+      _navigateToAuthorizedPage();
+    }
+    _controller.clearSignUpResult();
   }
 
   @override

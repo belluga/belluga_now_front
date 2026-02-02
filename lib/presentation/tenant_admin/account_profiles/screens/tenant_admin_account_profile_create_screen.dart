@@ -29,22 +29,15 @@ class _TenantAdminAccountProfileCreateScreenState
     extends State<TenantAdminAccountProfileCreateScreen> {
   final TenantAdminAccountProfilesController _controller =
       GetIt.I.get<TenantAdminAccountProfilesController>();
-  String? _accountId;
 
   @override
   void initState() {
     super.initState();
+    _controller.bindCreateFlow();
     _controller.resetCreateState();
     _controller.resetFormControllers();
-    _load();
-  }
-
-  Future<void> _load() async {
-    await _controller.loadProfileTypes();
-    final account =
-        await _controller.resolveAccountBySlug(widget.accountSlug);
-    if (!mounted) return;
-    _accountId = account.id;
+    _controller.loadProfileTypes();
+    _controller.loadAccountForCreate(widget.accountSlug);
   }
 
   @override
@@ -185,16 +178,11 @@ class _TenantAdminAccountProfileCreateScreenState
 
   Future<void> _openMapPicker() async {
     final currentLocation = _currentLocation();
-    final selected = await context.router.push<TenantAdminLocation?>(
+    context.router.push<TenantAdminLocation?>(
       TenantAdminLocationPickerRoute(
         initialLocation: currentLocation,
       ),
     );
-    if (selected == null) {
-      return;
-    }
-    _controller.latitudeController.text = selected.latitude.toStringAsFixed(6);
-    _controller.longitudeController.text = selected.longitude.toStringAsFixed(6);
   }
 
   TenantAdminLocation? _currentLocation() {
@@ -223,22 +211,16 @@ class _TenantAdminAccountProfileCreateScreenState
     final lowerName = selected.name.toLowerCase();
     const allowed = ['.jpg', '.jpeg', '.png', '.webp'];
     if (!allowed.any(lowerName.endsWith)) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Formato de imagem invalido. Use JPG, PNG ou WEBP.'),
-        ),
+      _controller.reportCreateErrorMessage(
+        'Formato de imagem invalido. Use JPG, PNG ou WEBP.',
       );
       return;
     }
     final size = await selected.length();
     const maxBytes = 5 * 1024 * 1024;
     if (size > maxBytes) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Imagem muito grande. Maximo 5MB.'),
-        ),
+      _controller.reportCreateErrorMessage(
+        'Imagem muito grande. Maximo 5MB.',
       );
       return;
     }
@@ -271,12 +253,9 @@ class _TenantAdminAccountProfileCreateScreenState
     if (form == null || !form.validate()) {
       return;
     }
-    final messenger = ScaffoldMessenger.of(context);
-    final router = context.router;
-    if (_accountId == null) {
-      messenger.showSnackBar(
-        const SnackBar(content: Text('Conta inválida.')),
-      );
+    final accountId = _controller.createAccountIdStreamValue.value;
+    if (accountId == null) {
+      _controller.reportCreateErrorMessage('Conta inválida.');
       return;
     }
     final state = _controller.createStateStreamValue.value;
@@ -291,8 +270,8 @@ class _TenantAdminAccountProfileCreateScreenState
         _hasCover(state.selectedProfileType)
             ? await _buildUpload(state.coverFile)
             : null;
-    await _controller.createProfile(
-      accountId: _accountId!,
+    _controller.submitCreateProfile(
+      accountId: accountId,
       profileType: selectedType,
       displayName: _controller.displayNameController.text.trim(),
       location: location,
@@ -301,74 +280,103 @@ class _TenantAdminAccountProfileCreateScreenState
       avatarUpload: avatarUpload,
       coverUpload: coverUpload,
     );
-    if (!context.mounted) return;
-    messenger.showSnackBar(
-      const SnackBar(content: Text('Perfil salvo.')),
-    );
-    router.maybePop();
   }
 
   @override
   Widget build(BuildContext context) {
-    return StreamValueBuilder<TenantAdminAccountProfileCreateState>(
-      streamValue: _controller.createStateStreamValue,
-      builder: (context, state) {
-        final requiresLocation = _requiresLocation(state.selectedProfileType);
-        final hasMedia =
-            _hasAvatar(state.selectedProfileType) || _hasCover(state.selectedProfileType);
-        final hasContent =
-            _hasBio(state.selectedProfileType) || _hasTaxonomies(state.selectedProfileType);
-        return Scaffold(
-          appBar: AppBar(
-            title: Text('Criar Perfil - ${widget.accountSlug}'),
-            leading: IconButton(
-              icon: const Icon(Icons.arrow_back),
-              onPressed: () => context.router.maybePop(),
-              tooltip: 'Voltar',
-            ),
-          ),
-          body: Padding(
-            padding: EdgeInsets.fromLTRB(
-              16,
-              16,
-              16,
-              16 + MediaQuery.of(context).viewInsets.bottom,
-            ),
-            child: SingleChildScrollView(
-              child: Form(
-                key: _controller.createFormKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildProfileSection(context, state),
-                    if (hasContent) ...[
-                      const SizedBox(height: 16),
-                      _buildContentSection(context, state),
-                    ],
-                    if (hasMedia) ...[
-                      const SizedBox(height: 16),
-                      _buildMediaSection(context, state),
-                    ],
-                    if (requiresLocation) ...[
-                      const SizedBox(height: 16),
-                      _buildLocationSection(context),
-                    ],
-                    const SizedBox(height: 24),
-                    SizedBox(
-                      width: double.infinity,
-                      child: FilledButton(
-                        onPressed: _submit,
-                        child: const Text('Salvar perfil'),
+    return StreamValueBuilder<String?>(
+      streamValue: _controller.createSuccessMessageStreamValue,
+      builder: (context, successMessage) {
+        _handleCreateSuccessMessage(successMessage);
+        return StreamValueBuilder<String?>(
+          streamValue: _controller.createErrorMessageStreamValue,
+          builder: (context, errorMessage) {
+            _handleCreateErrorMessage(errorMessage);
+            return StreamValueBuilder<TenantAdminAccountProfileCreateState>(
+              streamValue: _controller.createStateStreamValue,
+              builder: (context, state) {
+                final requiresLocation =
+                    _requiresLocation(state.selectedProfileType);
+                final hasMedia = _hasAvatar(state.selectedProfileType) ||
+                    _hasCover(state.selectedProfileType);
+                final hasContent = _hasBio(state.selectedProfileType) ||
+                    _hasTaxonomies(state.selectedProfileType);
+                return Scaffold(
+                  appBar: AppBar(
+                    title: Text('Criar Perfil - ${widget.accountSlug}'),
+                    leading: IconButton(
+                      icon: const Icon(Icons.arrow_back),
+                      onPressed: () => context.router.maybePop(),
+                      tooltip: 'Voltar',
+                    ),
+                  ),
+                  body: Padding(
+                    padding: EdgeInsets.fromLTRB(
+                      16,
+                      16,
+                      16,
+                      16 + MediaQuery.of(context).viewInsets.bottom,
+                    ),
+                    child: SingleChildScrollView(
+                      child: Form(
+                        key: _controller.createFormKey,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildProfileSection(context, state),
+                            if (hasContent) ...[
+                              const SizedBox(height: 16),
+                              _buildContentSection(context, state),
+                            ],
+                            if (hasMedia) ...[
+                              const SizedBox(height: 16),
+                              _buildMediaSection(context, state),
+                            ],
+                            if (requiresLocation) ...[
+                              const SizedBox(height: 16),
+                              _buildLocationSection(context),
+                            ],
+                            const SizedBox(height: 24),
+                            SizedBox(
+                              width: double.infinity,
+                              child: FilledButton(
+                                onPressed: _submit,
+                                child: const Text('Salvar perfil'),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
-                  ],
-                ),
-              ),
-            ),
-          ),
+                  ),
+                );
+              },
+            );
+          },
         );
       },
     );
+  }
+
+  void _handleCreateSuccessMessage(String? message) {
+    if (message == null) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _controller.clearCreateSuccessMessage();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message)),
+      );
+      context.router.maybePop();
+    });
+  }
+
+  void _handleCreateErrorMessage(String? message) {
+    if (message == null) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _controller.clearCreateErrorMessage();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message)),
+      );
+    });
   }
 
   Widget _buildProfileSection(

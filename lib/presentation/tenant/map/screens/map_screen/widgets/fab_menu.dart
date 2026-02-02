@@ -16,7 +16,7 @@ class FabMenu extends StatefulWidget {
     required this.controller,
   });
 
-  final Future<void> Function() onNavigateToUser;
+  final VoidCallback onNavigateToUser;
   final FabMenuController controller;
 
   @override
@@ -29,6 +29,13 @@ class _FabMenuState extends State<FabMenu> {
   late final FabMenuController _fabController = widget.controller;
 
   Timer? _condenseTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _handleExpandedStream(_fabController.expandedStreamValue.value);
+    _handleFilterModeStream(_fabController.filterModeStreamValue.value);
+  }
 
   @override
   void dispose() {
@@ -49,35 +56,40 @@ class _FabMenuState extends State<FabMenu> {
     });
   }
 
+  void _handleExpandedStream(bool expanded) {
+    if (_fabController.lastExpanded == expanded) {
+      return;
+    }
+    _fabController.lastExpanded = expanded;
+    _handleExpandedChange(expanded);
+  }
+
+  void _handleFilterModeStream(PoiFilterMode mode) {
+    if (_fabController.lastFilterMode == mode) {
+      return;
+    }
+    if (_fabController.ignoreNextFilterChangeStreamValue.value) {
+      _fabController.setIgnoreNextFilterChange(false);
+    } else {
+      if (_fabController.lastFilterMode != null) {
+        _fabController.previousFilterMode = _fabController.lastFilterMode!;
+      }
+      _fabController.setRevertedOnClose(false);
+    }
+    _fabController.lastFilterMode = mode;
+  }
+
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     return StreamValueBuilder<bool>(
       streamValue: _fabController.expandedStreamValue,
       builder: (_, expanded) {
-        if (_fabController.lastExpanded != expanded) {
-          _fabController.lastExpanded = expanded;
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted) {
-              _handleExpandedChange(expanded);
-            }
-          });
-        }
+        _handleExpandedStream(expanded);
         return StreamValueBuilder<PoiFilterMode>(
           streamValue: _fabController.filterModeStreamValue,
           builder: (_, mode) {
-            if (_fabController.lastFilterMode != mode) {
-              if (_fabController.ignoreNextFilterChangeStreamValue.value) {
-                _fabController.setIgnoreNextFilterChange(false);
-              } else {
-                if (_fabController.lastFilterMode != null) {
-                  _fabController.previousFilterMode =
-                      _fabController.lastFilterMode!;
-                }
-                _fabController.setRevertedOnClose(false);
-              }
-              _fabController.lastFilterMode = mode;
-            }
+            _handleFilterModeStream(mode);
             final filterConfigs = [
               const _FilterConfig(
                 mode: PoiFilterMode.events,

@@ -40,14 +40,52 @@ class _PoiDetailDeckState extends State<PoiDetailDeck>
   late final MapScreenController _controller = widget.controller;
   final PageController _pageController = PageController(viewportFraction: 0.8);
   final PoiDetailCardBuilder _cardBuilder = const PoiDetailCardBuilder();
+  PoiFilterMode? _lastFilterMode;
+  int? _lastPoiDeckIndex;
 
   static const double _defaultCardHeight = 320;
   static const double _minCardHeight = 220;
 
   @override
+  void initState() {
+    super.initState();
+    _lastFilterMode = _controller.filterModeStreamValue.value;
+    _lastPoiDeckIndex = _controller.poiDeckIndexStreamValue.value;
+    _applyFilterMode(_lastFilterMode!);
+    _applyPoiDeckIndex(_lastPoiDeckIndex!);
+  }
+
+  @override
   void dispose() {
     _pageController.dispose();
     super.dispose();
+  }
+
+  void _applyFilterMode(PoiFilterMode mode) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_controller.lastPoiDeckFilterMode != mode) {
+        _controller.lastPoiDeckFilterMode = mode;
+        if (mode != PoiFilterMode.none) {
+          _resetCarousel();
+        }
+      }
+      if (mode == PoiFilterMode.none &&
+          _controller.poiDeckIndexStreamValue.value != 0) {
+        _resetCarousel();
+      }
+    });
+  }
+
+  void _applyPoiDeckIndex(int index) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!_pageController.hasClients) {
+        return;
+      }
+      final pageIndex = _pageController.page?.round();
+      if (pageIndex != null && pageIndex != index) {
+        _pageController.jumpToPage(index);
+      }
+    });
   }
 
   @override
@@ -56,15 +94,9 @@ class _PoiDetailDeckState extends State<PoiDetailDeck>
     return StreamValueBuilder<PoiFilterMode>(
       streamValue: _controller.filterModeStreamValue,
       builder: (_, mode) {
-        if (_controller.lastPoiDeckFilterMode != mode) {
-          _controller.lastPoiDeckFilterMode = mode;
-          if (mode != PoiFilterMode.none) {
-            _resetCarousel();
-          }
-        }
-        if (mode == PoiFilterMode.none &&
-            _controller.poiDeckIndexStreamValue.value != 0) {
-          _resetCarousel();
+        if (_lastFilterMode != mode) {
+          _lastFilterMode = mode;
+          _applyFilterMode(mode);
         }
         if (mode != PoiFilterMode.none) {
           return StreamValueBuilder<List<CityPoiModel>>(
@@ -76,17 +108,12 @@ class _PoiDetailDeckState extends State<PoiDetailDeck>
               return StreamValueBuilder<int>(
                 streamValue: _controller.poiDeckIndexStreamValue,
                 builder: (_, pageIndex) {
+                  if (_lastPoiDeckIndex != pageIndex) {
+                    _lastPoiDeckIndex = pageIndex;
+                    _applyPoiDeckIndex(pageIndex);
+                  }
                   final clampedIndex =
                       pageIndex.clamp(0, filtered.length - 1).toInt();
-                  if (clampedIndex != pageIndex &&
-                      _pageController.hasClients &&
-                      mounted) {
-                    WidgetsBinding.instance.addPostFrameCallback((_) {
-                      if (!_pageController.hasClients) return;
-                      _pageController.jumpToPage(0);
-                    });
-                    _controller.setPoiDeckIndex(clampedIndex);
-                  }
                   final currentPoi = filtered[clampedIndex];
                   final deckHeight = _heightForPoi(context, currentPoi);
                   return FilteredDeck(
@@ -140,9 +167,6 @@ class _PoiDetailDeckState extends State<PoiDetailDeck>
 
   void _resetCarousel() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) {
-        return;
-      }
       _controller.resetPoiDeckIndex();
       if (_pageController.hasClients) {
         _pageController.jumpToPage(0);
@@ -153,17 +177,12 @@ class _PoiDetailDeckState extends State<PoiDetailDeck>
   void _handlePoiAction(CityPoiModel poi) {
     if (poi is EventPoiModel) {
       final slug = poi.event.slug;
-      if (slug.isNotEmpty && mounted) {
+      if (slug.isNotEmpty) {
         context.router.push(ImmersiveEventDetailRoute(eventSlug: slug));
       }
       return;
     }
-    if (!mounted) return;
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(content: Text('Abrindo ${poi.name}')),
-      );
+    _controller.statusMessageStreamValue.addValue('Abrindo ${poi.name}');
   }
 
   Future<void> _handleShare(CityPoiModel poi) async {
@@ -173,7 +192,8 @@ class _PoiDetailDeckState extends State<PoiDetailDeck>
         ShareParams(text: payload.message, subject: payload.subject),
       );
     } catch (_) {
-      _showMessage('Não foi possível compartilhar ${poi.name}.');
+      _controller.statusMessageStreamValue
+          .addValue('Não foi possível compartilhar ${poi.name}.');
     }
   }
 
@@ -181,10 +201,10 @@ class _PoiDetailDeckState extends State<PoiDetailDeck>
     _controller.logDirectionsOpened(poi);
     final info = await _prepareDirections(poi);
     if (info == null) {
-      _showMessage('Localização indisponível para ${poi.name}.');
+      _controller.statusMessageStreamValue
+          .addValue('Localização indisponível para ${poi.name}.');
       return;
     }
-    if (!mounted) return;
     await _presentDirectionsOptions(info, poi);
   }
 
@@ -326,8 +346,6 @@ class _PoiDetailDeckState extends State<PoiDetailDeck>
       return;
     }
 
-    if (!mounted) return;
-
     await showModalBottomSheet<void>(
       context: context,
       builder: (sheetContext) {
@@ -394,8 +412,9 @@ class _PoiDetailDeckState extends State<PoiDetailDeck>
       mode: LaunchMode.externalApplication,
     );
     if (!launched) {
-      _showMessage(
-          'Não foi possível abrir rotas para ${info.destinationName}.');
+      _controller.statusMessageStreamValue.addValue(
+        'Não foi possível abrir rotas para ${info.destinationName}.',
+      );
     }
   }
 
@@ -484,13 +503,6 @@ class _PoiDetailDeckState extends State<PoiDetailDeck>
     ];
     final message = details.where((line) => line.trim().isNotEmpty).join('\n');
     return _SharePayload(subject: poi.name, message: message);
-  }
-
-  void _showMessage(String message) {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text(message)));
   }
 
   void _handleMeasuredHeight(

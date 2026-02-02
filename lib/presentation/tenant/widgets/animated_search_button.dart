@@ -43,12 +43,10 @@ class _AnimatedSearchButtonState extends State<AnimatedSearchButton> {
   void _scheduleShrink() {
     _shrinkTimer?.cancel();
     _shrinkTimer = Timer(const Duration(seconds: 5), () {
-      if (mounted) {
-        setState(() {
-          _showText = false;
-          _isExpanded = false;
-        });
-      }
+      setState(() {
+        _showText = false;
+        _isExpanded = false;
+      });
     });
   }
 

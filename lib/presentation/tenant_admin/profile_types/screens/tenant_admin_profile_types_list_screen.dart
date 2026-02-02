@@ -49,32 +49,34 @@ class _TenantAdminProfileTypesListScreenState
       return;
     }
 
-    await _controller.deleteType(type);
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Tipo removido.')),
-    );
+    _controller.submitDeleteType(type);
   }
 
   @override
   Widget build(BuildContext context) {
-    return StreamValueBuilder<bool>(
-      streamValue: _controller.isLoadingStreamValue,
-      builder: (context, isLoading) {
+    return StreamValueBuilder<String?>(
+      streamValue: _controller.successMessageStreamValue,
+      builder: (context, successMessage) {
+        _handleSuccessMessage(successMessage);
         return StreamValueBuilder<String?>(
-          streamValue: _controller.errorStreamValue,
-          builder: (context, error) {
-            return StreamValueBuilder(
-              streamValue: _controller.typesStreamValue,
-              builder: (context, types) {
-                return Scaffold(
+          streamValue: _controller.actionErrorMessageStreamValue,
+          builder: (context, actionErrorMessage) {
+            _handleActionErrorMessage(actionErrorMessage);
+            return StreamValueBuilder<bool>(
+              streamValue: _controller.isLoadingStreamValue,
+              builder: (context, isLoading) {
+                return StreamValueBuilder<String?>(
+                  streamValue: _controller.errorStreamValue,
+                  builder: (context, error) {
+                    return StreamValueBuilder(
+                      streamValue: _controller.typesStreamValue,
+                      builder: (context, types) {
+                        return Scaffold(
                   floatingActionButton: FloatingActionButton.extended(
-                    onPressed: () async {
-                      await context.router.push(
-                        const TenantAdminProfileTypeCreateRoute(),
-                      );
-                      if (!mounted) return;
-                      await _controller.loadTypes();
+                    onPressed: () {
+                      context.router
+                          .push(const TenantAdminProfileTypeCreateRoute())
+                          .then((_) => _controller.loadTypes());
                     },
                     icon: const Icon(Icons.add),
                     label: const Text('Criar tipo'),
@@ -155,14 +157,14 @@ class _TenantAdminProfileTypesListScreenState
                                         trailing: PopupMenuButton<String>(
                                           onSelected: (value) async {
                                             if (value == 'edit') {
-                                              await context.router.push(
-                                                TenantAdminProfileTypeEditRoute(
-                                                  profileType: type.type,
-                                                  definition: type,
-                                                ),
-                                              );
-                                              if (!mounted) return;
-                                              await _controller.loadTypes();
+                                              context.router
+                                                  .push(
+                                                    TenantAdminProfileTypeEditRoute(
+                                                      profileType: type.type,
+                                                      definition: type,
+                                                    ),
+                                                  )
+                                                  .then((_) => _controller.loadTypes());
                                             }
                                             if (value == 'delete') {
                                               await _confirmDelete(
@@ -191,6 +193,10 @@ class _TenantAdminProfileTypesListScreenState
                     ),
                   ),
                 );
+                      },
+                    );
+                  },
+                );
               },
             );
           },
@@ -210,17 +216,35 @@ class _TenantAdminProfileTypesListScreenState
           ),
           const SizedBox(height: 16),
           FilledButton(
-            onPressed: () async {
-              await context.router.push(
-                const TenantAdminProfileTypeCreateRoute(),
-              );
-              if (!mounted) return;
-              await _controller.loadTypes();
+            onPressed: () {
+              context.router
+                  .push(const TenantAdminProfileTypeCreateRoute())
+                  .then((_) => _controller.loadTypes());
             },
             child: const Text('Criar tipo'),
           ),
         ],
       ),
     );
+  }
+
+  void _handleSuccessMessage(String? message) {
+    if (message == null || message.isEmpty) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message)),
+      );
+      _controller.clearSuccessMessage();
+    });
+  }
+
+  void _handleActionErrorMessage(String? message) {
+    if (message == null || message.isEmpty) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message)),
+      );
+      _controller.clearActionErrorMessage();
+    });
   }
 }

@@ -10,6 +10,7 @@ import 'package:belluga_now/presentation/tenant/map/screens/map_screen/widgets/p
 import 'package:belluga_now/presentation/tenant/widgets/belluga_bottom_navigation_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
+import 'package:stream_value/core/stream_value_builder.dart';
 
 class MapScreen extends StatefulWidget {
   const MapScreen({super.key});
@@ -50,26 +51,30 @@ class _MapScreenState extends State<MapScreen> {
       textTheme: base.textTheme.apply(fontFamily: 'Roboto'),
     );
 
-    return Theme(
-      data: theme,
-      child: PopScope(
-        canPop: false,
-        onPopInvokedWithResult: (didPop, result) {
-          if (didPop) {
-            return;
-          }
-          context.router.replaceAll([const TenantHomeRoute()]);
-        },
-        child: Scaffold(
-          body: Stack(
-            children: [
-              Column(
+    return StreamValueBuilder<String?>(
+      streamValue: _controller.statusMessageStreamValue,
+      builder: (context, message) {
+        _handleStatusMessage(message);
+        return Theme(
+          data: theme,
+          child: PopScope(
+            canPop: false,
+            onPopInvokedWithResult: (didPop, result) {
+              if (didPop) {
+                return;
+              }
+              context.router.replaceAll([const TenantHomeRoute()]);
+            },
+            child: Scaffold(
+              body: Stack(
                 children: [
-                  Expanded(
-                    child: MapLayers(controller: _controller),
+                  Column(
+                    children: [
+                      Expanded(
+                        child: MapLayers(controller: _controller),
+                      ),
+                    ],
                   ),
-                ],
-              ),
               // SafeArea(
               //   child: SizedBox(
               //     height: 120,
@@ -104,25 +109,28 @@ class _MapScreenState extends State<MapScreen> {
                   ),
                 ),
               ),
-              Positioned(
-                left: 16,
-                right: 16,
-                bottom: 16,
-                child: SafeArea(
-                  child: PoiDetailDeck(controller: _controller),
-                ),
+                  Positioned(
+                    left: 16,
+                    right: 16,
+                    bottom: 16,
+                    child: SafeArea(
+                      child: PoiDetailDeck(controller: _controller),
+                    ),
+                  ),
+                ],
               ),
-            ],
+              floatingActionButtonLocation:
+                  FloatingActionButtonLocation.endFloat,
+              floatingActionButton: FabMenu(
+                onNavigateToUser: _centerOnUser,
+                controller: _fabMenuController,
+              ),
+              bottomNavigationBar:
+                  const BellugaBottomNavigationBar(currentIndex: 1),
+            ),
           ),
-          floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
-          floatingActionButton: FabMenu(
-            onNavigateToUser: _centerOnUser,
-            controller: _fabMenuController,
-          ),
-          bottomNavigationBar:
-              const BellugaBottomNavigationBar(currentIndex: 1),
-        ),
-      ),
+        );
+      },
     );
   }
 
@@ -130,13 +138,17 @@ class _MapScreenState extends State<MapScreen> {
     await _controller.init();
   }
 
-  Future<void> _centerOnUser() async {
-    final message = await _controller.centerOnUser();
-    if (!mounted || message == null) {
-      return;
-    }
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
+  void _centerOnUser() {
+    _controller.centerOnUser();
+  }
+
+  void _handleStatusMessage(String? message) {
+    if (message == null || message.isEmpty) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message)),
+      );
+      _controller.clearStatusMessage();
+    });
   }
 }

@@ -17,6 +17,12 @@ class TenantAdminOrganizationsController implements Disposable {
   final StreamValue<bool> isLoadingStreamValue =
       StreamValue<bool>(defaultValue: false);
   final StreamValue<String?> errorStreamValue = StreamValue<String?>();
+  final StreamValue<bool> createSubmittingStreamValue =
+      StreamValue<bool>(defaultValue: false);
+  final StreamValue<String?> createSuccessMessageStreamValue =
+      StreamValue<String?>();
+  final StreamValue<String?> createErrorMessageStreamValue =
+      StreamValue<String?>();
   final GlobalKey<FormState> formKey = GlobalKey<FormState>();
   final TextEditingController nameController = TextEditingController();
   final TextEditingController descriptionController = TextEditingController();
@@ -53,6 +59,34 @@ class TenantAdminOrganizationsController implements Disposable {
     return org;
   }
 
+  Future<void> submitCreateOrganization({
+    required String name,
+    String? description,
+  }) async {
+    createSubmittingStreamValue.addValue(true);
+    try {
+      await createOrganization(name: name, description: description);
+      if (_isDisposed) return;
+      createErrorMessageStreamValue.addValue(null);
+      createSuccessMessageStreamValue.addValue('Organizacao salva.');
+    } catch (error) {
+      if (_isDisposed) return;
+      createErrorMessageStreamValue.addValue(error.toString());
+    } finally {
+      if (!_isDisposed) {
+        createSubmittingStreamValue.addValue(false);
+      }
+    }
+  }
+
+  void clearCreateSuccessMessage() {
+    createSuccessMessageStreamValue.addValue(null);
+  }
+
+  void clearCreateErrorMessage() {
+    createErrorMessageStreamValue.addValue(null);
+  }
+
   void resetCreateForm() {
     nameController.clear();
     descriptionController.clear();
@@ -65,6 +99,9 @@ class TenantAdminOrganizationsController implements Disposable {
     organizationsStreamValue.dispose();
     isLoadingStreamValue.dispose();
     errorStreamValue.dispose();
+    createSubmittingStreamValue.dispose();
+    createSuccessMessageStreamValue.dispose();
+    createErrorMessageStreamValue.dispose();
   }
 
   @override

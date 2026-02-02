@@ -8,6 +8,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/domain/tenant_admin/ownership_state.dart';
+import 'package:belluga_now/presentation/tenant_admin/accounts/controllers/tenant_admin_location_picker_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart' show Disposable, GetIt;
 import 'package:image_picker/image_picker.dart';
@@ -17,13 +18,17 @@ class TenantAdminAccountsController implements Disposable {
   TenantAdminAccountsController({
     TenantAdminAccountsRepositoryContract? accountsRepository,
     TenantAdminAccountProfilesRepositoryContract? profilesRepository,
+    TenantAdminLocationPickerController? locationPickerController,
   })  : _accountsRepository =
             accountsRepository ?? GetIt.I.get<TenantAdminAccountsRepositoryContract>(),
         _profilesRepository =
-            profilesRepository ?? GetIt.I.get<TenantAdminAccountProfilesRepositoryContract>();
+            profilesRepository ?? GetIt.I.get<TenantAdminAccountProfilesRepositoryContract>(),
+        _locationPickerController =
+            locationPickerController ?? GetIt.I.get<TenantAdminLocationPickerController>();
 
   final TenantAdminAccountsRepositoryContract _accountsRepository;
   final TenantAdminAccountProfilesRepositoryContract _profilesRepository;
+  final TenantAdminLocationPickerController _locationPickerController;
 
   final StreamValue<List<TenantAdminAccount>> accountsStreamValue =
       StreamValue<List<TenantAdminAccount>>(defaultValue: const []);
@@ -37,10 +42,18 @@ class TenantAdminAccountsController implements Disposable {
       StreamValue<TenantAdminOwnershipState>(
     defaultValue: TenantAdminOwnershipState.tenantOwned,
   );
+  final StreamValue<bool> createSubmittingStreamValue =
+      StreamValue<bool>(defaultValue: false);
+  final StreamValue<String?> createSuccessMessageStreamValue =
+      StreamValue<String?>();
+  final StreamValue<String?> createErrorMessageStreamValue =
+      StreamValue<String?>();
   final StreamValue<TenantAdminAccountCreateState> createStateStreamValue =
       StreamValue<TenantAdminAccountCreateState>(
     defaultValue: TenantAdminAccountCreateState.initial(),
   );
+  final StreamValue<String?> createAccountIdStreamValue =
+      StreamValue<String?>();
   final GlobalKey<FormState> createFormKey = GlobalKey<FormState>();
   final TextEditingController nameController = TextEditingController();
   final TextEditingController documentTypeController = TextEditingController();
@@ -52,10 +65,12 @@ class TenantAdminAccountsController implements Disposable {
 
   bool _isDisposed = false;
   bool _initialized = false;
+  StreamSubscription<TenantAdminLocation?>? _locationSelectionSubscription;
 
   Future<void> init() async {
     if (_initialized) return;
     _initialized = true;
+    _bindLocationSelection();
     await Future.wait([
       loadAccounts(),
       loadProfileTypes(),
@@ -118,6 +133,23 @@ class TenantAdminAccountsController implements Disposable {
     _updateCreateState(TenantAdminAccountCreateState.initial());
   }
 
+  void _bindLocationSelection() {
+    if (_locationSelectionSubscription != null) return;
+    _locationSelectionSubscription =
+        _locationPickerController.confirmedLocationStreamValue.stream.listen(
+      (location) {
+        if (_isDisposed || location == null) return;
+        latitudeController.text = location.latitude.toStringAsFixed(6);
+        longitudeController.text = location.longitude.toStringAsFixed(6);
+        _locationPickerController.clearConfirmedLocation();
+      },
+    );
+  }
+
+  void bindCreateFlow() {
+    _bindLocationSelection();
+  }
+
   Future<TenantAdminAccount> createAccountWithProfile({
     required String name,
     required String documentType,
@@ -166,6 +198,56 @@ class TenantAdminAccountsController implements Disposable {
     );
   }
 
+  Future<void> submitCreateAccountFromForm({
+    required TenantAdminLocation? location,
+    required TenantAdminMediaUpload? avatarUpload,
+    required TenantAdminMediaUpload? coverUpload,
+  }) async {
+    createSubmittingStreamValue.addValue(true);
+    try {
+      await createAccountFromForm(
+        location: location,
+        avatarUpload: avatarUpload,
+        coverUpload: coverUpload,
+      );
+      if (_isDisposed) return;
+      createErrorMessageStreamValue.addValue(null);
+      createSuccessMessageStreamValue.addValue('Conta e perfil salvos.');
+      resetCreateForm();
+      resetCreateState();
+    } catch (error) {
+      if (_isDisposed) return;
+      createErrorMessageStreamValue.addValue(error.toString());
+    } finally {
+      if (!_isDisposed) {
+        createSubmittingStreamValue.addValue(false);
+      }
+    }
+  }
+
+  void clearCreateSuccessMessage() {
+    createSuccessMessageStreamValue.addValue(null);
+  }
+
+  void clearCreateErrorMessage() {
+    createErrorMessageStreamValue.addValue(null);
+  }
+
+  Future<void> loadAccountForCreate(String slug) async {
+    try {
+      final account = await _accountsRepository.fetchAccountBySlug(slug);
+      if (_isDisposed) return;
+      createAccountIdStreamValue.addValue(account.id);
+    } catch (error) {
+      if (_isDisposed) return;
+      createErrorMessageStreamValue.addValue(error.toString());
+    }
+  }
+
+  void clearCreateAccountId() {
+    createAccountIdStreamValue.addValue(null);
+  }
+
   void resetCreateForm() {
     nameController.clear();
     documentTypeController.clear();
@@ -177,6 +259,7 @@ class TenantAdminAccountsController implements Disposable {
 
   void dispose() {
     _isDisposed = true;
+    _locationSelectionSubscription?.cancel();
     nameController.dispose();
     documentTypeController.dispose();
     documentNumberController.dispose();
@@ -189,6 +272,10 @@ class TenantAdminAccountsController implements Disposable {
     errorStreamValue.dispose();
     selectedOwnershipStreamValue.dispose();
     createStateStreamValue.dispose();
+    createSubmittingStreamValue.dispose();
+    createSuccessMessageStreamValue.dispose();
+    createErrorMessageStreamValue.dispose();
+    createAccountIdStreamValue.dispose();
   }
 
   @override

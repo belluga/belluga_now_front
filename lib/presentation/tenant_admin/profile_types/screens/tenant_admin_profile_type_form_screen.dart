@@ -57,222 +57,258 @@ class _TenantAdminProfileTypeFormScreenState
     final capabilities = _controller.currentCapabilities;
 
     if (_isEdit) {
-      await _controller.updateType(
+      _controller.submitUpdateType(
         type: widget.definition!.type,
         label: _controller.labelController.text.trim(),
         allowedTaxonomies: _parseTaxonomies(capabilities.hasTaxonomies),
         capabilities: capabilities,
       );
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Tipo atualizado.')),
-      );
-      context.router.maybePop();
       return;
     }
 
-    await _controller.createType(
+    _controller.submitCreateType(
       type: _controller.typeController.text.trim(),
       label: _controller.labelController.text.trim(),
       allowedTaxonomies: _parseTaxonomies(capabilities.hasTaxonomies),
       capabilities: capabilities,
     );
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Tipo criado.')),
-    );
-    context.router.maybePop();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(_isEdit ? 'Editar Tipo' : 'Criar Tipo'),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.router.maybePop(),
-          tooltip: 'Voltar',
-        ),
-      ),
-      body: Padding(
-        padding: EdgeInsets.fromLTRB(
-          16,
-          16,
-          16,
-          16 + MediaQuery.of(context).viewInsets.bottom,
-        ),
-        child: SingleChildScrollView(
-          child: Form(
-            key: _controller.formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Card(
-                  margin: EdgeInsets.zero,
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Informacoes do tipo',
-                          style: Theme.of(context).textTheme.titleMedium,
-                        ),
-                        const SizedBox(height: 12),
-                        TextFormField(
-                          controller: _controller.typeController,
-                          decoration:
-                              const InputDecoration(labelText: 'Tipo (slug)'),
-                          enabled: !_isEdit,
-                          validator: (value) {
-                            if (!_isEdit &&
-                                (value == null || value.trim().isEmpty)) {
-                              return 'Tipo e obrigatorio.';
-                            }
-                            return null;
-                          },
-                        ),
-                        const SizedBox(height: 12),
-                        TextFormField(
-                          controller: _controller.labelController,
-                          decoration: const InputDecoration(labelText: 'Label'),
-                          validator: (value) {
-                            if (value == null || value.trim().isEmpty) {
-                              return 'Label e obrigatorio.';
-                            }
-                            return null;
-                          },
-                        ),
-                        const SizedBox(height: 12),
-                        StreamValueBuilder<
-                            TenantAdminProfileTypeCapabilities>(
-                          streamValue: _controller.capabilitiesStreamValue,
-                          builder: (context, capabilities) {
-                            return TextFormField(
-                              controller: _controller.taxonomiesController,
-                              decoration: const InputDecoration(
-                                labelText: 'Taxonomias (separadas por virgula)',
-                              ),
-                              enabled: capabilities.hasTaxonomies,
-                            );
-                          },
-                        ),
-                      ],
-                    ),
-                  ),
+    return StreamValueBuilder<String?>(
+      streamValue: _controller.successMessageStreamValue,
+      builder: (context, successMessage) {
+        _handleSuccessMessage(successMessage);
+        return StreamValueBuilder<String?>(
+          streamValue: _controller.actionErrorMessageStreamValue,
+          builder: (context, errorMessage) {
+            _handleErrorMessage(errorMessage);
+            return Scaffold(
+              appBar: AppBar(
+                title: Text(_isEdit ? 'Editar Tipo' : 'Criar Tipo'),
+                leading: IconButton(
+                  icon: const Icon(Icons.arrow_back),
+                  onPressed: () => context.router.maybePop(),
+                  tooltip: 'Voltar',
                 ),
-                const SizedBox(height: 16),
-                Card(
-                  margin: EdgeInsets.zero,
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
+              ),
+              body: Padding(
+                padding: EdgeInsets.fromLTRB(
+                  16,
+                  16,
+                  16,
+                  16 + MediaQuery.of(context).viewInsets.bottom,
+                ),
+                child: SingleChildScrollView(
+                  child: Form(
+                    key: _controller.formKey,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          'Capacidades',
-                          style: Theme.of(context).textTheme.titleMedium,
-                        ),
-                        const SizedBox(height: 12),
-                        StreamValueBuilder<
-                            TenantAdminProfileTypeCapabilities>(
-                          streamValue: _controller.capabilitiesStreamValue,
-                          builder: (context, capabilities) {
-                            return Column(
+                        Card(
+                          margin: EdgeInsets.zero,
+                          child: Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                SwitchListTile(
-                                  contentPadding: EdgeInsets.zero,
-                                  title: const Text('Favoritavel'),
-                                  value: capabilities.isFavoritable,
-                                  onChanged: (value) =>
-                                      _controller.updateCapabilities(
-                                    isFavoritable: value,
-                                  ),
+                                Text(
+                                  'Informacoes do tipo',
+                                  style: Theme.of(context).textTheme.titleMedium,
                                 ),
-                                SwitchListTile(
-                                  contentPadding: EdgeInsets.zero,
-                                  title: const Text('POI habilitado'),
-                                  subtitle: const Text(
-                                      'Requer localizacao no perfil'),
-                                  value: capabilities.isPoiEnabled,
-                                  onChanged: (value) =>
-                                      _controller.updateCapabilities(
-                                    isPoiEnabled: value,
+                                const SizedBox(height: 12),
+                                TextFormField(
+                                  controller: _controller.typeController,
+                                  decoration: const InputDecoration(
+                                    labelText: 'Tipo (slug)',
                                   ),
+                                  enabled: !_isEdit,
+                                  validator: (value) {
+                                    if (!_isEdit &&
+                                        (value == null ||
+                                            value.trim().isEmpty)) {
+                                      return 'Tipo e obrigatorio.';
+                                    }
+                                    return null;
+                                  },
                                 ),
-                                SwitchListTile(
-                                  contentPadding: EdgeInsets.zero,
-                                  title: const Text('Bio habilitada'),
-                                  subtitle: const Text(
-                                      'Exibe campo de descricao no perfil'),
-                                  value: capabilities.hasBio,
-                                  onChanged: (value) =>
-                                      _controller.updateCapabilities(
-                                    hasBio: value,
-                                  ),
+                                const SizedBox(height: 12),
+                                TextFormField(
+                                  controller: _controller.labelController,
+                                  decoration:
+                                      const InputDecoration(labelText: 'Label'),
+                                  validator: (value) {
+                                    if (value == null || value.trim().isEmpty) {
+                                      return 'Label e obrigatorio.';
+                                    }
+                                    return null;
+                                  },
                                 ),
-                                SwitchListTile(
-                                  contentPadding: EdgeInsets.zero,
-                                  title: const Text('Taxonomias habilitadas'),
-                                  subtitle: const Text(
-                                      'Exibe categorias/etiquetas do tipo'),
-                                  value: capabilities.hasTaxonomies,
-                                  onChanged: (value) =>
-                                      _controller.updateCapabilities(
-                                    hasTaxonomies: value,
-                                  ),
-                                ),
-                                SwitchListTile(
-                                  contentPadding: EdgeInsets.zero,
-                                  title: const Text('Avatar habilitado'),
-                                  value: capabilities.hasAvatar,
-                                  onChanged: (value) =>
-                                      _controller.updateCapabilities(
-                                    hasAvatar: value,
-                                  ),
-                                ),
-                                SwitchListTile(
-                                  contentPadding: EdgeInsets.zero,
-                                  title: const Text('Capa habilitada'),
-                                  value: capabilities.hasCover,
-                                  onChanged: (value) =>
-                                      _controller.updateCapabilities(
-                                    hasCover: value,
-                                  ),
-                                ),
-                                SwitchListTile(
-                                  contentPadding: EdgeInsets.zero,
-                                  title: const Text('Agenda habilitada'),
-                                  subtitle:
-                                      const Text('Mostra "Proximos Eventos"'),
-                                  value: capabilities.hasEvents,
-                                  onChanged: (value) =>
-                                      _controller.updateCapabilities(
-                                    hasEvents: value,
-                                  ),
+                                const SizedBox(height: 12),
+                                StreamValueBuilder<
+                                    TenantAdminProfileTypeCapabilities>(
+                                  streamValue:
+                                      _controller.capabilitiesStreamValue,
+                                  builder: (context, capabilities) {
+                                    return TextFormField(
+                                      controller:
+                                          _controller.taxonomiesController,
+                                      decoration: const InputDecoration(
+                                        labelText:
+                                            'Taxonomias (separadas por virgula)',
+                                      ),
+                                      enabled: capabilities.hasTaxonomies,
+                                    );
+                                  },
                                 ),
                               ],
-                            );
-                          },
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        Card(
+                          margin: EdgeInsets.zero,
+                          child: Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Capacidades',
+                                  style: Theme.of(context).textTheme.titleMedium,
+                                ),
+                                const SizedBox(height: 12),
+                                StreamValueBuilder<
+                                    TenantAdminProfileTypeCapabilities>(
+                                  streamValue:
+                                      _controller.capabilitiesStreamValue,
+                                  builder: (context, capabilities) {
+                                    return Column(
+                                      children: [
+                                        SwitchListTile(
+                                          contentPadding: EdgeInsets.zero,
+                                          title: const Text('Favoritavel'),
+                                          value: capabilities.isFavoritable,
+                                          onChanged: (value) =>
+                                              _controller.updateCapabilities(
+                                            isFavoritable: value,
+                                          ),
+                                        ),
+                                        SwitchListTile(
+                                          contentPadding: EdgeInsets.zero,
+                                          title: const Text('POI habilitado'),
+                                          subtitle: const Text(
+                                            'Requer localizacao no perfil',
+                                          ),
+                                          value: capabilities.isPoiEnabled,
+                                          onChanged: (value) =>
+                                              _controller.updateCapabilities(
+                                            isPoiEnabled: value,
+                                          ),
+                                        ),
+                                        SwitchListTile(
+                                          contentPadding: EdgeInsets.zero,
+                                          title: const Text('Bio habilitada'),
+                                          subtitle: const Text(
+                                            'Exibe campo de descricao no perfil',
+                                          ),
+                                          value: capabilities.hasBio,
+                                          onChanged: (value) =>
+                                              _controller.updateCapabilities(
+                                            hasBio: value,
+                                          ),
+                                        ),
+                                        SwitchListTile(
+                                          contentPadding: EdgeInsets.zero,
+                                          title:
+                                              const Text('Taxonomias habilitadas'),
+                                          subtitle: const Text(
+                                            'Exibe categorias/etiquetas do tipo',
+                                          ),
+                                          value: capabilities.hasTaxonomies,
+                                          onChanged: (value) =>
+                                              _controller.updateCapabilities(
+                                            hasTaxonomies: value,
+                                          ),
+                                        ),
+                                        SwitchListTile(
+                                          contentPadding: EdgeInsets.zero,
+                                          title: const Text('Avatar habilitado'),
+                                          value: capabilities.hasAvatar,
+                                          onChanged: (value) =>
+                                              _controller.updateCapabilities(
+                                            hasAvatar: value,
+                                          ),
+                                        ),
+                                        SwitchListTile(
+                                          contentPadding: EdgeInsets.zero,
+                                          title: const Text('Capa habilitada'),
+                                          value: capabilities.hasCover,
+                                          onChanged: (value) =>
+                                              _controller.updateCapabilities(
+                                            hasCover: value,
+                                          ),
+                                        ),
+                                        SwitchListTile(
+                                          contentPadding: EdgeInsets.zero,
+                                          title:
+                                              const Text('Agenda habilitada'),
+                                          subtitle: const Text(
+                                            'Mostra "Proximos Eventos"',
+                                          ),
+                                          value: capabilities.hasEvents,
+                                          onChanged: (value) =>
+                                              _controller.updateCapabilities(
+                                            hasEvents: value,
+                                          ),
+                                        ),
+                                      ],
+                                    );
+                                  },
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                        SizedBox(
+                          width: double.infinity,
+                          child: FilledButton(
+                            onPressed: _save,
+                            child: Text(_isEdit ? 'Salvar' : 'Criar'),
+                          ),
                         ),
                       ],
                     ),
                   ),
                 ),
-                const SizedBox(height: 24),
-                SizedBox(
-                  width: double.infinity,
-                  child: FilledButton(
-                    onPressed: _save,
-                    child: Text(_isEdit ? 'Salvar' : 'Criar'),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
+              ),
+            );
+          },
+        );
+      },
     );
+  }
+
+  void _handleSuccessMessage(String? message) {
+    if (message == null || message.isEmpty) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message)),
+      );
+      _controller.clearSuccessMessage();
+      context.router.maybePop();
+    });
+  }
+
+  void _handleErrorMessage(String? message) {
+    if (message == null || message.isEmpty) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message)),
+      );
+      _controller.clearActionErrorMessage();
+    });
   }
 }

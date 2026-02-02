@@ -56,8 +56,10 @@ Future<bool> showLandlordLoginSheet(
                   onPressed: () async {
                     final email = controller.emailController.text.trim();
                     final password = controller.passwordController.text.trim();
+                    final messenger = ScaffoldMessenger.of(ctx);
+                    final router = ctx.router;
                     if (email.isEmpty || password.isEmpty) {
-                      ScaffoldMessenger.of(ctx).showSnackBar(
+                      messenger.showSnackBar(
                         const SnackBar(content: Text('Informe e-mail e senha.')),
                       );
                       return;
@@ -68,14 +70,9 @@ Future<bool> showLandlordLoginSheet(
                         password,
                       );
                       didLogin = true;
-                      if (ctx.mounted) {
-                        ctx.router.pop();
-                      }
+                      router.pop();
                     } catch (e) {
-                      if (!ctx.mounted) {
-                        return;
-                      }
-                      ScaffoldMessenger.of(ctx).showSnackBar(
+                      messenger.showSnackBar(
                         SnackBar(content: Text('Falha ao entrar: $e')),
                       );
                     }

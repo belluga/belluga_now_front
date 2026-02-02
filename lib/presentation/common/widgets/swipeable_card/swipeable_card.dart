@@ -38,6 +38,7 @@ class _SwipeableCardState extends State<SwipeableCard>
   Offset _dragOffset = Offset.zero;
   bool _isDragging = false;
   bool _isAnimatingOut = false;
+  VoidCallback? _pendingSwipeCallback;
 
   @override
   void initState() {
@@ -55,6 +56,15 @@ class _SwipeableCardState extends State<SwipeableCard>
           _dragOffset = _animation.value;
         }
       });
+    });
+    _controller.addStatusListener((status) {
+      if (status != AnimationStatus.completed) return;
+      final callback = _pendingSwipeCallback;
+      if (callback == null) return;
+      _pendingSwipeCallback = null;
+      callback();
+      _isAnimatingOut = false;
+      _dragOffset = Offset.zero;
     });
   }
 
@@ -149,20 +159,11 @@ class _SwipeableCardState extends State<SwipeableCard>
 
   void _animateOut(Offset target, VoidCallback onComplete) {
     _isAnimatingOut = true;
+    _pendingSwipeCallback = onComplete;
     _animation = Tween<Offset>(begin: _dragOffset, end: target).animate(
       CurvedAnimation(parent: _controller, curve: Curves.easeIn),
     );
-    _controller.forward(from: 0).then((_) {
-      onComplete();
-      // Reset state for reuse if the widget isn't disposed (e.g. in a stack)
-      if (mounted) {
-        // Ideally the parent removes this widget, but if not, we reset.
-        // For a stack, the parent rebuilds with new content.
-        // We can reset _isAnimatingOut here just in case.
-        _isAnimatingOut = false;
-        _dragOffset = Offset.zero;
-      }
-    });
+    _controller.forward(from: 0);
   }
 
   @override

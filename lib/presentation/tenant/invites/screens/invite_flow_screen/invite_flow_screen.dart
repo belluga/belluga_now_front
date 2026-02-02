@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/domain/invites/invite_decision.dart';
@@ -20,6 +19,8 @@ class InviteFlowScreen extends StatefulWidget {
 class _InviteFlowScreenState extends State<InviteFlowScreen> {
   final InviteFlowScreenController _controller =
       GetIt.I.get<InviteFlowScreenController>();
+  int _precacheToken = 0;
+  String? _lastPrecacheKey;
 
   @override
   void initState() {
@@ -29,72 +30,84 @@ class _InviteFlowScreenState extends State<InviteFlowScreen> {
   }
 
   @override
+  void dispose() {
+    _precacheToken++;
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return PopScope(
-      canPop: context.router.canPop(),
-      onPopInvokedWithResult: (didPop, result) {
-        if (didPop) return;
-        _exitInviteFlow();
-      },
-      child: Scaffold(
-        body: StreamValueBuilder<List<InviteModel>>(
-          streamValue: _controller.pendingInvitesStreamValue,
-          onNullWidget: const Center(child: CircularProgressIndicator()),
-          builder: (context, invites) {
-            _precacheNextInvites(invites);
-
-            if (invites.isEmpty) {
-              // Avoid flashing empty state: leave the flow when there's no invite.
-              SchedulerBinding.instance.addPostFrameCallback((_) {
-                if (mounted) _exitInviteFlow();
-              });
-              return const SizedBox.shrink();
-            }
-
-            return StreamValueBuilder<Set<String>>(
-              streamValue: _controller.loadedImagesStreamValue,
-              builder: (context, loadedImages) {
-                final invite = invites.first;
-                final remaining = invites.length - 1;
-                final isReady = loadedImages.contains(invite.eventImageUrl);
-
-                if (!isReady) {
-                  return const Center(child: CircularProgressIndicator());
+    return StreamValueBuilder<InviteDecisionResult?>(
+      streamValue: _controller.decisionResultStreamValue,
+      builder: (context, decisionResult) {
+        _handleDecisionResult(decisionResult);
+        return PopScope(
+          canPop: context.router.canPop(),
+          onPopInvokedWithResult: (didPop, result) {
+            if (didPop) return;
+            _exitInviteFlow();
+          },
+          child: Scaffold(
+            body: StreamValueBuilder<List<InviteModel>>(
+              streamValue: _controller.pendingInvitesStreamValue,
+              onNullWidget: const Center(child: CircularProgressIndicator()),
+              builder: (context, invites) {
+                _precacheNextInvites(invites);
+                if (invites.isEmpty) {
+                  // Avoid flashing empty state: leave the flow when there's no invite.
+                  SchedulerBinding.instance.addPostFrameCallback((_) {
+                    _exitInviteFlow();
+                  });
+                  return const SizedBox.shrink();
                 }
 
-                return InviteHeroCard(
-                  invite: invite,
-                  onAccept: () => _handleDecision(InviteDecision.accepted),
-                  onDecline: () => _handleDecision(InviteDecision.declined),
-                  onViewDetails: () => _openEventDetails(invite),
-                  onClose: _exitInviteFlow,
-                  remainingCount: remaining,
+                return StreamValueBuilder<Set<String>>(
+                  streamValue: _controller.loadedImagesStreamValue,
+                  builder: (context, loadedImages) {
+                    final invite = invites.first;
+                    final remaining = invites.length - 1;
+                    final isReady = loadedImages.contains(invite.eventImageUrl);
+
+                    if (!isReady) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+
+                    return InviteHeroCard(
+                      invite: invite,
+                      onAccept: () =>
+                          _controller.requestDecision(InviteDecision.accepted),
+                      onDecline: () =>
+                          _controller.requestDecision(InviteDecision.declined),
+                      onViewDetails: () => _openEventDetails(invite),
+                      onClose: _exitInviteFlow,
+                      remainingCount: remaining,
+                    );
+                  },
                 );
               },
-            );
-          },
-        ),
-      ),
+            ),
+          ),
+        );
+      },
     );
   }
 
-  Future<void> _handleDecision(InviteDecision decision) async {
-    final result = await _controller.applyDecision(decision);
-    if (!mounted) return;
+  void _handleDecisionResult(InviteDecisionResult? result) {
+    if (result == null) return;
+    final router = context.router;
 
-    if (decision == InviteDecision.accepted) {
-      if (result?.queued == true) {
-        _showOfflineAcceptToast(result?.invite);
+    if (result.invite != null) {
+      if (result.queued == true) {
+        _showOfflineAcceptToast(result.invite);
       }
-      if (result?.invite != null) {
-        await context.router.push(InviteShareRoute(invite: result!.invite!));
-      }
-      // Remove only after returning from share to avoid flashing next card mid-navigation.
-      _controller.removeInvite();
+      router.push(InviteShareRoute(invite: result.invite!)).then((_) {
+        _controller.removeInvite();
+      });
+      _controller.clearDecisionResult();
       return;
     }
 
-    // Decline path: removal already handled in controller.
+    _controller.clearDecisionResult();
   }
 
   void _openEventDetails(InviteModel invite) {
@@ -111,7 +124,6 @@ class _InviteFlowScreenState extends State<InviteFlowScreen> {
   }
 
   void _showOfflineAcceptToast(InviteModel? invite) {
-    if (!mounted) return;
     final messenger = ScaffoldMessenger.of(context);
     messenger.hideCurrentSnackBar();
     messenger.showSnackBar(
@@ -127,15 +139,22 @@ class _InviteFlowScreenState extends State<InviteFlowScreen> {
   }
 
   void _precacheNextInvites(List<InviteModel> invites) {
-    if (!mounted) return;
     final ctx = context;
     final toPrecache = invites.take(3); // current + next 2
+    final key = toPrecache.map((invite) => invite.eventImageUrl).join('|');
+    if (key.isNotEmpty && key == _lastPrecacheKey) {
+      return;
+    }
+    _lastPrecacheKey = key;
+    final token = ++_precacheToken;
     for (final invite in toPrecache) {
       final url = invite.eventImageUrl;
       if (_controller.isImageLoaded(url)) continue;
       precacheImage(NetworkImage(url), ctx).then((_) {
+        if (token != _precacheToken) return;
         _controller.markImageLoaded(url);
       }).catchError((_) {
+        if (token != _precacheToken) return;
         _controller.markImageLoaded(url); // avoid blocking on errors
       });
     }

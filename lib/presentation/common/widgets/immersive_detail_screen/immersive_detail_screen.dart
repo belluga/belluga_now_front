@@ -227,9 +227,4 @@ class _ImmersiveDetailScreenState extends State<ImmersiveDetailScreen> {
     );
   }
 
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
 }

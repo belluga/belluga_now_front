@@ -76,8 +76,10 @@ class MapScreenController implements Disposable {
   PoiQuery _currentQuery = const PoiQuery();
   bool _filtersLoadFailed = false;
   StreamSubscription<MapEvent>? _mapEventSubscription;
+  StreamSubscription<List<CityPoiModel>>? _filteredPoisSubscription;
 
   Future<void> init() async {
+    _bindFilteredPoisClamp();
     await Future.wait([
       loadMainFilters(),
       loadFilters(),
@@ -88,6 +90,30 @@ class MapScreenController implements Disposable {
     );
     await centerOnUser();
     _attachZoomListener();
+  }
+
+  void _bindFilteredPoisClamp() {
+    if (_filteredPoisSubscription != null) {
+      return;
+    }
+    _filteredPoisSubscription =
+        filteredPoisStreamValue.stream.listen(_clampPoiDeckIndex);
+    _clampPoiDeckIndex(filteredPoisStreamValue.value);
+  }
+
+  void _clampPoiDeckIndex(List<CityPoiModel> pois) {
+    if (pois.isEmpty) {
+      if (poiDeckIndexStreamValue.value != 0) {
+        poiDeckIndexStreamValue.addValue(0);
+      }
+      return;
+    }
+    final maxIndex = pois.length - 1;
+    final current = poiDeckIndexStreamValue.value;
+    final clamped = current.clamp(0, maxIndex);
+    if (current != clamped) {
+      poiDeckIndexStreamValue.addValue(clamped);
+    }
   }
 
   Future<void> startTracking({
@@ -126,7 +152,7 @@ class MapScreenController implements Disposable {
     }
   }
 
-  Future<String?> centerOnUser({bool animate = true}) async {
+  Future<void> centerOnUser({bool animate = true}) async {
     var coordinate = userLocationStreamValue.value;
     if (coordinate == null) {
       await _userLocationRepository.resolveUserLocation();
@@ -142,7 +168,8 @@ class MapScreenController implements Disposable {
           'reason': 'not_found',
         },
       );
-      return Future.value('Não encontramos sua localização');
+      statusMessageStreamValue.addValue('Não encontramos sua localização');
+      return;
     }
 
     final target = LatLng(coordinate.latitude, coordinate.longitude);
@@ -157,7 +184,11 @@ class MapScreenController implements Disposable {
       },
     );
 
-    return null;
+    statusMessageStreamValue.addValue(null);
+  }
+
+  void clearStatusMessage() {
+    statusMessageStreamValue.addValue(null);
   }
 
   Future<void> ensureMapReady() async {
@@ -372,6 +403,7 @@ class MapScreenController implements Disposable {
   FutureOr onDispose() async {
     _finishPoiTimedEvent();
     await _mapEventSubscription?.cancel();
+    await _filteredPoisSubscription?.cancel();
     poiDeckIndexStreamValue.dispose();
   }
 

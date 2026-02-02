@@ -27,6 +27,9 @@ class TenantAdminProfileTypesController implements Disposable {
     hasEvents: false,
   );
   final StreamValue<String?> errorStreamValue = StreamValue<String?>();
+  final StreamValue<String?> successMessageStreamValue = StreamValue<String?>();
+  final StreamValue<String?> actionErrorMessageStreamValue =
+      StreamValue<String?>();
   final StreamValue<TenantAdminProfileTypeCapabilities>
       capabilitiesStreamValue =
       StreamValue<TenantAdminProfileTypeCapabilities>(
@@ -135,6 +138,70 @@ class TenantAdminProfileTypesController implements Disposable {
     await loadTypes();
   }
 
+  Future<void> submitCreateType({
+    required String type,
+    required String label,
+    List<String> allowedTaxonomies = const [],
+    required TenantAdminProfileTypeCapabilities capabilities,
+  }) async {
+    try {
+      await createType(
+        type: type,
+        label: label,
+        allowedTaxonomies: allowedTaxonomies,
+        capabilities: capabilities,
+      );
+      if (_isDisposed) return;
+      actionErrorMessageStreamValue.addValue(null);
+      successMessageStreamValue.addValue('Tipo criado.');
+    } catch (error) {
+      if (_isDisposed) return;
+      actionErrorMessageStreamValue.addValue(error.toString());
+    }
+  }
+
+  Future<void> submitUpdateType({
+    required String type,
+    String? label,
+    List<String>? allowedTaxonomies,
+    TenantAdminProfileTypeCapabilities? capabilities,
+  }) async {
+    try {
+      await updateType(
+        type: type,
+        label: label,
+        allowedTaxonomies: allowedTaxonomies,
+        capabilities: capabilities,
+      );
+      if (_isDisposed) return;
+      actionErrorMessageStreamValue.addValue(null);
+      successMessageStreamValue.addValue('Tipo atualizado.');
+    } catch (error) {
+      if (_isDisposed) return;
+      actionErrorMessageStreamValue.addValue(error.toString());
+    }
+  }
+
+  Future<void> submitDeleteType(String type) async {
+    try {
+      await deleteType(type);
+      if (_isDisposed) return;
+      actionErrorMessageStreamValue.addValue(null);
+      successMessageStreamValue.addValue('Tipo removido.');
+    } catch (error) {
+      if (_isDisposed) return;
+      actionErrorMessageStreamValue.addValue(error.toString());
+    }
+  }
+
+  void clearSuccessMessage() {
+    successMessageStreamValue.addValue(null);
+  }
+
+  void clearActionErrorMessage() {
+    actionErrorMessageStreamValue.addValue(null);
+  }
+
   void dispose() {
     _isDisposed = true;
     typeController.dispose();
@@ -143,6 +210,8 @@ class TenantAdminProfileTypesController implements Disposable {
     typesStreamValue.dispose();
     isLoadingStreamValue.dispose();
     errorStreamValue.dispose();
+    successMessageStreamValue.dispose();
+    actionErrorMessageStreamValue.dispose();
     capabilitiesStreamValue.dispose();
   }
 

@@ -63,6 +63,9 @@ class ProfileScreenController implements Disposable {
 
   StreamValue<ThemeMode?> get themeModeStreamValue =>
       _appDataRepository.themeModeStreamValue;
+  StreamValue<AdminMode> get modeStreamValue =>
+      _adminModeRepository.modeStreamValue;
+  bool get isAdminMode => _adminModeRepository.mode == AdminMode.landlord;
   ThemeMode get themeMode => _appDataRepository.themeMode;
   Future<void> setThemeMode(ThemeMode mode) =>
       _appDataRepository.setThemeMode(mode);

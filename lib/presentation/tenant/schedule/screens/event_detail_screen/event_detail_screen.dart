@@ -62,12 +62,6 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
   }
 
   @override
-  void dispose() {
-    _controller.onDispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
     final effectiveScheme = widget.colorScheme ?? Theme.of(context).colorScheme;
     final colorScheme = effectiveScheme;
@@ -322,9 +316,20 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
       ),
     );
 
-    return Theme(
-      data: Theme.of(context).copyWith(colorScheme: effectiveScheme),
-      child: content,
+    return StreamValueBuilder<bool>(
+      streamValue: _controller.inviteAcceptedStreamValue,
+      builder: (context, inviteAccepted) {
+        if (inviteAccepted) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            _controller.clearInviteAccepted();
+            _openInviteFlow();
+          });
+        }
+        return Theme(
+          data: Theme.of(context).copyWith(colorScheme: effectiveScheme),
+          child: content,
+        );
+      },
     );
   }
 
@@ -336,26 +341,23 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     return 'Convidar amigos';
   }
 
-  Future<void> _handleInviteAction() async {
-    await _openInviteFlow();
+  void _handleInviteAction() {
+    _openInviteFlow();
   }
 
-  Future<void> _handleAcceptInvite(String inviteId) async {
-    await _controller.acceptInvite(inviteId);
-    if (mounted) {
-      _openInviteFlow();
-    }
+  Future<void> _handleAcceptInvite(String inviteId) {
+    return _controller.acceptInvite(inviteId);
   }
 
-  Future<void> _handleDeclineInvite(String inviteId) async {
-    await _controller.declineInvite(inviteId);
+  Future<void> _handleDeclineInvite(String inviteId) {
+    return _controller.declineInvite(inviteId);
   }
 
   void _handleInviteFriends() {
     _openInviteFlow();
   }
 
-  Future<void> _openInviteFlow() async {
+  void _openInviteFlow() {
     context.router.push(const InviteFlowRoute());
   }
 }

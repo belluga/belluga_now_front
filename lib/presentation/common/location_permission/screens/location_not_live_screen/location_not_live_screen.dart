@@ -43,84 +43,99 @@ class _LocationNotLiveScreenState extends State<LocationNotLiveScreen> {
       LocationPermissionState.deniedForever => 'Abrir configurações',
     };
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Localização')),
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                title,
-                style: Theme.of(context).textTheme.headlineSmall,
-              ),
-              const SizedBox(height: 8),
-              Text(
-                subtitle,
-                style: Theme.of(context).textTheme.bodyLarge,
-              ),
-              if (ageLabel != null) ...[
-                const SizedBox(height: 6),
-                Text(
-                  'Última localização conhecida: $ageLabel (pode estar desatualizada).',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
-                ),
-              ],
-              const SizedBox(height: 16),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.info_outline,
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        'Ative a localização ao vivo para mostrar lugares próximos e ordenar por distância com mais precisão.',
-                        style: Theme.of(context).textTheme.bodyMedium,
-                      ),
+    return StreamValueBuilder<bool?>(
+      streamValue: _controller.resultStreamValue,
+      builder: (context, result) {
+        _handleResult(result);
+        return Scaffold(
+          appBar: AppBar(title: const Text('Localização')),
+          body: SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    title,
+                    style: Theme.of(context).textTheme.headlineSmall,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    subtitle,
+                    style: Theme.of(context).textTheme.bodyLarge,
+                  ),
+                  if (ageLabel != null) ...[
+                    const SizedBox(height: 6),
+                    Text(
+                      'Última localização conhecida: $ageLabel (pode estar desatualizada).',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          ),
                     ),
                   ],
-                ),
+                  const SizedBox(height: 16),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.info_outline,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            'Ative a localização ao vivo para mostrar lugares próximos e ordenar por distância com mais precisão.',
+                            style: Theme.of(context).textTheme.bodyMedium,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Spacer(),
+                  StreamValueBuilder(
+                    streamValue: _controller.loading,
+                    builder: (context, isLoading) {
+                      return ButtonLoading(
+                        label: primaryLabel,
+                        isLoading: isLoading,
+                        onPressed: _onEnablePressed,
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  TextButton(
+                    onPressed: () => context.router.pop(true),
+                    child: const Text('Continuar sem localização ao vivo'),
+                  ),
+                ],
               ),
-              const Spacer(),
-              StreamValueBuilder(
-                streamValue: _controller.loading,
-                builder: (context, isLoading) {
-                  return ButtonLoading(
-                    label: primaryLabel,
-                    isLoading: isLoading,
-                    onPressed: _onEnablePressed,
-                  );
-                },
-              ),
-              const SizedBox(height: 12),
-              TextButton(
-                onPressed: () => context.router.pop(true),
-                child: const Text('Continuar sem localização ao vivo'),
-              ),
-            ],
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 
-  Future<void> _onEnablePressed() async {
-    final granted = await _controller.ensureReady(
-      initialState: widget.blockerState,
-    );
-    if (!mounted || !granted) return;
-    context.router.pop(true);
+  void _onEnablePressed() {
+    _controller.requestPermission(initialState: widget.blockerState);
+  }
+
+  void _handleResult(bool? result) {
+    if (result != true) {
+      if (result != null) {
+        _controller.clearResult();
+      }
+      return;
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.router.pop(true);
+      _controller.clearResult();
+    });
   }
 
   String _relativeAge(DateTime capturedAt) {

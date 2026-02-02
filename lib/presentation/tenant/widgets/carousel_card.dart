@@ -26,22 +26,12 @@ class _CarouselCardState extends State<CarouselCard> {
   ColorScheme? _derivedScheme;
   ImageProvider get _provider => NetworkImage(widget.imageUri.toString());
   bool _requested = false;
+  int _loadToken = 0;
 
   @override
   void initState() {
     super.initState();
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    // Kick off palette extraction after inherited widgets (Theme) are available.
-    if (!_requested) {
-      _requested = true;
-      final scheme = Theme.of(context).colorScheme;
-      // Defer to next microtask to avoid sync blocking the init frame.
-      Future.microtask(() => _loadScheme(scheme));
-    }
+    _scheduleSchemeLoad();
   }
 
   @override
@@ -49,20 +39,40 @@ class _CarouselCardState extends State<CarouselCard> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.imageUri != widget.imageUri) {
       _derivedScheme = null;
-      final scheme = Theme.of(context).colorScheme;
-      Future.microtask(() => _loadScheme(scheme));
+      _requested = false;
+      _loadToken++;
+      _scheduleSchemeLoad();
     }
   }
 
-  Future<void> _loadScheme(ColorScheme fallback) async {
+  void _scheduleSchemeLoad() {
+    if (_requested) {
+      return;
+    }
+    _requested = true;
+    final token = ++_loadToken;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final scheme = Theme.of(context).colorScheme;
+      // Defer to next microtask to avoid sync blocking the init frame.
+      Future.microtask(() => _loadScheme(scheme, token));
+    });
+  }
+
+  Future<void> _loadScheme(ColorScheme fallback, int token) async {
     final scheme = await ColorSchemeGenerator.fromImageProvider(
       _provider,
       fallback: fallback,
     );
-    if (!mounted) return;
+    if (token != _loadToken) return;
     setState(() {
       _derivedScheme = scheme;
     });
+  }
+
+  @override
+  void dispose() {
+    _loadToken++;
+    super.dispose();
   }
 
   @override

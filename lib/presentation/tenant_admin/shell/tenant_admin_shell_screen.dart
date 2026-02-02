@@ -1,5 +1,6 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
+import 'package:belluga_now/domain/repositories/admin_mode_repository_contract.dart';
 import 'package:belluga_now/presentation/tenant_admin/shell/controllers/tenant_admin_shell_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
@@ -101,7 +102,8 @@ class _TenantAdminShellScreenState extends State<TenantAdminShellScreen> {
   Widget build(BuildContext context) {
     return StreamValueBuilder(
       streamValue: _controller.modeStreamValue,
-      builder: (context, _) {
+      builder: (context, mode) {
+        _handleModeChange(mode);
         final router = context.router;
         final currentName = router.topRoute.name;
         final selectedIndex = _selectedIndex(currentName);
@@ -135,11 +137,7 @@ class _TenantAdminShellScreenState extends State<TenantAdminShellScreen> {
                 IconButton(
                   tooltip: 'Perfil',
                   icon: const Icon(Icons.person_outline),
-                  onPressed: () async {
-                    await _controller.switchToUserMode();
-                    if (!context.mounted) return;
-                    router.replaceAll([const ProfileRoute()]);
-                  },
+                  onPressed: () => _controller.switchToUserMode(),
                 ),
               ],
             ),
@@ -155,11 +153,7 @@ class _TenantAdminShellScreenState extends State<TenantAdminShellScreen> {
                       title: Text(_titleForRoute(currentName)),
                       actions: [
                         TextButton.icon(
-                          onPressed: () async {
-                            await _controller.switchToUserMode();
-                            if (!context.mounted) return;
-                            router.replaceAll([const ProfileRoute()]);
-                          },
+                          onPressed: () => _controller.switchToUserMode(),
                           icon: const Icon(Icons.person_outline),
                           label: const Text('Perfil'),
                         ),
@@ -203,6 +197,11 @@ class _TenantAdminShellScreenState extends State<TenantAdminShellScreen> {
         );
       },
     );
+  }
+
+  void _handleModeChange(AdminMode mode) {
+    if (mode != AdminMode.user) return;
+    context.router.replaceAll([const ProfileRoute()]);
   }
 }
 

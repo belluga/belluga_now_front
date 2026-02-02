@@ -20,6 +20,7 @@ class SliverAppBarController {
   );
 
   void shrink() {
+    if (!scrollController.hasClients) return;
     scrollController.animateTo(
       expandedBarHeight,
       duration: Duration(milliseconds: 300),
@@ -28,11 +29,31 @@ class SliverAppBarController {
   }
 
   void expand() {
+    if (!scrollController.hasClients) return;
     scrollController.animateTo(
       0,
       duration: Duration(milliseconds: 300),
       curve: Curves.easeInOut,
     );
+  }
+
+  void scheduleShrink() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      shrink();
+    });
+  }
+
+  void scheduleExpand() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      expand();
+    });
+  }
+
+  void dispose() {
+    scrollController.dispose();
+    isCollapsed.dispose();
+    isExpanded.dispose();
+    keyboardIsOpened.dispose();
   }
 
   // bool scrollListener() {

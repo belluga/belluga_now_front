@@ -23,23 +23,16 @@ class EventDetailLoader extends StatefulWidget {
 class _EventDetailLoaderState extends State<EventDetailLoader> {
   final EventDetailController _controller =
       GetIt.I.get<EventDetailController>();
-  StreamSubscription<EventModel?>? _eventSubscription;
   bool _telemetryStarted = false;
 
   @override
   void initState() {
     super.initState();
-    _eventSubscription = _controller.eventStreamValue.stream.listen((event) {
-      if (event == null || _telemetryStarted) return;
-      _telemetryStarted = true;
-      unawaited(_controller.startEventTelemetry(event));
-    });
     unawaited(_controller.loadEventBySlug(widget.slug));
   }
 
   @override
   void dispose() {
-    _eventSubscription?.cancel();
     unawaited(_controller.finishEventTelemetry());
     super.dispose();
   }
@@ -49,6 +42,14 @@ class _EventDetailLoaderState extends State<EventDetailLoader> {
     return StreamValueBuilder<EventModel?>(
       streamValue: _controller.eventStreamValue,
       builder: (context, _) {
+        final event = _controller.eventStreamValue.value;
+        if (event != null && !_telemetryStarted) {
+          _telemetryStarted = true;
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            unawaited(_controller.startEventTelemetry(event));
+          });
+        }
+
         if (_controller.isLoadingStreamValue.value &&
             _controller.eventStreamValue.value == null) {
           return const Scaffold(
@@ -56,7 +57,6 @@ class _EventDetailLoaderState extends State<EventDetailLoader> {
           );
         }
 
-        final event = _controller.eventStreamValue.value;
         if (event == null) {
           return Scaffold(
             appBar: AppBar(title: const Text('Evento')),

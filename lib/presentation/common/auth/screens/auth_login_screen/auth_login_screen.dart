@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/presentation/common/auth/screens/auth_login_screen/widgets/auth_header_expanded_content.dart';
@@ -10,6 +8,7 @@ import 'package:belluga_now/presentation/landlord/auth/controllers/landlord_logi
 import 'package:belluga_now/presentation/tenant/auth/login/controllers/auth_login_controller_contract.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
+import 'package:stream_value/core/stream_value_builder.dart';
 
 class AuthLoginScreen extends StatefulWidget {
   const AuthLoginScreen({
@@ -26,53 +25,56 @@ class _AuthLoginScreenState extends State<AuthLoginScreen>
       GetIt.I.get<AuthLoginControllerContract>();
   final LandlordLoginController _landlordLoginController =
       GetIt.I.get<LandlordLoginController>();
-  StreamSubscription<String?>? _generalErrorSubscription;
 
   @override
   void initState() {
     super.initState();
-
-    _generalErrorSubscription =
-        _controller.generalErrorStreamValue.stream.listen(_onGeneralError);
     WidgetsBinding.instance.addObserver(this);
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: CustomScrollView(
-        controller: _controller.sliverAppBarController.scrollController,
-        slivers: [
-          SliverAppBar(
-            elevation: 0,
-            automaticallyImplyLeading: true,
-            collapsedHeight:
-                _controller.sliverAppBarController.collapsedBarHeight,
-            expandedHeight:
-                _controller.sliverAppBarController.expandedBarHeight,
-            pinned: true,
-            backgroundColor: Theme.of(context).primaryColor,
-            title: MainLogo(appData: _controller.appData),
-            flexibleSpace: FlexibleSpaceBar(
-              collapseMode: CollapseMode.parallax,
-              background: AuthHeaderExpandedContent(),
-            ),
-          ),
-          SliverToBoxAdapter(child: AuthHeaderHeadline()),
-          SliverToBoxAdapter(
-            child: Center(
-              child: Padding(
-                padding: EdgeInsets.symmetric(horizontal: 24.0, vertical: 24),
-                child: AuthLoginCanvaContent(
-                  navigateToPasswordRecover: _navigateToPasswordRecover,
-                  controller: _controller,
-                  landlordLoginController: _landlordLoginController,
+    return StreamValueBuilder<String?>(
+      streamValue: _controller.generalErrorStreamValue,
+      builder: (context, error) {
+        _handleGeneralError(error);
+        return Scaffold(
+          body: CustomScrollView(
+            controller: _controller.sliverAppBarController.scrollController,
+            slivers: [
+              SliverAppBar(
+                elevation: 0,
+                automaticallyImplyLeading: true,
+                collapsedHeight:
+                    _controller.sliverAppBarController.collapsedBarHeight,
+                expandedHeight:
+                    _controller.sliverAppBarController.expandedBarHeight,
+                pinned: true,
+                backgroundColor: Theme.of(context).primaryColor,
+                title: MainLogo(appData: _controller.appData),
+                flexibleSpace: FlexibleSpaceBar(
+                  collapseMode: CollapseMode.parallax,
+                  background: AuthHeaderExpandedContent(),
                 ),
               ),
-            ),
+              SliverToBoxAdapter(child: AuthHeaderHeadline()),
+              SliverToBoxAdapter(
+                child: Center(
+                  child: Padding(
+                    padding:
+                        EdgeInsets.symmetric(horizontal: 24.0, vertical: 24),
+                    child: AuthLoginCanvaContent(
+                      navigateToPasswordRecover: _navigateToPasswordRecover,
+                      controller: _controller,
+                      landlordLoginController: _landlordLoginController,
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 
@@ -98,34 +100,32 @@ class _AuthLoginScreenState extends State<AuthLoginScreen>
   }
 
   void _shrinkSliverAppBar() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      _controller.sliverAppBarController.shrink();
-    });
+    _controller.sliverAppBarController.scheduleShrink();
   }
 
   void _expandSliverAppBar() {
+    _controller.sliverAppBarController.scheduleExpand();
+  }
+
+  void _handleGeneralError(String? error) {
+    if (error == null || error.isEmpty) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      _controller.sliverAppBarController.expand();
+      ScaffoldMessenger.of(context).showSnackBar(_messageSnack);
+      _controller.clearGeneralError();
     });
   }
 
-  void _onGeneralError(String? error) {
-    if (error != null) {
-      ScaffoldMessenger.of(context).showSnackBar(_messageSnack);
-    }
-  }
-
-  Future<void> _navigateToPasswordRecover() async {
-    final emailReturned = await context.router.push<String>(
-      RecoveryPasswordRoute(
-        initialEmmail: _controller.authEmailFieldController.text,
-      ),
-    );
-
-    _controller.authEmailFieldController.textController.text =
-        emailReturned ?? _controller.authEmailFieldController.text;
+  Future<void> _navigateToPasswordRecover() {
+    return context.router
+        .push<String>(
+          RecoveryPasswordRoute(
+            initialEmmail: _controller.authEmailFieldController.text,
+          ),
+        )
+        .then((emailReturned) {
+      _controller.authEmailFieldController.textController.text =
+          emailReturned ?? _controller.authEmailFieldController.text;
+    });
   }
 
   SnackBar get _messageSnack {
@@ -149,7 +149,6 @@ class _AuthLoginScreenState extends State<AuthLoginScreen>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    _generalErrorSubscription?.cancel();
     super.dispose();
   }
 }

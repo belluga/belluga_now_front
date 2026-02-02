@@ -116,23 +116,15 @@ void main() {
     await tester.tap(find.text('Venue').last);
     await tester.pumpAndSettle();
 
-    final selectOnMap = find.text('Selecionar no mapa');
-    expect(selectOnMap, findsOneWidget);
-    await tester.ensureVisible(selectOnMap);
-    await tester.pumpAndSettle();
-    await tester.tap(selectOnMap, warnIfMissed: false);
-    await tester.pumpAndSettle();
-
-    await _waitForFinder(
-      tester,
-      find.text('Selecionar Localização'),
-      timeout: const Duration(seconds: 30),
+    await tester.enterText(
+      find.byType(TextFormField).at(4),
+      '-20.673600',
     );
-    final mapCenter = tester.getCenter(find.byType(FlutterMap));
-    await tester.tapAt(mapCenter);
-    await tester.pumpAndSettle();
-
-    await tester.tap(find.text('Confirmar'));
+    await tester.enterText(
+      find.byType(TextFormField).at(5),
+      '-40.497600',
+    );
+    await tester.testTextInput.receiveAction(TextInputAction.done);
     await tester.pumpAndSettle();
 
     final saveButton = find.text('Salvar conta');

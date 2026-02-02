@@ -30,54 +30,65 @@ class _FavoritesSectionBuilderState extends State<FavoritesSectionBuilder> {
 
   @override
   Widget build(BuildContext context) {
-    return StreamValueBuilder<List<FavoriteResume>?>(
-      streamValue: _controller.favoritesStreamValue,
-      onNullWidget: const Padding(
-        padding: EdgeInsets.symmetric(vertical: 24),
-        child: Center(child: CircularProgressIndicator()),
-      ),
-      builder: (context, favorites) {
-        final all = favorites ?? const <FavoriteResume>[];
-        final items = all.where((fav) => !fav.isPrimary).toList();
-        final pinned = _controller.buildPinnedFavorite();
+    return StreamValueBuilder<FavoriteNavigationTarget?>(
+      streamValue: _controller.navigationTargetStreamValue,
+      builder: (context, target) {
+        if (target != null) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            _handleNavigationTarget(target);
+          });
+        }
+        return StreamValueBuilder<List<FavoriteResume>?>(
+          streamValue: _controller.favoritesStreamValue,
+          onNullWidget: const Padding(
+            padding: EdgeInsets.symmetric(vertical: 24),
+            child: Center(child: CircularProgressIndicator()),
+          ),
+          builder: (context, favorites) {
+            final all = favorites ?? const <FavoriteResume>[];
+            final items = all.where((fav) => !fav.isPrimary).toList();
+            final pinned = _controller.buildPinnedFavorite();
 
-        return Row(
-          children: [
-            Expanded(
-              child: FavoritesStrip(
-                items: items,
-                pinned: pinned,
-                onSearchTap: () {
-                  context.router.push(DiscoveryRoute());
-                },
-                onFavoriteTap: (favorite) {
-                  _handleFavoriteTap(favorite);
-                },
-                onPinnedTap: () {
-                  // TODO(Delphi): Route to About screen once available in AutoRoute map.
-                },
-              ),
-            ),
-          ],
+            return Row(
+              children: [
+                Expanded(
+                  child: FavoritesStrip(
+                    items: items,
+                    pinned: pinned,
+                    onSearchTap: () {
+                      context.router.push(DiscoveryRoute());
+                    },
+                    onFavoriteTap: (favorite) {
+                      _controller.requestNavigationTarget(favorite);
+                    },
+                    onPinnedTap: () {
+                      // TODO(Delphi): Route to About screen once available in AutoRoute map.
+                    },
+                  ),
+                ),
+              ],
+            );
+          },
         );
       },
     );
   }
 
-  Future<void> _handleFavoriteTap(FavoriteResume favorite) async {
-    final target = await _controller.resolveNavigationTarget(favorite);
-    if (!mounted) return;
-
+  void _handleNavigationTarget(FavoriteNavigationTarget? target) {
+    if (target == null) return;
+    final router = context.router;
     switch (target) {
       case FavoriteNavigationPrimary():
+        _controller.clearNavigationTarget();
         return;
       case FavoriteNavigationPartner():
-        context.router.push(
+        router.push(
           PartnerDetailRoute(slug: target.slug),
         );
+        _controller.clearNavigationTarget();
         return;
       case FavoriteNavigationSearch():
-        context.router.replaceAll(
+        router.replaceAll(
           [
             EventSearchRoute(
               startSearchActive: true,
@@ -85,6 +96,7 @@ class _FavoritesSectionBuilderState extends State<FavoritesSectionBuilder> {
             ),
           ],
         );
+        _controller.clearNavigationTarget();
         return;
     }
   }

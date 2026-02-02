@@ -43,27 +43,28 @@ class _TenantAdminAccountDetailScreenState
     return profile.profileType;
   }
 
-  Future<void> _openCreate() async {
-    final router = context.router;
-    await router.push(
-      TenantAdminAccountProfileCreateRoute(
-        accountSlug: widget.accountSlug,
-      ),
-    );
-    await _profilesController.loadAccountDetail(widget.accountSlug);
+  void _openCreate() {
+    context.router
+        .push(
+          TenantAdminAccountProfileCreateRoute(
+            accountSlug: widget.accountSlug,
+          ),
+        )
+        .then((_) => _profilesController.loadAccountDetail(widget.accountSlug));
   }
 
-  Future<void> _openEdit() async {
+  void _openEdit() {
     final profile = _profilesController.accountProfileStreamValue.value;
     if (profile == null) {
       return;
     }
-    await context.router.push(
-      TenantAdminAccountProfileEditRoute(
-        accountProfileId: profile.id,
-      ),
-    );
-    await _profilesController.loadAccountDetail(widget.accountSlug);
+    context.router
+        .push(
+          TenantAdminAccountProfileEditRoute(
+            accountProfileId: profile.id,
+          ),
+        )
+        .then((_) => _profilesController.loadAccountDetail(widget.accountSlug));
   }
 
   @override

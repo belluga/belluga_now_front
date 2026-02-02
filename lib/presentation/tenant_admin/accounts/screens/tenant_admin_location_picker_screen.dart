@@ -131,7 +131,10 @@ class _TenantAdminLocationPickerScreenState
                           FilledButton(
                             onPressed: location == null
                                 ? null
-                                : () => context.router.pop(location),
+                                : () {
+                                    _controller.confirmSelection();
+                                    context.router.maybePop();
+                                  },
                             child: const Text('Confirmar'),
                           ),
                         ],

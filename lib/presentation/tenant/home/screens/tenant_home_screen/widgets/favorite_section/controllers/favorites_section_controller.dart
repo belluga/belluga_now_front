@@ -40,6 +40,8 @@ class FavoritesSectionController implements Disposable {
 
   final StreamValue<List<FavoriteResume>?> favoritesStreamValue =
       StreamValue<List<FavoriteResume>?>();
+  final StreamValue<FavoriteNavigationTarget?> navigationTargetStreamValue =
+      StreamValue<FavoriteNavigationTarget?>(defaultValue: null);
 
   StreamSubscription? _partnersSubscription;
   List<AccountProfileModel> _favoritePartnersCache = const [];
@@ -162,6 +164,15 @@ class FavoritesSectionController implements Disposable {
     }
 
     return FavoriteNavigationSearch(query: favorite.title.trim());
+  }
+
+  Future<void> requestNavigationTarget(FavoriteResume favorite) async {
+    final target = await resolveNavigationTarget(favorite);
+    navigationTargetStreamValue.addValue(target);
+  }
+
+  void clearNavigationTarget() {
+    navigationTargetStreamValue.addValue(null);
   }
 
   void _resortFavoritesByUpcomingEvents() {
@@ -287,6 +298,7 @@ class FavoritesSectionController implements Disposable {
   void onDispose() {
     _partnersSubscription?.cancel();
     favoritesStreamValue.dispose();
+    navigationTargetStreamValue.dispose();
   }
 }
 

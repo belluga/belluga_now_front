@@ -41,6 +41,7 @@ class EventDetailController implements Disposable {
   final receivedInvitesStreamValue =
       StreamValue<List<InviteModel>>(defaultValue: const []);
   final inviteDeckIndexStreamValue = StreamValue<int>(defaultValue: 0);
+  final inviteAcceptedStreamValue = StreamValue<bool>(defaultValue: false);
 
   // Delegate to repository for single source of truth
   StreamValue<Map<String, List<SentInviteStatus>>>
@@ -166,6 +167,7 @@ class EventDetailController implements Disposable {
 
       final newTotal = totalConfirmedStreamValue.value + 1;
       totalConfirmedStreamValue.addValue(newTotal);
+      inviteAcceptedStreamValue.addValue(true);
     } finally {
       isLoadingStreamValue.addValue(false);
     }
@@ -242,12 +244,19 @@ class EventDetailController implements Disposable {
     setInviteDeckIndex(clamped);
   }
 
+  void clearInviteAccepted() {
+    if (inviteAcceptedStreamValue.value) {
+      inviteAcceptedStreamValue.addValue(false);
+    }
+  }
+
   @override
   void onDispose() {
     eventStreamValue.dispose();
     isConfirmedStreamValue.dispose();
     receivedInvitesStreamValue.dispose();
     inviteDeckIndexStreamValue.dispose();
+    inviteAcceptedStreamValue.dispose();
     // sentInvitesByEventStreamValue is owned by repository, do not dispose
     friendsGoingStreamValue.dispose();
     totalConfirmedStreamValue.dispose();

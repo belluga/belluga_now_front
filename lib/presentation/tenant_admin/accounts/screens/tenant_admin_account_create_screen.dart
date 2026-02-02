@@ -23,10 +23,12 @@ class _TenantAdminAccountCreateScreenState
     extends State<TenantAdminAccountCreateScreen> {
   final TenantAdminAccountsController _controller =
       GetIt.I.get<TenantAdminAccountsController>();
+  String? _lastSuccessMessage;
 
   @override
   void initState() {
     super.initState();
+    _controller.bindCreateFlow();
     _controller.resetCreateState();
     _controller.resetCreateForm();
     _controller.loadProfileTypes();
@@ -92,16 +94,11 @@ class _TenantAdminAccountCreateScreenState
 
   Future<void> _openMapPicker() async {
     final currentLocation = _currentLocation();
-    final selected = await context.router.push<TenantAdminLocation?>(
+    context.router.push<TenantAdminLocation?>(
       TenantAdminLocationPickerRoute(
         initialLocation: currentLocation,
       ),
     );
-    if (selected == null) {
-      return;
-    }
-    _controller.latitudeController.text = selected.latitude.toStringAsFixed(6);
-    _controller.longitudeController.text = selected.longitude.toStringAsFixed(6);
   }
 
   TenantAdminLocation? _currentLocation() {
@@ -153,75 +150,109 @@ class _TenantAdminAccountCreateScreenState
 
   @override
   Widget build(BuildContext context) {
-    return StreamValueBuilder<TenantAdminAccountCreateState>(
-      streamValue: _controller.createStateStreamValue,
-      builder: (context, state) {
-        final requiresLocation = _requiresLocation(state.selectedProfileType);
-        return Scaffold(
-          appBar: AppBar(
-            title: const Text('Criar Conta'),
-            leading: IconButton(
-              icon: const Icon(Icons.arrow_back),
-              onPressed: () => context.router.maybePop(),
-              tooltip: 'Voltar',
-            ),
-          ),
-          body: Padding(
-            padding: EdgeInsets.fromLTRB(
-              16,
-              16,
-              16,
-              16 + MediaQuery.of(context).viewInsets.bottom,
-            ),
-            child: SingleChildScrollView(
-              child: Form(
-                key: _controller.createFormKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildAccountSection(context, state),
-                    const SizedBox(height: 16),
-                    _buildMediaSection(context, state),
-                    if (requiresLocation) ...[
-                      const SizedBox(height: 16),
-                      _buildLocationSection(context),
-                    ],
-                    const SizedBox(height: 24),
-                    SizedBox(
-                      width: double.infinity,
-                      child: FilledButton(
-                        key: const ValueKey('tenant_admin_account_create_save'),
-                        onPressed: () async {
-                          final form = _controller.createFormKey.currentState;
-                          if (form == null || !form.validate()) {
-                            return;
-                          }
-                          final location = _currentLocation();
-                          final avatarUpload =
-                              await _buildUpload(state.avatarFile);
-                          final coverUpload =
-                              await _buildUpload(state.coverFile);
-                          await _controller.createAccountFromForm(
-                            location: location,
-                            avatarUpload: avatarUpload,
-                            coverUpload: coverUpload,
-                          );
-                          if (!context.mounted) return;
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Conta e perfil salvos.'),
+    return StreamValueBuilder<String?>(
+      streamValue: _controller.createSuccessMessageStreamValue,
+      builder: (context, successMessage) {
+        _handleCreateSuccessMessage(successMessage);
+        return StreamValueBuilder<String?>(
+          streamValue: _controller.createErrorMessageStreamValue,
+          builder: (context, errorMessage) {
+            _handleCreateErrorMessage(errorMessage);
+            return StreamValueBuilder<TenantAdminAccountCreateState>(
+              streamValue: _controller.createStateStreamValue,
+              builder: (context, state) {
+                final requiresLocation =
+                    _requiresLocation(state.selectedProfileType);
+                return Scaffold(
+                  appBar: AppBar(
+                    title: const Text('Criar Conta'),
+                    leading: IconButton(
+                      icon: const Icon(Icons.arrow_back),
+                      onPressed: () => context.router.maybePop(),
+                      tooltip: 'Voltar',
+                    ),
+                  ),
+                  body: Padding(
+                    padding: EdgeInsets.fromLTRB(
+                      16,
+                      16,
+                      16,
+                      16 + MediaQuery.of(context).viewInsets.bottom,
+                    ),
+                    child: SingleChildScrollView(
+                      child: Form(
+                        key: _controller.createFormKey,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if (successMessage != null &&
+                                successMessage.isNotEmpty)
+                              Padding(
+                                padding: const EdgeInsets.only(bottom: 12),
+                                child: Card(
+                                  margin: EdgeInsets.zero,
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .primaryContainer,
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(12),
+                                    child: Text(
+                                      successMessage,
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodyMedium
+                                          ?.copyWith(
+                                            color: Theme.of(context)
+                                                .colorScheme
+                                                .onPrimaryContainer,
+                                          ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            _buildAccountSection(context, state),
+                            const SizedBox(height: 16),
+                            _buildMediaSection(context, state),
+                            if (requiresLocation) ...[
+                              const SizedBox(height: 16),
+                              _buildLocationSection(context),
+                            ],
+                            const SizedBox(height: 24),
+                            SizedBox(
+                              width: double.infinity,
+                              child: FilledButton(
+                                key: const ValueKey(
+                                  'tenant_admin_account_create_save',
+                                ),
+                                onPressed: () async {
+                                  final form =
+                                      _controller.createFormKey.currentState;
+                                  if (form == null || !form.validate()) {
+                                    return;
+                                  }
+                                  final location = _currentLocation();
+                                  final avatarUpload =
+                                      await _buildUpload(state.avatarFile);
+                                  final coverUpload =
+                                      await _buildUpload(state.coverFile);
+                                  _controller.submitCreateAccountFromForm(
+                                    location: location,
+                                    avatarUpload: avatarUpload,
+                                    coverUpload: coverUpload,
+                                  );
+                                },
+                                child: const Text('Salvar conta'),
+                              ),
                             ),
-                          );
-                          context.router.maybePop();
-                        },
-                        child: const Text('Salvar conta'),
+                          ],
+                        ),
                       ),
                     ),
-                  ],
-                ),
-              ),
-            ),
-          ),
+                  ),
+                );
+              },
+            );
+          },
         );
       },
     );
@@ -407,6 +438,31 @@ class _TenantAdminAccountCreateScreenState
         ),
       ),
     );
+  }
+
+  void _handleCreateSuccessMessage(String? message) {
+    if (message == null || message.isEmpty) return;
+    if (_lastSuccessMessage == message) return;
+    _lastSuccessMessage = message;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message)),
+      );
+    });
+    Future.delayed(const Duration(seconds: 2), () {
+      _controller.clearCreateSuccessMessage();
+      _lastSuccessMessage = null;
+    });
+  }
+
+  void _handleCreateErrorMessage(String? message) {
+    if (message == null || message.isEmpty) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message)),
+      );
+      _controller.clearCreateErrorMessage();
+    });
   }
 
   Widget _buildMediaSection(

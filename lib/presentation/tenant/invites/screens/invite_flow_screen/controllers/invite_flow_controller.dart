@@ -52,6 +52,8 @@ class InviteFlowScreenController with Disposable {
   final topCardIndexStreamValue = StreamValue<int>(defaultValue: 0);
   final loadedImagesStreamValue =
       StreamValue<Set<String>>(defaultValue: const {});
+  final decisionResultStreamValue =
+      StreamValue<InviteDecisionResult?>(defaultValue: null);
   final Set<String> _openedInviteIds = <String>{};
   Future<EventTrackerTimedEventHandle?>? _activeInviteTimedEventFuture;
   String? _activeInviteId;
@@ -110,6 +112,15 @@ class InviteFlowScreenController with Disposable {
       resetConfirmPresence();
     }
     return result;
+  }
+
+  Future<void> requestDecision(InviteDecision decision) async {
+    final result = await applyDecision(decision);
+    decisionResultStreamValue.addValue(result);
+  }
+
+  void clearDecisionResult() {
+    decisionResultStreamValue.addValue(null);
   }
 
   Future<InviteDecisionResult?> _finalizeDecision(
@@ -278,6 +289,7 @@ class InviteFlowScreenController with Disposable {
     confirmingPresenceStreamValue.dispose();
     topCardIndexStreamValue.dispose();
     loadedImagesStreamValue.dispose();
+    decisionResultStreamValue.dispose();
   }
 
   void _finishActiveInviteTimedEvent({

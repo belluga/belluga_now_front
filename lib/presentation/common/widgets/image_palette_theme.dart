@@ -25,14 +25,28 @@ class _ImagePaletteThemeState extends State<ImagePaletteTheme> {
   static final Map<Object, ColorScheme> _cache = {};
   Object? _currentKey;
   ColorScheme? _scheme;
+  int _loadToken = 0;
 
   @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    _loadScheme();
+  void initState() {
+    super.initState();
+    final token = ++_loadToken;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (token != _loadToken) return;
+      _loadScheme(token);
+    });
   }
 
-  Future<void> _loadScheme() async {
+  @override
+  void didUpdateWidget(covariant ImagePaletteTheme oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.imageProvider != widget.imageProvider ||
+        oldWidget.fallbackScheme != widget.fallbackScheme) {
+      _loadScheme(++_loadToken);
+    }
+  }
+
+  Future<void> _loadScheme(int token) async {
     final fallback = widget.fallbackScheme ?? Theme.of(context).colorScheme;
     final key = widget.imageProvider;
     if (key == _currentKey && _scheme != null) {
@@ -53,13 +67,19 @@ class _ImagePaletteThemeState extends State<ImagePaletteTheme> {
       widget.imageProvider,
       fallback: fallback,
     );
-    if (!mounted || _currentKey != key) {
+    if (token != _loadToken || _currentKey != key) {
       return;
     }
     _cache[key] = scheme;
     setState(() {
       _scheme = scheme;
     });
+  }
+
+  @override
+  void dispose() {
+    _loadToken++;
+    super.dispose();
   }
 
   @override

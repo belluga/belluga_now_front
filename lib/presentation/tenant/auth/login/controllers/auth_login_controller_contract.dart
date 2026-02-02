@@ -42,6 +42,9 @@ abstract class AuthLoginControllerContract extends Object with Disposable {
 
   final StreamValue<bool> fieldEnabled = StreamValue<bool>(defaultValue: true);
 
+  final StreamValue<bool?> loginResultStreamValue = StreamValue<bool?>();
+  final StreamValue<bool?> signUpResultStreamValue = StreamValue<bool?>();
+
   bool get isAuthorized => _authRepository.isAuthorized;
 
   late FormFieldControllerEmail authEmailFieldController;
@@ -61,6 +64,10 @@ abstract class AuthLoginControllerContract extends Object with Disposable {
   void _cleanAllErrors() {
     cleanEmailError(null);
     cleanPasswordError(null);
+    generalErrorStreamValue.addValue(null);
+  }
+
+  void clearGeneralError() {
     generalErrorStreamValue.addValue(null);
   }
 
@@ -85,6 +92,7 @@ abstract class AuthLoginControllerContract extends Object with Disposable {
           passwordController.value,
         );
       }
+      loginResultStreamValue.addValue(_authRepository.isAuthorized);
     } on BellugaAuthError catch (e) {
       switch (e.runtimeType) {
         case const (AuthErrorEmail):
@@ -96,15 +104,17 @@ abstract class AuthLoginControllerContract extends Object with Disposable {
         default:
           generalErrorStreamValue.addValue(e.message);
       }
+      loginResultStreamValue.addValue(false);
     } catch (e) {
       generalErrorStreamValue.addValue("Erro desconhecido");
+      loginResultStreamValue.addValue(false);
     }
 
     buttonLoadingValue.addValue(false);
     fieldEnabled.addValue(true);
   }
 
-  Future<bool> signUpWithEmailPassword(
+  Future<void> signUpWithEmailPassword(
     String name,
     String email,
     String password,
@@ -115,17 +125,31 @@ abstract class AuthLoginControllerContract extends Object with Disposable {
 
     try {
       await _authRepository.signUpWithEmailPassword(name, email, password);
-      return _authRepository.isAuthorized;
+      final authorized = _authRepository.isAuthorized;
+      if (!authorized) {
+        generalErrorStreamValue.addValue(
+          'Falha ao autenticar após o cadastro.',
+        );
+      }
+      signUpResultStreamValue.addValue(authorized);
     } on BellugaAuthError catch (e) {
       generalErrorStreamValue.addValue(e.message);
-      return false;
+      signUpResultStreamValue.addValue(false);
     } catch (e) {
       generalErrorStreamValue.addValue("Erro desconhecido");
-      return false;
+      signUpResultStreamValue.addValue(false);
     } finally {
       buttonLoadingValue.addValue(false);
       fieldEnabled.addValue(true);
     }
+  }
+
+  void clearLoginResult() {
+    loginResultStreamValue.addValue(null);
+  }
+
+  void clearSignUpResult() {
+    signUpResultStreamValue.addValue(null);
   }
 
   @override
@@ -137,5 +161,8 @@ abstract class AuthLoginControllerContract extends Object with Disposable {
     signupPasswordController.dispose();
     generalErrorStreamValue.dispose();
     buttonLoadingValue.dispose();
+    loginResultStreamValue.dispose();
+    signUpResultStreamValue.dispose();
+    sliverAppBarController.dispose();
   }
 }

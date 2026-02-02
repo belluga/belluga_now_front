@@ -86,12 +86,6 @@ class _PushOptionSelectorSheetState extends State<PushOptionSelectorSheet> {
   }
 
   @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
     final titleText = widget.title.isNotEmpty
         ? widget.title
