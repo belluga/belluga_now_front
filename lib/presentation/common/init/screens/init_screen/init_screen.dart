@@ -3,22 +3,21 @@ import 'package:flutter/material.dart';
 import 'package:belluga_now/application/configurations/widget_keys.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/presentation/common/init/screens/init_screen/controllers/init_screen_controller.dart';
+import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 
 class InitScreen extends StatefulWidget {
   const InitScreen({
     super.key,
-    required this.controller,
   });
-
-  final InitScreenController controller;
 
   @override
   State<InitScreen> createState() => _InitScreenState();
 }
 
 class _InitScreenState extends State<InitScreen> {
-  InitScreenController get _controller => widget.controller;
+  final InitScreenController _controller =
+      GetIt.I.get<InitScreenController>();
 
   @override
   void initState() {

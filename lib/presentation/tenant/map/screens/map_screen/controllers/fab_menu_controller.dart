@@ -11,6 +11,13 @@ class FabMenuController {
   final MapScreenController _mapController;
 
   final expandedStreamValue = StreamValue<bool>(defaultValue: true);
+  final condensedStreamValue = StreamValue<bool>(defaultValue: false);
+  final revertedOnCloseStreamValue = StreamValue<bool>(defaultValue: false);
+  final ignoreNextFilterChangeStreamValue =
+      StreamValue<bool>(defaultValue: false);
+  PoiFilterMode previousFilterMode = PoiFilterMode.none;
+  PoiFilterMode? lastFilterMode;
+  bool? lastExpanded;
 
   StreamValue<PoiFilterMode> get filterModeStreamValue =>
       _mapController.filterModeStreamValue;
@@ -31,5 +38,24 @@ class FabMenuController {
 
   void setExpanded(bool expanded) {
     expandedStreamValue.addValue(expanded);
+  }
+
+  void setCondensed(bool condensed) {
+    condensedStreamValue.addValue(condensed);
+  }
+
+  void setRevertedOnClose(bool reverted) {
+    revertedOnCloseStreamValue.addValue(reverted);
+  }
+
+  void setIgnoreNextFilterChange(bool value) {
+    ignoreNextFilterChangeStreamValue.addValue(value);
+  }
+
+  void dispose() {
+    expandedStreamValue.dispose();
+    condensedStreamValue.dispose();
+    revertedOnCloseStreamValue.dispose();
+    ignoreNextFilterChangeStreamValue.dispose();
   }
 }

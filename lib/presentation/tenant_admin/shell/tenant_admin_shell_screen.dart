@@ -2,15 +2,11 @@ import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/presentation/tenant_admin/shell/controllers/tenant_admin_shell_controller.dart';
 import 'package:flutter/material.dart';
+import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 
 class TenantAdminShellScreen extends StatefulWidget {
-  const TenantAdminShellScreen({
-    super.key,
-    required this.controller,
-  });
-
-  final TenantAdminShellController controller;
+  const TenantAdminShellScreen({super.key});
 
   @override
   State<TenantAdminShellScreen> createState() =>
@@ -19,6 +15,8 @@ class TenantAdminShellScreen extends StatefulWidget {
 
 class _TenantAdminShellScreenState extends State<TenantAdminShellScreen> {
   static const _railBreakpoint = 900.0;
+  final TenantAdminShellController _controller =
+      GetIt.I.get<TenantAdminShellController>();
 
   final List<_AdminDestination> _destinations = const [
     _AdminDestination(
@@ -101,9 +99,8 @@ class _TenantAdminShellScreenState extends State<TenantAdminShellScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final controller = widget.controller;
     return StreamValueBuilder(
-      streamValue: controller.modeStreamValue,
+      streamValue: _controller.modeStreamValue,
       builder: (context, _) {
         final router = context.router;
         final currentName = router.topRoute.name;
@@ -139,7 +136,7 @@ class _TenantAdminShellScreenState extends State<TenantAdminShellScreen> {
                   tooltip: 'Perfil',
                   icon: const Icon(Icons.person_outline),
                   onPressed: () async {
-                    await controller.switchToUserMode();
+                    await _controller.switchToUserMode();
                     if (!context.mounted) return;
                     router.replaceAll([const ProfileRoute()]);
                   },
@@ -159,7 +156,7 @@ class _TenantAdminShellScreenState extends State<TenantAdminShellScreen> {
                       actions: [
                         TextButton.icon(
                           onPressed: () async {
-                            await controller.switchToUserMode();
+                            await _controller.switchToUserMode();
                             if (!context.mounted) return;
                             router.replaceAll([const ProfileRoute()]);
                           },

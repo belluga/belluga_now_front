@@ -24,12 +24,11 @@ void main() {
     final controller = LandlordHomeScreenController(
       adminModeRepository: GetIt.I.get<AdminModeRepositoryContract>(),
     );
+    GetIt.I.registerSingleton<LandlordHomeScreenController>(controller);
 
     await tester.pumpWidget(
       MaterialApp(
-        home: LandlordHomeScreen(
-          controller: controller,
-        ),
+        home: LandlordHomeScreen(),
       ),
     );
 

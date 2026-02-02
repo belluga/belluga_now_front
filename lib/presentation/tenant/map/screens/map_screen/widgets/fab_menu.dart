@@ -28,13 +28,7 @@ class _FabMenuState extends State<FabMenu> {
 
   late final FabMenuController _fabController = widget.controller;
 
-  bool _condensed = false;
-  bool? _lastExpanded;
   Timer? _condenseTimer;
-  PoiFilterMode _previousFilterMode = PoiFilterMode.none;
-  PoiFilterMode? _lastFilterMode;
-  bool _revertedOnClose = false;
-  bool _ignoreNextFilterChange = false;
 
   @override
   void dispose() {
@@ -45,20 +39,13 @@ class _FabMenuState extends State<FabMenu> {
   void _handleExpandedChange(bool expanded) {
     _condenseTimer?.cancel();
     if (!expanded) {
-      if (_condensed) {
-        setState(() => _condensed = false);
-      }
+      _fabController.setCondensed(false);
       return;
     }
-    _revertedOnClose = false;
-    if (_condensed) {
-      setState(() => _condensed = false);
-    }
+    _fabController.setRevertedOnClose(false);
+    _fabController.setCondensed(false);
     _condenseTimer = Timer(_condenseDelay, () {
-      if (!mounted) {
-        return;
-      }
-      setState(() => _condensed = true);
+      _fabController.setCondensed(true);
     });
   }
 
@@ -68,8 +55,8 @@ class _FabMenuState extends State<FabMenu> {
     return StreamValueBuilder<bool>(
       streamValue: _fabController.expandedStreamValue,
       builder: (_, expanded) {
-        if (_lastExpanded != expanded) {
-          _lastExpanded = expanded;
+        if (_fabController.lastExpanded != expanded) {
+          _fabController.lastExpanded = expanded;
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (mounted) {
               _handleExpandedChange(expanded);
@@ -79,16 +66,17 @@ class _FabMenuState extends State<FabMenu> {
         return StreamValueBuilder<PoiFilterMode>(
           streamValue: _fabController.filterModeStreamValue,
           builder: (_, mode) {
-            if (_lastFilterMode != mode) {
-              if (_ignoreNextFilterChange) {
-                _ignoreNextFilterChange = false;
+            if (_fabController.lastFilterMode != mode) {
+              if (_fabController.ignoreNextFilterChangeStreamValue.value) {
+                _fabController.setIgnoreNextFilterChange(false);
               } else {
-                if (_lastFilterMode != null) {
-                  _previousFilterMode = _lastFilterMode!;
+                if (_fabController.lastFilterMode != null) {
+                  _fabController.previousFilterMode =
+                      _fabController.lastFilterMode!;
                 }
-                _revertedOnClose = false;
+                _fabController.setRevertedOnClose(false);
               }
-              _lastFilterMode = mode;
+              _fabController.lastFilterMode = mode;
             }
             final filterConfigs = [
               const _FilterConfig(
@@ -113,49 +101,54 @@ class _FabMenuState extends State<FabMenu> {
               ),
             ];
 
-            return Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                if (expanded) ...[
-                  FabActionButton(
-                    label: 'Ir para você',
-                    icon: Icons.my_location,
-                    backgroundColor: scheme.secondaryContainer,
-                    foregroundColor: scheme.onSecondaryContainer,
-                    onTap: widget.onNavigateToUser,
-                    condensed: _condensed,
-                  ),
-                  const SizedBox(height: 8),
-                  ...filterConfigs.map((config) {
-                    final isActive = mode == config.mode;
-                    final activeColor = _colorForFilter(config.mode, scheme);
-                    final activeFg = isActive
-                        ? _foregroundForColor(activeColor)
-                        : scheme.onSurfaceVariant;
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
-                      child: FabActionButton(
-                        label: config.label,
-                        icon: config.icon,
-                        backgroundColor:
-                            isActive ? activeColor : scheme.surface,
-                        foregroundColor: activeFg,
-                        onTap: () =>
-                            _fabController.toggleFilterMode(config.mode),
-                        condensed: _condensed,
+            return StreamValueBuilder<bool>(
+              streamValue: _fabController.condensedStreamValue,
+              builder: (_, condensed) {
+                return Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    if (expanded) ...[
+                      FabActionButton(
+                        label: 'Ir para você',
+                        icon: Icons.my_location,
+                        backgroundColor: scheme.secondaryContainer,
+                        foregroundColor: scheme.onSecondaryContainer,
+                        onTap: widget.onNavigateToUser,
+                        condensed: condensed,
                       ),
-                    );
-                  }),
-                  const SizedBox(height: 4),
-                ],
-                FloatingActionButton(
-                  heroTag: 'map-fab-main',
-                  onPressed: () =>
-                      _handleMainFabPressed(mode, expanded),
-                  child: Icon(expanded ? Icons.close : Icons.tune),
-                ),
-              ],
+                      const SizedBox(height: 8),
+                      ...filterConfigs.map((config) {
+                        final isActive = mode == config.mode;
+                        final activeColor = _colorForFilter(config.mode, scheme);
+                        final activeFg = isActive
+                            ? _foregroundForColor(activeColor)
+                            : scheme.onSurfaceVariant;
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: FabActionButton(
+                            label: config.label,
+                            icon: config.icon,
+                            backgroundColor:
+                                isActive ? activeColor : scheme.surface,
+                            foregroundColor: activeFg,
+                            onTap: () =>
+                                _fabController.toggleFilterMode(config.mode),
+                            condensed: condensed,
+                          ),
+                        );
+                      }),
+                      const SizedBox(height: 4),
+                    ],
+                    FloatingActionButton(
+                      heroTag: 'map-fab-main',
+                      onPressed: () =>
+                          _handleMainFabPressed(mode, expanded),
+                      child: Icon(expanded ? Icons.close : Icons.tune),
+                    ),
+                  ],
+                );
+              },
             );
           },
         );
@@ -169,10 +162,11 @@ class _FabMenuState extends State<FabMenu> {
       return;
     }
 
-    if (!_revertedOnClose && mode != _previousFilterMode) {
-      _ignoreNextFilterChange = true;
-      _fabController.toggleFilterMode(_previousFilterMode);
-      setState(() => _revertedOnClose = true);
+    if (!_fabController.revertedOnCloseStreamValue.value &&
+        mode != _fabController.previousFilterMode) {
+      _fabController.setIgnoreNextFilterChange(true);
+      _fabController.toggleFilterMode(_fabController.previousFilterMode);
+      _fabController.setRevertedOnClose(true);
       return;
     }
 

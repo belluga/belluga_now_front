@@ -6,6 +6,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
+import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart' show Disposable, GetIt;
 import 'package:image_picker/image_picker.dart';
 import 'package:stream_value/core/stream_value.dart';
@@ -46,6 +47,11 @@ class TenantAdminAccountProfilesController implements Disposable {
       createStateStreamValue = StreamValue<TenantAdminAccountProfileCreateState>(
     defaultValue: TenantAdminAccountProfileCreateState.initial(),
   );
+  final TextEditingController displayNameController = TextEditingController();
+  final TextEditingController bioController = TextEditingController();
+  final TextEditingController latitudeController = TextEditingController();
+  final TextEditingController longitudeController = TextEditingController();
+  final Map<String, TextEditingController> taxonomyControllers = {};
 
   bool _isDisposed = false;
 
@@ -270,6 +276,35 @@ class TenantAdminAccountProfilesController implements Disposable {
     );
   }
 
+  void resetFormControllers() {
+    displayNameController.clear();
+    bioController.clear();
+    latitudeController.clear();
+    longitudeController.clear();
+    for (final controller in taxonomyControllers.values) {
+      controller.clear();
+    }
+  }
+
+  TextEditingController getOrCreateTaxonomyController(
+    String key, {
+    String? initialText,
+  }) {
+    final controller = taxonomyControllers.putIfAbsent(
+      key,
+      () => TextEditingController(text: initialText ?? ''),
+    );
+    if (initialText != null && controller.text.isEmpty) {
+      controller.text = initialText;
+    }
+    return controller;
+  }
+
+  void removeTaxonomyController(String key) {
+    final controller = taxonomyControllers.remove(key);
+    controller?.dispose();
+  }
+
   void resetCreateState() {
     _updateCreateState(TenantAdminAccountProfileCreateState.initial());
   }
@@ -410,6 +445,13 @@ class TenantAdminAccountProfilesController implements Disposable {
 
   void dispose() {
     _isDisposed = true;
+    displayNameController.dispose();
+    bioController.dispose();
+    latitudeController.dispose();
+    longitudeController.dispose();
+    for (final controller in taxonomyControllers.values) {
+      controller.dispose();
+    }
     profilesStreamValue.dispose();
     profileTypesStreamValue.dispose();
     isLoadingStreamValue.dispose();

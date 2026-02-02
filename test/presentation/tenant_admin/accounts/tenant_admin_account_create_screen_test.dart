@@ -244,6 +244,9 @@ void main() {
     GetIt.I.registerSingleton<TenantAdminAccountsController>(
       TenantAdminAccountsController(),
     );
+    GetIt.I.registerSingleton<TenantAdminLocationPickerController>(
+      TenantAdminLocationPickerController(),
+    );
   });
 
   tearDown(() async {
@@ -254,15 +257,10 @@ void main() {
   testWidgets(
       'requires location and shows map pick for POI-enabled profile type',
       (tester) async {
-    final controller = TenantAdminAccountsController();
-    final locationPickerController = TenantAdminLocationPickerController();
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
-          body: TenantAdminAccountCreateScreen(
-            controller: controller,
-            locationPickerController: locationPickerController,
-          ),
+          body: TenantAdminAccountCreateScreen(),
         ),
       ),
     );
@@ -315,16 +313,10 @@ void main() {
       avatarFile,
       coverFile,
     ]);
-    final controller = TenantAdminAccountsController();
-    final locationPickerController = TenantAdminLocationPickerController();
-
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
-          body: TenantAdminAccountCreateScreen(
-            controller: controller,
-            locationPickerController: locationPickerController,
-          ),
+          body: TenantAdminAccountCreateScreen(),
         ),
       ),
     );

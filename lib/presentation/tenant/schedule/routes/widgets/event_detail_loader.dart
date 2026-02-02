@@ -5,24 +5,24 @@ import 'package:belluga_now/presentation/common/widgets/image_palette_theme.dart
 import 'package:belluga_now/presentation/tenant/schedule/screens/event_detail_screen/controllers/event_detail_controller.dart';
 import 'package:belluga_now/presentation/tenant/schedule/screens/event_detail_screen/event_detail_screen.dart';
 import 'package:flutter/material.dart';
+import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 
 class EventDetailLoader extends StatefulWidget {
   const EventDetailLoader({
     super.key,
     required this.slug,
-    required this.controller,
   });
 
   final String slug;
-  final EventDetailController controller;
 
   @override
   State<EventDetailLoader> createState() => _EventDetailLoaderState();
 }
 
 class _EventDetailLoaderState extends State<EventDetailLoader> {
-  EventDetailController get _controller => widget.controller;
+  final EventDetailController _controller =
+      GetIt.I.get<EventDetailController>();
   StreamSubscription<EventModel?>? _eventSubscription;
   bool _telemetryStarted = false;
 
@@ -70,7 +70,6 @@ class _EventDetailLoaderState extends State<EventDetailLoader> {
         if (thumb == null) {
           return EventDetailScreen(
             event: event,
-            controller: _controller,
           );
         }
 
@@ -79,7 +78,6 @@ class _EventDetailLoaderState extends State<EventDetailLoader> {
           builder: (context, scheme) {
             return EventDetailScreen(
               event: event,
-              controller: _controller,
               colorScheme: scheme,
             );
           },

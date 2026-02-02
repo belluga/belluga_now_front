@@ -48,6 +48,10 @@ class MapScreenController implements Disposable {
   double? _pendingZoom;
   Future<EventTrackerTimedEventHandle?>? _activePoiTimedEventFuture;
   String? _activePoiId;
+  final StreamValue<int> poiDeckIndexStreamValue =
+      StreamValue<int>(defaultValue: 0);
+  PoiFilterMode? lastPoiDeckFilterMode;
+  final Map<String, double> poiDeckHeights = <String, double>{};
 
   StreamValue<CityCoordinate?> get userLocationStreamValue =>
       _userLocationRepository.userLocationStreamValue;
@@ -346,10 +350,29 @@ class MapScreenController implements Disposable {
     isLoading.addValue(false);
   }
 
+  void setPoiDeckIndex(int index) {
+    if (index != poiDeckIndexStreamValue.value) {
+      poiDeckIndexStreamValue.addValue(index);
+    }
+  }
+
+  void resetPoiDeckIndex() {
+    setPoiDeckIndex(0);
+  }
+
+  void updatePoiDeckHeight(String poiId, double height) {
+    poiDeckHeights[poiId] = height;
+  }
+
+  double? getPoiDeckHeight(String poiId) {
+    return poiDeckHeights[poiId];
+  }
+
   @override
   FutureOr onDispose() async {
     _finishPoiTimedEvent();
     await _mapEventSubscription?.cancel();
+    poiDeckIndexStreamValue.dispose();
   }
 
   void _attachZoomListener() {

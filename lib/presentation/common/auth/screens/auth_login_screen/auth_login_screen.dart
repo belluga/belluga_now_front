@@ -10,18 +10,12 @@ import 'package:belluga_now/presentation/common/widgets/main_logo.dart';
 import 'package:belluga_now/presentation/landlord/auth/controllers/landlord_login_controller.dart';
 import 'package:belluga_now/presentation/tenant/auth/login/controllers/auth_login_controller_contract.dart';
 import 'package:flutter/material.dart';
+import 'package:get_it/get_it.dart';
 
 class AuthLoginScreen extends StatefulWidget {
   const AuthLoginScreen({
     super.key,
-    required this.controller,
-    required this.landlordLoginController,
-    required this.appData,
   });
-
-  final AuthLoginControllerContract controller;
-  final LandlordLoginController landlordLoginController;
-  final AppData appData;
 
   @override
   State<AuthLoginScreen> createState() => _AuthLoginScreenState();
@@ -29,7 +23,11 @@ class AuthLoginScreen extends StatefulWidget {
 
 class _AuthLoginScreenState extends State<AuthLoginScreen>
     with WidgetsBindingObserver {
-  AuthLoginControllerContract get _controller => widget.controller;
+  final AuthLoginControllerContract _controller =
+      GetIt.I.get<AuthLoginControllerContract>();
+  final LandlordLoginController _landlordLoginController =
+      GetIt.I.get<LandlordLoginController>();
+  final AppData _appData = GetIt.I.get<AppData>();
   StreamSubscription<String?>? _generalErrorSubscription;
 
   @override
@@ -56,7 +54,7 @@ class _AuthLoginScreenState extends State<AuthLoginScreen>
                 _controller.sliverAppBarController.expandedBarHeight,
             pinned: true,
             backgroundColor: Theme.of(context).primaryColor,
-            title: MainLogo(appData: widget.appData),
+            title: MainLogo(appData: _appData),
             flexibleSpace: FlexibleSpaceBar(
               collapseMode: CollapseMode.parallax,
               background: AuthHeaderExpandedContent(),
@@ -70,7 +68,7 @@ class _AuthLoginScreenState extends State<AuthLoginScreen>
                 child: AuthLoginCanvaContent(
                   navigateToPasswordRecover: _navigateToPasswordRecover,
                   controller: _controller,
-                  landlordLoginController: widget.landlordLoginController,
+                  landlordLoginController: _landlordLoginController,
                 ),
               ),
             ),

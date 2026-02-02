@@ -1,5 +1,6 @@
 import 'package:belluga_now/domain/repositories/tenant_admin_account_profiles_repository_contract.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
+import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart' show Disposable, GetIt;
 import 'package:stream_value/core/stream_value.dart';
 
@@ -31,6 +32,9 @@ class TenantAdminProfileTypesController implements Disposable {
       StreamValue<TenantAdminProfileTypeCapabilities>(
     defaultValue: _emptyCapabilities,
   );
+  final TextEditingController typeController = TextEditingController();
+  final TextEditingController labelController = TextEditingController();
+  final TextEditingController taxonomiesController = TextEditingController();
 
   bool _isDisposed = false;
 
@@ -40,10 +44,17 @@ class TenantAdminProfileTypesController implements Disposable {
   void initForm(TenantAdminProfileTypeDefinition? definition) {
     final capabilities = definition?.capabilities ?? _emptyCapabilities;
     capabilitiesStreamValue.addValue(capabilities);
+    typeController.text = definition?.type ?? '';
+    labelController.text = definition?.label ?? '';
+    taxonomiesController.text =
+        (definition?.allowedTaxonomies ?? const []).join(', ');
   }
 
   void resetFormState() {
     capabilitiesStreamValue.addValue(_emptyCapabilities);
+    typeController.clear();
+    labelController.clear();
+    taxonomiesController.clear();
   }
 
   void updateCapabilities({
@@ -125,6 +136,9 @@ class TenantAdminProfileTypesController implements Disposable {
 
   void dispose() {
     _isDisposed = true;
+    typeController.dispose();
+    labelController.dispose();
+    taxonomiesController.dispose();
     typesStreamValue.dispose();
     isLoadingStreamValue.dispose();
     errorStreamValue.dispose();

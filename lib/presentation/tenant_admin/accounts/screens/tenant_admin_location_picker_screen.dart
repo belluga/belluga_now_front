@@ -3,6 +3,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/presentation/tenant_admin/accounts/controllers/tenant_admin_location_picker_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:get_it/get_it.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 
@@ -11,11 +12,9 @@ class TenantAdminLocationPickerScreen extends StatefulWidget {
   const TenantAdminLocationPickerScreen({
     super.key,
     this.initialLocation,
-    required this.controller,
   });
 
   final TenantAdminLocation? initialLocation;
-  final TenantAdminLocationPickerController controller;
 
   @override
   State<TenantAdminLocationPickerScreen> createState() =>
@@ -27,19 +26,17 @@ class _TenantAdminLocationPickerScreenState
   static const LatLng _defaultCenter = LatLng(-20.6736, -40.4976);
   static const double _defaultZoom = 15.5;
 
-  late final TenantAdminLocationPickerController _controller;
-  final MapController _mapController = MapController();
+  final TenantAdminLocationPickerController _controller =
+      GetIt.I.get<TenantAdminLocationPickerController>();
 
   @override
   void initState() {
     super.initState();
-    _controller = widget.controller;
     _controller.setInitialLocation(widget.initialLocation);
   }
 
   @override
   void dispose() {
-    _mapController.dispose();
     super.dispose();
   }
 
@@ -73,7 +70,7 @@ class _TenantAdminLocationPickerScreenState
           return Stack(
             children: [
               FlutterMap(
-                mapController: _mapController,
+                mapController: _controller.mapController,
                 options: MapOptions(
                   initialCenter: center,
                   initialZoom: _defaultZoom,

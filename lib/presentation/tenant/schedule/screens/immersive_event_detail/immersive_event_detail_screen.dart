@@ -17,6 +17,7 @@ import 'package:belluga_now/presentation/tenant/schedule/screens/immersive_event
 import 'package:belluga_now/presentation/tenant/schedule/screens/immersive_event_detail/widgets/overlapped_invite_avatars.dart';
 import 'package:belluga_now/presentation/tenant/schedule/screens/event_detail_screen/widgets/swipeable_invite_widget.dart';
 import 'package:flutter/material.dart';
+import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 
 /// Event-specific immersive detail screen.
@@ -27,13 +28,11 @@ import 'package:stream_value/core/stream_value_builder.dart';
 class ImmersiveEventDetailScreen extends StatefulWidget {
   const ImmersiveEventDetailScreen({
     required this.event,
-    required this.controller,
     this.colorScheme,
     super.key,
   });
 
   final EventModel event;
-  final ImmersiveEventDetailController controller;
   final ColorScheme? colorScheme;
 
   @override
@@ -43,7 +42,8 @@ class ImmersiveEventDetailScreen extends StatefulWidget {
 
 class _ImmersiveEventDetailScreenState
     extends State<ImmersiveEventDetailScreen> {
-  ImmersiveEventDetailController get _controller => widget.controller;
+  final ImmersiveEventDetailController _controller =
+      GetIt.I.get<ImmersiveEventDetailController>();
 
   @override
   void initState() {

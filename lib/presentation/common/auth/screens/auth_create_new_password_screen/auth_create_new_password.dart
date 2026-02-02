@@ -5,14 +5,12 @@ import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/presentation/common/auth/screens/auth_create_new_password_screen/widgets/create_new_password_widget.dart';
 import 'package:belluga_now/presentation/tenant/auth/login/controllers/create_password_controller_contract.dart';
 import 'package:flutter/material.dart';
+import 'package:get_it/get_it.dart';
 
 class AuthCreateNewPasswordScreen extends StatefulWidget {
   const AuthCreateNewPasswordScreen({
     super.key,
-    required this.controller,
   });
-
-  final CreatePasswordControllerContract controller;
 
   @override
   State<AuthCreateNewPasswordScreen> createState() =>
@@ -21,7 +19,8 @@ class AuthCreateNewPasswordScreen extends StatefulWidget {
 
 class _AuthCreateNewPasswordScreenState
     extends State<AuthCreateNewPasswordScreen> {
-  CreatePasswordControllerContract get _controller => widget.controller;
+  final CreatePasswordControllerContract _controller =
+      GetIt.I.get<CreatePasswordControllerContract>();
   StreamSubscription<String?>? _generalErrorSubscription;
 
   @override

@@ -7,8 +7,8 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
 import 'package:belluga_now/presentation/tenant_admin/account_profiles/controllers/tenant_admin_account_profiles_controller.dart';
-import 'package:belluga_now/presentation/tenant_admin/accounts/controllers/tenant_admin_location_picker_controller.dart';
 import 'package:flutter/material.dart';
+import 'package:get_it/get_it.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 
@@ -16,13 +16,9 @@ class TenantAdminAccountProfileEditScreen extends StatefulWidget {
   const TenantAdminAccountProfileEditScreen({
     super.key,
     required this.accountProfileId,
-    required this.controller,
-    required this.locationPickerController,
   });
 
   final String accountProfileId;
-  final TenantAdminAccountProfilesController controller;
-  final TenantAdminLocationPickerController locationPickerController;
 
   @override
   State<TenantAdminAccountProfileEditScreen> createState() =>
@@ -32,29 +28,18 @@ class TenantAdminAccountProfileEditScreen extends StatefulWidget {
 class _TenantAdminAccountProfileEditScreenState
     extends State<TenantAdminAccountProfileEditScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _displayNameController = TextEditingController();
-  final _bioController = TextEditingController();
-  final _latitudeController = TextEditingController();
-  final _longitudeController = TextEditingController();
-  final Map<String, TextEditingController> _taxonomyControllers = {};
-  late final TenantAdminAccountProfilesController _controller;
+  final TenantAdminAccountProfilesController _controller =
+      GetIt.I.get<TenantAdminAccountProfilesController>();
 
   @override
   void initState() {
     super.initState();
-    _controller = widget.controller;
     _controller.loadEditProfile(widget.accountProfileId);
   }
 
   @override
   void dispose() {
-    _displayNameController.dispose();
-    _bioController.dispose();
-    _latitudeController.dispose();
-    _longitudeController.dispose();
-    for (final controller in _taxonomyControllers.values) {
-      controller.dispose();
-    }
+    _controller.resetFormControllers();
     _controller.resetEditState();
     super.dispose();
   }
@@ -118,22 +103,21 @@ class _TenantAdminAccountProfileEditScreenState
     required List<TenantAdminTaxonomyTerm> terms,
   }) {
     final allowed = allowedTaxonomies.toSet();
-    _taxonomyControllers.removeWhere((key, controller) {
-      if (allowed.contains(key)) return false;
-      controller.dispose();
-      return true;
-    });
+    final existingKeys = _controller.taxonomyControllers.keys.toList();
+    for (final key in existingKeys) {
+      if (allowed.contains(key)) continue;
+      _controller.removeTaxonomyController(key);
+    }
     for (final taxonomy in allowed) {
-      final controller = _taxonomyControllers.putIfAbsent(
-        taxonomy,
-        () => TextEditingController(),
-      );
       final values = terms
           .where((term) => term.type == taxonomy)
           .map((term) => term.value)
           .where((value) => value.trim().isNotEmpty)
           .toList(growable: false);
-      controller.text = values.join(', ');
+      _controller.getOrCreateTaxonomyController(
+        taxonomy,
+        initialText: values.join(', '),
+      );
     }
   }
 
@@ -142,7 +126,7 @@ class _TenantAdminAccountProfileEditScreenState
       return const [];
     }
     final terms = <TenantAdminTaxonomyTerm>[];
-    for (final entry in _taxonomyControllers.entries) {
+    for (final entry in _controller.taxonomyControllers.entries) {
       final raw = entry.value.text.trim();
       if (raw.isEmpty) continue;
       final values = raw
@@ -158,7 +142,7 @@ class _TenantAdminAccountProfileEditScreenState
 
   String? _validateLatitude(String? value) {
     final trimmed = value?.trim() ?? '';
-    final other = _longitudeController.text.trim();
+    final other = _controller.longitudeController.text.trim();
     if (trimmed.isNotEmpty && double.tryParse(trimmed) == null) {
       return 'Latitude inválida.';
     }
@@ -177,7 +161,7 @@ class _TenantAdminAccountProfileEditScreenState
 
   String? _validateLongitude(String? value) {
     final trimmed = value?.trim() ?? '';
-    final other = _latitudeController.text.trim();
+    final other = _controller.latitudeController.text.trim();
     if (trimmed.isNotEmpty && double.tryParse(trimmed) == null) {
       return 'Longitude inválida.';
     }
@@ -190,8 +174,8 @@ class _TenantAdminAccountProfileEditScreenState
   }
 
   TenantAdminLocation? _currentLocation() {
-    final latText = _latitudeController.text.trim();
-    final lngText = _longitudeController.text.trim();
+    final latText = _controller.latitudeController.text.trim();
+    final lngText = _controller.longitudeController.text.trim();
     if (latText.isEmpty || lngText.isEmpty) {
       return null;
     }
@@ -208,14 +192,13 @@ class _TenantAdminAccountProfileEditScreenState
     final selected = await context.router.push<TenantAdminLocation?>(
       TenantAdminLocationPickerRoute(
         initialLocation: currentLocation,
-        controller: widget.locationPickerController,
       ),
     );
     if (selected == null) {
       return;
     }
-    _latitudeController.text = selected.latitude.toStringAsFixed(6);
-    _longitudeController.text = selected.longitude.toStringAsFixed(6);
+    _controller.latitudeController.text = selected.latitude.toStringAsFixed(6);
+    _controller.longitudeController.text = selected.longitude.toStringAsFixed(6);
   }
 
   Future<void> _autoSaveImages() async {
@@ -419,20 +402,20 @@ class _TenantAdminAccountProfileEditScreenState
         }
 
         if (profile != null) {
-          if (_displayNameController.text != profile.displayName) {
-            _displayNameController.text = profile.displayName;
+          if (_controller.displayNameController.text != profile.displayName) {
+            _controller.displayNameController.text = profile.displayName;
           }
-          if (_bioController.text != (profile.bio ?? '')) {
-            _bioController.text = profile.bio ?? '';
+          if (_controller.bioController.text != (profile.bio ?? '')) {
+            _controller.bioController.text = profile.bio ?? '';
           }
           if (profile.location != null) {
             final lat = profile.location!.latitude.toStringAsFixed(6);
             final lng = profile.location!.longitude.toStringAsFixed(6);
-            if (_latitudeController.text != lat) {
-              _latitudeController.text = lat;
+            if (_controller.latitudeController.text != lat) {
+              _controller.latitudeController.text = lat;
             }
-            if (_longitudeController.text != lng) {
-              _longitudeController.text = lng;
+            if (_controller.longitudeController.text != lng) {
+              _controller.longitudeController.text = lng;
             }
           }
           _syncTaxonomyControllers(
@@ -503,9 +486,9 @@ class _TenantAdminAccountProfileEditScreenState
                                   accountProfileId: widget.accountProfileId,
                                   profileType: state.selectedProfileType,
                                   displayName:
-                                      _displayNameController.text.trim(),
+                                      _controller.displayNameController.text.trim(),
                                   bio: _hasBio(state.selectedProfileType)
-                                      ? _bioController.text.trim()
+                                      ? _controller.bioController.text.trim()
                                       : null,
                                   taxonomyTerms: _hasTaxonomies(
                                           state.selectedProfileType)
@@ -586,14 +569,14 @@ class _TenantAdminAccountProfileEditScreenState
                     _controller.updateSelectedProfileType(value);
                     if (!mounted) return;
                     if (!_requiresLocation(value)) {
-                      _latitudeController.clear();
-                      _longitudeController.clear();
+                      _controller.latitudeController.clear();
+                      _controller.longitudeController.clear();
                     }
                     if (!_hasBio(value)) {
-                      _bioController.clear();
+                      _controller.bioController.clear();
                     }
                     if (!_hasTaxonomies(value)) {
-                      for (final controller in _taxonomyControllers.values) {
+                      for (final controller in _controller.taxonomyControllers.values) {
                         controller.clear();
                       }
                     }
@@ -609,7 +592,7 @@ class _TenantAdminAccountProfileEditScreenState
             ),
             const SizedBox(height: 12),
             TextFormField(
-              controller: _displayNameController,
+              controller: _controller.displayNameController,
               decoration: const InputDecoration(labelText: 'Nome de exibicao'),
               validator: (value) {
                 if (value == null || value.trim().isEmpty) {
@@ -644,7 +627,7 @@ class _TenantAdminAccountProfileEditScreenState
             if (hasBio) ...[
               const SizedBox(height: 12),
               TextFormField(
-                controller: _bioController,
+                controller: _controller.bioController,
                 decoration: const InputDecoration(labelText: 'Bio'),
                 maxLines: 4,
                 minLines: 2,
@@ -661,7 +644,7 @@ class _TenantAdminAccountProfileEditScreenState
                 Padding(
                   padding: const EdgeInsets.only(bottom: 12),
                   child: TextFormField(
-                    controller: _taxonomyControllers[taxonomy],
+                    controller: _controller.taxonomyControllers[taxonomy],
                     decoration: InputDecoration(
                       labelText: taxonomy,
                       helperText: 'Separe por virgula',
@@ -942,14 +925,14 @@ class _TenantAdminAccountProfileEditScreenState
             ),
             const SizedBox(height: 12),
             TextFormField(
-              controller: _latitudeController,
+              controller: _controller.latitudeController,
               decoration: const InputDecoration(labelText: 'Latitude'),
               keyboardType: TextInputType.number,
               validator: _validateLatitude,
             ),
             const SizedBox(height: 12),
             TextFormField(
-              controller: _longitudeController,
+              controller: _controller.longitudeController,
               decoration: const InputDecoration(labelText: 'Longitude'),
               keyboardType: TextInputType.number,
               validator: _validateLongitude,

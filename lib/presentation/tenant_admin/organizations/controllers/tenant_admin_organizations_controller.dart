@@ -1,5 +1,6 @@
 import 'package:belluga_now/domain/repositories/tenant_admin_organizations_repository_contract.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_organization.dart';
+import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart' show Disposable, GetIt;
 import 'package:stream_value/core/stream_value.dart';
 
@@ -16,6 +17,9 @@ class TenantAdminOrganizationsController implements Disposable {
   final StreamValue<bool> isLoadingStreamValue =
       StreamValue<bool>(defaultValue: false);
   final StreamValue<String?> errorStreamValue = StreamValue<String?>();
+  final GlobalKey<FormState> formKey = GlobalKey<FormState>();
+  final TextEditingController nameController = TextEditingController();
+  final TextEditingController descriptionController = TextEditingController();
 
   bool _isDisposed = false;
 
@@ -45,11 +49,19 @@ class TenantAdminOrganizationsController implements Disposable {
       description: description,
     );
     await loadOrganizations();
+    resetCreateForm();
     return org;
+  }
+
+  void resetCreateForm() {
+    nameController.clear();
+    descriptionController.clear();
   }
 
   void dispose() {
     _isDisposed = true;
+    nameController.dispose();
+    descriptionController.dispose();
     organizationsStreamValue.dispose();
     isLoadingStreamValue.dispose();
     errorStreamValue.dispose();

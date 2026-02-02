@@ -9,23 +9,19 @@ import 'package:belluga_now/presentation/tenant/map/screens/map_screen/widgets/m
 import 'package:belluga_now/presentation/tenant/map/screens/map_screen/widgets/poi_details_deck.dart';
 import 'package:belluga_now/presentation/tenant/widgets/belluga_bottom_navigation_bar.dart';
 import 'package:flutter/material.dart';
+import 'package:get_it/get_it.dart';
 
 class MapScreen extends StatefulWidget {
-  const MapScreen({
-    super.key,
-    required this.controller,
-    required this.fabMenuController,
-  });
-
-  final MapScreenController controller;
-  final FabMenuController fabMenuController;
+  const MapScreen({super.key});
 
   @override
   State<MapScreen> createState() => _MapScreenState();
 }
 
 class _MapScreenState extends State<MapScreen> {
-  late final MapScreenController _controller = widget.controller;
+  final MapScreenController _controller = GetIt.I.get<MapScreenController>();
+  final FabMenuController _fabMenuController =
+      GetIt.I.get<FabMenuController>();
 
   @override
   void initState() {
@@ -121,7 +117,7 @@ class _MapScreenState extends State<MapScreen> {
           floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
           floatingActionButton: FabMenu(
             onNavigateToUser: _centerOnUser,
-            controller: widget.fabMenuController,
+            controller: _fabMenuController,
           ),
           bottomNavigationBar:
               const BellugaBottomNavigationBar(currentIndex: 1),

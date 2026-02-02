@@ -15,30 +15,26 @@ import 'package:belluga_now/presentation/tenant/widgets/belluga_bottom_navigatio
 import 'package:belluga_now/presentation/tenant/widgets/section_header.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:get_it/get_it.dart';
  
 
 class TenantHomeScreen extends StatefulWidget {
-  const TenantHomeScreen({
-    super.key,
-    required this.controller,
-    required this.favoritesController,
-    required this.invitesBannerController,
-    required this.homeAgendaController,
-    required this.appData,
-  });
-
-  final TenantHomeController controller;
-  final FavoritesSectionController favoritesController;
-  final InvitesBannerBuilderController invitesBannerController;
-  final TenantHomeAgendaController homeAgendaController;
-  final AppData appData;
+  const TenantHomeScreen({super.key});
 
   @override
   State<TenantHomeScreen> createState() => _TenantHomeScreenState();
 }
 
 class _TenantHomeScreenState extends State<TenantHomeScreen> {
-  late final TenantHomeController _controller = widget.controller;
+  final TenantHomeController _controller =
+      GetIt.I.get<TenantHomeController>();
+  final FavoritesSectionController _favoritesController =
+      GetIt.I.get<FavoritesSectionController>();
+  final InvitesBannerBuilderController _invitesBannerController =
+      GetIt.I.get<InvitesBannerBuilderController>();
+  final TenantHomeAgendaController _homeAgendaController =
+      GetIt.I.get<TenantHomeAgendaController>();
+  final AppData _appData = GetIt.I.get<AppData>();
 
   @override
   void initState() {
@@ -61,13 +57,13 @@ class _TenantHomeScreenState extends State<TenantHomeScreen> {
         body: SafeArea(
           top: false,
           child: HomeAgendaSection(
-            controller: widget.homeAgendaController,
+            controller: _homeAgendaController,
             builder: (context, slots) {
               return NestedScrollView(
                 controller: _controller.scrollController,
                 headerSliverBuilder: (context, innerBoxIsScrolled) => [
                   HomeAppBar(
-                    appData: widget.appData,
+                    appData: _appData,
                     userAddressStreamValue: _controller.userAddressStreamValue,
                   ),
                   SliverToBoxAdapter(
@@ -81,14 +77,14 @@ class _TenantHomeScreenState extends State<TenantHomeScreen> {
                             onPressed: () {},
                           ),
                           FavoritesSectionBuilder(
-                            controller: widget.favoritesController,
+                            controller: _favoritesController,
                           ),
                           InvitesBannerBuilder(
                             margin: const EdgeInsets.only(top: 12),
                             onPressed: () {
                               context.router.push(const InviteFlowRoute());
                             },
-                            controller: widget.invitesBannerController,
+                            controller: _invitesBannerController,
                           ),
                           const SizedBox(height: 12),
                           HomeMyEventsCarousel(

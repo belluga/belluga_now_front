@@ -176,13 +176,7 @@ void main() {
     
     await tester.pumpWidget(
       MaterialApp(
-        home: TenantHomeScreen(
-          controller: mockController,
-          favoritesController: mockFavoritesController,
-          invitesBannerController: mockInvitesBannerController,
-          homeAgendaController: mockAgendaController,
-          appData: mockAppData,
-        ),
+        home: TenantHomeScreen(),
       ),
     );
     await tester.pump();
@@ -225,13 +219,7 @@ void main() {
         controller: mockRouter,
         stateHash: 0,
         child: MaterialApp(
-          home: TenantHomeScreen(
-            controller: mockController,
-            favoritesController: mockFavoritesController,
-            invitesBannerController: mockInvitesBannerController,
-            homeAgendaController: mockAgendaController,
-            appData: mockAppData,
-          ),
+          home: TenantHomeScreen(),
         ),
       ),
     );

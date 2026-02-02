@@ -45,6 +45,8 @@ class ProfileScreenController implements Disposable {
   final TextEditingController phoneController = TextEditingController();
   final StreamValue<String?> localAvatarPathStreamValue =
       StreamValue<String?>();
+  final StreamValue<int> formVersionStreamValue =
+      StreamValue<int>(defaultValue: 0);
   StreamValue<double> get maxRadiusMetersStreamValue =>
       _appDataRepository.maxRadiusMetersStreamValue;
 
@@ -97,6 +99,10 @@ class ProfileScreenController implements Disposable {
         emailController.text.trim() != _initialEmail.trim() ||
         descriptionController.text.trim() != _initialDescription.trim() ||
         phoneController.text.trim() != _initialPhone.trim();
+  }
+
+  void bumpFormVersion() {
+    formVersionStreamValue.addValue(formVersionStreamValue.value + 1);
   }
 
   Future<void> setMaxRadiusMeters(double meters) =>
@@ -155,5 +161,6 @@ class ProfileScreenController implements Disposable {
     emailController.dispose();
     phoneController.dispose();
     localAvatarPathStreamValue.dispose();
+    formVersionStreamValue.dispose();
   }
 }

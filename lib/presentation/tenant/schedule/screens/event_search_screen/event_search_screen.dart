@@ -7,19 +7,18 @@ import 'package:belluga_now/presentation/tenant/schedule/screens/event_search_sc
 import 'package:belluga_now/presentation/tenant/schedule/widgets/agenda_app_bar.dart';
 import 'package:belluga_now/presentation/tenant/widgets/date_grouped_event_list.dart';
 import 'package:flutter/material.dart';
+import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 
 class EventSearchScreen extends StatefulWidget {
   const EventSearchScreen({
     super.key,
-    required this.controller,
     this.startSearchActive = false,
     this.initialSearchQuery,
     this.inviteFilter = InviteFilter.none,
     this.startWithHistory = false,
   });
 
-  final EventSearchScreenController controller;
   final bool startSearchActive;
   final String? initialSearchQuery;
   final InviteFilter inviteFilter;
@@ -30,7 +29,8 @@ class EventSearchScreen extends StatefulWidget {
 }
 
 class _EventSearchScreenState extends State<EventSearchScreen> {
-  EventSearchScreenController get _controller => widget.controller;
+  final EventSearchScreenController _controller =
+      GetIt.I.get<EventSearchScreenController>();
 
   static final Uri _defaultEventImage = Uri.parse(
     'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?w=800',
@@ -47,7 +47,6 @@ class _EventSearchScreenState extends State<EventSearchScreen> {
 
   @override
   void dispose() {
-    _controller.onDispose();
     super.dispose();
   }
 

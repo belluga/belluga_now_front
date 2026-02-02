@@ -2,17 +2,16 @@ import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
 import 'package:belluga_now/presentation/tenant_admin/profile_types/controllers/tenant_admin_profile_types_controller.dart';
 import 'package:flutter/material.dart';
+import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 
 class TenantAdminProfileTypeFormScreen extends StatefulWidget {
   const TenantAdminProfileTypeFormScreen({
     super.key,
     this.definition,
-    required this.controller,
   });
 
   final TenantAdminProfileTypeDefinition? definition;
-  final TenantAdminProfileTypesController controller;
 
   @override
   State<TenantAdminProfileTypeFormScreen> createState() =>
@@ -22,31 +21,19 @@ class TenantAdminProfileTypeFormScreen extends StatefulWidget {
 class _TenantAdminProfileTypeFormScreenState
     extends State<TenantAdminProfileTypeFormScreen> {
   final _formKey = GlobalKey<FormState>();
-  late final TenantAdminProfileTypesController _controller;
-  late final TextEditingController _typeController;
-  late final TextEditingController _labelController;
-  late final TextEditingController _taxonomiesController;
+  final TenantAdminProfileTypesController _controller =
+      GetIt.I.get<TenantAdminProfileTypesController>();
 
   bool get _isEdit => widget.definition != null;
 
   @override
   void initState() {
     super.initState();
-    _controller = widget.controller;
-    _typeController = TextEditingController(text: widget.definition?.type ?? '');
-    _labelController =
-        TextEditingController(text: widget.definition?.label ?? '');
-    _taxonomiesController = TextEditingController(
-      text: widget.definition?.allowedTaxonomies.join(', ') ?? '',
-    );
     _controller.initForm(widget.definition);
   }
 
   @override
   void dispose() {
-    _typeController.dispose();
-    _labelController.dispose();
-    _taxonomiesController.dispose();
     _controller.resetFormState();
     super.dispose();
   }
@@ -55,7 +42,7 @@ class _TenantAdminProfileTypeFormScreenState
     if (!hasTaxonomies) {
       return const [];
     }
-    return _taxonomiesController.text
+    return _controller.taxonomiesController.text
         .split(',')
         .map((value) => value.trim())
         .where((value) => value.isNotEmpty)
@@ -73,7 +60,7 @@ class _TenantAdminProfileTypeFormScreenState
     if (_isEdit) {
       await _controller.updateType(
         type: widget.definition!.type,
-        label: _labelController.text.trim(),
+        label: _controller.labelController.text.trim(),
         allowedTaxonomies: _parseTaxonomies(capabilities.hasTaxonomies),
         capabilities: capabilities,
       );
@@ -86,8 +73,8 @@ class _TenantAdminProfileTypeFormScreenState
     }
 
     await _controller.createType(
-      type: _typeController.text.trim(),
-      label: _labelController.text.trim(),
+      type: _controller.typeController.text.trim(),
+      label: _controller.labelController.text.trim(),
       allowedTaxonomies: _parseTaxonomies(capabilities.hasTaxonomies),
       capabilities: capabilities,
     );
@@ -135,7 +122,7 @@ class _TenantAdminProfileTypeFormScreenState
                         ),
                         const SizedBox(height: 12),
                         TextFormField(
-                          controller: _typeController,
+                          controller: _controller.typeController,
                           decoration:
                               const InputDecoration(labelText: 'Tipo (slug)'),
                           enabled: !_isEdit,
@@ -149,7 +136,7 @@ class _TenantAdminProfileTypeFormScreenState
                         ),
                         const SizedBox(height: 12),
                         TextFormField(
-                          controller: _labelController,
+                          controller: _controller.labelController,
                           decoration: const InputDecoration(labelText: 'Label'),
                           validator: (value) {
                             if (value == null || value.trim().isEmpty) {
@@ -164,7 +151,7 @@ class _TenantAdminProfileTypeFormScreenState
                           streamValue: _controller.capabilitiesStreamValue,
                           builder: (context, capabilities) {
                             return TextFormField(
-                              controller: _taxonomiesController,
+                              controller: _controller.taxonomiesController,
                               decoration: const InputDecoration(
                                 labelText: 'Taxonomias (separadas por virgula)',
                               ),

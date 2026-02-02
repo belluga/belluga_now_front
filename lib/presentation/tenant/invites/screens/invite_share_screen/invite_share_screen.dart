@@ -8,24 +8,24 @@ import 'package:belluga_now/presentation/tenant/invites/screens/invite_share_scr
 import 'package:belluga_now/presentation/tenant/invites/screens/invite_share_screen/widgets/invite_share_friend_card.dart';
 import 'package:belluga_now/presentation/tenant/invites/screens/invite_share_screen/widgets/invite_share_summary.dart';
 import 'package:flutter/material.dart';
+import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 
 class InviteShareScreen extends StatefulWidget {
   const InviteShareScreen({
     super.key,
     required this.invite,
-    required this.controller,
   });
 
   final InviteModel invite;
-  final InviteShareScreenController controller;
 
   @override
   State<InviteShareScreen> createState() => _InviteShareScreenState();
 }
 
 class _InviteShareScreenState extends State<InviteShareScreen> {
-  late final InviteShareScreenController _controller = widget.controller;
+  final InviteShareScreenController _controller =
+      GetIt.I.get<InviteShareScreenController>();
 
   @override
   void initState() {

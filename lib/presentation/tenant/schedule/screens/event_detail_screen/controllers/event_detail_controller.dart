@@ -40,6 +40,7 @@ class EventDetailController implements Disposable {
   final isConfirmedStreamValue = StreamValue<bool>(defaultValue: false);
   final receivedInvitesStreamValue =
       StreamValue<List<InviteModel>>(defaultValue: const []);
+  final inviteDeckIndexStreamValue = StreamValue<int>(defaultValue: 0);
 
   // Delegate to repository for single source of truth
   StreamValue<Map<String, List<SentInviteStatus>>>
@@ -74,6 +75,7 @@ class EventDetailController implements Disposable {
             .where((invite) => invite.eventIdValue.value == event.id.value)
             .toList();
         receivedInvitesStreamValue.addValue(eventInvites);
+        _syncInviteDeckIndex(eventInvites.length);
 
         // Populate repository with initial data from event model if missing
         // This ensures we have data even before a refresh
@@ -137,6 +139,7 @@ class EventDetailController implements Disposable {
 
       // Clear received invites (since we're now confirmed)
       receivedInvitesStreamValue.addValue(const []);
+      _syncInviteDeckIndex(0);
     } finally {
       isLoadingStreamValue.addValue(false);
     }
@@ -158,6 +161,7 @@ class EventDetailController implements Disposable {
 
       // Optimistic update: remove from received invites and confirm
       receivedInvitesStreamValue.addValue(const []);
+      _syncInviteDeckIndex(0);
       isConfirmedStreamValue.addValue(true);
 
       final newTotal = totalConfirmedStreamValue.value + 1;
@@ -177,6 +181,7 @@ class EventDetailController implements Disposable {
 
       // Optimistic update: remove from received invites
       receivedInvitesStreamValue.addValue(const []);
+      _syncInviteDeckIndex(0);
     } finally {
       isLoadingStreamValue.addValue(false);
     }
@@ -221,11 +226,28 @@ class EventDetailController implements Disposable {
     }
   }
 
+  void setInviteDeckIndex(int index) {
+    if (index != inviteDeckIndexStreamValue.value) {
+      inviteDeckIndexStreamValue.addValue(index);
+    }
+  }
+
+  void _syncInviteDeckIndex(int invitesLength) {
+    if (invitesLength <= 0) {
+      setInviteDeckIndex(0);
+      return;
+    }
+    final clamped =
+        inviteDeckIndexStreamValue.value.clamp(0, invitesLength - 1);
+    setInviteDeckIndex(clamped);
+  }
+
   @override
   void onDispose() {
     eventStreamValue.dispose();
     isConfirmedStreamValue.dispose();
     receivedInvitesStreamValue.dispose();
+    inviteDeckIndexStreamValue.dispose();
     // sentInvitesByEventStreamValue is owned by repository, do not dispose
     friendsGoingStreamValue.dispose();
     totalConfirmedStreamValue.dispose();

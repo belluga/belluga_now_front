@@ -8,6 +8,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/domain/tenant_admin/ownership_state.dart';
+import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart' show Disposable, GetIt;
 import 'package:image_picker/image_picker.dart';
 import 'package:stream_value/core/stream_value.dart';
@@ -40,6 +41,13 @@ class TenantAdminAccountsController implements Disposable {
       StreamValue<TenantAdminAccountCreateState>(
     defaultValue: TenantAdminAccountCreateState.initial(),
   );
+  final TextEditingController nameController = TextEditingController();
+  final TextEditingController documentTypeController = TextEditingController();
+  final TextEditingController documentNumberController = TextEditingController();
+  final TextEditingController profileDisplayNameController =
+      TextEditingController();
+  final TextEditingController latitudeController = TextEditingController();
+  final TextEditingController longitudeController = TextEditingController();
 
   bool _isDisposed = false;
   bool _initialized = false;
@@ -138,8 +146,42 @@ class TenantAdminAccountsController implements Disposable {
     return account;
   }
 
+  Future<TenantAdminAccount> createAccountFromForm({
+    required TenantAdminLocation? location,
+    required TenantAdminMediaUpload? avatarUpload,
+    required TenantAdminMediaUpload? coverUpload,
+  }) async {
+    final selectedProfileType =
+        createStateStreamValue.value.selectedProfileType ?? '';
+    return createAccountWithProfile(
+      name: nameController.text.trim(),
+      documentType: documentTypeController.text.trim(),
+      documentNumber: documentNumberController.text.trim(),
+      profileType: selectedProfileType,
+      displayName: profileDisplayNameController.text.trim(),
+      location: location,
+      avatarUpload: avatarUpload,
+      coverUpload: coverUpload,
+    );
+  }
+
+  void resetCreateForm() {
+    nameController.clear();
+    documentTypeController.clear();
+    documentNumberController.clear();
+    profileDisplayNameController.clear();
+    latitudeController.clear();
+    longitudeController.clear();
+  }
+
   void dispose() {
     _isDisposed = true;
+    nameController.dispose();
+    documentTypeController.dispose();
+    documentNumberController.dispose();
+    profileDisplayNameController.dispose();
+    latitudeController.dispose();
+    longitudeController.dispose();
     accountsStreamValue.dispose();
     profileTypesStreamValue.dispose();
     isLoadingStreamValue.dispose();

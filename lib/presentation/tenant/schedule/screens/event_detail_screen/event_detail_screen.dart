@@ -19,6 +19,7 @@ import 'package:belluga_now/presentation/tenant/schedule/screens/event_detail_sc
 import 'package:belluga_now/presentation/tenant/schedule/screens/event_detail_screen/controllers/event_detail_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_html/flutter_html.dart';
+import 'package:get_it/get_it.dart';
 import 'package:intl/intl.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 
@@ -26,12 +27,10 @@ class EventDetailScreen extends StatefulWidget {
   const EventDetailScreen({
     super.key,
     required this.event,
-    required this.controller,
     this.colorScheme,
   });
 
   final EventModel event;
-  final EventDetailController controller;
   final ColorScheme? colorScheme;
 
   @override
@@ -53,7 +52,7 @@ class EventDetailScreen extends StatefulWidget {
 }
 
 class _EventDetailScreenState extends State<EventDetailScreen> {
-  EventDetailController get _controller => widget.controller;
+  final EventDetailController _controller = GetIt.I.get<EventDetailController>();
 
   @override
   void initState() {
@@ -106,6 +105,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                             ? Padding(
                                 padding: const EdgeInsets.only(bottom: 24),
                                 child: SwipeableInviteWidget(
+                                  controller: _controller,
                                   invites: receivedInvites,
                                   onAccept: _handleAcceptInvite,
                                   onDecline: _handleDeclineInvite,

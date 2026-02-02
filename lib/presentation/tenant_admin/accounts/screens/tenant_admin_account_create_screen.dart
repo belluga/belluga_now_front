@@ -6,20 +6,13 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
 import 'package:belluga_now/presentation/tenant_admin/accounts/controllers/tenant_admin_accounts_controller.dart';
-import 'package:belluga_now/presentation/tenant_admin/accounts/controllers/tenant_admin_location_picker_controller.dart';
 import 'package:flutter/material.dart';
+import 'package:get_it/get_it.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 
 class TenantAdminAccountCreateScreen extends StatefulWidget {
-  const TenantAdminAccountCreateScreen({
-    super.key,
-    required this.controller,
-    required this.locationPickerController,
-  });
-
-  final TenantAdminAccountsController controller;
-  final TenantAdminLocationPickerController locationPickerController;
+  const TenantAdminAccountCreateScreen({super.key});
 
   @override
   State<TenantAdminAccountCreateScreen> createState() =>
@@ -29,30 +22,19 @@ class TenantAdminAccountCreateScreen extends StatefulWidget {
 class _TenantAdminAccountCreateScreenState
     extends State<TenantAdminAccountCreateScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _nameController = TextEditingController();
-  final _documentTypeController = TextEditingController();
-  final _documentNumberController = TextEditingController();
-  final _profileDisplayNameController = TextEditingController();
-  final _latitudeController = TextEditingController();
-  final _longitudeController = TextEditingController();
-  late final TenantAdminAccountsController _controller;
+  final TenantAdminAccountsController _controller =
+      GetIt.I.get<TenantAdminAccountsController>();
 
   @override
   void initState() {
     super.initState();
-    _controller = widget.controller;
     _controller.resetCreateState();
+    _controller.resetCreateForm();
     _controller.loadProfileTypes();
   }
 
   @override
   void dispose() {
-    _nameController.dispose();
-    _documentTypeController.dispose();
-    _documentNumberController.dispose();
-    _profileDisplayNameController.dispose();
-    _latitudeController.dispose();
-    _longitudeController.dispose();
     _controller.resetCreateState();
     super.dispose();
   }
@@ -78,7 +60,7 @@ class _TenantAdminAccountCreateScreenState
 
   String? _validateLatitude(String? value) {
     final trimmed = value?.trim() ?? '';
-    final other = _longitudeController.text.trim();
+    final other = _controller.longitudeController.text.trim();
     final requires = _requiresLocation(
       _controller.createStateStreamValue.value.selectedProfileType,
     );
@@ -96,7 +78,7 @@ class _TenantAdminAccountCreateScreenState
 
   String? _validateLongitude(String? value) {
     final trimmed = value?.trim() ?? '';
-    final other = _latitudeController.text.trim();
+    final other = _controller.latitudeController.text.trim();
     final requires = _requiresLocation(
       _controller.createStateStreamValue.value.selectedProfileType,
     );
@@ -114,19 +96,18 @@ class _TenantAdminAccountCreateScreenState
     final selected = await context.router.push<TenantAdminLocation?>(
       TenantAdminLocationPickerRoute(
         initialLocation: currentLocation,
-        controller: widget.locationPickerController,
       ),
     );
     if (selected == null) {
       return;
     }
-    _latitudeController.text = selected.latitude.toStringAsFixed(6);
-    _longitudeController.text = selected.longitude.toStringAsFixed(6);
+    _controller.latitudeController.text = selected.latitude.toStringAsFixed(6);
+    _controller.longitudeController.text = selected.longitude.toStringAsFixed(6);
   }
 
   TenantAdminLocation? _currentLocation() {
-    final latText = _latitudeController.text.trim();
-    final lngText = _longitudeController.text.trim();
+    final latText = _controller.latitudeController.text.trim();
+    final lngText = _controller.longitudeController.text.trim();
     if (latText.isEmpty || lngText.isEmpty) {
       return null;
     }
@@ -216,20 +197,12 @@ class _TenantAdminAccountCreateScreenState
                           if (form == null || !form.validate()) {
                             return;
                           }
-                          final selectedType = state.selectedProfileType ?? '';
                           final location = _currentLocation();
                           final avatarUpload =
                               await _buildUpload(state.avatarFile);
                           final coverUpload =
                               await _buildUpload(state.coverFile);
-                          await _controller.createAccountWithProfile(
-                            name: _nameController.text.trim(),
-                            documentType: _documentTypeController.text.trim(),
-                            documentNumber:
-                                _documentNumberController.text.trim(),
-                            profileType: selectedType,
-                            displayName:
-                                _profileDisplayNameController.text.trim(),
+                          await _controller.createAccountFromForm(
                             location: location,
                             avatarUpload: avatarUpload,
                             coverUpload: coverUpload,
@@ -272,7 +245,7 @@ class _TenantAdminAccountCreateScreenState
             ),
             const SizedBox(height: 12),
             TextFormField(
-              controller: _nameController,
+              controller: _controller.nameController,
               decoration: const InputDecoration(labelText: 'Nome'),
               validator: (value) {
                 if (value == null || value.trim().isEmpty) {
@@ -283,7 +256,7 @@ class _TenantAdminAccountCreateScreenState
             ),
             const SizedBox(height: 12),
             TextFormField(
-              controller: _documentTypeController,
+              controller: _controller.documentTypeController,
               decoration: const InputDecoration(labelText: 'Tipo do documento'),
               validator: (value) {
                 if (value == null || value.trim().isEmpty) {
@@ -382,8 +355,8 @@ class _TenantAdminAccountCreateScreenState
                                       _controller
                                           .updateCreateSelectedProfileType(value);
                                       if (!_requiresLocation(value)) {
-                                        _latitudeController.clear();
-                                        _longitudeController.clear();
+                                        _controller.latitudeController.clear();
+                                        _controller.longitudeController.clear();
                                       }
                                     }
                                   : null,
@@ -411,7 +384,7 @@ class _TenantAdminAccountCreateScreenState
             ),
             const SizedBox(height: 12),
             TextFormField(
-              controller: _profileDisplayNameController,
+              controller: _controller.profileDisplayNameController,
               decoration: const InputDecoration(labelText: 'Nome de exibicao'),
               validator: (value) {
                 if (value == null || value.trim().isEmpty) {
@@ -422,7 +395,7 @@ class _TenantAdminAccountCreateScreenState
             ),
             const SizedBox(height: 12),
             TextFormField(
-              controller: _documentNumberController,
+              controller: _controller.documentNumberController,
               decoration: const InputDecoration(labelText: 'Numero do documento'),
               validator: (value) {
                 if (value == null || value.trim().isEmpty) {
@@ -578,14 +551,14 @@ class _TenantAdminAccountCreateScreenState
             ),
             const SizedBox(height: 12),
             TextFormField(
-              controller: _latitudeController,
+              controller: _controller.latitudeController,
               decoration: const InputDecoration(labelText: 'Latitude'),
               keyboardType: TextInputType.number,
               validator: _validateLatitude,
             ),
             const SizedBox(height: 12),
             TextFormField(
-              controller: _longitudeController,
+              controller: _controller.longitudeController,
               decoration: const InputDecoration(labelText: 'Longitude'),
               keyboardType: TextInputType.number,
               validator: _validateLongitude,

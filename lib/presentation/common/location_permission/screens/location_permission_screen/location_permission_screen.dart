@@ -3,16 +3,15 @@ import 'package:belluga_now/application/router/guards/location_permission_state.
 import 'package:belluga_now/presentation/common/location_permission/controllers/location_permission_controller.dart';
 import 'package:belluga_now/presentation/common/widgets/button_loading.dart';
 import 'package:flutter/material.dart';
+import 'package:get_it/get_it.dart';
 
 class LocationPermissionScreen extends StatefulWidget {
   const LocationPermissionScreen({
     super.key,
     required this.initialState,
-    required this.controller,
   });
 
   final LocationPermissionState initialState;
-  final LocationPermissionController controller;
 
   @override
   State<LocationPermissionScreen> createState() =>
@@ -20,7 +19,8 @@ class LocationPermissionScreen extends StatefulWidget {
 }
 
 class _LocationPermissionScreenState extends State<LocationPermissionScreen> {
-  LocationPermissionController get _controller => widget.controller;
+  final LocationPermissionController _controller =
+      GetIt.I.get<LocationPermissionController>();
 
   @override
   Widget build(BuildContext context) {

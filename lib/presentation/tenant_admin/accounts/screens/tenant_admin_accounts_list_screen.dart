@@ -3,15 +3,11 @@ import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/domain/tenant_admin/ownership_state.dart';
 import 'package:belluga_now/presentation/tenant_admin/accounts/controllers/tenant_admin_accounts_controller.dart';
 import 'package:flutter/material.dart';
+import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 
 class TenantAdminAccountsListScreen extends StatefulWidget {
-  const TenantAdminAccountsListScreen({
-    super.key,
-    required this.controller,
-  });
-
-  final TenantAdminAccountsController controller;
+  const TenantAdminAccountsListScreen({super.key});
 
   @override
   State<TenantAdminAccountsListScreen> createState() =>
@@ -21,12 +17,12 @@ class TenantAdminAccountsListScreen extends StatefulWidget {
 class _TenantAdminAccountsListScreenState
     extends State<TenantAdminAccountsListScreen> {
   final bool _hasError = false;
-  late final TenantAdminAccountsController _controller;
+  final TenantAdminAccountsController _controller =
+      GetIt.I.get<TenantAdminAccountsController>();
 
   @override
   void initState() {
     super.initState();
-    _controller = widget.controller;
     _controller.init();
   }
 

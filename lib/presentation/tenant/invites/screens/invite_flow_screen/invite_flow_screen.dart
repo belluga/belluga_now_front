@@ -7,23 +7,19 @@ import 'package:belluga_now/presentation/tenant/invites/screens/invite_flow_scre
 import 'package:belluga_now/presentation/tenant/invites/screens/invite_flow_screen/widgets/invite_hero_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
+import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 
 class InviteFlowScreen extends StatefulWidget {
-  const InviteFlowScreen({
-    super.key,
-    required this.controller,
-  });
-
-  final InviteFlowScreenController controller;
+  const InviteFlowScreen({super.key});
 
   @override
   State<InviteFlowScreen> createState() => _InviteFlowScreenState();
 }
 
 class _InviteFlowScreenState extends State<InviteFlowScreen> {
-  late final InviteFlowScreenController _controller = widget.controller;
-  final Set<String> _loadedImages = <String>{};
+  final InviteFlowScreenController _controller =
+      GetIt.I.get<InviteFlowScreenController>();
 
   @override
   void initState() {
@@ -55,21 +51,26 @@ class _InviteFlowScreenState extends State<InviteFlowScreen> {
               return const SizedBox.shrink();
             }
 
-            final invite = invites.first;
-            final remaining = invites.length - 1;
-            final isReady = _loadedImages.contains(invite.eventImageUrl);
+            return StreamValueBuilder<Set<String>>(
+              streamValue: _controller.loadedImagesStreamValue,
+              builder: (context, loadedImages) {
+                final invite = invites.first;
+                final remaining = invites.length - 1;
+                final isReady = loadedImages.contains(invite.eventImageUrl);
 
-            if (!isReady) {
-              return const Center(child: CircularProgressIndicator());
-            }
+                if (!isReady) {
+                  return const Center(child: CircularProgressIndicator());
+                }
 
-            return InviteHeroCard(
-              invite: invite,
-              onAccept: () => _handleDecision(InviteDecision.accepted),
-              onDecline: () => _handleDecision(InviteDecision.declined),
-              onViewDetails: () => _openEventDetails(invite),
-              onClose: _exitInviteFlow,
-              remainingCount: remaining,
+                return InviteHeroCard(
+                  invite: invite,
+                  onAccept: () => _handleDecision(InviteDecision.accepted),
+                  onDecline: () => _handleDecision(InviteDecision.declined),
+                  onViewDetails: () => _openEventDetails(invite),
+                  onClose: _exitInviteFlow,
+                  remainingCount: remaining,
+                );
+              },
             );
           },
         ),
@@ -131,19 +132,11 @@ class _InviteFlowScreenState extends State<InviteFlowScreen> {
     final toPrecache = invites.take(3); // current + next 2
     for (final invite in toPrecache) {
       final url = invite.eventImageUrl;
-      if (_loadedImages.contains(url)) continue;
+      if (_controller.isImageLoaded(url)) continue;
       precacheImage(NetworkImage(url), ctx).then((_) {
-        if (mounted) {
-          setState(() {
-            _loadedImages.add(url);
-          });
-        }
+        _controller.markImageLoaded(url);
       }).catchError((_) {
-        if (mounted) {
-          setState(() {
-            _loadedImages.add(url); // avoid blocking on errors
-          });
-        }
+        _controller.markImageLoaded(url); // avoid blocking on errors
       });
     }
   }

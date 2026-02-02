@@ -50,6 +50,8 @@ class InviteFlowScreenController with Disposable {
 
   final confirmingPresenceStreamValue = StreamValue<bool>(defaultValue: false);
   final topCardIndexStreamValue = StreamValue<int>(defaultValue: 0);
+  final loadedImagesStreamValue =
+      StreamValue<Set<String>>(defaultValue: const {});
   final Set<String> _openedInviteIds = <String>{};
   Future<EventTrackerTimedEventHandle?>? _activeInviteTimedEventFuture;
   String? _activeInviteId;
@@ -198,6 +200,19 @@ class InviteFlowScreenController with Disposable {
     }
   }
 
+  bool isImageLoaded(String url) {
+    return loadedImagesStreamValue.value.contains(url);
+  }
+
+  void markImageLoaded(String url) {
+    final current = loadedImagesStreamValue.value;
+    if (current.contains(url)) {
+      return;
+    }
+    final next = Set<String>.from(current)..add(url);
+    loadedImagesStreamValue.addValue(next);
+  }
+
   void _ensureInviteTrackingSubscription() {
     if (_pendingInvitesSubscription != null) {
       return;
@@ -262,6 +277,7 @@ class InviteFlowScreenController with Disposable {
     swiperController.dispose();
     confirmingPresenceStreamValue.dispose();
     topCardIndexStreamValue.dispose();
+    loadedImagesStreamValue.dispose();
   }
 
   void _finishActiveInviteTimedEvent({

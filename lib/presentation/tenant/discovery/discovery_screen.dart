@@ -9,22 +9,19 @@ import 'package:belluga_now/presentation/tenant/discovery/widgets/discovery_filt
 import 'package:belluga_now/presentation/tenant/discovery/widgets/discovery_partner_grid.dart';
 import 'package:belluga_now/presentation/tenant/widgets/carousel_section.dart';
 import 'package:flutter/material.dart';
+import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 
 class DiscoveryScreen extends StatefulWidget {
-  const DiscoveryScreen({
-    super.key,
-    required this.controller,
-  });
-
-  final DiscoveryScreenController controller;
+  const DiscoveryScreen({super.key});
 
   @override
   State<DiscoveryScreen> createState() => _DiscoveryScreenState();
 }
 
 class _DiscoveryScreenState extends State<DiscoveryScreen> {
-  DiscoveryScreenController get _controller => widget.controller;
+  final DiscoveryScreenController _controller =
+      GetIt.I.get<DiscoveryScreenController>();
 
   @override
   void initState() {

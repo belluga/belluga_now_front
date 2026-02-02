@@ -4,21 +4,17 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_account.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
 import 'package:belluga_now/presentation/tenant_admin/account_profiles/controllers/tenant_admin_account_profiles_controller.dart';
-import 'package:belluga_now/presentation/tenant_admin/accounts/controllers/tenant_admin_location_picker_controller.dart';
 import 'package:flutter/material.dart';
+import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 
 class TenantAdminAccountDetailScreen extends StatefulWidget {
   const TenantAdminAccountDetailScreen({
     super.key,
     required this.accountSlug,
-    required this.profilesController,
-    required this.locationPickerController,
   });
 
   final String accountSlug;
-  final TenantAdminAccountProfilesController profilesController;
-  final TenantAdminLocationPickerController locationPickerController;
 
   @override
   State<TenantAdminAccountDetailScreen> createState() =>
@@ -27,12 +23,12 @@ class TenantAdminAccountDetailScreen extends StatefulWidget {
 
 class _TenantAdminAccountDetailScreenState
     extends State<TenantAdminAccountDetailScreen> {
-  late final TenantAdminAccountProfilesController _profilesController;
+  final TenantAdminAccountProfilesController _profilesController =
+      GetIt.I.get<TenantAdminAccountProfilesController>();
 
   @override
   void initState() {
     super.initState();
-    _profilesController = widget.profilesController;
     _profilesController.loadAccountDetail(widget.accountSlug);
   }
 

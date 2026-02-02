@@ -7,8 +7,8 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
 import 'package:belluga_now/presentation/tenant_admin/account_profiles/controllers/tenant_admin_account_profiles_controller.dart';
-import 'package:belluga_now/presentation/tenant_admin/accounts/controllers/tenant_admin_location_picker_controller.dart';
 import 'package:flutter/material.dart';
+import 'package:get_it/get_it.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 
@@ -16,13 +16,9 @@ class TenantAdminAccountProfileCreateScreen extends StatefulWidget {
   const TenantAdminAccountProfileCreateScreen({
     super.key,
     required this.accountSlug,
-    required this.controller,
-    required this.locationPickerController,
   });
 
   final String accountSlug;
-  final TenantAdminAccountProfilesController controller;
-  final TenantAdminLocationPickerController locationPickerController;
 
   @override
   State<TenantAdminAccountProfileCreateScreen> createState() =>
@@ -32,19 +28,15 @@ class TenantAdminAccountProfileCreateScreen extends StatefulWidget {
 class _TenantAdminAccountProfileCreateScreenState
     extends State<TenantAdminAccountProfileCreateScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _displayNameController = TextEditingController();
-  final _bioController = TextEditingController();
-  final _latitudeController = TextEditingController();
-  final _longitudeController = TextEditingController();
-  final Map<String, TextEditingController> _taxonomyControllers = {};
-  late final TenantAdminAccountProfilesController _controller;
+  final TenantAdminAccountProfilesController _controller =
+      GetIt.I.get<TenantAdminAccountProfilesController>();
   String? _accountId;
 
   @override
   void initState() {
     super.initState();
-    _controller = widget.controller;
     _controller.resetCreateState();
+    _controller.resetFormControllers();
     _load();
   }
 
@@ -58,13 +50,7 @@ class _TenantAdminAccountProfileCreateScreenState
 
   @override
   void dispose() {
-    _displayNameController.dispose();
-    _bioController.dispose();
-    _latitudeController.dispose();
-    _longitudeController.dispose();
-    for (final controller in _taxonomyControllers.values) {
-      controller.dispose();
-    }
+    _controller.resetFormControllers();
     _controller.resetCreateState();
     super.dispose();
   }
@@ -115,25 +101,22 @@ class _TenantAdminAccountProfileCreateScreenState
 
   void _syncTaxonomyControllers(List<String> allowedTaxonomies) {
     final allowed = allowedTaxonomies.toSet();
-    _taxonomyControllers.removeWhere((key, controller) {
-      if (allowed.contains(key)) return false;
-      controller.dispose();
-      return true;
-    });
+    final existingKeys = _controller.taxonomyControllers.keys.toList();
+    for (final key in existingKeys) {
+      if (allowed.contains(key)) continue;
+      _controller.removeTaxonomyController(key);
+    }
     for (final taxonomy in allowed) {
-      _taxonomyControllers.putIfAbsent(
-        taxonomy,
-        () => TextEditingController(),
-      );
+      _controller.getOrCreateTaxonomyController(taxonomy);
     }
   }
 
   void _clearCapabilityFields(String? selectedType) {
     if (!_hasBio(selectedType)) {
-      _bioController.clear();
+      _controller.bioController.clear();
     }
     if (!_hasTaxonomies(selectedType)) {
-      for (final controller in _taxonomyControllers.values) {
+      for (final controller in _controller.taxonomyControllers.values) {
         controller.clear();
       }
     }
@@ -144,8 +127,8 @@ class _TenantAdminAccountProfileCreateScreenState
       _controller.updateCreateCoverFile(null);
     }
     if (!_requiresLocation(selectedType)) {
-      _latitudeController.clear();
-      _longitudeController.clear();
+      _controller.latitudeController.clear();
+      _controller.longitudeController.clear();
     }
   }
 
@@ -154,7 +137,7 @@ class _TenantAdminAccountProfileCreateScreenState
       return const [];
     }
     final terms = <TenantAdminTaxonomyTerm>[];
-    for (final entry in _taxonomyControllers.entries) {
+    for (final entry in _controller.taxonomyControllers.entries) {
       final raw = entry.value.text.trim();
       if (raw.isEmpty) continue;
       final values = raw
@@ -170,7 +153,7 @@ class _TenantAdminAccountProfileCreateScreenState
 
   String? _validateLatitude(String? value) {
     final trimmed = value?.trim() ?? '';
-    final other = _longitudeController.text.trim();
+    final other = _controller.longitudeController.text.trim();
     final requires = _requiresLocation(
       _controller.createStateStreamValue.value.selectedProfileType,
     );
@@ -188,7 +171,7 @@ class _TenantAdminAccountProfileCreateScreenState
 
   String? _validateLongitude(String? value) {
     final trimmed = value?.trim() ?? '';
-    final other = _latitudeController.text.trim();
+    final other = _controller.latitudeController.text.trim();
     final requires = _requiresLocation(
       _controller.createStateStreamValue.value.selectedProfileType,
     );
@@ -206,19 +189,18 @@ class _TenantAdminAccountProfileCreateScreenState
     final selected = await context.router.push<TenantAdminLocation?>(
       TenantAdminLocationPickerRoute(
         initialLocation: currentLocation,
-        controller: widget.locationPickerController,
       ),
     );
     if (selected == null) {
       return;
     }
-    _latitudeController.text = selected.latitude.toStringAsFixed(6);
-    _longitudeController.text = selected.longitude.toStringAsFixed(6);
+    _controller.latitudeController.text = selected.latitude.toStringAsFixed(6);
+    _controller.longitudeController.text = selected.longitude.toStringAsFixed(6);
   }
 
   TenantAdminLocation? _currentLocation() {
-    final latText = _latitudeController.text.trim();
-    final lngText = _longitudeController.text.trim();
+    final latText = _controller.latitudeController.text.trim();
+    final lngText = _controller.longitudeController.text.trim();
     if (latText.isEmpty || lngText.isEmpty) {
       return null;
     }
@@ -313,9 +295,9 @@ class _TenantAdminAccountProfileCreateScreenState
     await _controller.createProfile(
       accountId: _accountId!,
       profileType: selectedType,
-      displayName: _displayNameController.text.trim(),
+      displayName: _controller.displayNameController.text.trim(),
       location: location,
-      bio: _hasBio(state.selectedProfileType) ? _bioController.text.trim() : null,
+      bio: _hasBio(state.selectedProfileType) ? _controller.bioController.text.trim() : null,
       taxonomyTerms: _buildTaxonomyTerms(state.selectedProfileType),
       avatarUpload: avatarUpload,
       coverUpload: coverUpload,
@@ -490,7 +472,7 @@ class _TenantAdminAccountProfileCreateScreenState
             ),
             const SizedBox(height: 12),
             TextFormField(
-              controller: _displayNameController,
+              controller: _controller.displayNameController,
               decoration: const InputDecoration(labelText: 'Nome de exibicao'),
               validator: (value) {
                 if (value == null || value.trim().isEmpty) {
@@ -528,7 +510,7 @@ class _TenantAdminAccountProfileCreateScreenState
             if (hasBio) ...[
               const SizedBox(height: 12),
               TextFormField(
-                controller: _bioController,
+                controller: _controller.bioController,
                 decoration: const InputDecoration(labelText: 'Bio'),
                 maxLines: 4,
                 minLines: 2,
@@ -545,7 +527,7 @@ class _TenantAdminAccountProfileCreateScreenState
                 Padding(
                   padding: const EdgeInsets.only(bottom: 12),
                   child: TextFormField(
-                    controller: _taxonomyControllers[taxonomy],
+                    controller: _controller.taxonomyControllers[taxonomy],
                     decoration: InputDecoration(
                       labelText: taxonomy,
                       helperText: 'Separe por virgula',
@@ -694,14 +676,14 @@ class _TenantAdminAccountProfileCreateScreenState
             ),
             const SizedBox(height: 12),
             TextFormField(
-              controller: _latitudeController,
+              controller: _controller.latitudeController,
               decoration: const InputDecoration(labelText: 'Latitude'),
               keyboardType: TextInputType.number,
               validator: _validateLatitude,
             ),
             const SizedBox(height: 12),
             TextFormField(
-              controller: _longitudeController,
+              controller: _controller.longitudeController,
               decoration: const InputDecoration(labelText: 'Longitude'),
               keyboardType: TextInputType.number,
               validator: _validateLongitude,
