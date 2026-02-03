@@ -106,7 +106,7 @@ abstract class AuthLoginControllerContract extends Object with Disposable {
       }
       loginResultStreamValue.addValue(false);
     } catch (e) {
-      generalErrorStreamValue.addValue("Erro desconhecido");
+      generalErrorStreamValue.addValue(_resolveUnknownError(e));
       loginResultStreamValue.addValue(false);
     }
 
@@ -136,7 +136,7 @@ abstract class AuthLoginControllerContract extends Object with Disposable {
       generalErrorStreamValue.addValue(e.message);
       signUpResultStreamValue.addValue(false);
     } catch (e) {
-      generalErrorStreamValue.addValue("Erro desconhecido");
+      generalErrorStreamValue.addValue(_resolveUnknownError(e));
       signUpResultStreamValue.addValue(false);
     } finally {
       buttonLoadingValue.addValue(false);
@@ -150,6 +150,16 @@ abstract class AuthLoginControllerContract extends Object with Disposable {
 
   void clearSignUpResult() {
     signUpResultStreamValue.addValue(null);
+  }
+
+  String _resolveUnknownError(Object error) {
+    final raw = error.toString();
+    final cleaned = raw.replaceFirst(
+      RegExp(r'^(Exception|StateError|Error):\s*'),
+      '',
+    );
+    final message = cleaned.trim();
+    return message.isEmpty ? 'Erro desconhecido' : message;
   }
 
   @override
