@@ -6,6 +6,7 @@ import 'package:belluga_now/presentation/tenant/profile/screens/profile_screen/p
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/user/profile_avatar_storage_contract.dart';
+import 'package:belluga_now/domain/user/user_profile_contract.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/infrastructure/dal/dao/backend_contract.dart';
 import 'package:belluga_now/presentation/landlord/auth/controllers/landlord_login_controller.dart';
@@ -15,6 +16,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
 import 'package:mockito/mockito.dart';
 import 'package:stream_value/core/stream_value.dart';
+import 'package:value_object_pattern/domain/value_objects/email_address_value.dart';
+import 'package:value_object_pattern/domain/value_objects/full_name_value.dart';
+import 'package:value_object_pattern/domain/value_objects/mongo_id_value.dart';
 
 class _FakeBackendContract extends Fake implements BackendContract {}
 
@@ -191,6 +195,32 @@ class _FakeLandlordAuthRepository implements LandlordAuthRepositoryContract {
   Future<void> logout() async {}
 }
 
+class _FakeUser implements UserContract {
+  _FakeUser({
+    required this.uuidValue,
+    required this.profile,
+    this.customData,
+    this.currentDeviceId = 'device',
+  });
+
+  @override
+  final MongoIDValue uuidValue;
+
+  @override
+  final UserProfileContract profile;
+
+  @override
+  Map<String, Object?>? customData;
+
+  @override
+  String currentDeviceId;
+
+  @override
+  Future<void> updateCustomData(Map<String, Object?> newCustomData) async {
+    customData = newCustomData;
+  }
+}
+
 class _RecordingStackRouter extends Mock implements StackRouter {
   bool replaceAllCalled = false;
   List<PageRouteInfo>? lastRoutes;
@@ -259,6 +289,53 @@ void main() {
 
     expect(mockRouter.replaceAllCalled, isTrue);
     expect(mockRouter.lastRoutes, isNotNull);
+  });
+
+  testWidgets('Profile updates when user stream changes', (tester) async {
+    final adminModeRepository = _FakeAdminModeRepository(AdminMode.user);
+    final authRepository =
+        _FakeAuthRepository(backend: _FakeBackendContract());
+    final appDataRepository = _FakeAppDataRepository();
+    final avatarStorage = _FakeProfileAvatarStorage();
+    final landlordLoginController = LandlordLoginController(
+      adminModeRepository: adminModeRepository,
+      landlordAuthRepository: _FakeLandlordAuthRepository(),
+    );
+
+    final controller = ProfileScreenController(
+      authRepository: authRepository,
+      appDataRepository: appDataRepository,
+      adminModeRepository: adminModeRepository,
+      landlordLoginController: landlordLoginController,
+      avatarStorage: avatarStorage,
+    );
+
+    GetIt.I.registerSingleton<ProfileScreenController>(controller);
+    await tester.pumpWidget(
+      StackRouterScope(
+        controller: mockRouter,
+        stateHash: 0,
+        child: const MaterialApp(
+          home: ProfileScreen(),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text('Alice Smith'), findsNothing);
+
+    final user = _FakeUser(
+      uuidValue: MongoIDValue()..parse('507f1f77bcf86cd799439011'),
+      profile: UserProfileContract(
+        nameValue: FullNameValue()..parse('Alice Smith'),
+        emailValue: EmailAddressValue()..parse('alice@example.com'),
+      ),
+    );
+    authRepository.userStreamValue.addValue(user);
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.text('Alice Smith'), findsWidgets);
   });
 }
 

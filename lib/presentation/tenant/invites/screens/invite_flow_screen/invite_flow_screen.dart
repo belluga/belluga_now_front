@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/domain/invites/invite_decision.dart';
@@ -5,7 +7,6 @@ import 'package:belluga_now/domain/invites/invite_model.dart';
 import 'package:belluga_now/presentation/tenant/invites/screens/invite_flow_screen/controllers/invite_flow_controller.dart';
 import 'package:belluga_now/presentation/tenant/invites/screens/invite_flow_screen/widgets/invite_hero_card.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/scheduler.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 
@@ -21,75 +22,103 @@ class _InviteFlowScreenState extends State<InviteFlowScreen> {
       GetIt.I.get<InviteFlowScreenController>();
   int _precacheToken = 0;
   String? _lastPrecacheKey;
+  StreamSubscription<InviteDecisionResult?>? _decisionSubscription;
+  StreamSubscription<List<InviteModel>>? _pendingInvitesSubscription;
+  bool _exitHandled = false;
 
   @override
   void initState() {
     super.initState();
+    _bindDecisionListener();
+    _bindPendingInvitesListener();
     final inviteId = context.routeData.queryParams.get('invite');
     _controller.init(prioritizeInviteId: inviteId);
   }
 
   @override
   void dispose() {
+    _decisionSubscription?.cancel();
+    _pendingInvitesSubscription?.cancel();
     _precacheToken++;
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return StreamValueBuilder<InviteDecisionResult?>(
-      streamValue: _controller.decisionResultStreamValue,
-      builder: (context, decisionResult) {
-        _handleDecisionResult(decisionResult);
-        return PopScope(
-          canPop: context.router.canPop(),
-          onPopInvokedWithResult: (didPop, result) {
-            if (didPop) return;
-            _exitInviteFlow();
-          },
-          child: Scaffold(
-            body: StreamValueBuilder<List<InviteModel>>(
-              streamValue: _controller.pendingInvitesStreamValue,
-              onNullWidget: const Center(child: CircularProgressIndicator()),
-              builder: (context, invites) {
-                _precacheNextInvites(invites);
-                if (invites.isEmpty) {
-                  // Avoid flashing empty state: leave the flow when there's no invite.
-                  SchedulerBinding.instance.addPostFrameCallback((_) {
-                    _exitInviteFlow();
-                  });
-                  return const SizedBox.shrink();
+    return PopScope(
+      canPop: context.router.canPop(),
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        _exitInviteFlow();
+      },
+      child: Scaffold(
+        body: StreamValueBuilder<List<InviteModel>>(
+          streamValue: _controller.pendingInvitesStreamValue,
+          onNullWidget: const Center(child: CircularProgressIndicator()),
+          builder: (context, invites) {
+            _precacheNextInvites(invites);
+            if (invites.isEmpty) {
+              return const SizedBox.shrink();
+            }
+
+            return StreamValueBuilder<Set<String>>(
+              streamValue: _controller.loadedImagesStreamValue,
+              builder: (context, loadedImages) {
+                final invite = invites.first;
+                final remaining = invites.length - 1;
+                final isReady = loadedImages.contains(invite.eventImageUrl);
+
+                if (!isReady) {
+                  return const Center(child: CircularProgressIndicator());
                 }
 
-                return StreamValueBuilder<Set<String>>(
-                  streamValue: _controller.loadedImagesStreamValue,
-                  builder: (context, loadedImages) {
-                    final invite = invites.first;
-                    final remaining = invites.length - 1;
-                    final isReady = loadedImages.contains(invite.eventImageUrl);
-
-                    if (!isReady) {
-                      return const Center(child: CircularProgressIndicator());
-                    }
-
-                    return InviteHeroCard(
-                      invite: invite,
-                      onAccept: () =>
-                          _controller.requestDecision(InviteDecision.accepted),
-                      onDecline: () =>
-                          _controller.requestDecision(InviteDecision.declined),
-                      onViewDetails: () => _openEventDetails(invite),
-                      onClose: _exitInviteFlow,
-                      remainingCount: remaining,
-                    );
-                  },
+                return InviteHeroCard(
+                  invite: invite,
+                  onAccept: () =>
+                      _controller.requestDecision(InviteDecision.accepted),
+                  onDecline: () =>
+                      _controller.requestDecision(InviteDecision.declined),
+                  onViewDetails: () => _openEventDetails(invite),
+                  onClose: _exitInviteFlow,
+                  remainingCount: remaining,
                 );
               },
-            ),
-          ),
-        );
-      },
+            );
+          },
+        ),
+      ),
     );
+  }
+
+  void _bindDecisionListener() {
+    _decisionSubscription?.cancel();
+    _decisionSubscription =
+        _controller.decisionResultStreamValue.stream.listen(
+      _handleDecisionResult,
+    );
+    final current = _controller.decisionResultStreamValue.value;
+    if (current != null) {
+      _handleDecisionResult(current);
+    }
+  }
+
+  void _bindPendingInvitesListener() {
+    _pendingInvitesSubscription?.cancel();
+    _pendingInvitesSubscription =
+        _controller.pendingInvitesStreamValue.stream.listen(
+      _handlePendingInvites,
+    );
+    _handlePendingInvites(_controller.pendingInvitesStreamValue.value);
+  }
+
+  void _handlePendingInvites(List<InviteModel> invites) {
+    if (invites.isNotEmpty) {
+      _exitHandled = false;
+      return;
+    }
+    if (_exitHandled) return;
+    _exitHandled = true;
+    _exitInviteFlow();
   }
 
   void _handleDecisionResult(InviteDecisionResult? result) {

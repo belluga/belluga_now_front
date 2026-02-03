@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/domain/invites/invite_model.dart';
@@ -316,20 +318,9 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
       ),
     );
 
-    return StreamValueBuilder<bool>(
-      streamValue: _controller.inviteAcceptedStreamValue,
-      builder: (context, inviteAccepted) {
-        if (inviteAccepted) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            _controller.clearInviteAccepted();
-            _openInviteFlow();
-          });
-        }
-        return Theme(
-          data: Theme.of(context).copyWith(colorScheme: effectiveScheme),
-          child: content,
-        );
-      },
+    return Theme(
+      data: Theme.of(context).copyWith(colorScheme: effectiveScheme),
+      child: content,
     );
   }
 
@@ -345,8 +336,9 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     _openInviteFlow();
   }
 
-  Future<void> _handleAcceptInvite(String inviteId) {
-    return _controller.acceptInvite(inviteId);
+  Future<void> _handleAcceptInvite(String inviteId) async {
+    unawaited(_controller.acceptInvite(inviteId));
+    _openInviteFlow();
   }
 
   Future<void> _handleDeclineInvite(String inviteId) {

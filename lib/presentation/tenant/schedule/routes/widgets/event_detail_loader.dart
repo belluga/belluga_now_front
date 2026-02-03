@@ -23,7 +23,6 @@ class EventDetailLoader extends StatefulWidget {
 class _EventDetailLoaderState extends State<EventDetailLoader> {
   final EventDetailController _controller =
       GetIt.I.get<EventDetailController>();
-  bool _telemetryStarted = false;
 
   @override
   void initState() {
@@ -43,12 +42,6 @@ class _EventDetailLoaderState extends State<EventDetailLoader> {
       streamValue: _controller.eventStreamValue,
       builder: (context, _) {
         final event = _controller.eventStreamValue.value;
-        if (event != null && !_telemetryStarted) {
-          _telemetryStarted = true;
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            unawaited(_controller.startEventTelemetry(event));
-          });
-        }
 
         if (_controller.isLoadingStreamValue.value &&
             _controller.eventStreamValue.value == null) {

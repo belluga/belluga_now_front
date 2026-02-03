@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:math' as math;
 import 'package:auto_route/auto_route.dart';
@@ -27,12 +28,22 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen> {
   final ProfileScreenController _controller =
       GetIt.I.get<ProfileScreenController>();
+  StreamSubscription<AdminMode>? _modeSubscription;
+  AdminMode? _lastMode;
 
   @override
   void initState() {
     super.initState();
-    _controller.syncFromUser(_controller.userStreamValue.value);
+    _modeSubscription =
+        _controller.modeStreamValue.stream.listen(_handleModeChange);
+    _handleModeChange(_controller.modeStreamValue.value);
     _controller.loadAvatarPath();
+  }
+
+  @override
+  void dispose() {
+    _modeSubscription?.cancel();
+    super.dispose();
   }
 
   @override
@@ -42,9 +53,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return StreamValueBuilder<AdminMode>(
       streamValue: _controller.modeStreamValue,
       builder: (context, mode) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          _handleModeChange(mode);
-        });
         return Scaffold(
           appBar: AppBar(
             title: Text(
@@ -82,9 +90,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
             child: StreamValueBuilder<UserContract?>(
               streamValue: _controller.userStreamValue,
               builder: (context, user) {
-                WidgetsBinding.instance.addPostFrameCallback((_) {
-                  _controller.syncFromUser(user);
-                });
                 if (user == null) {
                   return ListView(
                     padding: const EdgeInsets.fromLTRB(16, 24, 16, 24),
@@ -425,6 +430,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   void _handleModeChange(AdminMode mode) {
+    if (_lastMode == mode) return;
+    _lastMode = mode;
     if (mode == AdminMode.landlord) {
       context.router.replaceAll([TenantAdminShellRoute()]);
     }

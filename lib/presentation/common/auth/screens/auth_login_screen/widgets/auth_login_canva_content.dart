@@ -251,7 +251,7 @@ class _AuthLoginCanvaContentState extends State<AuthLoginCanvaContent>
   void _handleSignUpResult(bool? authorized) {
     if (authorized == null) return;
     if (authorized) {
-      Navigator.of(context).maybePop();
+      unawaited(context.router.maybePop());
       _navigateToAuthorizedPage();
     }
     _controller.clearSignUpResult();

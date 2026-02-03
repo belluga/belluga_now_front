@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:belluga_now/domain/repositories/admin_mode_repository_contract.dart';
@@ -28,13 +29,16 @@ class ProfileScreenController implements Disposable {
         _landlordLoginController =
             landlordLoginController ?? GetIt.I.get<LandlordLoginController>(),
         _avatarStorage =
-            avatarStorage ?? GetIt.I.get<ProfileAvatarStorageContract>();
+            avatarStorage ?? GetIt.I.get<ProfileAvatarStorageContract>() {
+    _bindUserStream();
+  }
 
   final AuthRepositoryContract _authRepository;
   final AppDataRepositoryContract _appDataRepository;
   final AdminModeRepositoryContract _adminModeRepository;
   final LandlordLoginController _landlordLoginController;
   final ProfileAvatarStorageContract _avatarStorage;
+  StreamSubscription<UserContract?>? _userSubscription;
 
   LandlordLoginController get landlordLoginController =>
       _landlordLoginController;
@@ -70,10 +74,10 @@ class ProfileScreenController implements Disposable {
   Future<void> setThemeMode(ThemeMode mode) =>
       _appDataRepository.setThemeMode(mode);
 
-  void syncFromUser(UserContract? user) {
-    if (user == null) return;
+  bool syncFromUser(UserContract? user) {
+    if (user == null) return false;
     final id = user.uuidValue.value.toString();
-    if (id == _syncedUserId) return;
+    if (id == _syncedUserId) return false;
     _syncedUserId = id;
     _initialName = user.profile.nameValue?.value ?? '';
     _initialEmail = user.profile.emailValue?.value ?? '';
@@ -82,6 +86,19 @@ class ProfileScreenController implements Disposable {
     nameController.text = _initialName;
     emailController.text = _initialEmail;
     // TODO(Delphi): Wire description and phone from user profile/custom data once available.
+    return true;
+  }
+
+  void _bindUserStream() {
+    _userSubscription?.cancel();
+    _userSubscription = userStreamValue.stream.listen((user) {
+      if (syncFromUser(user)) {
+        bumpFormVersion();
+      }
+    });
+    if (syncFromUser(userStreamValue.value)) {
+      bumpFormVersion();
+    }
   }
 
   Future<void> loadAvatarPath() async {
@@ -161,6 +178,7 @@ class ProfileScreenController implements Disposable {
 
   @override
   void onDispose() {
+    _userSubscription?.cancel();
     nameController.dispose();
     descriptionController.dispose();
     emailController.dispose();
