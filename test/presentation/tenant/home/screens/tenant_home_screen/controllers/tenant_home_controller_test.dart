@@ -3,11 +3,14 @@ import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/domain/repositories/user_events_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
 import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
+import 'package:belluga_now/domain/app_data/app_data.dart';
+import 'package:belluga_now/domain/app_data/value_object/platform_type_value.dart';
 import 'package:belluga_now/domain/value_objects/title_value.dart';
 import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
 import 'package:belluga_now/domain/value_objects/description_value.dart';
 import 'package:value_object_pattern/domain/value_objects/date_time_value.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value.dart';
 
 void main() {
@@ -15,7 +18,9 @@ void main() {
   late _FakeUserEventsRepository userEventsRepository;
   late _FakeUserLocationRepository userLocationRepository;
 
-  setUp(() {
+  setUp(() async {
+    await GetIt.I.reset();
+    GetIt.I.registerSingleton<AppData>(_buildAppData());
     userEventsRepository = _FakeUserEventsRepository();
     userLocationRepository = _FakeUserLocationRepository();
     controller = TenantHomeController(
@@ -24,8 +29,9 @@ void main() {
     );
   });
 
-  tearDown(() {
+  tearDown(() async {
     controller.onDispose();
+    await GetIt.I.reset();
   });
 
   test('init initializes dependencies', () async {
@@ -69,6 +75,46 @@ void main() {
       isNot(contains('2')),
     );
   });
+}
+
+AppData _buildAppData() {
+  final remoteData = {
+    'name': 'Tenant Test',
+    'type': 'tenant',
+    'main_domain': 'https://tenant.test',
+    'profile_types': const [
+      {
+        'type': 'artist',
+        'label': 'Artist',
+        'allowed_taxonomies': [],
+        'capabilities': {
+          'is_favoritable': true,
+          'is_poi_enabled': false,
+        },
+      },
+    ],
+    'domains': const ['https://tenant.test'],
+    'app_domains': const [],
+    'theme_data_settings': const {
+      'brightness_default': 'light',
+      'primary_seed_color': '#FFFFFF',
+      'secondary_seed_color': '#000000',
+    },
+    'main_color': '#FFFFFF',
+    'tenant_id': 'tenant-1',
+    'telemetry': const {'trackers': []},
+    'telemetry_context': const {'location_freshness_minutes': 5},
+    'firebase': null,
+    'push': null,
+  };
+  final localInfo = {
+    'platformType': PlatformTypeValue()..parse('mobile'),
+    'hostname': 'tenant.test',
+    'href': 'https://tenant.test',
+    'port': null,
+    'device': 'test-device',
+  };
+  return AppData.fromInitialization(remoteData: remoteData, localInfo: localInfo);
 }
 
 class _FakeUserEventsRepository implements UserEventsRepositoryContract {

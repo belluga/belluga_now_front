@@ -241,11 +241,14 @@ void main() {
     GetIt.I.registerSingleton<TenantAdminAccountProfilesRepositoryContract>(
       _FakeAccountProfilesRepository(),
     );
-    GetIt.I.registerSingleton<TenantAdminAccountsController>(
-      TenantAdminAccountsController(),
-    );
+    final locationPickerController = TenantAdminLocationPickerController();
     GetIt.I.registerSingleton<TenantAdminLocationPickerController>(
-      TenantAdminLocationPickerController(),
+      locationPickerController,
+    );
+    GetIt.I.registerSingleton<TenantAdminAccountsController>(
+      TenantAdminAccountsController(
+        locationPickerController: locationPickerController,
+      ),
     );
   });
 

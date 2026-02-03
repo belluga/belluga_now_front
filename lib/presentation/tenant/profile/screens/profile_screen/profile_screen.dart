@@ -425,10 +425,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   void _handleModeChange(AdminMode mode) {
-    if (mode == AdminMode.user) {
-      context.router.replaceAll([TenantHomeRoute()]);
-      return;
-    }
     if (mode == AdminMode.landlord) {
       context.router.replaceAll([TenantAdminShellRoute()]);
     }
