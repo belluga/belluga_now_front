@@ -6,15 +6,16 @@ import 'package:belluga_now/presentation/tenant/home/screens/tenant_home_screen/
 import 'package:belluga_now/presentation/tenant/home/screens/tenant_home_screen/widgets/favorites_strip.dart';
 import 'package:belluga_now/domain/favorite/projections/favorite_resume.dart';
 import 'package:flutter/material.dart';
+import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 
 class FavoritesSectionBuilder extends StatefulWidget {
   const FavoritesSectionBuilder({
     super.key,
-    required this.controller,
+    this.controller,
   });
 
-  final FavoritesSectionController controller;
+  final FavoritesSectionController? controller;
 
   @override
   State<FavoritesSectionBuilder> createState() =>
@@ -22,7 +23,8 @@ class FavoritesSectionBuilder extends StatefulWidget {
 }
 
 class _FavoritesSectionBuilderState extends State<FavoritesSectionBuilder> {
-  late final FavoritesSectionController _controller = widget.controller;
+  late final FavoritesSectionController _controller =
+      widget.controller ?? GetIt.I.get<FavoritesSectionController>();
   StreamSubscription<FavoriteNavigationTarget?>? _navigationSubscription;
 
   @override

@@ -46,7 +46,7 @@ class HomeModule extends ModuleContract {
       () => UserEventsRepository(),
     );
 
-    registerFactory<TenantHomeAgendaController>(
+    registerLazySingleton<TenantHomeAgendaController>(
       () => TenantHomeAgendaController(),
     );
 
@@ -58,8 +58,8 @@ class HomeModule extends ModuleContract {
       () => LandlordHomeScreenController(),
     );
 
-    registerFactory(FavoritesSectionController.new);
-    registerFactory(InvitesBannerBuilderController.new);
+    registerLazySingleton(FavoritesSectionController.new);
+    registerLazySingleton(InvitesBannerBuilderController.new);
   }
 
   @override

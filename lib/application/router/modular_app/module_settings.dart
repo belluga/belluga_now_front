@@ -177,17 +177,17 @@ class ModuleSettings extends ModuleSettingsContract {
       );
     }
     if (!GetIt.I.isRegistered<TenantHomeAgendaController>()) {
-      GetIt.I.registerFactory<TenantHomeAgendaController>(
+      GetIt.I.registerLazySingleton<TenantHomeAgendaController>(
         () => TenantHomeAgendaController(),
       );
     }
     if (!GetIt.I.isRegistered<FavoritesSectionController>()) {
-      GetIt.I.registerFactory<FavoritesSectionController>(
+      GetIt.I.registerLazySingleton<FavoritesSectionController>(
         () => FavoritesSectionController(),
       );
     }
     if (!GetIt.I.isRegistered<InvitesBannerBuilderController>()) {
-      GetIt.I.registerFactory<InvitesBannerBuilderController>(
+      GetIt.I.registerLazySingleton<InvitesBannerBuilderController>(
         () => InvitesBannerBuilderController(),
       );
     }

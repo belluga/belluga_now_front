@@ -2,10 +2,10 @@ import 'dart:async';
 
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
-import 'package:belluga_now/presentation/tenant/map/screens/map_screen/controllers/fab_menu_controller.dart';
 import 'package:belluga_now/presentation/tenant/map/screens/map_screen/controllers/map_screen_controller.dart';
 import 'package:belluga_now/presentation/tenant/map/screens/map_screen/widgets/fab_menu.dart';
 import 'package:belluga_now/presentation/tenant/map/screens/map_screen/widgets/map_layers.dart';
+import 'package:belluga_now/presentation/tenant/map/screens/map_screen/widgets/map_status_message_listener.dart';
 import 'package:belluga_now/presentation/tenant/map/screens/map_screen/widgets/poi_details_deck.dart';
 import 'package:belluga_now/presentation/tenant/widgets/belluga_bottom_navigation_bar.dart';
 import 'package:flutter/material.dart';
@@ -21,8 +21,6 @@ class MapScreen extends StatefulWidget {
 
 class _MapScreenState extends State<MapScreen> {
   final MapScreenController _controller = GetIt.I.get<MapScreenController>();
-  final FabMenuController _fabMenuController =
-      GetIt.I.get<FabMenuController>();
 
   @override
   void initState() {
@@ -51,30 +49,27 @@ class _MapScreenState extends State<MapScreen> {
       textTheme: base.textTheme.apply(fontFamily: 'Roboto'),
     );
 
-    return StreamValueBuilder<String?>(
-      streamValue: _controller.statusMessageStreamValue,
-      builder: (context, message) {
-        _handleStatusMessage(message);
-        return Theme(
-          data: theme,
-          child: PopScope(
-            canPop: false,
-            onPopInvokedWithResult: (didPop, result) {
-              if (didPop) {
-                return;
-              }
-              context.router.replaceAll([const TenantHomeRoute()]);
-            },
-            child: Scaffold(
-              body: Stack(
-                children: [
-                  Column(
-                    children: [
-                      Expanded(
-                        child: MapLayers(controller: _controller),
-                      ),
-                    ],
-                  ),
+    return MapStatusMessageListener(
+      child: Theme(
+        data: theme,
+        child: PopScope(
+          canPop: false,
+          onPopInvokedWithResult: (didPop, result) {
+            if (didPop) {
+              return;
+            }
+            context.router.replaceAll([const TenantHomeRoute()]);
+          },
+          child: Scaffold(
+            body: Stack(
+              children: [
+                Column(
+                  children: [
+                    Expanded(
+                      child: MapLayers(controller: _controller),
+                    ),
+                  ],
+                ),
               // SafeArea(
               //   child: SizedBox(
               //     height: 120,
@@ -91,46 +86,44 @@ class _MapScreenState extends State<MapScreen> {
               //     ),
               //   ),
               // ),
-              SafeArea(
-                child: Align(
-                  alignment: Alignment.topLeft,
-                  child: Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: IconButton.filled(
-                      style: IconButton.styleFrom(
-                        backgroundColor: Colors.black54,
-                        foregroundColor: Colors.white,
+                SafeArea(
+                  child: Align(
+                    alignment: Alignment.topLeft,
+                    child: Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: IconButton.filled(
+                        style: IconButton.styleFrom(
+                          backgroundColor: Colors.black54,
+                          foregroundColor: Colors.white,
+                        ),
+                        onPressed: () {
+                          context.router.replaceAll([const TenantHomeRoute()]);
+                        },
+                        icon: const Icon(Icons.arrow_back),
                       ),
-                      onPressed: () {
-                        context.router.replaceAll([const TenantHomeRoute()]);
-                      },
-                      icon: const Icon(Icons.arrow_back),
                     ),
                   ),
                 ),
-              ),
-                  Positioned(
-                    left: 16,
-                    right: 16,
-                    bottom: 16,
-                    child: SafeArea(
-                      child: PoiDetailDeck(controller: _controller),
-                    ),
+                Positioned(
+                  left: 16,
+                  right: 16,
+                  bottom: 16,
+                  child: SafeArea(
+                    child: PoiDetailDeck(controller: _controller),
                   ),
-                ],
-              ),
-              floatingActionButtonLocation:
-                  FloatingActionButtonLocation.endFloat,
-              floatingActionButton: FabMenu(
-                onNavigateToUser: _centerOnUser,
-                controller: _fabMenuController,
-              ),
-              bottomNavigationBar:
-                  const BellugaBottomNavigationBar(currentIndex: 1),
+                ),
+              ],
             ),
+            floatingActionButtonLocation:
+                FloatingActionButtonLocation.endFloat,
+            floatingActionButton: FabMenu(
+              onNavigateToUser: _centerOnUser,
+            ),
+            bottomNavigationBar:
+                const BellugaBottomNavigationBar(currentIndex: 1),
           ),
-        );
-      },
+        ),
+      ),
     );
   }
 
@@ -142,13 +135,4 @@ class _MapScreenState extends State<MapScreen> {
     _controller.centerOnUser();
   }
 
-  void _handleStatusMessage(String? message) {
-    if (message == null || message.isEmpty) return;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message)),
-      );
-      _controller.clearStatusMessage();
-    });
-  }
 }

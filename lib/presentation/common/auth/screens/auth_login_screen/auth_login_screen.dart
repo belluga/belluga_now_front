@@ -3,8 +3,8 @@ import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/presentation/common/auth/screens/auth_login_screen/widgets/auth_header_expanded_content.dart';
 import 'package:belluga_now/presentation/common/auth/screens/auth_login_screen/widgets/auth_header_headline.dart';
 import 'package:belluga_now/presentation/common/auth/screens/auth_login_screen/widgets/auth_login_canva_content.dart';
+import 'package:belluga_now/presentation/common/auth/screens/auth_login_screen/widgets/auth_login_effects.dart';
 import 'package:belluga_now/presentation/common/widgets/main_logo.dart';
-import 'package:belluga_now/presentation/landlord/auth/controllers/landlord_login_controller.dart';
 import 'package:belluga_now/presentation/tenant/auth/login/controllers/auth_login_controller_contract.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
@@ -23,8 +23,6 @@ class _AuthLoginScreenState extends State<AuthLoginScreen>
     with WidgetsBindingObserver {
   final AuthLoginControllerContract _controller =
       GetIt.I.get<AuthLoginControllerContract>();
-  final LandlordLoginController _landlordLoginController =
-      GetIt.I.get<LandlordLoginController>();
 
   @override
   void initState() {
@@ -36,43 +34,62 @@ class _AuthLoginScreenState extends State<AuthLoginScreen>
   Widget build(BuildContext context) {
     return StreamValueBuilder<String?>(
       streamValue: _controller.generalErrorStreamValue,
-      builder: (context, error) {
-        _handleGeneralError(error);
-        return Scaffold(
-          body: CustomScrollView(
-            controller: _controller.sliverAppBarController.scrollController,
-            slivers: [
-              SliverAppBar(
-                elevation: 0,
-                automaticallyImplyLeading: true,
-                collapsedHeight:
-                    _controller.sliverAppBarController.collapsedBarHeight,
-                expandedHeight:
-                    _controller.sliverAppBarController.expandedBarHeight,
-                pinned: true,
-                backgroundColor: Theme.of(context).primaryColor,
-                title: MainLogo(appData: _controller.appData),
-                flexibleSpace: FlexibleSpaceBar(
-                  collapseMode: CollapseMode.parallax,
-                  background: AuthHeaderExpandedContent(),
-                ),
-              ),
-              SliverToBoxAdapter(child: AuthHeaderHeadline()),
-              SliverToBoxAdapter(
-                child: Center(
-                  child: Padding(
-                    padding:
-                        EdgeInsets.symmetric(horizontal: 24.0, vertical: 24),
-                    child: AuthLoginCanvaContent(
-                      navigateToPasswordRecover: _navigateToPasswordRecover,
-                      controller: _controller,
-                      landlordLoginController: _landlordLoginController,
+      builder: (context, generalError) {
+        return StreamValueBuilder<bool?>(
+          streamValue: _controller.loginResultStreamValue,
+          builder: (context, loginResult) {
+            return StreamValueBuilder<bool?>(
+              streamValue: _controller.signUpResultStreamValue,
+              builder: (context, signUpResult) {
+                return AuthLoginEffects(
+                  generalError: generalError,
+                  loginResult: loginResult,
+                  signUpResult: signUpResult,
+                  onClearGeneralError: _controller.clearGeneralError,
+                  onClearLoginResult: _controller.clearLoginResult,
+                  onClearSignUpResult: _controller.clearSignUpResult,
+                  child: Scaffold(
+                    body: CustomScrollView(
+                      controller:
+                          _controller.sliverAppBarController.scrollController,
+                      slivers: [
+                        SliverAppBar(
+                          elevation: 0,
+                          automaticallyImplyLeading: true,
+                          collapsedHeight: _controller
+                              .sliverAppBarController.collapsedBarHeight,
+                          expandedHeight: _controller
+                              .sliverAppBarController.expandedBarHeight,
+                          pinned: true,
+                          backgroundColor: Theme.of(context).primaryColor,
+                          title: MainLogo(appData: _controller.appData),
+                          flexibleSpace: FlexibleSpaceBar(
+                            collapseMode: CollapseMode.parallax,
+                            background: AuthHeaderExpandedContent(),
+                          ),
+                        ),
+                        SliverToBoxAdapter(child: AuthHeaderHeadline()),
+                        SliverToBoxAdapter(
+                          child: Center(
+                            child: Padding(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: 24.0,
+                                vertical: 24,
+                              ),
+                              child: AuthLoginCanvaContent(
+                                navigateToPasswordRecover:
+                                    _navigateToPasswordRecover,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                ),
-              ),
-            ],
-          ),
+                );
+              },
+            );
+          },
         );
       },
     );
@@ -107,14 +124,6 @@ class _AuthLoginScreenState extends State<AuthLoginScreen>
     _controller.sliverAppBarController.scheduleExpand();
   }
 
-  void _handleGeneralError(String? error) {
-    if (error == null || error.isEmpty) return;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      ScaffoldMessenger.of(context).showSnackBar(_messageSnack);
-      _controller.clearGeneralError();
-    });
-  }
-
   Future<void> _navigateToPasswordRecover() {
     return context.router
         .push<String>(
@@ -126,24 +135,6 @@ class _AuthLoginScreenState extends State<AuthLoginScreen>
       _controller.authEmailFieldController.textController.text =
           emailReturned ?? _controller.authEmailFieldController.text;
     });
-  }
-
-  SnackBar get _messageSnack {
-    return SnackBar(
-      closeIconColor: Theme.of(context).colorScheme.onError,
-      showCloseIcon: true,
-      backgroundColor: Theme.of(context).colorScheme.error,
-      content: SizedBox(
-        child: Center(
-          child: Text(
-            _controller.generalErrorStreamValue.value ?? "",
-            style: TextTheme.of(context).bodyMedium?.copyWith(
-                  color: Theme.of(context).colorScheme.onError,
-                ),
-          ),
-        ),
-      ),
-    );
   }
 
   @override

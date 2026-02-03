@@ -8,127 +8,108 @@ import 'package:belluga_now/presentation/landlord/auth/controllers/landlord_logi
 import 'package:belluga_now/presentation/landlord/auth/widgets/landlord_login_sheet.dart';
 import 'package:belluga_now/presentation/tenant/auth/login/controllers/auth_login_controller_contract.dart';
 import 'package:flutter/material.dart';
+import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 
 class AuthLoginCanvaContent extends StatefulWidget {
   const AuthLoginCanvaContent({
     super.key,
     required this.navigateToPasswordRecover,
-    required this.controller,
-    required this.landlordLoginController,
+    this.controller,
+    this.landlordLoginController,
   });
 
   final Future<void> Function() navigateToPasswordRecover;
-  final AuthLoginControllerContract controller;
-  final LandlordLoginController landlordLoginController;
+  final AuthLoginControllerContract? controller;
+  final LandlordLoginController? landlordLoginController;
 
   @override
   State<AuthLoginCanvaContent> createState() => _AuthLoginCanvaContentState();
 }
 
-class _AuthLoginCanvaContentState extends State<AuthLoginCanvaContent>
-    with WidgetsBindingObserver {
-  AuthLoginControllerContract get _controller => widget.controller;
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addObserver(this);
-  }
+class _AuthLoginCanvaContentState extends State<AuthLoginCanvaContent> {
+  late final AuthLoginControllerContract _controller =
+      widget.controller ?? GetIt.I.get<AuthLoginControllerContract>();
+  late final LandlordLoginController _landlordController =
+      widget.landlordLoginController ?? GetIt.I.get<LandlordLoginController>();
 
   @override
   Widget build(BuildContext context) {
-    return StreamValueBuilder<bool?>(
-      streamValue: _controller.loginResultStreamValue,
-      builder: (context, loginResult) {
-        _handleLoginResult(loginResult);
-        return StreamValueBuilder<bool?>(
-          streamValue: _controller.signUpResultStreamValue,
-          builder: (context, signUpResult) {
-            _handleSignUpResult(signUpResult);
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        StreamValueBuilder(
+          streamValue: _controller.sliverAppBarController.keyboardIsOpened,
+          builder: (context, isOpened) {
+            if (isOpened) {
+              return const SizedBox.shrink();
+            }
+
             return Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                StreamValueBuilder(
-                  streamValue:
-                      _controller.sliverAppBarController.keyboardIsOpened,
-                  builder: (context, isOpened) {
-                    if (isOpened) {
-                      return const SizedBox.shrink();
-                    }
-
-                    return Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          'Entrar',
-                          style: TextTheme.of(context).titleLarge,
-                        ),
-                        const SizedBox(height: 20),
-                      ],
-                    );
-                  },
-                ),
-                AuthLoginForm(controller: _controller),
-                Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const SizedBox(height: 20),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Text(
-                          'Esqueci minha senha.',
-                          style: TextStyle(fontSize: 12),
-                        ),
-                        TextButton(
-                          onPressed: widget.navigateToPasswordRecover,
-                          child: const Text(
-                            'Recuperar agora',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
+                Text(
+                  'Entrar',
+                  style: TextTheme.of(context).titleLarge,
                 ),
                 const SizedBox(height: 20),
-                StreamValueBuilder<bool>(
-                  streamValue: _controller.buttonLoadingValue,
-                  builder: (context, isLoading) {
-                    return ButtonLoading(
-                      onPressed: tryLoginWithEmailPassword,
-                      isLoading: isLoading,
-                      label: 'Entrar',
-                    );
-                  },
-                ),
-                const SizedBox(height: 16),
-                TextButton(
-                  onPressed: _openSignupSheet,
-                  child: const Text('Criar conta'),
-                ),
-                TextButton(
-                  onPressed: _openLandlordLogin,
-                  child: const Text('Entrar como Admin'),
-                ),
               ],
             );
           },
-        );
-      },
+        ),
+        AuthLoginForm(controller: _controller),
+        Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 20),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Text(
+                  'Esqueci minha senha.',
+                  style: TextStyle(fontSize: 12),
+                ),
+                TextButton(
+                  onPressed: widget.navigateToPasswordRecover,
+                  child: const Text(
+                    'Recuperar agora',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+        const SizedBox(height: 20),
+        StreamValueBuilder<bool>(
+          streamValue: _controller.buttonLoadingValue,
+          builder: (context, isLoading) {
+            return ButtonLoading(
+              onPressed: tryLoginWithEmailPassword,
+              isLoading: isLoading,
+              label: 'Entrar',
+            );
+          },
+        ),
+        const SizedBox(height: 16),
+        TextButton(
+          onPressed: _openSignupSheet,
+          child: const Text('Criar conta'),
+        ),
+        TextButton(
+          onPressed: _openLandlordLogin,
+          child: const Text('Entrar como Admin'),
+        ),
+      ],
     );
   }
 
   void tryLoginWithEmailPassword() {
     unawaited(_controller.tryLoginWithEmailPassword());
   }
-
-  void _navigateToAuthorizedPage() =>
-      context.router.replace(const TenantHomeRoute());
 
   Future<void> _openSignupSheet() async {
     _controller.resetSignupControllers();
@@ -206,7 +187,7 @@ class _AuthLoginCanvaContentState extends State<AuthLoginCanvaContent>
     final router = context.router;
     final didLogin = await showLandlordLoginSheet(
       context,
-      controller: widget.landlordLoginController,
+      controller: _landlordController,
     );
     if (!didLogin) {
       return;
@@ -240,26 +221,8 @@ class _AuthLoginCanvaContentState extends State<AuthLoginCanvaContent>
     );
   }
 
-  void _handleLoginResult(bool? authorized) {
-    if (authorized == null) return;
-    if (authorized) {
-      _navigateToAuthorizedPage();
-    }
-    _controller.clearLoginResult();
-  }
-
-  void _handleSignUpResult(bool? authorized) {
-    if (authorized == null) return;
-    if (authorized) {
-      unawaited(context.router.maybePop());
-      _navigateToAuthorizedPage();
-    }
-    _controller.clearSignUpResult();
-  }
-
   @override
   void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
 }

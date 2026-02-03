@@ -7,17 +7,18 @@ import 'package:belluga_now/presentation/tenant/map/screens/map_screen/controlle
 import 'package:belluga_now/presentation/tenant/map/screens/map_screen/widgets/fab_action_button.dart';
 import 'package:belluga_now/presentation/tenant/map/screens/map_screen/widgets/shared/poi_category_theme.dart';
 import 'package:flutter/material.dart';
+import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 
 class FabMenu extends StatefulWidget {
   const FabMenu({
     super.key,
     required this.onNavigateToUser,
-    required this.controller,
+    this.controller,
   });
 
   final VoidCallback onNavigateToUser;
-  final FabMenuController controller;
+  final FabMenuController? controller;
 
   @override
   State<FabMenu> createState() => _FabMenuState();
@@ -26,7 +27,8 @@ class FabMenu extends StatefulWidget {
 class _FabMenuState extends State<FabMenu> {
   static const _condenseDelay = Duration(seconds: 2);
 
-  late final FabMenuController _fabController = widget.controller;
+  late final FabMenuController _fabController =
+      widget.controller ?? GetIt.I.get<FabMenuController>();
 
   Timer? _condenseTimer;
 

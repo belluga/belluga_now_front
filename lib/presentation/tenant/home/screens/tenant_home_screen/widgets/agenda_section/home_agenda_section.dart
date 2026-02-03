@@ -3,24 +3,26 @@ import 'package:belluga_now/presentation/tenant/home/screens/tenant_home_screen/
 import 'package:belluga_now/presentation/tenant/home/screens/tenant_home_screen/widgets/agenda_section/home_agenda_body.dart';
 import 'package:belluga_now/presentation/tenant/schedule/screens/event_search_screen/models/invite_filter.dart';
 import 'package:flutter/material.dart';
+import 'package:get_it/get_it.dart';
 
 class HomeAgendaSection extends StatefulWidget {
   const HomeAgendaSection({
     super.key,
     required this.builder,
-    required this.controller,
+    this.controller,
   });
 
   final Widget Function(BuildContext context, HomeAgendaSectionSlots slots)
       builder;
-  final TenantHomeAgendaController controller;
+  final TenantHomeAgendaController? controller;
 
   @override
   State<HomeAgendaSection> createState() => _HomeAgendaSectionState();
 }
 
 class _HomeAgendaSectionState extends State<HomeAgendaSection> {
-  late final TenantHomeAgendaController _controller = widget.controller;
+  late final TenantHomeAgendaController _controller =
+      widget.controller ?? GetIt.I.get<TenantHomeAgendaController>();
 
   @override
   void initState() {

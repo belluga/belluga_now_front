@@ -1,13 +1,10 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/presentation/tenant/home/screens/tenant_home_screen/controllers/tenant_home_controller.dart';
-import 'package:belluga_now/presentation/tenant/home/screens/tenant_home_screen/widgets/agenda_section/controllers/tenant_home_agenda_controller.dart';
 import 'package:belluga_now/presentation/tenant/home/screens/tenant_home_screen/widgets/agenda_section/home_agenda_section.dart';
 import 'package:belluga_now/presentation/tenant/home/screens/tenant_home_screen/widgets/home_app_bar.dart';
 import 'package:belluga_now/presentation/tenant/home/screens/tenant_home_screen/widgets/home_my_events_carousel.dart';
-import 'package:belluga_now/presentation/tenant/home/screens/tenant_home_screen/widgets/favorite_section/controllers/favorites_section_controller.dart';
 import 'package:belluga_now/presentation/tenant/home/screens/tenant_home_screen/widgets/favorite_section/favorites_section_builder.dart';
-import 'package:belluga_now/presentation/tenant/home/screens/tenant_home_screen/widgets/invites_banner/controllers/invites_banner_builder_controller.dart';
 import 'package:belluga_now/presentation/tenant/home/screens/tenant_home_screen/widgets/invites_banner/invites_banner_builder.dart';
 import 'package:belluga_now/presentation/tenant/schedule/screens/event_search_screen/models/invite_filter.dart';
 import 'package:belluga_now/presentation/tenant/widgets/belluga_bottom_navigation_bar.dart';
@@ -27,12 +24,6 @@ class TenantHomeScreen extends StatefulWidget {
 class _TenantHomeScreenState extends State<TenantHomeScreen> {
   final TenantHomeController _controller =
       GetIt.I.get<TenantHomeController>();
-  final FavoritesSectionController _favoritesController =
-      GetIt.I.get<FavoritesSectionController>();
-  final InvitesBannerBuilderController _invitesBannerController =
-      GetIt.I.get<InvitesBannerBuilderController>();
-  final TenantHomeAgendaController _homeAgendaController =
-      GetIt.I.get<TenantHomeAgendaController>();
 
   @override
   void initState() {
@@ -55,7 +46,6 @@ class _TenantHomeScreenState extends State<TenantHomeScreen> {
         body: SafeArea(
           top: false,
           child: HomeAgendaSection(
-            controller: _homeAgendaController,
             builder: (context, slots) {
               return NestedScrollView(
                 controller: _controller.scrollController,
@@ -75,15 +65,12 @@ class _TenantHomeScreenState extends State<TenantHomeScreen> {
                             title: 'Seus Favoritos',
                             onPressed: () {},
                           ),
-                          FavoritesSectionBuilder(
-                            controller: _favoritesController,
-                          ),
+                          const FavoritesSectionBuilder(),
                           InvitesBannerBuilder(
                             margin: const EdgeInsets.only(top: 12),
                             onPressed: () {
                               context.router.push(const InviteFlowRoute());
                             },
-                            controller: _invitesBannerController,
                           ),
                           const SizedBox(height: 12),
                           StreamValueBuilder(
