@@ -97,7 +97,9 @@ class _FakeAppDataRepository implements AppDataRepositoryContract {
         maxRadiusMetersStreamValue =
             StreamValue<double>(defaultValue: initialMaxRadiusMeters);
 
+  @override
   final StreamValue<ThemeMode?> themeModeStreamValue;
+  @override
   final StreamValue<double> maxRadiusMetersStreamValue;
   final AppData _appData = _FakeAppData();
   ThemeMode _themeMode;
@@ -177,10 +179,10 @@ class _FakeProfileAvatarStorage implements ProfileAvatarStorageContract {
 }
 
 class _FakeLandlordAuthRepository implements LandlordAuthRepositoryContract {
-  _FakeLandlordAuthRepository({this.hasValidSession = false});
+  _FakeLandlordAuthRepository();
 
   @override
-  final bool hasValidSession;
+  final bool hasValidSession = false;
 
   @override
   String get token => '';
@@ -199,8 +201,6 @@ class _FakeUser implements UserContract {
   _FakeUser({
     required this.uuidValue,
     required this.profile,
-    this.customData,
-    this.currentDeviceId = 'device',
   });
 
   @override
@@ -213,7 +213,7 @@ class _FakeUser implements UserContract {
   Map<String, Object?>? customData;
 
   @override
-  String currentDeviceId;
+  String currentDeviceId = 'device';
 
   @override
   Future<void> updateCustomData(Map<String, Object?> newCustomData) async {

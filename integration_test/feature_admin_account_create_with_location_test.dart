@@ -17,7 +17,6 @@ import 'package:belluga_now/infrastructure/dal/dao/laravel_backend/app_data_back
 import 'package:belluga_now/infrastructure/dal/dao/local/app_data_local_info_source/app_data_local_info_source_stub.dart';
 import 'package:belluga_now/infrastructure/repositories/app_data_repository.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
 import 'package:integration_test/integration_test.dart';

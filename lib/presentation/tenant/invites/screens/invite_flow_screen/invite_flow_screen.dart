@@ -1,5 +1,4 @@
 import 'package:auto_route/auto_route.dart';
-import 'package:belluga_now/domain/invites/invite_decision.dart';
 import 'package:belluga_now/domain/invites/invite_model.dart';
 import 'package:belluga_now/presentation/tenant/invites/screens/invite_flow_screen/controllers/invite_flow_controller.dart';
 import 'package:belluga_now/presentation/tenant/invites/screens/invite_flow_screen/widgets/invite_flow_coordinator.dart';

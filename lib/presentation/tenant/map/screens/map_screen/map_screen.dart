@@ -10,7 +10,6 @@ import 'package:belluga_now/presentation/tenant/map/screens/map_screen/widgets/p
 import 'package:belluga_now/presentation/tenant/widgets/belluga_bottom_navigation_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
-import 'package:stream_value/core/stream_value_builder.dart';
 
 class MapScreen extends StatefulWidget {
   const MapScreen({super.key});

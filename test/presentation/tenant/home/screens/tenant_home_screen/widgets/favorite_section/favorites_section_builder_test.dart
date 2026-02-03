@@ -317,7 +317,6 @@ class _TestHttpClientResponse extends Stream<List<int>>
   @override
   int get contentLength => _imageBytes.length;
 
-  @override
   Stream<List<int>> get stream => Stream<List<int>>.value(_imageBytes);
 
   @override

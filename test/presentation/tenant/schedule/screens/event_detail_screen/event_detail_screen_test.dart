@@ -99,6 +99,7 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
 }
 
 class _FakeUserEventsRepository implements UserEventsRepositoryContract {
+  @override
   final StreamValue<Set<String>> confirmedEventIdsStream =
       StreamValue<Set<String>>(defaultValue: <String>{});
 
@@ -356,7 +357,6 @@ class _TestHttpClientResponse extends Stream<List<int>>
   @override
   int get contentLength => _imageBytes.length;
 
-  @override
   Stream<List<int>> get stream => Stream<List<int>>.value(_imageBytes);
 
   @override

@@ -91,6 +91,7 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
 }
 
 class _FakeUserEventsRepository implements UserEventsRepositoryContract {
+  @override
   final StreamValue<Set<String>> confirmedEventIdsStream =
       StreamValue<Set<String>>(defaultValue: <String>{});
 

@@ -326,7 +326,6 @@ class _TestHttpClientResponse extends Stream<List<int>>
   HttpClientResponseCompressionState get compressionState =>
       HttpClientResponseCompressionState.notCompressed;
 
-  @override
   Stream<List<int>> get stream => Stream<List<int>>.value(_imageBytes);
 
   @override
