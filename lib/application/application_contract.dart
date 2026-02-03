@@ -28,6 +28,7 @@ import 'package:belluga_now/infrastructure/services/push/push_action_dispatcher.
 import 'package:belluga_now/infrastructure/services/push/push_telemetry_forwarder.dart';
 import 'package:belluga_now/infrastructure/services/telemetry/telemetry_route_observer.dart';
 import 'package:belluga_now/presentation/common/push/controllers/push_options_controller.dart';
+import 'package:belluga_now/presentation/common/push/push_option_selector_sheet.dart';
 import 'package:belluga_now/presentation/common/push/push_step_validator.dart';
 import 'package:flutter/foundation.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -82,7 +83,8 @@ abstract class ApplicationContract extends ModularAppContract {
     // Log build info once to help verify the running version (web/mobile/desktop).
     try {
       final info = await PackageInfo.fromPlatform();
-      debugPrint('[BuildInfo] ${info.appName} ${info.version}+${info.buildNumber} (${info.packageName})');
+      debugPrint(
+          '[BuildInfo] ${info.appName} ${info.version}+${info.buildNumber} (${info.packageName})');
     } catch (_) {
       // Ignore if package info is unavailable for this platform.
     }
@@ -138,11 +140,12 @@ abstract class ApplicationContract extends ModularAppContract {
     final telemetryForwarder = PushTelemetryForwarder();
     final stepValidator = PushStepValidator();
     final actionDispatcher = PushActionDispatcher(
-      contextProvider: () => appRouter.navigatorKey.currentContext,
       optionsBuilder: optionsController.resolve,
       onStepSubmit: (answer, step) async {
         await _handlePushAnswer(answer, step);
       },
+      onOpenSelector: _openPushOptionSelector,
+      onShowToast: _showPushToast,
     );
     final factory = repositoryFactory ??
         ({
@@ -154,10 +157,13 @@ abstract class ApplicationContract extends ModularAppContract {
           required Stream<dynamic>? authChangeStream,
           required String Function() platformResolver,
           Future<bool> Function(StepData step)? gatekeeper,
-          Future<List<OptionItem>> Function(OptionSource source)? optionsBuilder,
-          Future<void> Function(AnswerPayload answer, StepData step)? onStepSubmit,
+          Future<List<OptionItem>> Function(OptionSource source)?
+              optionsBuilder,
+          Future<void> Function(AnswerPayload answer, StepData step)?
+              onStepSubmit,
           String? Function(StepData step, String? value)? stepValidator,
-          Future<void> Function(ButtonData button, StepData step)? onCustomAction,
+          Future<void> Function(ButtonData button, StepData step)?
+              onCustomAction,
           void Function(PushEvent event)? onPushEvent,
         }) {
           return PushHandlerRepositoryDefault(
@@ -213,6 +219,41 @@ abstract class ApplicationContract extends ModularAppContract {
     }
     _pushRepository = repository;
     _listenForInvitePushUpdates(repository);
+  }
+
+  Future<List<dynamic>?> _openPushOptionSelector(
+    PushOptionSelectorPayload payload,
+  ) async {
+    final context = appRouter.navigatorKey.currentContext;
+    if (context == null || !context.mounted) {
+      return null;
+    }
+    return PushOptionSelectorSheet.show(
+      context: context,
+      title: payload.title,
+      body: payload.body,
+      layout: payload.layout,
+      gridColumns: payload.gridColumns,
+      selectionMode: payload.selectionMode,
+      options: payload.options,
+      minSelected: payload.minSelected,
+      maxSelected: payload.maxSelected,
+      initialSelected: payload.initialSelected,
+    );
+  }
+
+  void _showPushToast(String message) {
+    if (message.isEmpty) {
+      return;
+    }
+    final context = appRouter.navigatorKey.currentContext;
+    final messenger = context != null ? ScaffoldMessenger.maybeOf(context) : null;
+    messenger?.showSnackBar(
+      SnackBar(
+        content: Text(message),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
   }
 
   void _listenForInvitePushUpdates(PushHandlerRepositoryContract repository) {
@@ -289,6 +330,7 @@ abstract class ApplicationContract extends ModularAppContract {
   Future<void> debugPresentPushMessage(String messageId) async {
     await _pushRepository?.debugInjectMessageId(messageId);
   }
+
   Future<void> _initializeFirebaseIfAvailable() async {
     final settings =
         GetIt.I.get<AppDataRepositoryContract>().appData.firebaseSettings;
@@ -327,8 +369,7 @@ abstract class ApplicationContract extends ModularAppContract {
       .themeDataSettings
       .themeData(Brightness.dark);
 
-  ThemeMode get themeMode =>
-      GetIt.I.get<AppDataRepositoryContract>().themeMode;
+  ThemeMode get themeMode => GetIt.I.get<AppDataRepositoryContract>().themeMode;
 
   @override
   State<ApplicationContract> createState() => _ApplicationContractState();
@@ -346,8 +387,7 @@ class _ApplicationContractState extends State<ApplicationContract>
   VoidCallback? _routerListener;
   final List<AppLifecycleState> _lifecycleStateBuffer = [];
   Timer? _lifecycleDebounceTimer;
-  static const Duration _lifecycleDebounceWindow =
-      Duration(milliseconds: 400);
+  static const Duration _lifecycleDebounceWindow = Duration(milliseconds: 400);
   static const int _appInitMaxRetries = 10;
   static const Duration _appInitRetryDelay = Duration(milliseconds: 500);
   int _appInitRetryCount = 0;
@@ -387,30 +427,20 @@ class _ApplicationContractState extends State<ApplicationContract>
   }
 
   void _registerRouterTelemetryObserver() {
-    if (!kIsWeb || _routerListener != null) {
-      return;
+    if (!kIsWeb || _routerListener != null) return;
+
+    void enqueueCurrentRoute(String reason) {
+      final route = widget.appRouter.topRoute;
+      _debugWebTelemetry(reason, {'route': route.name, 'match': route.match});
+      _enqueueRouterTrack(route);
     }
-    _routerListener = () {
-      _debugWebTelemetry(
-        'listener fired',
-        {
-          'route': widget.appRouter.topRoute.name,
-          'match': widget.appRouter.topRoute.match,
-        },
-      );
-      _enqueueRouterTrack(widget.appRouter.topRoute);
-    };
+
+    _routerListener = () => enqueueCurrentRoute('listener fired');
     widget.appRouter.addListener(_routerListener!);
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      _debugWebTelemetry(
-        'post frame enqueue',
-        {
-          'route': widget.appRouter.topRoute.name,
-          'match': widget.appRouter.topRoute.match,
-        },
-      );
-      _enqueueRouterTrack(widget.appRouter.topRoute);
+      enqueueCurrentRoute('post frame enqueue');
     });
   }
 
@@ -504,10 +534,7 @@ class _ApplicationContractState extends State<ApplicationContract>
   }
 
   Object? _sanitizeJsonValue(Object? value) {
-    if (value == null ||
-        value is String ||
-        value is num ||
-        value is bool) {
+    if (value == null || value is String || value is num || value is bool) {
       return value;
     }
     if (value is Map) {
@@ -521,10 +548,8 @@ class _ApplicationContractState extends State<ApplicationContract>
       return sanitized.isEmpty ? null : sanitized;
     }
     if (value is Iterable) {
-      final sanitized = value
-          .map(_sanitizeJsonValue)
-          .where((item) => item != null)
-          .toList();
+      final sanitized =
+          value.map(_sanitizeJsonValue).where((item) => item != null).toList();
       return sanitized.isEmpty ? null : sanitized;
     }
     return null;

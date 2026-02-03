@@ -1,27 +1,54 @@
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
-import 'package:belluga_now/presentation/common/push/push_option_selector_sheet.dart';
-import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:push_handler/push_handler.dart';
 
+class PushOptionSelectorPayload {
+  const PushOptionSelectorPayload({
+    required this.title,
+    required this.body,
+    required this.layout,
+    required this.gridColumns,
+    required this.selectionMode,
+    required this.options,
+    required this.minSelected,
+    required this.maxSelected,
+    required this.initialSelected,
+  });
+
+  final String title;
+  final String body;
+  final String layout;
+  final int gridColumns;
+  final String selectionMode;
+  final List<OptionItem> options;
+  final int minSelected;
+  final int maxSelected;
+  final List<dynamic> initialSelected;
+}
+
 class PushActionDispatcher {
   PushActionDispatcher({
-    BuildContext? Function()? contextProvider,
     UserLocationRepositoryContract? userLocationRepository,
     Future<List<OptionItem>> Function(OptionSource source)? optionsBuilder,
     Future<void> Function(AnswerPayload answer, StepData step)? onStepSubmit,
+    Future<List<dynamic>?> Function(PushOptionSelectorPayload payload)?
+        onOpenSelector,
+    void Function(String message)? onShowToast,
   })  : _userLocationRepository =
             userLocationRepository ??
                 GetIt.I.get<UserLocationRepositoryContract>(),
-        _contextProvider = contextProvider,
         _optionsBuilder = optionsBuilder,
-        _onStepSubmit = onStepSubmit;
+        _onStepSubmit = onStepSubmit,
+        _onOpenSelector = onOpenSelector,
+        _onShowToast = onShowToast;
 
   final UserLocationRepositoryContract _userLocationRepository;
-  final BuildContext? Function()? _contextProvider;
   final Future<List<OptionItem>> Function(OptionSource source)? _optionsBuilder;
   final Future<void> Function(AnswerPayload answer, StepData step)? _onStepSubmit;
+  final Future<List<dynamic>?> Function(PushOptionSelectorPayload payload)?
+      _onOpenSelector;
+  final void Function(String message)? _onShowToast;
 
   Future<void> dispatch({
     required ButtonData button,
@@ -82,8 +109,8 @@ class PushActionDispatcher {
   }
 
   Future<void> _openFavoritesSelector(StepData step) async {
-    final context = _contextProvider?.call();
-    if (context == null) {
+    final openSelector = _onOpenSelector;
+    if (openSelector == null) {
       return;
     }
     final config = step.config;
@@ -97,25 +124,24 @@ class PushActionDispatcher {
     }
 
     final selectionMode = config.selectionMode ?? 'single';
-    final maxSelected = selectionMode == 'single' ? 1 : config.maxSelected;
+    final maxSelected =
+        selectionMode == 'single' ? 1 : (config.maxSelected ?? 0);
     final initialSelected = _selectedFromOptions(
       options,
       maxSelected: maxSelected,
     );
-    if (!context.mounted) {
-      return;
-    }
-    final selectedValues = await PushOptionSelectorSheet.show(
-      context: context,
-      title: step.title.value,
-      body: step.body.value,
-      layout: config.layout ?? 'list',
-      gridColumns: config.gridColumns ?? 2,
-      selectionMode: selectionMode,
-      options: options,
-      minSelected: config.minSelected ?? 0,
-      maxSelected: maxSelected ?? 0,
-      initialSelected: initialSelected,
+    final selectedValues = await openSelector(
+      PushOptionSelectorPayload(
+        title: step.title.value,
+        body: step.body.value,
+        layout: config.layout ?? 'list',
+        gridColumns: config.gridColumns ?? 2,
+        selectionMode: selectionMode,
+        options: options,
+        minSelected: config.minSelected ?? 0,
+        maxSelected: maxSelected,
+        initialSelected: initialSelected,
+      ),
     );
     if (selectedValues == null) {
       return;
@@ -165,13 +191,10 @@ class PushActionDispatcher {
     if (message == null || message.isEmpty) {
       return;
     }
-    final context = _contextProvider?.call();
-    final messenger = context != null ? ScaffoldMessenger.maybeOf(context) : null;
-    messenger?.showSnackBar(
-      SnackBar(
-        content: Text(message),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+    final onShowToast = _onShowToast;
+    if (onShowToast == null) {
+      return;
+    }
+    onShowToast(message);
   }
 }
