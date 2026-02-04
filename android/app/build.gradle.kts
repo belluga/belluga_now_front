@@ -45,14 +45,6 @@ android {
     flavorDimensions.add("tenant")
 
     productFlavors {
-        val tenantFlavors = listOf("guarappari", "belluga", "alfredochaves")
-        tenantFlavors.forEach { flavorName ->
-            create(flavorName) {
-                dimension = "tenant"
-                applicationIdSuffix = ".${flavorName}"
-            }
-        }
-
         val keystoresDir = rootProject.file("keystores")
         if (keystoresDir.exists() && keystoresDir.isDirectory()) {
             keystoresDir.listFiles { _, name -> name.endsWith(".properties") }?.forEach { propertiesFile ->
@@ -71,6 +63,7 @@ android {
                     dimension = "tenant"
                 }
                 flavor.applicationId = flavorProperties["applicationId"] as String
+                flavor.applicationIdSuffix = null
                 flavor.signingConfig = signingConfigs.getByName(flavorName)
             }
         }
