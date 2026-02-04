@@ -30,7 +30,8 @@ class LandlordAuthRepository implements LandlordAuthRepositoryContract {
     }
     _dio = Dio(
       BaseOptions(
-        baseUrl: 'https://${BellugaConstants.landlordDomain}/admin/api',
+        baseUrl:
+            '${BellugaConstants.apiScheme}://${BellugaConstants.landlordDomain}/admin/api',
       ),
     );
     return _dio!;

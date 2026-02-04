@@ -15,9 +15,11 @@ import 'package:belluga_now/presentation/tenant/schedule/screens/immersive_event
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
+import 'support/integration_test_bootstrap.dart';
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
+  IntegrationTestBootstrap.ensureNonProductionLandlordDomain();
   final scheduleDtoMapper = _TestScheduleDtoMapper();
   final partnerDtoMapper = _TestPartnerDtoMapper();
 

@@ -29,9 +29,11 @@ import 'package:integration_test/integration_test.dart';
 import 'package:stream_value/core/stream_value.dart';
 
 import 'package:belluga_now/application/router/guards/location_permission_state.dart';
+import 'support/integration_test_bootstrap.dart';
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
+  IntegrationTestBootstrap.ensureNonProductionLandlordDomain();
 
   testWidgets('LocationPermissionScreen uses SafeArea', (tester) async {
     final getIt = GetIt.I;

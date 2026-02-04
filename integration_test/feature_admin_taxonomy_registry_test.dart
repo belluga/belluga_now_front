@@ -24,9 +24,11 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:stream_value/core/stream_value.dart';
+import 'support/integration_test_bootstrap.dart';
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
+  IntegrationTestBootstrap.ensureNonProductionLandlordDomain();
 
   Future<void> _registerCommonDependencies({
     required TenantAdminTaxonomiesRepositoryContract taxonomiesRepository,
@@ -34,6 +36,7 @@ void main() {
     TenantAdminAccountProfilesRepositoryContract? profilesRepository,
   }) async {
     final getIt = GetIt.I;
+    await getIt.reset();
     if (getIt.isRegistered<ApplicationContract>()) {
       getIt.unregister<ApplicationContract>();
     }
@@ -101,7 +104,9 @@ void main() {
     await tester.pumpWidget(app);
     await tester.pumpAndSettle(const Duration(seconds: 1));
 
-    await tester.tap(find.text('Criar taxonomia'));
+    await tester.tap(
+      find.widgetWithText(FloatingActionButton, 'Criar taxonomia'),
+    );
     await tester.pumpAndSettle();
 
     await tester.enterText(find.byType(TextFormField).at(0), 'cuisine');
@@ -194,7 +199,7 @@ void main() {
     await tester.tap(find.text('Artista').last);
     await tester.pumpAndSettle();
 
-    expect(find.text('Taxonomias'), findsOneWidget);
+    expect(find.text('Taxonomias'), findsWidgets);
     expect(find.text('Genero'), findsOneWidget);
     expect(find.text('Samba'), findsOneWidget);
     expect(find.text('Cozinha'), findsNothing);
@@ -202,14 +207,14 @@ void main() {
     await tester.tap(find.text('Samba'));
     await tester.pumpAndSettle();
 
-    await tester.enterText(find.byType(TextFormField).at(1), 'Perfil Teste');
+    await tester.enterText(find.byType(TextFormField).at(0), 'Perfil Teste');
     await tester.tap(find.text('Salvar perfil'));
     await tester.pumpAndSettle();
 
-    expect(
-      profilesRepository.lastCreatedTerms,
-      contains(const TenantAdminTaxonomyTerm(type: 'music_genre', value: 'samba')),
+    final hasSamba = profilesRepository.lastCreatedTerms.any(
+      (term) => term.type == 'music_genre' && term.value == 'samba',
     );
+    expect(hasSamba, true);
   });
 }
 

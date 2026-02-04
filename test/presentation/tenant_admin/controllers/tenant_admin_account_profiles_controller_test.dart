@@ -1,5 +1,6 @@
 import 'package:belluga_now/domain/repositories/tenant_admin_account_profiles_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_accounts_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/tenant_admin_taxonomies_repository_contract.dart';
 import 'package:belluga_now/domain/tenant_admin/ownership_state.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
@@ -7,6 +8,8 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_document.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
 import 'package:belluga_now/presentation/tenant_admin/account_profiles/controllers/tenant_admin_account_profiles_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/accounts/controllers/tenant_admin_location_picker_controller.dart';
@@ -172,6 +175,94 @@ class _FakeAccountProfilesRepository
   Future<void> deleteProfileType(String type) async {}
 }
 
+class _FakeTaxonomiesRepository
+    implements TenantAdminTaxonomiesRepositoryContract {
+  @override
+  Future<List<TenantAdminTaxonomyDefinition>> fetchTaxonomies() async =>
+      const [];
+
+  @override
+  Future<TenantAdminTaxonomyDefinition> createTaxonomy({
+    required String slug,
+    required String name,
+    required List<String> appliesTo,
+    String? icon,
+    String? color,
+  }) async {
+    return TenantAdminTaxonomyDefinition(
+      id: 'taxonomy-1',
+      slug: slug,
+      name: name,
+      appliesTo: appliesTo,
+      icon: icon,
+      color: color,
+    );
+  }
+
+  @override
+  Future<TenantAdminTaxonomyDefinition> updateTaxonomy({
+    required String taxonomyId,
+    String? slug,
+    String? name,
+    List<String>? appliesTo,
+    String? icon,
+    String? color,
+  }) async {
+    return TenantAdminTaxonomyDefinition(
+      id: taxonomyId,
+      slug: slug ?? 'taxonomy',
+      name: name ?? 'Taxonomy',
+      appliesTo: appliesTo ?? const [],
+      icon: icon,
+      color: color,
+    );
+  }
+
+  @override
+  Future<void> deleteTaxonomy(String taxonomyId) async {}
+
+  @override
+  Future<List<TenantAdminTaxonomyTermDefinition>> fetchTerms({
+    required String taxonomyId,
+  }) async =>
+      const [];
+
+  @override
+  Future<TenantAdminTaxonomyTermDefinition> createTerm({
+    required String taxonomyId,
+    required String slug,
+    required String name,
+  }) async {
+    return TenantAdminTaxonomyTermDefinition(
+      id: 'term-1',
+      taxonomyId: taxonomyId,
+      slug: slug,
+      name: name,
+    );
+  }
+
+  @override
+  Future<TenantAdminTaxonomyTermDefinition> updateTerm({
+    required String taxonomyId,
+    required String termId,
+    String? slug,
+    String? name,
+  }) async {
+    return TenantAdminTaxonomyTermDefinition(
+      id: termId,
+      taxonomyId: taxonomyId,
+      slug: slug ?? 'term',
+      name: name ?? 'Term',
+    );
+  }
+
+  @override
+  Future<void> deleteTerm({
+    required String taxonomyId,
+    required String termId,
+  }) async {}
+}
+
 void main() {
   test('loads profiles and profile types', () async {
     final profilesRepository = _FakeAccountProfilesRepository(
@@ -202,10 +293,12 @@ void main() {
     );
     final accountsRepository = _FakeAccountsRepository();
     final locationPickerController = TenantAdminLocationPickerController();
+    final taxonomiesRepository = _FakeTaxonomiesRepository();
 
     final controller = TenantAdminAccountProfilesController(
       profilesRepository: profilesRepository,
       accountsRepository: accountsRepository,
+      taxonomiesRepository: taxonomiesRepository,
       locationPickerController: locationPickerController,
     );
 
@@ -238,10 +331,12 @@ void main() {
     );
     final accountsRepository = _FakeAccountsRepository();
     final locationPickerController = TenantAdminLocationPickerController();
+    final taxonomiesRepository = _FakeTaxonomiesRepository();
 
     final controller = TenantAdminAccountProfilesController(
       profilesRepository: profilesRepository,
       accountsRepository: accountsRepository,
+      taxonomiesRepository: taxonomiesRepository,
       locationPickerController: locationPickerController,
     );
 

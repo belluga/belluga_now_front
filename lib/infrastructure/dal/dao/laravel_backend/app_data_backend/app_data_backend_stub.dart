@@ -9,7 +9,8 @@ class AppDataBackend implements AppDataBackendContract {
       : _dio = dio ??
             Dio(
               BaseOptions(
-                baseUrl: 'https://${BellugaConstants.landlordDomain}',
+                baseUrl:
+                    '${BellugaConstants.apiScheme}://${BellugaConstants.landlordDomain}',
               ),
             );
 

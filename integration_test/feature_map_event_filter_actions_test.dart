@@ -18,6 +18,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:geolocator_platform_interface/geolocator_platform_interface.dart';
 import 'package:get_it/get_it.dart';
 import 'package:integration_test/integration_test.dart';
+import 'support/integration_test_bootstrap.dart';
 
 void main() {
   developer.postEvent(
@@ -25,6 +26,7 @@ void main() {
     const {},
   );
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
+  IntegrationTestBootstrap.ensureNonProductionLandlordDomain();
   final originalGeolocator = GeolocatorPlatform.instance;
 
   setUpAll(() {
