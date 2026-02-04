@@ -29,7 +29,8 @@ class EventSearchScreen extends StatefulWidget {
 }
 
 class _EventSearchScreenState extends State<EventSearchScreen> {
-  final _controller = GetIt.I.get<EventSearchScreenController>();
+  final EventSearchScreenController _controller =
+      GetIt.I.get<EventSearchScreenController>();
 
   static final Uri _defaultEventImage = Uri.parse(
     'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?w=800',
@@ -46,7 +47,6 @@ class _EventSearchScreenState extends State<EventSearchScreen> {
 
   @override
   void dispose() {
-    _controller.onDispose();
     super.dispose();
   }
 
@@ -145,36 +145,39 @@ class _EventSearchScreenState extends State<EventSearchScreen> {
                       return StreamValueBuilder<bool>(
                         streamValue: _controller.showHistoryStreamValue,
                         builder: (context, showHistory) {
-                          return DateGroupedEventList(
+                          return PrimaryScrollController(
                             controller: _controller.scrollController,
-                            events: resumes,
-                            isConfirmed: (event) =>
-                                _controller.isEventConfirmed(event.id),
-                            pendingInvitesCount: (event) =>
-                                _controller.pendingInviteCount(event.id),
-                            distanceLabel: _controller.distanceLabelFor,
-                            statusIconSize: 22,
-                            highlightNowEvents: true,
-                            highlightTodayEvents: true,
-                            sortDescending: showHistory,
-                            footer: isPageLoading
-                                ? const Padding(
-                                    padding:
-                                        EdgeInsets.symmetric(vertical: 16),
-                                    child: Center(
-                                      child: SizedBox(
-                                        width: 24,
-                                        height: 24,
-                                        child: CircularProgressIndicator(),
+                            child: DateGroupedEventList(
+                              primary: true,
+                              events: resumes,
+                              isConfirmed: (event) =>
+                                  _controller.isEventConfirmed(event.id),
+                              pendingInvitesCount: (event) =>
+                                  _controller.pendingInviteCount(event.id),
+                              distanceLabel: _controller.distanceLabelFor,
+                              statusIconSize: 22,
+                              highlightNowEvents: true,
+                              highlightTodayEvents: true,
+                              sortDescending: showHistory,
+                              footer: isPageLoading
+                                  ? const Padding(
+                                      padding:
+                                          EdgeInsets.symmetric(vertical: 16),
+                                      child: Center(
+                                        child: SizedBox(
+                                          width: 24,
+                                          height: 24,
+                                          child: CircularProgressIndicator(),
+                                        ),
                                       ),
-                                    ),
-                                  )
-                                : null,
-                            onEventSelected: (slug) {
-                              context.router.push(
-                                ImmersiveEventDetailRoute(eventSlug: slug),
-                              );
-                            },
+                                    )
+                                  : null,
+                              onEventSelected: (slug) {
+                                context.router.push(
+                                  ImmersiveEventDetailRoute(eventSlug: slug),
+                                );
+                              },
+                            ),
                           );
                         },
                       );

@@ -22,7 +22,9 @@ class ImmersiveEventDetailRoutePage extends ResolverRoute<EventModel, ScheduleMo
   Widget buildScreen(BuildContext context, EventModel model) {
     final thumb = model.thumb?.thumbUri.value;
     if (thumb == null) {
-      return ImmersiveEventDetailScreen(event: model);
+      return ImmersiveEventDetailScreen(
+        event: model,
+      );
     }
     return ImagePaletteTheme(
       imageProvider: NetworkImage(thumb.toString()),

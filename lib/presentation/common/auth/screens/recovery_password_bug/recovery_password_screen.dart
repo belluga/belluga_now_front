@@ -5,14 +5,17 @@ import 'package:get_it/get_it.dart';
 class RecoveryPasswordScreen extends StatefulWidget {
   final String? initialEmmail;
 
-  const RecoveryPasswordScreen({super.key, this.initialEmmail});
+  const RecoveryPasswordScreen({
+    super.key,
+    this.initialEmmail,
+  });
 
   @override
   State<RecoveryPasswordScreen> createState() => _RecoveryPasswordScreenState();
 }
 
 class _RecoveryPasswordScreenState extends State<RecoveryPasswordScreen> {
-  late final AuthRecoveryPasswordControllerContract _controller =
+  final AuthRecoveryPasswordControllerContract _controller =
       GetIt.I.get<AuthRecoveryPasswordControllerContract>();
 
   @override

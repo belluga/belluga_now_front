@@ -2,8 +2,8 @@ import 'dart:async';
 
 import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
-import 'package:belluga_now/infrastructure/repositories/app_data_repository.dart';
 import 'package:belluga_now/infrastructure/services/telemetry/telemetry_queue.dart';
 import 'package:event_tracker_handler/event_tracker_handler.dart';
 import 'package:flutter/foundation.dart';
@@ -12,15 +12,15 @@ import 'package:get_it/get_it.dart';
 
 class TelemetryRepository implements TelemetryRepositoryContract {
   TelemetryRepository({
-    AppDataRepository? appDataRepository,
+    AppDataRepositoryContract? appDataRepository,
     TelemetryQueue? queue,
     EventTrackerHandlerContract? handler,
   })  : _appDataRepository =
-            appDataRepository ?? GetIt.I.get<AppDataRepository>(),
+            appDataRepository ?? GetIt.I.get<AppDataRepositoryContract>(),
         _queue = queue ?? TelemetryQueue(),
         _handler = handler;
 
-  final AppDataRepository _appDataRepository;
+  final AppDataRepositoryContract _appDataRepository;
   final TelemetryQueue _queue;
   final Set<String> _idempotencyKeys = <String>{};
   static const FlutterSecureStorage _storage = FlutterSecureStorage();

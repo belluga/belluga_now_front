@@ -1,20 +1,21 @@
 import 'package:belluga_now/domain/app_data/app_data.dart';
+import 'package:belluga_now/presentation/common/widgets/belluga_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:get_it/get_it.dart';
 
 class MainLogo extends StatelessWidget {
   const MainLogo({
     super.key,
+    required this.appData,
     this.width = 120,
     this.height = 32,
   });
 
+  final AppData appData;
   final double width;
   final double height;
 
   @override
   Widget build(BuildContext context) {
-    final appData = GetIt.I.get<AppData>();
     final brightness = Theme.of(context).brightness;
     final logoUri = brightness == Brightness.dark
         ? appData.mainLogoDarkUrl.value
@@ -22,7 +23,7 @@ class MainLogo extends StatelessWidget {
     debugPrint(
       '[MainLogo] brightness=$brightness -> uri=${logoUri?.toString()}',
     );
-    return Image.network(
+    return BellugaNetworkImage(
       logoUri!.toString(),
       width: width,
       height: height,

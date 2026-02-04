@@ -13,6 +13,8 @@ class TenantAdminAccountProfileCreateRoutePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return TenantAdminAccountProfileCreateScreen(accountSlug: accountSlug);
+    return TenantAdminAccountProfileCreateScreen(
+      accountSlug: accountSlug,
+    );
   }
 }

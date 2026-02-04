@@ -9,17 +9,17 @@ import 'package:belluga_now/domain/map/filters/poi_filter_options.dart';
 import 'package:belluga_now/domain/map/map_navigation_target.dart';
 import 'package:belluga_now/domain/map/map_region_definition.dart';
 import 'package:belluga_now/domain/map/map_status.dart';
+import 'package:belluga_now/domain/map/queries/poi_query.dart';
 import 'package:belluga_now/domain/map/ride_share_option.dart';
 import 'package:belluga_now/domain/map/ride_share_provider.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
 import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
+import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/city_map_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/share/share_payload.dart';
-import 'package:belluga_now/infrastructure/dal/datasources/poi_query.dart';
-import 'package:belluga_now/infrastructure/repositories/app_data_repository.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter/services.dart';
@@ -34,12 +34,12 @@ class CityMapController implements Disposable {
   CityMapController({
     CityMapRepositoryContract? repository,
     ScheduleRepositoryContract? scheduleRepository,
-    AppDataRepository? appDataRepository,
+    AppDataRepositoryContract? appDataRepository,
   })  : _repository = repository ?? GetIt.I.get<CityMapRepositoryContract>(),
         _scheduleRepository =
             scheduleRepository ?? GetIt.I.get<ScheduleRepositoryContract>(),
         _appDataRepository =
-            appDataRepository ?? GetIt.I.get<AppDataRepository>(),
+            appDataRepository ?? GetIt.I.get<AppDataRepositoryContract>(),
         eventsStreamValue =
             StreamValue<List<EventModel>>(defaultValue: const []) {
     _poiEventsSubscription = _repository.poiEvents.listen(_handlePoiEvent);
@@ -47,7 +47,7 @@ class CityMapController implements Disposable {
 
   final CityMapRepositoryContract _repository;
   final ScheduleRepositoryContract _scheduleRepository;
-  final AppDataRepository _appDataRepository;
+  final AppDataRepositoryContract _appDataRepository;
 
   final StreamValue<List<EventModel>> eventsStreamValue;
 

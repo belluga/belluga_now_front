@@ -1,20 +1,11 @@
 import 'package:belluga_now/presentation/tenant/schedule/screens/event_detail_screen/controllers/event_detail_controller.dart';
 import 'package:flutter/material.dart';
-import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 
 class AnimatedBooraButton extends StatefulWidget {
   const AnimatedBooraButton({
     super.key,
-    required this.isConfirmed,
-    required this.onPressed,
-    required this.text,
-  }) : controller = null;
-
-  @visibleForTesting
-  const AnimatedBooraButton.withController(
-    this.controller, {
-    super.key,
+    required this.controller,
     required this.isConfirmed,
     required this.onPressed,
     required this.text,
@@ -23,7 +14,7 @@ class AnimatedBooraButton extends StatefulWidget {
   final bool isConfirmed;
   final VoidCallback? onPressed;
   final String text;
-  final EventDetailController? controller;
+  final EventDetailController controller;
 
   @override
   State<AnimatedBooraButton> createState() => _AnimatedBooraButtonState();
@@ -34,8 +25,7 @@ class _AnimatedBooraButtonState extends State<AnimatedBooraButton>
   late AnimationController _animationController;
   late Animation<double> _scaleAnimation;
 
-  EventDetailController get _controller =>
-      widget.controller ?? GetIt.I.get<EventDetailController>();
+  EventDetailController get _controller => widget.controller;
 
   @override
   void initState() {

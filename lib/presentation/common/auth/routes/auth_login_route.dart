@@ -10,8 +10,8 @@ class AuthLoginRoutePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const ModuleScope<AuthModule>(
-      child: AuthLoginScreen(),
+    return ModuleScope<AuthModule>(
+      child: const AuthLoginScreen(),
     );
   }
 }

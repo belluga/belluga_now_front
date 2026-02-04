@@ -5,6 +5,7 @@ import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/domain/repositories/user_events_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
 import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
+import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:flutter/material.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:get_it/get_it.dart' show Disposable, GetIt;
@@ -25,6 +26,7 @@ class TenantHomeController implements Disposable {
 
   final UserEventsRepositoryContract _userEventsRepository;
   final UserLocationRepositoryContract? _userLocationRepository;
+  final AppData _appData = GetIt.I.get<AppData>();
   final ScrollController _scrollController = ScrollController();
 
   final StreamValue<String?> userAddressStreamValue = StreamValue<String?>();
@@ -35,6 +37,7 @@ class TenantHomeController implements Disposable {
 
   StreamValue<Set<String>> get confirmedIdsStreamValue =>
       _userEventsRepository.confirmedEventIdsStream;
+  AppData get appData => _appData;
 
   StreamSubscription? _confirmedEventsSubscription;
   StreamSubscription? _userLocationSubscription;

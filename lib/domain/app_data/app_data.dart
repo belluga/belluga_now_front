@@ -194,14 +194,6 @@ class AppData {
 
   String get schema => href.split(hostname).first;
 
-  /// Convenience constructor when a typed DTO is already available.
-  factory AppData.fromDto({
-    required dynamic dto,
-    required Map<String, dynamic> localInfo,
-  }) {
-    return AppData.fromInitialization(remoteData: dto, localInfo: localInfo);
-  }
-
   @override
   String toString() {
     return 'AppData(port: $port, hostname: $hostname, href: $href, device: $device)';

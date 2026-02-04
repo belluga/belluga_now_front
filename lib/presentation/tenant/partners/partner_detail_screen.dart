@@ -1,17 +1,11 @@
-import 'package:belluga_now/domain/partners/partner_model.dart';
+import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/presentation/tenant/partners/controllers/partner_detail_controller.dart';
+import 'package:belluga_now/presentation/common/widgets/belluga_network_image.dart';
 import 'package:belluga_now/presentation/common/widgets/immersive_detail_screen/immersive_detail_screen.dart';
 import 'package:belluga_now/presentation/common/widgets/immersive_detail_screen/models/immersive_tab_item.dart';
 import 'package:belluga_now/domain/partners/engagement_data.dart';
-import 'package:belluga_now/presentation/tenant/partners/models/partner_profile_config.dart';
-import 'package:belluga_now/infrastructure/dal/dto/profile/profile_event_dto.dart';
-import 'package:belluga_now/infrastructure/dal/dto/profile/profile_product_dto.dart';
-import 'package:belluga_now/infrastructure/dal/dto/profile/profile_media_dto.dart';
-import 'package:belluga_now/infrastructure/dal/dto/profile/profile_link_dto.dart';
-import 'package:belluga_now/infrastructure/dal/dto/profile/profile_faq_dto.dart';
-import 'package:belluga_now/infrastructure/dal/dto/profile/profile_location_dto.dart';
-import 'package:belluga_now/infrastructure/dal/dto/profile/profile_score_dto.dart';
-import 'package:belluga_now/infrastructure/dal/dto/profile/profile_supported_entity_dto.dart';
+import 'package:belluga_now/domain/partners/projections/partner_profile_config.dart';
+import 'package:belluga_now/domain/partners/projections/partner_profile_module_data.dart';
 import 'package:belluga_now/application/icons/boora_icons.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
@@ -31,7 +25,8 @@ class PartnerDetailScreen extends StatefulWidget {
 }
 
 class _PartnerDetailScreenState extends State<PartnerDetailScreen> {
-  final _controller = GetIt.I.get<PartnerDetailController>();
+  final PartnerDetailController _controller =
+      GetIt.I.get<PartnerDetailController>();
 
   @override
   void initState() {
@@ -41,7 +36,6 @@ class _PartnerDetailScreenState extends State<PartnerDetailScreen> {
 
   @override
   void dispose() {
-    _controller.onDispose();
     super.dispose();
   }
 
@@ -54,7 +48,7 @@ class _PartnerDetailScreenState extends State<PartnerDetailScreen> {
           if (isLoading) {
             return const Center(child: CircularProgressIndicator());
           }
-          return StreamValueBuilder<PartnerModel?>(
+          return StreamValueBuilder<AccountProfileModel?>(
             streamValue: _controller.partnerStreamValue,
             builder: (context, partner) {
               if (partner == null) {
@@ -66,7 +60,7 @@ class _PartnerDetailScreenState extends State<PartnerDetailScreen> {
                   if (config == null) {
                     return const Center(child: CircularProgressIndicator());
                   }
-                  return StreamValueBuilder<Map<ProfileModuleId, dynamic>>(
+                  return StreamValueBuilder<Map<ProfileModuleId, Object?>>(
                     streamValue: _controller.moduleDataStreamValue,
                     builder: (context, moduleData) {
                       return StreamValueBuilder<Set<String>>(
@@ -104,16 +98,16 @@ class _PartnerDetailScreenState extends State<PartnerDetailScreen> {
     );
   }
 
-  Widget _buildHero(PartnerModel partner, bool isFav, bool isFavoritable) {
+  Widget _buildHero(AccountProfileModel partner, bool isFav, bool isFavoritable) {
     final colorScheme = Theme.of(context).colorScheme;
     return Stack(
       fit: StackFit.expand,
       children: [
         partner.coverUrl != null
-            ? Image.network(
+            ? BellugaNetworkImage(
                 partner.coverUrl!,
                 fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => Container(
+                errorWidget: Container(
                   color: colorScheme.surfaceContainerHighest,
                   child: Icon(
                     _iconForType(partner.type),
@@ -192,7 +186,7 @@ class _PartnerDetailScreenState extends State<PartnerDetailScreen> {
     );
   }
 
-  Widget? _buildBetweenHero(PartnerModel partner) {
+  Widget? _buildBetweenHero(AccountProfileModel partner) {
     if (partner.tags.isEmpty && partner.engagementData == null) return null;
     final colorScheme = Theme.of(context).colorScheme;
     return Container(
@@ -232,7 +226,7 @@ class _PartnerDetailScreenState extends State<PartnerDetailScreen> {
 
   List<ImmersiveTabItem> _buildTabsFromConfig(
     PartnerProfileConfig config,
-    Map<ProfileModuleId, dynamic> moduleData,
+    Map<ProfileModuleId, Object?> moduleData,
   ) {
     return config.tabs
         .map(
@@ -245,38 +239,42 @@ class _PartnerDetailScreenState extends State<PartnerDetailScreen> {
         .toList();
   }
 
-  Widget _buildFooter(PartnerModel partner, bool isFav, bool isFavoritable) {
+  Widget _buildFooter(AccountProfileModel partner, bool isFav, bool isFavoritable) {
     if (!isFavoritable) return const SizedBox.shrink();
     return _actionFooter(isFav ? 'Favoritado' : 'Seguir');
   }
 
-  IconData _iconForType(PartnerType type) {
+  IconData _iconForType(String type) {
     switch (type) {
-      case PartnerType.artist:
+      case 'artist':
         return Icons.music_note;
-      case PartnerType.venue:
+      case 'venue':
         return Icons.place;
-      case PartnerType.experienceProvider:
+      case 'experience_provider':
         return Icons.explore;
-      case PartnerType.influencer:
+      case 'influencer':
         return Icons.person;
-      case PartnerType.curator:
+      case 'curator':
         return Icons.bookmark;
+      default:
+        return Icons.account_circle;
     }
   }
 
-  String _labelForType(PartnerType type) {
+  String _labelForType(String type) {
     switch (type) {
-      case PartnerType.artist:
+      case 'artist':
         return 'Artista';
-      case PartnerType.venue:
+      case 'venue':
         return 'Local';
-      case PartnerType.experienceProvider:
+      case 'experience_provider':
         return 'Experiência';
-      case PartnerType.influencer:
+      case 'influencer':
         return 'Conector';
-      case PartnerType.curator:
+      case 'curator':
         return 'Curador';
+      default:
+        return type;
     }
   }
 
@@ -338,7 +336,7 @@ class _PartnerDetailScreenState extends State<PartnerDetailScreen> {
   }
 
   // Placeholder module widgets
-  Widget _artistHighlights(List<ProfileEventDTO>? events) {
+  Widget _artistHighlights(List<PartnerEventView>? events) {
     return Padding(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -392,7 +390,7 @@ class _PartnerDetailScreenState extends State<PartnerDetailScreen> {
     );
   }
 
-  Widget _productGrid(List<ProfileProductDTO>? products) {
+  Widget _productGrid(List<PartnerProductView>? products) {
     return Padding(
       padding: const EdgeInsets.all(16),
       child: GridView.builder(
@@ -421,9 +419,9 @@ class _PartnerDetailScreenState extends State<PartnerDetailScreen> {
                     decoration: BoxDecoration(
                       color: Colors.grey.shade300,
                       borderRadius: BorderRadius.circular(8),
-                      image: product.image.isNotEmpty
+                      image: product.imageUrl.isNotEmpty
                           ? DecorationImage(
-                              image: NetworkImage(product.image),
+                              image: NetworkImage(product.imageUrl),
                               fit: BoxFit.cover,
                               onError: (_, __) {},
                             )
@@ -446,7 +444,7 @@ class _PartnerDetailScreenState extends State<PartnerDetailScreen> {
     );
   }
 
-  Widget _agendaList(List<ProfileEventDTO>? events) {
+  Widget _agendaList(List<PartnerEventView>? events) {
     return Padding(
       padding: const EdgeInsets.all(16),
       child: events == null || events.isEmpty
@@ -469,7 +467,7 @@ class _PartnerDetailScreenState extends State<PartnerDetailScreen> {
     );
   }
 
-  Widget _locationInfo(ProfileLocationDTO? location) {
+  Widget _locationInfo(PartnerLocationView? location) {
     final mapPreviewUri = _buildMapPreviewUri(location);
     return Padding(
       padding: const EdgeInsets.all(16),
@@ -495,11 +493,10 @@ class _PartnerDetailScreenState extends State<PartnerDetailScreen> {
                 fit: StackFit.expand,
                 children: [
                   if (mapPreviewUri != null)
-                    Image.network(
+                    BellugaNetworkImage(
                       mapPreviewUri.toString(),
                       fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) =>
-                          _buildMapFallback(location),
+                      errorWidget: _buildMapFallback(location),
                     )
                   else
                     _buildMapFallback(location),
@@ -533,7 +530,7 @@ class _PartnerDetailScreenState extends State<PartnerDetailScreen> {
     );
   }
 
-  Widget _buildMapFallback(ProfileLocationDTO? location) {
+  Widget _buildMapFallback(PartnerLocationView? location) {
     final address = location?.address;
     return Container(
       decoration: BoxDecoration(
@@ -565,7 +562,7 @@ class _PartnerDetailScreenState extends State<PartnerDetailScreen> {
     );
   }
 
-  Uri? _buildMapPreviewUri(ProfileLocationDTO? location) {
+  Uri? _buildMapPreviewUri(PartnerLocationView? location) {
     if (location == null) return null;
     final lat = double.tryParse(location.lat ?? '');
     final lng = double.tryParse(location.lng ?? '');
@@ -582,7 +579,7 @@ class _PartnerDetailScreenState extends State<PartnerDetailScreen> {
     );
   }
 
-  Future<void> _openMaps(ProfileLocationDTO? location) async {
+  Future<void> _openMaps(PartnerLocationView? location) async {
     if (location == null) return;
     final lat = double.tryParse(location.lat ?? '');
     final lng = double.tryParse(location.lng ?? '');
@@ -599,7 +596,7 @@ class _PartnerDetailScreenState extends State<PartnerDetailScreen> {
     await launchUrl(uri, mode: LaunchMode.externalApplication);
   }
 
-  Widget _experienceCards(List<Map<String, String>>? experiences) {
+  Widget _experienceCards(List<PartnerExperienceView>? experiences) {
     return Padding(
       padding: const EdgeInsets.all(16),
       child: experiences == null || experiences.isEmpty
@@ -611,9 +608,8 @@ class _PartnerDetailScreenState extends State<PartnerDetailScreen> {
                       margin: const EdgeInsets.only(bottom: 12),
                       child: ListTile(
                         leading: const Icon(Icons.explore),
-                        title: Text(e['title'] ?? ''),
-                        subtitle: Text(
-                            '${e['duration'] ?? ''} • ${e['price'] ?? ''}'),
+                        title: Text(e.title),
+                        subtitle: Text('${e.duration} • ${e.price}'),
                       ),
                     ),
                   )
@@ -622,7 +618,7 @@ class _PartnerDetailScreenState extends State<PartnerDetailScreen> {
     );
   }
 
-  Widget _faqBlock(List<ProfileFaqDTO>? faq) {
+  Widget _faqBlock(List<PartnerFaqView>? faq) {
     return Padding(
       padding: const EdgeInsets.all(16),
       child: faq == null || faq.isEmpty
@@ -647,7 +643,7 @@ class _PartnerDetailScreenState extends State<PartnerDetailScreen> {
     );
   }
 
-  Widget _videoGallery(List<ProfileMediaDTO>? videos) {
+  Widget _videoGallery(List<PartnerMediaView>? videos) {
     return Padding(
       padding: const EdgeInsets.all(16),
       child: videos == null || videos.isEmpty
@@ -679,7 +675,7 @@ class _PartnerDetailScreenState extends State<PartnerDetailScreen> {
     );
   }
 
-  Widget _externalLinks(List<ProfileLinkDTO>? links) {
+  Widget _externalLinks(List<PartnerLinkView>? links) {
     return Padding(
       padding: const EdgeInsets.all(16),
       child: links == null || links.isEmpty
@@ -703,7 +699,7 @@ class _PartnerDetailScreenState extends State<PartnerDetailScreen> {
     );
   }
 
-  Widget _photoGrid(List<ProfileMediaDTO>? photos) {
+  Widget _photoGrid(List<PartnerMediaView>? photos) {
     return Padding(
       padding: const EdgeInsets.all(16),
       child: photos == null || photos.isEmpty
@@ -737,7 +733,7 @@ class _PartnerDetailScreenState extends State<PartnerDetailScreen> {
     );
   }
 
-  Widget _affinityCarousel(List<Map<String, String>>? recommendations) {
+  Widget _affinityCarousel(List<PartnerRecommendationView>? recommendations) {
     return Padding(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -777,9 +773,9 @@ class _PartnerDetailScreenState extends State<PartnerDetailScreen> {
                           ),
                         ),
                         const SizedBox(height: 8),
-                        Text(rec['title'] ?? ''),
+                        Text(rec.title),
                         Text(
-                          rec['type'] ?? '',
+                          rec.type,
                           style: const TextStyle(
                               fontSize: 11, color: Colors.black54),
                         ),
@@ -794,7 +790,7 @@ class _PartnerDetailScreenState extends State<PartnerDetailScreen> {
     );
   }
 
-  Widget _musicPlayer(List<ProfileMediaDTO>? tracks) {
+  Widget _musicPlayer(List<PartnerMediaView>? tracks) {
     final track = tracks != null && tracks.isNotEmpty ? tracks.first : null;
     return Padding(
       padding: const EdgeInsets.all(16),
@@ -805,11 +801,11 @@ class _PartnerDetailScreenState extends State<PartnerDetailScreen> {
           subtitle: Text(track?.url ?? ''),
           trailing: IconButton(
             icon: StreamValueBuilder<bool>(
-              streamValue: _controller.audioPlayerService.isPlayingStream,
+              streamValue: _controller.isPlayingStreamValue,
               builder: (context, playing) {
+                final current = _controller.currentTrackStreamValue.value;
                 final isCurrent =
-                    _controller.audioPlayerService.currentTrackStream.value ==
-                        track;
+                    current != null && track != null && current.url == track.url;
                 final icon =
                     isCurrent && playing ? Icons.pause : Icons.play_arrow;
                 return Icon(icon);
@@ -817,9 +813,9 @@ class _PartnerDetailScreenState extends State<PartnerDetailScreen> {
             ),
             onPressed: () {
               if (track != null) {
-                _controller.audioPlayerService.play(track);
+                _controller.playTrack(track);
               } else {
-                _controller.audioPlayerService.toggle();
+                _controller.togglePlayback();
               }
             },
           ),
@@ -828,7 +824,7 @@ class _PartnerDetailScreenState extends State<PartnerDetailScreen> {
     );
   }
 
-  Widget _socialScore(ProfileScoreDTO? score) {
+  Widget _socialScore(PartnerScoreView? score) {
     return Padding(
       padding: const EdgeInsets.all(16),
       child: Row(
@@ -846,7 +842,7 @@ class _PartnerDetailScreenState extends State<PartnerDetailScreen> {
   }
 
   Widget _supportedEntities(
-      String title, List<ProfileSupportedEntityDTO>? data) {
+      String title, List<PartnerSupportedEntityView>? data) {
     return Padding(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -885,11 +881,10 @@ class _PartnerDetailScreenState extends State<PartnerDetailScreen> {
                             borderRadius: BorderRadius.circular(10),
                           ),
                           child: entity.thumb != null
-                              ? Image.network(
+                              ? BellugaNetworkImage(
                                   entity.thumb!,
                                   fit: BoxFit.cover,
-                                  errorBuilder: (_, __, ___) =>
-                                      const SizedBox(),
+                                  errorWidget: const SizedBox(),
                                 )
                               : null,
                         ),
@@ -947,8 +942,10 @@ class _PartnerDetailScreenState extends State<PartnerDetailScreen> {
     );
   }
 
-  Widget _buildModules(List<ProfileModuleConfig> modules,
-      Map<ProfileModuleId, dynamic> moduleData) {
+  Widget _buildModules(
+    List<ProfileModuleConfig> modules,
+    Map<ProfileModuleId, Object?> moduleData,
+  ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: modules.map((m) => _buildModule(m, moduleData[m.id])).toList(),
@@ -958,27 +955,43 @@ class _PartnerDetailScreenState extends State<PartnerDetailScreen> {
   Widget _buildModule(ProfileModuleConfig module, dynamic data) {
     switch (module.id) {
       case ProfileModuleId.socialScore:
-        return _socialScore(data);
+        return _socialScore(data as PartnerScoreView?);
       case ProfileModuleId.agendaCarousel:
-        return _artistHighlights(data);
+        return _artistHighlights(
+          data is List<PartnerEventView> ? data : null,
+        );
       case ProfileModuleId.agendaList:
-        return _agendaList(data);
+        return _agendaList(
+          data is List<PartnerEventView> ? data : null,
+        );
       case ProfileModuleId.musicPlayer:
-        return _musicPlayer(data);
+        return _musicPlayer(
+          data is List<PartnerMediaView> ? data : null,
+        );
       case ProfileModuleId.productGrid:
-        return _productGrid(data);
+        return _productGrid(
+          data is List<PartnerProductView> ? data : null,
+        );
       case ProfileModuleId.photoGallery:
-        return _photoGrid(data);
+        return _photoGrid(
+          data is List<PartnerMediaView> ? data : null,
+        );
       case ProfileModuleId.videoGallery:
-        return _videoGallery(data);
+        return _videoGallery(
+          data is List<PartnerMediaView> ? data : null,
+        );
       case ProfileModuleId.experienceCards:
-        return _experienceCards(data);
+        return _experienceCards(
+          data is List<PartnerExperienceView> ? data : null,
+        );
       case ProfileModuleId.affinityCarousels:
-        return _affinityCarousel(data);
+        return _affinityCarousel(
+          data is List<PartnerRecommendationView> ? data : null,
+        );
       case ProfileModuleId.supportedEntities:
         return _supportedEntities(
           module.title ?? 'Quem apoiamos',
-          data,
+          data is List<PartnerSupportedEntityView> ? data : null,
         );
       case ProfileModuleId.richText:
         return _richTextBlock(
@@ -988,11 +1001,15 @@ class _PartnerDetailScreenState extends State<PartnerDetailScreen> {
               : 'Conteúdo institucional e história do parceiro.',
         );
       case ProfileModuleId.locationInfo:
-        return _locationInfo(data);
+        return _locationInfo(data as PartnerLocationView?);
       case ProfileModuleId.externalLinks:
-        return _externalLinks(data);
+        return _externalLinks(
+          data is List<PartnerLinkView> ? data : null,
+        );
       case ProfileModuleId.faq:
-        return _faqBlock(data);
+        return _faqBlock(
+          data is List<PartnerFaqView> ? data : null,
+        );
       case ProfileModuleId.sponsorBanner:
         return _sponsorBanner(data is String ? data : null);
     }
@@ -1001,8 +1018,8 @@ class _PartnerDetailScreenState extends State<PartnerDetailScreen> {
   Widget _buildMiniPlayer() {
     return Align(
       alignment: Alignment.bottomCenter,
-      child: StreamValueBuilder<ProfileMediaDTO?>(
-        streamValue: _controller.audioPlayerService.currentTrackStream,
+      child: StreamValueBuilder<PartnerMediaView?>(
+        streamValue: _controller.currentTrackStreamValue,
         builder: (context, track) {
           if (track == null) return const SizedBox.shrink();
           return SafeArea(
@@ -1012,13 +1029,13 @@ class _PartnerDetailScreenState extends State<PartnerDetailScreen> {
                 leading: const Icon(Icons.music_note),
                 title: Text(track.title ?? 'Faixa'),
                 trailing: StreamValueBuilder<bool>(
-                  streamValue: _controller.audioPlayerService.isPlayingStream,
+                  streamValue: _controller.isPlayingStreamValue,
                   builder: (context, playing) {
                     return IconButton(
                       icon: Icon(
                           playing ? Icons.pause_circle : Icons.play_circle),
                       onPressed: () {
-                        _controller.audioPlayerService.toggle();
+                        _controller.togglePlayback();
                       },
                     );
                   },

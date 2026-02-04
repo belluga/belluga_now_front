@@ -10,8 +10,8 @@ class InviteFlowRoutePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const ModuleScope<InvitesModule>(
-      child: InviteFlowScreen(),
+    return ModuleScope<InvitesModule>(
+      child: const InviteFlowScreen(),
     );
   }
 }

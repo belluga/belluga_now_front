@@ -1,5 +1,4 @@
 import 'package:belluga_now/domain/user/user_profile_contract.dart';
-import 'package:belluga_now/infrastructure/user/dtos/user_profile_dto.dart';
 import 'package:value_object_pattern/domain/value_objects/date_time_value.dart';
 import 'package:value_object_pattern/domain/value_objects/email_address_value.dart';
 import 'package:value_object_pattern/domain/value_objects/full_name_value.dart';
@@ -13,15 +12,19 @@ class UserProfile extends UserProfileContract {
     super.pictureUrlValue,
   });
 
-  factory UserProfile.fromDto(UserProfileDto dto) {
+  factory UserProfile.fromPrimitives({
+    String? name,
+    String? email,
+    String? pictureUrl,
+    String? birthday,
+  }) {
     return UserProfile(
-      nameValue: dto.name != null ? (FullNameValue()..parse(dto.name!)) : null,
-      emailValue:
-          dto.email != null ? (EmailAddressValue()..parse(dto.email!)) : null,
+      nameValue: name != null ? (FullNameValue()..parse(name)) : null,
+      emailValue: email != null ? (EmailAddressValue()..parse(email)) : null,
       pictureUrlValue:
-          dto.pictureUrl != null ? (URIValue()..parse(dto.pictureUrl!)) : null,
+          pictureUrl != null ? (URIValue()..parse(pictureUrl)) : null,
       birthdayValue:
-          dto.birthday != null ? (DateTimeValue()..parse(dto.birthday!)) : null,
+          birthday != null ? (DateTimeValue()..parse(birthday)) : null,
     );
   }
 }

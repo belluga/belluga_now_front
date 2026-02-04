@@ -10,8 +10,8 @@ class DiscoveryRoute extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const ModuleScope<DiscoveryModule>(
-      child: DiscoveryScreen(),
+    return ModuleScope<DiscoveryModule>(
+      child: const DiscoveryScreen(),
     );
   }
 }

@@ -1,10 +1,12 @@
-import 'package:belluga_now/domain/repositories/landlord_auth_repository_contract.dart';
+import 'package:auto_route/auto_route.dart';
+import 'package:belluga_now/presentation/landlord/auth/controllers/landlord_login_controller.dart';
 import 'package:flutter/material.dart';
-import 'package:get_it/get_it.dart';
 
-Future<bool> showLandlordLoginSheet(BuildContext context) async {
-  final emailController = TextEditingController();
-  final passwordController = TextEditingController();
+Future<bool> showLandlordLoginSheet(
+  BuildContext context, {
+  required LandlordLoginController controller,
+}) async {
+  controller.resetForm();
   var didLogin = false;
 
   await showModalBottomSheet<void>(
@@ -29,7 +31,7 @@ Future<bool> showLandlordLoginSheet(BuildContext context) async {
               ),
               const SizedBox(height: 12),
               TextField(
-                controller: emailController,
+                controller: controller.emailController,
                 keyboardType: TextInputType.emailAddress,
                 textInputAction: TextInputAction.next,
                 decoration: const InputDecoration(
@@ -39,7 +41,7 @@ Future<bool> showLandlordLoginSheet(BuildContext context) async {
               ),
               const SizedBox(height: 12),
               TextField(
-                controller: passwordController,
+                controller: controller.passwordController,
                 obscureText: true,
                 textInputAction: TextInputAction.done,
                 decoration: const InputDecoration(
@@ -52,30 +54,25 @@ Future<bool> showLandlordLoginSheet(BuildContext context) async {
                 width: double.infinity,
                 child: FilledButton(
                   onPressed: () async {
-                    final email = emailController.text.trim();
-                    final password = passwordController.text.trim();
+                    final email = controller.emailController.text.trim();
+                    final password = controller.passwordController.text.trim();
+                    final messenger = ScaffoldMessenger.of(ctx);
+                    final router = ctx.router;
                     if (email.isEmpty || password.isEmpty) {
-                      ScaffoldMessenger.of(ctx).showSnackBar(
+                      messenger.showSnackBar(
                         const SnackBar(content: Text('Informe e-mail e senha.')),
                       );
                       return;
                     }
-                    final landlordAuth =
-                        GetIt.I.get<LandlordAuthRepositoryContract>();
                     try {
-                      await landlordAuth.loginWithEmailPassword(
+                      await controller.enterAdminModeWithCredentials(
                         email,
                         password,
                       );
                       didLogin = true;
-                      if (ctx.mounted) {
-                        Navigator.of(ctx).pop();
-                      }
+                      router.pop();
                     } catch (e) {
-                      if (!ctx.mounted) {
-                        return;
-                      }
-                      ScaffoldMessenger.of(ctx).showSnackBar(
+                      messenger.showSnackBar(
                         SnackBar(content: Text('Falha ao entrar: $e')),
                       );
                     }
@@ -90,9 +87,5 @@ Future<bool> showLandlordLoginSheet(BuildContext context) async {
     },
   );
 
-  Future<void>.delayed(const Duration(milliseconds: 300), () {
-    emailController.dispose();
-    passwordController.dispose();
-  });
   return didLogin;
 }

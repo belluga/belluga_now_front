@@ -10,8 +10,8 @@ class LandlordHomeRoutePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const ModuleScope<LandlordModule>(
-      child: LandlordHomeScreen(),
+    return ModuleScope<LandlordModule>(
+      child: const LandlordHomeScreen(),
     );
   }
 }

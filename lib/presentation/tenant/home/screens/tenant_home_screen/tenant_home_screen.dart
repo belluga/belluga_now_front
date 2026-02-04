@@ -10,8 +10,9 @@ import 'package:belluga_now/presentation/tenant/schedule/screens/event_search_sc
 import 'package:belluga_now/presentation/tenant/widgets/belluga_bottom_navigation_bar.dart';
 import 'package:belluga_now/presentation/tenant/widgets/section_header.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:get_it/get_it.dart';
+import 'package:stream_value/core/stream_value_builder.dart';
+ 
 
 class TenantHomeScreen extends StatefulWidget {
   const TenantHomeScreen({super.key});
@@ -49,8 +50,10 @@ class _TenantHomeScreenState extends State<TenantHomeScreen> {
               return NestedScrollView(
                 controller: _controller.scrollController,
                 headerSliverBuilder: (context, innerBoxIsScrolled) => [
-                  HomeAppBar(
-                    userAddressStreamValue: _controller.userAddressStreamValue,
+                  StreamValueBuilder<String>(
+                    streamValue: _controller.userAddressStreamValue,
+                    onNullWidget: _buildHomeAppBar(null),
+                    builder: (context, address) => _buildHomeAppBar(address),
                   ),
                   SliverToBoxAdapter(
                     child: Padding(
@@ -70,12 +73,16 @@ class _TenantHomeScreenState extends State<TenantHomeScreen> {
                             },
                           ),
                           const SizedBox(height: 12),
-                          HomeMyEventsCarousel(
-                            myEventsFilteredStreamValue:
-                                _controller.myEventsFilteredStreamValue,
-                            onSeeAll: _openConfirmedAgenda,
-                            distanceLabelProvider:
-                                _controller.distanceLabelForMyEvent,
+                          StreamValueBuilder(
+                            streamValue: _controller.myEventsFilteredStreamValue,
+                            builder: (context, events) {
+                              return HomeMyEventsCarousel(
+                                events: events,
+                                onSeeAll: _openConfirmedAgenda,
+                                distanceLabelProvider:
+                                    _controller.distanceLabelForMyEvent,
+                              );
+                            },
                           ),
                         ],
                       ),
@@ -98,6 +105,13 @@ class _TenantHomeScreenState extends State<TenantHomeScreen> {
     );
   }
 
+  Widget _buildHomeAppBar(String? address) {
+    return HomeAppBar(
+      appData: _controller.appData,
+      userAddress: address,
+    );
+  }
+
   Future<bool> _handleBackPressed() async {
     final scrollController = _controller.scrollController;
     if (scrollController.hasClients && scrollController.offset > 0) {
@@ -116,11 +130,11 @@ class _TenantHomeScreenState extends State<TenantHomeScreen> {
             content: const Text('Deseja fechar o aplicativo agora?'),
             actions: [
               TextButton(
-                onPressed: () => Navigator.of(context).pop(false),
+                onPressed: () => context.router.pop(false),
                 child: const Text('Cancelar'),
               ),
               ElevatedButton(
-                onPressed: () => Navigator.of(context).pop(true),
+                onPressed: () => context.router.pop(true),
                 child: const Text('Sair'),
               ),
             ],
@@ -129,9 +143,13 @@ class _TenantHomeScreenState extends State<TenantHomeScreen> {
         false;
 
     if (shouldExit) {
-      await SystemNavigator.pop();
+      _performExitNavigation();
     }
 
     return false;
+  }
+
+  void _performExitNavigation() {
+    context.router.pop();
   }
 }

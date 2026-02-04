@@ -1,14 +1,14 @@
-import 'package:belluga_now/infrastructure/repositories/app_data_repository.dart';
+import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:flutter/material.dart';
 import 'package:stream_value/core/stream_value.dart';
 import 'package:get_it/get_it.dart' show Disposable, GetIt;
 
 class MenuScreenController implements Disposable {
-  MenuScreenController({AppDataRepository? appDataRepository})
+  MenuScreenController({AppDataRepositoryContract? appDataRepository})
       : _appDataRepository =
-            appDataRepository ?? GetIt.I.get<AppDataRepository>();
+            appDataRepository ?? GetIt.I.get<AppDataRepositoryContract>();
 
-  final AppDataRepository _appDataRepository;
+  final AppDataRepositoryContract _appDataRepository;
 
   StreamValue<ThemeMode?> get themeModeStreamValue =>
       _appDataRepository.themeModeStreamValue;

@@ -30,6 +30,7 @@ dependencies:
   get_it_modular_with_auto_route: ^2.2.1
   geolocator: ^14.0.2
   geocoding: ^4.0.0
+  http_parser: ^4.0.2
   image_picker: ^1.1.2
   intl: ^0.20.2
   latlong2: ^0.9.1
@@ -64,6 +65,7 @@ dev_dependencies:
   flutter_launcher_icons: ^0.14.4
   flutter_lints: ^6.0.0
   mockito: ^5.4.4
+  image_picker_platform_interface: ^2.11.1
 
 flutter:
   uses-material-design: true

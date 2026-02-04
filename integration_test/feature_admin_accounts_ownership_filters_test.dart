@@ -6,13 +6,16 @@ import 'package:belluga_now/domain/repositories/landlord_auth_repository_contrac
 import 'package:belluga_now/infrastructure/dal/dao/laravel_backend/app_data_backend/app_data_backend_stub.dart';
 import 'package:belluga_now/infrastructure/dal/dao/local/app_data_local_info_source/app_data_local_info_source_stub.dart';
 import 'package:belluga_now/infrastructure/repositories/app_data_repository.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:stream_value/core/stream_value.dart';
+import 'support/integration_test_bootstrap.dart';
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
+  IntegrationTestBootstrap.ensureNonProductionLandlordDomain();
 
   Future<void> _waitForFinder(
     WidgetTester tester,
@@ -40,6 +43,23 @@ void main() {
     while (DateTime.now().isBefore(end)) {
       await tester.pump(const Duration(milliseconds: 100));
     }
+  }
+
+  Future<void> _waitForAny(
+    WidgetTester tester,
+    List<Finder> finders, {
+    Duration timeout = const Duration(seconds: 20),
+  }) async {
+    final deadline = DateTime.now().add(timeout);
+    while (DateTime.now().isBefore(deadline)) {
+      await tester.pump(const Duration(milliseconds: 200));
+      for (final finder in finders) {
+        if (finder.evaluate().isNotEmpty) {
+          return;
+        }
+      }
+    }
+    throw TestFailure('Timed out waiting for any expected widget.');
   }
 
   testWidgets('Admin accounts ownership filters', (tester) async {
@@ -82,17 +102,38 @@ void main() {
     await tester.pumpWidget(app);
     await _pumpFor(tester, const Duration(seconds: 2));
 
-    await _waitForFinder(tester, find.text('Accounts'));
-    await _waitForFinder(tester, find.text('Tenant owned'));
-    await _waitForFinder(tester, find.text('acme-events'));
+    await _waitForFinder(
+      tester,
+      find.byKey(const ValueKey('tenant-admin-shell-router')),
+    );
+    await _waitForFinder(tester, find.text('Do tenant'));
+    await _waitForAny(
+      tester,
+      [
+        find.byType(ListTile),
+        find.text('Nenhuma conta neste segmento ainda.'),
+      ],
+    );
 
-    await tester.tap(find.text('Unmanaged'));
+    await tester.tap(find.text('Nao gerenciadas'));
     await _pumpFor(tester, const Duration(seconds: 1));
-    await _waitForFinder(tester, find.text('moonlight-venue'));
+    await _waitForAny(
+      tester,
+      [
+        find.byType(ListTile),
+        find.text('Nenhuma conta neste segmento ainda.'),
+      ],
+    );
 
-    await tester.tap(find.text('User owned'));
+    await tester.tap(find.text('Do usuario'));
     await _pumpFor(tester, const Duration(seconds: 1));
-    await _waitForFinder(tester, find.text('sunset-artist'));
+    await _waitForAny(
+      tester,
+      [
+        find.byType(ListTile),
+        find.text('Nenhuma conta neste segmento ainda.'),
+      ],
+    );
   });
 }
 

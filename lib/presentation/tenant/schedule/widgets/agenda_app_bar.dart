@@ -1,3 +1,4 @@
+import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/icons/boora_icons.dart';
 import 'package:belluga_now/presentation/tenant/schedule/screens/event_search_screen/models/agenda_app_bar_controller.dart';
 import 'package:belluga_now/presentation/tenant/schedule/screens/event_search_screen/models/invite_filter.dart';
@@ -32,7 +33,7 @@ class AgendaAppBar extends StatelessWidget {
           leading: showBack
               ? IconButton(
                   tooltip: 'Voltar',
-                  onPressed: onBack ?? () => Navigator.of(context).maybePop(),
+                  onPressed: onBack ?? () => context.router.maybePop(),
                   icon: Icon(
                     Icons.arrow_back,
                     color: colorScheme.onSurfaceVariant,

@@ -1,33 +1,37 @@
 import 'dart:io';
 import 'dart:math' as math;
 import 'package:auto_route/auto_route.dart';
-import 'package:belluga_now/application/icons/boora_icons.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/domain/repositories/admin_mode_repository_contract.dart';
-import 'package:belluga_now/domain/repositories/landlord_auth_repository_contract.dart';
 import 'package:belluga_now/domain/user/user_contract.dart';
 import 'package:belluga_now/presentation/landlord/auth/widgets/landlord_login_sheet.dart';
 import 'package:belluga_now/presentation/tenant/profile/screens/profile_screen/controllers/profile_screen_controller.dart';
+import 'package:belluga_now/presentation/tenant/profile/screens/profile_screen/widgets/anonymous_profile_card.dart';
+import 'package:belluga_now/presentation/tenant/profile/screens/profile_screen/widgets/profile_editable_tile.dart';
+import 'package:belluga_now/presentation/tenant/profile/screens/profile_screen/widgets/profile_header.dart';
+import 'package:belluga_now/presentation/tenant/profile/screens/profile_screen/widgets/profile_mode_listener.dart';
+import 'package:belluga_now/presentation/tenant/profile/screens/profile_screen/widgets/profile_section_card.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 
 class ProfileScreen extends StatefulWidget {
-  const ProfileScreen({super.key});
+  const ProfileScreen({
+    super.key,
+  });
 
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  late final ProfileScreenController _controller =
+  final ProfileScreenController _controller =
       GetIt.I.get<ProfileScreenController>();
 
   @override
   void initState() {
     super.initState();
-    _controller.syncFromUser(_controller.userStreamValue.value);
     _controller.loadAvatarPath();
   }
 
@@ -35,228 +39,268 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          'Perfil',
-          style: theme.textTheme.titleLarge?.copyWith(
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        leading: BackButton(
-          onPressed: () {
-            if (context.router.canPop()) {
-              context.router.pop();
-              return;
-            }
-            context.router.replaceAll([TenantHomeRoute()]);
-          },
-        ),
-        actions: [
-          StreamValueBuilder<UserContract?>(
-            streamValue: _controller.userStreamValue,
-            builder: (context, user) {
-              if (user == null) {
-                return const SizedBox.shrink();
-              }
-              return IconButton(
-                tooltip: 'Sair',
-                onPressed: _logout,
-                icon: const Icon(Icons.exit_to_app),
-              );
-            },
-          ),
-        ],
-      ),
-      body: SafeArea(
-        child: StreamValueBuilder<UserContract?>(
-          streamValue: _controller.userStreamValue,
-          builder: (context, user) {
-            _controller.syncFromUser(user);
-            if (user == null) {
-              return ListView(
-                padding: const EdgeInsets.fromLTRB(16, 24, 16, 24),
-                children: [
-                  _AnonymousProfileCard(
-                    onTapLogin: () =>
-                        context.router.push(const AuthLoginRoute()),
-                  ),
-                ],
-              );
-            }
-            final avatarUrl = user.profile.pictureUrlValue?.value?.toString();
-            final hasPendingChanges = _controller.hasPendingChanges;
+    return StreamValueBuilder<AdminMode>(
+      streamValue: _controller.modeStreamValue,
+      builder: (context, mode) {
+        return ProfileModeListener(
+          mode: mode,
+          child: Scaffold(
+            appBar: AppBar(
+              title: Text(
+                'Perfil',
+                style: theme.textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              leading: BackButton(
+                onPressed: () {
+                  if (context.router.canPop()) {
+                    context.router.pop();
+                    return;
+                  }
+                  context.router.replaceAll([TenantHomeRoute()]);
+                },
+              ),
+              actions: [
+                StreamValueBuilder<UserContract?>(
+                  streamValue: _controller.userStreamValue,
+                  builder: (context, user) {
+                    if (user == null) {
+                      return const SizedBox.shrink();
+                    }
+                    return IconButton(
+                      tooltip: 'Sair',
+                      onPressed: _logout,
+                      icon: const Icon(Icons.exit_to_app),
+                    );
+                  },
+                ),
+              ],
+            ),
+            body: SafeArea(
+              child: StreamValueBuilder<UserContract?>(
+                streamValue: _controller.userStreamValue,
+                builder: (context, user) {
+                  if (user == null) {
+                    return ListView(
+                      padding: const EdgeInsets.fromLTRB(16, 24, 16, 24),
+                      children: [
+                        AnonymousProfileCard(
+                          onTapLogin: () =>
+                              context.router.push(const AuthLoginRoute()),
+                        ),
+                      ],
+                    );
+                  }
+                  final avatarUrl =
+                      user.profile.pictureUrlValue?.value?.toString();
 
-            return StreamValueBuilder<String?>(
-              streamValue: _controller.localAvatarPathStreamValue,
-              builder: (context, localPath) {
-                final avatarImage = _resolveAvatarImage(
-                  localPath: localPath,
-                  remoteUrl: avatarUrl,
-                );
+                  return StreamValueBuilder<int>(
+                    streamValue: _controller.formVersionStreamValue,
+                    builder: (context, _) {
+                      final hasPendingChanges = _controller.hasPendingChanges;
 
-                return ListView(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
-                  children: [
-                    _ProfileHeader(
-                      avatarImage: avatarImage,
-                      displayName: _controller.nameController.text,
-                      onChangeAvatar: _onChangeAvatar,
-                      invitesSent: 0, // TODO(Delphi): bind convites enviados.
-                      invitesAccepted: 0, // TODO(Delphi): bind convites aceitos.
-                      hasPendingChanges: hasPendingChanges,
-                    ),
-                const SizedBox(height: 16),
-                _SectionCard(
-                  title: 'Seus dados',
-                  children: [
-                    _EditableTile(
-                      label: 'Nome',
-                      value: _controller.nameController.text,
-                      icon: Icons.person_outline,
-                      onTap: () => _openEditField(
-                        context,
-                        label: 'Nome',
-                        controller: _controller.nameController,
-                        keyboardType: TextInputType.name,
-                      ),
-                    ),
-                    _EditableTile(
-                      label: 'Descrição',
-                      value: _controller.descriptionController.text,
-                      icon: Icons.short_text,
-                      onTap: () => _openEditField(
-                        context,
-                        label: 'Descrição',
-                        controller: _controller.descriptionController,
-                        keyboardType: TextInputType.multiline,
-                        maxLines: 3,
-                      ),
-                    ),
-                    _EditableTile(
-                      label: 'E-mail',
-                      value: _controller.emailController.text,
-                      icon: Icons.email_outlined,
-                      onTap: () => _openEditField(
-                        context,
-                        label: 'E-mail',
-                        controller: _controller.emailController,
-                        keyboardType: TextInputType.emailAddress,
-                      ),
-                    ),
-                    _EditableTile(
-                      label: 'Telefone',
-                      value: _controller.phoneController.text,
-                      icon: Icons.phone_outlined,
-                      onTap: () => _openEditField(
-                        context,
-                        label: 'Telefone',
-                        controller: _controller.phoneController,
-                        keyboardType: TextInputType.phone,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                _SectionCard(
-                  title: 'Preferências',
-                  children: [
-                    StreamValueBuilder<ThemeMode?>(
-                      streamValue: _controller.themeModeStreamValue,
-                      builder: (context, mode) {
-                        final isDark = mode == ThemeMode.dark;
-                        return SwitchListTile.adaptive(
-                          value: isDark,
-                          onChanged: (value) => _controller.setThemeMode(
-                            value ? ThemeMode.dark : ThemeMode.light,
-                          ),
-                          title: const Text('Tema escuro'),
-                          subtitle: Text(
-                            isDark
-                                ? 'Usando tema escuro'
-                                : 'Usando tema claro',
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: colorScheme.onSurfaceVariant,
-                            ),
-                          ),
-                          secondary: Icon(
-                            isDark ? Icons.dark_mode : Icons.light_mode,
-                          ),
-                          contentPadding:
-                              const EdgeInsets.symmetric(horizontal: 16),
-                        );
-                      },
-                    ),
-                    StreamValueBuilder<double>(
-                      streamValue: _controller.maxRadiusMetersStreamValue,
-                      builder: (context, radiusMeters) {
-                        return ListTile(
-                          leading: const Icon(Icons.my_location_outlined),
-                          title: const Text('Raio máximo'),
-                          subtitle: Text(_formatRadiusLabel(radiusMeters)),
-                          trailing: const Icon(Icons.chevron_right),
-                          onTap: () =>
-                              _openRadiusSelector(context, radiusMeters),
-                        );
-                      },
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                _SectionCard(
-                  title: 'Modo',
-                  children: [
-                    ListTile(
-                      leading: const Icon(Icons.person_outline),
-                      title: const Text('Modo Usuario'),
-                      subtitle: const Text('Experiencia do app'),
-                      trailing: const Icon(Icons.check_circle),
-                      onTap: () => _switchToUserMode(context),
-                    ),
-                    ListTile(
-                      leading: const Icon(Icons.shield_outlined),
-                      title: const Text('Modo Admin'),
-                      subtitle: const Text('Acesso landlord'),
-                      trailing: const Icon(Icons.chevron_right),
-                      onTap: () => _switchToAdminMode(context),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                _SectionCard(
-                  title: 'Privacidade & segurança',
-                  children: [
-                    ListTile(
-                      leading: const Icon(Icons.visibility_outlined),
-                      title: const Text('Visibilidade'),
-                      subtitle:
-                          const Text('Público · Amigos verão convites em breve'),
-                      trailing: const Icon(Icons.chevron_right),
-                      onTap: () => _showComingSoon(context),
-                    ),
-                    ListTile(
-                      leading: const Icon(Icons.shield_outlined),
-                      title: const Text('Alterar senha'),
-                      subtitle: const Text('Atualize a senha da sua conta'),
-                      trailing: const Icon(Icons.chevron_right),
-                      onTap: () => _showComingSoon(context),
-                    ),
-                    ListTile(
-                      leading: const Icon(Icons.policy_outlined),
-                      title: const Text('Política de privacidade'),
-                      subtitle: const Text('Como tratamos seus dados'),
-                      trailing: const Icon(Icons.chevron_right),
-                      onTap: () => _showComingSoon(context),
-                    ),
-                  ],
-                ),
-                  ],
-                );
-              },
-            );
-          },
-        ),
-      ),
+                      return StreamValueBuilder<String?>(
+                        streamValue: _controller.localAvatarPathStreamValue,
+                        builder: (context, localPath) {
+                          final avatarImage = _resolveAvatarImage(
+                            localPath: localPath,
+                            remoteUrl: avatarUrl,
+                          );
+
+                          return ListView(
+                            padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+                            children: [
+                              ProfileHeader(
+                                avatarImage: avatarImage,
+                                displayName: _controller.nameController.text,
+                                onChangeAvatar: _onChangeAvatar,
+                                invitesSent:
+                                    0, // TODO(Delphi): bind convites enviados.
+                                invitesAccepted:
+                                    0, // TODO(Delphi): bind convites aceitos.
+                                hasPendingChanges: hasPendingChanges,
+                              ),
+                              const SizedBox(height: 16),
+                              ProfileSectionCard(
+                                title: 'Seus dados',
+                                children: [
+                                  ProfileEditableTile(
+                                    label: 'Nome',
+                                    value: _controller.nameController.text,
+                                    icon: Icons.person_outline,
+                                    onTap: () => _openEditField(
+                                      context,
+                                      label: 'Nome',
+                                      controller: _controller.nameController,
+                                      keyboardType: TextInputType.name,
+                                    ),
+                                  ),
+                                  ProfileEditableTile(
+                                    label: 'Descrição',
+                                    value:
+                                        _controller.descriptionController.text,
+                                    icon: Icons.short_text,
+                                    onTap: () => _openEditField(
+                                      context,
+                                      label: 'Descrição',
+                                      controller:
+                                          _controller.descriptionController,
+                                      keyboardType: TextInputType.multiline,
+                                      maxLines: 3,
+                                    ),
+                                  ),
+                                  ProfileEditableTile(
+                                    label: 'E-mail',
+                                    value: _controller.emailController.text,
+                                    icon: Icons.email_outlined,
+                                    onTap: () => _openEditField(
+                                      context,
+                                      label: 'E-mail',
+                                      controller: _controller.emailController,
+                                      keyboardType: TextInputType.emailAddress,
+                                    ),
+                                  ),
+                                  ProfileEditableTile(
+                                    label: 'Telefone',
+                                    value: _controller.phoneController.text,
+                                    icon: Icons.phone_outlined,
+                                    onTap: () => _openEditField(
+                                      context,
+                                      label: 'Telefone',
+                                      controller: _controller.phoneController,
+                                      keyboardType: TextInputType.phone,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 12),
+                              ProfileSectionCard(
+                                title: 'Preferências',
+                                children: [
+                                  StreamValueBuilder<ThemeMode?>(
+                                    streamValue:
+                                        _controller.themeModeStreamValue,
+                                    builder: (context, mode) {
+                                      final isDark = mode == ThemeMode.dark;
+                                      return SwitchListTile.adaptive(
+                                        value: isDark,
+                                        onChanged: (value) =>
+                                            _controller.setThemeMode(
+                                          value
+                                              ? ThemeMode.dark
+                                              : ThemeMode.light,
+                                        ),
+                                        title: const Text('Tema escuro'),
+                                        subtitle: Text(
+                                          isDark
+                                              ? 'Usando tema escuro'
+                                              : 'Usando tema claro',
+                                          style: theme.textTheme.bodySmall
+                                              ?.copyWith(
+                                            color: colorScheme.onSurfaceVariant,
+                                          ),
+                                        ),
+                                        secondary: Icon(
+                                          isDark
+                                              ? Icons.dark_mode
+                                              : Icons.light_mode,
+                                        ),
+                                        contentPadding:
+                                            const EdgeInsets.symmetric(
+                                          horizontal: 16,
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                  StreamValueBuilder<double>(
+                                    streamValue:
+                                        _controller.maxRadiusMetersStreamValue,
+                                    builder: (context, radiusMeters) {
+                                      return ListTile(
+                                        leading: const Icon(
+                                          Icons.my_location_outlined,
+                                        ),
+                                        title: const Text('Raio máximo'),
+                                        subtitle: Text(
+                                          _formatRadiusLabel(radiusMeters),
+                                        ),
+                                        trailing:
+                                            const Icon(Icons.chevron_right),
+                                        onTap: () => _openRadiusSelector(
+                                          context,
+                                          radiusMeters,
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 12),
+                              ProfileSectionCard(
+                                title: 'Modo',
+                                children: [
+                                  ListTile(
+                                    leading: const Icon(Icons.person_outline),
+                                    title: const Text('Modo Usuario'),
+                                    subtitle: const Text('Experiencia do app'),
+                                    trailing: const Icon(Icons.check_circle),
+                                    onTap: () => _switchToUserMode(context),
+                                  ),
+                                  ListTile(
+                                    leading: const Icon(Icons.shield_outlined),
+                                    title: const Text('Modo Admin'),
+                                    subtitle: const Text('Acesso landlord'),
+                                    trailing: const Icon(Icons.chevron_right),
+                                    onTap: () => _switchToAdminMode(context),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 12),
+                              ProfileSectionCard(
+                                title: 'Privacidade & segurança',
+                                children: [
+                                  ListTile(
+                                    leading:
+                                        const Icon(Icons.visibility_outlined),
+                                    title: const Text('Visibilidade'),
+                                    subtitle: const Text(
+                                      'Público · Amigos verão convites em breve',
+                                    ),
+                                    trailing: const Icon(Icons.chevron_right),
+                                    onTap: () => _showComingSoon(context),
+                                  ),
+                                  ListTile(
+                                    leading: const Icon(Icons.shield_outlined),
+                                    title: const Text('Alterar senha'),
+                                    subtitle: const Text(
+                                        'Atualize a senha da sua conta'),
+                                    trailing: const Icon(Icons.chevron_right),
+                                    onTap: () => _showComingSoon(context),
+                                  ),
+                                  ListTile(
+                                    leading: const Icon(Icons.policy_outlined),
+                                    title:
+                                        const Text('Política de privacidade'),
+                                    subtitle:
+                                        const Text('Como tratamos seus dados'),
+                                    trailing: const Icon(Icons.chevron_right),
+                                    onTap: () => _showComingSoon(context),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          );
+                        },
+                      );
+                    },
+                  );
+                },
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -283,7 +327,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 leading: const Icon(Icons.photo_camera_outlined),
                 title: const Text('Tirar foto'),
                 onTap: () async {
-                  Navigator.of(ctx).pop();
+                  ctx.router.pop();
                   await _controller.pickAvatar(ImageSource.camera);
                 },
               ),
@@ -291,7 +335,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 leading: const Icon(Icons.photo_library_outlined),
                 title: const Text('Escolher da galeria'),
                 onTap: () async {
-                  Navigator.of(ctx).pop();
+                  ctx.router.pop();
                   await _controller.pickAvatar(ImageSource.gallery);
                 },
               ),
@@ -310,7 +354,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     TextInputType? keyboardType,
     int maxLines = 1,
   }) async {
-    final tempController = TextEditingController(text: controller.text);
+    _controller.editFieldController.text = controller.text;
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -326,7 +370,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               TextField(
-                controller: tempController,
+                controller: _controller.editFieldController,
                 keyboardType: keyboardType,
                 maxLines: maxLines,
                 decoration: InputDecoration(
@@ -340,15 +384,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
                   TextButton(
-                    onPressed: () => Navigator.of(ctx).pop(),
+                    onPressed: () => ctx.router.pop(),
                     child: const Text('Cancelar'),
                   ),
                   const SizedBox(width: 8),
                   FilledButton(
                     onPressed: () {
-                      controller.text = tempController.text;
-                      Navigator.of(ctx).pop();
-                      setState(() {});
+                      controller.text = _controller.editFieldController.text;
+                      ctx.router.pop();
+                      _controller.bumpFormVersion();
                     },
                     child: const Text('Salvar'),
                   ),
@@ -372,24 +416,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _switchToUserMode(BuildContext context) async {
-    final adminMode = GetIt.I.get<AdminModeRepositoryContract>();
-    await adminMode.setUserMode();
-    context.router.replaceAll([TenantHomeRoute()]);
+    await _controller.switchToUserMode();
   }
 
-  Future<void> _switchToAdminMode(BuildContext context) async {
-    final adminMode = GetIt.I.get<AdminModeRepositoryContract>();
-    final landlordAuth =
-        GetIt.I.get<LandlordAuthRepositoryContract>();
-    var canEnter = landlordAuth.hasValidSession;
-    if (!canEnter) {
-      canEnter = await showLandlordLoginSheet(context);
-    }
-    if (!canEnter) {
-      return;
-    }
-    await adminMode.setLandlordMode();
-    context.router.replaceAll([TenantAdminShellRoute()]);
+  void _switchToAdminMode(BuildContext context) {
+    if (_controller.isAdminMode) return;
+    showLandlordLoginSheet(
+      context,
+      controller: _controller.landlordLoginController,
+    );
   }
 
   static String _formatRadiusLabel(double meters) {
@@ -415,8 +450,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   ) async {
     final theme = Theme.of(context);
     double initialKm = math.max(1, selectedMeters / 1000);
-    final controller =
-        TextEditingController(text: _formatRadiusInputValue(initialKm));
+    _controller.radiusKmController.text = _formatRadiusInputValue(initialKm);
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -446,7 +480,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                 ),
                 TextField(
-                  controller: controller,
+                  controller: _controller.radiusKmController,
                   autofocus: true,
                   keyboardType: const TextInputType.numberWithOptions(
                     decimal: true,
@@ -463,7 +497,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   child: FilledButton(
                     onPressed: () {
                       final parsed = double.tryParse(
-                        controller.text.replaceAll(',', '.'),
+                        _controller.radiusKmController.text
+                            .replaceAll(',', '.'),
                       );
                       if (parsed == null) {
                         ScaffoldMessenger.of(context).showSnackBar(
@@ -475,7 +510,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       }
                       final km = parsed < 1 ? 1 : parsed;
                       _controller.setMaxRadiusMeters(km * 1000);
-                      Navigator.of(ctx).pop();
+                      ctx.router.pop();
                     },
                     child: const Text('Salvar'),
                   ),
@@ -486,11 +521,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
         );
       },
     );
-  }
-
-  @override
-  void dispose() {
-    super.dispose();
   }
 
   ImageProvider? _resolveAvatarImage({
@@ -508,318 +538,5 @@ class _ProfileScreenState extends State<ProfileScreen> {
       return NetworkImage(remoteUrl);
     }
     return null;
-  }
-}
-
-class _AnonymousProfileCard extends StatelessWidget {
-  const _AnonymousProfileCard({
-    required this.onTapLogin,
-  });
-
-  final VoidCallback onTapLogin;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            colorScheme.primary.withValues(alpha: 0.08),
-            colorScheme.secondary.withValues(alpha: 0.1),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Entre para ativar seu perfil',
-            style: theme.textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Suas preferencias e favoritos anonimos sao preservados '
-            'quando voce cria a conta.',
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: colorScheme.onSurfaceVariant,
-            ),
-          ),
-          const SizedBox(height: 16),
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton(
-              onPressed: onTapLogin,
-              child: const Text('Entrar / Criar conta'),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ProfileHeader extends StatelessWidget {
-  const _ProfileHeader({
-    this.avatarImage,
-    required this.displayName,
-    required this.onChangeAvatar,
-    required this.invitesSent,
-    required this.invitesAccepted,
-    required this.hasPendingChanges,
-  });
-
-  final ImageProvider? avatarImage;
-  final String displayName;
-  final VoidCallback onChangeAvatar;
-  final int invitesSent;
-  final int invitesAccepted;
-  final bool hasPendingChanges;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            colorScheme.primary.withValues(alpha: 0.08),
-            colorScheme.secondary.withValues(alpha: 0.08),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      padding: const EdgeInsets.all(16),
-      child: Row(
-        children: [
-          Stack(
-            clipBehavior: Clip.none,
-            children: [
-              CircleAvatar(
-                radius: 34,
-                backgroundColor: colorScheme.primary.withValues(alpha: 0.15),
-                backgroundImage: avatarImage,
-                child: avatarImage == null
-                    ? Icon(Icons.person, color: colorScheme.primary, size: 32)
-                    : null,
-              ),
-              Positioned(
-                right: -4,
-                bottom: -4,
-                child: Material(
-                  color: colorScheme.surface,
-                  shape: const CircleBorder(),
-                  elevation: 2,
-                  child: IconButton(
-                    visualDensity: VisualDensity.compact,
-                    iconSize: 18,
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints.tightFor(
-                      width: 32,
-                      height: 32,
-                    ),
-                    onPressed: onChangeAvatar,
-                    icon: Icon(
-                      Icons.photo_camera_outlined,
-                      color: colorScheme.primary,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        displayName.isNotEmpty ? displayName : 'Seu perfil',
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w800,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    if (hasPendingChanges)
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: colorScheme.primary.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(999),
-                        ),
-                        child: Text(
-                          'Alterado',
-                          style: theme.textTheme.labelSmall?.copyWith(
-                            color: colorScheme.primary,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Convites aceitos valem mais que likes.',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: colorScheme.onSurfaceVariant,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    _MetricPill(
-                      value: invitesSent,
-                      icon: BooraIcons.invite_outlined,
-                      iconColor: colorScheme.secondary,
-                      backgroundColor:
-                          colorScheme.secondary.withValues(alpha: 0.14),
-                    ),
-                    _MetricPill(
-                      value: invitesAccepted,
-                      icon: BooraIcons.invite_solid,
-                      iconColor: colorScheme.primary,
-                      backgroundColor:
-                          colorScheme.primary.withValues(alpha: 0.14),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _MetricPill extends StatelessWidget {
-  const _MetricPill({
-    required this.value,
-    required this.icon,
-    required this.iconColor,
-    required this.backgroundColor,
-  });
-
-  final int value;
-  final IconData icon;
-  final Color iconColor;
-  final Color backgroundColor;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      decoration: BoxDecoration(
-        color: backgroundColor,
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 16, color: iconColor),
-          const SizedBox(width: 6),
-          Text(
-            '$value',
-            style: theme.textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.w800,
-                ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _SectionCard extends StatelessWidget {
-  const _SectionCard({
-    required this.title,
-    required this.children,
-  });
-
-  final String title;
-  final List<Widget> children;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Card(
-      elevation: 0,
-      margin: EdgeInsets.zero,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 4),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-              child: Text(
-                title,
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-            ),
-            const Divider(height: 1),
-            ...children,
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _EditableTile extends StatelessWidget {
-  const _EditableTile({
-    required this.label,
-    required this.value,
-    required this.icon,
-    required this.onTap,
-  });
-
-  final String label;
-  final String value;
-  final IconData icon;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-    return ListTile(
-      leading: Icon(icon, color: colorScheme.onSurfaceVariant),
-      title: Text(label),
-      subtitle: Text(
-        value.isEmpty ? 'Toque para preencher' : value,
-        style: theme.textTheme.bodyMedium?.copyWith(
-          color: value.isEmpty
-              ? colorScheme.onSurfaceVariant.withAlpha((0.7 * 255).toInt())
-              : colorScheme.onSurface,
-        ),
-      ),
-      trailing: const Icon(Icons.chevron_right),
-      onTap: onTap,
-    );
   }
 }

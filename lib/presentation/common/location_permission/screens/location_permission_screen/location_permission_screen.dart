@@ -1,7 +1,9 @@
+import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/guards/location_permission_state.dart';
 import 'package:belluga_now/presentation/common/location_permission/controllers/location_permission_controller.dart';
 import 'package:belluga_now/presentation/common/widgets/button_loading.dart';
 import 'package:flutter/material.dart';
+import 'package:stream_value/core/stream_value_builder.dart';
 import 'package:get_it/get_it.dart';
 
 class LocationPermissionScreen extends StatefulWidget {
@@ -18,7 +20,7 @@ class LocationPermissionScreen extends StatefulWidget {
 }
 
 class _LocationPermissionScreenState extends State<LocationPermissionScreen> {
-  late final LocationPermissionController _controller =
+  final LocationPermissionController _controller =
       GetIt.I.get<LocationPermissionController>();
 
   @override
@@ -44,54 +46,68 @@ class _LocationPermissionScreenState extends State<LocationPermissionScreen> {
       LocationPermissionState.deniedForever => 'Abrir configurações',
     };
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(title),
-        automaticallyImplyLeading: false,
-      ),
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                title,
-                style: Theme.of(context).textTheme.headlineSmall,
-              ),
-              const SizedBox(height: 12),
-              Text(
-                description,
-                style: Theme.of(context).textTheme.bodyLarge,
-              ),
-              const Spacer(),
-              ButtonLoading(
-                label: primaryLabel,
-                loadingStatusStreamValue: _controller.loading,
-                onPressed: _onPrimaryPressed,
-              ),
-              const SizedBox(height: 12),
-              OutlinedButton(
-                onPressed: _onNotNowPressed,
-                child: const Text('Agora não'),
-              ),
-            ],
+    return StreamValueBuilder<bool?>(
+      streamValue: _controller.resultStreamValue,
+      builder: (context, result) {
+        _handleResult(result);
+        return Scaffold(
+          appBar: AppBar(
+            title: Text(title),
+            automaticallyImplyLeading: false,
           ),
-        ),
-      ),
+          body: SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    title,
+                    style: Theme.of(context).textTheme.headlineSmall,
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    description,
+                    style: Theme.of(context).textTheme.bodyLarge,
+                  ),
+                  const Spacer(),
+                  StreamValueBuilder(
+                    streamValue: _controller.loading,
+                    builder: (context, isLoading) {
+                      return ButtonLoading(
+                        label: primaryLabel,
+                        isLoading: isLoading,
+                        onPressed: _onPrimaryPressed,
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  OutlinedButton(
+                    onPressed: _onNotNowPressed,
+                    child: const Text('Agora não'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 
-  Future<void> _onPrimaryPressed() async {
-    final granted = await _controller.ensureReady(
-      initialState: widget.initialState,
-    );
-    if (!mounted) return;
-    Navigator.of(context).pop(granted);
+  void _onPrimaryPressed() {
+    _controller.requestPermission(initialState: widget.initialState);
   }
 
   void _onNotNowPressed() {
-    Navigator.of(context).pop(false);
+    context.router.pop(false);
+  }
+
+  void _handleResult(bool? result) {
+    if (result == null) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.router.pop(result);
+      _controller.clearResult();
+    });
   }
 }
-

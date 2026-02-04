@@ -42,6 +42,27 @@ import 'tenant_home_screen_test.mocks.dart';
   MockSpec<AppDataRepository>(),
   MockSpec<AppData>(),
 ])
+class _TestTenantHomeController extends MockTenantHomeController {
+  _TestTenantHomeController(this._appData);
+
+  final AppData _appData;
+
+  @override
+  AppData get appData => _appData;
+}
+
+class _TestFavoritesSectionController extends MockFavoritesSectionController {
+  _TestFavoritesSectionController()
+      : _navigationTargetStreamValue =
+            StreamValue<FavoriteNavigationTarget?>(defaultValue: null);
+
+  final StreamValue<FavoriteNavigationTarget?> _navigationTargetStreamValue;
+
+  @override
+  StreamValue<FavoriteNavigationTarget?> get navigationTargetStreamValue =>
+      _navigationTargetStreamValue;
+}
+
 void main() {
   late MockTenantHomeController mockController;
   late MockTenantHomeAgendaController mockAgendaController;
@@ -55,14 +76,16 @@ void main() {
     HttpOverrides.global = _TestHttpOverrides();
   });
 
-  setUp(() {
-    mockController = MockTenantHomeController();
+  setUp(() async {
+    mockito.resetMockitoState();
+    await GetIt.I.reset();
     mockAgendaController = MockTenantHomeAgendaController();
-    mockFavoritesController = MockFavoritesSectionController();
+    mockFavoritesController = _TestFavoritesSectionController();
     mockInvitesBannerController = MockInvitesBannerBuilderController();
     mockAppDataRepository = MockAppDataRepository();
     mockAppData = MockAppData();
     testScrollController = ScrollController();
+    mockController = _TestTenantHomeController(mockAppData);
 
     GetIt.I.registerSingleton<TenantHomeController>(mockController);
     GetIt.I.registerSingleton<TenantHomeAgendaController>(mockAgendaController);
@@ -148,9 +171,9 @@ void main() {
     mockito.when(mockAgendaController.loadNextPage()).thenAnswer((_) async {});
   });
 
-  tearDown(() {
+  tearDown(() async {
     testScrollController.dispose();
-    GetIt.I.reset();
+    await GetIt.I.reset();
   });
 
   testWidgets('TenantHomeScreen renders correctly', (tester) async {
@@ -175,7 +198,7 @@ void main() {
     // Navigation pushes might fail if not properly set up, but rendering should work.
     
     await tester.pumpWidget(
-      const MaterialApp(
+      MaterialApp(
         home: TenantHomeScreen(),
       ),
     );
@@ -218,7 +241,7 @@ void main() {
       StackRouterScope(
         controller: mockRouter,
         stateHash: 0,
-        child: const MaterialApp(
+        child: MaterialApp(
           home: TenantHomeScreen(),
         ),
       ),

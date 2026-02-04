@@ -1,3 +1,3 @@
-enum InvitePartnerType {
+enum InviteAccountProfileType {
   mercadoProducer,
 }

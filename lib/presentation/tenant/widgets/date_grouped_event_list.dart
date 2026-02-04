@@ -19,7 +19,6 @@ class DateGroupedEventList extends StatelessWidget {
     this.highlightTodayEvents = false,
     this.defaultEventDuration = const Duration(hours: 3),
     this.sortDescending = false,
-    this.controller,
     this.footer,
   });
 
@@ -28,7 +27,6 @@ class DateGroupedEventList extends StatelessWidget {
   final bool shrinkWrap;
   final ScrollPhysics? physics;
   final bool? primary;
-  final ScrollController? controller;
   final bool Function(VenueEventResume event)? isConfirmed;
   final int Function(VenueEventResume event)? pendingInvitesCount;
   final String? Function(VenueEventResume event)? distanceLabel;
@@ -113,7 +111,6 @@ class DateGroupedEventList extends StatelessWidget {
       primary: primary,
       shrinkWrap: shrinkWrap,
       physics: physics,
-      controller: controller,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
       itemCount: sections.length + (footer != null ? 1 : 0),
       itemBuilder: (context, index) {

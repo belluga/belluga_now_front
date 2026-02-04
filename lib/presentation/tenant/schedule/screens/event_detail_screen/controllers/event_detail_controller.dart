@@ -3,12 +3,13 @@ import 'dart:async';
 import 'package:belluga_now/domain/invites/invite_model.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_events_repository_contract.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/schedule/friend_resume.dart';
 import 'package:belluga_now/domain/schedule/invite_status.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
-import 'package:belluga_now/infrastructure/repositories/user_events_repository.dart';
+import 'package:event_tracker_handler/event_tracker_handler.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value.dart';
 
@@ -19,28 +20,28 @@ class EventDetailController implements Disposable {
     ScheduleRepositoryContract? repository,
     UserEventsRepositoryContract? userEventsRepository,
     InvitesRepositoryContract? invitesRepository,
+    TelemetryRepositoryContract? telemetryRepository,
   })  : _repository = repository ?? GetIt.I.get<ScheduleRepositoryContract>(),
-        _userEventsRepository = userEventsRepository ??
-            (() {
-              if (!GetIt.I.isRegistered<UserEventsRepositoryContract>()) {
-                GetIt.I.registerLazySingleton<UserEventsRepositoryContract>(
-                  () => UserEventsRepository(),
-                );
-              }
-              return GetIt.I.get<UserEventsRepositoryContract>();
-            }()),
+        _userEventsRepository =
+            userEventsRepository ?? GetIt.I.get<UserEventsRepositoryContract>(),
         _invitesRepository =
-            invitesRepository ?? GetIt.I.get<InvitesRepositoryContract>();
+            invitesRepository ?? GetIt.I.get<InvitesRepositoryContract>(),
+        _telemetryRepository =
+            telemetryRepository ?? GetIt.I.get<TelemetryRepositoryContract>();
 
   final ScheduleRepositoryContract _repository;
   final UserEventsRepositoryContract _userEventsRepository;
   final InvitesRepositoryContract _invitesRepository;
+  final TelemetryRepositoryContract _telemetryRepository;
+  Future<EventTrackerTimedEventHandle?>? _eventOpenedHandleFuture;
+  String? _telemetryEventId;
 
   // Reactive state
   final eventStreamValue = StreamValue<EventModel?>();
   final isConfirmedStreamValue = StreamValue<bool>(defaultValue: false);
   final receivedInvitesStreamValue =
       StreamValue<List<InviteModel>>(defaultValue: const []);
+  final inviteDeckIndexStreamValue = StreamValue<int>(defaultValue: 0);
 
   // Delegate to repository for single source of truth
   StreamValue<Map<String, List<SentInviteStatus>>>
@@ -61,6 +62,7 @@ class EventDetailController implements Disposable {
 
       if (event != null) {
         eventStreamValue.addValue(event);
+        unawaited(startEventTelemetry(event));
 
         // Check local confirmation state first, then fallback to backend value
         final isConfirmedLocally =
@@ -75,6 +77,7 @@ class EventDetailController implements Disposable {
             .where((invite) => invite.eventIdValue.value == event.id.value)
             .toList();
         receivedInvitesStreamValue.addValue(eventInvites);
+        _syncInviteDeckIndex(eventInvites.length);
 
         // Populate repository with initial data from event model if missing
         // This ensures we have data even before a refresh
@@ -94,6 +97,38 @@ class EventDetailController implements Disposable {
     } finally {
       isLoadingStreamValue.addValue(false);
     }
+  }
+
+  Future<void> startEventTelemetry(EventModel event) async {
+    final eventId = event.id.value;
+    if (_telemetryEventId == eventId) {
+      return;
+    }
+    if (_eventOpenedHandleFuture != null) {
+      await finishEventTelemetry();
+    }
+    _telemetryEventId = eventId;
+    _eventOpenedHandleFuture = _telemetryRepository.startTimedEvent(
+      EventTrackerEvents.eventOpened,
+      eventName: 'event_opened',
+      properties: {
+        'event_id': eventId,
+      },
+    );
+  }
+
+  Future<void> finishEventTelemetry() async {
+    final handleFuture = _eventOpenedHandleFuture;
+    if (handleFuture == null) {
+      _telemetryEventId = null;
+      return;
+    }
+    _eventOpenedHandleFuture = null;
+    final handle = await handleFuture;
+    if (handle != null) {
+      await _telemetryRepository.finishTimedEvent(handle);
+    }
+    _telemetryEventId = null;
   }
 
   /// Confirm attendance at this event
@@ -116,6 +151,7 @@ class EventDetailController implements Disposable {
 
       // Clear received invites (since we're now confirmed)
       receivedInvitesStreamValue.addValue(const []);
+      _syncInviteDeckIndex(0);
     } finally {
       isLoadingStreamValue.addValue(false);
     }
@@ -137,6 +173,7 @@ class EventDetailController implements Disposable {
 
       // Optimistic update: remove from received invites and confirm
       receivedInvitesStreamValue.addValue(const []);
+      _syncInviteDeckIndex(0);
       isConfirmedStreamValue.addValue(true);
 
       final newTotal = totalConfirmedStreamValue.value + 1;
@@ -156,6 +193,7 @@ class EventDetailController implements Disposable {
 
       // Optimistic update: remove from received invites
       receivedInvitesStreamValue.addValue(const []);
+      _syncInviteDeckIndex(0);
     } finally {
       isLoadingStreamValue.addValue(false);
     }
@@ -200,11 +238,28 @@ class EventDetailController implements Disposable {
     }
   }
 
+  void setInviteDeckIndex(int index) {
+    if (index != inviteDeckIndexStreamValue.value) {
+      inviteDeckIndexStreamValue.addValue(index);
+    }
+  }
+
+  void _syncInviteDeckIndex(int invitesLength) {
+    if (invitesLength <= 0) {
+      setInviteDeckIndex(0);
+      return;
+    }
+    final clamped =
+        inviteDeckIndexStreamValue.value.clamp(0, invitesLength - 1);
+    setInviteDeckIndex(clamped);
+  }
+
   @override
   void onDispose() {
     eventStreamValue.dispose();
     isConfirmedStreamValue.dispose();
     receivedInvitesStreamValue.dispose();
+    inviteDeckIndexStreamValue.dispose();
     // sentInvitesByEventStreamValue is owned by repository, do not dispose
     friendsGoingStreamValue.dispose();
     totalConfirmedStreamValue.dispose();

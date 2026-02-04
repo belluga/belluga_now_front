@@ -9,10 +9,12 @@ class InvitesBannerBuilder extends StatefulWidget {
   const InvitesBannerBuilder({
     super.key,
     required this.onPressed,
+    this.controller,
     this.margin,
   });
 
   final VoidCallback onPressed;
+  final InvitesBannerBuilderController? controller;
   final EdgeInsets? margin;
 
   @override
@@ -20,8 +22,8 @@ class InvitesBannerBuilder extends StatefulWidget {
 }
 
 class _InvitesBannerBuilderState extends State<InvitesBannerBuilder> {
-  final InvitesBannerBuilderController _controller =
-      GetIt.I.get<InvitesBannerBuilderController>();
+  late final InvitesBannerBuilderController _controller =
+      widget.controller ?? GetIt.I.get<InvitesBannerBuilderController>();
 
   @override
   Widget build(BuildContext context) {

@@ -10,8 +10,8 @@ class ProfileRoutePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const ModuleScope<ProfileModule>(
-      child: ProfileScreen(),
+    return ModuleScope<ProfileModule>(
+      child: const ProfileScreen(),
     );
   }
 }

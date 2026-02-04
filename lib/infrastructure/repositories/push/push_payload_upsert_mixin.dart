@@ -1,5 +1,6 @@
 import 'package:belluga_now/domain/invites/invite_model.dart';
 import 'package:belluga_now/infrastructure/dal/dto/invites/invite_dto.dart';
+import 'package:belluga_now/infrastructure/dal/dto/mappers/invite_dto_mapper.dart';
 
 abstract class PushInvitePayloadAware {
   void applyInvitePushPayload(Map<String, dynamic> payload);
@@ -38,7 +39,7 @@ mixin PushPayloadUpsertMixin<T> {
   }
 }
 
-mixin PushInvitePayloadMixin on PushPayloadUpsertMixin<InviteModel> {
+mixin PushInvitePayloadMixin on PushPayloadUpsertMixin<InviteModel>, InviteDtoMapper {
   List<InviteModel> mergeInvitePayload({
     required List<InviteModel> current,
     required Map<String, dynamic> payload,
@@ -79,7 +80,7 @@ mixin PushInvitePayloadMixin on PushPayloadUpsertMixin<InviteModel> {
         continue;
       }
       try {
-        invites.add(InviteModel.fromDto(dto));
+        invites.add(mapInviteDto(dto));
       } catch (_) {
         // Skip invalid payload entries.
       }

@@ -1,9 +1,12 @@
+import 'dart:async';
 import 'dart:io';
 
+import 'package:belluga_now/domain/repositories/admin_mode_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/user/user_contract.dart';
-import 'package:belluga_now/infrastructure/repositories/auth_repository.dart';
-import 'package:belluga_now/infrastructure/repositories/app_data_repository.dart';
+import 'package:belluga_now/domain/user/profile_avatar_storage_contract.dart';
+import 'package:belluga_now/presentation/landlord/auth/controllers/landlord_login_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:image_picker/image_picker.dart';
@@ -13,21 +16,43 @@ import 'package:stream_value/core/stream_value.dart';
 class ProfileScreenController implements Disposable {
   ProfileScreenController({
     AuthRepositoryContract? authRepository,
-    AppDataRepository? appDataRepository,
+    AppDataRepositoryContract? appDataRepository,
+    AdminModeRepositoryContract? adminModeRepository,
+    LandlordLoginController? landlordLoginController,
+    ProfileAvatarStorageContract? avatarStorage,
   })  : _authRepository =
             authRepository ?? GetIt.I.get<AuthRepositoryContract>(),
         _appDataRepository =
-            appDataRepository ?? GetIt.I.get<AppDataRepository>();
+            appDataRepository ?? GetIt.I.get<AppDataRepositoryContract>(),
+        _adminModeRepository =
+            adminModeRepository ?? GetIt.I.get<AdminModeRepositoryContract>(),
+        _landlordLoginController =
+            landlordLoginController ?? GetIt.I.get<LandlordLoginController>(),
+        _avatarStorage =
+            avatarStorage ?? GetIt.I.get<ProfileAvatarStorageContract>() {
+    _bindUserStream();
+  }
 
   final AuthRepositoryContract _authRepository;
-  final AppDataRepository _appDataRepository;
+  final AppDataRepositoryContract _appDataRepository;
+  final AdminModeRepositoryContract _adminModeRepository;
+  final LandlordLoginController _landlordLoginController;
+  final ProfileAvatarStorageContract _avatarStorage;
+  StreamSubscription<UserContract?>? _userSubscription;
+
+  LandlordLoginController get landlordLoginController =>
+      _landlordLoginController;
 
   final TextEditingController nameController = TextEditingController();
   final TextEditingController descriptionController = TextEditingController();
   final TextEditingController emailController = TextEditingController();
   final TextEditingController phoneController = TextEditingController();
+  final TextEditingController editFieldController = TextEditingController();
+  final TextEditingController radiusKmController = TextEditingController();
   final StreamValue<String?> localAvatarPathStreamValue =
       StreamValue<String?>();
+  final StreamValue<int> formVersionStreamValue =
+      StreamValue<int>(defaultValue: 0);
   StreamValue<double> get maxRadiusMetersStreamValue =>
       _appDataRepository.maxRadiusMetersStreamValue;
 
@@ -42,14 +67,17 @@ class ProfileScreenController implements Disposable {
 
   StreamValue<ThemeMode?> get themeModeStreamValue =>
       _appDataRepository.themeModeStreamValue;
+  StreamValue<AdminMode> get modeStreamValue =>
+      _adminModeRepository.modeStreamValue;
+  bool get isAdminMode => _adminModeRepository.mode == AdminMode.landlord;
   ThemeMode get themeMode => _appDataRepository.themeMode;
   Future<void> setThemeMode(ThemeMode mode) =>
       _appDataRepository.setThemeMode(mode);
 
-  void syncFromUser(UserContract? user) {
-    if (user == null) return;
+  bool syncFromUser(UserContract? user) {
+    if (user == null) return false;
     final id = user.uuidValue.value.toString();
-    if (id == _syncedUserId) return;
+    if (id == _syncedUserId) return false;
     _syncedUserId = id;
     _initialName = user.profile.nameValue?.value ?? '';
     _initialEmail = user.profile.emailValue?.value ?? '';
@@ -58,17 +86,30 @@ class ProfileScreenController implements Disposable {
     nameController.text = _initialName;
     emailController.text = _initialEmail;
     // TODO(Delphi): Wire description and phone from user profile/custom data once available.
+    return true;
+  }
+
+  void _bindUserStream() {
+    _userSubscription?.cancel();
+    _userSubscription = userStreamValue.stream.listen((user) {
+      if (syncFromUser(user)) {
+        bumpFormVersion();
+      }
+    });
+    if (syncFromUser(userStreamValue.value)) {
+      bumpFormVersion();
+    }
   }
 
   Future<void> loadAvatarPath() async {
-    final stored = await AuthRepository.storage.read(key: _avatarStorageKey);
+    final stored = await _avatarStorage.readAvatarPath();
     if (stored == null || stored.trim().isEmpty) {
       localAvatarPathStreamValue.addValue(null);
       return;
     }
     final file = File(stored);
     if (!await file.exists()) {
-      await AuthRepository.storage.delete(key: _avatarStorageKey);
+      await _avatarStorage.clearAvatarPath();
       localAvatarPathStreamValue.addValue(null);
       return;
     }
@@ -80,6 +121,10 @@ class ProfileScreenController implements Disposable {
         emailController.text.trim() != _initialEmail.trim() ||
         descriptionController.text.trim() != _initialDescription.trim() ||
         phoneController.text.trim() != _initialPhone.trim();
+  }
+
+  void bumpFormVersion() {
+    formVersionStreamValue.addValue(formVersionStreamValue.value + 1);
   }
 
   Future<void> setMaxRadiusMeters(double meters) =>
@@ -112,10 +157,7 @@ class ProfileScreenController implements Disposable {
       }
     }
 
-    await AuthRepository.storage.write(
-      key: _avatarStorageKey,
-      value: saved.path,
-    );
+    await _avatarStorage.writeAvatarPath(saved.path);
     localAvatarPathStreamValue.addValue(saved.path);
   }
 
@@ -130,14 +172,20 @@ class ProfileScreenController implements Disposable {
 
   Future<void> logout() => _authRepository.logout();
 
+  Future<void> switchToUserMode() => _adminModeRepository.setUserMode();
+
+  Future<bool> ensureAdminMode() => _landlordLoginController.ensureAdminMode();
+
   @override
   void onDispose() {
+    _userSubscription?.cancel();
     nameController.dispose();
     descriptionController.dispose();
     emailController.dispose();
     phoneController.dispose();
+    editFieldController.dispose();
+    radiusKmController.dispose();
     localAvatarPathStreamValue.dispose();
+    formVersionStreamValue.dispose();
   }
 }
-
-const String _avatarStorageKey = 'profile_avatar_path';

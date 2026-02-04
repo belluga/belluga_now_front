@@ -3,11 +3,16 @@ import 'dart:async';
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/application/router/guards/landlord_route_guard.dart';
+import 'package:belluga_now/presentation/tenant_admin/shell/controllers/tenant_admin_shell_controller.dart';
 import 'package:get_it_modular_with_auto_route/get_it_modular_with_auto_route.dart';
 
 class TenantAdminModule extends ModuleContract {
   @override
-  FutureOr<void> registerDependencies() async {}
+  FutureOr<void> registerDependencies() async {
+    registerLazySingleton<TenantAdminShellController>(
+      () => TenantAdminShellController(),
+    );
+  }
 
   @override
   List<AutoRoute> get routes => [
@@ -30,20 +35,20 @@ class TenantAdminModule extends ModuleContract {
               page: TenantAdminAccountCreateRoute.page,
             ),
             AutoRoute(
-              path: 'accounts/:accountSlug',
-              page: TenantAdminAccountDetailRoute.page,
+              path: 'accounts/location-picker',
+              page: TenantAdminLocationPickerRoute.page,
             ),
             AutoRoute(
-              path: 'accounts/:accountSlug/profiles',
-              page: TenantAdminAccountProfilesListRoute.page,
+              path: 'accounts/:accountSlug',
+              page: TenantAdminAccountDetailRoute.page,
             ),
             AutoRoute(
               path: 'accounts/:accountSlug/profiles/create',
               page: TenantAdminAccountProfileCreateRoute.page,
             ),
             AutoRoute(
-              path: 'profiles/:accountProfileId',
-              page: TenantAdminAccountProfileDetailRoute.page,
+              path: 'accounts/:accountSlug/profiles/:accountProfileId/edit',
+              page: TenantAdminAccountProfileEditRoute.page,
             ),
             AutoRoute(
               path: 'organizations',
@@ -56,6 +61,26 @@ class TenantAdminModule extends ModuleContract {
             AutoRoute(
               path: 'organizations/:organizationId',
               page: TenantAdminOrganizationDetailRoute.page,
+            ),
+            AutoRoute(
+              path: 'profile-types',
+              page: TenantAdminProfileTypesListRoute.page,
+            ),
+            AutoRoute(
+              path: 'profile-types/create',
+              page: TenantAdminProfileTypeCreateRoute.page,
+            ),
+            AutoRoute(
+              path: 'profile-types/:profileType/edit',
+              page: TenantAdminProfileTypeEditRoute.page,
+            ),
+            AutoRoute(
+              path: 'taxonomies',
+              page: TenantAdminTaxonomiesListRoute.page,
+            ),
+            AutoRoute(
+              path: 'taxonomies/:taxonomyId/terms',
+              page: TenantAdminTaxonomyTermsRoute.page,
             ),
           ],
         ),

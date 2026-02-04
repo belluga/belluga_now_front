@@ -10,8 +10,8 @@ class CityMapRoutePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const ModuleScope<MapModule>(
-      child: MapScreen(),
+    return ModuleScope<MapModule>(
+      child: const MapScreen(),
     );
   }
 }

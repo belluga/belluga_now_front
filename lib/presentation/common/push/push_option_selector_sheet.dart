@@ -1,5 +1,9 @@
+import 'package:auto_route/auto_route.dart';
+import 'package:belluga_now/presentation/common/push/controllers/push_option_selector_controller.dart';
+import 'package:belluga_now/presentation/common/widgets/belluga_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:push_handler/push_handler.dart';
+import 'package:stream_value/core/stream_value_builder.dart';
 
 class PushOptionSelectorSheet extends StatefulWidget {
   const PushOptionSelectorSheet({
@@ -66,25 +70,20 @@ class PushOptionSelectorSheet extends StatefulWidget {
 }
 
 class _PushOptionSelectorSheetState extends State<PushOptionSelectorSheet> {
-  late final Set<dynamic> _selectedValues = _resolveInitialSelection();
+  late final PushOptionSelectorController _controller = _buildController();
 
-  Set<dynamic> _resolveInitialSelection() {
-    final selected = <dynamic>[];
-    selected.addAll(widget.initialSelected);
-    selected.addAll(
-      widget.options.where((option) => option.isSelected).map((option) => option.value),
+  PushOptionSelectorController _buildController() {
+    final defaults = widget.options
+        .where((option) => option.isSelected)
+        .map((option) => option.value)
+        .toList();
+    return PushOptionSelectorController(
+      selectionMode: widget.selectionMode,
+      minSelected: widget.minSelected,
+      maxSelected: widget.maxSelected,
+      initialSelected: widget.initialSelected,
+      optionDefaults: defaults,
     );
-    if (selected.isEmpty) {
-      return <dynamic>{};
-    }
-    if (widget.selectionMode == 'single') {
-      return {selected.first};
-    }
-    final max = widget.maxSelected;
-    if (max > 0 && selected.length > max) {
-      return selected.take(max).toSet();
-    }
-    return selected.toSet();
   }
 
   @override
@@ -93,73 +92,80 @@ class _PushOptionSelectorSheetState extends State<PushOptionSelectorSheet> {
         ? widget.title
         : 'Selecione seus favoritos';
     final bodyText = widget.body;
-    final canContinue = _isSelectionValid();
-
-    return Scaffold(
-      appBar: AppBar(
-        automaticallyImplyLeading: false,
-        title: Text(titleText),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.close),
-            onPressed: _closeSheet,
+    return StreamValueBuilder<Set<dynamic>>(
+      streamValue: _controller.selectedValuesStreamValue,
+      builder: (context, selectedValues) {
+        final canContinue = _controller.isSelectionValid();
+        return Scaffold(
+          appBar: AppBar(
+            automaticallyImplyLeading: false,
+            title: Text(titleText),
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.close),
+                onPressed: _closeSheet,
+              ),
+            ],
           ),
-        ],
-      ),
-      body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (bodyText.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-                child: Text(
-                  bodyText,
-                  style: Theme.of(context).textTheme.bodyMedium,
+          body: SafeArea(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (bodyText.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                    child: Text(
+                      bodyText,
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                  ),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: _buildOptions(context, selectedValues),
+                  ),
                 ),
-              ),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: _buildOptions(context),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-              child: SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: canContinue ? _closeSheet : null,
-                  child: const Text('Continuar'),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: canContinue ? _closeSheet : null,
+                      child: const Text('Continuar'),
+                    ),
+                  ),
                 ),
-              ),
+              ],
             ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 
-  Widget _buildOptions(BuildContext context) {
+  Widget _buildOptions(
+    BuildContext context,
+    Set<dynamic> selectedValues,
+  ) {
     switch (widget.layout) {
       case 'grid':
-        return _buildGrid(context);
+        return _buildGrid(context, selectedValues);
       case 'tags':
       case 'row':
-        return _buildChips(context);
+        return _buildChips(context, selectedValues);
       case 'list':
       default:
-        return _buildList(context);
+        return _buildList(context, selectedValues);
     }
   }
 
-  Widget _buildList(BuildContext context) {
+  Widget _buildList(BuildContext context, Set<dynamic> selectedValues) {
     return ListView.separated(
       itemCount: widget.options.length,
       separatorBuilder: (_, __) => const Divider(height: 1),
       itemBuilder: (context, index) {
         final option = widget.options[index];
-        final selected = _selectedValues.contains(option.value);
+        final selected = selectedValues.contains(option.value);
         final title = option.label ?? option.value?.toString() ?? '';
         final subtitle = option.subtitle;
         return CheckboxListTile(
@@ -172,7 +178,7 @@ class _PushOptionSelectorSheetState extends State<PushOptionSelectorSheet> {
     );
   }
 
-  Widget _buildGrid(BuildContext context) {
+  Widget _buildGrid(BuildContext context, Set<dynamic> selectedValues) {
     final columns = widget.gridColumns <= 0 ? 2 : widget.gridColumns;
     return GridView.builder(
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
@@ -184,7 +190,7 @@ class _PushOptionSelectorSheetState extends State<PushOptionSelectorSheet> {
       itemCount: widget.options.length,
       itemBuilder: (context, index) {
         final option = widget.options[index];
-        final selected = _selectedValues.contains(option.value);
+        final selected = selectedValues.contains(option.value);
         final title = option.label ?? option.value?.toString() ?? '';
         return InkWell(
           borderRadius: BorderRadius.circular(12),
@@ -209,13 +215,11 @@ class _PushOptionSelectorSheetState extends State<PushOptionSelectorSheet> {
               children: [
                 Expanded(
                   child: option.image != null && option.image!.isNotEmpty
-                      ? ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
-                          child: Image.network(
-                            option.image!,
-                            width: double.infinity,
-                            fit: BoxFit.cover,
-                          ),
+                      ? BellugaNetworkImage(
+                          option.image!,
+                          width: double.infinity,
+                          fit: BoxFit.cover,
+                          clipBorderRadius: BorderRadius.circular(8),
                         )
                       : const SizedBox.shrink(),
                 ),
@@ -234,13 +238,13 @@ class _PushOptionSelectorSheetState extends State<PushOptionSelectorSheet> {
     );
   }
 
-  Widget _buildChips(BuildContext context) {
+  Widget _buildChips(BuildContext context, Set<dynamic> selectedValues) {
     return SingleChildScrollView(
       child: Wrap(
         spacing: 8,
         runSpacing: 8,
         children: widget.options.map((option) {
-          final selected = _selectedValues.contains(option.value);
+          final selected = selectedValues.contains(option.value);
           final title = option.label ?? option.value?.toString() ?? '';
           return option.customWidgetBuilder != null
               ? InkWell(
@@ -261,50 +265,10 @@ class _PushOptionSelectorSheetState extends State<PushOptionSelectorSheet> {
   }
 
   void _toggle(OptionItem option) {
-    final isSelected = _selectedValues.contains(option.value);
-    final selectionMode = widget.selectionMode;
-    if (selectionMode == 'single') {
-      setState(() {
-        if (isSelected) {
-          _selectedValues.remove(option.value);
-          return;
-        }
-        _selectedValues
-          ..clear()
-          ..add(option.value);
-      });
-      return;
-    }
-    final max = widget.maxSelected;
-    if (!isSelected && max > 0 && _selectedValues.length >= max) {
-      return;
-    }
-    setState(() {
-      if (isSelected) {
-        _selectedValues.remove(option.value);
-      } else {
-        _selectedValues.add(option.value);
-      }
-    });
-  }
-
-  bool _isSelectionValid() {
-    final selectionMode = widget.selectionMode;
-    if (selectionMode == 'single') {
-      return _selectedValues.length == 1;
-    }
-    final min = widget.minSelected;
-    final max = widget.maxSelected;
-    if (max > 0 && _selectedValues.length > max) {
-      return false;
-    }
-    if (min <= 0) {
-      return true;
-    }
-    return _selectedValues.length >= min;
+    _controller.toggle(option.value);
   }
 
   void _closeSheet() {
-    Navigator.of(context).pop(_selectedValues.toList());
+    context.router.pop(_controller.selectedValues.toList());
   }
 }

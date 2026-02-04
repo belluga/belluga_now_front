@@ -1,4 +1,5 @@
 import 'package:belluga_now/presentation/tenant/discovery/models/curator_content.dart';
+import 'package:belluga_now/presentation/common/widgets/belluga_network_image.dart';
 import 'package:flutter/material.dart';
 
 class CuratorContentCard extends StatelessWidget {
@@ -22,10 +23,10 @@ class CuratorContentCard extends StatelessWidget {
             fit: StackFit.expand,
             children: [
               if (content.imageUrl.isNotEmpty)
-                Image.network(
+                BellugaNetworkImage(
                   content.imageUrl,
                   fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => Container(
+                  errorWidget: Container(
                     color: colorScheme.surfaceContainerHighest,
                     child: const Center(
                       child: Icon(Icons.broken_image, size: 32),

@@ -10,4 +10,14 @@ class CustomScrollBehavior extends MaterialScrollBehavior {
         PointerDeviceKind.mouse,
         // etc.
       };
+
+  @override
+  Widget buildOverscrollIndicator(
+    BuildContext context,
+    Widget child,
+    ScrollableDetails details,
+  ) {
+    // Disable stretch/glow indicators to avoid build-scheduled-during-frame warnings.
+    return child;
+  }
 }

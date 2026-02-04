@@ -5,15 +5,15 @@ import 'package:belluga_now/domain/favorite/projections/favorite_resume.dart';
 import 'package:belluga_now/domain/favorite/value_objects/favorite_badge_font_family_value.dart';
 import 'package:belluga_now/domain/favorite/value_objects/favorite_badge_font_package_value.dart';
 import 'package:belluga_now/domain/favorite/value_objects/favorite_badge_icon_value.dart';
-import 'package:belluga_now/domain/partners/partner_model.dart';
+import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/domain/repositories/favorite_repository_contract.dart';
-import 'package:belluga_now/domain/repositories/partners_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/account_profiles_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
 import 'package:belluga_now/domain/value_objects/asset_path_value.dart';
 import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
 import 'package:belluga_now/domain/value_objects/title_value.dart';
 import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
-import 'package:belluga_now/infrastructure/repositories/app_data_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart' show Disposable, GetIt;
 import 'package:stream_value/core/stream_value.dart';
@@ -21,28 +21,30 @@ import 'package:stream_value/core/stream_value.dart';
 class FavoritesSectionController implements Disposable {
   FavoritesSectionController({
     FavoriteRepositoryContract? favoriteRepository,
-    PartnersRepositoryContract? partnersRepository,
+    AccountProfilesRepositoryContract? partnersRepository,
     ScheduleRepositoryContract? scheduleRepository,
-    AppDataRepository? appDataRepository,
+    AppDataRepositoryContract? appDataRepository,
   })  : _favoriteRepository =
             favoriteRepository ?? GetIt.I.get<FavoriteRepositoryContract>(),
         _partnersRepository =
-            partnersRepository ?? GetIt.I.get<PartnersRepositoryContract>(),
+            partnersRepository ?? GetIt.I.get<AccountProfilesRepositoryContract>(),
         _scheduleRepository =
             scheduleRepository ?? GetIt.I.get<ScheduleRepositoryContract>(),
         _appDataRepository =
-            appDataRepository ?? GetIt.I.get<AppDataRepository>();
+            appDataRepository ?? GetIt.I.get<AppDataRepositoryContract>();
 
   final FavoriteRepositoryContract _favoriteRepository;
-  final PartnersRepositoryContract _partnersRepository;
+  final AccountProfilesRepositoryContract _partnersRepository;
   final ScheduleRepositoryContract _scheduleRepository;
-  final AppDataRepository _appDataRepository;
+  final AppDataRepositoryContract _appDataRepository;
 
   final StreamValue<List<FavoriteResume>?> favoritesStreamValue =
       StreamValue<List<FavoriteResume>?>();
+  final StreamValue<FavoriteNavigationTarget?> navigationTargetStreamValue =
+      StreamValue<FavoriteNavigationTarget?>(defaultValue: null);
 
   StreamSubscription? _partnersSubscription;
-  List<PartnerModel> _favoritePartnersCache = const [];
+  List<AccountProfileModel> _favoritePartnersCache = const [];
   List<VenueEventResume> _upcomingEventsCache = const [];
 
   Future<void> init() async {
@@ -51,7 +53,7 @@ class FavoritesSectionController implements Disposable {
 
     _partnersSubscription?.cancel();
     _partnersSubscription =
-        _partnersRepository.favoritePartnerIdsStreamValue.stream.listen((_) {
+        _partnersRepository.favoriteAccountProfileIdsStreamValue.stream.listen((_) {
       _loadFavorites();
     });
   }
@@ -91,12 +93,12 @@ class FavoritesSectionController implements Disposable {
         return fav;
       }).toList();
 
-      final partnerFavorites = _partnersRepository.getFavoritePartners();
+      final partnerFavorites = _partnersRepository.getFavoriteAccountProfiles();
       _favoritePartnersCache = partnerFavorites;
       final partnerResumes = partnerFavorites.map((partner) {
         final hasAvatar =
             partner.avatarUrl != null && partner.avatarUrl!.isNotEmpty;
-        final badgeIcon = _getPartnerTypeIcon(partner.type);
+        final badgeIcon = _getAccountProfileTypeIcon(partner.type);
         final badge = FavoriteBadge(
           iconValue: FavoriteBadgeIconValue()
             ..parse(badgeIcon.codePoint.toString()),
@@ -144,6 +146,33 @@ class FavoritesSectionController implements Disposable {
       primaryColor: primaryColor,
       isPrimary: true,
     );
+  }
+
+  Future<FavoriteNavigationTarget> resolveNavigationTarget(
+    FavoriteResume favorite,
+  ) async {
+    if (favorite.isPrimary) {
+      return const FavoriteNavigationPrimary();
+    }
+
+    final slug = favorite.slug;
+    if (slug != null && slug.isNotEmpty) {
+      final partner = await _partnersRepository.getAccountProfileBySlug(slug);
+      if (partner != null) {
+        return FavoriteNavigationPartner(slug: partner.slug);
+      }
+    }
+
+    return FavoriteNavigationSearch(query: favorite.title.trim());
+  }
+
+  Future<void> requestNavigationTarget(FavoriteResume favorite) async {
+    final target = await resolveNavigationTarget(favorite);
+    navigationTargetStreamValue.addValue(target);
+  }
+
+  void clearNavigationTarget() {
+    navigationTargetStreamValue.addValue(null);
   }
 
   void _resortFavoritesByUpcomingEvents() {
@@ -236,18 +265,20 @@ class FavoritesSectionController implements Disposable {
     return keys.where((key) => key.isNotEmpty).toSet();
   }
 
-  IconData _getPartnerTypeIcon(PartnerType type) {
+  IconData _getAccountProfileTypeIcon(String type) {
     switch (type) {
-      case PartnerType.artist:
+      case 'artist':
         return Icons.person;
-      case PartnerType.venue:
+      case 'venue':
         return Icons.place;
-      case PartnerType.experienceProvider:
+      case 'experience_provider':
         return Icons.local_activity;
-      case PartnerType.influencer:
+      case 'influencer':
         return Icons.camera_alt;
-      case PartnerType.curator:
+      case 'curator':
         return Icons.verified_user;
+      default:
+        return Icons.account_circle;
     }
   }
 
@@ -267,5 +298,26 @@ class FavoritesSectionController implements Disposable {
   void onDispose() {
     _partnersSubscription?.cancel();
     favoritesStreamValue.dispose();
+    navigationTargetStreamValue.dispose();
   }
+}
+
+sealed class FavoriteNavigationTarget {
+  const FavoriteNavigationTarget();
+}
+
+class FavoriteNavigationPrimary extends FavoriteNavigationTarget {
+  const FavoriteNavigationPrimary();
+}
+
+class FavoriteNavigationPartner extends FavoriteNavigationTarget {
+  const FavoriteNavigationPartner({required this.slug});
+
+  final String slug;
+}
+
+class FavoriteNavigationSearch extends FavoriteNavigationTarget {
+  const FavoriteNavigationSearch({required this.query});
+
+  final String query;
 }

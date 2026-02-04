@@ -22,41 +22,75 @@ class ImagePaletteTheme extends StatefulWidget {
 }
 
 class _ImagePaletteThemeState extends State<ImagePaletteTheme> {
-  static final Map<Object, Future<ColorScheme>> _cache = {};
-  late final Future<ColorScheme> _schemeFuture;
+  static final Map<Object, ColorScheme> _cache = {};
+  Object? _currentKey;
+  ColorScheme? _scheme;
+  int _loadToken = 0;
 
   @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    _schemeFuture = _fetchScheme();
+  void initState() {
+    super.initState();
+    final token = ++_loadToken;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (token != _loadToken) return;
+      _loadScheme(token);
+    });
   }
 
-  Future<ColorScheme> _fetchScheme() {
+  @override
+  void didUpdateWidget(covariant ImagePaletteTheme oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.imageProvider != widget.imageProvider ||
+        oldWidget.fallbackScheme != widget.fallbackScheme) {
+      _loadScheme(++_loadToken);
+    }
+  }
+
+  Future<void> _loadScheme(int token) async {
     final fallback = widget.fallbackScheme ?? Theme.of(context).colorScheme;
     final key = widget.imageProvider;
-    if (_cache.containsKey(key)) return _cache[key]!;
-    final future = ColorSchemeGenerator.fromImageProvider(
+    if (key == _currentKey && _scheme != null) {
+      return;
+    }
+    _currentKey = key;
+    if (_cache.containsKey(key)) {
+      setState(() {
+        _scheme = _cache[key];
+      });
+      return;
+    }
+
+    setState(() {
+      _scheme = null;
+    });
+    final scheme = await ColorSchemeGenerator.fromImageProvider(
       widget.imageProvider,
       fallback: fallback,
     );
-    _cache[key] = future;
-    return future;
+    if (token != _loadToken || _currentKey != key) {
+      return;
+    }
+    _cache[key] = scheme;
+    setState(() {
+      _scheme = scheme;
+    });
+  }
+
+  @override
+  void dispose() {
+    _loadToken++;
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<ColorScheme>(
-      future: _schemeFuture,
-      builder: (context, snapshot) {
-        if (!snapshot.hasData) {
-          return const Center(child: CircularProgressIndicator());
-        }
-        final scheme = snapshot.data!;
-        return Theme(
-          data: Theme.of(context).copyWith(colorScheme: scheme),
-          child: widget.builder(context, scheme),
-        );
-      },
+    final scheme = _scheme;
+    if (scheme == null) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    return Theme(
+      data: Theme.of(context).copyWith(colorScheme: scheme),
+      child: widget.builder(context, scheme),
     );
   }
 }

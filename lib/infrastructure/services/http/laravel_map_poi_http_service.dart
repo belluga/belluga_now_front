@@ -1,6 +1,6 @@
 import 'package:belluga_now/infrastructure/dal/dao/backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/backend_context.dart';
-import 'package:belluga_now/infrastructure/dal/datasources/poi_query.dart';
+import 'package:belluga_now/domain/map/queries/poi_query.dart';
 import 'package:belluga_now/infrastructure/dal/dto/map/city_poi_dto.dart';
 import 'package:dio/dio.dart';
 import 'package:get_it/get_it.dart';

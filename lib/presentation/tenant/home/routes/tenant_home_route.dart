@@ -10,8 +10,8 @@ class TenantHomeRoutePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const ModuleScope<HomeModule>(
-      child: TenantHomeScreen(),
+    return ModuleScope<HomeModule>(
+      child: const TenantHomeScreen(),
     );
   }
 }

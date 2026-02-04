@@ -9,10 +9,12 @@ class HomeAgendaSection extends StatefulWidget {
   const HomeAgendaSection({
     super.key,
     required this.builder,
+    this.controller,
   });
 
   final Widget Function(BuildContext context, HomeAgendaSectionSlots slots)
       builder;
+  final TenantHomeAgendaController? controller;
 
   @override
   State<HomeAgendaSection> createState() => _HomeAgendaSectionState();
@@ -20,7 +22,7 @@ class HomeAgendaSection extends StatefulWidget {
 
 class _HomeAgendaSectionState extends State<HomeAgendaSection> {
   late final TenantHomeAgendaController _controller =
-      GetIt.I.get<TenantHomeAgendaController>();
+      widget.controller ?? GetIt.I.get<TenantHomeAgendaController>();
 
   @override
   void initState() {
@@ -32,12 +34,6 @@ class _HomeAgendaSectionState extends State<HomeAgendaSection> {
     await _controller.init(startWithHistory: false);
     _controller.setInviteFilter(InviteFilter.none);
     _controller.setSearchActive(false);
-  }
-
-  @override
-  void dispose() {
-    _controller.onDispose();
-    super.dispose();
   }
 
   @override

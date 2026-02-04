@@ -45,6 +45,10 @@ abstract class CreatePasswordControllerContract extends Disposable {
     generalErrorStreamValue.addValue(null);
   }
 
+  void clearGeneralError() {
+    generalErrorStreamValue.addValue(null);
+  }
+
   bool validate() => newPasswordFormKey.currentState?.validate() ?? false;
 
   Future<void> createPassword() async {

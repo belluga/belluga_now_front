@@ -9,11 +9,17 @@ import 'package:belluga_now/domain/user/value_objects/user_avatar_value.dart';
 import 'package:belluga_now/domain/user/value_objects/user_display_name_value.dart';
 import 'package:belluga_now/domain/user/value_objects/user_id_value.dart';
 import 'package:belluga_now/infrastructure/dal/datasources/mock_invites_database.dart';
+import 'package:belluga_now/infrastructure/dal/dto/mappers/invite_dto_mapper.dart';
+import 'package:belluga_now/infrastructure/dal/dto/mappers/invite_status_dto_mapper.dart';
 import 'package:belluga_now/infrastructure/repositories/push/push_payload_upsert_mixin.dart';
 import 'package:get_it/get_it.dart';
 
 class InvitesRepository extends InvitesRepositoryContract
-    with PushPayloadUpsertMixin<InviteModel>, PushInvitePayloadMixin
+    with
+        InviteDtoMapper,
+        InviteStatusDtoMapper,
+        PushPayloadUpsertMixin<InviteModel>,
+        PushInvitePayloadMixin
     implements PushInvitePayloadAware {
   InvitesRepository({
     MockInvitesDatabase? database,
@@ -28,7 +34,7 @@ class InvitesRepository extends InvitesRepositoryContract
   @override
   Future<List<InviteModel>> fetchInvites() async {
     final dtos = _database.invites;
-    return dtos.map((dto) => InviteModel.fromDto(dto)).toList();
+    return dtos.map(mapInviteDto).toList();
   }
 
   @override
@@ -66,7 +72,7 @@ class InvitesRepository extends InvitesRepositoryContract
       String eventSlug) async {
     final invitesData = _database.getSentInvitesForEvent(eventSlug);
     return invitesData
-        .map((data) => SentInviteStatus.fromDto(data))
+        .map(mapSentInviteStatus)
         .toList(growable: false);
   }
 

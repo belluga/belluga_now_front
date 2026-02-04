@@ -14,6 +14,7 @@ import 'package:belluga_now/presentation/tenant/schedule/screens/immersive_event
 import 'package:belluga_now/presentation/tenant/schedule/screens/immersive_event_detail/widgets/lineup_section.dart';
 import 'package:belluga_now/presentation/tenant/schedule/screens/immersive_event_detail/widgets/location_section.dart';
 import 'package:belluga_now/presentation/tenant/schedule/screens/immersive_event_detail/widgets/mission_widget.dart';
+import 'package:belluga_now/presentation/tenant/schedule/screens/immersive_event_detail/widgets/overlapped_invite_avatars.dart';
 import 'package:belluga_now/presentation/tenant/schedule/screens/event_detail_screen/widgets/swipeable_invite_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
@@ -41,7 +42,8 @@ class ImmersiveEventDetailScreen extends StatefulWidget {
 
 class _ImmersiveEventDetailScreenState
     extends State<ImmersiveEventDetailScreen> {
-  final _controller = GetIt.I.get<ImmersiveEventDetailController>();
+  final ImmersiveEventDetailController _controller =
+      GetIt.I.get<ImmersiveEventDetailController>();
 
   @override
   void initState() {
@@ -261,7 +263,7 @@ Widget _buildInviteFooter(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              _OverlappedAvatars(invites: sentInvites),
+              OverlappedInviteAvatars(invites: sentInvites),
               const SizedBox(height: 4),
               ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 220),
@@ -291,145 +293,4 @@ String _inviteSummary(List<SentInviteStatus> shown) {
       shown.where((invite) => invite.status != InviteStatus.accepted).length;
   final confirmed = shown.length - pending;
   return '$pending pendentes | $confirmed confirmados';
-}
-
-class _InviteAvatar extends StatelessWidget {
-  const _InviteAvatar(this.invite);
-
-  final SentInviteStatus invite;
-
-  @override
-  Widget build(BuildContext context) {
-    final badge = invite.status == InviteStatus.accepted
-        ? Icons.check_circle
-        : Icons.hourglass_bottom;
-    final badgeColor =
-        invite.status == InviteStatus.accepted ? Colors.green : Colors.orange;
-
-    final url = invite.friend.avatarUrl;
-    final display = invite.friend.displayName;
-
-    return Stack(
-      clipBehavior: Clip.none,
-      children: [
-        CircleAvatar(
-          radius: 16,
-          backgroundImage:
-              url != null && url.isNotEmpty ? NetworkImage(url) : null,
-          child: (url == null || url.isEmpty)
-              ? Text(
-                  display.isNotEmpty ? display[0].toUpperCase() : '?',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 12,
-                  ),
-                )
-              : null,
-        ),
-        Positioned(
-          bottom: -2,
-          right: -2,
-          child: Container(
-            padding: const EdgeInsets.all(2),
-            decoration: const BoxDecoration(
-              shape: BoxShape.circle,
-              color: Colors.white,
-            ),
-            child: Icon(
-              badge,
-              color: badgeColor,
-              size: 12,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _OverlappedAvatars extends StatelessWidget {
-  const _OverlappedAvatars({required this.invites});
-
-  final List<SentInviteStatus> invites;
-
-  @override
-  Widget build(BuildContext context) {
-    if (invites.isEmpty) return const SizedBox.shrink();
-
-    final cappedCount = invites.length > 3 ? 3 : invites.length;
-    final displayInvites = invites.take(cappedCount).toList();
-    final remaining = invites.length - cappedCount;
-
-    final items = <Widget>[];
-    for (var i = 0; i < displayInvites.length; i++) {
-      items.add(Positioned(
-        left: i * 18.0,
-        child: _InviteAvatar(displayInvites[i]),
-      ));
-    }
-
-    // Final slot shows +X or empty placeholder
-    items.add(Positioned(
-      left: cappedCount * 18.0,
-      child: remaining > 0
-          ? _PlusAvatar(remaining)
-          : const _PlusAvatar(0, isEmptySlot: true),
-    ));
-
-    final totalItems = cappedCount + 1;
-    final width = totalItems * 18.0 + 16.0;
-
-    return SizedBox(
-      width: width,
-      height: 36,
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: items,
-      ),
-    );
-  }
-}
-
-class _PlusAvatar extends StatelessWidget {
-  const _PlusAvatar(this.count, {this.isEmptySlot = false});
-
-  final int count;
-  final bool isEmptySlot;
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final baseOnSurface = colorScheme.onSurface;
-    final bgColor = isEmptySlot
-        ? baseOnSurface.withValues(alpha: 0.08)
-        : baseOnSurface.withValues(alpha: 0.16);
-    final borderColor = baseOnSurface.withValues(alpha: 0.28);
-
-    return CircleAvatar(
-      radius: 16,
-      backgroundColor: Colors.transparent,
-      child: Container(
-        width: 32,
-        height: 32,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: bgColor,
-          border: Border.all(color: borderColor, style: BorderStyle.solid),
-        ),
-        child: Center(
-          child: isEmptySlot
-              ? Icon(Icons.person_outline,
-                  size: 16, color: baseOnSurface.withValues(alpha: 0.65))
-              : Text(
-                  '+$count',
-                  style: TextStyle(
-                    color: baseOnSurface,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 11,
-                  ),
-                ),
-        ),
-      ),
-    );
-  }
 }

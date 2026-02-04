@@ -1,6 +1,7 @@
 import 'dart:ui';
 
 import 'package:belluga_now/application/extensions/event_data_formating.dart';
+import 'package:belluga_now/presentation/common/widgets/belluga_network_image.dart';
 import 'package:belluga_now/presentation/tenant/widgets/event_info_row.dart';
 import 'package:belluga_now/presentation/tenant/widgets/invite_status_icon.dart';
 import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
@@ -50,10 +51,10 @@ class EventLiveNowCard extends StatelessWidget {
               children: [
                   ImageFiltered(
                     imageFilter: ImageFilter.blur(sigmaX: 4, sigmaY: 4),
-                    child: Image.network(
+                    child: BellugaNetworkImage(
                       event.imageUri.toString(),
                       fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => Container(
+                      errorWidget: Container(
                         color: colorScheme.surfaceContainerHighest,
                         child: Icon(
                           Icons.broken_image,

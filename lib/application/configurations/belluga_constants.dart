@@ -5,7 +5,10 @@ import 'package:get_it/get_it.dart';
 import 'package:belluga_now/infrastructure/dal/dao/backend_routing_policy.dart';
 
 class BellugaConstants {
-  static final landlordDomain = "belluga.app";
+  static const landlordDomain =
+      String.fromEnvironment('LANDLORD_DOMAIN', defaultValue: 'belluga.app');
+  static const apiScheme =
+      String.fromEnvironment('API_SCHEME', defaultValue: 'https');
   static const backendRoutingPolicy = BackendRoutingPolicy();
   static final settings = _SettingsConstants();
   static final api = _ApiConstants();
@@ -15,9 +18,9 @@ class BellugaConstants {
 class _ApiConstants {
   AppData get _appData => GetIt.I.get<AppData>();
 
-  String get adminUrl => '${_appData.schema}://${_appData.hostname}/admin/api';
+  String get adminUrl => '${_appData.mainDomainValue.value.origin}/admin/api';
 
-  String get baseUrl => '${_appData.schema}://${_appData.hostname}/api';
+  String get baseUrl => '${_appData.mainDomainValue.value.origin}/api';
 }
 
 class _SettingsConstants {

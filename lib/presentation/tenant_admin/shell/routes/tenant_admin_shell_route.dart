@@ -10,8 +10,8 @@ class TenantAdminShellRoutePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const ModuleScope<TenantAdminModule>(
-      child: TenantAdminShellScreen(),
+    return ModuleScope<TenantAdminModule>(
+      child: const TenantAdminShellScreen(),
     );
   }
 }

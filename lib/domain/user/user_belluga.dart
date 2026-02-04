@@ -1,6 +1,5 @@
 import 'package:belluga_now/domain/user/user_contract.dart';
 import 'package:belluga_now/domain/user/user_profile.dart';
-import 'package:belluga_now/infrastructure/user/dtos/user_dto.dart';
 import 'package:value_object_pattern/domain/value_objects/mongo_id_value.dart';
 
 class UserBelluga extends UserContract {
@@ -10,11 +9,15 @@ class UserBelluga extends UserContract {
     super.customData,
   });
 
-  factory UserBelluga.fromDto(UserDto dto) {
+  factory UserBelluga.fromPrimitives({
+    required String id,
+    required UserProfile profile,
+    Map<String, Object?>? customData,
+  }) {
     return UserBelluga(
-      uuidValue: MongoIDValue(defaultValue: dto.id)..parse(dto.id),
-      profile: UserProfile.fromDto(dto.profile),
-      customData: dto.customData,
+      uuidValue: MongoIDValue(defaultValue: id)..parse(id),
+      profile: profile,
+      customData: customData,
     );
   }
 }

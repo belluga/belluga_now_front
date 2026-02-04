@@ -24,7 +24,7 @@ class PartnerResume {
   final MongoIDValue idValue;
   final InvitePartnerNameValue nameValue;
   final SlugValue? slugValue;
-  final InvitePartnerType type;
+  final InviteAccountProfileType type;
   final InvitePartnerTaglineValue taglineValue;
   final InvitePartnerHeroImageValue heroImageValue;
   final InvitePartnerLogoImageValue logoImageValue;
@@ -42,27 +42,4 @@ class PartnerResume {
   String? get heroImageUrl => heroImageUri?.toString();
   String? get logoImageUrl => logoImageUri?.toString();
 
-  factory PartnerResume.fromDto(Map<String, dynamic> dto) {
-    SlugValue? slugValue;
-    final slug = dto['slug']?.toString();
-    if (slug != null && slug.isNotEmpty) {
-      slugValue = SlugValue()..parse(slug);
-    }
-    return PartnerResume(
-      idValue: MongoIDValue()..parse(dto['id'] ?? ''),
-      nameValue: InvitePartnerNameValue()..parse(dto['display_name'] ?? ''),
-      slugValue: slugValue,
-      type: InvitePartnerType
-          .mercadoProducer, // TODO: Expand enum or use string when Partner types are defined
-      taglineValue: dto['tagline'] != null
-          ? (InvitePartnerTaglineValue()..parse(dto['tagline']))
-          : null,
-      logoImageValue: dto['logo_url'] != null
-          ? (InvitePartnerLogoImageValue()..parse(dto['logo_url']))
-          : null,
-      heroImageValue: dto['hero_image_url'] != null
-          ? (InvitePartnerHeroImageValue()..parse(dto['hero_image_url']))
-          : null,
-    );
-  }
 }

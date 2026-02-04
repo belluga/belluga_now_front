@@ -1,6 +1,7 @@
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/presentation/tenant/map/screens/map_screen/widgets/shared/event_temporal_state.dart';
 import 'package:belluga_now/presentation/tenant/map/screens/map_screen/widgets/shared/marker_fallback_icon.dart';
+import 'package:belluga_now/presentation/common/widgets/belluga_network_image.dart';
 import 'package:flutter/material.dart';
 
 class MarkerCore extends StatelessWidget {
@@ -44,11 +45,10 @@ class MarkerCore extends StatelessWidget {
       decoration: decoration,
       clipBehavior: Clip.antiAlias,
       child: imageUrl != null
-          ? Image.network(
+          ? BellugaNetworkImage(
               imageUrl,
               fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) =>
-                  MarkerFallbackIcon(color: activeColor),
+              errorWidget: MarkerFallbackIcon(color: activeColor),
             )
           : MarkerFallbackIcon(color: activeColor),
     );

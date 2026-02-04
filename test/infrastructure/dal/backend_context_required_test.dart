@@ -4,12 +4,12 @@ import 'package:belluga_now/infrastructure/services/push/push_option_source_reso
 import 'package:belluga_now/infrastructure/services/push/push_transport_configurator.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/user/user_contract.dart';
-import 'package:belluga_now/domain/partners/partner_model.dart';
+import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/infrastructure/dal/dao/app_data_backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/auth_backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/favorite_backend_contract.dart';
-import 'package:belluga_now/infrastructure/dal/dao/partners_backend_contract.dart';
+import 'package:belluga_now/infrastructure/dal/dao/account_profiles_backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/tenant_backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/venue_event_backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/backend_context.dart';
@@ -145,7 +145,7 @@ class _NoopBackend extends BackendContract {
   TenantBackendContract get tenant => throw UnimplementedError();
 
   @override
-  PartnersBackendContract get partners => _NoopPartnersBackend();
+  AccountProfilesBackendContract get accountProfiles => _NoopAccountProfilesBackend();
 
   @override
   FavoriteBackendContract get favorites => throw UnimplementedError();
@@ -162,18 +162,18 @@ class _NoopAppDataBackend extends AppDataBackendContract {
   Future<AppDataDTO> fetch() => throw UnimplementedError();
 }
 
-class _NoopPartnersBackend implements PartnersBackendContract {
+class _NoopAccountProfilesBackend implements AccountProfilesBackendContract {
   @override
-  Future<List<PartnerModel>> fetchPartners() => throw UnimplementedError();
+  Future<List<AccountProfileModel>> fetchAccountProfiles() => throw UnimplementedError();
 
   @override
-  Future<List<PartnerModel>> searchPartners({
+  Future<List<AccountProfileModel>> searchAccountProfiles({
     String? query,
-    PartnerType? typeFilter,
+    String? typeFilter,
   }) =>
       throw UnimplementedError();
 
   @override
-  Future<PartnerModel?> fetchPartnerBySlug(String slug) =>
+  Future<AccountProfileModel?> fetchAccountProfileBySlug(String slug) =>
       throw UnimplementedError();
 }

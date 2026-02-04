@@ -18,7 +18,7 @@ class InvitePartnerSummary {
 
   final String id;
   final InvitePartnerNameValue nameValue;
-  final InvitePartnerType type;
+  final InviteAccountProfileType type;
   final InvitePartnerTaglineValue taglineValue;
   final InvitePartnerHeroImageValue heroImageValue;
   final InvitePartnerLogoImageValue logoImageValue;

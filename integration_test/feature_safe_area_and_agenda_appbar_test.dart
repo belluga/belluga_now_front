@@ -29,18 +29,19 @@ import 'package:integration_test/integration_test.dart';
 import 'package:stream_value/core/stream_value.dart';
 
 import 'package:belluga_now/application/router/guards/location_permission_state.dart';
+import 'support/integration_test_bootstrap.dart';
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
+  IntegrationTestBootstrap.ensureNonProductionLandlordDomain();
 
   testWidgets('LocationPermissionScreen uses SafeArea', (tester) async {
     final getIt = GetIt.I;
     if (getIt.isRegistered<LocationPermissionController>()) {
       getIt.unregister<LocationPermissionController>();
     }
-    getIt.registerSingleton<LocationPermissionController>(
-      LocationPermissionController(),
-    );
+    final controller = LocationPermissionController();
+    getIt.registerSingleton<LocationPermissionController>(controller);
     addTearDown(() {
       if (getIt.isRegistered<LocationPermissionController>()) {
         getIt.unregister<LocationPermissionController>();
@@ -48,7 +49,7 @@ void main() {
     });
 
     await tester.pumpWidget(
-      const MaterialApp(
+      MaterialApp(
         home: LocationPermissionScreen(
           initialState: LocationPermissionState.denied,
         ),
@@ -60,6 +61,18 @@ void main() {
   });
 
   testWidgets('LocationNotLiveScreen uses SafeArea', (tester) async {
+    final getIt = GetIt.I;
+    if (getIt.isRegistered<LocationPermissionController>()) {
+      getIt.unregister<LocationPermissionController>();
+    }
+    final controller = LocationPermissionController();
+    getIt.registerSingleton<LocationPermissionController>(controller);
+    addTearDown(() {
+      if (getIt.isRegistered<LocationPermissionController>()) {
+        getIt.unregister<LocationPermissionController>();
+      }
+    });
+
     await tester.pumpWidget(
       MaterialApp(
         home: LocationNotLiveScreen(
@@ -94,7 +107,7 @@ void main() {
     );
 
     await tester.pumpWidget(
-      const MediaQuery(
+      MediaQuery(
         data: MediaQueryData(padding: EdgeInsets.only(top: 24)),
         child: MaterialApp(
           home: EventSearchScreen(),
@@ -130,6 +143,7 @@ void main() {
       MaterialApp(
         home: Scaffold(
           body: HomeAgendaSection(
+            controller: controller,
             builder: (context, slots) {
               return CustomScrollView(
                 slivers: [

@@ -3,27 +3,22 @@ import 'package:belluga_now/presentation/common/auth/widgets/auth_email_field.da
 import 'package:belluga_now/presentation/common/auth/widgets/auth_password_field.dart';
 import 'package:belluga_now/presentation/tenant/auth/login/controllers/auth_login_controller_contract.dart';
 import 'package:flutter/material.dart';
-import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 
 class AuthLoginForm extends StatefulWidget {
-  const AuthLoginForm({super.key}) : controller = null;
-
-  @visibleForTesting
-  const AuthLoginForm.withController(
-    this.controller, {
+  const AuthLoginForm({
     super.key,
+    required this.controller,
   });
 
-  final AuthLoginControllerContract? controller;
+  final AuthLoginControllerContract controller;
 
   @override
   State<AuthLoginForm> createState() => _AuthLoginFormState();
 }
 
 class _AuthLoginFormState extends State<AuthLoginForm> {
-  AuthLoginControllerContract get _controller =>
-      widget.controller ?? GetIt.I.get<AuthLoginControllerContract>();
+  AuthLoginControllerContract get _controller => widget.controller;
 
   @override
   Widget build(BuildContext context) {

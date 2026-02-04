@@ -1,8 +1,12 @@
-import 'package:belluga_now/domain/partner/partner_resume.dart';
-import 'package:belluga_now/domain/partners/partner_model.dart';
-import 'package:belluga_now/domain/schedule/event_model.dart';
+import 'package:belluga_now/domain/partners/account_profile_model.dart';
+import 'package:belluga_now/domain/partners/services/partner_profile_config_builder.dart';
 import 'package:belluga_now/infrastructure/dal/dao/mock_backend/mock_schedule_backend.dart';
-import 'package:belluga_now/infrastructure/dal/datasources/mock_partner_profile_database.dart';
+import 'package:belluga_now/infrastructure/dal/dto/mappers/artist_dto_mapper.dart';
+import 'package:belluga_now/infrastructure/dal/dto/mappers/invite_dto_mapper.dart';
+import 'package:belluga_now/infrastructure/dal/dto/mappers/invite_status_dto_mapper.dart';
+import 'package:belluga_now/infrastructure/dal/dto/mappers/partner_dto_mapper.dart';
+import 'package:belluga_now/infrastructure/dal/dto/mappers/schedule_dto_mapper.dart';
+import 'package:belluga_now/infrastructure/dal/dto/mappers/thumb_dto_mapper.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_artist_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_type_dto.dart';
@@ -11,19 +15,23 @@ import 'package:belluga_now/presentation/tenant/schedule/screens/immersive_event
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
+import 'support/integration_test_bootstrap.dart';
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
+  IntegrationTestBootstrap.ensureNonProductionLandlordDomain();
+  final scheduleDtoMapper = _TestScheduleDtoMapper();
+  final partnerDtoMapper = _TestPartnerDtoMapper();
 
   testWidgets('Venue profile config uses reduced tabs', (tester) async {
-    final partner = PartnerModel.fromPrimitives(
+    final partner = AccountProfileModel.fromPrimitives(
       id: MockScheduleBackend.generateMongoId('venue-1'),
       name: 'Test Venue',
       slug: 'test-venue',
-      type: PartnerType.venue,
+      type: 'venue',
       bio: 'Bio for venue',
     );
-    final config = MockPartnerProfileDatabase().buildConfig(partner);
+    final config = PartnerProfileConfigBuilder().build(partner);
 
     expect(config.tabs.map((t) => t.title).toList(), [
       'Sobre',
@@ -60,7 +68,7 @@ void main() {
       artists: <EventArtistDTO>[],
       tags: const [],
     );
-    final event = EventModel.fromDto(dto);
+    final event = scheduleDtoMapper.mapEventDto(dto);
 
     await tester.pumpWidget(
       MaterialApp(
@@ -72,7 +80,7 @@ void main() {
   });
 
   testWidgets('Venue card shows profile button', (tester) async {
-    final venue = PartnerResume.fromDto({
+    final venue = partnerDtoMapper.mapPartnerResume({
       'id': MockScheduleBackend.generateMongoId('test-venue'),
       'display_name': 'Test Venue',
       'tagline': 'Address',
@@ -90,3 +98,14 @@ void main() {
     expect(find.text('Ver perfil'), findsOneWidget);
   });
 }
+
+class _TestScheduleDtoMapper
+    with
+        InviteDtoMapper,
+        ThumbDtoMapper,
+        ArtistDtoMapper,
+        PartnerDtoMapper,
+        InviteStatusDtoMapper,
+        ScheduleDtoMapper {}
+
+class _TestPartnerDtoMapper with PartnerDtoMapper {}

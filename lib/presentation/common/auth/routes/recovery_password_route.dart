@@ -13,7 +13,9 @@ class RecoveryPasswordRoutePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ModuleScope<AuthModule>(
-      child: RecoveryPasswordScreen(initialEmmail: initialEmmail),
+      child: RecoveryPasswordScreen(
+        initialEmmail: initialEmmail,
+      ),
     );
   }
 }

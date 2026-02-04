@@ -16,7 +16,9 @@ class PartnerDetailRoute extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ModuleScope<DiscoveryModule>(
-      child: PartnerDetailScreen(slug: slug),
+      child: PartnerDetailScreen(
+        slug: slug,
+      ),
     );
   }
 }

@@ -71,8 +71,12 @@ void main() {
     );
 
     final dispatcher = PushActionDispatcher(
-      contextProvider: () => context,
       userLocationRepository: _FakeUserLocationRepository(),
+      onShowToast: (message) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(message)),
+        );
+      },
     );
 
     final button = ButtonData.fromMap({

@@ -11,9 +11,6 @@ void main() {
 
   setUp(() async {
     await GetIt.I.reset();
-    GetIt.I.registerSingleton<LandlordHomeScreenController>(
-      LandlordHomeScreenController(),
-    );
   });
 
   tearDown(() async {
@@ -24,9 +21,13 @@ void main() {
     GetIt.I.registerSingleton<AdminModeRepositoryContract>(
       _FakeAdminModeRepository(isLandlordMode: true),
     );
+    final controller = LandlordHomeScreenController(
+      adminModeRepository: GetIt.I.get<AdminModeRepositoryContract>(),
+    );
+    GetIt.I.registerSingleton<LandlordHomeScreenController>(controller);
 
     await tester.pumpWidget(
-      const MaterialApp(
+      MaterialApp(
         home: LandlordHomeScreen(),
       ),
     );

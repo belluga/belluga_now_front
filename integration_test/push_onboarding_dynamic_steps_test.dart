@@ -4,9 +4,29 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:push_handler/push_handler.dart';
+import 'support/integration_test_bootstrap.dart';
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
+  IntegrationTestBootstrap.ensureNonProductionLandlordDomain();
+
+  Future<void> _waitForFinder(
+    WidgetTester tester,
+    Finder finder, {
+    Duration timeout = const Duration(seconds: 30),
+    Duration step = const Duration(milliseconds: 200),
+  }) async {
+    final deadline = DateTime.now().add(timeout);
+    while (DateTime.now().isBefore(deadline)) {
+      await tester.pump(step);
+      if (finder.evaluate().isNotEmpty) {
+        return;
+      }
+    }
+    throw TestFailure(
+      'Timed out waiting for ${finder.describeMatch(Plurality.one)}.',
+    );
+  }
 
   PushTransportConfig _buildTransportConfig() {
     return PushTransportConfig(
@@ -146,7 +166,7 @@ void main() {
     unawaited(repository.debugInjectMessageId('msg-1'));
     await tester.pump(const Duration(seconds: 1));
 
-    expect(find.text('Pick one'), findsOneWidget);
+    await _waitForFinder(tester, find.text('Pick one'));
     await tester.tap(find.text('Option A'));
     await tester.pump(const Duration(seconds: 1));
 
@@ -155,8 +175,8 @@ void main() {
 
     expect(submitted?.stepSlug, 'choose-one');
     expect(submitted?.value, 'a');
-    expect(find.text('Select items'), findsOneWidget);
-    expect(find.text('Dynamic Option'), findsOneWidget);
+    await _waitForFinder(tester, find.text('Select items'));
+    await _waitForFinder(tester, find.text('Dynamic Option'));
   });
 
   testWidgets('skips pre-approved gate before initial render',
@@ -192,8 +212,8 @@ void main() {
     unawaited(repository.debugInjectMessageId('msg-2'));
     await tester.pump(const Duration(seconds: 1));
 
+    await _waitForFinder(tester, find.text('After Gate'));
     expect(find.text('Gate Step'), findsNothing);
-    expect(find.text('After Gate'), findsOneWidget);
   });
 
   testWidgets('back button skips already-passed gate', (tester) async {
@@ -228,15 +248,16 @@ void main() {
     unawaited(repository.debugInjectMessageId('msg-3'));
     await tester.pump(const Duration(seconds: 1));
 
-    expect(find.text('Intro'), findsOneWidget);
+    await _waitForFinder(tester, find.text('Intro'));
     await tester.tap(find.text('Continuar'));
     await tester.pump(const Duration(seconds: 1));
 
-    expect(find.text('After Gate'), findsOneWidget);
+    await _waitForFinder(tester, find.text('After Gate'));
+    await _waitForFinder(tester, find.text('voltar'));
     await tester.tap(find.text('voltar'));
     await tester.pump(const Duration(seconds: 1));
 
-    expect(find.text('Intro'), findsOneWidget);
+    await _waitForFinder(tester, find.text('Intro'));
     expect(find.text('Gate Step'), findsNothing);
   });
 
@@ -294,22 +315,22 @@ void main() {
     unawaited(repository.debugInjectMessageId('msg-4'));
     await tester.pump(const Duration(seconds: 1));
 
-    expect(find.text('Step One'), findsOneWidget);
+    await _waitForFinder(tester, find.text('Step One'));
 
     await tester.tap(find.text('Continuar'));
     await tester.pump(const Duration(seconds: 1));
 
-    expect(find.text('Step Two'), findsOneWidget);
+    await _waitForFinder(tester, find.text('Step Two'));
 
     await tester.binding.handlePopRoute();
     await tester.pump(const Duration(seconds: 1));
 
-    expect(find.text('Step One'), findsOneWidget);
+    await _waitForFinder(tester, find.text('Step One'));
 
     await tester.binding.handlePopRoute();
     await tester.pump(const Duration(seconds: 1));
 
-    expect(find.text('Step One'), findsOneWidget);
+    await _waitForFinder(tester, find.text('Step One'));
   });
 }
 

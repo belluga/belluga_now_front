@@ -1,3 +1,4 @@
+import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/presentation/common/widgets/immersive_detail_screen/controllers/immersive_detail_screen_controller.dart';
 import 'package:belluga_now/presentation/common/widgets/immersive_detail_screen/models/immersive_tab_item.dart';
 import 'package:belluga_now/presentation/common/widgets/immersive_detail_screen/immersive_header_delegate.dart';
@@ -111,7 +112,7 @@ class _ImmersiveDetailScreenState extends State<ImmersiveDetailScreen> {
                     color: innerBoxIsScrolled
                         ? colorScheme.onSurface
                         : Colors.white,
-                    onPressed: () => Navigator.of(context).pop(),
+                    onPressed: () => context.router.pop(),
                   ),
                   actions: [
                     IconButton(
@@ -226,9 +227,4 @@ class _ImmersiveDetailScreenState extends State<ImmersiveDetailScreen> {
     );
   }
 
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
 }

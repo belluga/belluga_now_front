@@ -5,6 +5,7 @@ import 'package:belluga_now/domain/map/events/poi_update_event.dart';
 import 'package:belluga_now/domain/map/filters/main_filter_option.dart';
 import 'package:belluga_now/domain/map/filters/poi_filter_options.dart';
 import 'package:belluga_now/domain/map/map_region_definition.dart';
+import 'package:belluga_now/domain/map/queries/poi_query.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/domain/map/value_objects/city_poi_id_value.dart';
 import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
@@ -14,7 +15,6 @@ import 'package:belluga_now/domain/repositories/city_map_repository_contract.dar
 import 'package:belluga_now/domain/value_objects/description_value.dart';
 import 'package:belluga_now/infrastructure/dal/datasources/mock_poi_database.dart';
 import 'package:belluga_now/infrastructure/dal/dto/mappers/map_dto_mapper.dart';
-import 'package:belluga_now/infrastructure/dal/datasources/poi_query.dart';
 import 'package:belluga_now/infrastructure/dal/dto/map/city_poi_dto.dart';
 import 'package:belluga_now/infrastructure/services/http/laravel_map_poi_http_service.dart';
 import 'package:belluga_now/infrastructure/services/http/mock_http_service.dart';

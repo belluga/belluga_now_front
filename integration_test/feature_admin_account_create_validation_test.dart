@@ -11,9 +11,11 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:stream_value/core/stream_value.dart';
+import 'support/integration_test_bootstrap.dart';
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
+  IntegrationTestBootstrap.ensureNonProductionLandlordDomain();
 
   Future<void> _waitForFinder(
     WidgetTester tester,
@@ -43,6 +45,23 @@ void main() {
     }
   }
 
+  Future<void> _waitForAny(
+    WidgetTester tester,
+    List<Finder> finders, {
+    Duration timeout = const Duration(seconds: 20),
+  }) async {
+    final deadline = DateTime.now().add(timeout);
+    while (DateTime.now().isBefore(deadline)) {
+      await tester.pump(const Duration(milliseconds: 200));
+      for (final finder in finders) {
+        if (finder.evaluate().isNotEmpty) {
+          return;
+        }
+      }
+    }
+    throw TestFailure('Timed out waiting for any expected widget.');
+  }
+
   testWidgets('Admin account create validation feedback', (tester) async {
     if (GetIt.I.isRegistered<ApplicationContract>()) {
       GetIt.I.unregister<ApplicationContract>();
@@ -53,9 +72,6 @@ void main() {
     if (GetIt.I.isRegistered<AdminModeRepositoryContract>()) {
       GetIt.I.unregister<AdminModeRepositoryContract>();
     }
-    if (GetIt.I.isRegistered<LandlordAuthRepositoryContract>()) {
-      GetIt.I.unregister<LandlordAuthRepositoryContract>();
-    }
 
     GetIt.I.registerSingleton<AppDataRepository>(
       AppDataRepository(
@@ -64,15 +80,23 @@ void main() {
       ),
     );
     GetIt.I.registerSingleton<AdminModeRepositoryContract>(
-      _FakeAdminModeRepository(AdminMode.landlord),
-    );
-    GetIt.I.registerSingleton<LandlordAuthRepositoryContract>(
-      _FakeLandlordAuthRepository(hasValidSession: true),
+      _InMemoryAdminModeRepository(),
     );
 
     final app = Application();
     GetIt.I.registerSingleton<ApplicationContract>(app);
     await app.init();
+
+    await tester.runAsync(() async {
+      final adminModeRepo = GetIt.I<AdminModeRepositoryContract>();
+      await adminModeRepo.setLandlordMode();
+      final authRepo = GetIt.I<LandlordAuthRepositoryContract>();
+      await authRepo.loginWithEmailPassword(
+        'admin@bellugasolutions.com.br',
+        '765432e1',
+      );
+    });
+    await _pumpFor(tester, const Duration(seconds: 1));
 
     app.appRouter.replaceAll([
       const TenantAdminShellRoute(
@@ -83,56 +107,55 @@ void main() {
     await tester.pumpWidget(app);
     await _pumpFor(tester, const Duration(seconds: 2));
 
-    await _waitForFinder(tester, find.text('Create Account'));
-    await tester.tap(find.widgetWithText(ElevatedButton, 'Save'));
+    final profileTypesError = find.byKey(
+      const ValueKey('tenant_admin_account_create_profile_types_error'),
+    );
+    final profileTypeField = find.byType(DropdownButtonFormField<String>);
+    await _waitForAny(
+      tester,
+      [profileTypesError, profileTypeField],
+      timeout: const Duration(seconds: 30),
+    );
+
+    final saveButton =
+        find.byKey(const ValueKey('tenant_admin_account_create_save'));
+    await _waitForFinder(tester, saveButton);
+    await tester.ensureVisible(saveButton);
+    await tester.tap(saveButton, warnIfMissed: false);
     await _pumpFor(tester, const Duration(seconds: 1));
 
-    await _waitForFinder(tester, find.text('Name is required.'));
-    await _waitForFinder(tester, find.text('Document type is required.'));
-    await _waitForFinder(tester, find.text('Document number is required.'));
+    await _waitForFinder(tester, find.text('Nome e obrigatorio.'));
+    await _waitForFinder(tester, find.text('Tipo do documento e obrigatorio.'));
+    await _waitForFinder(
+      tester,
+      find.text('Numero do documento e obrigatorio.'),
+    );
   });
 }
 
-class _FakeAdminModeRepository implements AdminModeRepositoryContract {
-  _FakeAdminModeRepository(this._mode);
-
-  final AdminMode _mode;
-
-  @override
-  StreamValue<AdminMode> get modeStreamValue =>
-      StreamValue<AdminMode>(defaultValue: _mode);
+class _InMemoryAdminModeRepository implements AdminModeRepositoryContract {
+  final StreamValue<AdminMode> _modeStreamValue =
+      StreamValue<AdminMode>(defaultValue: AdminMode.user);
 
   @override
-  AdminMode get mode => _mode;
+  StreamValue<AdminMode> get modeStreamValue => _modeStreamValue;
 
   @override
-  bool get isLandlordMode => _mode == AdminMode.landlord;
+  AdminMode get mode => _modeStreamValue.value;
+
+  @override
+  bool get isLandlordMode => mode == AdminMode.landlord;
 
   @override
   Future<void> init() async {}
 
   @override
-  Future<void> setLandlordMode() async {}
+  Future<void> setLandlordMode() async {
+    _modeStreamValue.addValue(AdminMode.landlord);
+  }
 
   @override
-  Future<void> setUserMode() async {}
-}
-
-class _FakeLandlordAuthRepository implements LandlordAuthRepositoryContract {
-  _FakeLandlordAuthRepository({required this.hasValidSession});
-
-  @override
-  final bool hasValidSession;
-
-  @override
-  String get token => hasValidSession ? 'token' : '';
-
-  @override
-  Future<void> init() async {}
-
-  @override
-  Future<void> loginWithEmailPassword(String email, String password) async {}
-
-  @override
-  Future<void> logout() async {}
+  Future<void> setUserMode() async {
+    _modeStreamValue.addValue(AdminMode.user);
+  }
 }

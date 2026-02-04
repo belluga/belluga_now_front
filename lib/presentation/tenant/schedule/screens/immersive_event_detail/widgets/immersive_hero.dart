@@ -1,5 +1,6 @@
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
+import 'package:belluga_now/presentation/common/widgets/belluga_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
@@ -20,10 +21,10 @@ class ImmersiveHero extends StatelessWidget {
       fit: StackFit.expand,
       children: [
         // 1. Background Image
-        Image.network(
+        BellugaNetworkImage(
           resume.imageUri.toString(),
           fit: BoxFit.cover,
-          errorBuilder: (_, __, ___) => Container(color: Colors.grey[900]),
+          errorWidget: Container(color: Colors.grey[900]),
         ),
 
         // 2. Gradient Overlay for readability

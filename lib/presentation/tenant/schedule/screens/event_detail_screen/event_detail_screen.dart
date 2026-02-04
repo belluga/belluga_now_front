@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/domain/invites/invite_model.dart';
@@ -52,19 +54,13 @@ class EventDetailScreen extends StatefulWidget {
 }
 
 class _EventDetailScreenState extends State<EventDetailScreen> {
-  final EventDetailController _controller = GetIt.I<EventDetailController>();
+  final EventDetailController _controller = GetIt.I.get<EventDetailController>();
 
   @override
   void initState() {
     super.initState();
     // Load event details using slug (ensures latest confirmation state)
     _controller.loadEventBySlug(widget.event.slug);
-  }
-
-  @override
-  void dispose() {
-    _controller.onDispose();
-    super.dispose();
   }
 
   @override
@@ -105,6 +101,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                             ? Padding(
                                 padding: const EdgeInsets.only(bottom: 24),
                                 child: SwipeableInviteWidget(
+                                  controller: _controller,
                                   invites: receivedInvites,
                                   onAccept: _handleAcceptInvite,
                                   onDecline: _handleDeclineInvite,
@@ -306,6 +303,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                 child: SizedBox(
                   width: double.infinity,
                   child: AnimatedBooraButton(
+                    controller: _controller,
                     isConfirmed: isConfirmed && receivedInvites.isEmpty,
                     onPressed: receivedInvites.isNotEmpty
                         ? () => _handleAcceptInvite(receivedInvites.first.id)
@@ -334,26 +332,24 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     return 'Convidar amigos';
   }
 
-  Future<void> _handleInviteAction() async {
-    await _openInviteFlow();
+  void _handleInviteAction() {
+    _openInviteFlow();
   }
 
   Future<void> _handleAcceptInvite(String inviteId) async {
-    await _controller.acceptInvite(inviteId);
-    if (mounted) {
-      _openInviteFlow();
-    }
+    unawaited(_controller.acceptInvite(inviteId));
+    _openInviteFlow();
   }
 
-  Future<void> _handleDeclineInvite(String inviteId) async {
-    await _controller.declineInvite(inviteId);
+  Future<void> _handleDeclineInvite(String inviteId) {
+    return _controller.declineInvite(inviteId);
   }
 
   void _handleInviteFriends() {
     _openInviteFlow();
   }
 
-  Future<void> _openInviteFlow() async {
+  void _openInviteFlow() {
     context.router.push(const InviteFlowRoute());
   }
 }

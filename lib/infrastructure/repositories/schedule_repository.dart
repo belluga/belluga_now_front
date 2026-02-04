@@ -10,10 +10,23 @@ import 'package:belluga_now/infrastructure/dal/dao/backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_delta_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_page_dto.dart';
+import 'package:belluga_now/infrastructure/dal/dto/mappers/artist_dto_mapper.dart';
+import 'package:belluga_now/infrastructure/dal/dto/mappers/invite_dto_mapper.dart';
+import 'package:belluga_now/infrastructure/dal/dto/mappers/invite_status_dto_mapper.dart';
+import 'package:belluga_now/infrastructure/dal/dto/mappers/partner_dto_mapper.dart';
+import 'package:belluga_now/infrastructure/dal/dto/mappers/schedule_dto_mapper.dart';
+import 'package:belluga_now/infrastructure/dal/dto/mappers/thumb_dto_mapper.dart';
 import 'package:belluga_now/infrastructure/services/schedule_backend_contract.dart';
 import 'package:get_it/get_it.dart';
 
-class ScheduleRepository extends ScheduleRepositoryContract {
+class ScheduleRepository extends ScheduleRepositoryContract
+    with
+        InviteDtoMapper,
+        ThumbDtoMapper,
+        ArtistDtoMapper,
+        PartnerDtoMapper,
+        InviteStatusDtoMapper,
+        ScheduleDtoMapper {
   static final Uri _defaultEventImage = Uri.parse(
     'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?w=800',
   );
@@ -40,7 +53,7 @@ class ScheduleRepository extends ScheduleRepositoryContract {
   @override
   Future<List<EventModel>> getAllEvents() async {
     final events = await _loadEvents();
-    return events.map((e) => EventModel.fromDto(e)).toList();
+    return events.map(mapEventDto).toList();
   }
 
   @override
@@ -87,7 +100,7 @@ class ScheduleRepository extends ScheduleRepositoryContract {
   Future<EventModel?> getEventBySlug(String slug) async {
     final dto = await _backend.fetchEventDetail(eventIdOrSlug: slug);
     if (dto != null) {
-      return EventModel.fromDto(dto);
+      return mapEventDto(dto);
     }
     final normalizedSlug = _normalizeSlug(slug);
     final events = await getAllEvents();
@@ -118,7 +131,7 @@ class ScheduleRepository extends ScheduleRepositoryContract {
   @override
   Future<ScheduleSummaryModel> getScheduleSummary() async {
     final summary = await _backend.fetchSummary();
-    return ScheduleSummaryModel.fromDto(summary);
+    return mapScheduleSummaryDto(summary);
   }
 
   @override
@@ -150,7 +163,7 @@ class ScheduleRepository extends ScheduleRepositoryContract {
     );
 
     final events = pageDto.events
-        .map((e) => EventModel.fromDto(e))
+        .map(mapEventDto)
         .toList(growable: false);
 
     return PagedEventsResult(
@@ -332,7 +345,7 @@ class ScheduleRepository extends ScheduleRepositoryContract {
       );
 
       for (final event in pageDto.events) {
-        final parsed = EventModel.fromDto(event);
+        final parsed = mapEventDto(event);
         final start = parsed.dateTimeStart.value;
         if (start == null) continue;
         if (_isSameDate(start, date)) {

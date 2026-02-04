@@ -1,3 +1,4 @@
+import 'package:belluga_now/presentation/common/widgets/belluga_network_image.dart';
 import 'package:flutter/material.dart';
 
 class UpcomingEventThumbnail extends StatelessWidget {
@@ -18,23 +19,20 @@ class UpcomingEventThumbnail extends StatelessWidget {
           fit: StackFit.expand,
           children: [
             if (imageUrl != null)
-              Image.network(
+              BellugaNetworkImage(
                 imageUrl!,
                 fit: BoxFit.cover,
-                loadingBuilder: (context, child, loadingProgress) {
-                  if (loadingProgress == null) return child;
-                  return Container(
-                    color: colorScheme.surfaceContainerHigh,
-                    child: const Center(
-                      child: SizedBox(
-                        width: 24,
-                        height: 24,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      ),
+                placeholder: Container(
+                  color: colorScheme.surfaceContainerHigh,
+                  child: const Center(
+                    child: SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(strokeWidth: 2),
                     ),
-                  );
-                },
-                errorBuilder: (context, error, stackTrace) => Container(
+                  ),
+                ),
+                errorWidget: Container(
                   color: colorScheme.surfaceContainerHigh,
                   child: Icon(
                     Icons.image_not_supported_outlined,

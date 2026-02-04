@@ -10,8 +10,8 @@ class InitRoutePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const ModuleScope<InitializationModule>(
-      child: InitScreen(),
+    return ModuleScope<InitializationModule>(
+      child: const InitScreen(),
     );
   }
 }

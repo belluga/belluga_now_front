@@ -1,8 +1,10 @@
+import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/guards/location_permission_state.dart';
+import 'package:belluga_now/presentation/common/location_permission/controllers/location_permission_controller.dart';
 import 'package:belluga_now/presentation/common/widgets/button_loading.dart';
 import 'package:flutter/material.dart';
-import 'package:geolocator/geolocator.dart';
-import 'package:stream_value/core/stream_value.dart';
+import 'package:get_it/get_it.dart';
+import 'package:stream_value/core/stream_value_builder.dart';
 
 class LocationNotLiveScreen extends StatefulWidget {
   const LocationNotLiveScreen({
@@ -21,13 +23,8 @@ class LocationNotLiveScreen extends StatefulWidget {
 }
 
 class _LocationNotLiveScreenState extends State<LocationNotLiveScreen> {
-  final _loading = StreamValue<bool>(defaultValue: false);
-
-  @override
-  void dispose() {
-    _loading.dispose();
-    super.dispose();
-  }
+  final LocationPermissionController _controller =
+      GetIt.I.get<LocationPermissionController>();
 
   @override
   Widget build(BuildContext context) {
@@ -46,99 +43,99 @@ class _LocationNotLiveScreenState extends State<LocationNotLiveScreen> {
       LocationPermissionState.deniedForever => 'Abrir configurações',
     };
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Localização')),
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                title,
-                style: Theme.of(context).textTheme.headlineSmall,
-              ),
-              const SizedBox(height: 8),
-              Text(
-                subtitle,
-                style: Theme.of(context).textTheme.bodyLarge,
-              ),
-              if (ageLabel != null) ...[
-                const SizedBox(height: 6),
-                Text(
-                  'Última localização conhecida: $ageLabel (pode estar desatualizada).',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
-                ),
-              ],
-              const SizedBox(height: 16),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.info_outline,
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        'Ative a localização ao vivo para mostrar lugares próximos e ordenar por distância com mais precisão.',
-                        style: Theme.of(context).textTheme.bodyMedium,
-                      ),
+    return StreamValueBuilder<bool?>(
+      streamValue: _controller.resultStreamValue,
+      builder: (context, result) {
+        _handleResult(result);
+        return Scaffold(
+          appBar: AppBar(title: const Text('Localização')),
+          body: SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    title,
+                    style: Theme.of(context).textTheme.headlineSmall,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    subtitle,
+                    style: Theme.of(context).textTheme.bodyLarge,
+                  ),
+                  if (ageLabel != null) ...[
+                    const SizedBox(height: 6),
+                    Text(
+                      'Última localização conhecida: $ageLabel (pode estar desatualizada).',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          ),
                     ),
                   ],
-                ),
+                  const SizedBox(height: 16),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.info_outline,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            'Ative a localização ao vivo para mostrar lugares próximos e ordenar por distância com mais precisão.',
+                            style: Theme.of(context).textTheme.bodyMedium,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Spacer(),
+                  StreamValueBuilder(
+                    streamValue: _controller.loading,
+                    builder: (context, isLoading) {
+                      return ButtonLoading(
+                        label: primaryLabel,
+                        isLoading: isLoading,
+                        onPressed: _onEnablePressed,
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  TextButton(
+                    onPressed: () => context.router.pop(true),
+                    child: const Text('Continuar sem localização ao vivo'),
+                  ),
+                ],
               ),
-              const Spacer(),
-              ButtonLoading(
-                label: primaryLabel,
-                loadingStatusStreamValue: _loading,
-                onPressed: _onEnablePressed,
-              ),
-              const SizedBox(height: 12),
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(true),
-                child: const Text('Continuar sem localização ao vivo'),
-              ),
-            ],
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 
-  Future<void> _onEnablePressed() async {
-    _loading.addValue(true);
-    try {
-      switch (widget.blockerState) {
-        case LocationPermissionState.serviceDisabled:
-          await Geolocator.openLocationSettings();
-          break;
-        case LocationPermissionState.denied:
-          await Geolocator.requestPermission();
-          break;
-        case LocationPermissionState.deniedForever:
-          await Geolocator.openAppSettings();
-          break;
-      }
-      final serviceEnabled = await Geolocator.isLocationServiceEnabled();
-      if (!serviceEnabled) return;
-      final permission = await Geolocator.checkPermission();
-      final granted = permission == LocationPermission.always ||
-          permission == LocationPermission.whileInUse;
-      if (!granted) return;
+  void _onEnablePressed() {
+    _controller.requestPermission(initialState: widget.blockerState);
+  }
 
-      if (!mounted) return;
-      Navigator.of(context).pop(true);
-    } finally {
-      _loading.addValue(false);
+  void _handleResult(bool? result) {
+    if (result != true) {
+      if (result != null) {
+        _controller.clearResult();
+      }
+      return;
     }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.router.pop(true);
+      _controller.clearResult();
+    });
   }
 
   String _relativeAge(DateTime capturedAt) {

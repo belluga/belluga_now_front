@@ -1,6 +1,7 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/domain/partner/partner_resume.dart';
+import 'package:belluga_now/presentation/common/widgets/belluga_network_image.dart';
 import 'package:flutter/material.dart';
 
 class VenueCard extends StatelessWidget {
@@ -27,19 +28,17 @@ class VenueCard extends StatelessWidget {
       child: Row(
         children: [
           if (venue.logoImageUri != null)
-            ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: Image.network(
-                venue.logoImageUri!.toString(),
+            BellugaNetworkImage(
+              venue.logoImageUri!.toString(),
+              width: 48,
+              height: 48,
+              fit: BoxFit.cover,
+              clipBorderRadius: BorderRadius.circular(8),
+              errorWidget: Container(
                 width: 48,
                 height: 48,
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => Container(
-                  width: 48,
-                  height: 48,
-                  color: colorScheme.surfaceContainerHighest,
-                  child: Icon(Icons.store, color: colorScheme.onSurfaceVariant),
-                ),
+                color: colorScheme.surfaceContainerHighest,
+                child: Icon(Icons.store, color: colorScheme.onSurfaceVariant),
               ),
             ),
           const SizedBox(width: 12),

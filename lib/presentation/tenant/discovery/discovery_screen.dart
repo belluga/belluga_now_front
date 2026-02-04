@@ -1,6 +1,6 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
-import 'package:belluga_now/domain/partners/partner_model.dart';
+import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/presentation/tenant/discovery/controllers/discovery_screen_controller.dart';
 import 'package:belluga_now/presentation/tenant/discovery/widgets/discovery_partner_card.dart';
 import 'package:belluga_now/presentation/tenant/discovery/widgets/discovery_curator_content_section.dart';
@@ -20,7 +20,8 @@ class DiscoveryScreen extends StatefulWidget {
 }
 
 class _DiscoveryScreenState extends State<DiscoveryScreen> {
-  final _controller = GetIt.I.get<DiscoveryScreenController>();
+  final DiscoveryScreenController _controller =
+      GetIt.I.get<DiscoveryScreenController>();
 
   @override
   void initState() {
@@ -72,7 +73,7 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
             return StreamValueBuilder<bool>(
               streamValue: _controller.isSearchingStreamValue,
               builder: (context, isSearching) {
-                return StreamValueBuilder<PartnerType?>(
+                return StreamValueBuilder<String?>(
                   streamValue: _controller.selectedTypeFilterStreamValue,
                   builder: (context, selectedType) {
                     return StreamValueBuilder<String>(
@@ -87,7 +88,7 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                         return StreamValueBuilder<Set<String>>(
                           streamValue: _controller.favoriteIdsStream,
                           builder: (context, favorites) {
-                            return StreamValueBuilder<List<PartnerModel>>(
+                            return StreamValueBuilder<List<AccountProfileModel>>(
                               streamValue:
                                   _controller.filteredPartnersStreamValue,
                               builder: (context, partners) {
@@ -96,79 +97,109 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                                     if (showSections) ...[
                                       SliverToBoxAdapter(
                                         child: Padding(
-                                          padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                                          child: CarouselSection<PartnerModel>(
-                                            title: 'Tocando agora',
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 16.0),
+                                          child: StreamValueBuilder<
+                                              List<AccountProfileModel>>(
                                             streamValue:
                                                 _controller.liveNowStreamValue,
-                                            onSeeAll: () =>
-                                                _navigateToMap(context),
-                                            headerPadding:
-                                                const EdgeInsets.symmetric(
-                                                    horizontal: 16, vertical: 4),
-                                            contentSpacing:
-                                                const EdgeInsets.only(bottom: 16),
-                                            cardBuilder: (partner) =>
-                                                DiscoveryPartnerCard(
-                                              partner: partner,
-                                              isFavoritable: _controller
-                                                  .isPartnerFavoritable(partner),
-                                              isFavorite:
-                                                  favorites.contains(partner.id),
-                                              onFavoriteTap: () {
-                                                if (_controller
-                                                    .isPartnerFavoritable(
-                                                  partner,
-                                                )) {
-                                                  _controller.toggleFavorite(
-                                                    partner.id,
-                                                  );
-                                                }
-                                              },
-                                              onTap: () => context.router.push(
-                                                PartnerDetailRoute(
-                                                    slug: partner.slug),
-                                              ),
-                                            ),
+                                            builder: (context, liveNow) {
+                                              return CarouselSection<
+                                                  AccountProfileModel>(
+                                                title: 'Tocando agora',
+                                                items: liveNow,
+                                                onSeeAll: () =>
+                                                    _navigateToMap(context),
+                                                headerPadding:
+                                                    const EdgeInsets.symmetric(
+                                                        horizontal: 16,
+                                                        vertical: 4),
+                                                contentSpacing:
+                                                    const EdgeInsets.only(
+                                                        bottom: 16),
+                                                cardBuilder: (partner) =>
+                                                    DiscoveryPartnerCard(
+                                                  partner: partner,
+                                                  isFavoritable: _controller
+                                                      .isPartnerFavoritable(
+                                                          partner),
+                                                  isFavorite: favorites
+                                                      .contains(partner.id),
+                                                  onFavoriteTap: () {
+                                                    if (_controller
+                                                        .isPartnerFavoritable(
+                                                      partner,
+                                                    )) {
+                                                      _controller.toggleFavorite(
+                                                        partner.id,
+                                                      );
+                                                    }
+                                                  },
+                                                  onTap: () =>
+                                                      context.router.push(
+                                                    PartnerDetailRoute(
+                                                        slug: partner.slug),
+                                                  ),
+                                                  typeLabel: _controller
+                                                      .labelForAccountProfileType(
+                                                          partner.type),
+                                                ),
+                                              );
+                                            },
                                           ),
                                         ),
                                       ),
                                       SliverToBoxAdapter(
                                         child: Padding(
-                                          padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                                          child: CarouselSection<PartnerModel>(
-                                            title: 'Perto de você',
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 16.0),
+                                          child: StreamValueBuilder<
+                                              List<AccountProfileModel>>(
                                             streamValue:
                                                 _controller.nearbyStreamValue,
-                                            onSeeAll: () =>
-                                                _navigateToMap(context),
-                                            headerPadding:
-                                                const EdgeInsets.symmetric(
-                                                    horizontal: 16, vertical: 4),
-                                            contentSpacing:
-                                                const EdgeInsets.only(bottom: 16),
-                                            cardBuilder: (partner) =>
-                                                DiscoveryPartnerCard(
-                                              partner: partner,
-                                              isFavoritable: _controller
-                                                  .isPartnerFavoritable(partner),
-                                              isFavorite:
-                                                  favorites.contains(partner.id),
-                                              onFavoriteTap: () {
-                                                if (_controller
-                                                    .isPartnerFavoritable(
-                                                  partner,
-                                                )) {
-                                                  _controller.toggleFavorite(
-                                                    partner.id,
-                                                  );
-                                                }
-                                              },
-                                              onTap: () => context.router.push(
-                                                PartnerDetailRoute(
-                                                    slug: partner.slug),
-                                              ),
-                                            ),
+                                            builder: (context, nearby) {
+                                              return CarouselSection<
+                                                  AccountProfileModel>(
+                                                title: 'Perto de você',
+                                                items: nearby,
+                                                onSeeAll: () =>
+                                                    _navigateToMap(context),
+                                                headerPadding:
+                                                    const EdgeInsets.symmetric(
+                                                        horizontal: 16,
+                                                        vertical: 4),
+                                                contentSpacing:
+                                                    const EdgeInsets.only(
+                                                        bottom: 16),
+                                                cardBuilder: (partner) =>
+                                                    DiscoveryPartnerCard(
+                                                  partner: partner,
+                                                  isFavoritable: _controller
+                                                      .isPartnerFavoritable(
+                                                          partner),
+                                                  isFavorite: favorites
+                                                      .contains(partner.id),
+                                                  onFavoriteTap: () {
+                                                    if (_controller
+                                                        .isPartnerFavoritable(
+                                                      partner,
+                                                    )) {
+                                                      _controller.toggleFavorite(
+                                                        partner.id,
+                                                      );
+                                                    }
+                                                  },
+                                                  onTap: () =>
+                                                      context.router.push(
+                                                    PartnerDetailRoute(
+                                                        slug: partner.slug),
+                                                  ),
+                                                  typeLabel: _controller
+                                                      .labelForAccountProfileType(
+                                                          partner.type),
+                                                ),
+                                              );
+                                            },
                                           ),
                                         ),
                                       ),
@@ -189,13 +220,26 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                                       delegate: DiscoveryFilterHeaderDelegate(
                                         extent: 112,
                                         filterBuilder: () =>
-                                            DiscoveryFilterChips(
-                                          selectedTypeStream: _controller
-                                              .selectedTypeFilterStreamValue,
-                                          availableTypesStream: _controller
+                                            StreamValueBuilder<List<String>>(
+                                          streamValue: _controller
                                               .availableTypesStreamValue,
-                                          onSelectType:
-                                              _controller.setTypeFilter,
+                                          builder: (context, availableTypes) {
+                                            return StreamValueBuilder<String?>(
+                                              streamValue: _controller
+                                                  .selectedTypeFilterStreamValue,
+                                              builder:
+                                                  (context, selectedType) {
+                                                return DiscoveryFilterChips(
+                                                  selectedType: selectedType,
+                                                  availableTypes: availableTypes,
+                                                  onSelectType:
+                                                      _controller.setTypeFilter,
+                                                  labelForType: _controller
+                                                      .labelForAccountProfileType,
+                                                );
+                                              },
+                                            );
+                                          },
                                         ),
                                       ),
                                     ),
@@ -250,6 +294,9 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                                             PartnerDetailRoute(
                                                 slug: partner.slug),
                                           ),
+                                          typeLabelForPartner: (partner) =>
+                                              _controller.labelForAccountProfileType(
+                                                  partner.type),
                                         ),
                                       ),
                                   ],

@@ -10,8 +10,8 @@ class AuthCreateNewPasswordRoutePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const ModuleScope<AuthModule>(
-      child: AuthCreateNewPasswordScreen(),
+    return ModuleScope<AuthModule>(
+      child: const AuthCreateNewPasswordScreen(),
     );
   }
 }

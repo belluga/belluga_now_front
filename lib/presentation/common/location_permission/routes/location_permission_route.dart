@@ -14,7 +14,8 @@ class LocationPermissionRoutePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return LocationPermissionScreen(initialState: initialState);
+    return LocationPermissionScreen(
+      initialState: initialState,
+    );
   }
 }
-
