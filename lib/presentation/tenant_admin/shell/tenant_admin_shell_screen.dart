@@ -63,6 +63,16 @@ class _TenantAdminShellScreenState extends State<TenantAdminShellScreen> {
         TenantAdminProfileTypeEditRoute.name,
       },
     ),
+    _AdminDestination(
+      label: 'Taxonomias',
+      icon: Icons.account_tree_outlined,
+      selectedIcon: Icons.account_tree,
+      route: TenantAdminTaxonomiesListRoute(),
+      routeNames: {
+        TenantAdminTaxonomiesListRoute.name,
+        TenantAdminTaxonomyTermsRoute.name,
+      },
+    ),
   ];
 
   final Set<String> _fullScreenRoutes = const {
@@ -94,6 +104,10 @@ class _TenantAdminShellScreenState extends State<TenantAdminShellScreen> {
     }
     if (routeName == TenantAdminProfileTypesListRoute.name) {
       return 'Tipos de Perfil';
+    }
+    if (routeName == TenantAdminTaxonomiesListRoute.name ||
+        routeName == TenantAdminTaxonomyTermsRoute.name) {
+      return 'Taxonomias';
     }
     return 'Admin';
   }

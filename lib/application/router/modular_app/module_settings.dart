@@ -29,6 +29,7 @@ import 'package:belluga_now/domain/repositories/telemetry_repository_contract.da
 import 'package:belluga_now/domain/repositories/tenant_admin_account_profiles_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_accounts_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_organizations_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/tenant_admin_taxonomies_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_events_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
 import 'package:belluga_now/domain/push/push_presentation_gate_contract.dart';
@@ -50,6 +51,7 @@ import 'package:belluga_now/infrastructure/repositories/telemetry_repository.dar
 import 'package:belluga_now/infrastructure/repositories/tenant_admin/tenant_admin_account_profiles_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/tenant_admin/tenant_admin_accounts_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/tenant_admin/tenant_admin_organizations_repository.dart';
+import 'package:belluga_now/infrastructure/repositories/tenant_admin/tenant_admin_taxonomies_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/user_events_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/user_location_repository.dart';
 import 'package:belluga_now/infrastructure/dal/datasources/mock_poi_database.dart';
@@ -92,6 +94,7 @@ import 'package:belluga_now/presentation/tenant_admin/accounts/controllers/tenan
 import 'package:belluga_now/presentation/tenant_admin/organizations/controllers/tenant_admin_organizations_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/profile_types/controllers/tenant_admin_profile_types_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/shell/controllers/tenant_admin_shell_controller.dart';
+import 'package:belluga_now/presentation/tenant_admin/taxonomies/controllers/tenant_admin_taxonomies_controller.dart';
 import 'package:belluga_now/infrastructure/services/push/push_answer_handler.dart';
 import 'package:belluga_now/infrastructure/services/push/push_answer_relay.dart';
 import 'package:belluga_now/infrastructure/services/push/push_answer_resolver.dart';
@@ -281,6 +284,11 @@ class ModuleSettings extends ModuleSettingsContract {
         () => TenantAdminProfileTypesController(),
       );
     }
+    if (!GetIt.I.isRegistered<TenantAdminTaxonomiesController>()) {
+      GetIt.I.registerFactory<TenantAdminTaxonomiesController>(
+        () => TenantAdminTaxonomiesController(),
+      );
+    }
   }
 
   void _registerPushDependencies() {
@@ -443,6 +451,9 @@ class ModuleSettings extends ModuleSettingsContract {
     );
     _registerIfAbsent<TenantAdminOrganizationsRepositoryContract>(
       () => TenantAdminOrganizationsRepository(),
+    );
+    _registerIfAbsent<TenantAdminTaxonomiesRepositoryContract>(
+      () => TenantAdminTaxonomiesRepository(),
     );
     _registerIfAbsent<ContactsRepositoryContract>(
       () => ContactsRepository(),

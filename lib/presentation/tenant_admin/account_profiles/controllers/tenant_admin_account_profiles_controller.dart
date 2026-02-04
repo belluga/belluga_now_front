@@ -2,12 +2,15 @@ import 'dart:async';
 
 import 'package:belluga_now/domain/repositories/tenant_admin_account_profiles_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_accounts_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/tenant_admin_taxonomies_repository_contract.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_definition.dart';
 import 'package:belluga_now/presentation/tenant_admin/accounts/controllers/tenant_admin_location_picker_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart' show Disposable, GetIt;
@@ -18,16 +21,20 @@ class TenantAdminAccountProfilesController implements Disposable {
   TenantAdminAccountProfilesController({
     TenantAdminAccountProfilesRepositoryContract? profilesRepository,
     TenantAdminAccountsRepositoryContract? accountsRepository,
+    TenantAdminTaxonomiesRepositoryContract? taxonomiesRepository,
     TenantAdminLocationPickerController? locationPickerController,
   })  : _profilesRepository = profilesRepository ??
             GetIt.I.get<TenantAdminAccountProfilesRepositoryContract>(),
         _accountsRepository =
             accountsRepository ?? GetIt.I.get<TenantAdminAccountsRepositoryContract>(),
+        _taxonomiesRepository = taxonomiesRepository ??
+            GetIt.I.get<TenantAdminTaxonomiesRepositoryContract>(),
         _locationPickerController =
             locationPickerController ?? GetIt.I.get<TenantAdminLocationPickerController>();
 
   final TenantAdminAccountProfilesRepositoryContract _profilesRepository;
   final TenantAdminAccountsRepositoryContract _accountsRepository;
+  final TenantAdminTaxonomiesRepositoryContract _taxonomiesRepository;
   final TenantAdminLocationPickerController _locationPickerController;
 
   final StreamValue<List<TenantAdminAccountProfile>> profilesStreamValue =
@@ -35,6 +42,16 @@ class TenantAdminAccountProfilesController implements Disposable {
   final StreamValue<List<TenantAdminProfileTypeDefinition>>
       profileTypesStreamValue =
       StreamValue<List<TenantAdminProfileTypeDefinition>>(defaultValue: const []);
+  final StreamValue<List<TenantAdminTaxonomyDefinition>>
+      taxonomiesStreamValue =
+      StreamValue<List<TenantAdminTaxonomyDefinition>>(defaultValue: const []);
+  final StreamValue<Map<String, List<TenantAdminTaxonomyTermDefinition>>>
+      taxonomyTermsStreamValue =
+      StreamValue<Map<String, List<TenantAdminTaxonomyTermDefinition>>>(
+    defaultValue: const {},
+  );
+  final StreamValue<Map<String, Set<String>>> taxonomySelectionStreamValue =
+      StreamValue<Map<String, Set<String>>>(defaultValue: const {});
   final StreamValue<bool> isLoadingStreamValue =
       StreamValue<bool>(defaultValue: false);
   final StreamValue<String?> errorStreamValue = StreamValue<String?>();
@@ -74,7 +91,6 @@ class TenantAdminAccountProfilesController implements Disposable {
   final TextEditingController bioController = TextEditingController();
   final TextEditingController latitudeController = TextEditingController();
   final TextEditingController longitudeController = TextEditingController();
-  final Map<String, TextEditingController> taxonomyControllers = {};
 
   bool _isDisposed = false;
   StreamSubscription<TenantAdminLocation?>? _locationSelectionSubscription;
@@ -152,6 +168,55 @@ class TenantAdminAccountProfilesController implements Disposable {
         isLoadingStreamValue.addValue(false);
       }
     }
+  }
+
+  Future<void> loadTaxonomies() async {
+    isLoadingStreamValue.addValue(true);
+    try {
+      final taxonomies = await _taxonomiesRepository.fetchTaxonomies();
+      if (_isDisposed) return;
+      taxonomiesStreamValue.addValue(taxonomies);
+      errorStreamValue.addValue(null);
+    } catch (error) {
+      if (_isDisposed) return;
+      errorStreamValue.addValue(error.toString());
+    } finally {
+      if (!_isDisposed) {
+        isLoadingStreamValue.addValue(false);
+      }
+    }
+  }
+
+  Future<void> loadTermsForTaxonomies(List<String> taxonomySlugs) async {
+    if (taxonomySlugs.isEmpty) {
+      taxonomyTermsStreamValue.addValue(const {});
+      return;
+    }
+    final registry = taxonomiesStreamValue.value;
+    final map = <String, List<TenantAdminTaxonomyTermDefinition>>{};
+    for (final slug in taxonomySlugs) {
+      final taxonomy = registry.firstWhere(
+        (entry) => entry.slug == slug,
+        orElse: () => const TenantAdminTaxonomyDefinition(
+          id: '',
+          slug: '',
+          name: '',
+          appliesTo: [],
+          icon: null,
+          color: null,
+        ),
+      );
+      if (taxonomy.id.isEmpty) continue;
+      try {
+        final terms =
+            await _taxonomiesRepository.fetchTerms(taxonomyId: taxonomy.id);
+        map[slug] = terms;
+      } catch (_) {
+        map[slug] = const [];
+      }
+    }
+    if (_isDisposed) return;
+    taxonomyTermsStreamValue.addValue(map);
   }
 
   Future<void> loadAccountForCreate(String slug) async {
@@ -469,28 +534,47 @@ class TenantAdminAccountProfilesController implements Disposable {
     bioController.clear();
     latitudeController.clear();
     longitudeController.clear();
-    for (final controller in taxonomyControllers.values) {
-      controller.clear();
-    }
+    resetTaxonomySelection();
   }
 
-  TextEditingController getOrCreateTaxonomyController(
-    String key, {
-    String? initialText,
+  void resetTaxonomySelection() {
+    taxonomySelectionStreamValue.addValue(const {});
+  }
+
+  void ensureTaxonomySelectionKeys(List<String> taxonomySlugs) {
+    final current = taxonomySelectionStreamValue.value;
+    final next = <String, Set<String>>{};
+    for (final slug in taxonomySlugs) {
+      next[slug] = current[slug] ?? <String>{};
+    }
+    taxonomySelectionStreamValue.addValue(next);
+  }
+
+  void setTaxonomySelectionFromTerms(List<TenantAdminTaxonomyTerm> terms) {
+    final next = <String, Set<String>>{};
+    for (final term in terms) {
+      next.putIfAbsent(term.type, () => <String>{}).add(term.value);
+    }
+    taxonomySelectionStreamValue.addValue(next);
+  }
+
+  void updateTaxonomySelection({
+    required String taxonomySlug,
+    required String termSlug,
+    required bool selected,
   }) {
-    final controller = taxonomyControllers.putIfAbsent(
-      key,
-      () => TextEditingController(text: initialText ?? ''),
-    );
-    if (initialText != null && controller.text.isEmpty) {
-      controller.text = initialText;
+    final current = taxonomySelectionStreamValue.value;
+    final next = <String, Set<String>>{};
+    for (final entry in current.entries) {
+      next[entry.key] = Set<String>.from(entry.value);
     }
-    return controller;
-  }
-
-  void removeTaxonomyController(String key) {
-    final controller = taxonomyControllers.remove(key);
-    controller?.dispose();
+    final set = next.putIfAbsent(taxonomySlug, () => <String>{});
+    if (selected) {
+      set.add(termSlug);
+    } else {
+      set.remove(termSlug);
+    }
+    taxonomySelectionStreamValue.addValue(next);
   }
 
   void resetCreateState() {
@@ -638,11 +722,11 @@ class TenantAdminAccountProfilesController implements Disposable {
     bioController.dispose();
     latitudeController.dispose();
     longitudeController.dispose();
-    for (final controller in taxonomyControllers.values) {
-      controller.dispose();
-    }
     profilesStreamValue.dispose();
     profileTypesStreamValue.dispose();
+    taxonomiesStreamValue.dispose();
+    taxonomyTermsStreamValue.dispose();
+    taxonomySelectionStreamValue.dispose();
     isLoadingStreamValue.dispose();
     errorStreamValue.dispose();
     accountStreamValue.dispose();

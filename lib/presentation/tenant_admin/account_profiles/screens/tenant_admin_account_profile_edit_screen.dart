@@ -1,10 +1,13 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
 import 'package:belluga_now/presentation/tenant_admin/account_profiles/controllers/tenant_admin_account_profiles_controller.dart';
 import 'package:flutter/material.dart';
@@ -29,16 +32,32 @@ class _TenantAdminAccountProfileEditScreenState
     extends State<TenantAdminAccountProfileEditScreen> {
   final TenantAdminAccountProfilesController _controller =
       GetIt.I.get<TenantAdminAccountProfilesController>();
+  StreamSubscription<TenantAdminAccountProfileEditState>? _editStateSubscription;
+  StreamSubscription<List<TenantAdminTaxonomyDefinition>>?
+      _taxonomiesSubscription;
+  TenantAdminAccountProfile? _activeProfile;
+  String? _syncedProfileId;
+  bool _initialTaxonomiesSynced = false;
+  String? _lastAvatarPreloadUrl;
+  String? _lastCoverPreloadUrl;
 
   @override
   void initState() {
     super.initState();
     _controller.bindEditFlow();
-    _controller.loadEditProfile(widget.accountProfileId);
+    _editStateSubscription =
+        _controller.editStateStreamValue.stream.listen(_handleEditStateChange);
+    _taxonomiesSubscription = _controller.taxonomiesStreamValue.stream
+        .listen((_) => _attemptTaxonomySync());
+    _controller
+        .loadTaxonomies()
+        .whenComplete(() => _controller.loadEditProfile(widget.accountProfileId));
   }
 
   @override
   void dispose() {
+    _editStateSubscription?.cancel();
+    _taxonomiesSubscription?.cancel();
     _controller.resetFormControllers();
     _controller.resetEditState();
     super.dispose();
@@ -98,26 +117,95 @@ class _TenantAdminAccountProfileEditScreenState
     return definition?.allowedTaxonomies ?? const [];
   }
 
-  void _syncTaxonomyControllers({
-    required List<String> allowedTaxonomies,
+  List<TenantAdminTaxonomyDefinition> _allowedTaxonomyDefinitions(
+    String? selectedType,
+  ) {
+    final allowed = _allowedTaxonomies(selectedType).toSet();
+    return _controller.taxonomiesStreamValue.value
+        .where((taxonomy) =>
+            taxonomy.appliesToTarget('account_profile') &&
+            allowed.contains(taxonomy.slug))
+        .toList(growable: false);
+  }
+
+  void _syncTaxonomySelection({
+    required List<TenantAdminTaxonomyDefinition> allowed,
     required List<TenantAdminTaxonomyTerm> terms,
   }) {
-    final allowed = allowedTaxonomies.toSet();
-    final existingKeys = _controller.taxonomyControllers.keys.toList();
-    for (final key in existingKeys) {
-      if (allowed.contains(key)) continue;
-      _controller.removeTaxonomyController(key);
+    final slugs = allowed.map((taxonomy) => taxonomy.slug).toList();
+    _controller.ensureTaxonomySelectionKeys(slugs);
+    _controller.setTaxonomySelectionFromTerms(terms);
+    _controller.loadTermsForTaxonomies(slugs);
+  }
+
+  void _handleEditStateChange(TenantAdminAccountProfileEditState state) {
+    final profile = state.profile;
+    if (profile == null) return;
+    _activeProfile = profile;
+    if (_syncedProfileId != profile.id) {
+      _syncedProfileId = profile.id;
+      _initialTaxonomiesSynced = false;
+      _syncFormControllers(profile);
+      _attemptTaxonomySync(profile: profile);
     }
-    for (final taxonomy in allowed) {
-      final values = terms
-          .where((term) => term.type == taxonomy)
-          .map((term) => term.value)
-          .where((value) => value.trim().isNotEmpty)
-          .toList(growable: false);
-      _controller.getOrCreateTaxonomyController(
-        taxonomy,
-        initialText: values.join(', '),
-      );
+    _maybePreloadRemoteImages(state);
+  }
+
+  void _syncFormControllers(TenantAdminAccountProfile profile) {
+    _controller.displayNameController.text = profile.displayName;
+    _controller.bioController.text = profile.bio ?? '';
+    if (profile.location == null) {
+      _controller.latitudeController.clear();
+      _controller.longitudeController.clear();
+      return;
+    }
+    _controller.latitudeController.text =
+        profile.location!.latitude.toStringAsFixed(6);
+    _controller.longitudeController.text =
+        profile.location!.longitude.toStringAsFixed(6);
+  }
+
+  void _attemptTaxonomySync({
+    TenantAdminAccountProfile? profile,
+  }) {
+    if (_initialTaxonomiesSynced) return;
+    final currentProfile = profile ?? _activeProfile;
+    if (currentProfile == null) return;
+    final selectedType =
+        _controller.editStateStreamValue.value.selectedProfileType;
+    if (selectedType == null || selectedType.isEmpty) return;
+    if (!_hasTaxonomies(selectedType)) {
+      _controller.resetTaxonomySelection();
+      _initialTaxonomiesSynced = true;
+      return;
+    }
+    final allowed = _allowedTaxonomyDefinitions(selectedType);
+    if (allowed.isEmpty) return;
+    _syncTaxonomySelection(
+      allowed: allowed,
+      terms: currentProfile.taxonomyTerms,
+    );
+    _initialTaxonomiesSynced = true;
+  }
+
+  void _maybePreloadRemoteImages(TenantAdminAccountProfileEditState state) {
+    final avatarUrl = state.avatarRemoteUrl;
+    if (avatarUrl != null &&
+        avatarUrl.isNotEmpty &&
+        state.avatarFile != null &&
+        !state.avatarRemoteReady &&
+        _lastAvatarPreloadUrl != avatarUrl) {
+      _lastAvatarPreloadUrl = avatarUrl;
+      _preloadRemoteImage(url: avatarUrl, isAvatar: true);
+    }
+    final coverUrl = state.coverRemoteUrl;
+    if (coverUrl != null &&
+        coverUrl.isNotEmpty &&
+        state.coverFile != null &&
+        !state.coverRemoteReady &&
+        _lastCoverPreloadUrl != coverUrl) {
+      _lastCoverPreloadUrl = coverUrl;
+      _preloadRemoteImage(url: coverUrl, isAvatar: false);
     }
   }
 
@@ -126,14 +214,9 @@ class _TenantAdminAccountProfileEditScreenState
       return const [];
     }
     final terms = <TenantAdminTaxonomyTerm>[];
-    for (final entry in _controller.taxonomyControllers.entries) {
-      final raw = entry.value.text.trim();
-      if (raw.isEmpty) continue;
-      final values = raw
-          .split(',')
-          .map((value) => value.trim())
-          .where((value) => value.isNotEmpty);
-      for (final value in values) {
+    final selections = _controller.taxonomySelectionStreamValue.value;
+    for (final entry in selections.entries) {
+      for (final value in entry.value) {
         terms.add(TenantAdminTaxonomyTerm(type: entry.key, value: value));
       }
     }
@@ -380,125 +463,112 @@ class _TenantAdminAccountProfileEditScreenState
                   );
                 }
 
-                if (profile != null) {
-                  if (_controller.displayNameController.text !=
-                      profile.displayName) {
-                    _controller.displayNameController.text =
-                        profile.displayName;
-                  }
-                  if (_controller.bioController.text != (profile.bio ?? '')) {
-                    _controller.bioController.text = profile.bio ?? '';
-                  }
-                  if (profile.location != null) {
-                    final lat = profile.location!.latitude.toStringAsFixed(6);
-                    final lng = profile.location!.longitude.toStringAsFixed(6);
-                    if (_controller.latitudeController.text != lat) {
-                      _controller.latitudeController.text = lat;
-                    }
-                    if (_controller.longitudeController.text != lng) {
-                      _controller.longitudeController.text = lng;
-                    }
-                  }
-                  _syncTaxonomyControllers(
-                    allowedTaxonomies:
-                        _allowedTaxonomies(state.selectedProfileType),
-                    terms: profile.taxonomyTerms,
-                  );
-                }
-
-        return Scaffold(
-          appBar: AppBar(
-            title: const Text('Editar Perfil'),
-            leading: IconButton(
-              icon: const Icon(Icons.arrow_back),
-              onPressed: () => context.router.maybePop(),
-              tooltip: 'Voltar',
-            ),
-          ),
-          body: Padding(
-            padding: EdgeInsets.fromLTRB(
-              16,
-              16,
-              16,
-              16 + MediaQuery.of(context).viewInsets.bottom,
-            ),
-            child: SingleChildScrollView(
-              child: Form(
-                key: _controller.editFormKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (state.isLoading) const LinearProgressIndicator(),
-                    if (state.isLoading) const SizedBox(height: 12),
-                    _buildProfileSection(context, state),
-                    if (hasContent) ...[
-                      const SizedBox(height: 16),
-                      _buildContentSection(context, state),
-                    ],
-                    if (hasMedia) ...[
-                      const SizedBox(height: 16),
-                      _buildMediaSection(context, state),
-                    ],
-                    if (requiresLocation) ...[
-                      const SizedBox(height: 16),
-                      _buildLocationSection(context),
-                    ],
-                    const SizedBox(height: 24),
-                    SizedBox(
-                      width: double.infinity,
-                      child: FilledButton(
-                        onPressed: state.isLoading
-                            ? null
-                            : () async {
-                                final form =
-                                    _controller.editFormKey.currentState;
-                                if (form == null || !form.validate()) {
-                                  return;
-                                }
-                                final selectedType =
-                                    state.selectedProfileType;
-                                if (selectedType == null) {
-                                  _controller.reportEditErrorMessage(
-                                    'Selecione o tipo de perfil.',
-                                  );
-                                  return;
-                                }
-                                final avatarUpload =
-                                    _hasAvatar(selectedType)
-                                        ? await _buildUpload(state.avatarFile)
-                                        : null;
-                                final coverUpload =
-                                    _hasCover(selectedType)
-                                        ? await _buildUpload(state.coverFile)
-                                        : null;
-                                _controller.submitUpdateProfile(
-                                  accountProfileId: widget.accountProfileId,
-                                  profileType: selectedType,
-                                  displayName:
-                                      _controller.displayNameController.text.trim(),
-                                  bio: _hasBio(selectedType)
-                                      ? _controller.bioController.text.trim()
-                                      : null,
-                                  taxonomyTerms: _hasTaxonomies(selectedType)
-                                      ? _buildTaxonomyTerms(
-                                          selectedType)
-                                      : null,
-                                  location: requiresLocation
-                                      ? _currentLocation()
-                                      : null,
-                                  avatarUpload: avatarUpload,
-                                  coverUpload: coverUpload,
-                                );
-                              },
-                        child: const Text('Salvar alteracoes'),
+                return Scaffold(
+                  appBar: AppBar(
+                    title: const Text('Editar Perfil'),
+                    leading: IconButton(
+                      icon: const Icon(Icons.arrow_back),
+                      onPressed: () => context.router.maybePop(),
+                      tooltip: 'Voltar',
+                    ),
+                  ),
+                  body: Padding(
+                    padding: EdgeInsets.fromLTRB(
+                      16,
+                      16,
+                      16,
+                      16 + MediaQuery.of(context).viewInsets.bottom,
+                    ),
+                    child: SingleChildScrollView(
+                      child: Form(
+                        key: _controller.editFormKey,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if (state.isLoading)
+                              const LinearProgressIndicator(),
+                            if (state.isLoading)
+                              const SizedBox(height: 12),
+                            _buildProfileSection(context, state),
+                            if (hasContent) ...[
+                              const SizedBox(height: 16),
+                              _buildContentSection(context, state),
+                            ],
+                            if (hasMedia) ...[
+                              const SizedBox(height: 16),
+                              _buildMediaSection(context, state),
+                            ],
+                            if (requiresLocation) ...[
+                              const SizedBox(height: 16),
+                              _buildLocationSection(context),
+                            ],
+                            const SizedBox(height: 24),
+                            SizedBox(
+                              width: double.infinity,
+                              child: FilledButton(
+                                onPressed: state.isLoading
+                                    ? null
+                                    : () async {
+                                        final form = _controller
+                                            .editFormKey.currentState;
+                                        if (form == null ||
+                                            !form.validate()) {
+                                          return;
+                                        }
+                                        final selectedType =
+                                            state.selectedProfileType;
+                                        if (selectedType == null) {
+                                          _controller.reportEditErrorMessage(
+                                            'Selecione o tipo de perfil.',
+                                          );
+                                          return;
+                                        }
+                                        final avatarUpload =
+                                            _hasAvatar(selectedType)
+                                                ? await _buildUpload(
+                                                    state.avatarFile,
+                                                  )
+                                                : null;
+                                        final coverUpload =
+                                            _hasCover(selectedType)
+                                                ? await _buildUpload(
+                                                    state.coverFile,
+                                                  )
+                                                : null;
+                                        _controller.submitUpdateProfile(
+                                          accountProfileId:
+                                              widget.accountProfileId,
+                                          profileType: selectedType,
+                                          displayName: _controller
+                                              .displayNameController.text
+                                              .trim(),
+                                          bio: _hasBio(selectedType)
+                                              ? _controller.bioController.text
+                                                  .trim()
+                                              : null,
+                                          taxonomyTerms: _hasTaxonomies(
+                                            selectedType,
+                                          )
+                                              ? _buildTaxonomyTerms(
+                                                  selectedType,
+                                                )
+                                              : null,
+                                          location: requiresLocation
+                                              ? _currentLocation()
+                                              : null,
+                                          avatarUpload: avatarUpload,
+                                          coverUpload: coverUpload,
+                                        );
+                                      },
+                                child: const Text('Salvar alteracoes'),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        );
+                  ),
+                );
               },
             );
           },
@@ -579,10 +649,13 @@ class _TenantAdminAccountProfileEditScreenState
                       _controller.bioController.clear();
                     }
                     if (!_hasTaxonomies(value)) {
-                      for (final controller in _controller.taxonomyControllers.values) {
-                        controller.clear();
-                      }
+                      _controller.resetTaxonomySelection();
                     }
+                    _initialTaxonomiesSynced = true;
+                    _syncTaxonomySelection(
+                      allowed: _allowedTaxonomyDefinitions(value),
+                      terms: const [],
+                    );
                   },
                   validator: (value) {
                     if (value == null || value.trim().isEmpty) {
@@ -615,7 +688,8 @@ class _TenantAdminAccountProfileEditScreenState
     TenantAdminAccountProfileEditState state,
   ) {
     final hasBio = _hasBio(state.selectedProfileType);
-    final allowedTaxonomies = _allowedTaxonomies(state.selectedProfileType);
+    final allowedDefinitions =
+        _allowedTaxonomyDefinitions(state.selectedProfileType);
     return Card(
       margin: EdgeInsets.zero,
       child: Padding(
@@ -643,17 +717,59 @@ class _TenantAdminAccountProfileEditScreenState
                 style: Theme.of(context).textTheme.labelLarge,
               ),
               const SizedBox(height: 8),
-              for (final taxonomy in allowedTaxonomies)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: TextFormField(
-                    controller: _controller.taxonomyControllers[taxonomy],
-                    decoration: InputDecoration(
-                      labelText: taxonomy,
-                      helperText: 'Separe por virgula',
-                    ),
-                  ),
-                ),
+              StreamValueBuilder(
+                streamValue: _controller.taxonomySelectionStreamValue,
+                builder: (context, selections) {
+                  return StreamValueBuilder(
+                    streamValue: _controller.taxonomyTermsStreamValue,
+                    builder: (context, termsByTaxonomy) {
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          for (final taxonomy in allowedDefinitions)
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 12),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(taxonomy.name),
+                                  const SizedBox(height: 8),
+                                  if ((termsByTaxonomy[taxonomy.slug] ??
+                                          const [])
+                                      .isEmpty)
+                                    const Text('Sem termos cadastrados.')
+                                  else
+                                    Wrap(
+                                      spacing: 8,
+                                      runSpacing: 8,
+                                      children: (termsByTaxonomy[taxonomy.slug] ??
+                                              const [])
+                                          .map(
+                                            (term) => FilterChip(
+                                              label: Text(term.name),
+                                              selected: selections[taxonomy.slug]
+                                                      ?.contains(term.slug) ??
+                                                  false,
+                                              onSelected: (selected) {
+                                                _controller.updateTaxonomySelection(
+                                                  taxonomySlug: taxonomy.slug,
+                                                  termSlug: term.slug,
+                                                  selected: selected,
+                                                );
+                                              },
+                                            ),
+                                          )
+                                          .toList(growable: false),
+                                    ),
+                                ],
+                              ),
+                            ),
+                        ],
+                      );
+                    },
+                  );
+                },
+              ),
             ],
           ],
         ),
@@ -671,13 +787,6 @@ class _TenantAdminAccountProfileEditScreenState
     final hasCoverUrl = coverUrl != null && coverUrl.isNotEmpty;
     final hasAvatar = _hasAvatar(state.selectedProfileType);
     final hasCover = _hasCover(state.selectedProfileType);
-
-    if (state.avatarFile != null && hasAvatarUrl && !state.avatarRemoteReady) {
-      _preloadRemoteImage(url: avatarUrl, isAvatar: true);
-    }
-    if (state.coverFile != null && hasCoverUrl && !state.coverRemoteReady) {
-      _preloadRemoteImage(url: coverUrl, isAvatar: false);
-    }
 
     return Card(
       margin: EdgeInsets.zero,

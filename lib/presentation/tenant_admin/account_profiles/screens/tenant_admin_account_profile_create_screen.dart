@@ -5,6 +5,7 @@ import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
 import 'package:belluga_now/presentation/tenant_admin/account_profiles/controllers/tenant_admin_account_profiles_controller.dart';
 import 'package:flutter/material.dart';
@@ -37,6 +38,7 @@ class _TenantAdminAccountProfileCreateScreenState
     _controller.resetCreateState();
     _controller.resetFormControllers();
     _controller.loadProfileTypes();
+    _controller.loadTaxonomies();
     _controller.loadAccountForCreate(widget.accountSlug);
   }
 
@@ -91,16 +93,21 @@ class _TenantAdminAccountProfileCreateScreenState
     return definition?.allowedTaxonomies ?? const [];
   }
 
-  void _syncTaxonomyControllers(List<String> allowedTaxonomies) {
-    final allowed = allowedTaxonomies.toSet();
-    final existingKeys = _controller.taxonomyControllers.keys.toList();
-    for (final key in existingKeys) {
-      if (allowed.contains(key)) continue;
-      _controller.removeTaxonomyController(key);
-    }
-    for (final taxonomy in allowed) {
-      _controller.getOrCreateTaxonomyController(taxonomy);
-    }
+  List<TenantAdminTaxonomyDefinition> _allowedTaxonomyDefinitions(
+    String? selectedType,
+  ) {
+    final allowed = _allowedTaxonomies(selectedType).toSet();
+    return _controller.taxonomiesStreamValue.value
+        .where((taxonomy) =>
+            taxonomy.appliesToTarget('account_profile') &&
+            allowed.contains(taxonomy.slug))
+        .toList(growable: false);
+  }
+
+  void _syncTaxonomySelection(List<TenantAdminTaxonomyDefinition> allowed) {
+    final slugs = allowed.map((taxonomy) => taxonomy.slug).toList();
+    _controller.ensureTaxonomySelectionKeys(slugs);
+    _controller.loadTermsForTaxonomies(slugs);
   }
 
   void _clearCapabilityFields(String? selectedType) {
@@ -108,9 +115,7 @@ class _TenantAdminAccountProfileCreateScreenState
       _controller.bioController.clear();
     }
     if (!_hasTaxonomies(selectedType)) {
-      for (final controller in _controller.taxonomyControllers.values) {
-        controller.clear();
-      }
+      _controller.resetTaxonomySelection();
     }
     if (!_hasAvatar(selectedType)) {
       _controller.updateCreateAvatarFile(null);
@@ -129,14 +134,9 @@ class _TenantAdminAccountProfileCreateScreenState
       return const [];
     }
     final terms = <TenantAdminTaxonomyTerm>[];
-    for (final entry in _controller.taxonomyControllers.entries) {
-      final raw = entry.value.text.trim();
-      if (raw.isEmpty) continue;
-      final values = raw
-          .split(',')
-          .map((value) => value.trim())
-          .where((value) => value.isNotEmpty);
-      for (final value in values) {
+    final selections = _controller.taxonomySelectionStreamValue.value;
+    for (final entry in selections.entries) {
+      for (final value in entry.value) {
         terms.add(TenantAdminTaxonomyTerm(type: entry.key, value: value));
       }
     }
@@ -449,8 +449,8 @@ class _TenantAdminAccountProfileCreateScreenState
                                   ? (value) {
                                       _controller
                                           .updateCreateSelectedProfileType(value);
-                                      _syncTaxonomyControllers(
-                                        _allowedTaxonomies(value),
+                                      _syncTaxonomySelection(
+                                        _allowedTaxonomyDefinitions(value),
                                       );
                                       _clearCapabilityFields(value);
                                     }
@@ -499,10 +499,9 @@ class _TenantAdminAccountProfileCreateScreenState
     TenantAdminAccountProfileCreateState state,
   ) {
     final hasBio = _hasBio(state.selectedProfileType);
-    final allowedTaxonomies = _allowedTaxonomies(state.selectedProfileType);
-    if (_hasTaxonomies(state.selectedProfileType)) {
-      _syncTaxonomyControllers(allowedTaxonomies);
-    }
+    final allowedDefinitions = _allowedTaxonomyDefinitions(
+      state.selectedProfileType,
+    );
     return Card(
       margin: EdgeInsets.zero,
       child: Padding(
@@ -530,17 +529,61 @@ class _TenantAdminAccountProfileCreateScreenState
                 style: Theme.of(context).textTheme.labelLarge,
               ),
               const SizedBox(height: 8),
-              for (final taxonomy in allowedTaxonomies)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: TextFormField(
-                    controller: _controller.taxonomyControllers[taxonomy],
-                    decoration: InputDecoration(
-                      labelText: taxonomy,
-                      helperText: 'Separe por virgula',
-                    ),
-                  ),
-                ),
+              StreamValueBuilder(
+                streamValue: _controller.taxonomySelectionStreamValue,
+                builder: (context, selections) {
+                  return StreamValueBuilder(
+                    streamValue: _controller.taxonomyTermsStreamValue,
+                    builder: (context, termsByTaxonomy) {
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          for (final taxonomy in allowedDefinitions)
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 12),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(taxonomy.name),
+                                  const SizedBox(height: 8),
+                                  if ((termsByTaxonomy[taxonomy.slug] ??
+                                          const [])
+                                      .isEmpty)
+                                    const Text(
+                                      'Sem termos cadastrados.',
+                                    )
+                                  else
+                                    Wrap(
+                                      spacing: 8,
+                                      runSpacing: 8,
+                                      children: (termsByTaxonomy[taxonomy.slug] ??
+                                              const [])
+                                          .map(
+                                            (term) => FilterChip(
+                                              label: Text(term.name),
+                                              selected: selections[taxonomy.slug]
+                                                      ?.contains(term.slug) ??
+                                                  false,
+                                              onSelected: (selected) {
+                                                _controller.updateTaxonomySelection(
+                                                  taxonomySlug: taxonomy.slug,
+                                                  termSlug: term.slug,
+                                                  selected: selected,
+                                                );
+                                              },
+                                            ),
+                                          )
+                                          .toList(growable: false),
+                                    ),
+                                ],
+                              ),
+                            ),
+                        ],
+                      );
+                    },
+                  );
+                },
+              ),
             ],
           ],
         ),

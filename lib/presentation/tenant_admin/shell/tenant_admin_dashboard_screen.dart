@@ -43,6 +43,15 @@ class TenantAdminDashboardScreen extends StatelessWidget {
           },
         ),
         const SizedBox(height: 12),
+        TenantAdminDashboardCard(
+          icon: Icons.account_tree_outlined,
+          title: 'Taxonomias',
+          description: 'Configure taxonomias e termos.',
+          onTap: () {
+            context.router.push(const TenantAdminTaxonomiesListRoute());
+          },
+        ),
+        const SizedBox(height: 12),
         Card(
           color: Theme.of(context).colorScheme.surfaceContainerHighest,
           child: const ListTile(

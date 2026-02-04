@@ -74,6 +74,14 @@ class TenantAdminModule extends ModuleContract {
               path: 'profile-types/:profileType/edit',
               page: TenantAdminProfileTypeEditRoute.page,
             ),
+            AutoRoute(
+              path: 'taxonomies',
+              page: TenantAdminTaxonomiesListRoute.page,
+            ),
+            AutoRoute(
+              path: 'taxonomies/:taxonomyId/terms',
+              page: TenantAdminTaxonomyTermsRoute.page,
+            ),
           ],
         ),
       ];
