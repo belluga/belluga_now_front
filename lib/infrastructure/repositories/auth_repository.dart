@@ -77,11 +77,14 @@ final class AuthRepository extends AuthRepositoryContract<UserBelluga>
 
     userTokenUpdate(token);
 
-    final user = await backend.auth.loginCheck();
-
-    final loggedUser = mapUserDto(user);
-    userStreamValue.addValue(loggedUser);
-    await _setUserId(loggedUser.uuidValue.value);
+    try {
+      final user = await backend.auth.loginCheck();
+      final loggedUser = mapUserDto(user);
+      userStreamValue.addValue(loggedUser);
+      await _setUserId(loggedUser.uuidValue.value);
+    } catch (error) {
+      await _resetStaleIdentity(error);
+    }
 
     return Future.value();
   }
@@ -130,6 +133,7 @@ final class AuthRepository extends AuthRepositoryContract<UserBelluga>
       anonymousUserIds: anonymousIds,
     );
     if (response.token.isNotEmpty) {
+      await _saveUserTokenOnLocalStorage(response.token);
       _userTokenStreamValue.addValue(response.token);
     }
 
@@ -223,6 +227,12 @@ final class AuthRepository extends AuthRepositoryContract<UserBelluga>
       key: _userIdStorageKey,
       value: userId,
     );
+  }
+
+  Future<void> _resetStaleIdentity(Object error) async {
+    userStreamValue.addValue(null);
+    await _setUserId(null);
+    userTokenDelete();
   }
 
   Future<void> _ensureIdentityToken() async {
