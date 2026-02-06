@@ -95,8 +95,9 @@ void main() {
     await _waitForFinder(tester, find.text('Eventos'));
     await _waitForFinder(tester, find.text('Em breve'));
 
+    await tester.pumpAndSettle(const Duration(seconds: 1));
     await tester.tap(find.text('Eventos'));
-    await _pumpFor(tester, const Duration(seconds: 1));
+    await tester.pumpAndSettle(const Duration(seconds: 1));
     await _waitForFinder(
       tester,
       find.byKey(const ValueKey('tenant-admin-shell-router')),

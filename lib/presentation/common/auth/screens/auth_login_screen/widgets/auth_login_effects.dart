@@ -1,6 +1,8 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
+import 'package:belluga_now/application/router/guards/auth_redirect_store.dart';
 import 'package:flutter/material.dart';
+import 'package:get_it/get_it.dart';
 
 class AuthLoginEffects extends StatefulWidget {
   const AuthLoginEffects({
@@ -79,7 +81,7 @@ class _AuthLoginEffectsState extends State<AuthLoginEffects> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       if (authorized) {
-        context.router.replace(const TenantHomeRoute());
+        _navigateAfterAuth();
       }
       widget.onClearLoginResult();
     });
@@ -92,11 +94,29 @@ class _AuthLoginEffectsState extends State<AuthLoginEffects> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       if (authorized) {
-        context.router.maybePop();
-        context.router.replace(const TenantHomeRoute());
+        final navigator = Navigator.of(context, rootNavigator: true);
+        if (navigator.canPop()) {
+          navigator.pop();
+        }
+        _navigateAfterAuth();
       }
       widget.onClearSignUpResult();
     });
+  }
+
+  void _navigateAfterAuth() {
+    final router = context.router;
+    final redirectStore = GetIt.I.get<AuthRedirectStore>();
+    final pendingPath = redirectStore.consumePendingPath();
+    if (pendingPath != null && !pendingPath.contains('/auth/login')) {
+      router.replacePath(pendingPath);
+      return;
+    }
+    if (router.canPop()) {
+      router.pop();
+      return;
+    }
+    router.replace(const TenantHomeRoute());
   }
 
   SnackBar _buildErrorSnack(String message) {

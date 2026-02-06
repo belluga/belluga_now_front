@@ -19,8 +19,8 @@ class AuthModule extends ModuleContract {
   @override
   FutureOr<void> registerDependencies() {
     if (!GetIt.I.isRegistered<AuthLoginControllerContract>()) {
-      GetIt.I.registerFactory<AuthLoginControllerContract>(
-        () => AuthLoginController(),
+      GetIt.I.registerSingleton<AuthLoginControllerContract>(
+        AuthLoginController(),
       );
     }
 

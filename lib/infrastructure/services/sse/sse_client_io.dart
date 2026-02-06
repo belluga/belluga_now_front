@@ -18,8 +18,13 @@ class _IoSseClient implements SseClient {
     HttpClientRequest? request;
     HttpClientResponse? response;
 
+    var closed = false;
+
     Future<void> close() async {
-      await response?.drain();
+      if (closed) {
+        return;
+      }
+      closed = true;
       client.close(force: true);
       if (!controller.isClosed) {
         await controller.close();
@@ -57,6 +62,12 @@ class _IoSseClient implements SseClient {
             event: currentEvent,
             id: currentId,
           );
+          if (controller.isClosed) {
+            dataLines.clear();
+            currentEvent = null;
+            currentId = null;
+            return;
+          }
           controller.add(message);
           dataLines.clear();
           currentEvent = null;
@@ -88,7 +99,9 @@ class _IoSseClient implements SseClient {
 
         dispatch();
       } catch (error, stackTrace) {
-        controller.addError(error, stackTrace);
+        if (!controller.isClosed) {
+          controller.addError(error, stackTrace);
+        }
         await close();
       }
     }();

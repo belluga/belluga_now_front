@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/presentation/common/auth/screens/auth_login_screen/widgets/auth_login_form.dart';
+import 'package:belluga_now/presentation/common/auth/screens/auth_login_screen/widgets/auth_signup_sheet.dart';
 import 'package:belluga_now/presentation/common/widgets/button_loading.dart';
 import 'package:belluga_now/presentation/landlord/auth/controllers/landlord_login_controller.dart';
 import 'package:belluga_now/presentation/landlord/auth/widgets/landlord_login_sheet.dart';
@@ -11,7 +12,7 @@ import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 
-class AuthLoginCanvaContent extends StatefulWidget {
+class AuthLoginCanvaContent extends StatelessWidget {
   const AuthLoginCanvaContent({
     super.key,
     required this.navigateToPasswordRecover,
@@ -23,15 +24,10 @@ class AuthLoginCanvaContent extends StatefulWidget {
   final AuthLoginControllerContract? controller;
   final LandlordLoginController? landlordLoginController;
 
-  @override
-  State<AuthLoginCanvaContent> createState() => _AuthLoginCanvaContentState();
-}
-
-class _AuthLoginCanvaContentState extends State<AuthLoginCanvaContent> {
-  late final AuthLoginControllerContract _controller =
-      widget.controller ?? GetIt.I.get<AuthLoginControllerContract>();
-  late final LandlordLoginController _landlordController =
-      widget.landlordLoginController ?? GetIt.I.get<LandlordLoginController>();
+  AuthLoginControllerContract get _controller =>
+      controller ?? GetIt.I.get<AuthLoginControllerContract>();
+  LandlordLoginController get _landlordController =>
+      landlordLoginController ?? GetIt.I.get<LandlordLoginController>();
 
   @override
   Widget build(BuildContext context) {
@@ -70,7 +66,7 @@ class _AuthLoginCanvaContentState extends State<AuthLoginCanvaContent> {
                   style: TextStyle(fontSize: 12),
                 ),
                 TextButton(
-                  onPressed: widget.navigateToPasswordRecover,
+                  onPressed: navigateToPasswordRecover,
                   child: const Text(
                     'Recuperar agora',
                     style: TextStyle(
@@ -88,7 +84,7 @@ class _AuthLoginCanvaContentState extends State<AuthLoginCanvaContent> {
           streamValue: _controller.buttonLoadingValue,
           builder: (context, isLoading) {
             return ButtonLoading(
-              onPressed: tryLoginWithEmailPassword,
+              onPressed: _tryLoginWithEmailPassword,
               isLoading: isLoading,
               label: 'Entrar',
             );
@@ -96,94 +92,32 @@ class _AuthLoginCanvaContentState extends State<AuthLoginCanvaContent> {
         ),
         const SizedBox(height: 16),
         TextButton(
-          onPressed: _openSignupSheet,
+          onPressed: () => _openSignupSheet(context),
           child: const Text('Criar conta'),
         ),
         TextButton(
-          onPressed: _openLandlordLogin,
+          onPressed: () => _openLandlordLogin(context),
           child: const Text('Entrar como Admin'),
         ),
       ],
     );
   }
 
-  void tryLoginWithEmailPassword() {
+  void _tryLoginWithEmailPassword() {
     unawaited(_controller.tryLoginWithEmailPassword());
   }
 
-  Future<void> _openSignupSheet() async {
+  Future<void> _openSignupSheet(BuildContext context) async {
     _controller.resetSignupControllers();
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
-      builder: (ctx) {
-        return SafeArea(
-          child: Padding(
-            padding: EdgeInsets.only(
-              left: 16,
-              right: 16,
-              top: 8,
-              bottom: 16 + MediaQuery.of(ctx).viewInsets.bottom,
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'Criar conta',
-                  style: Theme.of(ctx).textTheme.titleMedium,
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: _controller.signupNameController,
-                  textInputAction: TextInputAction.next,
-                  decoration: const InputDecoration(
-                    labelText: 'Nome',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: _controller.signupEmailController,
-                  keyboardType: TextInputType.emailAddress,
-                  textInputAction: TextInputAction.next,
-                  decoration: const InputDecoration(
-                    labelText: 'E-mail',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: _controller.signupPasswordController,
-                  obscureText: true,
-                  textInputAction: TextInputAction.done,
-                  decoration: const InputDecoration(
-                    labelText: 'Senha',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                SizedBox(
-                  width: double.infinity,
-                  child: FilledButton(
-                    onPressed: () => _submitSignup(
-                      ctx,
-                      _controller.signupNameController.text,
-                      _controller.signupEmailController.text,
-                      _controller.signupPasswordController.text,
-                    ),
-                    child: const Text('Criar conta'),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
+      builder: (_) => AuthSignupSheet(controller: _controller),
     );
   }
 
-  Future<void> _openLandlordLogin() async {
+  Future<void> _openLandlordLogin(BuildContext context) async {
     final router = context.router;
     final didLogin = await showLandlordLoginSheet(
       context,
@@ -193,36 +127,5 @@ class _AuthLoginCanvaContentState extends State<AuthLoginCanvaContent> {
       return;
     }
     router.replaceAll([const TenantAdminShellRoute()]);
-  }
-
-  void _submitSignup(
-    BuildContext ctx,
-    String name,
-    String email,
-    String password,
-  ) {
-    final messenger = ScaffoldMessenger.of(ctx);
-    final normalizedName = name.trim();
-    final normalizedEmail = email.trim();
-    if (normalizedName.isEmpty ||
-        normalizedEmail.isEmpty ||
-        password.trim().isEmpty) {
-      messenger.showSnackBar(
-        const SnackBar(content: Text('Preencha todos os campos.')),
-      );
-      return;
-    }
-    unawaited(
-      _controller.signUpWithEmailPassword(
-        normalizedName,
-        normalizedEmail,
-        password,
-      ),
-    );
-  }
-
-  @override
-  void dispose() {
-    super.dispose();
   }
 }

@@ -79,6 +79,28 @@ abstract class AuthLoginControllerContract extends Object with Disposable {
     signupPasswordController.clear();
   }
 
+  Future<void> submitSignup() async {
+    _cleanAllErrors();
+
+    final normalizedName = signupNameController.text.trim();
+    final normalizedEmail = signupEmailController.text.trim();
+    final normalizedPassword = signupPasswordController.text.trim();
+
+    if (normalizedName.isEmpty ||
+        normalizedEmail.isEmpty ||
+        normalizedPassword.isEmpty) {
+      generalErrorStreamValue.addValue('Preencha todos os campos.');
+      signUpResultStreamValue.addValue(false);
+      return;
+    }
+
+    await signUpWithEmailPassword(
+      normalizedName,
+      normalizedEmail,
+      normalizedPassword,
+    );
+  }
+
   Future<void> tryLoginWithEmailPassword() async {
     buttonLoadingValue.addValue(true);
     fieldEnabled.addValue(false);

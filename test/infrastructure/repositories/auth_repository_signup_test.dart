@@ -70,6 +70,46 @@ void main() {
     expect(storedToken, 'token-registered');
     expect(storedUserId, '507f1f77bcf86cd799439011');
   });
+
+  test('login merges anonymous identity and persists user id', () async {
+    final authBackend = _CaptureAuthBackend(
+      loginResponse: (
+        UserDto(
+          id: '507f1f77bcf86cd799439011',
+          profile: UserProfileDto(
+            name: 'User Name',
+            email: 'user@example.com',
+            birthday: '',
+            pictureUrl: null,
+          ),
+          customData: const {},
+        ),
+        'token-registered',
+      ),
+    );
+    GetIt.I.registerSingleton<BackendContract>(
+      _FakeBackend(auth: authBackend),
+    );
+    final telemetry = _CaptureTelemetryRepository();
+    GetIt.I.registerSingleton<TelemetryRepositoryContract>(telemetry);
+    GetIt.I.registerSingleton<AuthRepositoryContract<UserContract>>(
+      AuthRepository(),
+    );
+
+    final repository = GetIt.I.get<AuthRepositoryContract<UserContract>>();
+    await repository.loginWithEmailPassword(
+      'user@example.com',
+      'Secret!234',
+    );
+
+    expect(telemetry.mergeCalls, ['507f1f77bcf86cd799439012']);
+    final storedToken = await AuthRepository.storage.read(
+      key: 'user_token',
+    );
+    final storedUserId = await AuthRepository.storage.read(key: 'user_id');
+    expect(storedToken, 'token-registered');
+    expect(storedUserId, '507f1f77bcf86cd799439011');
+  });
 }
 
 class _CaptureTelemetryRepository implements TelemetryRepositoryContract {
@@ -153,6 +193,9 @@ class _FakeBackend extends BackendContract {
 }
 
 class _CaptureAuthBackend extends AuthBackendContract {
+  _CaptureAuthBackend({this.loginResponse});
+
+  final (UserDto, String)? loginResponse;
   int registerCalls = 0;
   List<String>? lastAnonymousUserIds;
 
@@ -161,7 +204,10 @@ class _CaptureAuthBackend extends AuthBackendContract {
     String email,
     String password,
   ) {
-    throw UnimplementedError();
+    if (loginResponse == null) {
+      throw UnimplementedError();
+    }
+    return Future.value(loginResponse!);
   }
 
   @override

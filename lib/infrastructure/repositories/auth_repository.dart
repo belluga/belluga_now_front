@@ -138,6 +138,7 @@ final class AuthRepository extends AuthRepositoryContract<UserBelluga>
     }
 
     UserDto? userDto;
+    String resolvedToken = response.token;
     try {
       userDto = await backend.auth.loginCheck();
     } catch (_) {
@@ -147,7 +148,26 @@ final class AuthRepository extends AuthRepositoryContract<UserBelluga>
     if (userDto != null) {
       await _finalizeAuthenticatedUser(
         userDto,
-        response.token,
+        resolvedToken,
+        previousUserId: previousUserId,
+        overrideUserId: response.userId,
+      );
+      return;
+    }
+
+    try {
+      final loginResult =
+          await backend.auth.loginWithEmailPassword(email, password);
+      userDto = loginResult.$1;
+      resolvedToken = loginResult.$2;
+    } catch (_) {
+      userDto = null;
+    }
+
+    if (userDto != null) {
+      await _finalizeAuthenticatedUser(
+        userDto,
+        resolvedToken,
         previousUserId: previousUserId,
         overrideUserId: response.userId,
       );

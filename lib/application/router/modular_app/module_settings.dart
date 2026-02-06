@@ -100,6 +100,7 @@ import 'package:belluga_now/infrastructure/services/push/push_answer_relay.dart'
 import 'package:belluga_now/infrastructure/services/push/push_answer_resolver.dart';
 import 'package:belluga_now/infrastructure/services/push/push_presentation_gate.dart';
 import 'package:belluga_now/infrastructure/services/user/profile_avatar_storage.dart';
+import 'package:belluga_now/application/router/guards/auth_redirect_store.dart';
 import 'package:flutter/foundation.dart';
 import 'package:get_it/get_it.dart';
 import 'package:get_it_modular_with_auto_route/get_it_modular_with_auto_route.dart';
@@ -116,9 +117,9 @@ class ModuleSettings extends ModuleSettingsContract {
 
   @override
   FutureOr<void> registerGlobalDependencies() async {
-    _registerControllerFactories();
     _registerBackend();
     await _registerRepositories();
+    _registerControllerFactories();
     _registerPushDependencies();
   }
 
@@ -144,14 +145,19 @@ class ModuleSettings extends ModuleSettingsContract {
 
 
   void _registerControllerFactories() {
+    if (!GetIt.I.isRegistered<AuthRedirectStore>()) {
+      GetIt.I.registerLazySingleton<AuthRedirectStore>(
+        () => AuthRedirectStore(),
+      );
+    }
     if (!GetIt.I.isRegistered<InitScreenController>()) {
       GetIt.I.registerLazySingleton<InitScreenController>(
         () => InitScreenController(),
       );
     }
     if (!GetIt.I.isRegistered<AuthLoginControllerContract>()) {
-      GetIt.I.registerFactory<AuthLoginControllerContract>(
-        () => AuthLoginController(),
+      GetIt.I.registerSingleton<AuthLoginControllerContract>(
+        AuthLoginController(),
       );
     }
     if (!GetIt.I.isRegistered<CreatePasswordControllerContract>()) {
@@ -165,7 +171,7 @@ class ModuleSettings extends ModuleSettingsContract {
       );
     }
     if (!GetIt.I.isRegistered<LandlordLoginController>()) {
-      GetIt.I.registerFactory<LandlordLoginController>(
+      GetIt.I.registerLazySingleton<LandlordLoginController>(
         () => LandlordLoginController(),
       );
     }
