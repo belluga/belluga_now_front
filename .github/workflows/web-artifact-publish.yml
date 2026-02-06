@@ -28,10 +28,27 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Resolve Flutter version
+        id: flutter_version
+        run: |
+          version="$(jq -r '.flutter // empty' .fvmrc 2>/dev/null || true)"
+
+          if [[ -z "$version" || "$version" == "null" ]]; then
+            version="$(grep -Eo '[0-9]+\.[0-9]+\.[0-9]+' .fvmrc | head -n 1 || true)"
+          fi
+
+          if [[ -z "$version" ]]; then
+            echo "Unable to resolve Flutter version from .fvmrc" >&2
+            exit 1
+          fi
+
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
       - name: Setup Flutter SDK
         uses: subosito/flutter-action@v2
         with:
-          flutter-version-file: .fvmrc
+          flutter-version: ${{ steps.flutter_version.outputs.version }}
+          channel: stable
           cache: true
 
       - name: Install FVM
