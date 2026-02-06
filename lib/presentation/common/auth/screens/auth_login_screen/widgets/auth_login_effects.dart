@@ -1,8 +1,6 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
-import 'package:belluga_now/application/router/guards/auth_redirect_store.dart';
 import 'package:flutter/material.dart';
-import 'package:get_it/get_it.dart';
 
 class AuthLoginEffects extends StatefulWidget {
   const AuthLoginEffects({
@@ -106,8 +104,7 @@ class _AuthLoginEffectsState extends State<AuthLoginEffects> {
 
   void _navigateAfterAuth() {
     final router = context.router;
-    final redirectStore = GetIt.I.get<AuthRedirectStore>();
-    final pendingPath = redirectStore.consumePendingPath();
+    final pendingPath = _readRedirectPathFromQuery();
     if (pendingPath != null && !pendingPath.contains('/auth/login')) {
       router.replacePath(pendingPath);
       return;
@@ -117,6 +114,18 @@ class _AuthLoginEffectsState extends State<AuthLoginEffects> {
       return;
     }
     router.replace(const TenantHomeRoute());
+  }
+
+  String? _readRedirectPathFromQuery() {
+    final value = context.routeData.queryParams.rawMap['redirect'];
+    if (value == null) {
+      return null;
+    }
+    final redirect = value.toString().trim();
+    if (redirect.isEmpty) {
+      return null;
+    }
+    return Uri.decodeComponent(redirect);
   }
 
   SnackBar _buildErrorSnack(String message) {

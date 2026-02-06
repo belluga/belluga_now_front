@@ -13,7 +13,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_defin
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
 import 'package:belluga_now/presentation/tenant_admin/account_profiles/controllers/tenant_admin_account_profiles_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/account_profiles/screens/tenant_admin_account_profile_create_screen.dart';
-import 'package:belluga_now/presentation/tenant_admin/accounts/controllers/tenant_admin_location_picker_controller.dart';
+import 'package:belluga_now/presentation/tenant_admin/accounts/services/tenant_admin_location_selection_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
@@ -35,8 +35,8 @@ void main() {
     if (getIt.isRegistered<TenantAdminAccountProfilesController>()) {
       getIt.unregister<TenantAdminAccountProfilesController>();
     }
-    if (getIt.isRegistered<TenantAdminLocationPickerController>()) {
-      getIt.unregister<TenantAdminLocationPickerController>();
+    if (getIt.isRegistered<TenantAdminLocationSelectionService>()) {
+      getIt.unregister<TenantAdminLocationSelectionService>();
     }
     if (getIt.isRegistered<TenantAdminTaxonomiesRepositoryContract>()) {
       getIt.unregister<TenantAdminTaxonomiesRepositoryContract>();
@@ -52,15 +52,14 @@ void main() {
       _FakeTenantAdminTaxonomiesRepository(),
     );
 
-    getIt.registerSingleton<TenantAdminLocationPickerController>(
-      TenantAdminLocationPickerController(),
+    getIt.registerSingleton<TenantAdminLocationSelectionService>(
+      TenantAdminLocationSelectionService(),
     );
     getIt.registerSingleton<TenantAdminAccountProfilesController>(
       TenantAdminAccountProfilesController(
         profilesRepository:
             getIt.get<TenantAdminAccountProfilesRepositoryContract>(),
-        accountsRepository:
-            getIt.get<TenantAdminAccountsRepositoryContract>(),
+        accountsRepository: getIt.get<TenantAdminAccountsRepositoryContract>(),
         taxonomiesRepository:
             getIt.get<TenantAdminTaxonomiesRepositoryContract>(),
       ),
@@ -146,7 +145,8 @@ class _FakeTenantAdminAccountsRepository
       id: 'account-1',
       name: name ?? 'Conta',
       slug: accountSlug,
-      document: document ?? const TenantAdminDocument(type: 'cpf', number: '000'),
+      document:
+          document ?? const TenantAdminDocument(type: 'cpf', number: '000'),
       ownershipState: TenantAdminOwnershipState.tenantOwned,
     );
   }
@@ -208,7 +208,8 @@ class _FakeTenantAdminAccountProfilesRepository
   @override
   Future<List<TenantAdminAccountProfile>> fetchAccountProfiles({
     String? accountId,
-  }) async => const [];
+  }) async =>
+      const [];
 
   @override
   Future<TenantAdminAccountProfile> fetchAccountProfile(

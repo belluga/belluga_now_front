@@ -11,7 +11,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_definition.dart';
-import 'package:belluga_now/presentation/tenant_admin/accounts/controllers/tenant_admin_location_picker_controller.dart';
+import 'package:belluga_now/presentation/tenant_admin/accounts/services/tenant_admin_location_selection_service.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart' show Disposable, GetIt;
 import 'package:image_picker/image_picker.dart';
@@ -22,20 +22,20 @@ class TenantAdminAccountProfilesController implements Disposable {
     TenantAdminAccountProfilesRepositoryContract? profilesRepository,
     TenantAdminAccountsRepositoryContract? accountsRepository,
     TenantAdminTaxonomiesRepositoryContract? taxonomiesRepository,
-    TenantAdminLocationPickerController? locationPickerController,
+    TenantAdminLocationSelectionService? locationSelectionService,
   })  : _profilesRepository = profilesRepository ??
             GetIt.I.get<TenantAdminAccountProfilesRepositoryContract>(),
         _accountsRepository =
             accountsRepository ?? GetIt.I.get<TenantAdminAccountsRepositoryContract>(),
         _taxonomiesRepository = taxonomiesRepository ??
             GetIt.I.get<TenantAdminTaxonomiesRepositoryContract>(),
-        _locationPickerController =
-            locationPickerController ?? GetIt.I.get<TenantAdminLocationPickerController>();
+        _locationSelectionService = locationSelectionService ??
+            GetIt.I.get<TenantAdminLocationSelectionService>();
 
   final TenantAdminAccountProfilesRepositoryContract _profilesRepository;
   final TenantAdminAccountsRepositoryContract _accountsRepository;
   final TenantAdminTaxonomiesRepositoryContract _taxonomiesRepository;
-  final TenantAdminLocationPickerController _locationPickerController;
+  final TenantAdminLocationSelectionService _locationSelectionService;
 
   final StreamValue<List<TenantAdminAccountProfile>> profilesStreamValue =
       StreamValue<List<TenantAdminAccountProfile>>(defaultValue: const []);
@@ -102,12 +102,12 @@ class TenantAdminAccountProfilesController implements Disposable {
   void _bindLocationSelection() {
     if (_locationSelectionSubscription != null) return;
     _locationSelectionSubscription =
-        _locationPickerController.confirmedLocationStreamValue.stream.listen(
+        _locationSelectionService.confirmedLocationStreamValue.stream.listen(
       (location) {
         if (_isDisposed || location == null) return;
         latitudeController.text = location.latitude.toStringAsFixed(6);
         longitudeController.text = location.longitude.toStringAsFixed(6);
-        _locationPickerController.clearConfirmedLocation();
+        _locationSelectionService.clearConfirmedLocation();
       },
     );
   }

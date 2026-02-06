@@ -3,8 +3,6 @@ import 'dart:developer' as developer;
 import 'package:belluga_now/application/application.dart';
 import 'package:belluga_now/application/application_contract.dart';
 import 'package:belluga_now/application/configurations/widget_keys.dart';
-import 'package:belluga_now/application/router/app_router.gr.dart';
-import 'package:belluga_now/application/router/guards/auth_redirect_store.dart';
 import 'package:belluga_now/domain/invites/invite_model.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
@@ -25,7 +23,6 @@ import 'package:belluga_now/infrastructure/repositories/auth_repository.dart';
 import 'package:belluga_now/presentation/common/auth/screens/auth_login_screen/auth_login_screen.dart';
 import 'package:belluga_now/presentation/common/auth/screens/auth_login_screen/controllers/auth_login_controller.dart';
 import 'package:belluga_now/presentation/tenant/auth/login/controllers/auth_login_controller_contract.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:get_it/get_it.dart';
@@ -203,10 +200,7 @@ void main() {
     );
     await authRepository.logout();
 
-    final redirectStore = GetIt.I.get<AuthRedirectStore>();
-    redirectStore.setPendingPath('/agenda');
-
-    app.appRouter.push(const AuthLoginRoute());
+    app.appRouter.pushPath('/auth/login?redirect=%2Fagenda');
     await _pumpFor(tester, const Duration(seconds: 1));
 
     await _waitForFinder(
@@ -221,8 +215,10 @@ void main() {
 
     await tester.enterText(emailField, email);
     await tester.enterText(passwordField, password);
+    tester.binding.focusManager.primaryFocus?.unfocus();
+    await _pumpFor(tester, const Duration(milliseconds: 500));
 
-    final loginButton = find.widgetWithText(ElevatedButton, 'Entrar');
+    final loginButton = find.byKey(WidgetKeys.auth.loginButton);
     await _waitForFinder(tester, loginButton);
     await tester.ensureVisible(loginButton);
     await tester.tap(loginButton);

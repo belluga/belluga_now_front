@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:belluga_now/application/configurations/widget_keys.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/presentation/common/auth/screens/auth_login_screen/widgets/auth_login_form.dart';
@@ -84,6 +85,7 @@ class AuthLoginCanvaContent extends StatelessWidget {
           streamValue: _controller.buttonLoadingValue,
           builder: (context, isLoading) {
             return ButtonLoading(
+              key: WidgetKeys.auth.loginButton,
               onPressed: _tryLoginWithEmailPassword,
               isLoading: isLoading,
               label: 'Entrar',

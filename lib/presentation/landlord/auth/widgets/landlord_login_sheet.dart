@@ -7,8 +7,40 @@ Future<bool> showLandlordLoginSheet(
   required LandlordLoginController controller,
 }) async {
   controller.resetForm();
-  var didLogin = false;
+  return _showLandlordLoginSheet(
+    context,
+    emailController: controller.emailController,
+    passwordController: controller.passwordController,
+    onSubmit: (email, password) async {
+      await controller.enterAdminModeWithCredentials(email, password);
+      return true;
+    },
+  );
+}
 
+Future<bool> showLandlordCredentialsSheet(
+  BuildContext context, {
+  required Future<bool> Function(String email, String password) onSubmit,
+}) {
+  final emailController = TextEditingController();
+  final passwordController = TextEditingController();
+  return _showLandlordLoginSheet(
+    context,
+    emailController: emailController,
+    passwordController: passwordController,
+    onSubmit: onSubmit,
+    disposeControllers: true,
+  );
+}
+
+Future<bool> _showLandlordLoginSheet(
+  BuildContext context, {
+  required TextEditingController emailController,
+  required TextEditingController passwordController,
+  required Future<bool> Function(String email, String password) onSubmit,
+  bool disposeControllers = false,
+}) async {
+  var didLogin = false;
   await showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
@@ -31,7 +63,7 @@ Future<bool> showLandlordLoginSheet(
               ),
               const SizedBox(height: 12),
               TextField(
-                controller: controller.emailController,
+                controller: emailController,
                 keyboardType: TextInputType.emailAddress,
                 textInputAction: TextInputAction.next,
                 decoration: const InputDecoration(
@@ -41,7 +73,7 @@ Future<bool> showLandlordLoginSheet(
               ),
               const SizedBox(height: 12),
               TextField(
-                controller: controller.passwordController,
+                controller: passwordController,
                 obscureText: true,
                 textInputAction: TextInputAction.done,
                 decoration: const InputDecoration(
@@ -54,8 +86,8 @@ Future<bool> showLandlordLoginSheet(
                 width: double.infinity,
                 child: FilledButton(
                   onPressed: () async {
-                    final email = controller.emailController.text.trim();
-                    final password = controller.passwordController.text.trim();
+                    final email = emailController.text.trim();
+                    final password = passwordController.text.trim();
                     final messenger = ScaffoldMessenger.of(ctx);
                     final router = ctx.router;
                     if (email.isEmpty || password.isEmpty) {
@@ -65,11 +97,7 @@ Future<bool> showLandlordLoginSheet(
                       return;
                     }
                     try {
-                      await controller.enterAdminModeWithCredentials(
-                        email,
-                        password,
-                      );
-                      didLogin = true;
+                      didLogin = await onSubmit(email, password);
                       router.pop();
                     } catch (e) {
                       messenger.showSnackBar(
@@ -86,6 +114,11 @@ Future<bool> showLandlordLoginSheet(
       );
     },
   );
+
+  if (disposeControllers) {
+    emailController.dispose();
+    passwordController.dispose();
+  }
 
   return didLogin;
 }

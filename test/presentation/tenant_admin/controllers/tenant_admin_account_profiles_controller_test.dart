@@ -12,7 +12,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
 import 'package:belluga_now/presentation/tenant_admin/account_profiles/controllers/tenant_admin_account_profiles_controller.dart';
-import 'package:belluga_now/presentation/tenant_admin/accounts/controllers/tenant_admin_location_picker_controller.dart';
+import 'package:belluga_now/presentation/tenant_admin/accounts/services/tenant_admin_location_selection_service.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 class _FakeAccountsRepository implements TenantAdminAccountsRepositoryContract {
@@ -292,14 +292,14 @@ void main() {
       ],
     );
     final accountsRepository = _FakeAccountsRepository();
-    final locationPickerController = TenantAdminLocationPickerController();
+    final locationSelectionService = TenantAdminLocationSelectionService();
     final taxonomiesRepository = _FakeTaxonomiesRepository();
 
     final controller = TenantAdminAccountProfilesController(
       profilesRepository: profilesRepository,
       accountsRepository: accountsRepository,
       taxonomiesRepository: taxonomiesRepository,
-      locationPickerController: locationPickerController,
+      locationSelectionService: locationSelectionService,
     );
 
     await controller.loadProfiles('acc-1');
@@ -330,14 +330,14 @@ void main() {
       ],
     );
     final accountsRepository = _FakeAccountsRepository();
-    final locationPickerController = TenantAdminLocationPickerController();
+    final locationSelectionService = TenantAdminLocationSelectionService();
     final taxonomiesRepository = _FakeTaxonomiesRepository();
 
     final controller = TenantAdminAccountProfilesController(
       profilesRepository: profilesRepository,
       accountsRepository: accountsRepository,
       taxonomiesRepository: taxonomiesRepository,
-      locationPickerController: locationPickerController,
+      locationSelectionService: locationSelectionService,
     );
 
     await controller.createProfile(

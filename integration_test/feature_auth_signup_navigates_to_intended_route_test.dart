@@ -4,7 +4,6 @@ import 'dart:developer' as developer;
 import 'package:belluga_now/application/application.dart';
 import 'package:belluga_now/application/application_contract.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
-import 'package:belluga_now/application/router/guards/auth_redirect_store.dart';
 import 'package:belluga_now/infrastructure/dal/dao/laravel_backend/app_data_backend/app_data_backend_stub.dart';
 import 'package:belluga_now/infrastructure/dal/dao/local/app_data_local_info_source/app_data_local_info_source_stub.dart';
 import 'package:belluga_now/infrastructure/repositories/app_data_repository.dart';
@@ -175,17 +174,14 @@ void main() {
 
       app.appRouter.replaceAll([EventSearchRoute()]);
       await _pumpFor(tester, const Duration(seconds: 1));
-      final redirectStore = GetIt.I.get<AuthRedirectStore>();
-      redirectStore.setPendingPath('/agenda');
-      app.appRouter.push(const AuthLoginRoute());
+      app.appRouter.pushPath('/auth/login?redirect=%2Fagenda');
       await _pumpFor(tester, const Duration(seconds: 1));
       await _waitForFinder(
         tester,
         find.byType(AuthLoginScreen, skipOffstage: false),
       );
 
-      final openSignupButton =
-          find.widgetWithText(TextButton, 'Criar conta');
+      final openSignupButton = find.widgetWithText(TextButton, 'Criar conta');
       await _waitForFinder(tester, openSignupButton.first);
       await tester.tap(openSignupButton.first);
       await _pumpFor(tester, const Duration(seconds: 1));
@@ -204,24 +200,21 @@ void main() {
         of: bottomSheet,
         matching: find.byWidgetPredicate(
           (widget) =>
-              widget is TextField &&
-              widget.decoration?.labelText == 'Nome',
+              widget is TextField && widget.decoration?.labelText == 'Nome',
         ),
       );
       final emailField = find.descendant(
         of: bottomSheet,
         matching: find.byWidgetPredicate(
           (widget) =>
-              widget is TextField &&
-              widget.decoration?.labelText == 'E-mail',
+              widget is TextField && widget.decoration?.labelText == 'E-mail',
         ),
       );
       final passwordField = find.descendant(
         of: bottomSheet,
         matching: find.byWidgetPredicate(
           (widget) =>
-              widget is TextField &&
-              widget.decoration?.labelText == 'Senha',
+              widget is TextField && widget.decoration?.labelText == 'Senha',
         ),
       );
       await _waitForFinder(tester, nameField);
@@ -259,8 +252,7 @@ void main() {
         await errorSub.cancel();
       });
 
-      final submitButton =
-          find.widgetWithText(FilledButton, 'Criar conta');
+      final submitButton = find.widgetWithText(FilledButton, 'Criar conta');
       await _waitForFinder(tester, submitButton);
       await tester.tap(submitButton);
       await _pumpFor(tester, const Duration(seconds: 2));
