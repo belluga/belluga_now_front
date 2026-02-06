@@ -21,7 +21,7 @@ class TenantAdminProfileTypesController implements Disposable {
     isFavoritable: false,
     isPoiEnabled: false,
     hasBio: false,
-    hasTaxonomies: false,
+    hasTaxonomies: true,
     hasAvatar: false,
     hasCover: false,
     hasEvents: false,
@@ -47,7 +47,17 @@ class TenantAdminProfileTypesController implements Disposable {
 
   void initForm(TenantAdminProfileTypeDefinition? definition) {
     final capabilities = definition?.capabilities ?? _emptyCapabilities;
-    capabilitiesStreamValue.addValue(capabilities);
+    capabilitiesStreamValue.addValue(
+      TenantAdminProfileTypeCapabilities(
+        isFavoritable: capabilities.isFavoritable,
+        isPoiEnabled: capabilities.isPoiEnabled,
+        hasBio: capabilities.hasBio,
+        hasTaxonomies: true,
+        hasAvatar: capabilities.hasAvatar,
+        hasCover: capabilities.hasCover,
+        hasEvents: capabilities.hasEvents,
+      ),
+    );
     typeController.text = definition?.type ?? '';
     labelController.text = definition?.label ?? '';
     taxonomiesController.text =
@@ -76,7 +86,7 @@ class TenantAdminProfileTypesController implements Disposable {
         isFavoritable: isFavoritable ?? current.isFavoritable,
         isPoiEnabled: isPoiEnabled ?? current.isPoiEnabled,
         hasBio: hasBio ?? current.hasBio,
-        hasTaxonomies: hasTaxonomies ?? current.hasTaxonomies,
+        hasTaxonomies: true,
         hasAvatar: hasAvatar ?? current.hasAvatar,
         hasCover: hasCover ?? current.hasCover,
         hasEvents: hasEvents ?? current.hasEvents,

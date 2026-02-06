@@ -52,6 +52,15 @@ class TenantAdminDashboardScreen extends StatelessWidget {
           },
         ),
         const SizedBox(height: 12),
+        TenantAdminDashboardCard(
+          icon: Icons.place_outlined,
+          title: 'Ativos estaticos',
+          description: 'Gerencie ativos e POIs do tenant.',
+          onTap: () {
+            context.router.push(const TenantAdminStaticAssetsListRoute());
+          },
+        ),
+        const SizedBox(height: 12),
         Card(
           color: Theme.of(context).colorScheme.surfaceContainerHighest,
           child: const ListTile(

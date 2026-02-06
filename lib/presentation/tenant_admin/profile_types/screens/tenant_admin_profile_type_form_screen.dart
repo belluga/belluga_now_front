@@ -37,10 +37,7 @@ class _TenantAdminProfileTypeFormScreenState
     super.dispose();
   }
 
-  List<String> _parseTaxonomies(bool hasTaxonomies) {
-    if (!hasTaxonomies) {
-      return const [];
-    }
+  List<String> _parseTaxonomies() {
     return _controller.taxonomiesController.text
         .split(',')
         .map((value) => value.trim())
@@ -55,12 +52,13 @@ class _TenantAdminProfileTypeFormScreenState
     }
 
     final capabilities = _controller.currentCapabilities;
+    final allowedTaxonomies = _parseTaxonomies();
 
     if (_isEdit) {
       _controller.submitUpdateType(
         type: widget.definition!.type,
         label: _controller.labelController.text.trim(),
-        allowedTaxonomies: _parseTaxonomies(capabilities.hasTaxonomies),
+        allowedTaxonomies: allowedTaxonomies,
         capabilities: capabilities,
       );
       return;
@@ -69,7 +67,7 @@ class _TenantAdminProfileTypeFormScreenState
     _controller.submitCreateType(
       type: _controller.typeController.text.trim(),
       label: _controller.labelController.text.trim(),
-      allowedTaxonomies: _parseTaxonomies(capabilities.hasTaxonomies),
+      allowedTaxonomies: allowedTaxonomies,
       capabilities: capabilities,
     );
   }
@@ -146,21 +144,12 @@ class _TenantAdminProfileTypeFormScreenState
                                   },
                                 ),
                                 const SizedBox(height: 12),
-                                StreamValueBuilder<
-                                    TenantAdminProfileTypeCapabilities>(
-                                  streamValue:
-                                      _controller.capabilitiesStreamValue,
-                                  builder: (context, capabilities) {
-                                    return TextFormField(
-                                      controller:
-                                          _controller.taxonomiesController,
-                                      decoration: const InputDecoration(
-                                        labelText:
-                                            'Taxonomias (separadas por virgula)',
-                                      ),
-                                      enabled: capabilities.hasTaxonomies,
-                                    );
-                                  },
+                                TextFormField(
+                                  controller: _controller.taxonomiesController,
+                                  decoration: const InputDecoration(
+                                    labelText:
+                                        'Taxonomias (separadas por virgula)',
+                                  ),
                                 ),
                               ],
                             ),
@@ -217,19 +206,6 @@ class _TenantAdminProfileTypeFormScreenState
                                           onChanged: (value) =>
                                               _controller.updateCapabilities(
                                             hasBio: value,
-                                          ),
-                                        ),
-                                        SwitchListTile(
-                                          contentPadding: EdgeInsets.zero,
-                                          title:
-                                              const Text('Taxonomias habilitadas'),
-                                          subtitle: const Text(
-                                            'Exibe categorias/etiquetas do tipo',
-                                          ),
-                                          value: capabilities.hasTaxonomies,
-                                          onChanged: (value) =>
-                                              _controller.updateCapabilities(
-                                            hasTaxonomies: value,
                                           ),
                                         ),
                                         SwitchListTile(

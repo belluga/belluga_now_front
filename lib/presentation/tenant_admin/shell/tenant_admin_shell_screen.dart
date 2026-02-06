@@ -73,6 +73,17 @@ class _TenantAdminShellScreenState extends State<TenantAdminShellScreen> {
         TenantAdminTaxonomyTermsRoute.name,
       },
     ),
+    _AdminDestination(
+      label: 'Ativos',
+      icon: Icons.place_outlined,
+      selectedIcon: Icons.place,
+      route: TenantAdminStaticAssetsListRoute(),
+      routeNames: {
+        TenantAdminStaticAssetsListRoute.name,
+        TenantAdminStaticAssetCreateRoute.name,
+        TenantAdminStaticAssetEditRoute.name,
+      },
+    ),
   ];
 
   final Set<String> _fullScreenRoutes = const {
@@ -84,6 +95,8 @@ class _TenantAdminShellScreenState extends State<TenantAdminShellScreen> {
     TenantAdminProfileTypeCreateRoute.name,
     TenantAdminProfileTypeEditRoute.name,
     TenantAdminLocationPickerRoute.name,
+    TenantAdminStaticAssetCreateRoute.name,
+    TenantAdminStaticAssetEditRoute.name,
   };
 
   int _selectedIndex(String? routeName) {
@@ -108,6 +121,11 @@ class _TenantAdminShellScreenState extends State<TenantAdminShellScreen> {
     if (routeName == TenantAdminTaxonomiesListRoute.name ||
         routeName == TenantAdminTaxonomyTermsRoute.name) {
       return 'Taxonomias';
+    }
+    if (routeName == TenantAdminStaticAssetsListRoute.name ||
+        routeName == TenantAdminStaticAssetCreateRoute.name ||
+        routeName == TenantAdminStaticAssetEditRoute.name) {
+      return 'Ativos estaticos';
     }
     return 'Admin';
   }

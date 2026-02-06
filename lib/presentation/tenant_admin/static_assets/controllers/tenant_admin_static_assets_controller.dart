@@ -1,0 +1,481 @@
+import 'dart:async';
+
+import 'package:belluga_now/domain/repositories/tenant_admin_static_assets_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/tenant_admin_taxonomies_repository_contract.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_static_asset.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_static_profile_type.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_definition.dart';
+import 'package:belluga_now/presentation/tenant_admin/accounts/controllers/tenant_admin_location_picker_controller.dart';
+import 'package:flutter/material.dart';
+import 'package:get_it/get_it.dart' show Disposable, GetIt;
+import 'package:stream_value/core/stream_value.dart';
+
+class TenantAdminStaticAssetsController implements Disposable {
+  TenantAdminStaticAssetsController({
+    TenantAdminStaticAssetsRepositoryContract? repository,
+    TenantAdminTaxonomiesRepositoryContract? taxonomiesRepository,
+    TenantAdminLocationPickerController? locationPickerController,
+  })  : _repository = repository ??
+            GetIt.I.get<TenantAdminStaticAssetsRepositoryContract>(),
+        _taxonomiesRepository = taxonomiesRepository ??
+            GetIt.I.get<TenantAdminTaxonomiesRepositoryContract>(),
+        _locationPickerController =
+            locationPickerController ?? GetIt.I.get<TenantAdminLocationPickerController>();
+
+  final TenantAdminStaticAssetsRepositoryContract _repository;
+  final TenantAdminTaxonomiesRepositoryContract _taxonomiesRepository;
+  final TenantAdminLocationPickerController _locationPickerController;
+
+  final StreamValue<List<TenantAdminStaticAsset>> assetsStreamValue =
+      StreamValue<List<TenantAdminStaticAsset>>(defaultValue: const []);
+  final StreamValue<List<TenantAdminStaticProfileTypeDefinition>>
+      profileTypesStreamValue =
+      StreamValue<List<TenantAdminStaticProfileTypeDefinition>>(
+        defaultValue: const [],
+      );
+  final StreamValue<List<TenantAdminTaxonomyDefinition>> taxonomiesStreamValue =
+      StreamValue<List<TenantAdminTaxonomyDefinition>>(defaultValue: const []);
+  final StreamValue<Map<String, List<TenantAdminTaxonomyTermDefinition>>>
+      taxonomyTermsStreamValue =
+      StreamValue<Map<String, List<TenantAdminTaxonomyTermDefinition>>>(
+        defaultValue: const {},
+      );
+  final StreamValue<Map<String, Set<String>>> selectedTaxonomyTermsStreamValue =
+      StreamValue<Map<String, Set<String>>>(defaultValue: const {});
+  final StreamValue<String?> selectedProfileTypeStreamValue =
+      StreamValue<String?>(defaultValue: null);
+  final StreamValue<bool> isActiveStreamValue =
+      StreamValue<bool>(defaultValue: true);
+  final StreamValue<TenantAdminStaticAsset?> editingAssetStreamValue =
+      StreamValue<TenantAdminStaticAsset?>();
+  final StreamValue<bool> isLoadingStreamValue =
+      StreamValue<bool>(defaultValue: false);
+  final StreamValue<String?> errorStreamValue = StreamValue<String?>();
+  final StreamValue<bool> taxonomyLoadingStreamValue =
+      StreamValue<bool>(defaultValue: false);
+  final StreamValue<String?> taxonomyErrorStreamValue =
+      StreamValue<String?>();
+  final StreamValue<bool> submitLoadingStreamValue =
+      StreamValue<bool>(defaultValue: false);
+  final StreamValue<String?> submitErrorStreamValue =
+      StreamValue<String?>();
+  final StreamValue<String?> submitSuccessStreamValue =
+      StreamValue<String?>();
+  final StreamValue<String> searchQueryStreamValue =
+      StreamValue<String>(defaultValue: '');
+
+  final GlobalKey<FormState> formKey = GlobalKey<FormState>();
+  final TextEditingController displayNameController = TextEditingController();
+  final TextEditingController slugController = TextEditingController();
+  final TextEditingController bioController = TextEditingController();
+  final TextEditingController contentController = TextEditingController();
+  final TextEditingController tagsController = TextEditingController();
+  final TextEditingController categoriesController = TextEditingController();
+  final TextEditingController avatarUrlController = TextEditingController();
+  final TextEditingController coverUrlController = TextEditingController();
+  final TextEditingController latitudeController = TextEditingController();
+  final TextEditingController longitudeController = TextEditingController();
+
+  bool _isDisposed = false;
+  StreamSubscription<TenantAdminLocation?>? _locationSubscription;
+
+  void _bindLocationSelection() {
+    if (_locationSubscription != null) return;
+    _locationSubscription =
+        _locationPickerController.confirmedLocationStreamValue.stream.listen(
+      (location) {
+        if (_isDisposed || location == null) return;
+        latitudeController.text = location.latitude.toStringAsFixed(6);
+        longitudeController.text = location.longitude.toStringAsFixed(6);
+        _locationPickerController.clearConfirmedLocation();
+      },
+    );
+  }
+
+  Future<void> loadAssets() async {
+    isLoadingStreamValue.addValue(true);
+    try {
+      final assets = await _repository.fetchStaticAssets();
+      if (_isDisposed) return;
+      assetsStreamValue.addValue(assets);
+      errorStreamValue.addValue(null);
+    } catch (error) {
+      if (_isDisposed) return;
+      errorStreamValue.addValue(error.toString());
+    } finally {
+      if (!_isDisposed) {
+        isLoadingStreamValue.addValue(false);
+      }
+    }
+  }
+
+  Future<void> loadProfileTypes() async {
+    try {
+      final types = await _repository.fetchStaticProfileTypes();
+      if (_isDisposed) return;
+      profileTypesStreamValue.addValue(types);
+    } catch (error) {
+      if (_isDisposed) return;
+      errorStreamValue.addValue(error.toString());
+    }
+  }
+
+  Future<void> loadTaxonomies() async {
+    taxonomyLoadingStreamValue.addValue(true);
+    try {
+      final taxonomies = await _taxonomiesRepository.fetchTaxonomies();
+      final filtered = taxonomies
+          .where((taxonomy) => taxonomy.appliesToTarget('static_asset'))
+          .toList(growable: false);
+      if (_isDisposed) return;
+      taxonomiesStreamValue.addValue(filtered);
+      final entries = await Future.wait(
+        filtered.map(
+          (taxonomy) async => MapEntry(
+            taxonomy.slug,
+            await _taxonomiesRepository.fetchTerms(taxonomyId: taxonomy.id),
+          ),
+        ),
+      );
+      if (_isDisposed) return;
+      taxonomyTermsStreamValue.addValue({
+        for (final entry in entries) entry.key: entry.value,
+      });
+      taxonomyErrorStreamValue.addValue(null);
+    } catch (error) {
+      if (_isDisposed) return;
+      taxonomyErrorStreamValue.addValue(error.toString());
+    } finally {
+      if (!_isDisposed) {
+        taxonomyLoadingStreamValue.addValue(false);
+      }
+    }
+  }
+
+  void initCreate() {
+    _bindLocationSelection();
+    _resetFormState();
+    loadProfileTypes();
+    loadTaxonomies();
+  }
+
+  Future<void> initEdit(String assetId) async {
+    _bindLocationSelection();
+    submitErrorStreamValue.addValue(null);
+    submitSuccessStreamValue.addValue(null);
+    await loadProfileTypes();
+    await loadTaxonomies();
+    await _loadAsset(assetId);
+  }
+
+  Future<void> _loadAsset(String assetId) async {
+    isLoadingStreamValue.addValue(true);
+    try {
+      final asset = await _repository.fetchStaticAsset(assetId);
+      if (_isDisposed) return;
+      editingAssetStreamValue.addValue(asset);
+      _hydrateForm(asset);
+    } catch (error) {
+      if (_isDisposed) return;
+      errorStreamValue.addValue(error.toString());
+    } finally {
+      if (!_isDisposed) {
+        isLoadingStreamValue.addValue(false);
+      }
+    }
+  }
+
+  void _hydrateForm(TenantAdminStaticAsset asset) {
+    displayNameController.text = asset.displayName;
+    slugController.text = asset.slug;
+    bioController.text = asset.bio ?? '';
+    contentController.text = asset.content ?? '';
+    tagsController.text = asset.tags.join(', ');
+    categoriesController.text = asset.categories.join(', ');
+    avatarUrlController.text = asset.avatarUrl ?? '';
+    coverUrlController.text = asset.coverUrl ?? '';
+    if (asset.location != null) {
+      latitudeController.text = asset.location!.latitude.toStringAsFixed(6);
+      longitudeController.text = asset.location!.longitude.toStringAsFixed(6);
+    } else {
+      latitudeController.clear();
+      longitudeController.clear();
+    }
+    isActiveStreamValue.addValue(asset.isActive);
+    updateSelectedProfileType(asset.profileType);
+    _applyTaxonomySelection(asset.taxonomyTerms);
+  }
+
+  void updateSelectedProfileType(String? profileType) {
+    selectedProfileTypeStreamValue.addValue(profileType);
+    _pruneTaxonomySelection();
+  }
+
+  void updateIsActive(bool value) {
+    isActiveStreamValue.addValue(value);
+  }
+
+  void updateSearchQuery(String value) {
+    searchQueryStreamValue.addValue(value);
+  }
+
+  void updateTaxonomySelection({
+    required String taxonomySlug,
+    required String termSlug,
+    required bool selected,
+  }) {
+    final current = Map<String, Set<String>>.from(
+      selectedTaxonomyTermsStreamValue.value,
+    );
+    final terms = current[taxonomySlug] ?? <String>{};
+    if (selected) {
+      terms.add(termSlug);
+    } else {
+      terms.remove(termSlug);
+    }
+    if (terms.isEmpty) {
+      current.remove(taxonomySlug);
+    } else {
+      current[taxonomySlug] = terms;
+    }
+    selectedTaxonomyTermsStreamValue.addValue(current);
+  }
+
+  void _applyTaxonomySelection(List<TenantAdminTaxonomyTerm> terms) {
+    final map = <String, Set<String>>{};
+    for (final term in terms) {
+      final set = map.putIfAbsent(term.type, () => <String>{});
+      set.add(term.value);
+    }
+    selectedTaxonomyTermsStreamValue.addValue(map);
+  }
+
+  void _pruneTaxonomySelection() {
+    final allowed = _allowedTaxonomiesForSelectedType();
+    if (allowed.isEmpty) {
+      selectedTaxonomyTermsStreamValue.addValue(const {});
+      return;
+    }
+    final current = Map<String, Set<String>>.from(
+      selectedTaxonomyTermsStreamValue.value,
+    );
+    current.removeWhere((key, _) => !allowed.contains(key));
+    selectedTaxonomyTermsStreamValue.addValue(current);
+  }
+
+  List<String> _allowedTaxonomiesForSelectedType() {
+    final selectedType = selectedProfileTypeStreamValue.value;
+    if (selectedType == null || selectedType.isEmpty) return const [];
+    for (final definition in profileTypesStreamValue.value) {
+      if (definition.type == selectedType) {
+        return definition.allowedTaxonomies;
+      }
+    }
+    return const [];
+  }
+
+  bool requiresLocation() {
+    final selectedType = selectedProfileTypeStreamValue.value;
+    if (selectedType == null || selectedType.isEmpty) return false;
+    for (final definition in profileTypesStreamValue.value) {
+      if (definition.type == selectedType) {
+        return definition.capabilities.isPoiEnabled;
+      }
+    }
+    return false;
+  }
+
+  TenantAdminLocation? _parseLocation() {
+    final lat = double.tryParse(latitudeController.text.trim());
+    final lng = double.tryParse(longitudeController.text.trim());
+    if (lat == null || lng == null) return null;
+    return TenantAdminLocation(latitude: lat, longitude: lng);
+  }
+
+  List<String> _parseList(TextEditingController controller) {
+    return controller.text
+        .split(',')
+        .map((value) => value.trim())
+        .where((value) => value.isNotEmpty)
+        .toList(growable: false);
+  }
+
+  List<TenantAdminTaxonomyTerm> _buildTaxonomyTerms() {
+    final selections = selectedTaxonomyTermsStreamValue.value;
+    final terms = <TenantAdminTaxonomyTerm>[];
+    selections.forEach((taxonomy, values) {
+      for (final value in values) {
+        terms.add(TenantAdminTaxonomyTerm(type: taxonomy, value: value));
+      }
+    });
+    return terms;
+  }
+
+  Future<void> submitCreate() async {
+    final form = formKey.currentState;
+    if (form == null || !form.validate()) return;
+    if (requiresLocation() && _parseLocation() == null) {
+      submitErrorStreamValue.addValue('Localizacao obrigatoria.');
+      return;
+    }
+    submitLoadingStreamValue.addValue(true);
+    try {
+      final created = await _repository.createStaticAsset(
+        profileType: selectedProfileTypeStreamValue.value ?? '',
+        displayName: displayNameController.text.trim(),
+        slug: slugController.text.trim(),
+        location: _parseLocation(),
+        taxonomyTerms: _buildTaxonomyTerms(),
+        tags: _parseList(tagsController),
+        categories: _parseList(categoriesController),
+        bio: bioController.text.trim().isEmpty ? null : bioController.text.trim(),
+        content:
+            contentController.text.trim().isEmpty ? null : contentController.text.trim(),
+        avatarUrl: avatarUrlController.text.trim().isEmpty
+            ? null
+            : avatarUrlController.text.trim(),
+        coverUrl: coverUrlController.text.trim().isEmpty
+            ? null
+            : coverUrlController.text.trim(),
+        isActive: isActiveStreamValue.value,
+      );
+      if (_isDisposed) return;
+      submitErrorStreamValue.addValue(null);
+      submitSuccessStreamValue.addValue('Ativo criado.');
+      assetsStreamValue.addValue(
+        [...assetsStreamValue.value, created],
+      );
+    } catch (error) {
+      if (_isDisposed) return;
+      submitErrorStreamValue.addValue(error.toString());
+    } finally {
+      if (!_isDisposed) {
+        submitLoadingStreamValue.addValue(false);
+      }
+    }
+  }
+
+  Future<void> submitUpdate(String assetId) async {
+    final form = formKey.currentState;
+    if (form == null || !form.validate()) return;
+    if (requiresLocation() && _parseLocation() == null) {
+      submitErrorStreamValue.addValue('Localizacao obrigatoria.');
+      return;
+    }
+    submitLoadingStreamValue.addValue(true);
+    try {
+      final updated = await _repository.updateStaticAsset(
+        assetId: assetId,
+        profileType: selectedProfileTypeStreamValue.value,
+        displayName: displayNameController.text.trim(),
+        slug: slugController.text.trim(),
+        location: _parseLocation(),
+        taxonomyTerms: _buildTaxonomyTerms(),
+        tags: _parseList(tagsController),
+        categories: _parseList(categoriesController),
+        bio: bioController.text.trim().isEmpty ? null : bioController.text.trim(),
+        content:
+            contentController.text.trim().isEmpty ? null : contentController.text.trim(),
+        avatarUrl: avatarUrlController.text.trim().isEmpty
+            ? null
+            : avatarUrlController.text.trim(),
+        coverUrl: coverUrlController.text.trim().isEmpty
+            ? null
+            : coverUrlController.text.trim(),
+        isActive: isActiveStreamValue.value,
+      );
+      if (_isDisposed) return;
+      submitErrorStreamValue.addValue(null);
+      submitSuccessStreamValue.addValue('Ativo atualizado.');
+      _replaceAsset(updated);
+    } catch (error) {
+      if (_isDisposed) return;
+      submitErrorStreamValue.addValue(error.toString());
+    } finally {
+      if (!_isDisposed) {
+        submitLoadingStreamValue.addValue(false);
+      }
+    }
+  }
+
+  Future<void> deleteAsset(String assetId) async {
+    try {
+      await _repository.deleteStaticAsset(assetId);
+      if (_isDisposed) return;
+      assetsStreamValue.addValue(
+        assetsStreamValue.value
+            .where((asset) => asset.id != assetId)
+            .toList(growable: false),
+      );
+    } catch (error) {
+      if (_isDisposed) return;
+      errorStreamValue.addValue(error.toString());
+    }
+  }
+
+  void _replaceAsset(TenantAdminStaticAsset updated) {
+    final updatedList = assetsStreamValue.value
+        .map((asset) => asset.id == updated.id ? updated : asset)
+        .toList(growable: false);
+    assetsStreamValue.addValue(updatedList);
+    editingAssetStreamValue.addValue(updated);
+  }
+
+  void clearSubmitMessages() {
+    submitErrorStreamValue.addValue(null);
+    submitSuccessStreamValue.addValue(null);
+  }
+
+  void _resetFormState() {
+    editingAssetStreamValue.addValue(null);
+    displayNameController.clear();
+    slugController.clear();
+    bioController.clear();
+    contentController.clear();
+    tagsController.clear();
+    categoriesController.clear();
+    avatarUrlController.clear();
+    coverUrlController.clear();
+    latitudeController.clear();
+    longitudeController.clear();
+    selectedProfileTypeStreamValue.addValue(null);
+    selectedTaxonomyTermsStreamValue.addValue(const {});
+    isActiveStreamValue.addValue(true);
+    clearSubmitMessages();
+  }
+
+  @override
+  void onDispose() {
+    _isDisposed = true;
+    _locationSubscription?.cancel();
+    displayNameController.dispose();
+    slugController.dispose();
+    bioController.dispose();
+    contentController.dispose();
+    tagsController.dispose();
+    categoriesController.dispose();
+    avatarUrlController.dispose();
+    coverUrlController.dispose();
+    latitudeController.dispose();
+    longitudeController.dispose();
+    assetsStreamValue.dispose();
+    profileTypesStreamValue.dispose();
+    taxonomiesStreamValue.dispose();
+    taxonomyTermsStreamValue.dispose();
+    selectedTaxonomyTermsStreamValue.dispose();
+    selectedProfileTypeStreamValue.dispose();
+    isActiveStreamValue.dispose();
+    editingAssetStreamValue.dispose();
+    isLoadingStreamValue.dispose();
+    errorStreamValue.dispose();
+    taxonomyLoadingStreamValue.dispose();
+    taxonomyErrorStreamValue.dispose();
+    submitLoadingStreamValue.dispose();
+    submitErrorStreamValue.dispose();
+    submitSuccessStreamValue.dispose();
+    searchQueryStreamValue.dispose();
+  }
+}

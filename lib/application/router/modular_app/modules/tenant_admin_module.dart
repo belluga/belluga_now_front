@@ -10,6 +10,7 @@ import 'package:belluga_now/presentation/tenant_admin/accounts/services/tenant_a
 import 'package:belluga_now/presentation/tenant_admin/organizations/controllers/tenant_admin_organizations_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/profile_types/controllers/tenant_admin_profile_types_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/shell/controllers/tenant_admin_shell_controller.dart';
+import 'package:belluga_now/presentation/tenant_admin/static_assets/controllers/tenant_admin_static_assets_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/taxonomies/controllers/tenant_admin_taxonomies_controller.dart';
 import 'package:get_it_modular_with_auto_route/get_it_modular_with_auto_route.dart';
 
@@ -39,6 +40,9 @@ class TenantAdminModule extends ModuleContract {
     );
     registerFactory<TenantAdminTaxonomiesController>(
       () => TenantAdminTaxonomiesController(),
+    );
+    registerFactory<TenantAdminStaticAssetsController>(
+      () => TenantAdminStaticAssetsController(),
     );
   }
 
@@ -109,6 +113,18 @@ class TenantAdminModule extends ModuleContract {
             AutoRoute(
               path: 'taxonomies/:taxonomyId/terms',
               page: TenantAdminTaxonomyTermsRoute.page,
+            ),
+            AutoRoute(
+              path: 'static_assets',
+              page: TenantAdminStaticAssetsListRoute.page,
+            ),
+            AutoRoute(
+              path: 'static_assets/create',
+              page: TenantAdminStaticAssetCreateRoute.page,
+            ),
+            AutoRoute(
+              path: 'static_assets/:assetId/edit',
+              page: TenantAdminStaticAssetEditRoute.page,
             ),
           ],
         ),
