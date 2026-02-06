@@ -110,6 +110,33 @@ void main() {
       AuthRepository.anonymousIdentityMaxAttempts,
     );
   });
+
+  test('init reissues identity when stored token fails validation', () async {
+    FlutterSecureStorage.setMockInitialValues({
+      'user_token': 'stored-token',
+      'user_id': 'legacy-user',
+    });
+    final authBackend = _FailingLoginCheckBackend(
+      tokenToReturn: 'identity-token-refresh',
+      userIdToReturn: 'user-refresh',
+    );
+    GetIt.I.registerSingleton<BackendContract>(
+      _FakeBackend(auth: authBackend),
+    );
+
+    final repository = AuthRepository();
+    await repository.init();
+    await Future<void>.delayed(const Duration(milliseconds: 10));
+
+    expect(authBackend.issueCount, 1);
+    expect(repository.userToken, 'identity-token-refresh');
+
+    final stored = await AuthRepository.storage.read(key: 'user_token');
+    expect(stored, 'identity-token-refresh');
+    final storedUserId =
+        await AuthRepository.storage.read(key: 'user_id');
+    expect(storedUserId, 'user-refresh');
+  });
 }
 
 class _FakeBackend extends BackendContract {
@@ -293,6 +320,18 @@ class _FlakyAuthBackend extends AuthBackendContract {
     List<String>? anonymousUserIds,
   }) =>
       throw UnimplementedError();
+}
+
+class _FailingLoginCheckBackend extends _FakeAuthBackend {
+  _FailingLoginCheckBackend({
+    required super.tokenToReturn,
+    required super.userIdToReturn,
+  });
+
+  @override
+  Future<UserDto> loginCheck() async {
+    throw Exception('Failed to validate auth token [status=401]');
+  }
 }
 
 class _UnsupportedTenantBackend extends TenantBackendContract {

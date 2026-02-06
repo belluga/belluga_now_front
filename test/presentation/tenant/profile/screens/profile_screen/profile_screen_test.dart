@@ -9,7 +9,6 @@ import 'package:belluga_now/domain/user/profile_avatar_storage_contract.dart';
 import 'package:belluga_now/domain/user/user_profile_contract.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/infrastructure/dal/dao/backend_contract.dart';
-import 'package:belluga_now/presentation/landlord/auth/controllers/landlord_login_controller.dart';
 import 'package:belluga_now/domain/repositories/landlord_auth_repository_contract.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -248,6 +247,34 @@ void main() {
     await GetIt.I.reset();
   });
 
+  test(
+    'ProfileScreenController does not require LandlordLoginController registration',
+    () {
+      final adminModeRepository = _FakeAdminModeRepository(AdminMode.user);
+      final authRepository =
+          _FakeAuthRepository(backend: _FakeBackendContract());
+      final appDataRepository = _FakeAppDataRepository();
+      final avatarStorage = _FakeProfileAvatarStorage();
+      final landlordAuthRepository = _FakeLandlordAuthRepository();
+
+      GetIt.I.registerSingleton<AuthRepositoryContract>(authRepository);
+      GetIt.I.registerSingleton<AppDataRepositoryContract>(appDataRepository);
+      GetIt.I.registerSingleton<AdminModeRepositoryContract>(
+        adminModeRepository,
+      );
+      GetIt.I.registerSingleton<ProfileAvatarStorageContract>(avatarStorage);
+      GetIt.I.registerSingleton<LandlordAuthRepositoryContract>(
+        landlordAuthRepository,
+      );
+
+      // Guardrail: profile must resolve from repositories, never from another feature controller.
+      expect(
+        () => ProfileScreenController(),
+        returnsNormally,
+      );
+    },
+  );
+
   testWidgets('Profile stays visible in user mode (no auto-redirect)',
       (tester) async {
     final controller = _buildController(AdminMode.user);
@@ -297,16 +324,13 @@ void main() {
         _FakeAuthRepository(backend: _FakeBackendContract());
     final appDataRepository = _FakeAppDataRepository();
     final avatarStorage = _FakeProfileAvatarStorage();
-    final landlordLoginController = LandlordLoginController(
-      adminModeRepository: adminModeRepository,
-      landlordAuthRepository: _FakeLandlordAuthRepository(),
-    );
+    final landlordAuthRepository = _FakeLandlordAuthRepository();
 
     final controller = ProfileScreenController(
       authRepository: authRepository,
       appDataRepository: appDataRepository,
       adminModeRepository: adminModeRepository,
-      landlordLoginController: landlordLoginController,
+      landlordAuthRepository: landlordAuthRepository,
       avatarStorage: avatarStorage,
     );
 
@@ -345,16 +369,13 @@ ProfileScreenController _buildController(AdminMode mode) {
       _FakeAuthRepository(backend: _FakeBackendContract());
   final appDataRepository = _FakeAppDataRepository();
   final avatarStorage = _FakeProfileAvatarStorage();
-  final landlordLoginController = LandlordLoginController(
-    adminModeRepository: adminModeRepository,
-    landlordAuthRepository: _FakeLandlordAuthRepository(),
-  );
+  final landlordAuthRepository = _FakeLandlordAuthRepository();
 
   return ProfileScreenController(
     authRepository: authRepository,
     appDataRepository: appDataRepository,
     adminModeRepository: adminModeRepository,
-    landlordLoginController: landlordLoginController,
+    landlordAuthRepository: landlordAuthRepository,
     avatarStorage: avatarStorage,
   );
 }

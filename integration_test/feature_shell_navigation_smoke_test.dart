@@ -170,9 +170,8 @@ void main() {
               find.byType(AuthLoginScreen, skipOffstage: false),
             );
       if (!foundProfile && !foundLogin) {
-        developer.log(
-          'Profile screen not resolved; continuing nav smoke test.',
-          name: 'integration_test.shell_nav',
+        throw TestFailure(
+          'Profile destination did not resolve to ProfileScreen or AuthLoginScreen.',
         );
       }
 

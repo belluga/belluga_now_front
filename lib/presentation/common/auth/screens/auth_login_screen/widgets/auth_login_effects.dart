@@ -79,7 +79,7 @@ class _AuthLoginEffectsState extends State<AuthLoginEffects> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       if (authorized) {
-        context.router.replace(const TenantHomeRoute());
+        _navigateAfterAuth();
       }
       widget.onClearLoginResult();
     });
@@ -92,11 +92,40 @@ class _AuthLoginEffectsState extends State<AuthLoginEffects> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       if (authorized) {
-        context.router.maybePop();
-        context.router.replace(const TenantHomeRoute());
+        final navigator = Navigator.of(context, rootNavigator: true);
+        if (navigator.canPop()) {
+          navigator.pop();
+        }
+        _navigateAfterAuth();
       }
       widget.onClearSignUpResult();
     });
+  }
+
+  void _navigateAfterAuth() {
+    final router = context.router;
+    final pendingPath = _readRedirectPathFromQuery();
+    if (pendingPath != null && !pendingPath.contains('/auth/login')) {
+      router.replacePath(pendingPath);
+      return;
+    }
+    if (router.canPop()) {
+      router.pop();
+      return;
+    }
+    router.replace(const TenantHomeRoute());
+  }
+
+  String? _readRedirectPathFromQuery() {
+    final value = context.routeData.queryParams.rawMap['redirect'];
+    if (value == null) {
+      return null;
+    }
+    final redirect = value.toString().trim();
+    if (redirect.isEmpty) {
+      return null;
+    }
+    return Uri.decodeComponent(redirect);
   }
 
   SnackBar _buildErrorSnack(String message) {

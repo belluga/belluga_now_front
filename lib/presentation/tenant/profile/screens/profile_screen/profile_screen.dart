@@ -421,9 +421,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   void _switchToAdminMode(BuildContext context) {
     if (_controller.isAdminMode) return;
-    showLandlordLoginSheet(
+    showLandlordCredentialsSheet(
       context,
-      controller: _controller.landlordLoginController,
+      onSubmit: _controller.enterAdminModeWithCredentials,
     );
   }
 

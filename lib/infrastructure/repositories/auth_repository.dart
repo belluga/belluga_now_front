@@ -77,11 +77,14 @@ final class AuthRepository extends AuthRepositoryContract<UserBelluga>
 
     userTokenUpdate(token);
 
-    final user = await backend.auth.loginCheck();
-
-    final loggedUser = mapUserDto(user);
-    userStreamValue.addValue(loggedUser);
-    await _setUserId(loggedUser.uuidValue.value);
+    try {
+      final user = await backend.auth.loginCheck();
+      final loggedUser = mapUserDto(user);
+      userStreamValue.addValue(loggedUser);
+      await _setUserId(loggedUser.uuidValue.value);
+    } catch (error) {
+      await _resetStaleIdentity(error);
+    }
 
     return Future.value();
   }
@@ -130,10 +133,12 @@ final class AuthRepository extends AuthRepositoryContract<UserBelluga>
       anonymousUserIds: anonymousIds,
     );
     if (response.token.isNotEmpty) {
+      await _saveUserTokenOnLocalStorage(response.token);
       _userTokenStreamValue.addValue(response.token);
     }
 
     UserDto? userDto;
+    String resolvedToken = response.token;
     try {
       userDto = await backend.auth.loginCheck();
     } catch (_) {
@@ -143,7 +148,26 @@ final class AuthRepository extends AuthRepositoryContract<UserBelluga>
     if (userDto != null) {
       await _finalizeAuthenticatedUser(
         userDto,
-        response.token,
+        resolvedToken,
+        previousUserId: previousUserId,
+        overrideUserId: response.userId,
+      );
+      return;
+    }
+
+    try {
+      final loginResult =
+          await backend.auth.loginWithEmailPassword(email, password);
+      userDto = loginResult.$1;
+      resolvedToken = loginResult.$2;
+    } catch (_) {
+      userDto = null;
+    }
+
+    if (userDto != null) {
+      await _finalizeAuthenticatedUser(
+        userDto,
+        resolvedToken,
         previousUserId: previousUserId,
         overrideUserId: response.userId,
       );
@@ -223,6 +247,12 @@ final class AuthRepository extends AuthRepositoryContract<UserBelluga>
       key: _userIdStorageKey,
       value: userId,
     );
+  }
+
+  Future<void> _resetStaleIdentity(Object error) async {
+    userStreamValue.addValue(null);
+    await _setUserId(null);
+    userTokenDelete();
   }
 
   Future<void> _ensureIdentityToken() async {

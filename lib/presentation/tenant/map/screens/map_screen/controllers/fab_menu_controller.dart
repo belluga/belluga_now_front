@@ -1,14 +1,14 @@
 import 'package:belluga_now/domain/map/filters/poi_filter_mode.dart';
-import 'package:belluga_now/presentation/tenant/map/screens/map_screen/controllers/map_screen_controller.dart';
+import 'package:belluga_now/domain/repositories/poi_repository_contract.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value.dart';
 
 class FabMenuController {
   FabMenuController({
-    MapScreenController? mapController,
-  }) : _mapController = mapController ?? GetIt.I.get<MapScreenController>();
+    PoiRepositoryContract? poiRepository,
+  }) : _poiRepository = poiRepository ?? GetIt.I.get<PoiRepositoryContract>();
 
-  final MapScreenController _mapController;
+  final PoiRepositoryContract _poiRepository;
 
   final expandedStreamValue = StreamValue<bool>(defaultValue: true);
   final condensedStreamValue = StreamValue<bool>(defaultValue: false);
@@ -20,14 +20,14 @@ class FabMenuController {
   bool? lastExpanded;
 
   StreamValue<PoiFilterMode> get filterModeStreamValue =>
-      _mapController.filterModeStreamValue;
+      _poiRepository.filterModeStreamValue;
 
   void toggleFilterMode(PoiFilterMode mode) {
     final current = filterModeStreamValue.value;
     if (current == mode) {
-      _mapController.clearFilters();
+      _poiRepository.clearFilters();
     } else {
-      _mapController.applyFilterMode(mode);
+      _poiRepository.applyFilterMode(mode);
     }
   }
 

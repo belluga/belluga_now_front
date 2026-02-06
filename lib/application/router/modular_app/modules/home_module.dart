@@ -13,7 +13,6 @@ import 'package:belluga_now/infrastructure/repositories/friends_repository.dart'
 import 'package:belluga_now/infrastructure/repositories/invites_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/schedule_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/user_events_repository.dart';
-import 'package:belluga_now/presentation/landlord/home/screens/landlord_home_screen/controllers/landlord_home_screen_controller.dart';
 import 'package:belluga_now/presentation/tenant/home/screens/tenant_home_screen/controllers/tenant_home_controller.dart';
 import 'package:belluga_now/presentation/tenant/home/screens/tenant_home_screen/widgets/agenda_section/controllers/tenant_home_agenda_controller.dart';
 import 'package:belluga_now/presentation/tenant/home/screens/tenant_home_screen/widgets/favorite_section/controllers/favorites_section_controller.dart';
@@ -52,10 +51,6 @@ class HomeModule extends ModuleContract {
 
     registerLazySingleton<TenantHomeController>(
       () => TenantHomeController(),
-    );
-
-    registerLazySingleton<LandlordHomeScreenController>(
-      () => LandlordHomeScreenController(),
     );
 
     registerLazySingleton(FavoritesSectionController.new);

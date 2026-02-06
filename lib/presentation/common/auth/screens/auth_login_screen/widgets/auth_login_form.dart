@@ -5,7 +5,7 @@ import 'package:belluga_now/presentation/tenant/auth/login/controllers/auth_logi
 import 'package:flutter/material.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 
-class AuthLoginForm extends StatefulWidget {
+class AuthLoginForm extends StatelessWidget {
   const AuthLoginForm({
     super.key,
     required this.controller,
@@ -13,12 +13,7 @@ class AuthLoginForm extends StatefulWidget {
 
   final AuthLoginControllerContract controller;
 
-  @override
-  State<AuthLoginForm> createState() => _AuthLoginFormState();
-}
-
-class _AuthLoginFormState extends State<AuthLoginForm> {
-  AuthLoginControllerContract get _controller => widget.controller;
+  AuthLoginControllerContract get _controller => controller;
 
   @override
   Widget build(BuildContext context) {

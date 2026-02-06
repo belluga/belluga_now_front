@@ -117,6 +117,12 @@ abstract class ApplicationContract extends ModularAppContract {
     PushHandlerRepositoryFactory? repositoryFactory,
     AuthRepositoryContract? authRepositoryOverride,
   }) async {
+    const disablePush =
+        bool.fromEnvironment('DISABLE_PUSH', defaultValue: false);
+    if (disablePush) {
+      debugPrint('[Push] Disabled via DISABLE_PUSH dart-define.');
+      return;
+    }
     final isWeb = isWebOverride ?? kIsWeb;
     if (isWeb) {
       debugPrint(
