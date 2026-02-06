@@ -67,6 +67,11 @@ jobs:
           fvm install
           fvm flutter pub get
 
+      - name: Free disk space for Android CI
+        run: |
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/share/boost /opt/hostedtoolcache/CodeQL || true
+          df -h
+
       - name: Warm Android debug build
         run: |
           fvm flutter build apk --debug --no-pub --dart-define=LANDLORD_DOMAIN=ci.flutter.test --dart-define=API_SCHEME=http
@@ -94,7 +99,6 @@ jobs:
             adb wait-for-device
             adb devices
             fvm flutter devices
-            fvm flutter precache --android
             fvm flutter test --no-pub --timeout=30m -d emulator-5554 --dart-define=LANDLORD_DOMAIN=ci.flutter.test --dart-define=API_SCHEME=http integration_test/push_queue_auto_present_test.dart
 
   validate_and_build:
