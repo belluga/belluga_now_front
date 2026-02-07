@@ -70,6 +70,14 @@ jobs:
           fvm install
           fvm flutter pub get
 
+      - name: Validate required Android flavor
+        run: |
+          if [ -z "${CI_ANDROID_FLAVOR:-}" ]; then
+            echo "CI_ANDROID_FLAVOR is required for Android CI builds/tests." >&2
+            echo "Configure repository variable: CI_ANDROID_FLAVOR" >&2
+            exit 1
+          fi
+
       - name: Free disk space for Android CI
         run: |
           sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/share/boost /opt/hostedtoolcache/CodeQL || true
@@ -77,10 +85,7 @@ jobs:
 
       - name: Build Android debug APK (CI warm build)
         run: |
-          set -- fvm flutter build apk --debug --no-pub --dart-define=LANDLORD_DOMAIN=ci.flutter.test --dart-define=API_SCHEME=http
-          if [ -n "${CI_ANDROID_FLAVOR:-}" ]; then
-            set -- "$@" --flavor "$CI_ANDROID_FLAVOR" "--dart-define=FLAVOR=$CI_ANDROID_FLAVOR"
-          fi
+          set -- fvm flutter build apk --debug --no-pub --flavor "$CI_ANDROID_FLAVOR" "--dart-define=FLAVOR=$CI_ANDROID_FLAVOR" --dart-define=LANDLORD_DOMAIN=ci.flutter.test --dart-define=API_SCHEME=http
           timeout 25m "$@"
           test -f build/app/outputs/flutter-apk/app-debug.apk
 
@@ -100,10 +105,7 @@ jobs:
             adb start-server
             adb wait-for-device
             adb devices
-            set -- fvm flutter drive --no-pub --driver=integration_test/driver.dart --target=integration_test/push_queue_auto_present_test.dart --use-application-binary=build/app/outputs/flutter-apk/app-debug.apk -d emulator-5554 --dart-define=LANDLORD_DOMAIN=ci.flutter.test --dart-define=API_SCHEME=http
-            if [ -n "${CI_ANDROID_FLAVOR:-}" ]; then
-              set -- "$@" --flavor "$CI_ANDROID_FLAVOR" "--dart-define=FLAVOR=$CI_ANDROID_FLAVOR"
-            fi
+            set -- fvm flutter drive --no-pub --driver=integration_test/driver.dart --target=integration_test/push_queue_auto_present_test.dart --use-application-binary=build/app/outputs/flutter-apk/app-debug.apk -d emulator-5554 --flavor "$CI_ANDROID_FLAVOR" "--dart-define=FLAVOR=$CI_ANDROID_FLAVOR" --dart-define=LANDLORD_DOMAIN=ci.flutter.test --dart-define=API_SCHEME=http
             timeout 25m "$@"
 
   validate_and_build:
