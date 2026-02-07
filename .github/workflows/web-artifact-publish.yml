@@ -72,10 +72,6 @@ jobs:
           sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/share/boost /opt/hostedtoolcache/CodeQL || true
           df -h
 
-      - name: Warm Android debug build
-        run: |
-          fvm flutter build apk --debug --no-pub --dart-define=LANDLORD_DOMAIN=ci.flutter.test --dart-define=API_SCHEME=http
-
       - name: Run Android integration smoke
         uses: reactivecircus/android-emulator-runner@v2
         with:
