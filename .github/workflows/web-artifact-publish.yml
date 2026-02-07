@@ -107,17 +107,35 @@ jobs:
     if: github.event_name == 'push'
 
     steps:
-      - name: Check publish token availability
+      - name: Check publish configuration availability
         id: gate
         env:
           WEB_APP_REPO_TOKEN: ${{ secrets.WEB_APP_REPO_TOKEN }}
+          WEB_APP_REPO: ${{ vars.WEB_APP_REPO }}
         run: |
+          missing=()
+
           if [[ -z "$WEB_APP_REPO_TOKEN" ]]; then
-            echo "enabled=false" >> "$GITHUB_OUTPUT"
-            echo "WEB_APP_REPO_TOKEN is not configured. Skipping publish." >&2
-          else
-            echo "enabled=true" >> "$GITHUB_OUTPUT"
+            missing+=("WEB_APP_REPO_TOKEN")
           fi
+
+          if [[ -z "$WEB_APP_REPO" ]]; then
+            missing+=("WEB_APP_REPO")
+          fi
+
+          if [[ ${#missing[@]} -gt 0 ]]; then
+            if [[ "${GITHUB_REF_NAME}" == "dev" ]]; then
+              echo "enabled=false" >> "$GITHUB_OUTPUT"
+              echo "Missing publish configuration (${missing[*]}). Skipping publish on dev." >&2
+              exit 0
+            fi
+
+            echo "Missing required publish configuration: ${missing[*]}" >&2
+            exit 1
+          fi
+
+          echo "enabled=true" >> "$GITHUB_OUTPUT"
+          echo "web_repo=$WEB_APP_REPO" >> "$GITHUB_OUTPUT"
 
       - name: Download web artifact
         if: steps.gate.outputs.enabled == 'true'
@@ -130,7 +148,7 @@ jobs:
         if: steps.gate.outputs.enabled == 'true'
         env:
           WEB_APP_REPO_TOKEN: ${{ secrets.WEB_APP_REPO_TOKEN }}
-          WEB_APP_REPO: belluga/belluga_now_web
+          WEB_APP_REPO: ${{ steps.gate.outputs.web_repo }}
         run: |
           git clone "https://x-access-token:${WEB_APP_REPO_TOKEN}@github.com/${WEB_APP_REPO}.git" web-app-repo
 
@@ -194,7 +212,7 @@ jobs:
         if: steps.gate.outputs.enabled == 'true' && env.NO_CHANGES == 'false'
         env:
           GH_TOKEN: ${{ secrets.WEB_APP_REPO_TOKEN }}
-          WEB_APP_REPO: belluga/belluga_now_web
+          WEB_APP_REPO: ${{ steps.gate.outputs.web_repo }}
           TARGET_BRANCH: ${{ github.ref_name }}
         run: |
           title="chore(web): publish Flutter web build from ${TARGET_BRANCH}"
