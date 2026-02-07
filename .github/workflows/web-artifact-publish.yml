@@ -22,6 +22,8 @@ jobs:
     name: Integration Tests (Android)
     runs-on: ubuntu-22.04
     timeout-minutes: 60
+    env:
+      CI_ANDROID_FLAVOR: ${{ vars.CI_ANDROID_FLAVOR }}
 
     steps:
       - name: Checkout flutter-app
@@ -75,7 +77,11 @@ jobs:
 
       - name: Build Android debug APK (CI warm build)
         run: |
-          timeout 25m fvm flutter build apk --debug --no-pub --dart-define=LANDLORD_DOMAIN=ci.flutter.test --dart-define=API_SCHEME=http
+          set -- fvm flutter build apk --debug --no-pub --dart-define=LANDLORD_DOMAIN=ci.flutter.test --dart-define=API_SCHEME=http
+          if [ -n "${CI_ANDROID_FLAVOR:-}" ]; then
+            set -- "$@" --flavor "$CI_ANDROID_FLAVOR" "--dart-define=FLAVOR=$CI_ANDROID_FLAVOR"
+          fi
+          timeout 25m "$@"
           test -f build/app/outputs/flutter-apk/app-debug.apk
 
       - name: Run Android integration smoke
@@ -94,7 +100,11 @@ jobs:
             adb start-server
             adb wait-for-device
             adb devices
-            timeout 25m fvm flutter drive --no-pub --driver=integration_test/driver.dart --target=integration_test/push_queue_auto_present_test.dart --use-application-binary=build/app/outputs/flutter-apk/app-debug.apk -d emulator-5554 --dart-define=LANDLORD_DOMAIN=ci.flutter.test --dart-define=API_SCHEME=http
+            set -- fvm flutter drive --no-pub --driver=integration_test/driver.dart --target=integration_test/push_queue_auto_present_test.dart --use-application-binary=build/app/outputs/flutter-apk/app-debug.apk -d emulator-5554 --dart-define=LANDLORD_DOMAIN=ci.flutter.test --dart-define=API_SCHEME=http
+            if [ -n "${CI_ANDROID_FLAVOR:-}" ]; then
+              set -- "$@" --flavor "$CI_ANDROID_FLAVOR" "--dart-define=FLAVOR=$CI_ANDROID_FLAVOR"
+            fi
+            timeout 25m "$@"
 
   validate_and_build:
     name: Validate and Build Web
