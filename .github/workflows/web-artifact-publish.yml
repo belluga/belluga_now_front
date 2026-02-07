@@ -21,7 +21,7 @@ jobs:
   integration_android:
     name: Integration Tests (Android)
     runs-on: ubuntu-22.04
-    timeout-minutes: 50
+    timeout-minutes: 60
 
     steps:
       - name: Checkout flutter-app
@@ -73,6 +73,11 @@ jobs:
           sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/share/boost /opt/hostedtoolcache/CodeQL || true
           df -h
 
+      - name: Build Android debug APK (CI warm build)
+        run: |
+          timeout 25m fvm flutter build apk --debug --no-pub --dart-define=LANDLORD_DOMAIN=ci.flutter.test --dart-define=API_SCHEME=http
+          test -f build/app/outputs/flutter-apk/app-debug.apk
+
       - name: Run Android integration smoke
         uses: reactivecircus/android-emulator-runner@v2
         with:
@@ -89,8 +94,7 @@ jobs:
             adb start-server
             adb wait-for-device
             adb devices
-            fvm flutter devices
-            timeout 35m fvm flutter drive --driver=integration_test/driver.dart --target=integration_test/push_queue_auto_present_test.dart -d emulator-5554 --dart-define=LANDLORD_DOMAIN=ci.flutter.test --dart-define=API_SCHEME=http
+            timeout 25m fvm flutter drive --no-pub --driver=integration_test/driver.dart --target=integration_test/push_queue_auto_present_test.dart --use-application-binary=build/app/outputs/flutter-apk/app-debug.apk -d emulator-5554 --dart-define=LANDLORD_DOMAIN=ci.flutter.test --dart-define=API_SCHEME=http
 
   validate_and_build:
     name: Validate and Build Web
