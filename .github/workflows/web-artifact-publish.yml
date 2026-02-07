@@ -1,0 +1,201 @@
+name: Flutter Web Artifact Publish
+
+on:
+  push:
+    branches:
+      - dev
+      - stage
+      - main
+  pull_request:
+    branches:
+      - dev
+      - stage
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: flutter-web-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate_and_build:
+    name: Validate and Build Web
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout flutter-app
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve Flutter version
+        id: flutter_version
+        run: |
+          version="$(jq -r '.flutter // empty' .fvmrc 2>/dev/null || true)"
+
+          if [[ -z "$version" || "$version" == "null" ]]; then
+            version="$(grep -Eo '[0-9]+\.[0-9]+\.[0-9]+' .fvmrc | head -n 1 || true)"
+          fi
+
+          if [[ -z "$version" ]]; then
+            echo "Unable to resolve Flutter version from .fvmrc" >&2
+            exit 1
+          fi
+
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Setup Flutter SDK
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ steps.flutter_version.outputs.version }}
+          channel: stable
+          cache: true
+
+      - name: Install FVM
+        run: |
+          dart pub global activate fvm
+          echo "$HOME/.pub-cache/bin" >> "$GITHUB_PATH"
+
+      - name: Verify toolchain
+        run: |
+          fvm install
+          fvm flutter --version
+
+      - name: Flutter dependencies
+        run: fvm flutter pub get
+
+      - name: Flutter unit/widget tests
+        run: fvm flutter test --no-pub
+
+      - name: Build web artifact
+        env:
+          WEB_OUTPUT: ${{ runner.temp }}/web-build
+        run: |
+          mkdir -p "$WEB_OUTPUT"
+          fvm flutter build web --release --no-tree-shake-icons -o "$WEB_OUTPUT"
+
+          # These files are served by Laravel and must not ship in web-app.
+          rm -f "$WEB_OUTPUT/favicon.ico" "$WEB_OUTPUT/manifest.json"
+          rm -rf "$WEB_OUTPUT/icons"
+
+          test ! -f "$WEB_OUTPUT/favicon.ico"
+          test ! -f "$WEB_OUTPUT/manifest.json"
+          test ! -d "$WEB_OUTPUT/icons"
+
+          short_sha="$(git rev-parse --short HEAD)"
+          build_time="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+
+          cat > "$WEB_OUTPUT/build_metadata.json" <<JSON
+          {
+            "flutter_git_sha": "$short_sha",
+            "source_branch": "${GITHUB_REF_NAME}",
+            "build_time_utc": "$build_time"
+          }
+          JSON
+
+      - name: Upload web artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-build
+          path: ${{ runner.temp }}/web-build
+          if-no-files-found: error
+
+  publish_pr_to_web_repo:
+    name: Publish PR to web-app
+    runs-on: ubuntu-latest
+    needs: validate_and_build
+    if: github.event_name == 'push'
+
+    steps:
+      - name: Check publish token availability
+        id: gate
+        env:
+          WEB_APP_REPO_TOKEN: ${{ secrets.WEB_APP_REPO_TOKEN }}
+        run: |
+          if [[ -z "$WEB_APP_REPO_TOKEN" ]]; then
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "WEB_APP_REPO_TOKEN is not configured. Skipping publish." >&2
+          else
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Download web artifact
+        if: steps.gate.outputs.enabled == 'true'
+        uses: actions/download-artifact@v4
+        with:
+          name: web-build
+          path: ${{ runner.temp }}/web-build
+
+      - name: Clone web-app repository
+        if: steps.gate.outputs.enabled == 'true'
+        env:
+          WEB_APP_REPO_TOKEN: ${{ secrets.WEB_APP_REPO_TOKEN }}
+          WEB_APP_REPO: belluga/belluga_now_web
+        run: |
+          git clone "https://x-access-token:${WEB_APP_REPO_TOKEN}@github.com/${WEB_APP_REPO}.git" web-app-repo
+
+      - name: Prepare PR branch in web-app repo
+        if: steps.gate.outputs.enabled == 'true'
+        env:
+          TARGET_BRANCH: ${{ github.ref_name }}
+        run: |
+          cd web-app-repo
+          git fetch origin "$TARGET_BRANCH" --quiet
+          git checkout "$TARGET_BRANCH"
+
+          short_sha="$(echo "${GITHUB_SHA}" | cut -c1-7)"
+          pr_branch="ci/flutter-web-${TARGET_BRANCH}-${short_sha}"
+          echo "PR_BRANCH=$pr_branch" >> "$GITHUB_ENV"
+
+          git checkout -b "$pr_branch"
+
+          find . -mindepth 1 -maxdepth 1 ! -name '.git' -exec rm -rf {} +
+          rsync -a --delete "$RUNNER_TEMP/web-build/" ./
+
+          git add -A
+          if git diff --cached --quiet; then
+            echo "NO_CHANGES=true" >> "$GITHUB_ENV"
+          else
+            echo "NO_CHANGES=false" >> "$GITHUB_ENV"
+          fi
+
+      - name: Commit and push PR branch
+        if: steps.gate.outputs.enabled == 'true' && env.NO_CHANGES == 'false'
+        env:
+          TARGET_BRANCH: ${{ github.ref_name }}
+        run: |
+          cd web-app-repo
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          short_sha="$(echo "${GITHUB_SHA}" | cut -c1-7)"
+          git commit -m "chore(web): publish Flutter web build from ${TARGET_BRANCH} (${short_sha})"
+          git push -u origin "$PR_BRANCH"
+
+      - name: Create PR in web-app repo
+        if: steps.gate.outputs.enabled == 'true' && env.NO_CHANGES == 'false'
+        env:
+          GH_TOKEN: ${{ secrets.WEB_APP_REPO_TOKEN }}
+          WEB_APP_REPO: belluga/belluga_now_web
+          TARGET_BRANCH: ${{ github.ref_name }}
+        run: |
+          title="chore(web): publish Flutter web build from ${TARGET_BRANCH}"
+          body="Automated web bundle publication from flutter-app commit ${GITHUB_SHA}."
+
+          existing_pr="$(gh pr list --repo "$WEB_APP_REPO" --base "$TARGET_BRANCH" --head "$PR_BRANCH" --json number --jq '.[0].number // empty')"
+
+          if [[ -n "$existing_pr" ]]; then
+            echo "PR already exists: #$existing_pr"
+          else
+            gh pr create \
+              --repo "$WEB_APP_REPO" \
+              --base "$TARGET_BRANCH" \
+              --head "$PR_BRANCH" \
+              --title "$title" \
+              --body "$body"
+          fi
+
+      - name: No changes notice
+        if: steps.gate.outputs.enabled == 'true' && env.NO_CHANGES == 'true'
+        run: echo "No web artifact changes detected. PR not created."
