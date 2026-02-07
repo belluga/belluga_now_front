@@ -149,8 +149,25 @@ jobs:
 
           git checkout -b "$pr_branch"
 
-          find . -mindepth 1 -maxdepth 1 ! -name '.git' -exec rm -rf {} +
-          rsync -a --delete "$RUNNER_TEMP/web-build/" ./
+          # Preserve web-app CI files while refreshing generated web bundle output.
+          find . -mindepth 1 -maxdepth 1 \
+            ! -name '.git' \
+            ! -name '.github' \
+            ! -name '.gitignore' \
+            ! -name 'package.json' \
+            ! -name 'package-lock.json' \
+            ! -name 'playwright.config.js' \
+            ! -name 'tests' \
+            -exec rm -rf {} +
+
+          rsync -a --delete \
+            --exclude '.github/' \
+            --exclude '.gitignore' \
+            --exclude 'package.json' \
+            --exclude 'package-lock.json' \
+            --exclude 'playwright.config.js' \
+            --exclude 'tests/' \
+            "$RUNNER_TEMP/web-build/" ./
 
           git add -A
           if git diff --cached --quiet; then
