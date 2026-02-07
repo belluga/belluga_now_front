@@ -93,7 +93,7 @@ jobs:
             adb wait-for-device
             adb devices
             fvm flutter devices
-            fvm flutter test --no-pub --timeout=30m -d emulator-5554 --dart-define=LANDLORD_DOMAIN=ci.flutter.test --dart-define=API_SCHEME=http integration_test/push_queue_auto_present_test.dart
+            timeout 35m fvm flutter drive --driver=integration_test/driver.dart --target=integration_test/push_queue_auto_present_test.dart -d emulator-5554 --dart-define=LANDLORD_DOMAIN=ci.flutter.test --dart-define=API_SCHEME=http
 
   validate_and_build:
     name: Validate and Build Web
