@@ -143,8 +143,10 @@ class MockScheduleBackend implements ScheduleBackendContract {
       return EventPageDTO(events: const [], hasMore: false);
     }
 
-    final pageEvents =
-        confirmedFiltered.skip(startIndex).take(pageSize).toList(growable: false);
+    final pageEvents = confirmedFiltered
+        .skip(startIndex)
+        .take(pageSize)
+        .toList(growable: false);
     final hasMore = startIndex + pageSize < confirmedFiltered.length;
 
     return EventPageDTO(events: pageEvents, hasMore: hasMore);
@@ -167,8 +169,10 @@ class MockScheduleBackend implements ScheduleBackendContract {
     if (!GetIt.I.isRegistered<UserLocationRepositoryContract>()) {
       return input;
     }
-    final userCoordinate =
-        GetIt.I.get<UserLocationRepositoryContract>().userLocationStreamValue.value;
+    final userCoordinate = GetIt.I
+        .get<UserLocationRepositoryContract>()
+        .userLocationStreamValue
+        .value;
     if (userCoordinate == null) {
       return input;
     }
@@ -214,8 +218,7 @@ class MockScheduleBackend implements ScheduleBackendContract {
     List<String>? categories,
   ) {
     if (categories == null || categories.isEmpty) return input;
-    final normalized =
-        categories.map((c) => c.toLowerCase().trim()).toSet();
+    final normalized = categories.map((c) => c.toLowerCase().trim()).toSet();
     return input
         .where((event) => normalized.contains(event.type.slug.toLowerCase()))
         .toList();
@@ -298,11 +301,28 @@ class MockScheduleBackend implements ScheduleBackendContract {
   }
 
   String? _tenantSubdomainFromHostname(String hostname) {
-    final landlord = BellugaConstants.landlordDomain;
+    final landlord = _landlordHost();
+    if (landlord == null || landlord.isEmpty) {
+      return null;
+    }
     if (hostname == landlord) return null;
     final suffix = '.$landlord';
     if (!hostname.endsWith(suffix)) return null;
     return hostname.substring(0, hostname.length - suffix.length);
+  }
+
+  String? _landlordHost() {
+    final raw = BellugaConstants.landlordDomain.trim();
+    if (raw.isEmpty) {
+      return null;
+    }
+
+    final parsed = Uri.tryParse(raw);
+    if (parsed != null && parsed.host.trim().isNotEmpty) {
+      return parsed.host.trim();
+    }
+
+    return raw;
   }
 
   List<MockEventSeed> _buildSeedsWithPast() {
@@ -594,7 +614,8 @@ class MockScheduleBackend implements ScheduleBackendContract {
       name: 'Cervejaria Speranza',
       latitude: -20.666,
       longitude: -40.501,
-      imageUrl: 'https://www.folhaonline.es/wp-content/uploads/2024/10/speranza.jpeg',
+      imageUrl:
+          'https://www.folhaonline.es/wp-content/uploads/2024/10/speranza.jpeg',
     ),
     _VenueSeed(
       id: 'boteco-do-urso',
@@ -740,7 +761,6 @@ class MockScheduleBackend implements ScheduleBackendContract {
     final cleaned = slug.replaceAll(RegExp(r'-{2,}'), '-');
     return cleaned.replaceAll(RegExp(r'^-+|-+$'), '');
   }
-
 }
 
 class EventVenue {
