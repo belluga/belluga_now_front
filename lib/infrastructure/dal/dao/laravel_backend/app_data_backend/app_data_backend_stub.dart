@@ -5,16 +5,9 @@ import 'package:dio/dio.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
 class AppDataBackend implements AppDataBackendContract {
-  AppDataBackend({Dio? dio})
-      : _dio = dio ??
-            Dio(
-              BaseOptions(
-                baseUrl:
-                    '${BellugaConstants.apiScheme}://${BellugaConstants.landlordDomain}',
-              ),
-            );
+  AppDataBackend({Dio? dio}) : _dio = dio;
 
-  final Dio _dio;
+  final Dio? _dio;
 
   @override
   Future<AppDataDTO> fetch() async {
@@ -22,20 +15,32 @@ class AppDataBackend implements AppDataBackendContract {
     final url =
         '/api/v1/environment?app_domain=${Uri.encodeComponent(packageInfo.packageName)}';
 
+    final bootstrapBaseUrl = _resolveBootstrapBaseUrl();
+    final client = _dio ??
+        Dio(
+          BaseOptions(
+            baseUrl: bootstrapBaseUrl,
+            connectTimeout: const Duration(seconds: 3),
+            receiveTimeout: const Duration(seconds: 3),
+          ),
+        );
+
     try {
-      final response = await _dio.get(url);
+      final response = await client.get(url);
       final raw = response.data;
-      final Map<String, dynamic> json;
+      final Map<String, dynamic> payload;
       if (raw is Map<String, dynamic>) {
-        json = (raw['data'] is Map<String, dynamic>)
+        payload = (raw['data'] is Map<String, dynamic>)
             ? raw['data'] as Map<String, dynamic>
             : raw;
       } else {
         throw Exception(
-          'Unexpected environment response shape for ${response.requestOptions.baseUrl}$url',
+          'Unexpected environment response shape for '
+          '${response.requestOptions.baseUrl}$url',
         );
       }
-      return AppDataDTO.fromJson(json);
+
+      return AppDataDTO.fromJson(payload);
     } on DioException catch (e) {
       final statusCode = e.response?.statusCode;
       final data = e.response?.data;
@@ -47,9 +52,51 @@ class AppDataBackend implements AppDataBackendContract {
       );
     } catch (e) {
       throw Exception(
-        'Could not retrieve branding data for ${_dio.options.baseUrl}$url: $e',
+        'Could not retrieve branding data for '
+        '${client.options.baseUrl}$url: $e',
       );
     }
+  }
+
+  String _resolveBootstrapBaseUrl() {
+    final explicit = BellugaConstants.bootstrapBaseUrlOverride.trim();
+    if (explicit.isNotEmpty) {
+      final explicitUri = Uri.tryParse(explicit);
+      if (explicitUri == null || explicitUri.host.trim().isEmpty) {
+        throw StateError(
+          'Invalid BOOTSTRAP_BASE_URL: "$explicit". '
+          'Use a full origin, e.g. http://10.0.2.2:8081',
+        );
+      }
+      return _trimTrailingSlash(explicit);
+    }
+
+    final landlordDomain = BellugaConstants.landlordDomain.trim();
+    if (landlordDomain.isEmpty) {
+      throw StateError(
+        'Missing landlord bootstrap configuration. '
+        'Provide BOOTSTRAP_BASE_URL or LANDLORD_DOMAIN via --dart-define '
+        'or --dart-define-from-file (config/defines/<lane>.json).',
+      );
+    }
+
+    final landlordUri = Uri.tryParse(landlordDomain);
+    if (landlordUri != null && landlordUri.hasScheme) {
+      if (landlordUri.host.trim().isEmpty) {
+        throw StateError(
+          'Invalid LANDLORD_DOMAIN: "$landlordDomain". '
+          'Expected host (e.g. belluga.app) or full origin.',
+        );
+      }
+      return _trimTrailingSlash(landlordDomain);
+    }
+
+    return _trimTrailingSlash(
+        '${BellugaConstants.apiScheme}://$landlordDomain');
+  }
+
+  String _trimTrailingSlash(String value) {
+    return value.endsWith('/') ? value.substring(0, value.length - 1) : value;
   }
 }
 

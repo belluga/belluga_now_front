@@ -1,0 +1,5 @@
+{
+  "LANDLORD_DOMAIN": "localhost",
+  "API_SCHEME": "http",
+  "BOOTSTRAP_BASE_URL": "http://192.168.15.7:8081"
+}

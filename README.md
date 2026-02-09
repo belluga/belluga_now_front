@@ -174,3 +174,29 @@ Após completar os passos, faça uma limpeza e execute o novo flavor para testar
     * Vá para a aba "Run and Debug" (🐞).
     * Selecione a nova configuração (`<NomeDoApp> (Debug)`) no menu dropdown.
     * Clique no botão de "play".
+
+## Defines por Ambiente (Compile Time)
+
+Este projeto usa `--dart-define-from-file` para definir ambiente em tempo de compilação (não em runtime).
+
+Arquivos versionados:
+- `config/defines/dev.json`
+- `config/defines/stage.json`
+- `config/defines/main.json`
+
+Override local (não versionado):
+- `config/defines/local.override.json` (baseado em `config/defines/local.override.example.json`)
+
+Execução local recomendada (lane `dev` + override local opcional):
+
+```bash
+./tool/with_lane_defines.sh dev run --flavor <novo_tenant>
+```
+
+Sem helper script:
+
+```bash
+fvm flutter run --flavor <novo_tenant> \
+  --dart-define-from-file=config/defines/dev.json \
+  --dart-define-from-file=config/defines/local.override.json
+```
