@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
-import 'package:belluga_now/application/configurations/app_environment_fallback.dart';
 import 'package:belluga_now/infrastructure/dal/dao/app_data_backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/local/app_data_local_info_source/app_data_local_info_source.dart';
@@ -16,9 +15,8 @@ class AppDataRepository implements AppDataRepositoryContract {
     AppDataBackendContract? backend,
     BackendContract? backendContract,
     required AppDataLocalInfoSource localInfoSource,
-  })  : _backend =
-            backend ?? (backendContract ?? GetIt.I.get<BackendContract>())
-                .appData,
+  })  : _backend = backend ??
+            (backendContract ?? GetIt.I.get<BackendContract>()).appData,
         _localInfoSource = localInfoSource;
 
   @override
@@ -91,15 +89,8 @@ class AppDataRepository implements AppDataRepositoryContract {
           : ThemeMode.light;
 
   Future<AppData> _fetchRemoteOrFail(Map<String, dynamic> localInfo) async {
-    try {
-      final dto = await _backend.fetch();
-      return AppData.fromInitialization(remoteData: dto, localInfo: localInfo);
-    } catch (_) {
-      return AppData.fromInitialization(
-        remoteData: kLocalEnvironmentFallback,
-        localInfo: localInfo,
-      );
-    }
+    final dto = await _backend.fetch();
+    return AppData.fromInitialization(remoteData: dto, localInfo: localInfo);
   }
 
   Future<void> _precacheLogos() async {
@@ -150,8 +141,7 @@ class AppDataRepository implements AppDataRepositoryContract {
   }
 
   Future<void> _persistRuntimeMetadata() async {
-    final apiBaseUrl =
-        '${appData.schema}://${appData.hostname}/api';
+    final apiBaseUrl = '${appData.schema}://${appData.hostname}/api';
     await _storage.write(
       key: _apiBaseUrlStorageKey,
       value: apiBaseUrl,

@@ -28,10 +28,10 @@ class LandlordAuthRepository implements LandlordAuthRepositoryContract {
     if (_dio != null) {
       return _dio!;
     }
+    final landlordOrigin = _resolveLandlordOrigin();
     _dio = Dio(
       BaseOptions(
-        baseUrl:
-            '${BellugaConstants.apiScheme}://${BellugaConstants.landlordDomain}/admin/api',
+        baseUrl: '$landlordOrigin/admin/api',
       ),
     );
     return _dio!;
@@ -173,6 +173,59 @@ class LandlordAuthRepository implements LandlordAuthRepositoryContract {
       case TargetPlatform.windows:
         return 'windows';
     }
+  }
+
+  String _resolveLandlordOrigin() {
+    final raw = BellugaConstants.landlordDomain.trim();
+    final uri = Uri.tryParse(raw);
+    if (raw.isEmpty ||
+        uri == null ||
+        !uri.hasScheme ||
+        (uri.scheme != 'http' && uri.scheme != 'https') ||
+        uri.host.trim().isEmpty ||
+        uri.userInfo.isNotEmpty ||
+        (uri.path.isNotEmpty && uri.path != '/') ||
+        uri.query.isNotEmpty ||
+        uri.fragment.isNotEmpty) {
+      throw StateError(
+        'Invalid LANDLORD_DOMAIN: "$raw". '
+        'Expected a full origin, e.g. https://belluga.app',
+      );
+    }
+
+    if (_isIpLiteralHost(uri.host)) {
+      throw StateError(
+        'LANDLORD_DOMAIN host "${uri.host}" is IP-only and cannot resolve tenant subdomains. '
+        'Use a wildcard DNS host such as http://192.168.0.10.nip.io:8081.',
+      );
+    }
+
+    final origin =
+        uri.replace(path: '', query: null, fragment: null).toString();
+    return origin.endsWith('/')
+        ? origin.substring(0, origin.length - 1)
+        : origin;
+  }
+
+  bool _isIpLiteralHost(String host) {
+    final normalized = host.trim();
+    if (normalized.isEmpty) {
+      return false;
+    }
+
+    if (normalized.contains(':')) {
+      return true;
+    }
+
+    final ipv4Pattern = RegExp(r'^\d{1,3}(?:\.\d{1,3}){3}$');
+    if (!ipv4Pattern.hasMatch(normalized)) {
+      return false;
+    }
+
+    return normalized
+        .split('.')
+        .map(int.tryParse)
+        .every((segment) => segment != null && segment >= 0 && segment <= 255);
   }
 }
 

@@ -174,3 +174,33 @@ Após completar os passos, faça uma limpeza e execute o novo flavor para testar
     * Vá para a aba "Run and Debug" (🐞).
     * Selecione a nova configuração (`<NomeDoApp> (Debug)`) no menu dropdown.
     * Clique no botão de "play".
+
+## Defines por Ambiente (Compile Time)
+
+Este projeto usa `--dart-define-from-file` para definir ambiente em tempo de compilação (não em runtime).
+
+Arquivos versionados:
+- `config/defines/dev.json`
+- `config/defines/stage.json`
+- `config/defines/main.json`
+
+Override local (não versionado):
+- `config/defines/local.override.json` (baseado em `config/defines/local.override.example.json`)
+
+Regras importantes:
+- `LANDLORD_DOMAIN` deve ser uma origem completa (`http://` ou `https://`), sem path/query.
+- Em ambiente local com tenant por subdomínio, não use host IP puro (`http://192.168.x.x:8081`), pois subdomínios não resolvem. Use um host wildcard DNS, por exemplo `http://192.168.0.10.nip.io:8081`.
+
+Execução local recomendada (lane `dev` + override local opcional):
+
+```bash
+./tool/with_lane_defines.sh dev run --flavor <novo_tenant>
+```
+
+Sem helper script:
+
+```bash
+fvm flutter run --flavor <novo_tenant> \
+  --dart-define-from-file=config/defines/dev.json \
+  --dart-define-from-file=config/defines/local.override.json
+```

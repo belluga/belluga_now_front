@@ -59,3 +59,6 @@ foundation_documentation
 !.agent/**
 .agent/test-run-progress.md
 .codex
+
+# Compile-time lane define overrides (local only)
+config/defines/local.override.json

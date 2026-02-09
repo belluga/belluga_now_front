@@ -12,7 +12,9 @@
             "args": [
                 "--flavor",
                 "guarappari",
-                "--dart-define=FLAVOR=guarappari"
+                "--dart-define=FLAVOR=guarappari",
+                "--dart-define-from-file=config/defines/dev.json",
+                "--dart-define-from-file=config/defines/local.override.json"
             ]
         },
         {
@@ -25,7 +27,9 @@
             "args": [
                 "--flavor",
                 "alfredochaves",
-                "--dart-define=FLAVOR=alfredochaves"
+                "--dart-define=FLAVOR=alfredochaves",
+                "--dart-define-from-file=config/defines/dev.json",
+                "--dart-define-from-file=config/defines/local.override.json"
             ]
         },
         {
@@ -37,7 +41,9 @@
             "args": [
                 "--flavor",
                 "belluga",
-                "--dart-define=FLAVOR=belluga"
+                "--dart-define=FLAVOR=belluga",
+                "--dart-define-from-file=config/defines/dev.json",
+                "--dart-define-from-file=config/defines/local.override.json"
             ]
         }
         // Você pode adicionar mais configurações para "profile" ou "release" aqui

@@ -12,30 +12,42 @@ abstract class TenantRepositoryContract {
 
   String get landlordDomain => BellugaConstants.landlordDomain;
 
-  Future<void> init() async {
-    final _tenant = await _getTenant();
-    _setTenant(_tenant);
+  String get landlordHost {
+    final raw = landlordDomain.trim();
+    if (raw.isEmpty) {
+      return '';
+    }
+
+    final parsed = Uri.tryParse(raw);
+    if (parsed != null && parsed.host.trim().isNotEmpty) {
+      return parsed.host.trim();
+    }
+
+    return raw;
   }
 
-  bool get isLandlordRequest => landlordDomain == appData.hostname;
+  Future<void> init() async {
+    final loadedTenant = await _getTenant();
+    _setTenant(loadedTenant);
+  }
+
+  bool get isLandlordRequest =>
+      landlordHost.isNotEmpty && landlordHost == appData.hostname;
 
   bool get isProperTenantRegistered {
-    final Tenant? _tenant = tenant;
-
-    if (_tenant == null) {
+    final currentTenant = tenant;
+    if (currentTenant == null) {
       return false;
     }
 
-    final _hasDomain = _tenant.hasDomain(appData.hostname);
-
-    return _hasDomain;
+    return currentTenant.hasDomain(appData.hostname);
   }
 
   Future<Tenant> _getTenant() async {
-    final _tenant = await _backend.tenant.getTenant().catchError((error) {
-      throw Exception("Failed to retrieve tenant: $error");
+    final loadedTenant = await _backend.tenant.getTenant().catchError((error) {
+      throw Exception('Failed to retrieve tenant: $error');
     });
-    return _tenant;
+    return loadedTenant;
   }
 
   void _setTenant(Tenant newTenant) => tenant = newTenant;

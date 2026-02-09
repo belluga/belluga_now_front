@@ -13,8 +13,9 @@ class LandlordRouteGuard extends AutoRouteGuard {
     final appData = GetIt.I.get<AppData>();
     final envType = appData.typeValue.value;
     final hostname = appData.hostname;
+    final landlordHost = _resolveLandlordHost(BellugaConstants.landlordDomain);
 
-    final isLandlordHost = hostname == BellugaConstants.landlordDomain;
+    final isLandlordHost = landlordHost != null && hostname == landlordHost;
     final isLandlordEnv = envType == EnvironmentType.landlord;
     final hasLandlordSession =
         GetIt.I.isRegistered<LandlordAuthRepositoryContract>() &&
@@ -23,7 +24,9 @@ class LandlordRouteGuard extends AutoRouteGuard {
         GetIt.I.isRegistered<AdminModeRepositoryContract>() &&
             GetIt.I.get<AdminModeRepositoryContract>().isLandlordMode;
 
-    if (isLandlordHost || isLandlordEnv || (hasLandlordSession && isLandlordMode)) {
+    if (isLandlordHost ||
+        isLandlordEnv ||
+        (hasLandlordSession && isLandlordMode)) {
       resolver.next(true);
       return;
     }
@@ -31,5 +34,19 @@ class LandlordRouteGuard extends AutoRouteGuard {
     // Tenant host must never access landlord routes (even deep links).
     resolver.next(false);
     router.replaceAll([const TenantHomeRoute()]);
+  }
+
+  String? _resolveLandlordHost(String raw) {
+    final trimmed = raw.trim();
+    if (trimmed.isEmpty) {
+      return null;
+    }
+
+    final uri = Uri.tryParse(trimmed);
+    if (uri != null && uri.host.trim().isNotEmpty) {
+      return uri.host.trim();
+    }
+
+    return trimmed;
   }
 }

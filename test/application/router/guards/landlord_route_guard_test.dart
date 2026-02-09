@@ -1,5 +1,6 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/guards/landlord_route_guard.dart';
+import 'package:belluga_now/application/configurations/belluga_constants.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/app_data/app_type.dart';
 import 'package:belluga_now/domain/app_data/value_object/platform_type_value.dart';
@@ -67,8 +68,9 @@ void main() {
   });
 
   test('allows navigation on landlord host without session', () {
+    final landlordHost = _landlordHostForTest();
     _registerAppData(_buildAppData(
-      hostname: 'belluga.app',
+      hostname: landlordHost,
       envType: 'tenant',
     ));
     GetIt.I.registerSingleton<AdminModeRepositoryContract>(
@@ -87,6 +89,18 @@ void main() {
     verify(resolver.next(true)).called(1);
     expect(router.replaceAllCalled, isFalse);
   });
+}
+
+String _landlordHostForTest() {
+  final configured = BellugaConstants.landlordDomain.trim();
+  final parsed = Uri.tryParse(configured);
+  if (parsed != null && parsed.host.trim().isNotEmpty) {
+    return parsed.host.trim();
+  }
+  if (configured.isNotEmpty && !configured.contains('://')) {
+    return configured;
+  }
+  return 'belluga.app';
 }
 
 void _registerAppData(AppData appData) {

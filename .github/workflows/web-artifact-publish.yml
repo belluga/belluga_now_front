@@ -81,6 +81,34 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Resolve lane define file
+        id: lane_defines
+        run: |
+          set -euo pipefail
+
+          if [[ "${GITHUB_EVENT_NAME}" == "pull_request" ]]; then
+            lane="${GITHUB_BASE_REF}"
+          else
+            lane="${GITHUB_REF_NAME}"
+          fi
+
+          case "$lane" in
+            dev|stage|main) ;;
+            *)
+              echo "ERROR: unsupported lane '$lane'. Expected dev|stage|main." >&2
+              exit 1
+              ;;
+          esac
+
+          defines_file="config/defines/${lane}.json"
+          if [[ ! -f "$defines_file" ]]; then
+            echo "ERROR: lane define file not found: $defines_file" >&2
+            exit 1
+          fi
+
+          echo "lane=$lane" >> "$GITHUB_OUTPUT"
+          echo "defines_file=$defines_file" >> "$GITHUB_OUTPUT"
+
       - name: Resolve Flutter version
         id: flutter_version
         run: |
@@ -118,14 +146,20 @@ jobs:
         run: fvm flutter pub get
 
       - name: Flutter unit/widget tests
-        run: fvm flutter test --no-pub
+        run: |
+          fvm flutter test --no-pub \
+            --dart-define-from-file="${{ steps.lane_defines.outputs.defines_file }}"
 
       - name: Build web artifact
         env:
           WEB_OUTPUT: ${{ runner.temp }}/web-build
         run: |
           mkdir -p "$WEB_OUTPUT"
-          fvm flutter build web --release --no-tree-shake-icons -o "$WEB_OUTPUT"
+          fvm flutter build web \
+            --release \
+            --no-tree-shake-icons \
+            --dart-define-from-file="${{ steps.lane_defines.outputs.defines_file }}" \
+            -o "$WEB_OUTPUT"
 
           # These files are served by Laravel and must not ship in web-app.
           rm -f "$WEB_OUTPUT/favicon.ico" "$WEB_OUTPUT/manifest.json"
