@@ -187,6 +187,10 @@ Arquivos versionados:
 Override local (não versionado):
 - `config/defines/local.override.json` (baseado em `config/defines/local.override.example.json`)
 
+Regras importantes:
+- `LANDLORD_DOMAIN` deve ser uma origem completa (`http://` ou `https://`), sem path/query.
+- Em ambiente local com tenant por subdomínio, não use host IP puro (`http://192.168.x.x:8081`), pois subdomínios não resolvem. Use um host wildcard DNS, por exemplo `http://192.168.0.10.nip.io:8081`.
+
 Execução local recomendada (lane `dev` + override local opcional):
 
 ```bash

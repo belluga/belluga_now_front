@@ -7,8 +7,6 @@ import 'package:belluga_now/infrastructure/dal/dao/backend_routing_policy.dart';
 class BellugaConstants {
   static const landlordDomain =
       String.fromEnvironment('LANDLORD_DOMAIN', defaultValue: '');
-  static const apiScheme =
-      String.fromEnvironment('API_SCHEME', defaultValue: 'https');
   static const bootstrapBaseUrlOverride =
       String.fromEnvironment('BOOTSTRAP_BASE_URL', defaultValue: '');
   static const backendRoutingPolicy = BackendRoutingPolicy();

@@ -1,5 +1,3 @@
 {
-  "LANDLORD_DOMAIN": "belluga.app",
-  "API_SCHEME": "https",
-  "BOOTSTRAP_BASE_URL": ""
+  "LANDLORD_DOMAIN": "https://belluga.app"
 }

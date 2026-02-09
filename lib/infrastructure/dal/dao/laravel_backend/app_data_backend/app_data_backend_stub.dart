@@ -20,8 +20,8 @@ class AppDataBackend implements AppDataBackendContract {
         Dio(
           BaseOptions(
             baseUrl: bootstrapBaseUrl,
-            connectTimeout: const Duration(seconds: 3),
-            receiveTimeout: const Duration(seconds: 3),
+            connectTimeout: const Duration(seconds: 5),
+            receiveTimeout: const Duration(seconds: 10),
           ),
         );
 
@@ -61,14 +61,10 @@ class AppDataBackend implements AppDataBackendContract {
   String _resolveBootstrapBaseUrl() {
     final explicit = BellugaConstants.bootstrapBaseUrlOverride.trim();
     if (explicit.isNotEmpty) {
-      final explicitUri = Uri.tryParse(explicit);
-      if (explicitUri == null || explicitUri.host.trim().isEmpty) {
-        throw StateError(
-          'Invalid BOOTSTRAP_BASE_URL: "$explicit". '
-          'Use a full origin, e.g. http://10.0.2.2:8081',
-        );
-      }
-      return _trimTrailingSlash(explicit);
+      return _parseRequiredOrigin(
+        explicit,
+        fieldName: 'BOOTSTRAP_BASE_URL',
+      );
     }
 
     final landlordDomain = BellugaConstants.landlordDomain.trim();
@@ -80,19 +76,63 @@ class AppDataBackend implements AppDataBackendContract {
       );
     }
 
-    final landlordUri = Uri.tryParse(landlordDomain);
-    if (landlordUri != null && landlordUri.hasScheme) {
-      if (landlordUri.host.trim().isEmpty) {
-        throw StateError(
-          'Invalid LANDLORD_DOMAIN: "$landlordDomain". '
-          'Expected host (e.g. belluga.app) or full origin.',
-        );
-      }
-      return _trimTrailingSlash(landlordDomain);
+    return _parseRequiredOrigin(
+      landlordDomain,
+      fieldName: 'LANDLORD_DOMAIN',
+    );
+  }
+
+  String _parseRequiredOrigin(
+    String raw, {
+    required String fieldName,
+  }) {
+    final uri = Uri.tryParse(raw);
+    if (uri == null ||
+        !uri.hasScheme ||
+        (uri.scheme != 'http' && uri.scheme != 'https') ||
+        uri.host.trim().isEmpty ||
+        uri.userInfo.isNotEmpty ||
+        (uri.path.isNotEmpty && uri.path != '/') ||
+        uri.query.isNotEmpty ||
+        uri.fragment.isNotEmpty) {
+      throw StateError(
+        'Invalid $fieldName: "$raw". '
+        'Expected a full origin, e.g. http://192.168.0.10.nip.io:8081',
+      );
+    }
+
+    if (_isIpLiteralHost(uri.host)) {
+      throw StateError(
+        '$fieldName host "${uri.host}" is IP-only and cannot resolve tenant subdomains. '
+        'Use a wildcard DNS host such as http://192.168.0.10.nip.io:8081.',
+      );
     }
 
     return _trimTrailingSlash(
-        '${BellugaConstants.apiScheme}://$landlordDomain');
+      uri.replace(path: '', query: null, fragment: null).toString(),
+    );
+  }
+
+  bool _isIpLiteralHost(String host) {
+    final normalized = host.trim();
+    if (normalized.isEmpty) {
+      return false;
+    }
+
+    // IPv6 literals contain ':' in Uri.host form.
+    if (normalized.contains(':')) {
+      return true;
+    }
+
+    final ipv4Pattern = RegExp(r'^\d{1,3}(?:\.\d{1,3}){3}$');
+    if (!ipv4Pattern.hasMatch(normalized)) {
+      return false;
+    }
+
+    return normalized
+        .split('.')
+        .map(int.tryParse)
+        .every((segment) => segment != null && segment >= 0 && segment <= 255);
   }
 
   String _trimTrailingSlash(String value) {

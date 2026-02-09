@@ -7,6 +7,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:get_it/get_it.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
 class LaravelAuthBackend extends AuthBackendContract {
   LaravelAuthBackend({
@@ -52,8 +53,9 @@ class LaravelAuthBackend extends AuthBackendContract {
     };
     try {
       final dio = _resolveAdminDio();
+      final tenantQuery = await _tenantQuerySuffix();
       final response = await dio.post(
-        '/v1/auth/login',
+        '/v1/auth/login$tenantQuery',
         data: payload,
       );
       final raw = response.data;
@@ -91,8 +93,9 @@ class LaravelAuthBackend extends AuthBackendContract {
     final deviceName = await _resolveDeviceName();
     try {
       final dio = _resolveAdminDio();
+      final tenantQuery = await _tenantQuerySuffix();
       await dio.post(
-        '/v1/auth/logout',
+        '/v1/auth/logout$tenantQuery',
         data: {'device': deviceName},
         options: Options(
           headers: {'Authorization': 'Bearer $token'},
@@ -118,8 +121,9 @@ class LaravelAuthBackend extends AuthBackendContract {
     }
     try {
       final dio = _resolveAdminDio();
+      final tenantQuery = await _tenantQuerySuffix();
       final response = await dio.get(
-        '/v1/auth/token_validate',
+        '/v1/auth/token_validate$tenantQuery',
         options: Options(
           headers: {'Authorization': 'Bearer $token'},
         ),
@@ -170,8 +174,9 @@ class LaravelAuthBackend extends AuthBackendContract {
     };
     try {
       final dio = _resolveAdminDio();
+      final tenantQuery = await _tenantQuerySuffix();
       final response = await dio.post(
-        '/v1/auth/register/password',
+        '/v1/auth/register/password$tenantQuery',
         data: payload,
       );
       final raw = response.data;
@@ -228,8 +233,9 @@ class LaravelAuthBackend extends AuthBackendContract {
 
     try {
       final dio = _resolveAdminDio();
+      final tenantQuery = await _tenantQuerySuffix();
       final response = await dio.post(
-        '/v1/anonymous/identities',
+        '/v1/anonymous/identities$tenantQuery',
         data: payload,
       );
       final raw = response.data;
@@ -294,6 +300,27 @@ class LaravelAuthBackend extends AuthBackendContract {
       case TargetPlatform.windows:
         return 'windows';
     }
+  }
+
+  Future<String> _tenantQuerySuffix() async {
+    final appDomain = await _resolveAppDomain();
+    if (appDomain == null || appDomain.isEmpty) {
+      return '';
+    }
+    return '?app_domain=${Uri.encodeQueryComponent(appDomain)}';
+  }
+
+  Future<String?> _resolveAppDomain() async {
+    if (kIsWeb) {
+      return null;
+    }
+
+    final packageInfo = await PackageInfo.fromPlatform();
+    final appDomain = packageInfo.packageName.trim();
+    if (appDomain.isEmpty) {
+      return null;
+    }
+    return appDomain;
   }
 }
 
