@@ -260,6 +260,7 @@ jobs:
             -exec rm -rf {} +
 
           rsync -a --delete \
+            --exclude '.git/' \
             --exclude '.github/' \
             --exclude '.gitignore' \
             --exclude 'package.json' \
