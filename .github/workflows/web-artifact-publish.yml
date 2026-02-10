@@ -172,21 +172,21 @@ jobs:
           short_sha="$(git rev-parse --short HEAD)"
           build_time="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
 
-	          cat > "$WEB_OUTPUT/build_metadata.json" <<JSON
-	          {
-	            "flutter_git_sha": "$short_sha",
-	            "source_branch": "${GITHUB_REF_NAME}",
-	            "build_time_utc": "$build_time"
-	          }
-	          JSON
+          cat > "$WEB_OUTPUT/build_metadata.json" <<JSON
+          {
+            "flutter_git_sha": "$short_sha",
+            "source_branch": "${GITHUB_REF_NAME}",
+            "build_time_utc": "$build_time"
+          }
+          JSON
 
-	          # Cloudflare may cache un-hashed entrypoints (e.g. main.dart.js) for hours.
-	          # Cache-bust the HTML references so each build gets a unique URL.
-	          #
-	          # This is intentionally done post-build so it applies to the generated web artifact
-	          # without requiring manual cache purges or server hotfixes.
-	          if [[ -f "$WEB_OUTPUT/index.html" ]]; then
-	            python3 - "$WEB_OUTPUT/index.html" "$short_sha" <<'PY'
+          # Cloudflare may cache un-hashed entrypoints (e.g. main.dart.js) for hours.
+          # Cache-bust the HTML references so each build gets a unique URL.
+          #
+          # This is intentionally done post-build so it applies to the generated web artifact
+          # without requiring manual cache purges or server hotfixes.
+          if [[ -f "$WEB_OUTPUT/index.html" ]]; then
+            python3 - "$WEB_OUTPUT/index.html" "$short_sha" <<'PY'
 import re
 import sys
 from pathlib import Path
@@ -207,11 +207,11 @@ for fname in ("main.dart.js", "flutter_bootstrap.js", "flutter.js", "flutter_ser
 
 index_path.write_text(html2, encoding="utf-8")
 PY
-	          fi
+          fi
 
-	      - name: Upload web artifact
-	        uses: actions/upload-artifact@v4
-	        with:
+      - name: Upload web artifact
+        uses: actions/upload-artifact@v4
+        with:
           name: web-build
           path: ${{ runner.temp }}/web-build
           if-no-files-found: error
