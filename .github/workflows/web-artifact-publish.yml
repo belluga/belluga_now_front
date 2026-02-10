@@ -186,7 +186,7 @@ jobs:
           # This is intentionally done post-build so it applies to the generated web artifact
           # without requiring manual cache purges or server hotfixes.
           if [[ -f "$WEB_OUTPUT/index.html" ]]; then
-            python3 -c 'import re,sys; p=sys.argv[1]; v=sys.argv[2]; s=open(p,"r",encoding="utf-8").read();\n\ndef bump(name, s):\n  return re.sub(r"(src=\\\")"+re.escape(name)+r"(?:\\\\?[^\\\"]*)?(\\\")", r\"\\\\1\"+name+\"?v=\"+v+r\"\\\\2\", s, flags=re.I)\n\nfor n in ("main.dart.js","flutter_bootstrap.js","flutter.js","flutter_service_worker.js"):\n  s=bump(n,s)\n\nopen(p,"w",encoding="utf-8").write(s)\n' "$WEB_OUTPUT/index.html" "$short_sha"
+            python3 -c 'import re,sys,functools; p=sys.argv[1]; v=sys.argv[2]; s=open(p,"r",encoding="utf-8").read(); names=("main.dart.js","flutter_bootstrap.js","flutter.js","flutter_service_worker.js"); f=lambda acc,n: re.sub(r"(src=\\\")"+re.escape(n)+r"(?:\\\\?[^\\\"]*)?(\\\")", \"\\\\1\"+n+\"?v=\"+v+\"\\\\2\", acc, flags=re.I); s=functools.reduce(f,names,s); open(p,\"w\",encoding=\"utf-8\").write(s)' "$WEB_OUTPUT/index.html" "$short_sha"
           fi
 
       - name: Upload web artifact
