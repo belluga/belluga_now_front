@@ -11,6 +11,7 @@ import 'package:belluga_now/presentation/tenant_admin/organizations/controllers/
 import 'package:belluga_now/presentation/tenant_admin/profile_types/controllers/tenant_admin_profile_types_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/shell/controllers/tenant_admin_shell_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/static_assets/controllers/tenant_admin_static_assets_controller.dart';
+import 'package:belluga_now/presentation/tenant_admin/static_profile_types/controllers/tenant_admin_static_profile_types_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/taxonomies/controllers/tenant_admin_taxonomies_controller.dart';
 import 'package:get_it_modular_with_auto_route/get_it_modular_with_auto_route.dart';
 
@@ -40,6 +41,9 @@ class TenantAdminModule extends ModuleContract {
     );
     registerFactory<TenantAdminTaxonomiesController>(
       () => TenantAdminTaxonomiesController(),
+    );
+    registerFactory<TenantAdminStaticProfileTypesController>(
+      () => TenantAdminStaticProfileTypesController(),
     );
     registerFactory<TenantAdminStaticAssetsController>(
       () => TenantAdminStaticAssetsController(),
@@ -105,6 +109,18 @@ class TenantAdminModule extends ModuleContract {
             AutoRoute(
               path: 'profile-types/:profileType/edit',
               page: TenantAdminProfileTypeEditRoute.page,
+            ),
+            AutoRoute(
+              path: 'static_profile_types',
+              page: TenantAdminStaticProfileTypesListRoute.page,
+            ),
+            AutoRoute(
+              path: 'static_profile_types/create',
+              page: TenantAdminStaticProfileTypeCreateRoute.page,
+            ),
+            AutoRoute(
+              path: 'static_profile_types/:profileType/edit',
+              page: TenantAdminStaticProfileTypeEditRoute.page,
             ),
             AutoRoute(
               path: 'taxonomies',

@@ -217,6 +217,69 @@ class TenantAdminStaticAssetsRepository
     }
   }
 
+  @override
+  Future<TenantAdminStaticProfileTypeDefinition> createStaticProfileType({
+    required String type,
+    required String label,
+    List<String> allowedTaxonomies = const [],
+    required TenantAdminStaticProfileTypeCapabilities capabilities,
+  }) async {
+    try {
+      final payload = _buildStaticProfileTypePayload(
+        type: type,
+        label: label,
+        allowedTaxonomies: allowedTaxonomies,
+        capabilities: capabilities,
+      );
+      final response = await _dio.post(
+        '$_apiBaseUrl/v1/static_profile_types',
+        data: payload,
+        options: Options(headers: _buildHeaders()),
+      );
+      final item = _extractItem(response.data);
+      return _mapStaticProfileType(item);
+    } on DioException catch (error) {
+      throw _wrapError(error, 'create static profile type');
+    }
+  }
+
+  @override
+  Future<TenantAdminStaticProfileTypeDefinition> updateStaticProfileType({
+    required String type,
+    String? label,
+    List<String>? allowedTaxonomies,
+    TenantAdminStaticProfileTypeCapabilities? capabilities,
+  }) async {
+    try {
+      final payload = _buildStaticProfileTypePayload(
+        label: label,
+        allowedTaxonomies: allowedTaxonomies,
+        capabilities: capabilities,
+      );
+      final response = await _dio.patch(
+        '$_apiBaseUrl/v1/static_profile_types/$type',
+        data: payload,
+        options: Options(headers: _buildHeaders()),
+      );
+      final item = _extractItem(response.data);
+      return _mapStaticProfileType(item);
+    } on DioException catch (error) {
+      throw _wrapError(error, 'update static profile type');
+    }
+  }
+
+  @override
+  Future<void> deleteStaticProfileType(String type) async {
+    try {
+      await _dio.delete(
+        '$_apiBaseUrl/v1/static_profile_types/$type',
+        options: Options(headers: _buildHeaders()),
+      );
+    } on DioException catch (error) {
+      throw _wrapError(error, 'delete static profile type');
+    }
+  }
+
   Map<String, dynamic> _buildPayload({
     String? profileType,
     String? displayName,
@@ -328,6 +391,31 @@ class TenantAdminStaticAssetsRepository
         hasContent: dto.hasContent,
       ),
     );
+  }
+
+  Map<String, dynamic> _buildStaticProfileTypePayload({
+    String? type,
+    String? label,
+    List<String>? allowedTaxonomies,
+    TenantAdminStaticProfileTypeCapabilities? capabilities,
+  }) {
+    final payload = <String, dynamic>{};
+    if (type != null) payload['type'] = type;
+    if (label != null) payload['label'] = label;
+    if (allowedTaxonomies != null) {
+      payload['allowed_taxonomies'] = allowedTaxonomies;
+    }
+    if (capabilities != null) {
+      payload['capabilities'] = {
+        'is_poi_enabled': capabilities.isPoiEnabled,
+        'has_bio': capabilities.hasBio,
+        'has_taxonomies': capabilities.hasTaxonomies,
+        'has_avatar': capabilities.hasAvatar,
+        'has_cover': capabilities.hasCover,
+        'has_content': capabilities.hasContent,
+      };
+    }
+    return payload;
   }
 
   FormData? _buildMultipartPayload(

@@ -52,4 +52,20 @@ abstract class TenantAdminStaticAssetsRepositoryContract {
 
   Future<List<TenantAdminStaticProfileTypeDefinition>>
       fetchStaticProfileTypes();
+
+  Future<TenantAdminStaticProfileTypeDefinition> createStaticProfileType({
+    required String type,
+    required String label,
+    List<String> allowedTaxonomies = const [],
+    required TenantAdminStaticProfileTypeCapabilities capabilities,
+  });
+
+  Future<TenantAdminStaticProfileTypeDefinition> updateStaticProfileType({
+    required String type,
+    String? label,
+    List<String>? allowedTaxonomies,
+    TenantAdminStaticProfileTypeCapabilities? capabilities,
+  });
+
+  Future<void> deleteStaticProfileType(String type);
 }

@@ -64,6 +64,17 @@ class _TenantAdminShellScreenState extends State<TenantAdminShellScreen> {
       },
     ),
     _AdminDestination(
+      label: 'Tipos de Ativo',
+      icon: Icons.layers_outlined,
+      selectedIcon: Icons.layers,
+      route: TenantAdminStaticProfileTypesListRoute(),
+      routeNames: {
+        TenantAdminStaticProfileTypesListRoute.name,
+        TenantAdminStaticProfileTypeCreateRoute.name,
+        TenantAdminStaticProfileTypeEditRoute.name,
+      },
+    ),
+    _AdminDestination(
       label: 'Taxonomias',
       icon: Icons.account_tree_outlined,
       selectedIcon: Icons.account_tree,
@@ -94,6 +105,8 @@ class _TenantAdminShellScreenState extends State<TenantAdminShellScreen> {
     TenantAdminOrganizationDetailRoute.name,
     TenantAdminProfileTypeCreateRoute.name,
     TenantAdminProfileTypeEditRoute.name,
+    TenantAdminStaticProfileTypeCreateRoute.name,
+    TenantAdminStaticProfileTypeEditRoute.name,
     TenantAdminLocationPickerRoute.name,
     TenantAdminStaticAssetCreateRoute.name,
     TenantAdminStaticAssetEditRoute.name,
@@ -117,6 +130,9 @@ class _TenantAdminShellScreenState extends State<TenantAdminShellScreen> {
     }
     if (routeName == TenantAdminProfileTypesListRoute.name) {
       return 'Tipos de Perfil';
+    }
+    if (routeName == TenantAdminStaticProfileTypesListRoute.name) {
+      return 'Tipos de Ativo';
     }
     if (routeName == TenantAdminTaxonomiesListRoute.name ||
         routeName == TenantAdminTaxonomyTermsRoute.name) {
