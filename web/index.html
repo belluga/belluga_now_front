@@ -164,24 +164,10 @@
     };
 
     (async function () {
-      // Cache disabled: always fetch fresh `/api/v1/environment` data (main domain only).
+      // Always fetch from the current host/origin.
+      // This keeps local dev deterministic and allows host-based tenant resolution on Web.
       let resolvedBranding = null;
-      const params = new URLSearchParams();
-      let environmentUrl = '/api/v1/environment';
-
-      if (!isLandlordHost) {
-        if (isTenantHost) {
-          const tenantSubdomain = hostname.split('.')[0];
-          if (tenantSubdomain) {
-            params.set('subdomain', tenantSubdomain);
-          }
-        } else if (hostname) {
-          params.set('domain', hostname);
-        }
-
-        const query = params.toString();
-        environmentUrl = `https://${landlordHost}/api/v1/environment${query ? `?${query}` : ''}`;
-      }
+      const environmentUrl = '/api/v1/environment';
 
       try {
         const response = await fetch(environmentUrl);
@@ -242,6 +228,15 @@
       window.__appProgressUpdate = updateProgress;
       window.__appProgressLabel = setProgressLabel;
     })();
+  </script>
+
+  <script>
+    // Remove the splash screen after Flutter paints the first frame.
+    // This is required so navigation validation can assert the app is actually visible.
+    window.addEventListener('flutter-first-frame', function () {
+      const splash = document.getElementById('splash-screen');
+      if (splash) splash.remove();
+    });
   </script>
 
   <script src="flutter_bootstrap.js" async></script>
