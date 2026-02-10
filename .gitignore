@@ -45,6 +45,9 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 
+# Android/Kotlin build caches (local only)
+/android/.kotlin/
+
 # FVM Version Cache
 .fvm/
 
@@ -62,3 +65,7 @@ foundation_documentation
 
 # Compile-time lane define overrides (local only)
 config/defines/local.override.json
+
+# Guardrail: backend code must never live inside flutter-app.
+laravel-app-root
+laravel-app/
