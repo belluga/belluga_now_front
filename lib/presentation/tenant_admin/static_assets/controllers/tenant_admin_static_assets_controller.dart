@@ -2,13 +2,13 @@ import 'dart:async';
 
 import 'package:belluga_now/domain/repositories/tenant_admin_static_assets_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_taxonomies_repository_contract.dart';
+import 'package:belluga_now/domain/services/tenant_admin_location_selection_contract.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_static_asset.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_static_profile_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_definition.dart';
-import 'package:belluga_now/presentation/tenant_admin/accounts/controllers/tenant_admin_location_picker_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart' show Disposable, GetIt;
 import 'package:stream_value/core/stream_value.dart';
@@ -17,17 +17,17 @@ class TenantAdminStaticAssetsController implements Disposable {
   TenantAdminStaticAssetsController({
     TenantAdminStaticAssetsRepositoryContract? repository,
     TenantAdminTaxonomiesRepositoryContract? taxonomiesRepository,
-    TenantAdminLocationPickerController? locationPickerController,
+    TenantAdminLocationSelectionContract? locationSelection,
   })  : _repository = repository ??
             GetIt.I.get<TenantAdminStaticAssetsRepositoryContract>(),
         _taxonomiesRepository = taxonomiesRepository ??
             GetIt.I.get<TenantAdminTaxonomiesRepositoryContract>(),
-        _locationPickerController =
-            locationPickerController ?? GetIt.I.get<TenantAdminLocationPickerController>();
+        _locationSelection =
+            locationSelection ?? GetIt.I.get<TenantAdminLocationSelectionContract>();
 
   final TenantAdminStaticAssetsRepositoryContract _repository;
   final TenantAdminTaxonomiesRepositoryContract _taxonomiesRepository;
-  final TenantAdminLocationPickerController _locationPickerController;
+  final TenantAdminLocationSelectionContract _locationSelection;
 
   final StreamValue<List<TenantAdminStaticAsset>> assetsStreamValue =
       StreamValue<List<TenantAdminStaticAsset>>(defaultValue: const []);
@@ -85,12 +85,12 @@ class TenantAdminStaticAssetsController implements Disposable {
   void _bindLocationSelection() {
     if (_locationSubscription != null) return;
     _locationSubscription =
-        _locationPickerController.confirmedLocationStreamValue.stream.listen(
+        _locationSelection.confirmedLocationStreamValue.stream.listen(
       (location) {
         if (_isDisposed || location == null) return;
         latitudeController.text = location.latitude.toStringAsFixed(6);
         longitudeController.text = location.longitude.toStringAsFixed(6);
-        _locationPickerController.clearConfirmedLocation();
+        _locationSelection.clearConfirmedLocation();
       },
     );
   }
@@ -117,6 +117,7 @@ class TenantAdminStaticAssetsController implements Disposable {
       final types = await _repository.fetchStaticProfileTypes();
       if (_isDisposed) return;
       profileTypesStreamValue.addValue(types);
+      errorStreamValue.addValue(null);
     } catch (error) {
       if (_isDisposed) return;
       errorStreamValue.addValue(error.toString());

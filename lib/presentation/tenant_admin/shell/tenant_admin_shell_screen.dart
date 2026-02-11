@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/domain/repositories/admin_mode_repository_contract.dart';
@@ -18,6 +20,7 @@ class _TenantAdminShellScreenState extends State<TenantAdminShellScreen> {
   static const _railBreakpoint = 900.0;
   final TenantAdminShellController _controller =
       GetIt.I.get<TenantAdminShellController>();
+  StreamSubscription<AdminMode>? _modeSubscription;
 
   final List<_AdminDestination> _destinations = const [
     _AdminDestination(
@@ -147,11 +150,22 @@ class _TenantAdminShellScreenState extends State<TenantAdminShellScreen> {
   }
 
   @override
+  void initState() {
+    super.initState();
+    _modeSubscription = _controller.modeStreamValue.stream.listen(_onModeChanged);
+  }
+
+  @override
+  void dispose() {
+    _modeSubscription?.cancel();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return StreamValueBuilder(
       streamValue: _controller.modeStreamValue,
       builder: (context, mode) {
-        _handleModeChange(mode);
         final router = context.router;
         final currentName = router.topRoute.name;
         final selectedIndex = _selectedIndex(currentName);
@@ -247,9 +261,15 @@ class _TenantAdminShellScreenState extends State<TenantAdminShellScreen> {
     );
   }
 
-  void _handleModeChange(AdminMode mode) {
+  void _onModeChanged(AdminMode mode) {
     if (mode != AdminMode.user) return;
-    context.router.replaceAll([const ProfileRoute()]);
+    if (!mounted) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final router = context.router;
+      if (router.topRoute.name == ProfileRoute.name) return;
+      router.replaceAll([const ProfileRoute()]);
+    });
   }
 }
 

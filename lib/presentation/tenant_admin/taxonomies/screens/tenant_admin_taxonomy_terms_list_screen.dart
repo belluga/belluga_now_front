@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_definition.dart';
 import 'package:belluga_now/presentation/tenant_admin/taxonomies/controllers/tenant_admin_taxonomy_terms_controller.dart';
 import 'package:flutter/material.dart';
@@ -23,11 +25,28 @@ class _TenantAdminTaxonomyTermsListScreenState
     extends State<TenantAdminTaxonomyTermsListScreen> {
   final TenantAdminTaxonomyTermsController _controller =
       GetIt.I.get<TenantAdminTaxonomyTermsController>();
+  StreamSubscription<String?>? _successSubscription;
+  StreamSubscription<String?>? _actionErrorSubscription;
+  bool _isFormDialogOpen = false;
 
   @override
   void initState() {
     super.initState();
     _controller.loadTerms(widget.taxonomyId);
+    _successSubscription = _controller.successMessageStreamValue.stream.listen(
+      _handleSuccessMessage,
+    );
+    _actionErrorSubscription =
+        _controller.actionErrorMessageStreamValue.stream.listen(
+      _handleActionErrorMessage,
+    );
+  }
+
+  @override
+  void dispose() {
+    _successSubscription?.cancel();
+    _actionErrorSubscription?.cancel();
+    super.dispose();
   }
 
   Future<void> _confirmDelete(TenantAdminTaxonomyTermDefinition term) async {
@@ -61,6 +80,7 @@ class _TenantAdminTaxonomyTermsListScreenState
   Future<void> _openForm({TenantAdminTaxonomyTermDefinition? term}) async {
     _controller.resetForm();
     _controller.initForm(term);
+    _isFormDialogOpen = true;
     await showDialog(
       context: context,
       builder: (context) {
@@ -77,7 +97,7 @@ class _TenantAdminTaxonomyTermsListScreenState
                   decoration: const InputDecoration(labelText: 'Slug'),
                   validator: (value) {
                     if (value == null || value.trim().isEmpty) {
-                      return 'Slug é obrigatório.';
+                      return 'Slug e obrigatorio.';
                     }
                     return null;
                   },
@@ -88,7 +108,7 @@ class _TenantAdminTaxonomyTermsListScreenState
                   decoration: const InputDecoration(labelText: 'Nome'),
                   validator: (value) {
                     if (value == null || value.trim().isEmpty) {
-                      return 'Nome é obrigatório.';
+                      return 'Nome e obrigatorio.';
                     }
                     return null;
                   },
@@ -102,28 +122,26 @@ class _TenantAdminTaxonomyTermsListScreenState
               child: const Text('Cancelar'),
             ),
             ElevatedButton(
-              onPressed: () async {
+              onPressed: () {
                 final form = _controller.formKey.currentState;
                 if (form == null || !form.validate()) {
                   return;
                 }
                 final currentTerm = term;
                 if (isEdit && currentTerm != null) {
-                  await _controller.submitUpdateTerm(
+                  _controller.submitUpdateTerm(
                     taxonomyId: widget.taxonomyId,
                     termId: currentTerm.id,
                     slug: _controller.slugController.text.trim(),
                     name: _controller.nameController.text.trim(),
                   );
                 } else {
-                  await _controller.submitCreateTerm(
+                  _controller.submitCreateTerm(
                     taxonomyId: widget.taxonomyId,
                     slug: _controller.slugController.text.trim(),
                     name: _controller.nameController.text.trim(),
                   );
                 }
-                if (!context.mounted) return;
-                Navigator.of(context).pop();
               },
               child: Text(isEdit ? 'Salvar' : 'Criar'),
             ),
@@ -131,124 +149,112 @@ class _TenantAdminTaxonomyTermsListScreenState
         );
       },
     );
+    _isFormDialogOpen = false;
   }
 
   @override
   Widget build(BuildContext context) {
-    return StreamValueBuilder<String?>(
-      streamValue: _controller.successMessageStreamValue,
-      builder: (context, successMessage) {
-        _handleSuccessMessage(successMessage);
+    return StreamValueBuilder<bool>(
+      streamValue: _controller.isLoadingStreamValue,
+      builder: (context, isLoading) {
         return StreamValueBuilder<String?>(
-          streamValue: _controller.actionErrorMessageStreamValue,
-          builder: (context, actionErrorMessage) {
-            _handleActionErrorMessage(actionErrorMessage);
-            return StreamValueBuilder<bool>(
-              streamValue: _controller.isLoadingStreamValue,
-              builder: (context, isLoading) {
-                return StreamValueBuilder<String?>(
-                  streamValue: _controller.errorStreamValue,
-                  builder: (context, error) {
-                    return StreamValueBuilder<List<TenantAdminTaxonomyTermDefinition>>(
-                      streamValue: _controller.termsStreamValue,
-                      builder: (context, terms) {
-                        return Scaffold(
-                          appBar: AppBar(
-                            title: Text('Termos • ${widget.taxonomyName}'),
-                          ),
-                          floatingActionButton: FloatingActionButton.extended(
-                            onPressed: () => _openForm(),
-                            icon: const Icon(Icons.add),
-                            label: const Text('Criar termo'),
-                          ),
-                          body: Padding(
-                            padding: const EdgeInsets.all(16),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Termos cadastrados',
-                                  style: Theme.of(context).textTheme.titleMedium,
+          streamValue: _controller.errorStreamValue,
+          builder: (context, error) {
+            return StreamValueBuilder<List<TenantAdminTaxonomyTermDefinition>>(
+              streamValue: _controller.termsStreamValue,
+              builder: (context, terms) {
+                return Scaffold(
+                  appBar: AppBar(
+                    title: Text('Termos • ${widget.taxonomyName}'),
+                  ),
+                  floatingActionButton: FloatingActionButton.extended(
+                    onPressed: () => _openForm(),
+                    icon: const Icon(Icons.add),
+                    label: const Text('Criar termo'),
+                  ),
+                  body: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Termos cadastrados',
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                        const SizedBox(height: 12),
+                        if (isLoading) const LinearProgressIndicator(),
+                        if (error != null)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 8),
+                            child: Card(
+                              margin: EdgeInsets.zero,
+                              child: Padding(
+                                padding: const EdgeInsets.all(12),
+                                child: Row(
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        error,
+                                        style: TextStyle(
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .error,
+                                        ),
+                                      ),
+                                    ),
+                                    TextButton(
+                                      onPressed: () => _controller
+                                          .loadTerms(widget.taxonomyId),
+                                      child: const Text('Tentar novamente'),
+                                    ),
+                                  ],
                                 ),
-                                const SizedBox(height: 12),
-                                if (isLoading) const LinearProgressIndicator(),
-                                if (error != null)
-                                  Padding(
-                                    padding: const EdgeInsets.only(top: 8),
-                                    child: Card(
-                                      margin: EdgeInsets.zero,
-                                      child: Padding(
-                                        padding: const EdgeInsets.all(12),
-                                        child: Row(
-                                          children: [
-                                            Expanded(
-                                              child: Text(
-                                                error,
-                                                style: TextStyle(
-                                                  color: Theme.of(context)
-                                                      .colorScheme
-                                                      .error,
-                                                ),
-                                              ),
+                              ),
+                            ),
+                          ),
+                        const SizedBox(height: 8),
+                        Expanded(
+                          child: terms.isEmpty
+                              ? _buildEmptyState(context)
+                              : ListView.separated(
+                                  itemCount: terms.length,
+                                  separatorBuilder: (_, __) =>
+                                      const SizedBox(height: 12),
+                                  itemBuilder: (context, index) {
+                                    final term = terms[index];
+                                    return Card(
+                                      clipBehavior: Clip.antiAlias,
+                                      child: ListTile(
+                                        title: Text(term.name),
+                                        subtitle: Text(term.slug),
+                                        trailing: PopupMenuButton<String>(
+                                          onSelected: (value) {
+                                            if (value == 'edit') {
+                                              _openForm(term: term);
+                                            }
+                                            if (value == 'delete') {
+                                              _confirmDelete(term);
+                                            }
+                                          },
+                                          itemBuilder: (context) => [
+                                            const PopupMenuItem(
+                                              value: 'edit',
+                                              child: Text('Editar'),
                                             ),
-                                            TextButton(
-                                              onPressed: () => _controller
-                                                  .loadTerms(widget.taxonomyId),
-                                              child: const Text('Tentar novamente'),
+                                            const PopupMenuItem(
+                                              value: 'delete',
+                                              child: Text('Remover'),
                                             ),
                                           ],
                                         ),
                                       ),
-                                    ),
-                                  ),
-                                const SizedBox(height: 8),
-                                Expanded(
-                                  child: terms.isEmpty
-                                      ? _buildEmptyState(context)
-                                      : ListView.separated(
-                                          itemCount: terms.length,
-                                          separatorBuilder: (_, __) =>
-                                              const SizedBox(height: 12),
-                                          itemBuilder: (context, index) {
-                                            final term = terms[index];
-                                            return Card(
-                                              clipBehavior: Clip.antiAlias,
-                                              child: ListTile(
-                                                title: Text(term.name),
-                                                subtitle: Text(term.slug),
-                                                trailing:
-                                                    PopupMenuButton<String>(
-                                                  onSelected: (value) async {
-                                                    if (value == 'edit') {
-                                                      await _openForm(term: term);
-                                                    }
-                                                    if (value == 'delete') {
-                                                      await _confirmDelete(term);
-                                                    }
-                                                  },
-                                                  itemBuilder: (context) => [
-                                                    const PopupMenuItem(
-                                                      value: 'edit',
-                                                      child: Text('Editar'),
-                                                    ),
-                                                    const PopupMenuItem(
-                                                      value: 'delete',
-                                                      child: Text('Remover'),
-                                                    ),
-                                                  ],
-                                                ),
-                                              ),
-                                            );
-                                          },
-                                        ),
+                                    );
+                                  },
                                 ),
-                              ],
-                            ),
-                          ),
-                        );
-                      },
-                    );
-                  },
+                        ),
+                      ],
+                    ),
+                  ),
                 );
               },
             );
@@ -278,22 +284,22 @@ class _TenantAdminTaxonomyTermsListScreenState
   }
 
   void _handleSuccessMessage(String? message) {
-    if (message == null || message.isEmpty) return;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message)),
-      );
-      _controller.clearSuccessMessage();
-    });
+    if (message == null || message.isEmpty || !mounted) return;
+    if (_isFormDialogOpen) {
+      Navigator.of(context, rootNavigator: true).pop();
+      _isFormDialogOpen = false;
+    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+    _controller.clearSuccessMessage();
   }
 
   void _handleActionErrorMessage(String? message) {
-    if (message == null || message.isEmpty) return;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message)),
-      );
-      _controller.clearActionErrorMessage();
-    });
+    if (message == null || message.isEmpty || !mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+    _controller.clearActionErrorMessage();
   }
 }
