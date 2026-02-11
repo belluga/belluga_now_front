@@ -180,6 +180,15 @@ jobs:
           }
           JSON
 
+          # Cloudflare may cache un-hashed entrypoints (e.g. main.dart.js) for hours.
+          # Cache-bust the HTML references so each build gets a unique URL.
+          #
+          # This is intentionally done post-build so it applies to the generated web artifact
+          # without requiring manual cache purges or server hotfixes.
+          if [[ -f "$WEB_OUTPUT/index.html" ]]; then
+            python3 -c 'import re,sys,functools; p=sys.argv[1]; v=sys.argv[2]; s=open(p,"r",encoding="utf-8").read(); names=("main.dart.js","flutter_bootstrap.js","flutter.js","flutter_service_worker.js"); f=lambda acc,n: re.sub(r"""(src=")"""+re.escape(n)+r"""(?:\?[^"]*)?(")""", r"\g<1>"+n+"?v="+v+r"\g<2>", acc, flags=re.I); s=functools.reduce(f,names,s); open(p,"w",encoding="utf-8").write(s)' "$WEB_OUTPUT/index.html" "$short_sha"
+          fi
+
       - name: Upload web artifact
         uses: actions/upload-artifact@v4
         with:
@@ -191,7 +200,7 @@ jobs:
     name: Publish PR to web-app
     runs-on: ubuntu-latest
     needs: validate_and_build
-    if: github.event_name == 'push'
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
 
     steps:
       - name: Check publish configuration availability
