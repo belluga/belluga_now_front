@@ -231,12 +231,47 @@
   </script>
 
   <script>
-    // Remove the splash screen after Flutter paints the first frame.
-    // This is required so navigation validation can assert the app is actually visible.
-    window.addEventListener('flutter-first-frame', function () {
-      const splash = document.getElementById('splash-screen');
-      if (splash) splash.remove();
-    });
+    // Remove splash when Flutter is visible.
+    // Primary signal: `flutter-first-frame`.
+    // Fallback signal: Flutter host nodes become available but the first-frame
+    // event is missed by the browser/runtime.
+    (function () {
+      const flutterHostSelectors = 'flt-glass-pane, flt-scene-host, flutter-view';
+
+      function removeSplash() {
+        const splash = document.getElementById('splash-screen');
+        if (splash) splash.remove();
+      }
+
+      function tryRemoveSplashFromDom() {
+        if (!document.querySelector(flutterHostSelectors)) {
+          return false;
+        }
+        removeSplash();
+        return true;
+      }
+
+      window.addEventListener('flutter-first-frame', removeSplash, { once: true });
+
+      if (tryRemoveSplashFromDom()) {
+        return;
+      }
+
+      const observer = new MutationObserver(function () {
+        if (tryRemoveSplashFromDom()) {
+          observer.disconnect();
+        }
+      });
+
+      observer.observe(document.documentElement, { childList: true, subtree: true });
+
+      // Keep observer bounded. If Flutter host nodes never appear, keep splash
+      // visible to communicate app is not ready.
+      window.setTimeout(function () {
+        observer.disconnect();
+        tryRemoveSplashFromDom();
+      }, 20000);
+    })();
   </script>
 
   <script src="flutter_bootstrap.js" async></script>
