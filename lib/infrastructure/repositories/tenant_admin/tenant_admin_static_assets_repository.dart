@@ -151,7 +151,8 @@ class TenantAdminStaticAssetsRepository
             )
           : await _dio.post(
               '$_apiBaseUrl/v1/static_assets/$assetId',
-              data: uploadPayload..fields.add(const MapEntry('_method', 'PATCH')),
+              data: uploadPayload
+                ..fields.add(const MapEntry('_method', 'PATCH')),
               options: Options(
                 headers: _buildHeaders(),
                 contentType: 'multipart/form-data',
@@ -251,13 +252,14 @@ class TenantAdminStaticAssetsRepository
     TenantAdminStaticProfileTypeCapabilities? capabilities,
   }) async {
     try {
+      final encodedType = Uri.encodeComponent(type);
       final payload = _buildStaticProfileTypePayload(
         label: label,
         allowedTaxonomies: allowedTaxonomies,
         capabilities: capabilities,
       );
       final response = await _dio.patch(
-        '$_apiBaseUrl/v1/static_profile_types/$type',
+        '$_apiBaseUrl/v1/static_profile_types/$encodedType',
         data: payload,
         options: Options(headers: _buildHeaders()),
       );
@@ -271,8 +273,9 @@ class TenantAdminStaticAssetsRepository
   @override
   Future<void> deleteStaticProfileType(String type) async {
     try {
+      final encodedType = Uri.encodeComponent(type);
       await _dio.delete(
-        '$_apiBaseUrl/v1/static_profile_types/$type',
+        '$_apiBaseUrl/v1/static_profile_types/$encodedType',
         options: Options(headers: _buildHeaders()),
       );
     } on DioException catch (error) {

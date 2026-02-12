@@ -27,7 +27,6 @@ class TenantAdminLocationSelectionService
 
   @override
   void setInitialLocation(TenantAdminLocation? location) {
-    if (location == null) return;
     _locationStreamValue.addValue(location);
   }
 
