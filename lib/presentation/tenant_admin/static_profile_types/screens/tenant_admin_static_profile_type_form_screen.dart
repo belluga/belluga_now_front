@@ -1,6 +1,6 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_static_profile_type.dart';
-import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
 import 'package:belluga_now/presentation/tenant_admin/static_profile_types/controllers/tenant_admin_static_profile_types_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
@@ -258,7 +258,7 @@ class _TenantAdminStaticProfileTypeFormScreenState
       margin: EdgeInsets.zero,
       child: Padding(
         padding: const EdgeInsets.all(16),
-        child: StreamValueBuilder<List<TenantAdminTaxonomy>>(
+        child: StreamValueBuilder<List<TenantAdminTaxonomyDefinition>>(
           streamValue: _controller.taxonomiesStreamValue,
           builder: (context, taxonomies) {
             return StreamValueBuilder<Set<String>>(

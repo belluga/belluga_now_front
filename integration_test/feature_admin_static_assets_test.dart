@@ -421,6 +421,47 @@ class _FakeStaticAssetsRepository
     ];
   }
 
+  @override
+  Future<TenantAdminStaticProfileTypeDefinition> createStaticProfileType({
+    required String type,
+    required String label,
+    List<String> allowedTaxonomies = const [],
+    required TenantAdminStaticProfileTypeCapabilities capabilities,
+  }) async {
+    return TenantAdminStaticProfileTypeDefinition(
+      type: type,
+      label: label,
+      allowedTaxonomies: allowedTaxonomies,
+      capabilities: capabilities,
+    );
+  }
+
+  @override
+  Future<TenantAdminStaticProfileTypeDefinition> updateStaticProfileType({
+    required String type,
+    String? label,
+    List<String>? allowedTaxonomies,
+    TenantAdminStaticProfileTypeCapabilities? capabilities,
+  }) async {
+    return TenantAdminStaticProfileTypeDefinition(
+      type: type,
+      label: label ?? 'Praia',
+      allowedTaxonomies: allowedTaxonomies ?? const [],
+      capabilities: capabilities ??
+          const TenantAdminStaticProfileTypeCapabilities(
+            isPoiEnabled: true,
+            hasBio: true,
+            hasTaxonomies: true,
+            hasAvatar: true,
+            hasCover: true,
+            hasContent: true,
+          ),
+    );
+  }
+
+  @override
+  Future<void> deleteStaticProfileType(String type) async {}
+
 }
 
 class _FakeTaxonomiesRepository

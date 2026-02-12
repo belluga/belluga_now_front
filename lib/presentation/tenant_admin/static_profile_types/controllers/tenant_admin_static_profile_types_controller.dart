@@ -1,7 +1,7 @@
 import 'package:belluga_now/domain/repositories/tenant_admin_static_assets_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_taxonomies_repository_contract.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_static_profile_type.dart';
-import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart' show Disposable, GetIt;
 import 'package:stream_value/core/stream_value.dart';
@@ -23,8 +23,8 @@ class TenantAdminStaticProfileTypesController implements Disposable {
       StreamValue<List<TenantAdminStaticProfileTypeDefinition>>(
     defaultValue: const [],
   );
-  final StreamValue<List<TenantAdminTaxonomy>> taxonomiesStreamValue =
-      StreamValue<List<TenantAdminTaxonomy>>(defaultValue: const []);
+  final StreamValue<List<TenantAdminTaxonomyDefinition>> taxonomiesStreamValue =
+      StreamValue<List<TenantAdminTaxonomyDefinition>>(defaultValue: const []);
   final StreamValue<Set<String>> selectedTaxonomiesStreamValue =
       StreamValue<Set<String>>(defaultValue: const {});
   final StreamValue<bool> isLoadingStreamValue =
@@ -137,7 +137,7 @@ class TenantAdminStaticProfileTypesController implements Disposable {
     try {
       final taxonomies = await _taxonomiesRepository.fetchTaxonomies();
       final filtered = taxonomies
-          .where((taxonomy) => taxonomy.appliesTo.contains('static_asset'))
+          .where((taxonomy) => taxonomy.appliesToTarget('static_asset'))
           .toList(growable: false);
       if (_isDisposed) return;
       taxonomiesStreamValue.addValue(filtered);
