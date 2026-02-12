@@ -423,6 +423,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (_controller.isAdminMode) return;
     showLandlordCredentialsSheet(
       context,
+      emailController: _controller.adminEmailController,
+      passwordController: _controller.adminPasswordController,
       onSubmit: _controller.enterAdminModeWithCredentials,
     );
   }

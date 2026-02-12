@@ -8,8 +8,9 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
+import 'package:belluga_now/domain/services/tenant_admin_location_selection_contract.dart';
+import 'package:belluga_now/infrastructure/services/tenant_admin/tenant_admin_location_selection_service.dart';
 import 'package:belluga_now/presentation/tenant_admin/accounts/controllers/tenant_admin_accounts_controller.dart';
-import 'package:belluga_now/presentation/tenant_admin/accounts/services/tenant_admin_location_selection_service.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 class _FakeAccountsRepository implements TenantAdminAccountsRepositoryContract {
@@ -232,7 +233,8 @@ void main() {
       ),
     ]);
 
-    final locationSelectionService = TenantAdminLocationSelectionService();
+    final TenantAdminLocationSelectionContract locationSelectionService =
+        TenantAdminLocationSelectionService();
     final controller = TenantAdminAccountsController(
       accountsRepository: accountsRepository,
       profilesRepository: profilesRepository,
@@ -264,7 +266,8 @@ void main() {
       ),
     ]);
 
-    final locationSelectionService = TenantAdminLocationSelectionService();
+    final TenantAdminLocationSelectionContract locationSelectionService =
+        TenantAdminLocationSelectionService();
     final controller = TenantAdminAccountsController(
       accountsRepository: accountsRepository,
       profilesRepository: profilesRepository,

@@ -199,7 +199,7 @@ class _TenantAdminShellScreenState extends State<TenantAdminShellScreen> {
                 IconButton(
                   tooltip: 'Perfil',
                   icon: const Icon(Icons.person_outline),
-                  onPressed: () => _controller.switchToUserMode(),
+                  onPressed: _openProfile,
                 ),
               ],
             ),
@@ -215,7 +215,7 @@ class _TenantAdminShellScreenState extends State<TenantAdminShellScreen> {
                       title: Text(_titleForRoute(currentName)),
                       actions: [
                         TextButton.icon(
-                          onPressed: () => _controller.switchToUserMode(),
+                          onPressed: _openProfile,
                           icon: const Icon(Icons.person_outline),
                           label: const Text('Perfil'),
                         ),
@@ -266,10 +266,18 @@ class _TenantAdminShellScreenState extends State<TenantAdminShellScreen> {
     if (!mounted) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      final router = context.router;
-      if (router.topRoute.name == ProfileRoute.name) return;
-      router.replaceAll([const ProfileRoute()]);
+      _navigateToProfileIfNeeded();
     });
+  }
+
+  Future<void> _openProfile() async {
+    await _controller.switchToUserMode();
+  }
+
+  void _navigateToProfileIfNeeded() {
+    final rootRouter = context.router.root;
+    if (rootRouter.topRoute.name == ProfileRoute.name) return;
+    rootRouter.replaceAll([const ProfileRoute()]);
   }
 }
 

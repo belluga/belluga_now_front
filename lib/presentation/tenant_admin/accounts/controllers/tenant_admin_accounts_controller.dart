@@ -8,7 +8,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/domain/tenant_admin/ownership_state.dart';
-import 'package:belluga_now/presentation/tenant_admin/accounts/services/tenant_admin_location_selection_service.dart';
+import 'package:belluga_now/domain/services/tenant_admin_location_selection_contract.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart' show Disposable, GetIt;
 import 'package:image_picker/image_picker.dart';
@@ -18,23 +18,24 @@ class TenantAdminAccountsController implements Disposable {
   TenantAdminAccountsController({
     TenantAdminAccountsRepositoryContract? accountsRepository,
     TenantAdminAccountProfilesRepositoryContract? profilesRepository,
-    TenantAdminLocationSelectionService? locationSelectionService,
-  })  : _accountsRepository =
-            accountsRepository ?? GetIt.I.get<TenantAdminAccountsRepositoryContract>(),
-        _profilesRepository =
-            profilesRepository ?? GetIt.I.get<TenantAdminAccountProfilesRepositoryContract>(),
+    TenantAdminLocationSelectionContract? locationSelectionService,
+  })  : _accountsRepository = accountsRepository ??
+            GetIt.I.get<TenantAdminAccountsRepositoryContract>(),
+        _profilesRepository = profilesRepository ??
+            GetIt.I.get<TenantAdminAccountProfilesRepositoryContract>(),
         _locationSelectionService = locationSelectionService ??
-            GetIt.I.get<TenantAdminLocationSelectionService>();
+            GetIt.I.get<TenantAdminLocationSelectionContract>();
 
   final TenantAdminAccountsRepositoryContract _accountsRepository;
   final TenantAdminAccountProfilesRepositoryContract _profilesRepository;
-  final TenantAdminLocationSelectionService _locationSelectionService;
+  final TenantAdminLocationSelectionContract _locationSelectionService;
 
   final StreamValue<List<TenantAdminAccount>> accountsStreamValue =
       StreamValue<List<TenantAdminAccount>>(defaultValue: const []);
   final StreamValue<List<TenantAdminProfileTypeDefinition>>
       profileTypesStreamValue =
-      StreamValue<List<TenantAdminProfileTypeDefinition>>(defaultValue: const []);
+      StreamValue<List<TenantAdminProfileTypeDefinition>>(
+          defaultValue: const []);
   final StreamValue<bool> isLoadingStreamValue =
       StreamValue<bool>(defaultValue: false);
   final StreamValue<String?> errorStreamValue = StreamValue<String?>();
@@ -57,7 +58,8 @@ class TenantAdminAccountsController implements Disposable {
   final GlobalKey<FormState> createFormKey = GlobalKey<FormState>();
   final TextEditingController nameController = TextEditingController();
   final TextEditingController documentTypeController = TextEditingController();
-  final TextEditingController documentNumberController = TextEditingController();
+  final TextEditingController documentNumberController =
+      TextEditingController();
   final TextEditingController profileDisplayNameController =
       TextEditingController();
   final TextEditingController latitudeController = TextEditingController();

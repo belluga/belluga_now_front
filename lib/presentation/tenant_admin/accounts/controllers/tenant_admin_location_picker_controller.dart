@@ -1,18 +1,16 @@
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
-import 'package:belluga_now/presentation/tenant_admin/accounts/services/tenant_admin_location_selection_service.dart';
+import 'package:belluga_now/domain/services/tenant_admin_location_selection_contract.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value.dart';
 
 class TenantAdminLocationPickerController {
   TenantAdminLocationPickerController({
-    TenantAdminLocationSelectionService? locationSelectionService,
+    TenantAdminLocationSelectionContract? locationSelectionService,
   }) : _locationSelectionService = locationSelectionService ??
-            (GetIt.I.isRegistered<TenantAdminLocationSelectionService>()
-                ? GetIt.I.get<TenantAdminLocationSelectionService>()
-                : TenantAdminLocationSelectionService());
+            GetIt.I.get<TenantAdminLocationSelectionContract>();
 
-  final TenantAdminLocationSelectionService _locationSelectionService;
+  final TenantAdminLocationSelectionContract _locationSelectionService;
   final MapController mapController = MapController();
 
   StreamValue<TenantAdminLocation?> get locationStreamValue =>

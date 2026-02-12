@@ -14,7 +14,6 @@ class LandlordLoginController implements Disposable {
 
   final LandlordAuthRepositoryContract _landlordAuthRepository;
   final AdminModeRepositoryContract _adminModeRepository;
-
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
 

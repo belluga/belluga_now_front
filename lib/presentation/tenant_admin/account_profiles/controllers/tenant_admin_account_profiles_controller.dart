@@ -11,7 +11,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_definition.dart';
-import 'package:belluga_now/presentation/tenant_admin/accounts/services/tenant_admin_location_selection_service.dart';
+import 'package:belluga_now/domain/services/tenant_admin_location_selection_contract.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart' show Disposable, GetIt;
 import 'package:image_picker/image_picker.dart';
@@ -22,28 +22,28 @@ class TenantAdminAccountProfilesController implements Disposable {
     TenantAdminAccountProfilesRepositoryContract? profilesRepository,
     TenantAdminAccountsRepositoryContract? accountsRepository,
     TenantAdminTaxonomiesRepositoryContract? taxonomiesRepository,
-    TenantAdminLocationSelectionService? locationSelectionService,
+    TenantAdminLocationSelectionContract? locationSelectionService,
   })  : _profilesRepository = profilesRepository ??
             GetIt.I.get<TenantAdminAccountProfilesRepositoryContract>(),
-        _accountsRepository =
-            accountsRepository ?? GetIt.I.get<TenantAdminAccountsRepositoryContract>(),
+        _accountsRepository = accountsRepository ??
+            GetIt.I.get<TenantAdminAccountsRepositoryContract>(),
         _taxonomiesRepository = taxonomiesRepository ??
             GetIt.I.get<TenantAdminTaxonomiesRepositoryContract>(),
         _locationSelectionService = locationSelectionService ??
-            GetIt.I.get<TenantAdminLocationSelectionService>();
+            GetIt.I.get<TenantAdminLocationSelectionContract>();
 
   final TenantAdminAccountProfilesRepositoryContract _profilesRepository;
   final TenantAdminAccountsRepositoryContract _accountsRepository;
   final TenantAdminTaxonomiesRepositoryContract _taxonomiesRepository;
-  final TenantAdminLocationSelectionService _locationSelectionService;
+  final TenantAdminLocationSelectionContract _locationSelectionService;
 
   final StreamValue<List<TenantAdminAccountProfile>> profilesStreamValue =
       StreamValue<List<TenantAdminAccountProfile>>(defaultValue: const []);
   final StreamValue<List<TenantAdminProfileTypeDefinition>>
       profileTypesStreamValue =
-      StreamValue<List<TenantAdminProfileTypeDefinition>>(defaultValue: const []);
-  final StreamValue<List<TenantAdminTaxonomyDefinition>>
-      taxonomiesStreamValue =
+      StreamValue<List<TenantAdminProfileTypeDefinition>>(
+          defaultValue: const []);
+  final StreamValue<List<TenantAdminTaxonomyDefinition>> taxonomiesStreamValue =
       StreamValue<List<TenantAdminTaxonomyDefinition>>(defaultValue: const []);
   final StreamValue<Map<String, List<TenantAdminTaxonomyTermDefinition>>>
       taxonomyTermsStreamValue =
@@ -63,8 +63,8 @@ class TenantAdminAccountProfilesController implements Disposable {
       StreamValue<bool>(defaultValue: false);
   final StreamValue<String?> accountDetailErrorStreamValue =
       StreamValue<String?>();
-  final StreamValue<TenantAdminAccountProfileEditState>
-      editStateStreamValue = StreamValue<TenantAdminAccountProfileEditState>(
+  final StreamValue<TenantAdminAccountProfileEditState> editStateStreamValue =
+      StreamValue<TenantAdminAccountProfileEditState>(
     defaultValue: TenantAdminAccountProfileEditState.initial(),
   );
   final StreamValue<bool> editSubmittingStreamValue =
@@ -74,7 +74,8 @@ class TenantAdminAccountProfilesController implements Disposable {
   final StreamValue<String?> editErrorMessageStreamValue =
       StreamValue<String?>();
   final StreamValue<TenantAdminAccountProfileCreateState>
-      createStateStreamValue = StreamValue<TenantAdminAccountProfileCreateState>(
+      createStateStreamValue =
+      StreamValue<TenantAdminAccountProfileCreateState>(
     defaultValue: TenantAdminAccountProfileCreateState.initial(),
   );
   final StreamValue<bool> createSubmittingStreamValue =
@@ -120,7 +121,8 @@ class TenantAdminAccountProfilesController implements Disposable {
     _bindLocationSelection();
   }
 
-  Future<TenantAdminAccountProfile> fetchProfile(String accountProfileId) async {
+  Future<TenantAdminAccountProfile> fetchProfile(
+      String accountProfileId) async {
     return _profilesRepository.fetchAccountProfile(accountProfileId);
   }
 
@@ -267,12 +269,14 @@ class TenantAdminAccountProfilesController implements Disposable {
       final profile = await fetchProfile(accountProfileId);
       if (_isDisposed) return;
       _updateEditState(
-        editStateStreamValue.value.copyWith(
-          isLoading: false,
-          errorMessage: null,
-          profile: profile,
-          selectedProfileType: profile.profileType,
-        ).syncRemoteState(profile),
+        editStateStreamValue.value
+            .copyWith(
+              isLoading: false,
+              errorMessage: null,
+              profile: profile,
+              selectedProfileType: profile.profileType,
+            )
+            .syncRemoteState(profile),
       );
     } catch (error) {
       if (_isDisposed) return;
@@ -301,9 +305,11 @@ class TenantAdminAccountProfilesController implements Disposable {
 
   void updateEditProfile(TenantAdminAccountProfile profile) {
     _updateEditState(
-      editStateStreamValue.value.copyWith(
-        profile: profile,
-      ).syncRemoteState(profile),
+      editStateStreamValue.value
+          .copyWith(
+            profile: profile,
+          )
+          .syncRemoteState(profile),
     );
   }
 

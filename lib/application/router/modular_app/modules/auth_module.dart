@@ -38,7 +38,7 @@ class AuthModule extends ModuleContract {
       () => AuthRecoveryPasswordController(),
     );
 
-    registerFactory<LandlordLoginController>(
+    registerLazySingleton<LandlordLoginController>(
       () => LandlordLoginController(),
     );
   }

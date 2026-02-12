@@ -3,10 +3,11 @@ import 'dart:async';
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/application/router/guards/landlord_route_guard.dart';
+import 'package:belluga_now/domain/services/tenant_admin_location_selection_contract.dart';
 import 'package:belluga_now/presentation/tenant_admin/account_profiles/controllers/tenant_admin_account_profiles_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/accounts/controllers/tenant_admin_accounts_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/accounts/controllers/tenant_admin_location_picker_controller.dart';
-import 'package:belluga_now/presentation/tenant_admin/accounts/services/tenant_admin_location_selection_service.dart';
+import 'package:belluga_now/infrastructure/services/tenant_admin/tenant_admin_location_selection_service.dart';
 import 'package:belluga_now/presentation/tenant_admin/organizations/controllers/tenant_admin_organizations_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/profile_types/controllers/tenant_admin_profile_types_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/shell/controllers/tenant_admin_shell_controller.dart';
@@ -24,7 +25,7 @@ class TenantAdminModule extends ModuleContract {
     registerFactory<TenantAdminAccountsController>(
       () => TenantAdminAccountsController(),
     );
-    registerLazySingleton<TenantAdminLocationSelectionService>(
+    registerLazySingleton<TenantAdminLocationSelectionContract>(
       () => TenantAdminLocationSelectionService(),
     );
     registerFactory<TenantAdminLocationPickerController>(
@@ -45,7 +46,7 @@ class TenantAdminModule extends ModuleContract {
     registerFactory<TenantAdminStaticProfileTypesController>(
       () => TenantAdminStaticProfileTypesController(),
     );
-    registerFactory<TenantAdminStaticAssetsController>(
+    registerLazySingleton<TenantAdminStaticAssetsController>(
       () => TenantAdminStaticAssetsController(),
     );
   }
