@@ -206,3 +206,5 @@ fvm flutter run --flavor <novo_tenant> \
 ```
 
 Nota de operação CI/CD: este commit inclui um ajuste documental mínimo para disparar a simulação ponta a ponta do fluxo de promoção de lanes.
+
+Nota de simulação CI/CD (flutter): alteração documental mínima para validar o fluxo integrado com backend no mesmo ciclo.
