@@ -306,6 +306,7 @@ jobs:
           git push -u origin "$PR_BRANCH"
 
       - name: Create PR in web-app repo
+        id: create_web_pr
         if: steps.gate.outputs.enabled == 'true' && env.NO_CHANGES == 'false'
         env:
           GH_TOKEN: ${{ secrets.WEB_APP_REPO_TOKEN }}
@@ -319,14 +320,59 @@ jobs:
 
           if [[ -n "$existing_pr" ]]; then
             echo "PR already exists: #$existing_pr"
+            echo "pr_number=$existing_pr" >> "$GITHUB_OUTPUT"
           else
-            gh pr create \
+            pr_url="$(
+              gh pr create \
               --repo "$WEB_APP_REPO" \
               --base "$TARGET_BRANCH" \
               --head "$PR_BRANCH" \
               --title "$title" \
               --body "$body"
+            )"
+
+            pr_number="$(gh pr view "$pr_url" --repo "$WEB_APP_REPO" --json number --jq '.number')"
+            echo "Created PR #$pr_number"
+            echo "pr_number=$pr_number" >> "$GITHUB_OUTPUT"
           fi
+
+      - name: Enable auto-merge in web-app PR
+        if: steps.gate.outputs.enabled == 'true' && env.NO_CHANGES == 'false'
+        env:
+          GH_TOKEN: ${{ secrets.WEB_APP_REPO_TOKEN }}
+          WEB_APP_REPO: ${{ steps.gate.outputs.web_repo }}
+          PR_NUMBER: ${{ steps.create_web_pr.outputs.pr_number }}
+        run: |
+          set -euo pipefail
+
+          if [[ -z "${PR_NUMBER:-}" ]]; then
+            echo "ERROR: missing PR number for web-app auto-merge." >&2
+            exit 1
+          fi
+
+          is_auto_enabled="$(gh pr view "${PR_NUMBER}" --repo "${WEB_APP_REPO}" --json autoMergeRequest --jq '.autoMergeRequest != null')"
+          if [[ "${is_auto_enabled}" == "true" ]]; then
+            echo "INFO: auto-merge already enabled for web-app PR #${PR_NUMBER}."
+            exit 0
+          fi
+
+          if gh pr merge "${PR_NUMBER}" --repo "${WEB_APP_REPO}" --auto --merge; then
+            echo "Enabled auto-merge using merge strategy for web-app PR #${PR_NUMBER}."
+            exit 0
+          fi
+
+          if gh pr merge "${PR_NUMBER}" --repo "${WEB_APP_REPO}" --auto --squash; then
+            echo "Enabled auto-merge using squash strategy for web-app PR #${PR_NUMBER}."
+            exit 0
+          fi
+
+          if gh pr merge "${PR_NUMBER}" --repo "${WEB_APP_REPO}" --auto --rebase; then
+            echo "Enabled auto-merge using rebase strategy for web-app PR #${PR_NUMBER}."
+            exit 0
+          fi
+
+          echo "ERROR: failed to enable auto-merge for web-app PR #${PR_NUMBER}." >&2
+          exit 1
 
       - name: No changes notice
         if: steps.gate.outputs.enabled == 'true' && env.NO_CHANGES == 'true'
