@@ -29,6 +29,7 @@ import 'package:belluga_now/domain/repositories/telemetry_repository_contract.da
 import 'package:belluga_now/domain/repositories/tenant_admin_account_profiles_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_accounts_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_organizations_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/tenant_admin_static_assets_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_taxonomies_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_events_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
@@ -51,6 +52,7 @@ import 'package:belluga_now/infrastructure/repositories/telemetry_repository.dar
 import 'package:belluga_now/infrastructure/repositories/tenant_admin/tenant_admin_account_profiles_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/tenant_admin/tenant_admin_accounts_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/tenant_admin/tenant_admin_organizations_repository.dart';
+import 'package:belluga_now/infrastructure/repositories/tenant_admin/tenant_admin_static_assets_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/tenant_admin/tenant_admin_taxonomies_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/user_events_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/user_location_repository.dart';
@@ -286,6 +288,9 @@ class ModuleSettings extends ModuleSettingsContract {
     );
     _registerIfAbsent<TenantAdminOrganizationsRepositoryContract>(
       () => TenantAdminOrganizationsRepository(),
+    );
+    _registerIfAbsent<TenantAdminStaticAssetsRepositoryContract>(
+      () => TenantAdminStaticAssetsRepository(),
     );
     _registerIfAbsent<TenantAdminTaxonomiesRepositoryContract>(
       () => TenantAdminTaxonomiesRepository(),

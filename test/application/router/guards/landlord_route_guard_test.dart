@@ -67,7 +67,7 @@ void main() {
     expect(router.replaceAllCalled, isTrue);
   });
 
-  test('allows navigation on landlord host without session', () {
+  test('host-based allow requires configured landlord domain', () {
     final landlordHost = _landlordHostForTest();
     _registerAppData(_buildAppData(
       hostname: landlordHost,
@@ -86,7 +86,15 @@ void main() {
 
     guard.onNavigation(resolver, router);
 
+    if (BellugaConstants.landlordDomain.trim().isEmpty) {
+      verify(resolver.next(false)).called(1);
+      verifyNever(resolver.next(true));
+      expect(router.replaceAllCalled, isTrue);
+      return;
+    }
+
     verify(resolver.next(true)).called(1);
+    verifyNever(resolver.next(false));
     expect(router.replaceAllCalled, isFalse);
   });
 }

@@ -11,9 +11,10 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
+import 'package:belluga_now/domain/services/tenant_admin_location_selection_contract.dart';
+import 'package:belluga_now/infrastructure/services/tenant_admin/tenant_admin_location_selection_service.dart';
 import 'package:belluga_now/presentation/tenant_admin/account_profiles/controllers/tenant_admin_account_profiles_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/account_profiles/screens/tenant_admin_account_profile_create_screen.dart';
-import 'package:belluga_now/presentation/tenant_admin/accounts/services/tenant_admin_location_selection_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
@@ -35,8 +36,8 @@ void main() {
     if (getIt.isRegistered<TenantAdminAccountProfilesController>()) {
       getIt.unregister<TenantAdminAccountProfilesController>();
     }
-    if (getIt.isRegistered<TenantAdminLocationSelectionService>()) {
-      getIt.unregister<TenantAdminLocationSelectionService>();
+    if (getIt.isRegistered<TenantAdminLocationSelectionContract>()) {
+      getIt.unregister<TenantAdminLocationSelectionContract>();
     }
     if (getIt.isRegistered<TenantAdminTaxonomiesRepositoryContract>()) {
       getIt.unregister<TenantAdminTaxonomiesRepositoryContract>();
@@ -52,7 +53,7 @@ void main() {
       _FakeTenantAdminTaxonomiesRepository(),
     );
 
-    getIt.registerSingleton<TenantAdminLocationSelectionService>(
+    getIt.registerSingleton<TenantAdminLocationSelectionContract>(
       TenantAdminLocationSelectionService(),
     );
     getIt.registerSingleton<TenantAdminAccountProfilesController>(
