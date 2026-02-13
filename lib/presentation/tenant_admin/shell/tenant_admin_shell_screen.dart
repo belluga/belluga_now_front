@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/domain/repositories/admin_mode_repository_contract.dart';
@@ -18,6 +20,7 @@ class _TenantAdminShellScreenState extends State<TenantAdminShellScreen> {
   static const _railBreakpoint = 900.0;
   final TenantAdminShellController _controller =
       GetIt.I.get<TenantAdminShellController>();
+  StreamSubscription<AdminMode>? _modeSubscription;
 
   final List<_AdminDestination> _destinations = const [
     _AdminDestination(
@@ -64,6 +67,17 @@ class _TenantAdminShellScreenState extends State<TenantAdminShellScreen> {
       },
     ),
     _AdminDestination(
+      label: 'Tipos de Ativo',
+      icon: Icons.layers_outlined,
+      selectedIcon: Icons.layers,
+      route: TenantAdminStaticProfileTypesListRoute(),
+      routeNames: {
+        TenantAdminStaticProfileTypesListRoute.name,
+        TenantAdminStaticProfileTypeCreateRoute.name,
+        TenantAdminStaticProfileTypeEditRoute.name,
+      },
+    ),
+    _AdminDestination(
       label: 'Taxonomias',
       icon: Icons.account_tree_outlined,
       selectedIcon: Icons.account_tree,
@@ -71,6 +85,17 @@ class _TenantAdminShellScreenState extends State<TenantAdminShellScreen> {
       routeNames: {
         TenantAdminTaxonomiesListRoute.name,
         TenantAdminTaxonomyTermsRoute.name,
+      },
+    ),
+    _AdminDestination(
+      label: 'Ativos',
+      icon: Icons.place_outlined,
+      selectedIcon: Icons.place,
+      route: TenantAdminStaticAssetsListRoute(),
+      routeNames: {
+        TenantAdminStaticAssetsListRoute.name,
+        TenantAdminStaticAssetCreateRoute.name,
+        TenantAdminStaticAssetEditRoute.name,
       },
     ),
   ];
@@ -83,7 +108,11 @@ class _TenantAdminShellScreenState extends State<TenantAdminShellScreen> {
     TenantAdminOrganizationDetailRoute.name,
     TenantAdminProfileTypeCreateRoute.name,
     TenantAdminProfileTypeEditRoute.name,
+    TenantAdminStaticProfileTypeCreateRoute.name,
+    TenantAdminStaticProfileTypeEditRoute.name,
     TenantAdminLocationPickerRoute.name,
+    TenantAdminStaticAssetCreateRoute.name,
+    TenantAdminStaticAssetEditRoute.name,
   };
 
   int _selectedIndex(String? routeName) {
@@ -105,11 +134,31 @@ class _TenantAdminShellScreenState extends State<TenantAdminShellScreen> {
     if (routeName == TenantAdminProfileTypesListRoute.name) {
       return 'Tipos de Perfil';
     }
+    if (routeName == TenantAdminStaticProfileTypesListRoute.name) {
+      return 'Tipos de Ativo';
+    }
     if (routeName == TenantAdminTaxonomiesListRoute.name ||
         routeName == TenantAdminTaxonomyTermsRoute.name) {
       return 'Taxonomias';
     }
+    if (routeName == TenantAdminStaticAssetsListRoute.name ||
+        routeName == TenantAdminStaticAssetCreateRoute.name ||
+        routeName == TenantAdminStaticAssetEditRoute.name) {
+      return 'Ativos estaticos';
+    }
     return 'Admin';
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _modeSubscription = _controller.modeStreamValue.stream.listen(_onModeChanged);
+  }
+
+  @override
+  void dispose() {
+    _modeSubscription?.cancel();
+    super.dispose();
   }
 
   @override
@@ -117,7 +166,6 @@ class _TenantAdminShellScreenState extends State<TenantAdminShellScreen> {
     return StreamValueBuilder(
       streamValue: _controller.modeStreamValue,
       builder: (context, mode) {
-        _handleModeChange(mode);
         final router = context.router;
         final currentName = router.topRoute.name;
         final selectedIndex = _selectedIndex(currentName);
@@ -151,7 +199,7 @@ class _TenantAdminShellScreenState extends State<TenantAdminShellScreen> {
                 IconButton(
                   tooltip: 'Perfil',
                   icon: const Icon(Icons.person_outline),
-                  onPressed: () => _controller.switchToUserMode(),
+                  onPressed: _openProfile,
                 ),
               ],
             ),
@@ -167,7 +215,7 @@ class _TenantAdminShellScreenState extends State<TenantAdminShellScreen> {
                       title: Text(_titleForRoute(currentName)),
                       actions: [
                         TextButton.icon(
-                          onPressed: () => _controller.switchToUserMode(),
+                          onPressed: _openProfile,
                           icon: const Icon(Icons.person_outline),
                           label: const Text('Perfil'),
                         ),
@@ -213,9 +261,23 @@ class _TenantAdminShellScreenState extends State<TenantAdminShellScreen> {
     );
   }
 
-  void _handleModeChange(AdminMode mode) {
+  void _onModeChanged(AdminMode mode) {
     if (mode != AdminMode.user) return;
-    context.router.replaceAll([const ProfileRoute()]);
+    if (!mounted) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _navigateToProfileIfNeeded();
+    });
+  }
+
+  Future<void> _openProfile() async {
+    await _controller.switchToUserMode();
+  }
+
+  void _navigateToProfileIfNeeded() {
+    final rootRouter = context.router.root;
+    if (rootRouter.topRoute.name == ProfileRoute.name) return;
+    rootRouter.replaceAll([const ProfileRoute()]);
   }
 }
 

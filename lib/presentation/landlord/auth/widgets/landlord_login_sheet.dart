@@ -20,16 +20,17 @@ Future<bool> showLandlordLoginSheet(
 
 Future<bool> showLandlordCredentialsSheet(
   BuildContext context, {
+  required TextEditingController emailController,
+  required TextEditingController passwordController,
   required Future<bool> Function(String email, String password) onSubmit,
 }) {
-  final emailController = TextEditingController();
-  final passwordController = TextEditingController();
+  emailController.clear();
+  passwordController.clear();
   return _showLandlordLoginSheet(
     context,
     emailController: emailController,
     passwordController: passwordController,
     onSubmit: onSubmit,
-    disposeControllers: true,
   );
 }
 
@@ -38,7 +39,6 @@ Future<bool> _showLandlordLoginSheet(
   required TextEditingController emailController,
   required TextEditingController passwordController,
   required Future<bool> Function(String email, String password) onSubmit,
-  bool disposeControllers = false,
 }) async {
   var didLogin = false;
   await showModalBottomSheet<void>(
@@ -47,7 +47,7 @@ Future<bool> _showLandlordLoginSheet(
     showDragHandle: true,
     builder: (ctx) {
       return SafeArea(
-        child: Padding(
+        child: SingleChildScrollView(
           padding: EdgeInsets.only(
             left: 16,
             right: 16,
@@ -114,11 +114,6 @@ Future<bool> _showLandlordLoginSheet(
       );
     },
   );
-
-  if (disposeControllers) {
-    emailController.dispose();
-    passwordController.dispose();
-  }
 
   return didLogin;
 }

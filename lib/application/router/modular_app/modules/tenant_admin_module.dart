@@ -3,13 +3,16 @@ import 'dart:async';
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/application/router/guards/landlord_route_guard.dart';
+import 'package:belluga_now/domain/services/tenant_admin_location_selection_contract.dart';
 import 'package:belluga_now/presentation/tenant_admin/account_profiles/controllers/tenant_admin_account_profiles_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/accounts/controllers/tenant_admin_accounts_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/accounts/controllers/tenant_admin_location_picker_controller.dart';
-import 'package:belluga_now/presentation/tenant_admin/accounts/services/tenant_admin_location_selection_service.dart';
+import 'package:belluga_now/infrastructure/services/tenant_admin/tenant_admin_location_selection_service.dart';
 import 'package:belluga_now/presentation/tenant_admin/organizations/controllers/tenant_admin_organizations_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/profile_types/controllers/tenant_admin_profile_types_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/shell/controllers/tenant_admin_shell_controller.dart';
+import 'package:belluga_now/presentation/tenant_admin/static_assets/controllers/tenant_admin_static_assets_controller.dart';
+import 'package:belluga_now/presentation/tenant_admin/static_profile_types/controllers/tenant_admin_static_profile_types_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/taxonomies/controllers/tenant_admin_taxonomies_controller.dart';
 import 'package:get_it_modular_with_auto_route/get_it_modular_with_auto_route.dart';
 
@@ -22,7 +25,7 @@ class TenantAdminModule extends ModuleContract {
     registerFactory<TenantAdminAccountsController>(
       () => TenantAdminAccountsController(),
     );
-    registerLazySingleton<TenantAdminLocationSelectionService>(
+    registerLazySingleton<TenantAdminLocationSelectionContract>(
       () => TenantAdminLocationSelectionService(),
     );
     registerFactory<TenantAdminLocationPickerController>(
@@ -39,6 +42,12 @@ class TenantAdminModule extends ModuleContract {
     );
     registerFactory<TenantAdminTaxonomiesController>(
       () => TenantAdminTaxonomiesController(),
+    );
+    registerFactory<TenantAdminStaticProfileTypesController>(
+      () => TenantAdminStaticProfileTypesController(),
+    );
+    registerLazySingleton<TenantAdminStaticAssetsController>(
+      () => TenantAdminStaticAssetsController(),
     );
   }
 
@@ -103,12 +112,36 @@ class TenantAdminModule extends ModuleContract {
               page: TenantAdminProfileTypeEditRoute.page,
             ),
             AutoRoute(
+              path: 'static_profile_types',
+              page: TenantAdminStaticProfileTypesListRoute.page,
+            ),
+            AutoRoute(
+              path: 'static_profile_types/create',
+              page: TenantAdminStaticProfileTypeCreateRoute.page,
+            ),
+            AutoRoute(
+              path: 'static_profile_types/:profileType/edit',
+              page: TenantAdminStaticProfileTypeEditRoute.page,
+            ),
+            AutoRoute(
               path: 'taxonomies',
               page: TenantAdminTaxonomiesListRoute.page,
             ),
             AutoRoute(
               path: 'taxonomies/:taxonomyId/terms',
               page: TenantAdminTaxonomyTermsRoute.page,
+            ),
+            AutoRoute(
+              path: 'static_assets',
+              page: TenantAdminStaticAssetsListRoute.page,
+            ),
+            AutoRoute(
+              path: 'static_assets/create',
+              page: TenantAdminStaticAssetCreateRoute.page,
+            ),
+            AutoRoute(
+              path: 'static_assets/:assetId/edit',
+              page: TenantAdminStaticAssetEditRoute.page,
             ),
           ],
         ),

@@ -1,27 +1,28 @@
 import 'package:auto_route/auto_route.dart';
-import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
-import 'package:belluga_now/presentation/tenant_admin/profile_types/controllers/tenant_admin_profile_types_controller.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_static_profile_type.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
+import 'package:belluga_now/presentation/tenant_admin/static_profile_types/controllers/tenant_admin_static_profile_types_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 
-class TenantAdminProfileTypeFormScreen extends StatefulWidget {
-  const TenantAdminProfileTypeFormScreen({
+class TenantAdminStaticProfileTypeFormScreen extends StatefulWidget {
+  const TenantAdminStaticProfileTypeFormScreen({
     super.key,
     this.definition,
   });
 
-  final TenantAdminProfileTypeDefinition? definition;
+  final TenantAdminStaticProfileTypeDefinition? definition;
 
   @override
-  State<TenantAdminProfileTypeFormScreen> createState() =>
-      _TenantAdminProfileTypeFormScreenState();
+  State<TenantAdminStaticProfileTypeFormScreen> createState() =>
+      _TenantAdminStaticProfileTypeFormScreenState();
 }
 
-class _TenantAdminProfileTypeFormScreenState
-    extends State<TenantAdminProfileTypeFormScreen> {
-  final TenantAdminProfileTypesController _controller =
-      GetIt.I.get<TenantAdminProfileTypesController>();
+class _TenantAdminStaticProfileTypeFormScreenState
+    extends State<TenantAdminStaticProfileTypeFormScreen> {
+  final TenantAdminStaticProfileTypesController _controller =
+      GetIt.I.get<TenantAdminStaticProfileTypesController>();
 
   bool get _isEdit => widget.definition != null;
 
@@ -29,6 +30,7 @@ class _TenantAdminProfileTypeFormScreenState
   void initState() {
     super.initState();
     _controller.initForm(widget.definition);
+    _controller.loadTaxonomies();
   }
 
   @override
@@ -37,11 +39,8 @@ class _TenantAdminProfileTypeFormScreenState
     super.dispose();
   }
 
-  List<String> _parseTaxonomies() {
-    return _controller.taxonomiesController.text
-        .split(',')
-        .map((value) => value.trim())
-        .where((value) => value.isNotEmpty)
+  List<String> _selectedTaxonomies() {
+    return _controller.selectedTaxonomiesStreamValue.value
         .toList(growable: false);
   }
 
@@ -52,7 +51,7 @@ class _TenantAdminProfileTypeFormScreenState
     }
 
     final capabilities = _controller.currentCapabilities;
-    final allowedTaxonomies = _parseTaxonomies();
+    final allowedTaxonomies = _selectedTaxonomies();
 
     if (_isEdit) {
       _controller.submitUpdateType(
@@ -143,18 +142,12 @@ class _TenantAdminProfileTypeFormScreenState
                                     return null;
                                   },
                                 ),
-                                const SizedBox(height: 12),
-                                TextFormField(
-                                  controller: _controller.taxonomiesController,
-                                  decoration: const InputDecoration(
-                                    labelText:
-                                        'Taxonomias (separadas por virgula)',
-                                  ),
-                                ),
                               ],
                             ),
                           ),
                         ),
+                        const SizedBox(height: 16),
+                        _buildTaxonomiesSection(context),
                         const SizedBox(height: 16),
                         Card(
                           margin: EdgeInsets.zero,
@@ -169,7 +162,7 @@ class _TenantAdminProfileTypeFormScreenState
                                 ),
                                 const SizedBox(height: 12),
                                 StreamValueBuilder<
-                                    TenantAdminProfileTypeCapabilities>(
+                                    TenantAdminStaticProfileTypeCapabilities>(
                                   streamValue:
                                       _controller.capabilitiesStreamValue,
                                   builder: (context, capabilities) {
@@ -177,18 +170,9 @@ class _TenantAdminProfileTypeFormScreenState
                                       children: [
                                         SwitchListTile(
                                           contentPadding: EdgeInsets.zero,
-                                          title: const Text('Favoritavel'),
-                                          value: capabilities.isFavoritable,
-                                          onChanged: (value) =>
-                                              _controller.updateCapabilities(
-                                            isFavoritable: value,
-                                          ),
-                                        ),
-                                        SwitchListTile(
-                                          contentPadding: EdgeInsets.zero,
                                           title: const Text('POI habilitado'),
                                           subtitle: const Text(
-                                            'Requer localizacao no perfil',
+                                            'Quando habilitado, o ativo exige localizacao',
                                           ),
                                           value: capabilities.isPoiEnabled,
                                           onChanged: (value) =>
@@ -199,13 +183,19 @@ class _TenantAdminProfileTypeFormScreenState
                                         SwitchListTile(
                                           contentPadding: EdgeInsets.zero,
                                           title: const Text('Bio habilitada'),
-                                          subtitle: const Text(
-                                            'Exibe campo de descricao no perfil',
-                                          ),
                                           value: capabilities.hasBio,
                                           onChanged: (value) =>
                                               _controller.updateCapabilities(
                                             hasBio: value,
+                                          ),
+                                        ),
+                                        SwitchListTile(
+                                          contentPadding: EdgeInsets.zero,
+                                          title: const Text('Taxonomias habilitadas'),
+                                          value: capabilities.hasTaxonomies,
+                                          onChanged: (value) =>
+                                              _controller.updateCapabilities(
+                                            hasTaxonomies: value,
                                           ),
                                         ),
                                         SwitchListTile(
@@ -228,15 +218,11 @@ class _TenantAdminProfileTypeFormScreenState
                                         ),
                                         SwitchListTile(
                                           contentPadding: EdgeInsets.zero,
-                                          title:
-                                              const Text('Agenda habilitada'),
-                                          subtitle: const Text(
-                                            'Mostra "Proximos Eventos"',
-                                          ),
-                                          value: capabilities.hasEvents,
+                                          title: const Text('Conteudo habilitado'),
+                                          value: capabilities.hasContent,
                                           onChanged: (value) =>
                                               _controller.updateCapabilities(
-                                            hasEvents: value,
+                                            hasContent: value,
                                           ),
                                         ),
                                       ],
@@ -264,6 +250,56 @@ class _TenantAdminProfileTypeFormScreenState
           },
         );
       },
+    );
+  }
+
+  Widget _buildTaxonomiesSection(BuildContext context) {
+    return Card(
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: StreamValueBuilder<List<TenantAdminTaxonomyDefinition>>(
+          streamValue: _controller.taxonomiesStreamValue,
+          builder: (context, taxonomies) {
+            return StreamValueBuilder<Set<String>>(
+              streamValue: _controller.selectedTaxonomiesStreamValue,
+              builder: (context, selected) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Taxonomias permitidas',
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: 12),
+                    if (taxonomies.isEmpty)
+                      const Text('Nenhuma taxonomia estatica disponivel.'),
+                    if (taxonomies.isNotEmpty)
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: taxonomies
+                            .map(
+                              (taxonomy) => FilterChip(
+                                label: Text(taxonomy.name),
+                                selected: selected.contains(taxonomy.slug),
+                                onSelected: (enabled) {
+                                  _controller.toggleTaxonomySelection(
+                                    taxonomy.slug,
+                                    enabled,
+                                  );
+                                },
+                              ),
+                            )
+                            .toList(growable: false),
+                      ),
+                  ],
+                );
+              },
+            );
+          },
+        ),
+      ),
     );
   }
 

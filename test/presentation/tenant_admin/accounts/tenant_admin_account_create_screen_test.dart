@@ -10,8 +10,9 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
+import 'package:belluga_now/domain/services/tenant_admin_location_selection_contract.dart';
+import 'package:belluga_now/infrastructure/services/tenant_admin/tenant_admin_location_selection_service.dart';
 import 'package:belluga_now/presentation/tenant_admin/accounts/controllers/tenant_admin_accounts_controller.dart';
-import 'package:belluga_now/presentation/tenant_admin/accounts/services/tenant_admin_location_selection_service.dart';
 import 'package:belluga_now/presentation/tenant_admin/accounts/screens/tenant_admin_account_create_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -242,8 +243,9 @@ void main() {
     GetIt.I.registerSingleton<TenantAdminAccountProfilesRepositoryContract>(
       _FakeAccountProfilesRepository(),
     );
-    final locationSelectionService = TenantAdminLocationSelectionService();
-    GetIt.I.registerSingleton<TenantAdminLocationSelectionService>(
+    final TenantAdminLocationSelectionContract locationSelectionService =
+        TenantAdminLocationSelectionService();
+    GetIt.I.registerSingleton<TenantAdminLocationSelectionContract>(
       locationSelectionService,
     );
     GetIt.I.registerSingleton<TenantAdminAccountsController>(
