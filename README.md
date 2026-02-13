@@ -204,3 +204,5 @@ fvm flutter run --flavor <novo_tenant> \
   --dart-define-from-file=config/defines/dev.json \
   --dart-define-from-file=config/defines/local.override.json
 ```
+
+Nota de operação CI/CD: este commit inclui um ajuste documental mínimo para disparar a simulação ponta a ponta do fluxo de promoção de lanes.
