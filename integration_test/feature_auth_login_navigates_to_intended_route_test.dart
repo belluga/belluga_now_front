@@ -23,6 +23,7 @@ import 'package:belluga_now/infrastructure/repositories/auth_repository.dart';
 import 'package:belluga_now/presentation/common/auth/screens/auth_login_screen/auth_login_screen.dart';
 import 'package:belluga_now/presentation/common/auth/screens/auth_login_screen/controllers/auth_login_controller.dart';
 import 'package:belluga_now/presentation/tenant/auth/login/controllers/auth_login_controller_contract.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:get_it/get_it.dart';
@@ -220,8 +221,13 @@ void main() {
 
     final loginButton = find.byKey(WidgetKeys.auth.loginButton);
     await _waitForFinder(tester, loginButton);
-    await tester.ensureVisible(loginButton);
-    await tester.tap(loginButton);
+    final elevatedLoginButton = find.descendant(
+      of: loginButton,
+      matching: find.byType(ElevatedButton),
+    );
+    await _waitForFinder(tester, elevatedLoginButton);
+    await tester.ensureVisible(elevatedLoginButton.first);
+    await tester.tap(elevatedLoginButton.first, warnIfMissed: false);
     await _pumpFor(tester, const Duration(seconds: 2));
 
     await _dismissLocationGateIfNeeded(tester);

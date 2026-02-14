@@ -1,12 +1,11 @@
 import 'package:belluga_now/application/configurations/belluga_constants.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/tenant/tenant.dart';
-import 'package:belluga_now/infrastructure/dal/dao/backend_contract.dart';
-import 'package:get_it/get_it.dart';
 
 abstract class TenantRepositoryContract {
   AppData get appData;
-  BackendContract get _backend => GetIt.I.get<BackendContract>();
+
+  Future<Tenant> fetchTenant();
 
   Tenant? tenant;
 
@@ -44,10 +43,7 @@ abstract class TenantRepositoryContract {
   }
 
   Future<Tenant> _getTenant() async {
-    final loadedTenant = await _backend.tenant.getTenant().catchError((error) {
-      throw Exception('Failed to retrieve tenant: $error');
-    });
-    return loadedTenant;
+    return fetchTenant();
   }
 
   void _setTenant(Tenant newTenant) => tenant = newTenant;

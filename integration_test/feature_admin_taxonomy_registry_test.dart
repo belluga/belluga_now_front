@@ -2,6 +2,7 @@ import 'package:belluga_now/application/application.dart';
 import 'package:belluga_now/application/application_contract.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/domain/repositories/admin_mode_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/landlord_auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_account_profiles_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_accounts_repository_contract.dart';
@@ -16,7 +17,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_definition.dart';
-import 'package:belluga_now/infrastructure/dal/dao/laravel_backend/app_data_backend/app_data_backend_stub.dart';
+import 'support/fake_landlord_app_data_backend.dart';
 import 'package:belluga_now/infrastructure/dal/dao/local/app_data_local_info_source/app_data_local_info_source_stub.dart';
 import 'package:belluga_now/infrastructure/repositories/app_data_repository.dart';
 import 'package:flutter/material.dart';
@@ -59,9 +60,9 @@ void main() {
       getIt.unregister<TenantAdminAccountProfilesRepositoryContract>();
     }
 
-    getIt.registerSingleton<AppDataRepository>(
+    getIt.registerSingleton<AppDataRepositoryContract>(
       AppDataRepository(
-        backend: AppDataBackend(),
+        backend: const FakeLandlordAppDataBackend(),
         localInfoSource: AppDataLocalInfoSource(),
       ),
     );
@@ -303,7 +304,8 @@ class _FakeAccountsRepository implements TenantAdminAccountsRepositoryContract {
       id: 'account-1',
       name: name ?? 'Conta',
       slug: accountSlug,
-      document: document ?? const TenantAdminDocument(type: 'cpf', number: '000'),
+      document:
+          document ?? const TenantAdminDocument(type: 'cpf', number: '000'),
       ownershipState: TenantAdminOwnershipState.tenantOwned,
     );
   }
@@ -353,7 +355,8 @@ class _FakeAccountProfilesRepository
   @override
   Future<List<TenantAdminAccountProfile>> fetchAccountProfiles({
     String? accountId,
-  }) async => const [];
+  }) async =>
+      const [];
 
   @override
   Future<TenantAdminAccountProfile> fetchAccountProfile(

@@ -194,12 +194,16 @@ void main() {
     mockito.when(mockController.myEventsFilteredStreamValue).thenReturn(
           StreamValue<List<VenueEventResume>>(defaultValue: [event]),
         );
-    // Provide a mocked AppRouter if needed, or just MaterialApp with home
-    // Navigation pushes might fail if not properly set up, but rendering should work.
-    
+    final mockRouter = MockStackRouter();
+    mockito.when(mockRouter.push(mockito.any)).thenAnswer((_) async => null);
+
     await tester.pumpWidget(
-      MaterialApp(
-        home: TenantHomeScreen(),
+      StackRouterScope(
+        controller: mockRouter,
+        stateHash: 0,
+        child: MaterialApp(
+          home: TenantHomeScreen(),
+        ),
       ),
     );
     await tester.pump();

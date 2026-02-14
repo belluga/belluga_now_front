@@ -160,9 +160,6 @@ class _FakeUser implements UserContract {
   Map<String, Object?>? customData;
 
   @override
-  String currentDeviceId = 'device';
-
-  @override
   Future<void> updateCustomData(Map<String, Object?> newCustomData) async {
     customData = newCustomData;
   }

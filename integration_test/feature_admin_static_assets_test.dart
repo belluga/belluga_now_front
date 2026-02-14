@@ -2,6 +2,7 @@ import 'package:belluga_now/application/application.dart';
 import 'package:belluga_now/application/application_contract.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/domain/repositories/admin_mode_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/landlord_auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_static_assets_repository_contract.dart';
@@ -23,7 +24,7 @@ import 'package:belluga_now/infrastructure/dal/dao/favorite_backend_contract.dar
 import 'package:belluga_now/infrastructure/dal/dao/tenant_backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/venue_event_backend_contract.dart';
 import 'package:belluga_now/infrastructure/services/schedule_backend_contract.dart';
-import 'package:belluga_now/infrastructure/dal/dao/laravel_backend/app_data_backend/app_data_backend_stub.dart';
+import 'support/fake_landlord_app_data_backend.dart';
 import 'package:belluga_now/infrastructure/dal/dao/local/app_data_local_info_source/app_data_local_info_source_stub.dart';
 import 'package:belluga_now/infrastructure/repositories/app_data_repository.dart';
 import 'package:flutter/material.dart';
@@ -75,17 +76,16 @@ void main() {
     if (GetIt.I.isRegistered<LandlordAuthRepositoryContract>()) {
       GetIt.I.unregister<LandlordAuthRepositoryContract>();
     }
-    if (GetIt.I
-        .isRegistered<TenantAdminStaticAssetsRepositoryContract>()) {
+    if (GetIt.I.isRegistered<TenantAdminStaticAssetsRepositoryContract>()) {
       GetIt.I.unregister<TenantAdminStaticAssetsRepositoryContract>();
     }
     if (GetIt.I.isRegistered<TenantAdminTaxonomiesRepositoryContract>()) {
       GetIt.I.unregister<TenantAdminTaxonomiesRepositoryContract>();
     }
 
-    GetIt.I.registerSingleton<AppDataRepository>(
+    GetIt.I.registerSingleton<AppDataRepositoryContract>(
       AppDataRepository(
-        backend: AppDataBackend(),
+        backend: const FakeLandlordAppDataBackend(),
         localInfoSource: AppDataLocalInfoSource(),
       ),
     );
@@ -135,7 +135,10 @@ void main() {
       'praia-do-morro',
     );
 
-    await tester.tap(find.text('Urbana'));
+    final urbanaOption = find.text('Urbana').last;
+    await _waitForFinder(tester, urbanaOption);
+    await tester.ensureVisible(urbanaOption);
+    await tester.tap(urbanaOption, warnIfMissed: false);
     await tester.pumpAndSettle();
 
     await tester.enterText(
@@ -283,7 +286,8 @@ class _NoopBackend extends BackendContract {
   TenantBackendContract get tenant => throw UnimplementedError();
 
   @override
-  AccountProfilesBackendContract get accountProfiles => throw UnimplementedError();
+  AccountProfilesBackendContract get accountProfiles =>
+      throw UnimplementedError();
 
   @override
   FavoriteBackendContract get favorites => throw UnimplementedError();
@@ -461,7 +465,6 @@ class _FakeStaticAssetsRepository
 
   @override
   Future<void> deleteStaticProfileType(String type) async {}
-
 }
 
 class _FakeTaxonomiesRepository
