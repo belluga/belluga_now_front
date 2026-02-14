@@ -152,6 +152,15 @@ class _FakeTenantScope implements TenantAdminTenantScopeContract {
   String? get selectedTenantDomain => _selectedTenantDomainStreamValue.value;
 
   @override
+  String get selectedTenantAdminBaseUrl {
+    final selected = selectedTenantDomain;
+    if (selected == null || selected.isEmpty) {
+      throw StateError('Tenant admin scope is not selected.');
+    }
+    return 'https://$selected/admin/api';
+  }
+
+  @override
   StreamValue<String?> get selectedTenantDomainStreamValue =>
       _selectedTenantDomainStreamValue;
 

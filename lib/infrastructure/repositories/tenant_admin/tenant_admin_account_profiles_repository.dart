@@ -24,9 +24,9 @@ class TenantAdminAccountProfilesRepository
   final Dio _dio;
   final TenantAdminTenantScopeContract? _tenantScope;
 
-  String get _apiBaseUrl => _resolveTenantAdminBaseUrl(
-        _tenantScope ?? GetIt.I.get<TenantAdminTenantScopeContract>(),
-      );
+  String get _apiBaseUrl =>
+      (_tenantScope ?? GetIt.I.get<TenantAdminTenantScopeContract>())
+          .selectedTenantAdminBaseUrl;
 
   Map<String, String> _buildHeaders() {
     final token = GetIt.I.get<LandlordAuthRepositoryContract>().token;
@@ -479,28 +479,5 @@ class TenantAdminAccountProfilesRepository
       'Failed to $label [status=$status] (${error.requestOptions.uri}): '
       '${data ?? error.message}',
     );
-  }
-
-  String _resolveTenantAdminBaseUrl(
-    TenantAdminTenantScopeContract tenantScope,
-  ) {
-    final selectedDomain = tenantScope.selectedTenantDomain?.trim();
-    if (selectedDomain == null || selectedDomain.isEmpty) {
-      throw StateError('Tenant admin scope is not selected.');
-    }
-    final uri = Uri.tryParse(
-      selectedDomain.contains('://')
-          ? selectedDomain
-          : 'https://$selectedDomain',
-    );
-    if (uri == null || uri.host.trim().isEmpty) {
-      throw StateError('Invalid tenant domain selected for admin scope.');
-    }
-    final origin = Uri(
-      scheme: uri.scheme,
-      host: uri.host,
-      port: uri.hasPort ? uri.port : null,
-    );
-    return origin.resolve('/admin/api').toString();
   }
 }

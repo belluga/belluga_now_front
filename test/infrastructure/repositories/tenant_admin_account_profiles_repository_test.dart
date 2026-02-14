@@ -7,6 +7,7 @@ import 'package:belluga_now/domain/repositories/landlord_auth_repository_contrac
 import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/infrastructure/repositories/tenant_admin/tenant_admin_account_profiles_repository.dart';
+import 'package:belluga_now/infrastructure/services/tenant_admin/tenant_admin_base_url_resolver.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
@@ -19,7 +20,7 @@ void main() {
     await GetIt.I.reset();
     GetIt.I.registerSingleton<LandlordAuthRepositoryContract>(_StubAuthRepo());
     GetIt.I.registerSingleton<TenantAdminTenantScopeContract>(
-      _StubTenantScope('tenant.test'),
+      _StubTenantScope('https://tenant.test'),
     );
     GetIt.I.registerSingleton<AppData>(_buildAppData());
   });
@@ -78,6 +79,10 @@ class _StubTenantScope implements TenantAdminTenantScopeContract {
 
   @override
   String? get selectedTenantDomain => _selectedTenantDomain;
+
+  @override
+  String get selectedTenantAdminBaseUrl =>
+      resolveTenantAdminBaseUrl(_selectedTenantDomain ?? '');
 
   @override
   StreamValue<String?> get selectedTenantDomainStreamValue =>
