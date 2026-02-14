@@ -22,7 +22,8 @@ class _TenantAdminShellScreenState extends State<TenantAdminShellScreen> {
 
   final List<_AdminDestination> _destinations = const [
     _AdminDestination(
-      label: 'Dashboard',
+      label: 'Início',
+      title: 'Visão geral',
       icon: Icons.dashboard_outlined,
       selectedIcon: Icons.dashboard,
       route: TenantAdminDashboardRoute(),
@@ -31,62 +32,42 @@ class _TenantAdminShellScreenState extends State<TenantAdminShellScreen> {
       },
     ),
     _AdminDestination(
-      label: 'Contas',
-      icon: Icons.account_box_outlined,
-      selectedIcon: Icons.account_box,
+      label: 'Pessoas',
+      title: 'Pessoas',
+      icon: Icons.groups_outlined,
+      selectedIcon: Icons.groups,
       route: TenantAdminAccountsListRoute(),
       routeNames: {
         TenantAdminAccountsListRoute.name,
         TenantAdminAccountCreateRoute.name,
         TenantAdminAccountDetailRoute.name,
         TenantAdminAccountProfileCreateRoute.name,
-      },
-    ),
-    _AdminDestination(
-      label: 'Organizações',
-      icon: Icons.apartment_outlined,
-      selectedIcon: Icons.apartment,
-      route: TenantAdminOrganizationsListRoute(),
-      routeNames: {
+        TenantAdminAccountProfileEditRoute.name,
         TenantAdminOrganizationsListRoute.name,
         TenantAdminOrganizationCreateRoute.name,
         TenantAdminOrganizationDetailRoute.name,
       },
     ),
     _AdminDestination(
-      label: 'Tipos',
-      icon: Icons.category_outlined,
-      selectedIcon: Icons.category,
+      label: 'Catálogo',
+      title: 'Catálogo',
+      icon: Icons.inventory_2_outlined,
+      selectedIcon: Icons.inventory_2,
       route: TenantAdminProfileTypesListRoute(),
       routeNames: {
         TenantAdminProfileTypesListRoute.name,
         TenantAdminProfileTypeCreateRoute.name,
         TenantAdminProfileTypeEditRoute.name,
-      },
-    ),
-    _AdminDestination(
-      label: 'Tipos de Ativo',
-      icon: Icons.layers_outlined,
-      selectedIcon: Icons.layers,
-      route: TenantAdminStaticProfileTypesListRoute(),
-      routeNames: {
         TenantAdminStaticProfileTypesListRoute.name,
         TenantAdminStaticProfileTypeCreateRoute.name,
         TenantAdminStaticProfileTypeEditRoute.name,
-      },
-    ),
-    _AdminDestination(
-      label: 'Taxonomias',
-      icon: Icons.account_tree_outlined,
-      selectedIcon: Icons.account_tree,
-      route: TenantAdminTaxonomiesListRoute(),
-      routeNames: {
         TenantAdminTaxonomiesListRoute.name,
         TenantAdminTaxonomyTermsRoute.name,
       },
     ),
     _AdminDestination(
       label: 'Ativos',
+      title: 'Ativos estáticos',
       icon: Icons.place_outlined,
       selectedIcon: Icons.place,
       route: TenantAdminStaticAssetsListRoute(),
@@ -96,18 +77,30 @@ class _TenantAdminShellScreenState extends State<TenantAdminShellScreen> {
         TenantAdminStaticAssetEditRoute.name,
       },
     ),
+    _AdminDestination(
+      label: 'Config',
+      title: 'Configurações',
+      icon: Icons.settings_outlined,
+      selectedIcon: Icons.settings,
+      route: TenantAdminSettingsRoute(),
+      routeNames: {
+        TenantAdminSettingsRoute.name,
+      },
+    ),
   ];
 
   final Set<String> _fullScreenRoutes = const {
     TenantAdminAccountCreateRoute.name,
     TenantAdminAccountDetailRoute.name,
     TenantAdminAccountProfileCreateRoute.name,
+    TenantAdminAccountProfileEditRoute.name,
     TenantAdminOrganizationCreateRoute.name,
     TenantAdminOrganizationDetailRoute.name,
     TenantAdminProfileTypeCreateRoute.name,
     TenantAdminProfileTypeEditRoute.name,
     TenantAdminStaticProfileTypeCreateRoute.name,
     TenantAdminStaticProfileTypeEditRoute.name,
+    TenantAdminTaxonomyTermsRoute.name,
     TenantAdminLocationPickerRoute.name,
     TenantAdminStaticAssetCreateRoute.name,
     TenantAdminStaticAssetEditRoute.name,
@@ -123,28 +116,14 @@ class _TenantAdminShellScreenState extends State<TenantAdminShellScreen> {
   }
 
   String _titleForRoute(String? routeName) {
-    if (routeName == TenantAdminAccountsListRoute.name) {
-      return 'Contas';
-    }
-    if (routeName == TenantAdminOrganizationsListRoute.name) {
-      return 'Organizações';
-    }
-    if (routeName == TenantAdminProfileTypesListRoute.name) {
-      return 'Tipos de Perfil';
-    }
-    if (routeName == TenantAdminStaticProfileTypesListRoute.name) {
-      return 'Tipos de Ativo';
-    }
-    if (routeName == TenantAdminTaxonomiesListRoute.name ||
-        routeName == TenantAdminTaxonomyTermsRoute.name) {
-      return 'Taxonomias';
-    }
-    if (routeName == TenantAdminStaticAssetsListRoute.name ||
-        routeName == TenantAdminStaticAssetCreateRoute.name ||
-        routeName == TenantAdminStaticAssetEditRoute.name) {
-      return 'Ativos estaticos';
-    }
-    return 'Admin';
+    final index = _selectedIndex(routeName);
+    return _destinations[index].title;
+  }
+
+  String? _resolveCurrentRouteName(BuildContext context) {
+    final nestedRouter =
+        context.innerRouterOf<StackRouter>(TenantAdminShellRoute.name);
+    return nestedRouter?.topRoute.name ?? context.router.topRoute.name;
   }
 
   @override
@@ -176,15 +155,17 @@ class _TenantAdminShellScreenState extends State<TenantAdminShellScreen> {
                 }
 
                 final router = context.router;
-                final currentName = router.topRoute.name;
+                final currentName = _resolveCurrentRouteName(context);
                 final selectedIndex = _selectedIndex(currentName);
-                final showShellAppBar =
+                final showShellScaffoldChrome =
                     !_fullScreenRoutes.contains(currentName);
                 final selectedTenantLabel = _controller.resolveTenantLabel(
                   tenants: availableTenants,
                   tenantDomain: selectedTenantDomain,
                 );
                 final canChangeTenant = availableTenants.length > 1;
+                final shellRouterKey =
+                    ValueKey('tenant-admin-shell-router-$selectedTenantDomain');
 
                 final navRail = NavigationRail(
                   selectedIndex: selectedIndex,
@@ -241,7 +222,7 @@ class _TenantAdminShellScreenState extends State<TenantAdminShellScreen> {
                   builder: (context, constraints) {
                     final isWide = constraints.maxWidth >= _railBreakpoint;
                     return Scaffold(
-                      appBar: showShellAppBar
+                      appBar: showShellScaffoldChrome
                           ? AppBar(
                               title: Text(_titleForRoute(currentName)),
                               actions: canChangeTenant
@@ -263,19 +244,17 @@ class _TenantAdminShellScreenState extends State<TenantAdminShellScreen> {
                               children: [
                                 navRail,
                                 const VerticalDivider(width: 1),
-                                const Expanded(
+                                Expanded(
                                   child: AutoRouter(
-                                    key: ValueKey(
-                                      'tenant-admin-shell-router',
-                                    ),
+                                    key: shellRouterKey,
                                   ),
                                 ),
                               ],
                             )
-                          : const AutoRouter(
-                              key: ValueKey('tenant-admin-shell-router'),
+                          : AutoRouter(
+                              key: shellRouterKey,
                             ),
-                      bottomNavigationBar: isWide
+                      bottomNavigationBar: isWide || !showShellScaffoldChrome
                           ? null
                           : NavigationBar(
                               selectedIndex: selectedIndex,
@@ -308,6 +287,7 @@ class _TenantAdminShellScreenState extends State<TenantAdminShellScreen> {
 class _AdminDestination {
   const _AdminDestination({
     required this.label,
+    required this.title,
     required this.icon,
     required this.selectedIcon,
     required this.route,
@@ -315,6 +295,7 @@ class _AdminDestination {
   });
 
   final String label;
+  final String title;
   final IconData icon;
   final IconData selectedIcon;
   final PageRouteInfo route;

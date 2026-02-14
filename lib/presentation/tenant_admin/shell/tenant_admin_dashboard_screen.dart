@@ -55,7 +55,7 @@ class TenantAdminDashboardScreen extends StatelessWidget {
         TenantAdminDashboardCard(
           icon: Icons.layers_outlined,
           title: 'Tipos de Ativo',
-          description: 'Defina tipos estaticos e capacidades.',
+          description: 'Defina tipos estáticos e capacidades.',
           onTap: () {
             context.router.push(const TenantAdminStaticProfileTypesListRoute());
           },
@@ -63,10 +63,19 @@ class TenantAdminDashboardScreen extends StatelessWidget {
         const SizedBox(height: 12),
         TenantAdminDashboardCard(
           icon: Icons.place_outlined,
-          title: 'Ativos estaticos',
+          title: 'Ativos estáticos',
           description: 'Gerencie ativos e POIs do tenant.',
           onTap: () {
             context.router.push(const TenantAdminStaticAssetsListRoute());
+          },
+        ),
+        const SizedBox(height: 12),
+        TenantAdminDashboardCard(
+          icon: Icons.settings_outlined,
+          title: 'Configurações',
+          description: 'Ajuste preferências e consulte o environment ativo.',
+          onTap: () {
+            context.router.push(const TenantAdminSettingsRoute());
           },
         ),
         const SizedBox(height: 12),

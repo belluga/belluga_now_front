@@ -12,6 +12,7 @@ import 'package:belluga_now/infrastructure/services/tenant_admin/tenant_admin_lo
 import 'package:belluga_now/infrastructure/services/tenant_admin/tenant_admin_tenant_scope_service.dart';
 import 'package:belluga_now/presentation/tenant_admin/organizations/controllers/tenant_admin_organizations_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/profile_types/controllers/tenant_admin_profile_types_controller.dart';
+import 'package:belluga_now/presentation/tenant_admin/settings/controllers/tenant_admin_settings_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/shell/controllers/tenant_admin_shell_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/static_assets/controllers/tenant_admin_static_assets_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/static_profile_types/controllers/tenant_admin_static_profile_types_controller.dart';
@@ -50,6 +51,9 @@ class TenantAdminModule extends ModuleContract {
     );
     registerFactory<TenantAdminStaticProfileTypesController>(
       () => TenantAdminStaticProfileTypesController(),
+    );
+    registerFactory<TenantAdminSettingsController>(
+      () => TenantAdminSettingsController(),
     );
     registerLazySingleton<TenantAdminStaticAssetsController>(
       () => TenantAdminStaticAssetsController(),
@@ -147,6 +151,10 @@ class TenantAdminModule extends ModuleContract {
             AutoRoute(
               path: 'static_assets/:assetId/edit',
               page: TenantAdminStaticAssetEditRoute.page,
+            ),
+            AutoRoute(
+              path: 'settings',
+              page: TenantAdminSettingsRoute.page,
             ),
           ],
         ),
