@@ -3,11 +3,13 @@ import 'dart:convert';
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/app_data/value_object/platform_type_value.dart';
 import 'package:belluga_now/domain/repositories/landlord_auth_repository_contract.dart';
+import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_static_profile_type.dart';
 import 'package:belluga_now/infrastructure/repositories/tenant_admin/tenant_admin_static_assets_repository.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
+import 'package:stream_value/core/stream_value.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -15,6 +17,9 @@ void main() {
   setUp(() async {
     await GetIt.I.reset();
     GetIt.I.registerSingleton<LandlordAuthRepositoryContract>(_StubAuthRepo());
+    GetIt.I.registerSingleton<TenantAdminTenantScopeContract>(
+      _StubTenantScope('tenant.test'),
+    );
     GetIt.I.registerSingleton<AppData>(_buildAppData());
   });
 
@@ -44,7 +49,8 @@ void main() {
     expect(adapter.lastRequest?.method, 'PATCH');
     expect(
       adapter.lastRequest?.path,
-      contains('/v1/static_profile_types/poi%2Ftype'),
+      contains(
+          'https://tenant.test/admin/api/v1/static_profile_types/poi%2Ftype'),
     );
   });
 
@@ -59,7 +65,8 @@ void main() {
     expect(adapter.lastRequest?.method, 'DELETE');
     expect(
       adapter.lastRequest?.path,
-      contains('/v1/static_profile_types/poi%2Ftype'),
+      contains(
+          'https://tenant.test/admin/api/v1/static_profile_types/poi%2Ftype'),
     );
   });
 }
@@ -79,6 +86,29 @@ class _StubAuthRepo implements LandlordAuthRepositoryContract {
 
   @override
   Future<void> logout() async {}
+}
+
+class _StubTenantScope implements TenantAdminTenantScopeContract {
+  _StubTenantScope(this._selectedTenantDomain);
+
+  String? _selectedTenantDomain;
+
+  @override
+  String? get selectedTenantDomain => _selectedTenantDomain;
+
+  @override
+  StreamValue<String?> get selectedTenantDomainStreamValue =>
+      StreamValue<String?>(defaultValue: _selectedTenantDomain);
+
+  @override
+  void clearSelectedTenantDomain() {
+    _selectedTenantDomain = null;
+  }
+
+  @override
+  void selectTenantDomain(String tenantDomain) {
+    _selectedTenantDomain = tenantDomain;
+  }
 }
 
 class _CaptureAdapter implements HttpClientAdapter {

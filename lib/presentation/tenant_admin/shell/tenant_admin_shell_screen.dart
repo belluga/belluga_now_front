@@ -1,9 +1,9 @@
-import 'dart:async';
-
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
-import 'package:belluga_now/domain/repositories/admin_mode_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/landlord_tenants_repository_contract.dart';
 import 'package:belluga_now/presentation/tenant_admin/shell/controllers/tenant_admin_shell_controller.dart';
+import 'package:belluga_now/presentation/tenant_admin/shell/widgets/tenant_selection_gate.dart';
+import 'package:belluga_now/presentation/tenant_admin/shell/widgets/tenant_selection_loading_gate.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
@@ -12,15 +12,13 @@ class TenantAdminShellScreen extends StatefulWidget {
   const TenantAdminShellScreen({super.key});
 
   @override
-  State<TenantAdminShellScreen> createState() =>
-      _TenantAdminShellScreenState();
+  State<TenantAdminShellScreen> createState() => _TenantAdminShellScreenState();
 }
 
 class _TenantAdminShellScreenState extends State<TenantAdminShellScreen> {
   static const _railBreakpoint = 900.0;
   final TenantAdminShellController _controller =
       GetIt.I.get<TenantAdminShellController>();
-  StreamSubscription<AdminMode>? _modeSubscription;
 
   final List<_AdminDestination> _destinations = const [
     _AdminDestination(
@@ -152,132 +150,158 @@ class _TenantAdminShellScreenState extends State<TenantAdminShellScreen> {
   @override
   void initState() {
     super.initState();
-    _modeSubscription = _controller.modeStreamValue.stream.listen(_onModeChanged);
-  }
-
-  @override
-  void dispose() {
-    _modeSubscription?.cancel();
-    super.dispose();
+    _controller.init();
   }
 
   @override
   Widget build(BuildContext context) {
-    return StreamValueBuilder(
-      streamValue: _controller.modeStreamValue,
-      builder: (context, mode) {
-        final router = context.router;
-        final currentName = router.topRoute.name;
-        final selectedIndex = _selectedIndex(currentName);
-        final showShellAppBar = !_fullScreenRoutes.contains(currentName);
+    return StreamValueBuilder<List<LandlordTenantOption>>(
+      streamValue: _controller.availableTenantsStreamValue,
+      builder: (context, availableTenants) {
+        return StreamValueBuilder<bool>(
+          streamValue: _controller.isTenantSelectionResolvingStreamValue,
+          builder: (context, isTenantSelectionResolving) {
+            return StreamValueBuilder<String?>(
+              streamValue: _controller.selectedTenantDomainStreamValue,
+              builder: (context, selectedTenantDomain) {
+                if (selectedTenantDomain == null ||
+                    selectedTenantDomain.trim().isEmpty) {
+                  if (isTenantSelectionResolving) {
+                    return const TenantSelectionLoadingGate();
+                  }
+                  return TenantSelectionGate(
+                    tenants: availableTenants,
+                    onSelectTenant: _controller.selectTenantDomain,
+                  );
+                }
 
-        final navRail = NavigationRail(
-          selectedIndex: selectedIndex,
-          onDestinationSelected: (index) {
-            router.replace(_destinations[index].route);
-          },
-          labelType: NavigationRailLabelType.all,
-          destinations: _destinations
-              .map(
-                (destination) => NavigationRailDestination(
-                  icon: Icon(destination.icon),
-                  selectedIcon: Icon(destination.selectedIcon),
-                  label: Text(destination.label),
-                ),
-              )
-              .toList(growable: false),
-          leading: Padding(
-            padding: const EdgeInsets.only(top: 16),
-            child: Column(
-              children: [
-                CircleAvatar(
-                  radius: 20,
-                  backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-                  child: const Icon(Icons.admin_panel_settings_outlined),
-                ),
-                const SizedBox(height: 12),
-                IconButton(
-                  tooltip: 'Perfil',
-                  icon: const Icon(Icons.person_outline),
-                  onPressed: _openProfile,
-                ),
-              ],
-            ),
-          ),
-        );
+                final router = context.router;
+                final currentName = router.topRoute.name;
+                final selectedIndex = _selectedIndex(currentName);
+                final showShellAppBar =
+                    !_fullScreenRoutes.contains(currentName);
+                final selectedTenantLabel = _controller.resolveTenantLabel(
+                  tenants: availableTenants,
+                  tenantDomain: selectedTenantDomain,
+                );
+                final canChangeTenant = availableTenants.length > 1;
 
-        return LayoutBuilder(
-          builder: (context, constraints) {
-            final isWide = constraints.maxWidth >= _railBreakpoint;
-            return Scaffold(
-              appBar: showShellAppBar
-                  ? AppBar(
-                      title: Text(_titleForRoute(currentName)),
-                      actions: [
-                        TextButton.icon(
-                          onPressed: _openProfile,
-                          icon: const Icon(Icons.person_outline),
-                          label: const Text('Perfil'),
+                final navRail = NavigationRail(
+                  selectedIndex: selectedIndex,
+                  onDestinationSelected: (index) {
+                    router.replace(_destinations[index].route);
+                  },
+                  labelType: NavigationRailLabelType.all,
+                  destinations: _destinations
+                      .map(
+                        (destination) => NavigationRailDestination(
+                          icon: Icon(destination.icon),
+                          selectedIcon: Icon(destination.selectedIcon),
+                          label: Text(destination.label),
                         ),
-                      ],
-                    )
-                  : null,
-              body: isWide
-                  ? Row(
+                      )
+                      .toList(growable: false),
+                  leading: Padding(
+                    padding: const EdgeInsets.only(top: 16),
+                    child: Column(
                       children: [
-                        navRail,
-                        const VerticalDivider(width: 1),
-                        Expanded(
-                          child: AutoRouter(
-                            key: const ValueKey('tenant-admin-shell-router'),
+                        CircleAvatar(
+                          radius: 20,
+                          backgroundColor:
+                              Theme.of(context).colorScheme.primaryContainer,
+                          child: const Icon(
+                            Icons.admin_panel_settings_outlined,
                           ),
                         ),
+                        const SizedBox(height: 8),
+                        SizedBox(
+                          width: 88,
+                          child: Text(
+                            selectedTenantLabel,
+                            maxLines: 2,
+                            textAlign: TextAlign.center,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context).textTheme.labelSmall,
+                          ),
+                        ),
+                        if (canChangeTenant) ...[
+                          const SizedBox(height: 8),
+                          IconButton(
+                            tooltip: 'Trocar tenant',
+                            onPressed: _controller.clearTenantSelection,
+                            icon: const Icon(Icons.swap_horiz_outlined),
+                          ),
+                        ],
                       ],
-                    )
-                  : AutoRouter(
-                      key: const ValueKey('tenant-admin-shell-router'),
                     ),
-              bottomNavigationBar: isWide
-                  ? null
-                  : NavigationBar(
-                      selectedIndex: selectedIndex,
-                      onDestinationSelected: (index) {
-                        router.replace(_destinations[index].route);
-                      },
-                      destinations: _destinations
-                          .map(
-                            (destination) => NavigationDestination(
-                              icon: Icon(destination.icon),
-                              selectedIcon: Icon(destination.selectedIcon),
-                              label: destination.label,
+                  ),
+                );
+
+                return LayoutBuilder(
+                  builder: (context, constraints) {
+                    final isWide = constraints.maxWidth >= _railBreakpoint;
+                    return Scaffold(
+                      appBar: showShellAppBar
+                          ? AppBar(
+                              title: Text(_titleForRoute(currentName)),
+                              actions: canChangeTenant
+                                  ? [
+                                      TextButton.icon(
+                                        onPressed:
+                                            _controller.clearTenantSelection,
+                                        icon: const Icon(
+                                          Icons.swap_horiz_outlined,
+                                        ),
+                                        label: Text(selectedTenantLabel),
+                                      ),
+                                    ]
+                                  : null,
+                            )
+                          : null,
+                      body: isWide
+                          ? Row(
+                              children: [
+                                navRail,
+                                const VerticalDivider(width: 1),
+                                const Expanded(
+                                  child: AutoRouter(
+                                    key: ValueKey(
+                                      'tenant-admin-shell-router',
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            )
+                          : const AutoRouter(
+                              key: ValueKey('tenant-admin-shell-router'),
                             ),
-                          )
-                          .toList(growable: false),
-                    ),
+                      bottomNavigationBar: isWide
+                          ? null
+                          : NavigationBar(
+                              selectedIndex: selectedIndex,
+                              onDestinationSelected: (index) {
+                                router.replace(_destinations[index].route);
+                              },
+                              destinations: _destinations
+                                  .map(
+                                    (destination) => NavigationDestination(
+                                      icon: Icon(destination.icon),
+                                      selectedIcon:
+                                          Icon(destination.selectedIcon),
+                                      label: destination.label,
+                                    ),
+                                  )
+                                  .toList(growable: false),
+                            ),
+                    );
+                  },
+                );
+              },
             );
           },
         );
       },
     );
-  }
-
-  void _onModeChanged(AdminMode mode) {
-    if (mode != AdminMode.user) return;
-    if (!mounted) return;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      _navigateToProfileIfNeeded();
-    });
-  }
-
-  Future<void> _openProfile() async {
-    await _controller.switchToUserMode();
-  }
-
-  void _navigateToProfileIfNeeded() {
-    final rootRouter = context.router.root;
-    if (rootRouter.topRoute.name == ProfileRoute.name) return;
-    rootRouter.replaceAll([const ProfileRoute()]);
   }
 }
 

@@ -1,3 +1,6 @@
+import 'package:belluga_now/application/configurations/belluga_constants.dart';
+import 'package:belluga_now/domain/app_data/app_data.dart';
+import 'package:belluga_now/domain/app_data/environment_type.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/user/user_belluga.dart';
 import 'dart:convert';
@@ -259,6 +262,9 @@ final class AuthRepository extends AuthRepositoryContract<UserBelluga>
     if (userToken.isNotEmpty) {
       return;
     }
+    if (_isLandlordScope()) {
+      return;
+    }
     final deviceId = await getDeviceId();
     final fingerprintHash = _hashFingerprint(deviceId);
     final deviceName = _buildDeviceName(deviceId);
@@ -323,6 +329,48 @@ final class AuthRepository extends AuthRepositoryContract<UserBelluga>
       }
     }
     throw Exception('Anonymous identity bootstrap failed.');
+  }
+
+  bool _isLandlordScope() {
+    final appData = _tryGetAppData();
+    if (appData != null &&
+        appData.typeValue.value == EnvironmentType.landlord) {
+      return true;
+    }
+
+    final landlordHost = _resolveHost(BellugaConstants.landlordDomain);
+    if (landlordHost == null || landlordHost.isEmpty) {
+      return false;
+    }
+
+    final requestHost = _resolveHost(backend.context?.baseUrl ?? '');
+    if (requestHost == null || requestHost.isEmpty) {
+      return false;
+    }
+
+    return requestHost == landlordHost;
+  }
+
+  AppData? _tryGetAppData() {
+    if (!GetIt.I.isRegistered<AppData>()) {
+      return null;
+    }
+    return GetIt.I.get<AppData>();
+  }
+
+  String? _resolveHost(String raw) {
+    final value = raw.trim();
+    if (value.isEmpty) {
+      return null;
+    }
+    final uri = Uri.tryParse(value);
+    if (uri == null) {
+      return value;
+    }
+    if (uri.host.trim().isNotEmpty) {
+      return uri.host.trim();
+    }
+    return value;
   }
 
   String _hashFingerprint(String deviceId) {

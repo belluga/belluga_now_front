@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:io';
 
 import 'package:auto_route/auto_route.dart';
@@ -32,9 +31,6 @@ class _TenantAdminAccountProfileEditScreenState
     extends State<TenantAdminAccountProfileEditScreen> {
   final TenantAdminAccountProfilesController _controller =
       GetIt.I.get<TenantAdminAccountProfilesController>();
-  StreamSubscription<TenantAdminAccountProfileEditState>? _editStateSubscription;
-  StreamSubscription<List<TenantAdminTaxonomyDefinition>>?
-      _taxonomiesSubscription;
   TenantAdminAccountProfile? _activeProfile;
   String? _syncedProfileId;
   bool _initialTaxonomiesSynced = false;
@@ -45,19 +41,12 @@ class _TenantAdminAccountProfileEditScreenState
   void initState() {
     super.initState();
     _controller.bindEditFlow();
-    _editStateSubscription =
-        _controller.editStateStreamValue.stream.listen(_handleEditStateChange);
-    _taxonomiesSubscription = _controller.taxonomiesStreamValue.stream
-        .listen((_) => _attemptTaxonomySync());
-    _controller
-        .loadTaxonomies()
-        .whenComplete(() => _controller.loadEditProfile(widget.accountProfileId));
+    _controller.loadTaxonomies().whenComplete(
+        () => _controller.loadEditProfile(widget.accountProfileId));
   }
 
   @override
   void dispose() {
-    _editStateSubscription?.cancel();
-    _taxonomiesSubscription?.cancel();
     _controller.resetFormControllers();
     _controller.resetEditState();
     super.dispose();
@@ -229,12 +218,14 @@ class _TenantAdminAccountProfileEditScreenState
     if (trimmed.isNotEmpty && double.tryParse(trimmed) == null) {
       return 'Latitude inválida.';
     }
-    if (_requiresLocation(_controller.editStateStreamValue.value.selectedProfileType) &&
+    if (_requiresLocation(
+            _controller.editStateStreamValue.value.selectedProfileType) &&
         trimmed.isEmpty &&
         other.isNotEmpty) {
       return 'Latitude é obrigatória.';
     }
-    if (_requiresLocation(_controller.editStateStreamValue.value.selectedProfileType) &&
+    if (_requiresLocation(
+            _controller.editStateStreamValue.value.selectedProfileType) &&
         trimmed.isEmpty &&
         other.isEmpty) {
       return 'Localização é obrigatória para este perfil.';
@@ -248,7 +239,8 @@ class _TenantAdminAccountProfileEditScreenState
     if (trimmed.isNotEmpty && double.tryParse(trimmed) == null) {
       return 'Longitude inválida.';
     }
-    if (_requiresLocation(_controller.editStateStreamValue.value.selectedProfileType) &&
+    if (_requiresLocation(
+            _controller.editStateStreamValue.value.selectedProfileType) &&
         trimmed.isEmpty &&
         other.isNotEmpty) {
       return 'Longitude é obrigatória.';
@@ -285,10 +277,12 @@ class _TenantAdminAccountProfileEditScreenState
       return;
     }
     final state = _controller.editStateStreamValue.value;
-    final avatarUpload =
-        _hasAvatar(state.selectedProfileType) ? await _buildUpload(state.avatarFile) : null;
-    final coverUpload =
-        _hasCover(state.selectedProfileType) ? await _buildUpload(state.coverFile) : null;
+    final avatarUpload = _hasAvatar(state.selectedProfileType)
+        ? await _buildUpload(state.avatarFile)
+        : null;
+    final coverUpload = _hasCover(state.selectedProfileType)
+        ? await _buildUpload(state.coverFile)
+        : null;
     _controller.submitAutoSaveImages(
       accountProfileId: profile.id,
       avatarUpload: avatarUpload,
@@ -390,184 +384,195 @@ class _TenantAdminAccountProfileEditScreenState
 
   @override
   Widget build(BuildContext context) {
-    return StreamValueBuilder<String?>(
-      streamValue: _controller.editSuccessMessageStreamValue,
-      builder: (context, successMessage) {
-        _handleEditSuccessMessage(successMessage);
+    return StreamValueBuilder<List<TenantAdminTaxonomyDefinition>>(
+      streamValue: _controller.taxonomiesStreamValue,
+      builder: (context, _) {
+        _attemptTaxonomySync();
         return StreamValueBuilder<String?>(
-          streamValue: _controller.editErrorMessageStreamValue,
-          builder: (context, errorMessage) {
-            _handleEditErrorMessage(errorMessage);
-            return StreamValueBuilder<TenantAdminAccountProfileEditState>(
-              streamValue: _controller.editStateStreamValue,
-              builder: (context, state) {
-                final requiresLocation =
-                    _requiresLocation(state.selectedProfileType);
-                final hasMedia = _hasAvatar(state.selectedProfileType) ||
-                    _hasCover(state.selectedProfileType);
-                final hasContent = _hasBio(state.selectedProfileType) ||
-                    _hasTaxonomies(state.selectedProfileType);
-                final profile = state.profile;
+          streamValue: _controller.editSuccessMessageStreamValue,
+          builder: (context, successMessage) {
+            _handleEditSuccessMessage(successMessage);
+            return StreamValueBuilder<String?>(
+              streamValue: _controller.editErrorMessageStreamValue,
+              builder: (context, errorMessage) {
+                _handleEditErrorMessage(errorMessage);
+                return StreamValueBuilder<TenantAdminAccountProfileEditState>(
+                  streamValue: _controller.editStateStreamValue,
+                  builder: (context, state) {
+                    _handleEditStateChange(state);
+                    _attemptTaxonomySync(profile: state.profile);
+                    final requiresLocation =
+                        _requiresLocation(state.selectedProfileType);
+                    final hasMedia = _hasAvatar(state.selectedProfileType) ||
+                        _hasCover(state.selectedProfileType);
+                    final hasContent = _hasBio(state.selectedProfileType) ||
+                        _hasTaxonomies(state.selectedProfileType);
+                    final profile = state.profile;
 
-                if (state.errorMessage != null) {
-                  return Scaffold(
-                    appBar: AppBar(
-                      title: const Text('Editar Perfil'),
-                      leading: IconButton(
-                        icon: const Icon(Icons.arrow_back),
-                        onPressed: () => context.router.maybePop(),
-                        tooltip: 'Voltar',
-                      ),
-                    ),
-                    body: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Card(
-                        margin: EdgeInsets.zero,
-                        child: Padding(
+                    if (state.errorMessage != null) {
+                      return Scaffold(
+                        appBar: AppBar(
+                          title: const Text('Editar Perfil'),
+                          leading: IconButton(
+                            icon: const Icon(Icons.arrow_back),
+                            onPressed: () => context.router.maybePop(),
+                            tooltip: 'Voltar',
+                          ),
+                        ),
+                        body: Padding(
                           padding: const EdgeInsets.all(16),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                state.errorMessage!,
-                                style: TextStyle(
-                                  color: Theme.of(context).colorScheme.error,
-                                ),
+                          child: Card(
+                            margin: EdgeInsets.zero,
+                            child: Padding(
+                              padding: const EdgeInsets.all(16),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    state.errorMessage!,
+                                    style: TextStyle(
+                                      color:
+                                          Theme.of(context).colorScheme.error,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 12),
+                                  TextButton(
+                                    onPressed: () =>
+                                        _controller.loadEditProfile(
+                                      widget.accountProfileId,
+                                    ),
+                                    child: const Text('Tentar novamente'),
+                                  ),
+                                ],
                               ),
-                              const SizedBox(height: 12),
-                              TextButton(
-                                onPressed: () => _controller.loadEditProfile(
-                                  widget.accountProfileId,
+                            ),
+                          ),
+                        ),
+                      );
+                    }
+
+                    if (profile == null && state.isLoading) {
+                      return Scaffold(
+                        appBar: AppBar(
+                          title: const Text('Editar Perfil'),
+                          leading: IconButton(
+                            icon: const Icon(Icons.arrow_back),
+                            onPressed: () => context.router.maybePop(),
+                            tooltip: 'Voltar',
+                          ),
+                        ),
+                        body: const Center(child: CircularProgressIndicator()),
+                      );
+                    }
+
+                    return Scaffold(
+                      appBar: AppBar(
+                        title: const Text('Editar Perfil'),
+                        leading: IconButton(
+                          icon: const Icon(Icons.arrow_back),
+                          onPressed: () => context.router.maybePop(),
+                          tooltip: 'Voltar',
+                        ),
+                      ),
+                      body: Padding(
+                        padding: EdgeInsets.fromLTRB(
+                          16,
+                          16,
+                          16,
+                          16 + MediaQuery.of(context).viewInsets.bottom,
+                        ),
+                        child: SingleChildScrollView(
+                          child: Form(
+                            key: _controller.editFormKey,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                if (state.isLoading)
+                                  const LinearProgressIndicator(),
+                                if (state.isLoading) const SizedBox(height: 12),
+                                _buildProfileSection(context, state),
+                                if (hasContent) ...[
+                                  const SizedBox(height: 16),
+                                  _buildContentSection(context, state),
+                                ],
+                                if (hasMedia) ...[
+                                  const SizedBox(height: 16),
+                                  _buildMediaSection(context, state),
+                                ],
+                                if (requiresLocation) ...[
+                                  const SizedBox(height: 16),
+                                  _buildLocationSection(context),
+                                ],
+                                const SizedBox(height: 24),
+                                SizedBox(
+                                  width: double.infinity,
+                                  child: FilledButton(
+                                    onPressed: state.isLoading
+                                        ? null
+                                        : () async {
+                                            final form = _controller
+                                                .editFormKey.currentState;
+                                            if (form == null ||
+                                                !form.validate()) {
+                                              return;
+                                            }
+                                            final selectedType =
+                                                state.selectedProfileType;
+                                            if (selectedType == null) {
+                                              _controller
+                                                  .reportEditErrorMessage(
+                                                'Selecione o tipo de perfil.',
+                                              );
+                                              return;
+                                            }
+                                            final avatarUpload =
+                                                _hasAvatar(selectedType)
+                                                    ? await _buildUpload(
+                                                        state.avatarFile,
+                                                      )
+                                                    : null;
+                                            final coverUpload =
+                                                _hasCover(selectedType)
+                                                    ? await _buildUpload(
+                                                        state.coverFile,
+                                                      )
+                                                    : null;
+                                            _controller.submitUpdateProfile(
+                                              accountProfileId:
+                                                  widget.accountProfileId,
+                                              profileType: selectedType,
+                                              displayName: _controller
+                                                  .displayNameController.text
+                                                  .trim(),
+                                              bio: _hasBio(selectedType)
+                                                  ? _controller
+                                                      .bioController.text
+                                                      .trim()
+                                                  : null,
+                                              taxonomyTerms: _hasTaxonomies(
+                                                selectedType,
+                                              )
+                                                  ? _buildTaxonomyTerms(
+                                                      selectedType,
+                                                    )
+                                                  : null,
+                                              location: requiresLocation
+                                                  ? _currentLocation()
+                                                  : null,
+                                              avatarUpload: avatarUpload,
+                                              coverUpload: coverUpload,
+                                            );
+                                          },
+                                    child: const Text('Salvar alteracoes'),
+                                  ),
                                 ),
-                                child: const Text('Tentar novamente'),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                  );
-                }
-
-                if (profile == null && state.isLoading) {
-                  return Scaffold(
-                    appBar: AppBar(
-                      title: const Text('Editar Perfil'),
-                      leading: IconButton(
-                        icon: const Icon(Icons.arrow_back),
-                        onPressed: () => context.router.maybePop(),
-                        tooltip: 'Voltar',
-                      ),
-                    ),
-                    body: const Center(child: CircularProgressIndicator()),
-                  );
-                }
-
-                return Scaffold(
-                  appBar: AppBar(
-                    title: const Text('Editar Perfil'),
-                    leading: IconButton(
-                      icon: const Icon(Icons.arrow_back),
-                      onPressed: () => context.router.maybePop(),
-                      tooltip: 'Voltar',
-                    ),
-                  ),
-                  body: Padding(
-                    padding: EdgeInsets.fromLTRB(
-                      16,
-                      16,
-                      16,
-                      16 + MediaQuery.of(context).viewInsets.bottom,
-                    ),
-                    child: SingleChildScrollView(
-                      child: Form(
-                        key: _controller.editFormKey,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            if (state.isLoading)
-                              const LinearProgressIndicator(),
-                            if (state.isLoading)
-                              const SizedBox(height: 12),
-                            _buildProfileSection(context, state),
-                            if (hasContent) ...[
-                              const SizedBox(height: 16),
-                              _buildContentSection(context, state),
-                            ],
-                            if (hasMedia) ...[
-                              const SizedBox(height: 16),
-                              _buildMediaSection(context, state),
-                            ],
-                            if (requiresLocation) ...[
-                              const SizedBox(height: 16),
-                              _buildLocationSection(context),
-                            ],
-                            const SizedBox(height: 24),
-                            SizedBox(
-                              width: double.infinity,
-                              child: FilledButton(
-                                onPressed: state.isLoading
-                                    ? null
-                                    : () async {
-                                        final form = _controller
-                                            .editFormKey.currentState;
-                                        if (form == null ||
-                                            !form.validate()) {
-                                          return;
-                                        }
-                                        final selectedType =
-                                            state.selectedProfileType;
-                                        if (selectedType == null) {
-                                          _controller.reportEditErrorMessage(
-                                            'Selecione o tipo de perfil.',
-                                          );
-                                          return;
-                                        }
-                                        final avatarUpload =
-                                            _hasAvatar(selectedType)
-                                                ? await _buildUpload(
-                                                    state.avatarFile,
-                                                  )
-                                                : null;
-                                        final coverUpload =
-                                            _hasCover(selectedType)
-                                                ? await _buildUpload(
-                                                    state.coverFile,
-                                                  )
-                                                : null;
-                                        _controller.submitUpdateProfile(
-                                          accountProfileId:
-                                              widget.accountProfileId,
-                                          profileType: selectedType,
-                                          displayName: _controller
-                                              .displayNameController.text
-                                              .trim(),
-                                          bio: _hasBio(selectedType)
-                                              ? _controller.bioController.text
-                                                  .trim()
-                                              : null,
-                                          taxonomyTerms: _hasTaxonomies(
-                                            selectedType,
-                                          )
-                                              ? _buildTaxonomyTerms(
-                                                  selectedType,
-                                                )
-                                              : null,
-                                          location: requiresLocation
-                                              ? _currentLocation()
-                                              : null,
-                                          avatarUpload: avatarUpload,
-                                          coverUpload: coverUpload,
-                                        );
-                                      },
-                                child: const Text('Salvar alteracoes'),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
+                    );
+                  },
                 );
               },
             );
@@ -621,8 +626,8 @@ class _TenantAdminAccountProfileEditScreenState
               streamValue: _controller.profileTypesStreamValue,
               builder: (context, types) {
                 final uniqueTypes = _uniqueProfileTypes(types);
-                final hasSelected = uniqueTypes
-                    .any((definition) => definition.type == state.selectedProfileType);
+                final hasSelected = uniqueTypes.any((definition) =>
+                    definition.type == state.selectedProfileType);
                 final effectiveSelected =
                     hasSelected ? state.selectedProfileType : null;
                 return DropdownButtonFormField<String>(
@@ -742,24 +747,29 @@ class _TenantAdminAccountProfileEditScreenState
                                     Wrap(
                                       spacing: 8,
                                       runSpacing: 8,
-                                      children: (termsByTaxonomy[taxonomy.slug] ??
-                                              const [])
-                                          .map(
-                                            (term) => FilterChip(
-                                              label: Text(term.name),
-                                              selected: selections[taxonomy.slug]
-                                                      ?.contains(term.slug) ??
-                                                  false,
-                                              onSelected: (selected) {
-                                                _controller.updateTaxonomySelection(
-                                                  taxonomySlug: taxonomy.slug,
-                                                  termSlug: term.slug,
-                                                  selected: selected,
-                                                );
-                                              },
-                                            ),
-                                          )
-                                          .toList(growable: false),
+                                      children:
+                                          (termsByTaxonomy[taxonomy.slug] ??
+                                                  const [])
+                                              .map(
+                                                (term) => FilterChip(
+                                                  label: Text(term.name),
+                                                  selected:
+                                                      selections[taxonomy.slug]
+                                                              ?.contains(
+                                                                  term.slug) ??
+                                                          false,
+                                                  onSelected: (selected) {
+                                                    _controller
+                                                        .updateTaxonomySelection(
+                                                      taxonomySlug:
+                                                          taxonomy.slug,
+                                                      termSlug: term.slug,
+                                                      selected: selected,
+                                                    );
+                                                  },
+                                                ),
+                                              )
+                                              .toList(growable: false),
                                     ),
                                 ],
                               ),
@@ -820,17 +830,17 @@ class _TenantAdminAccountProfileEditScreenState
                           Container(
                             margin: const EdgeInsets.all(2),
                             decoration: BoxDecoration(
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .errorContainer,
+                              color:
+                                  Theme.of(context).colorScheme.errorContainer,
                               shape: BoxShape.circle,
                             ),
                             padding: const EdgeInsets.all(4),
                             child: Icon(
                               Icons.warning_amber_rounded,
                               size: 16,
-                              color:
-                                  Theme.of(context).colorScheme.onErrorContainer,
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onErrorContainer,
                             ),
                           ),
                       ],
@@ -872,8 +882,9 @@ class _TenantAdminAccountProfileEditScreenState
                       width: 72,
                       height: 72,
                       decoration: BoxDecoration(
-                        color:
-                            Theme.of(context).colorScheme.surfaceContainerHighest,
+                        color: Theme.of(context)
+                            .colorScheme
+                            .surfaceContainerHighest,
                         borderRadius: BorderRadius.circular(36),
                       ),
                       child: const Icon(Icons.person_outline),
@@ -931,17 +942,14 @@ class _TenantAdminAccountProfileEditScreenState
                       Container(
                         margin: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
-                          color:
-                              Theme.of(context).colorScheme.errorContainer,
+                          color: Theme.of(context).colorScheme.errorContainer,
                           shape: BoxShape.circle,
                         ),
                         padding: const EdgeInsets.all(6),
                         child: Icon(
                           Icons.warning_amber_rounded,
                           size: 18,
-                          color: Theme.of(context)
-                              .colorScheme
-                              .onErrorContainer,
+                          color: Theme.of(context).colorScheme.onErrorContainer,
                         ),
                       ),
                   ],
@@ -1084,5 +1092,4 @@ class _TenantAdminAccountProfileEditScreenState
       ),
     );
   }
-
 }

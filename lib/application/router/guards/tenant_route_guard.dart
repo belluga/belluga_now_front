@@ -2,6 +2,8 @@ import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/app_data/environment_type.dart';
+import 'package:belluga_now/domain/repositories/admin_mode_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/landlord_auth_repository_contract.dart';
 import 'package:get_it/get_it.dart';
 
 class TenantRouteGuard extends AutoRouteGuard {
@@ -18,6 +20,25 @@ class TenantRouteGuard extends AutoRouteGuard {
 
     // Landlord host must never access tenant routes (even deep links).
     resolver.next(false);
-    router.replaceAll([const LandlordHomeRoute()]);
+    router.replaceAll([_resolveLandlordInitialRoute()]);
+  }
+
+  PageRouteInfo _resolveLandlordInitialRoute() {
+    if (!GetIt.I.isRegistered<AdminModeRepositoryContract>() ||
+        !GetIt.I.isRegistered<LandlordAuthRepositoryContract>()) {
+      return const LandlordHomeRoute();
+    }
+
+    final modeRepository = GetIt.I.get<AdminModeRepositoryContract>();
+    final landlordAuthRepository =
+        GetIt.I.get<LandlordAuthRepositoryContract>();
+    final shouldOpenAdminDirectly =
+        modeRepository.isLandlordMode && landlordAuthRepository.hasValidSession;
+
+    if (shouldOpenAdminDirectly) {
+      return const TenantAdminShellRoute();
+    }
+
+    return const LandlordHomeRoute();
   }
 }

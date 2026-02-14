@@ -97,10 +97,11 @@ class AuthLoginCanvaContent extends StatelessWidget {
           onPressed: () => _openSignupSheet(context),
           child: const Text('Criar conta'),
         ),
-        TextButton(
-          onPressed: () => _openLandlordLogin(context),
-          child: const Text('Entrar como Admin'),
-        ),
+        if (_controller.isLandlordContext)
+          TextButton(
+            onPressed: () => _openLandlordLogin(context),
+            child: const Text('Entrar como Admin'),
+          ),
       ],
     );
   }
@@ -121,11 +122,18 @@ class AuthLoginCanvaContent extends StatelessWidget {
 
   Future<void> _openLandlordLogin(BuildContext context) async {
     final router = context.router;
-    final didLogin = await showLandlordLoginSheet(
-      context,
-      controller: _landlordController,
+    final shouldOpenAdmin = await _controller.requestLandlordAdminLogin(
+      performLogin: () => showLandlordLoginSheet(
+        context,
+        controller: _landlordController,
+      ),
     );
-    if (!didLogin) {
+    _navigateToLandlordAdminIfNeeded(router, shouldOpenAdmin);
+  }
+
+  void _navigateToLandlordAdminIfNeeded(
+      StackRouter router, bool shouldOpenAdmin) {
+    if (!shouldOpenAdmin) {
       return;
     }
     router.replaceAll([const TenantAdminShellRoute()]);

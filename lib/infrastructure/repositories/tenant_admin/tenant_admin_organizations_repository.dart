@@ -1,6 +1,6 @@
-import 'package:belluga_now/application/configurations/belluga_constants.dart';
 import 'package:belluga_now/domain/repositories/landlord_auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_organizations_repository_contract.dart';
+import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_organization.dart';
 import 'package:belluga_now/infrastructure/dal/dto/tenant_admin/tenant_admin_organization_dto.dart';
 import 'package:dio/dio.dart';
@@ -8,11 +8,18 @@ import 'package:get_it/get_it.dart';
 
 class TenantAdminOrganizationsRepository
     implements TenantAdminOrganizationsRepositoryContract {
-  TenantAdminOrganizationsRepository({Dio? dio}) : _dio = dio ?? Dio();
+  TenantAdminOrganizationsRepository({
+    Dio? dio,
+    TenantAdminTenantScopeContract? tenantScope,
+  })  : _dio = dio ?? Dio(),
+        _tenantScope = tenantScope;
 
   final Dio _dio;
+  final TenantAdminTenantScopeContract? _tenantScope;
 
-  String get _apiBaseUrl => BellugaConstants.api.adminUrl;
+  String get _apiBaseUrl => _resolveTenantAdminBaseUrl(
+        _tenantScope ?? GetIt.I.get<TenantAdminTenantScopeContract>(),
+      );
 
   Map<String, String> _buildHeaders() {
     final token = GetIt.I.get<LandlordAuthRepositoryContract>().token;
@@ -37,7 +44,8 @@ class TenantAdminOrganizationsRepository
   }
 
   @override
-  Future<TenantAdminOrganization> fetchOrganization(String organizationId) async {
+  Future<TenantAdminOrganization> fetchOrganization(
+      String organizationId) async {
     try {
       final response = await _dio.get(
         '$_apiBaseUrl/v1/organizations/$organizationId',
@@ -177,5 +185,28 @@ class TenantAdminOrganizationsRepository
       'Failed to $label [status=$status] (${error.requestOptions.uri}): '
       '${data ?? error.message}',
     );
+  }
+
+  String _resolveTenantAdminBaseUrl(
+    TenantAdminTenantScopeContract tenantScope,
+  ) {
+    final selectedDomain = tenantScope.selectedTenantDomain?.trim();
+    if (selectedDomain == null || selectedDomain.isEmpty) {
+      throw StateError('Tenant admin scope is not selected.');
+    }
+    final uri = Uri.tryParse(
+      selectedDomain.contains('://')
+          ? selectedDomain
+          : 'https://$selectedDomain',
+    );
+    if (uri == null || uri.host.trim().isEmpty) {
+      throw StateError('Invalid tenant domain selected for admin scope.');
+    }
+    final origin = Uri(
+      scheme: uri.scheme,
+      host: uri.host,
+      port: uri.hasPort ? uri.port : null,
+    );
+    return origin.resolve('/admin/api').toString();
   }
 }

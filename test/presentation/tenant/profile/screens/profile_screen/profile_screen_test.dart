@@ -1,5 +1,4 @@
 import 'package:auto_route/auto_route.dart';
-import 'package:belluga_now/domain/repositories/admin_mode_repository_contract.dart';
 import 'package:belluga_now/domain/user/user_contract.dart';
 import 'package:belluga_now/presentation/tenant/profile/screens/profile_screen/controllers/profile_screen_controller.dart';
 import 'package:belluga_now/presentation/tenant/profile/screens/profile_screen/profile_screen.dart';
@@ -9,7 +8,6 @@ import 'package:belluga_now/domain/user/profile_avatar_storage_contract.dart';
 import 'package:belluga_now/domain/user/user_profile_contract.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/infrastructure/dal/dao/backend_contract.dart';
-import 'package:belluga_now/domain/repositories/landlord_auth_repository_contract.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
@@ -129,37 +127,6 @@ class _FakeAppDataRepository implements AppDataRepositoryContract {
   }
 }
 
-class _FakeAdminModeRepository implements AdminModeRepositoryContract {
-  _FakeAdminModeRepository(this._mode)
-      : modeStreamValue = StreamValue<AdminMode>(defaultValue: _mode);
-
-  AdminMode _mode;
-
-  @override
-  final StreamValue<AdminMode> modeStreamValue;
-
-  @override
-  AdminMode get mode => _mode;
-
-  @override
-  bool get isLandlordMode => _mode == AdminMode.landlord;
-
-  @override
-  Future<void> init() async {}
-
-  @override
-  Future<void> setLandlordMode() async {
-    _mode = AdminMode.landlord;
-    modeStreamValue.addValue(_mode);
-  }
-
-  @override
-  Future<void> setUserMode() async {
-    _mode = AdminMode.user;
-    modeStreamValue.addValue(_mode);
-  }
-}
-
 class _FakeProfileAvatarStorage implements ProfileAvatarStorageContract {
   String? _path;
 
@@ -175,25 +142,6 @@ class _FakeProfileAvatarStorage implements ProfileAvatarStorageContract {
   Future<void> clearAvatarPath() async {
     _path = null;
   }
-}
-
-class _FakeLandlordAuthRepository implements LandlordAuthRepositoryContract {
-  _FakeLandlordAuthRepository();
-
-  @override
-  final bool hasValidSession = false;
-
-  @override
-  String get token => '';
-
-  @override
-  Future<void> init() async {}
-
-  @override
-  Future<void> loginWithEmailPassword(String email, String password) async {}
-
-  @override
-  Future<void> logout() async {}
 }
 
 class _FakeUser implements UserContract {
@@ -248,24 +196,16 @@ void main() {
   });
 
   test(
-    'ProfileScreenController does not require LandlordLoginController registration',
+    'ProfileScreenController resolves with only profile dependencies',
     () {
-      final adminModeRepository = _FakeAdminModeRepository(AdminMode.user);
       final authRepository =
           _FakeAuthRepository(backend: _FakeBackendContract());
       final appDataRepository = _FakeAppDataRepository();
       final avatarStorage = _FakeProfileAvatarStorage();
-      final landlordAuthRepository = _FakeLandlordAuthRepository();
 
       GetIt.I.registerSingleton<AuthRepositoryContract>(authRepository);
       GetIt.I.registerSingleton<AppDataRepositoryContract>(appDataRepository);
-      GetIt.I.registerSingleton<AdminModeRepositoryContract>(
-        adminModeRepository,
-      );
       GetIt.I.registerSingleton<ProfileAvatarStorageContract>(avatarStorage);
-      GetIt.I.registerSingleton<LandlordAuthRepositoryContract>(
-        landlordAuthRepository,
-      );
 
       // Guardrail: profile must resolve from repositories, never from another feature controller.
       expect(
@@ -277,7 +217,7 @@ void main() {
 
   testWidgets('Profile stays visible in user mode (no auto-redirect)',
       (tester) async {
-    final controller = _buildController(AdminMode.user);
+    final controller = _buildController();
     GetIt.I.registerSingleton<ProfileScreenController>(controller);
     await tester.pumpWidget(
       StackRouterScope(
@@ -296,41 +236,14 @@ void main() {
     expect(find.text('Perfil'), findsOneWidget);
   });
 
-  testWidgets('Profile redirects to admin shell in landlord mode',
-      (tester) async {
-    final controller = _buildController(AdminMode.landlord);
-    GetIt.I.registerSingleton<ProfileScreenController>(controller);
-
-    await tester.pumpWidget(
-      StackRouterScope(
-        controller: mockRouter,
-        stateHash: 0,
-        child: const MaterialApp(
-          home: ProfileScreen(),
-        ),
-      ),
-    );
-
-    await tester.pump();
-    await tester.pump();
-
-    expect(mockRouter.replaceAllCalled, isTrue);
-    expect(mockRouter.lastRoutes, isNotNull);
-  });
-
   testWidgets('Profile updates when user stream changes', (tester) async {
-    final adminModeRepository = _FakeAdminModeRepository(AdminMode.user);
-    final authRepository =
-        _FakeAuthRepository(backend: _FakeBackendContract());
+    final authRepository = _FakeAuthRepository(backend: _FakeBackendContract());
     final appDataRepository = _FakeAppDataRepository();
     final avatarStorage = _FakeProfileAvatarStorage();
-    final landlordAuthRepository = _FakeLandlordAuthRepository();
 
     final controller = ProfileScreenController(
       authRepository: authRepository,
       appDataRepository: appDataRepository,
-      adminModeRepository: adminModeRepository,
-      landlordAuthRepository: landlordAuthRepository,
       avatarStorage: avatarStorage,
     );
 
@@ -363,19 +276,14 @@ void main() {
   });
 }
 
-ProfileScreenController _buildController(AdminMode mode) {
-  final adminModeRepository = _FakeAdminModeRepository(mode);
-  final authRepository =
-      _FakeAuthRepository(backend: _FakeBackendContract());
+ProfileScreenController _buildController() {
+  final authRepository = _FakeAuthRepository(backend: _FakeBackendContract());
   final appDataRepository = _FakeAppDataRepository();
   final avatarStorage = _FakeProfileAvatarStorage();
-  final landlordAuthRepository = _FakeLandlordAuthRepository();
 
   return ProfileScreenController(
     authRepository: authRepository,
     appDataRepository: appDataRepository,
-    adminModeRepository: adminModeRepository,
-    landlordAuthRepository: landlordAuthRepository,
     avatarStorage: avatarStorage,
   );
 }

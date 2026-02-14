@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
@@ -23,25 +21,15 @@ class _TenantAdminStaticAssetCreateScreenState
     extends State<TenantAdminStaticAssetCreateScreen> {
   final TenantAdminStaticAssetsController _controller =
       GetIt.I.get<TenantAdminStaticAssetsController>();
-  StreamSubscription<String?>? _submitSuccessSubscription;
-  StreamSubscription<String?>? _submitErrorSubscription;
 
   @override
   void initState() {
     super.initState();
     _controller.initCreate();
-    _submitSuccessSubscription = _controller.submitSuccessStreamValue.stream.listen(
-      _handleSubmitSuccess,
-    );
-    _submitErrorSubscription = _controller.submitErrorStreamValue.stream.listen(
-      _handleSubmitError,
-    );
   }
 
   @override
   void dispose() {
-    _submitSuccessSubscription?.cancel();
-    _submitErrorSubscription?.cancel();
     _controller.clearSubmitMessages();
     super.dispose();
   }
@@ -49,77 +37,93 @@ class _TenantAdminStaticAssetCreateScreenState
   @override
   Widget build(BuildContext context) {
     return StreamValueBuilder<String?>(
-      streamValue: _controller.errorStreamValue,
-      builder: (context, error) {
+      streamValue: _controller.submitSuccessStreamValue,
+      builder: (context, submitSuccessMessage) {
+        _handleSubmitSuccess(submitSuccessMessage);
         return StreamValueBuilder<String?>(
-          streamValue: _controller.selectedProfileTypeStreamValue,
-          builder: (context, selectedType) {
-            final selectedDefinition = _profileTypeDefinition(selectedType);
-            final requiresLocation =
-                selectedDefinition?.capabilities.isPoiEnabled ?? false;
-            final hasBio = selectedDefinition?.capabilities.hasBio ?? false;
-            final hasContent =
-                selectedDefinition?.capabilities.hasContent ?? false;
-            final hasTaxonomies =
-                selectedDefinition?.capabilities.hasTaxonomies ?? false;
-            final hasAvatar =
-                selectedDefinition?.capabilities.hasAvatar ?? false;
-            final hasCover =
-                selectedDefinition?.capabilities.hasCover ?? false;
-            return Scaffold(
-              appBar: AppBar(
-                title: const Text('Criar ativo'),
-                leading: IconButton(
-                  icon: const Icon(Icons.arrow_back),
-                  onPressed: () => context.router.maybePop(),
-                ),
-              ),
-              body: Padding(
-                padding: EdgeInsets.fromLTRB(
-                  16,
-                  16,
-                  16,
-                  16 + MediaQuery.of(context).viewInsets.bottom,
-                ),
-                child: Form(
-                  key: _controller.formKey,
-                  child: SingleChildScrollView(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildBasicSection(context, error),
-                        const SizedBox(height: 16),
-                        _buildStatusSection(),
-                        if (hasBio || hasContent || _hasTagsOrCategories()) ...[
-                          const SizedBox(height: 16),
-                          _buildContentSection(
-                            context,
-                            hasBio: hasBio,
-                            hasContent: hasContent,
+          streamValue: _controller.submitErrorStreamValue,
+          builder: (context, submitErrorMessage) {
+            _handleSubmitError(submitErrorMessage);
+            return StreamValueBuilder<String?>(
+              streamValue: _controller.errorStreamValue,
+              builder: (context, error) {
+                return StreamValueBuilder<String?>(
+                  streamValue: _controller.selectedProfileTypeStreamValue,
+                  builder: (context, selectedType) {
+                    final selectedDefinition =
+                        _profileTypeDefinition(selectedType);
+                    final requiresLocation =
+                        selectedDefinition?.capabilities.isPoiEnabled ?? false;
+                    final hasBio =
+                        selectedDefinition?.capabilities.hasBio ?? false;
+                    final hasContent =
+                        selectedDefinition?.capabilities.hasContent ?? false;
+                    final hasTaxonomies =
+                        selectedDefinition?.capabilities.hasTaxonomies ?? false;
+                    final hasAvatar =
+                        selectedDefinition?.capabilities.hasAvatar ?? false;
+                    final hasCover =
+                        selectedDefinition?.capabilities.hasCover ?? false;
+                    return Scaffold(
+                      appBar: AppBar(
+                        title: const Text('Criar ativo'),
+                        leading: IconButton(
+                          icon: const Icon(Icons.arrow_back),
+                          onPressed: () => context.router.maybePop(),
+                        ),
+                      ),
+                      body: Padding(
+                        padding: EdgeInsets.fromLTRB(
+                          16,
+                          16,
+                          16,
+                          16 + MediaQuery.of(context).viewInsets.bottom,
+                        ),
+                        child: Form(
+                          key: _controller.formKey,
+                          child: SingleChildScrollView(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                _buildBasicSection(context, error),
+                                const SizedBox(height: 16),
+                                _buildStatusSection(),
+                                if (hasBio ||
+                                    hasContent ||
+                                    _hasTagsOrCategories()) ...[
+                                  const SizedBox(height: 16),
+                                  _buildContentSection(
+                                    context,
+                                    hasBio: hasBio,
+                                    hasContent: hasContent,
+                                  ),
+                                ],
+                                if (hasAvatar || hasCover) ...[
+                                  const SizedBox(height: 16),
+                                  _buildMediaSection(
+                                    hasAvatar: hasAvatar,
+                                    hasCover: hasCover,
+                                  ),
+                                ],
+                                if (hasTaxonomies) ...[
+                                  const SizedBox(height: 16),
+                                  _buildTaxonomySection(context),
+                                ],
+                                if (requiresLocation) ...[
+                                  const SizedBox(height: 16),
+                                  _buildLocationSection(context),
+                                ],
+                                const SizedBox(height: 24),
+                                _buildSubmitButton(),
+                              ],
+                            ),
                           ),
-                        ],
-                        if (hasAvatar || hasCover) ...[
-                          const SizedBox(height: 16),
-                          _buildMediaSection(
-                            hasAvatar: hasAvatar,
-                            hasCover: hasCover,
-                          ),
-                        ],
-                        if (hasTaxonomies) ...[
-                          const SizedBox(height: 16),
-                          _buildTaxonomySection(context),
-                        ],
-                        if (requiresLocation) ...[
-                          const SizedBox(height: 16),
-                          _buildLocationSection(context),
-                        ],
-                        const SizedBox(height: 24),
-                        _buildSubmitButton(),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
+                        ),
+                      ),
+                    );
+                  },
+                );
+              },
             );
           },
         );
@@ -267,7 +271,8 @@ class _TenantAdminStaticAssetCreateScreenState
             StreamValueBuilder<bool>(
               streamValue: _controller.isLoadingStreamValue,
               builder: (context, isLoading) {
-                return StreamValueBuilder<List<TenantAdminStaticProfileTypeDefinition>>(
+                return StreamValueBuilder<
+                    List<TenantAdminStaticProfileTypeDefinition>>(
                   streamValue: _controller.profileTypesStreamValue,
                   builder: (context, profileTypes) {
                     final hasTypes = profileTypes.isNotEmpty;
@@ -503,8 +508,8 @@ class _TenantAdminStaticAssetCreateScreenState
                               _controller.selectedTaxonomyTermsStreamValue,
                           builder: (context, selectedTerms) {
                             final labels = _taxonomyLabels(taxonomies);
-                            final allowed =
-                                _controller.selectedProfileTypeStreamValue.value;
+                            final allowed = _controller
+                                .selectedProfileTypeStreamValue.value;
                             final allowedTaxonomies =
                                 _profileTypeDefinition(allowed)
                                         ?.allowedTaxonomies ??
@@ -514,7 +519,8 @@ class _TenantAdminStaticAssetCreateScreenState
                               children: [
                                 Text(
                                   'Taxonomias',
-                                  style: Theme.of(context).textTheme.titleMedium,
+                                  style:
+                                      Theme.of(context).textTheme.titleMedium,
                                 ),
                                 const SizedBox(height: 12),
                                 if (isLoading) const LinearProgressIndicator(),
@@ -524,9 +530,8 @@ class _TenantAdminStaticAssetCreateScreenState
                                     child: Text(
                                       taxonomyError,
                                       style: TextStyle(
-                                        color: Theme.of(context)
-                                            .colorScheme
-                                            .error,
+                                        color:
+                                            Theme.of(context).colorScheme.error,
                                       ),
                                     ),
                                   ),
