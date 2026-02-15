@@ -1,8 +1,10 @@
 import 'dart:async';
 
 import 'package:belluga_now/domain/repositories/tenant_admin_account_profiles_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/tenant_admin_taxonomies_repository_contract.dart';
 import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart' show Disposable, GetIt;
 import 'package:stream_value/core/stream_value.dart';
@@ -10,9 +12,14 @@ import 'package:stream_value/core/stream_value.dart';
 class TenantAdminProfileTypesController implements Disposable {
   TenantAdminProfileTypesController({
     TenantAdminAccountProfilesRepositoryContract? repository,
+    TenantAdminTaxonomiesRepositoryContract? taxonomiesRepository,
     TenantAdminTenantScopeContract? tenantScope,
   })  : _repository = repository ??
             GetIt.I.get<TenantAdminAccountProfilesRepositoryContract>(),
+        _taxonomiesRepository = taxonomiesRepository ??
+            (GetIt.I.isRegistered<TenantAdminTaxonomiesRepositoryContract>()
+                ? GetIt.I.get<TenantAdminTaxonomiesRepositoryContract>()
+                : null),
         _tenantScope = tenantScope ??
             (GetIt.I.isRegistered<TenantAdminTenantScopeContract>()
                 ? GetIt.I.get<TenantAdminTenantScopeContract>()
@@ -21,6 +28,7 @@ class TenantAdminProfileTypesController implements Disposable {
   }
 
   final TenantAdminAccountProfilesRepositoryContract _repository;
+  final TenantAdminTaxonomiesRepositoryContract? _taxonomiesRepository;
   final TenantAdminTenantScopeContract? _tenantScope;
   static const int _typesPageSize = 20;
 
@@ -32,6 +40,15 @@ class TenantAdminProfileTypesController implements Disposable {
       StreamValue<bool>(defaultValue: false);
   final StreamValue<bool> isLoadingStreamValue =
       StreamValue<bool>(defaultValue: false);
+  final StreamValue<List<TenantAdminTaxonomyDefinition>>
+      availableTaxonomiesStreamValue =
+      StreamValue<List<TenantAdminTaxonomyDefinition>>(defaultValue: const []);
+  final StreamValue<List<String>> selectedAllowedTaxonomiesStreamValue =
+      StreamValue<List<String>>(defaultValue: const []);
+  final StreamValue<bool> isTaxonomiesLoadingStreamValue =
+      StreamValue<bool>(defaultValue: false);
+  final StreamValue<String?> taxonomiesErrorStreamValue =
+      StreamValue<String?>();
   static const TenantAdminProfileTypeCapabilities _emptyCapabilities =
       TenantAdminProfileTypeCapabilities(
     isFavoritable: false,
@@ -85,6 +102,7 @@ class TenantAdminProfileTypesController implements Disposable {
         _resetTenantScopedState();
         if (normalized != null) {
           unawaited(loadTypes());
+          unawaited(loadAvailableTaxonomies());
         }
       },
     );
@@ -92,6 +110,9 @@ class TenantAdminProfileTypesController implements Disposable {
 
   TenantAdminProfileTypeCapabilities get currentCapabilities =>
       capabilitiesStreamValue.value;
+
+  List<String> get selectedAllowedTaxonomies =>
+      List<String>.unmodifiable(selectedAllowedTaxonomiesStreamValue.value);
 
   void initForm(TenantAdminProfileTypeDefinition? definition) {
     final capabilities = definition?.capabilities ?? _emptyCapabilities;
@@ -108,8 +129,7 @@ class TenantAdminProfileTypesController implements Disposable {
     );
     typeController.text = definition?.type ?? '';
     labelController.text = definition?.label ?? '';
-    taxonomiesController.text =
-        (definition?.allowedTaxonomies ?? const []).join(', ');
+    setAllowedTaxonomies(definition?.allowedTaxonomies ?? const []);
     isSlugAutoEnabledStreamValue.addValue(true);
   }
 
@@ -118,6 +138,7 @@ class TenantAdminProfileTypesController implements Disposable {
     typeController.clear();
     labelController.clear();
     taxonomiesController.clear();
+    selectedAllowedTaxonomiesStreamValue.addValue(const []);
     isSlugAutoEnabledStreamValue.addValue(true);
   }
 
@@ -155,6 +176,66 @@ class TenantAdminProfileTypesController implements Disposable {
     _resetTypesPagination();
     typesStreamValue.addValue(null);
     await _fetchTypesPage(page: 1);
+  }
+
+  Future<void> loadAvailableTaxonomies() async {
+    final repository = _taxonomiesRepository;
+    if (repository == null) {
+      availableTaxonomiesStreamValue.addValue(const []);
+      taxonomiesErrorStreamValue
+          .addValue('Repositório de taxonomias não registrado.');
+      return;
+    }
+    isTaxonomiesLoadingStreamValue.addValue(true);
+    try {
+      final loaded = await repository.fetchTaxonomies();
+      if (_isDisposed) return;
+      final filtered = loaded
+          .where((taxonomy) => taxonomy.appliesToTarget('account_profile'))
+          .toList(growable: false)
+        ..sort(
+          (left, right) =>
+              left.name.toLowerCase().compareTo(right.name.toLowerCase()),
+        );
+      availableTaxonomiesStreamValue.addValue(filtered);
+      taxonomiesErrorStreamValue.addValue(null);
+      _sanitizeSelectedTaxonomies();
+    } catch (error) {
+      if (_isDisposed) return;
+      availableTaxonomiesStreamValue.addValue(const []);
+      taxonomiesErrorStreamValue.addValue(error.toString());
+      _setSelectedAllowedTaxonomies(const []);
+    } finally {
+      if (!_isDisposed) {
+        isTaxonomiesLoadingStreamValue.addValue(false);
+      }
+    }
+  }
+
+  void toggleAllowedTaxonomy(String taxonomySlug) {
+    final slug = taxonomySlug.trim();
+    if (slug.isEmpty) {
+      return;
+    }
+    final availableSlugs = availableTaxonomiesStreamValue.value
+        .map((taxonomy) => taxonomy.slug)
+        .toSet();
+    if (!availableSlugs.contains(slug)) {
+      return;
+    }
+    final current = selectedAllowedTaxonomiesStreamValue.value;
+    final next = <String>[...current];
+    if (next.contains(slug)) {
+      next.remove(slug);
+    } else {
+      next.add(slug);
+    }
+    _setSelectedAllowedTaxonomies(next);
+  }
+
+  void setAllowedTaxonomies(List<String> slugs) {
+    _setSelectedAllowedTaxonomies(slugs);
+    _sanitizeSelectedTaxonomies();
   }
 
   Future<void> loadNextTypesPage() async {
@@ -195,8 +276,8 @@ class TenantAdminProfileTypesController implements Disposable {
       _currentTypesPage = page;
       _hasMoreTypes = result.hasMore;
       hasMoreTypesStreamValue.addValue(_hasMoreTypes);
-      typesStreamValue
-          .addValue(List<TenantAdminProfileTypeDefinition>.unmodifiable(_fetchedTypes));
+      typesStreamValue.addValue(
+          List<TenantAdminProfileTypeDefinition>.unmodifiable(_fetchedTypes));
       errorStreamValue.addValue(null);
     } catch (error) {
       if (_isDisposed) return;
@@ -318,6 +399,9 @@ class TenantAdminProfileTypesController implements Disposable {
     errorStreamValue.addValue(null);
     successMessageStreamValue.addValue(null);
     actionErrorMessageStreamValue.addValue(null);
+    availableTaxonomiesStreamValue.addValue(const []);
+    taxonomiesErrorStreamValue.addValue(null);
+    isTaxonomiesLoadingStreamValue.addValue(false);
     resetFormState();
   }
 
@@ -343,6 +427,35 @@ class TenantAdminProfileTypesController implements Disposable {
     return trimmed;
   }
 
+  void _sanitizeSelectedTaxonomies() {
+    final availableSlugs = availableTaxonomiesStreamValue.value
+        .map((taxonomy) => taxonomy.slug)
+        .toSet();
+    if (availableSlugs.isEmpty) {
+      _setSelectedAllowedTaxonomies(const []);
+      return;
+    }
+    final sanitized = selectedAllowedTaxonomiesStreamValue.value
+        .where(availableSlugs.contains)
+        .toList(growable: false);
+    _setSelectedAllowedTaxonomies(sanitized);
+  }
+
+  void _setSelectedAllowedTaxonomies(List<String> slugs) {
+    final seen = <String>{};
+    final normalized = <String>[];
+    for (final raw in slugs) {
+      final slug = raw.trim();
+      if (slug.isEmpty || seen.contains(slug)) {
+        continue;
+      }
+      seen.add(slug);
+      normalized.add(slug);
+    }
+    selectedAllowedTaxonomiesStreamValue.addValue(normalized);
+    taxonomiesController.text = normalized.join(', ');
+  }
+
   void dispose() {
     _isDisposed = true;
     _tenantScopeSubscription?.cancel();
@@ -353,6 +466,10 @@ class TenantAdminProfileTypesController implements Disposable {
     hasMoreTypesStreamValue.dispose();
     isTypesPageLoadingStreamValue.dispose();
     isLoadingStreamValue.dispose();
+    availableTaxonomiesStreamValue.dispose();
+    selectedAllowedTaxonomiesStreamValue.dispose();
+    isTaxonomiesLoadingStreamValue.dispose();
+    taxonomiesErrorStreamValue.dispose();
     errorStreamValue.dispose();
     successMessageStreamValue.dispose();
     actionErrorMessageStreamValue.dispose();

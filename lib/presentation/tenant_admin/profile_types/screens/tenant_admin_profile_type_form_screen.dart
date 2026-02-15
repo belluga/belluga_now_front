@@ -1,10 +1,11 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_form_value_utils.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_slug_utils.dart';
 import 'package:belluga_now/presentation/tenant_admin/profile_types/controllers/tenant_admin_profile_types_controller.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_error_banner.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_form_layout.dart';
-import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_token_chips_field.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
@@ -33,6 +34,7 @@ class _TenantAdminProfileTypeFormScreenState
   void initState() {
     super.initState();
     _controller.initForm(widget.definition);
+    _controller.loadAvailableTaxonomies();
     if (!_isEdit) {
       _controller.labelController.addListener(_syncSlugFromLabel);
       _syncSlugFromLabel();
@@ -64,17 +66,6 @@ class _TenantAdminProfileTypeFormScreenState
     );
   }
 
-  List<String> _parseTaxonomies() {
-    return tenantAdminParseTokenList(_controller.taxonomiesController.text);
-  }
-
-  List<String> _currentTaxonomies() =>
-      tenantAdminParseTokenList(_controller.taxonomiesController.text);
-
-  void _updateTaxonomies(List<String> next) {
-    _controller.taxonomiesController.text = tenantAdminJoinTokenList(next);
-  }
-
   Future<void> _save() async {
     final form = _controller.formKey.currentState;
     if (form == null || !form.validate()) {
@@ -82,7 +73,7 @@ class _TenantAdminProfileTypeFormScreenState
     }
 
     final capabilities = _controller.currentCapabilities;
-    final allowedTaxonomies = _parseTaxonomies();
+    final allowedTaxonomies = _controller.selectedAllowedTaxonomies;
 
     if (_isEdit) {
       _controller.submitUpdateType(
@@ -123,9 +114,22 @@ class _TenantAdminProfileTypeFormScreenState
                       TenantAdminFormSectionCard(
                         title: 'Informacoes do tipo',
                         description:
-                            'Defina identificador, nome exibido e taxonomias associadas.',
+                            'Defina nome exibido, identificador e taxonomias associadas.',
                         child: Column(
                           children: [
+                            TextFormField(
+                              controller: _controller.labelController,
+                              decoration:
+                                  const InputDecoration(labelText: 'Label'),
+                              onChanged: (_) => _syncSlugFromLabel(),
+                              validator: (value) {
+                                if (value == null || value.trim().isEmpty) {
+                                  return 'Label e obrigatorio.';
+                                }
+                                return null;
+                              },
+                            ),
+                            const SizedBox(height: 12),
                             TextFormField(
                               controller: _controller.typeController,
                               decoration: const InputDecoration(
@@ -157,52 +161,7 @@ class _TenantAdminProfileTypeFormScreenState
                               },
                             ),
                             const SizedBox(height: 12),
-                            TextFormField(
-                              controller: _controller.labelController,
-                              decoration:
-                                  const InputDecoration(labelText: 'Label'),
-                              onChanged: (_) => _syncSlugFromLabel(),
-                              validator: (value) {
-                                if (value == null || value.trim().isEmpty) {
-                                  return 'Label e obrigatorio.';
-                                }
-                                return null;
-                              },
-                            ),
-                            const SizedBox(height: 12),
-                            TenantAdminTokenChipsField(
-                              label: 'Taxonomias permitidas',
-                              values: _currentTaxonomies(),
-                              hintText: 'Adicionar slug de taxonomia',
-                              emptyStateText:
-                                  'Nenhuma taxonomia permitida selecionada.',
-                              onChanged: _updateTaxonomies,
-                            ),
-                            if (!_isEdit) ...[
-                              const SizedBox(height: 12),
-                              StreamValueBuilder<bool>(
-                                streamValue:
-                                    _controller.isSlugAutoEnabledStreamValue,
-                                builder: (context, isSlugAutoEnabled) {
-                                  return SwitchListTile(
-                                    contentPadding: EdgeInsets.zero,
-                                    title: const Text(
-                                      'Gerar slug automaticamente',
-                                    ),
-                                    subtitle: const Text(
-                                      'Você pode desligar para personalizar manualmente.',
-                                    ),
-                                    value: isSlugAutoEnabled,
-                                    onChanged: (value) {
-                                      _controller.setSlugAutoEnabled(value);
-                                      if (value) {
-                                        _syncSlugFromLabel();
-                                      }
-                                    },
-                                  );
-                                },
-                              ),
-                            ],
+                            _buildTaxonomySelection(),
                           ],
                         ),
                       ),
@@ -295,6 +254,75 @@ class _TenantAdminProfileTypeFormScreenState
                   ),
                 ),
               ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildTaxonomySelection() {
+    return StreamValueBuilder<bool>(
+      streamValue: _controller.isTaxonomiesLoadingStreamValue,
+      builder: (context, isLoading) {
+        return StreamValueBuilder<String?>(
+          streamValue: _controller.taxonomiesErrorStreamValue,
+          builder: (context, error) {
+            return StreamValueBuilder<List<TenantAdminTaxonomyDefinition>>(
+              streamValue: _controller.availableTaxonomiesStreamValue,
+              builder: (context, availableTaxonomies) {
+                return StreamValueBuilder<List<String>>(
+                  streamValue: _controller.selectedAllowedTaxonomiesStreamValue,
+                  builder: (context, selectedTaxonomies) {
+                    final selectedSet = selectedTaxonomies.toSet();
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (isLoading) const LinearProgressIndicator(),
+                        if (error != null && error.isNotEmpty)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 8),
+                            child: TenantAdminErrorBanner(
+                              rawError: error,
+                              fallbackMessage:
+                                  'Nao foi possivel carregar taxonomias.',
+                              onRetry: _controller.loadAvailableTaxonomies,
+                            ),
+                          ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Taxonomias permitidas',
+                          style: Theme.of(context).textTheme.labelLarge,
+                        ),
+                        const SizedBox(height: 8),
+                        if (availableTaxonomies.isEmpty && !isLoading)
+                          Text(
+                            'Nenhuma taxonomia aplicavel a perfis encontrada.',
+                            style: Theme.of(context).textTheme.bodySmall,
+                          )
+                        else
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: availableTaxonomies
+                                .map(
+                                  (taxonomy) => FilterChip(
+                                    label: Text(
+                                      '${taxonomy.name} (${taxonomy.slug})',
+                                    ),
+                                    selected:
+                                        selectedSet.contains(taxonomy.slug),
+                                    onSelected: (_) => _controller
+                                        .toggleAllowedTaxonomy(taxonomy.slug),
+                                  ),
+                                )
+                                .toList(growable: false),
+                          ),
+                      ],
+                    );
+                  },
+                );
+              },
             );
           },
         );

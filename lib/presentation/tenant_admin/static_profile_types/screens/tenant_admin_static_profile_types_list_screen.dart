@@ -177,6 +177,7 @@ class _TenantAdminStaticProfileTypesListScreenState
     final itemCount = loadedTypes.length + (hasMore ? 1 : 0);
     return ListView.separated(
       controller: _scrollController,
+      padding: const EdgeInsets.only(bottom: 112),
       itemCount: itemCount,
       separatorBuilder: (_, __) => const SizedBox(height: 12),
       itemBuilder: (context, index) {

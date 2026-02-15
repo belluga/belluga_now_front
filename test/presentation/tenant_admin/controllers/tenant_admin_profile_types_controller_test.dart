@@ -1,11 +1,14 @@
 import 'package:belluga_now/domain/repositories/tenant_admin_account_profiles_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/tenant_admin_taxonomies_repository_contract.dart';
 import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_definition.dart';
 import 'package:belluga_now/presentation/tenant_admin/profile_types/controllers/tenant_admin_profile_types_controller.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:stream_value/core/stream_value.dart';
@@ -169,6 +172,111 @@ class _FakeAccountProfilesRepository
   Future<void> forceDeleteAccountProfile(String accountProfileId) async {}
 }
 
+class _FakeTaxonomiesRepository
+    implements TenantAdminTaxonomiesRepositoryContract {
+  _FakeTaxonomiesRepository(this.taxonomies);
+
+  List<TenantAdminTaxonomyDefinition> taxonomies;
+
+  @override
+  Future<List<TenantAdminTaxonomyDefinition>> fetchTaxonomies() async =>
+      taxonomies;
+
+  @override
+  Future<TenantAdminTaxonomyDefinition> createTaxonomy({
+    required String slug,
+    required String name,
+    required List<String> appliesTo,
+    String? icon,
+    String? color,
+  }) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<void> deleteTaxonomy(String taxonomyId) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<TenantAdminPagedResult<TenantAdminTaxonomyDefinition>>
+      fetchTaxonomiesPage({
+    required int page,
+    required int pageSize,
+  }) async {
+    final start = (page - 1) * pageSize;
+    if (page <= 0 || pageSize <= 0 || start >= taxonomies.length) {
+      return const TenantAdminPagedResult<TenantAdminTaxonomyDefinition>(
+        items: <TenantAdminTaxonomyDefinition>[],
+        hasMore: false,
+      );
+    }
+    final end = (start + pageSize) < taxonomies.length
+        ? (start + pageSize)
+        : taxonomies.length;
+    return TenantAdminPagedResult<TenantAdminTaxonomyDefinition>(
+      items: taxonomies.sublist(start, end),
+      hasMore: end < taxonomies.length,
+    );
+  }
+
+  @override
+  Future<List<TenantAdminTaxonomyTermDefinition>> fetchTerms({
+    required String taxonomyId,
+  }) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<TenantAdminPagedResult<TenantAdminTaxonomyTermDefinition>>
+      fetchTermsPage({
+    required String taxonomyId,
+    required int page,
+    required int pageSize,
+  }) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<TenantAdminTaxonomyTermDefinition> createTerm({
+    required String taxonomyId,
+    required String slug,
+    required String name,
+  }) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<TenantAdminTaxonomyTermDefinition> updateTerm({
+    required String taxonomyId,
+    required String termId,
+    String? slug,
+    String? name,
+  }) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<void> deleteTerm({
+    required String taxonomyId,
+    required String termId,
+  }) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<TenantAdminTaxonomyDefinition> updateTaxonomy({
+    required String taxonomyId,
+    String? slug,
+    String? name,
+    List<String>? appliesTo,
+    String? icon,
+    String? color,
+  }) {
+    throw UnimplementedError();
+  }
+}
+
 void main() {
   test('appends profile type pages and stops when hasMore is false', () async {
     final types = List<TenantAdminProfileTypeDefinition>.generate(
@@ -303,6 +411,65 @@ void main() {
     await Future<void>.delayed(Duration.zero);
 
     expect(controller.typesStreamValue.value?.first.type, 'venue');
+  });
+
+  test('loads available taxonomies filtered by account_profile target',
+      () async {
+    final repository = _FakeAccountProfilesRepository(const []);
+    final taxonomiesRepository = _FakeTaxonomiesRepository([
+      const TenantAdminTaxonomyDefinition(
+        id: '1',
+        slug: 'music_genre',
+        name: 'Music Genre',
+        appliesTo: ['account_profile'],
+        icon: null,
+        color: null,
+      ),
+      const TenantAdminTaxonomyDefinition(
+        id: '2',
+        slug: 'event_type',
+        name: 'Event Type',
+        appliesTo: ['event'],
+        icon: null,
+        color: null,
+      ),
+    ]);
+    final controller = TenantAdminProfileTypesController(
+      repository: repository,
+      taxonomiesRepository: taxonomiesRepository,
+    );
+
+    await controller.loadAvailableTaxonomies();
+
+    expect(controller.availableTaxonomiesStreamValue.value.length, 1);
+    expect(
+      controller.availableTaxonomiesStreamValue.value.first.slug,
+      'music_genre',
+    );
+  });
+
+  test('ignores non-listed taxonomy slug when toggling selection', () async {
+    final repository = _FakeAccountProfilesRepository(const []);
+    final taxonomiesRepository = _FakeTaxonomiesRepository([
+      const TenantAdminTaxonomyDefinition(
+        id: '1',
+        slug: 'music_genre',
+        name: 'Music Genre',
+        appliesTo: ['account_profile'],
+        icon: null,
+        color: null,
+      ),
+    ]);
+    final controller = TenantAdminProfileTypesController(
+      repository: repository,
+      taxonomiesRepository: taxonomiesRepository,
+    );
+
+    await controller.loadAvailableTaxonomies();
+    controller.toggleAllowedTaxonomy('invalid_slug');
+    controller.toggleAllowedTaxonomy('music_genre');
+
+    expect(controller.selectedAllowedTaxonomies, ['music_genre']);
   });
 }
 

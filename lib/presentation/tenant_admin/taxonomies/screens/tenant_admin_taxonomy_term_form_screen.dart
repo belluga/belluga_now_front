@@ -111,9 +111,23 @@ class _TenantAdminTaxonomyTermFormScreenState
                       TenantAdminFormSectionCard(
                         title: 'Termo em ${widget.taxonomyName}',
                         description:
-                            'Defina o slug e o nome do termo para esta taxonomia.',
+                            'Defina o nome e o slug do termo para esta taxonomia.',
                         child: Column(
                           children: [
+                            TextFormField(
+                              controller: _controller.termNameController,
+                              decoration: const InputDecoration(
+                                labelText: 'Nome',
+                              ),
+                              onChanged: (_) => _syncSlugFromName(),
+                              validator: (value) {
+                                if (value == null || value.trim().isEmpty) {
+                                  return 'Nome obrigatorio.';
+                                }
+                                return null;
+                              },
+                            ),
+                            const SizedBox(height: 12),
                             TextFormField(
                               controller: _controller.termSlugController,
                               decoration: const InputDecoration(
@@ -141,45 +155,6 @@ class _TenantAdminTaxonomyTermFormScreenState
                                 );
                               },
                             ),
-                            const SizedBox(height: 12),
-                            TextFormField(
-                              controller: _controller.termNameController,
-                              decoration: const InputDecoration(
-                                labelText: 'Nome',
-                              ),
-                              onChanged: (_) => _syncSlugFromName(),
-                              validator: (value) {
-                                if (value == null || value.trim().isEmpty) {
-                                  return 'Nome obrigatorio.';
-                                }
-                                return null;
-                              },
-                            ),
-                            if (!_isEdit) ...[
-                              const SizedBox(height: 12),
-                              StreamValueBuilder<bool>(
-                                streamValue: _controller
-                                    .isTermSlugAutoEnabledStreamValue,
-                                builder: (context, isSlugAutoEnabled) {
-                                  return SwitchListTile(
-                                    contentPadding: EdgeInsets.zero,
-                                    title: const Text(
-                                      'Gerar slug automaticamente',
-                                    ),
-                                    subtitle: const Text(
-                                      'Você pode desligar para personalizar manualmente.',
-                                    ),
-                                    value: isSlugAutoEnabled,
-                                    onChanged: (value) {
-                                      _controller.setTermSlugAutoEnabled(value);
-                                      if (value) {
-                                        _syncSlugFromName();
-                                      }
-                                    },
-                                  );
-                                },
-                              ),
-                            ],
                           ],
                         ),
                       ),

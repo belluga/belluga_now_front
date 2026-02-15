@@ -158,9 +158,23 @@ class _TenantAdminTaxonomyFormScreenState
                       TenantAdminFormSectionCard(
                         title: 'Identidade da taxonomia',
                         description:
-                            'Defina slug, nome e metadados visuais da taxonomia.',
+                            'Defina nome, slug e metadados visuais da taxonomia.',
                         child: Column(
                           children: [
+                            TextFormField(
+                              controller: _controller.nameController,
+                              decoration: const InputDecoration(
+                                labelText: 'Nome',
+                              ),
+                              onChanged: (_) => _syncSlugFromName(),
+                              validator: (value) {
+                                if (value == null || value.trim().isEmpty) {
+                                  return 'Nome obrigatorio.';
+                                }
+                                return null;
+                              },
+                            ),
+                            const SizedBox(height: 12),
                             TextFormField(
                               controller: _controller.slugController,
                               decoration: const InputDecoration(
@@ -188,46 +202,6 @@ class _TenantAdminTaxonomyFormScreenState
                                 );
                               },
                             ),
-                            const SizedBox(height: 12),
-                            TextFormField(
-                              controller: _controller.nameController,
-                              decoration: const InputDecoration(
-                                labelText: 'Nome',
-                              ),
-                              onChanged: (_) => _syncSlugFromName(),
-                              validator: (value) {
-                                if (value == null || value.trim().isEmpty) {
-                                  return 'Nome obrigatorio.';
-                                }
-                                return null;
-                              },
-                            ),
-                            if (!_isEdit) ...[
-                              const SizedBox(height: 12),
-                              StreamValueBuilder<bool>(
-                                streamValue: _controller
-                                    .isTaxonomySlugAutoEnabledStreamValue,
-                                builder: (context, isSlugAutoEnabled) {
-                                  return SwitchListTile(
-                                    contentPadding: EdgeInsets.zero,
-                                    title: const Text(
-                                      'Gerar slug automaticamente',
-                                    ),
-                                    subtitle: const Text(
-                                      'Você pode desligar para personalizar manualmente.',
-                                    ),
-                                    value: isSlugAutoEnabled,
-                                    onChanged: (value) {
-                                      _controller
-                                          .setTaxonomySlugAutoEnabled(value);
-                                      if (value) {
-                                        _syncSlugFromName();
-                                      }
-                                    },
-                                  );
-                                },
-                              ),
-                            ],
                             const SizedBox(height: 12),
                             TextFormField(
                               controller: _controller.iconController,
@@ -281,10 +255,10 @@ class _TenantAdminTaxonomyFormScreenState
                                           backgroundColor: entry.value,
                                         ),
                                         label: Text(entry.key),
-                                        selected:
-                                            _controller.colorController.text
-                                                    .toUpperCase() ==
-                                                entry.key,
+                                        selected: _controller
+                                                .colorController.text
+                                                .toUpperCase() ==
+                                            entry.key,
                                         onSelected: (_) {
                                           _controller.colorController.text =
                                               entry.key;
@@ -313,7 +287,8 @@ class _TenantAdminTaxonomyFormScreenState
                                             Theme.of(context)
                                                 .colorScheme
                                                 .surfaceContainerHighest,
-                                        borderRadius: BorderRadius.circular(999),
+                                        borderRadius:
+                                            BorderRadius.circular(999),
                                       ),
                                       child: Icon(
                                         previewIcon ?? Icons.label_outline,

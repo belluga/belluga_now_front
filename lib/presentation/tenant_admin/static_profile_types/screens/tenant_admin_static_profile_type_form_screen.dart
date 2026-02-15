@@ -118,9 +118,22 @@ class _TenantAdminStaticProfileTypeFormScreenState
                       TenantAdminFormSectionCard(
                         title: 'Informacoes do tipo',
                         description:
-                            'Defina identificador e nome do tipo de ativo.',
+                            'Defina nome e identificador do tipo de ativo.',
                         child: Column(
                           children: [
+                            TextFormField(
+                              controller: _controller.labelController,
+                              decoration:
+                                  const InputDecoration(labelText: 'Label'),
+                              onChanged: (_) => _syncSlugFromLabel(),
+                              validator: (value) {
+                                if (value == null || value.trim().isEmpty) {
+                                  return 'Label e obrigatorio.';
+                                }
+                                return null;
+                              },
+                            ),
+                            const SizedBox(height: 12),
                             TextFormField(
                               controller: _controller.typeController,
                               decoration: const InputDecoration(
@@ -151,44 +164,6 @@ class _TenantAdminStaticProfileTypeFormScreenState
                                 );
                               },
                             ),
-                            const SizedBox(height: 12),
-                            TextFormField(
-                              controller: _controller.labelController,
-                              decoration:
-                                  const InputDecoration(labelText: 'Label'),
-                              onChanged: (_) => _syncSlugFromLabel(),
-                              validator: (value) {
-                                if (value == null || value.trim().isEmpty) {
-                                  return 'Label e obrigatorio.';
-                                }
-                                return null;
-                              },
-                            ),
-                            if (!_isEdit) ...[
-                              const SizedBox(height: 12),
-                              StreamValueBuilder<bool>(
-                                streamValue:
-                                    _controller.isSlugAutoEnabledStreamValue,
-                                builder: (context, isSlugAutoEnabled) {
-                                  return SwitchListTile(
-                                    contentPadding: EdgeInsets.zero,
-                                    title: const Text(
-                                      'Gerar slug automaticamente',
-                                    ),
-                                    subtitle: const Text(
-                                      'Você pode desligar para personalizar manualmente.',
-                                    ),
-                                    value: isSlugAutoEnabled,
-                                    onChanged: (value) {
-                                      _controller.setSlugAutoEnabled(value);
-                                      if (value) {
-                                        _syncSlugFromLabel();
-                                      }
-                                    },
-                                  );
-                                },
-                              ),
-                            ],
                           ],
                         ),
                       ),
