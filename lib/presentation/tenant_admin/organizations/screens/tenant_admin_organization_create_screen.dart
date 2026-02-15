@@ -1,5 +1,6 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/presentation/tenant_admin/organizations/controllers/tenant_admin_organizations_controller.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_form_layout.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
@@ -27,82 +28,65 @@ class _TenantAdminOrganizationCreateScreenState
           streamValue: _controller.createErrorMessageStreamValue,
           builder: (context, errorMessage) {
             _handleCreateErrorMessage(errorMessage);
-            return Scaffold(
-              appBar: AppBar(
-                title: const Text('Criar Organizacao'),
-                leading: IconButton(
-                  icon: const Icon(Icons.arrow_back),
-                  onPressed: () => context.router.maybePop(),
-                  tooltip: 'Voltar',
-                ),
+            return TenantAdminFormScaffold(
+              title: 'Criar Organizacao',
+              leading: IconButton(
+                icon: const Icon(Icons.arrow_back),
+                onPressed: () => context.router.maybePop(),
+                tooltip: 'Voltar',
               ),
-              body: Padding(
-                padding: EdgeInsets.fromLTRB(
-                  16,
-                  16,
-                  16,
-                  16 + MediaQuery.of(context).viewInsets.bottom,
-                ),
-                child: SingleChildScrollView(
-                  child: Form(
-                    key: _controller.formKey,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Card(
-                          margin: EdgeInsets.zero,
-                          child: Padding(
-                            padding: const EdgeInsets.all(16),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Dados da organizacao',
-                                  style: Theme.of(context).textTheme.titleMedium,
-                                ),
-                                const SizedBox(height: 12),
-                                TextFormField(
-                                  controller: _controller.nameController,
-                                  decoration:
-                                      const InputDecoration(labelText: 'Nome'),
-                                  validator: (value) {
-                                    if (value == null || value.trim().isEmpty) {
-                                      return 'Nome e obrigatorio.';
-                                    }
-                                    return null;
-                                  },
-                                ),
-                                const SizedBox(height: 12),
-                                TextFormField(
-                                  controller: _controller.descriptionController,
-                                  decoration: const InputDecoration(
-                                    labelText: 'Descricao (opcional)',
-                                  ),
-                                ),
-                              ],
+              child: SingleChildScrollView(
+                child: Form(
+                  key: _controller.formKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      TenantAdminFormSectionCard(
+                        title: 'Dados da organizacao',
+                        description:
+                            'Informe os dados basicos para cadastrar uma nova organizacao no tenant.',
+                        child: Column(
+                          children: [
+                            TextFormField(
+                              controller: _controller.nameController,
+                              decoration:
+                                  const InputDecoration(labelText: 'Nome'),
+                              validator: (value) {
+                                if (value == null || value.trim().isEmpty) {
+                                  return 'Nome e obrigatorio.';
+                                }
+                                return null;
+                              },
                             ),
-                          ),
+                            const SizedBox(height: 12),
+                            TextFormField(
+                              controller: _controller.descriptionController,
+                              decoration: const InputDecoration(
+                                labelText: 'Descricao (opcional)',
+                              ),
+                              minLines: 2,
+                              maxLines: 4,
+                            ),
+                          ],
                         ),
-                        const SizedBox(height: 24),
-                        SizedBox(
-                          width: double.infinity,
-                          child: FilledButton(
-                            onPressed: () {
-                              final form = _controller.formKey.currentState;
-                              if (form == null || !form.validate()) {
-                                return;
-                              }
-                              _controller.submitCreateOrganization(
-                                name: _controller.nameController.text.trim(),
-                                description:
-                                    _controller.descriptionController.text.trim(),
-                              );
-                            },
-                            child: const Text('Salvar'),
-                          ),
-                        ),
-                      ],
-                    ),
+                      ),
+                      const SizedBox(height: 24),
+                      TenantAdminPrimaryFormAction(
+                        label: 'Salvar organizacao',
+                        icon: Icons.save_outlined,
+                        onPressed: () {
+                          final form = _controller.formKey.currentState;
+                          if (form == null || !form.validate()) {
+                            return;
+                          }
+                          _controller.submitCreateOrganization(
+                            name: _controller.nameController.text.trim(),
+                            description:
+                                _controller.descriptionController.text.trim(),
+                          );
+                        },
+                      ),
+                    ],
                   ),
                 ),
               ),

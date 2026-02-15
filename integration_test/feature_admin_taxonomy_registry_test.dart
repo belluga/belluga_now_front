@@ -4,6 +4,7 @@ import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/domain/repositories/admin_mode_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/landlord_auth_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/landlord_tenants_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_account_profiles_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_accounts_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_taxonomies_repository_contract.dart';
@@ -13,10 +14,13 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dar
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_document.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_accounts_result.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_definition.dart';
+import 'package:belluga_now/presentation/tenant_admin/taxonomies/controllers/tenant_admin_taxonomies_controller.dart';
 import 'support/fake_landlord_app_data_backend.dart';
 import 'package:belluga_now/infrastructure/dal/dao/local/app_data_local_info_source/app_data_local_info_source_stub.dart';
 import 'package:belluga_now/infrastructure/repositories/app_data_repository.dart';
@@ -30,6 +34,34 @@ import 'support/integration_test_bootstrap.dart';
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
   IntegrationTestBootstrap.ensureNonProductionLandlordDomain();
+
+  Future<void> _waitForFinder(
+    WidgetTester tester,
+    Finder finder, {
+    Duration timeout = const Duration(seconds: 20),
+    Duration step = const Duration(milliseconds: 200),
+  }) async {
+    final deadline = DateTime.now().add(timeout);
+    while (DateTime.now().isBefore(deadline)) {
+      await tester.pump(step);
+      if (finder.evaluate().isNotEmpty) {
+        return;
+      }
+    }
+    throw TestFailure(
+      'Timed out waiting for ${finder.describeMatch(Plurality.one)}.',
+    );
+  }
+
+  Finder _tenantAdminShellRouterFinder() {
+    return find.byWidgetPredicate((widget) {
+      final key = widget.key;
+      if (key is! ValueKey<String>) {
+        return false;
+      }
+      return key.value.startsWith('tenant-admin-shell-router-');
+    });
+  }
 
   Future<void> _registerCommonDependencies({
     required TenantAdminTaxonomiesRepositoryContract taxonomiesRepository,
@@ -49,6 +81,9 @@ void main() {
     }
     if (getIt.isRegistered<LandlordAuthRepositoryContract>()) {
       getIt.unregister<LandlordAuthRepositoryContract>();
+    }
+    if (getIt.isRegistered<LandlordTenantsRepositoryContract>()) {
+      getIt.unregister<LandlordTenantsRepositoryContract>();
     }
     if (getIt.isRegistered<TenantAdminTaxonomiesRepositoryContract>()) {
       getIt.unregister<TenantAdminTaxonomiesRepositoryContract>();
@@ -71,6 +106,9 @@ void main() {
     );
     getIt.registerSingleton<LandlordAuthRepositoryContract>(
       _FakeLandlordAuthRepository(hasValidSession: true),
+    );
+    getIt.registerSingleton<LandlordTenantsRepositoryContract>(
+      _FakeLandlordTenantsRepository(),
     );
     getIt.registerSingleton<TenantAdminTaxonomiesRepositoryContract>(
       taxonomiesRepository,
@@ -96,48 +134,72 @@ void main() {
     GetIt.I.registerSingleton<ApplicationContract>(app);
     await app.init();
 
-    app.appRouter.replaceAll([
-      const TenantAdminShellRoute(
-        children: [TenantAdminTaxonomiesListRoute()],
-      ),
-    ]);
+    app.appRouter.replaceAll(
+      [
+        const TenantAdminShellRoute(
+          children: [TenantAdminTaxonomyCreateRoute()],
+        ),
+      ],
+    );
 
     await tester.pumpWidget(app);
-    await tester.pumpAndSettle(const Duration(seconds: 1));
-
-    await tester.tap(
-      find.widgetWithText(FloatingActionButton, 'Criar taxonomia'),
+    await tester.pumpAndSettle(const Duration(seconds: 2));
+    await _waitForFinder(tester, _tenantAdminShellRouterFinder());
+    app.appRouter.navigate(
+      const TenantAdminShellRoute(
+        children: [TenantAdminTaxonomyCreateRoute()],
+      ),
     );
-    await tester.pumpAndSettle();
+    await tester.pumpAndSettle(const Duration(seconds: 1));
 
     await tester.enterText(find.byType(TextFormField).at(0), 'cuisine');
     await tester.enterText(find.byType(TextFormField).at(1), 'Cozinha');
-    await tester.tap(find.text('account_profile'));
+    await tester.tap(find.widgetWithText(FilterChip, 'account_profile'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Salvar'));
+    final taxonomiesController = GetIt.I.get<TenantAdminTaxonomiesController>();
+    taxonomiesController.toggleTaxonomyAppliesToTarget('account_profile', true);
     await tester.pumpAndSettle();
+    FocusManager.instance.primaryFocus?.unfocus();
+    await tester.pumpAndSettle();
+    final taxonomySubmitButton =
+        find.byKey(const ValueKey('taxonomy-form-submit-button'));
+    await tester.ensureVisible(taxonomySubmitButton);
+    await tester.tap(taxonomySubmitButton);
+    await tester.pumpAndSettle();
+    final created = (await repository.fetchTaxonomies())
+        .firstWhere((taxonomy) => taxonomy.slug == 'cuisine');
 
-    expect(find.text('Cozinha'), findsOneWidget);
+    expect(created.name, 'Cozinha');
+    expect(created.appliesTo.contains('account_profile'), isTrue);
 
-    await tester.tap(find.byType(PopupMenuButton<String>).first);
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Editar'));
-    await tester.pumpAndSettle();
+    app.appRouter.replaceAll(
+      [
+        TenantAdminShellRoute(
+          children: [
+            TenantAdminTaxonomyEditRoute(taxonomy: created),
+          ],
+        ),
+      ],
+    );
+    await tester.pumpAndSettle(const Duration(seconds: 1));
 
     await tester.enterText(find.byType(TextFormField).at(1), 'Cozinha Nova');
-    await tester.tap(find.text('Salvar'));
+    FocusManager.instance.primaryFocus?.unfocus();
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(taxonomySubmitButton);
+    await tester.tap(taxonomySubmitButton);
     await tester.pumpAndSettle();
 
-    expect(find.text('Cozinha Nova'), findsOneWidget);
+    final updated = (await repository.fetchTaxonomies())
+        .firstWhere((taxonomy) => taxonomy.id == created.id);
+    expect(updated.name, 'Cozinha Nova');
 
-    await tester.tap(find.byType(PopupMenuButton<String>).first);
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Remover'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Remover'));
-    await tester.pumpAndSettle();
-
-    expect(find.text('Nenhuma taxonomia cadastrada.'), findsOneWidget);
+    await repository.deleteTaxonomy(created.id);
+    final taxonomies = await repository.fetchTaxonomies();
+    expect(
+      taxonomies.where((taxonomy) => taxonomy.id == created.id),
+      isEmpty,
+    );
   });
 
   testWidgets('Account profile creation selects taxonomy terms by registry',
@@ -193,8 +255,18 @@ void main() {
     ]);
 
     await tester.pumpWidget(app);
+    await tester.pumpAndSettle(const Duration(seconds: 2));
+    await _waitForFinder(tester, _tenantAdminShellRouterFinder());
+    app.appRouter.navigate(
+      TenantAdminShellRoute(
+        children: [
+          TenantAdminAccountProfileCreateRoute(accountSlug: 'account-1'),
+        ],
+      ),
+    );
     await tester.pumpAndSettle(const Duration(seconds: 1));
 
+    await _waitForFinder(tester, find.byType(DropdownButtonFormField<String>));
     await tester.tap(find.byType(DropdownButtonFormField<String>));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Artista').last);
@@ -268,6 +340,17 @@ class _FakeAccountsRepository implements TenantAdminAccountsRepositoryContract {
   Future<List<TenantAdminAccount>> fetchAccounts() async => const [];
 
   @override
+  Future<TenantAdminPagedAccountsResult> fetchAccountsPage({
+    required int page,
+    required int pageSize,
+  }) async {
+    return const TenantAdminPagedAccountsResult(
+      accounts: <TenantAdminAccount>[],
+      hasMore: false,
+    );
+  }
+
+  @override
   Future<TenantAdminAccount> fetchAccountBySlug(String accountSlug) async {
     return TenantAdminAccount(
       id: 'account-1',
@@ -328,6 +411,20 @@ class _FakeAccountsRepository implements TenantAdminAccountsRepositoryContract {
   Future<void> forceDeleteAccount(String accountSlug) async {}
 }
 
+class _FakeLandlordTenantsRepository
+    implements LandlordTenantsRepositoryContract {
+  @override
+  Future<List<LandlordTenantOption>> fetchTenants() async {
+    return const [
+      LandlordTenantOption(
+        id: 'tenant-guarappari',
+        name: 'Guarappari',
+        mainDomain: 'guarappari.local.test',
+      ),
+    ];
+  }
+}
+
 class _FakeAccountProfilesRepository
     implements TenantAdminAccountProfilesRepositoryContract {
   List<TenantAdminTaxonomyTerm> lastCreatedTerms = const [];
@@ -350,6 +447,28 @@ class _FakeAccountProfilesRepository
         ),
       ),
     ];
+  }
+
+  @override
+  Future<TenantAdminPagedResult<TenantAdminProfileTypeDefinition>>
+      fetchProfileTypesPage({
+    required int page,
+    required int pageSize,
+  }) async {
+    final types = await fetchProfileTypes();
+    final start = (page - 1) * pageSize;
+    if (page <= 0 || pageSize <= 0 || start >= types.length) {
+      return const TenantAdminPagedResult<TenantAdminProfileTypeDefinition>(
+        items: <TenantAdminProfileTypeDefinition>[],
+        hasMore: false,
+      );
+    }
+    final end =
+        start + pageSize < types.length ? start + pageSize : types.length;
+    return TenantAdminPagedResult<TenantAdminProfileTypeDefinition>(
+      items: types.sublist(start, end),
+      hasMore: end < types.length,
+    );
   }
 
   @override
@@ -502,6 +621,29 @@ class _FakeTaxonomiesRepository
       List.of(_taxonomies);
 
   @override
+  Future<TenantAdminPagedResult<TenantAdminTaxonomyDefinition>>
+      fetchTaxonomiesPage({
+    required int page,
+    required int pageSize,
+  }) async {
+    final taxonomies = await fetchTaxonomies();
+    final start = (page - 1) * pageSize;
+    if (page <= 0 || pageSize <= 0 || start >= taxonomies.length) {
+      return const TenantAdminPagedResult<TenantAdminTaxonomyDefinition>(
+        items: <TenantAdminTaxonomyDefinition>[],
+        hasMore: false,
+      );
+    }
+    final end = start + pageSize < taxonomies.length
+        ? start + pageSize
+        : taxonomies.length;
+    return TenantAdminPagedResult<TenantAdminTaxonomyDefinition>(
+      items: taxonomies.sublist(start, end),
+      hasMore: end < taxonomies.length,
+    );
+  }
+
+  @override
   Future<TenantAdminTaxonomyDefinition> createTaxonomy({
     required String slug,
     required String name,
@@ -559,6 +701,29 @@ class _FakeTaxonomiesRepository
     required String taxonomyId,
   }) async {
     return List.of(_terms[taxonomyId] ?? const []);
+  }
+
+  @override
+  Future<TenantAdminPagedResult<TenantAdminTaxonomyTermDefinition>>
+      fetchTermsPage({
+    required String taxonomyId,
+    required int page,
+    required int pageSize,
+  }) async {
+    final terms = await fetchTerms(taxonomyId: taxonomyId);
+    final start = (page - 1) * pageSize;
+    if (page <= 0 || pageSize <= 0 || start >= terms.length) {
+      return const TenantAdminPagedResult<TenantAdminTaxonomyTermDefinition>(
+        items: <TenantAdminTaxonomyTermDefinition>[],
+        hasMore: false,
+      );
+    }
+    final end =
+        start + pageSize < terms.length ? start + pageSize : terms.length;
+    return TenantAdminPagedResult<TenantAdminTaxonomyTermDefinition>(
+      items: terms.sublist(start, end),
+      hasMore: end < terms.length,
+    );
   }
 
   @override

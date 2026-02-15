@@ -4,6 +4,7 @@ import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/domain/repositories/admin_mode_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/landlord_auth_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/landlord_tenants_repository_contract.dart';
 import 'support/fake_landlord_app_data_backend.dart';
 import 'package:belluga_now/infrastructure/dal/dao/local/app_data_local_info_source/app_data_local_info_source_stub.dart';
 import 'package:belluga_now/infrastructure/repositories/app_data_repository.dart';
@@ -73,6 +74,16 @@ void main() {
     throw TestFailure('No tap target found.');
   }
 
+  Finder _tenantAdminShellRouterFinder() {
+    return find.byWidgetPredicate((widget) {
+      final key = widget.key;
+      if (key is! ValueKey<String>) {
+        return false;
+      }
+      return key.value.startsWith('tenant-admin-shell-router-');
+    });
+  }
+
   testWidgets('Admin accounts list/detail/create routes', (tester) async {
     if (GetIt.I.isRegistered<ApplicationContract>()) {
       GetIt.I.unregister<ApplicationContract>();
@@ -86,6 +97,9 @@ void main() {
     if (GetIt.I.isRegistered<LandlordAuthRepositoryContract>()) {
       GetIt.I.unregister<LandlordAuthRepositoryContract>();
     }
+    if (GetIt.I.isRegistered<LandlordTenantsRepositoryContract>()) {
+      GetIt.I.unregister<LandlordTenantsRepositoryContract>();
+    }
 
     GetIt.I.registerSingleton<AppDataRepositoryContract>(
       AppDataRepository(
@@ -98,6 +112,9 @@ void main() {
     );
     GetIt.I.registerSingleton<LandlordAuthRepositoryContract>(
       _FakeLandlordAuthRepository(hasValidSession: true),
+    );
+    GetIt.I.registerSingleton<LandlordTenantsRepositoryContract>(
+      _FakeLandlordTenantsRepository(),
     );
 
     final app = Application();
@@ -121,8 +138,15 @@ void main() {
 
     await _waitForFinder(
       tester,
-      find.byKey(const ValueKey('tenant-admin-shell-router')),
+      _tenantAdminShellRouterFinder(),
     );
+    app.appRouter.navigate(
+      const TenantAdminShellRoute(
+        children: [TenantAdminAccountsListRoute()],
+      ),
+    );
+    await _pumpFor(tester, const Duration(seconds: 2));
+    await _waitForFinder(tester, find.text('Segmento'));
     await _waitForFinder(tester, find.text('Do tenant'));
     await _waitForAny(
       tester,
@@ -146,24 +170,19 @@ void main() {
     await _pumpFor(tester, const Duration(seconds: 1));
     await _waitForFinder(
       tester,
-      find.byKey(const ValueKey('tenant-admin-shell-router')),
+      _tenantAdminShellRouterFinder(),
     );
-    if (find.byType(ListTile).evaluate().isNotEmpty) {
-      final firstTile = tester.widget<ListTile>(find.byType(ListTile).first);
-      final title = firstTile.title;
-      final slug = title is Text ? title.data : null;
-      await tester.tap(find.byType(ListTile).first);
-      await _pumpFor(tester, const Duration(seconds: 1));
-      if (slug != null) {
-        await _waitForFinder(tester, find.text('Conta: $slug'));
-      }
-      await tester.tap(find.byIcon(Icons.arrow_back));
-      await _pumpFor(tester, const Duration(seconds: 1));
-      await _waitForFinder(
-        tester,
-        find.byKey(const ValueKey('tenant-admin-shell-router')),
-      );
-    }
+    app.appRouter.push(
+      TenantAdminAccountDetailRoute(accountSlug: 'detalhes-tecnicos'),
+    );
+    await _pumpFor(tester, const Duration(seconds: 1));
+    await _waitForFinder(tester, find.textContaining('Conta:'));
+    await tester.tap(find.byIcon(Icons.arrow_back));
+    await _pumpFor(tester, const Duration(seconds: 1));
+    await _waitForFinder(
+      tester,
+      _tenantAdminShellRouterFinder(),
+    );
 
     await tester.tap(find.text('Nao gerenciadas'));
     await _pumpFor(tester, const Duration(seconds: 1));
@@ -237,5 +256,19 @@ class _FakeLandlordAuthRepository implements LandlordAuthRepositoryContract {
   @override
   Future<void> logout() async {
     _hasValidSession = false;
+  }
+}
+
+class _FakeLandlordTenantsRepository
+    implements LandlordTenantsRepositoryContract {
+  @override
+  Future<List<LandlordTenantOption>> fetchTenants() async {
+    return const [
+      LandlordTenantOption(
+        id: 'tenant-guarappari',
+        name: 'Guarappari',
+        mainDomain: 'guarappari.local.test',
+      ),
+    ];
   }
 }

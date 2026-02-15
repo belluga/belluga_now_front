@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:belluga_now/domain/repositories/tenant_admin_static_assets_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_taxonomies_repository_contract.dart';
 import 'package:belluga_now/domain/services/tenant_admin_location_selection_contract.dart';
+import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_static_asset.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_static_profile_type.dart';
@@ -18,31 +19,44 @@ class TenantAdminStaticAssetsController implements Disposable {
     TenantAdminStaticAssetsRepositoryContract? repository,
     TenantAdminTaxonomiesRepositoryContract? taxonomiesRepository,
     TenantAdminLocationSelectionContract? locationSelection,
+    TenantAdminTenantScopeContract? tenantScope,
   })  : _repository = repository ??
             GetIt.I.get<TenantAdminStaticAssetsRepositoryContract>(),
         _taxonomiesRepository = taxonomiesRepository ??
             GetIt.I.get<TenantAdminTaxonomiesRepositoryContract>(),
-        _locationSelection =
-            locationSelection ?? GetIt.I.get<TenantAdminLocationSelectionContract>();
+        _locationSelection = locationSelection ??
+            GetIt.I.get<TenantAdminLocationSelectionContract>(),
+        _tenantScope = tenantScope ??
+            (GetIt.I.isRegistered<TenantAdminTenantScopeContract>()
+                ? GetIt.I.get<TenantAdminTenantScopeContract>()
+                : null) {
+    _bindTenantScope();
+  }
 
   final TenantAdminStaticAssetsRepositoryContract _repository;
   final TenantAdminTaxonomiesRepositoryContract _taxonomiesRepository;
   final TenantAdminLocationSelectionContract _locationSelection;
+  final TenantAdminTenantScopeContract? _tenantScope;
+  static const int _assetsPageSize = 20;
 
-  final StreamValue<List<TenantAdminStaticAsset>> assetsStreamValue =
-      StreamValue<List<TenantAdminStaticAsset>>(defaultValue: const []);
+  final StreamValue<List<TenantAdminStaticAsset>?> assetsStreamValue =
+      StreamValue<List<TenantAdminStaticAsset>?>();
+  final StreamValue<bool> hasMoreAssetsStreamValue =
+      StreamValue<bool>(defaultValue: true);
+  final StreamValue<bool> isAssetsPageLoadingStreamValue =
+      StreamValue<bool>(defaultValue: false);
   final StreamValue<List<TenantAdminStaticProfileTypeDefinition>>
       profileTypesStreamValue =
       StreamValue<List<TenantAdminStaticProfileTypeDefinition>>(
-        defaultValue: const [],
-      );
+    defaultValue: const [],
+  );
   final StreamValue<List<TenantAdminTaxonomyDefinition>> taxonomiesStreamValue =
       StreamValue<List<TenantAdminTaxonomyDefinition>>(defaultValue: const []);
   final StreamValue<Map<String, List<TenantAdminTaxonomyTermDefinition>>>
       taxonomyTermsStreamValue =
       StreamValue<Map<String, List<TenantAdminTaxonomyTermDefinition>>>(
-        defaultValue: const {},
-      );
+    defaultValue: const {},
+  );
   final StreamValue<Map<String, Set<String>>> selectedTaxonomyTermsStreamValue =
       StreamValue<Map<String, Set<String>>>(defaultValue: const {});
   final StreamValue<String?> selectedProfileTypeStreamValue =
@@ -56,14 +70,11 @@ class TenantAdminStaticAssetsController implements Disposable {
   final StreamValue<String?> errorStreamValue = StreamValue<String?>();
   final StreamValue<bool> taxonomyLoadingStreamValue =
       StreamValue<bool>(defaultValue: false);
-  final StreamValue<String?> taxonomyErrorStreamValue =
-      StreamValue<String?>();
+  final StreamValue<String?> taxonomyErrorStreamValue = StreamValue<String?>();
   final StreamValue<bool> submitLoadingStreamValue =
       StreamValue<bool>(defaultValue: false);
-  final StreamValue<String?> submitErrorStreamValue =
-      StreamValue<String?>();
-  final StreamValue<String?> submitSuccessStreamValue =
-      StreamValue<String?>();
+  final StreamValue<String?> submitErrorStreamValue = StreamValue<String?>();
+  final StreamValue<String?> submitSuccessStreamValue = StreamValue<String?>();
   final StreamValue<String> searchQueryStreamValue =
       StreamValue<String>(defaultValue: '');
 
@@ -80,7 +91,40 @@ class TenantAdminStaticAssetsController implements Disposable {
   final TextEditingController longitudeController = TextEditingController();
 
   bool _isDisposed = false;
+  bool _isFetchingAssetsPage = false;
+  bool _hasMoreAssets = true;
+  int _currentAssetsPage = 0;
+  final List<TenantAdminStaticAsset> _fetchedAssets =
+      <TenantAdminStaticAsset>[];
   StreamSubscription<TenantAdminLocation?>? _locationSubscription;
+  StreamSubscription<String?>? _tenantScopeSubscription;
+  String? _lastTenantDomain;
+
+  void _bindTenantScope() {
+    if (_tenantScopeSubscription != null || _tenantScope == null) {
+      return;
+    }
+    final tenantScope = _tenantScope;
+    _lastTenantDomain =
+        _normalizeTenantDomain(tenantScope.selectedTenantDomain);
+    _tenantScopeSubscription =
+        tenantScope.selectedTenantDomainStreamValue.stream.listen(
+      (tenantDomain) {
+        if (_isDisposed) {
+          return;
+        }
+        final normalized = _normalizeTenantDomain(tenantDomain);
+        if (normalized == _lastTenantDomain) {
+          return;
+        }
+        _lastTenantDomain = normalized;
+        _resetTenantScopedState();
+        if (normalized != null) {
+          unawaited(loadAssets());
+        }
+      },
+    );
+  }
 
   void _bindLocationSelection() {
     if (_locationSubscription != null) return;
@@ -96,18 +140,64 @@ class TenantAdminStaticAssetsController implements Disposable {
   }
 
   Future<void> loadAssets() async {
+    await _waitForAssetsFetch();
+    _resetAssetsPagination();
+    assetsStreamValue.addValue(null);
+    await _fetchAssetsPage(page: 1);
+  }
+
+  Future<void> loadNextAssetsPage() async {
+    if (_isDisposed || _isFetchingAssetsPage || !_hasMoreAssets) {
+      return;
+    }
+    await _fetchAssetsPage(page: _currentAssetsPage + 1);
+  }
+
+  Future<void> _waitForAssetsFetch() async {
+    while (_isFetchingAssetsPage && !_isDisposed) {
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+    }
+  }
+
+  Future<void> _fetchAssetsPage({required int page}) async {
+    if (_isFetchingAssetsPage) return;
+    if (page > 1 && !_hasMoreAssets) return;
+
+    _isFetchingAssetsPage = true;
+    if (page > 1 && !_isDisposed) {
+      isAssetsPageLoadingStreamValue.addValue(true);
+    }
     isLoadingStreamValue.addValue(true);
     try {
-      final assets = await _repository.fetchStaticAssets();
+      final result = await _repository.fetchStaticAssetsPage(
+        page: page,
+        pageSize: _assetsPageSize,
+      );
       if (_isDisposed) return;
-      assetsStreamValue.addValue(assets);
+      if (page == 1) {
+        _fetchedAssets
+          ..clear()
+          ..addAll(result.items);
+      } else {
+        _fetchedAssets.addAll(result.items);
+      }
+      _currentAssetsPage = page;
+      _hasMoreAssets = result.hasMore;
+      hasMoreAssetsStreamValue.addValue(_hasMoreAssets);
+      assetsStreamValue
+          .addValue(List<TenantAdminStaticAsset>.unmodifiable(_fetchedAssets));
       errorStreamValue.addValue(null);
     } catch (error) {
       if (_isDisposed) return;
+      if (page == 1) {
+        assetsStreamValue.addValue(const <TenantAdminStaticAsset>[]);
+      }
       errorStreamValue.addValue(error.toString());
     } finally {
+      _isFetchingAssetsPage = false;
       if (!_isDisposed) {
         isLoadingStreamValue.addValue(false);
+        isAssetsPageLoadingStreamValue.addValue(false);
       }
     }
   }
@@ -332,9 +422,12 @@ class TenantAdminStaticAssetsController implements Disposable {
         taxonomyTerms: _buildTaxonomyTerms(),
         tags: _parseList(tagsController),
         categories: _parseList(categoriesController),
-        bio: bioController.text.trim().isEmpty ? null : bioController.text.trim(),
-        content:
-            contentController.text.trim().isEmpty ? null : contentController.text.trim(),
+        bio: bioController.text.trim().isEmpty
+            ? null
+            : bioController.text.trim(),
+        content: contentController.text.trim().isEmpty
+            ? null
+            : contentController.text.trim(),
         avatarUrl: avatarUrlController.text.trim().isEmpty
             ? null
             : avatarUrlController.text.trim(),
@@ -346,8 +439,12 @@ class TenantAdminStaticAssetsController implements Disposable {
       if (_isDisposed) return;
       submitErrorStreamValue.addValue(null);
       submitSuccessStreamValue.addValue('Ativo criado.');
+      final nextAssets = [..._fetchedAssets, created];
+      _fetchedAssets
+        ..clear()
+        ..addAll(nextAssets);
       assetsStreamValue.addValue(
-        [...assetsStreamValue.value, created],
+        List<TenantAdminStaticAsset>.unmodifiable(nextAssets),
       );
     } catch (error) {
       if (_isDisposed) return;
@@ -377,9 +474,12 @@ class TenantAdminStaticAssetsController implements Disposable {
         taxonomyTerms: _buildTaxonomyTerms(),
         tags: _parseList(tagsController),
         categories: _parseList(categoriesController),
-        bio: bioController.text.trim().isEmpty ? null : bioController.text.trim(),
-        content:
-            contentController.text.trim().isEmpty ? null : contentController.text.trim(),
+        bio: bioController.text.trim().isEmpty
+            ? null
+            : bioController.text.trim(),
+        content: contentController.text.trim().isEmpty
+            ? null
+            : contentController.text.trim(),
         avatarUrl: avatarUrlController.text.trim().isEmpty
             ? null
             : avatarUrlController.text.trim(),
@@ -406,10 +506,14 @@ class TenantAdminStaticAssetsController implements Disposable {
     try {
       await _repository.deleteStaticAsset(assetId);
       if (_isDisposed) return;
+      final nextAssets = _fetchedAssets
+          .where((asset) => asset.id != assetId)
+          .toList(growable: false);
+      _fetchedAssets
+        ..clear()
+        ..addAll(nextAssets);
       assetsStreamValue.addValue(
-        assetsStreamValue.value
-            .where((asset) => asset.id != assetId)
-            .toList(growable: false),
+        List<TenantAdminStaticAsset>.unmodifiable(nextAssets),
       );
     } catch (error) {
       if (_isDisposed) return;
@@ -418,10 +522,14 @@ class TenantAdminStaticAssetsController implements Disposable {
   }
 
   void _replaceAsset(TenantAdminStaticAsset updated) {
-    final updatedList = assetsStreamValue.value
+    final updatedList = _fetchedAssets
         .map((asset) => asset.id == updated.id ? updated : asset)
         .toList(growable: false);
-    assetsStreamValue.addValue(updatedList);
+    _fetchedAssets
+      ..clear()
+      ..addAll(updatedList);
+    assetsStreamValue
+        .addValue(List<TenantAdminStaticAsset>.unmodifiable(updatedList));
     editingAssetStreamValue.addValue(updated);
   }
 
@@ -448,10 +556,48 @@ class TenantAdminStaticAssetsController implements Disposable {
     clearSubmitMessages();
   }
 
+  void _resetTenantScopedState() {
+    _resetAssetsPagination();
+    assetsStreamValue.addValue(null);
+    profileTypesStreamValue.addValue(const []);
+    taxonomiesStreamValue.addValue(const []);
+    taxonomyTermsStreamValue.addValue(const {});
+    selectedTaxonomyTermsStreamValue.addValue(const {});
+    selectedProfileTypeStreamValue.addValue(null);
+    editingAssetStreamValue.addValue(null);
+    searchQueryStreamValue.addValue('');
+    errorStreamValue.addValue(null);
+    taxonomyErrorStreamValue.addValue(null);
+    _resetFormState();
+  }
+
+  void _resetAssetsPagination() {
+    _fetchedAssets.clear();
+    _currentAssetsPage = 0;
+    _hasMoreAssets = true;
+    _isFetchingAssetsPage = false;
+    hasMoreAssetsStreamValue.addValue(true);
+    isAssetsPageLoadingStreamValue.addValue(false);
+  }
+
+  String? _normalizeTenantDomain(String? raw) {
+    final trimmed = raw?.trim();
+    if (trimmed == null || trimmed.isEmpty) {
+      return null;
+    }
+    final uri =
+        Uri.tryParse(trimmed.contains('://') ? trimmed : 'https://$trimmed');
+    if (uri != null && uri.host.trim().isNotEmpty) {
+      return uri.host.trim();
+    }
+    return trimmed;
+  }
+
   @override
   void onDispose() {
     _isDisposed = true;
     _locationSubscription?.cancel();
+    _tenantScopeSubscription?.cancel();
     displayNameController.dispose();
     slugController.dispose();
     bioController.dispose();
@@ -463,6 +609,8 @@ class TenantAdminStaticAssetsController implements Disposable {
     latitudeController.dispose();
     longitudeController.dispose();
     assetsStreamValue.dispose();
+    hasMoreAssetsStreamValue.dispose();
+    isAssetsPageLoadingStreamValue.dispose();
     profileTypesStreamValue.dispose();
     taxonomiesStreamValue.dispose();
     taxonomyTermsStreamValue.dispose();

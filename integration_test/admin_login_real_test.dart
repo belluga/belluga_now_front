@@ -4,6 +4,7 @@ import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/domain/repositories/admin_mode_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/landlord_auth_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/landlord_tenants_repository_contract.dart';
 import 'package:belluga_now/presentation/landlord/auth/controllers/landlord_login_controller.dart';
 import 'support/fake_landlord_app_data_backend.dart';
 import 'package:belluga_now/infrastructure/dal/dao/local/app_data_local_info_source/app_data_local_info_source_stub.dart';
@@ -61,6 +62,16 @@ void main() {
     }
   }
 
+  Finder _tenantAdminShellRouterFinder() {
+    return find.byWidgetPredicate((widget) {
+      final key = widget.key;
+      if (key is! ValueKey<String>) {
+        return false;
+      }
+      return key.value.startsWith('tenant-admin-shell-router-');
+    });
+  }
+
   Future<void> _resetContainer() async {
     await GetIt.I.reset(dispose: true);
   }
@@ -85,6 +96,15 @@ void main() {
     );
   }
 
+  void _registerFakeLandlordTenantsRepository() {
+    if (GetIt.I.isRegistered<LandlordTenantsRepositoryContract>()) {
+      GetIt.I.unregister<LandlordTenantsRepositoryContract>();
+    }
+    GetIt.I.registerSingleton<LandlordTenantsRepositoryContract>(
+      _FakeLandlordTenantsRepository(),
+    );
+  }
+
   testWidgets('Admin login via real credentials opens admin shell',
       (tester) async {
     await _resetContainer();
@@ -104,6 +124,7 @@ void main() {
     GetIt.I.registerSingleton<ApplicationContract>(app);
     await app.init();
     _registerFakeLandlordAuth();
+    _registerFakeLandlordTenantsRepository();
 
     await tester.pumpWidget(app);
     await _pumpFor(tester, const Duration(seconds: 2));
@@ -143,10 +164,9 @@ void main() {
     await tester.tap(find.widgetWithText(FilledButton, 'Entrar'));
     await _assertNoFrameworkExceptionFor(tester, const Duration(seconds: 5));
 
-    final adminShellRouter =
-        find.byKey(const ValueKey('tenant-admin-shell-router'));
+    final adminShellRouter = _tenantAdminShellRouterFinder();
     await _waitForFinder(tester, adminShellRouter);
-    await _waitForFinder(tester, find.text('Admin'));
+    await _waitForFinder(tester, find.text('Visão geral'));
     await _assertNoFrameworkExceptionFor(tester, const Duration(seconds: 2));
   });
 
@@ -170,6 +190,7 @@ void main() {
       GetIt.I.registerSingleton<ApplicationContract>(app);
       await app.init();
       _registerFakeLandlordAuth();
+      _registerFakeLandlordTenantsRepository();
 
       await tester.pumpWidget(app);
       await _pumpFor(tester, const Duration(seconds: 2));
@@ -210,10 +231,9 @@ void main() {
       await tester.tap(find.widgetWithText(FilledButton, 'Entrar'));
       await _assertNoFrameworkExceptionFor(tester, const Duration(seconds: 5));
 
-      final adminShellRouter =
-          find.byKey(const ValueKey('tenant-admin-shell-router'));
+      final adminShellRouter = _tenantAdminShellRouterFinder();
       await _waitForFinder(tester, adminShellRouter);
-      await _waitForFinder(tester, find.text('Admin'));
+      await _waitForFinder(tester, find.text('Visão geral'));
       await _assertNoFrameworkExceptionFor(tester, const Duration(seconds: 2));
     },
   );
@@ -268,5 +288,19 @@ class _FakeLandlordAuthRepository implements LandlordAuthRepositoryContract {
   @override
   Future<void> logout() async {
     _hasValidSession = false;
+  }
+}
+
+class _FakeLandlordTenantsRepository
+    implements LandlordTenantsRepositoryContract {
+  @override
+  Future<List<LandlordTenantOption>> fetchTenants() async {
+    return const [
+      LandlordTenantOption(
+        id: 'tenant-guarappari',
+        name: 'Guarappari',
+        mainDomain: 'guarappari.local.test',
+      ),
+    ];
   }
 }

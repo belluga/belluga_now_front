@@ -9,6 +9,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/domain/tenant_admin/ownership_state.dart';
 import 'package:belluga_now/domain/services/tenant_admin_location_selection_contract.dart';
+import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart' show Disposable, GetIt;
 import 'package:image_picker/image_picker.dart';
@@ -19,24 +20,36 @@ class TenantAdminAccountsController implements Disposable {
     TenantAdminAccountsRepositoryContract? accountsRepository,
     TenantAdminAccountProfilesRepositoryContract? profilesRepository,
     TenantAdminLocationSelectionContract? locationSelectionService,
+    TenantAdminTenantScopeContract? tenantScope,
   })  : _accountsRepository = accountsRepository ??
             GetIt.I.get<TenantAdminAccountsRepositoryContract>(),
         _profilesRepository = profilesRepository ??
             GetIt.I.get<TenantAdminAccountProfilesRepositoryContract>(),
         _locationSelectionService = locationSelectionService ??
-            GetIt.I.get<TenantAdminLocationSelectionContract>();
+            GetIt.I.get<TenantAdminLocationSelectionContract>(),
+        _tenantScope = tenantScope ??
+            (GetIt.I.isRegistered<TenantAdminTenantScopeContract>()
+                ? GetIt.I.get<TenantAdminTenantScopeContract>()
+                : null);
 
   final TenantAdminAccountsRepositoryContract _accountsRepository;
   final TenantAdminAccountProfilesRepositoryContract _profilesRepository;
   final TenantAdminLocationSelectionContract _locationSelectionService;
+  final TenantAdminTenantScopeContract? _tenantScope;
 
-  final StreamValue<List<TenantAdminAccount>> accountsStreamValue =
-      StreamValue<List<TenantAdminAccount>>(defaultValue: const []);
+  static const int _accountsPageSize = 20;
+
+  final StreamValue<List<TenantAdminAccount>?> accountsStreamValue =
+      StreamValue<List<TenantAdminAccount>?>();
+  final StreamValue<bool> hasMoreAccountsStreamValue =
+      StreamValue<bool>(defaultValue: true);
+  final StreamValue<bool> isAccountsPageLoadingStreamValue =
+      StreamValue<bool>(defaultValue: false);
   final StreamValue<List<TenantAdminProfileTypeDefinition>>
       profileTypesStreamValue =
       StreamValue<List<TenantAdminProfileTypeDefinition>>(
           defaultValue: const []);
-  final StreamValue<bool> isLoadingStreamValue =
+  final StreamValue<bool> isProfileTypesLoadingStreamValue =
       StreamValue<bool>(defaultValue: false);
   final StreamValue<String?> errorStreamValue = StreamValue<String?>();
   final StreamValue<TenantAdminOwnershipState> selectedOwnershipStreamValue =
@@ -67,11 +80,26 @@ class TenantAdminAccountsController implements Disposable {
 
   bool _isDisposed = false;
   bool _initialized = false;
+  bool _isFetchingAccountsPage = false;
+  bool _hasMoreAccounts = true;
+  int _currentAccountsPage = 0;
+  final List<TenantAdminAccount> _fetchedAccounts = <TenantAdminAccount>[];
+  String? _initializedTenantDomain;
   StreamSubscription<TenantAdminLocation?>? _locationSelectionSubscription;
+  StreamSubscription<String?>? _tenantScopeSubscription;
 
   Future<void> init() async {
-    if (_initialized) return;
+    _bindTenantScope();
+    final normalizedTenantDomain =
+        _normalizeTenantDomain(_tenantScope?.selectedTenantDomain);
+    if (_initialized && _initializedTenantDomain == normalizedTenantDomain) {
+      return;
+    }
+    if (_initialized && _initializedTenantDomain != normalizedTenantDomain) {
+      _resetTenantScopedState();
+    }
     _initialized = true;
+    _initializedTenantDomain = normalizedTenantDomain;
     _bindLocationSelection();
     await Future.wait([
       loadAccounts(),
@@ -79,25 +107,103 @@ class TenantAdminAccountsController implements Disposable {
     ]);
   }
 
+  void _bindTenantScope() {
+    if (_tenantScopeSubscription != null || _tenantScope == null) {
+      return;
+    }
+    final tenantScope = _tenantScope;
+    _tenantScopeSubscription =
+        tenantScope.selectedTenantDomainStreamValue.stream.listen(
+      (tenantDomain) {
+        if (_isDisposed) return;
+        final normalized = _normalizeTenantDomain(tenantDomain);
+        if (normalized == _initializedTenantDomain) {
+          return;
+        }
+        _initializedTenantDomain = normalized;
+        _initialized = normalized != null;
+        _resetTenantScopedState();
+        if (normalized != null) {
+          unawaited(_loadTenantScopedData());
+        }
+      },
+    );
+  }
+
+  Future<void> _loadTenantScopedData() async {
+    await Future.wait([
+      loadAccounts(),
+      loadProfileTypes(),
+    ]);
+  }
+
   Future<void> loadAccounts() async {
-    isLoadingStreamValue.addValue(true);
+    await _waitForAccountsFetch();
+    _resetAccountsPagination();
+    if (_isDisposed) {
+      return;
+    }
+    accountsStreamValue.addValue(null);
+    await _fetchAccountsPage(page: 1);
+  }
+
+  Future<void> loadNextAccountsPage() async {
+    if (_isDisposed || _isFetchingAccountsPage || !_hasMoreAccounts) {
+      return;
+    }
+    await _fetchAccountsPage(page: _currentAccountsPage + 1);
+  }
+
+  Future<void> _waitForAccountsFetch() async {
+    while (_isFetchingAccountsPage && !_isDisposed) {
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+    }
+  }
+
+  Future<void> _fetchAccountsPage({required int page}) async {
+    if (_isFetchingAccountsPage) return;
+    if (page > 1 && !_hasMoreAccounts) return;
+
+    _isFetchingAccountsPage = true;
+    if (page > 1 && !_isDisposed) {
+      isAccountsPageLoadingStreamValue.addValue(true);
+    }
+
     try {
-      final accounts = await _accountsRepository.fetchAccounts();
+      final result = await _accountsRepository.fetchAccountsPage(
+        page: page,
+        pageSize: _accountsPageSize,
+      );
       if (_isDisposed) return;
-      accountsStreamValue.addValue(accounts);
+      if (page == 1) {
+        _fetchedAccounts
+          ..clear()
+          ..addAll(result.accounts);
+      } else {
+        _fetchedAccounts.addAll(result.accounts);
+      }
+      _currentAccountsPage = page;
+      _hasMoreAccounts = result.hasMore;
+      hasMoreAccountsStreamValue.addValue(_hasMoreAccounts);
+      accountsStreamValue
+          .addValue(List<TenantAdminAccount>.unmodifiable(_fetchedAccounts));
       errorStreamValue.addValue(null);
     } catch (error) {
       if (_isDisposed) return;
       errorStreamValue.addValue(error.toString());
+      if (page == 1) {
+        accountsStreamValue.addValue(const <TenantAdminAccount>[]);
+      }
     } finally {
+      _isFetchingAccountsPage = false;
       if (!_isDisposed) {
-        isLoadingStreamValue.addValue(false);
+        isAccountsPageLoadingStreamValue.addValue(false);
       }
     }
   }
 
   Future<void> loadProfileTypes() async {
-    isLoadingStreamValue.addValue(true);
+    isProfileTypesLoadingStreamValue.addValue(true);
     try {
       final types = await _profilesRepository.fetchProfileTypes();
       if (_isDisposed) return;
@@ -108,7 +214,7 @@ class TenantAdminAccountsController implements Disposable {
       errorStreamValue.addValue(error.toString());
     } finally {
       if (!_isDisposed) {
-        isLoadingStreamValue.addValue(false);
+        isProfileTypesLoadingStreamValue.addValue(false);
       }
     }
   }
@@ -259,9 +365,44 @@ class TenantAdminAccountsController implements Disposable {
     longitudeController.clear();
   }
 
+  void _resetAccountsPagination() {
+    _fetchedAccounts.clear();
+    _currentAccountsPage = 0;
+    _hasMoreAccounts = true;
+    _isFetchingAccountsPage = false;
+    hasMoreAccountsStreamValue.addValue(true);
+    isAccountsPageLoadingStreamValue.addValue(false);
+  }
+
+  void _resetTenantScopedState() {
+    _resetAccountsPagination();
+    accountsStreamValue.addValue(null);
+    profileTypesStreamValue.addValue(const []);
+    errorStreamValue.addValue(null);
+    createErrorMessageStreamValue.addValue(null);
+    createSuccessMessageStreamValue.addValue(null);
+    createAccountIdStreamValue.addValue(null);
+    resetCreateForm();
+    resetCreateState();
+  }
+
+  String? _normalizeTenantDomain(String? raw) {
+    final trimmed = raw?.trim();
+    if (trimmed == null || trimmed.isEmpty) {
+      return null;
+    }
+    final uri =
+        Uri.tryParse(trimmed.contains('://') ? trimmed : 'https://$trimmed');
+    if (uri != null && uri.host.trim().isNotEmpty) {
+      return uri.host.trim();
+    }
+    return trimmed;
+  }
+
   void dispose() {
     _isDisposed = true;
     _locationSelectionSubscription?.cancel();
+    _tenantScopeSubscription?.cancel();
     nameController.dispose();
     documentTypeController.dispose();
     documentNumberController.dispose();
@@ -269,8 +410,10 @@ class TenantAdminAccountsController implements Disposable {
     latitudeController.dispose();
     longitudeController.dispose();
     accountsStreamValue.dispose();
+    hasMoreAccountsStreamValue.dispose();
+    isAccountsPageLoadingStreamValue.dispose();
     profileTypesStreamValue.dispose();
-    isLoadingStreamValue.dispose();
+    isProfileTypesLoadingStreamValue.dispose();
     errorStreamValue.dispose();
     selectedOwnershipStreamValue.dispose();
     createStateStreamValue.dispose();

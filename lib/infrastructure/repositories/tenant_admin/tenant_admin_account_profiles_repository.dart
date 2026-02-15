@@ -5,10 +5,12 @@ import 'package:belluga_now/domain/tenant_admin/ownership_state.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
 import 'package:belluga_now/infrastructure/dal/dto/tenant_admin/tenant_admin_account_profile_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/tenant_admin/tenant_admin_profile_type_dto.dart';
+import 'package:belluga_now/infrastructure/repositories/tenant_admin/tenant_admin_pagination_utils.dart';
 import 'package:dio/dio.dart';
 import 'package:get_it/get_it.dart';
 import 'package:http_parser/http_parser.dart';
@@ -217,15 +219,49 @@ class TenantAdminAccountProfilesRepository
 
   @override
   Future<List<TenantAdminProfileTypeDefinition>> fetchProfileTypes() async {
+    var page = 1;
+    const pageSize = 100;
+    var hasMore = true;
+    final types = <TenantAdminProfileTypeDefinition>[];
+
+    while (hasMore) {
+      final result = await fetchProfileTypesPage(
+        page: page,
+        pageSize: pageSize,
+      );
+      types.addAll(result.items);
+      hasMore = result.hasMore;
+      page += 1;
+    }
+
+    return List<TenantAdminProfileTypeDefinition>.unmodifiable(types);
+  }
+
+  @override
+  Future<TenantAdminPagedResult<TenantAdminProfileTypeDefinition>>
+      fetchProfileTypesPage({
+    required int page,
+    required int pageSize,
+  }) async {
     try {
       final response = await _dio.get(
         '$_apiBaseUrl/v1/account_profile_types',
+        queryParameters: {
+          'page': page,
+          'page_size': pageSize,
+        },
         options: Options(headers: _buildHeaders()),
       );
       final data = _extractList(response.data);
-      return data.map(_mapProfileType).toList(growable: false);
+      return TenantAdminPagedResult<TenantAdminProfileTypeDefinition>(
+        items: data.map(_mapProfileType).toList(growable: false),
+        hasMore: tenantAdminResolveHasMore(
+          rawResponse: response.data,
+          requestedPage: page,
+        ),
+      );
     } on DioException catch (error) {
-      throw _wrapError(error, 'load profile types');
+      throw _wrapError(error, 'load profile types page');
     }
   }
 

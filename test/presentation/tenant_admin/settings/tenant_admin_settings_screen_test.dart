@@ -1,6 +1,8 @@
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/app_data/value_object/platform_type_value.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/tenant_admin_settings_repository_contract.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_settings.dart';
 import 'package:belluga_now/presentation/tenant_admin/settings/controllers/tenant_admin_settings_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/settings/screens/tenant_admin_settings_screen.dart';
 import 'package:flutter/material.dart';
@@ -21,7 +23,11 @@ void main() {
 
   testWidgets('renders environment snapshot details', (tester) async {
     final repository = _FakeAppDataRepository(_buildAppData());
+    final settingsRepository = _FakeTenantAdminSettingsRepository();
     GetIt.I.registerSingleton<AppDataRepositoryContract>(repository);
+    GetIt.I.registerSingleton<TenantAdminSettingsRepositoryContract>(
+      settingsRepository,
+    );
     GetIt.I.registerFactory<TenantAdminSettingsController>(
       () => TenantAdminSettingsController(),
     );
@@ -42,7 +48,11 @@ void main() {
 
   testWidgets('updates theme mode via segmented control', (tester) async {
     final repository = _FakeAppDataRepository(_buildAppData());
+    final settingsRepository = _FakeTenantAdminSettingsRepository();
     GetIt.I.registerSingleton<AppDataRepositoryContract>(repository);
+    GetIt.I.registerSingleton<TenantAdminSettingsRepositoryContract>(
+      settingsRepository,
+    );
     GetIt.I.registerFactory<TenantAdminSettingsController>(
       () => TenantAdminSettingsController(),
     );
@@ -58,6 +68,48 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(repository.themeMode, ThemeMode.dark);
+  });
+
+  testWidgets('saves firebase settings via remote repository', (tester) async {
+    final repository = _FakeAppDataRepository(_buildAppData());
+    final settingsRepository = _FakeTenantAdminSettingsRepository();
+    GetIt.I.registerSingleton<AppDataRepositoryContract>(repository);
+    GetIt.I.registerSingleton<TenantAdminSettingsRepositoryContract>(
+      settingsRepository,
+    );
+    GetIt.I.registerFactory<TenantAdminSettingsController>(
+      () => TenantAdminSettingsController(),
+    );
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(body: TenantAdminSettingsScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final projectIdField = find.byKey(
+      const ValueKey('tenant_admin_settings_firebase_project_id'),
+    );
+    final saveFirebaseButton = find.byKey(
+      const ValueKey('tenant_admin_settings_save_firebase'),
+    );
+
+    await tester.scrollUntilVisible(
+      saveFirebaseButton,
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      projectIdField,
+      'project-updated',
+    );
+    await tester.tap(saveFirebaseButton);
+    await tester.pumpAndSettle();
+
+    expect(settingsRepository.updatedFirebaseProjectId, 'project-updated');
   });
 }
 
@@ -97,6 +149,65 @@ class _FakeAppDataRepository implements AppDataRepositoryContract {
   @override
   Future<void> setThemeMode(ThemeMode mode) async {
     _themeModeStreamValue.addValue(mode);
+  }
+}
+
+class _FakeTenantAdminSettingsRepository
+    implements TenantAdminSettingsRepositoryContract {
+  String? updatedFirebaseProjectId;
+
+  @override
+  Future<TenantAdminTelemetrySettingsSnapshot> deleteTelemetryIntegration({
+    required String type,
+  }) async {
+    return const TenantAdminTelemetrySettingsSnapshot(
+      integrations: [],
+      availableEvents: ['app_opened'],
+    );
+  }
+
+  @override
+  Future<TenantAdminFirebaseSettings?> fetchFirebaseSettings() async {
+    return const TenantAdminFirebaseSettings(
+      apiKey: 'apikey',
+      appId: 'appid',
+      projectId: 'project-test',
+      messagingSenderId: 'sender',
+      storageBucket: 'bucket',
+    );
+  }
+
+  @override
+  Future<TenantAdminTelemetrySettingsSnapshot> fetchTelemetrySettings() async {
+    return const TenantAdminTelemetrySettingsSnapshot(
+      integrations: [],
+      availableEvents: ['app_opened'],
+    );
+  }
+
+  @override
+  Future<TenantAdminTelemetrySettingsSnapshot> upsertTelemetryIntegration({
+    required TenantAdminTelemetryIntegration integration,
+  }) async {
+    return TenantAdminTelemetrySettingsSnapshot(
+      integrations: [integration],
+      availableEvents: const ['app_opened'],
+    );
+  }
+
+  @override
+  Future<TenantAdminFirebaseSettings> updateFirebaseSettings({
+    required TenantAdminFirebaseSettings settings,
+  }) async {
+    updatedFirebaseProjectId = settings.projectId;
+    return settings;
+  }
+
+  @override
+  Future<TenantAdminPushSettings> updatePushSettings({
+    required TenantAdminPushSettings settings,
+  }) async {
+    return settings;
   }
 }
 

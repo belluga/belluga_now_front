@@ -1,11 +1,14 @@
 import 'package:belluga_now/domain/repositories/tenant_admin_account_profiles_repository_contract.dart';
+import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
 import 'package:belluga_now/presentation/tenant_admin/profile_types/controllers/tenant_admin_profile_types_controller.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:stream_value/core/stream_value.dart';
 
 class _FakeAccountProfilesRepository
     implements TenantAdminAccountProfilesRepositoryContract {
@@ -17,6 +20,28 @@ class _FakeAccountProfilesRepository
   @override
   Future<List<TenantAdminProfileTypeDefinition>> fetchProfileTypes() async =>
       _types;
+
+  @override
+  Future<TenantAdminPagedResult<TenantAdminProfileTypeDefinition>>
+      fetchProfileTypesPage({
+    required int page,
+    required int pageSize,
+  }) async {
+    final types = await fetchProfileTypes();
+    final start = (page - 1) * pageSize;
+    if (page <= 0 || pageSize <= 0 || start >= types.length) {
+      return const TenantAdminPagedResult<TenantAdminProfileTypeDefinition>(
+        items: <TenantAdminProfileTypeDefinition>[],
+        hasMore: false,
+      );
+    }
+    final end =
+        start + pageSize < types.length ? start + pageSize : types.length;
+    return TenantAdminPagedResult<TenantAdminProfileTypeDefinition>(
+      items: types.sublist(start, end),
+      hasMore: end < types.length,
+    );
+  }
 
   @override
   Future<TenantAdminProfileTypeDefinition> createProfileType({
@@ -145,9 +170,44 @@ class _FakeAccountProfilesRepository
 }
 
 void main() {
+  test('appends profile type pages and stops when hasMore is false', () async {
+    final types = List<TenantAdminProfileTypeDefinition>.generate(
+      25,
+      (index) => TenantAdminProfileTypeDefinition(
+        type: 'type-$index',
+        label: 'Type $index',
+        allowedTaxonomies: const [],
+        capabilities: const TenantAdminProfileTypeCapabilities(
+          isFavoritable: false,
+          isPoiEnabled: false,
+          hasBio: false,
+          hasTaxonomies: false,
+          hasAvatar: false,
+          hasCover: false,
+          hasEvents: false,
+        ),
+      ),
+    );
+    final repository = _FakeAccountProfilesRepository(types);
+    final controller =
+        TenantAdminProfileTypesController(repository: repository);
+
+    await controller.loadTypes();
+    expect(controller.typesStreamValue.value?.length, 20);
+    expect(controller.hasMoreTypesStreamValue.value, isTrue);
+
+    await controller.loadNextTypesPage();
+    expect(controller.typesStreamValue.value?.length, 25);
+    expect(controller.hasMoreTypesStreamValue.value, isFalse);
+
+    await controller.loadNextTypesPage();
+    expect(controller.typesStreamValue.value?.length, 25);
+  });
+
   test('createType reloads registry list', () async {
     final repository = _FakeAccountProfilesRepository(const []);
-    final controller = TenantAdminProfileTypesController(repository: repository);
+    final controller =
+        TenantAdminProfileTypesController(repository: repository);
 
     await controller.createType(
       type: 'venue',
@@ -164,7 +224,7 @@ void main() {
       ),
     );
 
-    expect(controller.typesStreamValue.value.length, 1);
+    expect(controller.typesStreamValue.value?.length, 1);
   });
 
   test('deleteType removes entry', () async {
@@ -184,14 +244,93 @@ void main() {
         ),
       ),
     ]);
-    final controller = TenantAdminProfileTypesController(repository: repository);
+    final controller =
+        TenantAdminProfileTypesController(repository: repository);
 
     await controller.loadTypes();
-    expect(controller.typesStreamValue.value.length, 1);
+    expect(controller.typesStreamValue.value?.length, 1);
 
     await controller.deleteType('venue');
 
     expect(repository.deleteCalls, 1);
-    expect(controller.typesStreamValue.value.length, 0);
+    expect(controller.typesStreamValue.value?.length, 0);
   });
+
+  test('reloads registry when tenant scope changes', () async {
+    final repository = _FakeAccountProfilesRepository(const [
+      TenantAdminProfileTypeDefinition(
+        type: 'artist',
+        label: 'Artist',
+        allowedTaxonomies: [],
+        capabilities: TenantAdminProfileTypeCapabilities(
+          isFavoritable: true,
+          isPoiEnabled: false,
+          hasBio: true,
+          hasTaxonomies: false,
+          hasAvatar: true,
+          hasCover: true,
+          hasEvents: true,
+        ),
+      ),
+    ]);
+    final tenantScope = _FakeTenantScope('tenant-a.test');
+    final controller = TenantAdminProfileTypesController(
+      repository: repository,
+      tenantScope: tenantScope,
+    );
+
+    await controller.loadTypes();
+    expect(controller.typesStreamValue.value?.first.type, 'artist');
+
+    repository._types = const [
+      TenantAdminProfileTypeDefinition(
+        type: 'venue',
+        label: 'Venue',
+        allowedTaxonomies: [],
+        capabilities: TenantAdminProfileTypeCapabilities(
+          isFavoritable: true,
+          isPoiEnabled: true,
+          hasBio: false,
+          hasTaxonomies: false,
+          hasAvatar: false,
+          hasCover: false,
+          hasEvents: false,
+        ),
+      ),
+    ];
+    tenantScope.selectTenantDomain('tenant-b.test');
+    await Future<void>.delayed(Duration.zero);
+    await Future<void>.delayed(Duration.zero);
+
+    expect(controller.typesStreamValue.value?.first.type, 'venue');
+  });
+}
+
+class _FakeTenantScope implements TenantAdminTenantScopeContract {
+  _FakeTenantScope(String initialDomain)
+      : _selectedTenantDomainStreamValue =
+            StreamValue<String?>(defaultValue: initialDomain);
+
+  final StreamValue<String?> _selectedTenantDomainStreamValue;
+
+  @override
+  String? get selectedTenantDomain => _selectedTenantDomainStreamValue.value;
+
+  @override
+  String get selectedTenantAdminBaseUrl =>
+      'https://${selectedTenantDomain ?? ''}/admin/api';
+
+  @override
+  StreamValue<String?> get selectedTenantDomainStreamValue =>
+      _selectedTenantDomainStreamValue;
+
+  @override
+  void clearSelectedTenantDomain() {
+    _selectedTenantDomainStreamValue.addValue(null);
+  }
+
+  @override
+  void selectTenantDomain(String tenantDomain) {
+    _selectedTenantDomainStreamValue.addValue(tenantDomain.trim());
+  }
 }

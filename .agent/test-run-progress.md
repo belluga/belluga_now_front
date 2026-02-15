@@ -24,3 +24,22 @@ Status key: [ ] pending, [x] passed, [!] failed (needs retry)
 - [x] integration_test/feature_venue_profile_widgets_test.dart
 - [x] integration_test/push_onboarding_dynamic_steps_test.dart
 - [x] integration_test/push_queue_auto_present_test.dart
+
+# Unit Test Progress (Current Branch)
+
+## New Unit Tests Added
+- [x] test/infrastructure/repositories/tenant_admin_accounts_repository_test.dart
+- [x] test/infrastructure/repositories/tenant_admin_settings_repository_test.dart
+- [x] test/presentation/tenant_admin/controllers/tenant_admin_organizations_controller_test.dart
+- [x] test/presentation/tenant_admin/controllers/tenant_admin_static_profile_types_controller_test.dart
+- [x] test/presentation/tenant_admin/controllers/tenant_admin_taxonomies_controller_test.dart
+- [x] test/presentation/tenant_admin/shared/tenant_admin_slug_utils_test.dart
+- [x] test/presentation/tenant_admin/shared/tenant_admin_visual_regression_golden_test.dart
+
+## Updated Unit Tests (Rerun Required)
+- [x] test/infrastructure/repositories/tenant_admin_static_assets_repository_test.dart
+- [x] test/presentation/tenant_admin/accounts/tenant_admin_account_create_screen_test.dart
+- [x] test/presentation/tenant_admin/controllers/tenant_admin_account_profiles_controller_test.dart
+- [x] test/presentation/tenant_admin/controllers/tenant_admin_accounts_controller_test.dart
+- [x] test/presentation/tenant_admin/controllers/tenant_admin_profile_types_controller_test.dart
+- [x] test/presentation/tenant_admin/settings/tenant_admin_settings_screen_test.dart

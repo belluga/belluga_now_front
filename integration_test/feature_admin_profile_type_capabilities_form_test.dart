@@ -7,6 +7,8 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_document.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/domain/tenant_admin/ownership_state.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_accounts_result.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_definition.dart';
@@ -110,6 +112,17 @@ class _FakeTenantAdminAccountsRepository
   Future<List<TenantAdminAccount>> fetchAccounts() async => const [];
 
   @override
+  Future<TenantAdminPagedAccountsResult> fetchAccountsPage({
+    required int page,
+    required int pageSize,
+  }) async {
+    return const TenantAdminPagedAccountsResult(
+      accounts: <TenantAdminAccount>[],
+      hasMore: false,
+    );
+  }
+
+  @override
   Future<TenantAdminAccount> fetchAccountBySlug(String accountSlug) async {
     return TenantAdminAccount(
       id: 'account-1',
@@ -204,6 +217,28 @@ class _FakeTenantAdminAccountProfilesRepository
         ),
       ),
     ];
+  }
+
+  @override
+  Future<TenantAdminPagedResult<TenantAdminProfileTypeDefinition>>
+      fetchProfileTypesPage({
+    required int page,
+    required int pageSize,
+  }) async {
+    final types = await fetchProfileTypes();
+    final start = (page - 1) * pageSize;
+    if (page <= 0 || pageSize <= 0 || start >= types.length) {
+      return const TenantAdminPagedResult<TenantAdminProfileTypeDefinition>(
+        items: <TenantAdminProfileTypeDefinition>[],
+        hasMore: false,
+      );
+    }
+    final end =
+        start + pageSize < types.length ? start + pageSize : types.length;
+    return TenantAdminPagedResult<TenantAdminProfileTypeDefinition>(
+      items: types.sublist(start, end),
+      hasMore: end < types.length,
+    );
   }
 
   @override
@@ -354,6 +389,29 @@ class _FakeTenantAdminTaxonomiesRepository
   }
 
   @override
+  Future<TenantAdminPagedResult<TenantAdminTaxonomyDefinition>>
+      fetchTaxonomiesPage({
+    required int page,
+    required int pageSize,
+  }) async {
+    final taxonomies = await fetchTaxonomies();
+    final start = (page - 1) * pageSize;
+    if (page <= 0 || pageSize <= 0 || start >= taxonomies.length) {
+      return const TenantAdminPagedResult<TenantAdminTaxonomyDefinition>(
+        items: <TenantAdminTaxonomyDefinition>[],
+        hasMore: false,
+      );
+    }
+    final end = start + pageSize < taxonomies.length
+        ? start + pageSize
+        : taxonomies.length;
+    return TenantAdminPagedResult<TenantAdminTaxonomyDefinition>(
+      items: taxonomies.sublist(start, end),
+      hasMore: end < taxonomies.length,
+    );
+  }
+
+  @override
   Future<List<TenantAdminTaxonomyTermDefinition>> fetchTerms({
     required String taxonomyId,
   }) async {
@@ -365,6 +423,29 @@ class _FakeTenantAdminTaxonomiesRepository
         name: 'Samba',
       ),
     ];
+  }
+
+  @override
+  Future<TenantAdminPagedResult<TenantAdminTaxonomyTermDefinition>>
+      fetchTermsPage({
+    required String taxonomyId,
+    required int page,
+    required int pageSize,
+  }) async {
+    final terms = await fetchTerms(taxonomyId: taxonomyId);
+    final start = (page - 1) * pageSize;
+    if (page <= 0 || pageSize <= 0 || start >= terms.length) {
+      return const TenantAdminPagedResult<TenantAdminTaxonomyTermDefinition>(
+        items: <TenantAdminTaxonomyTermDefinition>[],
+        hasMore: false,
+      );
+    }
+    final end =
+        start + pageSize < terms.length ? start + pageSize : terms.length;
+    return TenantAdminPagedResult<TenantAdminTaxonomyTermDefinition>(
+      items: terms.sublist(start, end),
+      hasMore: end < terms.length,
+    );
   }
 
   @override

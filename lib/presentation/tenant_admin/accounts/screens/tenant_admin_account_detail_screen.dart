@@ -5,6 +5,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_account.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
 import 'package:belluga_now/presentation/tenant_admin/account_profiles/controllers/tenant_admin_account_profiles_controller.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_error_banner.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
@@ -109,207 +110,237 @@ class _TenantAdminAccountDetailScreenState
                         child: isLoading
                             ? const Center(child: CircularProgressIndicator())
                             : errorMessage != null
-                                ? Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        errorMessage,
-                                        style:
-                                            const TextStyle(color: Colors.red),
-                                      ),
-                                      const SizedBox(height: 12),
-                                      TextButton(
-                                        onPressed: () => _profilesController
-                                            .loadAccountDetail(
-                                          widget.accountSlug,
-                                        ),
-                                        child: const Text('Tentar novamente'),
-                                      ),
-                                    ],
+                                ? TenantAdminErrorBanner(
+                                    rawError: errorMessage,
+                                    fallbackMessage:
+                                        'Não foi possível carregar os dados da conta.',
+                                    onRetry: () =>
+                                        _profilesController.loadAccountDetail(
+                                      widget.accountSlug,
+                                    ),
                                   )
                                 : StreamValueBuilder(
                                     streamValue: _profilesController
                                         .profileTypesStreamValue,
                                     builder: (context, types) {
                                       return ListView(
-                        children: [
-                          Card(
-                            margin: EdgeInsets.zero,
-                            child: Padding(
-                              padding: const EdgeInsets.all(16),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'Detalhes da conta',
-                                    style:
-                                        Theme.of(context).textTheme.titleMedium,
-                                  ),
-                                  const SizedBox(height: 12),
-                                  _buildRow('Slug', account?.slug ?? '-'),
-                                  const SizedBox(height: 8),
-                                  _buildRow(
-                                    'Documento',
-                                    account?.document.number ?? '-',
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                                  const SizedBox(height: 16),
-                                  if (profile == null) ...[
-                            Card(
-                              margin: EdgeInsets.zero,
-                              child: Padding(
-                                padding: const EdgeInsets.all(16),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      'Perfil da conta',
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .titleMedium,
-                                    ),
-                                    const SizedBox(height: 8),
-                                    const Text(
-                                      'Nenhum perfil associado a esta conta.',
-                                    ),
-                                    const SizedBox(height: 12),
-                                    FilledButton(
-                                      onPressed: _openCreate,
-                                      child: const Text('Criar Perfil'),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ] else ...[
-                            Card(
-                              margin: EdgeInsets.zero,
-                              child: Padding(
-                                padding: const EdgeInsets.all(16),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      'Perfil da conta',
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .titleMedium,
-                                    ),
-                                    const SizedBox(height: 12),
-                                    if (coverUrl != null && coverUrl.isNotEmpty)
-                                      BellugaNetworkImage(
-                                        coverUrl,
-                                        height: 160,
-                                        fit: BoxFit.cover,
-                                        clipBorderRadius:
-                                            BorderRadius.circular(12),
-                                        errorWidget: Container(
-                                          height: 160,
-                                          decoration: BoxDecoration(
-                                            color: Theme.of(context)
-                                                .colorScheme
-                                                .surfaceContainerHighest,
-                                          ),
-                                          child: const Center(
-                                            child: Icon(
-                                              Icons.image_not_supported,
-                                            ),
-                                          ),
-                                        ),
-                                      )
-                                    else
-                                      Container(
-                                        height: 160,
-                                        decoration: BoxDecoration(
-                                          color: Theme.of(context)
-                                              .colorScheme
-                                              .surfaceContainerHighest,
-                                          borderRadius: BorderRadius.circular(12),
-                                        ),
-                                        child: const Center(
-                                          child: Icon(Icons.image_outlined),
-                                        ),
-                                      ),
-                                    const SizedBox(height: 16),
-                                    Row(
-                                      children: [
-                                        if (avatarUrl != null &&
-                                            avatarUrl.isNotEmpty)
-                                          BellugaNetworkImage(
-                                            avatarUrl,
-                                            width: 72,
-                                            height: 72,
-                                            fit: BoxFit.cover,
-                                            clipBorderRadius:
-                                                BorderRadius.circular(36),
-                                            errorWidget: Container(
-                                              width: 72,
-                                              height: 72,
-                                              decoration: BoxDecoration(
-                                                color: Theme.of(context)
-                                                    .colorScheme
-                                                    .surfaceContainerHighest,
-                                              ),
-                                              child: const Icon(
-                                                Icons.person_off_outlined,
+                                        children: [
+                                          Card(
+                                            margin: EdgeInsets.zero,
+                                            child: Padding(
+                                              padding: const EdgeInsets.all(16),
+                                              child: Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                children: [
+                                                  Text(
+                                                    'Detalhes da conta',
+                                                    style: Theme.of(context)
+                                                        .textTheme
+                                                        .titleMedium,
+                                                  ),
+                                                  const SizedBox(height: 12),
+                                                  _buildRow('Slug',
+                                                      account?.slug ?? '-'),
+                                                  const SizedBox(height: 8),
+                                                  _buildRow(
+                                                    'Documento',
+                                                    account?.document.number ??
+                                                        '-',
+                                                  ),
+                                                ],
                                               ),
                                             ),
-                                          )
-                                        else
-                                          Container(
-                                            width: 72,
-                                            height: 72,
-                                            decoration: BoxDecoration(
-                                              color: Theme.of(context)
-                                                  .colorScheme
-                                                  .surfaceContainerHighest,
-                                              borderRadius:
-                                                  BorderRadius.circular(36),
-                                            ),
-                                            child: const Icon(
-                                              Icons.person_outline,
-                                            ),
                                           ),
-                                        const SizedBox(width: 12),
-                                    Expanded(
-                                      child: Text(
-                                        profile.displayName,
-                                        style: Theme.of(context)
-                                            .textTheme
-                                            .titleMedium,
-                                      ),
-                                    ),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 16),
-                                    _buildRow('Tipo', _profileTypeLabel(types)),
-                                    const SizedBox(height: 8),
-                                    if (location != null)
-                                      _buildRow(
-                                        'Localização',
-                                        '${location.latitude.toStringAsFixed(6)}, '
-                                        '${location.longitude.toStringAsFixed(6)}',
-                                      ),
-                                    const SizedBox(height: 12),
-                                    Align(
-                                      alignment: Alignment.centerRight,
-                                      child: OutlinedButton.icon(
-                                        onPressed: _openEdit,
-                                        icon: const Icon(Icons.edit_outlined),
-                                        label: const Text('Editar Perfil'),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ],
-                        ],
-                      );
+                                          const SizedBox(height: 16),
+                                          if (profile == null) ...[
+                                            Card(
+                                              margin: EdgeInsets.zero,
+                                              child: Padding(
+                                                padding:
+                                                    const EdgeInsets.all(16),
+                                                child: Column(
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.start,
+                                                  children: [
+                                                    Text(
+                                                      'Perfil da conta',
+                                                      style: Theme.of(context)
+                                                          .textTheme
+                                                          .titleMedium,
+                                                    ),
+                                                    const SizedBox(height: 8),
+                                                    const Text(
+                                                      'Nenhum perfil associado a esta conta.',
+                                                    ),
+                                                    const SizedBox(height: 12),
+                                                    FilledButton(
+                                                      onPressed: _openCreate,
+                                                      child: const Text(
+                                                          'Criar Perfil'),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                            ),
+                                          ] else ...[
+                                            Card(
+                                              margin: EdgeInsets.zero,
+                                              child: Padding(
+                                                padding:
+                                                    const EdgeInsets.all(16),
+                                                child: Column(
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.start,
+                                                  children: [
+                                                    Text(
+                                                      'Perfil da conta',
+                                                      style: Theme.of(context)
+                                                          .textTheme
+                                                          .titleMedium,
+                                                    ),
+                                                    const SizedBox(height: 12),
+                                                    if (coverUrl != null &&
+                                                        coverUrl.isNotEmpty)
+                                                      BellugaNetworkImage(
+                                                        coverUrl,
+                                                        height: 160,
+                                                        fit: BoxFit.cover,
+                                                        clipBorderRadius:
+                                                            BorderRadius
+                                                                .circular(12),
+                                                        errorWidget: Container(
+                                                          height: 160,
+                                                          decoration:
+                                                              BoxDecoration(
+                                                            color: Theme.of(
+                                                                    context)
+                                                                .colorScheme
+                                                                .surfaceContainerHighest,
+                                                          ),
+                                                          child: const Center(
+                                                            child: Icon(
+                                                              Icons
+                                                                  .image_not_supported,
+                                                            ),
+                                                          ),
+                                                        ),
+                                                      )
+                                                    else
+                                                      Container(
+                                                        height: 160,
+                                                        decoration:
+                                                            BoxDecoration(
+                                                          color: Theme.of(
+                                                                  context)
+                                                              .colorScheme
+                                                              .surfaceContainerHighest,
+                                                          borderRadius:
+                                                              BorderRadius
+                                                                  .circular(12),
+                                                        ),
+                                                        child: const Center(
+                                                          child: Icon(Icons
+                                                              .image_outlined),
+                                                        ),
+                                                      ),
+                                                    const SizedBox(height: 16),
+                                                    Row(
+                                                      children: [
+                                                        if (avatarUrl != null &&
+                                                            avatarUrl
+                                                                .isNotEmpty)
+                                                          BellugaNetworkImage(
+                                                            avatarUrl,
+                                                            width: 72,
+                                                            height: 72,
+                                                            fit: BoxFit.cover,
+                                                            clipBorderRadius:
+                                                                BorderRadius
+                                                                    .circular(
+                                                                        36),
+                                                            errorWidget:
+                                                                Container(
+                                                              width: 72,
+                                                              height: 72,
+                                                              decoration:
+                                                                  BoxDecoration(
+                                                                color: Theme.of(
+                                                                        context)
+                                                                    .colorScheme
+                                                                    .surfaceContainerHighest,
+                                                              ),
+                                                              child: const Icon(
+                                                                Icons
+                                                                    .person_off_outlined,
+                                                              ),
+                                                            ),
+                                                          )
+                                                        else
+                                                          Container(
+                                                            width: 72,
+                                                            height: 72,
+                                                            decoration:
+                                                                BoxDecoration(
+                                                              color: Theme.of(
+                                                                      context)
+                                                                  .colorScheme
+                                                                  .surfaceContainerHighest,
+                                                              borderRadius:
+                                                                  BorderRadius
+                                                                      .circular(
+                                                                          36),
+                                                            ),
+                                                            child: const Icon(
+                                                              Icons
+                                                                  .person_outline,
+                                                            ),
+                                                          ),
+                                                        const SizedBox(
+                                                            width: 12),
+                                                        Expanded(
+                                                          child: Text(
+                                                            profile.displayName,
+                                                            style: Theme.of(
+                                                                    context)
+                                                                .textTheme
+                                                                .titleMedium,
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                    const SizedBox(height: 16),
+                                                    _buildRow(
+                                                        'Tipo',
+                                                        _profileTypeLabel(
+                                                            types)),
+                                                    const SizedBox(height: 8),
+                                                    if (location != null)
+                                                      _buildRow(
+                                                        'Localização',
+                                                        '${location.latitude.toStringAsFixed(6)}, '
+                                                            '${location.longitude.toStringAsFixed(6)}',
+                                                      ),
+                                                    const SizedBox(height: 12),
+                                                    Align(
+                                                      alignment:
+                                                          Alignment.centerRight,
+                                                      child:
+                                                          OutlinedButton.icon(
+                                                        onPressed: _openEdit,
+                                                        icon: const Icon(Icons
+                                                            .edit_outlined),
+                                                        label: const Text(
+                                                            'Editar Perfil'),
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ],
+                                      );
                                     },
                                   ),
                       ),

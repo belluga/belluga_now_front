@@ -213,7 +213,10 @@ class TenantAdminAccountProfilesController implements Disposable {
         final terms =
             await _taxonomiesRepository.fetchTerms(taxonomyId: taxonomy.id);
         map[slug] = terms;
-      } catch (_) {
+      } catch (error) {
+        debugPrint(
+          '[TenantAdmin] Failed to load taxonomy terms for "$slug": $error',
+        );
         map[slug] = const [];
       }
     }

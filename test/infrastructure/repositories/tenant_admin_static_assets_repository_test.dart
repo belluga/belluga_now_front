@@ -70,6 +70,25 @@ void main() {
           'https://tenant.test/admin/api/v1/static_profile_types/poi%2Ftype'),
     );
   });
+
+  test('fetchStaticAssets switches request host after tenant selection changes',
+      () async {
+    final adapter = _CaptureAdapter();
+    final dio = Dio()..httpClientAdapter = adapter;
+    final tenantScope = _StubTenantScope('https://tenant-a.test');
+    final repository = TenantAdminStaticAssetsRepository(
+      dio: dio,
+      tenantScope: tenantScope,
+    );
+
+    await repository.fetchStaticAssets();
+    tenantScope.selectTenantDomain('https://tenant-b.test');
+    await repository.fetchStaticAssets();
+
+    expect(adapter.requests, hasLength(2));
+    expect(adapter.requests[0].uri.host, 'tenant-a.test');
+    expect(adapter.requests[1].uri.host, 'tenant-b.test');
+  });
 }
 
 class _StubAuthRepo implements LandlordAuthRepositoryContract {
@@ -118,6 +137,7 @@ class _StubTenantScope implements TenantAdminTenantScopeContract {
 
 class _CaptureAdapter implements HttpClientAdapter {
   RequestOptions? lastRequest;
+  final List<RequestOptions> requests = [];
 
   @override
   void close({bool force = false}) {}
@@ -129,6 +149,7 @@ class _CaptureAdapter implements HttpClientAdapter {
     Future? cancelFuture,
   ) async {
     lastRequest = options;
+    requests.add(options);
     if (options.method == 'PATCH') {
       final payload = jsonEncode({
         'data': {
@@ -147,6 +168,16 @@ class _CaptureAdapter implements HttpClientAdapter {
       });
       return ResponseBody.fromString(
         payload,
+        200,
+        headers: {
+          Headers.contentTypeHeader: ['application/json'],
+        },
+      );
+    }
+
+    if (options.method == 'GET' && options.path.contains('/v1/static_assets')) {
+      return ResponseBody.fromString(
+        jsonEncode(const {'data': []}),
         200,
         headers: {
           Headers.contentTypeHeader: ['application/json'],

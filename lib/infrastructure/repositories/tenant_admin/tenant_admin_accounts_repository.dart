@@ -4,6 +4,7 @@ import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.d
 import 'package:belluga_now/domain/tenant_admin/ownership_state.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_document.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_accounts_result.dart';
 import 'package:belluga_now/infrastructure/dal/dto/tenant_admin/tenant_admin_account_dto.dart';
 import 'package:dio/dio.dart';
 import 'package:get_it/get_it.dart';
@@ -33,15 +34,56 @@ class TenantAdminAccountsRepository
 
   @override
   Future<List<TenantAdminAccount>> fetchAccounts() async {
+    var page = 1;
+    const pageSize = 100;
+    final accounts = <TenantAdminAccount>[];
+    var hasMore = true;
+
+    while (hasMore) {
+      final pageResult = await fetchAccountsPage(
+        page: page,
+        pageSize: pageSize,
+      );
+      accounts.addAll(pageResult.accounts);
+      hasMore = pageResult.hasMore;
+      page += 1;
+    }
+
+    return List<TenantAdminAccount>.unmodifiable(accounts);
+  }
+
+  @override
+  Future<TenantAdminPagedAccountsResult> fetchAccountsPage({
+    required int page,
+    required int pageSize,
+  }) async {
     try {
       final response = await _dio.get(
         '$_apiBaseUrl/v1/accounts',
+        queryParameters: {
+          'page': page,
+          'page_size': pageSize,
+        },
         options: Options(headers: _buildHeaders()),
       );
       final data = _extractList(response.data);
-      return data.map(_mapAccount).toList(growable: false);
+      final currentPage = _extractCurrentPage(
+            raw: response.data,
+            fallback: page,
+          ) ??
+          page;
+      final lastPage = _extractLastPage(
+            raw: response.data,
+            fallback: page,
+          ) ??
+          currentPage;
+      final hasMore = currentPage < lastPage;
+      return TenantAdminPagedAccountsResult(
+        accounts: data.map(_mapAccount).toList(growable: false),
+        hasMore: hasMore,
+      );
     } on DioException catch (error) {
-      throw _wrapError(error, 'load accounts');
+      throw _wrapError(error, 'load accounts page');
     }
   }
 
@@ -187,6 +229,43 @@ class TenantAdminAccountsRepository
       }
     }
     throw Exception('Unexpected accounts list response shape.');
+  }
+
+  int? _extractCurrentPage({
+    required dynamic raw,
+    int? fallback,
+  }) {
+    if (raw is! Map<String, dynamic>) return fallback;
+    return _readInt(raw, 'current_page') ??
+        _readInt(raw['meta'], 'current_page') ??
+        fallback;
+  }
+
+  int? _extractLastPage({
+    required dynamic raw,
+    int? fallback,
+  }) {
+    if (raw is! Map<String, dynamic>) return fallback;
+    return _readInt(raw, 'last_page') ??
+        _readInt(raw['meta'], 'last_page') ??
+        fallback;
+  }
+
+  int? _readInt(dynamic source, String key) {
+    if (source is! Map) {
+      return null;
+    }
+    final value = source[key];
+    if (value is int) {
+      return value;
+    }
+    if (value is num) {
+      return value.toInt();
+    }
+    if (value is String) {
+      return int.tryParse(value);
+    }
+    return null;
   }
 
   TenantAdminAccount _mapAccount(Map<String, dynamic> json) {

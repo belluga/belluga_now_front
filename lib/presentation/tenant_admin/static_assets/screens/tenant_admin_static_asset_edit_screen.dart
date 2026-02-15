@@ -5,6 +5,8 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_static_asset.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_static_profile_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_definition.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_confirmation_dialog.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_error_banner.dart';
 import 'package:belluga_now/presentation/tenant_admin/static_assets/controllers/tenant_admin_static_assets_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
@@ -94,6 +96,13 @@ class _TenantAdminStaticAssetEditScreenState
                                 _buildBasicSection(context, error),
                                 const SizedBox(height: 16),
                                 _buildStatusSection(),
+                                if (hasAvatar || hasCover) ...[
+                                  const SizedBox(height: 16),
+                                  _buildMediaSection(
+                                    hasAvatar: hasAvatar,
+                                    hasCover: hasCover,
+                                  ),
+                                ],
                                 if (hasBio ||
                                     hasContent ||
                                     _hasTagsOrCategories()) ...[
@@ -102,13 +111,6 @@ class _TenantAdminStaticAssetEditScreenState
                                     context,
                                     hasBio: hasBio,
                                     hasContent: hasContent,
-                                  ),
-                                ],
-                                if (hasAvatar || hasCover) ...[
-                                  const SizedBox(height: 16),
-                                  _buildMediaSection(
-                                    hasAvatar: hasAvatar,
-                                    hasCover: hasCover,
                                   ),
                                 ],
                                 if (hasTaxonomies) ...[
@@ -290,22 +292,11 @@ class _TenantAdminStaticAssetEditScreenState
                         if (error != null)
                           Padding(
                             padding: const EdgeInsets.only(top: 8),
-                            child: Row(
-                              children: [
-                                Expanded(
-                                  child: Text(
-                                    error,
-                                    style: TextStyle(
-                                      color:
-                                          Theme.of(context).colorScheme.error,
-                                    ),
-                                  ),
-                                ),
-                                TextButton(
-                                  onPressed: _controller.loadProfileTypes,
-                                  child: const Text('Tentar novamente'),
-                                ),
-                              ],
+                            child: TenantAdminErrorBanner(
+                              rawError: error,
+                              fallbackMessage:
+                                  'Não foi possível carregar os tipos de ativo.',
+                              onRetry: _controller.loadProfileTypes,
                             ),
                           ),
                         const SizedBox(height: 8),
@@ -674,27 +665,14 @@ class _TenantAdminStaticAssetEditScreenState
   }
 
   Future<void> _confirmDelete(TenantAdminStaticAsset asset) async {
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showTenantAdminConfirmationDialog(
       context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Remover ativo'),
-          content: Text('Remover "${asset.displayName}"?'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Cancelar'),
-            ),
-            ElevatedButton(
-              onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('Remover'),
-            ),
-          ],
-        );
-      },
+      title: 'Remover ativo',
+      message: 'Remover "${asset.displayName}"?',
+      confirmLabel: 'Remover',
+      isDestructive: true,
     );
-
-    if (confirmed != true) return;
+    if (!confirmed) return;
     await _controller.deleteAsset(asset.id);
     if (!mounted) return;
     context.router.maybePop();

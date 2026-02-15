@@ -1,24 +1,36 @@
 import 'package:belluga_now/domain/app_data/environment_type.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_settings.dart';
 import 'package:belluga_now/presentation/tenant_admin/settings/controllers/tenant_admin_settings_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 
-class TenantAdminSettingsScreen extends StatelessWidget {
+class TenantAdminSettingsScreen extends StatefulWidget {
   const TenantAdminSettingsScreen({super.key});
 
-  TenantAdminSettingsController get _controller =>
+  @override
+  State<TenantAdminSettingsScreen> createState() =>
+      _TenantAdminSettingsScreenState();
+}
+
+class _TenantAdminSettingsScreenState extends State<TenantAdminSettingsScreen> {
+  final TenantAdminSettingsController _controller =
       GetIt.I.get<TenantAdminSettingsController>();
+
+  @override
+  void initState() {
+    super.initState();
+    _controller.init();
+  }
 
   @override
   Widget build(BuildContext context) {
     final appData = _controller.appData;
     final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
-    final brightnessLabel = appData.themeDataSettings.brightnessDefault ==
-            Brightness.dark
-        ? 'Escuro'
-        : 'Claro';
+    final brightnessLabel =
+        appData.themeDataSettings.brightnessDefault == Brightness.dark
+            ? 'Escuro'
+            : 'Claro';
     final envType = appData.typeValue.value;
     final envTypeLabel = switch (envType) {
       EnvironmentType.landlord => 'Landlord',
@@ -41,77 +53,7 @@ class TenantAdminSettingsScreen extends StatelessWidget {
           style: theme.textTheme.bodyMedium,
         ),
         const SizedBox(height: 16),
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Preferências locais',
-                  style: theme.textTheme.titleMedium,
-                ),
-                const SizedBox(height: 12),
-                StreamValueBuilder<ThemeMode?>(
-                  streamValue: _controller.themeModeStreamValue,
-                  builder: (context, themeMode) {
-                    final selectedThemeMode = themeMode ?? ThemeMode.system;
-                    return SegmentedButton<ThemeMode>(
-                      segments: const [
-                        ButtonSegment(
-                          value: ThemeMode.light,
-                          label: Text('Claro'),
-                          icon: Icon(Icons.light_mode_outlined),
-                        ),
-                        ButtonSegment(
-                          value: ThemeMode.dark,
-                          label: Text('Escuro'),
-                          icon: Icon(Icons.dark_mode_outlined),
-                        ),
-                        ButtonSegment(
-                          value: ThemeMode.system,
-                          label: Text('Sistema'),
-                          icon: Icon(Icons.phone_android_outlined),
-                        ),
-                      ],
-                      selected: {selectedThemeMode},
-                      onSelectionChanged: (selection) {
-                        if (selection.isEmpty) {
-                          return;
-                        }
-                        _controller.updateThemeMode(selection.first);
-                      },
-                    );
-                  },
-                ),
-                const SizedBox(height: 16),
-                StreamValueBuilder<double>(
-                  streamValue: _controller.maxRadiusMetersStreamValue,
-                  builder: (context, maxRadiusMeters) {
-                    final current = maxRadiusMeters.clamp(1000.0, 100000.0);
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Raio máximo do mapa: ${current.toStringAsFixed(0)} m',
-                          style: theme.textTheme.bodyMedium,
-                        ),
-                        Slider(
-                          min: 1000,
-                          max: 100000,
-                          divisions: 99,
-                          value: current,
-                          label: '${current.toStringAsFixed(0)} m',
-                          onChanged: _controller.updateMaxRadiusMeters,
-                        ),
-                      ],
-                    );
-                  },
-                ),
-              ],
-            ),
-          ),
-        ),
+        _buildLocalPreferencesCard(context),
         const SizedBox(height: 12),
         Card(
           child: Padding(
@@ -142,7 +84,8 @@ class TenantAdminSettingsScreen extends StatelessWidget {
                 ),
                 _SettingRow(
                   label: 'Domínios',
-                  value: appData.domains.map((item) => item.value.host).join(', '),
+                  value:
+                      appData.domains.map((item) => item.value.host).join(', '),
                 ),
                 _SettingRow(
                   label: 'App domains',
@@ -172,24 +115,518 @@ class TenantAdminSettingsScreen extends StatelessWidget {
                   label: 'Telemetry trackers',
                   value: '$trackerCount',
                 ),
-                const SizedBox(height: 8),
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(12),
-                    color: scheme.surfaceContainerHighest,
-                  ),
-                  child: Text(
-                    'Configurações remotas (firebase/push/telemetry) serão '
-                    'editáveis na próxima etapa com endpoints dedicados do admin.',
-                    style: theme.textTheme.bodySmall,
-                  ),
-                ),
               ],
             ),
           ),
         ),
+        const SizedBox(height: 12),
+        _buildRemoteSettingsCard(context),
       ],
+    );
+  }
+
+  Widget _buildLocalPreferencesCard(BuildContext context) {
+    final theme = Theme.of(context);
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Preferências locais',
+              style: theme.textTheme.titleMedium,
+            ),
+            const SizedBox(height: 12),
+            StreamValueBuilder<ThemeMode?>(
+              streamValue: _controller.themeModeStreamValue,
+              builder: (context, themeMode) {
+                final selectedThemeMode = themeMode ?? ThemeMode.system;
+                return SegmentedButton<ThemeMode>(
+                  segments: const [
+                    ButtonSegment(
+                      value: ThemeMode.light,
+                      label: Text('Claro'),
+                      icon: Icon(Icons.light_mode_outlined),
+                    ),
+                    ButtonSegment(
+                      value: ThemeMode.dark,
+                      label: Text('Escuro'),
+                      icon: Icon(Icons.dark_mode_outlined),
+                    ),
+                    ButtonSegment(
+                      value: ThemeMode.system,
+                      label: Text('Sistema'),
+                      icon: Icon(Icons.phone_android_outlined),
+                    ),
+                  ],
+                  selected: {selectedThemeMode},
+                  onSelectionChanged: (selection) {
+                    if (selection.isEmpty) {
+                      return;
+                    }
+                    _controller.updateThemeMode(selection.first);
+                  },
+                );
+              },
+            ),
+            const SizedBox(height: 16),
+            StreamValueBuilder<double>(
+              streamValue: _controller.maxRadiusMetersStreamValue,
+              builder: (context, maxRadiusMeters) {
+                final current = maxRadiusMeters.clamp(1000.0, 100000.0);
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Raio máximo do mapa: ${current.toStringAsFixed(0)} m',
+                      style: theme.textTheme.bodyMedium,
+                    ),
+                    Slider(
+                      min: 1000,
+                      max: 100000,
+                      divisions: 99,
+                      value: current,
+                      label: '${current.toStringAsFixed(0)} m',
+                      onChanged: _controller.updateMaxRadiusMeters,
+                    ),
+                  ],
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRemoteSettingsCard(BuildContext context) {
+    final theme = Theme.of(context);
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Configurações remotas',
+              style: theme.textTheme.titleMedium,
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Endpoints admin do tenant para firebase, push e telemetry.',
+              style: theme.textTheme.bodySmall,
+            ),
+            const SizedBox(height: 12),
+            _RemoteStatusPanel(controller: _controller),
+            const SizedBox(height: 12),
+            _FirebaseSettingsSection(controller: _controller),
+            const Divider(height: 32),
+            _PushSettingsSection(controller: _controller),
+            const Divider(height: 32),
+            _TelemetrySettingsSection(controller: _controller),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _RemoteStatusPanel extends StatelessWidget {
+  const _RemoteStatusPanel({required this.controller});
+
+  final TenantAdminSettingsController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return StreamValueBuilder<String?>(
+      streamValue: controller.remoteErrorStreamValue,
+      builder: (context, errorMessage) {
+        return StreamValueBuilder<String?>(
+          streamValue: controller.remoteSuccessStreamValue,
+          builder: (context, successMessage) {
+            return StreamValueBuilder<bool>(
+              streamValue: controller.isRemoteLoadingStreamValue,
+              builder: (context, isRemoteLoading) {
+                if (!isRemoteLoading &&
+                    (errorMessage == null || errorMessage.isEmpty) &&
+                    (successMessage == null || successMessage.isEmpty)) {
+                  return const SizedBox.shrink();
+                }
+                final hasError =
+                    errorMessage != null && errorMessage.isNotEmpty;
+                final message = hasError ? errorMessage : successMessage ?? '';
+                return Container(
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    color: hasError
+                        ? scheme.errorContainer
+                        : scheme.primaryContainer,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (isRemoteLoading)
+                        const Padding(
+                          padding: EdgeInsets.only(bottom: 8),
+                          child: LinearProgressIndicator(minHeight: 2),
+                        ),
+                      Text(
+                        message,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: hasError
+                                  ? scheme.onErrorContainer
+                                  : scheme.onPrimaryContainer,
+                            ),
+                      ),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 8,
+                        children: [
+                          OutlinedButton(
+                            onPressed: isRemoteLoading
+                                ? null
+                                : controller.loadRemoteSettings,
+                            child: const Text('Recarregar'),
+                          ),
+                          if ((hasError || successMessage != null) &&
+                              !isRemoteLoading)
+                            TextButton(
+                              onPressed: controller.clearStatusMessages,
+                              child: const Text('Fechar'),
+                            ),
+                        ],
+                      ),
+                    ],
+                  ),
+                );
+              },
+            );
+          },
+        );
+      },
+    );
+  }
+}
+
+class _FirebaseSettingsSection extends StatelessWidget {
+  const _FirebaseSettingsSection({required this.controller});
+
+  final TenantAdminSettingsController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamValueBuilder<bool>(
+      streamValue: controller.firebaseSubmittingStreamValue,
+      builder: (context, isSaving) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Firebase',
+              style: Theme.of(context).textTheme.titleSmall,
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              key: const ValueKey('tenant_admin_settings_firebase_project_id'),
+              controller: controller.firebaseProjectIdController,
+              decoration: const InputDecoration(
+                labelText: 'Project ID',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: controller.firebaseAppIdController,
+              decoration: const InputDecoration(
+                labelText: 'App ID',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: controller.firebaseApiKeyController,
+              decoration: const InputDecoration(
+                labelText: 'API Key',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: controller.firebaseMessagingSenderIdController,
+              decoration: const InputDecoration(
+                labelText: 'Messaging Sender ID',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: controller.firebaseStorageBucketController,
+              decoration: const InputDecoration(
+                labelText: 'Storage Bucket',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 8),
+            FilledButton.icon(
+              key: const ValueKey('tenant_admin_settings_save_firebase'),
+              onPressed: isSaving ? null : controller.saveFirebaseSettings,
+              icon: isSaving
+                  ? const SizedBox(
+                      height: 16,
+                      width: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.save_outlined),
+              label: const Text('Salvar Firebase'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _PushSettingsSection extends StatelessWidget {
+  const _PushSettingsSection({required this.controller});
+
+  final TenantAdminSettingsController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamValueBuilder<bool>(
+      streamValue: controller.pushSubmittingStreamValue,
+      builder: (context, isSaving) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Push',
+              style: Theme.of(context).textTheme.titleSmall,
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: controller.pushMaxTtlDaysController,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(
+                labelText: 'Max TTL (dias)',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: controller.pushMaxPerMinuteController,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(
+                labelText: 'Máximo por minuto',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: controller.pushMaxPerHourController,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(
+                labelText: 'Máximo por hora',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 8),
+            FilledButton.icon(
+              onPressed: isSaving ? null : controller.savePushSettings,
+              icon: isSaving
+                  ? const SizedBox(
+                      height: 16,
+                      width: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.save_outlined),
+              label: const Text('Salvar Push'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _TelemetrySettingsSection extends StatelessWidget {
+  const _TelemetrySettingsSection({required this.controller});
+
+  final TenantAdminSettingsController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamValueBuilder<TenantAdminTelemetrySettingsSnapshot>(
+      streamValue: controller.telemetrySnapshotStreamValue,
+      builder: (context, snapshot) {
+        return StreamValueBuilder<String>(
+          streamValue: controller.selectedTelemetryTypeStreamValue,
+          builder: (context, selectedType) {
+            return StreamValueBuilder<bool>(
+              streamValue: controller.telemetryTrackAllStreamValue,
+              builder: (context, trackAll) {
+                return StreamValueBuilder<bool>(
+                  streamValue: controller.telemetrySubmittingStreamValue,
+                  builder: (context, isSaving) {
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Telemetry',
+                          style: Theme.of(context).textTheme.titleSmall,
+                        ),
+                        const SizedBox(height: 8),
+                        if (snapshot.availableEvents.isNotEmpty)
+                          Wrap(
+                            spacing: 6,
+                            runSpacing: 6,
+                            children: snapshot.availableEvents
+                                .map((event) => Chip(label: Text(event)))
+                                .toList(growable: false),
+                          ),
+                        if (snapshot.availableEvents.isNotEmpty)
+                          const SizedBox(height: 8),
+                        if (snapshot.integrations.isEmpty)
+                          Text(
+                            'Nenhuma integração cadastrada.',
+                            style: Theme.of(context).textTheme.bodySmall,
+                          )
+                        else
+                          ...snapshot.integrations.map(
+                            (integration) => Card(
+                              child: ListTile(
+                                title: Text(integration.type),
+                                subtitle: Text(
+                                  integration.trackAll
+                                      ? 'track_all=true'
+                                      : integration.events.join(', '),
+                                ),
+                                trailing: Wrap(
+                                  spacing: 4,
+                                  children: [
+                                    IconButton(
+                                      tooltip: 'Editar',
+                                      onPressed: isSaving
+                                          ? null
+                                          : () =>
+                                              controller.prefillTelemetryForm(
+                                                integration,
+                                              ),
+                                      icon: const Icon(Icons.edit_outlined),
+                                    ),
+                                    IconButton(
+                                      tooltip: 'Excluir',
+                                      onPressed: isSaving
+                                          ? null
+                                          : () => controller
+                                                  .deleteTelemetryIntegration(
+                                                integration.type,
+                                              ),
+                                      icon: const Icon(Icons.delete_outline),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        const SizedBox(height: 8),
+                        DropdownButtonFormField<String>(
+                          key: ValueKey(
+                              'tenant_admin_settings_type_$selectedType'),
+                          initialValue: selectedType,
+                          decoration: const InputDecoration(
+                            labelText: 'Tipo',
+                            border: OutlineInputBorder(),
+                          ),
+                          items: TenantAdminSettingsController.telemetryTypes
+                              .map(
+                                (type) => DropdownMenuItem<String>(
+                                  value: type,
+                                  child: Text(type),
+                                ),
+                              )
+                              .toList(growable: false),
+                          onChanged: isSaving
+                              ? null
+                              : (value) {
+                                  if (value != null) {
+                                    controller.selectTelemetryType(value);
+                                  }
+                                },
+                        ),
+                        SwitchListTile.adaptive(
+                          value: trackAll,
+                          onChanged: isSaving
+                              ? null
+                              : controller.updateTelemetryTrackAll,
+                          title: const Text('Track all'),
+                          contentPadding: EdgeInsets.zero,
+                        ),
+                        if (!trackAll) ...[
+                          TextField(
+                            controller: controller.telemetryEventsController,
+                            decoration: const InputDecoration(
+                              labelText: 'Eventos (separados por vírgula)',
+                              border: OutlineInputBorder(),
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                        ],
+                        TextField(
+                          controller: controller.telemetryTokenController,
+                          decoration: const InputDecoration(
+                            labelText: 'Token (opcional)',
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        TextField(
+                          controller: controller.telemetryUrlController,
+                          decoration: const InputDecoration(
+                            labelText: 'URL webhook (opcional)',
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Wrap(
+                          spacing: 8,
+                          children: [
+                            FilledButton.icon(
+                              onPressed: isSaving
+                                  ? null
+                                  : controller.saveTelemetryIntegration,
+                              icon: isSaving
+                                  ? const SizedBox(
+                                      height: 16,
+                                      width: 16,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                      ),
+                                    )
+                                  : const Icon(Icons.save_outlined),
+                              label: const Text('Salvar integração'),
+                            ),
+                            OutlinedButton(
+                              onPressed: isSaving
+                                  ? null
+                                  : controller.clearTelemetryForm,
+                              child: const Text('Limpar formulário'),
+                            ),
+                          ],
+                        ),
+                      ],
+                    );
+                  },
+                );
+              },
+            );
+          },
+        );
+      },
     );
   }
 }

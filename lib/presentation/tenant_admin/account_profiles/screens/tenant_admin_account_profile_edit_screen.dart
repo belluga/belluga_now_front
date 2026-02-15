@@ -9,6 +9,8 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
 import 'package:belluga_now/presentation/tenant_admin/account_profiles/controllers/tenant_admin_account_profiles_controller.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_error_banner.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_form_layout.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:image_picker/image_picker.dart';
@@ -410,164 +412,123 @@ class _TenantAdminAccountProfileEditScreenState
                     final profile = state.profile;
 
                     if (state.errorMessage != null) {
-                      return Scaffold(
-                        appBar: AppBar(
-                          title: const Text('Editar Perfil'),
-                          leading: IconButton(
-                            icon: const Icon(Icons.arrow_back),
-                            onPressed: () => context.router.maybePop(),
-                            tooltip: 'Voltar',
-                          ),
+                      return TenantAdminFormScaffold(
+                        title: 'Editar Perfil',
+                        leading: IconButton(
+                          icon: const Icon(Icons.arrow_back),
+                          onPressed: () => context.router.maybePop(),
+                          tooltip: 'Voltar',
                         ),
-                        body: Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: Card(
-                            margin: EdgeInsets.zero,
-                            child: Padding(
-                              padding: const EdgeInsets.all(16),
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Text(
-                                    state.errorMessage!,
-                                    style: TextStyle(
-                                      color:
-                                          Theme.of(context).colorScheme.error,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 12),
-                                  TextButton(
-                                    onPressed: () =>
-                                        _controller.loadEditProfile(
-                                      widget.accountProfileId,
-                                    ),
-                                    child: const Text('Tentar novamente'),
-                                  ),
-                                ],
-                              ),
-                            ),
+                        child: TenantAdminErrorBanner(
+                          rawError: state.errorMessage!,
+                          fallbackMessage:
+                              'Não foi possível carregar os dados do perfil.',
+                          onRetry: () => _controller.loadEditProfile(
+                            widget.accountProfileId,
                           ),
                         ),
                       );
                     }
 
                     if (profile == null && state.isLoading) {
-                      return Scaffold(
-                        appBar: AppBar(
-                          title: const Text('Editar Perfil'),
-                          leading: IconButton(
-                            icon: const Icon(Icons.arrow_back),
-                            onPressed: () => context.router.maybePop(),
-                            tooltip: 'Voltar',
-                          ),
-                        ),
-                        body: const Center(child: CircularProgressIndicator()),
-                      );
-                    }
-
-                    return Scaffold(
-                      appBar: AppBar(
-                        title: const Text('Editar Perfil'),
+                      return TenantAdminFormScaffold(
+                        title: 'Editar Perfil',
                         leading: IconButton(
                           icon: const Icon(Icons.arrow_back),
                           onPressed: () => context.router.maybePop(),
                           tooltip: 'Voltar',
                         ),
+                        child: const Center(child: CircularProgressIndicator()),
+                      );
+                    }
+
+                    return TenantAdminFormScaffold(
+                      title: 'Editar Perfil',
+                      leading: IconButton(
+                        icon: const Icon(Icons.arrow_back),
+                        onPressed: () => context.router.maybePop(),
+                        tooltip: 'Voltar',
                       ),
-                      body: Padding(
-                        padding: EdgeInsets.fromLTRB(
-                          16,
-                          16,
-                          16,
-                          16 + MediaQuery.of(context).viewInsets.bottom,
-                        ),
-                        child: SingleChildScrollView(
-                          child: Form(
-                            key: _controller.editFormKey,
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                if (state.isLoading)
-                                  const LinearProgressIndicator(),
-                                if (state.isLoading) const SizedBox(height: 12),
-                                _buildProfileSection(context, state),
-                                if (hasContent) ...[
-                                  const SizedBox(height: 16),
-                                  _buildContentSection(context, state),
-                                ],
-                                if (hasMedia) ...[
-                                  const SizedBox(height: 16),
-                                  _buildMediaSection(context, state),
-                                ],
-                                if (requiresLocation) ...[
-                                  const SizedBox(height: 16),
-                                  _buildLocationSection(context),
-                                ],
-                                const SizedBox(height: 24),
-                                SizedBox(
-                                  width: double.infinity,
-                                  child: FilledButton(
-                                    onPressed: state.isLoading
-                                        ? null
-                                        : () async {
-                                            final form = _controller
-                                                .editFormKey.currentState;
-                                            if (form == null ||
-                                                !form.validate()) {
-                                              return;
-                                            }
-                                            final selectedType =
-                                                state.selectedProfileType;
-                                            if (selectedType == null) {
-                                              _controller
-                                                  .reportEditErrorMessage(
-                                                'Selecione o tipo de perfil.',
-                                              );
-                                              return;
-                                            }
-                                            final avatarUpload =
-                                                _hasAvatar(selectedType)
-                                                    ? await _buildUpload(
-                                                        state.avatarFile,
-                                                      )
-                                                    : null;
-                                            final coverUpload =
-                                                _hasCover(selectedType)
-                                                    ? await _buildUpload(
-                                                        state.coverFile,
-                                                      )
-                                                    : null;
-                                            _controller.submitUpdateProfile(
-                                              accountProfileId:
-                                                  widget.accountProfileId,
-                                              profileType: selectedType,
-                                              displayName: _controller
-                                                  .displayNameController.text
-                                                  .trim(),
-                                              bio: _hasBio(selectedType)
-                                                  ? _controller
-                                                      .bioController.text
-                                                      .trim()
-                                                  : null,
-                                              taxonomyTerms: _hasTaxonomies(
-                                                selectedType,
-                                              )
+                      child: SingleChildScrollView(
+                        child: Form(
+                          key: _controller.editFormKey,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              if (state.isLoading)
+                                const LinearProgressIndicator(),
+                              if (state.isLoading) const SizedBox(height: 12),
+                              _buildProfileSection(context, state),
+                              if (hasMedia) ...[
+                                const SizedBox(height: 16),
+                                _buildMediaSection(context, state),
+                              ],
+                              if (hasContent) ...[
+                                const SizedBox(height: 16),
+                                _buildContentSection(context, state),
+                              ],
+                              if (requiresLocation) ...[
+                                const SizedBox(height: 16),
+                                _buildLocationSection(context),
+                              ],
+                              const SizedBox(height: 24),
+                              TenantAdminPrimaryFormAction(
+                                label: 'Salvar alteracoes',
+                                icon: Icons.save_outlined,
+                                onPressed: state.isLoading
+                                    ? null
+                                    : () async {
+                                        final form = _controller
+                                            .editFormKey.currentState;
+                                        if (form == null || !form.validate()) {
+                                          return;
+                                        }
+                                        final selectedType =
+                                            state.selectedProfileType;
+                                        if (selectedType == null) {
+                                          _controller.reportEditErrorMessage(
+                                            'Selecione o tipo de perfil.',
+                                          );
+                                          return;
+                                        }
+                                        final avatarUpload =
+                                            _hasAvatar(selectedType)
+                                                ? await _buildUpload(
+                                                    state.avatarFile,
+                                                  )
+                                                : null;
+                                        final coverUpload =
+                                            _hasCover(selectedType)
+                                                ? await _buildUpload(
+                                                    state.coverFile,
+                                                  )
+                                                : null;
+                                        _controller.submitUpdateProfile(
+                                          accountProfileId:
+                                              widget.accountProfileId,
+                                          profileType: selectedType,
+                                          displayName: _controller
+                                              .displayNameController.text
+                                              .trim(),
+                                          bio: _hasBio(selectedType)
+                                              ? _controller.bioController.text
+                                                  .trim()
+                                              : null,
+                                          taxonomyTerms:
+                                              _hasTaxonomies(selectedType)
                                                   ? _buildTaxonomyTerms(
                                                       selectedType,
                                                     )
                                                   : null,
-                                              location: requiresLocation
-                                                  ? _currentLocation()
-                                                  : null,
-                                              avatarUpload: avatarUpload,
-                                              coverUpload: coverUpload,
-                                            );
-                                          },
-                                    child: const Text('Salvar alteracoes'),
-                                  ),
-                                ),
-                              ],
-                            ),
+                                          location: requiresLocation
+                                              ? _currentLocation()
+                                              : null,
+                                          avatarUpload: avatarUpload,
+                                          coverUpload: coverUpload,
+                                        );
+                                      },
+                              ),
+                            ],
                           ),
                         ),
                       ),
@@ -610,80 +571,72 @@ class _TenantAdminAccountProfileEditScreenState
     BuildContext context,
     TenantAdminAccountProfileEditState state,
   ) {
-    return Card(
-      margin: EdgeInsets.zero,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Dados do perfil',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            const SizedBox(height: 12),
-            StreamValueBuilder(
-              streamValue: _controller.profileTypesStreamValue,
-              builder: (context, types) {
-                final uniqueTypes = _uniqueProfileTypes(types);
-                final hasSelected = uniqueTypes.any((definition) =>
-                    definition.type == state.selectedProfileType);
-                final effectiveSelected =
-                    hasSelected ? state.selectedProfileType : null;
-                return DropdownButtonFormField<String>(
-                  key: ValueKey(effectiveSelected),
-                  initialValue: effectiveSelected,
-                  decoration: const InputDecoration(
-                    labelText: 'Tipo de perfil',
-                  ),
-                  items: uniqueTypes
-                      .map(
-                        (type) => DropdownMenuItem<String>(
-                          value: type.type,
-                          child: Text(type.label),
-                        ),
-                      )
-                      .toList(growable: false),
-                  onChanged: (value) {
-                    _controller.updateSelectedProfileType(value);
-                    if (!_requiresLocation(value)) {
-                      _controller.latitudeController.clear();
-                      _controller.longitudeController.clear();
-                    }
-                    if (!_hasBio(value)) {
-                      _controller.bioController.clear();
-                    }
-                    if (!_hasTaxonomies(value)) {
-                      _controller.resetTaxonomySelection();
-                    }
-                    _initialTaxonomiesSynced = true;
-                    _syncTaxonomySelection(
-                      allowed: _allowedTaxonomyDefinitions(value),
-                      terms: const [],
-                    );
-                  },
-                  validator: (value) {
-                    if (value == null || value.trim().isEmpty) {
-                      return 'Tipo de perfil e obrigatorio.';
-                    }
-                    return null;
-                  },
-                );
-              },
-            ),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: _controller.displayNameController,
-              decoration: const InputDecoration(labelText: 'Nome de exibicao'),
-              validator: (value) {
-                if (value == null || value.trim().isEmpty) {
-                  return 'Nome de exibicao e obrigatorio.';
-                }
-                return null;
-              },
-            ),
-          ],
-        ),
+    return TenantAdminFormSectionCard(
+      title: 'Dados do perfil',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          StreamValueBuilder(
+            streamValue: _controller.profileTypesStreamValue,
+            builder: (context, types) {
+              final uniqueTypes = _uniqueProfileTypes(types);
+              final hasSelected = uniqueTypes.any(
+                  (definition) => definition.type == state.selectedProfileType);
+              final effectiveSelected =
+                  hasSelected ? state.selectedProfileType : null;
+              return DropdownButtonFormField<String>(
+                key: ValueKey(effectiveSelected),
+                initialValue: effectiveSelected,
+                decoration: const InputDecoration(
+                  labelText: 'Tipo de perfil',
+                ),
+                items: uniqueTypes
+                    .map(
+                      (type) => DropdownMenuItem<String>(
+                        value: type.type,
+                        child: Text(type.label),
+                      ),
+                    )
+                    .toList(growable: false),
+                onChanged: (value) {
+                  _controller.updateSelectedProfileType(value);
+                  if (!_requiresLocation(value)) {
+                    _controller.latitudeController.clear();
+                    _controller.longitudeController.clear();
+                  }
+                  if (!_hasBio(value)) {
+                    _controller.bioController.clear();
+                  }
+                  if (!_hasTaxonomies(value)) {
+                    _controller.resetTaxonomySelection();
+                  }
+                  _initialTaxonomiesSynced = true;
+                  _syncTaxonomySelection(
+                    allowed: _allowedTaxonomyDefinitions(value),
+                    terms: const [],
+                  );
+                },
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return 'Tipo de perfil e obrigatorio.';
+                  }
+                  return null;
+                },
+              );
+            },
+          ),
+          const SizedBox(height: 12),
+          TextFormField(
+            controller: _controller.displayNameController,
+            decoration: const InputDecoration(labelText: 'Nome de exibicao'),
+            validator: (value) {
+              if (value == null || value.trim().isEmpty) {
+                return 'Nome de exibicao e obrigatorio.';
+              }
+              return null;
+            },
+          ),
+        ],
       ),
     );
   }
@@ -695,94 +648,81 @@ class _TenantAdminAccountProfileEditScreenState
     final hasBio = _hasBio(state.selectedProfileType);
     final allowedDefinitions =
         _allowedTaxonomyDefinitions(state.selectedProfileType);
-    return Card(
-      margin: EdgeInsets.zero,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Conteudo do perfil',
-              style: Theme.of(context).textTheme.titleMedium,
+    return TenantAdminFormSectionCard(
+      title: 'Conteudo do perfil',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (hasBio) ...[
+            TextFormField(
+              controller: _controller.bioController,
+              decoration: const InputDecoration(labelText: 'Bio'),
+              maxLines: 4,
+              minLines: 2,
             ),
-            if (hasBio) ...[
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _controller.bioController,
-                decoration: const InputDecoration(labelText: 'Bio'),
-                maxLines: 4,
-                minLines: 2,
-              ),
-            ],
-            if (_hasTaxonomies(state.selectedProfileType)) ...[
-              const SizedBox(height: 12),
-              Text(
-                'Taxonomias',
-                style: Theme.of(context).textTheme.labelLarge,
-              ),
-              const SizedBox(height: 8),
-              StreamValueBuilder(
-                streamValue: _controller.taxonomySelectionStreamValue,
-                builder: (context, selections) {
-                  return StreamValueBuilder(
-                    streamValue: _controller.taxonomyTermsStreamValue,
-                    builder: (context, termsByTaxonomy) {
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          for (final taxonomy in allowedDefinitions)
-                            Padding(
-                              padding: const EdgeInsets.only(bottom: 12),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(taxonomy.name),
-                                  const SizedBox(height: 8),
-                                  if ((termsByTaxonomy[taxonomy.slug] ??
-                                          const [])
-                                      .isEmpty)
-                                    const Text('Sem termos cadastrados.')
-                                  else
-                                    Wrap(
-                                      spacing: 8,
-                                      runSpacing: 8,
-                                      children:
-                                          (termsByTaxonomy[taxonomy.slug] ??
-                                                  const [])
-                                              .map(
-                                                (term) => FilterChip(
-                                                  label: Text(term.name),
-                                                  selected:
-                                                      selections[taxonomy.slug]
-                                                              ?.contains(
-                                                                  term.slug) ??
-                                                          false,
-                                                  onSelected: (selected) {
-                                                    _controller
-                                                        .updateTaxonomySelection(
-                                                      taxonomySlug:
-                                                          taxonomy.slug,
-                                                      termSlug: term.slug,
-                                                      selected: selected,
-                                                    );
-                                                  },
-                                                ),
-                                              )
-                                              .toList(growable: false),
-                                    ),
-                                ],
-                              ),
-                            ),
-                        ],
-                      );
-                    },
-                  );
-                },
-              ),
-            ],
           ],
-        ),
+          if (_hasTaxonomies(state.selectedProfileType)) ...[
+            if (hasBio) const SizedBox(height: 12),
+            Text(
+              'Taxonomias',
+              style: Theme.of(context).textTheme.labelLarge,
+            ),
+            const SizedBox(height: 8),
+            StreamValueBuilder(
+              streamValue: _controller.taxonomySelectionStreamValue,
+              builder: (context, selections) {
+                return StreamValueBuilder(
+                  streamValue: _controller.taxonomyTermsStreamValue,
+                  builder: (context, termsByTaxonomy) {
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        for (final taxonomy in allowedDefinitions)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(taxonomy.name),
+                                const SizedBox(height: 8),
+                                if ((termsByTaxonomy[taxonomy.slug] ?? const [])
+                                    .isEmpty)
+                                  const Text('Sem termos cadastrados.')
+                                else
+                                  Wrap(
+                                    spacing: 8,
+                                    runSpacing: 8,
+                                    children: (termsByTaxonomy[taxonomy.slug] ??
+                                            const [])
+                                        .map(
+                                          (term) => FilterChip(
+                                            label: Text(term.name),
+                                            selected: selections[taxonomy.slug]
+                                                    ?.contains(term.slug) ??
+                                                false,
+                                            onSelected: (selected) {
+                                              _controller
+                                                  .updateTaxonomySelection(
+                                                taxonomySlug: taxonomy.slug,
+                                                termSlug: term.slug,
+                                                selected: selected,
+                                              );
+                                            },
+                                          ),
+                                        )
+                                        .toList(growable: false),
+                                  ),
+                              ],
+                            ),
+                          ),
+                      ],
+                    );
+                  },
+                );
+              },
+            ),
+          ],
+        ],
       ),
     );
   }
@@ -798,226 +738,214 @@ class _TenantAdminAccountProfileEditScreenState
     final hasAvatar = _hasAvatar(state.selectedProfileType);
     final hasCover = _hasCover(state.selectedProfileType);
 
-    return Card(
-      margin: EdgeInsets.zero,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Imagens do perfil',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            const SizedBox(height: 12),
-            if (hasAvatar) ...[
-              Row(
-                children: [
-                  if (state.avatarFile != null)
-                    Stack(
-                      alignment: Alignment.bottomRight,
-                      children: [
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(36),
-                          child: Image.file(
-                            File(state.avatarFile!.path),
-                            width: 72,
-                            height: 72,
-                            fit: BoxFit.cover,
+    return TenantAdminFormSectionCard(
+      title: 'Imagens do perfil',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (hasAvatar) ...[
+            Row(
+              children: [
+                if (state.avatarFile != null)
+                  Stack(
+                    alignment: Alignment.bottomRight,
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(36),
+                        child: Image.file(
+                          File(state.avatarFile!.path),
+                          width: 72,
+                          height: 72,
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                      if (state.avatarRemoteError)
+                        Container(
+                          margin: const EdgeInsets.all(2),
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).colorScheme.errorContainer,
+                            shape: BoxShape.circle,
+                          ),
+                          padding: const EdgeInsets.all(4),
+                          child: Icon(
+                            Icons.warning_amber_rounded,
+                            size: 16,
+                            color:
+                                Theme.of(context).colorScheme.onErrorContainer,
                           ),
                         ),
-                        if (state.avatarRemoteError)
-                          Container(
-                            margin: const EdgeInsets.all(2),
-                            decoration: BoxDecoration(
-                              color:
-                                  Theme.of(context).colorScheme.errorContainer,
-                              shape: BoxShape.circle,
-                            ),
-                            padding: const EdgeInsets.all(4),
-                            child: Icon(
-                              Icons.warning_amber_rounded,
-                              size: 16,
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .onErrorContainer,
-                            ),
-                          ),
-                      ],
-                    )
-                  else if (hasAvatarUrl)
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(36),
-                      child: Image.network(
-                        avatarUrl,
-                        width: 72,
-                        height: 72,
-                        fit: BoxFit.cover,
-                        loadingBuilder: (context, child, loadingProgress) {
-                          if (loadingProgress == null) return child;
-                          return Container(
-                            width: 72,
-                            height: 72,
-                            decoration: BoxDecoration(
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .surfaceContainerHighest,
-                              borderRadius: BorderRadius.circular(36),
-                            ),
-                            child: const Icon(Icons.person_outline),
-                          );
-                        },
-                        errorBuilder: (context, error, stackTrace) {
-                          if (!state.avatarRemoteError) {
-                            _controller.updateAvatarRemoteError(true);
-                          }
-                          return _buildAvatarError(context);
-                        },
-                      ),
-                    )
-                  else if (state.avatarRemoteError)
-                    _buildAvatarError(context)
-                  else
-                    Container(
+                    ],
+                  )
+                else if (hasAvatarUrl)
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(36),
+                    child: Image.network(
+                      avatarUrl,
                       width: 72,
                       height: 72,
+                      fit: BoxFit.cover,
+                      loadingBuilder: (context, child, loadingProgress) {
+                        if (loadingProgress == null) return child;
+                        return Container(
+                          width: 72,
+                          height: 72,
+                          decoration: BoxDecoration(
+                            color: Theme.of(context)
+                                .colorScheme
+                                .surfaceContainerHighest,
+                            borderRadius: BorderRadius.circular(36),
+                          ),
+                          child: const Icon(Icons.person_outline),
+                        );
+                      },
+                      errorBuilder: (context, error, stackTrace) {
+                        if (!state.avatarRemoteError) {
+                          _controller.updateAvatarRemoteError(true);
+                        }
+                        return _buildAvatarError(context);
+                      },
+                    ),
+                  )
+                else if (state.avatarRemoteError)
+                  _buildAvatarError(context)
+                else
+                  Container(
+                    width: 72,
+                    height: 72,
+                    decoration: BoxDecoration(
+                      color:
+                          Theme.of(context).colorScheme.surfaceContainerHighest,
+                      borderRadius: BorderRadius.circular(36),
+                    ),
+                    child: const Icon(Icons.person_outline),
+                  ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        state.avatarFile?.name ??
+                            (state.profile?.avatarUrl?.isNotEmpty ?? false
+                                ? 'Imagem atual'
+                                : 'Nenhuma imagem selecionada'),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      Row(
+                        children: [
+                          FilledButton.tonalIcon(
+                            onPressed: () => _pickImage(isAvatar: true),
+                            icon: const Icon(Icons.photo_library_outlined),
+                            label: const Text('Selecionar'),
+                          ),
+                          const SizedBox(width: 8),
+                          if (state.avatarFile != null)
+                            TextButton(
+                              onPressed: () => _clearImage(isAvatar: true),
+                              child: const Text('Remover'),
+                            ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ],
+          if (hasAvatar && hasCover) const SizedBox(height: 16),
+          if (hasCover) ...[
+            if (state.coverFile != null)
+              Stack(
+                alignment: Alignment.topRight,
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: Image.file(
+                      File(state.coverFile!.path),
+                      width: double.infinity,
+                      height: 140,
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                  if (state.coverRemoteError)
+                    Container(
+                      margin: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.errorContainer,
+                        shape: BoxShape.circle,
+                      ),
+                      padding: const EdgeInsets.all(6),
+                      child: Icon(
+                        Icons.warning_amber_rounded,
+                        size: 18,
+                        color: Theme.of(context).colorScheme.onErrorContainer,
+                      ),
+                    ),
+                ],
+              )
+            else if (hasCoverUrl)
+              ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: Image.network(
+                  coverUrl,
+                  width: double.infinity,
+                  height: 140,
+                  fit: BoxFit.cover,
+                  loadingBuilder: (context, child, loadingProgress) {
+                    if (loadingProgress == null) return child;
+                    return Container(
+                      width: double.infinity,
+                      height: 140,
                       decoration: BoxDecoration(
                         color: Theme.of(context)
                             .colorScheme
                             .surfaceContainerHighest,
-                        borderRadius: BorderRadius.circular(36),
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                      child: const Icon(Icons.person_outline),
-                    ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          state.avatarFile?.name ??
-                              (state.profile?.avatarUrl?.isNotEmpty ?? false
-                                  ? 'Imagem atual'
-                                  : 'Nenhuma imagem selecionada'),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        Row(
-                          children: [
-                            FilledButton.tonalIcon(
-                              onPressed: () => _pickImage(isAvatar: true),
-                              icon: const Icon(Icons.photo_library_outlined),
-                              label: const Text('Selecionar'),
-                            ),
-                            const SizedBox(width: 8),
-                            if (state.avatarFile != null)
-                              TextButton(
-                                onPressed: () => _clearImage(isAvatar: true),
-                                child: const Text('Remover'),
-                              ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ],
-            if (hasAvatar && hasCover) const SizedBox(height: 16),
-            if (hasCover) ...[
-              if (state.coverFile != null)
-                Stack(
-                  alignment: Alignment.topRight,
-                  children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(12),
-                      child: Image.file(
-                        File(state.coverFile!.path),
-                        width: double.infinity,
-                        height: 140,
-                        fit: BoxFit.cover,
-                      ),
-                    ),
-                    if (state.coverRemoteError)
-                      Container(
-                        margin: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).colorScheme.errorContainer,
-                          shape: BoxShape.circle,
-                        ),
-                        padding: const EdgeInsets.all(6),
-                        child: Icon(
-                          Icons.warning_amber_rounded,
-                          size: 18,
-                          color: Theme.of(context).colorScheme.onErrorContainer,
-                        ),
-                      ),
-                  ],
-                )
-              else if (hasCoverUrl)
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-                  child: Image.network(
-                    coverUrl,
-                    width: double.infinity,
-                    height: 140,
-                    fit: BoxFit.cover,
-                    loadingBuilder: (context, child, loadingProgress) {
-                      if (loadingProgress == null) return child;
-                      return Container(
-                        width: double.infinity,
-                        height: 140,
-                        decoration: BoxDecoration(
-                          color: Theme.of(context)
-                              .colorScheme
-                              .surfaceContainerHighest,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: const Icon(Icons.image_outlined),
-                      );
-                    },
-                    errorBuilder: (context, error, stackTrace) {
-                      if (!state.coverRemoteError) {
-                        _controller.updateCoverRemoteError(true);
-                      }
-                      return _buildCoverError(context);
-                    },
-                  ),
-                )
-              else if (state.coverRemoteError)
-                _buildCoverError(context)
-              else
-                Container(
-                  width: double.infinity,
-                  height: 140,
-                  decoration: BoxDecoration(
-                    color:
-                        Theme.of(context).colorScheme.surfaceContainerHighest,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Center(
-                    child: Icon(Icons.image_outlined),
-                  ),
+                      child: const Icon(Icons.image_outlined),
+                    );
+                  },
+                  errorBuilder: (context, error, stackTrace) {
+                    if (!state.coverRemoteError) {
+                      _controller.updateCoverRemoteError(true);
+                    }
+                    return _buildCoverError(context);
+                  },
                 ),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  FilledButton.tonalIcon(
-                    onPressed: () => _pickImage(isAvatar: false),
-                    icon: const Icon(Icons.photo_library_outlined),
-                    label: const Text('Selecionar capa'),
-                  ),
-                  const SizedBox(width: 8),
-                  if (state.coverFile != null)
-                    TextButton(
-                      onPressed: () => _clearImage(isAvatar: false),
-                      child: const Text('Remover'),
-                    ),
-                ],
+              )
+            else if (state.coverRemoteError)
+              _buildCoverError(context)
+            else
+              Container(
+                width: double.infinity,
+                height: 140,
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Center(
+                  child: Icon(Icons.image_outlined),
+                ),
               ),
-            ],
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                FilledButton.tonalIcon(
+                  onPressed: () => _pickImage(isAvatar: false),
+                  icon: const Icon(Icons.photo_library_outlined),
+                  label: const Text('Selecionar capa'),
+                ),
+                const SizedBox(width: 8),
+                if (state.coverFile != null)
+                  TextButton(
+                    onPressed: () => _clearImage(isAvatar: false),
+                    child: const Text('Remover'),
+                  ),
+              ],
+            ),
           ],
-        ),
+        ],
       ),
     );
   }
@@ -1056,39 +984,31 @@ class _TenantAdminAccountProfileEditScreenState
   }
 
   Widget _buildLocationSection(BuildContext context) {
-    return Card(
-      margin: EdgeInsets.zero,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Localizacao',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: _controller.latitudeController,
-              decoration: const InputDecoration(labelText: 'Latitude'),
-              keyboardType: TextInputType.number,
-              validator: _validateLatitude,
-            ),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: _controller.longitudeController,
-              decoration: const InputDecoration(labelText: 'Longitude'),
-              keyboardType: TextInputType.number,
-              validator: _validateLongitude,
-            ),
-            const SizedBox(height: 8),
-            FilledButton.tonalIcon(
-              onPressed: _openMapPicker,
-              icon: const Icon(Icons.map_outlined),
-              label: const Text('Selecionar no mapa'),
-            ),
-          ],
-        ),
+    return TenantAdminFormSectionCard(
+      title: 'Localizacao',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          TextFormField(
+            controller: _controller.latitudeController,
+            decoration: const InputDecoration(labelText: 'Latitude'),
+            keyboardType: TextInputType.number,
+            validator: _validateLatitude,
+          ),
+          const SizedBox(height: 12),
+          TextFormField(
+            controller: _controller.longitudeController,
+            decoration: const InputDecoration(labelText: 'Longitude'),
+            keyboardType: TextInputType.number,
+            validator: _validateLongitude,
+          ),
+          const SizedBox(height: 8),
+          FilledButton.tonalIcon(
+            onPressed: _openMapPicker,
+            icon: const Icon(Icons.map_outlined),
+            label: const Text('Selecionar no mapa'),
+          ),
+        ],
       ),
     );
   }

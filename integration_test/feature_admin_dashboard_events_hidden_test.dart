@@ -4,6 +4,7 @@ import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/domain/repositories/admin_mode_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/landlord_auth_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/landlord_tenants_repository_contract.dart';
 import 'support/fake_landlord_app_data_backend.dart';
 import 'package:belluga_now/infrastructure/dal/dao/local/app_data_local_info_source/app_data_local_info_source_stub.dart';
 import 'package:belluga_now/infrastructure/repositories/app_data_repository.dart';
@@ -46,6 +47,16 @@ void main() {
     }
   }
 
+  Finder _tenantAdminShellRouterFinder() {
+    return find.byWidgetPredicate((widget) {
+      final key = widget.key;
+      if (key is! ValueKey<String>) {
+        return false;
+      }
+      return key.value.startsWith('tenant-admin-shell-router-');
+    });
+  }
+
   testWidgets('Admin dashboard hides events', (tester) async {
     if (GetIt.I.isRegistered<ApplicationContract>()) {
       GetIt.I.unregister<ApplicationContract>();
@@ -59,6 +70,9 @@ void main() {
     if (GetIt.I.isRegistered<LandlordAuthRepositoryContract>()) {
       GetIt.I.unregister<LandlordAuthRepositoryContract>();
     }
+    if (GetIt.I.isRegistered<LandlordTenantsRepositoryContract>()) {
+      GetIt.I.unregister<LandlordTenantsRepositoryContract>();
+    }
 
     GetIt.I.registerSingleton<AppDataRepositoryContract>(
       AppDataRepository(
@@ -71,6 +85,9 @@ void main() {
     );
     GetIt.I.registerSingleton<LandlordAuthRepositoryContract>(
       _FakeLandlordAuthRepository(hasValidSession: true),
+    );
+    GetIt.I.registerSingleton<LandlordTenantsRepositoryContract>(
+      _FakeLandlordTenantsRepository(),
     );
 
     final app = Application();
@@ -89,7 +106,7 @@ void main() {
 
     await _waitForFinder(
       tester,
-      find.byKey(const ValueKey('tenant-admin-shell-router')),
+      _tenantAdminShellRouterFinder(),
     );
     await _waitForFinder(tester, find.text('Eventos'));
     await _waitForFinder(tester, find.text('Em breve'));
@@ -99,7 +116,7 @@ void main() {
     await tester.pumpAndSettle(const Duration(seconds: 1));
     await _waitForFinder(
       tester,
-      find.byKey(const ValueKey('tenant-admin-shell-router')),
+      _tenantAdminShellRouterFinder(),
     );
   });
 }
@@ -154,5 +171,19 @@ class _FakeLandlordAuthRepository implements LandlordAuthRepositoryContract {
   @override
   Future<void> logout() async {
     _hasValidSession = false;
+  }
+}
+
+class _FakeLandlordTenantsRepository
+    implements LandlordTenantsRepositoryContract {
+  @override
+  Future<List<LandlordTenantOption>> fetchTenants() async {
+    return const [
+      LandlordTenantOption(
+        id: 'tenant-guarappari',
+        name: 'Guarappari',
+        mainDomain: 'guarappari.local.test',
+      ),
+    ];
   }
 }

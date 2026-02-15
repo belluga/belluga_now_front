@@ -8,6 +8,8 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dar
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_document.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_accounts_result.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
 import 'package:belluga_now/domain/services/tenant_admin_location_selection_contract.dart';
@@ -53,6 +55,17 @@ class _FakeAccountsRepository implements TenantAdminAccountsRepositoryContract {
   @override
   Future<List<TenantAdminAccount>> fetchAccounts() async {
     return const [];
+  }
+
+  @override
+  Future<TenantAdminPagedAccountsResult> fetchAccountsPage({
+    required int page,
+    required int pageSize,
+  }) async {
+    return const TenantAdminPagedAccountsResult(
+      accounts: <TenantAdminAccount>[],
+      hasMore: false,
+    );
   }
 
   @override
@@ -106,6 +119,28 @@ class _FakeAccountProfilesRepository
         ),
       ),
     ];
+  }
+
+  @override
+  Future<TenantAdminPagedResult<TenantAdminProfileTypeDefinition>>
+      fetchProfileTypesPage({
+    required int page,
+    required int pageSize,
+  }) async {
+    final types = await fetchProfileTypes();
+    final start = (page - 1) * pageSize;
+    if (page <= 0 || pageSize <= 0 || start >= types.length) {
+      return const TenantAdminPagedResult<TenantAdminProfileTypeDefinition>(
+        items: <TenantAdminProfileTypeDefinition>[],
+        hasMore: false,
+      );
+    }
+    final end =
+        start + pageSize < types.length ? start + pageSize : types.length;
+    return TenantAdminPagedResult<TenantAdminProfileTypeDefinition>(
+      items: types.sublist(start, end),
+      hasMore: end < types.length,
+    );
   }
 
   @override
@@ -290,7 +325,9 @@ void main() {
       '000',
     );
 
-    await tester.tap(find.byType(DropdownButtonFormField<String>));
+    final profileTypeDropdown = find.byType(DropdownButtonFormField<String>);
+    await tester.ensureVisible(profileTypeDropdown);
+    await tester.tap(profileTypeDropdown, warnIfMissed: false);
     await tester.pumpAndSettle();
     await tester.tap(find.text('Venue').last);
     await tester.pumpAndSettle();

@@ -4,6 +4,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_static_profile_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_definition.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_error_banner.dart';
 import 'package:belluga_now/presentation/tenant_admin/static_assets/controllers/tenant_admin_static_assets_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
@@ -88,6 +89,13 @@ class _TenantAdminStaticAssetCreateScreenState
                                 _buildBasicSection(context, error),
                                 const SizedBox(height: 16),
                                 _buildStatusSection(),
+                                if (hasAvatar || hasCover) ...[
+                                  const SizedBox(height: 16),
+                                  _buildMediaSection(
+                                    hasAvatar: hasAvatar,
+                                    hasCover: hasCover,
+                                  ),
+                                ],
                                 if (hasBio ||
                                     hasContent ||
                                     _hasTagsOrCategories()) ...[
@@ -96,13 +104,6 @@ class _TenantAdminStaticAssetCreateScreenState
                                     context,
                                     hasBio: hasBio,
                                     hasContent: hasContent,
-                                  ),
-                                ],
-                                if (hasAvatar || hasCover) ...[
-                                  const SizedBox(height: 16),
-                                  _buildMediaSection(
-                                    hasAvatar: hasAvatar,
-                                    hasCover: hasCover,
                                   ),
                                 ],
                                 if (hasTaxonomies) ...[
@@ -283,22 +284,11 @@ class _TenantAdminStaticAssetCreateScreenState
                         if (error != null)
                           Padding(
                             padding: const EdgeInsets.only(top: 8),
-                            child: Row(
-                              children: [
-                                Expanded(
-                                  child: Text(
-                                    error,
-                                    style: TextStyle(
-                                      color:
-                                          Theme.of(context).colorScheme.error,
-                                    ),
-                                  ),
-                                ),
-                                TextButton(
-                                  onPressed: _controller.loadProfileTypes,
-                                  child: const Text('Tentar novamente'),
-                                ),
-                              ],
+                            child: TenantAdminErrorBanner(
+                              rawError: error,
+                              fallbackMessage:
+                                  'Não foi possível carregar os tipos de ativo.',
+                              onRetry: _controller.loadProfileTypes,
                             ),
                           ),
                         const SizedBox(height: 8),

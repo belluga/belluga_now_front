@@ -1,6 +1,9 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_static_asset.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_confirmation_dialog.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_empty_state.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_error_banner.dart';
 import 'package:belluga_now/presentation/tenant_admin/static_assets/controllers/tenant_admin_static_assets_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
@@ -18,35 +21,41 @@ class _TenantAdminStaticAssetsListScreenState
     extends State<TenantAdminStaticAssetsListScreen> {
   final TenantAdminStaticAssetsController _controller =
       GetIt.I.get<TenantAdminStaticAssetsController>();
+  final ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
     super.initState();
+    _scrollController.addListener(_handleScroll);
     _controller.loadAssets();
   }
 
-  Future<void> _confirmDelete(TenantAdminStaticAsset asset) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Remover ativo'),
-          content: Text('Remover "${asset.displayName}"?'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Cancelar'),
-            ),
-            ElevatedButton(
-              onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('Remover'),
-            ),
-          ],
-        );
-      },
-    );
+  @override
+  void dispose() {
+    _scrollController
+      ..removeListener(_handleScroll)
+      ..dispose();
+    super.dispose();
+  }
 
-    if (confirmed != true) return;
+  void _handleScroll() {
+    if (!_scrollController.hasClients) return;
+    final position = _scrollController.position;
+    const threshold = 320.0;
+    if (position.pixels + threshold >= position.maxScrollExtent) {
+      _controller.loadNextAssetsPage();
+    }
+  }
+
+  Future<void> _confirmDelete(TenantAdminStaticAsset asset) async {
+    final confirmed = await showTenantAdminConfirmationDialog(
+      context: context,
+      title: 'Remover ativo',
+      message: 'Remover "${asset.displayName}"?',
+      confirmLabel: 'Remover',
+      isDestructive: true,
+    );
+    if (!confirmed) return;
     await _controller.deleteAsset(asset.id);
   }
 
@@ -56,141 +65,43 @@ class _TenantAdminStaticAssetsListScreenState
       streamValue: _controller.errorStreamValue,
       builder: (context, error) {
         return StreamValueBuilder<bool>(
-          streamValue: _controller.isLoadingStreamValue,
-          builder: (context, isLoading) {
-            return StreamValueBuilder<List<TenantAdminStaticAsset>>(
-              streamValue: _controller.assetsStreamValue,
-              builder: (context, assets) {
-                return StreamValueBuilder<String>(
-                  streamValue: _controller.searchQueryStreamValue,
-                  builder: (context, query) {
-                    final filteredAssets =
-                        _filterAssets(assets, query.trim());
-                    return Scaffold(
-                      floatingActionButton: FloatingActionButton.extended(
-                        onPressed: () {
-                          context.router.push(
-                            const TenantAdminStaticAssetCreateRoute(),
-                          );
-                        },
-                        icon: const Icon(Icons.add),
-                        label: const Text('Criar ativo'),
-                      ),
-                      body: Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Ativos estaticos',
-                              style: Theme.of(context).textTheme.titleMedium,
-                            ),
-                            const SizedBox(height: 12),
-                            TextField(
-                              onChanged: _controller.updateSearchQuery,
-                              decoration: const InputDecoration(
-                                prefixIcon: Icon(Icons.search),
-                                labelText: 'Buscar por nome ou slug',
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-                            if (isLoading) const LinearProgressIndicator(),
-                            if (error != null)
-                              Padding(
-                                padding: const EdgeInsets.only(top: 8),
-                                child: Card(
-                                  margin: EdgeInsets.zero,
-                                  child: Padding(
-                                    padding: const EdgeInsets.all(12),
-                                    child: Row(
-                                      children: [
-                                        Expanded(
-                                          child: Text(
-                                            error,
-                                            style: TextStyle(
-                                              color: Theme.of(context)
-                                                  .colorScheme
-                                                  .error,
-                                            ),
-                                          ),
-                                        ),
-                                        TextButton(
-                                          onPressed: _controller.loadAssets,
-                                          child: const Text('Tentar novamente'),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
+          streamValue: _controller.hasMoreAssetsStreamValue,
+          builder: (context, hasMore) {
+            return StreamValueBuilder<bool>(
+              streamValue: _controller.isAssetsPageLoadingStreamValue,
+              builder: (context, isPageLoading) {
+                return StreamValueBuilder<List<TenantAdminStaticAsset>?>(
+                  streamValue: _controller.assetsStreamValue,
+                  onNullWidget: _buildScaffold(
+                    context: context,
+                    error: error,
+                    body: const Center(child: CircularProgressIndicator()),
+                  ),
+                  builder: (context, assets) {
+                    return StreamValueBuilder<String>(
+                      streamValue: _controller.searchQueryStreamValue,
+                      builder: (context, query) {
+                        final loadedAssets =
+                            assets ?? const <TenantAdminStaticAsset>[];
+                        final filteredAssets =
+                            _filterAssets(loadedAssets, query.trim());
+                        return _buildScaffold(
+                          context: context,
+                          error: error,
+                          body: filteredAssets.isEmpty
+                              ? const TenantAdminEmptyState(
+                                  icon: Icons.place_outlined,
+                                  title: 'Nenhum ativo estático',
+                                  description:
+                                      'Use "Criar ativo" para adicionar o primeiro ativo do tenant.',
+                                )
+                              : _buildAssetsList(
+                                  filteredAssets: filteredAssets,
+                                  hasMore: hasMore,
+                                  isPageLoading: isPageLoading,
                                 ),
-                              ),
-                            const SizedBox(height: 8),
-                            Expanded(
-                              child: filteredAssets.isEmpty
-                                  ? _buildEmptyState(context)
-                                  : ListView.separated(
-                                      itemCount: filteredAssets.length,
-                                      separatorBuilder: (_, __) =>
-                                          const SizedBox(height: 12),
-                                      itemBuilder: (context, index) {
-                                        final asset = filteredAssets[index];
-                                        final subtitle = [
-                                          asset.slug,
-                                          asset.profileType,
-                                        ].join(' • ');
-                                        return Card(
-                                          clipBehavior: Clip.antiAlias,
-                                          child: ListTile(
-                                            title: Text(asset.displayName),
-                                            subtitle: Text(subtitle),
-                                            onTap: () {
-                                              context.router.push(
-                                                TenantAdminStaticAssetEditRoute(
-                                                  assetId: asset.id,
-                                                ),
-                                              );
-                                            },
-                                            trailing: Row(
-                                              mainAxisSize: MainAxisSize.min,
-                                              children: [
-                                                _buildStatusChip(
-                                                  context,
-                                                  asset.isActive,
-                                                ),
-                                                const SizedBox(width: 8),
-                                                PopupMenuButton<String>(
-                                                  onSelected: (value) {
-                                                    if (value == 'edit') {
-                                                      context.router.push(
-                                                        TenantAdminStaticAssetEditRoute(
-                                                          assetId: asset.id,
-                                                        ),
-                                                      );
-                                                    }
-                                                    if (value == 'delete') {
-                                                      _confirmDelete(asset);
-                                                    }
-                                                  },
-                                                  itemBuilder: (context) => [
-                                                    const PopupMenuItem(
-                                                      value: 'edit',
-                                                      child: Text('Editar'),
-                                                    ),
-                                                    const PopupMenuItem(
-                                                      value: 'delete',
-                                                      child: Text('Remover'),
-                                                    ),
-                                                  ],
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                        );
-                                      },
-                                    ),
-                            ),
-                          ],
-                        ),
-                      ),
+                        );
+                      },
                     );
                   },
                 );
@@ -199,6 +110,131 @@ class _TenantAdminStaticAssetsListScreenState
           },
         );
       },
+    );
+  }
+
+  Widget _buildAssetsList({
+    required List<TenantAdminStaticAsset> filteredAssets,
+    required bool hasMore,
+    required bool isPageLoading,
+  }) {
+    final itemCount = filteredAssets.length + (hasMore ? 1 : 0);
+    return ListView.separated(
+      controller: _scrollController,
+      itemCount: itemCount,
+      separatorBuilder: (_, __) => const SizedBox(height: 12),
+      itemBuilder: (context, index) {
+        if (index >= filteredAssets.length) {
+          if (isPageLoading) {
+            return const Padding(
+              padding: EdgeInsets.symmetric(vertical: 16),
+              child: Center(child: CircularProgressIndicator()),
+            );
+          }
+          return const SizedBox.shrink();
+        }
+        final asset = filteredAssets[index];
+        final subtitle = [asset.slug, asset.profileType].join(' • ');
+        return Card(
+          clipBehavior: Clip.antiAlias,
+          child: ListTile(
+            title: Text(asset.displayName),
+            subtitle: Text(subtitle),
+            onTap: () {
+              context.router.push(
+                TenantAdminStaticAssetEditRoute(
+                  assetId: asset.id,
+                ),
+              );
+            },
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _buildStatusChip(
+                  context,
+                  asset.isActive,
+                ),
+                const SizedBox(width: 8),
+                PopupMenuButton<String>(
+                  onSelected: (value) {
+                    if (value == 'edit') {
+                      context.router.push(
+                        TenantAdminStaticAssetEditRoute(
+                          assetId: asset.id,
+                        ),
+                      );
+                    }
+                    if (value == 'delete') {
+                      _confirmDelete(asset);
+                    }
+                  },
+                  itemBuilder: (context) => [
+                    const PopupMenuItem(
+                      value: 'edit',
+                      child: Text('Editar'),
+                    ),
+                    const PopupMenuItem(
+                      value: 'delete',
+                      child: Text('Remover'),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildScaffold({
+    required BuildContext context,
+    required String? error,
+    required Widget body,
+  }) {
+    return Scaffold(
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () {
+          context.router.push(
+            const TenantAdminStaticAssetCreateRoute(),
+          );
+        },
+        icon: const Icon(Icons.add),
+        label: const Text('Criar ativo'),
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Ativos estaticos',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              onChanged: _controller.updateSearchQuery,
+              decoration: const InputDecoration(
+                prefixIcon: Icon(Icons.search),
+                labelText: 'Buscar por nome ou slug',
+              ),
+            ),
+            const SizedBox(height: 12),
+            if (error != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: TenantAdminErrorBanner(
+                  rawError: error,
+                  fallbackMessage:
+                      'Não foi possível carregar os ativos estáticos.',
+                  onRetry: _controller.loadAssets,
+                ),
+              ),
+            const SizedBox(height: 8),
+            Expanded(child: body),
+          ],
+        ),
+      ),
     );
   }
 
@@ -224,29 +260,6 @@ class _TenantAdminStaticAssetsListScreenState
       label: Text(isActive ? 'Ativo' : 'Inativo'),
       backgroundColor:
           isActive ? scheme.primaryContainer : scheme.surfaceContainerHighest,
-    );
-  }
-
-  Widget _buildEmptyState(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            'Nenhum ativo cadastrado ainda.',
-            style: Theme.of(context).textTheme.bodyLarge,
-          ),
-          const SizedBox(height: 16),
-          FilledButton(
-            onPressed: () {
-              context.router.push(
-                const TenantAdminStaticAssetCreateRoute(),
-              );
-            },
-            child: const Text('Criar ativo'),
-          ),
-        ],
-      ),
     );
   }
 }

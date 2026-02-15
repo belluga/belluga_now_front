@@ -98,7 +98,10 @@ class TenantAdminShellController implements Disposable {
           mainDomain: host,
         );
       }
-    } catch (_) {
+    } catch (error) {
+      debugPrint(
+        '[TenantAdmin] Failed to read bootstrap tenant domains: $error',
+      );
       return const [];
     }
 

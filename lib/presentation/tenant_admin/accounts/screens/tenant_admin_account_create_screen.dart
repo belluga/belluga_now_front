@@ -6,6 +6,8 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
 import 'package:belluga_now/presentation/tenant_admin/accounts/controllers/tenant_admin_accounts_controller.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_error_banner.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_form_layout.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:image_picker/image_picker.dart';
@@ -163,89 +165,77 @@ class _TenantAdminAccountCreateScreenState
               builder: (context, state) {
                 final requiresLocation =
                     _requiresLocation(state.selectedProfileType);
-                return Scaffold(
-                  appBar: AppBar(
-                    title: const Text('Criar Conta'),
-                    leading: IconButton(
-                      icon: const Icon(Icons.arrow_back),
-                      onPressed: () => context.router.maybePop(),
-                      tooltip: 'Voltar',
-                    ),
+                return TenantAdminFormScaffold(
+                  title: 'Criar Conta',
+                  leading: IconButton(
+                    icon: const Icon(Icons.arrow_back),
+                    onPressed: () => context.router.maybePop(),
+                    tooltip: 'Voltar',
                   ),
-                  body: Padding(
-                    padding: EdgeInsets.fromLTRB(
-                      16,
-                      16,
-                      16,
-                      16 + MediaQuery.of(context).viewInsets.bottom,
-                    ),
-                    child: SingleChildScrollView(
-                      child: Form(
-                        key: _controller.createFormKey,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            if (successMessage != null &&
-                                successMessage.isNotEmpty)
-                              Padding(
-                                padding: const EdgeInsets.only(bottom: 12),
-                                child: Card(
-                                  margin: EdgeInsets.zero,
-                                  color: Theme.of(context)
-                                      .colorScheme
-                                      .primaryContainer,
-                                  child: Padding(
-                                    padding: const EdgeInsets.all(12),
-                                    child: Text(
-                                      successMessage,
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .bodyMedium
-                                          ?.copyWith(
-                                            color: Theme.of(context)
-                                                .colorScheme
-                                                .onPrimaryContainer,
-                                          ),
-                                    ),
+                  child: SingleChildScrollView(
+                    child: Form(
+                      key: _controller.createFormKey,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (successMessage != null &&
+                              successMessage.isNotEmpty)
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 12),
+                              child: Card(
+                                margin: EdgeInsets.zero,
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .primaryContainer,
+                                child: Padding(
+                                  padding: const EdgeInsets.all(12),
+                                  child: Text(
+                                    successMessage,
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .bodyMedium
+                                        ?.copyWith(
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .onPrimaryContainer,
+                                        ),
                                   ),
                                 ),
                               ),
-                            _buildAccountSection(context, state),
-                            const SizedBox(height: 16),
-                            _buildMediaSection(context, state),
-                            if (requiresLocation) ...[
-                              const SizedBox(height: 16),
-                              _buildLocationSection(context),
-                            ],
-                            const SizedBox(height: 24),
-                            SizedBox(
-                              width: double.infinity,
-                              child: FilledButton(
-                                key: const ValueKey(
-                                  'tenant_admin_account_create_save',
-                                ),
-                                onPressed: () async {
-                                  final form =
-                                      _controller.createFormKey.currentState;
-                                  if (form == null || !form.validate()) {
-                                    return;
-                                  }
-                                  final location = _currentLocation();
-                                  final avatarUpload =
-                                      await _buildUpload(state.avatarFile);
-                                  final coverUpload =
-                                      await _buildUpload(state.coverFile);
-                                  _controller.submitCreateAccountFromForm(
-                                    location: location,
-                                    avatarUpload: avatarUpload,
-                                    coverUpload: coverUpload,
-                                  );
-                                },
-                                child: const Text('Salvar conta'),
-                              ),
                             ),
+                          _buildMediaSection(context, state),
+                          const SizedBox(height: 16),
+                          _buildAccountSection(context, state),
+                          if (requiresLocation) ...[
+                            const SizedBox(height: 16),
+                            _buildLocationSection(context),
                           ],
-                        ),
+                          const SizedBox(height: 24),
+                          TenantAdminPrimaryFormAction(
+                            buttonKey: const ValueKey(
+                              'tenant_admin_account_create_save',
+                            ),
+                            label: 'Salvar conta',
+                            icon: Icons.save_outlined,
+                            onPressed: () async {
+                              final form =
+                                  _controller.createFormKey.currentState;
+                              if (form == null || !form.validate()) {
+                                return;
+                              }
+                              final location = _currentLocation();
+                              final avatarUpload =
+                                  await _buildUpload(state.avatarFile);
+                              final coverUpload =
+                                  await _buildUpload(state.coverFile);
+                              _controller.submitCreateAccountFromForm(
+                                location: location,
+                                avatarUpload: avatarUpload,
+                                coverUpload: coverUpload,
+                              );
+                            },
+                          ),
+                        ],
                       ),
                     ),
                   ),
@@ -262,180 +252,132 @@ class _TenantAdminAccountCreateScreenState
     BuildContext context,
     TenantAdminAccountCreateState state,
   ) {
-    return Card(
-      margin: EdgeInsets.zero,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Dados da conta',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: _controller.nameController,
-              decoration: const InputDecoration(labelText: 'Nome'),
-              validator: (value) {
-                if (value == null || value.trim().isEmpty) {
-                  return 'Nome e obrigatorio.';
-                }
-                return null;
-              },
-            ),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: _controller.documentTypeController,
-              decoration: const InputDecoration(labelText: 'Tipo do documento'),
-              validator: (value) {
-                if (value == null || value.trim().isEmpty) {
-                  return 'Tipo do documento e obrigatorio.';
-                }
-                return null;
-              },
-            ),
-            const SizedBox(height: 12),
-            StreamValueBuilder<bool>(
-              streamValue: _controller.isLoadingStreamValue,
-              builder: (context, isLoading) {
-                return StreamValueBuilder<String?>(
-                  streamValue: _controller.errorStreamValue,
-                  builder: (context, error) {
-                    return StreamValueBuilder(
-                      streamValue: _controller.profileTypesStreamValue,
-                      builder: (context, types) {
-                        final hasTypes = types.isNotEmpty;
-                        return Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            if (isLoading) const LinearProgressIndicator(),
-                            if (error != null)
-                              Padding(
-                                padding: const EdgeInsets.only(top: 8),
-                                child: Card(
-                                  key: const ValueKey(
-                                    'tenant_admin_account_create_profile_types_error',
-                                  ),
-                                  margin: EdgeInsets.zero,
-                                  color: Theme.of(context)
-                                      .colorScheme
-                                      .errorContainer,
-                                  child: Padding(
-                                    padding: const EdgeInsets.all(12),
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          'Falha ao carregar tipos de perfil',
-                                          style: Theme.of(context)
-                                              .textTheme
-                                              .titleSmall
-                                              ?.copyWith(
-                                                color: Theme.of(context)
-                                                    .colorScheme
-                                                    .onErrorContainer,
-                                              ),
-                                        ),
-                                        const SizedBox(height: 4),
-                                        Text(
-                                          'Sua sessao de admin pode ter expirado. Tente novamente.',
-                                          style: Theme.of(context)
-                                              .textTheme
-                                              .bodySmall
-                                              ?.copyWith(
-                                                color: Theme.of(context)
-                                                    .colorScheme
-                                                    .onErrorContainer,
-                                              ),
-                                        ),
-                                        const SizedBox(height: 8),
-                                        Align(
-                                          alignment: Alignment.centerLeft,
-                                          child: TextButton(
-                                            onPressed:
-                                                _controller.loadProfileTypes,
-                                            child:
-                                                const Text('Tentar novamente'),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
+    return TenantAdminFormSectionCard(
+      title: 'Dados da conta',
+      description:
+          'Preencha os dados principais da conta e associe um tipo de perfil.',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          TextFormField(
+            controller: _controller.nameController,
+            decoration: const InputDecoration(labelText: 'Nome'),
+            validator: (value) {
+              if (value == null || value.trim().isEmpty) {
+                return 'Nome e obrigatorio.';
+              }
+              return null;
+            },
+          ),
+          const SizedBox(height: 12),
+          TextFormField(
+            controller: _controller.documentTypeController,
+            decoration: const InputDecoration(labelText: 'Tipo do documento'),
+            validator: (value) {
+              if (value == null || value.trim().isEmpty) {
+                return 'Tipo do documento e obrigatorio.';
+              }
+              return null;
+            },
+          ),
+          const SizedBox(height: 12),
+          StreamValueBuilder<bool>(
+            streamValue: _controller.isProfileTypesLoadingStreamValue,
+            builder: (context, isLoading) {
+              return StreamValueBuilder<String?>(
+                streamValue: _controller.errorStreamValue,
+                builder: (context, error) {
+                  return StreamValueBuilder(
+                    streamValue: _controller.profileTypesStreamValue,
+                    builder: (context, types) {
+                      final hasTypes = types.isNotEmpty;
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (isLoading) const LinearProgressIndicator(),
+                          if (error != null)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 8),
+                              child: TenantAdminErrorBanner(
+                                key: const ValueKey(
+                                  'tenant_admin_account_create_profile_types_error',
                                 ),
+                                rawError: error,
+                                fallbackMessage:
+                                    'Falha ao carregar tipos de perfil para este tenant.',
+                                onRetry: _controller.loadProfileTypes,
                               ),
-                            const SizedBox(height: 8),
-                            DropdownButtonFormField<String>(
-                              key: ValueKey(state.selectedProfileType),
-                              initialValue: state.selectedProfileType,
-                              decoration: const InputDecoration(
-                                labelText: 'Tipo de perfil',
-                              ),
-                              items: types
-                                  .map(
-                                    (type) => DropdownMenuItem<String>(
-                                      value: type.type,
-                                      child: Text(type.label),
-                                    ),
-                                  )
-                                  .toList(growable: false),
-                              onChanged: hasTypes
-                                  ? (value) {
-                                      _controller
-                                          .updateCreateSelectedProfileType(value);
-                                      if (!_requiresLocation(value)) {
-                                        _controller.latitudeController.clear();
-                                        _controller.longitudeController.clear();
-                                      }
-                                    }
-                                  : null,
-                              validator: (value) {
-                                if (value == null || value.trim().isEmpty) {
-                                  return 'Tipo de perfil e obrigatorio.';
-                                }
-                                return null;
-                              },
                             ),
-                            if (!isLoading && error == null && !hasTypes)
-                              const Padding(
-                                padding: EdgeInsets.only(top: 8),
-                                child: Text(
-                                  'Nenhum tipo disponivel para este tenant.',
-                                ),
+                          const SizedBox(height: 8),
+                          DropdownButtonFormField<String>(
+                            key: ValueKey(state.selectedProfileType),
+                            initialValue: state.selectedProfileType,
+                            decoration: const InputDecoration(
+                              labelText: 'Tipo de perfil',
+                            ),
+                            items: types
+                                .map(
+                                  (type) => DropdownMenuItem<String>(
+                                    value: type.type,
+                                    child: Text(type.label),
+                                  ),
+                                )
+                                .toList(growable: false),
+                            onChanged: hasTypes
+                                ? (value) {
+                                    _controller
+                                        .updateCreateSelectedProfileType(value);
+                                    if (!_requiresLocation(value)) {
+                                      _controller.latitudeController.clear();
+                                      _controller.longitudeController.clear();
+                                    }
+                                  }
+                                : null,
+                            validator: (value) {
+                              if (value == null || value.trim().isEmpty) {
+                                return 'Tipo de perfil e obrigatorio.';
+                              }
+                              return null;
+                            },
+                          ),
+                          if (!isLoading && error == null && !hasTypes)
+                            const Padding(
+                              padding: EdgeInsets.only(top: 8),
+                              child: Text(
+                                'Nenhum tipo disponivel para este tenant.',
                               ),
-                          ],
-                        );
-                      },
-                    );
-                  },
-                );
-              },
-            ),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: _controller.profileDisplayNameController,
-              decoration: const InputDecoration(labelText: 'Nome de exibicao'),
-              validator: (value) {
-                if (value == null || value.trim().isEmpty) {
-                  return 'Nome de exibicao e obrigatorio.';
-                }
-                return null;
-              },
-            ),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: _controller.documentNumberController,
-              decoration: const InputDecoration(labelText: 'Numero do documento'),
-              validator: (value) {
-                if (value == null || value.trim().isEmpty) {
-                  return 'Numero do documento e obrigatorio.';
-                }
-                return null;
-              },
-            ),
-          ],
-        ),
+                            ),
+                        ],
+                      );
+                    },
+                  );
+                },
+              );
+            },
+          ),
+          const SizedBox(height: 12),
+          TextFormField(
+            controller: _controller.profileDisplayNameController,
+            decoration: const InputDecoration(labelText: 'Nome de exibicao'),
+            validator: (value) {
+              if (value == null || value.trim().isEmpty) {
+                return 'Nome de exibicao e obrigatorio.';
+              }
+              return null;
+            },
+          ),
+          const SizedBox(height: 12),
+          TextFormField(
+            controller: _controller.documentNumberController,
+            decoration: const InputDecoration(labelText: 'Numero do documento'),
+            validator: (value) {
+              if (value == null || value.trim().isEmpty) {
+                return 'Numero do documento e obrigatorio.';
+              }
+              return null;
+            },
+          ),
+        ],
       ),
     );
   }
@@ -469,166 +411,154 @@ class _TenantAdminAccountCreateScreenState
     BuildContext context,
     TenantAdminAccountCreateState state,
   ) {
-    return Card(
-      margin: EdgeInsets.zero,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Imagens do perfil',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                if (state.avatarFile != null)
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(36),
-                    child: Image.file(
-                      File(state.avatarFile!.path),
-                      width: 72,
-                      height: 72,
-                      fit: BoxFit.cover,
-                    ),
-                  )
-                else
-                  Container(
+    return TenantAdminFormSectionCard(
+      title: 'Imagem e identidade visual',
+      description:
+          'Defina avatar e capa antes dos metadados para validar rapidamente a identidade da conta.',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              if (state.avatarFile != null)
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(36),
+                  child: Image.file(
+                    File(state.avatarFile!.path),
                     width: 72,
                     height: 72,
-                    decoration: BoxDecoration(
-                      color:
-                          Theme.of(context).colorScheme.surfaceContainerHighest,
-                      borderRadius: BorderRadius.circular(36),
+                    fit: BoxFit.cover,
+                  ),
+                )
+              else
+                Container(
+                  width: 72,
+                  height: 72,
+                  decoration: BoxDecoration(
+                    color:
+                        Theme.of(context).colorScheme.surfaceContainerHighest,
+                    borderRadius: BorderRadius.circular(36),
+                  ),
+                  child: const Icon(Icons.person_outline),
+                ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      state.avatarFile?.name ?? 'Nenhuma imagem selecionada',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    child: const Icon(Icons.person_outline),
-                  ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        state.avatarFile?.name ?? 'Nenhuma imagem selecionada',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      Row(
-                        children: [
-                          FilledButton.tonalIcon(
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        FilledButton.tonalIcon(
+                          key: const ValueKey(
+                            'tenant_admin_account_create_avatar_pick',
+                          ),
+                          onPressed: () => _pickImage(isAvatar: true),
+                          icon: const Icon(Icons.photo_library_outlined),
+                          label: const Text('Selecionar'),
+                        ),
+                        const SizedBox(width: 8),
+                        if (state.avatarFile != null)
+                          TextButton(
                             key: const ValueKey(
-                              'tenant_admin_account_create_avatar_pick',
+                              'tenant_admin_account_create_avatar_remove',
                             ),
-                            onPressed: () => _pickImage(isAvatar: true),
-                            icon: const Icon(Icons.photo_library_outlined),
-                            label: const Text('Selecionar'),
-                            ),
-                            const SizedBox(width: 8),
-                            if (state.avatarFile != null)
-                              TextButton(
-                                key: const ValueKey(
-                                  'tenant_admin_account_create_avatar_remove',
-                                ),
-                              onPressed: () => _clearImage(isAvatar: true),
-                              child: const Text('Remover'),
-                            ),
-                        ],
-                      ),
-                    ],
+                            onPressed: () => _clearImage(isAvatar: true),
+                            child: const Text('Remover'),
+                          ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          if (state.coverFile != null)
+            ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: Image.file(
+                File(state.coverFile!.path),
+                width: double.infinity,
+                height: 140,
+                fit: BoxFit.cover,
+              ),
+            )
+          else
+            Container(
+              width: double.infinity,
+              height: 140,
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Center(
+                child: Icon(Icons.image_outlined),
+              ),
+            ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              FilledButton.tonalIcon(
+                key: const ValueKey(
+                  'tenant_admin_account_create_cover_pick',
+                ),
+                onPressed: () => _pickImage(isAvatar: false),
+                icon: const Icon(Icons.photo_library_outlined),
+                label: const Text('Selecionar capa'),
+              ),
+              const SizedBox(width: 8),
+              if (state.coverFile != null)
+                TextButton(
+                  key: const ValueKey(
+                    'tenant_admin_account_create_cover_remove',
                   ),
+                  onPressed: () => _clearImage(isAvatar: false),
+                  child: const Text('Remover'),
                 ),
             ],
           ),
-            const SizedBox(height: 16),
-            if (state.coverFile != null)
-              ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: Image.file(
-                  File(state.coverFile!.path),
-                  width: double.infinity,
-                  height: 140,
-                  fit: BoxFit.cover,
-                ),
-              )
-            else
-              Container(
-                width: double.infinity,
-                height: 140,
-                decoration: BoxDecoration(
-                  color:
-                      Theme.of(context).colorScheme.surfaceContainerHighest,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Center(
-                  child: Icon(Icons.image_outlined),
-                ),
-              ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                FilledButton.tonalIcon(
-                  key: const ValueKey(
-                    'tenant_admin_account_create_cover_pick',
-                  ),
-                  onPressed: () => _pickImage(isAvatar: false),
-                  icon: const Icon(Icons.photo_library_outlined),
-                  label: const Text('Selecionar capa'),
-                ),
-                const SizedBox(width: 8),
-                if (state.coverFile != null)
-                  TextButton(
-                    key: const ValueKey(
-                      'tenant_admin_account_create_cover_remove',
-                    ),
-                    onPressed: () => _clearImage(isAvatar: false),
-                    child: const Text('Remover'),
-                  ),
-              ],
-            ),
-          ],
-        ),
+        ],
       ),
     );
   }
 
   Widget _buildLocationSection(BuildContext context) {
-    return Card(
-      margin: EdgeInsets.zero,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Localizacao',
-              style: Theme.of(context).textTheme.titleMedium,
+    return TenantAdminFormSectionCard(
+      title: 'Localizacao',
+      description:
+          'Perfis com POI habilitado precisam de coordenadas para publicação.',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          TextFormField(
+            controller: _controller.latitudeController,
+            decoration: const InputDecoration(labelText: 'Latitude'),
+            keyboardType: TextInputType.number,
+            validator: _validateLatitude,
+          ),
+          const SizedBox(height: 12),
+          TextFormField(
+            controller: _controller.longitudeController,
+            decoration: const InputDecoration(labelText: 'Longitude'),
+            keyboardType: TextInputType.number,
+            validator: _validateLongitude,
+          ),
+          const SizedBox(height: 8),
+          FilledButton.tonalIcon(
+            key: const ValueKey(
+              'tenant_admin_account_create_map_pick',
             ),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: _controller.latitudeController,
-              decoration: const InputDecoration(labelText: 'Latitude'),
-              keyboardType: TextInputType.number,
-              validator: _validateLatitude,
-            ),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: _controller.longitudeController,
-              decoration: const InputDecoration(labelText: 'Longitude'),
-              keyboardType: TextInputType.number,
-              validator: _validateLongitude,
-            ),
-            const SizedBox(height: 8),
-                  FilledButton.tonalIcon(
-                    key: const ValueKey(
-                      'tenant_admin_account_create_map_pick',
-                    ),
-                    onPressed: _openMapPicker,
-                    icon: const Icon(Icons.map_outlined),
-                    label: const Text('Selecionar no mapa'),
-                  ),
-          ],
-        ),
+            onPressed: _openMapPicker,
+            icon: const Icon(Icons.map_outlined),
+            label: const Text('Selecionar no mapa'),
+          ),
+        ],
       ),
     );
   }

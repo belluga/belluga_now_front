@@ -137,8 +137,24 @@ class TenantAdminModule extends ModuleContract {
               page: TenantAdminTaxonomiesListRoute.page,
             ),
             AutoRoute(
+              path: 'taxonomies/create',
+              page: TenantAdminTaxonomyCreateRoute.page,
+            ),
+            AutoRoute(
+              path: 'taxonomies/:taxonomyId/edit',
+              page: TenantAdminTaxonomyEditRoute.page,
+            ),
+            AutoRoute(
               path: 'taxonomies/:taxonomyId/terms',
               page: TenantAdminTaxonomyTermsRoute.page,
+            ),
+            AutoRoute(
+              path: 'taxonomies/:taxonomyId/terms/create',
+              page: TenantAdminTaxonomyTermCreateRoute.page,
+            ),
+            AutoRoute(
+              path: 'taxonomies/:taxonomyId/terms/:termId/edit',
+              page: TenantAdminTaxonomyTermEditRoute.page,
             ),
             AutoRoute(
               path: 'static_assets',
