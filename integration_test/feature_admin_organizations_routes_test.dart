@@ -147,7 +147,7 @@ void main() {
     await _pumpFor(tester, const Duration(seconds: 1));
     await _waitForFinder(tester, find.text('Criar Organizacao'));
 
-    await tester.tap(find.byIcon(Icons.arrow_back));
+    await tester.tap(find.byIcon(Icons.close));
     await _pumpFor(tester, const Duration(seconds: 1));
     await _waitForFinder(tester, find.text('Organizacoes cadastradas'));
 

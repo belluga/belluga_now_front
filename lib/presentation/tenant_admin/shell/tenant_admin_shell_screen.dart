@@ -128,11 +128,8 @@ class _TenantAdminShellScreenState extends State<TenantAdminShellScreen> {
     return _destinations[index].title;
   }
 
-  String? _resolveCurrentRouteName(BuildContext context) {
-    final nestedRouter =
-        context.innerRouterOf<StackRouter>(TenantAdminShellRoute.name);
-    return nestedRouter?.topRoute.name ?? context.router.topRoute.name;
-  }
+  String? _resolveCurrentRouteName(BuildContext context) =>
+      context.topRoute.name;
 
   @override
   void initState() {

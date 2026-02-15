@@ -414,11 +414,6 @@ class _TenantAdminAccountProfileEditScreenState
                     if (state.errorMessage != null) {
                       return TenantAdminFormScaffold(
                         title: 'Editar Perfil',
-                        leading: IconButton(
-                          icon: const Icon(Icons.arrow_back),
-                          onPressed: () => context.router.maybePop(),
-                          tooltip: 'Voltar',
-                        ),
                         child: TenantAdminErrorBanner(
                           rawError: state.errorMessage!,
                           fallbackMessage:
@@ -433,22 +428,12 @@ class _TenantAdminAccountProfileEditScreenState
                     if (profile == null && state.isLoading) {
                       return TenantAdminFormScaffold(
                         title: 'Editar Perfil',
-                        leading: IconButton(
-                          icon: const Icon(Icons.arrow_back),
-                          onPressed: () => context.router.maybePop(),
-                          tooltip: 'Voltar',
-                        ),
                         child: const Center(child: CircularProgressIndicator()),
                       );
                     }
 
                     return TenantAdminFormScaffold(
                       title: 'Editar Perfil',
-                      leading: IconButton(
-                        icon: const Icon(Icons.arrow_back),
-                        onPressed: () => context.router.maybePop(),
-                        tooltip: 'Voltar',
-                      ),
                       child: SingleChildScrollView(
                         child: Form(
                           key: _controller.editFormKey,

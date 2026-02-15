@@ -30,11 +30,6 @@ class _TenantAdminOrganizationCreateScreenState
             _handleCreateErrorMessage(errorMessage);
             return TenantAdminFormScaffold(
               title: 'Criar Organizacao',
-              leading: IconButton(
-                icon: const Icon(Icons.arrow_back),
-                onPressed: () => context.router.maybePop(),
-                tooltip: 'Voltar',
-              ),
               child: SingleChildScrollView(
                 child: Form(
                   key: _controller.formKey,

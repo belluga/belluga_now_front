@@ -22,6 +22,7 @@ Status key: [ ] pending, [x] passed, [!] failed (needs retry)
 - [x] integration_test/feature_safe_area_and_agenda_appbar_test.dart
 - [x] integration_test/feature_shell_navigation_smoke_test.dart
 - [x] integration_test/feature_venue_profile_widgets_test.dart
+- [x] integration_test/ephemeral_admin_form_sheet_chrome_test.dart
 - [x] integration_test/push_onboarding_dynamic_steps_test.dart
 - [x] integration_test/push_queue_auto_present_test.dart
 

@@ -101,11 +101,6 @@ class _TenantAdminTaxonomyTermFormScreenState
             _handleActionErrorMessage(actionErrorMessage);
             return TenantAdminFormScaffold(
               title: _isEdit ? 'Editar termo' : 'Criar termo',
-              leading: IconButton(
-                icon: const Icon(Icons.arrow_back),
-                onPressed: () => context.router.maybePop(),
-                tooltip: 'Voltar',
-              ),
               child: SingleChildScrollView(
                 child: Form(
                   key: _controller.termFormKey,
@@ -160,8 +155,8 @@ class _TenantAdminTaxonomyTermFormScreenState
                             if (!_isEdit) ...[
                               const SizedBox(height: 12),
                               StreamValueBuilder<bool>(
-                                streamValue:
-                                    _controller.isTermSlugAutoEnabledStreamValue,
+                                streamValue: _controller
+                                    .isTermSlugAutoEnabledStreamValue,
                                 builder: (context, isSlugAutoEnabled) {
                                   return SwitchListTile(
                                     contentPadding: EdgeInsets.zero,

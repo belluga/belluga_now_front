@@ -108,11 +108,6 @@ class _TenantAdminStaticProfileTypeFormScreenState
             _handleErrorMessage(errorMessage);
             return TenantAdminFormScaffold(
               title: _isEdit ? 'Editar Tipo' : 'Criar Tipo',
-              leading: IconButton(
-                icon: const Icon(Icons.arrow_back),
-                onPressed: () => context.router.maybePop(),
-                tooltip: 'Voltar',
-              ),
               child: SingleChildScrollView(
                 child: Form(
                   key: _controller.formKey,

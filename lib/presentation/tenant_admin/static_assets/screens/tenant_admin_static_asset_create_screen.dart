@@ -5,6 +5,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_static_profile_type
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_definition.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_error_banner.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_form_layout.dart';
 import 'package:belluga_now/presentation/tenant_admin/static_assets/controllers/tenant_admin_static_assets_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
@@ -65,59 +66,45 @@ class _TenantAdminStaticAssetCreateScreenState
                         selectedDefinition?.capabilities.hasAvatar ?? false;
                     final hasCover =
                         selectedDefinition?.capabilities.hasCover ?? false;
-                    return Scaffold(
-                      appBar: AppBar(
-                        title: const Text('Criar ativo'),
-                        leading: IconButton(
-                          icon: const Icon(Icons.arrow_back),
-                          onPressed: () => context.router.maybePop(),
-                        ),
-                      ),
-                      body: Padding(
-                        padding: EdgeInsets.fromLTRB(
-                          16,
-                          16,
-                          16,
-                          16 + MediaQuery.of(context).viewInsets.bottom,
-                        ),
-                        child: Form(
-                          key: _controller.formKey,
-                          child: SingleChildScrollView(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                _buildBasicSection(context, error),
+                    return TenantAdminFormScaffold(
+                      title: 'Criar ativo',
+                      child: Form(
+                        key: _controller.formKey,
+                        child: SingleChildScrollView(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _buildBasicSection(context, error),
+                              const SizedBox(height: 16),
+                              _buildStatusSection(),
+                              if (hasAvatar || hasCover) ...[
                                 const SizedBox(height: 16),
-                                _buildStatusSection(),
-                                if (hasAvatar || hasCover) ...[
-                                  const SizedBox(height: 16),
-                                  _buildMediaSection(
-                                    hasAvatar: hasAvatar,
-                                    hasCover: hasCover,
-                                  ),
-                                ],
-                                if (hasBio ||
-                                    hasContent ||
-                                    _hasTagsOrCategories()) ...[
-                                  const SizedBox(height: 16),
-                                  _buildContentSection(
-                                    context,
-                                    hasBio: hasBio,
-                                    hasContent: hasContent,
-                                  ),
-                                ],
-                                if (hasTaxonomies) ...[
-                                  const SizedBox(height: 16),
-                                  _buildTaxonomySection(context),
-                                ],
-                                if (requiresLocation) ...[
-                                  const SizedBox(height: 16),
-                                  _buildLocationSection(context),
-                                ],
-                                const SizedBox(height: 24),
-                                _buildSubmitButton(),
+                                _buildMediaSection(
+                                  hasAvatar: hasAvatar,
+                                  hasCover: hasCover,
+                                ),
                               ],
-                            ),
+                              if (hasBio ||
+                                  hasContent ||
+                                  _hasTagsOrCategories()) ...[
+                                const SizedBox(height: 16),
+                                _buildContentSection(
+                                  context,
+                                  hasBio: hasBio,
+                                  hasContent: hasContent,
+                                ),
+                              ],
+                              if (hasTaxonomies) ...[
+                                const SizedBox(height: 16),
+                                _buildTaxonomySection(context),
+                              ],
+                              if (requiresLocation) ...[
+                                const SizedBox(height: 16),
+                                _buildLocationSection(context),
+                              ],
+                              const SizedBox(height: 24),
+                              _buildSubmitButton(),
+                            ],
                           ),
                         ),
                       ),

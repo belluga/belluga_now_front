@@ -60,7 +60,8 @@ class _TenantAdminTaxonomyFormScreenState
     if (_controller.slugController.text == generated) {
       return;
     }
-    _controller.slugController.value = _controller.slugController.value.copyWith(
+    _controller.slugController.value =
+        _controller.slugController.value.copyWith(
       text: generated,
       selection: TextSelection.collapsed(offset: generated.length),
       composing: TextRange.empty,
@@ -119,11 +120,6 @@ class _TenantAdminTaxonomyFormScreenState
             _handleActionErrorMessage(actionErrorMessage);
             return TenantAdminFormScaffold(
               title: _isEdit ? 'Editar taxonomia' : 'Criar taxonomia',
-              leading: IconButton(
-                icon: const Icon(Icons.arrow_back),
-                onPressed: () => context.router.maybePop(),
-                tooltip: 'Voltar',
-              ),
               child: SingleChildScrollView(
                 child: Form(
                   key: _controller.taxonomyFormKey,
@@ -254,7 +250,8 @@ class _TenantAdminTaxonomyFormScreenState
                       TenantAdminPrimaryFormAction(
                         buttonKey:
                             const ValueKey('taxonomy-form-submit-button'),
-                        label: _isEdit ? 'Salvar alteracoes' : 'Criar taxonomia',
+                        label:
+                            _isEdit ? 'Salvar alteracoes' : 'Criar taxonomia',
                         icon: _isEdit ? Icons.save_outlined : Icons.add,
                         onPressed: _save,
                       ),

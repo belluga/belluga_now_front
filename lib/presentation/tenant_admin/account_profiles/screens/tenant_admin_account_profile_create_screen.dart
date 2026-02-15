@@ -306,11 +306,6 @@ class _TenantAdminAccountProfileCreateScreenState
                     _hasTaxonomies(state.selectedProfileType);
                 return TenantAdminFormScaffold(
                   title: 'Criar Perfil - ${widget.accountSlug}',
-                  leading: IconButton(
-                    icon: const Icon(Icons.arrow_back),
-                    onPressed: () => context.router.maybePop(),
-                    tooltip: 'Voltar',
-                  ),
                   child: SingleChildScrollView(
                     child: Form(
                       key: _controller.createFormKey,

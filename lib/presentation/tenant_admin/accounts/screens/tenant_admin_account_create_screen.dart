@@ -167,11 +167,6 @@ class _TenantAdminAccountCreateScreenState
                     _requiresLocation(state.selectedProfileType);
                 return TenantAdminFormScaffold(
                   title: 'Criar Conta',
-                  leading: IconButton(
-                    icon: const Icon(Icons.arrow_back),
-                    onPressed: () => context.router.maybePop(),
-                    tooltip: 'Voltar',
-                  ),
                   child: SingleChildScrollView(
                     child: Form(
                       key: _controller.createFormKey,
