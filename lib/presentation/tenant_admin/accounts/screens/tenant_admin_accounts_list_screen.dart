@@ -160,6 +160,17 @@ class _TenantAdminAccountsListScreenState
                 ),
               ),
             ),
+            const SizedBox(height: 8),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                onPressed: () {
+                  context.router.push(const TenantAdminProfileTypesListRoute());
+                },
+                icon: const Icon(Icons.category_outlined),
+                label: const Text('Gerenciar tipos de perfil'),
+              ),
+            ),
             if (error != null)
               Padding(
                 padding: const EdgeInsets.only(top: 8),

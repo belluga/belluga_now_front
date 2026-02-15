@@ -17,6 +17,15 @@ class TenantAdminDashboardScreen extends StatelessWidget {
         ),
         const SizedBox(height: 16),
         TenantAdminDashboardCard(
+          icon: Icons.event_outlined,
+          title: 'Eventos',
+          description: 'Acompanhe o domínio de eventos do tenant.',
+          onTap: () {
+            context.router.push(const TenantAdminEventsRoute());
+          },
+        ),
+        const SizedBox(height: 12),
+        TenantAdminDashboardCard(
           icon: Icons.account_box_outlined,
           title: 'Contas',
           description: 'Gerencie contas e o perfil associado.',
@@ -77,16 +86,6 @@ class TenantAdminDashboardScreen extends StatelessWidget {
           onTap: () {
             context.router.push(const TenantAdminSettingsRoute());
           },
-        ),
-        const SizedBox(height: 12),
-        Card(
-          color: Theme.of(context).colorScheme.surfaceContainerHighest,
-          child: const ListTile(
-            leading: Icon(Icons.lock_outline),
-            title: Text('Eventos'),
-            subtitle: Text('Em breve'),
-            enabled: false,
-          ),
         ),
       ],
     );

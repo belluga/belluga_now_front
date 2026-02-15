@@ -220,6 +220,19 @@ class _TenantAdminStaticAssetsListScreenState
                 labelText: 'Buscar por nome ou slug',
               ),
             ),
+            const SizedBox(height: 8),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                onPressed: () {
+                  context.router.push(
+                    const TenantAdminStaticProfileTypesListRoute(),
+                  );
+                },
+                icon: const Icon(Icons.layers_outlined),
+                label: const Text('Gerenciar tipos de ativo'),
+              ),
+            ),
             const SizedBox(height: 12),
             if (error != null)
               Padding(

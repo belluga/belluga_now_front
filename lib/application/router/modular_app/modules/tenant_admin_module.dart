@@ -73,6 +73,10 @@ class TenantAdminModule extends ModuleContract {
               initial: true,
             ),
             AutoRoute(
+              path: 'events',
+              page: TenantAdminEventsRoute.page,
+            ),
+            AutoRoute(
               path: 'accounts',
               page: TenantAdminAccountsListRoute.page,
             ),

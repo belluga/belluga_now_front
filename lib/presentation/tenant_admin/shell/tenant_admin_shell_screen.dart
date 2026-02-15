@@ -32,8 +32,18 @@ class _TenantAdminShellScreenState extends State<TenantAdminShellScreen> {
       },
     ),
     _AdminDestination(
-      label: 'Accounts',
-      title: 'Accounts',
+      label: 'Eventos',
+      title: 'Eventos',
+      icon: Icons.event_outlined,
+      selectedIcon: Icons.event,
+      route: TenantAdminEventsRoute(),
+      routeNames: {
+        TenantAdminEventsRoute.name,
+      },
+    ),
+    _AdminDestination(
+      label: 'Contas',
+      title: 'Contas',
       icon: Icons.groups_outlined,
       selectedIcon: Icons.groups,
       route: TenantAdminAccountsListRoute(),
@@ -46,27 +56,9 @@ class _TenantAdminShellScreenState extends State<TenantAdminShellScreen> {
         TenantAdminOrganizationsListRoute.name,
         TenantAdminOrganizationCreateRoute.name,
         TenantAdminOrganizationDetailRoute.name,
-      },
-    ),
-    _AdminDestination(
-      label: 'Catálogo',
-      title: 'Catálogo',
-      icon: Icons.inventory_2_outlined,
-      selectedIcon: Icons.inventory_2,
-      route: TenantAdminProfileTypesListRoute(),
-      routeNames: {
         TenantAdminProfileTypesListRoute.name,
         TenantAdminProfileTypeCreateRoute.name,
         TenantAdminProfileTypeEditRoute.name,
-        TenantAdminStaticProfileTypesListRoute.name,
-        TenantAdminStaticProfileTypeCreateRoute.name,
-        TenantAdminStaticProfileTypeEditRoute.name,
-        TenantAdminTaxonomiesListRoute.name,
-        TenantAdminTaxonomyCreateRoute.name,
-        TenantAdminTaxonomyEditRoute.name,
-        TenantAdminTaxonomyTermsRoute.name,
-        TenantAdminTaxonomyTermCreateRoute.name,
-        TenantAdminTaxonomyTermEditRoute.name,
       },
     ),
     _AdminDestination(
@@ -79,6 +71,15 @@ class _TenantAdminShellScreenState extends State<TenantAdminShellScreen> {
         TenantAdminStaticAssetsListRoute.name,
         TenantAdminStaticAssetCreateRoute.name,
         TenantAdminStaticAssetEditRoute.name,
+        TenantAdminStaticProfileTypesListRoute.name,
+        TenantAdminStaticProfileTypeCreateRoute.name,
+        TenantAdminStaticProfileTypeEditRoute.name,
+        TenantAdminTaxonomiesListRoute.name,
+        TenantAdminTaxonomyCreateRoute.name,
+        TenantAdminTaxonomyEditRoute.name,
+        TenantAdminTaxonomyTermsRoute.name,
+        TenantAdminTaxonomyTermCreateRoute.name,
+        TenantAdminTaxonomyTermEditRoute.name,
       },
     ),
     _AdminDestination(
@@ -126,6 +127,35 @@ class _TenantAdminShellScreenState extends State<TenantAdminShellScreen> {
   String _titleForRoute(String? routeName) {
     final index = _selectedIndex(routeName);
     return _destinations[index].title;
+  }
+
+  List<Widget> _buildContextualActions({
+    required BuildContext context,
+    required String? routeName,
+  }) {
+    if (routeName == TenantAdminAccountsListRoute.name) {
+      return [
+        IconButton(
+          tooltip: 'Tipos de Perfil',
+          onPressed: () {
+            context.router.push(const TenantAdminProfileTypesListRoute());
+          },
+          icon: const Icon(Icons.category_outlined),
+        ),
+      ];
+    }
+    if (routeName == TenantAdminStaticAssetsListRoute.name) {
+      return [
+        IconButton(
+          tooltip: 'Tipos de Ativo',
+          onPressed: () {
+            context.router.push(const TenantAdminStaticProfileTypesListRoute());
+          },
+          icon: const Icon(Icons.layers_outlined),
+        ),
+      ];
+    }
+    return const [];
   }
 
   String? _resolveCurrentRouteName(BuildContext context) =>
@@ -230,18 +260,20 @@ class _TenantAdminShellScreenState extends State<TenantAdminShellScreen> {
                       appBar: showShellScaffoldChrome
                           ? AppBar(
                               title: Text(_titleForRoute(currentName)),
-                              actions: canChangeTenant
-                                  ? [
-                                      TextButton.icon(
-                                        onPressed:
-                                            _controller.clearTenantSelection,
-                                        icon: const Icon(
-                                          Icons.swap_horiz_outlined,
-                                        ),
-                                        label: Text(selectedTenantLabel),
-                                      ),
-                                    ]
-                                  : null,
+                              actions: [
+                                ..._buildContextualActions(
+                                  context: context,
+                                  routeName: currentName,
+                                ),
+                                if (canChangeTenant)
+                                  TextButton.icon(
+                                    onPressed: _controller.clearTenantSelection,
+                                    icon: const Icon(
+                                      Icons.swap_horiz_outlined,
+                                    ),
+                                    label: Text(selectedTenantLabel),
+                                  ),
+                              ],
                             )
                           : null,
                       body: isWide

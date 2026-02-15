@@ -57,7 +57,7 @@ void main() {
     });
   }
 
-  testWidgets('Admin dashboard hides events', (tester) async {
+  testWidgets('Admin shell exposes events destination', (tester) async {
     if (GetIt.I.isRegistered<ApplicationContract>()) {
       GetIt.I.unregister<ApplicationContract>();
     }
@@ -109,11 +109,10 @@ void main() {
       _tenantAdminShellRouterFinder(),
     );
     await _waitForFinder(tester, find.text('Eventos'));
-    await _waitForFinder(tester, find.text('Em breve'));
-
     await tester.pumpAndSettle(const Duration(seconds: 1));
-    await tester.tap(find.text('Eventos'));
+    await tester.tap(find.text('Eventos').first);
     await tester.pumpAndSettle(const Duration(seconds: 1));
+    await _waitForFinder(tester, find.text('Gestão de eventos em evolução'));
     await _waitForFinder(
       tester,
       _tenantAdminShellRouterFinder(),
