@@ -121,6 +121,8 @@ class _TenantAdminProfileTypeFormScreenState
                               controller: _controller.labelController,
                               decoration:
                                   const InputDecoration(labelText: 'Label'),
+                              keyboardType: TextInputType.name,
+                              textCapitalization: TextCapitalization.words,
                               onChanged: (_) => _syncSlugFromLabel(),
                               validator: (value) {
                                 if (value == null || value.trim().isEmpty) {
@@ -136,6 +138,11 @@ class _TenantAdminProfileTypeFormScreenState
                                 labelText: 'Tipo (slug)',
                               ),
                               enabled: !_isEdit,
+                              keyboardType: TextInputType.visiblePassword,
+                              textCapitalization: TextCapitalization.none,
+                              autocorrect: false,
+                              enableSuggestions: false,
+                              inputFormatters: tenantAdminSlugInputFormatters,
                               onChanged: (value) {
                                 if (_isEdit) {
                                   return;

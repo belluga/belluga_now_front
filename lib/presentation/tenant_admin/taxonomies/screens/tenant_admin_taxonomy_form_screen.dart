@@ -166,6 +166,8 @@ class _TenantAdminTaxonomyFormScreenState
                               decoration: const InputDecoration(
                                 labelText: 'Nome',
                               ),
+                              keyboardType: TextInputType.name,
+                              textCapitalization: TextCapitalization.words,
                               onChanged: (_) => _syncSlugFromName(),
                               validator: (value) {
                                 if (value == null || value.trim().isEmpty) {
@@ -181,6 +183,11 @@ class _TenantAdminTaxonomyFormScreenState
                                 labelText: 'Slug',
                               ),
                               enabled: !_isEdit,
+                              keyboardType: TextInputType.visiblePassword,
+                              textCapitalization: TextCapitalization.none,
+                              autocorrect: false,
+                              enableSuggestions: false,
+                              inputFormatters: tenantAdminSlugInputFormatters,
                               onChanged: (value) {
                                 if (_isEdit) {
                                   return;
@@ -208,6 +215,10 @@ class _TenantAdminTaxonomyFormScreenState
                               decoration: const InputDecoration(
                                 labelText: 'Icon (Material)',
                               ),
+                              keyboardType: TextInputType.visiblePassword,
+                              textCapitalization: TextCapitalization.none,
+                              autocorrect: false,
+                              enableSuggestions: false,
                             ),
                             const SizedBox(height: 8),
                             Align(
@@ -239,6 +250,10 @@ class _TenantAdminTaxonomyFormScreenState
                               decoration: const InputDecoration(
                                 labelText: 'Cor (#RRGGBB)',
                               ),
+                              keyboardType: TextInputType.visiblePassword,
+                              textCapitalization: TextCapitalization.characters,
+                              autocorrect: false,
+                              enableSuggestions: false,
                               validator: tenantAdminValidateOptionalHexColor,
                             ),
                             const SizedBox(height: 8),

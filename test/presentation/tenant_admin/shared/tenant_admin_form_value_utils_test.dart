@@ -25,4 +25,26 @@ void main() {
       expect(tenantAdminParseLongitude('181'), isNull);
     });
   });
+
+  group('tenantAdminSlugInputFormatters', () {
+    test('normalizes pasted value into slug-safe text', () {
+      final formatter = tenantAdminSlugInputFormatters.single;
+      final result = formatter.formatEditUpdate(
+        TextEditingValue.empty,
+        const TextEditingValue(text: 'Música São João @@ 2026'),
+      );
+
+      expect(result.text, 'musica-sao-joao-2026');
+    });
+
+    test('removes unsupported characters and lowercases', () {
+      final formatter = tenantAdminSlugInputFormatters.single;
+      final result = formatter.formatEditUpdate(
+        TextEditingValue.empty,
+        const TextEditingValue(text: 'ABC__DEF++/ghi'),
+      );
+
+      expect(result.text, 'abc-defghi');
+    });
+  });
 }

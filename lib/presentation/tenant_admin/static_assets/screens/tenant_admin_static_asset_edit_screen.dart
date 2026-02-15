@@ -6,6 +6,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_static_profile_type
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_definition.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_form_value_utils.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_slug_utils.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_confirmation_dialog.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_error_banner.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_form_layout.dart';
@@ -37,10 +38,12 @@ class _TenantAdminStaticAssetEditScreenState
   void initState() {
     super.initState();
     _controller.initEdit(widget.assetId);
+    _controller.displayNameController.addListener(_syncSlugFromDisplayName);
   }
 
   @override
   void dispose() {
+    _controller.displayNameController.removeListener(_syncSlugFromDisplayName);
     _controller.clearSubmitMessages();
     super.dispose();
   }
@@ -142,6 +145,23 @@ class _TenantAdminStaticAssetEditScreenState
       }
     }
     return null;
+  }
+
+  void _syncSlugFromDisplayName() {
+    if (!_controller.isSlugAutoEnabled) {
+      return;
+    }
+    final generated =
+        tenantAdminSlugify(_controller.displayNameController.text);
+    if (_controller.slugController.text == generated) {
+      return;
+    }
+    _controller.slugController.value =
+        _controller.slugController.value.copyWith(
+      text: generated,
+      selection: TextSelection.collapsed(offset: generated.length),
+      composing: TextRange.empty,
+    );
   }
 
   void _clearCapabilityFields(String? selectedType) {
@@ -371,6 +391,8 @@ class _TenantAdminStaticAssetEditScreenState
             TextFormField(
               controller: _controller.displayNameController,
               decoration: const InputDecoration(labelText: 'Nome de exibicao'),
+              keyboardType: TextInputType.name,
+              textCapitalization: TextCapitalization.words,
               textInputAction: TextInputAction.next,
               validator: (value) {
                 if (value == null || value.trim().isEmpty) {
@@ -383,6 +405,18 @@ class _TenantAdminStaticAssetEditScreenState
             TextFormField(
               controller: _controller.slugController,
               decoration: const InputDecoration(labelText: 'Slug'),
+              keyboardType: TextInputType.visiblePassword,
+              textCapitalization: TextCapitalization.none,
+              autocorrect: false,
+              enableSuggestions: false,
+              inputFormatters: tenantAdminSlugInputFormatters,
+              onChanged: (value) {
+                final generated =
+                    tenantAdminSlugify(_controller.displayNameController.text);
+                if (_controller.isSlugAutoEnabled && value != generated) {
+                  _controller.setSlugAutoEnabled(false);
+                }
+              },
               textInputAction: TextInputAction.next,
               validator: (value) => tenantAdminValidateRequiredSlug(
                 value,
@@ -439,6 +473,8 @@ class _TenantAdminStaticAssetEditScreenState
               TextFormField(
                 controller: _controller.bioController,
                 decoration: const InputDecoration(labelText: 'Bio'),
+                keyboardType: TextInputType.multiline,
+                textCapitalization: TextCapitalization.sentences,
                 maxLines: 3,
                 textInputAction: TextInputAction.newline,
               ),
@@ -448,6 +484,8 @@ class _TenantAdminStaticAssetEditScreenState
               TextFormField(
                 controller: _controller.contentController,
                 decoration: const InputDecoration(labelText: 'Conteudo'),
+                keyboardType: TextInputType.multiline,
+                textCapitalization: TextCapitalization.sentences,
                 maxLines: 6,
                 textInputAction: TextInputAction.newline,
               ),
@@ -495,6 +533,9 @@ class _TenantAdminStaticAssetEditScreenState
                 controller: _controller.avatarUrlController,
                 decoration: const InputDecoration(labelText: 'Avatar URL'),
                 keyboardType: TextInputType.url,
+                textCapitalization: TextCapitalization.none,
+                autocorrect: false,
+                enableSuggestions: false,
                 textInputAction: TextInputAction.next,
               ),
             ],
@@ -504,6 +545,9 @@ class _TenantAdminStaticAssetEditScreenState
                 controller: _controller.coverUrlController,
                 decoration: const InputDecoration(labelText: 'Capa URL'),
                 keyboardType: TextInputType.url,
+                textCapitalization: TextCapitalization.none,
+                autocorrect: false,
+                enableSuggestions: false,
                 textInputAction: TextInputAction.next,
               ),
             ],

@@ -11,6 +11,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_definition.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_form_value_utils.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_slug_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart' show Disposable, GetIt;
 import 'package:stream_value/core/stream_value.dart';
@@ -78,6 +79,8 @@ class TenantAdminStaticAssetsController implements Disposable {
   final StreamValue<String?> submitSuccessStreamValue = StreamValue<String?>();
   final StreamValue<String> searchQueryStreamValue =
       StreamValue<String>(defaultValue: '');
+  final StreamValue<bool> isSlugAutoEnabledStreamValue =
+      StreamValue<bool>(defaultValue: true);
 
   final GlobalKey<FormState> formKey = GlobalKey<FormState>();
   final TextEditingController displayNameController = TextEditingController();
@@ -283,6 +286,8 @@ class TenantAdminStaticAssetsController implements Disposable {
   void _hydrateForm(TenantAdminStaticAsset asset) {
     displayNameController.text = asset.displayName;
     slugController.text = asset.slug;
+    final generatedSlug = tenantAdminSlugify(asset.displayName);
+    isSlugAutoEnabledStreamValue.addValue(asset.slug == generatedSlug);
     bioController.text = asset.bio ?? '';
     contentController.text = asset.content ?? '';
     tagsController.text = asset.tags.join(', ');
@@ -312,6 +317,12 @@ class TenantAdminStaticAssetsController implements Disposable {
 
   void updateSearchQuery(String value) {
     searchQueryStreamValue.addValue(value);
+  }
+
+  bool get isSlugAutoEnabled => isSlugAutoEnabledStreamValue.value;
+
+  void setSlugAutoEnabled(bool enabled) {
+    isSlugAutoEnabledStreamValue.addValue(enabled);
   }
 
   void updateTaxonomySelection({
@@ -550,6 +561,7 @@ class TenantAdminStaticAssetsController implements Disposable {
     selectedProfileTypeStreamValue.addValue(null);
     selectedTaxonomyTermsStreamValue.addValue(const {});
     isActiveStreamValue.addValue(true);
+    isSlugAutoEnabledStreamValue.addValue(true);
     clearSubmitMessages();
   }
 
@@ -623,5 +635,6 @@ class TenantAdminStaticAssetsController implements Disposable {
     submitErrorStreamValue.dispose();
     submitSuccessStreamValue.dispose();
     searchQueryStreamValue.dispose();
+    isSlugAutoEnabledStreamValue.dispose();
   }
 }
