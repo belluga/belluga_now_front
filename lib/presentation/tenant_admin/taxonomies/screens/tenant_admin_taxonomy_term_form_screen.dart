@@ -1,5 +1,6 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_definition.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_form_value_utils.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_slug_utils.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_form_layout.dart';
 import 'package:belluga_now/presentation/tenant_admin/taxonomies/controllers/tenant_admin_taxonomies_controller.dart';
@@ -132,10 +133,12 @@ class _TenantAdminTaxonomyTermFormScreenState
                                 }
                               },
                               validator: (value) {
-                                if (value == null || value.trim().isEmpty) {
-                                  return 'Slug obrigatorio.';
-                                }
-                                return null;
+                                return tenantAdminValidateRequiredSlug(
+                                  value,
+                                  requiredMessage: 'Slug obrigatorio.',
+                                  invalidMessage:
+                                      'Slug invalido. Use letras minusculas, numeros, - ou _.',
+                                );
                               },
                             ),
                             const SizedBox(height: 12),

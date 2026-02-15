@@ -312,22 +312,20 @@ void main() {
       find.byType(TextFormField).at(0),
       'Conta Teste',
     );
+    GetIt.I.get<TenantAdminAccountsController>().documentTypeController.text =
+        'cpf';
     await tester.enterText(
       find.byType(TextFormField).at(1),
-      'cpf',
-    );
-    await tester.enterText(
-      find.byType(TextFormField).at(2),
       'Perfil Teste',
     );
     await tester.enterText(
-      find.byType(TextFormField).at(3),
+      find.byType(TextFormField).at(2),
       '000',
     );
 
     final profileTypeDropdown = find.byType(DropdownButtonFormField<String>);
-    await tester.ensureVisible(profileTypeDropdown);
-    await tester.tap(profileTypeDropdown, warnIfMissed: false);
+    await tester.ensureVisible(profileTypeDropdown.last);
+    await tester.tap(profileTypeDropdown.last, warnIfMissed: false);
     await tester.pumpAndSettle();
     await tester.tap(find.text('Venue').last);
     await tester.pumpAndSettle();

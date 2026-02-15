@@ -9,6 +9,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
 import 'package:belluga_now/presentation/tenant_admin/account_profiles/controllers/tenant_admin_account_profiles_controller.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_form_value_utils.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_error_banner.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_form_layout.dart';
 import 'package:flutter/material.dart';
@@ -217,7 +218,7 @@ class _TenantAdminAccountProfileEditScreenState
   String? _validateLatitude(String? value) {
     final trimmed = value?.trim() ?? '';
     final other = _controller.longitudeController.text.trim();
-    if (trimmed.isNotEmpty && double.tryParse(trimmed) == null) {
+    if (trimmed.isNotEmpty && tenantAdminParseLatitude(trimmed) == null) {
       return 'Latitude inválida.';
     }
     if (_requiresLocation(
@@ -238,7 +239,7 @@ class _TenantAdminAccountProfileEditScreenState
   String? _validateLongitude(String? value) {
     final trimmed = value?.trim() ?? '';
     final other = _controller.latitudeController.text.trim();
-    if (trimmed.isNotEmpty && double.tryParse(trimmed) == null) {
+    if (trimmed.isNotEmpty && tenantAdminParseLongitude(trimmed) == null) {
       return 'Longitude inválida.';
     }
     if (_requiresLocation(
@@ -256,8 +257,8 @@ class _TenantAdminAccountProfileEditScreenState
     if (latText.isEmpty || lngText.isEmpty) {
       return null;
     }
-    final lat = double.tryParse(latText);
-    final lng = double.tryParse(lngText);
+    final lat = tenantAdminParseLatitude(latText);
+    final lng = tenantAdminParseLongitude(lngText);
     if (lat == null || lng == null) {
       return null;
     }
@@ -610,10 +611,28 @@ class _TenantAdminAccountProfileEditScreenState
               );
             },
           ),
+          const SizedBox(height: 8),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton.icon(
+              onPressed: () async {
+                await context.router.push(
+                  const TenantAdminProfileTypeCreateRoute(),
+                );
+                if (!mounted) {
+                  return;
+                }
+                await _controller.loadProfileTypes();
+              },
+              icon: const Icon(Icons.add),
+              label: const Text('Criar tipo de perfil'),
+            ),
+          ),
           const SizedBox(height: 12),
           TextFormField(
             controller: _controller.displayNameController,
             decoration: const InputDecoration(labelText: 'Nome de exibicao'),
+            textInputAction: TextInputAction.next,
             validator: (value) {
               if (value == null || value.trim().isEmpty) {
                 return 'Nome de exibicao e obrigatorio.';
@@ -644,6 +663,7 @@ class _TenantAdminAccountProfileEditScreenState
               decoration: const InputDecoration(labelText: 'Bio'),
               maxLines: 4,
               minLines: 2,
+              textInputAction: TextInputAction.newline,
             ),
           ],
           if (_hasTaxonomies(state.selectedProfileType)) ...[
@@ -977,14 +997,20 @@ class _TenantAdminAccountProfileEditScreenState
           TextFormField(
             controller: _controller.latitudeController,
             decoration: const InputDecoration(labelText: 'Latitude'),
-            keyboardType: TextInputType.number,
+            keyboardType: const TextInputType.numberWithOptions(
+                decimal: true, signed: true),
+            inputFormatters: tenantAdminCoordinateInputFormatters,
+            textInputAction: TextInputAction.next,
             validator: _validateLatitude,
           ),
           const SizedBox(height: 12),
           TextFormField(
             controller: _controller.longitudeController,
             decoration: const InputDecoration(labelText: 'Longitude'),
-            keyboardType: TextInputType.number,
+            keyboardType: const TextInputType.numberWithOptions(
+                decimal: true, signed: true),
+            inputFormatters: tenantAdminCoordinateInputFormatters,
+            textInputAction: TextInputAction.done,
             validator: _validateLongitude,
           ),
           const SizedBox(height: 8),

@@ -1,6 +1,7 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_static_profile_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_form_value_utils.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_slug_utils.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_form_layout.dart';
 import 'package:belluga_now/presentation/tenant_admin/static_profile_types/controllers/tenant_admin_static_profile_types_controller.dart';
@@ -139,11 +140,15 @@ class _TenantAdminStaticProfileTypeFormScreenState
                                 }
                               },
                               validator: (value) {
-                                if (!_isEdit &&
-                                    (value == null || value.trim().isEmpty)) {
-                                  return 'Tipo e obrigatorio.';
+                                if (_isEdit) {
+                                  return null;
                                 }
-                                return null;
+                                return tenantAdminValidateRequiredSlug(
+                                  value,
+                                  requiredMessage: 'Tipo e obrigatorio.',
+                                  invalidMessage:
+                                      'Tipo invalido. Use letras minusculas, numeros, - ou _.',
+                                );
                               },
                             ),
                             const SizedBox(height: 12),

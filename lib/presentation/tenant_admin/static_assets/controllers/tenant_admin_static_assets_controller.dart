@@ -10,6 +10,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_static_profile_type
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_definition.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_form_value_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart' show Disposable, GetIt;
 import 'package:stream_value/core/stream_value.dart';
@@ -380,18 +381,14 @@ class TenantAdminStaticAssetsController implements Disposable {
   }
 
   TenantAdminLocation? _parseLocation() {
-    final lat = double.tryParse(latitudeController.text.trim());
-    final lng = double.tryParse(longitudeController.text.trim());
+    final lat = tenantAdminParseLatitude(latitudeController.text);
+    final lng = tenantAdminParseLongitude(longitudeController.text);
     if (lat == null || lng == null) return null;
     return TenantAdminLocation(latitude: lat, longitude: lng);
   }
 
   List<String> _parseList(TextEditingController controller) {
-    return controller.text
-        .split(',')
-        .map((value) => value.trim())
-        .where((value) => value.isNotEmpty)
-        .toList(growable: false);
+    return tenantAdminParseTokenList(controller.text);
   }
 
   List<TenantAdminTaxonomyTerm> _buildTaxonomyTerms() {

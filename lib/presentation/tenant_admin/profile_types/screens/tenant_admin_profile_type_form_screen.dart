@@ -1,8 +1,10 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_form_value_utils.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_slug_utils.dart';
 import 'package:belluga_now/presentation/tenant_admin/profile_types/controllers/tenant_admin_profile_types_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_form_layout.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_token_chips_field.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
@@ -63,11 +65,14 @@ class _TenantAdminProfileTypeFormScreenState
   }
 
   List<String> _parseTaxonomies() {
-    return _controller.taxonomiesController.text
-        .split(',')
-        .map((value) => value.trim())
-        .where((value) => value.isNotEmpty)
-        .toList(growable: false);
+    return tenantAdminParseTokenList(_controller.taxonomiesController.text);
+  }
+
+  List<String> _currentTaxonomies() =>
+      tenantAdminParseTokenList(_controller.taxonomiesController.text);
+
+  void _updateTaxonomies(List<String> next) {
+    _controller.taxonomiesController.text = tenantAdminJoinTokenList(next);
   }
 
   Future<void> _save() async {
@@ -140,11 +145,15 @@ class _TenantAdminProfileTypeFormScreenState
                                 }
                               },
                               validator: (value) {
-                                if (!_isEdit &&
-                                    (value == null || value.trim().isEmpty)) {
-                                  return 'Tipo e obrigatorio.';
+                                if (_isEdit) {
+                                  return null;
                                 }
-                                return null;
+                                return tenantAdminValidateRequiredSlug(
+                                  value,
+                                  requiredMessage: 'Tipo e obrigatorio.',
+                                  invalidMessage:
+                                      'Tipo invalido. Use letras minusculas, numeros, - ou _.',
+                                );
                               },
                             ),
                             const SizedBox(height: 12),
@@ -161,11 +170,13 @@ class _TenantAdminProfileTypeFormScreenState
                               },
                             ),
                             const SizedBox(height: 12),
-                            TextFormField(
-                              controller: _controller.taxonomiesController,
-                              decoration: const InputDecoration(
-                                labelText: 'Taxonomias (separadas por virgula)',
-                              ),
+                            TenantAdminTokenChipsField(
+                              label: 'Taxonomias permitidas',
+                              values: _currentTaxonomies(),
+                              hintText: 'Adicionar slug de taxonomia',
+                              emptyStateText:
+                                  'Nenhuma taxonomia permitida selecionada.',
+                              onChanged: _updateTaxonomies,
                             ),
                             if (!_isEdit) ...[
                               const SizedBox(height: 12),

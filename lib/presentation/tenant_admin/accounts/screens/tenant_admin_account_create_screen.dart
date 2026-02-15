@@ -5,10 +5,12 @@ import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_form_value_utils.dart';
 import 'package:belluga_now/presentation/tenant_admin/accounts/controllers/tenant_admin_accounts_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_error_banner.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_form_layout.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get_it/get_it.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
@@ -23,9 +25,17 @@ class TenantAdminAccountCreateScreen extends StatefulWidget {
 
 class _TenantAdminAccountCreateScreenState
     extends State<TenantAdminAccountCreateScreen> {
+  static const List<String> _documentTypeOptions = <String>[
+    'cpf',
+    'cnpj',
+    'passport',
+    'other',
+  ];
+
   final TenantAdminAccountsController _controller =
       GetIt.I.get<TenantAdminAccountsController>();
   String? _lastSuccessMessage;
+  String? _selectedDocumentType;
 
   @override
   void initState() {
@@ -33,6 +43,10 @@ class _TenantAdminAccountCreateScreenState
     _controller.bindCreateFlow();
     _controller.resetCreateState();
     _controller.resetCreateForm();
+    _selectedDocumentType =
+        _controller.documentTypeController.text.trim().isEmpty
+            ? null
+            : _controller.documentTypeController.text.trim();
     _controller.loadProfileTypes();
   }
 
@@ -70,7 +84,7 @@ class _TenantAdminAccountCreateScreenState
     if (requires && trimmed.isEmpty && other.isEmpty) {
       return 'Localização é obrigatória para este perfil.';
     }
-    if (trimmed.isNotEmpty && double.tryParse(trimmed) == null) {
+    if (trimmed.isNotEmpty && tenantAdminParseLatitude(trimmed) == null) {
       return 'Latitude inválida.';
     }
     if (requires && trimmed.isEmpty && other.isNotEmpty) {
@@ -85,7 +99,7 @@ class _TenantAdminAccountCreateScreenState
     final requires = _requiresLocation(
       _controller.createStateStreamValue.value.selectedProfileType,
     );
-    if (trimmed.isNotEmpty && double.tryParse(trimmed) == null) {
+    if (trimmed.isNotEmpty && tenantAdminParseLongitude(trimmed) == null) {
       return 'Longitude inválida.';
     }
     if (requires && trimmed.isEmpty && other.isNotEmpty) {
@@ -109,8 +123,8 @@ class _TenantAdminAccountCreateScreenState
     if (latText.isEmpty || lngText.isEmpty) {
       return null;
     }
-    final lat = double.tryParse(latText);
-    final lng = double.tryParse(lngText);
+    final lat = tenantAdminParseLatitude(latText);
+    final lng = tenantAdminParseLongitude(lngText);
     if (lat == null || lng == null) {
       return null;
     }
@@ -257,6 +271,8 @@ class _TenantAdminAccountCreateScreenState
           TextFormField(
             controller: _controller.nameController,
             decoration: const InputDecoration(labelText: 'Nome'),
+            textInputAction: TextInputAction.next,
+            autofillHints: const [AutofillHints.name],
             validator: (value) {
               if (value == null || value.trim().isEmpty) {
                 return 'Nome e obrigatorio.';
@@ -265,11 +281,26 @@ class _TenantAdminAccountCreateScreenState
             },
           ),
           const SizedBox(height: 12),
-          TextFormField(
-            controller: _controller.documentTypeController,
+          DropdownButtonFormField<String>(
+            initialValue: _selectedDocumentType,
             decoration: const InputDecoration(labelText: 'Tipo do documento'),
+            items: _documentTypeOptions
+                .map(
+                  (type) => DropdownMenuItem<String>(
+                    value: type,
+                    child: Text(type.toUpperCase()),
+                  ),
+                )
+                .toList(growable: false),
+            onChanged: (value) {
+              setState(() {
+                _selectedDocumentType = value;
+              });
+              _controller.documentTypeController.text = value ?? '';
+            },
             validator: (value) {
-              if (value == null || value.trim().isEmpty) {
+              final current = value ?? _controller.documentTypeController.text;
+              if (current.trim().isEmpty) {
                 return 'Tipo do documento e obrigatorio.';
               }
               return null;
@@ -335,6 +366,23 @@ class _TenantAdminAccountCreateScreenState
                               return null;
                             },
                           ),
+                          const SizedBox(height: 8),
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: TextButton.icon(
+                              onPressed: () async {
+                                await context.router.push(
+                                  const TenantAdminProfileTypeCreateRoute(),
+                                );
+                                if (!mounted) {
+                                  return;
+                                }
+                                await _controller.loadProfileTypes();
+                              },
+                              icon: const Icon(Icons.add),
+                              label: const Text('Criar tipo de perfil'),
+                            ),
+                          ),
                           if (!isLoading && error == null && !hasTypes)
                             const Padding(
                               padding: EdgeInsets.only(top: 8),
@@ -354,6 +402,7 @@ class _TenantAdminAccountCreateScreenState
           TextFormField(
             controller: _controller.profileDisplayNameController,
             decoration: const InputDecoration(labelText: 'Nome de exibicao'),
+            textInputAction: TextInputAction.next,
             validator: (value) {
               if (value == null || value.trim().isEmpty) {
                 return 'Nome de exibicao e obrigatorio.';
@@ -365,6 +414,12 @@ class _TenantAdminAccountCreateScreenState
           TextFormField(
             controller: _controller.documentNumberController,
             decoration: const InputDecoration(labelText: 'Numero do documento'),
+            textInputAction: TextInputAction.next,
+            keyboardType: TextInputType.text,
+            autofillHints: const [AutofillHints.creditCardNumber],
+            inputFormatters: <TextInputFormatter>[
+              FilteringTextInputFormatter.allow(RegExp(r'[0-9A-Za-z./-]')),
+            ],
             validator: (value) {
               if (value == null || value.trim().isEmpty) {
                 return 'Numero do documento e obrigatorio.';
@@ -534,14 +589,20 @@ class _TenantAdminAccountCreateScreenState
           TextFormField(
             controller: _controller.latitudeController,
             decoration: const InputDecoration(labelText: 'Latitude'),
-            keyboardType: TextInputType.number,
+            keyboardType: const TextInputType.numberWithOptions(
+                decimal: true, signed: true),
+            inputFormatters: tenantAdminCoordinateInputFormatters,
+            textInputAction: TextInputAction.next,
             validator: _validateLatitude,
           ),
           const SizedBox(height: 12),
           TextFormField(
             controller: _controller.longitudeController,
             decoration: const InputDecoration(labelText: 'Longitude'),
-            keyboardType: TextInputType.number,
+            keyboardType: const TextInputType.numberWithOptions(
+                decimal: true, signed: true),
+            inputFormatters: tenantAdminCoordinateInputFormatters,
+            textInputAction: TextInputAction.done,
             validator: _validateLongitude,
           ),
           const SizedBox(height: 8),

@@ -5,9 +5,11 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_static_asset.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_static_profile_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_definition.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_form_value_utils.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_confirmation_dialog.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_error_banner.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_form_layout.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_token_chips_field.dart';
 import 'package:belluga_now/presentation/tenant_admin/static_assets/controllers/tenant_admin_static_assets_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
@@ -192,12 +194,26 @@ class _TenantAdminStaticAssetEditScreenState
     if (latText.isEmpty || lngText.isEmpty) {
       return null;
     }
-    final lat = double.tryParse(latText);
-    final lng = double.tryParse(lngText);
+    final lat = tenantAdminParseLatitude(latText);
+    final lng = tenantAdminParseLongitude(lngText);
     if (lat == null || lng == null) {
       return null;
     }
     return TenantAdminLocation(latitude: lat, longitude: lng);
+  }
+
+  List<String> _currentTags() =>
+      tenantAdminParseTokenList(_controller.tagsController.text);
+
+  List<String> _currentCategories() =>
+      tenantAdminParseTokenList(_controller.categoriesController.text);
+
+  void _updateTags(List<String> next) {
+    _controller.tagsController.text = tenantAdminJoinTokenList(next);
+  }
+
+  void _updateCategories(List<String> next) {
+    _controller.categoriesController.text = tenantAdminJoinTokenList(next);
   }
 
   String? _validateLatitude(String? value) {
@@ -206,7 +222,7 @@ class _TenantAdminStaticAssetEditScreenState
     if (_controller.requiresLocation() && trimmed.isEmpty && other.isEmpty) {
       return 'Localizacao obrigatoria.';
     }
-    if (trimmed.isNotEmpty && double.tryParse(trimmed) == null) {
+    if (trimmed.isNotEmpty && tenantAdminParseLatitude(trimmed) == null) {
       return 'Latitude invalida.';
     }
     if (_controller.requiresLocation() && trimmed.isEmpty && other.isNotEmpty) {
@@ -218,7 +234,7 @@ class _TenantAdminStaticAssetEditScreenState
   String? _validateLongitude(String? value) {
     final trimmed = value?.trim() ?? '';
     final other = _controller.latitudeController.text.trim();
-    if (trimmed.isNotEmpty && double.tryParse(trimmed) == null) {
+    if (trimmed.isNotEmpty && tenantAdminParseLongitude(trimmed) == null) {
       return 'Longitude invalida.';
     }
     if (_controller.requiresLocation() && trimmed.isEmpty && other.isNotEmpty) {
@@ -321,6 +337,23 @@ class _TenantAdminStaticAssetEditScreenState
                             );
                           },
                         ),
+                        const SizedBox(height: 8),
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: TextButton.icon(
+                            onPressed: () async {
+                              await context.router.push(
+                                const TenantAdminStaticProfileTypeCreateRoute(),
+                              );
+                              if (!mounted) {
+                                return;
+                              }
+                              await _controller.loadProfileTypes();
+                            },
+                            icon: const Icon(Icons.add),
+                            label: const Text('Criar tipo de ativo'),
+                          ),
+                        ),
                         if (!isLoading && error == null && !hasTypes)
                           const Padding(
                             padding: EdgeInsets.only(top: 8),
@@ -338,6 +371,7 @@ class _TenantAdminStaticAssetEditScreenState
             TextFormField(
               controller: _controller.displayNameController,
               decoration: const InputDecoration(labelText: 'Nome de exibicao'),
+              textInputAction: TextInputAction.next,
               validator: (value) {
                 if (value == null || value.trim().isEmpty) {
                   return 'Nome e obrigatorio.';
@@ -349,12 +383,13 @@ class _TenantAdminStaticAssetEditScreenState
             TextFormField(
               controller: _controller.slugController,
               decoration: const InputDecoration(labelText: 'Slug'),
-              validator: (value) {
-                if (value == null || value.trim().isEmpty) {
-                  return 'Slug e obrigatorio.';
-                }
-                return null;
-              },
+              textInputAction: TextInputAction.next,
+              validator: (value) => tenantAdminValidateRequiredSlug(
+                value,
+                requiredMessage: 'Slug e obrigatorio.',
+                invalidMessage:
+                    'Slug invalido. Use letras minusculas, numeros, - ou _.',
+              ),
             ),
           ],
         ),
@@ -405,6 +440,7 @@ class _TenantAdminStaticAssetEditScreenState
                 controller: _controller.bioController,
                 decoration: const InputDecoration(labelText: 'Bio'),
                 maxLines: 3,
+                textInputAction: TextInputAction.newline,
               ),
             ],
             if (hasContent) ...[
@@ -413,21 +449,24 @@ class _TenantAdminStaticAssetEditScreenState
                 controller: _controller.contentController,
                 decoration: const InputDecoration(labelText: 'Conteudo'),
                 maxLines: 6,
+                textInputAction: TextInputAction.newline,
               ),
             ],
             const SizedBox(height: 12),
-            TextFormField(
-              controller: _controller.tagsController,
-              decoration: const InputDecoration(
-                labelText: 'Tags (separadas por virgulas)',
-              ),
+            TenantAdminTokenChipsField(
+              label: 'Tags',
+              values: _currentTags(),
+              hintText: 'Adicionar tag',
+              emptyStateText: 'Nenhuma tag adicionada.',
+              onChanged: _updateTags,
             ),
             const SizedBox(height: 12),
-            TextFormField(
-              controller: _controller.categoriesController,
-              decoration: const InputDecoration(
-                labelText: 'Categorias (separadas por virgulas)',
-              ),
+            TenantAdminTokenChipsField(
+              label: 'Categorias',
+              values: _currentCategories(),
+              hintText: 'Adicionar categoria',
+              emptyStateText: 'Nenhuma categoria adicionada.',
+              onChanged: _updateCategories,
             ),
           ],
         ),
@@ -455,6 +494,8 @@ class _TenantAdminStaticAssetEditScreenState
               TextFormField(
                 controller: _controller.avatarUrlController,
                 decoration: const InputDecoration(labelText: 'Avatar URL'),
+                keyboardType: TextInputType.url,
+                textInputAction: TextInputAction.next,
               ),
             ],
             if (hasCover) ...[
@@ -462,6 +503,8 @@ class _TenantAdminStaticAssetEditScreenState
               TextFormField(
                 controller: _controller.coverUrlController,
                 decoration: const InputDecoration(labelText: 'Capa URL'),
+                keyboardType: TextInputType.url,
+                textInputAction: TextInputAction.next,
               ),
             ],
           ],
@@ -596,14 +639,20 @@ class _TenantAdminStaticAssetEditScreenState
             TextFormField(
               controller: _controller.latitudeController,
               decoration: const InputDecoration(labelText: 'Latitude'),
-              keyboardType: TextInputType.number,
+              keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true, signed: true),
+              inputFormatters: tenantAdminCoordinateInputFormatters,
+              textInputAction: TextInputAction.next,
               validator: _validateLatitude,
             ),
             const SizedBox(height: 12),
             TextFormField(
               controller: _controller.longitudeController,
               decoration: const InputDecoration(labelText: 'Longitude'),
-              keyboardType: TextInputType.number,
+              keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true, signed: true),
+              inputFormatters: tenantAdminCoordinateInputFormatters,
+              textInputAction: TextInputAction.done,
               validator: _validateLongitude,
             ),
             const SizedBox(height: 8),
