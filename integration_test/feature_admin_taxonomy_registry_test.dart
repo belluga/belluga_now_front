@@ -395,6 +395,7 @@ class _FakeAccountsRepository implements TenantAdminAccountsRepositoryContract {
   Future<TenantAdminAccount> updateAccount({
     required String accountSlug,
     String? name,
+    String? slug,
     TenantAdminDocument? document,
   }) async {
     return TenantAdminAccount(
@@ -535,6 +536,7 @@ class _FakeAccountProfilesRepository
     required String accountProfileId,
     String? profileType,
     String? displayName,
+    String? slug,
     TenantAdminLocation? location,
     List<TenantAdminTaxonomyTerm>? taxonomyTerms,
     String? bio,
@@ -592,6 +594,7 @@ class _FakeAccountProfilesRepository
   @override
   Future<TenantAdminProfileTypeDefinition> updateProfileType({
     required String type,
+    String? newType,
     String? label,
     List<String>? allowedTaxonomies,
     TenantAdminProfileTypeCapabilities? capabilities,

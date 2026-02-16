@@ -137,12 +137,16 @@ class TenantAdminAccountsRepository
   Future<TenantAdminAccount> updateAccount({
     required String accountSlug,
     String? name,
+    String? slug,
     TenantAdminDocument? document,
   }) async {
     try {
       final payload = <String, dynamic>{};
       if (name != null && name.trim().isNotEmpty) {
         payload['name'] = name.trim();
+      }
+      if (slug != null && slug.trim().isNotEmpty) {
+        payload['slug'] = slug.trim();
       }
       if (document != null) {
         payload['document'] = {

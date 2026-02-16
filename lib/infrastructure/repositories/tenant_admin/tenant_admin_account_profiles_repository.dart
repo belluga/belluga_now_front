@@ -124,6 +124,7 @@ class TenantAdminAccountProfilesRepository
     required String accountProfileId,
     String? profileType,
     String? displayName,
+    String? slug,
     TenantAdminLocation? location,
     List<TenantAdminTaxonomyTerm>? taxonomyTerms,
     String? bio,
@@ -136,6 +137,7 @@ class TenantAdminAccountProfilesRepository
       final payload = <String, dynamic>{};
       if (profileType != null) payload['profile_type'] = profileType;
       if (displayName != null) payload['display_name'] = displayName;
+      if (slug != null && slug.trim().isNotEmpty) payload['slug'] = slug.trim();
       if (location != null) {
         payload['location'] = {
           'lat': location.latitude,
@@ -301,6 +303,7 @@ class TenantAdminAccountProfilesRepository
   @override
   Future<TenantAdminProfileTypeDefinition> updateProfileType({
     required String type,
+    String? newType,
     String? label,
     List<String>? allowedTaxonomies,
     TenantAdminProfileTypeCapabilities? capabilities,
@@ -308,6 +311,9 @@ class TenantAdminAccountProfilesRepository
     try {
       final encodedType = Uri.encodeComponent(type);
       final payload = <String, dynamic>{};
+      if (newType != null && newType.trim().isNotEmpty) {
+        payload['type'] = newType.trim();
+      }
       if (label != null) {
         payload['label'] = label;
       }

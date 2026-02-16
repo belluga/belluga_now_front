@@ -120,12 +120,16 @@ class TenantAdminOrganizationsRepository
   Future<TenantAdminOrganization> updateOrganization({
     required String organizationId,
     String? name,
+    String? slug,
     String? description,
   }) async {
     try {
       final payload = <String, dynamic>{};
       if (name != null && name.trim().isNotEmpty) {
         payload['name'] = name.trim();
+      }
+      if (slug != null && slug.trim().isNotEmpty) {
+        payload['slug'] = slug.trim();
       }
       if (description != null) {
         payload['description'] = description.trim();

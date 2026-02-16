@@ -9,8 +9,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart'
 
 abstract class TenantAdminStaticAssetsRepositoryContract {
   Future<List<TenantAdminStaticAsset>> fetchStaticAssets();
-  Future<TenantAdminPagedResult<TenantAdminStaticAsset>>
-      fetchStaticAssetsPage({
+  Future<TenantAdminPagedResult<TenantAdminStaticAsset>> fetchStaticAssetsPage({
     required int page,
     required int pageSize,
   }) async {
@@ -55,6 +54,7 @@ abstract class TenantAdminStaticAssetsRepositoryContract {
     required String assetId,
     String? profileType,
     String? displayName,
+    String? slug,
     TenantAdminLocation? location,
     List<TenantAdminTaxonomyTerm>? taxonomyTerms,
     List<String>? tags,
@@ -81,14 +81,16 @@ abstract class TenantAdminStaticAssetsRepositoryContract {
   }) async {
     final profileTypes = await fetchStaticProfileTypes();
     if (page <= 0 || pageSize <= 0) {
-      return const TenantAdminPagedResult<TenantAdminStaticProfileTypeDefinition>(
+      return const TenantAdminPagedResult<
+          TenantAdminStaticProfileTypeDefinition>(
         items: <TenantAdminStaticProfileTypeDefinition>[],
         hasMore: false,
       );
     }
     final startIndex = (page - 1) * pageSize;
     if (startIndex >= profileTypes.length) {
-      return const TenantAdminPagedResult<TenantAdminStaticProfileTypeDefinition>(
+      return const TenantAdminPagedResult<
+          TenantAdminStaticProfileTypeDefinition>(
         items: <TenantAdminStaticProfileTypeDefinition>[],
         hasMore: false,
       );
@@ -109,6 +111,7 @@ abstract class TenantAdminStaticAssetsRepositoryContract {
 
   Future<TenantAdminStaticProfileTypeDefinition> updateStaticProfileType({
     required String type,
+    String? newType,
     String? label,
     List<String>? allowedTaxonomies,
     TenantAdminStaticProfileTypeCapabilities? capabilities,

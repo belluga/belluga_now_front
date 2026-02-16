@@ -10,7 +10,10 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart'
 import 'package:belluga_now/presentation/tenant_admin/account_profiles/controllers/tenant_admin_account_profiles_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_form_value_utils.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_error_banner.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_field_edit_sheet.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_form_layout.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_html_toolbar.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_image_source_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:image_picker/image_picker.dart';
@@ -202,7 +205,7 @@ class _TenantAdminAccountProfileCreateScreenState
     return TenantAdminLocation(latitude: lat, longitude: lng);
   }
 
-  Future<void> _pickImage({required bool isAvatar}) async {
+  Future<void> _pickImageFromDevice({required bool isAvatar}) async {
     final picker = ImagePicker();
     final selected = await picker.pickImage(
       source: ImageSource.gallery,
@@ -234,11 +237,67 @@ class _TenantAdminAccountProfileCreateScreenState
     }
   }
 
+  Future<String?> _promptWebImageUrl({required String title}) async {
+    final result = await showTenantAdminFieldEditSheet(
+      context: context,
+      title: title,
+      label: 'URL da imagem',
+      initialValue: '',
+      helperText: 'Use URL completa (http/https).',
+      keyboardType: TextInputType.url,
+      textCapitalization: TextCapitalization.none,
+      autocorrect: false,
+      enableSuggestions: false,
+      validator: (value) {
+        final trimmed = value?.trim() ?? '';
+        if (trimmed.isEmpty) {
+          return 'URL obrigatoria.';
+        }
+        final uri = Uri.tryParse(trimmed);
+        final hasScheme = uri != null &&
+            (uri.scheme == 'http' || uri.scheme == 'https') &&
+            uri.host.isNotEmpty;
+        if (!hasScheme) {
+          return 'URL invalida.';
+        }
+        return null;
+      },
+    );
+    return result?.value.trim();
+  }
+
+  Future<void> _pickImage({required bool isAvatar}) async {
+    final source = await showTenantAdminImageSourceSheet(
+      context: context,
+      title: isAvatar ? 'Adicionar avatar' : 'Adicionar capa',
+    );
+    if (source == null) {
+      return;
+    }
+    if (source == TenantAdminImageSourceOption.device) {
+      await _pickImageFromDevice(isAvatar: isAvatar);
+      return;
+    }
+    final url = await _promptWebImageUrl(
+      title: isAvatar ? 'URL do avatar' : 'URL da capa',
+    );
+    if (url == null || !mounted) {
+      return;
+    }
+    if (isAvatar) {
+      _controller.updateCreateAvatarWebUrl(url);
+    } else {
+      _controller.updateCreateCoverWebUrl(url);
+    }
+  }
+
   void _clearImage({required bool isAvatar}) {
     if (isAvatar) {
       _controller.updateCreateAvatarFile(null);
+      _controller.updateCreateAvatarWebUrl(null);
     } else {
       _controller.updateCreateCoverFile(null);
+      _controller.updateCreateCoverWebUrl(null);
     }
   }
 
@@ -283,6 +342,10 @@ class _TenantAdminAccountProfileCreateScreenState
       taxonomyTerms: _buildTaxonomyTerms(state.selectedProfileType),
       avatarUpload: avatarUpload,
       coverUpload: coverUpload,
+      avatarUrl: _hasAvatar(state.selectedProfileType)
+          ? state.avatarWebUrl
+          : null,
+      coverUrl: _hasCover(state.selectedProfileType) ? state.coverWebUrl : null,
     );
   }
 
@@ -494,6 +557,10 @@ class _TenantAdminAccountProfileCreateScreenState
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (hasBio) ...[
+            const Text('Acoes HTML para bio'),
+            const SizedBox(height: 8),
+            TenantAdminHtmlToolbar(controller: _controller.bioController),
+            const SizedBox(height: 8),
             TextFormField(
               controller: _controller.bioController,
               decoration: const InputDecoration(labelText: 'Bio'),
@@ -594,6 +661,18 @@ class _TenantAdminAccountProfileCreateScreenState
                       fit: BoxFit.cover,
                     ),
                   )
+                else if (state.avatarWebUrl != null &&
+                    state.avatarWebUrl!.isNotEmpty)
+                  Container(
+                    width: 72,
+                    height: 72,
+                    decoration: BoxDecoration(
+                      color:
+                          Theme.of(context).colorScheme.surfaceContainerHighest,
+                      borderRadius: BorderRadius.circular(36),
+                    ),
+                    child: const Icon(Icons.link_outlined),
+                  )
                 else
                   Container(
                     width: 72,
@@ -611,7 +690,9 @@ class _TenantAdminAccountProfileCreateScreenState
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        state.avatarFile?.name ?? 'Nenhuma imagem selecionada',
+                        state.avatarFile?.name ??
+                            state.avatarWebUrl ??
+                            'Nenhuma imagem selecionada',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -619,11 +700,13 @@ class _TenantAdminAccountProfileCreateScreenState
                         children: [
                           FilledButton.tonalIcon(
                             onPressed: () => _pickImage(isAvatar: true),
-                            icon: const Icon(Icons.photo_library_outlined),
-                            label: const Text('Selecionar'),
+                            icon: const Icon(Icons.add_photo_alternate_outlined),
+                            label: const Text('Adicionar avatar'),
                           ),
                           const SizedBox(width: 8),
-                          if (state.avatarFile != null)
+                          if (state.avatarFile != null ||
+                              (state.avatarWebUrl != null &&
+                                  state.avatarWebUrl!.isNotEmpty))
                             TextButton(
                               onPressed: () => _clearImage(isAvatar: true),
                               child: const Text('Remover'),
@@ -648,6 +731,18 @@ class _TenantAdminAccountProfileCreateScreenState
                   fit: BoxFit.cover,
                 ),
               )
+            else if (state.coverWebUrl != null && state.coverWebUrl!.isNotEmpty)
+              Container(
+                width: double.infinity,
+                height: 140,
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Center(
+                  child: Icon(Icons.link_outlined),
+                ),
+              )
             else
               Container(
                 width: double.infinity,
@@ -665,11 +760,13 @@ class _TenantAdminAccountProfileCreateScreenState
               children: [
                 FilledButton.tonalIcon(
                   onPressed: () => _pickImage(isAvatar: false),
-                  icon: const Icon(Icons.photo_library_outlined),
-                  label: const Text('Selecionar capa'),
+                  icon: const Icon(Icons.add_photo_alternate_outlined),
+                  label: const Text('Adicionar capa'),
                 ),
                 const SizedBox(width: 8),
-                if (state.coverFile != null)
+                if (state.coverFile != null ||
+                    (state.coverWebUrl != null &&
+                        state.coverWebUrl!.isNotEmpty))
                   TextButton(
                     onPressed: () => _clearImage(isAvatar: false),
                     child: const Text('Remover'),

@@ -1,6 +1,7 @@
 import 'package:belluga_now/domain/app_data/environment_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_settings.dart';
 import 'package:belluga_now/presentation/tenant_admin/settings/controllers/tenant_admin_settings_controller.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_field_edit_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
@@ -317,73 +318,159 @@ class _FirebaseSettingsSection extends StatelessWidget {
 
   final TenantAdminSettingsController controller;
 
+  Listenable _controllersListenable() {
+    return Listenable.merge(
+      [
+        controller.firebaseProjectIdController,
+        controller.firebaseAppIdController,
+        controller.firebaseApiKeyController,
+        controller.firebaseMessagingSenderIdController,
+        controller.firebaseStorageBucketController,
+      ],
+    );
+  }
+
+  Future<void> _editRequiredField({
+    required BuildContext context,
+    required TextEditingController fieldController,
+    required String title,
+    required String label,
+    TextInputType keyboardType = TextInputType.text,
+  }) async {
+    final result = await showTenantAdminFieldEditSheet(
+      context: context,
+      title: title,
+      label: label,
+      initialValue: fieldController.text,
+      confirmLabel: 'Aplicar',
+      keyboardType: keyboardType,
+      textCapitalization: TextCapitalization.none,
+      autocorrect: false,
+      enableSuggestions: false,
+      validator: (value) {
+        final trimmed = value?.trim() ?? '';
+        if (trimmed.isEmpty) {
+          return '$label obrigatorio.';
+        }
+        return null;
+      },
+    );
+    if (result == null) {
+      return;
+    }
+    final next = result.value.trim();
+    if (next == fieldController.text.trim()) {
+      return;
+    }
+    fieldController.text = next;
+  }
+
   @override
   Widget build(BuildContext context) {
     return StreamValueBuilder<bool>(
       streamValue: controller.firebaseSubmittingStreamValue,
       builder: (context, isSaving) {
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Firebase',
-              style: Theme.of(context).textTheme.titleSmall,
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              key: const ValueKey('tenant_admin_settings_firebase_project_id'),
-              controller: controller.firebaseProjectIdController,
-              decoration: const InputDecoration(
-                labelText: 'Project ID',
-                border: OutlineInputBorder(),
+        return AnimatedBuilder(
+          animation: _controllersListenable(),
+          builder: (context, _) => Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Firebase',
+                style: Theme.of(context).textTheme.titleSmall,
               ),
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: controller.firebaseAppIdController,
-              decoration: const InputDecoration(
-                labelText: 'App ID',
-                border: OutlineInputBorder(),
+              const SizedBox(height: 8),
+              _SettingsEditableValueRow(
+                key: const ValueKey(
+                  'tenant_admin_settings_firebase_project_id_edit',
+                ),
+                label: 'Project ID',
+                value: controller.firebaseProjectIdController.text,
+                onEdit: isSaving
+                    ? null
+                    : () => _editRequiredField(
+                          context: context,
+                          fieldController:
+                              controller.firebaseProjectIdController,
+                          title: 'Editar Project ID',
+                          label: 'Project ID',
+                        ),
               ),
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: controller.firebaseApiKeyController,
-              decoration: const InputDecoration(
-                labelText: 'API Key',
-                border: OutlineInputBorder(),
+              _SettingsEditableValueRow(
+                key: const ValueKey(
+                    'tenant_admin_settings_firebase_app_id_edit'),
+                label: 'App ID',
+                value: controller.firebaseAppIdController.text,
+                onEdit: isSaving
+                    ? null
+                    : () => _editRequiredField(
+                          context: context,
+                          fieldController: controller.firebaseAppIdController,
+                          title: 'Editar App ID',
+                          label: 'App ID',
+                        ),
               ),
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: controller.firebaseMessagingSenderIdController,
-              decoration: const InputDecoration(
-                labelText: 'Messaging Sender ID',
-                border: OutlineInputBorder(),
+              _SettingsEditableValueRow(
+                key: const ValueKey(
+                    'tenant_admin_settings_firebase_api_key_edit'),
+                label: 'API Key',
+                value: controller.firebaseApiKeyController.text,
+                onEdit: isSaving
+                    ? null
+                    : () => _editRequiredField(
+                          context: context,
+                          fieldController: controller.firebaseApiKeyController,
+                          title: 'Editar API Key',
+                          label: 'API Key',
+                        ),
               ),
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: controller.firebaseStorageBucketController,
-              decoration: const InputDecoration(
-                labelText: 'Storage Bucket',
-                border: OutlineInputBorder(),
+              _SettingsEditableValueRow(
+                key: const ValueKey(
+                  'tenant_admin_settings_firebase_sender_id_edit',
+                ),
+                label: 'Messaging Sender ID',
+                value: controller.firebaseMessagingSenderIdController.text,
+                onEdit: isSaving
+                    ? null
+                    : () => _editRequiredField(
+                          context: context,
+                          fieldController:
+                              controller.firebaseMessagingSenderIdController,
+                          title: 'Editar Messaging Sender ID',
+                          label: 'Messaging Sender ID',
+                        ),
               ),
-            ),
-            const SizedBox(height: 8),
-            FilledButton.icon(
-              key: const ValueKey('tenant_admin_settings_save_firebase'),
-              onPressed: isSaving ? null : controller.saveFirebaseSettings,
-              icon: isSaving
-                  ? const SizedBox(
-                      height: 16,
-                      width: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.save_outlined),
-              label: const Text('Salvar Firebase'),
-            ),
-          ],
+              _SettingsEditableValueRow(
+                key: const ValueKey(
+                  'tenant_admin_settings_firebase_storage_bucket_edit',
+                ),
+                label: 'Storage Bucket',
+                value: controller.firebaseStorageBucketController.text,
+                onEdit: isSaving
+                    ? null
+                    : () => _editRequiredField(
+                          context: context,
+                          fieldController:
+                              controller.firebaseStorageBucketController,
+                          title: 'Editar Storage Bucket',
+                          label: 'Storage Bucket',
+                        ),
+              ),
+              const SizedBox(height: 8),
+              FilledButton.icon(
+                key: const ValueKey('tenant_admin_settings_save_firebase'),
+                onPressed: isSaving ? null : controller.saveFirebaseSettings,
+                icon: isSaving
+                    ? const SizedBox(
+                        height: 16,
+                        width: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.save_outlined),
+                label: const Text('Salvar Firebase'),
+              ),
+            ],
+          ),
         );
       },
     );
@@ -395,58 +482,124 @@ class _PushSettingsSection extends StatelessWidget {
 
   final TenantAdminSettingsController controller;
 
+  Listenable _controllersListenable() {
+    return Listenable.merge(
+      [
+        controller.pushMaxTtlDaysController,
+        controller.pushMaxPerMinuteController,
+        controller.pushMaxPerHourController,
+      ],
+    );
+  }
+
+  Future<void> _editPositiveIntField({
+    required BuildContext context,
+    required TextEditingController fieldController,
+    required String title,
+    required String label,
+  }) async {
+    final result = await showTenantAdminFieldEditSheet(
+      context: context,
+      title: title,
+      label: label,
+      initialValue: fieldController.text,
+      confirmLabel: 'Aplicar',
+      keyboardType: TextInputType.number,
+      textCapitalization: TextCapitalization.none,
+      autocorrect: false,
+      enableSuggestions: false,
+      validator: (value) {
+        final trimmed = value?.trim() ?? '';
+        final parsed = int.tryParse(trimmed);
+        if (parsed == null || parsed <= 0) {
+          return 'Informe um numero positivo.';
+        }
+        return null;
+      },
+    );
+    if (result == null) {
+      return;
+    }
+    final next = result.value.trim();
+    if (next == fieldController.text.trim()) {
+      return;
+    }
+    fieldController.text = next;
+  }
+
   @override
   Widget build(BuildContext context) {
     return StreamValueBuilder<bool>(
       streamValue: controller.pushSubmittingStreamValue,
       builder: (context, isSaving) {
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Push',
-              style: Theme.of(context).textTheme.titleSmall,
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: controller.pushMaxTtlDaysController,
-              keyboardType: TextInputType.number,
-              decoration: const InputDecoration(
-                labelText: 'Max TTL (dias)',
-                border: OutlineInputBorder(),
+        return AnimatedBuilder(
+          animation: _controllersListenable(),
+          builder: (context, _) => Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Push',
+                style: Theme.of(context).textTheme.titleSmall,
               ),
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: controller.pushMaxPerMinuteController,
-              keyboardType: TextInputType.number,
-              decoration: const InputDecoration(
-                labelText: 'Máximo por minuto',
-                border: OutlineInputBorder(),
+              const SizedBox(height: 8),
+              _SettingsEditableValueRow(
+                key: const ValueKey('tenant_admin_settings_push_ttl_edit'),
+                label: 'Max TTL (dias)',
+                value: controller.pushMaxTtlDaysController.text,
+                onEdit: isSaving
+                    ? null
+                    : () => _editPositiveIntField(
+                          context: context,
+                          fieldController: controller.pushMaxTtlDaysController,
+                          title: 'Editar Max TTL',
+                          label: 'Max TTL (dias)',
+                        ),
               ),
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: controller.pushMaxPerHourController,
-              keyboardType: TextInputType.number,
-              decoration: const InputDecoration(
-                labelText: 'Máximo por hora',
-                border: OutlineInputBorder(),
+              _SettingsEditableValueRow(
+                key: const ValueKey(
+                  'tenant_admin_settings_push_max_per_minute_edit',
+                ),
+                label: 'Maximo por minuto',
+                value: controller.pushMaxPerMinuteController.text,
+                onEdit: isSaving
+                    ? null
+                    : () => _editPositiveIntField(
+                          context: context,
+                          fieldController:
+                              controller.pushMaxPerMinuteController,
+                          title: 'Editar maximo por minuto',
+                          label: 'Maximo por minuto',
+                        ),
               ),
-            ),
-            const SizedBox(height: 8),
-            FilledButton.icon(
-              onPressed: isSaving ? null : controller.savePushSettings,
-              icon: isSaving
-                  ? const SizedBox(
-                      height: 16,
-                      width: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.save_outlined),
-              label: const Text('Salvar Push'),
-            ),
-          ],
+              _SettingsEditableValueRow(
+                key: const ValueKey(
+                  'tenant_admin_settings_push_max_per_hour_edit',
+                ),
+                label: 'Maximo por hora',
+                value: controller.pushMaxPerHourController.text,
+                onEdit: isSaving
+                    ? null
+                    : () => _editPositiveIntField(
+                          context: context,
+                          fieldController: controller.pushMaxPerHourController,
+                          title: 'Editar maximo por hora',
+                          label: 'Maximo por hora',
+                        ),
+              ),
+              const SizedBox(height: 8),
+              FilledButton.icon(
+                onPressed: isSaving ? null : controller.savePushSettings,
+                icon: isSaving
+                    ? const SizedBox(
+                        height: 16,
+                        width: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.save_outlined),
+                label: const Text('Salvar Push'),
+              ),
+            ],
+          ),
         );
       },
     );
@@ -659,6 +812,51 @@ class _SettingRow extends StatelessWidget {
               value.isEmpty ? '-' : value,
               style: Theme.of(context).textTheme.bodyMedium,
             ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SettingsEditableValueRow extends StatelessWidget {
+  const _SettingsEditableValueRow({
+    super.key,
+    required this.label,
+    required this.value,
+    required this.onEdit,
+  });
+
+  final String label;
+  final String value;
+  final VoidCallback? onEdit;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 3),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          SizedBox(
+            width: 160,
+            child: Text(
+              label,
+              style: Theme.of(context).textTheme.labelMedium,
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value.trim().isEmpty ? '-' : value.trim(),
+              style: Theme.of(context).textTheme.bodyMedium,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          IconButton(
+            onPressed: onEdit,
+            tooltip: 'Editar $label',
+            icon: const Icon(Icons.edit_outlined),
           ),
         ],
       ),

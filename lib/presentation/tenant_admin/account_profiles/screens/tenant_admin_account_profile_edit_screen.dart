@@ -11,7 +11,10 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart'
 import 'package:belluga_now/presentation/tenant_admin/account_profiles/controllers/tenant_admin_account_profiles_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_form_value_utils.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_error_banner.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_field_edit_sheet.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_form_layout.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_html_toolbar.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_image_source_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:image_picker/image_picker.dart';
@@ -39,6 +42,7 @@ class _TenantAdminAccountProfileEditScreenState
   bool _initialTaxonomiesSynced = false;
   String? _lastAvatarPreloadUrl;
   String? _lastCoverPreloadUrl;
+  bool _isTaxonomyAutosaving = false;
 
   @override
   void initState() {
@@ -144,6 +148,7 @@ class _TenantAdminAccountProfileEditScreenState
   }
 
   void _syncFormControllers(TenantAdminAccountProfile profile) {
+    _controller.slugController.text = profile.slug ?? '';
     _controller.displayNameController.text = profile.displayName;
     _controller.bioController.text = profile.bio ?? '';
     if (profile.location == null) {
@@ -213,6 +218,58 @@ class _TenantAdminAccountProfileEditScreenState
       }
     }
     return terms;
+  }
+
+  Map<String, Set<String>> _cloneTaxonomySelection(
+    Map<String, Set<String>> source,
+  ) {
+    final next = <String, Set<String>>{};
+    for (final entry in source.entries) {
+      next[entry.key] = Set<String>.from(entry.value);
+    }
+    return next;
+  }
+
+  Future<void> _toggleTaxonomyWithAutoSave({
+    required String taxonomySlug,
+    required String termSlug,
+    required bool selected,
+  }) async {
+    final previous = _cloneTaxonomySelection(
+      _controller.taxonomySelectionStreamValue.value,
+    );
+    _controller.updateTaxonomySelection(
+      taxonomySlug: taxonomySlug,
+      termSlug: termSlug,
+      selected: selected,
+    );
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _isTaxonomyAutosaving = true;
+    });
+    final currentType =
+        _controller.editStateStreamValue.value.selectedProfileType;
+    final saved = await _controller.submitTaxonomySelectionUpdate(
+      accountProfileId: widget.accountProfileId,
+      taxonomyTerms: _buildTaxonomyTerms(currentType),
+    );
+    if (!mounted) {
+      return;
+    }
+    if (!saved) {
+      _controller.taxonomySelectionStreamValue.addValue(previous);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content:
+              Text('Nao foi possivel salvar a taxonomia. Alteracao desfeita.'),
+        ),
+      );
+    }
+    setState(() {
+      _isTaxonomyAutosaving = false;
+    });
   }
 
   String? _validateLatitude(String? value) {
@@ -290,10 +347,14 @@ class _TenantAdminAccountProfileEditScreenState
       accountProfileId: profile.id,
       avatarUpload: avatarUpload,
       coverUpload: coverUpload,
+      avatarUrl:
+          _hasAvatar(state.selectedProfileType) ? state.avatarRemoteUrl : null,
+      coverUrl:
+          _hasCover(state.selectedProfileType) ? state.coverRemoteUrl : null,
     );
   }
 
-  Future<void> _pickImage({required bool isAvatar}) async {
+  Future<void> _pickImageFromDevice({required bool isAvatar}) async {
     final picker = ImagePicker();
     final selected = await picker.pickImage(
       source: ImageSource.gallery,
@@ -326,12 +387,77 @@ class _TenantAdminAccountProfileEditScreenState
     await _autoSaveImages();
   }
 
+  Future<String?> _promptWebImageUrl({
+    required String title,
+    required String initialValue,
+  }) async {
+    final result = await showTenantAdminFieldEditSheet(
+      context: context,
+      title: title,
+      label: 'URL da imagem',
+      initialValue: initialValue,
+      helperText: 'Use URL completa (http/https).',
+      keyboardType: TextInputType.url,
+      textCapitalization: TextCapitalization.none,
+      autocorrect: false,
+      enableSuggestions: false,
+      validator: (value) {
+        final trimmed = value?.trim() ?? '';
+        if (trimmed.isEmpty) {
+          return 'URL obrigatoria.';
+        }
+        final uri = Uri.tryParse(trimmed);
+        final hasScheme = uri != null &&
+            (uri.scheme == 'http' || uri.scheme == 'https') &&
+            uri.host.isNotEmpty;
+        if (!hasScheme) {
+          return 'URL invalida.';
+        }
+        return null;
+      },
+    );
+    return result?.value.trim();
+  }
+
+  Future<void> _pickImage({required bool isAvatar}) async {
+    final source = await showTenantAdminImageSourceSheet(
+      context: context,
+      title: isAvatar ? 'Adicionar avatar' : 'Adicionar capa',
+    );
+    if (source == null) {
+      return;
+    }
+    if (source == TenantAdminImageSourceOption.device) {
+      await _pickImageFromDevice(isAvatar: isAvatar);
+      return;
+    }
+    final state = _controller.editStateStreamValue.value;
+    final initialUrl = isAvatar
+        ? (state.avatarRemoteUrl ?? '')
+        : (state.coverRemoteUrl ?? '');
+    final url = await _promptWebImageUrl(
+      title: isAvatar ? 'URL do avatar' : 'URL da capa',
+      initialValue: initialUrl,
+    );
+    if (url == null || !mounted) {
+      return;
+    }
+    if (isAvatar) {
+      _controller.updateAvatarRemoteUrl(url);
+    } else {
+      _controller.updateCoverRemoteUrl(url);
+    }
+    await _autoSaveImages();
+  }
+
   void _clearImage({required bool isAvatar}) {
     if (isAvatar) {
       _controller.updateAvatarFile(null);
+      _controller.updateAvatarRemoteUrl(null);
       _controller.updateAvatarRemoteError(false);
     } else {
       _controller.updateCoverFile(null);
+      _controller.updateCoverRemoteUrl(null);
       _controller.updateCoverRemoteError(false);
     }
   }
@@ -493,6 +619,8 @@ class _TenantAdminAccountProfileEditScreenState
                                           accountProfileId:
                                               widget.accountProfileId,
                                           profileType: selectedType,
+                                          slug: _controller.slugController.text
+                                              .trim(),
                                           displayName: _controller
                                               .displayNameController.text
                                               .trim(),
@@ -511,6 +639,12 @@ class _TenantAdminAccountProfileEditScreenState
                                               : null,
                                           avatarUpload: avatarUpload,
                                           coverUpload: coverUpload,
+                                          avatarUrl: _hasAvatar(selectedType)
+                                              ? state.avatarRemoteUrl
+                                              : null,
+                                          coverUrl: _hasCover(selectedType)
+                                              ? state.coverRemoteUrl
+                                              : null,
                                         );
                                       },
                               ),
@@ -630,6 +764,23 @@ class _TenantAdminAccountProfileEditScreenState
           ),
           const SizedBox(height: 12),
           TextFormField(
+            controller: _controller.slugController,
+            decoration: const InputDecoration(labelText: 'Slug'),
+            keyboardType: TextInputType.visiblePassword,
+            textCapitalization: TextCapitalization.none,
+            autocorrect: false,
+            enableSuggestions: false,
+            inputFormatters: tenantAdminSlugInputFormatters,
+            textInputAction: TextInputAction.next,
+            validator: (value) => tenantAdminValidateRequiredSlug(
+              value,
+              requiredMessage: 'Slug e obrigatorio.',
+              invalidMessage:
+                  'Slug invalido. Use letras minusculas, numeros, - ou _.',
+            ),
+          ),
+          const SizedBox(height: 12),
+          TextFormField(
             controller: _controller.displayNameController,
             decoration: const InputDecoration(labelText: 'Nome de exibicao'),
             textInputAction: TextInputAction.next,
@@ -658,6 +809,10 @@ class _TenantAdminAccountProfileEditScreenState
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (hasBio) ...[
+            const Text('Acoes HTML para bio'),
+            const SizedBox(height: 8),
+            TenantAdminHtmlToolbar(controller: _controller.bioController),
+            const SizedBox(height: 8),
             TextFormField(
               controller: _controller.bioController,
               decoration: const InputDecoration(labelText: 'Bio'),
@@ -673,6 +828,11 @@ class _TenantAdminAccountProfileEditScreenState
               style: Theme.of(context).textTheme.labelLarge,
             ),
             const SizedBox(height: 8),
+            if (_isTaxonomyAutosaving)
+              const Padding(
+                padding: EdgeInsets.only(bottom: 8),
+                child: LinearProgressIndicator(minHeight: 2),
+              ),
             StreamValueBuilder(
               streamValue: _controller.taxonomySelectionStreamValue,
               builder: (context, selections) {
@@ -706,8 +866,7 @@ class _TenantAdminAccountProfileEditScreenState
                                                     ?.contains(term.slug) ??
                                                 false,
                                             onSelected: (selected) {
-                                              _controller
-                                                  .updateTaxonomySelection(
+                                              _toggleTaxonomyWithAutoSave(
                                                 taxonomySlug: taxonomy.slug,
                                                 termSlug: term.slug,
                                                 selected: selected,
@@ -831,8 +990,8 @@ class _TenantAdminAccountProfileEditScreenState
                     children: [
                       Text(
                         state.avatarFile?.name ??
-                            (state.profile?.avatarUrl?.isNotEmpty ?? false
-                                ? 'Imagem atual'
+                            (hasAvatarUrl
+                                ? avatarUrl
                                 : 'Nenhuma imagem selecionada'),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -841,11 +1000,11 @@ class _TenantAdminAccountProfileEditScreenState
                         children: [
                           FilledButton.tonalIcon(
                             onPressed: () => _pickImage(isAvatar: true),
-                            icon: const Icon(Icons.photo_library_outlined),
-                            label: const Text('Selecionar'),
+                            icon: const Icon(Icons.add_photo_alternate_outlined),
+                            label: const Text('Adicionar avatar'),
                           ),
                           const SizedBox(width: 8),
-                          if (state.avatarFile != null)
+                          if (state.avatarFile != null || hasAvatarUrl)
                             TextButton(
                               onPressed: () => _clearImage(isAvatar: true),
                               child: const Text('Remover'),
@@ -938,11 +1097,11 @@ class _TenantAdminAccountProfileEditScreenState
               children: [
                 FilledButton.tonalIcon(
                   onPressed: () => _pickImage(isAvatar: false),
-                  icon: const Icon(Icons.photo_library_outlined),
-                  label: const Text('Selecionar capa'),
+                  icon: const Icon(Icons.add_photo_alternate_outlined),
+                  label: const Text('Adicionar capa'),
                 ),
                 const SizedBox(width: 8),
-                if (state.coverFile != null)
+                if (state.coverFile != null || hasCoverUrl)
                   TextButton(
                     onPressed: () => _clearImage(isAvatar: false),
                     child: const Text('Remover'),

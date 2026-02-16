@@ -1,9 +1,13 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_static_profile_type.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_form_value_utils.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_field_edit_sheet.dart';
+import 'package:belluga_now/presentation/tenant_admin/static_profile_types/controllers/tenant_admin_static_profile_types_controller.dart';
 import 'package:flutter/material.dart';
+import 'package:get_it/get_it.dart';
 
-class TenantAdminStaticProfileTypeDetailScreen extends StatelessWidget {
+class TenantAdminStaticProfileTypeDetailScreen extends StatefulWidget {
   const TenantAdminStaticProfileTypeDetailScreen({
     super.key,
     required this.definition,
@@ -12,29 +16,136 @@ class TenantAdminStaticProfileTypeDetailScreen extends StatelessWidget {
   final TenantAdminStaticProfileTypeDefinition definition;
 
   @override
+  State<TenantAdminStaticProfileTypeDetailScreen> createState() =>
+      _TenantAdminStaticProfileTypeDetailScreenState();
+}
+
+class _TenantAdminStaticProfileTypeDetailScreenState
+    extends State<TenantAdminStaticProfileTypeDetailScreen> {
+  final TenantAdminStaticProfileTypesController _controller =
+      GetIt.I.get<TenantAdminStaticProfileTypesController>();
+  late TenantAdminStaticProfileTypeDefinition _definition;
+  bool _isSaving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _definition = widget.definition;
+  }
+
+  Future<void> _editLabel() async {
+    final result = await showTenantAdminFieldEditSheet(
+      context: context,
+      title: 'Editar nome do tipo',
+      label: 'Label',
+      initialValue: _definition.label,
+      textCapitalization: TextCapitalization.words,
+      autocorrect: true,
+      enableSuggestions: true,
+      validator: (value) {
+        final trimmed = value?.trim() ?? '';
+        if (trimmed.isEmpty) {
+          return 'Label e obrigatorio.';
+        }
+        return null;
+      },
+    );
+    if (result == null || !mounted) {
+      return;
+    }
+    final next = result.value.trim();
+    if (next.isEmpty || next == _definition.label) {
+      return;
+    }
+    await _saveChanges(label: next);
+  }
+
+  Future<void> _editSlug() async {
+    final result = await showTenantAdminFieldEditSheet(
+      context: context,
+      title: 'Editar slug do tipo',
+      label: 'Tipo (slug)',
+      initialValue: _definition.type,
+      helperText: 'Deve ser unico no tenant.',
+      inputFormatters: tenantAdminSlugInputFormatters,
+      validator: (value) => tenantAdminValidateRequiredSlug(
+        value,
+        requiredMessage: 'Slug e obrigatorio.',
+      ),
+    );
+    if (result == null || !mounted) {
+      return;
+    }
+    final next = result.value.trim();
+    if (next.isEmpty || next == _definition.type) {
+      return;
+    }
+    await _saveChanges(newType: next);
+  }
+
+  Future<void> _saveChanges({
+    String? newType,
+    String? label,
+  }) async {
+    if (_isSaving) {
+      return;
+    }
+    setState(() => _isSaving = true);
+    try {
+      final updated = await _controller.updateType(
+        type: _definition.type,
+        newType: newType,
+        label: label,
+      );
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _definition = updated;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Tipo atualizado.')),
+      );
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.toString())),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isSaving = false);
+      }
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final capabilities = <String>[
-      if (definition.capabilities.isPoiEnabled) 'POI habilitado',
-      if (definition.capabilities.hasBio) 'Bio',
-      if (definition.capabilities.hasTaxonomies) 'Taxonomias',
-      if (definition.capabilities.hasAvatar) 'Avatar',
-      if (definition.capabilities.hasCover) 'Capa',
-      if (definition.capabilities.hasContent) 'Conteudo',
+      if (_definition.capabilities.isPoiEnabled) 'POI habilitado',
+      if (_definition.capabilities.hasBio) 'Bio',
+      if (_definition.capabilities.hasTaxonomies) 'Taxonomias',
+      if (_definition.capabilities.hasAvatar) 'Avatar',
+      if (_definition.capabilities.hasCover) 'Capa',
+      if (_definition.capabilities.hasContent) 'Conteudo',
     ];
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(definition.label),
+        title: Text(_definition.label),
         actions: [
           FilledButton.tonalIcon(
-            onPressed: () {
-              context.router.push(
-                TenantAdminStaticProfileTypeEditRoute(
-                  profileType: definition.type,
-                  definition: definition,
-                ),
-              );
-            },
+            onPressed: _isSaving
+                ? null
+                : () {
+                    context.router.push(
+                      TenantAdminStaticProfileTypeEditRoute(
+                        profileType: _definition.type,
+                        definition: _definition,
+                      ),
+                    );
+                  },
             icon: const Icon(Icons.edit_outlined),
             label: const Text('Editar'),
           ),
@@ -55,9 +166,19 @@ class TenantAdminStaticProfileTypeDetailScreen extends StatelessWidget {
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
                   const SizedBox(height: 12),
-                  _buildRow(context, 'Slug', definition.type),
+                  _editableRow(
+                    context,
+                    label: 'Slug',
+                    value: _definition.type,
+                    onEdit: _editSlug,
+                  ),
                   const SizedBox(height: 8),
-                  _buildRow(context, 'Label', definition.label),
+                  _editableRow(
+                    context,
+                    label: 'Label',
+                    value: _definition.label,
+                    onEdit: _editLabel,
+                  ),
                 ],
               ),
             ),
@@ -86,7 +207,7 @@ class TenantAdminStaticProfileTypeDetailScreen extends StatelessWidget {
               ),
             ),
           ),
-          if (definition.allowedTaxonomies.isNotEmpty) ...[
+          if (_definition.allowedTaxonomies.isNotEmpty) ...[
             const SizedBox(height: 16),
             Card(
               margin: EdgeInsets.zero,
@@ -103,7 +224,7 @@ class TenantAdminStaticProfileTypeDetailScreen extends StatelessWidget {
                     Wrap(
                       spacing: 8,
                       runSpacing: 8,
-                      children: definition.allowedTaxonomies
+                      children: _definition.allowedTaxonomies
                           .map((item) => Chip(label: Text(item)))
                           .toList(),
                     ),
@@ -117,9 +238,14 @@ class TenantAdminStaticProfileTypeDetailScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildRow(BuildContext context, String label, String value) {
+  Widget _editableRow(
+    BuildContext context, {
+    required String label,
+    required String value,
+    required VoidCallback onEdit,
+  }) {
     return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         SizedBox(
           width: 96,
@@ -133,6 +259,11 @@ class TenantAdminStaticProfileTypeDetailScreen extends StatelessWidget {
             value,
             style: Theme.of(context).textTheme.bodyMedium,
           ),
+        ),
+        IconButton(
+          onPressed: _isSaving ? null : onEdit,
+          tooltip: 'Editar $label',
+          icon: const Icon(Icons.edit_outlined),
         ),
       ],
     );

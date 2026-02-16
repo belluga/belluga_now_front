@@ -5,6 +5,7 @@ import 'package:belluga_now/domain/repositories/tenant_admin_taxonomies_reposito
 import 'package:belluga_now/domain/services/tenant_admin_location_selection_contract.dart';
 import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_static_asset.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_static_profile_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
@@ -13,6 +14,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_defin
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_form_value_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart' show Disposable, GetIt;
+import 'package:image_picker/image_picker.dart';
 import 'package:stream_value/core/stream_value.dart';
 
 class TenantAdminStaticAssetsController implements Disposable {
@@ -76,12 +78,13 @@ class TenantAdminStaticAssetsController implements Disposable {
   final StreamValue<String?> submitSuccessStreamValue = StreamValue<String?>();
   final StreamValue<String> searchQueryStreamValue =
       StreamValue<String>(defaultValue: '');
+  final StreamValue<XFile?> avatarFileStreamValue = StreamValue<XFile?>();
+  final StreamValue<XFile?> coverFileStreamValue = StreamValue<XFile?>();
 
   final GlobalKey<FormState> formKey = GlobalKey<FormState>();
   final TextEditingController displayNameController = TextEditingController();
   final TextEditingController bioController = TextEditingController();
   final TextEditingController contentController = TextEditingController();
-  final TextEditingController tagsController = TextEditingController();
   final TextEditingController avatarUrlController = TextEditingController();
   final TextEditingController coverUrlController = TextEditingController();
   final TextEditingController latitudeController = TextEditingController();
@@ -280,9 +283,10 @@ class TenantAdminStaticAssetsController implements Disposable {
     displayNameController.text = asset.displayName;
     bioController.text = asset.bio ?? '';
     contentController.text = asset.content ?? '';
-    tagsController.text = asset.tags.join(', ');
     avatarUrlController.text = asset.avatarUrl ?? '';
     coverUrlController.text = asset.coverUrl ?? '';
+    avatarFileStreamValue.addValue(null);
+    coverFileStreamValue.addValue(null);
     if (asset.location != null) {
       latitudeController.text = asset.location!.latitude.toStringAsFixed(6);
       longitudeController.text = asset.location!.longitude.toStringAsFixed(6);
@@ -292,6 +296,34 @@ class TenantAdminStaticAssetsController implements Disposable {
     }
     updateSelectedProfileType(asset.profileType);
     _applyTaxonomySelection(asset.taxonomyTerms);
+  }
+
+  void updateAvatarFile(XFile? file) {
+    avatarFileStreamValue.addValue(file);
+    if (file != null) {
+      avatarUrlController.clear();
+    }
+  }
+
+  void updateCoverFile(XFile? file) {
+    coverFileStreamValue.addValue(file);
+    if (file != null) {
+      coverUrlController.clear();
+    }
+  }
+
+  void updateAvatarWebUrl(String? url) {
+    avatarUrlController.text = (url ?? '').trim();
+    if (avatarUrlController.text.isNotEmpty) {
+      avatarFileStreamValue.addValue(null);
+    }
+  }
+
+  void updateCoverWebUrl(String? url) {
+    coverUrlController.text = (url ?? '').trim();
+    if (coverUrlController.text.isNotEmpty) {
+      coverFileStreamValue.addValue(null);
+    }
   }
 
   void updateSelectedProfileType(String? profileType) {
@@ -376,10 +408,6 @@ class TenantAdminStaticAssetsController implements Disposable {
     return TenantAdminLocation(latitude: lat, longitude: lng);
   }
 
-  List<String> _parseList(TextEditingController controller) {
-    return tenantAdminParseTokenList(controller.text);
-  }
-
   List<TenantAdminTaxonomyTerm> _buildTaxonomyTerms() {
     final selections = selectedTaxonomyTermsStreamValue.value;
     final terms = <TenantAdminTaxonomyTerm>[];
@@ -400,12 +428,15 @@ class TenantAdminStaticAssetsController implements Disposable {
     }
     submitLoadingStreamValue.addValue(true);
     try {
+      final avatarUpload =
+          await _buildMediaUpload(avatarFileStreamValue.value);
+      final coverUpload =
+          await _buildMediaUpload(coverFileStreamValue.value);
       final created = await _repository.createStaticAsset(
         profileType: selectedProfileTypeStreamValue.value ?? '',
         displayName: displayNameController.text.trim(),
         location: _parseLocation(),
         taxonomyTerms: _buildTaxonomyTerms(),
-        tags: _parseList(tagsController),
         bio: bioController.text.trim().isEmpty
             ? null
             : bioController.text.trim(),
@@ -418,6 +449,8 @@ class TenantAdminStaticAssetsController implements Disposable {
         coverUrl: coverUrlController.text.trim().isEmpty
             ? null
             : coverUrlController.text.trim(),
+        avatarUpload: avatarUpload,
+        coverUpload: coverUpload,
       );
       if (_isDisposed) return;
       submitErrorStreamValue.addValue(null);
@@ -448,13 +481,16 @@ class TenantAdminStaticAssetsController implements Disposable {
     }
     submitLoadingStreamValue.addValue(true);
     try {
+      final avatarUpload =
+          await _buildMediaUpload(avatarFileStreamValue.value);
+      final coverUpload =
+          await _buildMediaUpload(coverFileStreamValue.value);
       final updated = await _repository.updateStaticAsset(
         assetId: assetId,
         profileType: selectedProfileTypeStreamValue.value,
         displayName: displayNameController.text.trim(),
         location: _parseLocation(),
         taxonomyTerms: _buildTaxonomyTerms(),
-        tags: _parseList(tagsController),
         bio: bioController.text.trim().isEmpty
             ? null
             : bioController.text.trim(),
@@ -467,6 +503,8 @@ class TenantAdminStaticAssetsController implements Disposable {
         coverUrl: coverUrlController.text.trim().isEmpty
             ? null
             : coverUrlController.text.trim(),
+        avatarUpload: avatarUpload,
+        coverUpload: coverUpload,
       );
       if (_isDisposed) return;
       submitErrorStreamValue.addValue(null);
@@ -501,6 +539,56 @@ class TenantAdminStaticAssetsController implements Disposable {
     }
   }
 
+  Future<bool> submitSlugUpdate({
+    required String assetId,
+    required String slug,
+  }) async {
+    submitLoadingStreamValue.addValue(true);
+    try {
+      final updated = await _repository.updateStaticAsset(
+        assetId: assetId,
+        slug: slug,
+      );
+      if (_isDisposed) return false;
+      submitErrorStreamValue.addValue(null);
+      submitSuccessStreamValue.addValue('Slug do ativo atualizado.');
+      _replaceAsset(updated);
+      return true;
+    } catch (error) {
+      if (_isDisposed) return false;
+      submitErrorStreamValue.addValue(error.toString());
+      return false;
+    } finally {
+      if (!_isDisposed) {
+        submitLoadingStreamValue.addValue(false);
+      }
+    }
+  }
+
+  Future<bool> submitTaxonomySelectionUpdate({
+    required String assetId,
+  }) async {
+    submitLoadingStreamValue.addValue(true);
+    try {
+      final updated = await _repository.updateStaticAsset(
+        assetId: assetId,
+        taxonomyTerms: _buildTaxonomyTerms(),
+      );
+      if (_isDisposed) return false;
+      submitErrorStreamValue.addValue(null);
+      _replaceAsset(updated);
+      return true;
+    } catch (error) {
+      if (_isDisposed) return false;
+      submitErrorStreamValue.addValue(error.toString());
+      return false;
+    } finally {
+      if (!_isDisposed) {
+        submitLoadingStreamValue.addValue(false);
+      }
+    }
+  }
+
   void _replaceAsset(TenantAdminStaticAsset updated) {
     final updatedList = _fetchedAssets
         .map((asset) => asset.id == updated.id ? updated : asset)
@@ -523,9 +611,10 @@ class TenantAdminStaticAssetsController implements Disposable {
     displayNameController.clear();
     bioController.clear();
     contentController.clear();
-    tagsController.clear();
     avatarUrlController.clear();
     coverUrlController.clear();
+    avatarFileStreamValue.addValue(null);
+    coverFileStreamValue.addValue(null);
     latitudeController.clear();
     longitudeController.clear();
     selectedProfileTypeStreamValue.addValue(null);
@@ -546,6 +635,17 @@ class TenantAdminStaticAssetsController implements Disposable {
     errorStreamValue.addValue(null);
     taxonomyErrorStreamValue.addValue(null);
     _resetFormState();
+  }
+
+  Future<TenantAdminMediaUpload?> _buildMediaUpload(XFile? file) async {
+    if (file == null) {
+      return null;
+    }
+    final bytes = await file.readAsBytes();
+    return TenantAdminMediaUpload(
+      bytes: bytes,
+      fileName: file.name,
+    );
   }
 
   void _resetAssetsPagination() {
@@ -578,7 +678,6 @@ class TenantAdminStaticAssetsController implements Disposable {
     displayNameController.dispose();
     bioController.dispose();
     contentController.dispose();
-    tagsController.dispose();
     avatarUrlController.dispose();
     coverUrlController.dispose();
     latitudeController.dispose();
@@ -600,5 +699,7 @@ class TenantAdminStaticAssetsController implements Disposable {
     submitErrorStreamValue.dispose();
     submitSuccessStreamValue.dispose();
     searchQueryStreamValue.dispose();
+    avatarFileStreamValue.dispose();
+    coverFileStreamValue.dispose();
   }
 }

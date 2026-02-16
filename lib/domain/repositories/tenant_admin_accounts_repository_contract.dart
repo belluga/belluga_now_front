@@ -42,6 +42,7 @@ abstract class TenantAdminAccountsRepositoryContract {
   Future<TenantAdminAccount> updateAccount({
     required String accountSlug,
     String? name,
+    String? slug,
     TenantAdminDocument? document,
   });
   Future<void> deleteAccount(String accountSlug);

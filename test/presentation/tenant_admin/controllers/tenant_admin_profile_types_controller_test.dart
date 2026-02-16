@@ -66,6 +66,7 @@ class _FakeAccountProfilesRepository
   @override
   Future<TenantAdminProfileTypeDefinition> updateProfileType({
     required String type,
+    String? newType,
     String? label,
     List<String>? allowedTaxonomies,
     TenantAdminProfileTypeCapabilities? capabilities,
@@ -137,6 +138,7 @@ class _FakeAccountProfilesRepository
     required String accountProfileId,
     String? profileType,
     String? displayName,
+    String? slug,
     TenantAdminLocation? location,
     List<TenantAdminTaxonomyTerm>? taxonomyTerms,
     String? bio,

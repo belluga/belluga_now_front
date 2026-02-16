@@ -11,7 +11,8 @@ abstract class TenantAdminAccountProfilesRepositoryContract {
   Future<List<TenantAdminAccountProfile>> fetchAccountProfiles({
     String? accountId,
   });
-  Future<TenantAdminAccountProfile> fetchAccountProfile(String accountProfileId);
+  Future<TenantAdminAccountProfile> fetchAccountProfile(
+      String accountProfileId);
   Future<TenantAdminAccountProfile> createAccountProfile({
     required String accountId,
     required String profileType,
@@ -28,6 +29,7 @@ abstract class TenantAdminAccountProfilesRepositoryContract {
     required String accountProfileId,
     String? profileType,
     String? displayName,
+    String? slug,
     TenantAdminLocation? location,
     List<TenantAdminTaxonomyTerm>? taxonomyTerms,
     String? bio,
@@ -37,7 +39,8 @@ abstract class TenantAdminAccountProfilesRepositoryContract {
     TenantAdminMediaUpload? coverUpload,
   });
   Future<void> deleteAccountProfile(String accountProfileId);
-  Future<TenantAdminAccountProfile> restoreAccountProfile(String accountProfileId);
+  Future<TenantAdminAccountProfile> restoreAccountProfile(
+      String accountProfileId);
   Future<void> forceDeleteAccountProfile(String accountProfileId);
   Future<List<TenantAdminProfileTypeDefinition>> fetchProfileTypes();
   Future<TenantAdminPagedResult<TenantAdminProfileTypeDefinition>>
@@ -74,6 +77,7 @@ abstract class TenantAdminAccountProfilesRepositoryContract {
   });
   Future<TenantAdminProfileTypeDefinition> updateProfileType({
     required String type,
+    String? newType,
     String? label,
     List<String>? allowedTaxonomies,
     TenantAdminProfileTypeCapabilities? capabilities,

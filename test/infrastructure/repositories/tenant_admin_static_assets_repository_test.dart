@@ -71,6 +71,26 @@ void main() {
     );
   });
 
+  test('updateStaticProfileType sends new type when renaming', () async {
+    final adapter = _CaptureAdapter();
+    final dio = Dio()..httpClientAdapter = adapter;
+    final repository = TenantAdminStaticAssetsRepository(dio: dio);
+
+    await repository.updateStaticProfileType(
+      type: 'poi',
+      newType: 'landmark',
+    );
+
+    expect(adapter.lastRequest?.method, 'PATCH');
+    expect(
+      adapter.lastRequest?.path,
+      contains('https://tenant.test/admin/api/v1/static_profile_types/poi'),
+    );
+    final data = adapter.lastRequest?.data;
+    expect(data, isA<Map<String, dynamic>>());
+    expect((data as Map<String, dynamic>)['type'], 'landmark');
+  });
+
   test('fetchStaticAssets switches request host after tenant selection changes',
       () async {
     final adapter = _CaptureAdapter();

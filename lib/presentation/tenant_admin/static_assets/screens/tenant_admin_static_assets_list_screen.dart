@@ -78,6 +78,7 @@ class _TenantAdminStaticAssetsListScreenState
                     context: context,
                     query: '',
                     availableTypes: const [],
+                    selectedTypeFilter: null,
                     error: error,
                     body: const Center(child: CircularProgressIndicator()),
                   ),
@@ -92,24 +93,25 @@ class _TenantAdminStaticAssetsListScreenState
                             .toSet()
                             .toList(growable: false)
                           ..sort();
-                        if (_selectedTypeFilter != null &&
-                            !availableTypes.contains(_selectedTypeFilter)) {
-                          _selectedTypeFilter = null;
-                        }
+                        final selectedTypeFilter =
+                            availableTypes.contains(_selectedTypeFilter)
+                                ? _selectedTypeFilter
+                                : null;
                         final filteredAssets =
                             _filterAssets(loadedAssets, query.trim());
-                        final filteredByType = _selectedTypeFilter == null
+                        final filteredByType = selectedTypeFilter == null
                             ? filteredAssets
                             : filteredAssets
                                 .where(
                                   (asset) =>
-                                      asset.profileType == _selectedTypeFilter,
+                                      asset.profileType == selectedTypeFilter,
                                 )
                                 .toList(growable: false);
                         return _buildScaffold(
                           context: context,
                           query: query,
                           availableTypes: availableTypes,
+                          selectedTypeFilter: selectedTypeFilter,
                           error: error,
                           body: filteredByType.isEmpty
                               ? const TenantAdminEmptyState(
@@ -216,6 +218,7 @@ class _TenantAdminStaticAssetsListScreenState
     required BuildContext context,
     required String query,
     required List<String> availableTypes,
+    required String? selectedTypeFilter,
     required String? error,
     required Widget body,
   }) {
@@ -268,7 +271,8 @@ class _TenantAdminStaticAssetsListScreenState
               const SizedBox(height: 12),
             ],
             DropdownButtonFormField<String?>(
-              initialValue: _selectedTypeFilter,
+              key: ValueKey(selectedTypeFilter),
+              initialValue: selectedTypeFilter,
               decoration: const InputDecoration(
                 labelText: 'Filtrar por tipo',
               ),

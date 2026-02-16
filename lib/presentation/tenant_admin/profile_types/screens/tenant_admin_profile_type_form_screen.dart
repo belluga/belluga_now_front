@@ -78,6 +78,7 @@ class _TenantAdminProfileTypeFormScreenState
     if (_isEdit) {
       _controller.submitUpdateType(
         type: widget.definition!.type,
+        newType: _controller.typeController.text.trim(),
         label: _controller.labelController.text.trim(),
         allowedTaxonomies: allowedTaxonomies,
         capabilities: capabilities,
@@ -137,7 +138,6 @@ class _TenantAdminProfileTypeFormScreenState
                               decoration: const InputDecoration(
                                 labelText: 'Tipo (slug)',
                               ),
-                              enabled: !_isEdit,
                               keyboardType: TextInputType.visiblePassword,
                               textCapitalization: TextCapitalization.none,
                               autocorrect: false,
@@ -156,9 +156,6 @@ class _TenantAdminProfileTypeFormScreenState
                                 }
                               },
                               validator: (value) {
-                                if (_isEdit) {
-                                  return null;
-                                }
                                 return tenantAdminValidateRequiredSlug(
                                   value,
                                   requiredMessage: 'Tipo e obrigatorio.',

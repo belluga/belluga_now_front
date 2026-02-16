@@ -6,10 +6,15 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/domain/tenant_admin/ownership_state.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_definition.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_form_value_utils.dart';
 import 'package:belluga_now/presentation/tenant_admin/accounts/controllers/tenant_admin_accounts_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_error_banner.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_field_edit_sheet.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_form_layout.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_html_toolbar.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_image_source_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:image_picker/image_picker.dart';
@@ -35,6 +40,7 @@ class _TenantAdminAccountCreateScreenState
     _controller.resetCreateState();
     _controller.resetCreateForm();
     _controller.loadProfileTypes();
+    _controller.loadTaxonomies();
   }
 
   @override
@@ -118,7 +124,7 @@ class _TenantAdminAccountCreateScreenState
     return TenantAdminLocation(latitude: lat, longitude: lng);
   }
 
-  Future<void> _pickImage({required bool isAvatar}) async {
+  Future<void> _pickImageFromDevice({required bool isAvatar}) async {
     final picker = ImagePicker();
     final selected = await picker.pickImage(
       source: ImageSource.gallery,
@@ -134,11 +140,67 @@ class _TenantAdminAccountCreateScreenState
     }
   }
 
+  Future<void> _pickImage({required bool isAvatar}) async {
+    final source = await showTenantAdminImageSourceSheet(
+      context: context,
+      title: isAvatar ? 'Adicionar avatar' : 'Adicionar capa',
+    );
+    if (source == null) {
+      return;
+    }
+    if (source == TenantAdminImageSourceOption.device) {
+      await _pickImageFromDevice(isAvatar: isAvatar);
+      return;
+    }
+    final url = await _promptWebImageUrl(
+      title: isAvatar ? 'URL do avatar' : 'URL da capa',
+    );
+    if (url == null || !mounted) {
+      return;
+    }
+    if (isAvatar) {
+      _controller.updateCreateAvatarWebUrl(url);
+    } else {
+      _controller.updateCreateCoverWebUrl(url);
+    }
+  }
+
+  Future<String?> _promptWebImageUrl({required String title}) async {
+    final result = await showTenantAdminFieldEditSheet(
+      context: context,
+      title: title,
+      label: 'URL da imagem',
+      initialValue: '',
+      helperText: 'Use URL completa (http/https).',
+      keyboardType: TextInputType.url,
+      textCapitalization: TextCapitalization.none,
+      autocorrect: false,
+      enableSuggestions: false,
+      validator: (value) {
+        final trimmed = value?.trim() ?? '';
+        if (trimmed.isEmpty) {
+          return 'URL obrigatoria.';
+        }
+        final uri = Uri.tryParse(trimmed);
+        final hasScheme = uri != null &&
+            (uri.scheme == 'http' || uri.scheme == 'https') &&
+            uri.host.isNotEmpty;
+        if (!hasScheme) {
+          return 'URL invalida.';
+        }
+        return null;
+      },
+    );
+    return result?.value.trim();
+  }
+
   void _clearImage({required bool isAvatar}) {
     if (isAvatar) {
       _controller.updateCreateAvatarFile(null);
+      _controller.updateCreateAvatarWebUrl(null);
     } else {
       _controller.updateCreateCoverFile(null);
+      _controller.updateCreateCoverWebUrl(null);
     }
   }
 
@@ -164,6 +226,9 @@ class _TenantAdminAccountCreateScreenState
                 _requiresLocation(state.selectedProfileType);
             final definition =
                 _profileTypeDefinition(state.selectedProfileType);
+            final hasBio = definition?.capabilities.hasBio ?? false;
+            final hasTaxonomies =
+                definition?.capabilities.hasTaxonomies ?? false;
             final showAvatar = definition?.capabilities.hasAvatar ?? false;
             final showCover = definition?.capabilities.hasCover ?? false;
             final showMediaSection = showAvatar || showCover;
@@ -185,6 +250,15 @@ class _TenantAdminAccountCreateScreenState
                           state,
                           showAvatar: showAvatar,
                           showCover: showCover,
+                        ),
+                      ],
+                      if (hasBio || hasTaxonomies) ...[
+                        const SizedBox(height: 16),
+                        _buildProfileContentSection(
+                          context,
+                          state,
+                          hasBio: hasBio,
+                          hasTaxonomies: hasTaxonomies,
                         ),
                       ],
                       if (requiresLocation) ...[
@@ -320,6 +394,10 @@ class _TenantAdminAccountCreateScreenState
                                         false)) {
                                       _controller.updateCreateCoverFile(null);
                                     }
+                                    if (!(definition?.capabilities.hasBio ??
+                                        false)) {
+                                      _controller.bioController.clear();
+                                    }
                                   }
                                 : null,
                             validator: (value) {
@@ -446,6 +524,18 @@ class _TenantAdminAccountCreateScreenState
                       fit: BoxFit.cover,
                     ),
                   )
+                else if (state.avatarWebUrl != null &&
+                    state.avatarWebUrl!.isNotEmpty)
+                  Container(
+                    width: 72,
+                    height: 72,
+                    decoration: BoxDecoration(
+                      color:
+                          Theme.of(context).colorScheme.surfaceContainerHighest,
+                      borderRadius: BorderRadius.circular(36),
+                    ),
+                    child: const Icon(Icons.link_outlined),
+                  )
                 else
                   Container(
                     width: 72,
@@ -463,7 +553,9 @@ class _TenantAdminAccountCreateScreenState
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        state.avatarFile?.name ?? 'Nenhuma imagem selecionada',
+                        state.avatarFile?.name ??
+                            state.avatarWebUrl ??
+                            'Nenhuma imagem selecionada',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -475,11 +567,13 @@ class _TenantAdminAccountCreateScreenState
                               'tenant_admin_account_create_avatar_pick',
                             ),
                             onPressed: () => _pickImage(isAvatar: true),
-                            icon: const Icon(Icons.photo_library_outlined),
-                            label: const Text('Selecionar'),
+                            icon: const Icon(Icons.add_photo_alternate_outlined),
+                            label: const Text('Adicionar avatar'),
                           ),
                           const SizedBox(width: 8),
-                          if (state.avatarFile != null)
+                          if (state.avatarFile != null ||
+                              (state.avatarWebUrl != null &&
+                                  state.avatarWebUrl!.isNotEmpty))
                             TextButton(
                               key: const ValueKey(
                                 'tenant_admin_account_create_avatar_remove',
@@ -507,6 +601,18 @@ class _TenantAdminAccountCreateScreenState
                   fit: BoxFit.cover,
                 ),
               )
+            else if (state.coverWebUrl != null && state.coverWebUrl!.isNotEmpty)
+              Container(
+                width: double.infinity,
+                height: 140,
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Center(
+                  child: Icon(Icons.link_outlined),
+                ),
+              )
             else
               Container(
                 width: double.infinity,
@@ -527,11 +633,13 @@ class _TenantAdminAccountCreateScreenState
                     'tenant_admin_account_create_cover_pick',
                   ),
                   onPressed: () => _pickImage(isAvatar: false),
-                  icon: const Icon(Icons.photo_library_outlined),
-                  label: const Text('Selecionar capa'),
+                  icon: const Icon(Icons.add_photo_alternate_outlined),
+                  label: const Text('Adicionar capa'),
                 ),
                 const SizedBox(width: 8),
-                if (state.coverFile != null)
+                if (state.coverFile != null ||
+                    (state.coverWebUrl != null &&
+                        state.coverWebUrl!.isNotEmpty))
                   TextButton(
                     key: const ValueKey(
                       'tenant_admin_account_create_cover_remove',
@@ -544,6 +652,146 @@ class _TenantAdminAccountCreateScreenState
           ],
         ],
       ),
+    );
+  }
+
+  Widget _buildProfileContentSection(
+    BuildContext context,
+    TenantAdminAccountCreateState state, {
+    required bool hasBio,
+    required bool hasTaxonomies,
+  }) {
+    final allowedTaxonomies = _allowedTaxonomyDefinitions(
+      state.selectedProfileType,
+    );
+    return TenantAdminFormSectionCard(
+      title: 'Conteudo do perfil',
+      description:
+          'Campos exibidos conforme capabilities do tipo de perfil selecionado.',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (hasBio) ...[
+            const Text('Acoes HTML para bio'),
+            const SizedBox(height: 8),
+            TenantAdminHtmlToolbar(controller: _controller.bioController),
+            const SizedBox(height: 8),
+            TextFormField(
+              controller: _controller.bioController,
+              decoration: const InputDecoration(labelText: 'Bio'),
+              keyboardType: TextInputType.multiline,
+              textCapitalization: TextCapitalization.sentences,
+              maxLines: 4,
+              textInputAction: TextInputAction.newline,
+            ),
+          ],
+          if (hasTaxonomies) ...[
+            if (hasBio) const SizedBox(height: 16),
+            _buildTaxonomySection(allowedTaxonomies),
+          ],
+        ],
+      ),
+    );
+  }
+
+  List<TenantAdminTaxonomyDefinition> _allowedTaxonomyDefinitions(
+    String? profileType,
+  ) {
+    final definition = _profileTypeDefinition(profileType);
+    final allowed = (definition?.allowedTaxonomies ?? const []).toSet();
+    return _controller.taxonomiesStreamValue.value
+        .where((taxonomy) => allowed.contains(taxonomy.slug))
+        .toList(growable: false);
+  }
+
+  Widget _buildTaxonomySection(
+    List<TenantAdminTaxonomyDefinition> allowedTaxonomies,
+  ) {
+    return StreamValueBuilder<bool>(
+      streamValue: _controller.taxonomiesLoadingStreamValue,
+      builder: (context, isLoading) {
+        return StreamValueBuilder<String?>(
+          streamValue: _controller.taxonomiesErrorStreamValue,
+          builder: (context, error) {
+            return StreamValueBuilder<
+                Map<String, List<TenantAdminTaxonomyTermDefinition>>>(
+              streamValue: _controller.taxonomyTermsStreamValue,
+              builder: (context, termsByTaxonomy) {
+                return StreamValueBuilder<Map<String, Set<String>>>(
+                  streamValue: _controller.selectedTaxonomyTermsStreamValue,
+                  builder: (context, selected) {
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Taxonomias',
+                          style: Theme.of(context).textTheme.labelLarge,
+                        ),
+                        const SizedBox(height: 8),
+                        if (isLoading) const LinearProgressIndicator(),
+                        if (error != null && error.isNotEmpty)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 8),
+                            child: TenantAdminErrorBanner(
+                              rawError: error,
+                              fallbackMessage:
+                                  'Nao foi possivel carregar taxonomias.',
+                              onRetry: _controller.loadTaxonomies,
+                            ),
+                          ),
+                        if (allowedTaxonomies.isEmpty && !isLoading)
+                          const Padding(
+                            padding: EdgeInsets.only(top: 8),
+                            child: Text('Nenhuma taxonomia permitida para este tipo.'),
+                          ),
+                        for (final taxonomy in allowedTaxonomies) ...[
+                          const SizedBox(height: 12),
+                          Text(taxonomy.name),
+                          const SizedBox(height: 6),
+                          _buildTaxonomyChips(
+                            taxonomySlug: taxonomy.slug,
+                            terms: termsByTaxonomy[taxonomy.slug] ?? const [],
+                            selected: selected[taxonomy.slug] ?? const {},
+                          ),
+                        ],
+                      ],
+                    );
+                  },
+                );
+              },
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildTaxonomyChips({
+    required String taxonomySlug,
+    required List<TenantAdminTaxonomyTermDefinition> terms,
+    required Set<String> selected,
+  }) {
+    if (terms.isEmpty) {
+      return const Text('Sem termos cadastrados.');
+    }
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: terms
+          .map(
+            (term) => FilterChip(
+              label: Text(term.name),
+              selected: selected.contains(term.slug),
+              onSelected: (enabled) {
+                _controller.updateTaxonomySelection(
+                  taxonomySlug: taxonomySlug,
+                  termSlug: term.slug,
+                  selected: enabled,
+                );
+              },
+            ),
+          )
+          .toList(growable: false),
     );
   }
 

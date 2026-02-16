@@ -39,6 +39,7 @@ abstract class TenantAdminOrganizationsRepositoryContract {
   Future<TenantAdminOrganization> updateOrganization({
     required String organizationId,
     String? name,
+    String? slug,
     String? description,
   });
   Future<void> deleteOrganization(String organizationId);

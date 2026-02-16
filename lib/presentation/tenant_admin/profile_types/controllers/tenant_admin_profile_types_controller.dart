@@ -310,12 +310,14 @@ class TenantAdminProfileTypesController implements Disposable {
 
   Future<TenantAdminProfileTypeDefinition> updateType({
     required String type,
+    String? newType,
     String? label,
     List<String>? allowedTaxonomies,
     TenantAdminProfileTypeCapabilities? capabilities,
   }) async {
     final updated = await _repository.updateProfileType(
       type: type,
+      newType: newType,
       label: label,
       allowedTaxonomies: allowedTaxonomies,
       capabilities: capabilities,
@@ -353,6 +355,7 @@ class TenantAdminProfileTypesController implements Disposable {
 
   Future<void> submitUpdateType({
     required String type,
+    String? newType,
     String? label,
     List<String>? allowedTaxonomies,
     TenantAdminProfileTypeCapabilities? capabilities,
@@ -360,6 +363,7 @@ class TenantAdminProfileTypesController implements Disposable {
     try {
       await updateType(
         type: type,
+        newType: newType,
         label: label,
         allowedTaxonomies: allowedTaxonomies,
         capabilities: capabilities,

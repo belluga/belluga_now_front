@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
@@ -6,11 +8,14 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_definition.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_form_value_utils.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_error_banner.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_field_edit_sheet.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_form_layout.dart';
-import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_token_chips_field.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_html_toolbar.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_image_source_sheet.dart';
 import 'package:belluga_now/presentation/tenant_admin/static_assets/controllers/tenant_admin_static_assets_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 
 class TenantAdminStaticAssetCreateScreen extends StatefulWidget {
@@ -85,7 +90,7 @@ class _TenantAdminStaticAssetCreateScreenState
                                   hasCover: hasCover,
                                 ),
                               ],
-                              if (hasBio || hasContent || _hasTagsSection()) ...[
+                              if (hasBio || hasContent) ...[
                                 const SizedBox(height: 16),
                                 _buildContentSection(
                                   context,
@@ -144,19 +149,17 @@ class _TenantAdminStaticAssetCreateScreenState
       _controller.selectedTaxonomyTermsStreamValue.addValue(const {});
     }
     if (!(definition?.capabilities.hasAvatar ?? false)) {
-      _controller.avatarUrlController.clear();
+      _controller.updateAvatarFile(null);
+      _controller.updateAvatarWebUrl(null);
     }
     if (!(definition?.capabilities.hasCover ?? false)) {
-      _controller.coverUrlController.clear();
+      _controller.updateCoverFile(null);
+      _controller.updateCoverWebUrl(null);
     }
     if (!(definition?.capabilities.isPoiEnabled ?? false)) {
       _controller.latitudeController.clear();
       _controller.longitudeController.clear();
     }
-  }
-
-  bool _hasTagsSection() {
-    return true;
   }
 
   Map<String, String> _taxonomyLabels(
@@ -188,13 +191,6 @@ class _TenantAdminStaticAssetCreateScreenState
       return null;
     }
     return TenantAdminLocation(latitude: lat, longitude: lng);
-  }
-
-  List<String> _currentTags() =>
-      tenantAdminParseTokenList(_controller.tagsController.text);
-
-  void _updateTags(List<String> next) {
-    _controller.tagsController.text = tenantAdminJoinTokenList(next);
   }
 
   String? _validateLatitude(String? value) {
@@ -247,6 +243,86 @@ class _TenantAdminStaticAssetCreateScreenState
         SnackBar(content: Text(message)),
       );
     });
+  }
+
+  Future<void> _pickImageFromDevice({required bool isAvatar}) async {
+    final picker = ImagePicker();
+    final selected = await picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 85,
+    );
+    if (selected == null) {
+      return;
+    }
+    if (isAvatar) {
+      _controller.updateAvatarFile(selected);
+    } else {
+      _controller.updateCoverFile(selected);
+    }
+  }
+
+  Future<String?> _promptWebImageUrl({required String title}) async {
+    final result = await showTenantAdminFieldEditSheet(
+      context: context,
+      title: title,
+      label: 'URL da imagem',
+      initialValue: '',
+      helperText: 'Use URL completa (http/https).',
+      keyboardType: TextInputType.url,
+      textCapitalization: TextCapitalization.none,
+      autocorrect: false,
+      enableSuggestions: false,
+      validator: (value) {
+        final trimmed = value?.trim() ?? '';
+        if (trimmed.isEmpty) {
+          return 'URL obrigatoria.';
+        }
+        final uri = Uri.tryParse(trimmed);
+        final hasScheme = uri != null &&
+            (uri.scheme == 'http' || uri.scheme == 'https') &&
+            uri.host.isNotEmpty;
+        if (!hasScheme) {
+          return 'URL invalida.';
+        }
+        return null;
+      },
+    );
+    return result?.value.trim();
+  }
+
+  Future<void> _pickImage({required bool isAvatar}) async {
+    final source = await showTenantAdminImageSourceSheet(
+      context: context,
+      title: isAvatar ? 'Adicionar avatar' : 'Adicionar capa',
+    );
+    if (source == null) {
+      return;
+    }
+    if (source == TenantAdminImageSourceOption.device) {
+      await _pickImageFromDevice(isAvatar: isAvatar);
+      return;
+    }
+    final url = await _promptWebImageUrl(
+      title: isAvatar ? 'URL do avatar' : 'URL da capa',
+    );
+    if (url == null || !mounted) {
+      return;
+    }
+    if (isAvatar) {
+      _controller.updateAvatarWebUrl(url);
+    } else {
+      _controller.updateCoverWebUrl(url);
+    }
+  }
+
+  void _clearImage({required bool isAvatar}) {
+    if (isAvatar) {
+      _controller.updateAvatarFile(null);
+      _controller.updateAvatarWebUrl(null);
+      return;
+    }
+    _controller.updateCoverFile(null);
+    _controller.updateCoverWebUrl(null);
   }
 
   Widget _buildBasicSection(BuildContext context, String? error) {
@@ -387,6 +463,10 @@ class _TenantAdminStaticAssetCreateScreenState
             ),
             if (hasBio) ...[
               const SizedBox(height: 12),
+              const Text('Acoes HTML para bio'),
+              const SizedBox(height: 8),
+              TenantAdminHtmlToolbar(controller: _controller.bioController),
+              const SizedBox(height: 8),
               TextFormField(
                 controller: _controller.bioController,
                 decoration: const InputDecoration(labelText: 'Bio'),
@@ -407,14 +487,6 @@ class _TenantAdminStaticAssetCreateScreenState
                 textInputAction: TextInputAction.newline,
               ),
             ],
-            const SizedBox(height: 12),
-            TenantAdminTokenChipsField(
-              label: 'Tags',
-              values: _currentTags(),
-              hintText: 'Adicionar tag',
-              emptyStateText: 'Nenhuma tag adicionada.',
-              onChanged: _updateTags,
-            ),
           ],
         ),
       ),
@@ -425,44 +497,149 @@ class _TenantAdminStaticAssetCreateScreenState
     required bool hasAvatar,
     required bool hasCover,
   }) {
-    return Card(
-      margin: EdgeInsets.zero,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Midia',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            if (hasAvatar) ...[
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _controller.avatarUrlController,
-                decoration: const InputDecoration(labelText: 'Avatar URL'),
-                keyboardType: TextInputType.url,
-                textCapitalization: TextCapitalization.none,
-                autocorrect: false,
-                enableSuggestions: false,
-                textInputAction: TextInputAction.next,
+    return StreamValueBuilder<XFile?>(
+      streamValue: _controller.avatarFileStreamValue,
+      builder: (context, avatarFile) {
+        return StreamValueBuilder<XFile?>(
+          streamValue: _controller.coverFileStreamValue,
+          builder: (context, coverFile) {
+            final avatarUrl = _controller.avatarUrlController.text.trim();
+            final coverUrl = _controller.coverUrlController.text.trim();
+            return Card(
+              margin: EdgeInsets.zero,
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Midia',
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    if (hasAvatar) ...[
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          if (avatarFile != null)
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(36),
+                              child: Image.file(
+                                File(avatarFile.path),
+                                width: 72,
+                                height: 72,
+                                fit: BoxFit.cover,
+                              ),
+                            )
+                          else
+                            Container(
+                              width: 72,
+                              height: 72,
+                              decoration: BoxDecoration(
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .surfaceContainerHighest,
+                                borderRadius: BorderRadius.circular(36),
+                              ),
+                              child: Icon(
+                                avatarUrl.isNotEmpty
+                                    ? Icons.link_outlined
+                                    : Icons.person_outline,
+                              ),
+                            ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  avatarFile?.name ??
+                                      (avatarUrl.isNotEmpty
+                                          ? avatarUrl
+                                          : 'Nenhuma imagem selecionada'),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                const SizedBox(height: 8),
+                                Row(
+                                  children: [
+                                    FilledButton.tonalIcon(
+                                      onPressed: () =>
+                                          _pickImage(isAvatar: true),
+                                      icon: const Icon(
+                                        Icons.add_photo_alternate_outlined,
+                                      ),
+                                      label: const Text('Adicionar avatar'),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    if (avatarFile != null ||
+                                        avatarUrl.isNotEmpty)
+                                      TextButton(
+                                        onPressed: () =>
+                                            _clearImage(isAvatar: true),
+                                        child: const Text('Remover'),
+                                      ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                    if (hasAvatar && hasCover) const SizedBox(height: 16),
+                    if (hasCover) ...[
+                      if (coverFile != null)
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: Image.file(
+                            File(coverFile.path),
+                            width: double.infinity,
+                            height: 140,
+                            fit: BoxFit.cover,
+                          ),
+                        )
+                      else
+                        Container(
+                          width: double.infinity,
+                          height: 140,
+                          decoration: BoxDecoration(
+                            color: Theme.of(context)
+                                .colorScheme
+                                .surfaceContainerHighest,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Center(
+                            child: Icon(
+                              coverUrl.isNotEmpty
+                                  ? Icons.link_outlined
+                                  : Icons.image_outlined,
+                            ),
+                          ),
+                        ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          FilledButton.tonalIcon(
+                            onPressed: () => _pickImage(isAvatar: false),
+                            icon: const Icon(Icons.add_photo_alternate_outlined),
+                            label: const Text('Adicionar capa'),
+                          ),
+                          const SizedBox(width: 8),
+                          if (coverFile != null || coverUrl.isNotEmpty)
+                            TextButton(
+                              onPressed: () => _clearImage(isAvatar: false),
+                              child: const Text('Remover'),
+                            ),
+                        ],
+                      ),
+                    ],
+                  ],
+                ),
               ),
-            ],
-            if (hasCover) ...[
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _controller.coverUrlController,
-                decoration: const InputDecoration(labelText: 'Capa URL'),
-                keyboardType: TextInputType.url,
-                textCapitalization: TextCapitalization.none,
-                autocorrect: false,
-                enableSuggestions: false,
-                textInputAction: TextInputAction.next,
-              ),
-            ],
-          ],
-        ),
-      ),
+            );
+          },
+        );
+      },
     );
   }
 

@@ -65,6 +65,7 @@ class _FakeAccountsRepository implements TenantAdminAccountsRepositoryContract {
   Future<TenantAdminAccount> updateAccount({
     required String accountSlug,
     String? name,
+    String? slug,
     TenantAdminDocument? document,
   }) async {
     return fetchAccountBySlug(accountSlug);
@@ -89,6 +90,9 @@ class _FakeAccountProfilesRepository
   List<TenantAdminAccountProfile> _profiles;
   final List<TenantAdminProfileTypeDefinition> _types;
   int createProfileCalls = 0;
+  String? lastUpdateSlug;
+  String? lastUpdateProfileType;
+  String? lastUpdateDisplayName;
 
   @override
   Future<List<TenantAdminAccountProfile>> fetchAccountProfiles({
@@ -160,6 +164,7 @@ class _FakeAccountProfilesRepository
     required String accountProfileId,
     String? profileType,
     String? displayName,
+    String? slug,
     TenantAdminLocation? location,
     List<TenantAdminTaxonomyTerm>? taxonomyTerms,
     String? bio,
@@ -168,6 +173,9 @@ class _FakeAccountProfilesRepository
     TenantAdminMediaUpload? avatarUpload,
     TenantAdminMediaUpload? coverUpload,
   }) async {
+    lastUpdateSlug = slug;
+    lastUpdateProfileType = profileType;
+    lastUpdateDisplayName = displayName;
     return _profiles.first;
   }
 
@@ -202,6 +210,7 @@ class _FakeAccountProfilesRepository
   @override
   Future<TenantAdminProfileTypeDefinition> updateProfileType({
     required String type,
+    String? newType,
     String? label,
     List<String>? allowedTaxonomies,
     TenantAdminProfileTypeCapabilities? capabilities,
@@ -435,5 +444,62 @@ void main() {
 
     expect(profilesRepository.createProfileCalls, 1);
     expect(controller.profilesStreamValue.value.length, 1);
+  });
+
+  test('submitUpdateProfile forwards slug to repository update', () async {
+    final profilesRepository = _FakeAccountProfilesRepository(
+      [
+        const TenantAdminAccountProfile(
+          id: 'profile-1',
+          accountId: 'acc-1',
+          profileType: 'venue',
+          displayName: 'Perfil',
+          slug: 'perfil-original',
+        ),
+      ],
+      const [
+        TenantAdminProfileTypeDefinition(
+          type: 'venue',
+          label: 'Venue',
+          allowedTaxonomies: [],
+          capabilities: TenantAdminProfileTypeCapabilities(
+            isFavoritable: true,
+            isPoiEnabled: true,
+            hasBio: false,
+            hasTaxonomies: false,
+            hasAvatar: false,
+            hasCover: false,
+            hasEvents: false,
+          ),
+        ),
+      ],
+    );
+    final accountsRepository = _FakeAccountsRepository();
+    final TenantAdminLocationSelectionContract locationSelectionService =
+        TenantAdminLocationSelectionService();
+    final taxonomiesRepository = _FakeTaxonomiesRepository();
+
+    final controller = TenantAdminAccountProfilesController(
+      profilesRepository: profilesRepository,
+      accountsRepository: accountsRepository,
+      taxonomiesRepository: taxonomiesRepository,
+      locationSelectionService: locationSelectionService,
+    );
+
+    await controller.submitUpdateProfile(
+      accountProfileId: 'profile-1',
+      profileType: 'venue',
+      displayName: 'Perfil atualizado',
+      slug: 'perfil-atualizado',
+      location: null,
+      bio: null,
+      taxonomyTerms: const [],
+      avatarUpload: null,
+      coverUpload: null,
+    );
+
+    expect(profilesRepository.lastUpdateSlug, 'perfil-atualizado');
+    expect(profilesRepository.lastUpdateProfileType, 'venue');
+    expect(profilesRepository.lastUpdateDisplayName, 'Perfil atualizado');
   });
 }

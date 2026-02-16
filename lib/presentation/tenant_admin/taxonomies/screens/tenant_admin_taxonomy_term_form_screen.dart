@@ -135,7 +135,6 @@ class _TenantAdminTaxonomyTermFormScreenState
                               decoration: const InputDecoration(
                                 labelText: 'Slug',
                               ),
-                              enabled: !_isEdit,
                               keyboardType: TextInputType.visiblePassword,
                               textCapitalization: TextCapitalization.none,
                               autocorrect: false,

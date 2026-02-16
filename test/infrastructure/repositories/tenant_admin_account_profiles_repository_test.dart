@@ -53,6 +53,26 @@ void main() {
     final formData = data as FormData;
     expect(formData.files.any((entry) => entry.key == 'avatar'), isTrue);
   });
+
+  test('updateAccountProfile sends slug when provided', () async {
+    final adapter = _CaptureAdapter();
+    final dio = Dio()..httpClientAdapter = adapter;
+    final repository = TenantAdminAccountProfilesRepository(dio: dio);
+
+    await repository.updateAccountProfile(
+      accountProfileId: 'profile-1',
+      slug: 'profile-slug-custom',
+    );
+
+    expect(adapter.lastRequest?.method, 'PATCH');
+    expect(
+      adapter.lastRequest?.path,
+      contains('https://tenant.test/admin/api/v1/account_profiles/profile-1'),
+    );
+    final data = adapter.lastRequest?.data;
+    expect(data, isA<Map<String, dynamic>>());
+    expect((data as Map<String, dynamic>)['slug'], 'profile-slug-custom');
+  });
 }
 
 class _StubAuthRepo implements LandlordAuthRepositoryContract {

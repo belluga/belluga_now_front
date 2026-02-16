@@ -62,6 +62,14 @@ void main() {
     );
   }
 
+  setUp(() async {
+    await GetIt.I.reset();
+  });
+
+  tearDown(() async {
+    await GetIt.I.reset();
+  });
+
   Finder _tenantAdminShellRouterFinder() {
     return find.byWidgetPredicate((widget) {
       final key = widget.key;
@@ -75,6 +83,9 @@ void main() {
   testWidgets('Admin static asset create flow', (tester) async {
     if (GetIt.I.isRegistered<ApplicationContract>()) {
       GetIt.I.unregister<ApplicationContract>();
+    }
+    if (GetIt.I.isRegistered<AppDataRepositoryContract>()) {
+      GetIt.I.unregister<AppDataRepositoryContract>();
     }
     if (GetIt.I.isRegistered<AppDataRepository>()) {
       GetIt.I.unregister<AppDataRepository>();
@@ -151,6 +162,9 @@ void main() {
     await tester.tap(find.text('Praia').last);
     await tester.pumpAndSettle();
 
+    expect(find.text('Tags'), findsNothing);
+    expect(find.text('Categorias'), findsNothing);
+
     await tester.enterText(
       find.widgetWithText(TextFormField, 'Nome de exibicao'),
       'Praia do Morro',
@@ -178,6 +192,134 @@ void main() {
 
     await _waitForFinder(tester, find.text('Ativo criado.'));
     expect(staticAssetsRepository.createdAssets.length, 1);
+  });
+
+  testWidgets('Admin static assets list applies search and type filters', (
+    tester,
+  ) async {
+    if (GetIt.I.isRegistered<ApplicationContract>()) {
+      GetIt.I.unregister<ApplicationContract>();
+    }
+    if (GetIt.I.isRegistered<AppDataRepositoryContract>()) {
+      GetIt.I.unregister<AppDataRepositoryContract>();
+    }
+    if (GetIt.I.isRegistered<AppDataRepository>()) {
+      GetIt.I.unregister<AppDataRepository>();
+    }
+    if (GetIt.I.isRegistered<AdminModeRepositoryContract>()) {
+      GetIt.I.unregister<AdminModeRepositoryContract>();
+    }
+    if (GetIt.I.isRegistered<AuthRepositoryContract<UserContract>>()) {
+      GetIt.I.unregister<AuthRepositoryContract<UserContract>>();
+    }
+    if (GetIt.I.isRegistered<LandlordAuthRepositoryContract>()) {
+      GetIt.I.unregister<LandlordAuthRepositoryContract>();
+    }
+    if (GetIt.I.isRegistered<LandlordTenantsRepositoryContract>()) {
+      GetIt.I.unregister<LandlordTenantsRepositoryContract>();
+    }
+    if (GetIt.I.isRegistered<TenantAdminStaticAssetsRepositoryContract>()) {
+      GetIt.I.unregister<TenantAdminStaticAssetsRepositoryContract>();
+    }
+    if (GetIt.I.isRegistered<TenantAdminTaxonomiesRepositoryContract>()) {
+      GetIt.I.unregister<TenantAdminTaxonomiesRepositoryContract>();
+    }
+
+    GetIt.I.registerSingleton<AppDataRepositoryContract>(
+      AppDataRepository(
+        backend: const FakeLandlordAppDataBackend(),
+        localInfoSource: AppDataLocalInfoSource(),
+      ),
+    );
+    GetIt.I.registerSingleton<AdminModeRepositoryContract>(
+      _FakeAdminModeRepository(AdminMode.landlord),
+    );
+    GetIt.I.registerSingleton<AuthRepositoryContract<UserContract>>(
+      _FakeAuthRepository(),
+    );
+    GetIt.I.registerSingleton<LandlordAuthRepositoryContract>(
+      _FakeLandlordAuthRepository(hasValidSession: true),
+    );
+    GetIt.I.registerSingleton<LandlordTenantsRepositoryContract>(
+      _FakeLandlordTenantsRepository(),
+    );
+    final staticAssetsRepository = _FakeStaticAssetsRepository(
+      seededAssets: const [
+        TenantAdminStaticAsset(
+          id: 'asset-1',
+          profileType: 'beach',
+          displayName: 'Praia do Morro',
+          slug: 'praia-do-morro',
+          isActive: true,
+        ),
+        TenantAdminStaticAsset(
+          id: 'asset-2',
+          profileType: 'museum',
+          displayName: 'Museu Vale',
+          slug: 'museu-vale',
+          isActive: true,
+        ),
+      ],
+    );
+    GetIt.I.registerSingleton<TenantAdminStaticAssetsRepositoryContract>(
+      staticAssetsRepository,
+    );
+    GetIt.I.registerSingleton<TenantAdminTaxonomiesRepositoryContract>(
+      _FakeTaxonomiesRepository(),
+    );
+
+    final app = Application();
+    GetIt.I.registerSingleton<ApplicationContract>(app);
+    await app.init();
+
+    app.appRouter.replaceAll([
+      const TenantAdminShellRoute(
+        children: [TenantAdminStaticAssetsListRoute()],
+      ),
+    ]);
+
+    await tester.pumpWidget(app);
+    await _pumpFor(tester, const Duration(seconds: 2));
+    await _waitForFinder(tester, _tenantAdminShellRouterFinder());
+    app.appRouter.navigate(
+      const TenantAdminShellRoute(
+        children: [TenantAdminStaticAssetsListRoute()],
+      ),
+    );
+    await _pumpFor(tester, const Duration(seconds: 2));
+
+    await _waitForFinder(tester, find.text('Ativos estaticos'));
+    await _waitForFinder(tester, find.text('Praia do Morro'));
+    await _waitForFinder(tester, find.text('Museu Vale'));
+
+    final typeFilterDropdown = find.byType(DropdownButtonFormField<String?>);
+    await _waitForFinder(tester, typeFilterDropdown);
+    await tester.tap(typeFilterDropdown);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('beach').last);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Praia do Morro'), findsOneWidget);
+    expect(find.text('Museu Vale'), findsNothing);
+
+    await tester.tap(typeFilterDropdown);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Todos os tipos').last);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Praia do Morro'), findsOneWidget);
+    expect(find.text('Museu Vale'), findsOneWidget);
+
+    await tester.tap(find.byIcon(Icons.search));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Buscar por nome ou slug'),
+      'museu',
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Praia do Morro'), findsNothing);
+    expect(find.text('Museu Vale'), findsOneWidget);
   });
 }
 
@@ -335,10 +477,16 @@ class _NoopBackend extends BackendContract {
 
 class _FakeStaticAssetsRepository
     implements TenantAdminStaticAssetsRepositoryContract {
+  _FakeStaticAssetsRepository({
+    List<TenantAdminStaticAsset> seededAssets = const [],
+  }) : _assets = List<TenantAdminStaticAsset>.of(seededAssets);
+
   final List<TenantAdminStaticAsset> createdAssets = [];
+  final List<TenantAdminStaticAsset> _assets;
 
   @override
-  Future<List<TenantAdminStaticAsset>> fetchStaticAssets() async => const [];
+  Future<List<TenantAdminStaticAsset>> fetchStaticAssets() async =>
+      List<TenantAdminStaticAsset>.unmodifiable(_assets);
 
   @override
   Future<TenantAdminPagedResult<TenantAdminStaticAsset>> fetchStaticAssetsPage({
@@ -363,6 +511,11 @@ class _FakeStaticAssetsRepository
 
   @override
   Future<TenantAdminStaticAsset> fetchStaticAsset(String assetId) async {
+    for (final asset in _assets) {
+      if (asset.id == assetId) {
+        return asset;
+      }
+    }
     return TenantAdminStaticAsset(
       id: assetId,
       profileType: 'beach',
@@ -401,6 +554,7 @@ class _FakeStaticAssetsRepository
       coverUrl: coverUrl,
     );
     createdAssets.add(asset);
+    _assets.add(asset);
     return asset;
   }
 
@@ -409,6 +563,7 @@ class _FakeStaticAssetsRepository
     required String assetId,
     String? profileType,
     String? displayName,
+    String? slug,
     TenantAdminLocation? location,
     List<TenantAdminTaxonomyTerm>? taxonomyTerms,
     List<String>? tags,
@@ -419,7 +574,7 @@ class _FakeStaticAssetsRepository
     TenantAdminMediaUpload? avatarUpload,
     TenantAdminMediaUpload? coverUpload,
   }) async {
-    return TenantAdminStaticAsset(
+    final updated = TenantAdminStaticAsset(
       id: assetId,
       profileType: profileType ?? 'beach',
       displayName: displayName ?? 'Praia',
@@ -433,6 +588,11 @@ class _FakeStaticAssetsRepository
       avatarUrl: avatarUrl,
       coverUrl: coverUrl,
     );
+    final index = _assets.indexWhere((asset) => asset.id == assetId);
+    if (index >= 0) {
+      _assets[index] = updated;
+    }
+    return updated;
   }
 
   @override
@@ -514,6 +674,7 @@ class _FakeStaticAssetsRepository
   @override
   Future<TenantAdminStaticProfileTypeDefinition> updateStaticProfileType({
     required String type,
+    String? newType,
     String? label,
     List<String>? allowedTaxonomies,
     TenantAdminStaticProfileTypeCapabilities? capabilities,

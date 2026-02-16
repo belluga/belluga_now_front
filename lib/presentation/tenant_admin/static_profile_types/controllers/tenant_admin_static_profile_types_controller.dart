@@ -269,12 +269,14 @@ class TenantAdminStaticProfileTypesController implements Disposable {
 
   Future<TenantAdminStaticProfileTypeDefinition> updateType({
     required String type,
+    String? newType,
     String? label,
     List<String>? allowedTaxonomies,
     TenantAdminStaticProfileTypeCapabilities? capabilities,
   }) async {
     final updated = await _repository.updateStaticProfileType(
       type: type,
+      newType: newType,
       label: label,
       allowedTaxonomies: allowedTaxonomies,
       capabilities: capabilities,
@@ -312,6 +314,7 @@ class TenantAdminStaticProfileTypesController implements Disposable {
 
   Future<void> submitUpdateType({
     required String type,
+    String? newType,
     String? label,
     List<String>? allowedTaxonomies,
     TenantAdminStaticProfileTypeCapabilities? capabilities,
@@ -319,6 +322,7 @@ class TenantAdminStaticProfileTypesController implements Disposable {
     try {
       await updateType(
         type: type,
+        newType: newType,
         label: label,
         allowedTaxonomies: allowedTaxonomies,
         capabilities: capabilities,

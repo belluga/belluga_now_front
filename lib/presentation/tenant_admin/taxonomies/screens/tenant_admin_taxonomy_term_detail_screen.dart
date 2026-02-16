@@ -1,9 +1,13 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_definition.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_form_value_utils.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_field_edit_sheet.dart';
+import 'package:belluga_now/presentation/tenant_admin/taxonomies/controllers/tenant_admin_taxonomies_controller.dart';
 import 'package:flutter/material.dart';
+import 'package:get_it/get_it.dart';
 
-class TenantAdminTaxonomyTermDetailScreen extends StatelessWidget {
+class TenantAdminTaxonomyTermDetailScreen extends StatefulWidget {
   const TenantAdminTaxonomyTermDetailScreen({
     super.key,
     required this.taxonomyId,
@@ -16,21 +20,129 @@ class TenantAdminTaxonomyTermDetailScreen extends StatelessWidget {
   final TenantAdminTaxonomyTermDefinition term;
 
   @override
+  State<TenantAdminTaxonomyTermDetailScreen> createState() =>
+      _TenantAdminTaxonomyTermDetailScreenState();
+}
+
+class _TenantAdminTaxonomyTermDetailScreenState
+    extends State<TenantAdminTaxonomyTermDetailScreen> {
+  final TenantAdminTaxonomiesController _controller =
+      GetIt.I.get<TenantAdminTaxonomiesController>();
+  late TenantAdminTaxonomyTermDefinition _term;
+  bool _isSaving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _term = widget.term;
+  }
+
+  Future<void> _editName() async {
+    final result = await showTenantAdminFieldEditSheet(
+      context: context,
+      title: 'Editar nome do termo',
+      label: 'Nome',
+      initialValue: _term.name,
+      textCapitalization: TextCapitalization.words,
+      autocorrect: true,
+      enableSuggestions: true,
+      validator: (value) {
+        final trimmed = value?.trim() ?? '';
+        if (trimmed.isEmpty) {
+          return 'Nome obrigatorio.';
+        }
+        return null;
+      },
+    );
+    if (result == null || !mounted) {
+      return;
+    }
+    final next = result.value.trim();
+    if (next.isEmpty || next == _term.name) {
+      return;
+    }
+    await _saveChanges(name: next);
+  }
+
+  Future<void> _editSlug() async {
+    final result = await showTenantAdminFieldEditSheet(
+      context: context,
+      title: 'Editar slug do termo',
+      label: 'Slug',
+      initialValue: _term.slug,
+      helperText: 'Deve ser unico dentro da taxonomia.',
+      inputFormatters: tenantAdminSlugInputFormatters,
+      validator: (value) => tenantAdminValidateRequiredSlug(
+        value,
+        requiredMessage: 'Slug obrigatorio.',
+      ),
+    );
+    if (result == null || !mounted) {
+      return;
+    }
+    final next = result.value.trim();
+    if (next.isEmpty || next == _term.slug) {
+      return;
+    }
+    await _saveChanges(slug: next);
+  }
+
+  Future<void> _saveChanges({
+    String? slug,
+    String? name,
+  }) async {
+    if (_isSaving) {
+      return;
+    }
+    setState(() => _isSaving = true);
+    try {
+      final updated = await _controller.updateTerm(
+        taxonomyId: widget.taxonomyId,
+        termId: _term.id,
+        slug: slug,
+        name: name,
+      );
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _term = updated;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Termo atualizado.')),
+      );
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.toString())),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isSaving = false);
+      }
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(term.name),
+        title: Text(_term.name),
         actions: [
           FilledButton.tonalIcon(
-            onPressed: () {
-              context.router.push(
-                TenantAdminTaxonomyTermEditRoute(
-                  taxonomyId: taxonomyId,
-                  taxonomyName: taxonomyName,
-                  term: term,
-                ),
-              );
-            },
+            onPressed: _isSaving
+                ? null
+                : () {
+                    context.router.push(
+                      TenantAdminTaxonomyTermEditRoute(
+                        taxonomyId: widget.taxonomyId,
+                        taxonomyName: widget.taxonomyName,
+                        term: _term,
+                      ),
+                    );
+                  },
             icon: const Icon(Icons.edit_outlined),
             label: const Text('Editar'),
           ),
@@ -51,17 +163,58 @@ class TenantAdminTaxonomyTermDetailScreen extends StatelessWidget {
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
                   const SizedBox(height: 12),
-                  _buildRow(context, 'Nome', term.name),
+                  _editableRow(
+                    context,
+                    label: 'Nome',
+                    value: _term.name,
+                    onEdit: _editName,
+                  ),
                   const SizedBox(height: 8),
-                  _buildRow(context, 'Slug', term.slug),
+                  _editableRow(
+                    context,
+                    label: 'Slug',
+                    value: _term.slug,
+                    onEdit: _editSlug,
+                  ),
                   const SizedBox(height: 8),
-                  _buildRow(context, 'Taxonomia', taxonomyName),
+                  _buildRow(context, 'Taxonomia', widget.taxonomyName),
                 ],
               ),
             ),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _editableRow(
+    BuildContext context, {
+    required String label,
+    required String value,
+    required VoidCallback onEdit,
+  }) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        SizedBox(
+          width: 96,
+          child: Text(
+            label,
+            style: Theme.of(context).textTheme.labelMedium,
+          ),
+        ),
+        Expanded(
+          child: Text(
+            value,
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
+        ),
+        IconButton(
+          onPressed: _isSaving ? null : onEdit,
+          tooltip: 'Editar $label',
+          icon: const Icon(Icons.edit_outlined),
+        ),
+      ],
     );
   }
 

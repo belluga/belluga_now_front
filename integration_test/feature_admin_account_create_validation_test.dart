@@ -126,12 +126,8 @@ void main() {
     await tester.tap(saveButton, warnIfMissed: false);
     await _pumpFor(tester, const Duration(seconds: 1));
 
+    await _waitForFinder(tester, find.text('Tipo de perfil e obrigatorio.'));
     await _waitForFinder(tester, find.text('Nome e obrigatorio.'));
-    await _waitForFinder(tester, find.text('Tipo do documento e obrigatorio.'));
-    await _waitForFinder(
-      tester,
-      find.text('Numero do documento e obrigatorio.'),
-    );
   });
 }
 

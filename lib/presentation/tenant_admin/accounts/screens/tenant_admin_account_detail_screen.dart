@@ -6,6 +6,8 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dar
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
 import 'package:belluga_now/presentation/tenant_admin/account_profiles/controllers/tenant_admin_account_profiles_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_error_banner.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_form_value_utils.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_field_edit_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
@@ -27,11 +29,13 @@ class _TenantAdminAccountDetailScreenState
     extends State<TenantAdminAccountDetailScreen> {
   final TenantAdminAccountProfilesController _profilesController =
       GetIt.I.get<TenantAdminAccountProfilesController>();
+  late String _accountSlugForRequests;
 
   @override
   void initState() {
     super.initState();
-    _profilesController.loadAccountDetail(widget.accountSlug);
+    _accountSlugForRequests = widget.accountSlug;
+    _profilesController.loadAccountDetail(_accountSlugForRequests);
   }
 
   String _profileTypeLabel(List<TenantAdminProfileTypeDefinition> types) {
@@ -49,10 +53,10 @@ class _TenantAdminAccountDetailScreenState
     context.router
         .push(
           TenantAdminAccountProfileCreateRoute(
-            accountSlug: widget.accountSlug,
+            accountSlug: _accountSlugForRequests,
           ),
         )
-        .then((_) => _profilesController.loadAccountDetail(widget.accountSlug));
+        .then((_) => _profilesController.loadAccountDetail(_accountSlugForRequests));
   }
 
   void _openEdit() {
@@ -66,7 +70,85 @@ class _TenantAdminAccountDetailScreenState
             accountProfileId: profile.id,
           ),
         )
-        .then((_) => _profilesController.loadAccountDetail(widget.accountSlug));
+        .then((_) => _profilesController.loadAccountDetail(_accountSlugForRequests));
+  }
+
+  Future<void> _editAccountName(TenantAdminAccount account) async {
+    final result = await showTenantAdminFieldEditSheet(
+      context: context,
+      title: 'Editar nome da conta',
+      label: 'Nome',
+      initialValue: account.name,
+      helperText: 'Atualiza apenas o nome da conta.',
+      textCapitalization: TextCapitalization.words,
+      textInputAction: TextInputAction.done,
+      autocorrect: true,
+      enableSuggestions: true,
+      validator: (value) {
+        final trimmed = value?.trim() ?? '';
+        if (trimmed.isEmpty) {
+          return 'Nome e obrigatorio.';
+        }
+        return null;
+      },
+    );
+    if (result == null || !mounted) {
+      return;
+    }
+    final trimmed = result.value.trim();
+    if (trimmed.isEmpty || trimmed == account.name) {
+      return;
+    }
+    final messenger = ScaffoldMessenger.of(context);
+    final updated = await _profilesController.updateAccount(
+      accountSlug: _accountSlugForRequests,
+      name: trimmed,
+    );
+    if (!mounted || updated == null) {
+      return;
+    }
+    messenger.showSnackBar(
+      const SnackBar(content: Text('Nome da conta atualizado.')),
+    );
+  }
+
+  Future<void> _editAccountSlug(TenantAdminAccount account) async {
+    final result = await showTenantAdminFieldEditSheet(
+      context: context,
+      title: 'Editar slug da conta',
+      label: 'Slug',
+      initialValue: account.slug,
+      helperText: 'Deve ser unico no tenant.',
+      textInputAction: TextInputAction.done,
+      inputFormatters: tenantAdminSlugInputFormatters,
+      validator: (value) => tenantAdminValidateRequiredSlug(
+        value,
+        requiredMessage: 'Slug e obrigatorio.',
+      ),
+    );
+    if (result == null || !mounted) {
+      return;
+    }
+    final trimmed = result.value.trim();
+    if (trimmed.isEmpty || trimmed == account.slug) {
+      return;
+    }
+    final messenger = ScaffoldMessenger.of(context);
+    final updated = await _profilesController.updateAccount(
+      accountSlug: _accountSlugForRequests,
+      slug: trimmed,
+    );
+    if (!mounted || updated == null) {
+      return;
+    }
+    if (updated.slug != _accountSlugForRequests) {
+      setState(() {
+        _accountSlugForRequests = updated.slug;
+      });
+    }
+    messenger.showSnackBar(
+      const SnackBar(content: Text('Slug da conta atualizado.')),
+    );
   }
 
   @override
@@ -95,7 +177,7 @@ class _TenantAdminAccountDetailScreenState
 
                     return Scaffold(
                       appBar: AppBar(
-                        title: Text('Conta: ${widget.accountSlug}'),
+                        title: Text('Conta: $_accountSlugForRequests'),
                         actions: [
                           if (profile != null)
                             FilledButton.tonalIcon(
@@ -140,8 +222,25 @@ class _TenantAdminAccountDetailScreenState
                                                         .titleMedium,
                                                   ),
                                                   const SizedBox(height: 12),
-                                                  _buildRow('Slug',
-                                                      account?.slug ?? '-'),
+                                                  _buildEditableRow(
+                                                    label: 'Slug',
+                                                    value: account?.slug ?? '-',
+                                                    onEdit: account == null
+                                                        ? null
+                                                        : () => _editAccountSlug(
+                                                              account,
+                                                            ),
+                                                  ),
+                                                  const SizedBox(height: 8),
+                                                  _buildEditableRow(
+                                                    label: 'Nome',
+                                                    value: account?.name ?? '-',
+                                                    onEdit: account == null
+                                                        ? null
+                                                        : () => _editAccountName(
+                                                              account,
+                                                            ),
+                                                  ),
                                                   const SizedBox(height: 8),
                                                   _buildRow(
                                                     'Documento',
@@ -367,6 +466,31 @@ class _TenantAdminAccountDetailScreenState
           ),
         ),
         Expanded(child: Text(value)),
+      ],
+    );
+  }
+
+  Widget _buildEditableRow({
+    required String label,
+    required String value,
+    required VoidCallback? onEdit,
+  }) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        SizedBox(
+          width: 110,
+          child: Text(
+            label,
+            style: const TextStyle(fontWeight: FontWeight.w600),
+          ),
+        ),
+        Expanded(child: Text(value)),
+        IconButton(
+          onPressed: onEdit,
+          tooltip: 'Editar $label',
+          icon: const Icon(Icons.edit_outlined),
+        ),
       ],
     );
   }

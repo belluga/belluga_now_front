@@ -146,6 +146,7 @@ class TenantAdminStaticAssetsRepository
     required String assetId,
     String? profileType,
     String? displayName,
+    String? slug,
     TenantAdminLocation? location,
     List<TenantAdminTaxonomyTerm>? taxonomyTerms,
     List<String>? tags,
@@ -160,6 +161,7 @@ class TenantAdminStaticAssetsRepository
       final payload = _buildPayload(
         profileType: profileType,
         displayName: displayName,
+        slug: slug,
         location: location,
         taxonomyTerms: taxonomyTerms,
         tags: tags,
@@ -311,6 +313,7 @@ class TenantAdminStaticAssetsRepository
   @override
   Future<TenantAdminStaticProfileTypeDefinition> updateStaticProfileType({
     required String type,
+    String? newType,
     String? label,
     List<String>? allowedTaxonomies,
     TenantAdminStaticProfileTypeCapabilities? capabilities,
@@ -318,6 +321,7 @@ class TenantAdminStaticAssetsRepository
     try {
       final encodedType = Uri.encodeComponent(type);
       final payload = _buildStaticProfileTypePayload(
+        type: newType,
         label: label,
         allowedTaxonomies: allowedTaxonomies,
         capabilities: capabilities,
@@ -350,6 +354,7 @@ class TenantAdminStaticAssetsRepository
   Map<String, dynamic> _buildPayload({
     String? profileType,
     String? displayName,
+    String? slug,
     TenantAdminLocation? location,
     List<TenantAdminTaxonomyTerm>? taxonomyTerms,
     List<String>? tags,
@@ -361,6 +366,7 @@ class TenantAdminStaticAssetsRepository
     final payload = <String, dynamic>{};
     if (profileType != null) payload['profile_type'] = profileType;
     if (displayName != null) payload['display_name'] = displayName;
+    if (slug != null) payload['slug'] = slug;
     if (location != null) {
       payload['location'] = {
         'lat': location.latitude,

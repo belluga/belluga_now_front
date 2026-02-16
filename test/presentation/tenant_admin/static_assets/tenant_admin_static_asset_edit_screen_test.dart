@@ -1,6 +1,5 @@
 import 'package:belluga_now/domain/repositories/tenant_admin_static_assets_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_taxonomies_repository_contract.dart';
-import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_result.dart';
@@ -9,132 +8,163 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_static_profile_type
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_definition.dart';
-import 'package:belluga_now/presentation/tenant_admin/static_profile_types/controllers/tenant_admin_static_profile_types_controller.dart';
+import 'package:belluga_now/infrastructure/services/tenant_admin/tenant_admin_location_selection_service.dart';
+import 'package:belluga_now/presentation/tenant_admin/static_assets/controllers/tenant_admin_static_assets_controller.dart';
+import 'package:belluga_now/presentation/tenant_admin/static_assets/screens/tenant_admin_static_asset_edit_screen.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:stream_value/core/stream_value.dart';
+import 'package:get_it/get_it.dart';
 
 void main() {
-  test('appends static profile type pages and stops when hasMore is false',
-      () async {
-    final assetsRepository = _FakeStaticAssetsRepository(
-      types: List<TenantAdminStaticProfileTypeDefinition>.generate(
-        24,
-        (index) => TenantAdminStaticProfileTypeDefinition(
-          type: 'type-$index',
-          label: 'Type $index',
-          allowedTaxonomies: const [],
-          capabilities: const TenantAdminStaticProfileTypeCapabilities(
-            isPoiEnabled: false,
-            hasBio: false,
-            hasTaxonomies: false,
-            hasAvatar: false,
-            hasCover: false,
-            hasContent: false,
-          ),
-        ),
-      ),
-    );
-    final controller = TenantAdminStaticProfileTypesController(
-      repository: assetsRepository,
-      taxonomiesRepository: _FakeTaxonomiesRepository(taxonomies: const []),
-    );
+  TestWidgetsFlutterBinding.ensureInitialized();
 
-    await controller.loadTypes();
-    expect(controller.typesStreamValue.value?.length, 20);
-    expect(controller.hasMoreTypesStreamValue.value, isTrue);
-
-    await controller.loadNextTypesPage();
-    expect(controller.typesStreamValue.value?.length, 24);
-    expect(controller.hasMoreTypesStreamValue.value, isFalse);
-
-    await controller.loadNextTypesPage();
-    expect(controller.typesStreamValue.value?.length, 24);
+  setUp(() async {
+    await GetIt.I.reset();
   });
 
-  test('reloads static profile types and taxonomies when tenant changes',
-      () async {
-    final assetsRepository = _FakeStaticAssetsRepository(
-      types: const [
-        TenantAdminStaticProfileTypeDefinition(
-          type: 'type-a',
-          label: 'Type A',
-          allowedTaxonomies: [],
-          capabilities: TenantAdminStaticProfileTypeCapabilities(
-            isPoiEnabled: false,
-            hasBio: false,
-            hasTaxonomies: false,
-            hasAvatar: false,
-            hasCover: false,
-            hasContent: false,
-          ),
-        ),
-      ],
-    );
-    final taxonomiesRepository = _FakeTaxonomiesRepository(
-      taxonomies: const [
-        TenantAdminTaxonomyDefinition(
-          id: 'tax-a',
-          slug: 'slug-a',
-          name: 'Tax A',
-          appliesTo: ['static_asset'],
-          icon: null,
-          color: null,
-        ),
-      ],
-    );
-    final tenantScope = _FakeTenantScope('tenant-a.test');
-    final controller = TenantAdminStaticProfileTypesController(
-      repository: assetsRepository,
-      taxonomiesRepository: taxonomiesRepository,
-      tenantScope: tenantScope,
-    );
-
-    await controller.loadTypes();
-    await controller.loadTaxonomies();
-    expect(controller.typesStreamValue.value?.first.type, 'type-a');
-    expect(controller.taxonomiesStreamValue.value.first.slug, 'slug-a');
-
-    assetsRepository.types = const [
-      TenantAdminStaticProfileTypeDefinition(
-        type: 'type-b',
-        label: 'Type B',
-        allowedTaxonomies: [],
-        capabilities: TenantAdminStaticProfileTypeCapabilities(
-          isPoiEnabled: true,
-          hasBio: true,
-          hasTaxonomies: true,
-          hasAvatar: true,
-          hasCover: true,
-          hasContent: true,
-        ),
-      ),
-    ];
-    taxonomiesRepository.taxonomies = const [
-      TenantAdminTaxonomyDefinition(
-        id: 'tax-b',
-        slug: 'slug-b',
-        name: 'Tax B',
-        appliesTo: ['static_asset'],
-        icon: null,
-        color: null,
-      ),
-    ];
-    tenantScope.selectTenantDomain('tenant-b.test');
-    await Future<void>.delayed(Duration.zero);
-    await Future<void>.delayed(Duration.zero);
-
-    expect(controller.typesStreamValue.value?.first.type, 'type-b');
-    expect(controller.taxonomiesStreamValue.value.first.slug, 'slug-b');
+  tearDown(() async {
+    await GetIt.I.reset();
   });
+
+  testWidgets(
+      'opens slug per-field edit sheet and surfaces uniqueness errors from backend',
+      (tester) async {
+    final assetsRepository = _FakeStaticAssetsRepository(
+      asset: _sampleAsset(),
+      failSlugUpdate: true,
+    );
+    await _pumpScreen(
+      tester,
+      assetsRepository: assetsRepository,
+      taxonomiesRepository: _FakeTaxonomiesRepository(),
+    );
+
+    await tester.tap(find.byTooltip('Editar slug'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Editar slug do ativo'), findsOneWidget);
+
+    final slugField = find.descendant(
+      of: find.byType(BottomSheet),
+      matching: find.byType(TextFormField),
+    );
+    await tester.enterText(slugField, 'slug-duplicado');
+
+    await tester.tap(
+      find.descendant(
+        of: find.byType(BottomSheet),
+        matching: find.text('Salvar'),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('FormatException: slug already exists'),
+        findsOneWidget);
+  });
+
+  testWidgets('auto-saves taxonomy selection after chip toggle',
+      (tester) async {
+    final assetsRepository = _FakeStaticAssetsRepository(
+      asset: _sampleAsset(),
+    );
+    await _pumpScreen(
+      tester,
+      assetsRepository: assetsRepository,
+      taxonomiesRepository: _FakeTaxonomiesRepository(),
+    );
+
+    final chipFinder = find.widgetWithText(FilterChip, 'Rock');
+    expect(chipFinder, findsOneWidget);
+    expect(_chipSelected(tester, chipFinder), isFalse);
+
+    await tester.tap(chipFinder);
+    await tester.pumpAndSettle();
+
+    final sentTerms = assetsRepository.lastUpdatedTaxonomyTerms;
+    expect(sentTerms, isNotNull);
+    expect(sentTerms, hasLength(1));
+    expect(sentTerms!.first.type, 'genre');
+    expect(sentTerms.first.value, 'rock');
+    expect(_chipSelected(tester, chipFinder), isTrue);
+  });
+
+  testWidgets('rolls back taxonomy selection when auto-save fails',
+      (tester) async {
+    final assetsRepository = _FakeStaticAssetsRepository(
+      asset: _sampleAsset(),
+      failTaxonomyUpdate: true,
+    );
+    await _pumpScreen(
+      tester,
+      assetsRepository: assetsRepository,
+      taxonomiesRepository: _FakeTaxonomiesRepository(),
+    );
+
+    final chipFinder = find.widgetWithText(FilterChip, 'Rock');
+    expect(chipFinder, findsOneWidget);
+    expect(_chipSelected(tester, chipFinder), isFalse);
+
+    await tester.tap(chipFinder);
+    await tester.pumpAndSettle();
+
+    expect(_chipSelected(tester, chipFinder), isFalse);
+    expect(
+      find.text('Nao foi possivel salvar a taxonomia. Alteracao desfeita.'),
+      findsOneWidget,
+    );
+  });
+}
+
+Future<void> _pumpScreen(
+  WidgetTester tester, {
+  required _FakeStaticAssetsRepository assetsRepository,
+  required _FakeTaxonomiesRepository taxonomiesRepository,
+}) async {
+  final controller = TenantAdminStaticAssetsController(
+    repository: assetsRepository,
+    taxonomiesRepository: taxonomiesRepository,
+    locationSelection: TenantAdminLocationSelectionService(),
+  );
+  GetIt.I.registerSingleton<TenantAdminStaticAssetsController>(controller);
+
+  await tester.pumpWidget(
+    const MaterialApp(
+      home: TenantAdminStaticAssetEditScreen(assetId: 'asset-1'),
+    ),
+  );
+  await tester.pumpAndSettle();
+}
+
+TenantAdminStaticAsset _sampleAsset() {
+  return const TenantAdminStaticAsset(
+    id: 'asset-1',
+    profileType: 'poi',
+    displayName: 'Praia da Serra',
+    slug: 'praia-da-serra',
+    isActive: true,
+    taxonomyTerms: [],
+  );
+}
+
+bool _chipSelected(WidgetTester tester, Finder chipFinder) {
+  final chip = tester.widget<FilterChip>(chipFinder);
+  return chip.selected;
 }
 
 class _FakeStaticAssetsRepository
     implements TenantAdminStaticAssetsRepositoryContract {
   _FakeStaticAssetsRepository({
-    required this.types,
+    required this.asset,
+    this.failSlugUpdate = false,
+    this.failTaxonomyUpdate = false,
   });
 
-  List<TenantAdminStaticProfileTypeDefinition> types;
+  TenantAdminStaticAsset asset;
+  final bool failSlugUpdate;
+  final bool failTaxonomyUpdate;
+
+  String? lastUpdatedSlug;
+  List<TenantAdminTaxonomyTerm>? lastUpdatedTaxonomyTerms;
 
   @override
   Future<TenantAdminStaticAsset> createStaticAsset({
@@ -149,7 +179,7 @@ class _FakeStaticAssetsRepository
     String? coverUrl,
     TenantAdminMediaUpload? avatarUpload,
     TenantAdminMediaUpload? coverUpload,
-  }) {
+  }) async {
     throw UnimplementedError();
   }
 
@@ -159,7 +189,7 @@ class _FakeStaticAssetsRepository
     required String label,
     List<String> allowedTaxonomies = const [],
     required TenantAdminStaticProfileTypeCapabilities capabilities,
-  }) {
+  }) async {
     throw UnimplementedError();
   }
 
@@ -174,7 +204,14 @@ class _FakeStaticAssetsRepository
   }
 
   @override
-  Future<List<TenantAdminStaticAsset>> fetchStaticAssets() async => const [];
+  Future<TenantAdminStaticAsset> fetchStaticAsset(String assetId) async {
+    return asset;
+  }
+
+  @override
+  Future<List<TenantAdminStaticAsset>> fetchStaticAssets() async {
+    return [asset];
+  }
 
   @override
   Future<TenantAdminPagedResult<TenantAdminStaticAsset>> fetchStaticAssetsPage({
@@ -198,13 +235,24 @@ class _FakeStaticAssetsRepository
   }
 
   @override
-  Future<TenantAdminStaticAsset> fetchStaticAsset(String assetId) async {
-    throw UnimplementedError();
-  }
-
-  @override
   Future<List<TenantAdminStaticProfileTypeDefinition>>
-      fetchStaticProfileTypes() async => types;
+      fetchStaticProfileTypes() async {
+    return const [
+      TenantAdminStaticProfileTypeDefinition(
+        type: 'poi',
+        label: 'POI',
+        allowedTaxonomies: ['genre'],
+        capabilities: TenantAdminStaticProfileTypeCapabilities(
+          isPoiEnabled: false,
+          hasBio: false,
+          hasTaxonomies: true,
+          hasAvatar: false,
+          hasCover: false,
+          hasContent: false,
+        ),
+      ),
+    ];
+  }
 
   @override
   Future<TenantAdminPagedResult<TenantAdminStaticProfileTypeDefinition>>
@@ -255,8 +303,37 @@ class _FakeStaticAssetsRepository
     String? coverUrl,
     TenantAdminMediaUpload? avatarUpload,
     TenantAdminMediaUpload? coverUpload,
-  }) {
-    throw UnimplementedError();
+  }) async {
+    if (slug != null) {
+      if (failSlugUpdate) {
+        throw const FormatException('slug already exists');
+      }
+      lastUpdatedSlug = slug;
+    }
+    if (taxonomyTerms != null) {
+      if (failTaxonomyUpdate) {
+        throw Exception('taxonomy update failed');
+      }
+      lastUpdatedTaxonomyTerms = List<TenantAdminTaxonomyTerm>.from(
+        taxonomyTerms,
+      );
+    }
+    asset = TenantAdminStaticAsset(
+      id: asset.id,
+      profileType: profileType ?? asset.profileType,
+      displayName: displayName ?? asset.displayName,
+      slug: slug ?? asset.slug,
+      isActive: asset.isActive,
+      avatarUrl: avatarUrl ?? asset.avatarUrl,
+      coverUrl: coverUrl ?? asset.coverUrl,
+      bio: bio ?? asset.bio,
+      content: content ?? asset.content,
+      tags: tags ?? asset.tags,
+      categories: asset.categories,
+      taxonomyTerms: taxonomyTerms ?? asset.taxonomyTerms,
+      location: location ?? asset.location,
+    );
+    return asset;
   }
 
   @override
@@ -266,19 +343,13 @@ class _FakeStaticAssetsRepository
     String? label,
     List<String>? allowedTaxonomies,
     TenantAdminStaticProfileTypeCapabilities? capabilities,
-  }) {
+  }) async {
     throw UnimplementedError();
   }
 }
 
 class _FakeTaxonomiesRepository
     implements TenantAdminTaxonomiesRepositoryContract {
-  _FakeTaxonomiesRepository({
-    required this.taxonomies,
-  });
-
-  List<TenantAdminTaxonomyDefinition> taxonomies;
-
   @override
   Future<TenantAdminTaxonomyDefinition> createTaxonomy({
     required String slug,
@@ -286,7 +357,7 @@ class _FakeTaxonomiesRepository
     required List<String> appliesTo,
     String? icon,
     String? color,
-  }) {
+  }) async {
     throw UnimplementedError();
   }
 
@@ -295,7 +366,7 @@ class _FakeTaxonomiesRepository
     required String taxonomyId,
     required String slug,
     required String name,
-  }) {
+  }) async {
     throw UnimplementedError();
   }
 
@@ -313,8 +384,18 @@ class _FakeTaxonomiesRepository
   }
 
   @override
-  Future<List<TenantAdminTaxonomyDefinition>> fetchTaxonomies() async =>
-      taxonomies;
+  Future<List<TenantAdminTaxonomyDefinition>> fetchTaxonomies() async {
+    return const [
+      TenantAdminTaxonomyDefinition(
+        id: 'tax-1',
+        slug: 'genre',
+        name: 'Genero',
+        appliesTo: ['static_asset'],
+        icon: null,
+        color: null,
+      ),
+    ];
+  }
 
   @override
   Future<TenantAdminPagedResult<TenantAdminTaxonomyDefinition>>
@@ -322,27 +403,39 @@ class _FakeTaxonomiesRepository
     required int page,
     required int pageSize,
   }) async {
-    final entries = await fetchTaxonomies();
+    final taxonomies = await fetchTaxonomies();
     final start = (page - 1) * pageSize;
-    if (page <= 0 || pageSize <= 0 || start >= entries.length) {
+    if (page <= 0 || pageSize <= 0 || start >= taxonomies.length) {
       return const TenantAdminPagedResult<TenantAdminTaxonomyDefinition>(
         items: <TenantAdminTaxonomyDefinition>[],
         hasMore: false,
       );
     }
-    final end =
-        start + pageSize < entries.length ? start + pageSize : entries.length;
+    final end = start + pageSize < taxonomies.length
+        ? start + pageSize
+        : taxonomies.length;
     return TenantAdminPagedResult<TenantAdminTaxonomyDefinition>(
-      items: entries.sublist(start, end),
-      hasMore: end < entries.length,
+      items: taxonomies.sublist(start, end),
+      hasMore: end < taxonomies.length,
     );
   }
 
   @override
   Future<List<TenantAdminTaxonomyTermDefinition>> fetchTerms({
     required String taxonomyId,
-  }) async =>
-      const [];
+  }) async {
+    if (taxonomyId != 'tax-1') {
+      return const [];
+    }
+    return const [
+      TenantAdminTaxonomyTermDefinition(
+        id: 'term-1',
+        taxonomyId: 'tax-1',
+        slug: 'rock',
+        name: 'Rock',
+      ),
+    ];
+  }
 
   @override
   Future<TenantAdminPagedResult<TenantAdminTaxonomyTermDefinition>>
@@ -375,7 +468,7 @@ class _FakeTaxonomiesRepository
     List<String>? appliesTo,
     String? icon,
     String? color,
-  }) {
+  }) async {
     throw UnimplementedError();
   }
 
@@ -385,36 +478,7 @@ class _FakeTaxonomiesRepository
     required String termId,
     String? slug,
     String? name,
-  }) {
+  }) async {
     throw UnimplementedError();
-  }
-}
-
-class _FakeTenantScope implements TenantAdminTenantScopeContract {
-  _FakeTenantScope(String initialDomain)
-      : _selectedTenantDomainStreamValue =
-            StreamValue<String?>(defaultValue: initialDomain);
-
-  final StreamValue<String?> _selectedTenantDomainStreamValue;
-
-  @override
-  String? get selectedTenantDomain => _selectedTenantDomainStreamValue.value;
-
-  @override
-  String get selectedTenantAdminBaseUrl =>
-      'https://${selectedTenantDomain ?? ''}/admin/api';
-
-  @override
-  StreamValue<String?> get selectedTenantDomainStreamValue =>
-      _selectedTenantDomainStreamValue;
-
-  @override
-  void clearSelectedTenantDomain() {
-    _selectedTenantDomainStreamValue.addValue(null);
-  }
-
-  @override
-  void selectTenantDomain(String tenantDomain) {
-    _selectedTenantDomainStreamValue.addValue(tenantDomain.trim());
   }
 }

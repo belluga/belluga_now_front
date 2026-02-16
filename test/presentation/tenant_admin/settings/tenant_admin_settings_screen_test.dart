@@ -88,12 +88,26 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    final projectIdField = find.byKey(
-      const ValueKey('tenant_admin_settings_firebase_project_id'),
-    );
+    final editProjectIdButton = find.byTooltip('Editar Project ID');
     final saveFirebaseButton = find.byKey(
       const ValueKey('tenant_admin_settings_save_firebase'),
     );
+
+    await tester.scrollUntilVisible(
+      editProjectIdButton,
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(editProjectIdButton);
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Project ID'),
+      'project-updated',
+    );
+    await tester.tap(find.text('Aplicar'));
+    await tester.pumpAndSettle();
 
     await tester.scrollUntilVisible(
       saveFirebaseButton,
@@ -102,10 +116,6 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.enterText(
-      projectIdField,
-      'project-updated',
-    );
     await tester.tap(saveFirebaseButton);
     await tester.pumpAndSettle();
 

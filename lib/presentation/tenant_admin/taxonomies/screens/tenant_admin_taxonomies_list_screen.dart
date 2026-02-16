@@ -1,9 +1,11 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_form_value_utils.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_confirmation_dialog.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_empty_state.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_error_banner.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_field_edit_sheet.dart';
 import 'package:belluga_now/presentation/tenant_admin/taxonomies/controllers/tenant_admin_taxonomies_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
@@ -60,6 +62,62 @@ class _TenantAdminTaxonomiesListScreenState
       TenantAdminTaxonomyEditRoute(
         taxonomy: taxonomy,
       ),
+    );
+  }
+
+  Future<void> _editTaxonomyName(TenantAdminTaxonomyDefinition taxonomy) async {
+    final result = await showTenantAdminFieldEditSheet(
+      context: context,
+      title: 'Editar nome da taxonomia',
+      label: 'Nome',
+      initialValue: taxonomy.name,
+      textCapitalization: TextCapitalization.words,
+      autocorrect: true,
+      enableSuggestions: true,
+      validator: (value) {
+        final trimmed = value?.trim() ?? '';
+        if (trimmed.isEmpty) {
+          return 'Nome obrigatorio.';
+        }
+        return null;
+      },
+    );
+    if (result == null || !mounted) {
+      return;
+    }
+    final next = result.value.trim();
+    if (next.isEmpty || next == taxonomy.name) {
+      return;
+    }
+    await _controller.submitUpdateTaxonomy(
+      taxonomyId: taxonomy.id,
+      name: next,
+    );
+  }
+
+  Future<void> _editTaxonomySlug(TenantAdminTaxonomyDefinition taxonomy) async {
+    final result = await showTenantAdminFieldEditSheet(
+      context: context,
+      title: 'Editar slug da taxonomia',
+      label: 'Slug',
+      initialValue: taxonomy.slug,
+      helperText: 'Deve ser unico no tenant.',
+      inputFormatters: tenantAdminSlugInputFormatters,
+      validator: (value) => tenantAdminValidateRequiredSlug(
+        value,
+        requiredMessage: 'Slug obrigatorio.',
+      ),
+    );
+    if (result == null || !mounted) {
+      return;
+    }
+    final next = result.value.trim();
+    if (next.isEmpty || next == taxonomy.slug) {
+      return;
+    }
+    await _controller.submitUpdateTaxonomy(
+      taxonomyId: taxonomy.id,
+      slug: next,
     );
   }
 
@@ -227,14 +285,30 @@ class _TenantAdminTaxonomiesListScreenState
                   await _openTaxonomyForm(taxonomy: taxonomy);
                   return;
                 }
+                if (value == 'edit-name') {
+                  await _editTaxonomyName(taxonomy);
+                  return;
+                }
+                if (value == 'edit-slug') {
+                  await _editTaxonomySlug(taxonomy);
+                  return;
+                }
                 if (value == 'delete') {
                   await _confirmDelete(taxonomy);
                 }
               },
               itemBuilder: (context) => [
                 const PopupMenuItem(
+                  value: 'edit-name',
+                  child: Text('Editar nome'),
+                ),
+                const PopupMenuItem(
+                  value: 'edit-slug',
+                  child: Text('Editar slug'),
+                ),
+                const PopupMenuItem(
                   value: 'edit',
-                  child: Text('Editar'),
+                  child: Text('Editar completo'),
                 ),
                 const PopupMenuItem(
                   value: 'terms',

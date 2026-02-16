@@ -33,6 +33,14 @@ class TenantAdminOrganizationsController implements Disposable {
   final StreamValue<bool> isLoadingStreamValue =
       StreamValue<bool>(defaultValue: false);
   final StreamValue<String?> errorStreamValue = StreamValue<String?>();
+  final StreamValue<TenantAdminOrganization?> organizationDetailStreamValue =
+      StreamValue<TenantAdminOrganization?>();
+  final StreamValue<bool> organizationDetailLoadingStreamValue =
+      StreamValue<bool>(defaultValue: false);
+  final StreamValue<String?> organizationDetailErrorStreamValue =
+      StreamValue<String?>();
+  final StreamValue<bool> organizationUpdatingStreamValue =
+      StreamValue<bool>(defaultValue: false);
   final StreamValue<bool> createSubmittingStreamValue =
       StreamValue<bool>(defaultValue: false);
   final StreamValue<String?> createSuccessMessageStreamValue =
@@ -151,6 +159,57 @@ class TenantAdminOrganizationsController implements Disposable {
     return org;
   }
 
+  Future<void> loadOrganizationDetail(String organizationId) async {
+    organizationDetailLoadingStreamValue.addValue(true);
+    organizationDetailErrorStreamValue.addValue(null);
+    try {
+      final organization =
+          await _organizationsRepository.fetchOrganization(organizationId);
+      if (_isDisposed) return;
+      organizationDetailStreamValue.addValue(organization);
+    } catch (error) {
+      if (_isDisposed) return;
+      organizationDetailErrorStreamValue.addValue(error.toString());
+    } finally {
+      if (!_isDisposed) {
+        organizationDetailLoadingStreamValue.addValue(false);
+      }
+    }
+  }
+
+  Future<TenantAdminOrganization?> updateOrganization({
+    required String organizationId,
+    String? name,
+    String? slug,
+    String? description,
+  }) async {
+    organizationUpdatingStreamValue.addValue(true);
+    try {
+      final updated = await _organizationsRepository.updateOrganization(
+        organizationId: organizationId,
+        name: name,
+        slug: slug,
+        description: description,
+      );
+      if (_isDisposed) {
+        return null;
+      }
+      organizationDetailStreamValue.addValue(updated);
+      organizationDetailErrorStreamValue.addValue(null);
+      return updated;
+    } catch (error) {
+      if (_isDisposed) {
+        return null;
+      }
+      organizationDetailErrorStreamValue.addValue(error.toString());
+      return null;
+    } finally {
+      if (!_isDisposed) {
+        organizationUpdatingStreamValue.addValue(false);
+      }
+    }
+  }
+
   Future<void> submitCreateOrganization({
     required String name,
     String? description,
@@ -190,6 +249,10 @@ class TenantAdminOrganizationsController implements Disposable {
     errorStreamValue.addValue(null);
     createSuccessMessageStreamValue.addValue(null);
     createErrorMessageStreamValue.addValue(null);
+    organizationDetailStreamValue.addValue(null);
+    organizationDetailErrorStreamValue.addValue(null);
+    organizationDetailLoadingStreamValue.addValue(false);
+    organizationUpdatingStreamValue.addValue(false);
     resetCreateForm();
   }
 
@@ -225,6 +288,10 @@ class TenantAdminOrganizationsController implements Disposable {
     isOrganizationsPageLoadingStreamValue.dispose();
     isLoadingStreamValue.dispose();
     errorStreamValue.dispose();
+    organizationDetailStreamValue.dispose();
+    organizationDetailLoadingStreamValue.dispose();
+    organizationDetailErrorStreamValue.dispose();
+    organizationUpdatingStreamValue.dispose();
     createSubmittingStreamValue.dispose();
     createSuccessMessageStreamValue.dispose();
     createErrorMessageStreamValue.dispose();

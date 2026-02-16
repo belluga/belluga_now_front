@@ -340,7 +340,7 @@ class TenantAdminTaxonomiesController implements Disposable {
     String? name,
   }) async {
     try {
-      await _repository.updateTerm(
+      await updateTerm(
         taxonomyId: taxonomyId,
         termId: termId,
         slug: slug,
@@ -353,6 +353,22 @@ class TenantAdminTaxonomiesController implements Disposable {
       if (_isDisposed) return;
       actionErrorMessageStreamValue.addValue(error.toString());
     }
+  }
+
+  Future<TenantAdminTaxonomyTermDefinition> updateTerm({
+    required String taxonomyId,
+    required String termId,
+    String? slug,
+    String? name,
+  }) async {
+    final updated = await _repository.updateTerm(
+      taxonomyId: taxonomyId,
+      termId: termId,
+      slug: slug,
+      name: name,
+    );
+    await loadTerms(taxonomyId);
+    return updated;
   }
 
   Future<void> submitDeleteTerm({

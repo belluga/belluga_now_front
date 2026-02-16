@@ -70,14 +70,6 @@ class TenantAdminStaticAssetDetailScreen extends StatelessWidget {
               ),
             ),
           ),
-          if (asset.tags.isNotEmpty) ...[
-            const SizedBox(height: 16),
-            _buildChipsSection(context, 'Tags', asset.tags),
-          ],
-          if (asset.categories.isNotEmpty) ...[
-            const SizedBox(height: 16),
-            _buildChipsSection(context, 'Categorias', asset.categories),
-          ],
           if (asset.taxonomyTerms.isNotEmpty) ...[
             const SizedBox(height: 16),
             _buildChipsSection(

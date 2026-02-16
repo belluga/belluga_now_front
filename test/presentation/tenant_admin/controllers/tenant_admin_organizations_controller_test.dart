@@ -94,6 +94,7 @@ class _FakeOrganizationsRepository
   Future<TenantAdminOrganization> updateOrganization({
     required String organizationId,
     String? name,
+    String? slug,
     String? description,
   }) {
     throw UnimplementedError();

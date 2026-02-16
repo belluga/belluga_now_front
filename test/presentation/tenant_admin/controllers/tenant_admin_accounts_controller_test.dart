@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:belluga_now/domain/repositories/tenant_admin_account_profiles_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_accounts_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/tenant_admin_taxonomies_repository_contract.dart';
 import 'package:belluga_now/domain/tenant_admin/ownership_state.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
@@ -11,7 +12,9 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_accounts_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_definition.dart';
 import 'package:belluga_now/domain/services/tenant_admin_location_selection_contract.dart';
 import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.dart';
 import 'package:belluga_now/infrastructure/services/tenant_admin/tenant_admin_location_selection_service.dart';
@@ -91,6 +94,7 @@ class _FakeAccountsRepository implements TenantAdminAccountsRepositoryContract {
   Future<TenantAdminAccount> updateAccount({
     required String accountSlug,
     String? name,
+    String? slug,
     TenantAdminDocument? document,
   }) async {
     return fetchAccountBySlug(accountSlug);
@@ -115,6 +119,8 @@ class _FakeAccountProfilesRepository
   final List<TenantAdminProfileTypeDefinition> _types;
   int createProfileCalls = 0;
   String? lastCreateDisplayName;
+  String? lastCreateBio;
+  List<TenantAdminTaxonomyTerm> lastCreateTaxonomyTerms = const [];
 
   @override
   Future<List<TenantAdminProfileTypeDefinition>> fetchProfileTypes() async =>
@@ -157,6 +163,8 @@ class _FakeAccountProfilesRepository
   }) async {
     createProfileCalls += 1;
     lastCreateDisplayName = displayName;
+    lastCreateBio = bio;
+    lastCreateTaxonomyTerms = List<TenantAdminTaxonomyTerm>.from(taxonomyTerms);
     return TenantAdminAccountProfile(
       id: 'profile-$createProfileCalls',
       accountId: accountId,
@@ -190,6 +198,7 @@ class _FakeAccountProfilesRepository
     required String accountProfileId,
     String? profileType,
     String? displayName,
+    String? slug,
     TenantAdminLocation? location,
     List<TenantAdminTaxonomyTerm>? taxonomyTerms,
     String? bio,
@@ -242,6 +251,7 @@ class _FakeAccountProfilesRepository
   @override
   Future<TenantAdminProfileTypeDefinition> updateProfileType({
     required String type,
+    String? newType,
     String? label,
     List<String>? allowedTaxonomies,
     TenantAdminProfileTypeCapabilities? capabilities,
@@ -265,6 +275,119 @@ class _FakeAccountProfilesRepository
 
   @override
   Future<void> deleteProfileType(String type) async {}
+}
+
+class _FakeTaxonomiesRepository
+    implements TenantAdminTaxonomiesRepositoryContract {
+  @override
+  Future<List<TenantAdminTaxonomyDefinition>> fetchTaxonomies() async =>
+      const [];
+
+  @override
+  Future<TenantAdminPagedResult<TenantAdminTaxonomyDefinition>>
+      fetchTaxonomiesPage({
+    required int page,
+    required int pageSize,
+  }) async {
+    return const TenantAdminPagedResult<TenantAdminTaxonomyDefinition>(
+      items: <TenantAdminTaxonomyDefinition>[],
+      hasMore: false,
+    );
+  }
+
+  @override
+  Future<List<TenantAdminTaxonomyTermDefinition>> fetchTerms({
+    required String taxonomyId,
+  }) async =>
+      const [];
+
+  @override
+  Future<TenantAdminPagedResult<TenantAdminTaxonomyTermDefinition>>
+      fetchTermsPage({
+    required String taxonomyId,
+    required int page,
+    required int pageSize,
+  }) async {
+    return const TenantAdminPagedResult<TenantAdminTaxonomyTermDefinition>(
+      items: <TenantAdminTaxonomyTermDefinition>[],
+      hasMore: false,
+    );
+  }
+
+  @override
+  Future<TenantAdminTaxonomyDefinition> createTaxonomy({
+    required String slug,
+    required String name,
+    required List<String> appliesTo,
+    String? icon,
+    String? color,
+  }) async {
+    return TenantAdminTaxonomyDefinition(
+      id: 'tax-1',
+      slug: slug,
+      name: name,
+      appliesTo: appliesTo,
+      icon: icon,
+      color: color,
+    );
+  }
+
+  @override
+  Future<TenantAdminTaxonomyDefinition> updateTaxonomy({
+    required String taxonomyId,
+    String? slug,
+    String? name,
+    List<String>? appliesTo,
+    String? icon,
+    String? color,
+  }) async {
+    return TenantAdminTaxonomyDefinition(
+      id: taxonomyId,
+      slug: slug ?? 'taxonomy',
+      name: name ?? 'Taxonomy',
+      appliesTo: appliesTo ?? const [],
+      icon: icon,
+      color: color,
+    );
+  }
+
+  @override
+  Future<void> deleteTaxonomy(String taxonomyId) async {}
+
+  @override
+  Future<TenantAdminTaxonomyTermDefinition> createTerm({
+    required String taxonomyId,
+    required String slug,
+    required String name,
+  }) async {
+    return TenantAdminTaxonomyTermDefinition(
+      id: 'term-1',
+      taxonomyId: taxonomyId,
+      slug: slug,
+      name: name,
+    );
+  }
+
+  @override
+  Future<TenantAdminTaxonomyTermDefinition> updateTerm({
+    required String taxonomyId,
+    required String termId,
+    String? slug,
+    String? name,
+  }) async {
+    return TenantAdminTaxonomyTermDefinition(
+      id: termId,
+      taxonomyId: taxonomyId,
+      slug: slug ?? 'term',
+      name: name ?? 'Term',
+    );
+  }
+
+  @override
+  Future<void> deleteTerm({
+    required String taxonomyId,
+    required String termId,
+  }) async {}
 }
 
 void main() {
@@ -297,9 +420,11 @@ void main() {
 
     final TenantAdminLocationSelectionContract locationSelectionService =
         TenantAdminLocationSelectionService();
+    final taxonomiesRepository = _FakeTaxonomiesRepository();
     final controller = TenantAdminAccountsController(
       accountsRepository: accountsRepository,
       profilesRepository: profilesRepository,
+      taxonomiesRepository: taxonomiesRepository,
       locationSelectionService: locationSelectionService,
     );
 
@@ -330,9 +455,11 @@ void main() {
 
     final TenantAdminLocationSelectionContract locationSelectionService =
         TenantAdminLocationSelectionService();
+    final taxonomiesRepository = _FakeTaxonomiesRepository();
     final controller = TenantAdminAccountsController(
       accountsRepository: accountsRepository,
       profilesRepository: profilesRepository,
+      taxonomiesRepository: taxonomiesRepository,
       locationSelectionService: locationSelectionService,
     );
 
@@ -347,6 +474,50 @@ void main() {
     expect(profilesRepository.createProfileCalls, 1);
     expect(profilesRepository.lastCreateDisplayName, 'Nova Conta');
     expect(controller.accountsStreamValue.value?.length, 1);
+  });
+
+  test('createAccountWithProfile forwards bio and taxonomy terms', () async {
+    final accountsRepository = _FakeAccountsRepository([]);
+    final profilesRepository = _FakeAccountProfilesRepository(const [
+      TenantAdminProfileTypeDefinition(
+        type: 'venue',
+        label: 'Venue',
+        allowedTaxonomies: ['genre'],
+        capabilities: TenantAdminProfileTypeCapabilities(
+          isFavoritable: true,
+          isPoiEnabled: false,
+          hasBio: true,
+          hasTaxonomies: true,
+          hasAvatar: false,
+          hasCover: false,
+          hasEvents: false,
+        ),
+      ),
+    ]);
+    final taxonomiesRepository = _FakeTaxonomiesRepository();
+    final TenantAdminLocationSelectionContract locationSelectionService =
+        TenantAdminLocationSelectionService();
+    final controller = TenantAdminAccountsController(
+      accountsRepository: accountsRepository,
+      profilesRepository: profilesRepository,
+      taxonomiesRepository: taxonomiesRepository,
+      locationSelectionService: locationSelectionService,
+    );
+
+    await controller.createAccountWithProfile(
+      name: 'Nova Conta',
+      ownershipState: TenantAdminOwnershipState.tenantOwned,
+      profileType: 'venue',
+      bio: '<p>Bio teste</p>',
+      taxonomyTerms: const [
+        TenantAdminTaxonomyTerm(type: 'genre', value: 'urbana'),
+      ],
+    );
+
+    expect(profilesRepository.lastCreateBio, '<p>Bio teste</p>');
+    expect(profilesRepository.lastCreateTaxonomyTerms.length, 1);
+    expect(profilesRepository.lastCreateTaxonomyTerms.first.type, 'genre');
+    expect(profilesRepository.lastCreateTaxonomyTerms.first.value, 'urbana');
   });
 
   test('init reloads when tenant scope changes', () async {
@@ -378,9 +549,11 @@ void main() {
     final tenantScope = _FakeTenantScope('tenant-a.test');
     final TenantAdminLocationSelectionContract locationSelectionService =
         TenantAdminLocationSelectionService();
+    final taxonomiesRepository = _FakeTaxonomiesRepository();
     final controller = TenantAdminAccountsController(
       accountsRepository: accountsRepository,
       profilesRepository: profilesRepository,
+      taxonomiesRepository: taxonomiesRepository,
       locationSelectionService: locationSelectionService,
       tenantScope: tenantScope,
     );
@@ -417,9 +590,11 @@ void main() {
     final profilesRepository = _FakeAccountProfilesRepository(const []);
     final TenantAdminLocationSelectionContract locationSelectionService =
         TenantAdminLocationSelectionService();
+    final taxonomiesRepository = _FakeTaxonomiesRepository();
     final controller = TenantAdminAccountsController(
       accountsRepository: accountsRepository,
       profilesRepository: profilesRepository,
+      taxonomiesRepository: taxonomiesRepository,
       locationSelectionService: locationSelectionService,
     );
 
@@ -447,9 +622,11 @@ void main() {
     final profilesRepository = _FakeAccountProfilesRepository(const []);
     final TenantAdminLocationSelectionContract locationSelectionService =
         TenantAdminLocationSelectionService();
+    final taxonomiesRepository = _FakeTaxonomiesRepository();
     final controller = TenantAdminAccountsController(
       accountsRepository: accountsRepository,
       profilesRepository: profilesRepository,
+      taxonomiesRepository: taxonomiesRepository,
       locationSelectionService: locationSelectionService,
     );
 
