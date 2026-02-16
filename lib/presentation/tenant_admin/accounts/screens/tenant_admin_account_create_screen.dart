@@ -8,11 +8,9 @@ import 'package:belluga_now/domain/tenant_admin/ownership_state.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_form_value_utils.dart';
 import 'package:belluga_now/presentation/tenant_admin/accounts/controllers/tenant_admin_accounts_controller.dart';
-import 'package:belluga_now/presentation/tenant_admin/accounts/screens/widgets/tenant_admin_document_type_field.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_error_banner.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_form_layout.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:get_it/get_it.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
@@ -164,6 +162,11 @@ class _TenantAdminAccountCreateScreenState
           builder: (context, state) {
             final requiresLocation =
                 _requiresLocation(state.selectedProfileType);
+            final definition =
+                _profileTypeDefinition(state.selectedProfileType);
+            final showAvatar = definition?.capabilities.hasAvatar ?? false;
+            final showCover = definition?.capabilities.hasCover ?? false;
+            final showMediaSection = showAvatar || showCover;
             return TenantAdminFormScaffold(
               title: 'Criar Conta',
               child: SingleChildScrollView(
@@ -172,50 +175,67 @@ class _TenantAdminAccountCreateScreenState
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _buildMediaSection(context, state),
+                      _buildOwnershipSection(state),
                       const SizedBox(height: 16),
                       _buildAccountSection(context, state),
+                      if (showMediaSection) ...[
+                        const SizedBox(height: 16),
+                        _buildMediaSection(
+                          context,
+                          state,
+                          showAvatar: showAvatar,
+                          showCover: showCover,
+                        ),
+                      ],
                       if (requiresLocation) ...[
                         const SizedBox(height: 16),
                         _buildLocationSection(context),
                       ],
                       const SizedBox(height: 24),
-                      TenantAdminPrimaryFormAction(
-                        buttonKey: const ValueKey(
-                          'tenant_admin_account_create_save',
-                        ),
-                        label: 'Salvar conta',
-                        icon: Icons.save_outlined,
-                        onPressed: () async {
-                          final messenger = ScaffoldMessenger.of(context);
-                          final form = _controller.createFormKey.currentState;
-                          if (form == null || !form.validate()) {
-                            return;
-                          }
-                          final location = _currentLocation();
-                          final avatarUpload =
-                              await _buildUpload(state.avatarFile);
-                          final coverUpload =
-                              await _buildUpload(state.coverFile);
-                          final created =
-                              await _controller.submitCreateAccountFromForm(
-                            location: location,
-                            avatarUpload: avatarUpload,
-                            coverUpload: coverUpload,
-                          );
-                          if (!context.mounted || !created) {
-                            return;
-                          }
+                      StreamValueBuilder<bool>(
+                        streamValue: _controller.createSubmittingStreamValue,
+                        builder: (context, isSubmitting) {
+                          return TenantAdminPrimaryFormAction(
+                            buttonKey: const ValueKey(
+                              'tenant_admin_account_create_save',
+                            ),
+                            label: 'Salvar conta',
+                            loadingLabel: 'Salvando conta...',
+                            icon: Icons.save_outlined,
+                            isLoading: isSubmitting,
+                            onPressed: () async {
+                              final messenger = ScaffoldMessenger.of(context);
+                              final form =
+                                  _controller.createFormKey.currentState;
+                              if (form == null || !form.validate()) {
+                                return;
+                              }
+                              final location = _currentLocation();
+                              final avatarUpload =
+                                  await _buildUpload(state.avatarFile);
+                              final coverUpload =
+                                  await _buildUpload(state.coverFile);
+                              final created =
+                                  await _controller.submitCreateAccountFromForm(
+                                location: location,
+                                avatarUpload: avatarUpload,
+                                coverUpload: coverUpload,
+                              );
+                              if (!context.mounted || !created) {
+                                return;
+                              }
 
-                          final router = context.router;
-                          final closed = await router.maybePop(true);
-                          if (!closed && context.mounted) {
-                            messenger.showSnackBar(
-                              const SnackBar(
-                                content: Text('Conta e perfil salvos.'),
-                              ),
-                            );
-                          }
+                              final router = context.router;
+                              final closed = await router.maybePop(true);
+                              if (!closed && context.mounted) {
+                                messenger.showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Conta e perfil salvos.'),
+                                  ),
+                                );
+                              }
+                            },
+                          );
                         },
                       ),
                     ],
@@ -236,52 +256,10 @@ class _TenantAdminAccountCreateScreenState
     return TenantAdminFormSectionCard(
       title: 'Dados da conta',
       description:
-          'Preencha os dados principais da conta e associe um tipo de perfil.',
+          'Associe o tipo de perfil e defina o nome da conta para habilitar os campos dependentes.',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          TextFormField(
-            controller: _controller.nameController,
-            decoration: const InputDecoration(labelText: 'Nome'),
-            textInputAction: TextInputAction.next,
-            autofillHints: const [AutofillHints.name],
-            validator: (value) {
-              if (value == null || value.trim().isEmpty) {
-                return 'Nome e obrigatorio.';
-              }
-              return null;
-            },
-          ),
-          const SizedBox(height: 12),
-          Text(
-            'Propriedade da conta',
-            style: Theme.of(context).textTheme.labelLarge,
-          ),
-          const SizedBox(height: 8),
-          SegmentedButton<TenantAdminOwnershipState>(
-            segments: const [
-              ButtonSegment<TenantAdminOwnershipState>(
-                value: TenantAdminOwnershipState.tenantOwned,
-                label: Text('Do tenant'),
-              ),
-              ButtonSegment<TenantAdminOwnershipState>(
-                value: TenantAdminOwnershipState.unmanaged,
-                label: Text('Nao gerenciada'),
-              ),
-            ],
-            selected: <TenantAdminOwnershipState>{state.ownershipState},
-            onSelectionChanged: (selection) {
-              if (selection.isEmpty) {
-                return;
-              }
-              _controller.updateCreateOwnershipState(selection.first);
-            },
-          ),
-          const SizedBox(height: 12),
-          TenantAdminDocumentTypeField(
-            documentTypeController: _controller.documentTypeController,
-          ),
-          const SizedBox(height: 12),
           StreamValueBuilder<bool>(
             streamValue: _controller.isProfileTypesLoadingStreamValue,
             builder: (context, isLoading) {
@@ -326,11 +304,21 @@ class _TenantAdminAccountCreateScreenState
                                 .toList(growable: false),
                             onChanged: hasTypes
                                 ? (value) {
+                                    final definition =
+                                        _profileTypeDefinition(value);
                                     _controller
                                         .updateCreateSelectedProfileType(value);
                                     if (!_requiresLocation(value)) {
                                       _controller.latitudeController.clear();
                                       _controller.longitudeController.clear();
+                                    }
+                                    if (!(definition?.capabilities.hasAvatar ??
+                                        false)) {
+                                      _controller.updateCreateAvatarFile(null);
+                                    }
+                                    if (!(definition?.capabilities.hasCover ??
+                                        false)) {
+                                      _controller.updateCreateCoverFile(null);
                                     }
                                   }
                                 : null,
@@ -375,31 +363,46 @@ class _TenantAdminAccountCreateScreenState
           ),
           const SizedBox(height: 12),
           TextFormField(
-            controller: _controller.profileDisplayNameController,
-            decoration: const InputDecoration(labelText: 'Nome de exibicao'),
+            controller: _controller.nameController,
+            decoration: const InputDecoration(labelText: 'Nome'),
             textInputAction: TextInputAction.next,
+            autofillHints: const [AutofillHints.name],
             validator: (value) {
               if (value == null || value.trim().isEmpty) {
-                return 'Nome de exibicao e obrigatorio.';
+                return 'Nome e obrigatorio.';
               }
               return null;
             },
           ),
-          const SizedBox(height: 12),
-          TextFormField(
-            controller: _controller.documentNumberController,
-            decoration: const InputDecoration(labelText: 'Numero do documento'),
-            textInputAction: TextInputAction.next,
-            keyboardType: TextInputType.text,
-            autofillHints: const [AutofillHints.creditCardNumber],
-            inputFormatters: <TextInputFormatter>[
-              FilteringTextInputFormatter.allow(RegExp(r'[0-9A-Za-z./-]')),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildOwnershipSection(TenantAdminAccountCreateState state) {
+    return TenantAdminFormSectionCard(
+      title: 'Propriedade da conta',
+      description: 'Defina a vinculação da conta ao tenant.',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SegmentedButton<TenantAdminOwnershipState>(
+            segments: const [
+              ButtonSegment<TenantAdminOwnershipState>(
+                value: TenantAdminOwnershipState.tenantOwned,
+                label: Text('Do tenant'),
+              ),
+              ButtonSegment<TenantAdminOwnershipState>(
+                value: TenantAdminOwnershipState.unmanaged,
+                label: Text('Nao gerenciada'),
+              ),
             ],
-            validator: (value) {
-              if (value == null || value.trim().isEmpty) {
-                return 'Numero do documento e obrigatorio.';
+            selected: <TenantAdminOwnershipState>{state.ownershipState},
+            onSelectionChanged: (selection) {
+              if (selection.isEmpty) {
+                return;
               }
-              return null;
+              _controller.updateCreateOwnershipState(selection.first);
             },
           ),
         ],
@@ -419,120 +422,126 @@ class _TenantAdminAccountCreateScreenState
 
   Widget _buildMediaSection(
     BuildContext context,
-    TenantAdminAccountCreateState state,
-  ) {
+    TenantAdminAccountCreateState state, {
+    required bool showAvatar,
+    required bool showCover,
+  }) {
     return TenantAdminFormSectionCard(
       title: 'Imagem e identidade visual',
       description:
-          'Defina avatar e capa antes dos metadados para validar rapidamente a identidade da conta.',
+          'Campos exibidos conforme capabilities do tipo de perfil selecionado.',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              if (state.avatarFile != null)
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(36),
-                  child: Image.file(
-                    File(state.avatarFile!.path),
+          if (showAvatar) ...[
+            Row(
+              children: [
+                if (state.avatarFile != null)
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(36),
+                    child: Image.file(
+                      File(state.avatarFile!.path),
+                      width: 72,
+                      height: 72,
+                      fit: BoxFit.cover,
+                    ),
+                  )
+                else
+                  Container(
                     width: 72,
                     height: 72,
-                    fit: BoxFit.cover,
-                  ),
-                )
-              else
-                Container(
-                  width: 72,
-                  height: 72,
-                  decoration: BoxDecoration(
-                    color:
-                        Theme.of(context).colorScheme.surfaceContainerHighest,
-                    borderRadius: BorderRadius.circular(36),
-                  ),
-                  child: const Icon(Icons.person_outline),
-                ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      state.avatarFile?.name ?? 'Nenhuma imagem selecionada',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                    decoration: BoxDecoration(
+                      color:
+                          Theme.of(context).colorScheme.surfaceContainerHighest,
+                      borderRadius: BorderRadius.circular(36),
                     ),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        FilledButton.tonalIcon(
-                          key: const ValueKey(
-                            'tenant_admin_account_create_avatar_pick',
-                          ),
-                          onPressed: () => _pickImage(isAvatar: true),
-                          icon: const Icon(Icons.photo_library_outlined),
-                          label: const Text('Selecionar'),
-                        ),
-                        const SizedBox(width: 8),
-                        if (state.avatarFile != null)
-                          TextButton(
+                    child: const Icon(Icons.person_outline),
+                  ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        state.avatarFile?.name ?? 'Nenhuma imagem selecionada',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          FilledButton.tonalIcon(
                             key: const ValueKey(
-                              'tenant_admin_account_create_avatar_remove',
+                              'tenant_admin_account_create_avatar_pick',
                             ),
-                            onPressed: () => _clearImage(isAvatar: true),
-                            child: const Text('Remover'),
+                            onPressed: () => _pickImage(isAvatar: true),
+                            icon: const Icon(Icons.photo_library_outlined),
+                            label: const Text('Selecionar'),
                           ),
-                      ],
-                    ),
-                  ],
+                          const SizedBox(width: 8),
+                          if (state.avatarFile != null)
+                            TextButton(
+                              key: const ValueKey(
+                                'tenant_admin_account_create_avatar_remove',
+                              ),
+                              onPressed: () => _clearImage(isAvatar: true),
+                              child: const Text('Remover'),
+                            ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          if (state.coverFile != null)
-            ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: Image.file(
-                File(state.coverFile!.path),
+              ],
+            ),
+          ],
+          if (showAvatar && showCover) const SizedBox(height: 16),
+          if (showCover) ...[
+            if (state.coverFile != null)
+              ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: Image.file(
+                  File(state.coverFile!.path),
+                  width: double.infinity,
+                  height: 140,
+                  fit: BoxFit.cover,
+                ),
+              )
+            else
+              Container(
                 width: double.infinity,
                 height: 140,
-                fit: BoxFit.cover,
-              ),
-            )
-          else
-            Container(
-              width: double.infinity,
-              height: 140,
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Center(
-                child: Icon(Icons.image_outlined),
-              ),
-            ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              FilledButton.tonalIcon(
-                key: const ValueKey(
-                  'tenant_admin_account_create_cover_pick',
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                onPressed: () => _pickImage(isAvatar: false),
-                icon: const Icon(Icons.photo_library_outlined),
-                label: const Text('Selecionar capa'),
+                child: const Center(
+                  child: Icon(Icons.image_outlined),
+                ),
               ),
-              const SizedBox(width: 8),
-              if (state.coverFile != null)
-                TextButton(
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                FilledButton.tonalIcon(
                   key: const ValueKey(
-                    'tenant_admin_account_create_cover_remove',
+                    'tenant_admin_account_create_cover_pick',
                   ),
-                  onPressed: () => _clearImage(isAvatar: false),
-                  child: const Text('Remover'),
+                  onPressed: () => _pickImage(isAvatar: false),
+                  icon: const Icon(Icons.photo_library_outlined),
+                  label: const Text('Selecionar capa'),
                 ),
-            ],
-          ),
+                const SizedBox(width: 8),
+                if (state.coverFile != null)
+                  TextButton(
+                    key: const ValueKey(
+                      'tenant_admin_account_create_cover_remove',
+                    ),
+                    onPressed: () => _clearImage(isAvatar: false),
+                    child: const Text('Remover'),
+                  ),
+              ],
+            ),
+          ],
         ],
       ),
     );

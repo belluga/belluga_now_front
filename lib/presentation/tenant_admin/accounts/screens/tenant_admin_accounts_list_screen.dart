@@ -19,6 +19,12 @@ class TenantAdminAccountsListScreen extends StatefulWidget {
 
 class _TenantAdminAccountsListScreenState
     extends State<TenantAdminAccountsListScreen> {
+  static const List<TenantAdminOwnershipState> _visibleOwnershipSegments =
+      <TenantAdminOwnershipState>[
+    TenantAdminOwnershipState.tenantOwned,
+    TenantAdminOwnershipState.unmanaged,
+  ];
+
   final TenantAdminAccountsController _controller =
       GetIt.I.get<TenantAdminAccountsController>();
   final ScrollController _scrollController = ScrollController();
@@ -56,6 +62,10 @@ class _TenantAdminAccountsListScreenState
         return StreamValueBuilder<TenantAdminOwnershipState>(
           streamValue: _controller.selectedOwnershipStreamValue,
           builder: (context, selected) {
+            final selectedOwnership =
+                _visibleOwnershipSegments.contains(selected)
+                    ? selected
+                    : TenantAdminOwnershipState.tenantOwned;
             return StreamValueBuilder<String>(
               streamValue: _controller.searchQueryStreamValue,
               builder: (context, query) {
@@ -69,7 +79,7 @@ class _TenantAdminAccountsListScreenState
                           streamValue: _controller.accountsStreamValue,
                           onNullWidget: _buildScaffold(
                             context: context,
-                            selectedOwnership: selected,
+                            selectedOwnership: selectedOwnership,
                             query: query,
                             error: error,
                             content: const Center(
@@ -81,13 +91,13 @@ class _TenantAdminAccountsListScreenState
                                 accounts ?? const <TenantAdminAccount>[];
                             final filteredAccounts = _filterAccounts(
                               loadedAccounts: loadedAccounts,
-                              selectedOwnership: selected,
+                              selectedOwnership: selectedOwnership,
                               query: query.trim(),
                             );
 
                             return _buildScaffold(
                               context: context,
-                              selectedOwnership: selected,
+                              selectedOwnership: selectedOwnership,
                               query: query,
                               error: error,
                               content: filteredAccounts.isEmpty
@@ -188,7 +198,7 @@ class _TenantAdminAccountsListScreenState
                     tapTargetSize: MaterialTapTargetSize.padded,
                     visualDensity: VisualDensity.standard,
                   ),
-                  segments: TenantAdminOwnershipState.values
+                  segments: _visibleOwnershipSegments
                       .map(
                         (state) => ButtonSegment<TenantAdminOwnershipState>(
                           value: state,

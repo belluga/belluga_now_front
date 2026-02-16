@@ -25,7 +25,7 @@ class _FakeAccountsRepository implements TenantAdminAccountsRepositoryContract {
   @override
   Future<TenantAdminAccount> createAccount({
     required String name,
-    required TenantAdminDocument document,
+    TenantAdminDocument? document,
     required TenantAdminOwnershipState ownershipState,
     String? organizationId,
   }) async {
@@ -33,7 +33,8 @@ class _FakeAccountsRepository implements TenantAdminAccountsRepositoryContract {
       id: 'acc-1',
       name: name,
       slug: 'acc-1',
-      document: document,
+      document:
+          document ?? const TenantAdminDocument(type: 'cpf', number: '000'),
       ownershipState: ownershipState,
       organizationId: organizationId,
     );
@@ -114,8 +115,8 @@ class _FakeAccountProfilesRepository
           isPoiEnabled: true,
           hasBio: false,
           hasTaxonomies: false,
-          hasAvatar: false,
-          hasCover: false,
+          hasAvatar: true,
+          hasCover: true,
           hasEvents: false,
         ),
       ),
@@ -309,27 +310,17 @@ void main() {
 
     await tester.pumpAndSettle();
 
-    await tester.enterText(
-      find.byType(TextFormField).at(0),
-      'Conta Teste',
-    );
-    GetIt.I.get<TenantAdminAccountsController>().documentTypeController.text =
-        'cpf';
-    await tester.enterText(
-      find.byType(TextFormField).at(1),
-      'Perfil Teste',
-    );
-    await tester.enterText(
-      find.byType(TextFormField).at(2),
-      '000',
-    );
-
     final profileTypeDropdown = find.byType(DropdownButtonFormField<String>);
     await tester.ensureVisible(profileTypeDropdown.last);
     await tester.tap(profileTypeDropdown.last, warnIfMissed: false);
     await tester.pumpAndSettle();
     await tester.tap(find.text('Venue').last);
     await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Nome'),
+      'Conta Teste',
+    );
 
     expect(
       find.byKey(const ValueKey('tenant_admin_account_create_map_pick')),
@@ -364,6 +355,31 @@ void main() {
     );
 
     await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const ValueKey('tenant_admin_account_create_avatar_pick')),
+      findsNothing,
+    );
+    expect(
+      find.byKey(const ValueKey('tenant_admin_account_create_cover_pick')),
+      findsNothing,
+    );
+
+    final profileTypeDropdown = find.byType(DropdownButtonFormField<String>);
+    await tester.ensureVisible(profileTypeDropdown.last);
+    await tester.tap(profileTypeDropdown.last, warnIfMissed: false);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Venue').last);
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const ValueKey('tenant_admin_account_create_avatar_pick')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('tenant_admin_account_create_cover_pick')),
+      findsOneWidget,
+    );
 
     expect(find.byIcon(Icons.person_outline), findsOneWidget);
     expect(find.text('Remover'), findsNothing);

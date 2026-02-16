@@ -69,7 +69,7 @@ class _FakeAccountsRepository implements TenantAdminAccountsRepositoryContract {
   @override
   Future<TenantAdminAccount> createAccount({
     required String name,
-    required TenantAdminDocument document,
+    TenantAdminDocument? document,
     required TenantAdminOwnershipState ownershipState,
     String? organizationId,
   }) async {
@@ -78,7 +78,8 @@ class _FakeAccountsRepository implements TenantAdminAccountsRepositoryContract {
       id: 'acc-$createCalls',
       name: name,
       slug: 'acc-$createCalls',
-      document: document,
+      document:
+          document ?? const TenantAdminDocument(type: 'cpf', number: '000'),
       ownershipState: ownershipState,
       organizationId: organizationId,
     );
@@ -113,6 +114,7 @@ class _FakeAccountProfilesRepository
 
   final List<TenantAdminProfileTypeDefinition> _types;
   int createProfileCalls = 0;
+  String? lastCreateDisplayName;
 
   @override
   Future<List<TenantAdminProfileTypeDefinition>> fetchProfileTypes() async =>
@@ -154,6 +156,7 @@ class _FakeAccountProfilesRepository
     TenantAdminMediaUpload? coverUpload,
   }) async {
     createProfileCalls += 1;
+    lastCreateDisplayName = displayName;
     return TenantAdminAccountProfile(
       id: 'profile-$createProfileCalls',
       accountId: accountId,
@@ -335,16 +338,14 @@ void main() {
 
     await controller.createAccountWithProfile(
       name: 'Nova Conta',
-      documentType: 'cpf',
-      documentNumber: '000',
       ownershipState: TenantAdminOwnershipState.tenantOwned,
       profileType: 'venue',
-      displayName: 'Perfil',
       location: const TenantAdminLocation(latitude: -20.0, longitude: -40.0),
     );
 
     expect(accountsRepository.createCalls, 1);
     expect(profilesRepository.createProfileCalls, 1);
+    expect(profilesRepository.lastCreateDisplayName, 'Nova Conta');
     expect(controller.accountsStreamValue.value?.length, 1);
   });
 

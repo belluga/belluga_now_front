@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:belluga_now/domain/repositories/tenant_admin_account_profiles_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_accounts_repository_contract.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account.dart';
-import 'package:belluga_now/domain/tenant_admin/tenant_admin_document.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
@@ -68,11 +67,6 @@ class TenantAdminAccountsController implements Disposable {
   );
   final GlobalKey<FormState> createFormKey = GlobalKey<FormState>();
   final TextEditingController nameController = TextEditingController();
-  final TextEditingController documentTypeController = TextEditingController();
-  final TextEditingController documentNumberController =
-      TextEditingController();
-  final TextEditingController profileDisplayNameController =
-      TextEditingController();
   final TextEditingController latitudeController = TextEditingController();
   final TextEditingController longitudeController = TextEditingController();
 
@@ -268,27 +262,21 @@ class TenantAdminAccountsController implements Disposable {
 
   Future<TenantAdminAccount> createAccountWithProfile({
     required String name,
-    required String documentType,
-    required String documentNumber,
     required TenantAdminOwnershipState ownershipState,
     required String profileType,
-    required String displayName,
     TenantAdminLocation? location,
     TenantAdminMediaUpload? avatarUpload,
     TenantAdminMediaUpload? coverUpload,
   }) async {
+    final trimmedName = name.trim();
     final account = await _accountsRepository.createAccount(
-      name: name,
-      document: TenantAdminDocument(
-        type: documentType,
-        number: documentNumber,
-      ),
+      name: trimmedName,
       ownershipState: ownershipState,
     );
     await _profilesRepository.createAccountProfile(
       accountId: account.id,
       profileType: profileType,
-      displayName: displayName,
+      displayName: trimmedName,
       location: location,
       avatarUpload: avatarUpload,
       coverUpload: coverUpload,
@@ -306,11 +294,8 @@ class TenantAdminAccountsController implements Disposable {
         createStateStreamValue.value.selectedProfileType ?? '';
     return createAccountWithProfile(
       name: nameController.text.trim(),
-      documentType: documentTypeController.text.trim(),
-      documentNumber: documentNumberController.text.trim(),
       ownershipState: createStateStreamValue.value.ownershipState,
       profileType: selectedProfileType,
-      displayName: profileDisplayNameController.text.trim(),
       location: location,
       avatarUpload: avatarUpload,
       coverUpload: coverUpload,
@@ -349,9 +334,6 @@ class TenantAdminAccountsController implements Disposable {
 
   void resetCreateForm() {
     nameController.clear();
-    documentTypeController.clear();
-    documentNumberController.clear();
-    profileDisplayNameController.clear();
     latitudeController.clear();
     longitudeController.clear();
   }
@@ -393,9 +375,6 @@ class TenantAdminAccountsController implements Disposable {
     _locationSelectionSubscription?.cancel();
     _tenantScopeSubscription?.cancel();
     nameController.dispose();
-    documentTypeController.dispose();
-    documentNumberController.dispose();
-    profileDisplayNameController.dispose();
     latitudeController.dispose();
     longitudeController.dispose();
     accountsStreamValue.dispose();

@@ -136,7 +136,7 @@ class _FakeTenantAdminAccountsRepository
   @override
   Future<TenantAdminAccount> createAccount({
     required String name,
-    required TenantAdminDocument document,
+    TenantAdminDocument? document,
     required TenantAdminOwnershipState ownershipState,
     String? organizationId,
   }) async {
@@ -144,7 +144,8 @@ class _FakeTenantAdminAccountsRepository
       id: 'account-1',
       name: name,
       slug: 'account-1',
-      document: document,
+      document:
+          document ?? const TenantAdminDocument(type: 'cpf', number: '000'),
       ownershipState: ownershipState,
       organizationId: organizationId,
     );

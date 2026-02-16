@@ -35,7 +35,7 @@ abstract class TenantAdminAccountsRepositoryContract {
   Future<TenantAdminAccount> fetchAccountBySlug(String accountSlug);
   Future<TenantAdminAccount> createAccount({
     required String name,
-    required TenantAdminDocument document,
+    TenantAdminDocument? document,
     required TenantAdminOwnershipState ownershipState,
     String? organizationId,
   });

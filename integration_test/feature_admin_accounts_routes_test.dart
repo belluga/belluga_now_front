@@ -193,16 +193,6 @@ void main() {
         find.text('Nenhuma conta neste segmento ainda.'),
       ],
     );
-
-    await tester.tap(find.text('Do usuario'));
-    await _pumpFor(tester, const Duration(seconds: 1));
-    await _waitForAny(
-      tester,
-      [
-        find.byType(ListTile),
-        find.text('Nenhuma conta neste segmento ainda.'),
-      ],
-    );
   });
 }
 

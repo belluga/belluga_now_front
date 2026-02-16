@@ -104,23 +104,26 @@ class TenantAdminAccountsRepository
   @override
   Future<TenantAdminAccount> createAccount({
     required String name,
-    required TenantAdminDocument document,
+    TenantAdminDocument? document,
     required TenantAdminOwnershipState ownershipState,
     String? organizationId,
   }) async {
+    final payload = <String, dynamic>{
+      'name': name,
+      'ownership_state': ownershipState.apiValue,
+      if (organizationId != null && organizationId.trim().isNotEmpty)
+        'organization_id': organizationId.trim(),
+    };
+    if (document != null) {
+      payload['document'] = {
+        'type': document.type,
+        'number': document.number,
+      };
+    }
     try {
       final response = await _dio.post(
         '$_apiBaseUrl/v1/accounts',
-        data: {
-          'name': name,
-          'document': {
-            'type': document.type,
-            'number': document.number,
-          },
-          'ownership_state': ownershipState.apiValue,
-          if (organizationId != null && organizationId.trim().isNotEmpty)
-            'organization_id': organizationId.trim(),
-        },
+        data: payload,
         options: Options(headers: _buildHeaders()),
       );
       final item = _extractAccountFromCreate(response.data);
