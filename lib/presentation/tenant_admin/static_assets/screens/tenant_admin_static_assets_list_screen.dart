@@ -192,7 +192,6 @@ class _TenantAdminStaticAssetsListScreenState
               context.router.push(
                 TenantAdminStaticAssetDetailRoute(
                   assetId: asset.id,
-                  asset: asset,
                 ),
               );
             },
@@ -253,7 +252,8 @@ class _TenantAdminStaticAssetsListScreenState
                           ),
                         ],
                       ),
-                      if (asset.bio != null && asset.bio!.trim().isNotEmpty) ...[
+                      if (asset.bio != null &&
+                          asset.bio!.trim().isNotEmpty) ...[
                         const SizedBox(height: 10),
                         Text(
                           asset.bio!.trim(),
@@ -316,7 +316,8 @@ class _TenantAdminStaticAssetsListScreenState
         fit: BoxFit.cover,
         clipBorderRadius: BorderRadius.circular(20),
         errorWidget: CircleAvatar(
-          backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+          backgroundColor:
+              Theme.of(context).colorScheme.surfaceContainerHighest,
           child: const Icon(Icons.person_outline),
         ),
       );
