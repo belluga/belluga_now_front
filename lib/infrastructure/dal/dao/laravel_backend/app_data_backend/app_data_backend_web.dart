@@ -21,12 +21,9 @@ class AppDataBackend implements AppDataBackendContract {
       try {
         final jsonString = stringify(preResolved).toDart;
         final decoded = jsonDecode(jsonString);
-        if (decoded is Map<String, dynamic> &&
-            decoded['type'] != null &&
-            decoded['name'] != null &&
-            decoded['main_domain'] != null &&
-            decoded['theme_data_settings'] != null) {
-          return Future.value(AppDataDTO.fromJson(decoded));
+        final payload = _extractPayload(decoded);
+        if (_isAppDataPayload(payload)) {
+          return Future.value(AppDataDTO.fromJson(payload));
         }
       } catch (error) {
         // Ignore invalid/unreadable branding payload.
@@ -57,9 +54,7 @@ class AppDataBackend implements AppDataBackendContract {
       if (jsDetail != null) {
         final jsonString = stringify(jsDetail).toDart;
         final data = jsonDecode(jsonString) as Map<String, dynamic>;
-        final payload = (data['data'] is Map<String, dynamic>)
-            ? data['data'] as Map<String, dynamic>
-            : data;
+        final payload = _extractPayload(data);
         completer.complete(AppDataDTO.fromJson(payload));
       } else {
         clearAndCompleteError(
@@ -81,5 +76,23 @@ class AppDataBackend implements AppDataBackendContract {
     });
 
     return completer.future;
+  }
+
+  Map<String, dynamic> _extractPayload(Object? decoded) {
+    if (decoded is! Map<String, dynamic>) {
+      return const <String, dynamic>{};
+    }
+    final data = decoded['data'];
+    if (data is Map<String, dynamic>) {
+      return data;
+    }
+    return decoded;
+  }
+
+  bool _isAppDataPayload(Map<String, dynamic> payload) {
+    return payload['type'] != null &&
+        payload['name'] != null &&
+        payload['main_domain'] != null &&
+        payload['theme_data_settings'] != null;
   }
 }

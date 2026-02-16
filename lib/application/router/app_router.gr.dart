@@ -18,14 +18,12 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart'
     as _i56;
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart'
     as _i57;
-import 'package:belluga_now/domain/tenant_admin/tenant_admin_static_asset.dart'
-    as _i58;
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_static_profile_type.dart'
-    as _i59;
+    as _i58;
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart'
-    as _i60;
+    as _i59;
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_definition.dart'
-    as _i61;
+    as _i60;
 import 'package:belluga_now/presentation/common/auth/routes/auth_create_new_password_route.dart'
     as _i1;
 import 'package:belluga_now/presentation/common/auth/routes/auth_login_route.dart'
@@ -1382,15 +1380,14 @@ class TenantAdminStaticAssetDetailRoute
   TenantAdminStaticAssetDetailRoute({
     _i51.Key? key,
     required String assetId,
-    required _i58.TenantAdminStaticAsset asset,
     List<_i50.PageRouteInfo>? children,
   }) : super(
           TenantAdminStaticAssetDetailRoute.name,
           args: TenantAdminStaticAssetDetailRouteArgs(
             key: key,
             assetId: assetId,
-            asset: asset,
           ),
+          rawPathParams: {'assetId': assetId},
           initialChildren: children,
         );
 
@@ -1399,11 +1396,15 @@ class TenantAdminStaticAssetDetailRoute
   static _i50.PageInfo page = _i50.PageInfo(
     name,
     builder: (data) {
-      final args = data.argsAs<TenantAdminStaticAssetDetailRouteArgs>();
+      final pathParams = data.inheritedPathParams;
+      final args = data.argsAs<TenantAdminStaticAssetDetailRouteArgs>(
+        orElse: () => TenantAdminStaticAssetDetailRouteArgs(
+          assetId: pathParams.getString('assetId'),
+        ),
+      );
       return _i36.TenantAdminStaticAssetDetailRoutePage(
         key: args.key,
         assetId: args.assetId,
-        asset: args.asset,
       );
     },
   );
@@ -1413,29 +1414,26 @@ class TenantAdminStaticAssetDetailRouteArgs {
   const TenantAdminStaticAssetDetailRouteArgs({
     this.key,
     required this.assetId,
-    required this.asset,
   });
 
   final _i51.Key? key;
 
   final String assetId;
 
-  final _i58.TenantAdminStaticAsset asset;
-
   @override
   String toString() {
-    return 'TenantAdminStaticAssetDetailRouteArgs{key: $key, assetId: $assetId, asset: $asset}';
+    return 'TenantAdminStaticAssetDetailRouteArgs{key: $key, assetId: $assetId}';
   }
 
   @override
   bool operator ==(Object other) {
     if (identical(this, other)) return true;
     if (other is! TenantAdminStaticAssetDetailRouteArgs) return false;
-    return key == other.key && assetId == other.assetId && asset == other.asset;
+    return key == other.key && assetId == other.assetId;
   }
 
   @override
-  int get hashCode => key.hashCode ^ assetId.hashCode ^ asset.hashCode;
+  int get hashCode => key.hashCode ^ assetId.hashCode;
 }
 
 /// generated route for
@@ -1532,7 +1530,7 @@ class TenantAdminStaticProfileTypeDetailRoute
   TenantAdminStaticProfileTypeDetailRoute({
     _i51.Key? key,
     required String profileType,
-    required _i59.TenantAdminStaticProfileTypeDefinition definition,
+    required _i58.TenantAdminStaticProfileTypeDefinition definition,
     List<_i50.PageRouteInfo>? children,
   }) : super(
           TenantAdminStaticProfileTypeDetailRoute.name,
@@ -1570,7 +1568,7 @@ class TenantAdminStaticProfileTypeDetailRouteArgs {
 
   final String profileType;
 
-  final _i59.TenantAdminStaticProfileTypeDefinition definition;
+  final _i58.TenantAdminStaticProfileTypeDefinition definition;
 
   @override
   String toString() {
@@ -1597,7 +1595,7 @@ class TenantAdminStaticProfileTypeEditRoute
   TenantAdminStaticProfileTypeEditRoute({
     _i51.Key? key,
     required String profileType,
-    required _i59.TenantAdminStaticProfileTypeDefinition definition,
+    required _i58.TenantAdminStaticProfileTypeDefinition definition,
     List<_i50.PageRouteInfo>? children,
   }) : super(
           TenantAdminStaticProfileTypeEditRoute.name,
@@ -1635,7 +1633,7 @@ class TenantAdminStaticProfileTypeEditRouteArgs {
 
   final String profileType;
 
-  final _i59.TenantAdminStaticProfileTypeDefinition definition;
+  final _i58.TenantAdminStaticProfileTypeDefinition definition;
 
   @override
   String toString() {
@@ -1713,7 +1711,7 @@ class TenantAdminTaxonomyEditRoute
     extends _i50.PageRouteInfo<TenantAdminTaxonomyEditRouteArgs> {
   TenantAdminTaxonomyEditRoute({
     _i51.Key? key,
-    required _i60.TenantAdminTaxonomyDefinition taxonomy,
+    required _i59.TenantAdminTaxonomyDefinition taxonomy,
     List<_i50.PageRouteInfo>? children,
   }) : super(
           TenantAdminTaxonomyEditRoute.name,
@@ -1740,7 +1738,7 @@ class TenantAdminTaxonomyEditRouteArgs {
 
   final _i51.Key? key;
 
-  final _i60.TenantAdminTaxonomyDefinition taxonomy;
+  final _i59.TenantAdminTaxonomyDefinition taxonomy;
 
   @override
   String toString() {
@@ -1833,7 +1831,7 @@ class TenantAdminTaxonomyTermDetailRoute
     required String taxonomyId,
     required String taxonomyName,
     required String termId,
-    required _i61.TenantAdminTaxonomyTermDefinition term,
+    required _i60.TenantAdminTaxonomyTermDefinition term,
     List<_i50.PageRouteInfo>? children,
   }) : super(
           TenantAdminTaxonomyTermDetailRoute.name,
@@ -1881,7 +1879,7 @@ class TenantAdminTaxonomyTermDetailRouteArgs {
 
   final String termId;
 
-  final _i61.TenantAdminTaxonomyTermDefinition term;
+  final _i60.TenantAdminTaxonomyTermDefinition term;
 
   @override
   String toString() {
@@ -1916,7 +1914,7 @@ class TenantAdminTaxonomyTermEditRoute
     _i51.Key? key,
     required String taxonomyId,
     required String taxonomyName,
-    required _i61.TenantAdminTaxonomyTermDefinition term,
+    required _i60.TenantAdminTaxonomyTermDefinition term,
     List<_i50.PageRouteInfo>? children,
   }) : super(
           TenantAdminTaxonomyTermEditRoute.name,
@@ -1959,7 +1957,7 @@ class TenantAdminTaxonomyTermEditRouteArgs {
 
   final String taxonomyName;
 
-  final _i61.TenantAdminTaxonomyTermDefinition term;
+  final _i60.TenantAdminTaxonomyTermDefinition term;
 
   @override
   String toString() {

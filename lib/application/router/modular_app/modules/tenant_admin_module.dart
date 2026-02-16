@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/application/router/guards/landlord_route_guard.dart';
+import 'package:belluga_now/application/router/resolvers/tenant_admin_static_asset_detail_route_resolver.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_static_asset.dart';
 import 'package:belluga_now/domain/services/tenant_admin_location_selection_contract.dart';
 import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.dart';
 import 'package:belluga_now/presentation/tenant_admin/account_profiles/controllers/tenant_admin_account_profiles_controller.dart';
@@ -22,6 +24,17 @@ import 'package:get_it_modular_with_auto_route/get_it_modular_with_auto_route.da
 class TenantAdminModule extends ModuleContract {
   @override
   FutureOr<void> registerDependencies() async {
+    _registerResolvers();
+    _registerControllersAndServices();
+  }
+
+  void _registerResolvers() {
+    registerRouteResolver<TenantAdminStaticAsset>(
+      TenantAdminStaticAssetDetailRouteResolver.new,
+    );
+  }
+
+  void _registerControllersAndServices() {
     registerLazySingleton<TenantAdminShellController>(
       () => TenantAdminShellController(),
     );
