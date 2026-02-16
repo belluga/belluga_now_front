@@ -162,6 +162,7 @@ void main() {
 }
 
 class _FakeTaxonomiesRepository
+    with TenantAdminTaxonomiesPaginationMixin
     implements TenantAdminTaxonomiesRepositoryContract {
   _FakeTaxonomiesRepository({
     required this.taxonomies,

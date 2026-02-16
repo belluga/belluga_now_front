@@ -152,6 +152,7 @@ bool _chipSelected(WidgetTester tester, Finder chipFinder) {
 }
 
 class _FakeStaticAssetsRepository
+    with TenantAdminStaticAssetsPaginationMixin
     implements TenantAdminStaticAssetsRepositoryContract {
   _FakeStaticAssetsRepository({
     required this.asset,
@@ -349,6 +350,7 @@ class _FakeStaticAssetsRepository
 }
 
 class _FakeTaxonomiesRepository
+    with TenantAdminTaxonomiesPaginationMixin
     implements TenantAdminTaxonomiesRepositoryContract {
   @override
   Future<TenantAdminTaxonomyDefinition> createTaxonomy({

@@ -16,6 +16,7 @@ import 'package:get_it/get_it.dart';
 import 'package:http_parser/http_parser.dart';
 
 class TenantAdminAccountProfilesRepository
+    with TenantAdminProfileTypesPaginationMixin
     implements TenantAdminAccountProfilesRepositoryContract {
   TenantAdminAccountProfilesRepository({
     Dio? dio,

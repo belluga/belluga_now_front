@@ -32,6 +32,7 @@ void main() {
 }
 
 class _FakeOrganizationsRepository
+    with TenantAdminOrganizationsPaginationMixin
     implements TenantAdminOrganizationsRepositoryContract {
   _FakeOrganizationsRepository(this.organizations);
 

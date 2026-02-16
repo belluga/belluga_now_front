@@ -129,6 +129,7 @@ void main() {
 }
 
 class _FakeStaticAssetsRepository
+    with TenantAdminStaticAssetsPaginationMixin
     implements TenantAdminStaticAssetsRepositoryContract {
   _FakeStaticAssetsRepository({
     required this.types,
@@ -272,6 +273,7 @@ class _FakeStaticAssetsRepository
 }
 
 class _FakeTaxonomiesRepository
+    with TenantAdminTaxonomiesPaginationMixin
     implements TenantAdminTaxonomiesRepositoryContract {
   _FakeTaxonomiesRepository({
     required this.taxonomies,

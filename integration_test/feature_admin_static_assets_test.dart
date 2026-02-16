@@ -476,6 +476,7 @@ class _NoopBackend extends BackendContract {
 }
 
 class _FakeStaticAssetsRepository
+    with TenantAdminStaticAssetsPaginationMixin
     implements TenantAdminStaticAssetsRepositoryContract {
   _FakeStaticAssetsRepository({
     List<TenantAdminStaticAsset> seededAssets = const [],
@@ -700,6 +701,7 @@ class _FakeStaticAssetsRepository
 }
 
 class _FakeTaxonomiesRepository
+    with TenantAdminTaxonomiesPaginationMixin
     implements TenantAdminTaxonomiesRepositoryContract {
   @override
   Future<List<TenantAdminTaxonomyDefinition>> fetchTaxonomies() async {

@@ -6,6 +6,7 @@ import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_field_edit_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
+import 'package:stream_value/core/stream_value_builder.dart';
 
 class TenantAdminProfileTypeDetailScreen extends StatefulWidget {
   const TenantAdminProfileTypeDetailScreen({
@@ -24,13 +25,17 @@ class _TenantAdminProfileTypeDetailScreenState
     extends State<TenantAdminProfileTypeDetailScreen> {
   final TenantAdminProfileTypesController _controller =
       GetIt.I.get<TenantAdminProfileTypesController>();
-  late TenantAdminProfileTypeDefinition _definition;
-  bool _isSaving = false;
 
   @override
   void initState() {
     super.initState();
-    _definition = widget.definition;
+    _controller.initDetailType(widget.definition);
+  }
+
+  @override
+  void dispose() {
+    _controller.clearDetailType();
+    super.dispose();
   }
 
   Future<void> _editLabel() async {
@@ -38,7 +43,7 @@ class _TenantAdminProfileTypeDetailScreenState
       context: context,
       title: 'Editar nome do tipo',
       label: 'Label',
-      initialValue: _definition.label,
+      initialValue: _currentDefinition().label,
       textCapitalization: TextCapitalization.words,
       autocorrect: true,
       enableSuggestions: true,
@@ -54,7 +59,7 @@ class _TenantAdminProfileTypeDetailScreenState
       return;
     }
     final next = result.value.trim();
-    if (next.isEmpty || next == _definition.label) {
+    if (next.isEmpty || next == _currentDefinition().label) {
       return;
     }
     await _saveChanges(label: next);
@@ -65,7 +70,7 @@ class _TenantAdminProfileTypeDetailScreenState
       context: context,
       title: 'Editar slug do tipo',
       label: 'Tipo (slug)',
-      initialValue: _definition.type,
+      initialValue: _currentDefinition().type,
       helperText: 'Deve ser unico no tenant.',
       inputFormatters: tenantAdminSlugInputFormatters,
       validator: (value) => tenantAdminValidateRequiredSlug(
@@ -77,7 +82,7 @@ class _TenantAdminProfileTypeDetailScreenState
       return;
     }
     final next = result.value.trim();
-    if (next.isEmpty || next == _definition.type) {
+    if (next.isEmpty || next == _currentDefinition().type) {
       return;
     }
     await _saveChanges(newType: next);
@@ -87,155 +92,161 @@ class _TenantAdminProfileTypeDetailScreenState
     String? newType,
     String? label,
   }) async {
-    if (_isSaving) {
+    final definition = _currentDefinition();
+    final updated = await _controller.submitDetailTypeUpdate(
+      type: definition.type,
+      newType: newType,
+      label: label,
+    );
+    if (!mounted) {
       return;
     }
-    setState(() => _isSaving = true);
-    try {
-      final updated = await _controller.updateType(
-        type: _definition.type,
-        newType: newType,
-        label: label,
-      );
-      if (!mounted) {
-        return;
-      }
-      setState(() {
-        _definition = updated;
-      });
+    if (updated != null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Tipo atualizado.')),
       );
-    } catch (error) {
-      if (!mounted) {
-        return;
-      }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.toString())),
-      );
-    } finally {
-      if (mounted) {
-        setState(() => _isSaving = false);
-      }
+      return;
     }
+    final error = _controller.actionErrorMessageStreamValue.value ??
+        'Não foi possível atualizar o tipo.';
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(error)),
+    );
+  }
+
+  TenantAdminProfileTypeDefinition _currentDefinition() {
+    return _controller.detailTypeStreamValue.value ?? widget.definition;
   }
 
   @override
   Widget build(BuildContext context) {
-    final capabilities = <String>[
-      if (_definition.capabilities.isFavoritable) 'Favoritavel',
-      if (_definition.capabilities.isPoiEnabled) 'POI habilitado',
-      if (_definition.capabilities.hasBio) 'Bio',
-      if (_definition.capabilities.hasTaxonomies) 'Taxonomias',
-      if (_definition.capabilities.hasAvatar) 'Avatar',
-      if (_definition.capabilities.hasCover) 'Capa',
-      if (_definition.capabilities.hasEvents) 'Agenda',
-    ];
+    return StreamValueBuilder<TenantAdminProfileTypeDefinition?>(
+      streamValue: _controller.detailTypeStreamValue,
+      builder: (context, detailDefinition) {
+        final definition = detailDefinition ?? widget.definition;
+        final capabilities = <String>[
+          if (definition.capabilities.isFavoritable) 'Favoritavel',
+          if (definition.capabilities.isPoiEnabled) 'POI habilitado',
+          if (definition.capabilities.hasBio) 'Bio',
+          if (definition.capabilities.hasTaxonomies) 'Taxonomias',
+          if (definition.capabilities.hasAvatar) 'Avatar',
+          if (definition.capabilities.hasCover) 'Capa',
+          if (definition.capabilities.hasEvents) 'Agenda',
+        ];
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(_definition.label),
-        actions: [
-          FilledButton.tonalIcon(
-            onPressed: _isSaving
-                ? null
-                : () {
-                    context.router.push(
-                      TenantAdminProfileTypeEditRoute(
-                        profileType: _definition.type,
-                        definition: _definition,
-                      ),
-                    );
-                  },
-            icon: const Icon(Icons.edit_outlined),
-            label: const Text('Editar'),
-          ),
-        ],
-      ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          Card(
-            margin: EdgeInsets.zero,
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Detalhes do tipo',
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                  const SizedBox(height: 12),
-                  _editableRow(
-                    context,
-                    label: 'Slug',
-                    value: _definition.type,
-                    onEdit: _editSlug,
-                  ),
-                  const SizedBox(height: 8),
-                  _editableRow(
-                    context,
-                    label: 'Label',
-                    value: _definition.label,
-                    onEdit: _editLabel,
+        return StreamValueBuilder<bool>(
+          streamValue: _controller.detailSavingStreamValue,
+          builder: (context, isSaving) {
+            return Scaffold(
+              appBar: AppBar(
+                title: Text(definition.label),
+                actions: [
+                  FilledButton.tonalIcon(
+                    onPressed: isSaving
+                        ? null
+                        : () {
+                            context.router.push(
+                              TenantAdminProfileTypeEditRoute(
+                                profileType: definition.type,
+                                definition: definition,
+                              ),
+                            );
+                          },
+                    icon: const Icon(Icons.edit_outlined),
+                    label: const Text('Editar'),
                   ),
                 ],
               ),
-            ),
-          ),
-          const SizedBox(height: 16),
-          Card(
-            margin: EdgeInsets.zero,
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Capacidades',
-                    style: Theme.of(context).textTheme.titleSmall,
-                  ),
-                  const SizedBox(height: 12),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: capabilities
-                        .map((item) => Chip(label: Text(item)))
-                        .toList(),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          if (_definition.allowedTaxonomies.isNotEmpty) ...[
-            const SizedBox(height: 16),
-            Card(
-              margin: EdgeInsets.zero,
-              child: Padding(
+              body: ListView(
                 padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Taxonomias permitidas',
-                      style: Theme.of(context).textTheme.titleSmall,
+                children: [
+                  Card(
+                    margin: EdgeInsets.zero,
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Detalhes do tipo',
+                            style: Theme.of(context).textTheme.titleMedium,
+                          ),
+                          const SizedBox(height: 12),
+                          _editableRow(
+                            context,
+                            label: 'Slug',
+                            value: definition.type,
+                            isSaving: isSaving,
+                            onEdit: _editSlug,
+                          ),
+                          const SizedBox(height: 8),
+                          _editableRow(
+                            context,
+                            label: 'Label',
+                            value: definition.label,
+                            isSaving: isSaving,
+                            onEdit: _editLabel,
+                          ),
+                        ],
+                      ),
                     ),
-                    const SizedBox(height: 12),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: _definition.allowedTaxonomies
-                          .map((item) => Chip(label: Text(item)))
-                          .toList(),
+                  ),
+                  const SizedBox(height: 16),
+                  Card(
+                    margin: EdgeInsets.zero,
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Capacidades',
+                            style: Theme.of(context).textTheme.titleSmall,
+                          ),
+                          const SizedBox(height: 12),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: capabilities
+                                .map((item) => Chip(label: Text(item)))
+                                .toList(),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  if (definition.allowedTaxonomies.isNotEmpty) ...[
+                    const SizedBox(height: 16),
+                    Card(
+                      margin: EdgeInsets.zero,
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Taxonomias permitidas',
+                              style: Theme.of(context).textTheme.titleSmall,
+                            ),
+                            const SizedBox(height: 12),
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: definition.allowedTaxonomies
+                                  .map((item) => Chip(label: Text(item)))
+                                  .toList(),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
                   ],
-                ),
+                ],
               ),
-            ),
-          ],
-        ],
-      ),
+            );
+          },
+        );
+      },
     );
   }
 
@@ -243,6 +254,7 @@ class _TenantAdminProfileTypeDetailScreenState
     BuildContext context, {
     required String label,
     required String value,
+    required bool isSaving,
     required VoidCallback onEdit,
   }) {
     return Row(
@@ -262,7 +274,7 @@ class _TenantAdminProfileTypeDetailScreenState
           ),
         ),
         IconButton(
-          onPressed: _isSaving ? null : onEdit,
+          onPressed: isSaving ? null : onEdit,
           tooltip: 'Editar $label',
           icon: const Icon(Icons.edit_outlined),
         ),

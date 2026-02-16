@@ -32,14 +32,14 @@ class TenantAdminProfileTypesController implements Disposable {
   final TenantAdminTenantScopeContract? _tenantScope;
   static const int _typesPageSize = 20;
 
-  final StreamValue<List<TenantAdminProfileTypeDefinition>?> typesStreamValue =
-      StreamValue<List<TenantAdminProfileTypeDefinition>?>();
-  final StreamValue<bool> hasMoreTypesStreamValue =
-      StreamValue<bool>(defaultValue: true);
-  final StreamValue<bool> isTypesPageLoadingStreamValue =
-      StreamValue<bool>(defaultValue: false);
-  final StreamValue<bool> isLoadingStreamValue =
-      StreamValue<bool>(defaultValue: false);
+  StreamValue<List<TenantAdminProfileTypeDefinition>?> get typesStreamValue =>
+      _repository.profileTypesStreamValue;
+  StreamValue<bool> get hasMoreTypesStreamValue =>
+      _repository.hasMoreProfileTypesStreamValue;
+  StreamValue<bool> get isTypesPageLoadingStreamValue =>
+      _repository.isProfileTypesPageLoadingStreamValue;
+  StreamValue<String?> get errorStreamValue =>
+      _repository.profileTypesErrorStreamValue;
   final StreamValue<List<TenantAdminTaxonomyDefinition>>
       availableTaxonomiesStreamValue =
       StreamValue<List<TenantAdminTaxonomyDefinition>>(defaultValue: const []);
@@ -59,10 +59,13 @@ class TenantAdminProfileTypesController implements Disposable {
     hasCover: false,
     hasEvents: false,
   );
-  final StreamValue<String?> errorStreamValue = StreamValue<String?>();
   final StreamValue<String?> successMessageStreamValue = StreamValue<String?>();
   final StreamValue<String?> actionErrorMessageStreamValue =
       StreamValue<String?>();
+  final StreamValue<TenantAdminProfileTypeDefinition?> detailTypeStreamValue =
+      StreamValue<TenantAdminProfileTypeDefinition?>();
+  final StreamValue<bool> detailSavingStreamValue =
+      StreamValue<bool>(defaultValue: false);
   final StreamValue<TenantAdminProfileTypeCapabilities>
       capabilitiesStreamValue = StreamValue<TenantAdminProfileTypeCapabilities>(
     defaultValue: _emptyCapabilities,
@@ -75,11 +78,6 @@ class TenantAdminProfileTypesController implements Disposable {
   final TextEditingController taxonomiesController = TextEditingController();
 
   bool _isDisposed = false;
-  bool _isFetchingTypesPage = false;
-  bool _hasMoreTypes = true;
-  int _currentTypesPage = 0;
-  final List<TenantAdminProfileTypeDefinition> _fetchedTypes =
-      <TenantAdminProfileTypeDefinition>[];
   StreamSubscription<String?>? _tenantScopeSubscription;
   String? _lastTenantDomain;
 
@@ -172,10 +170,7 @@ class TenantAdminProfileTypesController implements Disposable {
   }
 
   Future<void> loadTypes() async {
-    await _waitForTypesFetch();
-    _resetTypesPagination();
-    typesStreamValue.addValue(null);
-    await _fetchTypesPage(page: 1);
+    await _repository.loadProfileTypes(pageSize: _typesPageSize);
   }
 
   Future<void> loadAvailableTaxonomies() async {
@@ -239,57 +234,10 @@ class TenantAdminProfileTypesController implements Disposable {
   }
 
   Future<void> loadNextTypesPage() async {
-    if (_isDisposed || _isFetchingTypesPage || !_hasMoreTypes) {
+    if (_isDisposed) {
       return;
     }
-    await _fetchTypesPage(page: _currentTypesPage + 1);
-  }
-
-  Future<void> _waitForTypesFetch() async {
-    while (_isFetchingTypesPage && !_isDisposed) {
-      await Future<void>.delayed(const Duration(milliseconds: 50));
-    }
-  }
-
-  Future<void> _fetchTypesPage({required int page}) async {
-    if (_isFetchingTypesPage) return;
-    if (page > 1 && !_hasMoreTypes) return;
-
-    _isFetchingTypesPage = true;
-    if (page > 1 && !_isDisposed) {
-      isTypesPageLoadingStreamValue.addValue(true);
-    }
-    isLoadingStreamValue.addValue(true);
-    try {
-      final result = await _repository.fetchProfileTypesPage(
-        page: page,
-        pageSize: _typesPageSize,
-      );
-      if (_isDisposed) return;
-      if (page == 1) {
-        _fetchedTypes
-          ..clear()
-          ..addAll(result.items);
-      } else {
-        _fetchedTypes.addAll(result.items);
-      }
-      _currentTypesPage = page;
-      _hasMoreTypes = result.hasMore;
-      hasMoreTypesStreamValue.addValue(_hasMoreTypes);
-      typesStreamValue.addValue(
-          List<TenantAdminProfileTypeDefinition>.unmodifiable(_fetchedTypes));
-      errorStreamValue.addValue(null);
-    } catch (error) {
-      if (_isDisposed) return;
-      typesStreamValue.addValue(const <TenantAdminProfileTypeDefinition>[]);
-      errorStreamValue.addValue(error.toString());
-    } finally {
-      _isFetchingTypesPage = false;
-      if (!_isDisposed) {
-        isLoadingStreamValue.addValue(false);
-        isTypesPageLoadingStreamValue.addValue(false);
-      }
-    }
+    await _repository.loadNextProfileTypesPage(pageSize: _typesPageSize);
   }
 
   Future<TenantAdminProfileTypeDefinition> createType({
@@ -397,25 +345,55 @@ class TenantAdminProfileTypesController implements Disposable {
     actionErrorMessageStreamValue.addValue(null);
   }
 
+  void initDetailType(TenantAdminProfileTypeDefinition definition) {
+    detailTypeStreamValue.addValue(definition);
+    detailSavingStreamValue.addValue(false);
+  }
+
+  void clearDetailType() {
+    detailTypeStreamValue.addValue(null);
+    detailSavingStreamValue.addValue(false);
+  }
+
+  Future<TenantAdminProfileTypeDefinition?> submitDetailTypeUpdate({
+    required String type,
+    String? newType,
+    String? label,
+  }) async {
+    if (detailSavingStreamValue.value) {
+      return null;
+    }
+    detailSavingStreamValue.addValue(true);
+    try {
+      final updated = await updateType(
+        type: type,
+        newType: newType,
+        label: label,
+      );
+      if (_isDisposed) return null;
+      detailTypeStreamValue.addValue(updated);
+      actionErrorMessageStreamValue.addValue(null);
+      return updated;
+    } catch (error) {
+      if (_isDisposed) return null;
+      actionErrorMessageStreamValue.addValue(error.toString());
+      return null;
+    } finally {
+      if (!_isDisposed) {
+        detailSavingStreamValue.addValue(false);
+      }
+    }
+  }
+
   void _resetTenantScopedState() {
-    _resetTypesPagination();
+    _repository.resetProfileTypesState();
     typesStreamValue.addValue(null);
-    errorStreamValue.addValue(null);
     successMessageStreamValue.addValue(null);
     actionErrorMessageStreamValue.addValue(null);
     availableTaxonomiesStreamValue.addValue(const []);
     taxonomiesErrorStreamValue.addValue(null);
     isTaxonomiesLoadingStreamValue.addValue(false);
     resetFormState();
-  }
-
-  void _resetTypesPagination() {
-    _fetchedTypes.clear();
-    _currentTypesPage = 0;
-    _hasMoreTypes = true;
-    _isFetchingTypesPage = false;
-    hasMoreTypesStreamValue.addValue(true);
-    isTypesPageLoadingStreamValue.addValue(false);
   }
 
   String? _normalizeTenantDomain(String? raw) {
@@ -466,17 +444,14 @@ class TenantAdminProfileTypesController implements Disposable {
     typeController.dispose();
     labelController.dispose();
     taxonomiesController.dispose();
-    typesStreamValue.dispose();
-    hasMoreTypesStreamValue.dispose();
-    isTypesPageLoadingStreamValue.dispose();
-    isLoadingStreamValue.dispose();
     availableTaxonomiesStreamValue.dispose();
     selectedAllowedTaxonomiesStreamValue.dispose();
     isTaxonomiesLoadingStreamValue.dispose();
     taxonomiesErrorStreamValue.dispose();
-    errorStreamValue.dispose();
     successMessageStreamValue.dispose();
     actionErrorMessageStreamValue.dispose();
+    detailTypeStreamValue.dispose();
+    detailSavingStreamValue.dispose();
     capabilitiesStreamValue.dispose();
     isSlugAutoEnabledStreamValue.dispose();
   }

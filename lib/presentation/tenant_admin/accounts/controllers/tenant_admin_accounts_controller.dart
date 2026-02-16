@@ -46,12 +46,12 @@ class TenantAdminAccountsController implements Disposable {
 
   static const int _accountsPageSize = 20;
 
-  final StreamValue<List<TenantAdminAccount>?> accountsStreamValue =
-      StreamValue<List<TenantAdminAccount>?>();
-  final StreamValue<bool> hasMoreAccountsStreamValue =
-      StreamValue<bool>(defaultValue: true);
-  final StreamValue<bool> isAccountsPageLoadingStreamValue =
-      StreamValue<bool>(defaultValue: false);
+  StreamValue<List<TenantAdminAccount>?> get accountsStreamValue =>
+      _accountsRepository.accountsStreamValue;
+  StreamValue<bool> get hasMoreAccountsStreamValue =>
+      _accountsRepository.hasMoreAccountsStreamValue;
+  StreamValue<bool> get isAccountsPageLoadingStreamValue =>
+      _accountsRepository.isAccountsPageLoadingStreamValue;
   final StreamValue<List<TenantAdminProfileTypeDefinition>>
       profileTypesStreamValue =
       StreamValue<List<TenantAdminProfileTypeDefinition>>(
@@ -65,13 +65,15 @@ class TenantAdminAccountsController implements Disposable {
   );
   final StreamValue<String> searchQueryStreamValue =
       StreamValue<String>(defaultValue: '');
+  final StreamValue<bool> showSearchFieldStreamValue =
+      StreamValue<bool>(defaultValue: false);
   final StreamValue<bool> createSubmittingStreamValue =
       StreamValue<bool>(defaultValue: false);
   final StreamValue<String?> createErrorMessageStreamValue =
       StreamValue<String?>();
-  final StreamValue<TenantAdminAccountCreateState> createStateStreamValue =
-      StreamValue<TenantAdminAccountCreateState>(
-    defaultValue: TenantAdminAccountCreateState.initial(),
+  final StreamValue<TenantAdminAccountCreateDraft> createStateStreamValue =
+      StreamValue<TenantAdminAccountCreateDraft>(
+    defaultValue: TenantAdminAccountCreateDraft.initial(),
   );
   final StreamValue<List<TenantAdminTaxonomyDefinition>> taxonomiesStreamValue =
       StreamValue<List<TenantAdminTaxonomyDefinition>>(defaultValue: const []);
@@ -94,15 +96,13 @@ class TenantAdminAccountsController implements Disposable {
 
   bool _isDisposed = false;
   bool _initialized = false;
-  bool _isFetchingAccountsPage = false;
-  bool _hasMoreAccounts = true;
-  int _currentAccountsPage = 0;
-  final List<TenantAdminAccount> _fetchedAccounts = <TenantAdminAccount>[];
   String? _initializedTenantDomain;
   StreamSubscription<TenantAdminLocation?>? _locationSelectionSubscription;
   StreamSubscription<String?>? _tenantScopeSubscription;
+  StreamSubscription<String?>? _accountsRepositoryErrorSubscription;
 
   Future<void> init() async {
+    _bindAccountsRepositoryError();
     _bindTenantScope();
     final normalizedTenantDomain =
         _normalizeTenantDomain(_tenantScope?.selectedTenantDomain);
@@ -154,68 +154,19 @@ class TenantAdminAccountsController implements Disposable {
   }
 
   Future<void> loadAccounts() async {
-    await _waitForAccountsFetch();
-    _resetAccountsPagination();
+    _bindAccountsRepositoryError();
     if (_isDisposed) {
       return;
     }
-    accountsStreamValue.addValue(null);
-    await _fetchAccountsPage(page: 1);
+    await _accountsRepository.loadAccounts(pageSize: _accountsPageSize);
   }
 
   Future<void> loadNextAccountsPage() async {
-    if (_isDisposed || _isFetchingAccountsPage || !_hasMoreAccounts) {
+    _bindAccountsRepositoryError();
+    if (_isDisposed) {
       return;
     }
-    await _fetchAccountsPage(page: _currentAccountsPage + 1);
-  }
-
-  Future<void> _waitForAccountsFetch() async {
-    while (_isFetchingAccountsPage && !_isDisposed) {
-      await Future<void>.delayed(const Duration(milliseconds: 50));
-    }
-  }
-
-  Future<void> _fetchAccountsPage({required int page}) async {
-    if (_isFetchingAccountsPage) return;
-    if (page > 1 && !_hasMoreAccounts) return;
-
-    _isFetchingAccountsPage = true;
-    if (page > 1 && !_isDisposed) {
-      isAccountsPageLoadingStreamValue.addValue(true);
-    }
-
-    try {
-      final result = await _accountsRepository.fetchAccountsPage(
-        page: page,
-        pageSize: _accountsPageSize,
-      );
-      if (_isDisposed) return;
-      if (page == 1) {
-        _fetchedAccounts
-          ..clear()
-          ..addAll(result.accounts);
-      } else {
-        _fetchedAccounts.addAll(result.accounts);
-      }
-      _currentAccountsPage = page;
-      _hasMoreAccounts = result.hasMore;
-      hasMoreAccountsStreamValue.addValue(_hasMoreAccounts);
-      accountsStreamValue
-          .addValue(List<TenantAdminAccount>.unmodifiable(_fetchedAccounts));
-      errorStreamValue.addValue(null);
-    } catch (error) {
-      if (_isDisposed) return;
-      errorStreamValue.addValue(error.toString());
-      if (page == 1) {
-        accountsStreamValue.addValue(const <TenantAdminAccount>[]);
-      }
-    } finally {
-      _isFetchingAccountsPage = false;
-      if (!_isDisposed) {
-        isAccountsPageLoadingStreamValue.addValue(false);
-      }
-    }
+    await _accountsRepository.loadNextAccountsPage(pageSize: _accountsPageSize);
   }
 
   Future<void> loadProfileTypes() async {
@@ -265,6 +216,14 @@ class TenantAdminAccountsController implements Disposable {
     searchQueryStreamValue.addValue(query);
   }
 
+  void toggleSearchFieldVisibility() {
+    final next = !showSearchFieldStreamValue.value;
+    showSearchFieldStreamValue.addValue(next);
+    if (!next) {
+      updateSearchQuery('');
+    }
+  }
+
   void updateCreateSelectedProfileType(String? profileType) {
     _updateCreateState(
       createStateStreamValue.value.copyWith(selectedProfileType: profileType),
@@ -300,8 +259,7 @@ class TenantAdminAccountsController implements Disposable {
     final trimmed = url?.trim();
     _updateCreateState(
       createStateStreamValue.value.copyWith(
-        avatarWebUrl:
-            trimmed == null || trimmed.isEmpty ? null : trimmed,
+        avatarWebUrl: trimmed == null || trimmed.isEmpty ? null : trimmed,
         avatarFile: null,
       ),
     );
@@ -311,8 +269,7 @@ class TenantAdminAccountsController implements Disposable {
     final trimmed = url?.trim();
     _updateCreateState(
       createStateStreamValue.value.copyWith(
-        coverWebUrl:
-            trimmed == null || trimmed.isEmpty ? null : trimmed,
+        coverWebUrl: trimmed == null || trimmed.isEmpty ? null : trimmed,
         coverFile: null,
       ),
     );
@@ -341,7 +298,7 @@ class TenantAdminAccountsController implements Disposable {
   }
 
   void resetCreateState() {
-    _updateCreateState(TenantAdminAccountCreateState.initial());
+    _updateCreateState(TenantAdminAccountCreateDraft.initial());
   }
 
   void _bindLocationSelection() {
@@ -466,18 +423,23 @@ class TenantAdminAccountsController implements Disposable {
     selectedTaxonomyTermsStreamValue.addValue(const {});
   }
 
-  void _resetAccountsPagination() {
-    _fetchedAccounts.clear();
-    _currentAccountsPage = 0;
-    _hasMoreAccounts = true;
-    _isFetchingAccountsPage = false;
-    hasMoreAccountsStreamValue.addValue(true);
-    isAccountsPageLoadingStreamValue.addValue(false);
+  void _bindAccountsRepositoryError() {
+    if (_accountsRepositoryErrorSubscription != null) {
+      return;
+    }
+    _accountsRepositoryErrorSubscription =
+        _accountsRepository.accountsErrorStreamValue.stream.listen(
+      (error) {
+        if (_isDisposed) {
+          return;
+        }
+        errorStreamValue.addValue(error);
+      },
+    );
   }
 
   void _resetTenantScopedState() {
-    _resetAccountsPagination();
-    accountsStreamValue.addValue(null);
+    _accountsRepository.resetAccountsState();
     profileTypesStreamValue.addValue(const []);
     errorStreamValue.addValue(null);
     taxonomiesStreamValue.addValue(const []);
@@ -487,6 +449,7 @@ class TenantAdminAccountsController implements Disposable {
     createErrorMessageStreamValue.addValue(null);
     resetCreateForm();
     resetCreateState();
+    showSearchFieldStreamValue.addValue(false);
   }
 
   String? _normalizeTenantDomain(String? raw) {
@@ -506,18 +469,17 @@ class TenantAdminAccountsController implements Disposable {
     _isDisposed = true;
     _locationSelectionSubscription?.cancel();
     _tenantScopeSubscription?.cancel();
+    _accountsRepositoryErrorSubscription?.cancel();
     nameController.dispose();
     bioController.dispose();
     latitudeController.dispose();
     longitudeController.dispose();
-    accountsStreamValue.dispose();
-    hasMoreAccountsStreamValue.dispose();
-    isAccountsPageLoadingStreamValue.dispose();
     profileTypesStreamValue.dispose();
     isProfileTypesLoadingStreamValue.dispose();
     errorStreamValue.dispose();
     selectedOwnershipStreamValue.dispose();
     searchQueryStreamValue.dispose();
+    showSearchFieldStreamValue.dispose();
     createStateStreamValue.dispose();
     taxonomiesStreamValue.dispose();
     taxonomyTermsStreamValue.dispose();
@@ -588,7 +550,11 @@ extension on TenantAdminAccountsController {
         );
         if (_isDisposed) return;
         map[slug] = terms;
-      } catch (_) {
+      } catch (error) {
+        if (!_isDisposed) {
+          taxonomiesErrorStreamValue
+              .addValue('Falha ao carregar termos para taxonomia "$slug".');
+        }
         map[slug] = const [];
       }
     }
@@ -616,10 +582,10 @@ extension on TenantAdminAccountsController {
   }
 }
 
-class TenantAdminAccountCreateState {
+class TenantAdminAccountCreateDraft {
   static const _unset = Object();
 
-  const TenantAdminAccountCreateState({
+  const TenantAdminAccountCreateDraft({
     required this.ownershipState,
     required this.selectedProfileType,
     required this.avatarFile,
@@ -628,8 +594,8 @@ class TenantAdminAccountCreateState {
     required this.coverWebUrl,
   });
 
-  factory TenantAdminAccountCreateState.initial() =>
-      const TenantAdminAccountCreateState(
+  factory TenantAdminAccountCreateDraft.initial() =>
+      const TenantAdminAccountCreateDraft(
         ownershipState: TenantAdminOwnershipState.tenantOwned,
         selectedProfileType: null,
         avatarFile: null,
@@ -645,7 +611,7 @@ class TenantAdminAccountCreateState {
   final String? avatarWebUrl;
   final String? coverWebUrl;
 
-  TenantAdminAccountCreateState copyWith({
+  TenantAdminAccountCreateDraft copyWith({
     Object? ownershipState = _unset,
     Object? selectedProfileType = _unset,
     Object? avatarFile = _unset,
@@ -663,13 +629,12 @@ class TenantAdminAccountCreateState {
         avatarFile == _unset ? this.avatarFile : avatarFile as XFile?;
     final nextCoverFile =
         coverFile == _unset ? this.coverFile : coverFile as XFile?;
-    final nextAvatarWebUrl = avatarWebUrl == _unset
-        ? this.avatarWebUrl
-        : avatarWebUrl as String?;
+    final nextAvatarWebUrl =
+        avatarWebUrl == _unset ? this.avatarWebUrl : avatarWebUrl as String?;
     final nextCoverWebUrl =
         coverWebUrl == _unset ? this.coverWebUrl : coverWebUrl as String?;
 
-    return TenantAdminAccountCreateState(
+    return TenantAdminAccountCreateDraft(
       ownershipState: nextOwnershipState,
       selectedProfileType: nextSelectedProfileType,
       avatarFile: nextAvatarFile,
@@ -681,7 +646,7 @@ class TenantAdminAccountCreateState {
 }
 
 extension on TenantAdminAccountsController {
-  void _updateCreateState(TenantAdminAccountCreateState state) {
+  void _updateCreateState(TenantAdminAccountCreateDraft state) {
     if (_isDisposed) return;
     createStateStreamValue.addValue(state);
   }

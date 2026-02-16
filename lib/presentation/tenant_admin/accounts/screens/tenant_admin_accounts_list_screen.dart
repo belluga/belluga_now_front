@@ -28,7 +28,6 @@ class _TenantAdminAccountsListScreenState
   final TenantAdminAccountsController _controller =
       GetIt.I.get<TenantAdminAccountsController>();
   final ScrollController _scrollController = ScrollController();
-  bool _showSearchField = false;
 
   @override
   void initState() {
@@ -66,52 +65,59 @@ class _TenantAdminAccountsListScreenState
                 _visibleOwnershipSegments.contains(selected)
                     ? selected
                     : TenantAdminOwnershipState.tenantOwned;
-            return StreamValueBuilder<String>(
-              streamValue: _controller.searchQueryStreamValue,
-              builder: (context, query) {
-                return StreamValueBuilder<bool>(
-                  streamValue: _controller.hasMoreAccountsStreamValue,
-                  builder: (context, hasMore) {
+            return StreamValueBuilder<bool>(
+              streamValue: _controller.showSearchFieldStreamValue,
+              builder: (context, showSearchField) {
+                return StreamValueBuilder<String>(
+                  streamValue: _controller.searchQueryStreamValue,
+                  builder: (context, query) {
                     return StreamValueBuilder<bool>(
-                      streamValue: _controller.isAccountsPageLoadingStreamValue,
-                      builder: (context, isPageLoading) {
-                        return StreamValueBuilder<List<TenantAdminAccount>?>(
-                          streamValue: _controller.accountsStreamValue,
-                          onNullWidget: _buildScaffold(
-                            context: context,
-                            selectedOwnership: selectedOwnership,
-                            query: query,
-                            error: error,
-                            content: const Center(
-                              child: CircularProgressIndicator(),
-                            ),
-                          ),
-                          builder: (context, accounts) {
-                            final loadedAccounts =
-                                accounts ?? const <TenantAdminAccount>[];
-                            final filteredAccounts = _filterAccounts(
-                              loadedAccounts: loadedAccounts,
-                              selectedOwnership: selectedOwnership,
-                              query: query.trim(),
-                            );
+                      streamValue: _controller.hasMoreAccountsStreamValue,
+                      builder: (context, hasMore) {
+                        return StreamValueBuilder<bool>(
+                          streamValue:
+                              _controller.isAccountsPageLoadingStreamValue,
+                          builder: (context, isPageLoading) {
+                            return StreamValueBuilder<
+                                List<TenantAdminAccount>?>(
+                              streamValue: _controller.accountsStreamValue,
+                              onNullWidget: _buildScaffold(
+                                context: context,
+                                selectedOwnership: selectedOwnership,
+                                showSearchField: showSearchField,
+                                error: error,
+                                content: const Center(
+                                  child: CircularProgressIndicator(),
+                                ),
+                              ),
+                              builder: (context, accounts) {
+                                final loadedAccounts =
+                                    accounts ?? const <TenantAdminAccount>[];
+                                final filteredAccounts = _filterAccounts(
+                                  loadedAccounts: loadedAccounts,
+                                  selectedOwnership: selectedOwnership,
+                                  query: query.trim(),
+                                );
 
-                            return _buildScaffold(
-                              context: context,
-                              selectedOwnership: selectedOwnership,
-                              query: query,
-                              error: error,
-                              content: filteredAccounts.isEmpty
-                                  ? const TenantAdminEmptyState(
-                                      icon: Icons.group_off_outlined,
-                                      title: 'Nenhuma conta encontrada',
-                                      description:
-                                          'Crie a primeira conta deste segmento usando o botão "Criar conta".',
-                                    )
-                                  : _buildAccountsList(
-                                      filteredAccounts: filteredAccounts,
-                                      hasMore: hasMore,
-                                      isPageLoading: isPageLoading,
-                                    ),
+                                return _buildScaffold(
+                                  context: context,
+                                  selectedOwnership: selectedOwnership,
+                                  showSearchField: showSearchField,
+                                  error: error,
+                                  content: filteredAccounts.isEmpty
+                                      ? const TenantAdminEmptyState(
+                                          icon: Icons.group_off_outlined,
+                                          title: 'Nenhuma conta encontrada',
+                                          description:
+                                              'Crie a primeira conta deste segmento usando o botão "Criar conta".',
+                                        )
+                                      : _buildAccountsList(
+                                          filteredAccounts: filteredAccounts,
+                                          hasMore: hasMore,
+                                          isPageLoading: isPageLoading,
+                                        ),
+                                );
+                              },
                             );
                           },
                         );
@@ -130,7 +136,7 @@ class _TenantAdminAccountsListScreenState
   Widget _buildScaffold({
     required BuildContext context,
     required TenantAdminOwnershipState selectedOwnership,
-    required String query,
+    required bool showSearchField,
     required String? error,
     required Widget content,
   }) {
@@ -164,21 +170,14 @@ class _TenantAdminAccountsListScreenState
             Align(
               alignment: Alignment.centerRight,
               child: IconButton(
-                tooltip: _showSearchField ? 'Ocultar busca' : 'Buscar',
-                onPressed: () {
-                  setState(() {
-                    _showSearchField = !_showSearchField;
-                    if (!_showSearchField && query.isNotEmpty) {
-                      _controller.updateSearchQuery('');
-                    }
-                  });
-                },
+                tooltip: showSearchField ? 'Ocultar busca' : 'Buscar',
+                onPressed: _controller.toggleSearchFieldVisibility,
                 icon: Icon(
-                  _showSearchField ? Icons.close : Icons.search,
+                  showSearchField ? Icons.close : Icons.search,
                 ),
               ),
             ),
-            if (_showSearchField) ...[
+            if (showSearchField) ...[
               TextField(
                 onChanged: _controller.updateSearchQuery,
                 decoration: const InputDecoration(

@@ -24,15 +24,14 @@ class TenantAdminOrganizationsController implements Disposable {
   final TenantAdminTenantScopeContract? _tenantScope;
   static const int _organizationsPageSize = 20;
 
-  final StreamValue<List<TenantAdminOrganization>?> organizationsStreamValue =
-      StreamValue<List<TenantAdminOrganization>?>();
-  final StreamValue<bool> hasMoreOrganizationsStreamValue =
-      StreamValue<bool>(defaultValue: true);
-  final StreamValue<bool> isOrganizationsPageLoadingStreamValue =
-      StreamValue<bool>(defaultValue: false);
-  final StreamValue<bool> isLoadingStreamValue =
-      StreamValue<bool>(defaultValue: false);
-  final StreamValue<String?> errorStreamValue = StreamValue<String?>();
+  StreamValue<List<TenantAdminOrganization>?> get organizationsStreamValue =>
+      _organizationsRepository.organizationsStreamValue;
+  StreamValue<bool> get hasMoreOrganizationsStreamValue =>
+      _organizationsRepository.hasMoreOrganizationsStreamValue;
+  StreamValue<bool> get isOrganizationsPageLoadingStreamValue =>
+      _organizationsRepository.isOrganizationsPageLoadingStreamValue;
+  StreamValue<String?> get errorStreamValue =>
+      _organizationsRepository.organizationsErrorStreamValue;
   final StreamValue<TenantAdminOrganization?> organizationDetailStreamValue =
       StreamValue<TenantAdminOrganization?>();
   final StreamValue<bool> organizationDetailLoadingStreamValue =
@@ -52,11 +51,6 @@ class TenantAdminOrganizationsController implements Disposable {
   final TextEditingController descriptionController = TextEditingController();
 
   bool _isDisposed = false;
-  bool _isFetchingOrganizationsPage = false;
-  bool _hasMoreOrganizations = true;
-  int _currentOrganizationsPage = 0;
-  final List<TenantAdminOrganization> _fetchedOrganizations =
-      <TenantAdminOrganization>[];
   StreamSubscription<String?>? _tenantScopeSubscription;
   String? _lastTenantDomain;
 
@@ -85,65 +79,19 @@ class TenantAdminOrganizationsController implements Disposable {
   }
 
   Future<void> loadOrganizations() async {
-    await _waitForOrganizationsFetch();
-    _resetOrganizationsPagination();
-    organizationsStreamValue.addValue(null);
-    await _fetchOrganizationsPage(page: 1);
+    if (_isDisposed) return;
+    await _organizationsRepository.loadOrganizations(
+      pageSize: _organizationsPageSize,
+    );
   }
 
   Future<void> loadNextOrganizationsPage() async {
-    if (_isDisposed || _isFetchingOrganizationsPage || !_hasMoreOrganizations) {
+    if (_isDisposed) {
       return;
     }
-    await _fetchOrganizationsPage(page: _currentOrganizationsPage + 1);
-  }
-
-  Future<void> _waitForOrganizationsFetch() async {
-    while (_isFetchingOrganizationsPage && !_isDisposed) {
-      await Future<void>.delayed(const Duration(milliseconds: 50));
-    }
-  }
-
-  Future<void> _fetchOrganizationsPage({required int page}) async {
-    if (_isFetchingOrganizationsPage) return;
-    if (page > 1 && !_hasMoreOrganizations) return;
-
-    _isFetchingOrganizationsPage = true;
-    if (page > 1 && !_isDisposed) {
-      isOrganizationsPageLoadingStreamValue.addValue(true);
-    }
-    isLoadingStreamValue.addValue(true);
-    try {
-      final result = await _organizationsRepository.fetchOrganizationsPage(
-        page: page,
-        pageSize: _organizationsPageSize,
-      );
-      if (_isDisposed) return;
-      if (page == 1) {
-        _fetchedOrganizations
-          ..clear()
-          ..addAll(result.items);
-      } else {
-        _fetchedOrganizations.addAll(result.items);
-      }
-      _currentOrganizationsPage = page;
-      _hasMoreOrganizations = result.hasMore;
-      hasMoreOrganizationsStreamValue.addValue(_hasMoreOrganizations);
-      organizationsStreamValue.addValue(
-        List<TenantAdminOrganization>.unmodifiable(_fetchedOrganizations),
-      );
-      errorStreamValue.addValue(null);
-    } catch (error) {
-      if (_isDisposed) return;
-      organizationsStreamValue.addValue(const <TenantAdminOrganization>[]);
-      errorStreamValue.addValue(error.toString());
-    } finally {
-      _isFetchingOrganizationsPage = false;
-      if (!_isDisposed) {
-        isLoadingStreamValue.addValue(false);
-        isOrganizationsPageLoadingStreamValue.addValue(false);
-      }
-    }
+    await _organizationsRepository.loadNextOrganizationsPage(
+      pageSize: _organizationsPageSize,
+    );
   }
 
   Future<TenantAdminOrganization> createOrganization({
@@ -244,9 +192,7 @@ class TenantAdminOrganizationsController implements Disposable {
   }
 
   void _resetTenantScopedState() {
-    _resetOrganizationsPagination();
-    organizationsStreamValue.addValue(null);
-    errorStreamValue.addValue(null);
+    _organizationsRepository.resetOrganizationsState();
     createSuccessMessageStreamValue.addValue(null);
     createErrorMessageStreamValue.addValue(null);
     organizationDetailStreamValue.addValue(null);
@@ -254,15 +200,6 @@ class TenantAdminOrganizationsController implements Disposable {
     organizationDetailLoadingStreamValue.addValue(false);
     organizationUpdatingStreamValue.addValue(false);
     resetCreateForm();
-  }
-
-  void _resetOrganizationsPagination() {
-    _fetchedOrganizations.clear();
-    _currentOrganizationsPage = 0;
-    _hasMoreOrganizations = true;
-    _isFetchingOrganizationsPage = false;
-    hasMoreOrganizationsStreamValue.addValue(true);
-    isOrganizationsPageLoadingStreamValue.addValue(false);
   }
 
   String? _normalizeTenantDomain(String? raw) {
@@ -283,11 +220,6 @@ class TenantAdminOrganizationsController implements Disposable {
     _tenantScopeSubscription?.cancel();
     nameController.dispose();
     descriptionController.dispose();
-    organizationsStreamValue.dispose();
-    hasMoreOrganizationsStreamValue.dispose();
-    isOrganizationsPageLoadingStreamValue.dispose();
-    isLoadingStreamValue.dispose();
-    errorStreamValue.dispose();
     organizationDetailStreamValue.dispose();
     organizationDetailLoadingStreamValue.dispose();
     organizationDetailErrorStreamValue.dispose();

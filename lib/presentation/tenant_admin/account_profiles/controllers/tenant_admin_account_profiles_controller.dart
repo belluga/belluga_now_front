@@ -65,20 +65,25 @@ class TenantAdminAccountProfilesController implements Disposable {
       StreamValue<String?>();
   final StreamValue<bool> accountUpdatingStreamValue =
       StreamValue<bool>(defaultValue: false);
-  final StreamValue<TenantAdminAccountProfileEditState> editStateStreamValue =
-      StreamValue<TenantAdminAccountProfileEditState>(
-    defaultValue: TenantAdminAccountProfileEditState.initial(),
+  final StreamValue<TenantAdminAccountProfileEditDraft> editStateStreamValue =
+      StreamValue<TenantAdminAccountProfileEditDraft>(
+    defaultValue: TenantAdminAccountProfileEditDraft.initial(),
   );
+  final StreamValue<bool> editLoadingStreamValue =
+      StreamValue<bool>(defaultValue: false);
+  final StreamValue<String?> editLoadErrorStreamValue = StreamValue<String?>();
   final StreamValue<bool> editSubmittingStreamValue =
       StreamValue<bool>(defaultValue: false);
   final StreamValue<String?> editSuccessMessageStreamValue =
       StreamValue<String?>();
   final StreamValue<String?> editErrorMessageStreamValue =
       StreamValue<String?>();
-  final StreamValue<TenantAdminAccountProfileCreateState>
+  final StreamValue<bool> taxonomyAutosavingStreamValue =
+      StreamValue<bool>(defaultValue: false);
+  final StreamValue<TenantAdminAccountProfileCreateDraft>
       createStateStreamValue =
-      StreamValue<TenantAdminAccountProfileCreateState>(
-    defaultValue: TenantAdminAccountProfileCreateState.initial(),
+      StreamValue<TenantAdminAccountProfileCreateDraft>(
+    defaultValue: TenantAdminAccountProfileCreateDraft.initial(),
   );
   final StreamValue<bool> createSubmittingStreamValue =
       StreamValue<bool>(defaultValue: false);
@@ -295,34 +300,27 @@ class TenantAdminAccountProfilesController implements Disposable {
   }
 
   Future<void> loadEditProfile(String accountProfileId) async {
-    _updateEditState(
-      editStateStreamValue.value.copyWith(
-        isLoading: true,
-        errorMessage: null,
-      ),
-    );
+    editLoadingStreamValue.addValue(true);
+    editLoadErrorStreamValue.addValue(null);
     try {
       await loadProfileTypes();
       final profile = await fetchProfile(accountProfileId);
       if (_isDisposed) return;
+      accountProfileStreamValue.addValue(profile);
       _updateEditState(
         editStateStreamValue.value
             .copyWith(
-              isLoading: false,
-              errorMessage: null,
-              profile: profile,
               selectedProfileType: profile.profileType,
             )
             .syncRemoteState(profile),
       );
     } catch (error) {
       if (_isDisposed) return;
-      _updateEditState(
-        editStateStreamValue.value.copyWith(
-          isLoading: false,
-          errorMessage: error.toString(),
-        ),
-      );
+      editLoadErrorStreamValue.addValue(error.toString());
+    } finally {
+      if (!_isDisposed) {
+        editLoadingStreamValue.addValue(false);
+      }
     }
   }
 
@@ -335,18 +333,13 @@ class TenantAdminAccountProfilesController implements Disposable {
   }
 
   void updateEditLoading(bool isLoading) {
-    _updateEditState(
-      editStateStreamValue.value.copyWith(isLoading: isLoading),
-    );
+    editLoadingStreamValue.addValue(isLoading);
   }
 
   void updateEditProfile(TenantAdminAccountProfile profile) {
+    accountProfileStreamValue.addValue(profile);
     _updateEditState(
-      editStateStreamValue.value
-          .copyWith(
-            profile: profile,
-          )
-          .syncRemoteState(profile),
+      editStateStreamValue.value.copyWith().syncRemoteState(profile),
     );
   }
 
@@ -354,9 +347,8 @@ class TenantAdminAccountProfilesController implements Disposable {
     _updateEditState(
       editStateStreamValue.value.copyWith(
         avatarFile: file,
-        avatarRemoteUrl: file == null
-            ? editStateStreamValue.value.avatarRemoteUrl
-            : null,
+        avatarRemoteUrl:
+            file == null ? editStateStreamValue.value.avatarRemoteUrl : null,
         avatarRemoteReady: false,
         avatarRemoteError: false,
         avatarPreloadUrl: null,
@@ -381,8 +373,7 @@ class TenantAdminAccountProfilesController implements Disposable {
     final trimmed = url?.trim();
     _updateEditState(
       editStateStreamValue.value.copyWith(
-        avatarRemoteUrl:
-            trimmed == null || trimmed.isEmpty ? null : trimmed,
+        avatarRemoteUrl: trimmed == null || trimmed.isEmpty ? null : trimmed,
         avatarFile: null,
         avatarRemoteReady: false,
         avatarRemoteError: false,
@@ -579,6 +570,7 @@ class TenantAdminAccountProfilesController implements Disposable {
     required String accountProfileId,
     required List<TenantAdminTaxonomyTerm> taxonomyTerms,
   }) async {
+    taxonomyAutosavingStreamValue.addValue(true);
     editSubmittingStreamValue.addValue(true);
     try {
       final updated = await updateProfile(
@@ -596,6 +588,7 @@ class TenantAdminAccountProfilesController implements Disposable {
     } finally {
       if (!_isDisposed) {
         editSubmittingStreamValue.addValue(false);
+        taxonomyAutosavingStreamValue.addValue(false);
       }
     }
   }
@@ -625,7 +618,10 @@ class TenantAdminAccountProfilesController implements Disposable {
   }
 
   void resetEditState() {
-    _updateEditState(TenantAdminAccountProfileEditState.initial());
+    _updateEditState(TenantAdminAccountProfileEditDraft.initial());
+    editLoadingStreamValue.addValue(false);
+    editLoadErrorStreamValue.addValue(null);
+    taxonomyAutosavingStreamValue.addValue(false);
   }
 
   void updateCreateSelectedProfileType(String? profileType) {
@@ -656,8 +652,7 @@ class TenantAdminAccountProfilesController implements Disposable {
     final trimmed = url?.trim();
     _updateCreateState(
       createStateStreamValue.value.copyWith(
-        avatarWebUrl:
-            trimmed == null || trimmed.isEmpty ? null : trimmed,
+        avatarWebUrl: trimmed == null || trimmed.isEmpty ? null : trimmed,
         avatarFile: null,
       ),
     );
@@ -667,8 +662,7 @@ class TenantAdminAccountProfilesController implements Disposable {
     final trimmed = url?.trim();
     _updateCreateState(
       createStateStreamValue.value.copyWith(
-        coverWebUrl:
-            trimmed == null || trimmed.isEmpty ? null : trimmed,
+        coverWebUrl: trimmed == null || trimmed.isEmpty ? null : trimmed,
         coverFile: null,
       ),
     );
@@ -724,15 +718,15 @@ class TenantAdminAccountProfilesController implements Disposable {
   }
 
   void resetCreateState() {
-    _updateCreateState(TenantAdminAccountProfileCreateState.initial());
+    _updateCreateState(TenantAdminAccountProfileCreateDraft.initial());
   }
 
-  void _updateEditState(TenantAdminAccountProfileEditState state) {
+  void _updateEditState(TenantAdminAccountProfileEditDraft state) {
     if (_isDisposed) return;
     editStateStreamValue.addValue(state);
   }
 
-  void _updateCreateState(TenantAdminAccountProfileCreateState state) {
+  void _updateCreateState(TenantAdminAccountProfileCreateDraft state) {
     if (_isDisposed) return;
     createStateStreamValue.addValue(state);
   }
@@ -904,10 +898,13 @@ class TenantAdminAccountProfilesController implements Disposable {
     accountDetailErrorStreamValue.dispose();
     accountUpdatingStreamValue.dispose();
     editStateStreamValue.dispose();
+    editLoadingStreamValue.dispose();
+    editLoadErrorStreamValue.dispose();
     createStateStreamValue.dispose();
     editSubmittingStreamValue.dispose();
     editSuccessMessageStreamValue.dispose();
     editErrorMessageStreamValue.dispose();
+    taxonomyAutosavingStreamValue.dispose();
     createSubmittingStreamValue.dispose();
     createSuccessMessageStreamValue.dispose();
     createErrorMessageStreamValue.dispose();
@@ -920,13 +917,10 @@ class TenantAdminAccountProfilesController implements Disposable {
   }
 }
 
-class TenantAdminAccountProfileEditState {
+class TenantAdminAccountProfileEditDraft {
   static const _unset = Object();
 
-  const TenantAdminAccountProfileEditState({
-    required this.isLoading,
-    required this.profile,
-    required this.errorMessage,
+  const TenantAdminAccountProfileEditDraft({
     required this.selectedProfileType,
     required this.avatarFile,
     required this.coverFile,
@@ -940,11 +934,8 @@ class TenantAdminAccountProfileEditState {
     required this.coverPreloadUrl,
   });
 
-  factory TenantAdminAccountProfileEditState.initial() =>
-      const TenantAdminAccountProfileEditState(
-        isLoading: true,
-        profile: null,
-        errorMessage: null,
+  factory TenantAdminAccountProfileEditDraft.initial() =>
+      const TenantAdminAccountProfileEditDraft(
         selectedProfileType: null,
         avatarFile: null,
         coverFile: null,
@@ -958,9 +949,6 @@ class TenantAdminAccountProfileEditState {
         coverPreloadUrl: null,
       );
 
-  final bool isLoading;
-  final TenantAdminAccountProfile? profile;
-  final String? errorMessage;
   final String? selectedProfileType;
   final XFile? avatarFile;
   final XFile? coverFile;
@@ -973,10 +961,7 @@ class TenantAdminAccountProfileEditState {
   final String? avatarPreloadUrl;
   final String? coverPreloadUrl;
 
-  TenantAdminAccountProfileEditState copyWith({
-    bool? isLoading,
-    Object? profile = _unset,
-    Object? errorMessage = _unset,
+  TenantAdminAccountProfileEditDraft copyWith({
     Object? selectedProfileType = _unset,
     Object? avatarFile = _unset,
     Object? coverFile = _unset,
@@ -989,11 +974,6 @@ class TenantAdminAccountProfileEditState {
     Object? avatarPreloadUrl = _unset,
     Object? coverPreloadUrl = _unset,
   }) {
-    final nextProfile = profile == _unset
-        ? this.profile
-        : profile as TenantAdminAccountProfile?;
-    final nextErrorMessage =
-        errorMessage == _unset ? this.errorMessage : errorMessage as String?;
     final nextSelectedProfileType = selectedProfileType == _unset
         ? this.selectedProfileType
         : selectedProfileType as String?;
@@ -1014,10 +994,7 @@ class TenantAdminAccountProfileEditState {
         ? this.coverPreloadUrl
         : coverPreloadUrl as String?;
 
-    return TenantAdminAccountProfileEditState(
-      isLoading: isLoading ?? this.isLoading,
-      profile: nextProfile,
-      errorMessage: nextErrorMessage,
+    return TenantAdminAccountProfileEditDraft(
       selectedProfileType: nextSelectedProfileType,
       avatarFile: nextAvatarFile,
       coverFile: nextCoverFile,
@@ -1032,7 +1009,7 @@ class TenantAdminAccountProfileEditState {
     );
   }
 
-  TenantAdminAccountProfileEditState syncRemoteState(
+  TenantAdminAccountProfileEditDraft syncRemoteState(
     TenantAdminAccountProfile updated,
   ) {
     final avatarUrl = updated.avatarUrl;
@@ -1050,10 +1027,10 @@ class TenantAdminAccountProfileEditState {
   }
 }
 
-class TenantAdminAccountProfileCreateState {
+class TenantAdminAccountProfileCreateDraft {
   static const _unset = Object();
 
-  const TenantAdminAccountProfileCreateState({
+  const TenantAdminAccountProfileCreateDraft({
     required this.selectedProfileType,
     required this.avatarFile,
     required this.coverFile,
@@ -1061,8 +1038,8 @@ class TenantAdminAccountProfileCreateState {
     required this.coverWebUrl,
   });
 
-  factory TenantAdminAccountProfileCreateState.initial() =>
-      const TenantAdminAccountProfileCreateState(
+  factory TenantAdminAccountProfileCreateDraft.initial() =>
+      const TenantAdminAccountProfileCreateDraft(
         selectedProfileType: null,
         avatarFile: null,
         coverFile: null,
@@ -1076,7 +1053,7 @@ class TenantAdminAccountProfileCreateState {
   final String? avatarWebUrl;
   final String? coverWebUrl;
 
-  TenantAdminAccountProfileCreateState copyWith({
+  TenantAdminAccountProfileCreateDraft copyWith({
     Object? selectedProfileType = _unset,
     Object? avatarFile = _unset,
     Object? coverFile = _unset,
@@ -1090,13 +1067,12 @@ class TenantAdminAccountProfileCreateState {
         avatarFile == _unset ? this.avatarFile : avatarFile as XFile?;
     final nextCoverFile =
         coverFile == _unset ? this.coverFile : coverFile as XFile?;
-    final nextAvatarWebUrl = avatarWebUrl == _unset
-        ? this.avatarWebUrl
-        : avatarWebUrl as String?;
+    final nextAvatarWebUrl =
+        avatarWebUrl == _unset ? this.avatarWebUrl : avatarWebUrl as String?;
     final nextCoverWebUrl =
         coverWebUrl == _unset ? this.coverWebUrl : coverWebUrl as String?;
 
-    return TenantAdminAccountProfileCreateState(
+    return TenantAdminAccountProfileCreateDraft(
       selectedProfileType: nextSelectedProfileType,
       avatarFile: nextAvatarFile,
       coverFile: nextCoverFile,

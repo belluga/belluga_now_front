@@ -23,8 +23,35 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
 import 'package:image_picker_platform_interface/image_picker_platform_interface.dart';
+import 'package:stream_value/core/stream_value.dart';
 
-class _FakeAccountsRepository implements TenantAdminAccountsRepositoryContract {
+class _FakeAccountsRepository
+    with TenantAdminAccountsRepositoryPaginationMixin
+    implements TenantAdminAccountsRepositoryContract {
+  @override
+  final StreamValue<List<TenantAdminAccount>?> accountsStreamValue =
+      StreamValue<List<TenantAdminAccount>?>(defaultValue: const []);
+
+  @override
+  final StreamValue<bool> hasMoreAccountsStreamValue =
+      StreamValue<bool>(defaultValue: false);
+
+  @override
+  final StreamValue<bool> isAccountsPageLoadingStreamValue =
+      StreamValue<bool>(defaultValue: false);
+
+  @override
+  final StreamValue<String?> accountsErrorStreamValue = StreamValue<String?>();
+
+  @override
+  Future<void> loadAccounts({int pageSize = 20}) async {}
+
+  @override
+  Future<void> loadNextAccountsPage({int pageSize = 20}) async {}
+
+  @override
+  void resetAccountsState() {}
+
   @override
   Future<TenantAdminAccount> createAccount({
     required String name,
@@ -106,6 +133,7 @@ class _FakeAccountsRepository implements TenantAdminAccountsRepositoryContract {
 }
 
 class _FakeAccountProfilesRepository
+    with TenantAdminProfileTypesPaginationMixin
     implements TenantAdminAccountProfilesRepositoryContract {
   _FakeAccountProfilesRepository({
     List<TenantAdminProfileTypeDefinition>? profileTypes,
@@ -287,6 +315,7 @@ class _FakeAccountProfilesRepository
 }
 
 class _FakeTaxonomiesRepository
+    with TenantAdminTaxonomiesPaginationMixin
     implements TenantAdminTaxonomiesRepositoryContract {
   _FakeTaxonomiesRepository({
     List<TenantAdminTaxonomyDefinition>? taxonomies,

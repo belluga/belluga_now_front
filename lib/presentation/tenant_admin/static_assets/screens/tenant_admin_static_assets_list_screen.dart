@@ -22,8 +22,6 @@ class _TenantAdminStaticAssetsListScreenState
   final TenantAdminStaticAssetsController _controller =
       GetIt.I.get<TenantAdminStaticAssetsController>();
   final ScrollController _scrollController = ScrollController();
-  bool _showSearchField = false;
-  String? _selectedTypeFilter;
 
   @override
   void initState() {
@@ -74,57 +72,83 @@ class _TenantAdminStaticAssetsListScreenState
               builder: (context, isPageLoading) {
                 return StreamValueBuilder<List<TenantAdminStaticAsset>?>(
                   streamValue: _controller.assetsStreamValue,
-                  onNullWidget: _buildScaffold(
-                    context: context,
-                    query: '',
-                    availableTypes: const [],
-                    selectedTypeFilter: null,
-                    error: error,
-                    body: const Center(child: CircularProgressIndicator()),
+                  onNullWidget: StreamValueBuilder<bool>(
+                    streamValue: _controller.showSearchFieldStreamValue,
+                    builder: (context, showSearchField) {
+                      return StreamValueBuilder<String?>(
+                        streamValue: _controller.selectedTypeFilterStreamValue,
+                        builder: (context, selectedTypeFilter) {
+                          return _buildScaffold(
+                            context: context,
+                            showSearchField: showSearchField,
+                            availableTypes: const [],
+                            selectedTypeFilter: selectedTypeFilter,
+                            error: error,
+                            body: const Center(
+                                child: CircularProgressIndicator()),
+                          );
+                        },
+                      );
+                    },
                   ),
                   builder: (context, assets) {
-                    return StreamValueBuilder<String>(
-                      streamValue: _controller.searchQueryStreamValue,
-                      builder: (context, query) {
-                        final loadedAssets =
-                            assets ?? const <TenantAdminStaticAsset>[];
-                        final availableTypes = loadedAssets
-                            .map((asset) => asset.profileType)
-                            .toSet()
-                            .toList(growable: false)
-                          ..sort();
-                        final selectedTypeFilter =
-                            availableTypes.contains(_selectedTypeFilter)
-                                ? _selectedTypeFilter
-                                : null;
-                        final filteredAssets =
-                            _filterAssets(loadedAssets, query.trim());
-                        final filteredByType = selectedTypeFilter == null
-                            ? filteredAssets
-                            : filteredAssets
-                                .where(
-                                  (asset) =>
-                                      asset.profileType == selectedTypeFilter,
+                    return StreamValueBuilder<bool>(
+                      streamValue: _controller.showSearchFieldStreamValue,
+                      builder: (context, showSearchField) {
+                        return StreamValueBuilder<String?>(
+                          streamValue:
+                              _controller.selectedTypeFilterStreamValue,
+                          builder: (context, selectedTypeFilterValue) {
+                            return StreamValueBuilder<String>(
+                              streamValue: _controller.searchQueryStreamValue,
+                              builder: (context, query) {
+                                final loadedAssets =
+                                    assets ?? const <TenantAdminStaticAsset>[];
+                                final availableTypes = loadedAssets
+                                    .map((asset) => asset.profileType)
+                                    .toSet()
+                                    .toList(growable: false)
+                                  ..sort();
+                                final selectedTypeFilter =
+                                    availableTypes.contains(
+                                  selectedTypeFilterValue,
                                 )
-                                .toList(growable: false);
-                        return _buildScaffold(
-                          context: context,
-                          query: query,
-                          availableTypes: availableTypes,
-                          selectedTypeFilter: selectedTypeFilter,
-                          error: error,
-                          body: filteredByType.isEmpty
-                              ? const TenantAdminEmptyState(
-                                  icon: Icons.place_outlined,
-                                  title: 'Nenhum ativo estático',
-                                  description:
-                                      'Use "Criar ativo" para adicionar o primeiro ativo do tenant.',
-                                )
-                              : _buildAssetsList(
-                                  filteredAssets: filteredByType,
-                                  hasMore: hasMore,
-                                  isPageLoading: isPageLoading,
-                                ),
+                                        ? selectedTypeFilterValue
+                                        : null;
+                                final filteredAssets =
+                                    _filterAssets(loadedAssets, query.trim());
+                                final filteredByType =
+                                    selectedTypeFilter == null
+                                        ? filteredAssets
+                                        : filteredAssets
+                                            .where(
+                                              (asset) =>
+                                                  asset.profileType ==
+                                                  selectedTypeFilter,
+                                            )
+                                            .toList(growable: false);
+                                return _buildScaffold(
+                                  context: context,
+                                  showSearchField: showSearchField,
+                                  availableTypes: availableTypes,
+                                  selectedTypeFilter: selectedTypeFilter,
+                                  error: error,
+                                  body: filteredByType.isEmpty
+                                      ? const TenantAdminEmptyState(
+                                          icon: Icons.place_outlined,
+                                          title: 'Nenhum ativo estático',
+                                          description:
+                                              'Use "Criar ativo" para adicionar o primeiro ativo do tenant.',
+                                        )
+                                      : _buildAssetsList(
+                                          filteredAssets: filteredByType,
+                                          hasMore: hasMore,
+                                          isPageLoading: isPageLoading,
+                                        ),
+                                );
+                              },
+                            );
+                          },
                         );
                       },
                     );
@@ -216,7 +240,7 @@ class _TenantAdminStaticAssetsListScreenState
 
   Widget _buildScaffold({
     required BuildContext context,
-    required String query,
+    required bool showSearchField,
     required List<String> availableTypes,
     required String? selectedTypeFilter,
     required String? error,
@@ -245,22 +269,15 @@ class _TenantAdminStaticAssetsListScreenState
               children: [
                 const Spacer(),
                 IconButton(
-                  tooltip: _showSearchField ? 'Ocultar busca' : 'Buscar',
-                  onPressed: () {
-                    setState(() {
-                      _showSearchField = !_showSearchField;
-                      if (!_showSearchField && query.isNotEmpty) {
-                        _controller.updateSearchQuery('');
-                      }
-                    });
-                  },
+                  tooltip: showSearchField ? 'Ocultar busca' : 'Buscar',
+                  onPressed: _controller.toggleSearchFieldVisibility,
                   icon: Icon(
-                    _showSearchField ? Icons.close : Icons.search,
+                    showSearchField ? Icons.close : Icons.search,
                   ),
                 ),
               ],
             ),
-            if (_showSearchField) ...[
+            if (showSearchField) ...[
               TextField(
                 onChanged: _controller.updateSearchQuery,
                 decoration: const InputDecoration(
@@ -289,9 +306,7 @@ class _TenantAdminStaticAssetsListScreenState
                 ),
               ],
               onChanged: (value) {
-                setState(() {
-                  _selectedTypeFilter = value;
-                });
+                _controller.updateSelectedTypeFilter(value);
               },
             ),
             const SizedBox(height: 8),

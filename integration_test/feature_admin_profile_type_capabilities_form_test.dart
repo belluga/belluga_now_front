@@ -107,6 +107,7 @@ void main() {
 }
 
 class _FakeTenantAdminAccountsRepository
+    with TenantAdminAccountsRepositoryPaginationMixin
     implements TenantAdminAccountsRepositoryContract {
   @override
   Future<List<TenantAdminAccount>> fetchAccounts() async => const [];
@@ -187,6 +188,7 @@ class _FakeTenantAdminAccountsRepository
 }
 
 class _FakeTenantAdminAccountProfilesRepository
+    with TenantAdminProfileTypesPaginationMixin
     implements TenantAdminAccountProfilesRepositoryContract {
   @override
   Future<List<TenantAdminProfileTypeDefinition>> fetchProfileTypes() async {
@@ -378,6 +380,7 @@ class _FakeTenantAdminAccountProfilesRepository
 }
 
 class _FakeTenantAdminTaxonomiesRepository
+    with TenantAdminTaxonomiesPaginationMixin
     implements TenantAdminTaxonomiesRepositoryContract {
   @override
   Future<List<TenantAdminTaxonomyDefinition>> fetchTaxonomies() async {

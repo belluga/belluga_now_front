@@ -9,6 +9,7 @@ import 'package:dio/dio.dart';
 import 'package:get_it/get_it.dart';
 
 class TenantAdminOrganizationsRepository
+    with TenantAdminOrganizationsPaginationMixin
     implements TenantAdminOrganizationsRepositoryContract {
   TenantAdminOrganizationsRepository({
     Dio? dio,

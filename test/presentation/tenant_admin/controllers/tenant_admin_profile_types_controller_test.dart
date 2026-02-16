@@ -14,6 +14,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:stream_value/core/stream_value.dart';
 
 class _FakeAccountProfilesRepository
+    with TenantAdminProfileTypesPaginationMixin
     implements TenantAdminAccountProfilesRepositoryContract {
   _FakeAccountProfilesRepository(this._types);
 
@@ -175,6 +176,7 @@ class _FakeAccountProfilesRepository
 }
 
 class _FakeTaxonomiesRepository
+    with TenantAdminTaxonomiesPaginationMixin
     implements TenantAdminTaxonomiesRepositoryContract {
   _FakeTaxonomiesRepository(this.taxonomies);
 

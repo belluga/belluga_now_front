@@ -42,12 +42,12 @@ class TenantAdminStaticAssetsController implements Disposable {
   final TenantAdminTenantScopeContract? _tenantScope;
   static const int _assetsPageSize = 20;
 
-  final StreamValue<List<TenantAdminStaticAsset>?> assetsStreamValue =
-      StreamValue<List<TenantAdminStaticAsset>?>();
-  final StreamValue<bool> hasMoreAssetsStreamValue =
-      StreamValue<bool>(defaultValue: true);
-  final StreamValue<bool> isAssetsPageLoadingStreamValue =
-      StreamValue<bool>(defaultValue: false);
+  StreamValue<List<TenantAdminStaticAsset>?> get assetsStreamValue =>
+      _repository.staticAssetsStreamValue;
+  StreamValue<bool> get hasMoreAssetsStreamValue =>
+      _repository.hasMoreStaticAssetsStreamValue;
+  StreamValue<bool> get isAssetsPageLoadingStreamValue =>
+      _repository.isStaticAssetsPageLoadingStreamValue;
   final StreamValue<List<TenantAdminStaticProfileTypeDefinition>>
       profileTypesStreamValue =
       StreamValue<List<TenantAdminStaticProfileTypeDefinition>>(
@@ -78,6 +78,12 @@ class TenantAdminStaticAssetsController implements Disposable {
   final StreamValue<String?> submitSuccessStreamValue = StreamValue<String?>();
   final StreamValue<String> searchQueryStreamValue =
       StreamValue<String>(defaultValue: '');
+  final StreamValue<bool> showSearchFieldStreamValue =
+      StreamValue<bool>(defaultValue: false);
+  final StreamValue<String?> selectedTypeFilterStreamValue =
+      StreamValue<String?>(defaultValue: null);
+  final StreamValue<bool> taxonomyAutosavingStreamValue =
+      StreamValue<bool>(defaultValue: false);
   final StreamValue<XFile?> avatarFileStreamValue = StreamValue<XFile?>();
   final StreamValue<XFile?> coverFileStreamValue = StreamValue<XFile?>();
 
@@ -91,11 +97,6 @@ class TenantAdminStaticAssetsController implements Disposable {
   final TextEditingController longitudeController = TextEditingController();
 
   bool _isDisposed = false;
-  bool _isFetchingAssetsPage = false;
-  bool _hasMoreAssets = true;
-  int _currentAssetsPage = 0;
-  final List<TenantAdminStaticAsset> _fetchedAssets =
-      <TenantAdminStaticAsset>[];
   StreamSubscription<TenantAdminLocation?>? _locationSubscription;
   StreamSubscription<String?>? _tenantScopeSubscription;
   String? _lastTenantDomain;
@@ -140,66 +141,16 @@ class TenantAdminStaticAssetsController implements Disposable {
   }
 
   Future<void> loadAssets() async {
-    await _waitForAssetsFetch();
-    _resetAssetsPagination();
-    assetsStreamValue.addValue(null);
-    await _fetchAssetsPage(page: 1);
+    await _repository.loadStaticAssets(pageSize: _assetsPageSize);
+    errorStreamValue.addValue(_repository.staticAssetsErrorStreamValue.value);
   }
 
   Future<void> loadNextAssetsPage() async {
-    if (_isDisposed || _isFetchingAssetsPage || !_hasMoreAssets) {
+    if (_isDisposed) {
       return;
     }
-    await _fetchAssetsPage(page: _currentAssetsPage + 1);
-  }
-
-  Future<void> _waitForAssetsFetch() async {
-    while (_isFetchingAssetsPage && !_isDisposed) {
-      await Future<void>.delayed(const Duration(milliseconds: 50));
-    }
-  }
-
-  Future<void> _fetchAssetsPage({required int page}) async {
-    if (_isFetchingAssetsPage) return;
-    if (page > 1 && !_hasMoreAssets) return;
-
-    _isFetchingAssetsPage = true;
-    if (page > 1 && !_isDisposed) {
-      isAssetsPageLoadingStreamValue.addValue(true);
-    }
-    isLoadingStreamValue.addValue(true);
-    try {
-      final result = await _repository.fetchStaticAssetsPage(
-        page: page,
-        pageSize: _assetsPageSize,
-      );
-      if (_isDisposed) return;
-      if (page == 1) {
-        _fetchedAssets
-          ..clear()
-          ..addAll(result.items);
-      } else {
-        _fetchedAssets.addAll(result.items);
-      }
-      _currentAssetsPage = page;
-      _hasMoreAssets = result.hasMore;
-      hasMoreAssetsStreamValue.addValue(_hasMoreAssets);
-      assetsStreamValue
-          .addValue(List<TenantAdminStaticAsset>.unmodifiable(_fetchedAssets));
-      errorStreamValue.addValue(null);
-    } catch (error) {
-      if (_isDisposed) return;
-      if (page == 1) {
-        assetsStreamValue.addValue(const <TenantAdminStaticAsset>[]);
-      }
-      errorStreamValue.addValue(error.toString());
-    } finally {
-      _isFetchingAssetsPage = false;
-      if (!_isDisposed) {
-        isLoadingStreamValue.addValue(false);
-        isAssetsPageLoadingStreamValue.addValue(false);
-      }
-    }
+    await _repository.loadNextStaticAssetsPage(pageSize: _assetsPageSize);
+    errorStreamValue.addValue(_repository.staticAssetsErrorStreamValue.value);
   }
 
   Future<void> loadProfileTypes() async {
@@ -335,6 +286,23 @@ class TenantAdminStaticAssetsController implements Disposable {
     searchQueryStreamValue.addValue(value);
   }
 
+  void toggleSearchFieldVisibility() {
+    final next = !showSearchFieldStreamValue.value;
+    showSearchFieldStreamValue.addValue(next);
+    if (!next) {
+      updateSearchQuery('');
+    }
+  }
+
+  void updateSelectedTypeFilter(String? profileType) {
+    final normalized = profileType?.trim();
+    if (normalized == null || normalized.isEmpty) {
+      selectedTypeFilterStreamValue.addValue(null);
+      return;
+    }
+    selectedTypeFilterStreamValue.addValue(normalized);
+  }
+
   void updateTaxonomySelection({
     required String taxonomySlug,
     required String termSlug,
@@ -428,10 +396,8 @@ class TenantAdminStaticAssetsController implements Disposable {
     }
     submitLoadingStreamValue.addValue(true);
     try {
-      final avatarUpload =
-          await _buildMediaUpload(avatarFileStreamValue.value);
-      final coverUpload =
-          await _buildMediaUpload(coverFileStreamValue.value);
+      final avatarUpload = await _buildMediaUpload(avatarFileStreamValue.value);
+      final coverUpload = await _buildMediaUpload(coverFileStreamValue.value);
       final created = await _repository.createStaticAsset(
         profileType: selectedProfileTypeStreamValue.value ?? '',
         displayName: displayNameController.text.trim(),
@@ -455,13 +421,8 @@ class TenantAdminStaticAssetsController implements Disposable {
       if (_isDisposed) return;
       submitErrorStreamValue.addValue(null);
       submitSuccessStreamValue.addValue('Ativo criado.');
-      final nextAssets = [..._fetchedAssets, created];
-      _fetchedAssets
-        ..clear()
-        ..addAll(nextAssets);
-      assetsStreamValue.addValue(
-        List<TenantAdminStaticAsset>.unmodifiable(nextAssets),
-      );
+      await loadAssets();
+      editingAssetStreamValue.addValue(created);
     } catch (error) {
       if (_isDisposed) return;
       submitErrorStreamValue.addValue(error.toString());
@@ -481,10 +442,8 @@ class TenantAdminStaticAssetsController implements Disposable {
     }
     submitLoadingStreamValue.addValue(true);
     try {
-      final avatarUpload =
-          await _buildMediaUpload(avatarFileStreamValue.value);
-      final coverUpload =
-          await _buildMediaUpload(coverFileStreamValue.value);
+      final avatarUpload = await _buildMediaUpload(avatarFileStreamValue.value);
+      final coverUpload = await _buildMediaUpload(coverFileStreamValue.value);
       final updated = await _repository.updateStaticAsset(
         assetId: assetId,
         profileType: selectedProfileTypeStreamValue.value,
@@ -509,7 +468,8 @@ class TenantAdminStaticAssetsController implements Disposable {
       if (_isDisposed) return;
       submitErrorStreamValue.addValue(null);
       submitSuccessStreamValue.addValue('Ativo atualizado.');
-      _replaceAsset(updated);
+      editingAssetStreamValue.addValue(updated);
+      await loadAssets();
     } catch (error) {
       if (_isDisposed) return;
       submitErrorStreamValue.addValue(error.toString());
@@ -524,15 +484,7 @@ class TenantAdminStaticAssetsController implements Disposable {
     try {
       await _repository.deleteStaticAsset(assetId);
       if (_isDisposed) return;
-      final nextAssets = _fetchedAssets
-          .where((asset) => asset.id != assetId)
-          .toList(growable: false);
-      _fetchedAssets
-        ..clear()
-        ..addAll(nextAssets);
-      assetsStreamValue.addValue(
-        List<TenantAdminStaticAsset>.unmodifiable(nextAssets),
-      );
+      await loadAssets();
     } catch (error) {
       if (_isDisposed) return;
       errorStreamValue.addValue(error.toString());
@@ -552,7 +504,8 @@ class TenantAdminStaticAssetsController implements Disposable {
       if (_isDisposed) return false;
       submitErrorStreamValue.addValue(null);
       submitSuccessStreamValue.addValue('Slug do ativo atualizado.');
-      _replaceAsset(updated);
+      editingAssetStreamValue.addValue(updated);
+      await loadAssets();
       return true;
     } catch (error) {
       if (_isDisposed) return false;
@@ -568,6 +521,7 @@ class TenantAdminStaticAssetsController implements Disposable {
   Future<bool> submitTaxonomySelectionUpdate({
     required String assetId,
   }) async {
+    taxonomyAutosavingStreamValue.addValue(true);
     submitLoadingStreamValue.addValue(true);
     try {
       final updated = await _repository.updateStaticAsset(
@@ -576,7 +530,8 @@ class TenantAdminStaticAssetsController implements Disposable {
       );
       if (_isDisposed) return false;
       submitErrorStreamValue.addValue(null);
-      _replaceAsset(updated);
+      editingAssetStreamValue.addValue(updated);
+      await loadAssets();
       return true;
     } catch (error) {
       if (_isDisposed) return false;
@@ -585,20 +540,9 @@ class TenantAdminStaticAssetsController implements Disposable {
     } finally {
       if (!_isDisposed) {
         submitLoadingStreamValue.addValue(false);
+        taxonomyAutosavingStreamValue.addValue(false);
       }
     }
-  }
-
-  void _replaceAsset(TenantAdminStaticAsset updated) {
-    final updatedList = _fetchedAssets
-        .map((asset) => asset.id == updated.id ? updated : asset)
-        .toList(growable: false);
-    _fetchedAssets
-      ..clear()
-      ..addAll(updatedList);
-    assetsStreamValue
-        .addValue(List<TenantAdminStaticAsset>.unmodifiable(updatedList));
-    editingAssetStreamValue.addValue(updated);
   }
 
   void clearSubmitMessages() {
@@ -619,11 +563,14 @@ class TenantAdminStaticAssetsController implements Disposable {
     longitudeController.clear();
     selectedProfileTypeStreamValue.addValue(null);
     selectedTaxonomyTermsStreamValue.addValue(const {});
+    selectedTypeFilterStreamValue.addValue(null);
+    showSearchFieldStreamValue.addValue(false);
+    taxonomyAutosavingStreamValue.addValue(false);
     clearSubmitMessages();
   }
 
   void _resetTenantScopedState() {
-    _resetAssetsPagination();
+    _repository.resetStaticAssetsState();
     assetsStreamValue.addValue(null);
     profileTypesStreamValue.addValue(const []);
     taxonomiesStreamValue.addValue(const []);
@@ -634,6 +581,9 @@ class TenantAdminStaticAssetsController implements Disposable {
     searchQueryStreamValue.addValue('');
     errorStreamValue.addValue(null);
     taxonomyErrorStreamValue.addValue(null);
+    selectedTypeFilterStreamValue.addValue(null);
+    showSearchFieldStreamValue.addValue(false);
+    taxonomyAutosavingStreamValue.addValue(false);
     _resetFormState();
   }
 
@@ -646,15 +596,6 @@ class TenantAdminStaticAssetsController implements Disposable {
       bytes: bytes,
       fileName: file.name,
     );
-  }
-
-  void _resetAssetsPagination() {
-    _fetchedAssets.clear();
-    _currentAssetsPage = 0;
-    _hasMoreAssets = true;
-    _isFetchingAssetsPage = false;
-    hasMoreAssetsStreamValue.addValue(true);
-    isAssetsPageLoadingStreamValue.addValue(false);
   }
 
   String? _normalizeTenantDomain(String? raw) {
@@ -682,9 +623,6 @@ class TenantAdminStaticAssetsController implements Disposable {
     coverUrlController.dispose();
     latitudeController.dispose();
     longitudeController.dispose();
-    assetsStreamValue.dispose();
-    hasMoreAssetsStreamValue.dispose();
-    isAssetsPageLoadingStreamValue.dispose();
     profileTypesStreamValue.dispose();
     taxonomiesStreamValue.dispose();
     taxonomyTermsStreamValue.dispose();
@@ -699,6 +637,9 @@ class TenantAdminStaticAssetsController implements Disposable {
     submitErrorStreamValue.dispose();
     submitSuccessStreamValue.dispose();
     searchQueryStreamValue.dispose();
+    showSearchFieldStreamValue.dispose();
+    selectedTypeFilterStreamValue.dispose();
+    taxonomyAutosavingStreamValue.dispose();
     avatarFileStreamValue.dispose();
     coverFileStreamValue.dispose();
   }

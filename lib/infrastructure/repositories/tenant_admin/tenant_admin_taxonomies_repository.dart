@@ -11,6 +11,7 @@ import 'package:dio/dio.dart';
 import 'package:get_it/get_it.dart';
 
 class TenantAdminTaxonomiesRepository
+    with TenantAdminTaxonomiesPaginationMixin
     implements TenantAdminTaxonomiesRepositoryContract {
   TenantAdminTaxonomiesRepository({
     Dio? dio,

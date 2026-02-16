@@ -342,9 +342,8 @@ class _TenantAdminAccountProfileCreateScreenState
       taxonomyTerms: _buildTaxonomyTerms(state.selectedProfileType),
       avatarUpload: avatarUpload,
       coverUpload: coverUpload,
-      avatarUrl: _hasAvatar(state.selectedProfileType)
-          ? state.avatarWebUrl
-          : null,
+      avatarUrl:
+          _hasAvatar(state.selectedProfileType) ? state.avatarWebUrl : null,
       coverUrl: _hasCover(state.selectedProfileType) ? state.coverWebUrl : null,
     );
   }
@@ -359,7 +358,7 @@ class _TenantAdminAccountProfileCreateScreenState
           streamValue: _controller.createErrorMessageStreamValue,
           builder: (context, errorMessage) {
             _handleCreateErrorMessage(errorMessage);
-            return StreamValueBuilder<TenantAdminAccountProfileCreateState>(
+            return StreamValueBuilder<TenantAdminAccountProfileCreateDraft>(
               streamValue: _controller.createStateStreamValue,
               builder: (context, state) {
                 final requiresLocation =
@@ -431,7 +430,7 @@ class _TenantAdminAccountProfileCreateScreenState
 
   Widget _buildProfileSection(
     BuildContext context,
-    TenantAdminAccountProfileCreateState state,
+    TenantAdminAccountProfileCreateDraft state,
   ) {
     return TenantAdminFormSectionCard(
       title: 'Dados do perfil',
@@ -545,7 +544,7 @@ class _TenantAdminAccountProfileCreateScreenState
 
   Widget _buildContentSection(
     BuildContext context,
-    TenantAdminAccountProfileCreateState state,
+    TenantAdminAccountProfileCreateDraft state,
   ) {
     final hasBio = _hasBio(state.selectedProfileType);
     final allowedDefinitions = _allowedTaxonomyDefinitions(
@@ -639,7 +638,7 @@ class _TenantAdminAccountProfileCreateScreenState
 
   Widget _buildMediaSection(
     BuildContext context,
-    TenantAdminAccountProfileCreateState state,
+    TenantAdminAccountProfileCreateDraft state,
   ) {
     final hasAvatar = _hasAvatar(state.selectedProfileType);
     final hasCover = _hasCover(state.selectedProfileType);
@@ -700,7 +699,8 @@ class _TenantAdminAccountProfileCreateScreenState
                         children: [
                           FilledButton.tonalIcon(
                             onPressed: () => _pickImage(isAvatar: true),
-                            icon: const Icon(Icons.add_photo_alternate_outlined),
+                            icon:
+                                const Icon(Icons.add_photo_alternate_outlined),
                             label: const Text('Adicionar avatar'),
                           ),
                           const SizedBox(width: 8),

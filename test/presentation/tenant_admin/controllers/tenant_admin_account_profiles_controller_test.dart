@@ -17,8 +17,35 @@ import 'package:belluga_now/domain/services/tenant_admin_location_selection_cont
 import 'package:belluga_now/infrastructure/services/tenant_admin/tenant_admin_location_selection_service.dart';
 import 'package:belluga_now/presentation/tenant_admin/account_profiles/controllers/tenant_admin_account_profiles_controller.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:stream_value/core/stream_value.dart';
 
-class _FakeAccountsRepository implements TenantAdminAccountsRepositoryContract {
+class _FakeAccountsRepository
+    with TenantAdminAccountsRepositoryPaginationMixin
+    implements TenantAdminAccountsRepositoryContract {
+  @override
+  final StreamValue<List<TenantAdminAccount>?> accountsStreamValue =
+      StreamValue<List<TenantAdminAccount>?>(defaultValue: const []);
+
+  @override
+  final StreamValue<bool> hasMoreAccountsStreamValue =
+      StreamValue<bool>(defaultValue: false);
+
+  @override
+  final StreamValue<bool> isAccountsPageLoadingStreamValue =
+      StreamValue<bool>(defaultValue: false);
+
+  @override
+  final StreamValue<String?> accountsErrorStreamValue = StreamValue<String?>();
+
+  @override
+  Future<void> loadAccounts({int pageSize = 20}) async {}
+
+  @override
+  Future<void> loadNextAccountsPage({int pageSize = 20}) async {}
+
+  @override
+  void resetAccountsState() {}
+
   @override
   Future<TenantAdminAccount> fetchAccountBySlug(String accountSlug) async {
     return TenantAdminAccount(
@@ -84,6 +111,7 @@ class _FakeAccountsRepository implements TenantAdminAccountsRepositoryContract {
 }
 
 class _FakeAccountProfilesRepository
+    with TenantAdminProfileTypesPaginationMixin
     implements TenantAdminAccountProfilesRepositoryContract {
   _FakeAccountProfilesRepository(this._profiles, this._types);
 
@@ -223,6 +251,7 @@ class _FakeAccountProfilesRepository
 }
 
 class _FakeTaxonomiesRepository
+    with TenantAdminTaxonomiesPaginationMixin
     implements TenantAdminTaxonomiesRepositoryContract {
   @override
   Future<List<TenantAdminTaxonomyDefinition>> fetchTaxonomies() async =>

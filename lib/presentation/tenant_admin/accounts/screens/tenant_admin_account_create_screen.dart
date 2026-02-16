@@ -219,7 +219,7 @@ class _TenantAdminAccountCreateScreenState
       streamValue: _controller.createErrorMessageStreamValue,
       builder: (context, errorMessage) {
         _handleCreateErrorMessage(errorMessage);
-        return StreamValueBuilder<TenantAdminAccountCreateState>(
+        return StreamValueBuilder<TenantAdminAccountCreateDraft>(
           streamValue: _controller.createStateStreamValue,
           builder: (context, state) {
             final requiresLocation =
@@ -325,7 +325,7 @@ class _TenantAdminAccountCreateScreenState
 
   Widget _buildAccountSection(
     BuildContext context,
-    TenantAdminAccountCreateState state,
+    TenantAdminAccountCreateDraft state,
   ) {
     return TenantAdminFormSectionCard(
       title: 'Dados da conta',
@@ -457,7 +457,7 @@ class _TenantAdminAccountCreateScreenState
     );
   }
 
-  Widget _buildOwnershipSection(TenantAdminAccountCreateState state) {
+  Widget _buildOwnershipSection(TenantAdminAccountCreateDraft state) {
     return TenantAdminFormSectionCard(
       title: 'Propriedade da conta',
       description: 'Defina a vinculação da conta ao tenant.',
@@ -500,7 +500,7 @@ class _TenantAdminAccountCreateScreenState
 
   Widget _buildMediaSection(
     BuildContext context,
-    TenantAdminAccountCreateState state, {
+    TenantAdminAccountCreateDraft state, {
     required bool showAvatar,
     required bool showCover,
   }) {
@@ -567,7 +567,8 @@ class _TenantAdminAccountCreateScreenState
                               'tenant_admin_account_create_avatar_pick',
                             ),
                             onPressed: () => _pickImage(isAvatar: true),
-                            icon: const Icon(Icons.add_photo_alternate_outlined),
+                            icon:
+                                const Icon(Icons.add_photo_alternate_outlined),
                             label: const Text('Adicionar avatar'),
                           ),
                           const SizedBox(width: 8),
@@ -657,7 +658,7 @@ class _TenantAdminAccountCreateScreenState
 
   Widget _buildProfileContentSection(
     BuildContext context,
-    TenantAdminAccountCreateState state, {
+    TenantAdminAccountCreateDraft state, {
     required bool hasBio,
     required bool hasTaxonomies,
   }) {
@@ -742,7 +743,8 @@ class _TenantAdminAccountCreateScreenState
                         if (allowedTaxonomies.isEmpty && !isLoading)
                           const Padding(
                             padding: EdgeInsets.only(top: 8),
-                            child: Text('Nenhuma taxonomia permitida para este tipo.'),
+                            child: Text(
+                                'Nenhuma taxonomia permitida para este tipo.'),
                           ),
                         for (final taxonomy in allowedTaxonomies) ...[
                           const SizedBox(height: 12),

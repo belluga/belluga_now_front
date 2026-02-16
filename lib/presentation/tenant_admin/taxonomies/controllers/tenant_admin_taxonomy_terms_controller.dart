@@ -24,29 +24,26 @@ class TenantAdminTaxonomyTermsController implements Disposable {
   final TenantAdminTenantScopeContract? _tenantScope;
   static const int _termsPageSize = 20;
 
-  final StreamValue<List<TenantAdminTaxonomyTermDefinition>?> termsStreamValue =
-      StreamValue<List<TenantAdminTaxonomyTermDefinition>?>();
-  final StreamValue<bool> hasMoreTermsStreamValue =
-      StreamValue<bool>(defaultValue: true);
-  final StreamValue<bool> isTermsPageLoadingStreamValue =
-      StreamValue<bool>(defaultValue: false);
-  final StreamValue<bool> isLoadingStreamValue =
-      StreamValue<bool>(defaultValue: false);
+  StreamValue<List<TenantAdminTaxonomyTermDefinition>?> get termsStreamValue =>
+      _repository.termsStreamValue;
+  StreamValue<bool> get hasMoreTermsStreamValue =>
+      _repository.hasMoreTermsStreamValue;
+  StreamValue<bool> get isTermsPageLoadingStreamValue =>
+      _repository.isTermsPageLoadingStreamValue;
   final StreamValue<String?> errorStreamValue = StreamValue<String?>();
   final StreamValue<String?> successMessageStreamValue = StreamValue<String?>();
   final StreamValue<String?> actionErrorMessageStreamValue =
       StreamValue<String?>();
+  final StreamValue<TenantAdminTaxonomyTermDefinition?> detailTermStreamValue =
+      StreamValue<TenantAdminTaxonomyTermDefinition?>();
+  final StreamValue<bool> detailSavingStreamValue =
+      StreamValue<bool>(defaultValue: false);
 
   final GlobalKey<FormState> formKey = GlobalKey<FormState>();
   final TextEditingController slugController = TextEditingController();
   final TextEditingController nameController = TextEditingController();
 
   bool _isDisposed = false;
-  bool _isFetchingTermsPage = false;
-  bool _hasMoreTerms = true;
-  int _currentTermsPage = 0;
-  final List<TenantAdminTaxonomyTermDefinition> _fetchedTerms =
-      <TenantAdminTaxonomyTermDefinition>[];
   StreamSubscription<String?>? _tenantScopeSubscription;
   String? _lastTenantDomain;
   String? _activeTaxonomyId;
@@ -90,79 +87,20 @@ class TenantAdminTaxonomyTermsController implements Disposable {
 
   Future<void> loadTerms(String taxonomyId) async {
     _activeTaxonomyId = taxonomyId;
-    await _waitForTermsFetch();
-    _resetTermsPagination();
-    termsStreamValue.addValue(null);
-    await _fetchTermsPage(taxonomyId: taxonomyId, page: 1);
+    await _repository.loadTerms(
+      taxonomyId: taxonomyId,
+      pageSize: _termsPageSize,
+    );
+    errorStreamValue.addValue(_repository.termsErrorStreamValue.value);
   }
 
   Future<void> loadNextTermsPage() async {
     final taxonomyId = _activeTaxonomyId;
-    if (_isDisposed ||
-        taxonomyId == null ||
-        taxonomyId.isEmpty ||
-        _isFetchingTermsPage ||
-        !_hasMoreTerms) {
+    if (_isDisposed || taxonomyId == null || taxonomyId.isEmpty) {
       return;
     }
-    await _fetchTermsPage(
-      taxonomyId: taxonomyId,
-      page: _currentTermsPage + 1,
-    );
-  }
-
-  Future<void> _waitForTermsFetch() async {
-    while (_isFetchingTermsPage && !_isDisposed) {
-      await Future<void>.delayed(const Duration(milliseconds: 50));
-    }
-  }
-
-  Future<void> _fetchTermsPage({
-    required String taxonomyId,
-    required int page,
-  }) async {
-    if (_isFetchingTermsPage) return;
-    if (page > 1 && !_hasMoreTerms) return;
-
-    _isFetchingTermsPage = true;
-    if (page > 1 && !_isDisposed) {
-      isTermsPageLoadingStreamValue.addValue(true);
-    }
-    isLoadingStreamValue.addValue(true);
-    try {
-      final result = await _repository.fetchTermsPage(
-        taxonomyId: taxonomyId,
-        page: page,
-        pageSize: _termsPageSize,
-      );
-      if (_isDisposed) return;
-      if (page == 1) {
-        _fetchedTerms
-          ..clear()
-          ..addAll(result.items);
-      } else {
-        _fetchedTerms.addAll(result.items);
-      }
-      _currentTermsPage = page;
-      _hasMoreTerms = result.hasMore;
-      hasMoreTermsStreamValue.addValue(_hasMoreTerms);
-      termsStreamValue.addValue(
-        List<TenantAdminTaxonomyTermDefinition>.unmodifiable(_fetchedTerms),
-      );
-      errorStreamValue.addValue(null);
-    } catch (error) {
-      if (_isDisposed) return;
-      if (page == 1) {
-        termsStreamValue.addValue(const <TenantAdminTaxonomyTermDefinition>[]);
-      }
-      errorStreamValue.addValue(error.toString());
-    } finally {
-      _isFetchingTermsPage = false;
-      if (!_isDisposed) {
-        isLoadingStreamValue.addValue(false);
-        isTermsPageLoadingStreamValue.addValue(false);
-      }
-    }
+    await _repository.loadNextTermsPage(pageSize: _termsPageSize);
+    errorStreamValue.addValue(_repository.termsErrorStreamValue.value);
   }
 
   Future<TenantAdminTaxonomyTermDefinition> createTerm({
@@ -268,23 +206,56 @@ class TenantAdminTaxonomyTermsController implements Disposable {
     actionErrorMessageStreamValue.addValue(null);
   }
 
+  void initDetailTerm(TenantAdminTaxonomyTermDefinition term) {
+    detailTermStreamValue.addValue(term);
+    detailSavingStreamValue.addValue(false);
+  }
+
+  void clearDetailTerm() {
+    detailTermStreamValue.addValue(null);
+    detailSavingStreamValue.addValue(false);
+  }
+
+  Future<TenantAdminTaxonomyTermDefinition?> submitDetailTermUpdate({
+    required String taxonomyId,
+    required String termId,
+    String? slug,
+    String? name,
+  }) async {
+    if (detailSavingStreamValue.value) {
+      return null;
+    }
+    detailSavingStreamValue.addValue(true);
+    try {
+      final updated = await updateTerm(
+        taxonomyId: taxonomyId,
+        termId: termId,
+        slug: slug,
+        name: name,
+      );
+      if (_isDisposed) return null;
+      detailTermStreamValue.addValue(updated);
+      actionErrorMessageStreamValue.addValue(null);
+      return updated;
+    } catch (error) {
+      if (_isDisposed) return null;
+      actionErrorMessageStreamValue.addValue(error.toString());
+      return null;
+    } finally {
+      if (!_isDisposed) {
+        detailSavingStreamValue.addValue(false);
+      }
+    }
+  }
+
   void _resetTenantScopedState() {
-    _resetTermsPagination();
+    _repository.resetTermsState();
     termsStreamValue.addValue(null);
     errorStreamValue.addValue(null);
     successMessageStreamValue.addValue(null);
     actionErrorMessageStreamValue.addValue(null);
     resetForm();
     _activeTaxonomyId = null;
-  }
-
-  void _resetTermsPagination() {
-    _fetchedTerms.clear();
-    _currentTermsPage = 0;
-    _hasMoreTerms = true;
-    _isFetchingTermsPage = false;
-    hasMoreTermsStreamValue.addValue(true);
-    isTermsPageLoadingStreamValue.addValue(false);
   }
 
   String? _normalizeTenantDomain(String? raw) {
@@ -305,13 +276,11 @@ class TenantAdminTaxonomyTermsController implements Disposable {
     _tenantScopeSubscription?.cancel();
     slugController.dispose();
     nameController.dispose();
-    termsStreamValue.dispose();
-    hasMoreTermsStreamValue.dispose();
-    isTermsPageLoadingStreamValue.dispose();
-    isLoadingStreamValue.dispose();
     errorStreamValue.dispose();
     successMessageStreamValue.dispose();
     actionErrorMessageStreamValue.dispose();
+    detailTermStreamValue.dispose();
+    detailSavingStreamValue.dispose();
   }
 
   @override

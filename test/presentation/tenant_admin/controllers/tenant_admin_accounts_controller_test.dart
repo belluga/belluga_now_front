@@ -22,13 +22,61 @@ import 'package:belluga_now/presentation/tenant_admin/accounts/controllers/tenan
 import 'package:flutter_test/flutter_test.dart';
 import 'package:stream_value/core/stream_value.dart';
 
-class _FakeAccountsRepository implements TenantAdminAccountsRepositoryContract {
+class _FakeAccountsRepository
+    with TenantAdminAccountsRepositoryPaginationMixin
+    implements TenantAdminAccountsRepositoryContract {
   _FakeAccountsRepository(this._accounts);
 
   List<TenantAdminAccount> _accounts;
   Completer<void>? fetchAccountsGate;
   int fetchAccountsCalls = 0;
   int createCalls = 0;
+
+  @override
+  final StreamValue<List<TenantAdminAccount>?> accountsStreamValue =
+      StreamValue<List<TenantAdminAccount>?>();
+
+  @override
+  final StreamValue<bool> hasMoreAccountsStreamValue =
+      StreamValue<bool>(defaultValue: true);
+
+  @override
+  final StreamValue<bool> isAccountsPageLoadingStreamValue =
+      StreamValue<bool>(defaultValue: false);
+
+  @override
+  final StreamValue<String?> accountsErrorStreamValue = StreamValue<String?>();
+
+  @override
+  Future<void> loadAccounts({int pageSize = 20}) async {
+    final result = await fetchAccountsPage(page: 1, pageSize: pageSize);
+    accountsStreamValue.addValue(result.accounts);
+    hasMoreAccountsStreamValue.addValue(result.hasMore);
+    accountsErrorStreamValue.addValue(null);
+  }
+
+  @override
+  Future<void> loadNextAccountsPage({int pageSize = 20}) async {
+    if (!hasMoreAccountsStreamValue.value) {
+      return;
+    }
+    final loaded = accountsStreamValue.value ?? const <TenantAdminAccount>[];
+    final page = (loaded.length ~/ pageSize) + 1;
+    final result = await fetchAccountsPage(page: page, pageSize: pageSize);
+    accountsStreamValue.addValue(
+      List<TenantAdminAccount>.unmodifiable([...loaded, ...result.accounts]),
+    );
+    hasMoreAccountsStreamValue.addValue(result.hasMore);
+    accountsErrorStreamValue.addValue(null);
+  }
+
+  @override
+  void resetAccountsState() {
+    accountsStreamValue.addValue(null);
+    hasMoreAccountsStreamValue.addValue(true);
+    isAccountsPageLoadingStreamValue.addValue(false);
+    accountsErrorStreamValue.addValue(null);
+  }
 
   @override
   Future<List<TenantAdminAccount>> fetchAccounts() async {
@@ -87,6 +135,11 @@ class _FakeAccountsRepository implements TenantAdminAccountsRepositoryContract {
       organizationId: organizationId,
     );
     _accounts = [..._accounts, created];
+    final loaded = accountsStreamValue.value;
+    if (loaded != null) {
+      accountsStreamValue.addValue(
+          List<TenantAdminAccount>.unmodifiable([...loaded, created]));
+    }
     return created;
   }
 
@@ -113,6 +166,7 @@ class _FakeAccountsRepository implements TenantAdminAccountsRepositoryContract {
 }
 
 class _FakeAccountProfilesRepository
+    with TenantAdminProfileTypesPaginationMixin
     implements TenantAdminAccountProfilesRepositoryContract {
   _FakeAccountProfilesRepository(this._types);
 
@@ -278,6 +332,7 @@ class _FakeAccountProfilesRepository
 }
 
 class _FakeTaxonomiesRepository
+    with TenantAdminTaxonomiesPaginationMixin
     implements TenantAdminTaxonomiesRepositoryContract {
   @override
   Future<List<TenantAdminTaxonomyDefinition>> fetchTaxonomies() async =>

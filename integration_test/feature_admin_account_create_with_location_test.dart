@@ -198,7 +198,9 @@ class _FakeLandlordAuthRepository implements LandlordAuthRepositoryContract {
   Future<void> logout() async {}
 }
 
-class _FakeAccountsRepository implements TenantAdminAccountsRepositoryContract {
+class _FakeAccountsRepository
+    with TenantAdminAccountsRepositoryPaginationMixin
+    implements TenantAdminAccountsRepositoryContract {
   @override
   Future<TenantAdminAccount> createAccount({
     required String name,
@@ -278,6 +280,7 @@ class _FakeAccountsRepository implements TenantAdminAccountsRepositoryContract {
 }
 
 class _FakeAccountProfilesRepository
+    with TenantAdminProfileTypesPaginationMixin
     implements TenantAdminAccountProfilesRepositoryContract {
   @override
   Future<List<TenantAdminProfileTypeDefinition>> fetchProfileTypes() async {
@@ -446,7 +449,9 @@ class _FakeAccountProfilesRepository
   Future<void> deleteProfileType(String type) async {}
 }
 
-class _FakeTaxonomiesRepository implements TenantAdminTaxonomiesRepositoryContract {
+class _FakeTaxonomiesRepository
+    with TenantAdminTaxonomiesPaginationMixin
+    implements TenantAdminTaxonomiesRepositoryContract {
   @override
   Future<TenantAdminTaxonomyDefinition> createTaxonomy({
     required String slug,
@@ -489,7 +494,8 @@ class _FakeTaxonomiesRepository implements TenantAdminTaxonomiesRepositoryContra
   }) async {}
 
   @override
-  Future<List<TenantAdminTaxonomyDefinition>> fetchTaxonomies() async => const [];
+  Future<List<TenantAdminTaxonomyDefinition>> fetchTaxonomies() async =>
+      const [];
 
   @override
   Future<TenantAdminPagedResult<TenantAdminTaxonomyDefinition>>

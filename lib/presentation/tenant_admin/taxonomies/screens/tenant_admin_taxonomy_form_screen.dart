@@ -222,25 +222,28 @@ class _TenantAdminTaxonomyFormScreenState
                             const SizedBox(height: 8),
                             Align(
                               alignment: Alignment.centerLeft,
-                              child: Wrap(
-                                spacing: 8,
-                                runSpacing: 8,
-                                children: _iconSuggestions.entries
-                                    .map(
-                                      (entry) => ChoiceChip(
-                                        avatar: Icon(entry.value, size: 16),
-                                        label: Text(entry.key),
-                                        selected:
-                                            _controller.iconController.text ==
-                                                entry.key,
-                                        onSelected: (_) {
-                                          _controller.iconController.text =
-                                              entry.key;
-                                          setState(() {});
-                                        },
-                                      ),
-                                    )
-                                    .toList(growable: false),
+                              child: ValueListenableBuilder<TextEditingValue>(
+                                valueListenable: _controller.iconController,
+                                builder: (context, iconValue, _) {
+                                  return Wrap(
+                                    spacing: 8,
+                                    runSpacing: 8,
+                                    children: _iconSuggestions.entries
+                                        .map(
+                                          (entry) => ChoiceChip(
+                                            avatar: Icon(entry.value, size: 16),
+                                            label: Text(entry.key),
+                                            selected:
+                                                iconValue.text == entry.key,
+                                            onSelected: (_) {
+                                              _controller.iconController.text =
+                                                  entry.key;
+                                            },
+                                          ),
+                                        )
+                                        .toList(growable: false),
+                                  );
+                                },
                               ),
                             ),
                             const SizedBox(height: 12),
@@ -258,34 +261,41 @@ class _TenantAdminTaxonomyFormScreenState
                             const SizedBox(height: 8),
                             Align(
                               alignment: Alignment.centerLeft,
-                              child: Wrap(
-                                spacing: 8,
-                                runSpacing: 8,
-                                children: _colorSuggestions.entries
-                                    .map(
-                                      (entry) => ChoiceChip(
-                                        avatar: CircleAvatar(
-                                          radius: 7,
-                                          backgroundColor: entry.value,
-                                        ),
-                                        label: Text(entry.key),
-                                        selected: _controller
-                                                .colorController.text
-                                                .toUpperCase() ==
-                                            entry.key,
-                                        onSelected: (_) {
-                                          _controller.colorController.text =
-                                              entry.key;
-                                          setState(() {});
-                                        },
-                                      ),
-                                    )
-                                    .toList(growable: false),
+                              child: ValueListenableBuilder<TextEditingValue>(
+                                valueListenable: _controller.colorController,
+                                builder: (context, colorValue, _) {
+                                  return Wrap(
+                                    spacing: 8,
+                                    runSpacing: 8,
+                                    children: _colorSuggestions.entries
+                                        .map(
+                                          (entry) => ChoiceChip(
+                                            avatar: CircleAvatar(
+                                              radius: 7,
+                                              backgroundColor: entry.value,
+                                            ),
+                                            label: Text(entry.key),
+                                            selected:
+                                                colorValue.text.toUpperCase() ==
+                                                    entry.key,
+                                            onSelected: (_) {
+                                              _controller.colorController.text =
+                                                  entry.key;
+                                            },
+                                          ),
+                                        )
+                                        .toList(growable: false),
+                                  );
+                                },
                               ),
                             ),
                             const SizedBox(height: 8),
-                            Builder(
-                              builder: (context) {
+                            AnimatedBuilder(
+                              animation: Listenable.merge([
+                                _controller.iconController,
+                                _controller.colorController,
+                              ]),
+                              builder: (context, _) {
                                 final previewColor = _parseHexColor(
                                   _controller.colorController.text,
                                 );

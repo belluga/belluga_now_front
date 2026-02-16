@@ -42,7 +42,6 @@ class _TenantAdminAccountProfileEditScreenState
   bool _initialTaxonomiesSynced = false;
   String? _lastAvatarPreloadUrl;
   String? _lastCoverPreloadUrl;
-  bool _isTaxonomyAutosaving = false;
 
   @override
   void initState() {
@@ -134,8 +133,8 @@ class _TenantAdminAccountProfileEditScreenState
     _controller.loadTermsForTaxonomies(slugs);
   }
 
-  void _handleEditStateChange(TenantAdminAccountProfileEditState state) {
-    final profile = state.profile;
+  void _handleEditStateChange(TenantAdminAccountProfileEditDraft state) {
+    final profile = _controller.accountProfileStreamValue.value;
     if (profile == null) return;
     _activeProfile = profile;
     if (_syncedProfileId != profile.id) {
@@ -185,7 +184,7 @@ class _TenantAdminAccountProfileEditScreenState
     _initialTaxonomiesSynced = true;
   }
 
-  void _maybePreloadRemoteImages(TenantAdminAccountProfileEditState state) {
+  void _maybePreloadRemoteImages(TenantAdminAccountProfileEditDraft state) {
     final avatarUrl = state.avatarRemoteUrl;
     if (avatarUrl != null &&
         avatarUrl.isNotEmpty &&
@@ -243,33 +242,25 @@ class _TenantAdminAccountProfileEditScreenState
       termSlug: termSlug,
       selected: selected,
     );
-    if (!mounted) {
-      return;
-    }
-    setState(() {
-      _isTaxonomyAutosaving = true;
-    });
     final currentType =
         _controller.editStateStreamValue.value.selectedProfileType;
     final saved = await _controller.submitTaxonomySelectionUpdate(
       accountProfileId: widget.accountProfileId,
       taxonomyTerms: _buildTaxonomyTerms(currentType),
     );
+    if (saved) {
+      return;
+    }
+    _controller.taxonomySelectionStreamValue.addValue(previous);
     if (!mounted) {
       return;
     }
-    if (!saved) {
-      _controller.taxonomySelectionStreamValue.addValue(previous);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content:
-              Text('Nao foi possivel salvar a taxonomia. Alteracao desfeita.'),
-        ),
-      );
-    }
-    setState(() {
-      _isTaxonomyAutosaving = false;
-    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content:
+            Text('Nao foi possivel salvar a taxonomia. Alteracao desfeita.'),
+      ),
+    );
   }
 
   String? _validateLatitude(String? value) {
@@ -332,7 +323,7 @@ class _TenantAdminAccountProfileEditScreenState
   }
 
   Future<void> _autoSaveImages() async {
-    final profile = _controller.editStateStreamValue.value.profile;
+    final profile = _controller.accountProfileStreamValue.value;
     if (profile == null) {
       return;
     }
@@ -432,9 +423,8 @@ class _TenantAdminAccountProfileEditScreenState
       return;
     }
     final state = _controller.editStateStreamValue.value;
-    final initialUrl = isAvatar
-        ? (state.avatarRemoteUrl ?? '')
-        : (state.coverRemoteUrl ?? '');
+    final initialUrl =
+        isAvatar ? (state.avatarRemoteUrl ?? '') : (state.coverRemoteUrl ?? '');
     final url = await _promptWebImageUrl(
       title: isAvatar ? 'URL do avatar' : 'URL da capa',
       initialValue: initialUrl,
@@ -525,133 +515,171 @@ class _TenantAdminAccountProfileEditScreenState
               streamValue: _controller.editErrorMessageStreamValue,
               builder: (context, errorMessage) {
                 _handleEditErrorMessage(errorMessage);
-                return StreamValueBuilder<TenantAdminAccountProfileEditState>(
-                  streamValue: _controller.editStateStreamValue,
-                  builder: (context, state) {
-                    _handleEditStateChange(state);
-                    _attemptTaxonomySync(profile: state.profile);
-                    final requiresLocation =
-                        _requiresLocation(state.selectedProfileType);
-                    final hasMedia = _hasAvatar(state.selectedProfileType) ||
-                        _hasCover(state.selectedProfileType);
-                    final hasContent = _hasBio(state.selectedProfileType) ||
-                        _hasTaxonomies(state.selectedProfileType);
-                    final profile = state.profile;
-
-                    if (state.errorMessage != null) {
-                      return TenantAdminFormScaffold(
-                        title: 'Editar Perfil',
-                        child: TenantAdminErrorBanner(
-                          rawError: state.errorMessage!,
-                          fallbackMessage:
-                              'Não foi possível carregar os dados do perfil.',
-                          onRetry: () => _controller.loadEditProfile(
-                            widget.accountProfileId,
-                          ),
-                        ),
-                      );
-                    }
-
-                    if (profile == null && state.isLoading) {
-                      return TenantAdminFormScaffold(
-                        title: 'Editar Perfil',
-                        child: const Center(child: CircularProgressIndicator()),
-                      );
-                    }
-
-                    return TenantAdminFormScaffold(
-                      title: 'Editar Perfil',
-                      child: SingleChildScrollView(
-                        child: Form(
-                          key: _controller.editFormKey,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              if (state.isLoading)
-                                const LinearProgressIndicator(),
-                              if (state.isLoading) const SizedBox(height: 12),
-                              _buildProfileSection(context, state),
-                              if (hasMedia) ...[
-                                const SizedBox(height: 16),
-                                _buildMediaSection(context, state),
-                              ],
-                              if (hasContent) ...[
-                                const SizedBox(height: 16),
-                                _buildContentSection(context, state),
-                              ],
-                              if (requiresLocation) ...[
-                                const SizedBox(height: 16),
-                                _buildLocationSection(context),
-                              ],
-                              const SizedBox(height: 24),
-                              TenantAdminPrimaryFormAction(
-                                label: 'Salvar alteracoes',
-                                icon: Icons.save_outlined,
-                                onPressed: state.isLoading
-                                    ? null
-                                    : () async {
-                                        final form = _controller
-                                            .editFormKey.currentState;
-                                        if (form == null || !form.validate()) {
-                                          return;
-                                        }
-                                        final selectedType =
-                                            state.selectedProfileType;
-                                        if (selectedType == null) {
-                                          _controller.reportEditErrorMessage(
-                                            'Selecione o tipo de perfil.',
-                                          );
-                                          return;
-                                        }
-                                        final avatarUpload =
-                                            _hasAvatar(selectedType)
-                                                ? await _buildUpload(
-                                                    state.avatarFile,
-                                                  )
-                                                : null;
-                                        final coverUpload =
-                                            _hasCover(selectedType)
-                                                ? await _buildUpload(
-                                                    state.coverFile,
-                                                  )
-                                                : null;
-                                        _controller.submitUpdateProfile(
-                                          accountProfileId:
-                                              widget.accountProfileId,
-                                          profileType: selectedType,
-                                          slug: _controller.slugController.text
-                                              .trim(),
-                                          displayName: _controller
-                                              .displayNameController.text
-                                              .trim(),
-                                          bio: _hasBio(selectedType)
-                                              ? _controller.bioController.text
-                                                  .trim()
-                                              : null,
-                                          taxonomyTerms:
-                                              _hasTaxonomies(selectedType)
-                                                  ? _buildTaxonomyTerms(
-                                                      selectedType,
-                                                    )
-                                                  : null,
-                                          location: requiresLocation
-                                              ? _currentLocation()
-                                              : null,
-                                          avatarUpload: avatarUpload,
-                                          coverUpload: coverUpload,
-                                          avatarUrl: _hasAvatar(selectedType)
-                                              ? state.avatarRemoteUrl
-                                              : null,
-                                          coverUrl: _hasCover(selectedType)
-                                              ? state.coverRemoteUrl
-                                              : null,
+                return StreamValueBuilder<String?>(
+                  streamValue: _controller.editLoadErrorStreamValue,
+                  builder: (context, loadError) {
+                    return StreamValueBuilder<bool>(
+                      streamValue: _controller.editLoadingStreamValue,
+                      builder: (context, isLoading) {
+                        return StreamValueBuilder<TenantAdminAccountProfile?>(
+                          streamValue: _controller.accountProfileStreamValue,
+                          builder: (context, profile) {
+                            return StreamValueBuilder<
+                                TenantAdminAccountProfileEditDraft>(
+                              streamValue: _controller.editStateStreamValue,
+                              builder: (context, state) {
+                                _handleEditStateChange(state);
+                                _attemptTaxonomySync(profile: profile);
+                                final requiresLocation = _requiresLocation(
+                                    state.selectedProfileType);
+                                final hasMedia =
+                                    _hasAvatar(state.selectedProfileType) ||
+                                        _hasCover(state.selectedProfileType);
+                                final hasContent =
+                                    _hasBio(state.selectedProfileType) ||
+                                        _hasTaxonomies(
+                                          state.selectedProfileType,
                                         );
-                                      },
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
+
+                                if (loadError != null) {
+                                  return TenantAdminFormScaffold(
+                                    title: 'Editar Perfil',
+                                    child: TenantAdminErrorBanner(
+                                      rawError: loadError,
+                                      fallbackMessage:
+                                          'Não foi possível carregar os dados do perfil.',
+                                      onRetry: () =>
+                                          _controller.loadEditProfile(
+                                        widget.accountProfileId,
+                                      ),
+                                    ),
+                                  );
+                                }
+
+                                if (profile == null && isLoading) {
+                                  return TenantAdminFormScaffold(
+                                    title: 'Editar Perfil',
+                                    child: const Center(
+                                      child: CircularProgressIndicator(),
+                                    ),
+                                  );
+                                }
+
+                                return TenantAdminFormScaffold(
+                                  title: 'Editar Perfil',
+                                  child: SingleChildScrollView(
+                                    child: Form(
+                                      key: _controller.editFormKey,
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          if (isLoading)
+                                            const LinearProgressIndicator(),
+                                          if (isLoading)
+                                            const SizedBox(height: 12),
+                                          _buildProfileSection(context, state),
+                                          if (hasMedia) ...[
+                                            const SizedBox(height: 16),
+                                            _buildMediaSection(context, state),
+                                          ],
+                                          if (hasContent) ...[
+                                            const SizedBox(height: 16),
+                                            _buildContentSection(
+                                                context, state),
+                                          ],
+                                          if (requiresLocation) ...[
+                                            const SizedBox(height: 16),
+                                            _buildLocationSection(context),
+                                          ],
+                                          const SizedBox(height: 24),
+                                          TenantAdminPrimaryFormAction(
+                                            label: 'Salvar alteracoes',
+                                            icon: Icons.save_outlined,
+                                            onPressed: isLoading
+                                                ? null
+                                                : () async {
+                                                    final form = _controller
+                                                        .editFormKey
+                                                        .currentState;
+                                                    if (form == null ||
+                                                        !form.validate()) {
+                                                      return;
+                                                    }
+                                                    final selectedType = state
+                                                        .selectedProfileType;
+                                                    if (selectedType == null) {
+                                                      _controller
+                                                          .reportEditErrorMessage(
+                                                        'Selecione o tipo de perfil.',
+                                                      );
+                                                      return;
+                                                    }
+                                                    final avatarUpload =
+                                                        _hasAvatar(selectedType)
+                                                            ? await _buildUpload(
+                                                                state
+                                                                    .avatarFile,
+                                                              )
+                                                            : null;
+                                                    final coverUpload =
+                                                        _hasCover(selectedType)
+                                                            ? await _buildUpload(
+                                                                state.coverFile,
+                                                              )
+                                                            : null;
+                                                    _controller
+                                                        .submitUpdateProfile(
+                                                      accountProfileId: widget
+                                                          .accountProfileId,
+                                                      profileType: selectedType,
+                                                      slug: _controller
+                                                          .slugController.text
+                                                          .trim(),
+                                                      displayName: _controller
+                                                          .displayNameController
+                                                          .text
+                                                          .trim(),
+                                                      bio: _hasBio(selectedType)
+                                                          ? _controller
+                                                              .bioController
+                                                              .text
+                                                              .trim()
+                                                          : null,
+                                                      taxonomyTerms: _hasTaxonomies(
+                                                              selectedType)
+                                                          ? _buildTaxonomyTerms(
+                                                              selectedType,
+                                                            )
+                                                          : null,
+                                                      location: requiresLocation
+                                                          ? _currentLocation()
+                                                          : null,
+                                                      avatarUpload:
+                                                          avatarUpload,
+                                                      coverUpload: coverUpload,
+                                                      avatarUrl: _hasAvatar(
+                                                              selectedType)
+                                                          ? state
+                                                              .avatarRemoteUrl
+                                                          : null,
+                                                      coverUrl: _hasCover(
+                                                              selectedType)
+                                                          ? state.coverRemoteUrl
+                                                          : null,
+                                                    );
+                                                  },
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              },
+                            );
+                          },
+                        );
+                      },
                     );
                   },
                 );
@@ -689,7 +717,7 @@ class _TenantAdminAccountProfileEditScreenState
 
   Widget _buildProfileSection(
     BuildContext context,
-    TenantAdminAccountProfileEditState state,
+    TenantAdminAccountProfileEditDraft state,
   ) {
     return TenantAdminFormSectionCard(
       title: 'Dados do perfil',
@@ -798,7 +826,7 @@ class _TenantAdminAccountProfileEditScreenState
 
   Widget _buildContentSection(
     BuildContext context,
-    TenantAdminAccountProfileEditState state,
+    TenantAdminAccountProfileEditDraft state,
   ) {
     final hasBio = _hasBio(state.selectedProfileType);
     final allowedDefinitions =
@@ -828,60 +856,76 @@ class _TenantAdminAccountProfileEditScreenState
               style: Theme.of(context).textTheme.labelLarge,
             ),
             const SizedBox(height: 8),
-            if (_isTaxonomyAutosaving)
-              const Padding(
-                padding: EdgeInsets.only(bottom: 8),
-                child: LinearProgressIndicator(minHeight: 2),
-              ),
-            StreamValueBuilder(
-              streamValue: _controller.taxonomySelectionStreamValue,
-              builder: (context, selections) {
-                return StreamValueBuilder(
-                  streamValue: _controller.taxonomyTermsStreamValue,
-                  builder: (context, termsByTaxonomy) {
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        for (final taxonomy in allowedDefinitions)
-                          Padding(
-                            padding: const EdgeInsets.only(bottom: 12),
-                            child: Column(
+            StreamValueBuilder<bool>(
+              streamValue: _controller.taxonomyAutosavingStreamValue,
+              builder: (context, isTaxonomyAutosaving) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (isTaxonomyAutosaving)
+                      const Padding(
+                        padding: EdgeInsets.only(bottom: 8),
+                        child: LinearProgressIndicator(minHeight: 2),
+                      ),
+                    StreamValueBuilder(
+                      streamValue: _controller.taxonomySelectionStreamValue,
+                      builder: (context, selections) {
+                        return StreamValueBuilder(
+                          streamValue: _controller.taxonomyTermsStreamValue,
+                          builder: (context, termsByTaxonomy) {
+                            return Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(taxonomy.name),
-                                const SizedBox(height: 8),
-                                if ((termsByTaxonomy[taxonomy.slug] ?? const [])
-                                    .isEmpty)
-                                  const Text('Sem termos cadastrados.')
-                                else
-                                  Wrap(
-                                    spacing: 8,
-                                    runSpacing: 8,
-                                    children: (termsByTaxonomy[taxonomy.slug] ??
-                                            const [])
-                                        .map(
-                                          (term) => FilterChip(
-                                            label: Text(term.name),
-                                            selected: selections[taxonomy.slug]
-                                                    ?.contains(term.slug) ??
-                                                false,
-                                            onSelected: (selected) {
-                                              _toggleTaxonomyWithAutoSave(
-                                                taxonomySlug: taxonomy.slug,
-                                                termSlug: term.slug,
-                                                selected: selected,
-                                              );
-                                            },
+                                for (final taxonomy in allowedDefinitions)
+                                  Padding(
+                                    padding: const EdgeInsets.only(bottom: 12),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(taxonomy.name),
+                                        const SizedBox(height: 8),
+                                        if ((termsByTaxonomy[taxonomy.slug] ??
+                                                const [])
+                                            .isEmpty)
+                                          const Text('Sem termos cadastrados.')
+                                        else
+                                          Wrap(
+                                            spacing: 8,
+                                            runSpacing: 8,
+                                            children: (termsByTaxonomy[
+                                                        taxonomy.slug] ??
+                                                    const [])
+                                                .map(
+                                                  (term) => FilterChip(
+                                                    label: Text(term.name),
+                                                    selected: selections[
+                                                                taxonomy.slug]
+                                                            ?.contains(
+                                                                term.slug) ??
+                                                        false,
+                                                    onSelected: (selected) {
+                                                      _toggleTaxonomyWithAutoSave(
+                                                        taxonomySlug:
+                                                            taxonomy.slug,
+                                                        termSlug: term.slug,
+                                                        selected: selected,
+                                                      );
+                                                    },
+                                                  ),
+                                                )
+                                                .toList(growable: false),
                                           ),
-                                        )
-                                        .toList(growable: false),
+                                      ],
+                                    ),
                                   ),
                               ],
-                            ),
-                          ),
-                      ],
-                    );
-                  },
+                            );
+                          },
+                        );
+                      },
+                    ),
+                  ],
                 );
               },
             ),
@@ -893,7 +937,7 @@ class _TenantAdminAccountProfileEditScreenState
 
   Widget _buildMediaSection(
     BuildContext context,
-    TenantAdminAccountProfileEditState state,
+    TenantAdminAccountProfileEditDraft state,
   ) {
     final avatarUrl = state.avatarRemoteUrl;
     final hasAvatarUrl = avatarUrl != null && avatarUrl.isNotEmpty;
@@ -1000,7 +1044,8 @@ class _TenantAdminAccountProfileEditScreenState
                         children: [
                           FilledButton.tonalIcon(
                             onPressed: () => _pickImage(isAvatar: true),
-                            icon: const Icon(Icons.add_photo_alternate_outlined),
+                            icon:
+                                const Icon(Icons.add_photo_alternate_outlined),
                             label: const Text('Adicionar avatar'),
                           ),
                           const SizedBox(width: 8),

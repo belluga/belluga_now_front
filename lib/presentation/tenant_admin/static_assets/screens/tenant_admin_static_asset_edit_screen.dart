@@ -37,7 +37,6 @@ class _TenantAdminStaticAssetEditScreenState
     extends State<TenantAdminStaticAssetEditScreen> {
   final TenantAdminStaticAssetsController _controller =
       GetIt.I.get<TenantAdminStaticAssetsController>();
-  bool _isTaxonomyAutosaving = false;
 
   @override
   void initState() {
@@ -303,29 +302,21 @@ class _TenantAdminStaticAssetEditScreenState
       termSlug: termSlug,
       selected: selected,
     );
-    if (!mounted) {
-      return;
-    }
-    setState(() {
-      _isTaxonomyAutosaving = true;
-    });
     final saved = await _controller.submitTaxonomySelectionUpdate(
       assetId: widget.assetId,
     );
-    if (!mounted) {
-      return;
-    }
     if (!saved) {
       _controller.selectedTaxonomyTermsStreamValue.addValue(previous);
+      if (!mounted) {
+        return;
+      }
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Nao foi possivel salvar a taxonomia. Alteracao desfeita.'),
+          content:
+              Text('Nao foi possivel salvar a taxonomia. Alteracao desfeita.'),
         ),
       );
     }
-    setState(() {
-      _isTaxonomyAutosaving = false;
-    });
   }
 
   Future<void> _pickImageFromDevice({required bool isAvatar}) async {
@@ -536,7 +527,8 @@ class _TenantAdminStaticAssetEditScreenState
                       ),
                     ),
                     IconButton(
-                      onPressed: asset == null ? null : () => _editSlug(asset.slug),
+                      onPressed:
+                          asset == null ? null : () => _editSlug(asset.slug),
                       tooltip: 'Editar slug',
                       icon: const Icon(Icons.edit_outlined),
                     ),
@@ -726,7 +718,8 @@ class _TenantAdminStaticAssetEditScreenState
                         children: [
                           FilledButton.tonalIcon(
                             onPressed: () => _pickImage(isAvatar: false),
-                            icon: const Icon(Icons.add_photo_alternate_outlined),
+                            icon:
+                                const Icon(Icons.add_photo_alternate_outlined),
                             label: const Text('Adicionar capa'),
                           ),
                           const SizedBox(width: 8),
@@ -786,11 +779,20 @@ class _TenantAdminStaticAssetEditScreenState
                                       Theme.of(context).textTheme.titleMedium,
                                 ),
                                 const SizedBox(height: 12),
-                                if (_isTaxonomyAutosaving)
-                                  const Padding(
-                                    padding: EdgeInsets.only(bottom: 8),
-                                    child: LinearProgressIndicator(minHeight: 2),
-                                  ),
+                                StreamValueBuilder<bool>(
+                                  streamValue:
+                                      _controller.taxonomyAutosavingStreamValue,
+                                  builder: (context, isTaxonomyAutosaving) {
+                                    if (!isTaxonomyAutosaving) {
+                                      return const SizedBox.shrink();
+                                    }
+                                    return const Padding(
+                                      padding: EdgeInsets.only(bottom: 8),
+                                      child:
+                                          LinearProgressIndicator(minHeight: 2),
+                                    );
+                                  },
+                                ),
                                 if (isLoading) const LinearProgressIndicator(),
                                 if (taxonomyError != null)
                                   Padding(

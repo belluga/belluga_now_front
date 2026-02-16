@@ -15,6 +15,7 @@ import 'package:get_it/get_it.dart';
 import 'package:http_parser/http_parser.dart';
 
 class TenantAdminStaticAssetsRepository
+    with TenantAdminStaticAssetsPaginationMixin
     implements TenantAdminStaticAssetsRepositoryContract {
   TenantAdminStaticAssetsRepository({
     Dio? dio,

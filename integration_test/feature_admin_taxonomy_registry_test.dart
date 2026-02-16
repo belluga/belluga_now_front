@@ -347,7 +347,9 @@ class _FakeLandlordAuthRepository implements LandlordAuthRepositoryContract {
   Future<void> logout() async {}
 }
 
-class _FakeAccountsRepository implements TenantAdminAccountsRepositoryContract {
+class _FakeAccountsRepository
+    with TenantAdminAccountsRepositoryPaginationMixin
+    implements TenantAdminAccountsRepositoryContract {
   @override
   Future<List<TenantAdminAccount>> fetchAccounts() async => const [];
 
@@ -441,6 +443,7 @@ class _FakeLandlordTenantsRepository
 }
 
 class _FakeAccountProfilesRepository
+    with TenantAdminProfileTypesPaginationMixin
     implements TenantAdminAccountProfilesRepositoryContract {
   List<TenantAdminTaxonomyTerm> lastCreatedTerms = const [];
 
@@ -621,6 +624,7 @@ class _FakeAccountProfilesRepository
 }
 
 class _FakeTaxonomiesRepository
+    with TenantAdminTaxonomiesPaginationMixin
     implements TenantAdminTaxonomiesRepositoryContract {
   final List<TenantAdminTaxonomyDefinition> _taxonomies = [];
   final Map<String, List<TenantAdminTaxonomyTermDefinition>> _terms = {};

@@ -29,13 +29,19 @@ class _TenantAdminAccountDetailScreenState
     extends State<TenantAdminAccountDetailScreen> {
   final TenantAdminAccountProfilesController _profilesController =
       GetIt.I.get<TenantAdminAccountProfilesController>();
-  late String _accountSlugForRequests;
 
   @override
   void initState() {
     super.initState();
-    _accountSlugForRequests = widget.accountSlug;
-    _profilesController.loadAccountDetail(_accountSlugForRequests);
+    _profilesController.loadAccountDetail(_currentAccountSlugForRequests());
+  }
+
+  String _currentAccountSlugForRequests() {
+    final current = _profilesController.accountStreamValue.value?.slug;
+    if (current != null && current.isNotEmpty) {
+      return current;
+    }
+    return widget.accountSlug;
   }
 
   String _profileTypeLabel(List<TenantAdminProfileTypeDefinition> types) {
@@ -53,10 +59,12 @@ class _TenantAdminAccountDetailScreenState
     context.router
         .push(
           TenantAdminAccountProfileCreateRoute(
-            accountSlug: _accountSlugForRequests,
+            accountSlug: _currentAccountSlugForRequests(),
           ),
         )
-        .then((_) => _profilesController.loadAccountDetail(_accountSlugForRequests));
+        .then((_) => _profilesController.loadAccountDetail(
+              _currentAccountSlugForRequests(),
+            ));
   }
 
   void _openEdit() {
@@ -70,7 +78,9 @@ class _TenantAdminAccountDetailScreenState
             accountProfileId: profile.id,
           ),
         )
-        .then((_) => _profilesController.loadAccountDetail(_accountSlugForRequests));
+        .then((_) => _profilesController.loadAccountDetail(
+              _currentAccountSlugForRequests(),
+            ));
   }
 
   Future<void> _editAccountName(TenantAdminAccount account) async {
@@ -101,7 +111,7 @@ class _TenantAdminAccountDetailScreenState
     }
     final messenger = ScaffoldMessenger.of(context);
     final updated = await _profilesController.updateAccount(
-      accountSlug: _accountSlugForRequests,
+      accountSlug: _currentAccountSlugForRequests(),
       name: trimmed,
     );
     if (!mounted || updated == null) {
@@ -135,16 +145,11 @@ class _TenantAdminAccountDetailScreenState
     }
     final messenger = ScaffoldMessenger.of(context);
     final updated = await _profilesController.updateAccount(
-      accountSlug: _accountSlugForRequests,
+      accountSlug: _currentAccountSlugForRequests(),
       slug: trimmed,
     );
     if (!mounted || updated == null) {
       return;
-    }
-    if (updated.slug != _accountSlugForRequests) {
-      setState(() {
-        _accountSlugForRequests = updated.slug;
-      });
     }
     messenger.showSnackBar(
       const SnackBar(content: Text('Slug da conta atualizado.')),
@@ -174,10 +179,12 @@ class _TenantAdminAccountDetailScreenState
                     final coverUrl = profile?.coverUrl;
                     final avatarUrl = profile?.avatarUrl;
                     final location = profile?.location;
+                    final accountSlugForUi =
+                        account?.slug ?? _currentAccountSlugForRequests();
 
                     return Scaffold(
                       appBar: AppBar(
-                        title: Text('Conta: $_accountSlugForRequests'),
+                        title: Text('Conta: $accountSlugForUi'),
                         actions: [
                           if (profile != null)
                             FilledButton.tonalIcon(
@@ -198,7 +205,7 @@ class _TenantAdminAccountDetailScreenState
                                         'Não foi possível carregar os dados da conta.',
                                     onRetry: () =>
                                         _profilesController.loadAccountDetail(
-                                      widget.accountSlug,
+                                      _currentAccountSlugForRequests(),
                                     ),
                                   )
                                 : StreamValueBuilder(
@@ -227,7 +234,8 @@ class _TenantAdminAccountDetailScreenState
                                                     value: account?.slug ?? '-',
                                                     onEdit: account == null
                                                         ? null
-                                                        : () => _editAccountSlug(
+                                                        : () =>
+                                                            _editAccountSlug(
                                                               account,
                                                             ),
                                                   ),
@@ -237,7 +245,8 @@ class _TenantAdminAccountDetailScreenState
                                                     value: account?.name ?? '-',
                                                     onEdit: account == null
                                                         ? null
-                                                        : () => _editAccountName(
+                                                        : () =>
+                                                            _editAccountName(
                                                               account,
                                                             ),
                                                   ),
