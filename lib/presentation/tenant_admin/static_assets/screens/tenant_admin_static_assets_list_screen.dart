@@ -1,6 +1,7 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_static_asset.dart';
+import 'package:belluga_now/presentation/common/widgets/belluga_network_image.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_confirmation_dialog.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_empty_state.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_error_banner.dart';
@@ -184,12 +185,9 @@ class _TenantAdminStaticAssetsListScreenState
           return const SizedBox.shrink();
         }
         final asset = filteredAssets[index];
-        final subtitle = [asset.slug, asset.profileType].join(' • ');
         return Card(
           clipBehavior: Clip.antiAlias,
-          child: ListTile(
-            title: Text(asset.displayName),
-            subtitle: Text(subtitle),
+          child: InkWell(
             onTap: () {
               context.router.push(
                 TenantAdminStaticAssetDetailRoute(
@@ -198,43 +196,134 @@ class _TenantAdminStaticAssetsListScreenState
                 ),
               );
             },
-            trailing: Row(
-              mainAxisSize: MainAxisSize.min,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildStatusChip(
-                  context,
-                  asset.isActive,
-                ),
-                const SizedBox(width: 8),
-                PopupMenuButton<String>(
-                  onSelected: (value) {
-                    if (value == 'edit') {
-                      context.router.push(
-                        TenantAdminStaticAssetEditRoute(
-                          assetId: asset.id,
+                _buildCoverPreview(context, asset),
+                Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildAvatarPreview(context, asset),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  asset.displayName,
+                                  style: Theme.of(context).textTheme.titleSmall,
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  '${asset.slug} • ${asset.profileType}',
+                                  style: Theme.of(context).textTheme.bodySmall,
+                                ),
+                              ],
+                            ),
+                          ),
+                          _buildStatusChip(context, asset.isActive),
+                          PopupMenuButton<String>(
+                            onSelected: (value) {
+                              if (value == 'edit') {
+                                context.router.push(
+                                  TenantAdminStaticAssetEditRoute(
+                                    assetId: asset.id,
+                                  ),
+                                );
+                              }
+                              if (value == 'delete') {
+                                _confirmDelete(asset);
+                              }
+                            },
+                            itemBuilder: (context) => [
+                              const PopupMenuItem(
+                                value: 'edit',
+                                child: Text('Editar'),
+                              ),
+                              const PopupMenuItem(
+                                value: 'delete',
+                                child: Text('Remover'),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                      if (asset.bio != null && asset.bio!.trim().isNotEmpty) ...[
+                        const SizedBox(height: 10),
+                        Text(
+                          asset.bio!.trim(),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.bodyMedium,
                         ),
-                      );
-                    }
-                    if (value == 'delete') {
-                      _confirmDelete(asset);
-                    }
-                  },
-                  itemBuilder: (context) => [
-                    const PopupMenuItem(
-                      value: 'edit',
-                      child: Text('Editar'),
-                    ),
-                    const PopupMenuItem(
-                      value: 'delete',
-                      child: Text('Remover'),
-                    ),
-                  ],
+                      ],
+                    ],
+                  ),
                 ),
               ],
             ),
           ),
         );
       },
+    );
+  }
+
+  Widget _buildCoverPreview(
+    BuildContext context,
+    TenantAdminStaticAsset asset,
+  ) {
+    final coverUrl = asset.coverUrl;
+    if (coverUrl != null && coverUrl.isNotEmpty) {
+      return BellugaNetworkImage(
+        coverUrl,
+        height: 120,
+        width: double.infinity,
+        fit: BoxFit.cover,
+        errorWidget: Container(
+          height: 120,
+          color: Theme.of(context).colorScheme.surfaceContainerHighest,
+          child: const Center(
+            child: Icon(Icons.image_not_supported_outlined),
+          ),
+        ),
+      );
+    }
+    return Container(
+      height: 120,
+      width: double.infinity,
+      color: Theme.of(context).colorScheme.surfaceContainerHighest,
+      child: const Center(
+        child: Icon(Icons.image_outlined),
+      ),
+    );
+  }
+
+  Widget _buildAvatarPreview(
+    BuildContext context,
+    TenantAdminStaticAsset asset,
+  ) {
+    final avatarUrl = asset.avatarUrl;
+    if (avatarUrl != null && avatarUrl.isNotEmpty) {
+      return BellugaNetworkImage(
+        avatarUrl,
+        width: 40,
+        height: 40,
+        fit: BoxFit.cover,
+        clipBorderRadius: BorderRadius.circular(20),
+        errorWidget: CircleAvatar(
+          backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+          child: const Icon(Icons.person_outline),
+        ),
+      );
+    }
+    return CircleAvatar(
+      backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+      child: const Icon(Icons.photo_outlined),
     );
   }
 

@@ -80,6 +80,7 @@ class TenantAdminAccountProfilesRepository
     TenantAdminLocation? location,
     List<TenantAdminTaxonomyTerm> taxonomyTerms = const [],
     String? bio,
+    String? content,
     String? avatarUrl,
     String? coverUrl,
     TenantAdminMediaUpload? avatarUpload,
@@ -100,6 +101,7 @@ class TenantAdminAccountProfilesRepository
               .map((term) => {'type': term.type, 'value': term.value})
               .toList(),
         if (bio != null) 'bio': bio,
+        if (content != null) 'content': content,
         if (avatarUrl != null) 'avatar_url': avatarUrl,
         if (coverUrl != null) 'cover_url': coverUrl,
       };
@@ -129,6 +131,7 @@ class TenantAdminAccountProfilesRepository
     TenantAdminLocation? location,
     List<TenantAdminTaxonomyTerm>? taxonomyTerms,
     String? bio,
+    String? content,
     String? avatarUrl,
     String? coverUrl,
     TenantAdminMediaUpload? avatarUpload,
@@ -151,6 +154,7 @@ class TenantAdminAccountProfilesRepository
             .toList();
       }
       if (bio != null) payload['bio'] = bio;
+      if (content != null) payload['content'] = content;
       if (avatarUrl != null) payload['avatar_url'] = avatarUrl;
       if (coverUrl != null) payload['cover_url'] = coverUrl;
       final uploadPayload = _buildMultipartPayload(
@@ -286,6 +290,7 @@ class TenantAdminAccountProfilesRepository
             'is_favoritable': capabilities.isFavoritable,
             'is_poi_enabled': capabilities.isPoiEnabled,
             'has_bio': capabilities.hasBio,
+            'has_content': capabilities.hasContent,
             'has_taxonomies': capabilities.hasTaxonomies,
             'has_avatar': capabilities.hasAvatar,
             'has_cover': capabilities.hasCover,
@@ -326,6 +331,7 @@ class TenantAdminAccountProfilesRepository
           'is_favoritable': capabilities.isFavoritable,
           'is_poi_enabled': capabilities.isPoiEnabled,
           'has_bio': capabilities.hasBio,
+          'has_content': capabilities.hasContent,
           'has_taxonomies': capabilities.hasTaxonomies,
           'has_avatar': capabilities.hasAvatar,
           'has_cover': capabilities.hasCover,
@@ -402,6 +408,7 @@ class TenantAdminAccountProfilesRepository
       avatarUrl: dto.avatarUrl,
       coverUrl: dto.coverUrl,
       bio: dto.bio,
+      content: dto.content,
       location: location,
       taxonomyTerms: taxonomy,
       ownershipState: dto.ownershipState == null
@@ -422,6 +429,7 @@ class TenantAdminAccountProfilesRepository
         isFavoritable: dto.isFavoritable,
         isPoiEnabled: dto.isPoiEnabled,
         hasBio: dto.hasBio,
+        hasContent: dto.hasContent,
         hasTaxonomies: dto.hasTaxonomies,
         hasAvatar: dto.hasAvatar,
         hasCover: dto.hasCover,

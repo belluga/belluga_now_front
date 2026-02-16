@@ -147,7 +147,8 @@ class _FakeAccountProfilesRepository
                   isFavoritable: true,
                   isPoiEnabled: true,
                   hasBio: false,
-                  hasTaxonomies: false,
+                  hasContent: false,
+          hasTaxonomies: false,
                   hasAvatar: true,
                   hasCover: true,
                   hasEvents: false,
@@ -194,6 +195,7 @@ class _FakeAccountProfilesRepository
     TenantAdminLocation? location,
     List<TenantAdminTaxonomyTerm> taxonomyTerms = const [],
     String? bio,
+    String? content,
     String? avatarUrl,
     String? coverUrl,
     TenantAdminMediaUpload? avatarUpload,
@@ -281,7 +283,8 @@ class _FakeAccountProfilesRepository
             isFavoritable: true,
             isPoiEnabled: true,
             hasBio: false,
-            hasTaxonomies: false,
+            hasContent: false,
+          hasTaxonomies: false,
             hasAvatar: false,
             hasCover: false,
             hasEvents: false,
@@ -298,6 +301,7 @@ class _FakeAccountProfilesRepository
     TenantAdminLocation? location,
     List<TenantAdminTaxonomyTerm>? taxonomyTerms,
     String? bio,
+    String? content,
     String? avatarUrl,
     String? coverUrl,
     TenantAdminMediaUpload? avatarUpload,
@@ -604,6 +608,7 @@ void main() {
           isFavoritable: true,
           isPoiEnabled: false,
           hasBio: true,
+          hasContent: false,
           hasTaxonomies: true,
           hasAvatar: false,
           hasCover: false,
@@ -656,13 +661,13 @@ void main() {
 
     await tester.enterText(
         find.widgetWithText(TextFormField, 'Nome'), 'Conta A');
-    await tester.enterText(
-        find.widgetWithText(TextFormField, 'Bio'), '<p>Bio teste</p>');
+    final controller = GetIt.I.get<TenantAdminAccountsController>();
+    controller.bioController.text = '<p>Bio teste</p>';
+    await tester.pump();
     final urbanaChip = find.text('Urbana').last;
     await tester.ensureVisible(urbanaChip);
     await tester.tap(urbanaChip, warnIfMissed: false);
     await tester.pumpAndSettle();
-    final controller = GetIt.I.get<TenantAdminAccountsController>();
     expect(controller.bioController.text, '<p>Bio teste</p>');
     expect(
       controller.selectedTaxonomyTermsStreamValue.value['genre'],

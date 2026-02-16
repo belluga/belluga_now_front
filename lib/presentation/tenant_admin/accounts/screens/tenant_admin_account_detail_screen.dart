@@ -429,6 +429,32 @@ class _TenantAdminAccountDetailScreenState
                                                         '${location.latitude.toStringAsFixed(6)}, '
                                                             '${location.longitude.toStringAsFixed(6)}',
                                                       ),
+                                                    if (profile.bio != null &&
+                                                        profile.bio!
+                                                            .trim()
+                                                            .isNotEmpty) ...[
+                                                      const SizedBox(height: 8),
+                                                      _buildRow(
+                                                        'Bio',
+                                                        _stripHtml(
+                                                          profile.bio!.trim(),
+                                                        ),
+                                                      ),
+                                                    ],
+                                                    if (profile.content !=
+                                                            null &&
+                                                        profile.content!
+                                                            .trim()
+                                                            .isNotEmpty) ...[
+                                                      const SizedBox(height: 8),
+                                                      _buildRow(
+                                                        'Conteúdo',
+                                                        _stripHtml(
+                                                          profile.content!
+                                                              .trim(),
+                                                        ),
+                                                      ),
+                                                    ],
                                                     const SizedBox(height: 12),
                                                     Align(
                                                       alignment:
@@ -502,5 +528,13 @@ class _TenantAdminAccountDetailScreenState
         ),
       ],
     );
+  }
+
+  String _stripHtml(String value) {
+    return value
+        .replaceAll(RegExp(r'<[^>]+>'), ' ')
+        .replaceAll('&nbsp;', ' ')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
   }
 }

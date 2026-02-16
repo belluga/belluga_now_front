@@ -98,6 +98,7 @@ class TenantAdminAccountProfilesController implements Disposable {
   final TextEditingController slugController = TextEditingController();
   final TextEditingController displayNameController = TextEditingController();
   final TextEditingController bioController = TextEditingController();
+  final TextEditingController contentController = TextEditingController();
   final TextEditingController latitudeController = TextEditingController();
   final TextEditingController longitudeController = TextEditingController();
 
@@ -401,6 +402,7 @@ class TenantAdminAccountProfilesController implements Disposable {
     required String displayName,
     required TenantAdminLocation? location,
     required String? bio,
+    required String? content,
     required List<TenantAdminTaxonomyTerm> taxonomyTerms,
     required TenantAdminMediaUpload? avatarUpload,
     required TenantAdminMediaUpload? coverUpload,
@@ -415,6 +417,7 @@ class TenantAdminAccountProfilesController implements Disposable {
         displayName: displayName,
         location: location,
         bio: bio,
+        content: content,
         taxonomyTerms: taxonomyTerms,
         avatarUpload: avatarUpload,
         coverUpload: coverUpload,
@@ -493,6 +496,7 @@ class TenantAdminAccountProfilesController implements Disposable {
     String? slug,
     required TenantAdminLocation? location,
     required String? bio,
+    required String? content,
     required List<TenantAdminTaxonomyTerm>? taxonomyTerms,
     required TenantAdminMediaUpload? avatarUpload,
     required TenantAdminMediaUpload? coverUpload,
@@ -508,6 +512,7 @@ class TenantAdminAccountProfilesController implements Disposable {
         slug: slug,
         location: location,
         bio: bio,
+        content: content,
         taxonomyTerms: taxonomyTerms,
         avatarUpload: avatarUpload,
         coverUpload: coverUpload,
@@ -672,6 +677,7 @@ class TenantAdminAccountProfilesController implements Disposable {
     slugController.clear();
     displayNameController.clear();
     bioController.clear();
+    contentController.clear();
     latitudeController.clear();
     longitudeController.clear();
     resetTaxonomySelection();
@@ -745,6 +751,7 @@ class TenantAdminAccountProfilesController implements Disposable {
     TenantAdminLocation? location,
     List<TenantAdminTaxonomyTerm> taxonomyTerms = const [],
     String? bio,
+    String? content,
     String? avatarUrl,
     String? coverUrl,
     TenantAdminMediaUpload? avatarUpload,
@@ -755,6 +762,7 @@ class TenantAdminAccountProfilesController implements Disposable {
       location: location,
       taxonomyTerms: taxonomyTerms,
       bio: bio,
+      content: content,
       avatarUrl: avatarUrl,
       coverUrl: coverUrl,
       avatarUpload: avatarUpload,
@@ -767,6 +775,7 @@ class TenantAdminAccountProfilesController implements Disposable {
       location: filtered.location,
       taxonomyTerms: filtered.taxonomyTerms,
       bio: filtered.bio,
+      content: filtered.content,
       avatarUrl: filtered.avatarUrl,
       coverUrl: filtered.coverUrl,
       avatarUpload: filtered.avatarUpload,
@@ -784,6 +793,7 @@ class TenantAdminAccountProfilesController implements Disposable {
     TenantAdminLocation? location,
     List<TenantAdminTaxonomyTerm>? taxonomyTerms,
     String? bio,
+    String? content,
     String? avatarUrl,
     String? coverUrl,
     TenantAdminMediaUpload? avatarUpload,
@@ -794,6 +804,7 @@ class TenantAdminAccountProfilesController implements Disposable {
             location: location,
             taxonomyTerms: taxonomyTerms ?? const [],
             bio: bio,
+            content: content,
             avatarUrl: avatarUrl,
             coverUrl: coverUrl,
             avatarUpload: avatarUpload,
@@ -804,6 +815,7 @@ class TenantAdminAccountProfilesController implements Disposable {
             location: location,
             taxonomyTerms: taxonomyTerms ?? const [],
             bio: bio,
+            content: content,
             avatarUrl: avatarUrl,
             coverUrl: coverUrl,
             avatarUpload: avatarUpload,
@@ -817,6 +829,7 @@ class TenantAdminAccountProfilesController implements Disposable {
       location: filtered.location,
       taxonomyTerms: taxonomyTerms == null ? null : filtered.taxonomyTerms,
       bio: filtered.bio,
+      content: filtered.content,
       avatarUrl: filtered.avatarUrl,
       coverUrl: filtered.coverUrl,
       avatarUpload: filtered.avatarUpload,
@@ -842,6 +855,7 @@ class TenantAdminAccountProfilesController implements Disposable {
     required TenantAdminLocation? location,
     required List<TenantAdminTaxonomyTerm> taxonomyTerms,
     required String? bio,
+    required String? content,
     required String? avatarUrl,
     required String? coverUrl,
     required TenantAdminMediaUpload? avatarUpload,
@@ -853,6 +867,7 @@ class TenantAdminAccountProfilesController implements Disposable {
         location: location,
         taxonomyTerms: taxonomyTerms,
         bio: bio,
+        content: content,
         avatarUrl: avatarUrl,
         coverUrl: coverUrl,
         avatarUpload: avatarUpload,
@@ -870,6 +885,7 @@ class TenantAdminAccountProfilesController implements Disposable {
       location: capabilities.isPoiEnabled ? location : null,
       taxonomyTerms: filteredTerms,
       bio: capabilities.hasBio ? bio : null,
+      content: capabilities.hasContent ? content : null,
       avatarUrl: capabilities.hasAvatar ? avatarUrl : null,
       coverUrl: capabilities.hasCover ? coverUrl : null,
       avatarUpload: capabilities.hasAvatar ? avatarUpload : null,
@@ -883,6 +899,7 @@ class TenantAdminAccountProfilesController implements Disposable {
     slugController.dispose();
     displayNameController.dispose();
     bioController.dispose();
+    contentController.dispose();
     latitudeController.dispose();
     longitudeController.dispose();
     profilesStreamValue.dispose();
@@ -1087,6 +1104,7 @@ class _CapabilityFilter {
     required this.location,
     required this.taxonomyTerms,
     required this.bio,
+    required this.content,
     required this.avatarUrl,
     required this.coverUrl,
     required this.avatarUpload,
@@ -1096,6 +1114,7 @@ class _CapabilityFilter {
   final TenantAdminLocation? location;
   final List<TenantAdminTaxonomyTerm> taxonomyTerms;
   final String? bio;
+  final String? content;
   final String? avatarUrl;
   final String? coverUrl;
   final TenantAdminMediaUpload? avatarUpload;

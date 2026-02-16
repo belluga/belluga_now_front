@@ -13,8 +13,8 @@ import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_error_banner.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_field_edit_sheet.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_form_layout.dart';
-import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_html_toolbar.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_image_source_sheet.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_rich_text_editor.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:image_picker/image_picker.dart';
@@ -92,6 +92,11 @@ class _TenantAdminAccountProfileEditScreenState
     return definition?.capabilities.hasBio ?? false;
   }
 
+  bool _hasContent(String? selectedType) {
+    final definition = _selectedProfileTypeDefinition(selectedType);
+    return definition?.capabilities.hasContent ?? false;
+  }
+
   bool _hasTaxonomies(String? selectedType) {
     final definition = _selectedProfileTypeDefinition(selectedType);
     return definition?.capabilities.hasTaxonomies ?? false;
@@ -150,6 +155,7 @@ class _TenantAdminAccountProfileEditScreenState
     _controller.slugController.text = profile.slug ?? '';
     _controller.displayNameController.text = profile.displayName;
     _controller.bioController.text = profile.bio ?? '';
+    _controller.contentController.text = profile.content ?? '';
     if (profile.location == null) {
       _controller.latitudeController.clear();
       _controller.longitudeController.clear();
@@ -537,6 +543,9 @@ class _TenantAdminAccountProfileEditScreenState
                                         _hasCover(state.selectedProfileType);
                                 final hasContent =
                                     _hasBio(state.selectedProfileType) ||
+                                        _hasContent(
+                                          state.selectedProfileType,
+                                        ) ||
                                         _hasTaxonomies(
                                           state.selectedProfileType,
                                         );
@@ -643,6 +652,13 @@ class _TenantAdminAccountProfileEditScreenState
                                                       bio: _hasBio(selectedType)
                                                           ? _controller
                                                               .bioController
+                                                              .text
+                                                              .trim()
+                                                          : null,
+                                                      content: _hasContent(
+                                                              selectedType)
+                                                          ? _controller
+                                                              .contentController
                                                               .text
                                                               .trim()
                                                           : null,
@@ -755,6 +771,9 @@ class _TenantAdminAccountProfileEditScreenState
                   if (!_hasBio(value)) {
                     _controller.bioController.clear();
                   }
+                  if (!_hasContent(value)) {
+                    _controller.contentController.clear();
+                  }
                   if (!_hasTaxonomies(value)) {
                     _controller.resetTaxonomySelection();
                   }
@@ -829,6 +848,7 @@ class _TenantAdminAccountProfileEditScreenState
     TenantAdminAccountProfileEditDraft state,
   ) {
     final hasBio = _hasBio(state.selectedProfileType);
+    final hasContent = _hasContent(state.selectedProfileType);
     final allowedDefinitions =
         _allowedTaxonomyDefinitions(state.selectedProfileType);
     return TenantAdminFormSectionCard(
@@ -837,20 +857,24 @@ class _TenantAdminAccountProfileEditScreenState
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (hasBio) ...[
-            const Text('Acoes HTML para bio'),
-            const SizedBox(height: 8),
-            TenantAdminHtmlToolbar(controller: _controller.bioController),
-            const SizedBox(height: 8),
-            TextFormField(
+            TenantAdminRichTextEditor(
               controller: _controller.bioController,
-              decoration: const InputDecoration(labelText: 'Bio'),
-              maxLines: 4,
-              minLines: 2,
-              textInputAction: TextInputAction.newline,
+              label: 'Bio',
+              placeholder: 'Edite a bio do perfil',
+              minHeight: 160,
+            ),
+          ],
+          if (hasContent) ...[
+            if (hasBio) const SizedBox(height: 12),
+            TenantAdminRichTextEditor(
+              controller: _controller.contentController,
+              label: 'Conteudo',
+              placeholder: 'Edite o conteudo estendido do perfil',
+              minHeight: 220,
             ),
           ],
           if (_hasTaxonomies(state.selectedProfileType)) ...[
-            if (hasBio) const SizedBox(height: 12),
+            if (hasBio || hasContent) const SizedBox(height: 12),
             Text(
               'Taxonomias',
               style: Theme.of(context).textTheme.labelLarge,

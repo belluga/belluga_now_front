@@ -1,6 +1,7 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_static_asset.dart';
+import 'package:belluga_now/presentation/common/widgets/belluga_network_image.dart';
 import 'package:flutter/material.dart';
 
 class TenantAdminStaticAssetDetailScreen extends StatelessWidget {
@@ -38,11 +39,8 @@ class TenantAdminStaticAssetDetailScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'Detalhes do ativo',
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                  const SizedBox(height: 12),
+                  _buildVisualHeader(context),
+                  const SizedBox(height: 16),
                   _buildRow(context, 'Slug', asset.slug),
                   const SizedBox(height: 8),
                   _buildRow(context, 'Tipo', asset.profileType),
@@ -51,12 +49,16 @@ class TenantAdminStaticAssetDetailScreen extends StatelessWidget {
                       context, 'Status', asset.isActive ? 'Ativo' : 'Inativo'),
                   if (asset.bio != null && asset.bio!.trim().isNotEmpty) ...[
                     const SizedBox(height: 8),
-                    _buildRow(context, 'Bio', asset.bio!.trim()),
+                    _buildRow(context, 'Bio', _stripHtml(asset.bio!.trim())),
                   ],
                   if (asset.content != null &&
                       asset.content!.trim().isNotEmpty) ...[
                     const SizedBox(height: 8),
-                    _buildRow(context, 'Conteudo', asset.content!.trim()),
+                    _buildRow(
+                      context,
+                      'Conteudo',
+                      _stripHtml(asset.content!.trim()),
+                    ),
                   ],
                   if (asset.location != null) ...[
                     const SizedBox(height: 8),
@@ -82,6 +84,79 @@ class TenantAdminStaticAssetDetailScreen extends StatelessWidget {
           ],
         ],
       ),
+    );
+  }
+
+  Widget _buildVisualHeader(BuildContext context) {
+    final coverUrl = asset.coverUrl;
+    final avatarUrl = asset.avatarUrl;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (coverUrl != null && coverUrl.isNotEmpty)
+          BellugaNetworkImage(
+            coverUrl,
+            height: 160,
+            fit: BoxFit.cover,
+            clipBorderRadius: BorderRadius.circular(12),
+            errorWidget: Container(
+              height: 160,
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Center(
+                child: Icon(Icons.image_not_supported_outlined),
+              ),
+            ),
+          )
+        else
+          Container(
+            height: 160,
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surfaceContainerHighest,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Center(
+              child: Icon(Icons.image_outlined),
+            ),
+          ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            if (avatarUrl != null && avatarUrl.isNotEmpty)
+              BellugaNetworkImage(
+                avatarUrl,
+                width: 72,
+                height: 72,
+                fit: BoxFit.cover,
+                clipBorderRadius: BorderRadius.circular(36),
+                errorWidget: _avatarFallback(context),
+              )
+            else
+              _avatarFallback(context),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                asset.displayName,
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _avatarFallback(BuildContext context) {
+    return Container(
+      width: 72,
+      height: 72,
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(36),
+      ),
+      child: const Icon(Icons.photo_outlined),
     );
   }
 
@@ -133,5 +208,13 @@ class TenantAdminStaticAssetDetailScreen extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  String _stripHtml(String value) {
+    return value
+        .replaceAll(RegExp(r'<[^>]+>'), ' ')
+        .replaceAll('&nbsp;', ' ')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
   }
 }

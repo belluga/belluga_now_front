@@ -91,6 +91,7 @@ class TenantAdminAccountsController implements Disposable {
   final GlobalKey<FormState> createFormKey = GlobalKey<FormState>();
   final TextEditingController nameController = TextEditingController();
   final TextEditingController bioController = TextEditingController();
+  final TextEditingController contentController = TextEditingController();
   final TextEditingController latitudeController = TextEditingController();
   final TextEditingController longitudeController = TextEditingController();
 
@@ -324,6 +325,7 @@ class TenantAdminAccountsController implements Disposable {
     required String profileType,
     TenantAdminLocation? location,
     String? bio,
+    String? content,
     List<TenantAdminTaxonomyTerm> taxonomyTerms = const [],
     String? avatarUrl,
     String? coverUrl,
@@ -342,6 +344,7 @@ class TenantAdminAccountsController implements Disposable {
       location: location,
       taxonomyTerms: taxonomyTerms,
       bio: bio,
+      content: content,
       avatarUrl: avatarUrl,
       coverUrl: coverUrl,
       avatarUpload: avatarUpload,
@@ -365,6 +368,9 @@ class TenantAdminAccountsController implements Disposable {
     final filteredBio = capabilities?.hasBio == true
         ? _normalizeOptionalString(bioController.text)
         : null;
+    final filteredContent = capabilities?.hasContent == true
+        ? _normalizeOptionalString(contentController.text)
+        : null;
     final avatarUrl = capabilities?.hasAvatar == true
         ? createStateStreamValue.value.avatarWebUrl
         : null;
@@ -377,6 +383,7 @@ class TenantAdminAccountsController implements Disposable {
       profileType: selectedProfileType,
       location: location,
       bio: filteredBio,
+      content: filteredContent,
       taxonomyTerms: filteredTaxonomyTerms,
       avatarUrl: avatarUrl,
       coverUrl: coverUrl,
@@ -418,6 +425,7 @@ class TenantAdminAccountsController implements Disposable {
   void resetCreateForm() {
     nameController.clear();
     bioController.clear();
+    contentController.clear();
     latitudeController.clear();
     longitudeController.clear();
     selectedTaxonomyTermsStreamValue.addValue(const {});
@@ -472,6 +480,7 @@ class TenantAdminAccountsController implements Disposable {
     _accountsRepositoryErrorSubscription?.cancel();
     nameController.dispose();
     bioController.dispose();
+    contentController.dispose();
     latitudeController.dispose();
     longitudeController.dispose();
     profileTypesStreamValue.dispose();

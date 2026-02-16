@@ -128,6 +128,7 @@ class _TenantAdminProfileTypeDetailScreenState
           if (definition.capabilities.isFavoritable) 'Favoritavel',
           if (definition.capabilities.isPoiEnabled) 'POI habilitado',
           if (definition.capabilities.hasBio) 'Bio',
+          if (definition.capabilities.hasContent) 'Conteudo',
           if (definition.capabilities.hasTaxonomies) 'Taxonomias',
           if (definition.capabilities.hasAvatar) 'Avatar',
           if (definition.capabilities.hasCover) 'Capa',

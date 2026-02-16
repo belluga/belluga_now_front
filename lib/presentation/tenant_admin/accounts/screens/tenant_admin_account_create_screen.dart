@@ -13,8 +13,8 @@ import 'package:belluga_now/presentation/tenant_admin/accounts/controllers/tenan
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_error_banner.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_field_edit_sheet.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_form_layout.dart';
-import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_html_toolbar.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_image_source_sheet.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_rich_text_editor.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:image_picker/image_picker.dart';
@@ -227,6 +227,7 @@ class _TenantAdminAccountCreateScreenState
             final definition =
                 _profileTypeDefinition(state.selectedProfileType);
             final hasBio = definition?.capabilities.hasBio ?? false;
+            final hasContent = definition?.capabilities.hasContent ?? false;
             final hasTaxonomies =
                 definition?.capabilities.hasTaxonomies ?? false;
             final showAvatar = definition?.capabilities.hasAvatar ?? false;
@@ -252,12 +253,13 @@ class _TenantAdminAccountCreateScreenState
                           showCover: showCover,
                         ),
                       ],
-                      if (hasBio || hasTaxonomies) ...[
+                      if (hasBio || hasContent || hasTaxonomies) ...[
                         const SizedBox(height: 16),
                         _buildProfileContentSection(
                           context,
                           state,
                           hasBio: hasBio,
+                          hasContent: hasContent,
                           hasTaxonomies: hasTaxonomies,
                         ),
                       ],
@@ -397,6 +399,10 @@ class _TenantAdminAccountCreateScreenState
                                     if (!(definition?.capabilities.hasBio ??
                                         false)) {
                                       _controller.bioController.clear();
+                                    }
+                                    if (!(definition?.capabilities.hasContent ??
+                                        false)) {
+                                      _controller.contentController.clear();
                                     }
                                   }
                                 : null,
@@ -660,6 +666,7 @@ class _TenantAdminAccountCreateScreenState
     BuildContext context,
     TenantAdminAccountCreateDraft state, {
     required bool hasBio,
+    required bool hasContent,
     required bool hasTaxonomies,
   }) {
     final allowedTaxonomies = _allowedTaxonomyDefinitions(
@@ -673,21 +680,24 @@ class _TenantAdminAccountCreateScreenState
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (hasBio) ...[
-            const Text('Acoes HTML para bio'),
-            const SizedBox(height: 8),
-            TenantAdminHtmlToolbar(controller: _controller.bioController),
-            const SizedBox(height: 8),
-            TextFormField(
+            TenantAdminRichTextEditor(
               controller: _controller.bioController,
-              decoration: const InputDecoration(labelText: 'Bio'),
-              keyboardType: TextInputType.multiline,
-              textCapitalization: TextCapitalization.sentences,
-              maxLines: 4,
-              textInputAction: TextInputAction.newline,
+              label: 'Bio',
+              placeholder: 'Escreva a bio do perfil',
+              minHeight: 160,
+            ),
+          ],
+          if (hasContent) ...[
+            if (hasBio) const SizedBox(height: 16),
+            TenantAdminRichTextEditor(
+              controller: _controller.contentController,
+              label: 'Conteudo',
+              placeholder: 'Escreva o conteudo estendido do perfil',
+              minHeight: 220,
             ),
           ],
           if (hasTaxonomies) ...[
-            if (hasBio) const SizedBox(height: 16),
+            if (hasBio || hasContent) const SizedBox(height: 16),
             _buildTaxonomySection(allowedTaxonomies),
           ],
         ],

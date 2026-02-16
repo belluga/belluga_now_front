@@ -12,8 +12,8 @@ import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_error_banner.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_field_edit_sheet.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_form_layout.dart';
-import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_html_toolbar.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_image_source_sheet.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_rich_text_editor.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:image_picker/image_picker.dart';
@@ -79,6 +79,11 @@ class _TenantAdminAccountProfileCreateScreenState
     return definition?.capabilities.hasBio ?? false;
   }
 
+  bool _hasContent(String? selectedType) {
+    final definition = _profileTypeDefinition(selectedType);
+    return definition?.capabilities.hasContent ?? false;
+  }
+
   bool _hasTaxonomies(String? selectedType) {
     final definition = _profileTypeDefinition(selectedType);
     return definition?.capabilities.hasTaxonomies ?? false;
@@ -119,6 +124,9 @@ class _TenantAdminAccountProfileCreateScreenState
   void _clearCapabilityFields(String? selectedType) {
     if (!_hasBio(selectedType)) {
       _controller.bioController.clear();
+    }
+    if (!_hasContent(selectedType)) {
+      _controller.contentController.clear();
     }
     if (!_hasTaxonomies(selectedType)) {
       _controller.resetTaxonomySelection();
@@ -339,6 +347,9 @@ class _TenantAdminAccountProfileCreateScreenState
       bio: _hasBio(state.selectedProfileType)
           ? _controller.bioController.text.trim()
           : null,
+      content: _hasContent(state.selectedProfileType)
+          ? _controller.contentController.text.trim()
+          : null,
       taxonomyTerms: _buildTaxonomyTerms(state.selectedProfileType),
       avatarUpload: avatarUpload,
       coverUpload: coverUpload,
@@ -366,6 +377,7 @@ class _TenantAdminAccountProfileCreateScreenState
                 final hasMedia = _hasAvatar(state.selectedProfileType) ||
                     _hasCover(state.selectedProfileType);
                 final hasContent = _hasBio(state.selectedProfileType) ||
+                    _hasContent(state.selectedProfileType) ||
                     _hasTaxonomies(state.selectedProfileType);
                 return TenantAdminFormScaffold(
                   title: 'Criar Perfil - ${widget.accountSlug}',
@@ -547,6 +559,7 @@ class _TenantAdminAccountProfileCreateScreenState
     TenantAdminAccountProfileCreateDraft state,
   ) {
     final hasBio = _hasBio(state.selectedProfileType);
+    final hasContent = _hasContent(state.selectedProfileType);
     final allowedDefinitions = _allowedTaxonomyDefinitions(
       state.selectedProfileType,
     );
@@ -556,20 +569,24 @@ class _TenantAdminAccountProfileCreateScreenState
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (hasBio) ...[
-            const Text('Acoes HTML para bio'),
-            const SizedBox(height: 8),
-            TenantAdminHtmlToolbar(controller: _controller.bioController),
-            const SizedBox(height: 8),
-            TextFormField(
+            TenantAdminRichTextEditor(
               controller: _controller.bioController,
-              decoration: const InputDecoration(labelText: 'Bio'),
-              maxLines: 4,
-              minLines: 2,
-              textInputAction: TextInputAction.newline,
+              label: 'Bio',
+              placeholder: 'Escreva a bio do perfil',
+              minHeight: 160,
+            ),
+          ],
+          if (hasContent) ...[
+            if (hasBio) const SizedBox(height: 12),
+            TenantAdminRichTextEditor(
+              controller: _controller.contentController,
+              label: 'Conteudo',
+              placeholder: 'Escreva o conteudo estendido do perfil',
+              minHeight: 220,
             ),
           ],
           if (_hasTaxonomies(state.selectedProfileType)) ...[
-            if (hasBio) const SizedBox(height: 12),
+            if (hasBio || hasContent) const SizedBox(height: 12),
             Text(
               'Taxonomias',
               style: Theme.of(context).textTheme.labelLarge,

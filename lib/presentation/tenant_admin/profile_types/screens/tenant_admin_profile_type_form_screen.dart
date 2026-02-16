@@ -215,6 +215,18 @@ class _TenantAdminProfileTypeFormScreenState
                                 ),
                                 SwitchListTile(
                                   contentPadding: EdgeInsets.zero,
+                                  title: const Text('Conteudo habilitado'),
+                                  subtitle: const Text(
+                                    'Exibe campo de conteudo estendido no perfil',
+                                  ),
+                                  value: capabilities.hasContent,
+                                  onChanged: (value) =>
+                                      _controller.updateCapabilities(
+                                    hasContent: value,
+                                  ),
+                                ),
+                                SwitchListTile(
+                                  contentPadding: EdgeInsets.zero,
                                   title: const Text('Avatar habilitado'),
                                   value: capabilities.hasAvatar,
                                   onChanged: (value) =>

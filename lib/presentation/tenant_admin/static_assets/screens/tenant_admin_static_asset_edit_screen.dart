@@ -12,8 +12,8 @@ import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admi
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_error_banner.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_field_edit_sheet.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_form_layout.dart';
-import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_html_toolbar.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_image_source_sheet.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_rich_text_editor.dart';
 import 'package:belluga_now/presentation/tenant_admin/static_assets/controllers/tenant_admin_static_assets_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
@@ -560,28 +560,20 @@ class _TenantAdminStaticAssetEditScreenState
             ),
             if (hasBio) ...[
               const SizedBox(height: 12),
-              const Text('Acoes HTML para bio'),
-              const SizedBox(height: 8),
-              TenantAdminHtmlToolbar(controller: _controller.bioController),
-              const SizedBox(height: 8),
-              TextFormField(
+              TenantAdminRichTextEditor(
                 controller: _controller.bioController,
-                decoration: const InputDecoration(labelText: 'Bio'),
-                keyboardType: TextInputType.multiline,
-                textCapitalization: TextCapitalization.sentences,
-                maxLines: 3,
-                textInputAction: TextInputAction.newline,
+                label: 'Bio',
+                placeholder: 'Edite a bio do ativo',
+                minHeight: 150,
               ),
             ],
             if (hasContent) ...[
               const SizedBox(height: 12),
-              TextFormField(
+              TenantAdminRichTextEditor(
                 controller: _controller.contentController,
-                decoration: const InputDecoration(labelText: 'Conteudo'),
-                keyboardType: TextInputType.multiline,
-                textCapitalization: TextCapitalization.sentences,
-                maxLines: 6,
-                textInputAction: TextInputAction.newline,
+                label: 'Conteudo',
+                placeholder: 'Edite o conteudo detalhado do ativo',
+                minHeight: 220,
               ),
             ],
           ],

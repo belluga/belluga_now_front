@@ -192,6 +192,7 @@ class _TenantAdminProfileTypesListScreenState
           if (type.capabilities.isPoiEnabled) 'POI habilitado',
           if (type.capabilities.isFavoritable) 'Favoritavel',
           if (type.capabilities.hasBio) 'Bio',
+          if (type.capabilities.hasContent) 'Conteudo',
           if (type.capabilities.hasTaxonomies) 'Taxonomias',
           if (type.capabilities.hasAvatar) 'Avatar',
           if (type.capabilities.hasCover) 'Capa',
