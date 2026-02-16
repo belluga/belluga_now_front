@@ -6,6 +6,7 @@ class TenantAdminProfileTypeDTO {
     required this.isFavoritable,
     required this.isPoiEnabled,
     required this.hasBio,
+    required this.hasContent,
     required this.hasTaxonomies,
     required this.hasAvatar,
     required this.hasCover,
@@ -18,6 +19,7 @@ class TenantAdminProfileTypeDTO {
   final bool isFavoritable;
   final bool isPoiEnabled;
   final bool hasBio;
+  final bool hasContent;
   final bool hasTaxonomies;
   final bool hasAvatar;
   final bool hasCover;
@@ -37,6 +39,7 @@ class TenantAdminProfileTypeDTO {
     bool isFavoritable = false;
     bool isPoiEnabled = false;
     bool hasBio = false;
+    bool hasContent = false;
     bool hasTaxonomies = false;
     bool hasAvatar = false;
     bool hasCover = false;
@@ -45,6 +48,7 @@ class TenantAdminProfileTypeDTO {
       isFavoritable = _parseBool(capabilities['is_favoritable']);
       isPoiEnabled = _parseBool(capabilities['is_poi_enabled']);
       hasBio = _parseBool(capabilities['has_bio']);
+      hasContent = _parseBool(capabilities['has_content']);
       hasTaxonomies = _parseBool(capabilities['has_taxonomies']);
       hasAvatar = _parseBool(capabilities['has_avatar']);
       hasCover = _parseBool(capabilities['has_cover']);
@@ -57,6 +61,7 @@ class TenantAdminProfileTypeDTO {
       isFavoritable: isFavoritable,
       isPoiEnabled: isPoiEnabled,
       hasBio: hasBio,
+      hasContent: hasContent,
       hasTaxonomies: hasTaxonomies,
       hasAvatar: hasAvatar,
       hasCover: hasCover,

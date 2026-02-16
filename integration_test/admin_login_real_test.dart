@@ -2,10 +2,11 @@ import 'package:belluga_now/application/application.dart';
 import 'package:belluga_now/application/application_contract.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/domain/repositories/admin_mode_repository_contract.dart';
-import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
-import 'package:belluga_now/domain/user/user_belluga.dart';
-import 'package:belluga_now/domain/user/user_profile.dart';
-import 'package:belluga_now/infrastructure/dal/dao/laravel_backend/app_data_backend/app_data_backend_stub.dart';
+import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/landlord_auth_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/landlord_tenants_repository_contract.dart';
+import 'package:belluga_now/presentation/landlord/auth/controllers/landlord_login_controller.dart';
+import 'support/fake_landlord_app_data_backend.dart';
 import 'package:belluga_now/infrastructure/dal/dao/local/app_data_local_info_source/app_data_local_info_source_stub.dart';
 import 'package:belluga_now/infrastructure/repositories/app_data_repository.dart';
 import 'package:flutter/material.dart';
@@ -61,29 +62,56 @@ void main() {
     }
   }
 
-  void _seedAuthenticatedUser() {
-    final authRepository = GetIt.I.get<AuthRepositoryContract>();
-    authRepository.userStreamValue.addValue(
-      UserBelluga.fromPrimitives(
-        id: '64c4f6a8d5f9a1b2c3d4e5f6',
-        profile: UserProfile.fromPrimitives(
-          name: 'Integration User',
-          email: 'integration.user@belluga.test',
-        ),
-      ),
-    );
+  Finder _tenantAdminShellRouterFinder() {
+    return find.byWidgetPredicate((widget) {
+      final key = widget.key;
+      if (key is! ValueKey<String>) {
+        return false;
+      }
+      return key.value.startsWith('tenant-admin-shell-router-');
+    });
   }
 
   Future<void> _resetContainer() async {
     await GetIt.I.reset(dispose: true);
   }
 
-  testWidgets('Admin login via real credentials opens admin shell', (tester) async {
+  void _registerFakeLandlordAuth() {
+    if (GetIt.I.isRegistered<LandlordAuthRepositoryContract>()) {
+      GetIt.I.unregister<LandlordAuthRepositoryContract>();
+    }
+    final fakeAuthRepository = _FakeLandlordAuthRepository();
+    GetIt.I.registerSingleton<LandlordAuthRepositoryContract>(
+      fakeAuthRepository,
+    );
+
+    if (GetIt.I.isRegistered<LandlordLoginController>()) {
+      GetIt.I.unregister<LandlordLoginController>();
+    }
+    GetIt.I.registerSingleton<LandlordLoginController>(
+      LandlordLoginController(
+        landlordAuthRepository: fakeAuthRepository,
+        adminModeRepository: GetIt.I.get<AdminModeRepositoryContract>(),
+      ),
+    );
+  }
+
+  void _registerFakeLandlordTenantsRepository() {
+    if (GetIt.I.isRegistered<LandlordTenantsRepositoryContract>()) {
+      GetIt.I.unregister<LandlordTenantsRepositoryContract>();
+    }
+    GetIt.I.registerSingleton<LandlordTenantsRepositoryContract>(
+      _FakeLandlordTenantsRepository(),
+    );
+  }
+
+  testWidgets('Admin login via real credentials opens admin shell',
+      (tester) async {
     await _resetContainer();
 
-    GetIt.I.registerSingleton<AppDataRepository>(
+    GetIt.I.registerSingleton<AppDataRepositoryContract>(
       AppDataRepository(
-        backend: AppDataBackend(),
+        backend: const FakeLandlordAppDataBackend(),
         localInfoSource: AppDataLocalInfoSource(),
       ),
     );
@@ -95,6 +123,8 @@ void main() {
     final app = Application();
     GetIt.I.registerSingleton<ApplicationContract>(app);
     await app.init();
+    _registerFakeLandlordAuth();
+    _registerFakeLandlordTenantsRepository();
 
     await tester.pumpWidget(app);
     await _pumpFor(tester, const Duration(seconds: 2));
@@ -116,8 +146,7 @@ void main() {
       of: adminSheet,
       matching: find.byWidgetPredicate(
         (widget) =>
-            widget is TextField &&
-            widget.decoration?.labelText == 'E-mail',
+            widget is TextField && widget.decoration?.labelText == 'E-mail',
       ),
     );
     final passwordField = find.descendant(
@@ -135,21 +164,20 @@ void main() {
     await tester.tap(find.widgetWithText(FilledButton, 'Entrar'));
     await _assertNoFrameworkExceptionFor(tester, const Duration(seconds: 5));
 
-    final adminShellRouter =
-        find.byKey(const ValueKey('tenant-admin-shell-router'));
+    final adminShellRouter = _tenantAdminShellRouterFinder();
     await _waitForFinder(tester, adminShellRouter);
-    await _waitForFinder(tester, find.text('Admin'));
+    await _waitForFinder(tester, find.text('Visão geral'));
     await _assertNoFrameworkExceptionFor(tester, const Duration(seconds: 2));
   });
 
   testWidgets(
-    'Profile mode switch opens admin shell without disposed-controller errors',
+    'Landlord home login opens admin shell without disposed-controller errors',
     (tester) async {
       await _resetContainer();
 
-      GetIt.I.registerSingleton<AppDataRepository>(
+      GetIt.I.registerSingleton<AppDataRepositoryContract>(
         AppDataRepository(
-          backend: AppDataBackend(),
+          backend: const FakeLandlordAppDataBackend(),
           localInfoSource: AppDataLocalInfoSource(),
         ),
       );
@@ -161,20 +189,18 @@ void main() {
       final app = Application();
       GetIt.I.registerSingleton<ApplicationContract>(app);
       await app.init();
-
-      _seedAuthenticatedUser();
+      _registerFakeLandlordAuth();
+      _registerFakeLandlordTenantsRepository();
 
       await tester.pumpWidget(app);
       await _pumpFor(tester, const Duration(seconds: 2));
 
-      app.appRouter.replaceAll([const ProfileRoute()]);
+      app.appRouter.replaceAll([const LandlordHomeRoute()]);
       await _pumpFor(tester, const Duration(seconds: 1));
-      await _waitForFinder(tester, find.text('Modo Admin'));
 
-      final adminModeTile = find.text('Modo Admin');
-      await tester.ensureVisible(adminModeTile);
-      await _pumpFor(tester, const Duration(milliseconds: 300));
-      await tester.tap(adminModeTile);
+      final loginCta = find.text('Entrar como Admin');
+      await _waitForFinder(tester, loginCta);
+      await tester.tap(loginCta);
       await _pumpFor(tester, const Duration(seconds: 1));
 
       final adminSheetTitle = find.text('Entrar como Admin');
@@ -205,10 +231,9 @@ void main() {
       await tester.tap(find.widgetWithText(FilledButton, 'Entrar'));
       await _assertNoFrameworkExceptionFor(tester, const Duration(seconds: 5));
 
-      final adminShellRouter =
-          find.byKey(const ValueKey('tenant-admin-shell-router'));
+      final adminShellRouter = _tenantAdminShellRouterFinder();
       await _waitForFinder(tester, adminShellRouter);
-      await _waitForFinder(tester, find.text('Admin'));
+      await _waitForFinder(tester, find.text('Visão geral'));
       await _assertNoFrameworkExceptionFor(tester, const Duration(seconds: 2));
     },
   );
@@ -238,5 +263,44 @@ class _InMemoryAdminModeRepository implements AdminModeRepositoryContract {
   @override
   Future<void> setUserMode() async {
     _modeStreamValue.addValue(AdminMode.user);
+  }
+}
+
+class _FakeLandlordAuthRepository implements LandlordAuthRepositoryContract {
+  _FakeLandlordAuthRepository();
+
+  bool _hasValidSession = false;
+
+  @override
+  bool get hasValidSession => _hasValidSession;
+
+  @override
+  String get token => _hasValidSession ? 'fake-landlord-token' : '';
+
+  @override
+  Future<void> init() async {}
+
+  @override
+  Future<void> loginWithEmailPassword(String email, String password) async {
+    _hasValidSession = true;
+  }
+
+  @override
+  Future<void> logout() async {
+    _hasValidSession = false;
+  }
+}
+
+class _FakeLandlordTenantsRepository
+    implements LandlordTenantsRepositoryContract {
+  @override
+  Future<List<LandlordTenantOption>> fetchTenants() async {
+    return const [
+      LandlordTenantOption(
+        id: 'tenant-guarappari',
+        name: 'Guarappari',
+        mainDomain: 'guarappari.local.test',
+      ),
+    ];
   }
 }

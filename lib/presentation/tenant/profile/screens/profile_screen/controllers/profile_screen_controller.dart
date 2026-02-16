@@ -1,10 +1,8 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:belluga_now/domain/repositories/admin_mode_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
-import 'package:belluga_now/domain/repositories/landlord_auth_repository_contract.dart';
 import 'package:belluga_now/domain/user/user_contract.dart';
 import 'package:belluga_now/domain/user/profile_avatar_storage_contract.dart';
 import 'package:flutter/material.dart';
@@ -17,17 +15,11 @@ class ProfileScreenController implements Disposable {
   ProfileScreenController({
     AuthRepositoryContract? authRepository,
     AppDataRepositoryContract? appDataRepository,
-    AdminModeRepositoryContract? adminModeRepository,
-    LandlordAuthRepositoryContract? landlordAuthRepository,
     ProfileAvatarStorageContract? avatarStorage,
   })  : _authRepository =
             authRepository ?? GetIt.I.get<AuthRepositoryContract>(),
         _appDataRepository =
             appDataRepository ?? GetIt.I.get<AppDataRepositoryContract>(),
-        _adminModeRepository =
-            adminModeRepository ?? GetIt.I.get<AdminModeRepositoryContract>(),
-        _landlordAuthRepository = landlordAuthRepository ??
-            GetIt.I.get<LandlordAuthRepositoryContract>(),
         _avatarStorage =
             avatarStorage ?? GetIt.I.get<ProfileAvatarStorageContract>() {
     _bindUserStream();
@@ -35,8 +27,6 @@ class ProfileScreenController implements Disposable {
 
   final AuthRepositoryContract _authRepository;
   final AppDataRepositoryContract _appDataRepository;
-  final AdminModeRepositoryContract _adminModeRepository;
-  final LandlordAuthRepositoryContract _landlordAuthRepository;
   final ProfileAvatarStorageContract _avatarStorage;
   StreamSubscription<UserContract?>? _userSubscription;
 
@@ -46,8 +36,6 @@ class ProfileScreenController implements Disposable {
   final TextEditingController phoneController = TextEditingController();
   final TextEditingController editFieldController = TextEditingController();
   final TextEditingController radiusKmController = TextEditingController();
-  final TextEditingController adminEmailController = TextEditingController();
-  final TextEditingController adminPasswordController = TextEditingController();
   final StreamValue<String?> localAvatarPathStreamValue =
       StreamValue<String?>();
   final StreamValue<int> formVersionStreamValue =
@@ -66,9 +54,6 @@ class ProfileScreenController implements Disposable {
 
   StreamValue<ThemeMode?> get themeModeStreamValue =>
       _appDataRepository.themeModeStreamValue;
-  StreamValue<AdminMode> get modeStreamValue =>
-      _adminModeRepository.modeStreamValue;
-  bool get isAdminMode => _adminModeRepository.mode == AdminMode.landlord;
   ThemeMode get themeMode => _appDataRepository.themeMode;
   Future<void> setThemeMode(ThemeMode mode) =>
       _appDataRepository.setThemeMode(mode);
@@ -171,25 +156,6 @@ class ProfileScreenController implements Disposable {
 
   Future<void> logout() => _authRepository.logout();
 
-  Future<void> switchToUserMode() => _adminModeRepository.setUserMode();
-
-  Future<bool> enterAdminModeWithCredentials(
-    String email,
-    String password,
-  ) async {
-    await _landlordAuthRepository.loginWithEmailPassword(email, password);
-    await _adminModeRepository.setLandlordMode();
-    return true;
-  }
-
-  Future<bool> ensureAdminMode() async {
-    if (!_landlordAuthRepository.hasValidSession) {
-      return false;
-    }
-    await _adminModeRepository.setLandlordMode();
-    return true;
-  }
-
   @override
   void onDispose() {
     _userSubscription?.cancel();
@@ -199,8 +165,6 @@ class ProfileScreenController implements Disposable {
     phoneController.dispose();
     editFieldController.dispose();
     radiusKmController.dispose();
-    adminEmailController.dispose();
-    adminPasswordController.dispose();
     localAvatarPathStreamValue.dispose();
     formVersionStreamValue.dispose();
   }

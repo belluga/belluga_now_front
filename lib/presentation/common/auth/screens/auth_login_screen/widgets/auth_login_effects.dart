@@ -92,9 +92,9 @@ class _AuthLoginEffectsState extends State<AuthLoginEffects> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       if (authorized) {
-        final navigator = Navigator.of(context, rootNavigator: true);
-        if (navigator.canPop()) {
-          navigator.pop();
+        final rootRouter = context.router.root;
+        if (rootRouter.canPop()) {
+          rootRouter.pop();
         }
         _navigateAfterAuth();
       }

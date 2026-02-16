@@ -3,8 +3,6 @@ import 'package:belluga_now/application/configurations/belluga_constants.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/app_data/environment_type.dart';
-import 'package:belluga_now/domain/repositories/admin_mode_repository_contract.dart';
-import 'package:belluga_now/domain/repositories/landlord_auth_repository_contract.dart';
 import 'package:get_it/get_it.dart';
 
 class LandlordRouteGuard extends AutoRouteGuard {
@@ -17,16 +15,8 @@ class LandlordRouteGuard extends AutoRouteGuard {
 
     final isLandlordHost = landlordHost != null && hostname == landlordHost;
     final isLandlordEnv = envType == EnvironmentType.landlord;
-    final hasLandlordSession =
-        GetIt.I.isRegistered<LandlordAuthRepositoryContract>() &&
-            GetIt.I.get<LandlordAuthRepositoryContract>().hasValidSession;
-    final isLandlordMode =
-        GetIt.I.isRegistered<AdminModeRepositoryContract>() &&
-            GetIt.I.get<AdminModeRepositoryContract>().isLandlordMode;
 
-    if (isLandlordHost ||
-        isLandlordEnv ||
-        (hasLandlordSession && isLandlordMode)) {
+    if (isLandlordHost || isLandlordEnv) {
       resolver.next(true);
       return;
     }

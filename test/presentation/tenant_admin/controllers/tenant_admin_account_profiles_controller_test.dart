@@ -7,6 +7,8 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dar
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_document.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_accounts_result.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_definition.dart';
@@ -15,8 +17,35 @@ import 'package:belluga_now/domain/services/tenant_admin_location_selection_cont
 import 'package:belluga_now/infrastructure/services/tenant_admin/tenant_admin_location_selection_service.dart';
 import 'package:belluga_now/presentation/tenant_admin/account_profiles/controllers/tenant_admin_account_profiles_controller.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:stream_value/core/stream_value.dart';
 
-class _FakeAccountsRepository implements TenantAdminAccountsRepositoryContract {
+class _FakeAccountsRepository
+    with TenantAdminAccountsRepositoryPaginationMixin
+    implements TenantAdminAccountsRepositoryContract {
+  @override
+  final StreamValue<List<TenantAdminAccount>?> accountsStreamValue =
+      StreamValue<List<TenantAdminAccount>?>(defaultValue: const []);
+
+  @override
+  final StreamValue<bool> hasMoreAccountsStreamValue =
+      StreamValue<bool>(defaultValue: false);
+
+  @override
+  final StreamValue<bool> isAccountsPageLoadingStreamValue =
+      StreamValue<bool>(defaultValue: false);
+
+  @override
+  final StreamValue<String?> accountsErrorStreamValue = StreamValue<String?>();
+
+  @override
+  Future<void> loadAccounts({int pageSize = 20}) async {}
+
+  @override
+  Future<void> loadNextAccountsPage({int pageSize = 20}) async {}
+
+  @override
+  void resetAccountsState() {}
+
   @override
   Future<TenantAdminAccount> fetchAccountBySlug(String accountSlug) async {
     return TenantAdminAccount(
@@ -32,17 +61,30 @@ class _FakeAccountsRepository implements TenantAdminAccountsRepositoryContract {
   Future<List<TenantAdminAccount>> fetchAccounts() async => const [];
 
   @override
+  Future<TenantAdminPagedAccountsResult> fetchAccountsPage({
+    required int page,
+    required int pageSize,
+  }) async {
+    return const TenantAdminPagedAccountsResult(
+      accounts: <TenantAdminAccount>[],
+      hasMore: false,
+    );
+  }
+
+  @override
   Future<TenantAdminAccount> createAccount({
     required String name,
-    required TenantAdminDocument document,
+    TenantAdminDocument? document,
+    required TenantAdminOwnershipState ownershipState,
     String? organizationId,
   }) async {
     return TenantAdminAccount(
       id: 'acc-1',
       name: name,
       slug: 'acc-1',
-      document: document,
-      ownershipState: TenantAdminOwnershipState.tenantOwned,
+      document:
+          document ?? const TenantAdminDocument(type: 'cpf', number: '000'),
+      ownershipState: ownershipState,
     );
   }
 
@@ -50,6 +92,7 @@ class _FakeAccountsRepository implements TenantAdminAccountsRepositoryContract {
   Future<TenantAdminAccount> updateAccount({
     required String accountSlug,
     String? name,
+    String? slug,
     TenantAdminDocument? document,
   }) async {
     return fetchAccountBySlug(accountSlug);
@@ -68,12 +111,16 @@ class _FakeAccountsRepository implements TenantAdminAccountsRepositoryContract {
 }
 
 class _FakeAccountProfilesRepository
+    with TenantAdminProfileTypesPaginationMixin
     implements TenantAdminAccountProfilesRepositoryContract {
   _FakeAccountProfilesRepository(this._profiles, this._types);
 
   List<TenantAdminAccountProfile> _profiles;
   final List<TenantAdminProfileTypeDefinition> _types;
   int createProfileCalls = 0;
+  String? lastUpdateSlug;
+  String? lastUpdateProfileType;
+  String? lastUpdateDisplayName;
 
   @override
   Future<List<TenantAdminAccountProfile>> fetchAccountProfiles({
@@ -89,6 +136,7 @@ class _FakeAccountProfilesRepository
     TenantAdminLocation? location,
     List<TenantAdminTaxonomyTerm> taxonomyTerms = const [],
     String? bio,
+    String? content,
     String? avatarUrl,
     String? coverUrl,
     TenantAdminMediaUpload? avatarUpload,
@@ -112,6 +160,28 @@ class _FakeAccountProfilesRepository
       _types;
 
   @override
+  Future<TenantAdminPagedResult<TenantAdminProfileTypeDefinition>>
+      fetchProfileTypesPage({
+    required int page,
+    required int pageSize,
+  }) async {
+    final types = await fetchProfileTypes();
+    final start = (page - 1) * pageSize;
+    if (page <= 0 || pageSize <= 0 || start >= types.length) {
+      return const TenantAdminPagedResult<TenantAdminProfileTypeDefinition>(
+        items: <TenantAdminProfileTypeDefinition>[],
+        hasMore: false,
+      );
+    }
+    final end =
+        start + pageSize < types.length ? start + pageSize : types.length;
+    return TenantAdminPagedResult<TenantAdminProfileTypeDefinition>(
+      items: types.sublist(start, end),
+      hasMore: end < types.length,
+    );
+  }
+
+  @override
   Future<TenantAdminAccountProfile> fetchAccountProfile(
     String accountProfileId,
   ) async {
@@ -123,14 +193,19 @@ class _FakeAccountProfilesRepository
     required String accountProfileId,
     String? profileType,
     String? displayName,
+    String? slug,
     TenantAdminLocation? location,
     List<TenantAdminTaxonomyTerm>? taxonomyTerms,
     String? bio,
+    String? content,
     String? avatarUrl,
     String? coverUrl,
     TenantAdminMediaUpload? avatarUpload,
     TenantAdminMediaUpload? coverUpload,
   }) async {
+    lastUpdateSlug = slug;
+    lastUpdateProfileType = profileType;
+    lastUpdateDisplayName = displayName;
     return _profiles.first;
   }
 
@@ -165,6 +240,7 @@ class _FakeAccountProfilesRepository
   @override
   Future<TenantAdminProfileTypeDefinition> updateProfileType({
     required String type,
+    String? newType,
     String? label,
     List<String>? allowedTaxonomies,
     TenantAdminProfileTypeCapabilities? capabilities,
@@ -177,10 +253,34 @@ class _FakeAccountProfilesRepository
 }
 
 class _FakeTaxonomiesRepository
+    with TenantAdminTaxonomiesPaginationMixin
     implements TenantAdminTaxonomiesRepositoryContract {
   @override
   Future<List<TenantAdminTaxonomyDefinition>> fetchTaxonomies() async =>
       const [];
+
+  @override
+  Future<TenantAdminPagedResult<TenantAdminTaxonomyDefinition>>
+      fetchTaxonomiesPage({
+    required int page,
+    required int pageSize,
+  }) async {
+    final taxonomies = await fetchTaxonomies();
+    final start = (page - 1) * pageSize;
+    if (page <= 0 || pageSize <= 0 || start >= taxonomies.length) {
+      return const TenantAdminPagedResult<TenantAdminTaxonomyDefinition>(
+        items: <TenantAdminTaxonomyDefinition>[],
+        hasMore: false,
+      );
+    }
+    final end = start + pageSize < taxonomies.length
+        ? start + pageSize
+        : taxonomies.length;
+    return TenantAdminPagedResult<TenantAdminTaxonomyDefinition>(
+      items: taxonomies.sublist(start, end),
+      hasMore: end < taxonomies.length,
+    );
+  }
 
   @override
   Future<TenantAdminTaxonomyDefinition> createTaxonomy({
@@ -227,6 +327,29 @@ class _FakeTaxonomiesRepository
     required String taxonomyId,
   }) async =>
       const [];
+
+  @override
+  Future<TenantAdminPagedResult<TenantAdminTaxonomyTermDefinition>>
+      fetchTermsPage({
+    required String taxonomyId,
+    required int page,
+    required int pageSize,
+  }) async {
+    final terms = await fetchTerms(taxonomyId: taxonomyId);
+    final start = (page - 1) * pageSize;
+    if (page <= 0 || pageSize <= 0 || start >= terms.length) {
+      return const TenantAdminPagedResult<TenantAdminTaxonomyTermDefinition>(
+        items: <TenantAdminTaxonomyTermDefinition>[],
+        hasMore: false,
+      );
+    }
+    final end =
+        start + pageSize < terms.length ? start + pageSize : terms.length;
+    return TenantAdminPagedResult<TenantAdminTaxonomyTermDefinition>(
+      items: terms.sublist(start, end),
+      hasMore: end < terms.length,
+    );
+  }
 
   @override
   Future<TenantAdminTaxonomyTermDefinition> createTerm({
@@ -284,7 +407,8 @@ void main() {
             isFavoritable: true,
             isPoiEnabled: true,
             hasBio: false,
-            hasTaxonomies: false,
+            hasContent: false,
+          hasTaxonomies: false,
             hasAvatar: false,
             hasCover: false,
             hasEvents: false,
@@ -323,7 +447,8 @@ void main() {
             isFavoritable: true,
             isPoiEnabled: true,
             hasBio: false,
-            hasTaxonomies: false,
+            hasContent: false,
+          hasTaxonomies: false,
             hasAvatar: false,
             hasCover: false,
             hasEvents: false,
@@ -352,5 +477,64 @@ void main() {
 
     expect(profilesRepository.createProfileCalls, 1);
     expect(controller.profilesStreamValue.value.length, 1);
+  });
+
+  test('submitUpdateProfile forwards slug to repository update', () async {
+    final profilesRepository = _FakeAccountProfilesRepository(
+      [
+        const TenantAdminAccountProfile(
+          id: 'profile-1',
+          accountId: 'acc-1',
+          profileType: 'venue',
+          displayName: 'Perfil',
+          slug: 'perfil-original',
+        ),
+      ],
+      const [
+        TenantAdminProfileTypeDefinition(
+          type: 'venue',
+          label: 'Venue',
+          allowedTaxonomies: [],
+          capabilities: TenantAdminProfileTypeCapabilities(
+            isFavoritable: true,
+            isPoiEnabled: true,
+            hasBio: false,
+            hasContent: false,
+          hasTaxonomies: false,
+            hasAvatar: false,
+            hasCover: false,
+            hasEvents: false,
+          ),
+        ),
+      ],
+    );
+    final accountsRepository = _FakeAccountsRepository();
+    final TenantAdminLocationSelectionContract locationSelectionService =
+        TenantAdminLocationSelectionService();
+    final taxonomiesRepository = _FakeTaxonomiesRepository();
+
+    final controller = TenantAdminAccountProfilesController(
+      profilesRepository: profilesRepository,
+      accountsRepository: accountsRepository,
+      taxonomiesRepository: taxonomiesRepository,
+      locationSelectionService: locationSelectionService,
+    );
+
+    await controller.submitUpdateProfile(
+      accountProfileId: 'profile-1',
+      profileType: 'venue',
+      displayName: 'Perfil atualizado',
+      slug: 'perfil-atualizado',
+      location: null,
+      bio: null,
+      content: null,
+      taxonomyTerms: const [],
+      avatarUpload: null,
+      coverUpload: null,
+    );
+
+    expect(profilesRepository.lastUpdateSlug, 'perfil-atualizado');
+    expect(profilesRepository.lastUpdateProfileType, 'venue');
+    expect(profilesRepository.lastUpdateDisplayName, 'Perfil atualizado');
   });
 }

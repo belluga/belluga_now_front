@@ -6,6 +6,9 @@ import 'package:belluga_now/infrastructure/dal/dao/favorite_backend_contract.dar
 import 'package:belluga_now/infrastructure/dal/dao/account_profiles_backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/tenant_backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/venue_event_backend_contract.dart';
+import 'package:belluga_now/domain/app_data/app_data.dart';
+import 'package:belluga_now/domain/app_data/app_type.dart';
+import 'package:belluga_now/domain/app_data/value_object/platform_type_value.dart';
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/domain/tenant/tenant.dart';
 import 'package:belluga_now/infrastructure/dal/dto/app_data_dto.dart';
@@ -53,9 +56,28 @@ void main() {
 
     final stored = await AuthRepository.storage.read(key: 'user_token');
     expect(stored, 'identity-token-1');
-    final storedUserId =
-        await AuthRepository.storage.read(key: 'user_id');
+    final storedUserId = await AuthRepository.storage.read(key: 'user_id');
     expect(storedUserId, 'user-1');
+  });
+
+  test('init skips identity bootstrap in landlord environment', () async {
+    final authBackend = _FakeAuthBackend(
+      tokenToReturn: 'identity-token-landlord',
+      userIdToReturn: 'user-landlord',
+    );
+    GetIt.I.registerSingleton<BackendContract>(
+      _FakeBackend(auth: authBackend),
+    );
+    GetIt.I.registerSingleton<AppData>(_buildLandlordAppData());
+
+    final repository = AuthRepository();
+    await repository.init();
+    await Future<void>.delayed(const Duration(milliseconds: 10));
+
+    expect(authBackend.issueCount, 0);
+    expect(repository.userToken, '');
+    final stored = await AuthRepository.storage.read(key: 'user_token');
+    expect(stored, isNull);
   });
 
   test('init skips identity token when stored token exists', () async {
@@ -133,8 +155,7 @@ void main() {
 
     final stored = await AuthRepository.storage.read(key: 'user_token');
     expect(stored, 'identity-token-refresh');
-    final storedUserId =
-        await AuthRepository.storage.read(key: 'user_id');
+    final storedUserId = await AuthRepository.storage.read(key: 'user_id');
     expect(storedUserId, 'user-refresh');
   });
 }
@@ -162,7 +183,8 @@ class _FakeBackend extends BackendContract {
   TenantBackendContract get tenant => _UnsupportedTenantBackend();
 
   @override
-  AccountProfilesBackendContract get accountProfiles => _NoopAccountProfilesBackend();
+  AccountProfilesBackendContract get accountProfiles =>
+      _NoopAccountProfilesBackend();
 
   @override
   FavoriteBackendContract get favorites => _UnsupportedFavoriteBackend();
@@ -181,7 +203,8 @@ class _UnsupportedAppDataBackend extends AppDataBackendContract {
 
 class _NoopAccountProfilesBackend implements AccountProfilesBackendContract {
   @override
-  Future<List<AccountProfileModel>> fetchAccountProfiles() => throw UnimplementedError();
+  Future<List<AccountProfileModel>> fetchAccountProfiles() =>
+      throw UnimplementedError();
 
   @override
   Future<List<AccountProfileModel>> searchAccountProfiles({
@@ -396,4 +419,31 @@ class _UnsupportedScheduleBackend extends ScheduleBackendContract {
     bool showPastOnly = false,
   }) =>
       const Stream.empty();
+}
+
+AppData _buildLandlordAppData() {
+  final platform = PlatformTypeValue(defaultValue: AppType.mobile)
+    ..parse(AppType.mobile.name);
+  return AppData.fromInitialization(
+    remoteData: {
+      'name': 'Landlord',
+      'type': 'landlord',
+      'main_domain': 'https://landlord.example',
+      'profile_types': const <Map<String, dynamic>>[],
+      'domains': const <String>[],
+      'app_domains': const <String>[],
+      'theme_data_settings': {
+        'primary_seed_color': '#000000',
+        'secondary_seed_color': '#FFFFFF',
+        'brightness_default': 'light',
+      },
+    },
+    localInfo: {
+      'platformType': platform,
+      'port': '1.0.0',
+      'hostname': 'landlord.example',
+      'href': 'https://landlord.example',
+      'device': 'test-device',
+    },
+  );
 }

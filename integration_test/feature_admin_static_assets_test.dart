@@ -2,13 +2,16 @@ import 'package:belluga_now/application/application.dart';
 import 'package:belluga_now/application/application_contract.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/domain/repositories/admin_mode_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/landlord_auth_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/landlord_tenants_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_static_assets_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_taxonomies_repository_contract.dart';
 import 'package:belluga_now/domain/user/user_contract.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_static_asset.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_static_profile_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
@@ -23,7 +26,7 @@ import 'package:belluga_now/infrastructure/dal/dao/favorite_backend_contract.dar
 import 'package:belluga_now/infrastructure/dal/dao/tenant_backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/venue_event_backend_contract.dart';
 import 'package:belluga_now/infrastructure/services/schedule_backend_contract.dart';
-import 'package:belluga_now/infrastructure/dal/dao/laravel_backend/app_data_backend/app_data_backend_stub.dart';
+import 'support/fake_landlord_app_data_backend.dart';
 import 'package:belluga_now/infrastructure/dal/dao/local/app_data_local_info_source/app_data_local_info_source_stub.dart';
 import 'package:belluga_now/infrastructure/repositories/app_data_repository.dart';
 import 'package:flutter/material.dart';
@@ -59,9 +62,30 @@ void main() {
     );
   }
 
+  setUp(() async {
+    await GetIt.I.reset();
+  });
+
+  tearDown(() async {
+    await GetIt.I.reset();
+  });
+
+  Finder _tenantAdminShellRouterFinder() {
+    return find.byWidgetPredicate((widget) {
+      final key = widget.key;
+      if (key is! ValueKey<String>) {
+        return false;
+      }
+      return key.value.startsWith('tenant-admin-shell-router-');
+    });
+  }
+
   testWidgets('Admin static asset create flow', (tester) async {
     if (GetIt.I.isRegistered<ApplicationContract>()) {
       GetIt.I.unregister<ApplicationContract>();
+    }
+    if (GetIt.I.isRegistered<AppDataRepositoryContract>()) {
+      GetIt.I.unregister<AppDataRepositoryContract>();
     }
     if (GetIt.I.isRegistered<AppDataRepository>()) {
       GetIt.I.unregister<AppDataRepository>();
@@ -75,17 +99,19 @@ void main() {
     if (GetIt.I.isRegistered<LandlordAuthRepositoryContract>()) {
       GetIt.I.unregister<LandlordAuthRepositoryContract>();
     }
-    if (GetIt.I
-        .isRegistered<TenantAdminStaticAssetsRepositoryContract>()) {
+    if (GetIt.I.isRegistered<LandlordTenantsRepositoryContract>()) {
+      GetIt.I.unregister<LandlordTenantsRepositoryContract>();
+    }
+    if (GetIt.I.isRegistered<TenantAdminStaticAssetsRepositoryContract>()) {
       GetIt.I.unregister<TenantAdminStaticAssetsRepositoryContract>();
     }
     if (GetIt.I.isRegistered<TenantAdminTaxonomiesRepositoryContract>()) {
       GetIt.I.unregister<TenantAdminTaxonomiesRepositoryContract>();
     }
 
-    GetIt.I.registerSingleton<AppDataRepository>(
+    GetIt.I.registerSingleton<AppDataRepositoryContract>(
       AppDataRepository(
-        backend: AppDataBackend(),
+        backend: const FakeLandlordAppDataBackend(),
         localInfoSource: AppDataLocalInfoSource(),
       ),
     );
@@ -97,6 +123,9 @@ void main() {
     );
     GetIt.I.registerSingleton<LandlordAuthRepositoryContract>(
       _FakeLandlordAuthRepository(hasValidSession: true),
+    );
+    GetIt.I.registerSingleton<LandlordTenantsRepositoryContract>(
+      _FakeLandlordTenantsRepository(),
     );
     final staticAssetsRepository = _FakeStaticAssetsRepository();
     GetIt.I.registerSingleton<TenantAdminStaticAssetsRepositoryContract>(
@@ -118,6 +147,13 @@ void main() {
 
     await tester.pumpWidget(app);
     await _pumpFor(tester, const Duration(seconds: 2));
+    await _waitForFinder(tester, _tenantAdminShellRouterFinder());
+    app.appRouter.navigate(
+      const TenantAdminShellRoute(
+        children: [TenantAdminStaticAssetCreateRoute()],
+      ),
+    );
+    await _pumpFor(tester, const Duration(seconds: 2));
 
     await _waitForFinder(tester, find.text('Criar ativo'));
 
@@ -126,24 +162,25 @@ void main() {
     await tester.tap(find.text('Praia').last);
     await tester.pumpAndSettle();
 
+    expect(find.text('Tags'), findsNothing);
+    expect(find.text('Categorias'), findsNothing);
+
     await tester.enterText(
-      find.byType(TextFormField).at(0),
+      find.widgetWithText(TextFormField, 'Nome de exibicao'),
       'Praia do Morro',
     );
-    await tester.enterText(
-      find.byType(TextFormField).at(1),
-      'praia-do-morro',
-    );
-
-    await tester.tap(find.text('Urbana'));
+    final urbanaOption = find.text('Urbana').last;
+    await _waitForFinder(tester, urbanaOption);
+    await tester.ensureVisible(urbanaOption);
+    await tester.tap(urbanaOption, warnIfMissed: false);
     await tester.pumpAndSettle();
 
     await tester.enterText(
-      find.byType(TextFormField).at(8),
+      find.widgetWithText(TextFormField, 'Latitude'),
       '-20.659900',
     );
     await tester.enterText(
-      find.byType(TextFormField).at(9),
+      find.widgetWithText(TextFormField, 'Longitude'),
       '-40.503300',
     );
 
@@ -155,6 +192,134 @@ void main() {
 
     await _waitForFinder(tester, find.text('Ativo criado.'));
     expect(staticAssetsRepository.createdAssets.length, 1);
+  });
+
+  testWidgets('Admin static assets list applies search and type filters', (
+    tester,
+  ) async {
+    if (GetIt.I.isRegistered<ApplicationContract>()) {
+      GetIt.I.unregister<ApplicationContract>();
+    }
+    if (GetIt.I.isRegistered<AppDataRepositoryContract>()) {
+      GetIt.I.unregister<AppDataRepositoryContract>();
+    }
+    if (GetIt.I.isRegistered<AppDataRepository>()) {
+      GetIt.I.unregister<AppDataRepository>();
+    }
+    if (GetIt.I.isRegistered<AdminModeRepositoryContract>()) {
+      GetIt.I.unregister<AdminModeRepositoryContract>();
+    }
+    if (GetIt.I.isRegistered<AuthRepositoryContract<UserContract>>()) {
+      GetIt.I.unregister<AuthRepositoryContract<UserContract>>();
+    }
+    if (GetIt.I.isRegistered<LandlordAuthRepositoryContract>()) {
+      GetIt.I.unregister<LandlordAuthRepositoryContract>();
+    }
+    if (GetIt.I.isRegistered<LandlordTenantsRepositoryContract>()) {
+      GetIt.I.unregister<LandlordTenantsRepositoryContract>();
+    }
+    if (GetIt.I.isRegistered<TenantAdminStaticAssetsRepositoryContract>()) {
+      GetIt.I.unregister<TenantAdminStaticAssetsRepositoryContract>();
+    }
+    if (GetIt.I.isRegistered<TenantAdminTaxonomiesRepositoryContract>()) {
+      GetIt.I.unregister<TenantAdminTaxonomiesRepositoryContract>();
+    }
+
+    GetIt.I.registerSingleton<AppDataRepositoryContract>(
+      AppDataRepository(
+        backend: const FakeLandlordAppDataBackend(),
+        localInfoSource: AppDataLocalInfoSource(),
+      ),
+    );
+    GetIt.I.registerSingleton<AdminModeRepositoryContract>(
+      _FakeAdminModeRepository(AdminMode.landlord),
+    );
+    GetIt.I.registerSingleton<AuthRepositoryContract<UserContract>>(
+      _FakeAuthRepository(),
+    );
+    GetIt.I.registerSingleton<LandlordAuthRepositoryContract>(
+      _FakeLandlordAuthRepository(hasValidSession: true),
+    );
+    GetIt.I.registerSingleton<LandlordTenantsRepositoryContract>(
+      _FakeLandlordTenantsRepository(),
+    );
+    final staticAssetsRepository = _FakeStaticAssetsRepository(
+      seededAssets: const [
+        TenantAdminStaticAsset(
+          id: 'asset-1',
+          profileType: 'beach',
+          displayName: 'Praia do Morro',
+          slug: 'praia-do-morro',
+          isActive: true,
+        ),
+        TenantAdminStaticAsset(
+          id: 'asset-2',
+          profileType: 'museum',
+          displayName: 'Museu Vale',
+          slug: 'museu-vale',
+          isActive: true,
+        ),
+      ],
+    );
+    GetIt.I.registerSingleton<TenantAdminStaticAssetsRepositoryContract>(
+      staticAssetsRepository,
+    );
+    GetIt.I.registerSingleton<TenantAdminTaxonomiesRepositoryContract>(
+      _FakeTaxonomiesRepository(),
+    );
+
+    final app = Application();
+    GetIt.I.registerSingleton<ApplicationContract>(app);
+    await app.init();
+
+    app.appRouter.replaceAll([
+      const TenantAdminShellRoute(
+        children: [TenantAdminStaticAssetsListRoute()],
+      ),
+    ]);
+
+    await tester.pumpWidget(app);
+    await _pumpFor(tester, const Duration(seconds: 2));
+    await _waitForFinder(tester, _tenantAdminShellRouterFinder());
+    app.appRouter.navigate(
+      const TenantAdminShellRoute(
+        children: [TenantAdminStaticAssetsListRoute()],
+      ),
+    );
+    await _pumpFor(tester, const Duration(seconds: 2));
+
+    await _waitForFinder(tester, find.text('Ativos estaticos'));
+    await _waitForFinder(tester, find.text('Praia do Morro'));
+    await _waitForFinder(tester, find.text('Museu Vale'));
+
+    final typeFilterDropdown = find.byType(DropdownButtonFormField<String?>);
+    await _waitForFinder(tester, typeFilterDropdown);
+    await tester.tap(typeFilterDropdown);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('beach').last);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Praia do Morro'), findsOneWidget);
+    expect(find.text('Museu Vale'), findsNothing);
+
+    await tester.tap(typeFilterDropdown);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Todos os tipos').last);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Praia do Morro'), findsOneWidget);
+    expect(find.text('Museu Vale'), findsOneWidget);
+
+    await tester.tap(find.byIcon(Icons.search));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Buscar por nome ou slug'),
+      'museu',
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Praia do Morro'), findsNothing);
+    expect(find.text('Museu Vale'), findsOneWidget);
   });
 }
 
@@ -262,6 +427,20 @@ class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
   Future<void> updateUser(Map<String, Object?> data) async {}
 }
 
+class _FakeLandlordTenantsRepository
+    implements LandlordTenantsRepositoryContract {
+  @override
+  Future<List<LandlordTenantOption>> fetchTenants() async {
+    return const [
+      LandlordTenantOption(
+        id: 'tenant-guarappari',
+        name: 'Guarappari',
+        mainDomain: 'guarappari.local.test',
+      ),
+    ];
+  }
+}
+
 class _NoopBackend extends BackendContract {
   BackendContext? _context;
 
@@ -283,7 +462,8 @@ class _NoopBackend extends BackendContract {
   TenantBackendContract get tenant => throw UnimplementedError();
 
   @override
-  AccountProfilesBackendContract get accountProfiles => throw UnimplementedError();
+  AccountProfilesBackendContract get accountProfiles =>
+      throw UnimplementedError();
 
   @override
   FavoriteBackendContract get favorites => throw UnimplementedError();
@@ -296,14 +476,47 @@ class _NoopBackend extends BackendContract {
 }
 
 class _FakeStaticAssetsRepository
+    with TenantAdminStaticAssetsPaginationMixin
     implements TenantAdminStaticAssetsRepositoryContract {
+  _FakeStaticAssetsRepository({
+    List<TenantAdminStaticAsset> seededAssets = const [],
+  }) : _assets = List<TenantAdminStaticAsset>.of(seededAssets);
+
   final List<TenantAdminStaticAsset> createdAssets = [];
+  final List<TenantAdminStaticAsset> _assets;
 
   @override
-  Future<List<TenantAdminStaticAsset>> fetchStaticAssets() async => const [];
+  Future<List<TenantAdminStaticAsset>> fetchStaticAssets() async =>
+      List<TenantAdminStaticAsset>.unmodifiable(_assets);
+
+  @override
+  Future<TenantAdminPagedResult<TenantAdminStaticAsset>> fetchStaticAssetsPage({
+    required int page,
+    required int pageSize,
+  }) async {
+    final assets = await fetchStaticAssets();
+    final start = (page - 1) * pageSize;
+    if (page <= 0 || pageSize <= 0 || start >= assets.length) {
+      return const TenantAdminPagedResult<TenantAdminStaticAsset>(
+        items: <TenantAdminStaticAsset>[],
+        hasMore: false,
+      );
+    }
+    final end =
+        start + pageSize < assets.length ? start + pageSize : assets.length;
+    return TenantAdminPagedResult<TenantAdminStaticAsset>(
+      items: assets.sublist(start, end),
+      hasMore: end < assets.length,
+    );
+  }
 
   @override
   Future<TenantAdminStaticAsset> fetchStaticAsset(String assetId) async {
+    for (final asset in _assets) {
+      if (asset.id == assetId) {
+        return asset;
+      }
+    }
     return TenantAdminStaticAsset(
       id: assetId,
       profileType: 'beach',
@@ -317,35 +530,32 @@ class _FakeStaticAssetsRepository
   Future<TenantAdminStaticAsset> createStaticAsset({
     required String profileType,
     required String displayName,
-    required String slug,
     TenantAdminLocation? location,
     List<TenantAdminTaxonomyTerm> taxonomyTerms = const [],
     List<String> tags = const [],
-    List<String> categories = const [],
     String? bio,
     String? content,
     String? avatarUrl,
     String? coverUrl,
     TenantAdminMediaUpload? avatarUpload,
     TenantAdminMediaUpload? coverUpload,
-    required bool isActive,
   }) async {
     final asset = TenantAdminStaticAsset(
       id: 'asset-1',
       profileType: profileType,
       displayName: displayName,
-      slug: slug,
-      isActive: isActive,
+      slug: 'asset-1',
+      isActive: true,
       location: location,
       taxonomyTerms: taxonomyTerms,
       tags: tags,
-      categories: categories,
       bio: bio,
       content: content,
       avatarUrl: avatarUrl,
       coverUrl: coverUrl,
     );
     createdAssets.add(asset);
+    _assets.add(asset);
     return asset;
   }
 
@@ -358,30 +568,32 @@ class _FakeStaticAssetsRepository
     TenantAdminLocation? location,
     List<TenantAdminTaxonomyTerm>? taxonomyTerms,
     List<String>? tags,
-    List<String>? categories,
     String? bio,
     String? content,
     String? avatarUrl,
     String? coverUrl,
     TenantAdminMediaUpload? avatarUpload,
     TenantAdminMediaUpload? coverUpload,
-    bool? isActive,
   }) async {
-    return TenantAdminStaticAsset(
+    final updated = TenantAdminStaticAsset(
       id: assetId,
       profileType: profileType ?? 'beach',
       displayName: displayName ?? 'Praia',
-      slug: slug ?? 'praia',
-      isActive: isActive ?? true,
+      slug: 'praia',
+      isActive: true,
       location: location,
       taxonomyTerms: taxonomyTerms ?? const [],
       tags: tags ?? const [],
-      categories: categories ?? const [],
       bio: bio,
       content: content,
       avatarUrl: avatarUrl,
       coverUrl: coverUrl,
     );
+    final index = _assets.indexWhere((asset) => asset.id == assetId);
+    if (index >= 0) {
+      _assets[index] = updated;
+    }
+    return updated;
   }
 
   @override
@@ -422,6 +634,30 @@ class _FakeStaticAssetsRepository
   }
 
   @override
+  Future<TenantAdminPagedResult<TenantAdminStaticProfileTypeDefinition>>
+      fetchStaticProfileTypesPage({
+    required int page,
+    required int pageSize,
+  }) async {
+    final profileTypes = await fetchStaticProfileTypes();
+    final start = (page - 1) * pageSize;
+    if (page <= 0 || pageSize <= 0 || start >= profileTypes.length) {
+      return const TenantAdminPagedResult<
+          TenantAdminStaticProfileTypeDefinition>(
+        items: <TenantAdminStaticProfileTypeDefinition>[],
+        hasMore: false,
+      );
+    }
+    final end = start + pageSize < profileTypes.length
+        ? start + pageSize
+        : profileTypes.length;
+    return TenantAdminPagedResult<TenantAdminStaticProfileTypeDefinition>(
+      items: profileTypes.sublist(start, end),
+      hasMore: end < profileTypes.length,
+    );
+  }
+
+  @override
   Future<TenantAdminStaticProfileTypeDefinition> createStaticProfileType({
     required String type,
     required String label,
@@ -439,6 +675,7 @@ class _FakeStaticAssetsRepository
   @override
   Future<TenantAdminStaticProfileTypeDefinition> updateStaticProfileType({
     required String type,
+    String? newType,
     String? label,
     List<String>? allowedTaxonomies,
     TenantAdminStaticProfileTypeCapabilities? capabilities,
@@ -461,10 +698,10 @@ class _FakeStaticAssetsRepository
 
   @override
   Future<void> deleteStaticProfileType(String type) async {}
-
 }
 
 class _FakeTaxonomiesRepository
+    with TenantAdminTaxonomiesPaginationMixin
     implements TenantAdminTaxonomiesRepositoryContract {
   @override
   Future<List<TenantAdminTaxonomyDefinition>> fetchTaxonomies() async {
@@ -478,6 +715,29 @@ class _FakeTaxonomiesRepository
         color: null,
       ),
     ];
+  }
+
+  @override
+  Future<TenantAdminPagedResult<TenantAdminTaxonomyDefinition>>
+      fetchTaxonomiesPage({
+    required int page,
+    required int pageSize,
+  }) async {
+    final taxonomies = await fetchTaxonomies();
+    final start = (page - 1) * pageSize;
+    if (page <= 0 || pageSize <= 0 || start >= taxonomies.length) {
+      return const TenantAdminPagedResult<TenantAdminTaxonomyDefinition>(
+        items: <TenantAdminTaxonomyDefinition>[],
+        hasMore: false,
+      );
+    }
+    final end = start + pageSize < taxonomies.length
+        ? start + pageSize
+        : taxonomies.length;
+    return TenantAdminPagedResult<TenantAdminTaxonomyDefinition>(
+      items: taxonomies.sublist(start, end),
+      hasMore: end < taxonomies.length,
+    );
   }
 
   @override
@@ -532,6 +792,29 @@ class _FakeTaxonomiesRepository
         name: 'Urbana',
       ),
     ];
+  }
+
+  @override
+  Future<TenantAdminPagedResult<TenantAdminTaxonomyTermDefinition>>
+      fetchTermsPage({
+    required String taxonomyId,
+    required int page,
+    required int pageSize,
+  }) async {
+    final terms = await fetchTerms(taxonomyId: taxonomyId);
+    final start = (page - 1) * pageSize;
+    if (page <= 0 || pageSize <= 0 || start >= terms.length) {
+      return const TenantAdminPagedResult<TenantAdminTaxonomyTermDefinition>(
+        items: <TenantAdminTaxonomyTermDefinition>[],
+        hasMore: false,
+      );
+    }
+    final end =
+        start + pageSize < terms.length ? start + pageSize : terms.length;
+    return TenantAdminPagedResult<TenantAdminTaxonomyTermDefinition>(
+      items: terms.sublist(start, end),
+      hasMore: end < terms.length,
+    );
   }
 
   @override

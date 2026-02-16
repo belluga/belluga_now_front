@@ -1,24 +1,34 @@
-import 'package:belluga_now/application/configurations/belluga_constants.dart';
 import 'package:belluga_now/domain/repositories/landlord_auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_static_assets_repository_contract.dart';
+import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_static_asset.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_static_profile_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
 import 'package:belluga_now/infrastructure/dal/dto/tenant_admin/tenant_admin_static_asset_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/tenant_admin/tenant_admin_static_profile_type_dto.dart';
+import 'package:belluga_now/infrastructure/repositories/tenant_admin/tenant_admin_pagination_utils.dart';
 import 'package:dio/dio.dart';
 import 'package:get_it/get_it.dart';
 import 'package:http_parser/http_parser.dart';
 
 class TenantAdminStaticAssetsRepository
+    with TenantAdminStaticAssetsPaginationMixin
     implements TenantAdminStaticAssetsRepositoryContract {
-  TenantAdminStaticAssetsRepository({Dio? dio}) : _dio = dio ?? Dio();
+  TenantAdminStaticAssetsRepository({
+    Dio? dio,
+    TenantAdminTenantScopeContract? tenantScope,
+  })  : _dio = dio ?? Dio(),
+        _tenantScope = tenantScope;
 
   final Dio _dio;
+  final TenantAdminTenantScopeContract? _tenantScope;
 
-  String get _apiBaseUrl => BellugaConstants.api.adminUrl;
+  String get _apiBaseUrl =>
+      (_tenantScope ?? GetIt.I.get<TenantAdminTenantScopeContract>())
+          .selectedTenantAdminBaseUrl;
 
   Map<String, String> _buildHeaders() {
     final token = GetIt.I.get<LandlordAuthRepositoryContract>().token;
@@ -30,15 +40,48 @@ class TenantAdminStaticAssetsRepository
 
   @override
   Future<List<TenantAdminStaticAsset>> fetchStaticAssets() async {
+    var page = 1;
+    const pageSize = 100;
+    var hasMore = true;
+    final assets = <TenantAdminStaticAsset>[];
+
+    while (hasMore) {
+      final result = await fetchStaticAssetsPage(
+        page: page,
+        pageSize: pageSize,
+      );
+      assets.addAll(result.items);
+      hasMore = result.hasMore;
+      page += 1;
+    }
+
+    return List<TenantAdminStaticAsset>.unmodifiable(assets);
+  }
+
+  @override
+  Future<TenantAdminPagedResult<TenantAdminStaticAsset>> fetchStaticAssetsPage({
+    required int page,
+    required int pageSize,
+  }) async {
     try {
       final response = await _dio.get(
         '$_apiBaseUrl/v1/static_assets',
+        queryParameters: {
+          'page': page,
+          'page_size': pageSize,
+        },
         options: Options(headers: _buildHeaders()),
       );
       final data = _extractList(response.data);
-      return data.map(_mapStaticAsset).toList(growable: false);
+      return TenantAdminPagedResult<TenantAdminStaticAsset>(
+        items: data.map(_mapStaticAsset).toList(growable: false),
+        hasMore: tenantAdminResolveHasMore(
+          rawResponse: response.data,
+          requestedPage: page,
+        ),
+      );
     } on DioException catch (error) {
-      throw _wrapError(error, 'load static assets');
+      throw _wrapError(error, 'load static assets page');
     }
   }
 
@@ -60,33 +103,27 @@ class TenantAdminStaticAssetsRepository
   Future<TenantAdminStaticAsset> createStaticAsset({
     required String profileType,
     required String displayName,
-    required String slug,
     TenantAdminLocation? location,
     List<TenantAdminTaxonomyTerm> taxonomyTerms = const [],
     List<String> tags = const [],
-    List<String> categories = const [],
     String? bio,
     String? content,
     String? avatarUrl,
     String? coverUrl,
     TenantAdminMediaUpload? avatarUpload,
     TenantAdminMediaUpload? coverUpload,
-    required bool isActive,
   }) async {
     try {
       final payload = _buildPayload(
         profileType: profileType,
         displayName: displayName,
-        slug: slug,
         location: location,
         taxonomyTerms: taxonomyTerms,
         tags: tags,
-        categories: categories,
         bio: bio,
         content: content,
         avatarUrl: avatarUrl,
         coverUrl: coverUrl,
-        isActive: isActive,
       );
       final uploadPayload = _buildMultipartPayload(
         payload,
@@ -114,14 +151,12 @@ class TenantAdminStaticAssetsRepository
     TenantAdminLocation? location,
     List<TenantAdminTaxonomyTerm>? taxonomyTerms,
     List<String>? tags,
-    List<String>? categories,
     String? bio,
     String? content,
     String? avatarUrl,
     String? coverUrl,
     TenantAdminMediaUpload? avatarUpload,
     TenantAdminMediaUpload? coverUpload,
-    bool? isActive,
   }) async {
     try {
       final payload = _buildPayload(
@@ -131,12 +166,10 @@ class TenantAdminStaticAssetsRepository
         location: location,
         taxonomyTerms: taxonomyTerms,
         tags: tags,
-        categories: categories,
         bio: bio,
         content: content,
         avatarUrl: avatarUrl,
         coverUrl: coverUrl,
-        isActive: isActive,
       );
       final uploadPayload = _buildMultipartPayload(
         payload,
@@ -206,15 +239,49 @@ class TenantAdminStaticAssetsRepository
   @override
   Future<List<TenantAdminStaticProfileTypeDefinition>>
       fetchStaticProfileTypes() async {
+    var page = 1;
+    const pageSize = 100;
+    var hasMore = true;
+    final types = <TenantAdminStaticProfileTypeDefinition>[];
+
+    while (hasMore) {
+      final result = await fetchStaticProfileTypesPage(
+        page: page,
+        pageSize: pageSize,
+      );
+      types.addAll(result.items);
+      hasMore = result.hasMore;
+      page += 1;
+    }
+
+    return List<TenantAdminStaticProfileTypeDefinition>.unmodifiable(types);
+  }
+
+  @override
+  Future<TenantAdminPagedResult<TenantAdminStaticProfileTypeDefinition>>
+      fetchStaticProfileTypesPage({
+    required int page,
+    required int pageSize,
+  }) async {
     try {
       final response = await _dio.get(
         '$_apiBaseUrl/v1/static_profile_types',
+        queryParameters: {
+          'page': page,
+          'page_size': pageSize,
+        },
         options: Options(headers: _buildHeaders()),
       );
       final data = _extractList(response.data);
-      return data.map(_mapStaticProfileType).toList(growable: false);
+      return TenantAdminPagedResult<TenantAdminStaticProfileTypeDefinition>(
+        items: data.map(_mapStaticProfileType).toList(growable: false),
+        hasMore: tenantAdminResolveHasMore(
+          rawResponse: response.data,
+          requestedPage: page,
+        ),
+      );
     } on DioException catch (error) {
-      throw _wrapError(error, 'load static profile types');
+      throw _wrapError(error, 'load static profile types page');
     }
   }
 
@@ -247,6 +314,7 @@ class TenantAdminStaticAssetsRepository
   @override
   Future<TenantAdminStaticProfileTypeDefinition> updateStaticProfileType({
     required String type,
+    String? newType,
     String? label,
     List<String>? allowedTaxonomies,
     TenantAdminStaticProfileTypeCapabilities? capabilities,
@@ -254,6 +322,7 @@ class TenantAdminStaticAssetsRepository
     try {
       final encodedType = Uri.encodeComponent(type);
       final payload = _buildStaticProfileTypePayload(
+        type: newType,
         label: label,
         allowedTaxonomies: allowedTaxonomies,
         capabilities: capabilities,
@@ -290,12 +359,10 @@ class TenantAdminStaticAssetsRepository
     TenantAdminLocation? location,
     List<TenantAdminTaxonomyTerm>? taxonomyTerms,
     List<String>? tags,
-    List<String>? categories,
     String? bio,
     String? content,
     String? avatarUrl,
     String? coverUrl,
-    bool? isActive,
   }) {
     final payload = <String, dynamic>{};
     if (profileType != null) payload['profile_type'] = profileType;
@@ -313,12 +380,10 @@ class TenantAdminStaticAssetsRepository
           .toList();
     }
     if (tags != null) payload['tags'] = tags;
-    if (categories != null) payload['categories'] = categories;
     if (bio != null) payload['bio'] = bio;
     if (content != null) payload['content'] = content;
     if (avatarUrl != null) payload['avatar_url'] = avatarUrl;
     if (coverUrl != null) payload['cover_url'] = coverUrl;
-    if (isActive != null) payload['is_active'] = isActive;
     return payload;
   }
 

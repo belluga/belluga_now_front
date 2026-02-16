@@ -11,6 +11,14 @@ enum TenantAdminOwnershipState {
   String get subtitle => apiValue;
 
   static TenantAdminOwnershipState fromApiValue(String? value) {
+    final parsed = tryFromApiValue(value);
+    if (parsed != null) {
+      return parsed;
+    }
+    throw FormatException('Invalid ownership_state value: $value');
+  }
+
+  static TenantAdminOwnershipState? tryFromApiValue(String? value) {
     switch (value) {
       case 'tenant_owned':
         return TenantAdminOwnershipState.tenantOwned;
@@ -19,6 +27,6 @@ enum TenantAdminOwnershipState {
       case 'user_owned':
         return TenantAdminOwnershipState.userOwned;
     }
-    return TenantAdminOwnershipState.tenantOwned;
+    return null;
   }
 }

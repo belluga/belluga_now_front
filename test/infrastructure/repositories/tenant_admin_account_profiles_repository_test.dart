@@ -4,11 +4,14 @@ import 'dart:typed_data';
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/app_data/value_object/platform_type_value.dart';
 import 'package:belluga_now/domain/repositories/landlord_auth_repository_contract.dart';
+import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/infrastructure/repositories/tenant_admin/tenant_admin_account_profiles_repository.dart';
+import 'package:belluga_now/infrastructure/services/tenant_admin/tenant_admin_base_url_resolver.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
+import 'package:stream_value/core/stream_value.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -16,6 +19,9 @@ void main() {
   setUp(() async {
     await GetIt.I.reset();
     GetIt.I.registerSingleton<LandlordAuthRepositoryContract>(_StubAuthRepo());
+    GetIt.I.registerSingleton<TenantAdminTenantScopeContract>(
+      _StubTenantScope('https://tenant.test'),
+    );
     GetIt.I.registerSingleton<AppData>(_buildAppData());
   });
 
@@ -39,9 +45,33 @@ void main() {
     );
 
     final data = adapter.lastRequest?.data;
+    expect(
+      adapter.lastRequest?.path,
+      contains('https://tenant.test/admin/api/v1/account_profiles'),
+    );
     expect(data, isA<FormData>());
     final formData = data as FormData;
     expect(formData.files.any((entry) => entry.key == 'avatar'), isTrue);
+  });
+
+  test('updateAccountProfile sends slug when provided', () async {
+    final adapter = _CaptureAdapter();
+    final dio = Dio()..httpClientAdapter = adapter;
+    final repository = TenantAdminAccountProfilesRepository(dio: dio);
+
+    await repository.updateAccountProfile(
+      accountProfileId: 'profile-1',
+      slug: 'profile-slug-custom',
+    );
+
+    expect(adapter.lastRequest?.method, 'PATCH');
+    expect(
+      adapter.lastRequest?.path,
+      contains('https://tenant.test/admin/api/v1/account_profiles/profile-1'),
+    );
+    final data = adapter.lastRequest?.data;
+    expect(data, isA<Map<String, dynamic>>());
+    expect((data as Map<String, dynamic>)['slug'], 'profile-slug-custom');
   });
 }
 
@@ -60,6 +90,33 @@ class _StubAuthRepo implements LandlordAuthRepositoryContract {
 
   @override
   Future<void> logout() async {}
+}
+
+class _StubTenantScope implements TenantAdminTenantScopeContract {
+  _StubTenantScope(this._selectedTenantDomain);
+
+  String? _selectedTenantDomain;
+
+  @override
+  String? get selectedTenantDomain => _selectedTenantDomain;
+
+  @override
+  String get selectedTenantAdminBaseUrl =>
+      resolveTenantAdminBaseUrl(_selectedTenantDomain ?? '');
+
+  @override
+  StreamValue<String?> get selectedTenantDomainStreamValue =>
+      StreamValue<String?>(defaultValue: _selectedTenantDomain);
+
+  @override
+  void clearSelectedTenantDomain() {
+    _selectedTenantDomain = null;
+  }
+
+  @override
+  void selectTenantDomain(String tenantDomain) {
+    _selectedTenantDomain = tenantDomain;
+  }
 }
 
 class _CaptureAdapter implements HttpClientAdapter {
@@ -130,5 +187,6 @@ AppData _buildAppData() {
     'port': null,
     'device': 'test-device',
   };
-  return AppData.fromInitialization(remoteData: remoteData, localInfo: localInfo);
+  return AppData.fromInitialization(
+      remoteData: remoteData, localInfo: localInfo);
 }

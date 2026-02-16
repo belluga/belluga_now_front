@@ -17,6 +17,15 @@ class TenantAdminDashboardScreen extends StatelessWidget {
         ),
         const SizedBox(height: 16),
         TenantAdminDashboardCard(
+          icon: Icons.event_outlined,
+          title: 'Eventos',
+          description: 'Acompanhe o domínio de eventos do tenant.',
+          onTap: () {
+            context.router.push(const TenantAdminEventsRoute());
+          },
+        ),
+        const SizedBox(height: 12),
+        TenantAdminDashboardCard(
           icon: Icons.account_box_outlined,
           title: 'Contas',
           description: 'Gerencie contas e o perfil associado.',
@@ -55,7 +64,7 @@ class TenantAdminDashboardScreen extends StatelessWidget {
         TenantAdminDashboardCard(
           icon: Icons.layers_outlined,
           title: 'Tipos de Ativo',
-          description: 'Defina tipos estaticos e capacidades.',
+          description: 'Defina tipos estáticos e capacidades.',
           onTap: () {
             context.router.push(const TenantAdminStaticProfileTypesListRoute());
           },
@@ -63,21 +72,20 @@ class TenantAdminDashboardScreen extends StatelessWidget {
         const SizedBox(height: 12),
         TenantAdminDashboardCard(
           icon: Icons.place_outlined,
-          title: 'Ativos estaticos',
+          title: 'Ativos estáticos',
           description: 'Gerencie ativos e POIs do tenant.',
           onTap: () {
             context.router.push(const TenantAdminStaticAssetsListRoute());
           },
         ),
         const SizedBox(height: 12),
-        Card(
-          color: Theme.of(context).colorScheme.surfaceContainerHighest,
-          child: const ListTile(
-            leading: Icon(Icons.lock_outline),
-            title: Text('Eventos'),
-            subtitle: Text('Em breve'),
-            enabled: false,
-          ),
+        TenantAdminDashboardCard(
+          icon: Icons.settings_outlined,
+          title: 'Configurações',
+          description: 'Ajuste preferências e consulte o environment ativo.',
+          onTap: () {
+            context.router.push(const TenantAdminSettingsRoute());
+          },
         ),
       ],
     );

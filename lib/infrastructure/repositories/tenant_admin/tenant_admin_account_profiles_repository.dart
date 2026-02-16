@@ -1,25 +1,35 @@
-import 'package:belluga_now/application/configurations/belluga_constants.dart';
 import 'package:belluga_now/domain/repositories/landlord_auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_account_profiles_repository_contract.dart';
+import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.dart';
 import 'package:belluga_now/domain/tenant_admin/ownership_state.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
 import 'package:belluga_now/infrastructure/dal/dto/tenant_admin/tenant_admin_account_profile_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/tenant_admin/tenant_admin_profile_type_dto.dart';
+import 'package:belluga_now/infrastructure/repositories/tenant_admin/tenant_admin_pagination_utils.dart';
 import 'package:dio/dio.dart';
 import 'package:get_it/get_it.dart';
 import 'package:http_parser/http_parser.dart';
 
 class TenantAdminAccountProfilesRepository
+    with TenantAdminProfileTypesPaginationMixin
     implements TenantAdminAccountProfilesRepositoryContract {
-  TenantAdminAccountProfilesRepository({Dio? dio}) : _dio = dio ?? Dio();
+  TenantAdminAccountProfilesRepository({
+    Dio? dio,
+    TenantAdminTenantScopeContract? tenantScope,
+  })  : _dio = dio ?? Dio(),
+        _tenantScope = tenantScope;
 
   final Dio _dio;
+  final TenantAdminTenantScopeContract? _tenantScope;
 
-  String get _apiBaseUrl => BellugaConstants.api.adminUrl;
+  String get _apiBaseUrl =>
+      (_tenantScope ?? GetIt.I.get<TenantAdminTenantScopeContract>())
+          .selectedTenantAdminBaseUrl;
 
   Map<String, String> _buildHeaders() {
     final token = GetIt.I.get<LandlordAuthRepositoryContract>().token;
@@ -70,6 +80,7 @@ class TenantAdminAccountProfilesRepository
     TenantAdminLocation? location,
     List<TenantAdminTaxonomyTerm> taxonomyTerms = const [],
     String? bio,
+    String? content,
     String? avatarUrl,
     String? coverUrl,
     TenantAdminMediaUpload? avatarUpload,
@@ -90,6 +101,7 @@ class TenantAdminAccountProfilesRepository
               .map((term) => {'type': term.type, 'value': term.value})
               .toList(),
         if (bio != null) 'bio': bio,
+        if (content != null) 'content': content,
         if (avatarUrl != null) 'avatar_url': avatarUrl,
         if (coverUrl != null) 'cover_url': coverUrl,
       };
@@ -115,9 +127,11 @@ class TenantAdminAccountProfilesRepository
     required String accountProfileId,
     String? profileType,
     String? displayName,
+    String? slug,
     TenantAdminLocation? location,
     List<TenantAdminTaxonomyTerm>? taxonomyTerms,
     String? bio,
+    String? content,
     String? avatarUrl,
     String? coverUrl,
     TenantAdminMediaUpload? avatarUpload,
@@ -127,6 +141,7 @@ class TenantAdminAccountProfilesRepository
       final payload = <String, dynamic>{};
       if (profileType != null) payload['profile_type'] = profileType;
       if (displayName != null) payload['display_name'] = displayName;
+      if (slug != null && slug.trim().isNotEmpty) payload['slug'] = slug.trim();
       if (location != null) {
         payload['location'] = {
           'lat': location.latitude,
@@ -139,6 +154,7 @@ class TenantAdminAccountProfilesRepository
             .toList();
       }
       if (bio != null) payload['bio'] = bio;
+      if (content != null) payload['content'] = content;
       if (avatarUrl != null) payload['avatar_url'] = avatarUrl;
       if (coverUrl != null) payload['cover_url'] = coverUrl;
       final uploadPayload = _buildMultipartPayload(
@@ -154,7 +170,8 @@ class TenantAdminAccountProfilesRepository
             )
           : await _dio.post(
               '$_apiBaseUrl/v1/account_profiles/$accountProfileId',
-              data: uploadPayload..fields.add(const MapEntry('_method', 'PATCH')),
+              data: uploadPayload
+                ..fields.add(const MapEntry('_method', 'PATCH')),
               options: Options(
                 headers: _buildHeaders(),
                 contentType: 'multipart/form-data',
@@ -209,15 +226,49 @@ class TenantAdminAccountProfilesRepository
 
   @override
   Future<List<TenantAdminProfileTypeDefinition>> fetchProfileTypes() async {
+    var page = 1;
+    const pageSize = 100;
+    var hasMore = true;
+    final types = <TenantAdminProfileTypeDefinition>[];
+
+    while (hasMore) {
+      final result = await fetchProfileTypesPage(
+        page: page,
+        pageSize: pageSize,
+      );
+      types.addAll(result.items);
+      hasMore = result.hasMore;
+      page += 1;
+    }
+
+    return List<TenantAdminProfileTypeDefinition>.unmodifiable(types);
+  }
+
+  @override
+  Future<TenantAdminPagedResult<TenantAdminProfileTypeDefinition>>
+      fetchProfileTypesPage({
+    required int page,
+    required int pageSize,
+  }) async {
     try {
       final response = await _dio.get(
         '$_apiBaseUrl/v1/account_profile_types',
+        queryParameters: {
+          'page': page,
+          'page_size': pageSize,
+        },
         options: Options(headers: _buildHeaders()),
       );
       final data = _extractList(response.data);
-      return data.map(_mapProfileType).toList(growable: false);
+      return TenantAdminPagedResult<TenantAdminProfileTypeDefinition>(
+        items: data.map(_mapProfileType).toList(growable: false),
+        hasMore: tenantAdminResolveHasMore(
+          rawResponse: response.data,
+          requestedPage: page,
+        ),
+      );
     } on DioException catch (error) {
-      throw _wrapError(error, 'load profile types');
+      throw _wrapError(error, 'load profile types page');
     }
   }
 
@@ -239,6 +290,7 @@ class TenantAdminAccountProfilesRepository
             'is_favoritable': capabilities.isFavoritable,
             'is_poi_enabled': capabilities.isPoiEnabled,
             'has_bio': capabilities.hasBio,
+            'has_content': capabilities.hasContent,
             'has_taxonomies': capabilities.hasTaxonomies,
             'has_avatar': capabilities.hasAvatar,
             'has_cover': capabilities.hasCover,
@@ -257,6 +309,7 @@ class TenantAdminAccountProfilesRepository
   @override
   Future<TenantAdminProfileTypeDefinition> updateProfileType({
     required String type,
+    String? newType,
     String? label,
     List<String>? allowedTaxonomies,
     TenantAdminProfileTypeCapabilities? capabilities,
@@ -264,6 +317,9 @@ class TenantAdminAccountProfilesRepository
     try {
       final encodedType = Uri.encodeComponent(type);
       final payload = <String, dynamic>{};
+      if (newType != null && newType.trim().isNotEmpty) {
+        payload['type'] = newType.trim();
+      }
       if (label != null) {
         payload['label'] = label;
       }
@@ -275,6 +331,7 @@ class TenantAdminAccountProfilesRepository
           'is_favoritable': capabilities.isFavoritable,
           'is_poi_enabled': capabilities.isPoiEnabled,
           'has_bio': capabilities.hasBio,
+          'has_content': capabilities.hasContent,
           'has_taxonomies': capabilities.hasTaxonomies,
           'has_avatar': capabilities.hasAvatar,
           'has_cover': capabilities.hasCover,
@@ -351,6 +408,7 @@ class TenantAdminAccountProfilesRepository
       avatarUrl: dto.avatarUrl,
       coverUrl: dto.coverUrl,
       bio: dto.bio,
+      content: dto.content,
       location: location,
       taxonomyTerms: taxonomy,
       ownershipState: dto.ownershipState == null
@@ -371,6 +429,7 @@ class TenantAdminAccountProfilesRepository
         isFavoritable: dto.isFavoritable,
         isPoiEnabled: dto.isPoiEnabled,
         hasBio: dto.hasBio,
+        hasContent: dto.hasContent,
         hasTaxonomies: dto.hasTaxonomies,
         hasAvatar: dto.hasAvatar,
         hasCover: dto.hasCover,

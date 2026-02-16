@@ -38,9 +38,11 @@ class AuthModule extends ModuleContract {
       () => AuthRecoveryPasswordController(),
     );
 
-    registerLazySingleton<LandlordLoginController>(
-      () => LandlordLoginController(),
-    );
+    if (!GetIt.I.isRegistered<LandlordLoginController>()) {
+      GetIt.I.registerLazySingleton<LandlordLoginController>(
+        () => LandlordLoginController(),
+      );
+    }
   }
 
   @override

@@ -4,12 +4,9 @@ import 'package:belluga_now/application/configurations/belluga_constants.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/app_data/app_type.dart';
 import 'package:belluga_now/domain/app_data/value_object/platform_type_value.dart';
-import 'package:belluga_now/domain/repositories/admin_mode_repository_contract.dart';
-import 'package:belluga_now/domain/repositories/landlord_auth_repository_contract.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
 import 'package:mockito/mockito.dart';
-import 'package:stream_value/core/stream_value.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -22,17 +19,11 @@ void main() {
     await GetIt.I.reset();
   });
 
-  test('allows navigation when landlord session + mode active', () {
+  test('blocks navigation on tenant host even with landlord mode/session', () {
     _registerAppData(_buildAppData(
       hostname: 'tenant.test',
       envType: 'tenant',
     ));
-    GetIt.I.registerSingleton<AdminModeRepositoryContract>(
-      _FakeAdminModeRepository(AdminMode.landlord),
-    );
-    GetIt.I.registerSingleton<LandlordAuthRepositoryContract>(
-      _FakeLandlordAuthRepository(hasValidSession: true),
-    );
 
     final guard = LandlordRouteGuard();
     final resolver = MockNavigationResolver();
@@ -40,21 +31,16 @@ void main() {
 
     guard.onNavigation(resolver, router);
 
-    verify(resolver.next(true)).called(1);
-    expect(router.replaceAllCalled, isFalse);
+    verify(resolver.next(false)).called(1);
+    verifyNever(resolver.next(true));
+    expect(router.replaceAllCalled, isTrue);
   });
 
-  test('blocks navigation when landlord mode inactive', () {
+  test('blocks navigation on tenant host', () {
     _registerAppData(_buildAppData(
       hostname: 'tenant.test',
       envType: 'tenant',
     ));
-    GetIt.I.registerSingleton<AdminModeRepositoryContract>(
-      _FakeAdminModeRepository(AdminMode.user),
-    );
-    GetIt.I.registerSingleton<LandlordAuthRepositoryContract>(
-      _FakeLandlordAuthRepository(hasValidSession: true),
-    );
 
     final guard = LandlordRouteGuard();
     final resolver = MockNavigationResolver();
@@ -73,12 +59,6 @@ void main() {
       hostname: landlordHost,
       envType: 'tenant',
     ));
-    GetIt.I.registerSingleton<AdminModeRepositoryContract>(
-      _FakeAdminModeRepository(AdminMode.user),
-    );
-    GetIt.I.registerSingleton<LandlordAuthRepositoryContract>(
-      _FakeLandlordAuthRepository(hasValidSession: false),
-    );
 
     final guard = LandlordRouteGuard();
     final resolver = MockNavigationResolver();
@@ -92,6 +72,23 @@ void main() {
       expect(router.replaceAllCalled, isTrue);
       return;
     }
+
+    verify(resolver.next(true)).called(1);
+    verifyNever(resolver.next(false));
+    expect(router.replaceAllCalled, isFalse);
+  });
+
+  test('allows navigation in landlord environment regardless of host', () {
+    _registerAppData(_buildAppData(
+      hostname: 'tenant.test',
+      envType: 'landlord',
+    ));
+
+    final guard = LandlordRouteGuard();
+    final resolver = MockNavigationResolver();
+    final router = RecordingStackRouter();
+
+    guard.onNavigation(resolver, router);
 
     verify(resolver.next(true)).called(1);
     verifyNever(resolver.next(false));
@@ -164,48 +161,4 @@ class RecordingStackRouter extends Mock implements StackRouter {
     replaceAllCalled = true;
     lastRoutes = routes;
   }
-}
-
-class _FakeAdminModeRepository implements AdminModeRepositoryContract {
-  _FakeAdminModeRepository(this._mode);
-
-  final AdminMode _mode;
-
-  @override
-  StreamValue<AdminMode> get modeStreamValue =>
-      StreamValue<AdminMode>(defaultValue: _mode);
-
-  @override
-  AdminMode get mode => _mode;
-
-  @override
-  bool get isLandlordMode => _mode == AdminMode.landlord;
-
-  @override
-  Future<void> init() async {}
-
-  @override
-  Future<void> setLandlordMode() async {}
-
-  @override
-  Future<void> setUserMode() async {}
-}
-
-class _FakeLandlordAuthRepository implements LandlordAuthRepositoryContract {
-  _FakeLandlordAuthRepository({required this.hasValidSession});
-
-  @override
-  final bool hasValidSession;
-
-  @override
-  String get token => hasValidSession ? 'token' : '';
-
-  @override
-  Future<void> init() async {}
-
-  @override
-  Future<void> loginWithEmailPassword(String email, String password) async {}
-
-  @override
-  Future<void> logout() async {}
 }

@@ -1,5 +1,6 @@
 import 'package:belluga_now/application/configurations/belluga_constants.dart';
 import 'package:belluga_now/infrastructure/dal/dao/app_data_backend_contract.dart';
+import 'package:belluga_now/infrastructure/dal/dao/laravel_backend/app_data_backend/environment_origin_normalizer.dart';
 import 'package:belluga_now/infrastructure/dal/dto/app_data_dto.dart';
 import 'package:dio/dio.dart';
 import 'package:package_info_plus/package_info_plus.dart';
@@ -40,7 +41,11 @@ class AppDataBackend implements AppDataBackendContract {
         );
       }
 
-      return AppDataDTO.fromJson(payload);
+      final normalizedPayload = normalizeEnvironmentOrigins(
+        payload,
+        bootstrapBaseUrl: bootstrapBaseUrl,
+      );
+      return AppDataDTO.fromJson(normalizedPayload);
     } on DioException catch (e) {
       final statusCode = e.response?.statusCode;
       final data = e.response?.data;

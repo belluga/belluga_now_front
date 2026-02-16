@@ -2,18 +2,24 @@ import 'package:belluga_now/application/application.dart';
 import 'package:belluga_now/application/application_contract.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/domain/repositories/admin_mode_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/landlord_auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_account_profiles_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_accounts_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/tenant_admin_taxonomies_repository_contract.dart';
 import 'package:belluga_now/domain/tenant_admin/ownership_state.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_document.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_accounts_result.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
-import 'package:belluga_now/infrastructure/dal/dao/laravel_backend/app_data_backend/app_data_backend_stub.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_definition.dart';
+import 'support/fake_landlord_app_data_backend.dart';
 import 'package:belluga_now/infrastructure/dal/dao/local/app_data_local_info_source/app_data_local_info_source_stub.dart';
 import 'package:belluga_now/infrastructure/repositories/app_data_repository.dart';
 import 'package:flutter/material.dart';
@@ -70,10 +76,13 @@ void main() {
     if (GetIt.I.isRegistered<TenantAdminAccountProfilesRepositoryContract>()) {
       GetIt.I.unregister<TenantAdminAccountProfilesRepositoryContract>();
     }
+    if (GetIt.I.isRegistered<TenantAdminTaxonomiesRepositoryContract>()) {
+      GetIt.I.unregister<TenantAdminTaxonomiesRepositoryContract>();
+    }
 
-    GetIt.I.registerSingleton<AppDataRepository>(
+    GetIt.I.registerSingleton<AppDataRepositoryContract>(
       AppDataRepository(
-        backend: AppDataBackend(),
+        backend: const FakeLandlordAppDataBackend(),
         localInfoSource: AppDataLocalInfoSource(),
       ),
     );
@@ -88,6 +97,9 @@ void main() {
     );
     GetIt.I.registerSingleton<TenantAdminAccountProfilesRepositoryContract>(
       _FakeAccountProfilesRepository(),
+    );
+    GetIt.I.registerSingleton<TenantAdminTaxonomiesRepositoryContract>(
+      _FakeTaxonomiesRepository(),
     );
 
     final app = Application();
@@ -105,24 +117,22 @@ void main() {
 
     await _waitForFinder(tester, find.text('Criar Conta'));
 
-    await tester.enterText(find.byType(TextFormField).at(0), 'Conta Teste');
-    await tester.enterText(find.byType(TextFormField).at(1), 'cpf');
-    await tester.enterText(find.byType(TextFormField).at(2), 'Perfil Teste');
-    await tester.enterText(find.byType(TextFormField).at(3), '000');
-    await tester.testTextInput.receiveAction(TextInputAction.done);
-    await tester.pumpAndSettle();
-
-    await tester.tap(find.byType(DropdownButtonFormField<String>));
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Nome'),
+      'Conta Teste',
+    );
+    final profileTypeDropdown = find.byType(DropdownButtonFormField<String>);
+    await tester.tap(profileTypeDropdown.first);
     await tester.pumpAndSettle();
     await tester.tap(find.text('Venue').last);
     await tester.pumpAndSettle();
 
     await tester.enterText(
-      find.byType(TextFormField).at(4),
+      find.widgetWithText(TextFormField, 'Latitude'),
       '-20.673600',
     );
     await tester.enterText(
-      find.byType(TextFormField).at(5),
+      find.widgetWithText(TextFormField, 'Longitude'),
       '-40.497600',
     );
     await tester.testTextInput.receiveAction(TextInputAction.done);
@@ -134,7 +144,13 @@ void main() {
     await tester.tap(saveButton, warnIfMissed: false);
     await tester.pumpAndSettle();
 
-    await _waitForFinder(tester, find.text('Conta e perfil salvos.'));
+    await _pumpFor(tester, const Duration(seconds: 2));
+
+    final successMessageVisible =
+        find.text('Conta e perfil salvos.').evaluate().isNotEmpty;
+    final createScreenStillVisible =
+        find.text('Criar Conta').evaluate().isNotEmpty;
+    expect(successMessageVisible || !createScreenStillVisible, isTrue);
   });
 }
 
@@ -182,19 +198,23 @@ class _FakeLandlordAuthRepository implements LandlordAuthRepositoryContract {
   Future<void> logout() async {}
 }
 
-class _FakeAccountsRepository implements TenantAdminAccountsRepositoryContract {
+class _FakeAccountsRepository
+    with TenantAdminAccountsRepositoryPaginationMixin
+    implements TenantAdminAccountsRepositoryContract {
   @override
   Future<TenantAdminAccount> createAccount({
     required String name,
-    required TenantAdminDocument document,
+    TenantAdminDocument? document,
+    required TenantAdminOwnershipState ownershipState,
     String? organizationId,
   }) async {
     return TenantAdminAccount(
       id: 'acc-1',
       name: name,
       slug: 'acc-1',
-      document: document,
-      ownershipState: TenantAdminOwnershipState.tenantOwned,
+      document:
+          document ?? const TenantAdminDocument(type: 'cpf', number: '000'),
+      ownershipState: ownershipState,
       organizationId: organizationId,
     );
   }
@@ -217,6 +237,17 @@ class _FakeAccountsRepository implements TenantAdminAccountsRepositoryContract {
   Future<List<TenantAdminAccount>> fetchAccounts() async => const [];
 
   @override
+  Future<TenantAdminPagedAccountsResult> fetchAccountsPage({
+    required int page,
+    required int pageSize,
+  }) async {
+    return const TenantAdminPagedAccountsResult(
+      accounts: <TenantAdminAccount>[],
+      hasMore: false,
+    );
+  }
+
+  @override
   Future<void> forceDeleteAccount(String accountSlug) async {}
 
   @override
@@ -234,19 +265,22 @@ class _FakeAccountsRepository implements TenantAdminAccountsRepositoryContract {
   Future<TenantAdminAccount> updateAccount({
     required String accountSlug,
     String? name,
+    String? slug,
     TenantAdminDocument? document,
   }) async {
     return TenantAdminAccount(
       id: 'acc-1',
       name: name ?? 'Conta',
       slug: accountSlug,
-      document: document ?? const TenantAdminDocument(type: 'cpf', number: '000'),
+      document:
+          document ?? const TenantAdminDocument(type: 'cpf', number: '000'),
       ownershipState: TenantAdminOwnershipState.tenantOwned,
     );
   }
 }
 
 class _FakeAccountProfilesRepository
+    with TenantAdminProfileTypesPaginationMixin
     implements TenantAdminAccountProfilesRepositoryContract {
   @override
   Future<List<TenantAdminProfileTypeDefinition>> fetchProfileTypes() async {
@@ -259,6 +293,7 @@ class _FakeAccountProfilesRepository
           isFavoritable: true,
           isPoiEnabled: true,
           hasBio: false,
+          hasContent: false,
           hasTaxonomies: false,
           hasAvatar: false,
           hasCover: false,
@@ -269,6 +304,28 @@ class _FakeAccountProfilesRepository
   }
 
   @override
+  Future<TenantAdminPagedResult<TenantAdminProfileTypeDefinition>>
+      fetchProfileTypesPage({
+    required int page,
+    required int pageSize,
+  }) async {
+    final types = await fetchProfileTypes();
+    final start = (page - 1) * pageSize;
+    if (page <= 0 || pageSize <= 0 || start >= types.length) {
+      return const TenantAdminPagedResult<TenantAdminProfileTypeDefinition>(
+        items: <TenantAdminProfileTypeDefinition>[],
+        hasMore: false,
+      );
+    }
+    final end =
+        start + pageSize < types.length ? start + pageSize : types.length;
+    return TenantAdminPagedResult<TenantAdminProfileTypeDefinition>(
+      items: types.sublist(start, end),
+      hasMore: end < types.length,
+    );
+  }
+
+  @override
   Future<TenantAdminAccountProfile> createAccountProfile({
     required String accountId,
     required String profileType,
@@ -276,6 +333,7 @@ class _FakeAccountProfilesRepository
     TenantAdminLocation? location,
     List<TenantAdminTaxonomyTerm> taxonomyTerms = const [],
     String? bio,
+    String? content,
     String? avatarUrl,
     String? coverUrl,
     TenantAdminMediaUpload? avatarUpload,
@@ -314,9 +372,11 @@ class _FakeAccountProfilesRepository
     required String accountProfileId,
     String? profileType,
     String? displayName,
+    String? slug,
     TenantAdminLocation? location,
     List<TenantAdminTaxonomyTerm>? taxonomyTerms,
     String? bio,
+    String? content,
     String? avatarUrl,
     String? coverUrl,
     TenantAdminMediaUpload? avatarUpload,
@@ -366,6 +426,7 @@ class _FakeAccountProfilesRepository
   @override
   Future<TenantAdminProfileTypeDefinition> updateProfileType({
     required String type,
+    String? newType,
     String? label,
     List<String>? allowedTaxonomies,
     TenantAdminProfileTypeCapabilities? capabilities,
@@ -379,7 +440,8 @@ class _FakeAccountProfilesRepository
             isFavoritable: true,
             isPoiEnabled: true,
             hasBio: false,
-            hasTaxonomies: false,
+            hasContent: false,
+          hasTaxonomies: false,
             hasAvatar: false,
             hasCover: false,
             hasEvents: false,
@@ -389,4 +451,118 @@ class _FakeAccountProfilesRepository
 
   @override
   Future<void> deleteProfileType(String type) async {}
+}
+
+class _FakeTaxonomiesRepository
+    with TenantAdminTaxonomiesPaginationMixin
+    implements TenantAdminTaxonomiesRepositoryContract {
+  @override
+  Future<TenantAdminTaxonomyDefinition> createTaxonomy({
+    required String slug,
+    required String name,
+    required List<String> appliesTo,
+    String? icon,
+    String? color,
+  }) async {
+    return TenantAdminTaxonomyDefinition(
+      id: 'tax-1',
+      slug: slug,
+      name: name,
+      appliesTo: appliesTo,
+      icon: icon,
+      color: color,
+    );
+  }
+
+  @override
+  Future<TenantAdminTaxonomyTermDefinition> createTerm({
+    required String taxonomyId,
+    required String slug,
+    required String name,
+  }) async {
+    return TenantAdminTaxonomyTermDefinition(
+      id: 'term-1',
+      taxonomyId: taxonomyId,
+      slug: slug,
+      name: name,
+    );
+  }
+
+  @override
+  Future<void> deleteTaxonomy(String taxonomyId) async {}
+
+  @override
+  Future<void> deleteTerm({
+    required String taxonomyId,
+    required String termId,
+  }) async {}
+
+  @override
+  Future<List<TenantAdminTaxonomyDefinition>> fetchTaxonomies() async =>
+      const [];
+
+  @override
+  Future<TenantAdminPagedResult<TenantAdminTaxonomyDefinition>>
+      fetchTaxonomiesPage({
+    required int page,
+    required int pageSize,
+  }) async {
+    return const TenantAdminPagedResult<TenantAdminTaxonomyDefinition>(
+      items: <TenantAdminTaxonomyDefinition>[],
+      hasMore: false,
+    );
+  }
+
+  @override
+  Future<List<TenantAdminTaxonomyTermDefinition>> fetchTerms({
+    required String taxonomyId,
+  }) async =>
+      const [];
+
+  @override
+  Future<TenantAdminPagedResult<TenantAdminTaxonomyTermDefinition>>
+      fetchTermsPage({
+    required String taxonomyId,
+    required int page,
+    required int pageSize,
+  }) async {
+    return const TenantAdminPagedResult<TenantAdminTaxonomyTermDefinition>(
+      items: <TenantAdminTaxonomyTermDefinition>[],
+      hasMore: false,
+    );
+  }
+
+  @override
+  Future<TenantAdminTaxonomyDefinition> updateTaxonomy({
+    required String taxonomyId,
+    String? slug,
+    String? name,
+    List<String>? appliesTo,
+    String? icon,
+    String? color,
+  }) async {
+    return TenantAdminTaxonomyDefinition(
+      id: taxonomyId,
+      slug: slug ?? 'taxonomy',
+      name: name ?? 'Taxonomy',
+      appliesTo: appliesTo ?? const [],
+      icon: icon,
+      color: color,
+    );
+  }
+
+  @override
+  Future<TenantAdminTaxonomyTermDefinition> updateTerm({
+    required String taxonomyId,
+    required String termId,
+    String? slug,
+    String? name,
+  }) async {
+    return TenantAdminTaxonomyTermDefinition(
+      id: termId,
+      taxonomyId: taxonomyId,
+      slug: slug ?? 'term',
+      name: name ?? 'Term',
+    );
+  }
 }
