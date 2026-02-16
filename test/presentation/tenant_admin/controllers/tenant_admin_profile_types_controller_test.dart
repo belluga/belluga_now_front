@@ -72,8 +72,8 @@ class _FakeAccountProfilesRepository
     List<String>? allowedTaxonomies,
     TenantAdminProfileTypeCapabilities? capabilities,
   }) async {
-    return TenantAdminProfileTypeDefinition(
-      type: type,
+    final updated = TenantAdminProfileTypeDefinition(
+      type: newType ?? type,
       label: label ?? 'Updated',
       allowedTaxonomies: allowedTaxonomies ?? const [],
       capabilities: capabilities ??
@@ -82,12 +82,19 @@ class _FakeAccountProfilesRepository
             isPoiEnabled: false,
             hasBio: false,
             hasContent: false,
-          hasTaxonomies: false,
+            hasTaxonomies: false,
             hasAvatar: false,
             hasCover: false,
             hasEvents: false,
           ),
     );
+    _types = _types.map((entry) {
+      if (entry.type == type) {
+        return updated;
+      }
+      return entry;
+    }).toList(growable: false);
+    return updated;
   }
 
   @override
@@ -334,7 +341,7 @@ void main() {
         isPoiEnabled: true,
         hasBio: false,
         hasContent: false,
-          hasTaxonomies: false,
+        hasTaxonomies: false,
         hasAvatar: false,
         hasCover: false,
         hasEvents: false,
@@ -482,6 +489,56 @@ void main() {
     controller.toggleAllowedTaxonomy('music_genre');
 
     expect(controller.selectedAllowedTaxonomies, ['music_genre']);
+  });
+
+  test('submitUpdateType keeps detail stream aligned with saved values',
+      () async {
+    final repository = _FakeAccountProfilesRepository(const [
+      TenantAdminProfileTypeDefinition(
+        type: 'artist',
+        label: 'Artist',
+        allowedTaxonomies: [],
+        capabilities: TenantAdminProfileTypeCapabilities(
+          isFavoritable: false,
+          isPoiEnabled: false,
+          hasBio: false,
+          hasContent: false,
+          hasTaxonomies: false,
+          hasAvatar: false,
+          hasCover: false,
+          hasEvents: false,
+        ),
+      ),
+    ]);
+    final controller =
+        TenantAdminProfileTypesController(repository: repository);
+
+    controller.initDetailType(const TenantAdminProfileTypeDefinition(
+      type: 'artist',
+      label: 'Artist',
+      allowedTaxonomies: [],
+      capabilities: TenantAdminProfileTypeCapabilities(
+        isFavoritable: false,
+        isPoiEnabled: false,
+        hasBio: false,
+        hasContent: false,
+        hasTaxonomies: false,
+        hasAvatar: false,
+        hasCover: false,
+        hasEvents: false,
+      ),
+    ));
+
+    await controller.submitUpdateType(
+      type: 'artist',
+      newType: 'artist-pro',
+      label: 'Artist Pro',
+    );
+
+    final detail = controller.detailTypeStreamValue.value;
+    expect(detail, isNotNull);
+    expect(detail!.type, 'artist-pro');
+    expect(detail.label, 'Artist Pro');
   });
 }
 

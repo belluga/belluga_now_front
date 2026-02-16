@@ -313,7 +313,7 @@ class TenantAdminProfileTypesController implements Disposable {
     TenantAdminProfileTypeCapabilities? capabilities,
   }) async {
     try {
-      await updateType(
+      final updated = await updateType(
         type: type,
         newType: newType,
         label: label,
@@ -321,6 +321,11 @@ class TenantAdminProfileTypesController implements Disposable {
         capabilities: capabilities,
       );
       if (_isDisposed) return;
+      final currentDetail = detailTypeStreamValue.value;
+      if (currentDetail != null &&
+          (currentDetail.type == type || currentDetail.type == updated.type)) {
+        detailTypeStreamValue.addValue(updated);
+      }
       actionErrorMessageStreamValue.addValue(null);
       successMessageStreamValue.addValue('Tipo atualizado.');
     } catch (error) {
@@ -333,6 +338,9 @@ class TenantAdminProfileTypesController implements Disposable {
     try {
       await deleteType(type);
       if (_isDisposed) return;
+      if (detailTypeStreamValue.value?.type == type) {
+        detailTypeStreamValue.addValue(null);
+      }
       actionErrorMessageStreamValue.addValue(null);
       successMessageStreamValue.addValue('Tipo removido.');
     } catch (error) {
