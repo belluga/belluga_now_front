@@ -56,18 +56,16 @@ class TenantAdminAccountsController implements Disposable {
       StreamValue<TenantAdminOwnershipState>(
     defaultValue: TenantAdminOwnershipState.tenantOwned,
   );
+  final StreamValue<String> searchQueryStreamValue =
+      StreamValue<String>(defaultValue: '');
   final StreamValue<bool> createSubmittingStreamValue =
       StreamValue<bool>(defaultValue: false);
-  final StreamValue<String?> createSuccessMessageStreamValue =
-      StreamValue<String?>();
   final StreamValue<String?> createErrorMessageStreamValue =
       StreamValue<String?>();
   final StreamValue<TenantAdminAccountCreateState> createStateStreamValue =
       StreamValue<TenantAdminAccountCreateState>(
     defaultValue: TenantAdminAccountCreateState.initial(),
   );
-  final StreamValue<String?> createAccountIdStreamValue =
-      StreamValue<String?>();
   final GlobalKey<FormState> createFormKey = GlobalKey<FormState>();
   final TextEditingController nameController = TextEditingController();
   final TextEditingController documentTypeController = TextEditingController();
@@ -223,9 +221,19 @@ class TenantAdminAccountsController implements Disposable {
     selectedOwnershipStreamValue.addValue(ownershipState);
   }
 
+  void updateSearchQuery(String query) {
+    searchQueryStreamValue.addValue(query);
+  }
+
   void updateCreateSelectedProfileType(String? profileType) {
     _updateCreateState(
       createStateStreamValue.value.copyWith(selectedProfileType: profileType),
+    );
+  }
+
+  void updateCreateOwnershipState(TenantAdminOwnershipState ownershipState) {
+    _updateCreateState(
+      createStateStreamValue.value.copyWith(ownershipState: ownershipState),
     );
   }
 
@@ -262,6 +270,7 @@ class TenantAdminAccountsController implements Disposable {
     required String name,
     required String documentType,
     required String documentNumber,
+    required TenantAdminOwnershipState ownershipState,
     required String profileType,
     required String displayName,
     TenantAdminLocation? location,
@@ -274,6 +283,7 @@ class TenantAdminAccountsController implements Disposable {
         type: documentType,
         number: documentNumber,
       ),
+      ownershipState: ownershipState,
     );
     await _profilesRepository.createAccountProfile(
       accountId: account.id,
@@ -298,6 +308,7 @@ class TenantAdminAccountsController implements Disposable {
       name: nameController.text.trim(),
       documentType: documentTypeController.text.trim(),
       documentNumber: documentNumberController.text.trim(),
+      ownershipState: createStateStreamValue.value.ownershipState,
       profileType: selectedProfileType,
       displayName: profileDisplayNameController.text.trim(),
       location: location,
@@ -306,7 +317,7 @@ class TenantAdminAccountsController implements Disposable {
     );
   }
 
-  Future<void> submitCreateAccountFromForm({
+  Future<bool> submitCreateAccountFromForm({
     required TenantAdminLocation? location,
     required TenantAdminMediaUpload? avatarUpload,
     required TenantAdminMediaUpload? coverUpload,
@@ -318,14 +329,13 @@ class TenantAdminAccountsController implements Disposable {
         avatarUpload: avatarUpload,
         coverUpload: coverUpload,
       );
-      if (_isDisposed) return;
+      if (_isDisposed) return false;
       createErrorMessageStreamValue.addValue(null);
-      createSuccessMessageStreamValue.addValue('Conta e perfil salvos.');
-      resetCreateForm();
-      resetCreateState();
+      return true;
     } catch (error) {
-      if (_isDisposed) return;
+      if (_isDisposed) return false;
       createErrorMessageStreamValue.addValue(error.toString());
+      return false;
     } finally {
       if (!_isDisposed) {
         createSubmittingStreamValue.addValue(false);
@@ -333,27 +343,8 @@ class TenantAdminAccountsController implements Disposable {
     }
   }
 
-  void clearCreateSuccessMessage() {
-    createSuccessMessageStreamValue.addValue(null);
-  }
-
   void clearCreateErrorMessage() {
     createErrorMessageStreamValue.addValue(null);
-  }
-
-  Future<void> loadAccountForCreate(String slug) async {
-    try {
-      final account = await _accountsRepository.fetchAccountBySlug(slug);
-      if (_isDisposed) return;
-      createAccountIdStreamValue.addValue(account.id);
-    } catch (error) {
-      if (_isDisposed) return;
-      createErrorMessageStreamValue.addValue(error.toString());
-    }
-  }
-
-  void clearCreateAccountId() {
-    createAccountIdStreamValue.addValue(null);
   }
 
   void resetCreateForm() {
@@ -380,8 +371,6 @@ class TenantAdminAccountsController implements Disposable {
     profileTypesStreamValue.addValue(const []);
     errorStreamValue.addValue(null);
     createErrorMessageStreamValue.addValue(null);
-    createSuccessMessageStreamValue.addValue(null);
-    createAccountIdStreamValue.addValue(null);
     resetCreateForm();
     resetCreateState();
   }
@@ -416,11 +405,10 @@ class TenantAdminAccountsController implements Disposable {
     isProfileTypesLoadingStreamValue.dispose();
     errorStreamValue.dispose();
     selectedOwnershipStreamValue.dispose();
+    searchQueryStreamValue.dispose();
     createStateStreamValue.dispose();
     createSubmittingStreamValue.dispose();
-    createSuccessMessageStreamValue.dispose();
     createErrorMessageStreamValue.dispose();
-    createAccountIdStreamValue.dispose();
   }
 
   @override
@@ -433,6 +421,7 @@ class TenantAdminAccountCreateState {
   static const _unset = Object();
 
   const TenantAdminAccountCreateState({
+    required this.ownershipState,
     required this.selectedProfileType,
     required this.avatarFile,
     required this.coverFile,
@@ -440,20 +429,26 @@ class TenantAdminAccountCreateState {
 
   factory TenantAdminAccountCreateState.initial() =>
       const TenantAdminAccountCreateState(
+        ownershipState: TenantAdminOwnershipState.tenantOwned,
         selectedProfileType: null,
         avatarFile: null,
         coverFile: null,
       );
 
+  final TenantAdminOwnershipState ownershipState;
   final String? selectedProfileType;
   final XFile? avatarFile;
   final XFile? coverFile;
 
   TenantAdminAccountCreateState copyWith({
+    Object? ownershipState = _unset,
     Object? selectedProfileType = _unset,
     Object? avatarFile = _unset,
     Object? coverFile = _unset,
   }) {
+    final nextOwnershipState = ownershipState == _unset
+        ? this.ownershipState
+        : ownershipState as TenantAdminOwnershipState;
     final nextSelectedProfileType = selectedProfileType == _unset
         ? this.selectedProfileType
         : selectedProfileType as String?;
@@ -463,6 +458,7 @@ class TenantAdminAccountCreateState {
         coverFile == _unset ? this.coverFile : coverFile as XFile?;
 
     return TenantAdminAccountCreateState(
+      ownershipState: nextOwnershipState,
       selectedProfileType: nextSelectedProfileType,
       avatarFile: nextAvatarFile,
       coverFile: nextCoverFile,

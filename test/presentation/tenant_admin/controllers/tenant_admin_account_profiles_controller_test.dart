@@ -48,6 +48,7 @@ class _FakeAccountsRepository implements TenantAdminAccountsRepositoryContract {
   Future<TenantAdminAccount> createAccount({
     required String name,
     required TenantAdminDocument document,
+    required TenantAdminOwnershipState ownershipState,
     String? organizationId,
   }) async {
     return TenantAdminAccount(
@@ -55,7 +56,7 @@ class _FakeAccountsRepository implements TenantAdminAccountsRepositoryContract {
       name: name,
       slug: 'acc-1',
       document: document,
-      ownershipState: TenantAdminOwnershipState.tenantOwned,
+      ownershipState: ownershipState,
     );
   }
 

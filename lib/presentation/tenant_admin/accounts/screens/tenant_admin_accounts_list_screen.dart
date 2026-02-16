@@ -22,6 +22,7 @@ class _TenantAdminAccountsListScreenState
   final TenantAdminAccountsController _controller =
       GetIt.I.get<TenantAdminAccountsController>();
   final ScrollController _scrollController = ScrollController();
+  bool _showSearchField = false;
 
   @override
   void initState() {
@@ -55,47 +56,54 @@ class _TenantAdminAccountsListScreenState
         return StreamValueBuilder<TenantAdminOwnershipState>(
           streamValue: _controller.selectedOwnershipStreamValue,
           builder: (context, selected) {
-            return StreamValueBuilder<bool>(
-              streamValue: _controller.hasMoreAccountsStreamValue,
-              builder: (context, hasMore) {
+            return StreamValueBuilder<String>(
+              streamValue: _controller.searchQueryStreamValue,
+              builder: (context, query) {
                 return StreamValueBuilder<bool>(
-                  streamValue: _controller.isAccountsPageLoadingStreamValue,
-                  builder: (context, isPageLoading) {
-                    return StreamValueBuilder<List<TenantAdminAccount>?>(
-                      streamValue: _controller.accountsStreamValue,
-                      onNullWidget: _buildScaffold(
-                        context: context,
-                        selectedOwnership: selected,
-                        error: error,
-                        content: const Center(
-                          child: CircularProgressIndicator(),
-                        ),
-                      ),
-                      builder: (context, accounts) {
-                        final loadedAccounts =
-                            accounts ?? const <TenantAdminAccount>[];
-                        final filteredAccounts = loadedAccounts
-                            .where(
-                              (account) => account.ownershipState == selected,
-                            )
-                            .toList(growable: false);
+                  streamValue: _controller.hasMoreAccountsStreamValue,
+                  builder: (context, hasMore) {
+                    return StreamValueBuilder<bool>(
+                      streamValue: _controller.isAccountsPageLoadingStreamValue,
+                      builder: (context, isPageLoading) {
+                        return StreamValueBuilder<List<TenantAdminAccount>?>(
+                          streamValue: _controller.accountsStreamValue,
+                          onNullWidget: _buildScaffold(
+                            context: context,
+                            selectedOwnership: selected,
+                            query: query,
+                            error: error,
+                            content: const Center(
+                              child: CircularProgressIndicator(),
+                            ),
+                          ),
+                          builder: (context, accounts) {
+                            final loadedAccounts =
+                                accounts ?? const <TenantAdminAccount>[];
+                            final filteredAccounts = _filterAccounts(
+                              loadedAccounts: loadedAccounts,
+                              selectedOwnership: selected,
+                              query: query.trim(),
+                            );
 
-                        return _buildScaffold(
-                          context: context,
-                          selectedOwnership: selected,
-                          error: error,
-                          content: filteredAccounts.isEmpty
-                              ? const TenantAdminEmptyState(
-                                  icon: Icons.group_off_outlined,
-                                  title: 'Nenhuma conta encontrada',
-                                  description:
-                                      'Crie a primeira conta deste segmento usando o botão "Criar conta".',
-                                )
-                              : _buildAccountsList(
-                                  filteredAccounts: filteredAccounts,
-                                  hasMore: hasMore,
-                                  isPageLoading: isPageLoading,
-                                ),
+                            return _buildScaffold(
+                              context: context,
+                              selectedOwnership: selected,
+                              query: query,
+                              error: error,
+                              content: filteredAccounts.isEmpty
+                                  ? const TenantAdminEmptyState(
+                                      icon: Icons.group_off_outlined,
+                                      title: 'Nenhuma conta encontrada',
+                                      description:
+                                          'Crie a primeira conta deste segmento usando o botão "Criar conta".',
+                                    )
+                                  : _buildAccountsList(
+                                      filteredAccounts: filteredAccounts,
+                                      hasMore: hasMore,
+                                      isPageLoading: isPageLoading,
+                                    ),
+                            );
+                          },
                         );
                       },
                     );
@@ -112,13 +120,24 @@ class _TenantAdminAccountsListScreenState
   Widget _buildScaffold({
     required BuildContext context,
     required TenantAdminOwnershipState selectedOwnership,
+    required String query,
     required String? error,
     required Widget content,
   }) {
     return Scaffold(
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          context.router.push(const TenantAdminAccountCreateRoute());
+        onPressed: () async {
+          final router = context.router;
+          final messenger = ScaffoldMessenger.of(context);
+          final created = await router.push<bool>(
+            const TenantAdminAccountCreateRoute(),
+          );
+          if (!mounted || created != true) {
+            return;
+          }
+          messenger.showSnackBar(
+            const SnackBar(content: Text('Conta e perfil salvos.')),
+          );
         },
         icon: const Icon(Icons.add),
         label: const Text('Criar conta'),
@@ -132,6 +151,33 @@ class _TenantAdminAccountsListScreenState
               'Segmento',
               style: Theme.of(context).textTheme.titleMedium,
             ),
+            Align(
+              alignment: Alignment.centerRight,
+              child: IconButton(
+                tooltip: _showSearchField ? 'Ocultar busca' : 'Buscar',
+                onPressed: () {
+                  setState(() {
+                    _showSearchField = !_showSearchField;
+                    if (!_showSearchField && query.isNotEmpty) {
+                      _controller.updateSearchQuery('');
+                    }
+                  });
+                },
+                icon: Icon(
+                  _showSearchField ? Icons.close : Icons.search,
+                ),
+              ),
+            ),
+            if (_showSearchField) ...[
+              TextField(
+                onChanged: _controller.updateSearchQuery,
+                decoration: const InputDecoration(
+                  prefixIcon: Icon(Icons.search),
+                  labelText: 'Buscar por nome, slug ou documento',
+                ),
+              ),
+              const SizedBox(height: 12),
+            ],
             const SizedBox(height: 8),
             Card(
               margin: EdgeInsets.zero,
@@ -229,5 +275,29 @@ class _TenantAdminAccountsListScreenState
         );
       },
     );
+  }
+
+  List<TenantAdminAccount> _filterAccounts({
+    required List<TenantAdminAccount> loadedAccounts,
+    required TenantAdminOwnershipState selectedOwnership,
+    required String query,
+  }) {
+    final byOwnership = loadedAccounts
+        .where((account) => account.ownershipState == selectedOwnership)
+        .toList(growable: false);
+
+    if (query.isEmpty) {
+      return byOwnership;
+    }
+
+    final needle = query.toLowerCase();
+    return byOwnership
+        .where(
+          (account) =>
+              account.name.toLowerCase().contains(needle) ||
+              account.slug.toLowerCase().contains(needle) ||
+              account.document.number.toLowerCase().contains(needle),
+        )
+        .toList(growable: false);
   }
 }

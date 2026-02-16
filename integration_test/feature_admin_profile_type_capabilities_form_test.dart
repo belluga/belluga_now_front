@@ -137,6 +137,7 @@ class _FakeTenantAdminAccountsRepository
   Future<TenantAdminAccount> createAccount({
     required String name,
     required TenantAdminDocument document,
+    required TenantAdminOwnershipState ownershipState,
     String? organizationId,
   }) async {
     return TenantAdminAccount(
@@ -144,7 +145,7 @@ class _FakeTenantAdminAccountsRepository
       name: name,
       slug: 'account-1',
       document: document,
-      ownershipState: TenantAdminOwnershipState.tenantOwned,
+      ownershipState: ownershipState,
       organizationId: organizationId,
     );
   }

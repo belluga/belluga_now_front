@@ -207,7 +207,7 @@ class _TenantAdminProfileTypesListScreenState
             onTap: () {
               context.router
                   .push(
-                    TenantAdminProfileTypeEditRoute(
+                    TenantAdminProfileTypeDetailRoute(
                       profileType: type.type,
                       definition: type,
                     ),

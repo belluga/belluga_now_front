@@ -22,6 +22,8 @@ class _TenantAdminStaticAssetsListScreenState
   final TenantAdminStaticAssetsController _controller =
       GetIt.I.get<TenantAdminStaticAssetsController>();
   final ScrollController _scrollController = ScrollController();
+  bool _showSearchField = false;
+  String? _selectedTypeFilter;
 
   @override
   void initState() {
@@ -74,6 +76,8 @@ class _TenantAdminStaticAssetsListScreenState
                   streamValue: _controller.assetsStreamValue,
                   onNullWidget: _buildScaffold(
                     context: context,
+                    query: '',
+                    availableTypes: const [],
                     error: error,
                     body: const Center(child: CircularProgressIndicator()),
                   ),
@@ -83,12 +87,31 @@ class _TenantAdminStaticAssetsListScreenState
                       builder: (context, query) {
                         final loadedAssets =
                             assets ?? const <TenantAdminStaticAsset>[];
+                        final availableTypes = loadedAssets
+                            .map((asset) => asset.profileType)
+                            .toSet()
+                            .toList(growable: false)
+                          ..sort();
+                        if (_selectedTypeFilter != null &&
+                            !availableTypes.contains(_selectedTypeFilter)) {
+                          _selectedTypeFilter = null;
+                        }
                         final filteredAssets =
                             _filterAssets(loadedAssets, query.trim());
+                        final filteredByType = _selectedTypeFilter == null
+                            ? filteredAssets
+                            : filteredAssets
+                                .where(
+                                  (asset) =>
+                                      asset.profileType == _selectedTypeFilter,
+                                )
+                                .toList(growable: false);
                         return _buildScaffold(
                           context: context,
+                          query: query,
+                          availableTypes: availableTypes,
                           error: error,
-                          body: filteredAssets.isEmpty
+                          body: filteredByType.isEmpty
                               ? const TenantAdminEmptyState(
                                   icon: Icons.place_outlined,
                                   title: 'Nenhum ativo estático',
@@ -96,7 +119,7 @@ class _TenantAdminStaticAssetsListScreenState
                                       'Use "Criar ativo" para adicionar o primeiro ativo do tenant.',
                                 )
                               : _buildAssetsList(
-                                  filteredAssets: filteredAssets,
+                                  filteredAssets: filteredByType,
                                   hasMore: hasMore,
                                   isPageLoading: isPageLoading,
                                 ),
@@ -143,8 +166,9 @@ class _TenantAdminStaticAssetsListScreenState
             subtitle: Text(subtitle),
             onTap: () {
               context.router.push(
-                TenantAdminStaticAssetEditRoute(
+                TenantAdminStaticAssetDetailRoute(
                   assetId: asset.id,
+                  asset: asset,
                 ),
               );
             },
@@ -190,6 +214,8 @@ class _TenantAdminStaticAssetsListScreenState
 
   Widget _buildScaffold({
     required BuildContext context,
+    required String query,
+    required List<String> availableTypes,
     required String? error,
     required Widget body,
   }) {
@@ -212,13 +238,57 @@ class _TenantAdminStaticAssetsListScreenState
               'Ativos estaticos',
               style: Theme.of(context).textTheme.titleMedium,
             ),
-            const SizedBox(height: 12),
-            TextField(
-              onChanged: _controller.updateSearchQuery,
-              decoration: const InputDecoration(
-                prefixIcon: Icon(Icons.search),
-                labelText: 'Buscar por nome ou slug',
+            Row(
+              children: [
+                const Spacer(),
+                IconButton(
+                  tooltip: _showSearchField ? 'Ocultar busca' : 'Buscar',
+                  onPressed: () {
+                    setState(() {
+                      _showSearchField = !_showSearchField;
+                      if (!_showSearchField && query.isNotEmpty) {
+                        _controller.updateSearchQuery('');
+                      }
+                    });
+                  },
+                  icon: Icon(
+                    _showSearchField ? Icons.close : Icons.search,
+                  ),
+                ),
+              ],
+            ),
+            if (_showSearchField) ...[
+              TextField(
+                onChanged: _controller.updateSearchQuery,
+                decoration: const InputDecoration(
+                  prefixIcon: Icon(Icons.search),
+                  labelText: 'Buscar por nome ou slug',
+                ),
               ),
+              const SizedBox(height: 12),
+            ],
+            DropdownButtonFormField<String?>(
+              initialValue: _selectedTypeFilter,
+              decoration: const InputDecoration(
+                labelText: 'Filtrar por tipo',
+              ),
+              items: <DropdownMenuItem<String?>>[
+                const DropdownMenuItem<String?>(
+                  value: null,
+                  child: Text('Todos os tipos'),
+                ),
+                ...availableTypes.map(
+                  (profileType) => DropdownMenuItem<String?>(
+                    value: profileType,
+                    child: Text(profileType),
+                  ),
+                ),
+              ],
+              onChanged: (value) {
+                setState(() {
+                  _selectedTypeFilter = value;
+                });
+              },
             ),
             const SizedBox(height: 8),
             Align(

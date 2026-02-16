@@ -152,9 +152,18 @@ void main() {
     );
     await tester.pumpAndSettle(const Duration(seconds: 1));
 
-    await tester.enterText(find.byType(TextFormField).at(0), 'cuisine');
-    await tester.enterText(find.byType(TextFormField).at(1), 'Cozinha');
-    await tester.tap(find.widgetWithText(FilterChip, 'account_profile'));
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Nome'),
+      'Cozinha',
+    );
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Slug'),
+      'cuisine',
+    );
+    final appliesToAccountProfile =
+        find.widgetWithText(FilterChip, 'account_profile');
+    await tester.ensureVisible(appliesToAccountProfile);
+    await tester.tap(appliesToAccountProfile, warnIfMissed: false);
     await tester.pumpAndSettle();
     final taxonomiesController = GetIt.I.get<TenantAdminTaxonomiesController>();
     taxonomiesController.toggleTaxonomyAppliesToTarget('account_profile', true);
@@ -183,7 +192,10 @@ void main() {
     );
     await tester.pumpAndSettle(const Duration(seconds: 1));
 
-    await tester.enterText(find.byType(TextFormField).at(1), 'Cozinha Nova');
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Nome'),
+      'Cozinha Nova',
+    );
     FocusManager.instance.primaryFocus?.unfocus();
     await tester.pumpAndSettle();
     await tester.ensureVisible(taxonomySubmitButton);
@@ -365,6 +377,7 @@ class _FakeAccountsRepository implements TenantAdminAccountsRepositoryContract {
   Future<TenantAdminAccount> createAccount({
     required String name,
     required TenantAdminDocument document,
+    required TenantAdminOwnershipState ownershipState,
     String? organizationId,
   }) async {
     return TenantAdminAccount(
@@ -372,7 +385,7 @@ class _FakeAccountsRepository implements TenantAdminAccountsRepositoryContract {
       name: name,
       slug: 'account-1',
       document: document,
-      ownershipState: TenantAdminOwnershipState.tenantOwned,
+      ownershipState: ownershipState,
       organizationId: organizationId,
     );
   }

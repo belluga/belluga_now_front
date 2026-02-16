@@ -4,9 +4,11 @@ import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
+import 'package:belluga_now/domain/tenant_admin/ownership_state.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_form_value_utils.dart';
 import 'package:belluga_now/presentation/tenant_admin/accounts/controllers/tenant_admin_accounts_controller.dart';
+import 'package:belluga_now/presentation/tenant_admin/accounts/screens/widgets/tenant_admin_document_type_field.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_error_banner.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_form_layout.dart';
 import 'package:flutter/material.dart';
@@ -25,17 +27,8 @@ class TenantAdminAccountCreateScreen extends StatefulWidget {
 
 class _TenantAdminAccountCreateScreenState
     extends State<TenantAdminAccountCreateScreen> {
-  static const List<String> _documentTypeOptions = <String>[
-    'cpf',
-    'cnpj',
-    'passport',
-    'other',
-  ];
-
   final TenantAdminAccountsController _controller =
       GetIt.I.get<TenantAdminAccountsController>();
-  String? _lastSuccessMessage;
-  String? _selectedDocumentType;
 
   @override
   void initState() {
@@ -43,10 +36,6 @@ class _TenantAdminAccountCreateScreenState
     _controller.bindCreateFlow();
     _controller.resetCreateState();
     _controller.resetCreateForm();
-    _selectedDocumentType =
-        _controller.documentTypeController.text.trim().isEmpty
-            ? null
-            : _controller.documentTypeController.text.trim();
     _controller.loadProfileTypes();
   }
 
@@ -167,89 +156,72 @@ class _TenantAdminAccountCreateScreenState
   @override
   Widget build(BuildContext context) {
     return StreamValueBuilder<String?>(
-      streamValue: _controller.createSuccessMessageStreamValue,
-      builder: (context, successMessage) {
-        _handleCreateSuccessMessage(successMessage);
-        return StreamValueBuilder<String?>(
-          streamValue: _controller.createErrorMessageStreamValue,
-          builder: (context, errorMessage) {
-            _handleCreateErrorMessage(errorMessage);
-            return StreamValueBuilder<TenantAdminAccountCreateState>(
-              streamValue: _controller.createStateStreamValue,
-              builder: (context, state) {
-                final requiresLocation =
-                    _requiresLocation(state.selectedProfileType);
-                return TenantAdminFormScaffold(
-                  title: 'Criar Conta',
-                  child: SingleChildScrollView(
-                    child: Form(
-                      key: _controller.createFormKey,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          if (successMessage != null &&
-                              successMessage.isNotEmpty)
-                            Padding(
-                              padding: const EdgeInsets.only(bottom: 12),
-                              child: Card(
-                                margin: EdgeInsets.zero,
-                                color: Theme.of(context)
-                                    .colorScheme
-                                    .primaryContainer,
-                                child: Padding(
-                                  padding: const EdgeInsets.all(12),
-                                  child: Text(
-                                    successMessage,
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .bodyMedium
-                                        ?.copyWith(
-                                          color: Theme.of(context)
-                                              .colorScheme
-                                              .onPrimaryContainer,
-                                        ),
-                                  ),
-                                ),
+      streamValue: _controller.createErrorMessageStreamValue,
+      builder: (context, errorMessage) {
+        _handleCreateErrorMessage(errorMessage);
+        return StreamValueBuilder<TenantAdminAccountCreateState>(
+          streamValue: _controller.createStateStreamValue,
+          builder: (context, state) {
+            final requiresLocation =
+                _requiresLocation(state.selectedProfileType);
+            return TenantAdminFormScaffold(
+              title: 'Criar Conta',
+              child: SingleChildScrollView(
+                child: Form(
+                  key: _controller.createFormKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildMediaSection(context, state),
+                      const SizedBox(height: 16),
+                      _buildAccountSection(context, state),
+                      if (requiresLocation) ...[
+                        const SizedBox(height: 16),
+                        _buildLocationSection(context),
+                      ],
+                      const SizedBox(height: 24),
+                      TenantAdminPrimaryFormAction(
+                        buttonKey: const ValueKey(
+                          'tenant_admin_account_create_save',
+                        ),
+                        label: 'Salvar conta',
+                        icon: Icons.save_outlined,
+                        onPressed: () async {
+                          final messenger = ScaffoldMessenger.of(context);
+                          final form = _controller.createFormKey.currentState;
+                          if (form == null || !form.validate()) {
+                            return;
+                          }
+                          final location = _currentLocation();
+                          final avatarUpload =
+                              await _buildUpload(state.avatarFile);
+                          final coverUpload =
+                              await _buildUpload(state.coverFile);
+                          final created =
+                              await _controller.submitCreateAccountFromForm(
+                            location: location,
+                            avatarUpload: avatarUpload,
+                            coverUpload: coverUpload,
+                          );
+                          if (!context.mounted || !created) {
+                            return;
+                          }
+
+                          final router = context.router;
+                          final closed = await router.maybePop(true);
+                          if (!closed && context.mounted) {
+                            messenger.showSnackBar(
+                              const SnackBar(
+                                content: Text('Conta e perfil salvos.'),
                               ),
-                            ),
-                          _buildMediaSection(context, state),
-                          const SizedBox(height: 16),
-                          _buildAccountSection(context, state),
-                          if (requiresLocation) ...[
-                            const SizedBox(height: 16),
-                            _buildLocationSection(context),
-                          ],
-                          const SizedBox(height: 24),
-                          TenantAdminPrimaryFormAction(
-                            buttonKey: const ValueKey(
-                              'tenant_admin_account_create_save',
-                            ),
-                            label: 'Salvar conta',
-                            icon: Icons.save_outlined,
-                            onPressed: () async {
-                              final form =
-                                  _controller.createFormKey.currentState;
-                              if (form == null || !form.validate()) {
-                                return;
-                              }
-                              final location = _currentLocation();
-                              final avatarUpload =
-                                  await _buildUpload(state.avatarFile);
-                              final coverUpload =
-                                  await _buildUpload(state.coverFile);
-                              _controller.submitCreateAccountFromForm(
-                                location: location,
-                                avatarUpload: avatarUpload,
-                                coverUpload: coverUpload,
-                              );
-                            },
-                          ),
-                        ],
+                            );
+                          }
+                        },
                       ),
-                    ),
+                    ],
                   ),
-                );
-              },
+                ),
+              ),
             );
           },
         );
@@ -281,30 +253,33 @@ class _TenantAdminAccountCreateScreenState
             },
           ),
           const SizedBox(height: 12),
-          DropdownButtonFormField<String>(
-            initialValue: _selectedDocumentType,
-            decoration: const InputDecoration(labelText: 'Tipo do documento'),
-            items: _documentTypeOptions
-                .map(
-                  (type) => DropdownMenuItem<String>(
-                    value: type,
-                    child: Text(type.toUpperCase()),
-                  ),
-                )
-                .toList(growable: false),
-            onChanged: (value) {
-              setState(() {
-                _selectedDocumentType = value;
-              });
-              _controller.documentTypeController.text = value ?? '';
-            },
-            validator: (value) {
-              final current = value ?? _controller.documentTypeController.text;
-              if (current.trim().isEmpty) {
-                return 'Tipo do documento e obrigatorio.';
+          Text(
+            'Propriedade da conta',
+            style: Theme.of(context).textTheme.labelLarge,
+          ),
+          const SizedBox(height: 8),
+          SegmentedButton<TenantAdminOwnershipState>(
+            segments: const [
+              ButtonSegment<TenantAdminOwnershipState>(
+                value: TenantAdminOwnershipState.tenantOwned,
+                label: Text('Do tenant'),
+              ),
+              ButtonSegment<TenantAdminOwnershipState>(
+                value: TenantAdminOwnershipState.unmanaged,
+                label: Text('Nao gerenciada'),
+              ),
+            ],
+            selected: <TenantAdminOwnershipState>{state.ownershipState},
+            onSelectionChanged: (selection) {
+              if (selection.isEmpty) {
+                return;
               }
-              return null;
+              _controller.updateCreateOwnershipState(selection.first);
             },
+          ),
+          const SizedBox(height: 12),
+          TenantAdminDocumentTypeField(
+            documentTypeController: _controller.documentTypeController,
           ),
           const SizedBox(height: 12),
           StreamValueBuilder<bool>(
@@ -430,21 +405,6 @@ class _TenantAdminAccountCreateScreenState
         ],
       ),
     );
-  }
-
-  void _handleCreateSuccessMessage(String? message) {
-    if (message == null || message.isEmpty) return;
-    if (_lastSuccessMessage == message) return;
-    _lastSuccessMessage = message;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message)),
-      );
-    });
-    Future.delayed(const Duration(seconds: 2), () {
-      _controller.clearCreateSuccessMessage();
-      _lastSuccessMessage = null;
-    });
   }
 
   void _handleCreateErrorMessage(String? message) {

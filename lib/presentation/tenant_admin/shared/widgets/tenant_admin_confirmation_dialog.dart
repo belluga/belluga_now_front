@@ -1,3 +1,4 @@
+import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 
 Future<bool> showTenantAdminConfirmationDialog({
@@ -8,6 +9,7 @@ Future<bool> showTenantAdminConfirmationDialog({
   String cancelLabel = 'Cancelar',
   bool isDestructive = false,
 }) async {
+  final router = context.router;
   final confirmed = await showDialog<bool>(
     context: context,
     builder: (dialogContext) {
@@ -22,12 +24,12 @@ Future<bool> showTenantAdminConfirmationDialog({
         content: Text(message),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
+            onPressed: () => router.pop(false),
             child: Text(cancelLabel),
           ),
           FilledButton(
             style: isDestructive ? destructiveStyle : null,
-            onPressed: () => Navigator.of(dialogContext).pop(true),
+            onPressed: () => router.pop(true),
             child: Text(confirmLabel),
           ),
         ],

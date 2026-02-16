@@ -108,24 +108,37 @@ void main() {
 
     await _waitForFinder(tester, find.text('Criar Conta'));
 
-    await tester.enterText(find.byType(TextFormField).at(0), 'Conta Teste');
-    await tester.enterText(find.byType(TextFormField).at(1), 'cpf');
-    await tester.enterText(find.byType(TextFormField).at(2), 'Perfil Teste');
-    await tester.enterText(find.byType(TextFormField).at(3), '000');
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Nome'),
+      'Conta Teste',
+    );
+    final documentTypeDropdown = find.byType(DropdownButtonFormField<String>);
+    await tester.tap(documentTypeDropdown.first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('CPF').last);
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Nome de exibicao'),
+      'Perfil Teste',
+    );
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Numero do documento'),
+      '000',
+    );
     await tester.testTextInput.receiveAction(TextInputAction.done);
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byType(DropdownButtonFormField<String>));
+    await tester.tap(documentTypeDropdown.last);
     await tester.pumpAndSettle();
     await tester.tap(find.text('Venue').last);
     await tester.pumpAndSettle();
 
     await tester.enterText(
-      find.byType(TextFormField).at(4),
+      find.widgetWithText(TextFormField, 'Latitude'),
       '-20.673600',
     );
     await tester.enterText(
-      find.byType(TextFormField).at(5),
+      find.widgetWithText(TextFormField, 'Longitude'),
       '-40.497600',
     );
     await tester.testTextInput.receiveAction(TextInputAction.done);
@@ -137,7 +150,13 @@ void main() {
     await tester.tap(saveButton, warnIfMissed: false);
     await tester.pumpAndSettle();
 
-    await _waitForFinder(tester, find.text('Conta e perfil salvos.'));
+    await _pumpFor(tester, const Duration(seconds: 2));
+
+    final successMessageVisible =
+        find.text('Conta e perfil salvos.').evaluate().isNotEmpty;
+    final createScreenStillVisible =
+        find.text('Criar Conta').evaluate().isNotEmpty;
+    expect(successMessageVisible || !createScreenStillVisible, isTrue);
   });
 }
 
@@ -190,6 +209,7 @@ class _FakeAccountsRepository implements TenantAdminAccountsRepositoryContract {
   Future<TenantAdminAccount> createAccount({
     required String name,
     required TenantAdminDocument document,
+    required TenantAdminOwnershipState ownershipState,
     String? organizationId,
   }) async {
     return TenantAdminAccount(
@@ -197,7 +217,7 @@ class _FakeAccountsRepository implements TenantAdminAccountsRepositoryContract {
       name: name,
       slug: 'acc-1',
       document: document,
-      ownershipState: TenantAdminOwnershipState.tenantOwned,
+      ownershipState: ownershipState,
       organizationId: organizationId,
     );
   }

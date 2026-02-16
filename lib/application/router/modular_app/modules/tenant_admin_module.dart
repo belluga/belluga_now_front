@@ -25,7 +25,7 @@ class TenantAdminModule extends ModuleContract {
     registerLazySingleton<TenantAdminShellController>(
       () => TenantAdminShellController(),
     );
-    registerFactory<TenantAdminAccountsController>(
+    registerLazySingleton<TenantAdminAccountsController>(
       () => TenantAdminAccountsController(),
     );
     registerLazySingleton<TenantAdminLocationSelectionContract>(
@@ -131,6 +131,10 @@ class TenantAdminModule extends ModuleContract {
               path: 'profile-types',
               page: TenantAdminProfileTypesListRoute.page,
             ),
+            AutoRoute(
+              path: 'profile-types/:profileType',
+              page: TenantAdminProfileTypeDetailRoute.page,
+            ),
             CustomRoute(
               path: 'profile-types/create',
               page: TenantAdminProfileTypeCreateRoute.page,
@@ -148,6 +152,10 @@ class TenantAdminModule extends ModuleContract {
             AutoRoute(
               path: 'static_profile_types',
               page: TenantAdminStaticProfileTypesListRoute.page,
+            ),
+            AutoRoute(
+              path: 'static_profile_types/:profileType',
+              page: TenantAdminStaticProfileTypeDetailRoute.page,
             ),
             CustomRoute(
               path: 'static_profile_types/create',
@@ -185,6 +193,10 @@ class TenantAdminModule extends ModuleContract {
               path: 'taxonomies/:taxonomyId/terms',
               page: TenantAdminTaxonomyTermsRoute.page,
             ),
+            AutoRoute(
+              path: 'taxonomies/:taxonomyId/terms/:termId',
+              page: TenantAdminTaxonomyTermDetailRoute.page,
+            ),
             CustomRoute(
               path: 'taxonomies/:taxonomyId/terms/create',
               page: TenantAdminTaxonomyTermCreateRoute.page,
@@ -202,6 +214,10 @@ class TenantAdminModule extends ModuleContract {
             AutoRoute(
               path: 'static_assets',
               page: TenantAdminStaticAssetsListRoute.page,
+            ),
+            AutoRoute(
+              path: 'static_assets/:assetId',
+              page: TenantAdminStaticAssetDetailRoute.page,
             ),
             CustomRoute(
               path: 'static_assets/create',

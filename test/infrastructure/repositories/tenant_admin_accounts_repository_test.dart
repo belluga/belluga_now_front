@@ -53,6 +53,27 @@ void main() {
     expect(accounts.last.slug, 'acc-3');
     expect(adapter.requests, hasLength(2));
   });
+
+  test('fetchAccountsPage fails when ownership_state is missing', () async {
+    final adapter = _AccountsRoutingAdapter(includeOwnershipState: false);
+    final dio = Dio()..httpClientAdapter = adapter;
+    final scope = _MutableTenantScope('https://tenant-a.test/admin/api');
+    final repository = TenantAdminAccountsRepository(
+      dio: dio,
+      tenantScope: scope,
+    );
+
+    expect(
+      repository.fetchAccountsPage(page: 1, pageSize: 2),
+      throwsA(
+        isA<FormatException>().having(
+          (error) => error.toString(),
+          'message',
+          contains('Invalid ownership_state value'),
+        ),
+      ),
+    );
+  });
 }
 
 class _StubAuthRepo implements LandlordAuthRepositoryContract {
@@ -102,7 +123,10 @@ class _MutableTenantScope implements TenantAdminTenantScopeContract {
 }
 
 class _AccountsRoutingAdapter implements HttpClientAdapter {
+  _AccountsRoutingAdapter({this.includeOwnershipState = true});
+
   final List<RequestOptions> requests = [];
+  final bool includeOwnershipState;
 
   @override
   void close({bool force = false}) {}
@@ -156,7 +180,7 @@ class _AccountsRoutingAdapter implements HttpClientAdapter {
         'type': 'cpf',
         'number': '000$id',
       },
-      'ownership_state': 'tenant_owned',
+      if (includeOwnershipState) 'ownership_state': 'tenant_owned',
     };
   }
 

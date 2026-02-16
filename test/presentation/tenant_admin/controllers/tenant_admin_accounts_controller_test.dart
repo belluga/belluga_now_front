@@ -70,6 +70,7 @@ class _FakeAccountsRepository implements TenantAdminAccountsRepositoryContract {
   Future<TenantAdminAccount> createAccount({
     required String name,
     required TenantAdminDocument document,
+    required TenantAdminOwnershipState ownershipState,
     String? organizationId,
   }) async {
     createCalls += 1;
@@ -78,7 +79,7 @@ class _FakeAccountsRepository implements TenantAdminAccountsRepositoryContract {
       name: name,
       slug: 'acc-$createCalls',
       document: document,
-      ownershipState: TenantAdminOwnershipState.tenantOwned,
+      ownershipState: ownershipState,
       organizationId: organizationId,
     );
     _accounts = [..._accounts, created];
@@ -336,6 +337,7 @@ void main() {
       name: 'Nova Conta',
       documentType: 'cpf',
       documentNumber: '000',
+      ownershipState: TenantAdminOwnershipState.tenantOwned,
       profileType: 'venue',
       displayName: 'Perfil',
       location: const TenantAdminLocation(latitude: -20.0, longitude: -40.0),

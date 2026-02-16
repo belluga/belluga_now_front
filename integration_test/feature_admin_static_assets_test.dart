@@ -152,11 +152,11 @@ void main() {
     await tester.pumpAndSettle();
 
     await tester.enterText(
-      find.byType(TextFormField).at(0),
+      find.widgetWithText(TextFormField, 'Nome de exibicao'),
       'Praia do Morro',
     );
     await tester.enterText(
-      find.byType(TextFormField).at(1),
+      find.widgetWithText(TextFormField, 'Slug'),
       'praia-do-morro',
     );
 
@@ -167,11 +167,11 @@ void main() {
     await tester.pumpAndSettle();
 
     await tester.enterText(
-      find.byType(TextFormField).at(8),
+      find.widgetWithText(TextFormField, 'Latitude'),
       '-20.659900',
     );
     await tester.enterText(
-      find.byType(TextFormField).at(9),
+      find.widgetWithText(TextFormField, 'Longitude'),
       '-40.503300',
     );
 

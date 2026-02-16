@@ -105,6 +105,7 @@ class TenantAdminAccountsRepository
   Future<TenantAdminAccount> createAccount({
     required String name,
     required TenantAdminDocument document,
+    required TenantAdminOwnershipState ownershipState,
     String? organizationId,
   }) async {
     try {
@@ -116,6 +117,7 @@ class TenantAdminAccountsRepository
             'type': document.type,
             'number': document.number,
           },
+          'ownership_state': ownershipState.apiValue,
           if (organizationId != null && organizationId.trim().isNotEmpty)
             'organization_id': organizationId.trim(),
         },

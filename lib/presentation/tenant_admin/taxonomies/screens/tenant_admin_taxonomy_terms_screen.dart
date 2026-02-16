@@ -221,7 +221,14 @@ class _TenantAdminTaxonomyTermsScreenState
             title: Text(term.name),
             subtitle: Text(term.slug),
             onTap: () {
-              _openTermForm(term: term);
+              context.router.push(
+                TenantAdminTaxonomyTermDetailRoute(
+                  taxonomyId: widget.taxonomyId,
+                  taxonomyName: widget.taxonomyName,
+                  termId: term.id,
+                  term: term,
+                ),
+              );
             },
             trailing: PopupMenuButton<String>(
               onSelected: (value) async {
