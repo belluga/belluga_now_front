@@ -191,18 +191,17 @@ Regras importantes:
 - `LANDLORD_DOMAIN` deve ser uma origem completa (`http://` ou `https://`), sem path/query.
 - Em ambiente local com tenant por subdomínio, não use host IP puro (`http://192.168.x.x:8081`), pois subdomínios não resolvem. Use um host wildcard DNS, por exemplo `http://192.168.0.10.nip.io:8081`.
 
-Execução local recomendada (lane `dev` + override local opcional):
-
-```bash
-./tool/with_lane_defines.sh dev run --flavor <novo_tenant>
-```
-
-Sem helper script:
+Execução local recomendada (override local):
 
 ```bash
 fvm flutter run --flavor <novo_tenant> \
-  --dart-define-from-file=config/defines/dev.json \
   --dart-define-from-file=config/defines/local.override.json
+```
+
+Com helper script (quando precisar de lane específica):
+
+```bash
+./tool/with_lane_defines.sh dev run --flavor <novo_tenant>
 ```
 
 Nota de operação CI/CD: este commit inclui um ajuste documental mínimo para disparar a simulação ponta a ponta do fluxo de promoção de lanes.

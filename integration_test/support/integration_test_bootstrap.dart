@@ -13,10 +13,9 @@ class IntegrationTestBootstrap {
     if (domain == 'belluga.app') {
       fail(
         'Integration tests must not run against production landlord domain. '
-        'Pass --dart-define-from-file=config/defines/dev.json '
-        '(and optional local override file), or provide explicit '
-        '--dart-define=LANDLORD_DOMAIN=<local-domain> '
-        'with --dart-define=API_SCHEME=http. '
+        'Pass --dart-define-from-file=config/defines/local.override.json '
+        'or provide explicit '
+        '--dart-define=LANDLORD_DOMAIN=<local-domain>. '
         'If you explicitly need production, pass '
         '--dart-define=ALLOW_PROD_LANDLORD=true.',
       );

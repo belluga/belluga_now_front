@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:belluga_now/application/configurations/belluga_constants.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
+import 'package:belluga_now/domain/app_data/environment_type.dart';
 import 'package:belluga_now/domain/auth/errors/belluga_auth_errors.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/user/user_belluga.dart';
@@ -46,6 +48,13 @@ abstract class AuthLoginControllerContract extends Object with Disposable {
   final StreamValue<bool?> signUpResultStreamValue = StreamValue<bool?>();
 
   bool get isAuthorized => _authRepository.isAuthorized;
+  bool get isLandlordContext {
+    if (_appData.typeValue.value == EnvironmentType.landlord) {
+      return true;
+    }
+    final landlordHost = _resolveLandlordHost(BellugaConstants.landlordDomain);
+    return landlordHost != null && _appData.hostname == landlordHost;
+  }
 
   late FormFieldControllerEmail authEmailFieldController;
 
@@ -174,6 +183,15 @@ abstract class AuthLoginControllerContract extends Object with Disposable {
     signUpResultStreamValue.addValue(null);
   }
 
+  Future<bool> requestLandlordAdminLogin({
+    required Future<bool> Function() performLogin,
+  }) async {
+    if (!isLandlordContext) {
+      return false;
+    }
+    return performLogin();
+  }
+
   String _resolveUnknownError(Object error) {
     final raw = error.toString();
     final cleaned = raw.replaceFirst(
@@ -182,6 +200,18 @@ abstract class AuthLoginControllerContract extends Object with Disposable {
     );
     final message = cleaned.trim();
     return message.isEmpty ? 'Erro desconhecido' : message;
+  }
+
+  String? _resolveLandlordHost(String raw) {
+    final trimmed = raw.trim();
+    if (trimmed.isEmpty) {
+      return null;
+    }
+    final uri = Uri.tryParse(trimmed);
+    if (uri != null && uri.host.trim().isNotEmpty) {
+      return uri.host.trim();
+    }
+    return trimmed;
   }
 
   @override

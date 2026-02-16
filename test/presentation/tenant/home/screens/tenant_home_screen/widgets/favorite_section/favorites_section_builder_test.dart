@@ -17,6 +17,8 @@ import 'package:belluga_now/domain/schedule/paged_events_result.dart';
 import 'package:belluga_now/domain/schedule/schedule_summary_model.dart';
 import 'package:belluga_now/domain/tenant/value_objects/icon_url_value.dart';
 import 'package:belluga_now/domain/tenant/value_objects/main_color_value.dart';
+import 'package:belluga_now/domain/value_objects/asset_path_value.dart';
+import 'package:belluga_now/domain/value_objects/title_value.dart';
 import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
 import 'package:belluga_now/presentation/tenant/home/screens/tenant_home_screen/widgets/favorite_section/controllers/favorites_section_controller.dart';
 import 'package:belluga_now/presentation/tenant/home/screens/tenant_home_screen/widgets/favorite_section/favorites_section_builder.dart';
@@ -27,15 +29,21 @@ import 'package:mockito/mockito.dart';
 import 'package:stream_value/core/stream_value.dart';
 
 class _FakeFavoriteRepository implements FavoriteRepositoryContract {
+  _FakeFavoriteRepository({
+    this.favoriteResumes = const <FavoriteResume>[],
+  });
+
+  final List<FavoriteResume> favoriteResumes;
+
   @override
   Future<List<Favorite>> fetchFavorites() async => <Favorite>[];
 
   @override
-  Future<List<FavoriteResume>> fetchFavoriteResumes() async =>
-      <FavoriteResume>[];
+  Future<List<FavoriteResume>> fetchFavoriteResumes() async => favoriteResumes;
 }
 
-class _FakeAccountProfilesRepository implements AccountProfilesRepositoryContract {
+class _FakeAccountProfilesRepository
+    implements AccountProfilesRepositoryContract {
   @override
   final StreamValue<List<AccountProfileModel>> allAccountProfilesStreamValue =
       StreamValue<List<AccountProfileModel>>(defaultValue: const []);
@@ -144,8 +152,7 @@ class _FakeAppData extends Fake implements AppData {
       IconUrlValue()..parse('http://example.com/icon.png');
 
   @override
-  MainColorValue get mainColor =>
-      MainColorValue()..parse('#000000');
+  MainColorValue get mainColor => MainColorValue()..parse('#000000');
 }
 
 class _FakeAppDataRepository implements AppDataRepositoryContract {
@@ -154,8 +161,7 @@ class _FakeAppDataRepository implements AppDataRepositoryContract {
         themeModeStreamValue = StreamValue<ThemeMode?>(
           defaultValue: ThemeMode.light,
         ),
-        maxRadiusMetersStreamValue =
-            StreamValue<double>(defaultValue: 5000);
+        maxRadiusMetersStreamValue = StreamValue<double>(defaultValue: 5000);
 
   final AppData _appData;
 
@@ -212,15 +218,22 @@ void main() {
     await GetIt.I.reset();
   });
 
-  testWidgets('Emitting navigation target triggers route change',
-      (tester) async {
+  testWidgets('Direct favorite tap triggers route change', (tester) async {
+    final favoriteItem = FavoriteResume(
+      titleValue: TitleValue()..parse('Pizza Place'),
+      slug: 'pizza-place',
+      assetPathValue: AssetPathValue()
+        ..parse('assets/images/placeholder_avatar.png'),
+    );
+
     final controller = FavoritesSectionController(
-      favoriteRepository: _FakeFavoriteRepository(),
+      favoriteRepository: _FakeFavoriteRepository(
+        favoriteResumes: [favoriteItem],
+      ),
       partnersRepository: _FakeAccountProfilesRepository(),
       scheduleRepository: _FakeScheduleRepository(),
       appDataRepository: _FakeAppDataRepository(),
     );
-    controller.favoritesStreamValue.addValue(<FavoriteResume>[]);
 
     final router = _RecordingStackRouter();
 
@@ -237,10 +250,9 @@ void main() {
     );
     await tester.pump();
 
-    controller.navigationTargetStreamValue.addValue(
-      const FavoriteNavigationSearch(query: 'pizza'),
-    );
+    await tester.tap(find.text('Pizza Place').first);
     await tester.pump();
+    await tester.pumpAndSettle();
 
     expect(router.replaceAllCalled, isTrue);
     expect(router.lastRoutes?.first, isA<EventSearchRoute>());
@@ -258,15 +270,73 @@ class _TestHttpClient implements HttpClient {
   bool _autoUncompress = true;
 
   static final List<int> _transparentImage = <int>[
-    0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A,
-    0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52,
-    0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
-    0x08, 0x06, 0x00, 0x00, 0x00, 0x1F, 0x15, 0xC4,
-    0x89, 0x00, 0x00, 0x00, 0x0A, 0x49, 0x44, 0x41,
-    0x54, 0x78, 0x9C, 0x63, 0x00, 0x01, 0x00, 0x00,
-    0x05, 0x00, 0x01, 0x0D, 0x0A, 0x2D, 0xB4, 0x00,
-    0x00, 0x00, 0x00, 0x49, 0x45, 0x4E, 0x44, 0xAE,
-    0x42, 0x60, 0x82,
+    0x89,
+    0x50,
+    0x4E,
+    0x47,
+    0x0D,
+    0x0A,
+    0x1A,
+    0x0A,
+    0x00,
+    0x00,
+    0x00,
+    0x0D,
+    0x49,
+    0x48,
+    0x44,
+    0x52,
+    0x00,
+    0x00,
+    0x00,
+    0x01,
+    0x00,
+    0x00,
+    0x00,
+    0x01,
+    0x08,
+    0x06,
+    0x00,
+    0x00,
+    0x00,
+    0x1F,
+    0x15,
+    0xC4,
+    0x89,
+    0x00,
+    0x00,
+    0x00,
+    0x0A,
+    0x49,
+    0x44,
+    0x41,
+    0x54,
+    0x78,
+    0x9C,
+    0x63,
+    0x00,
+    0x01,
+    0x00,
+    0x00,
+    0x05,
+    0x00,
+    0x01,
+    0x0D,
+    0x0A,
+    0x2D,
+    0xB4,
+    0x00,
+    0x00,
+    0x00,
+    0x00,
+    0x49,
+    0x45,
+    0x4E,
+    0x44,
+    0xAE,
+    0x42,
+    0x60,
+    0x82,
   ];
 
   @override

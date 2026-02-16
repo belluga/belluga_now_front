@@ -1,18 +1,28 @@
-import 'package:belluga_now/application/configurations/belluga_constants.dart';
 import 'package:belluga_now/domain/repositories/landlord_auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_organizations_repository_contract.dart';
+import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_organization.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_result.dart';
 import 'package:belluga_now/infrastructure/dal/dto/tenant_admin/tenant_admin_organization_dto.dart';
+import 'package:belluga_now/infrastructure/repositories/tenant_admin/tenant_admin_pagination_utils.dart';
 import 'package:dio/dio.dart';
 import 'package:get_it/get_it.dart';
 
 class TenantAdminOrganizationsRepository
+    with TenantAdminOrganizationsPaginationMixin
     implements TenantAdminOrganizationsRepositoryContract {
-  TenantAdminOrganizationsRepository({Dio? dio}) : _dio = dio ?? Dio();
+  TenantAdminOrganizationsRepository({
+    Dio? dio,
+    TenantAdminTenantScopeContract? tenantScope,
+  })  : _dio = dio ?? Dio(),
+        _tenantScope = tenantScope;
 
   final Dio _dio;
+  final TenantAdminTenantScopeContract? _tenantScope;
 
-  String get _apiBaseUrl => BellugaConstants.api.adminUrl;
+  String get _apiBaseUrl =>
+      (_tenantScope ?? GetIt.I.get<TenantAdminTenantScopeContract>())
+          .selectedTenantAdminBaseUrl;
 
   Map<String, String> _buildHeaders() {
     final token = GetIt.I.get<LandlordAuthRepositoryContract>().token;
@@ -24,20 +34,55 @@ class TenantAdminOrganizationsRepository
 
   @override
   Future<List<TenantAdminOrganization>> fetchOrganizations() async {
+    var page = 1;
+    const pageSize = 100;
+    var hasMore = true;
+    final organizations = <TenantAdminOrganization>[];
+
+    while (hasMore) {
+      final result = await fetchOrganizationsPage(
+        page: page,
+        pageSize: pageSize,
+      );
+      organizations.addAll(result.items);
+      hasMore = result.hasMore;
+      page += 1;
+    }
+
+    return List<TenantAdminOrganization>.unmodifiable(organizations);
+  }
+
+  @override
+  Future<TenantAdminPagedResult<TenantAdminOrganization>>
+      fetchOrganizationsPage({
+    required int page,
+    required int pageSize,
+  }) async {
     try {
       final response = await _dio.get(
         '$_apiBaseUrl/v1/organizations',
+        queryParameters: {
+          'page': page,
+          'page_size': pageSize,
+        },
         options: Options(headers: _buildHeaders()),
       );
       final data = _extractList(response.data);
-      return data.map(_mapOrganization).toList(growable: false);
+      return TenantAdminPagedResult<TenantAdminOrganization>(
+        items: data.map(_mapOrganization).toList(growable: false),
+        hasMore: tenantAdminResolveHasMore(
+          rawResponse: response.data,
+          requestedPage: page,
+        ),
+      );
     } on DioException catch (error) {
-      throw _wrapError(error, 'load organizations');
+      throw _wrapError(error, 'load organizations page');
     }
   }
 
   @override
-  Future<TenantAdminOrganization> fetchOrganization(String organizationId) async {
+  Future<TenantAdminOrganization> fetchOrganization(
+      String organizationId) async {
     try {
       final response = await _dio.get(
         '$_apiBaseUrl/v1/organizations/$organizationId',
@@ -76,12 +121,16 @@ class TenantAdminOrganizationsRepository
   Future<TenantAdminOrganization> updateOrganization({
     required String organizationId,
     String? name,
+    String? slug,
     String? description,
   }) async {
     try {
       final payload = <String, dynamic>{};
       if (name != null && name.trim().isNotEmpty) {
         payload['name'] = name.trim();
+      }
+      if (slug != null && slug.trim().isNotEmpty) {
+        payload['slug'] = slug.trim();
       }
       if (description != null) {
         payload['description'] = description.trim();

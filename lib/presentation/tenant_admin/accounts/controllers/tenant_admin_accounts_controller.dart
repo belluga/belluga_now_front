@@ -2,13 +2,17 @@ import 'dart:async';
 
 import 'package:belluga_now/domain/repositories/tenant_admin_account_profiles_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_accounts_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/tenant_admin_taxonomies_repository_contract.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account.dart';
-import 'package:belluga_now/domain/tenant_admin/tenant_admin_document.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/ownership_state.dart';
 import 'package:belluga_now/domain/services/tenant_admin_location_selection_contract.dart';
+import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart' show Disposable, GetIt;
 import 'package:image_picker/image_picker.dart';
@@ -18,86 +22,156 @@ class TenantAdminAccountsController implements Disposable {
   TenantAdminAccountsController({
     TenantAdminAccountsRepositoryContract? accountsRepository,
     TenantAdminAccountProfilesRepositoryContract? profilesRepository,
+    TenantAdminTaxonomiesRepositoryContract? taxonomiesRepository,
     TenantAdminLocationSelectionContract? locationSelectionService,
+    TenantAdminTenantScopeContract? tenantScope,
   })  : _accountsRepository = accountsRepository ??
             GetIt.I.get<TenantAdminAccountsRepositoryContract>(),
         _profilesRepository = profilesRepository ??
             GetIt.I.get<TenantAdminAccountProfilesRepositoryContract>(),
+        _taxonomiesRepository = taxonomiesRepository ??
+            GetIt.I.get<TenantAdminTaxonomiesRepositoryContract>(),
         _locationSelectionService = locationSelectionService ??
-            GetIt.I.get<TenantAdminLocationSelectionContract>();
+            GetIt.I.get<TenantAdminLocationSelectionContract>(),
+        _tenantScope = tenantScope ??
+            (GetIt.I.isRegistered<TenantAdminTenantScopeContract>()
+                ? GetIt.I.get<TenantAdminTenantScopeContract>()
+                : null);
 
   final TenantAdminAccountsRepositoryContract _accountsRepository;
   final TenantAdminAccountProfilesRepositoryContract _profilesRepository;
+  final TenantAdminTaxonomiesRepositoryContract _taxonomiesRepository;
   final TenantAdminLocationSelectionContract _locationSelectionService;
+  final TenantAdminTenantScopeContract? _tenantScope;
 
-  final StreamValue<List<TenantAdminAccount>> accountsStreamValue =
-      StreamValue<List<TenantAdminAccount>>(defaultValue: const []);
+  static const int _accountsPageSize = 20;
+
+  StreamValue<List<TenantAdminAccount>?> get accountsStreamValue =>
+      _accountsRepository.accountsStreamValue;
+  StreamValue<bool> get hasMoreAccountsStreamValue =>
+      _accountsRepository.hasMoreAccountsStreamValue;
+  StreamValue<bool> get isAccountsPageLoadingStreamValue =>
+      _accountsRepository.isAccountsPageLoadingStreamValue;
   final StreamValue<List<TenantAdminProfileTypeDefinition>>
       profileTypesStreamValue =
       StreamValue<List<TenantAdminProfileTypeDefinition>>(
           defaultValue: const []);
-  final StreamValue<bool> isLoadingStreamValue =
+  final StreamValue<bool> isProfileTypesLoadingStreamValue =
       StreamValue<bool>(defaultValue: false);
   final StreamValue<String?> errorStreamValue = StreamValue<String?>();
   final StreamValue<TenantAdminOwnershipState> selectedOwnershipStreamValue =
       StreamValue<TenantAdminOwnershipState>(
     defaultValue: TenantAdminOwnershipState.tenantOwned,
   );
+  final StreamValue<String> searchQueryStreamValue =
+      StreamValue<String>(defaultValue: '');
+  final StreamValue<bool> showSearchFieldStreamValue =
+      StreamValue<bool>(defaultValue: false);
   final StreamValue<bool> createSubmittingStreamValue =
       StreamValue<bool>(defaultValue: false);
-  final StreamValue<String?> createSuccessMessageStreamValue =
-      StreamValue<String?>();
   final StreamValue<String?> createErrorMessageStreamValue =
       StreamValue<String?>();
-  final StreamValue<TenantAdminAccountCreateState> createStateStreamValue =
-      StreamValue<TenantAdminAccountCreateState>(
-    defaultValue: TenantAdminAccountCreateState.initial(),
+  final StreamValue<TenantAdminAccountCreateDraft> createStateStreamValue =
+      StreamValue<TenantAdminAccountCreateDraft>(
+    defaultValue: TenantAdminAccountCreateDraft.initial(),
   );
-  final StreamValue<String?> createAccountIdStreamValue =
+  final StreamValue<List<TenantAdminTaxonomyDefinition>> taxonomiesStreamValue =
+      StreamValue<List<TenantAdminTaxonomyDefinition>>(defaultValue: const []);
+  final StreamValue<Map<String, List<TenantAdminTaxonomyTermDefinition>>>
+      taxonomyTermsStreamValue =
+      StreamValue<Map<String, List<TenantAdminTaxonomyTermDefinition>>>(
+    defaultValue: const {},
+  );
+  final StreamValue<Map<String, Set<String>>> selectedTaxonomyTermsStreamValue =
+      StreamValue<Map<String, Set<String>>>(defaultValue: const {});
+  final StreamValue<bool> taxonomiesLoadingStreamValue =
+      StreamValue<bool>(defaultValue: false);
+  final StreamValue<String?> taxonomiesErrorStreamValue =
       StreamValue<String?>();
   final GlobalKey<FormState> createFormKey = GlobalKey<FormState>();
   final TextEditingController nameController = TextEditingController();
-  final TextEditingController documentTypeController = TextEditingController();
-  final TextEditingController documentNumberController =
-      TextEditingController();
-  final TextEditingController profileDisplayNameController =
-      TextEditingController();
+  final TextEditingController bioController = TextEditingController();
+  final TextEditingController contentController = TextEditingController();
   final TextEditingController latitudeController = TextEditingController();
   final TextEditingController longitudeController = TextEditingController();
 
   bool _isDisposed = false;
   bool _initialized = false;
+  String? _initializedTenantDomain;
   StreamSubscription<TenantAdminLocation?>? _locationSelectionSubscription;
+  StreamSubscription<String?>? _tenantScopeSubscription;
+  StreamSubscription<String?>? _accountsRepositoryErrorSubscription;
 
   Future<void> init() async {
-    if (_initialized) return;
+    _bindAccountsRepositoryError();
+    _bindTenantScope();
+    final normalizedTenantDomain =
+        _normalizeTenantDomain(_tenantScope?.selectedTenantDomain);
+    if (_initialized && _initializedTenantDomain == normalizedTenantDomain) {
+      return;
+    }
+    if (_initialized && _initializedTenantDomain != normalizedTenantDomain) {
+      _resetTenantScopedState();
+    }
     _initialized = true;
+    _initializedTenantDomain = normalizedTenantDomain;
     _bindLocationSelection();
     await Future.wait([
       loadAccounts(),
       loadProfileTypes(),
+      loadTaxonomies(),
+    ]);
+  }
+
+  void _bindTenantScope() {
+    if (_tenantScopeSubscription != null || _tenantScope == null) {
+      return;
+    }
+    final tenantScope = _tenantScope;
+    _tenantScopeSubscription =
+        tenantScope.selectedTenantDomainStreamValue.stream.listen(
+      (tenantDomain) {
+        if (_isDisposed) return;
+        final normalized = _normalizeTenantDomain(tenantDomain);
+        if (normalized == _initializedTenantDomain) {
+          return;
+        }
+        _initializedTenantDomain = normalized;
+        _initialized = normalized != null;
+        _resetTenantScopedState();
+        if (normalized != null) {
+          unawaited(_loadTenantScopedData());
+        }
+      },
+    );
+  }
+
+  Future<void> _loadTenantScopedData() async {
+    await Future.wait([
+      loadAccounts(),
+      loadProfileTypes(),
+      loadTaxonomies(),
     ]);
   }
 
   Future<void> loadAccounts() async {
-    isLoadingStreamValue.addValue(true);
-    try {
-      final accounts = await _accountsRepository.fetchAccounts();
-      if (_isDisposed) return;
-      accountsStreamValue.addValue(accounts);
-      errorStreamValue.addValue(null);
-    } catch (error) {
-      if (_isDisposed) return;
-      errorStreamValue.addValue(error.toString());
-    } finally {
-      if (!_isDisposed) {
-        isLoadingStreamValue.addValue(false);
-      }
+    _bindAccountsRepositoryError();
+    if (_isDisposed) {
+      return;
     }
+    await _accountsRepository.loadAccounts(pageSize: _accountsPageSize);
+  }
+
+  Future<void> loadNextAccountsPage() async {
+    _bindAccountsRepositoryError();
+    if (_isDisposed) {
+      return;
+    }
+    await _accountsRepository.loadNextAccountsPage(pageSize: _accountsPageSize);
   }
 
   Future<void> loadProfileTypes() async {
-    isLoadingStreamValue.addValue(true);
+    isProfileTypesLoadingStreamValue.addValue(true);
     try {
       final types = await _profilesRepository.fetchProfileTypes();
       if (_isDisposed) return;
@@ -108,7 +182,29 @@ class TenantAdminAccountsController implements Disposable {
       errorStreamValue.addValue(error.toString());
     } finally {
       if (!_isDisposed) {
-        isLoadingStreamValue.addValue(false);
+        isProfileTypesLoadingStreamValue.addValue(false);
+      }
+    }
+  }
+
+  Future<void> loadTaxonomies() async {
+    taxonomiesLoadingStreamValue.addValue(true);
+    try {
+      final taxonomies = await _taxonomiesRepository.fetchTaxonomies();
+      if (_isDisposed) return;
+      final filtered = taxonomies
+          .where((taxonomy) => taxonomy.appliesToTarget('account_profile'))
+          .toList(growable: false);
+      taxonomiesStreamValue.addValue(filtered);
+      taxonomiesErrorStreamValue.addValue(null);
+      await _refreshTaxonomyTermsForSelectedProfileType();
+    } catch (error) {
+      if (_isDisposed) return;
+      taxonomiesErrorStreamValue.addValue(error.toString());
+      taxonomyTermsStreamValue.addValue(const {});
+    } finally {
+      if (!_isDisposed) {
+        taxonomiesLoadingStreamValue.addValue(false);
       }
     }
   }
@@ -117,22 +213,93 @@ class TenantAdminAccountsController implements Disposable {
     selectedOwnershipStreamValue.addValue(ownershipState);
   }
 
+  void updateSearchQuery(String query) {
+    searchQueryStreamValue.addValue(query);
+  }
+
+  void toggleSearchFieldVisibility() {
+    final next = !showSearchFieldStreamValue.value;
+    showSearchFieldStreamValue.addValue(next);
+    if (!next) {
+      updateSearchQuery('');
+    }
+  }
+
   void updateCreateSelectedProfileType(String? profileType) {
     _updateCreateState(
       createStateStreamValue.value.copyWith(selectedProfileType: profileType),
     );
+    unawaited(_refreshTaxonomyTermsForSelectedProfileType());
+  }
+
+  void updateCreateOwnershipState(TenantAdminOwnershipState ownershipState) {
+    _updateCreateState(
+      createStateStreamValue.value.copyWith(ownershipState: ownershipState),
+    );
   }
 
   void updateCreateAvatarFile(XFile? file) {
-    _updateCreateState(createStateStreamValue.value.copyWith(avatarFile: file));
+    _updateCreateState(
+      createStateStreamValue.value.copyWith(
+        avatarFile: file,
+        avatarWebUrl: null,
+      ),
+    );
   }
 
   void updateCreateCoverFile(XFile? file) {
-    _updateCreateState(createStateStreamValue.value.copyWith(coverFile: file));
+    _updateCreateState(
+      createStateStreamValue.value.copyWith(
+        coverFile: file,
+        coverWebUrl: null,
+      ),
+    );
+  }
+
+  void updateCreateAvatarWebUrl(String? url) {
+    final trimmed = url?.trim();
+    _updateCreateState(
+      createStateStreamValue.value.copyWith(
+        avatarWebUrl: trimmed == null || trimmed.isEmpty ? null : trimmed,
+        avatarFile: null,
+      ),
+    );
+  }
+
+  void updateCreateCoverWebUrl(String? url) {
+    final trimmed = url?.trim();
+    _updateCreateState(
+      createStateStreamValue.value.copyWith(
+        coverWebUrl: trimmed == null || trimmed.isEmpty ? null : trimmed,
+        coverFile: null,
+      ),
+    );
+  }
+
+  void updateTaxonomySelection({
+    required String taxonomySlug,
+    required String termSlug,
+    required bool selected,
+  }) {
+    final current = Map<String, Set<String>>.from(
+      selectedTaxonomyTermsStreamValue.value,
+    );
+    final terms = current[taxonomySlug] ?? <String>{};
+    if (selected) {
+      terms.add(termSlug);
+    } else {
+      terms.remove(termSlug);
+    }
+    if (terms.isEmpty) {
+      current.remove(taxonomySlug);
+    } else {
+      current[taxonomySlug] = terms;
+    }
+    selectedTaxonomyTermsStreamValue.addValue(current);
   }
 
   void resetCreateState() {
-    _updateCreateState(TenantAdminAccountCreateState.initial());
+    _updateCreateState(TenantAdminAccountCreateDraft.initial());
   }
 
   void _bindLocationSelection() {
@@ -154,26 +321,32 @@ class TenantAdminAccountsController implements Disposable {
 
   Future<TenantAdminAccount> createAccountWithProfile({
     required String name,
-    required String documentType,
-    required String documentNumber,
+    required TenantAdminOwnershipState ownershipState,
     required String profileType,
-    required String displayName,
     TenantAdminLocation? location,
+    String? bio,
+    String? content,
+    List<TenantAdminTaxonomyTerm> taxonomyTerms = const [],
+    String? avatarUrl,
+    String? coverUrl,
     TenantAdminMediaUpload? avatarUpload,
     TenantAdminMediaUpload? coverUpload,
   }) async {
+    final trimmedName = name.trim();
     final account = await _accountsRepository.createAccount(
-      name: name,
-      document: TenantAdminDocument(
-        type: documentType,
-        number: documentNumber,
-      ),
+      name: trimmedName,
+      ownershipState: ownershipState,
     );
     await _profilesRepository.createAccountProfile(
       accountId: account.id,
       profileType: profileType,
-      displayName: displayName,
+      displayName: trimmedName,
       location: location,
+      taxonomyTerms: taxonomyTerms,
+      bio: bio,
+      content: content,
+      avatarUrl: avatarUrl,
+      coverUrl: coverUrl,
       avatarUpload: avatarUpload,
       coverUpload: coverUpload,
     );
@@ -188,19 +361,38 @@ class TenantAdminAccountsController implements Disposable {
   }) async {
     final selectedProfileType =
         createStateStreamValue.value.selectedProfileType ?? '';
+    final capabilities = _capabilitiesForProfileType(selectedProfileType);
+    final filteredTaxonomyTerms = capabilities?.hasTaxonomies == true
+        ? _buildTaxonomyTerms()
+        : const <TenantAdminTaxonomyTerm>[];
+    final filteredBio = capabilities?.hasBio == true
+        ? _normalizeOptionalString(bioController.text)
+        : null;
+    final filteredContent = capabilities?.hasContent == true
+        ? _normalizeOptionalString(contentController.text)
+        : null;
+    final avatarUrl = capabilities?.hasAvatar == true
+        ? createStateStreamValue.value.avatarWebUrl
+        : null;
+    final coverUrl = capabilities?.hasCover == true
+        ? createStateStreamValue.value.coverWebUrl
+        : null;
     return createAccountWithProfile(
       name: nameController.text.trim(),
-      documentType: documentTypeController.text.trim(),
-      documentNumber: documentNumberController.text.trim(),
+      ownershipState: createStateStreamValue.value.ownershipState,
       profileType: selectedProfileType,
-      displayName: profileDisplayNameController.text.trim(),
       location: location,
+      bio: filteredBio,
+      content: filteredContent,
+      taxonomyTerms: filteredTaxonomyTerms,
+      avatarUrl: avatarUrl,
+      coverUrl: coverUrl,
       avatarUpload: avatarUpload,
       coverUpload: coverUpload,
     );
   }
 
-  Future<void> submitCreateAccountFromForm({
+  Future<bool> submitCreateAccountFromForm({
     required TenantAdminLocation? location,
     required TenantAdminMediaUpload? avatarUpload,
     required TenantAdminMediaUpload? coverUpload,
@@ -212,14 +404,13 @@ class TenantAdminAccountsController implements Disposable {
         avatarUpload: avatarUpload,
         coverUpload: coverUpload,
       );
-      if (_isDisposed) return;
+      if (_isDisposed) return false;
       createErrorMessageStreamValue.addValue(null);
-      createSuccessMessageStreamValue.addValue('Conta e perfil salvos.');
-      resetCreateForm();
-      resetCreateState();
+      return true;
     } catch (error) {
-      if (_isDisposed) return;
+      if (_isDisposed) return false;
       createErrorMessageStreamValue.addValue(error.toString());
+      return false;
     } finally {
       if (!_isDisposed) {
         createSubmittingStreamValue.addValue(false);
@@ -227,57 +418,85 @@ class TenantAdminAccountsController implements Disposable {
     }
   }
 
-  void clearCreateSuccessMessage() {
-    createSuccessMessageStreamValue.addValue(null);
-  }
-
   void clearCreateErrorMessage() {
     createErrorMessageStreamValue.addValue(null);
   }
 
-  Future<void> loadAccountForCreate(String slug) async {
-    try {
-      final account = await _accountsRepository.fetchAccountBySlug(slug);
-      if (_isDisposed) return;
-      createAccountIdStreamValue.addValue(account.id);
-    } catch (error) {
-      if (_isDisposed) return;
-      createErrorMessageStreamValue.addValue(error.toString());
-    }
-  }
-
-  void clearCreateAccountId() {
-    createAccountIdStreamValue.addValue(null);
-  }
-
   void resetCreateForm() {
     nameController.clear();
-    documentTypeController.clear();
-    documentNumberController.clear();
-    profileDisplayNameController.clear();
+    bioController.clear();
+    contentController.clear();
     latitudeController.clear();
     longitudeController.clear();
+    selectedTaxonomyTermsStreamValue.addValue(const {});
+  }
+
+  void _bindAccountsRepositoryError() {
+    if (_accountsRepositoryErrorSubscription != null) {
+      return;
+    }
+    _accountsRepositoryErrorSubscription =
+        _accountsRepository.accountsErrorStreamValue.stream.listen(
+      (error) {
+        if (_isDisposed) {
+          return;
+        }
+        errorStreamValue.addValue(error);
+      },
+    );
+  }
+
+  void _resetTenantScopedState() {
+    _accountsRepository.resetAccountsState();
+    profileTypesStreamValue.addValue(const []);
+    errorStreamValue.addValue(null);
+    taxonomiesStreamValue.addValue(const []);
+    taxonomyTermsStreamValue.addValue(const {});
+    selectedTaxonomyTermsStreamValue.addValue(const {});
+    taxonomiesErrorStreamValue.addValue(null);
+    createErrorMessageStreamValue.addValue(null);
+    resetCreateForm();
+    resetCreateState();
+    showSearchFieldStreamValue.addValue(false);
+  }
+
+  String? _normalizeTenantDomain(String? raw) {
+    final trimmed = raw?.trim();
+    if (trimmed == null || trimmed.isEmpty) {
+      return null;
+    }
+    final uri =
+        Uri.tryParse(trimmed.contains('://') ? trimmed : 'https://$trimmed');
+    if (uri != null && uri.host.trim().isNotEmpty) {
+      return uri.host.trim();
+    }
+    return trimmed;
   }
 
   void dispose() {
     _isDisposed = true;
     _locationSelectionSubscription?.cancel();
+    _tenantScopeSubscription?.cancel();
+    _accountsRepositoryErrorSubscription?.cancel();
     nameController.dispose();
-    documentTypeController.dispose();
-    documentNumberController.dispose();
-    profileDisplayNameController.dispose();
+    bioController.dispose();
+    contentController.dispose();
     latitudeController.dispose();
     longitudeController.dispose();
-    accountsStreamValue.dispose();
     profileTypesStreamValue.dispose();
-    isLoadingStreamValue.dispose();
+    isProfileTypesLoadingStreamValue.dispose();
     errorStreamValue.dispose();
     selectedOwnershipStreamValue.dispose();
+    searchQueryStreamValue.dispose();
+    showSearchFieldStreamValue.dispose();
     createStateStreamValue.dispose();
+    taxonomiesStreamValue.dispose();
+    taxonomyTermsStreamValue.dispose();
+    selectedTaxonomyTermsStreamValue.dispose();
+    taxonomiesLoadingStreamValue.dispose();
+    taxonomiesErrorStreamValue.dispose();
     createSubmittingStreamValue.dispose();
-    createSuccessMessageStreamValue.dispose();
     createErrorMessageStreamValue.dispose();
-    createAccountIdStreamValue.dispose();
   }
 
   @override
@@ -286,31 +505,132 @@ class TenantAdminAccountsController implements Disposable {
   }
 }
 
-class TenantAdminAccountCreateState {
+extension on TenantAdminAccountsController {
+  TenantAdminProfileTypeCapabilities? _capabilitiesForProfileType(
+    String profileType,
+  ) {
+    for (final definition in profileTypesStreamValue.value) {
+      if (definition.type == profileType) {
+        return definition.capabilities;
+      }
+    }
+    return null;
+  }
+
+  List<String> _allowedTaxonomiesForProfileType(String? profileType) {
+    if (profileType == null || profileType.isEmpty) {
+      return const [];
+    }
+    for (final definition in profileTypesStreamValue.value) {
+      if (definition.type == profileType) {
+        return definition.allowedTaxonomies;
+      }
+    }
+    return const [];
+  }
+
+  Future<void> _refreshTaxonomyTermsForSelectedProfileType() async {
+    final allowed = _allowedTaxonomiesForProfileType(
+      createStateStreamValue.value.selectedProfileType,
+    );
+    if (allowed.isEmpty) {
+      taxonomyTermsStreamValue.addValue(const {});
+      selectedTaxonomyTermsStreamValue.addValue(const {});
+      return;
+    }
+    final current = Map<String, Set<String>>.from(
+      selectedTaxonomyTermsStreamValue.value,
+    );
+    current.removeWhere((slug, _) => !allowed.contains(slug));
+    selectedTaxonomyTermsStreamValue.addValue(current);
+
+    final registry = taxonomiesStreamValue.value;
+    final map = <String, List<TenantAdminTaxonomyTermDefinition>>{};
+    for (final slug in allowed) {
+      final taxonomy = registry.where((item) => item.slug == slug);
+      if (taxonomy.isEmpty) {
+        map[slug] = const [];
+        continue;
+      }
+      final taxonomyId = taxonomy.first.id;
+      try {
+        final terms = await _taxonomiesRepository.fetchTerms(
+          taxonomyId: taxonomyId,
+        );
+        if (_isDisposed) return;
+        map[slug] = terms;
+      } catch (error) {
+        if (!_isDisposed) {
+          taxonomiesErrorStreamValue
+              .addValue('Falha ao carregar termos para taxonomia "$slug".');
+        }
+        map[slug] = const [];
+      }
+    }
+    if (_isDisposed) return;
+    taxonomyTermsStreamValue.addValue(map);
+  }
+
+  List<TenantAdminTaxonomyTerm> _buildTaxonomyTerms() {
+    final terms = <TenantAdminTaxonomyTerm>[];
+    final selected = selectedTaxonomyTermsStreamValue.value;
+    for (final entry in selected.entries) {
+      for (final value in entry.value) {
+        terms.add(TenantAdminTaxonomyTerm(type: entry.key, value: value));
+      }
+    }
+    return terms;
+  }
+
+  String? _normalizeOptionalString(String value) {
+    final trimmed = value.trim();
+    if (trimmed.isEmpty) {
+      return null;
+    }
+    return trimmed;
+  }
+}
+
+class TenantAdminAccountCreateDraft {
   static const _unset = Object();
 
-  const TenantAdminAccountCreateState({
+  const TenantAdminAccountCreateDraft({
+    required this.ownershipState,
     required this.selectedProfileType,
     required this.avatarFile,
     required this.coverFile,
+    required this.avatarWebUrl,
+    required this.coverWebUrl,
   });
 
-  factory TenantAdminAccountCreateState.initial() =>
-      const TenantAdminAccountCreateState(
+  factory TenantAdminAccountCreateDraft.initial() =>
+      const TenantAdminAccountCreateDraft(
+        ownershipState: TenantAdminOwnershipState.tenantOwned,
         selectedProfileType: null,
         avatarFile: null,
         coverFile: null,
+        avatarWebUrl: null,
+        coverWebUrl: null,
       );
 
+  final TenantAdminOwnershipState ownershipState;
   final String? selectedProfileType;
   final XFile? avatarFile;
   final XFile? coverFile;
+  final String? avatarWebUrl;
+  final String? coverWebUrl;
 
-  TenantAdminAccountCreateState copyWith({
+  TenantAdminAccountCreateDraft copyWith({
+    Object? ownershipState = _unset,
     Object? selectedProfileType = _unset,
     Object? avatarFile = _unset,
     Object? coverFile = _unset,
+    Object? avatarWebUrl = _unset,
+    Object? coverWebUrl = _unset,
   }) {
+    final nextOwnershipState = ownershipState == _unset
+        ? this.ownershipState
+        : ownershipState as TenantAdminOwnershipState;
     final nextSelectedProfileType = selectedProfileType == _unset
         ? this.selectedProfileType
         : selectedProfileType as String?;
@@ -318,17 +638,24 @@ class TenantAdminAccountCreateState {
         avatarFile == _unset ? this.avatarFile : avatarFile as XFile?;
     final nextCoverFile =
         coverFile == _unset ? this.coverFile : coverFile as XFile?;
+    final nextAvatarWebUrl =
+        avatarWebUrl == _unset ? this.avatarWebUrl : avatarWebUrl as String?;
+    final nextCoverWebUrl =
+        coverWebUrl == _unset ? this.coverWebUrl : coverWebUrl as String?;
 
-    return TenantAdminAccountCreateState(
+    return TenantAdminAccountCreateDraft(
+      ownershipState: nextOwnershipState,
       selectedProfileType: nextSelectedProfileType,
       avatarFile: nextAvatarFile,
       coverFile: nextCoverFile,
+      avatarWebUrl: nextAvatarWebUrl,
+      coverWebUrl: nextCoverWebUrl,
     );
   }
 }
 
 extension on TenantAdminAccountsController {
-  void _updateCreateState(TenantAdminAccountCreateState state) {
+  void _updateCreateState(TenantAdminAccountCreateDraft state) {
     if (_isDisposed) return;
     createStateStreamValue.addValue(state);
   }

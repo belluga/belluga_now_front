@@ -12,6 +12,7 @@ class TenantAdminAccountProfile {
     this.avatarUrl,
     this.coverUrl,
     this.bio,
+    this.content,
     this.location,
     this.taxonomyTerms = const [],
     this.ownershipState,
@@ -25,6 +26,7 @@ class TenantAdminAccountProfile {
   final String? avatarUrl;
   final String? coverUrl;
   final String? bio;
+  final String? content;
   final TenantAdminLocation? location;
   final List<TenantAdminTaxonomyTerm> taxonomyTerms;
   final TenantAdminOwnershipState? ownershipState;

@@ -25,27 +25,15 @@ class FavoritesSectionBuilder extends StatefulWidget {
 class _FavoritesSectionBuilderState extends State<FavoritesSectionBuilder> {
   late final FavoritesSectionController _controller =
       widget.controller ?? GetIt.I.get<FavoritesSectionController>();
-  StreamSubscription<FavoriteNavigationTarget?>? _navigationSubscription;
 
   @override
   void initState() {
     super.initState();
     _controller.init();
-    _navigationSubscription =
-        _controller.navigationTargetStreamValue.stream.listen(
-      _handleNavigationTarget,
-    );
-    final target = _controller.navigationTargetStreamValue.value;
-    if (target != null) {
-      _handleNavigationTarget(target);
-    }
   }
 
   @override
-  void dispose() {
-    _navigationSubscription?.cancel();
-    super.dispose();
-  }
+  void dispose() => super.dispose();
 
   @override
   Widget build(BuildContext context) {
@@ -59,6 +47,7 @@ class _FavoritesSectionBuilderState extends State<FavoritesSectionBuilder> {
         final all = favorites ?? const <FavoriteResume>[];
         final items = all.where((fav) => !fav.isPrimary).toList();
         final pinned = _controller.buildPinnedFavorite();
+        final router = context.router;
 
         return Row(
           children: [
@@ -67,10 +56,10 @@ class _FavoritesSectionBuilderState extends State<FavoritesSectionBuilder> {
                 items: items,
                 pinned: pinned,
                 onSearchTap: () {
-                  context.router.push(DiscoveryRoute());
+                  router.push(DiscoveryRoute());
                 },
                 onFavoriteTap: (favorite) {
-                  _controller.requestNavigationTarget(favorite);
+                  unawaited(_openFavoriteTarget(router, favorite));
                 },
                 onPinnedTap: () {
                   // TODO(Delphi): Route to About screen once available in AutoRoute map.
@@ -83,18 +72,18 @@ class _FavoritesSectionBuilderState extends State<FavoritesSectionBuilder> {
     );
   }
 
-  void _handleNavigationTarget(FavoriteNavigationTarget? target) {
-    if (target == null) return;
-    final router = context.router;
+  Future<void> _openFavoriteTarget(
+    StackRouter router,
+    FavoriteResume favorite,
+  ) async {
+    final target = await _controller.resolveNavigationTarget(favorite);
     switch (target) {
       case FavoriteNavigationPrimary():
-        _controller.clearNavigationTarget();
         return;
       case FavoriteNavigationPartner():
         router.push(
           PartnerDetailRoute(slug: target.slug),
         );
-        _controller.clearNavigationTarget();
         return;
       case FavoriteNavigationSearch():
         router.replaceAll(
@@ -105,7 +94,6 @@ class _FavoritesSectionBuilderState extends State<FavoritesSectionBuilder> {
             ),
           ],
         );
-        _controller.clearNavigationTarget();
         return;
     }
   }

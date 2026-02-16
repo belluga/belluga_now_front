@@ -63,20 +63,27 @@ class TenantAdminAccountProfilesController implements Disposable {
       StreamValue<bool>(defaultValue: false);
   final StreamValue<String?> accountDetailErrorStreamValue =
       StreamValue<String?>();
-  final StreamValue<TenantAdminAccountProfileEditState> editStateStreamValue =
-      StreamValue<TenantAdminAccountProfileEditState>(
-    defaultValue: TenantAdminAccountProfileEditState.initial(),
+  final StreamValue<bool> accountUpdatingStreamValue =
+      StreamValue<bool>(defaultValue: false);
+  final StreamValue<TenantAdminAccountProfileEditDraft> editStateStreamValue =
+      StreamValue<TenantAdminAccountProfileEditDraft>(
+    defaultValue: TenantAdminAccountProfileEditDraft.initial(),
   );
+  final StreamValue<bool> editLoadingStreamValue =
+      StreamValue<bool>(defaultValue: false);
+  final StreamValue<String?> editLoadErrorStreamValue = StreamValue<String?>();
   final StreamValue<bool> editSubmittingStreamValue =
       StreamValue<bool>(defaultValue: false);
   final StreamValue<String?> editSuccessMessageStreamValue =
       StreamValue<String?>();
   final StreamValue<String?> editErrorMessageStreamValue =
       StreamValue<String?>();
-  final StreamValue<TenantAdminAccountProfileCreateState>
+  final StreamValue<bool> taxonomyAutosavingStreamValue =
+      StreamValue<bool>(defaultValue: false);
+  final StreamValue<TenantAdminAccountProfileCreateDraft>
       createStateStreamValue =
-      StreamValue<TenantAdminAccountProfileCreateState>(
-    defaultValue: TenantAdminAccountProfileCreateState.initial(),
+      StreamValue<TenantAdminAccountProfileCreateDraft>(
+    defaultValue: TenantAdminAccountProfileCreateDraft.initial(),
   );
   final StreamValue<bool> createSubmittingStreamValue =
       StreamValue<bool>(defaultValue: false);
@@ -88,8 +95,10 @@ class TenantAdminAccountProfilesController implements Disposable {
       StreamValue<String?>();
   final GlobalKey<FormState> createFormKey = GlobalKey<FormState>();
   final GlobalKey<FormState> editFormKey = GlobalKey<FormState>();
+  final TextEditingController slugController = TextEditingController();
   final TextEditingController displayNameController = TextEditingController();
   final TextEditingController bioController = TextEditingController();
+  final TextEditingController contentController = TextEditingController();
   final TextEditingController latitudeController = TextEditingController();
   final TextEditingController longitudeController = TextEditingController();
 
@@ -213,7 +222,10 @@ class TenantAdminAccountProfilesController implements Disposable {
         final terms =
             await _taxonomiesRepository.fetchTerms(taxonomyId: taxonomy.id);
         map[slug] = terms;
-      } catch (_) {
+      } catch (error) {
+        debugPrint(
+          '[TenantAdmin] Failed to load taxonomy terms for "$slug": $error',
+        );
         map[slug] = const [];
       }
     }
@@ -257,35 +269,59 @@ class TenantAdminAccountProfilesController implements Disposable {
     }
   }
 
+  Future<TenantAdminAccount?> updateAccount({
+    required String accountSlug,
+    String? name,
+    String? slug,
+  }) async {
+    accountUpdatingStreamValue.addValue(true);
+    try {
+      final updated = await _accountsRepository.updateAccount(
+        accountSlug: accountSlug,
+        name: name,
+        slug: slug,
+      );
+      if (_isDisposed) {
+        return null;
+      }
+      accountStreamValue.addValue(updated);
+      accountDetailErrorStreamValue.addValue(null);
+      return updated;
+    } catch (error) {
+      if (_isDisposed) {
+        return null;
+      }
+      accountDetailErrorStreamValue.addValue(error.toString());
+      return null;
+    } finally {
+      if (!_isDisposed) {
+        accountUpdatingStreamValue.addValue(false);
+      }
+    }
+  }
+
   Future<void> loadEditProfile(String accountProfileId) async {
-    _updateEditState(
-      editStateStreamValue.value.copyWith(
-        isLoading: true,
-        errorMessage: null,
-      ),
-    );
+    editLoadingStreamValue.addValue(true);
+    editLoadErrorStreamValue.addValue(null);
     try {
       await loadProfileTypes();
       final profile = await fetchProfile(accountProfileId);
       if (_isDisposed) return;
+      accountProfileStreamValue.addValue(profile);
       _updateEditState(
         editStateStreamValue.value
             .copyWith(
-              isLoading: false,
-              errorMessage: null,
-              profile: profile,
               selectedProfileType: profile.profileType,
             )
             .syncRemoteState(profile),
       );
     } catch (error) {
       if (_isDisposed) return;
-      _updateEditState(
-        editStateStreamValue.value.copyWith(
-          isLoading: false,
-          errorMessage: error.toString(),
-        ),
-      );
+      editLoadErrorStreamValue.addValue(error.toString());
+    } finally {
+      if (!_isDisposed) {
+        editLoadingStreamValue.addValue(false);
+      }
     }
   }
 
@@ -298,18 +334,13 @@ class TenantAdminAccountProfilesController implements Disposable {
   }
 
   void updateEditLoading(bool isLoading) {
-    _updateEditState(
-      editStateStreamValue.value.copyWith(isLoading: isLoading),
-    );
+    editLoadingStreamValue.addValue(isLoading);
   }
 
   void updateEditProfile(TenantAdminAccountProfile profile) {
+    accountProfileStreamValue.addValue(profile);
     _updateEditState(
-      editStateStreamValue.value
-          .copyWith(
-            profile: profile,
-          )
-          .syncRemoteState(profile),
+      editStateStreamValue.value.copyWith().syncRemoteState(profile),
     );
   }
 
@@ -317,6 +348,8 @@ class TenantAdminAccountProfilesController implements Disposable {
     _updateEditState(
       editStateStreamValue.value.copyWith(
         avatarFile: file,
+        avatarRemoteUrl:
+            file == null ? editStateStreamValue.value.avatarRemoteUrl : null,
         avatarRemoteReady: false,
         avatarRemoteError: false,
         avatarPreloadUrl: null,
@@ -328,6 +361,34 @@ class TenantAdminAccountProfilesController implements Disposable {
     _updateEditState(
       editStateStreamValue.value.copyWith(
         coverFile: file,
+        coverRemoteUrl:
+            file == null ? editStateStreamValue.value.coverRemoteUrl : null,
+        coverRemoteReady: false,
+        coverRemoteError: false,
+        coverPreloadUrl: null,
+      ),
+    );
+  }
+
+  void updateAvatarRemoteUrl(String? url) {
+    final trimmed = url?.trim();
+    _updateEditState(
+      editStateStreamValue.value.copyWith(
+        avatarRemoteUrl: trimmed == null || trimmed.isEmpty ? null : trimmed,
+        avatarFile: null,
+        avatarRemoteReady: false,
+        avatarRemoteError: false,
+        avatarPreloadUrl: null,
+      ),
+    );
+  }
+
+  void updateCoverRemoteUrl(String? url) {
+    final trimmed = url?.trim();
+    _updateEditState(
+      editStateStreamValue.value.copyWith(
+        coverRemoteUrl: trimmed == null || trimmed.isEmpty ? null : trimmed,
+        coverFile: null,
         coverRemoteReady: false,
         coverRemoteError: false,
         coverPreloadUrl: null,
@@ -341,9 +402,12 @@ class TenantAdminAccountProfilesController implements Disposable {
     required String displayName,
     required TenantAdminLocation? location,
     required String? bio,
+    required String? content,
     required List<TenantAdminTaxonomyTerm> taxonomyTerms,
     required TenantAdminMediaUpload? avatarUpload,
     required TenantAdminMediaUpload? coverUpload,
+    String? avatarUrl,
+    String? coverUrl,
   }) async {
     createSubmittingStreamValue.addValue(true);
     try {
@@ -353,9 +417,12 @@ class TenantAdminAccountProfilesController implements Disposable {
         displayName: displayName,
         location: location,
         bio: bio,
+        content: content,
         taxonomyTerms: taxonomyTerms,
         avatarUpload: avatarUpload,
         coverUpload: coverUpload,
+        avatarUrl: avatarUrl,
+        coverUrl: coverUrl,
       );
       if (_isDisposed) return;
       createErrorMessageStreamValue.addValue(null);
@@ -426,11 +493,15 @@ class TenantAdminAccountProfilesController implements Disposable {
     required String accountProfileId,
     required String profileType,
     required String displayName,
+    String? slug,
     required TenantAdminLocation? location,
     required String? bio,
+    required String? content,
     required List<TenantAdminTaxonomyTerm>? taxonomyTerms,
     required TenantAdminMediaUpload? avatarUpload,
     required TenantAdminMediaUpload? coverUpload,
+    String? avatarUrl,
+    String? coverUrl,
   }) async {
     editSubmittingStreamValue.addValue(true);
     try {
@@ -438,11 +509,15 @@ class TenantAdminAccountProfilesController implements Disposable {
         accountProfileId: accountProfileId,
         profileType: profileType,
         displayName: displayName,
+        slug: slug,
         location: location,
         bio: bio,
+        content: content,
         taxonomyTerms: taxonomyTerms,
         avatarUpload: avatarUpload,
         coverUpload: coverUpload,
+        avatarUrl: avatarUrl,
+        coverUrl: coverUrl,
       );
       if (_isDisposed) return;
       updateEditProfile(updated);
@@ -462,8 +537,13 @@ class TenantAdminAccountProfilesController implements Disposable {
     required String accountProfileId,
     required TenantAdminMediaUpload? avatarUpload,
     required TenantAdminMediaUpload? coverUpload,
+    String? avatarUrl,
+    String? coverUrl,
   }) async {
-    if (avatarUpload == null && coverUpload == null) {
+    if (avatarUpload == null &&
+        coverUpload == null &&
+        avatarUrl == null &&
+        coverUrl == null) {
       return;
     }
     updateEditLoading(true);
@@ -472,6 +552,8 @@ class TenantAdminAccountProfilesController implements Disposable {
         accountProfileId: accountProfileId,
         avatarUpload: avatarUpload,
         coverUpload: coverUpload,
+        avatarUrl: avatarUrl,
+        coverUrl: coverUrl,
       );
       if (_isDisposed) return;
       updateEditProfile(updated);
@@ -485,6 +567,33 @@ class TenantAdminAccountProfilesController implements Disposable {
     } finally {
       if (!_isDisposed) {
         updateEditLoading(false);
+      }
+    }
+  }
+
+  Future<bool> submitTaxonomySelectionUpdate({
+    required String accountProfileId,
+    required List<TenantAdminTaxonomyTerm> taxonomyTerms,
+  }) async {
+    taxonomyAutosavingStreamValue.addValue(true);
+    editSubmittingStreamValue.addValue(true);
+    try {
+      final updated = await updateProfile(
+        accountProfileId: accountProfileId,
+        taxonomyTerms: taxonomyTerms,
+      );
+      if (_isDisposed) return false;
+      updateEditProfile(updated);
+      editErrorMessageStreamValue.addValue(null);
+      return true;
+    } catch (error) {
+      if (_isDisposed) return false;
+      editErrorMessageStreamValue.addValue(error.toString());
+      return false;
+    } finally {
+      if (!_isDisposed) {
+        editSubmittingStreamValue.addValue(false);
+        taxonomyAutosavingStreamValue.addValue(false);
       }
     }
   }
@@ -514,7 +623,10 @@ class TenantAdminAccountProfilesController implements Disposable {
   }
 
   void resetEditState() {
-    _updateEditState(TenantAdminAccountProfileEditState.initial());
+    _updateEditState(TenantAdminAccountProfileEditDraft.initial());
+    editLoadingStreamValue.addValue(false);
+    editLoadErrorStreamValue.addValue(null);
+    taxonomyAutosavingStreamValue.addValue(false);
   }
 
   void updateCreateSelectedProfileType(String? profileType) {
@@ -525,19 +637,47 @@ class TenantAdminAccountProfilesController implements Disposable {
 
   void updateCreateAvatarFile(XFile? file) {
     _updateCreateState(
-      createStateStreamValue.value.copyWith(avatarFile: file),
+      createStateStreamValue.value.copyWith(
+        avatarFile: file,
+        avatarWebUrl: null,
+      ),
     );
   }
 
   void updateCreateCoverFile(XFile? file) {
     _updateCreateState(
-      createStateStreamValue.value.copyWith(coverFile: file),
+      createStateStreamValue.value.copyWith(
+        coverFile: file,
+        coverWebUrl: null,
+      ),
+    );
+  }
+
+  void updateCreateAvatarWebUrl(String? url) {
+    final trimmed = url?.trim();
+    _updateCreateState(
+      createStateStreamValue.value.copyWith(
+        avatarWebUrl: trimmed == null || trimmed.isEmpty ? null : trimmed,
+        avatarFile: null,
+      ),
+    );
+  }
+
+  void updateCreateCoverWebUrl(String? url) {
+    final trimmed = url?.trim();
+    _updateCreateState(
+      createStateStreamValue.value.copyWith(
+        coverWebUrl: trimmed == null || trimmed.isEmpty ? null : trimmed,
+        coverFile: null,
+      ),
     );
   }
 
   void resetFormControllers() {
+    slugController.clear();
     displayNameController.clear();
     bioController.clear();
+    contentController.clear();
     latitudeController.clear();
     longitudeController.clear();
     resetTaxonomySelection();
@@ -584,15 +724,15 @@ class TenantAdminAccountProfilesController implements Disposable {
   }
 
   void resetCreateState() {
-    _updateCreateState(TenantAdminAccountProfileCreateState.initial());
+    _updateCreateState(TenantAdminAccountProfileCreateDraft.initial());
   }
 
-  void _updateEditState(TenantAdminAccountProfileEditState state) {
+  void _updateEditState(TenantAdminAccountProfileEditDraft state) {
     if (_isDisposed) return;
     editStateStreamValue.addValue(state);
   }
 
-  void _updateCreateState(TenantAdminAccountProfileCreateState state) {
+  void _updateCreateState(TenantAdminAccountProfileCreateDraft state) {
     if (_isDisposed) return;
     createStateStreamValue.addValue(state);
   }
@@ -611,6 +751,9 @@ class TenantAdminAccountProfilesController implements Disposable {
     TenantAdminLocation? location,
     List<TenantAdminTaxonomyTerm> taxonomyTerms = const [],
     String? bio,
+    String? content,
+    String? avatarUrl,
+    String? coverUrl,
     TenantAdminMediaUpload? avatarUpload,
     TenantAdminMediaUpload? coverUpload,
   }) async {
@@ -619,6 +762,9 @@ class TenantAdminAccountProfilesController implements Disposable {
       location: location,
       taxonomyTerms: taxonomyTerms,
       bio: bio,
+      content: content,
+      avatarUrl: avatarUrl,
+      coverUrl: coverUrl,
       avatarUpload: avatarUpload,
       coverUpload: coverUpload,
     );
@@ -629,6 +775,9 @@ class TenantAdminAccountProfilesController implements Disposable {
       location: filtered.location,
       taxonomyTerms: filtered.taxonomyTerms,
       bio: filtered.bio,
+      content: filtered.content,
+      avatarUrl: filtered.avatarUrl,
+      coverUrl: filtered.coverUrl,
       avatarUpload: filtered.avatarUpload,
       coverUpload: filtered.coverUpload,
     );
@@ -640,9 +789,13 @@ class TenantAdminAccountProfilesController implements Disposable {
     required String accountProfileId,
     String? profileType,
     String? displayName,
+    String? slug,
     TenantAdminLocation? location,
     List<TenantAdminTaxonomyTerm>? taxonomyTerms,
     String? bio,
+    String? content,
+    String? avatarUrl,
+    String? coverUrl,
     TenantAdminMediaUpload? avatarUpload,
     TenantAdminMediaUpload? coverUpload,
   }) async {
@@ -651,6 +804,9 @@ class TenantAdminAccountProfilesController implements Disposable {
             location: location,
             taxonomyTerms: taxonomyTerms ?? const [],
             bio: bio,
+            content: content,
+            avatarUrl: avatarUrl,
+            coverUrl: coverUrl,
             avatarUpload: avatarUpload,
             coverUpload: coverUpload,
           )
@@ -659,6 +815,9 @@ class TenantAdminAccountProfilesController implements Disposable {
             location: location,
             taxonomyTerms: taxonomyTerms ?? const [],
             bio: bio,
+            content: content,
+            avatarUrl: avatarUrl,
+            coverUrl: coverUrl,
             avatarUpload: avatarUpload,
             coverUpload: coverUpload,
           );
@@ -666,9 +825,13 @@ class TenantAdminAccountProfilesController implements Disposable {
       accountProfileId: accountProfileId,
       profileType: profileType,
       displayName: displayName,
+      slug: slug,
       location: filtered.location,
       taxonomyTerms: taxonomyTerms == null ? null : filtered.taxonomyTerms,
       bio: filtered.bio,
+      content: filtered.content,
+      avatarUrl: filtered.avatarUrl,
+      coverUrl: filtered.coverUrl,
       avatarUpload: filtered.avatarUpload,
       coverUpload: filtered.coverUpload,
     );
@@ -692,6 +855,9 @@ class TenantAdminAccountProfilesController implements Disposable {
     required TenantAdminLocation? location,
     required List<TenantAdminTaxonomyTerm> taxonomyTerms,
     required String? bio,
+    required String? content,
+    required String? avatarUrl,
+    required String? coverUrl,
     required TenantAdminMediaUpload? avatarUpload,
     required TenantAdminMediaUpload? coverUpload,
   }) {
@@ -701,6 +867,9 @@ class TenantAdminAccountProfilesController implements Disposable {
         location: location,
         taxonomyTerms: taxonomyTerms,
         bio: bio,
+        content: content,
+        avatarUrl: avatarUrl,
+        coverUrl: coverUrl,
         avatarUpload: avatarUpload,
         coverUpload: coverUpload,
       );
@@ -716,6 +885,9 @@ class TenantAdminAccountProfilesController implements Disposable {
       location: capabilities.isPoiEnabled ? location : null,
       taxonomyTerms: filteredTerms,
       bio: capabilities.hasBio ? bio : null,
+      content: capabilities.hasContent ? content : null,
+      avatarUrl: capabilities.hasAvatar ? avatarUrl : null,
+      coverUrl: capabilities.hasCover ? coverUrl : null,
       avatarUpload: capabilities.hasAvatar ? avatarUpload : null,
       coverUpload: capabilities.hasCover ? coverUpload : null,
     );
@@ -724,8 +896,10 @@ class TenantAdminAccountProfilesController implements Disposable {
   void dispose() {
     _isDisposed = true;
     _locationSelectionSubscription?.cancel();
+    slugController.dispose();
     displayNameController.dispose();
     bioController.dispose();
+    contentController.dispose();
     latitudeController.dispose();
     longitudeController.dispose();
     profilesStreamValue.dispose();
@@ -739,11 +913,15 @@ class TenantAdminAccountProfilesController implements Disposable {
     accountProfileStreamValue.dispose();
     accountDetailLoadingStreamValue.dispose();
     accountDetailErrorStreamValue.dispose();
+    accountUpdatingStreamValue.dispose();
     editStateStreamValue.dispose();
+    editLoadingStreamValue.dispose();
+    editLoadErrorStreamValue.dispose();
     createStateStreamValue.dispose();
     editSubmittingStreamValue.dispose();
     editSuccessMessageStreamValue.dispose();
     editErrorMessageStreamValue.dispose();
+    taxonomyAutosavingStreamValue.dispose();
     createSubmittingStreamValue.dispose();
     createSuccessMessageStreamValue.dispose();
     createErrorMessageStreamValue.dispose();
@@ -756,13 +934,10 @@ class TenantAdminAccountProfilesController implements Disposable {
   }
 }
 
-class TenantAdminAccountProfileEditState {
+class TenantAdminAccountProfileEditDraft {
   static const _unset = Object();
 
-  const TenantAdminAccountProfileEditState({
-    required this.isLoading,
-    required this.profile,
-    required this.errorMessage,
+  const TenantAdminAccountProfileEditDraft({
     required this.selectedProfileType,
     required this.avatarFile,
     required this.coverFile,
@@ -776,11 +951,8 @@ class TenantAdminAccountProfileEditState {
     required this.coverPreloadUrl,
   });
 
-  factory TenantAdminAccountProfileEditState.initial() =>
-      const TenantAdminAccountProfileEditState(
-        isLoading: true,
-        profile: null,
-        errorMessage: null,
+  factory TenantAdminAccountProfileEditDraft.initial() =>
+      const TenantAdminAccountProfileEditDraft(
         selectedProfileType: null,
         avatarFile: null,
         coverFile: null,
@@ -794,9 +966,6 @@ class TenantAdminAccountProfileEditState {
         coverPreloadUrl: null,
       );
 
-  final bool isLoading;
-  final TenantAdminAccountProfile? profile;
-  final String? errorMessage;
   final String? selectedProfileType;
   final XFile? avatarFile;
   final XFile? coverFile;
@@ -809,10 +978,7 @@ class TenantAdminAccountProfileEditState {
   final String? avatarPreloadUrl;
   final String? coverPreloadUrl;
 
-  TenantAdminAccountProfileEditState copyWith({
-    bool? isLoading,
-    Object? profile = _unset,
-    Object? errorMessage = _unset,
+  TenantAdminAccountProfileEditDraft copyWith({
     Object? selectedProfileType = _unset,
     Object? avatarFile = _unset,
     Object? coverFile = _unset,
@@ -825,11 +991,6 @@ class TenantAdminAccountProfileEditState {
     Object? avatarPreloadUrl = _unset,
     Object? coverPreloadUrl = _unset,
   }) {
-    final nextProfile = profile == _unset
-        ? this.profile
-        : profile as TenantAdminAccountProfile?;
-    final nextErrorMessage =
-        errorMessage == _unset ? this.errorMessage : errorMessage as String?;
     final nextSelectedProfileType = selectedProfileType == _unset
         ? this.selectedProfileType
         : selectedProfileType as String?;
@@ -850,10 +1011,7 @@ class TenantAdminAccountProfileEditState {
         ? this.coverPreloadUrl
         : coverPreloadUrl as String?;
 
-    return TenantAdminAccountProfileEditState(
-      isLoading: isLoading ?? this.isLoading,
-      profile: nextProfile,
-      errorMessage: nextErrorMessage,
+    return TenantAdminAccountProfileEditDraft(
       selectedProfileType: nextSelectedProfileType,
       avatarFile: nextAvatarFile,
       coverFile: nextCoverFile,
@@ -868,7 +1026,7 @@ class TenantAdminAccountProfileEditState {
     );
   }
 
-  TenantAdminAccountProfileEditState syncRemoteState(
+  TenantAdminAccountProfileEditDraft syncRemoteState(
     TenantAdminAccountProfile updated,
   ) {
     final avatarUrl = updated.avatarUrl;
@@ -886,30 +1044,38 @@ class TenantAdminAccountProfileEditState {
   }
 }
 
-class TenantAdminAccountProfileCreateState {
+class TenantAdminAccountProfileCreateDraft {
   static const _unset = Object();
 
-  const TenantAdminAccountProfileCreateState({
+  const TenantAdminAccountProfileCreateDraft({
     required this.selectedProfileType,
     required this.avatarFile,
     required this.coverFile,
+    required this.avatarWebUrl,
+    required this.coverWebUrl,
   });
 
-  factory TenantAdminAccountProfileCreateState.initial() =>
-      const TenantAdminAccountProfileCreateState(
+  factory TenantAdminAccountProfileCreateDraft.initial() =>
+      const TenantAdminAccountProfileCreateDraft(
         selectedProfileType: null,
         avatarFile: null,
         coverFile: null,
+        avatarWebUrl: null,
+        coverWebUrl: null,
       );
 
   final String? selectedProfileType;
   final XFile? avatarFile;
   final XFile? coverFile;
+  final String? avatarWebUrl;
+  final String? coverWebUrl;
 
-  TenantAdminAccountProfileCreateState copyWith({
+  TenantAdminAccountProfileCreateDraft copyWith({
     Object? selectedProfileType = _unset,
     Object? avatarFile = _unset,
     Object? coverFile = _unset,
+    Object? avatarWebUrl = _unset,
+    Object? coverWebUrl = _unset,
   }) {
     final nextSelectedProfileType = selectedProfileType == _unset
         ? this.selectedProfileType
@@ -918,11 +1084,17 @@ class TenantAdminAccountProfileCreateState {
         avatarFile == _unset ? this.avatarFile : avatarFile as XFile?;
     final nextCoverFile =
         coverFile == _unset ? this.coverFile : coverFile as XFile?;
+    final nextAvatarWebUrl =
+        avatarWebUrl == _unset ? this.avatarWebUrl : avatarWebUrl as String?;
+    final nextCoverWebUrl =
+        coverWebUrl == _unset ? this.coverWebUrl : coverWebUrl as String?;
 
-    return TenantAdminAccountProfileCreateState(
+    return TenantAdminAccountProfileCreateDraft(
       selectedProfileType: nextSelectedProfileType,
       avatarFile: nextAvatarFile,
       coverFile: nextCoverFile,
+      avatarWebUrl: nextAvatarWebUrl,
+      coverWebUrl: nextCoverWebUrl,
     );
   }
 }
@@ -932,6 +1104,9 @@ class _CapabilityFilter {
     required this.location,
     required this.taxonomyTerms,
     required this.bio,
+    required this.content,
+    required this.avatarUrl,
+    required this.coverUrl,
     required this.avatarUpload,
     required this.coverUpload,
   });
@@ -939,6 +1114,9 @@ class _CapabilityFilter {
   final TenantAdminLocation? location;
   final List<TenantAdminTaxonomyTerm> taxonomyTerms;
   final String? bio;
+  final String? content;
+  final String? avatarUrl;
+  final String? coverUrl;
   final TenantAdminMediaUpload? avatarUpload;
   final TenantAdminMediaUpload? coverUpload;
 }

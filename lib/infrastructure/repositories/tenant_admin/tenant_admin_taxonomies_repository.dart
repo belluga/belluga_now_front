@@ -1,20 +1,30 @@
-import 'package:belluga_now/application/configurations/belluga_constants.dart';
 import 'package:belluga_now/domain/repositories/landlord_auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_taxonomies_repository_contract.dart';
+import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_definition.dart';
 import 'package:belluga_now/infrastructure/dal/dto/tenant_admin/tenant_admin_taxonomy_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/tenant_admin/tenant_admin_taxonomy_term_definition_dto.dart';
+import 'package:belluga_now/infrastructure/repositories/tenant_admin/tenant_admin_pagination_utils.dart';
 import 'package:dio/dio.dart';
 import 'package:get_it/get_it.dart';
 
 class TenantAdminTaxonomiesRepository
+    with TenantAdminTaxonomiesPaginationMixin
     implements TenantAdminTaxonomiesRepositoryContract {
-  TenantAdminTaxonomiesRepository({Dio? dio}) : _dio = dio ?? Dio();
+  TenantAdminTaxonomiesRepository({
+    Dio? dio,
+    TenantAdminTenantScopeContract? tenantScope,
+  })  : _dio = dio ?? Dio(),
+        _tenantScope = tenantScope;
 
   final Dio _dio;
+  final TenantAdminTenantScopeContract? _tenantScope;
 
-  String get _apiBaseUrl => BellugaConstants.api.adminUrl;
+  String get _apiBaseUrl =>
+      (_tenantScope ?? GetIt.I.get<TenantAdminTenantScopeContract>())
+          .selectedTenantAdminBaseUrl;
 
   Map<String, String> _buildHeaders() {
     final token = GetIt.I.get<LandlordAuthRepositoryContract>().token;
@@ -26,15 +36,49 @@ class TenantAdminTaxonomiesRepository
 
   @override
   Future<List<TenantAdminTaxonomyDefinition>> fetchTaxonomies() async {
+    var page = 1;
+    const pageSize = 100;
+    var hasMore = true;
+    final taxonomies = <TenantAdminTaxonomyDefinition>[];
+
+    while (hasMore) {
+      final result = await fetchTaxonomiesPage(
+        page: page,
+        pageSize: pageSize,
+      );
+      taxonomies.addAll(result.items);
+      hasMore = result.hasMore;
+      page += 1;
+    }
+
+    return List<TenantAdminTaxonomyDefinition>.unmodifiable(taxonomies);
+  }
+
+  @override
+  Future<TenantAdminPagedResult<TenantAdminTaxonomyDefinition>>
+      fetchTaxonomiesPage({
+    required int page,
+    required int pageSize,
+  }) async {
     try {
       final response = await _dio.get(
         '$_apiBaseUrl/v1/taxonomies',
+        queryParameters: {
+          'page': page,
+          'page_size': pageSize,
+        },
         options: Options(headers: _buildHeaders()),
       );
       final data = _extractList(response.data);
-      return data.map(_mapTaxonomy).toList(growable: false);
+      return TenantAdminPagedResult<TenantAdminTaxonomyDefinition>(
+        items: data.map(_mapTaxonomy).toList(growable: false),
+        hasMore: tenantAdminResolveHasMore(
+          rawResponse: response.data,
+          requestedPage: page,
+        ),
+      );
     } on DioException catch (error) {
-      throw _wrapError(error, 'load taxonomies');
+      throw _wrapError(error, 'load taxonomies page');
     }
   }
 
@@ -119,15 +163,51 @@ class TenantAdminTaxonomiesRepository
   Future<List<TenantAdminTaxonomyTermDefinition>> fetchTerms({
     required String taxonomyId,
   }) async {
+    var page = 1;
+    const pageSize = 100;
+    var hasMore = true;
+    final terms = <TenantAdminTaxonomyTermDefinition>[];
+
+    while (hasMore) {
+      final result = await fetchTermsPage(
+        taxonomyId: taxonomyId,
+        page: page,
+        pageSize: pageSize,
+      );
+      terms.addAll(result.items);
+      hasMore = result.hasMore;
+      page += 1;
+    }
+
+    return List<TenantAdminTaxonomyTermDefinition>.unmodifiable(terms);
+  }
+
+  @override
+  Future<TenantAdminPagedResult<TenantAdminTaxonomyTermDefinition>>
+      fetchTermsPage({
+    required String taxonomyId,
+    required int page,
+    required int pageSize,
+  }) async {
     try {
       final response = await _dio.get(
         '$_apiBaseUrl/v1/taxonomies/$taxonomyId/terms',
+        queryParameters: {
+          'page': page,
+          'page_size': pageSize,
+        },
         options: Options(headers: _buildHeaders()),
       );
       final data = _extractList(response.data);
-      return data.map(_mapTerm).toList(growable: false);
+      return TenantAdminPagedResult<TenantAdminTaxonomyTermDefinition>(
+        items: data.map(_mapTerm).toList(growable: false),
+        hasMore: tenantAdminResolveHasMore(
+          rawResponse: response.data,
+          requestedPage: page,
+        ),
+      );
     } on DioException catch (error) {
-      throw _wrapError(error, 'load taxonomy terms');
+      throw _wrapError(error, 'load taxonomy terms page');
     }
   }
 
