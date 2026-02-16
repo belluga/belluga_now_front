@@ -155,11 +155,6 @@ void main() {
       find.widgetWithText(TextFormField, 'Nome de exibicao'),
       'Praia do Morro',
     );
-    await tester.enterText(
-      find.widgetWithText(TextFormField, 'Slug'),
-      'praia-do-morro',
-    );
-
     final urbanaOption = find.text('Urbana').last;
     await _waitForFinder(tester, urbanaOption);
     await tester.ensureVisible(urbanaOption);
@@ -381,29 +376,25 @@ class _FakeStaticAssetsRepository
   Future<TenantAdminStaticAsset> createStaticAsset({
     required String profileType,
     required String displayName,
-    required String slug,
     TenantAdminLocation? location,
     List<TenantAdminTaxonomyTerm> taxonomyTerms = const [],
     List<String> tags = const [],
-    List<String> categories = const [],
     String? bio,
     String? content,
     String? avatarUrl,
     String? coverUrl,
     TenantAdminMediaUpload? avatarUpload,
     TenantAdminMediaUpload? coverUpload,
-    required bool isActive,
   }) async {
     final asset = TenantAdminStaticAsset(
       id: 'asset-1',
       profileType: profileType,
       displayName: displayName,
-      slug: slug,
-      isActive: isActive,
+      slug: 'asset-1',
+      isActive: true,
       location: location,
       taxonomyTerms: taxonomyTerms,
       tags: tags,
-      categories: categories,
       bio: bio,
       content: content,
       avatarUrl: avatarUrl,
@@ -418,29 +409,25 @@ class _FakeStaticAssetsRepository
     required String assetId,
     String? profileType,
     String? displayName,
-    String? slug,
     TenantAdminLocation? location,
     List<TenantAdminTaxonomyTerm>? taxonomyTerms,
     List<String>? tags,
-    List<String>? categories,
     String? bio,
     String? content,
     String? avatarUrl,
     String? coverUrl,
     TenantAdminMediaUpload? avatarUpload,
     TenantAdminMediaUpload? coverUpload,
-    bool? isActive,
   }) async {
     return TenantAdminStaticAsset(
       id: assetId,
       profileType: profileType ?? 'beach',
       displayName: displayName ?? 'Praia',
-      slug: slug ?? 'praia',
-      isActive: isActive ?? true,
+      slug: 'praia',
+      isActive: true,
       location: location,
       taxonomyTerms: taxonomyTerms ?? const [],
       tags: tags ?? const [],
-      categories: categories ?? const [],
       bio: bio,
       content: content,
       avatarUrl: avatarUrl,

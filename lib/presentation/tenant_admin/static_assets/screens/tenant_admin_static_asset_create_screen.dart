@@ -5,7 +5,6 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_static_profile_type
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_definition.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_form_value_utils.dart';
-import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_slug_utils.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_error_banner.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_form_layout.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_token_chips_field.dart';
@@ -31,13 +30,10 @@ class _TenantAdminStaticAssetCreateScreenState
   void initState() {
     super.initState();
     _controller.initCreate();
-    _controller.displayNameController.addListener(_syncSlugFromDisplayName);
-    _syncSlugFromDisplayName();
   }
 
   @override
   void dispose() {
-    _controller.displayNameController.removeListener(_syncSlugFromDisplayName);
     _controller.clearSubmitMessages();
     super.dispose();
   }
@@ -82,7 +78,6 @@ class _TenantAdminStaticAssetCreateScreenState
                             children: [
                               _buildBasicSection(context, error),
                               const SizedBox(height: 16),
-                              _buildStatusSection(),
                               if (hasAvatar || hasCover) ...[
                                 const SizedBox(height: 16),
                                 _buildMediaSection(
@@ -90,9 +85,7 @@ class _TenantAdminStaticAssetCreateScreenState
                                   hasCover: hasCover,
                                 ),
                               ],
-                              if (hasBio ||
-                                  hasContent ||
-                                  _hasTagsOrCategories()) ...[
+                              if (hasBio || hasContent || _hasTagsSection()) ...[
                                 const SizedBox(height: 16),
                                 _buildContentSection(
                                   context,
@@ -139,23 +132,6 @@ class _TenantAdminStaticAssetCreateScreenState
     return null;
   }
 
-  void _syncSlugFromDisplayName() {
-    if (!_controller.isSlugAutoEnabled) {
-      return;
-    }
-    final generated =
-        tenantAdminSlugify(_controller.displayNameController.text);
-    if (_controller.slugController.text == generated) {
-      return;
-    }
-    _controller.slugController.value =
-        _controller.slugController.value.copyWith(
-      text: generated,
-      selection: TextSelection.collapsed(offset: generated.length),
-      composing: TextRange.empty,
-    );
-  }
-
   void _clearCapabilityFields(String? selectedType) {
     final definition = _profileTypeDefinition(selectedType);
     if (!(definition?.capabilities.hasBio ?? false)) {
@@ -179,7 +155,7 @@ class _TenantAdminStaticAssetCreateScreenState
     }
   }
 
-  bool _hasTagsOrCategories() {
+  bool _hasTagsSection() {
     return true;
   }
 
@@ -217,15 +193,8 @@ class _TenantAdminStaticAssetCreateScreenState
   List<String> _currentTags() =>
       tenantAdminParseTokenList(_controller.tagsController.text);
 
-  List<String> _currentCategories() =>
-      tenantAdminParseTokenList(_controller.categoriesController.text);
-
   void _updateTags(List<String> next) {
     _controller.tagsController.text = tenantAdminJoinTokenList(next);
-  }
-
-  void _updateCategories(List<String> next) {
-    _controller.categoriesController.text = tenantAdminJoinTokenList(next);
   }
 
   String? _validateLatitude(String? value) {
@@ -394,52 +363,7 @@ class _TenantAdminStaticAssetCreateScreenState
                 return null;
               },
             ),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: _controller.slugController,
-              decoration: const InputDecoration(labelText: 'Slug'),
-              keyboardType: TextInputType.visiblePassword,
-              textCapitalization: TextCapitalization.none,
-              autocorrect: false,
-              enableSuggestions: false,
-              inputFormatters: tenantAdminSlugInputFormatters,
-              onChanged: (value) {
-                final generated =
-                    tenantAdminSlugify(_controller.displayNameController.text);
-                if (_controller.isSlugAutoEnabled && value != generated) {
-                  _controller.setSlugAutoEnabled(false);
-                }
-              },
-              textInputAction: TextInputAction.next,
-              validator: (value) => tenantAdminValidateRequiredSlug(
-                value,
-                requiredMessage: 'Slug e obrigatorio.',
-                invalidMessage:
-                    'Slug invalido. Use letras minusculas, numeros, - ou _.',
-              ),
-            ),
           ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildStatusSection() {
-    return Card(
-      margin: EdgeInsets.zero,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: StreamValueBuilder<bool>(
-          streamValue: _controller.isActiveStreamValue,
-          builder: (context, isActive) {
-            return SwitchListTile(
-              contentPadding: EdgeInsets.zero,
-              title: const Text('Ativo'),
-              subtitle: const Text('Exibir ativo nas superficies publicas.'),
-              value: isActive,
-              onChanged: _controller.updateIsActive,
-            );
-          },
         ),
       ),
     );
@@ -490,14 +414,6 @@ class _TenantAdminStaticAssetCreateScreenState
               hintText: 'Adicionar tag',
               emptyStateText: 'Nenhuma tag adicionada.',
               onChanged: _updateTags,
-            ),
-            const SizedBox(height: 12),
-            TenantAdminTokenChipsField(
-              label: 'Categorias',
-              values: _currentCategories(),
-              hintText: 'Adicionar categoria',
-              emptyStateText: 'Nenhuma categoria adicionada.',
-              onChanged: _updateCategories,
             ),
           ],
         ),

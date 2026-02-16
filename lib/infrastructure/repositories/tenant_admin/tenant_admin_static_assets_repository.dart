@@ -102,33 +102,27 @@ class TenantAdminStaticAssetsRepository
   Future<TenantAdminStaticAsset> createStaticAsset({
     required String profileType,
     required String displayName,
-    required String slug,
     TenantAdminLocation? location,
     List<TenantAdminTaxonomyTerm> taxonomyTerms = const [],
     List<String> tags = const [],
-    List<String> categories = const [],
     String? bio,
     String? content,
     String? avatarUrl,
     String? coverUrl,
     TenantAdminMediaUpload? avatarUpload,
     TenantAdminMediaUpload? coverUpload,
-    required bool isActive,
   }) async {
     try {
       final payload = _buildPayload(
         profileType: profileType,
         displayName: displayName,
-        slug: slug,
         location: location,
         taxonomyTerms: taxonomyTerms,
         tags: tags,
-        categories: categories,
         bio: bio,
         content: content,
         avatarUrl: avatarUrl,
         coverUrl: coverUrl,
-        isActive: isActive,
       );
       final uploadPayload = _buildMultipartPayload(
         payload,
@@ -152,33 +146,27 @@ class TenantAdminStaticAssetsRepository
     required String assetId,
     String? profileType,
     String? displayName,
-    String? slug,
     TenantAdminLocation? location,
     List<TenantAdminTaxonomyTerm>? taxonomyTerms,
     List<String>? tags,
-    List<String>? categories,
     String? bio,
     String? content,
     String? avatarUrl,
     String? coverUrl,
     TenantAdminMediaUpload? avatarUpload,
     TenantAdminMediaUpload? coverUpload,
-    bool? isActive,
   }) async {
     try {
       final payload = _buildPayload(
         profileType: profileType,
         displayName: displayName,
-        slug: slug,
         location: location,
         taxonomyTerms: taxonomyTerms,
         tags: tags,
-        categories: categories,
         bio: bio,
         content: content,
         avatarUrl: avatarUrl,
         coverUrl: coverUrl,
-        isActive: isActive,
       );
       final uploadPayload = _buildMultipartPayload(
         payload,
@@ -362,21 +350,17 @@ class TenantAdminStaticAssetsRepository
   Map<String, dynamic> _buildPayload({
     String? profileType,
     String? displayName,
-    String? slug,
     TenantAdminLocation? location,
     List<TenantAdminTaxonomyTerm>? taxonomyTerms,
     List<String>? tags,
-    List<String>? categories,
     String? bio,
     String? content,
     String? avatarUrl,
     String? coverUrl,
-    bool? isActive,
   }) {
     final payload = <String, dynamic>{};
     if (profileType != null) payload['profile_type'] = profileType;
     if (displayName != null) payload['display_name'] = displayName;
-    if (slug != null) payload['slug'] = slug;
     if (location != null) {
       payload['location'] = {
         'lat': location.latitude,
@@ -389,12 +373,10 @@ class TenantAdminStaticAssetsRepository
           .toList();
     }
     if (tags != null) payload['tags'] = tags;
-    if (categories != null) payload['categories'] = categories;
     if (bio != null) payload['bio'] = bio;
     if (content != null) payload['content'] = content;
     if (avatarUrl != null) payload['avatar_url'] = avatarUrl;
     if (coverUrl != null) payload['cover_url'] = coverUrl;
-    if (isActive != null) payload['is_active'] = isActive;
     return payload;
   }
 

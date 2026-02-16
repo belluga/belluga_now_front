@@ -11,7 +11,6 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_definition.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_form_value_utils.dart';
-import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_slug_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart' show Disposable, GetIt;
 import 'package:stream_value/core/stream_value.dart';
@@ -63,8 +62,6 @@ class TenantAdminStaticAssetsController implements Disposable {
       StreamValue<Map<String, Set<String>>>(defaultValue: const {});
   final StreamValue<String?> selectedProfileTypeStreamValue =
       StreamValue<String?>(defaultValue: null);
-  final StreamValue<bool> isActiveStreamValue =
-      StreamValue<bool>(defaultValue: true);
   final StreamValue<TenantAdminStaticAsset?> editingAssetStreamValue =
       StreamValue<TenantAdminStaticAsset?>();
   final StreamValue<bool> isLoadingStreamValue =
@@ -79,16 +76,12 @@ class TenantAdminStaticAssetsController implements Disposable {
   final StreamValue<String?> submitSuccessStreamValue = StreamValue<String?>();
   final StreamValue<String> searchQueryStreamValue =
       StreamValue<String>(defaultValue: '');
-  final StreamValue<bool> isSlugAutoEnabledStreamValue =
-      StreamValue<bool>(defaultValue: true);
 
   final GlobalKey<FormState> formKey = GlobalKey<FormState>();
   final TextEditingController displayNameController = TextEditingController();
-  final TextEditingController slugController = TextEditingController();
   final TextEditingController bioController = TextEditingController();
   final TextEditingController contentController = TextEditingController();
   final TextEditingController tagsController = TextEditingController();
-  final TextEditingController categoriesController = TextEditingController();
   final TextEditingController avatarUrlController = TextEditingController();
   final TextEditingController coverUrlController = TextEditingController();
   final TextEditingController latitudeController = TextEditingController();
@@ -285,13 +278,9 @@ class TenantAdminStaticAssetsController implements Disposable {
 
   void _hydrateForm(TenantAdminStaticAsset asset) {
     displayNameController.text = asset.displayName;
-    slugController.text = asset.slug;
-    final generatedSlug = tenantAdminSlugify(asset.displayName);
-    isSlugAutoEnabledStreamValue.addValue(asset.slug == generatedSlug);
     bioController.text = asset.bio ?? '';
     contentController.text = asset.content ?? '';
     tagsController.text = asset.tags.join(', ');
-    categoriesController.text = asset.categories.join(', ');
     avatarUrlController.text = asset.avatarUrl ?? '';
     coverUrlController.text = asset.coverUrl ?? '';
     if (asset.location != null) {
@@ -301,7 +290,6 @@ class TenantAdminStaticAssetsController implements Disposable {
       latitudeController.clear();
       longitudeController.clear();
     }
-    isActiveStreamValue.addValue(asset.isActive);
     updateSelectedProfileType(asset.profileType);
     _applyTaxonomySelection(asset.taxonomyTerms);
   }
@@ -311,18 +299,8 @@ class TenantAdminStaticAssetsController implements Disposable {
     _pruneTaxonomySelection();
   }
 
-  void updateIsActive(bool value) {
-    isActiveStreamValue.addValue(value);
-  }
-
   void updateSearchQuery(String value) {
     searchQueryStreamValue.addValue(value);
-  }
-
-  bool get isSlugAutoEnabled => isSlugAutoEnabledStreamValue.value;
-
-  void setSlugAutoEnabled(bool enabled) {
-    isSlugAutoEnabledStreamValue.addValue(enabled);
   }
 
   void updateTaxonomySelection({
@@ -425,11 +403,9 @@ class TenantAdminStaticAssetsController implements Disposable {
       final created = await _repository.createStaticAsset(
         profileType: selectedProfileTypeStreamValue.value ?? '',
         displayName: displayNameController.text.trim(),
-        slug: slugController.text.trim(),
         location: _parseLocation(),
         taxonomyTerms: _buildTaxonomyTerms(),
         tags: _parseList(tagsController),
-        categories: _parseList(categoriesController),
         bio: bioController.text.trim().isEmpty
             ? null
             : bioController.text.trim(),
@@ -442,7 +418,6 @@ class TenantAdminStaticAssetsController implements Disposable {
         coverUrl: coverUrlController.text.trim().isEmpty
             ? null
             : coverUrlController.text.trim(),
-        isActive: isActiveStreamValue.value,
       );
       if (_isDisposed) return;
       submitErrorStreamValue.addValue(null);
@@ -477,11 +452,9 @@ class TenantAdminStaticAssetsController implements Disposable {
         assetId: assetId,
         profileType: selectedProfileTypeStreamValue.value,
         displayName: displayNameController.text.trim(),
-        slug: slugController.text.trim(),
         location: _parseLocation(),
         taxonomyTerms: _buildTaxonomyTerms(),
         tags: _parseList(tagsController),
-        categories: _parseList(categoriesController),
         bio: bioController.text.trim().isEmpty
             ? null
             : bioController.text.trim(),
@@ -494,7 +467,6 @@ class TenantAdminStaticAssetsController implements Disposable {
         coverUrl: coverUrlController.text.trim().isEmpty
             ? null
             : coverUrlController.text.trim(),
-        isActive: isActiveStreamValue.value,
       );
       if (_isDisposed) return;
       submitErrorStreamValue.addValue(null);
@@ -549,19 +521,15 @@ class TenantAdminStaticAssetsController implements Disposable {
   void _resetFormState() {
     editingAssetStreamValue.addValue(null);
     displayNameController.clear();
-    slugController.clear();
     bioController.clear();
     contentController.clear();
     tagsController.clear();
-    categoriesController.clear();
     avatarUrlController.clear();
     coverUrlController.clear();
     latitudeController.clear();
     longitudeController.clear();
     selectedProfileTypeStreamValue.addValue(null);
     selectedTaxonomyTermsStreamValue.addValue(const {});
-    isActiveStreamValue.addValue(true);
-    isSlugAutoEnabledStreamValue.addValue(true);
     clearSubmitMessages();
   }
 
@@ -608,11 +576,9 @@ class TenantAdminStaticAssetsController implements Disposable {
     _locationSubscription?.cancel();
     _tenantScopeSubscription?.cancel();
     displayNameController.dispose();
-    slugController.dispose();
     bioController.dispose();
     contentController.dispose();
     tagsController.dispose();
-    categoriesController.dispose();
     avatarUrlController.dispose();
     coverUrlController.dispose();
     latitudeController.dispose();
@@ -625,7 +591,6 @@ class TenantAdminStaticAssetsController implements Disposable {
     taxonomyTermsStreamValue.dispose();
     selectedTaxonomyTermsStreamValue.dispose();
     selectedProfileTypeStreamValue.dispose();
-    isActiveStreamValue.dispose();
     editingAssetStreamValue.dispose();
     isLoadingStreamValue.dispose();
     errorStreamValue.dispose();
@@ -635,6 +600,5 @@ class TenantAdminStaticAssetsController implements Disposable {
     submitErrorStreamValue.dispose();
     submitSuccessStreamValue.dispose();
     searchQueryStreamValue.dispose();
-    isSlugAutoEnabledStreamValue.dispose();
   }
 }

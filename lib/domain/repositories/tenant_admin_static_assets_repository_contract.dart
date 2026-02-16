@@ -40,36 +40,30 @@ abstract class TenantAdminStaticAssetsRepositoryContract {
   Future<TenantAdminStaticAsset> createStaticAsset({
     required String profileType,
     required String displayName,
-    required String slug,
     TenantAdminLocation? location,
     List<TenantAdminTaxonomyTerm> taxonomyTerms = const [],
     List<String> tags = const [],
-    List<String> categories = const [],
     String? bio,
     String? content,
     String? avatarUrl,
     String? coverUrl,
     TenantAdminMediaUpload? avatarUpload,
     TenantAdminMediaUpload? coverUpload,
-    required bool isActive,
   });
 
   Future<TenantAdminStaticAsset> updateStaticAsset({
     required String assetId,
     String? profileType,
     String? displayName,
-    String? slug,
     TenantAdminLocation? location,
     List<TenantAdminTaxonomyTerm>? taxonomyTerms,
     List<String>? tags,
-    List<String>? categories,
     String? bio,
     String? content,
     String? avatarUrl,
     String? coverUrl,
     TenantAdminMediaUpload? avatarUpload,
     TenantAdminMediaUpload? coverUpload,
-    bool? isActive,
   });
 
   Future<void> deleteStaticAsset(String assetId);
