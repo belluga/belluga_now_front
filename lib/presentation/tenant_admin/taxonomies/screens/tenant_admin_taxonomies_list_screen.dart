@@ -60,6 +60,7 @@ class _TenantAdminTaxonomiesListScreenState
     }
     await context.router.push(
       TenantAdminTaxonomyEditRoute(
+        taxonomyId: taxonomy.id,
         taxonomy: taxonomy,
       ),
     );

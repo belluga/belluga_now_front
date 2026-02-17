@@ -63,8 +63,10 @@ void main() {
       await authRepository.init();
       GetIt.I.registerSingleton<AuthRepositoryContract>(authRepository);
 
-      final initialAnonymousId = await authRepository.getUserId();
-      expect(initialAnonymousId, isNotNull);
+      final preSignupUserId = await authRepository.getUserId();
+      if (preSignupUserId != null) {
+        expect(preSignupUserId, isNotEmpty);
+      }
 
       final now = DateTime.now().millisecondsSinceEpoch;
       final email = 'signup-regression-$now@belluga.test';

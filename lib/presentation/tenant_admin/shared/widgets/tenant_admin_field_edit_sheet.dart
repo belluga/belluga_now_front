@@ -1,3 +1,4 @@
+import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -102,7 +103,7 @@ class _TenantAdminFieldEditSheetState extends State<_TenantAdminFieldEditSheet> 
     if (form == null || !form.validate()) {
       return;
     }
-    Navigator.of(context).pop(
+    context.router.maybePop(
       TenantAdminFieldEditSheetResult(value: _controller.text.trim()),
     );
   }

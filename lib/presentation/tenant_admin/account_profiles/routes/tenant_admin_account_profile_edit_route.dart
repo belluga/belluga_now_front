@@ -6,14 +6,20 @@ import 'package:flutter/material.dart';
 class TenantAdminAccountProfileEditRoutePage extends StatelessWidget {
   const TenantAdminAccountProfileEditRoutePage({
     super.key,
-    required this.accountProfileId,
+    @PathParam('accountSlug') required this.accountSlug,
+    @PathParam('accountProfileId') required this.accountProfileId,
   });
 
+  final String accountSlug;
   final String accountProfileId;
 
   @override
   Widget build(BuildContext context) {
     return TenantAdminAccountProfileEditScreen(
+      key: ValueKey(
+        'tenant-admin-account-profile-edit-$accountSlug-$accountProfileId',
+      ),
+      accountSlug: accountSlug,
       accountProfileId: accountProfileId,
     );
   }

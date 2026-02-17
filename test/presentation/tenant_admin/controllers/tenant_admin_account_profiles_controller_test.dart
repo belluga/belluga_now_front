@@ -38,23 +38,42 @@ class _FakeAccountsRepository
   final StreamValue<String?> accountsErrorStreamValue = StreamValue<String?>();
 
   @override
-  Future<void> loadAccounts({int pageSize = 20}) async {}
+  Future<void> loadAccounts(
+      {int pageSize = 20, TenantAdminOwnershipState? ownershipState}) async {}
 
   @override
-  Future<void> loadNextAccountsPage({int pageSize = 20}) async {}
+  Future<void> loadNextAccountsPage(
+      {int pageSize = 20, TenantAdminOwnershipState? ownershipState}) async {}
 
   @override
   void resetAccountsState() {}
 
+  void _upsertAccount(TenantAdminAccount account) {
+    final current = List<TenantAdminAccount>.from(
+      accountsStreamValue.value ?? const <TenantAdminAccount>[],
+    );
+    final index = current.indexWhere((entry) => entry.id == account.id);
+    if (index >= 0) {
+      current[index] = account;
+    } else {
+      current.add(account);
+    }
+    accountsStreamValue.addValue(
+      List<TenantAdminAccount>.unmodifiable(current),
+    );
+  }
+
   @override
   Future<TenantAdminAccount> fetchAccountBySlug(String accountSlug) async {
-    return TenantAdminAccount(
+    final account = TenantAdminAccount(
       id: 'acc-1',
       name: 'Conta',
       slug: accountSlug,
       document: const TenantAdminDocument(type: 'cpf', number: '000'),
       ownershipState: TenantAdminOwnershipState.tenantOwned,
     );
+    _upsertAccount(account);
+    return account;
   }
 
   @override
@@ -64,6 +83,7 @@ class _FakeAccountsRepository
   Future<TenantAdminPagedAccountsResult> fetchAccountsPage({
     required int page,
     required int pageSize,
+    TenantAdminOwnershipState? ownershipState,
   }) async {
     return const TenantAdminPagedAccountsResult(
       accounts: <TenantAdminAccount>[],
@@ -78,7 +98,7 @@ class _FakeAccountsRepository
     required TenantAdminOwnershipState ownershipState,
     String? organizationId,
   }) async {
-    return TenantAdminAccount(
+    final account = TenantAdminAccount(
       id: 'acc-1',
       name: name,
       slug: 'acc-1',
@@ -86,6 +106,8 @@ class _FakeAccountsRepository
           document ?? const TenantAdminDocument(type: 'cpf', number: '000'),
       ownershipState: ownershipState,
     );
+    _upsertAccount(account);
+    return account;
   }
 
   @override
@@ -95,7 +117,16 @@ class _FakeAccountsRepository
     String? slug,
     TenantAdminDocument? document,
   }) async {
-    return fetchAccountBySlug(accountSlug);
+    final account = TenantAdminAccount(
+      id: 'acc-1',
+      name: name ?? 'Conta',
+      slug: slug ?? accountSlug,
+      document:
+          document ?? const TenantAdminDocument(type: 'cpf', number: '000'),
+      ownershipState: TenantAdminOwnershipState.tenantOwned,
+    );
+    _upsertAccount(account);
+    return account;
   }
 
   @override
@@ -121,6 +152,8 @@ class _FakeAccountProfilesRepository
   String? lastUpdateSlug;
   String? lastUpdateProfileType;
   String? lastUpdateDisplayName;
+  String? lastUpdateBio;
+  String? lastUpdateContent;
 
   @override
   Future<List<TenantAdminAccountProfile>> fetchAccountProfiles({
@@ -206,6 +239,8 @@ class _FakeAccountProfilesRepository
     lastUpdateSlug = slug;
     lastUpdateProfileType = profileType;
     lastUpdateDisplayName = displayName;
+    lastUpdateBio = bio;
+    lastUpdateContent = content;
     return _profiles.first;
   }
 
@@ -408,7 +443,7 @@ void main() {
             isPoiEnabled: true,
             hasBio: false,
             hasContent: false,
-          hasTaxonomies: false,
+            hasTaxonomies: false,
             hasAvatar: false,
             hasCover: false,
             hasEvents: false,
@@ -448,7 +483,7 @@ void main() {
             isPoiEnabled: true,
             hasBio: false,
             hasContent: false,
-          hasTaxonomies: false,
+            hasTaxonomies: false,
             hasAvatar: false,
             hasCover: false,
             hasEvents: false,
@@ -500,7 +535,7 @@ void main() {
             isPoiEnabled: true,
             hasBio: false,
             hasContent: false,
-          hasTaxonomies: false,
+            hasTaxonomies: false,
             hasAvatar: false,
             hasCover: false,
             hasEvents: false,
@@ -536,5 +571,149 @@ void main() {
     expect(profilesRepository.lastUpdateSlug, 'perfil-atualizado');
     expect(profilesRepository.lastUpdateProfileType, 'venue');
     expect(profilesRepository.lastUpdateDisplayName, 'Perfil atualizado');
+  });
+
+  test(
+      'submitTaxonomySelectionUpdate resolves profileType and sends string bio/content',
+      () async {
+    final profilesRepository = _FakeAccountProfilesRepository(
+      [
+        const TenantAdminAccountProfile(
+          id: 'profile-1',
+          accountId: 'acc-1',
+          profileType: 'artist',
+          displayName: 'Perfil',
+          slug: 'perfil',
+          bio: null,
+          content: null,
+        ),
+      ],
+      const [
+        TenantAdminProfileTypeDefinition(
+          type: 'artist',
+          label: 'Artist',
+          allowedTaxonomies: ['music-style'],
+          capabilities: TenantAdminProfileTypeCapabilities(
+            isFavoritable: true,
+            isPoiEnabled: false,
+            hasBio: true,
+            hasContent: true,
+            hasTaxonomies: true,
+            hasAvatar: true,
+            hasCover: true,
+            hasEvents: true,
+          ),
+        ),
+      ],
+    );
+    final accountsRepository = _FakeAccountsRepository();
+    final TenantAdminLocationSelectionContract locationSelectionService =
+        TenantAdminLocationSelectionService();
+    final taxonomiesRepository = _FakeTaxonomiesRepository();
+
+    final controller = TenantAdminAccountProfilesController(
+      profilesRepository: profilesRepository,
+      accountsRepository: accountsRepository,
+      taxonomiesRepository: taxonomiesRepository,
+      locationSelectionService: locationSelectionService,
+    );
+
+    controller.accountProfileStreamValue.addValue(
+      const TenantAdminAccountProfile(
+        id: 'profile-1',
+        accountId: 'acc-1',
+        profileType: 'artist',
+        displayName: 'Perfil',
+      ),
+    );
+    controller.profileTypesStreamValue.addValue(
+      const [
+        TenantAdminProfileTypeDefinition(
+          type: 'artist',
+          label: 'Artist',
+          allowedTaxonomies: ['music-style'],
+          capabilities: TenantAdminProfileTypeCapabilities(
+            isFavoritable: true,
+            isPoiEnabled: false,
+            hasBio: true,
+            hasContent: true,
+            hasTaxonomies: true,
+            hasAvatar: true,
+            hasCover: true,
+            hasEvents: true,
+          ),
+        ),
+      ],
+    );
+
+    final saved = await controller.submitTaxonomySelectionUpdate(
+      accountProfileId: 'profile-1',
+      profileType: null,
+      taxonomyTerms: const [
+        TenantAdminTaxonomyTerm(type: 'music-style', value: 'rock'),
+      ],
+      bio: null,
+      content: null,
+    );
+
+    expect(saved, isTrue);
+    expect(profilesRepository.lastUpdateProfileType, 'artist');
+    expect(profilesRepository.lastUpdateBio, '');
+    expect(profilesRepository.lastUpdateContent, '');
+  });
+
+  test('loadAccountForCreate stores resolved account slug in stream', () async {
+    final profilesRepository = _FakeAccountProfilesRepository(
+      const [],
+      const [],
+    );
+    final accountsRepository = _FakeAccountsRepository();
+    final TenantAdminLocationSelectionContract locationSelectionService =
+        TenantAdminLocationSelectionService();
+    final taxonomiesRepository = _FakeTaxonomiesRepository();
+
+    final controller = TenantAdminAccountProfilesController(
+      profilesRepository: profilesRepository,
+      accountsRepository: accountsRepository,
+      taxonomiesRepository: taxonomiesRepository,
+      locationSelectionService: locationSelectionService,
+    );
+
+    await controller.loadAccountForCreate('yuri-dias');
+
+    expect(controller.accountStreamValue.value, isNotNull);
+    expect(controller.accountStreamValue.value!.slug, 'yuri-dias');
+    expect(controller.createAccountIdStreamValue.value, 'acc-1');
+  });
+
+  test('updateAccount syncs canonical account stream without manual reload',
+      () async {
+    final profilesRepository = _FakeAccountProfilesRepository(
+      const [],
+      const [],
+    );
+    final accountsRepository = _FakeAccountsRepository();
+    final TenantAdminLocationSelectionContract locationSelectionService =
+        TenantAdminLocationSelectionService();
+    final taxonomiesRepository = _FakeTaxonomiesRepository();
+
+    final controller = TenantAdminAccountProfilesController(
+      profilesRepository: profilesRepository,
+      accountsRepository: accountsRepository,
+      taxonomiesRepository: taxonomiesRepository,
+      locationSelectionService: locationSelectionService,
+    );
+
+    await controller.loadAccountDetail('yuri-dias');
+    final updated = await controller.updateAccount(
+      accountSlug: 'yuri-dias',
+      name: 'Conta atualizada',
+      slug: 'yuri-atualizado',
+    );
+
+    expect(updated, isNotNull);
+    expect(controller.accountStreamValue.value, isNotNull);
+    expect(controller.accountStreamValue.value!.name, 'Conta atualizada');
+    expect(controller.accountStreamValue.value!.slug, 'yuri-atualizado');
   });
 }

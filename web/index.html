@@ -124,22 +124,31 @@
     // Host-based routing safety (pre-Flutter).
     // - Tenant hosts must never render landlord routes even via direct navigation.
     // - Landlord host must never render tenant-only routes even via direct navigation.
-    // This protects against stale cached builds (where guards might not exist yet).
-    const landlordHost = 'belluga.app';
-    const hostname = window.location.hostname;
-    const pathname = window.location.pathname || '/';
-    const isTenantHost =
-      hostname.endsWith('.' + landlordHost) && hostname !== landlordHost;
-    const isLandlordHost = hostname === landlordHost;
+    // This check is optional and only runs when the host app injects a landlord
+    // host at runtime (window.__LANDLORD_HOST__). Keeping it dynamic avoids
+    // lane/domain drift caused by hardcoded hosts in the web bundle.
+    const landlordHostRaw = window.__LANDLORD_HOST__;
+    const landlordHost =
+      typeof landlordHostRaw === 'string' && landlordHostRaw.trim().length > 0
+        ? landlordHostRaw.trim().toLowerCase()
+        : null;
 
-    if (isTenantHost && pathname.startsWith('/landlord')) {
-      window.location.replace('/');
-      return;
-    }
+    if (landlordHost) {
+      const hostname = window.location.hostname.toLowerCase();
+      const pathname = window.location.pathname || '/';
+      const isTenantHost =
+        hostname.endsWith('.' + landlordHost) && hostname !== landlordHost;
+      const isLandlordHost = hostname === landlordHost;
 
-    if (isLandlordHost && pathname.startsWith('/home')) {
-      window.location.replace('/landlord');
-      return;
+      if (isTenantHost && pathname.startsWith('/landlord')) {
+        window.location.replace('/');
+        return;
+      }
+
+      if (isLandlordHost && pathname.startsWith('/home')) {
+        window.location.replace('/landlord');
+        return;
+      }
     }
 
     const applyBranding = (branding) => {

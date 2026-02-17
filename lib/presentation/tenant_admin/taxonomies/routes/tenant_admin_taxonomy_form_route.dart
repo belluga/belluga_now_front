@@ -19,9 +19,11 @@ class TenantAdminTaxonomyCreateRoutePage extends StatelessWidget {
 class TenantAdminTaxonomyEditRoutePage extends StatelessWidget {
   const TenantAdminTaxonomyEditRoutePage({
     super.key,
+    @PathParam('taxonomyId') required this.taxonomyId,
     required this.taxonomy,
   });
 
+  final String taxonomyId;
   final TenantAdminTaxonomyDefinition taxonomy;
 
   @override

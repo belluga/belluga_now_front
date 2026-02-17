@@ -25,7 +25,6 @@ class TenantAdminAccountsRepository
   bool _isFetchingAccountsPage = false;
   bool _hasMoreAccounts = true;
   int _currentAccountsPage = 0;
-  final List<TenantAdminAccount> _cachedAccounts = <TenantAdminAccount>[];
 
   @override
   final StreamValue<List<TenantAdminAccount>?> accountsStreamValue =
@@ -47,21 +46,32 @@ class TenantAdminAccountsRepository
           .selectedTenantAdminBaseUrl;
 
   @override
-  Future<void> loadAccounts({int pageSize = _defaultPageSize}) async {
+  Future<void> loadAccounts({
+    int pageSize = _defaultPageSize,
+    TenantAdminOwnershipState? ownershipState,
+  }) async {
     await _waitForAccountsFetch();
     _resetAccountsPagination();
     accountsStreamValue.addValue(null);
-    await _fetchAccountsPage(page: 1, pageSize: pageSize);
+    await _fetchAccountsPage(
+      page: 1,
+      pageSize: pageSize,
+      ownershipState: ownershipState,
+    );
   }
 
   @override
-  Future<void> loadNextAccountsPage({int pageSize = _defaultPageSize}) async {
+  Future<void> loadNextAccountsPage({
+    int pageSize = _defaultPageSize,
+    TenantAdminOwnershipState? ownershipState,
+  }) async {
     if (_isFetchingAccountsPage || !_hasMoreAccounts) {
       return;
     }
     await _fetchAccountsPage(
       page: _currentAccountsPage + 1,
       pageSize: pageSize,
+      ownershipState: ownershipState,
     );
   }
 
@@ -104,6 +114,19 @@ class TenantAdminAccountsRepository
   Future<TenantAdminPagedAccountsResult> fetchAccountsPage({
     required int page,
     required int pageSize,
+    TenantAdminOwnershipState? ownershipState,
+  }) async {
+    return _fetchFilteredAccountsPage(
+      page: page,
+      pageSize: pageSize,
+      ownershipState: ownershipState,
+    );
+  }
+
+  Future<TenantAdminPagedAccountsResult> _fetchFilteredAccountsPage({
+    required int page,
+    required int pageSize,
+    TenantAdminOwnershipState? ownershipState,
   }) async {
     try {
       final response = await _dio.get(
@@ -111,6 +134,8 @@ class TenantAdminAccountsRepository
         queryParameters: {
           'page': page,
           'page_size': pageSize,
+          if (ownershipState != null)
+            'ownership_state': ownershipState.apiValue,
         },
         options: Options(headers: _buildHeaders()),
       );
@@ -137,10 +162,9 @@ class TenantAdminAccountsRepository
 
   @override
   Future<TenantAdminAccount> fetchAccountBySlug(String accountSlug) async {
-    for (final account in _cachedAccounts) {
-      if (account.slug == accountSlug) {
-        return account;
-      }
+    final loaded = findLoadedAccount(accountSlug: accountSlug);
+    if (loaded != null) {
+      return loaded;
     }
     try {
       final response = await _dio.get(
@@ -149,7 +173,7 @@ class TenantAdminAccountsRepository
       );
       final item = _extractItem(response.data);
       final account = _mapAccount(item);
-      _upsertCachedAccount(account);
+      _upsertLoadedAccount(account);
       return account;
     } on DioException catch (error) {
       throw _wrapError(error, 'load account');
@@ -183,7 +207,7 @@ class TenantAdminAccountsRepository
       );
       final item = _extractAccountFromCreate(response.data);
       final created = _mapAccount(item);
-      _appendCachedAccount(created);
+      _appendLoadedAccount(created);
       return created;
     } on DioException catch (error) {
       throw _wrapError(error, 'create account');
@@ -218,7 +242,7 @@ class TenantAdminAccountsRepository
       );
       final item = _extractItem(response.data);
       final updated = _mapAccount(item);
-      _upsertCachedAccount(updated);
+      _upsertLoadedAccount(updated);
       return updated;
     } on DioException catch (error) {
       throw _wrapError(error, 'update account');
@@ -232,7 +256,7 @@ class TenantAdminAccountsRepository
         '$_apiBaseUrl/v1/accounts/$accountSlug',
         options: Options(headers: _buildHeaders()),
       );
-      _removeCachedAccountBySlug(accountSlug);
+      _removeLoadedAccountBySlug(accountSlug);
     } on DioException catch (error) {
       throw _wrapError(error, 'delete account');
     }
@@ -247,7 +271,7 @@ class TenantAdminAccountsRepository
       );
       final item = _extractItem(response.data);
       final restored = _mapAccount(item);
-      _upsertCachedAccount(restored);
+      _upsertLoadedAccount(restored);
       return restored;
     } on DioException catch (error) {
       throw _wrapError(error, 'restore account');
@@ -261,7 +285,7 @@ class TenantAdminAccountsRepository
         '$_apiBaseUrl/v1/accounts/$accountSlug/force_delete',
         options: Options(headers: _buildHeaders()),
       );
-      _removeCachedAccountBySlug(accountSlug);
+      _removeLoadedAccountBySlug(accountSlug);
     } on DioException catch (error) {
       throw _wrapError(error, 'force delete account');
     }
@@ -276,6 +300,7 @@ class TenantAdminAccountsRepository
   Future<void> _fetchAccountsPage({
     required int page,
     required int pageSize,
+    TenantAdminOwnershipState? ownershipState,
   }) async {
     if (_isFetchingAccountsPage) return;
     if (page > 1 && !_hasMoreAccounts) return;
@@ -288,24 +313,25 @@ class TenantAdminAccountsRepository
       final result = await fetchAccountsPage(
         page: page,
         pageSize: pageSize,
+        ownershipState: ownershipState,
       );
-      if (page == 1) {
-        _cachedAccounts
-          ..clear()
-          ..addAll(result.accounts);
-      } else {
-        _cachedAccounts.addAll(result.accounts);
-      }
+      final currentAccounts = accountsStreamValue.value;
+      final nextAccounts = page == 1
+          ? result.accounts
+          : <TenantAdminAccount>[
+              ...?currentAccounts,
+              ...result.accounts,
+            ];
       _currentAccountsPage = page;
       _hasMoreAccounts = result.hasMore;
       hasMoreAccountsStreamValue.addValue(_hasMoreAccounts);
       accountsStreamValue.addValue(
-        List<TenantAdminAccount>.unmodifiable(_cachedAccounts),
+        List<TenantAdminAccount>.unmodifiable(nextAccounts),
       );
       accountsErrorStreamValue.addValue(null);
     } catch (error) {
       accountsErrorStreamValue.addValue(error.toString());
-      if (page == 1) {
+      if (page == 1 && accountsStreamValue.value == null) {
         accountsStreamValue.addValue(const <TenantAdminAccount>[]);
       }
     } finally {
@@ -315,7 +341,6 @@ class TenantAdminAccountsRepository
   }
 
   void _resetAccountsPagination() {
-    _cachedAccounts.clear();
     _currentAccountsPage = 0;
     _hasMoreAccounts = true;
     _isFetchingAccountsPage = false;
@@ -323,40 +348,57 @@ class TenantAdminAccountsRepository
     isAccountsPageLoadingStreamValue.addValue(false);
   }
 
-  void _appendCachedAccount(TenantAdminAccount account) {
-    if (accountsStreamValue.value == null) {
-      return;
-    }
-    _cachedAccounts.add(account);
-    accountsStreamValue.addValue(
-      List<TenantAdminAccount>.unmodifiable(_cachedAccounts),
-    );
-  }
-
-  void _upsertCachedAccount(TenantAdminAccount account) {
-    final index = _cachedAccounts.indexWhere((entry) => entry.id == account.id);
-    if (index >= 0) {
-      _cachedAccounts[index] = account;
+  void _appendLoadedAccount(TenantAdminAccount account) {
+    final currentAccounts = accountsStreamValue.value;
+    if (currentAccounts == null) {
       accountsStreamValue.addValue(
-        List<TenantAdminAccount>.unmodifiable(_cachedAccounts),
+        List<TenantAdminAccount>.unmodifiable(<TenantAdminAccount>[account]),
       );
       return;
     }
-    if (accountsStreamValue.value == null) {
-      return;
-    }
-    _cachedAccounts.add(account);
+    final nextAccounts = <TenantAdminAccount>[
+      ...currentAccounts,
+      account,
+    ];
     accountsStreamValue.addValue(
-      List<TenantAdminAccount>.unmodifiable(_cachedAccounts),
+      List<TenantAdminAccount>.unmodifiable(nextAccounts),
     );
   }
 
-  void _removeCachedAccountBySlug(String accountSlug) {
-    final beforeCount = _cachedAccounts.length;
-    _cachedAccounts.removeWhere((entry) => entry.slug == accountSlug);
-    if (_cachedAccounts.length != beforeCount) {
+  void _upsertLoadedAccount(TenantAdminAccount account) {
+    final currentAccounts = accountsStreamValue.value;
+    if (currentAccounts == null) {
       accountsStreamValue.addValue(
-        List<TenantAdminAccount>.unmodifiable(_cachedAccounts),
+        List<TenantAdminAccount>.unmodifiable(<TenantAdminAccount>[account]),
+      );
+      return;
+    }
+    final nextAccounts = List<TenantAdminAccount>.from(currentAccounts);
+    final index = nextAccounts.indexWhere((entry) => entry.id == account.id);
+    if (index >= 0) {
+      nextAccounts[index] = account;
+      accountsStreamValue.addValue(
+        List<TenantAdminAccount>.unmodifiable(nextAccounts),
+      );
+      return;
+    }
+    nextAccounts.add(account);
+    accountsStreamValue.addValue(
+      List<TenantAdminAccount>.unmodifiable(nextAccounts),
+    );
+  }
+
+  void _removeLoadedAccountBySlug(String accountSlug) {
+    final currentAccounts = accountsStreamValue.value;
+    if (currentAccounts == null) {
+      return;
+    }
+    final nextAccounts = List<TenantAdminAccount>.from(currentAccounts);
+    final beforeCount = nextAccounts.length;
+    nextAccounts.removeWhere((entry) => entry.slug == accountSlug);
+    if (nextAccounts.length != beforeCount) {
+      accountsStreamValue.addValue(
+        List<TenantAdminAccount>.unmodifiable(nextAccounts),
       );
     }
   }
@@ -436,6 +478,11 @@ class TenantAdminAccountsRepository
 
   TenantAdminAccount _mapAccount(Map<String, dynamic> json) {
     final dto = TenantAdminAccountDTO.fromJson(json);
+    final ownershipStateRaw = dto.ownershipState?.trim();
+    final ownershipState =
+        (ownershipStateRaw == null || ownershipStateRaw.isEmpty)
+            ? TenantAdminOwnershipState.unmanaged
+            : TenantAdminOwnershipState.fromApiValue(ownershipStateRaw);
     return TenantAdminAccount(
       id: dto.id,
       name: dto.name,
@@ -445,8 +492,7 @@ class TenantAdminAccountsRepository
         number: dto.documentNumber,
       ),
       organizationId: dto.organizationId,
-      ownershipState:
-          TenantAdminOwnershipState.fromApiValue(dto.ownershipState),
+      ownershipState: ownershipState,
     );
   }
 

@@ -117,7 +117,7 @@ class TenantAdminAccountsController implements Disposable {
     _initializedTenantDomain = normalizedTenantDomain;
     _bindLocationSelection();
     await Future.wait([
-      loadAccounts(),
+      loadAccounts(ownershipState: selectedOwnershipStreamValue.value),
       loadProfileTypes(),
       loadTaxonomies(),
     ]);
@@ -148,26 +148,36 @@ class TenantAdminAccountsController implements Disposable {
 
   Future<void> _loadTenantScopedData() async {
     await Future.wait([
-      loadAccounts(),
+      loadAccounts(ownershipState: selectedOwnershipStreamValue.value),
       loadProfileTypes(),
       loadTaxonomies(),
     ]);
   }
 
-  Future<void> loadAccounts() async {
+  Future<void> loadAccounts({
+    TenantAdminOwnershipState? ownershipState,
+  }) async {
     _bindAccountsRepositoryError();
     if (_isDisposed) {
       return;
     }
-    await _accountsRepository.loadAccounts(pageSize: _accountsPageSize);
+    await _accountsRepository.loadAccounts(
+      pageSize: _accountsPageSize,
+      ownershipState: ownershipState ?? selectedOwnershipStreamValue.value,
+    );
   }
 
-  Future<void> loadNextAccountsPage() async {
+  Future<void> loadNextAccountsPage({
+    TenantAdminOwnershipState? ownershipState,
+  }) async {
     _bindAccountsRepositoryError();
     if (_isDisposed) {
       return;
     }
-    await _accountsRepository.loadNextAccountsPage(pageSize: _accountsPageSize);
+    await _accountsRepository.loadNextAccountsPage(
+      pageSize: _accountsPageSize,
+      ownershipState: ownershipState ?? selectedOwnershipStreamValue.value,
+    );
   }
 
   Future<void> loadProfileTypes() async {
@@ -210,7 +220,11 @@ class TenantAdminAccountsController implements Disposable {
   }
 
   void updateSelectedOwnership(TenantAdminOwnershipState ownershipState) {
+    if (selectedOwnershipStreamValue.value == ownershipState) {
+      return;
+    }
     selectedOwnershipStreamValue.addValue(ownershipState);
+    unawaited(loadAccounts(ownershipState: ownershipState));
   }
 
   void updateSearchQuery(String query) {
@@ -371,12 +385,6 @@ class TenantAdminAccountsController implements Disposable {
     final filteredContent = capabilities?.hasContent == true
         ? _normalizeOptionalString(contentController.text)
         : null;
-    final avatarUrl = capabilities?.hasAvatar == true
-        ? createStateStreamValue.value.avatarWebUrl
-        : null;
-    final coverUrl = capabilities?.hasCover == true
-        ? createStateStreamValue.value.coverWebUrl
-        : null;
     return createAccountWithProfile(
       name: nameController.text.trim(),
       ownershipState: createStateStreamValue.value.ownershipState,
@@ -385,8 +393,8 @@ class TenantAdminAccountsController implements Disposable {
       bio: filteredBio,
       content: filteredContent,
       taxonomyTerms: filteredTaxonomyTerms,
-      avatarUrl: avatarUrl,
-      coverUrl: coverUrl,
+      avatarUrl: null,
+      coverUrl: null,
       avatarUpload: avatarUpload,
       coverUpload: coverUpload,
     );

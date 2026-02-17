@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
@@ -7,15 +5,17 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_static_profile_type
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_definition.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_form_value_utils.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_image_ingestion_service.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_error_banner.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_field_edit_sheet.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_form_layout.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_image_source_sheet.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_rich_text_editor.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_xfile_preview.dart';
 import 'package:belluga_now/presentation/tenant_admin/static_assets/controllers/tenant_admin_static_assets_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
-import 'package:image_picker/image_picker.dart';
+import 'package:image_picker/image_picker.dart' show XFile;
 import 'package:stream_value/core/stream_value_builder.dart';
 
 class TenantAdminStaticAssetCreateScreen extends StatefulWidget {
@@ -30,6 +30,8 @@ class _TenantAdminStaticAssetCreateScreenState
     extends State<TenantAdminStaticAssetCreateScreen> {
   final TenantAdminStaticAssetsController _controller =
       GetIt.I.get<TenantAdminStaticAssetsController>();
+  final TenantAdminImageIngestionService _imageIngestionService =
+      TenantAdminImageIngestionService();
 
   @override
   void initState() {
@@ -246,18 +248,21 @@ class _TenantAdminStaticAssetCreateScreenState
   }
 
   Future<void> _pickImageFromDevice({required bool isAvatar}) async {
-    final picker = ImagePicker();
-    final selected = await picker.pickImage(
-      source: ImageSource.gallery,
-      imageQuality: 85,
-    );
-    if (selected == null) {
-      return;
-    }
-    if (isAvatar) {
-      _controller.updateAvatarFile(selected);
-    } else {
-      _controller.updateCoverFile(selected);
+    try {
+      final selected = await _imageIngestionService.pickFromDevice(
+        slot:
+            isAvatar ? TenantAdminImageSlot.avatar : TenantAdminImageSlot.cover,
+      );
+      if (selected == null) {
+        return;
+      }
+      if (isAvatar) {
+        _controller.updateAvatarFile(selected);
+      } else {
+        _controller.updateCoverFile(selected);
+      }
+    } on TenantAdminImageIngestionException catch (error) {
+      _controller.submitErrorStreamValue.addValue(error.message);
     }
   }
 
@@ -308,10 +313,19 @@ class _TenantAdminStaticAssetCreateScreenState
     if (url == null || !mounted) {
       return;
     }
-    if (isAvatar) {
-      _controller.updateAvatarWebUrl(url);
-    } else {
-      _controller.updateCoverWebUrl(url);
+    try {
+      final selected = await _imageIngestionService.importFromUrl(
+        imageUrl: url,
+        slot:
+            isAvatar ? TenantAdminImageSlot.avatar : TenantAdminImageSlot.cover,
+      );
+      if (isAvatar) {
+        _controller.updateAvatarFile(selected);
+      } else {
+        _controller.updateCoverFile(selected);
+      }
+    } on TenantAdminImageIngestionException catch (error) {
+      _controller.submitErrorStreamValue.addValue(error.message);
     }
   }
 
@@ -515,8 +529,8 @@ class _TenantAdminStaticAssetCreateScreenState
                           if (avatarFile != null)
                             ClipRRect(
                               borderRadius: BorderRadius.circular(36),
-                              child: Image.file(
-                                File(avatarFile.path),
+                              child: TenantAdminXFilePreview(
+                                file: avatarFile,
                                 width: 72,
                                 height: 72,
                                 fit: BoxFit.cover,
@@ -583,8 +597,8 @@ class _TenantAdminStaticAssetCreateScreenState
                       if (coverFile != null)
                         ClipRRect(
                           borderRadius: BorderRadius.circular(12),
-                          child: Image.file(
-                            File(coverFile.path),
+                          child: TenantAdminXFilePreview(
+                            file: coverFile,
                             width: double.infinity,
                             height: 140,
                             fit: BoxFit.cover,
@@ -613,7 +627,8 @@ class _TenantAdminStaticAssetCreateScreenState
                         children: [
                           FilledButton.tonalIcon(
                             onPressed: () => _pickImage(isAvatar: false),
-                            icon: const Icon(Icons.add_photo_alternate_outlined),
+                            icon:
+                                const Icon(Icons.add_photo_alternate_outlined),
                             label: const Text('Adicionar capa'),
                           ),
                           const SizedBox(width: 8),

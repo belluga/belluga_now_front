@@ -409,12 +409,8 @@ class TenantAdminStaticAssetsController implements Disposable {
         content: contentController.text.trim().isEmpty
             ? null
             : contentController.text.trim(),
-        avatarUrl: avatarUrlController.text.trim().isEmpty
-            ? null
-            : avatarUrlController.text.trim(),
-        coverUrl: coverUrlController.text.trim().isEmpty
-            ? null
-            : coverUrlController.text.trim(),
+        avatarUrl: null,
+        coverUrl: null,
         avatarUpload: avatarUpload,
         coverUpload: coverUpload,
       );
@@ -456,12 +452,8 @@ class TenantAdminStaticAssetsController implements Disposable {
         content: contentController.text.trim().isEmpty
             ? null
             : contentController.text.trim(),
-        avatarUrl: avatarUrlController.text.trim().isEmpty
-            ? null
-            : avatarUrlController.text.trim(),
-        coverUrl: coverUrlController.text.trim().isEmpty
-            ? null
-            : coverUrlController.text.trim(),
+        avatarUrl: null,
+        coverUrl: null,
         avatarUpload: avatarUpload,
         coverUpload: coverUpload,
       );

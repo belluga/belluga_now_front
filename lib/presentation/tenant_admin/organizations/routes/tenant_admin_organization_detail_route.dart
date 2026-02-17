@@ -6,7 +6,7 @@ import 'package:flutter/material.dart';
 class TenantAdminOrganizationDetailRoutePage extends StatelessWidget {
   const TenantAdminOrganizationDetailRoutePage({
     super.key,
-    required this.organizationId,
+    @PathParam('organizationId') required this.organizationId,
   });
 
   final String organizationId;

@@ -113,36 +113,35 @@ class _FakeTelemetryRepository implements TelemetryRepositoryContract {
 void main() {
   testWidgets('tracks screen_view for routes and overlays', (tester) async {
     final telemetryRepository = _FakeTelemetryRepository();
-    late BuildContext context;
-
-    await tester.pumpWidget(
-      MaterialApp(
-        navigatorObservers: [
-          TelemetryRouteObserver(telemetryRepository: telemetryRepository),
-        ],
-        home: Builder(
-          builder: (ctx) {
-            context = ctx;
-            return const Scaffold(body: SizedBox.shrink());
-          },
-        ),
-      ),
+    final observer = TelemetryRouteObserver(
+      telemetryRepository: telemetryRepository,
     );
-    await tester.pumpAndSettle();
+
+    final detailRoute = MaterialPageRoute<void>(
+      settings: const RouteSettings(
+        name: '/detail',
+        arguments: {'event_id': 'evt-1'},
+      ),
+      builder: (_) => const Scaffold(body: SizedBox.shrink()),
+    );
+    final overlayRoute = _TestPopupRoute(
+      settings: const RouteSettings(name: '/overlay'),
+    );
+
+    final homeRoute = MaterialPageRoute<void>(
+      settings: const RouteSettings(name: '/home'),
+      builder: (_) => const Scaffold(body: SizedBox.shrink()),
+    );
+    observer.didPush(homeRoute, null);
+    await tester.pump();
+    await tester.pump();
 
     final initialCount = telemetryRepository.events.length;
     final initialTimedCount = telemetryRepository.startedEvents.length;
 
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        settings: RouteSettings(
-          name: '/detail',
-          arguments: {'event_id': 'evt-1'},
-        ),
-        builder: (_) => const Scaffold(body: SizedBox.shrink()),
-      ),
-    );
-    await tester.pumpAndSettle();
+    observer.didPush(detailRoute, null);
+    await tester.pump();
+    await tester.pump();
 
     expect(telemetryRepository.events.length, initialCount + 1);
     expect(telemetryRepository.startedEvents.length, initialTimedCount);
@@ -152,11 +151,9 @@ void main() {
         telemetryRepository.lastScreenContext?['route_params'] as Map?;
     expect(params?['event_id'], 'evt-1');
 
-    showDialog<void>(
-      context: context,
-      builder: (_) => const AlertDialog(content: Text('Dialog')),
-    );
-    await tester.pumpAndSettle();
+    observer.didPush(overlayRoute, detailRoute);
+    await tester.pump();
+    await tester.pump();
 
     expect(telemetryRepository.events.length, initialCount + 2);
     expect(telemetryRepository.lastScreenContext?['is_overlay'], true);
@@ -166,8 +163,9 @@ void main() {
       '/detail',
     );
 
-    Navigator.of(context).pop();
-    await tester.pumpAndSettle();
+    observer.didPop(overlayRoute, detailRoute);
+    await tester.pump();
+    await tester.pump();
 
     expect(telemetryRepository.events.length, initialCount + 3);
     expect(
@@ -176,4 +174,32 @@ void main() {
       true,
     );
   });
+}
+
+class _TestPopupRoute extends PopupRoute<void> {
+  _TestPopupRoute({required this.settings});
+
+  @override
+  final RouteSettings settings;
+
+  @override
+  Color? get barrierColor => Colors.black45;
+
+  @override
+  bool get barrierDismissible => true;
+
+  @override
+  String? get barrierLabel => 'overlay';
+
+  @override
+  Duration get transitionDuration => Duration.zero;
+
+  @override
+  Widget buildPage(
+    BuildContext context,
+    Animation<double> animation,
+    Animation<double> secondaryAnimation,
+  ) {
+    return const SizedBox.shrink();
+  }
 }

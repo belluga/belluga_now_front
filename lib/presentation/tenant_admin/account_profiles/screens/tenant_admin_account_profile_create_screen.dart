@@ -1,22 +1,21 @@
-import 'dart:io';
-
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
-import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
 import 'package:belluga_now/presentation/tenant_admin/account_profiles/controllers/tenant_admin_account_profiles_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_form_value_utils.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_image_ingestion_service.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_error_banner.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_field_edit_sheet.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_form_layout.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_image_source_sheet.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_rich_text_editor.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_xfile_preview.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 
 class TenantAdminAccountProfileCreateScreen extends StatefulWidget {
@@ -36,6 +35,9 @@ class _TenantAdminAccountProfileCreateScreenState
     extends State<TenantAdminAccountProfileCreateScreen> {
   final TenantAdminAccountProfilesController _controller =
       GetIt.I.get<TenantAdminAccountProfilesController>();
+  final TenantAdminImageIngestionService _imageIngestionService =
+      TenantAdminImageIngestionService();
+  bool _routeParamNormalized = false;
 
   @override
   void initState() {
@@ -45,7 +47,53 @@ class _TenantAdminAccountProfileCreateScreenState
     _controller.resetFormControllers();
     _controller.loadProfileTypes();
     _controller.loadTaxonomies();
-    _controller.loadAccountForCreate(widget.accountSlug);
+    _controller.loadAccountForCreate(_currentAccountSlugForRequests());
+  }
+
+  bool _isResolvedSlug(String? value) {
+    if (value == null) {
+      return false;
+    }
+    final trimmed = value.trim();
+    return trimmed.isNotEmpty && !trimmed.startsWith(':');
+  }
+
+  String _currentAccountSlugForRequests() {
+    final current = _controller.accountStreamValue.value?.slug;
+    if (_isResolvedSlug(current)) {
+      return current!.trim();
+    }
+    return widget.accountSlug;
+  }
+
+  bool _requiresPathNormalization() {
+    return kIsWeb && context.router.currentPath.contains('/:');
+  }
+
+  void _normalizeRouteParamIfNeeded() {
+    if (_routeParamNormalized || !mounted) {
+      return;
+    }
+    final needsPathNormalization = _requiresPathNormalization();
+    if (!needsPathNormalization && _isResolvedSlug(widget.accountSlug)) {
+      _routeParamNormalized = true;
+      return;
+    }
+    final resolved = _isResolvedSlug(widget.accountSlug)
+        ? widget.accountSlug
+        : _controller.accountStreamValue.value?.slug;
+    if (!_isResolvedSlug(resolved)) {
+      return;
+    }
+    _routeParamNormalized = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        return;
+      }
+      context.router.replace(
+        TenantAdminAccountProfileCreateRoute(accountSlug: resolved!.trim()),
+      );
+    });
   }
 
   @override
@@ -214,34 +262,21 @@ class _TenantAdminAccountProfileCreateScreenState
   }
 
   Future<void> _pickImageFromDevice({required bool isAvatar}) async {
-    final picker = ImagePicker();
-    final selected = await picker.pickImage(
-      source: ImageSource.gallery,
-      imageQuality: 85,
-    );
-    if (selected == null) {
-      return;
-    }
-    final lowerName = selected.name.toLowerCase();
-    const allowed = ['.jpg', '.jpeg', '.png', '.webp'];
-    if (!allowed.any(lowerName.endsWith)) {
-      _controller.reportCreateErrorMessage(
-        'Formato de imagem invalido. Use JPG, PNG ou WEBP.',
+    try {
+      final selected = await _imageIngestionService.pickFromDevice(
+        slot:
+            isAvatar ? TenantAdminImageSlot.avatar : TenantAdminImageSlot.cover,
       );
-      return;
-    }
-    final size = await selected.length();
-    const maxBytes = 5 * 1024 * 1024;
-    if (size > maxBytes) {
-      _controller.reportCreateErrorMessage(
-        'Imagem muito grande. Maximo 5MB.',
-      );
-      return;
-    }
-    if (isAvatar) {
-      _controller.updateCreateAvatarFile(selected);
-    } else {
-      _controller.updateCreateCoverFile(selected);
+      if (selected == null) {
+        return;
+      }
+      if (isAvatar) {
+        _controller.updateCreateAvatarFile(selected);
+      } else {
+        _controller.updateCreateCoverFile(selected);
+      }
+    } on TenantAdminImageIngestionException catch (error) {
+      _controller.reportCreateErrorMessage(error.message);
     }
   }
 
@@ -292,10 +327,19 @@ class _TenantAdminAccountProfileCreateScreenState
     if (url == null || !mounted) {
       return;
     }
-    if (isAvatar) {
-      _controller.updateCreateAvatarWebUrl(url);
-    } else {
-      _controller.updateCreateCoverWebUrl(url);
+    try {
+      final selected = await _imageIngestionService.importFromUrl(
+        imageUrl: url,
+        slot:
+            isAvatar ? TenantAdminImageSlot.avatar : TenantAdminImageSlot.cover,
+      );
+      if (isAvatar) {
+        _controller.updateCreateAvatarFile(selected);
+      } else {
+        _controller.updateCreateCoverFile(selected);
+      }
+    } on TenantAdminImageIngestionException catch (error) {
+      _controller.reportCreateErrorMessage(error.message);
     }
   }
 
@@ -307,15 +351,6 @@ class _TenantAdminAccountProfileCreateScreenState
       _controller.updateCreateCoverFile(null);
       _controller.updateCreateCoverWebUrl(null);
     }
-  }
-
-  Future<TenantAdminMediaUpload?> _buildUpload(XFile? file) async {
-    if (file == null) return null;
-    final bytes = await file.readAsBytes();
-    return TenantAdminMediaUpload(
-      bytes: bytes,
-      fileName: file.name,
-    );
   }
 
   Future<void> _submit() async {
@@ -334,10 +369,16 @@ class _TenantAdminAccountProfileCreateScreenState
         ? _currentLocation()
         : null;
     final avatarUpload = _hasAvatar(state.selectedProfileType)
-        ? await _buildUpload(state.avatarFile)
+        ? await _imageIngestionService.buildUpload(
+            state.avatarFile,
+            slot: TenantAdminImageSlot.avatar,
+          )
         : null;
     final coverUpload = _hasCover(state.selectedProfileType)
-        ? await _buildUpload(state.coverFile)
+        ? await _imageIngestionService.buildUpload(
+            state.coverFile,
+            slot: TenantAdminImageSlot.cover,
+          )
         : null;
     _controller.submitCreateProfile(
       accountId: accountId,
@@ -353,9 +394,8 @@ class _TenantAdminAccountProfileCreateScreenState
       taxonomyTerms: _buildTaxonomyTerms(state.selectedProfileType),
       avatarUpload: avatarUpload,
       coverUpload: coverUpload,
-      avatarUrl:
-          _hasAvatar(state.selectedProfileType) ? state.avatarWebUrl : null,
-      coverUrl: _hasCover(state.selectedProfileType) ? state.coverWebUrl : null,
+      avatarUrl: null,
+      coverUrl: null,
     );
   }
 
@@ -372,6 +412,7 @@ class _TenantAdminAccountProfileCreateScreenState
             return StreamValueBuilder<TenantAdminAccountProfileCreateDraft>(
               streamValue: _controller.createStateStreamValue,
               builder: (context, state) {
+                _normalizeRouteParamIfNeeded();
                 final requiresLocation =
                     _requiresLocation(state.selectedProfileType);
                 final hasMedia = _hasAvatar(state.selectedProfileType) ||
@@ -379,8 +420,9 @@ class _TenantAdminAccountProfileCreateScreenState
                 final hasContent = _hasBio(state.selectedProfileType) ||
                     _hasContent(state.selectedProfileType) ||
                     _hasTaxonomies(state.selectedProfileType);
+                final accountSlugForUi = _currentAccountSlugForRequests();
                 return TenantAdminFormScaffold(
-                  title: 'Criar Perfil - ${widget.accountSlug}',
+                  title: 'Criar Perfil - $accountSlugForUi',
                   child: SingleChildScrollView(
                     child: Form(
                       key: _controller.createFormKey,
@@ -670,8 +712,8 @@ class _TenantAdminAccountProfileCreateScreenState
                 if (state.avatarFile != null)
                   ClipRRect(
                     borderRadius: BorderRadius.circular(36),
-                    child: Image.file(
-                      File(state.avatarFile!.path),
+                    child: TenantAdminXFilePreview(
+                      file: state.avatarFile!,
                       width: 72,
                       height: 72,
                       fit: BoxFit.cover,
@@ -741,8 +783,8 @@ class _TenantAdminAccountProfileCreateScreenState
             if (state.coverFile != null)
               ClipRRect(
                 borderRadius: BorderRadius.circular(12),
-                child: Image.file(
-                  File(state.coverFile!.path),
+                child: TenantAdminXFilePreview(
+                  file: state.coverFile!,
                   width: double.infinity,
                   height: 140,
                   fit: BoxFit.cover,

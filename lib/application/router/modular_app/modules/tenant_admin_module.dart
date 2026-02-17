@@ -50,7 +50,7 @@ class TenantAdminModule extends ModuleContract {
     registerFactory<TenantAdminLocationPickerController>(
       () => TenantAdminLocationPickerController(),
     );
-    registerFactory<TenantAdminAccountProfilesController>(
+    registerLazySingleton<TenantAdminAccountProfilesController>(
       () => TenantAdminAccountProfilesController(),
     );
     registerFactory<TenantAdminOrganizationsController>(

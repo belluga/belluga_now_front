@@ -1,3 +1,4 @@
+import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 
 enum TenantAdminImageSourceOption {
@@ -31,7 +32,7 @@ Future<TenantAdminImageSourceOption?> showTenantAdminImageSourceSheet({
                 title: const Text('Do dispositivo'),
                 subtitle: const Text('Selecionar imagem da galeria'),
                 onTap: () {
-                  Navigator.of(sheetContext).pop(
+                  sheetContext.router.maybePop(
                     TenantAdminImageSourceOption.device,
                   );
                 },
@@ -42,7 +43,7 @@ Future<TenantAdminImageSourceOption?> showTenantAdminImageSourceSheet({
                 title: const Text('Da web'),
                 subtitle: const Text('Colar URL da imagem'),
                 onTap: () {
-                  Navigator.of(sheetContext).pop(
+                  sheetContext.router.maybePop(
                     TenantAdminImageSourceOption.web,
                   );
                 },

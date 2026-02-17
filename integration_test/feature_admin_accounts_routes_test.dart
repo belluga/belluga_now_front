@@ -176,13 +176,32 @@ void main() {
       TenantAdminAccountDetailRoute(accountSlug: 'detalhes-tecnicos'),
     );
     await _pumpFor(tester, const Duration(seconds: 1));
-    await _waitForFinder(tester, find.textContaining('Conta:'));
-    await tester.tap(find.byIcon(Icons.arrow_back));
-    await _pumpFor(tester, const Duration(seconds: 1));
-    await _waitForFinder(
-      tester,
-      _tenantAdminShellRouterFinder(),
+    expect(
+      app.appRouter.currentPath,
+      '/admin/accounts/detalhes-tecnicos',
     );
+    expect(app.appRouter.currentPath.contains(':'), isFalse);
+    await _waitForFinder(tester, find.textContaining('Conta:'));
+
+    app.appRouter.push(
+      TenantAdminAccountProfileEditRoute(
+        accountSlug: 'detalhes-tecnicos',
+        accountProfileId: 'profile-123',
+      ),
+    );
+    await _pumpFor(tester, const Duration(seconds: 1));
+    expect(
+      app.appRouter.currentPath,
+      '/admin/accounts/detalhes-tecnicos/profiles/profile-123/edit',
+    );
+    expect(app.appRouter.currentPath.contains(':'), isFalse);
+    app.appRouter.replaceAll([
+      const TenantAdminShellRoute(
+        children: [TenantAdminAccountsListRoute()],
+      ),
+    ]);
+    await _pumpFor(tester, const Duration(seconds: 2));
+    await _waitForFinder(tester, find.text('Segmento'));
 
     await tester.tap(find.text('Nao gerenciadas'));
     await _pumpFor(tester, const Duration(seconds: 1));
