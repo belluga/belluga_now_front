@@ -13,6 +13,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value.dart';
 
+import 'support/tenant_admin_paged_stream_contract.dart';
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -72,6 +74,72 @@ void main() {
     final data = adapter.lastRequest?.data;
     expect(data, isA<Map<String, dynamic>>());
     expect((data as Map<String, dynamic>)['slug'], 'profile-slug-custom');
+  });
+
+  test('updateAccountProfile keeps empty bio as string payload', () async {
+    final adapter = _CaptureAdapter();
+    final dio = Dio()..httpClientAdapter = adapter;
+    final repository = TenantAdminAccountProfilesRepository(dio: dio);
+
+    await repository.updateAccountProfile(
+      accountProfileId: 'profile-1',
+      bio: '',
+    );
+
+    final data = adapter.lastRequest?.data;
+    expect(data, isA<Map<String, dynamic>>());
+    expect((data as Map<String, dynamic>)['bio'], '');
+  });
+
+  test('updateAccountProfile omits bio when null', () async {
+    final adapter = _CaptureAdapter();
+    final dio = Dio()..httpClientAdapter = adapter;
+    final repository = TenantAdminAccountProfilesRepository(dio: dio);
+
+    await repository.updateAccountProfile(
+      accountProfileId: 'profile-1',
+      bio: null,
+      displayName: 'New Name',
+    );
+
+    final data = adapter.lastRequest?.data;
+    expect(data, isA<Map<String, dynamic>>());
+    expect((data as Map<String, dynamic>).containsKey('bio'), isFalse);
+    expect(data['display_name'], 'New Name');
+  });
+
+  test('fetchProfileTypesPage sends pagination params and parses hasMore',
+      () async {
+    final adapter = _ProfileTypesRoutingAdapter();
+    final dio = Dio()..httpClientAdapter = adapter;
+    final repository = TenantAdminAccountProfilesRepository(dio: dio);
+
+    final page = await repository.fetchProfileTypesPage(page: 1, pageSize: 2);
+
+    expect(page.items, hasLength(2));
+    expect(page.hasMore, isTrue);
+    expect(adapter.requests, hasLength(1));
+    expect(adapter.requests.single.queryParameters['page'], 1);
+    expect(adapter.requests.single.queryParameters['page_size'], 2);
+  });
+
+  test('load/reset/next follow paged stream contract for profile types',
+      () async {
+    final adapter = _ProfileTypesRoutingAdapter();
+    final dio = Dio()..httpClientAdapter = adapter;
+    final repository = TenantAdminAccountProfilesRepository(dio: dio);
+
+    await verifyTenantAdminPagedStreamContract(
+      scope: 'account profile types',
+      loadFirstPage: () => repository.loadProfileTypes(pageSize: 2),
+      loadNextPage: () => repository.loadNextProfileTypesPage(pageSize: 2),
+      resetState: repository.resetProfileTypesState,
+      readItems: () => repository.profileTypesStreamValue.value,
+      readHasMore: () => repository.hasMoreProfileTypesStreamValue.value,
+      readError: () => repository.profileTypesErrorStreamValue.value,
+      expectedCountsPerStep: const [2, 3],
+      loadNextCalls: 1,
+    );
   });
 }
 
@@ -142,6 +210,84 @@ class _CaptureAdapter implements HttpClientAdapter {
     });
     return ResponseBody.fromString(
       payload,
+      200,
+      headers: {
+        Headers.contentTypeHeader: ['application/json'],
+      },
+    );
+  }
+}
+
+class _ProfileTypesRoutingAdapter implements HttpClientAdapter {
+  final List<RequestOptions> requests = [];
+
+  @override
+  void close({bool force = false}) {}
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<List<int>>? requestStream,
+    Future? cancelFuture,
+  ) async {
+    requests.add(options);
+    final pageRaw = options.queryParameters['page'];
+    final page = pageRaw is int ? pageRaw : int.tryParse('$pageRaw') ?? 1;
+
+    if (options.path.endsWith('/v1/account_profile_types') && page == 1) {
+      return _jsonResponse({
+        'data': [
+          _profileType(id: 'pt-1', type: 'artist', label: 'Artist'),
+          _profileType(id: 'pt-2', type: 'venue', label: 'Venue'),
+        ],
+        'current_page': 1,
+        'last_page': 2,
+      });
+    }
+
+    if (options.path.endsWith('/v1/account_profile_types') && page == 2) {
+      return _jsonResponse({
+        'data': [
+          _profileType(id: 'pt-3', type: 'restaurant', label: 'Restaurant'),
+        ],
+        'current_page': 2,
+        'last_page': 2,
+      });
+    }
+
+    return _jsonResponse({
+      'data': const [],
+      'current_page': page,
+      'last_page': page,
+    });
+  }
+
+  Map<String, dynamic> _profileType({
+    required String id,
+    required String type,
+    required String label,
+  }) {
+    return {
+      'id': id,
+      'type': type,
+      'label': label,
+      'allowed_taxonomies': const <String>[],
+      'capabilities': const {
+        'is_favoritable': true,
+        'is_poi_enabled': false,
+        'has_bio': true,
+        'has_content': true,
+        'has_taxonomies': true,
+        'has_avatar': true,
+        'has_cover': true,
+        'has_events': false,
+      },
+    };
+  }
+
+  ResponseBody _jsonResponse(Map<String, dynamic> payload) {
+    return ResponseBody.fromString(
+      jsonEncode(payload),
       200,
       headers: {
         Headers.contentTypeHeader: ['application/json'],

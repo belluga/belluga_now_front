@@ -1,3 +1,4 @@
+import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_static_assets_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_taxonomies_repository_contract.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
@@ -126,13 +127,29 @@ Future<void> _pumpScreen(
     locationSelection: TenantAdminLocationSelectionService(),
   );
   GetIt.I.registerSingleton<TenantAdminStaticAssetsController>(controller);
+  final router = _buildTestRouter(
+    const TenantAdminStaticAssetEditScreen(assetId: 'asset-1'),
+  );
 
   await tester.pumpWidget(
-    const MaterialApp(
-      home: TenantAdminStaticAssetEditScreen(assetId: 'asset-1'),
+    MaterialApp.router(
+      routeInformationParser: router.defaultRouteParser(),
+      routerDelegate: router.delegate(),
     ),
   );
   await tester.pumpAndSettle();
+}
+
+RootStackRouter _buildTestRouter(Widget child) {
+  return RootStackRouter.build(
+    routes: [
+      NamedRouteDef(
+        name: 'static-asset-edit-test',
+        path: '/',
+        builder: (_, __) => child,
+      ),
+    ],
+  )..ignorePopCompleters = true;
 }
 
 TenantAdminStaticAsset _sampleAsset() {
