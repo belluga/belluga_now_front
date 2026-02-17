@@ -7,9 +7,9 @@ import 'package:flutter/material.dart';
 class TenantAdminTaxonomyTermDetailRoutePage extends StatelessWidget {
   const TenantAdminTaxonomyTermDetailRoutePage({
     super.key,
-    required this.taxonomyId,
+    @PathParam('taxonomyId') required this.taxonomyId,
     required this.taxonomyName,
-    required this.termId,
+    @PathParam('termId') required this.termId,
     required this.term,
   });
 

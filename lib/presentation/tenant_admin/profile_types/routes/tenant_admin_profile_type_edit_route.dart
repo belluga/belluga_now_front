@@ -7,7 +7,7 @@ import 'package:flutter/material.dart';
 class TenantAdminProfileTypeEditRoutePage extends StatelessWidget {
   const TenantAdminProfileTypeEditRoutePage({
     super.key,
-    required this.profileType,
+    @PathParam('profileType') required this.profileType,
     required this.definition,
   });
 
