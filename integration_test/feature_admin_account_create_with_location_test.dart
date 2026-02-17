@@ -240,6 +240,7 @@ class _FakeAccountsRepository
   Future<TenantAdminPagedAccountsResult> fetchAccountsPage({
     required int page,
     required int pageSize,
+    TenantAdminOwnershipState? ownershipState,
   }) async {
     return const TenantAdminPagedAccountsResult(
       accounts: <TenantAdminAccount>[],
@@ -441,7 +442,7 @@ class _FakeAccountProfilesRepository
             isPoiEnabled: true,
             hasBio: false,
             hasContent: false,
-          hasTaxonomies: false,
+            hasTaxonomies: false,
             hasAvatar: false,
             hasCover: false,
             hasEvents: false,

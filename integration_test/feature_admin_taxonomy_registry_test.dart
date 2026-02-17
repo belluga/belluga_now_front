@@ -185,7 +185,10 @@ void main() {
       [
         TenantAdminShellRoute(
           children: [
-            TenantAdminTaxonomyEditRoute(taxonomy: created),
+            TenantAdminTaxonomyEditRoute(
+              taxonomyId: created.id,
+              taxonomy: created,
+            ),
           ],
         ),
       ],
@@ -357,6 +360,7 @@ class _FakeAccountsRepository
   Future<TenantAdminPagedAccountsResult> fetchAccountsPage({
     required int page,
     required int pageSize,
+    TenantAdminOwnershipState? ownershipState,
   }) async {
     return const TenantAdminPagedAccountsResult(
       accounts: <TenantAdminAccount>[],
@@ -615,7 +619,7 @@ class _FakeAccountProfilesRepository
             isPoiEnabled: false,
             hasBio: false,
             hasContent: false,
-          hasTaxonomies: true,
+            hasTaxonomies: true,
             hasAvatar: false,
             hasCover: false,
             hasEvents: false,
