@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:belluga_now/domain/tenant_admin/ownership_state.dart';
@@ -5,6 +6,26 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_account.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_document.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_accounts_result.dart';
 import 'package:stream_value/core/stream_value.dart';
+
+class TenantAdminLoadedAccountWatch {
+  TenantAdminLoadedAccountWatch({
+    required this.streamValue,
+    required void Function() onDispose,
+  }) : _onDispose = onDispose;
+
+  final StreamValue<TenantAdminAccount?> streamValue;
+  final void Function() _onDispose;
+  bool _disposed = false;
+
+  void dispose() {
+    if (_disposed) {
+      return;
+    }
+    _disposed = true;
+    _onDispose();
+    streamValue.dispose();
+  }
+}
 
 abstract class TenantAdminAccountsRepositoryContract {
   static final Expando<_TenantAdminAccountsPaginationState>
@@ -27,14 +48,24 @@ abstract class TenantAdminAccountsRepositoryContract {
   StreamValue<String?> get accountsErrorStreamValue =>
       _paginationState.accountsErrorStreamValue;
 
-  Future<void> loadAccounts({int pageSize = 20}) async {
+  Future<void> loadAccounts({
+    int pageSize = 20,
+    TenantAdminOwnershipState? ownershipState,
+  }) async {
     await _waitForAccountsFetch();
     _resetAccountsPagination();
     accountsStreamValue.addValue(null);
-    await _fetchAccountsPage(page: 1, pageSize: pageSize);
+    await _fetchAccountsPage(
+      page: 1,
+      pageSize: pageSize,
+      ownershipState: ownershipState,
+    );
   }
 
-  Future<void> loadNextAccountsPage({int pageSize = 20}) async {
+  Future<void> loadNextAccountsPage({
+    int pageSize = 20,
+    TenantAdminOwnershipState? ownershipState,
+  }) async {
     if (_paginationState.isFetchingAccountsPage ||
         !_paginationState.hasMoreAccounts) {
       return;
@@ -42,6 +73,7 @@ abstract class TenantAdminAccountsRepositoryContract {
     await _fetchAccountsPage(
       page: _paginationState.currentAccountsPage + 1,
       pageSize: pageSize,
+      ownershipState: ownershipState,
     );
   }
 
@@ -55,8 +87,14 @@ abstract class TenantAdminAccountsRepositoryContract {
   Future<TenantAdminPagedAccountsResult> fetchAccountsPage({
     required int page,
     required int pageSize,
+    TenantAdminOwnershipState? ownershipState,
   }) async {
     final accounts = await fetchAccounts();
+    final filteredAccounts = ownershipState == null
+        ? accounts
+        : accounts.where((account) {
+            return account.ownershipState == ownershipState;
+          }).toList(growable: false);
     if (page <= 0 || pageSize <= 0) {
       return const TenantAdminPagedAccountsResult(
         accounts: <TenantAdminAccount>[],
@@ -64,20 +102,75 @@ abstract class TenantAdminAccountsRepositoryContract {
       );
     }
     final startIndex = (page - 1) * pageSize;
-    if (startIndex >= accounts.length) {
+    if (startIndex >= filteredAccounts.length) {
       return const TenantAdminPagedAccountsResult(
         accounts: <TenantAdminAccount>[],
         hasMore: false,
       );
     }
-    final endIndex = math.min(startIndex + pageSize, accounts.length);
+    final endIndex = math.min(startIndex + pageSize, filteredAccounts.length);
     return TenantAdminPagedAccountsResult(
-      accounts: accounts.sublist(startIndex, endIndex),
-      hasMore: endIndex < accounts.length,
+      accounts: filteredAccounts.sublist(startIndex, endIndex),
+      hasMore: endIndex < filteredAccounts.length,
     );
   }
 
   Future<TenantAdminAccount> fetchAccountBySlug(String accountSlug);
+  TenantAdminAccount? findLoadedAccount({
+    String? accountId,
+    String? accountSlug,
+  }) {
+    final loadedAccounts = accountsStreamValue.value;
+    if (loadedAccounts == null || loadedAccounts.isEmpty) {
+      return null;
+    }
+    final normalizedId = accountId?.trim();
+    if (normalizedId != null && normalizedId.isNotEmpty) {
+      for (final account in loadedAccounts) {
+        if (account.id == normalizedId) {
+          return account;
+        }
+      }
+    }
+    final normalizedSlug = accountSlug?.trim();
+    if (normalizedSlug != null && normalizedSlug.isNotEmpty) {
+      for (final account in loadedAccounts) {
+        if (account.slug == normalizedSlug) {
+          return account;
+        }
+      }
+    }
+    return null;
+  }
+
+  TenantAdminLoadedAccountWatch watchLoadedAccount({
+    String? accountId,
+    String? accountSlug,
+  }) {
+    final normalizedId = accountId?.trim();
+    final normalizedSlug = accountSlug?.trim();
+    final watchedAccountStreamValue = StreamValue<TenantAdminAccount?>(
+      defaultValue: findLoadedAccount(
+        accountId: normalizedId,
+        accountSlug: normalizedSlug,
+      ),
+    );
+    final subscription = accountsStreamValue.stream.listen((_) {
+      watchedAccountStreamValue.addValue(
+        findLoadedAccount(
+          accountId: normalizedId,
+          accountSlug: normalizedSlug,
+        ),
+      );
+    });
+    return TenantAdminLoadedAccountWatch(
+      streamValue: watchedAccountStreamValue,
+      onDispose: () {
+        unawaited(subscription.cancel());
+      },
+    );
+  }
+
   Future<TenantAdminAccount> createAccount({
     required String name,
     TenantAdminDocument? document,
@@ -103,6 +196,7 @@ abstract class TenantAdminAccountsRepositoryContract {
   Future<void> _fetchAccountsPage({
     required int page,
     required int pageSize,
+    TenantAdminOwnershipState? ownershipState,
   }) async {
     if (_paginationState.isFetchingAccountsPage) return;
     if (page > 1 && !_paginationState.hasMoreAccounts) return;
@@ -115,19 +209,20 @@ abstract class TenantAdminAccountsRepositoryContract {
       final result = await fetchAccountsPage(
         page: page,
         pageSize: pageSize,
+        ownershipState: ownershipState,
       );
       if (page == 1) {
-        _paginationState.cachedAccounts
+        _paginationState.loadedAccounts
           ..clear()
           ..addAll(result.accounts);
       } else {
-        _paginationState.cachedAccounts.addAll(result.accounts);
+        _paginationState.loadedAccounts.addAll(result.accounts);
       }
       _paginationState.currentAccountsPage = page;
       _paginationState.hasMoreAccounts = result.hasMore;
       hasMoreAccountsStreamValue.addValue(_paginationState.hasMoreAccounts);
       accountsStreamValue.addValue(
-        List<TenantAdminAccount>.unmodifiable(_paginationState.cachedAccounts),
+        List<TenantAdminAccount>.unmodifiable(_paginationState.loadedAccounts),
       );
       accountsErrorStreamValue.addValue(null);
     } catch (error) {
@@ -142,7 +237,7 @@ abstract class TenantAdminAccountsRepositoryContract {
   }
 
   void _resetAccountsPagination() {
-    _paginationState.cachedAccounts.clear();
+    _paginationState.loadedAccounts.clear();
     _paginationState.currentAccountsPage = 0;
     _paginationState.hasMoreAccounts = true;
     _paginationState.isFetchingAccountsPage = false;
@@ -178,15 +273,25 @@ mixin TenantAdminAccountsRepositoryPaginationMixin
       _mixinPaginationState.accountsErrorStreamValue;
 
   @override
-  Future<void> loadAccounts({int pageSize = 20}) async {
+  Future<void> loadAccounts({
+    int pageSize = 20,
+    TenantAdminOwnershipState? ownershipState,
+  }) async {
     await _waitForAccountsFetchMixin();
     _resetAccountsPaginationMixin();
     accountsStreamValue.addValue(null);
-    await _fetchAccountsPageMixin(page: 1, pageSize: pageSize);
+    await _fetchAccountsPageMixin(
+      page: 1,
+      pageSize: pageSize,
+      ownershipState: ownershipState,
+    );
   }
 
   @override
-  Future<void> loadNextAccountsPage({int pageSize = 20}) async {
+  Future<void> loadNextAccountsPage({
+    int pageSize = 20,
+    TenantAdminOwnershipState? ownershipState,
+  }) async {
     if (_mixinPaginationState.isFetchingAccountsPage ||
         !_mixinPaginationState.hasMoreAccounts) {
       return;
@@ -194,6 +299,7 @@ mixin TenantAdminAccountsRepositoryPaginationMixin
     await _fetchAccountsPageMixin(
       page: _mixinPaginationState.currentAccountsPage + 1,
       pageSize: pageSize,
+      ownershipState: ownershipState,
     );
   }
 
@@ -202,6 +308,63 @@ mixin TenantAdminAccountsRepositoryPaginationMixin
     _resetAccountsPaginationMixin();
     accountsStreamValue.addValue(null);
     accountsErrorStreamValue.addValue(null);
+  }
+
+  @override
+  TenantAdminAccount? findLoadedAccount({
+    String? accountId,
+    String? accountSlug,
+  }) {
+    final loadedAccounts = accountsStreamValue.value;
+    if (loadedAccounts == null || loadedAccounts.isEmpty) {
+      return null;
+    }
+    final normalizedId = accountId?.trim();
+    if (normalizedId != null && normalizedId.isNotEmpty) {
+      for (final account in loadedAccounts) {
+        if (account.id == normalizedId) {
+          return account;
+        }
+      }
+    }
+    final normalizedSlug = accountSlug?.trim();
+    if (normalizedSlug != null && normalizedSlug.isNotEmpty) {
+      for (final account in loadedAccounts) {
+        if (account.slug == normalizedSlug) {
+          return account;
+        }
+      }
+    }
+    return null;
+  }
+
+  @override
+  TenantAdminLoadedAccountWatch watchLoadedAccount({
+    String? accountId,
+    String? accountSlug,
+  }) {
+    final normalizedId = accountId?.trim();
+    final normalizedSlug = accountSlug?.trim();
+    final watchedAccountStreamValue = StreamValue<TenantAdminAccount?>(
+      defaultValue: findLoadedAccount(
+        accountId: normalizedId,
+        accountSlug: normalizedSlug,
+      ),
+    );
+    final subscription = accountsStreamValue.stream.listen((_) {
+      watchedAccountStreamValue.addValue(
+        findLoadedAccount(
+          accountId: normalizedId,
+          accountSlug: normalizedSlug,
+        ),
+      );
+    });
+    return TenantAdminLoadedAccountWatch(
+      streamValue: watchedAccountStreamValue,
+      onDispose: () {
+        unawaited(subscription.cancel());
+      },
+    );
   }
 
   Future<void> _waitForAccountsFetchMixin() async {
@@ -213,6 +376,7 @@ mixin TenantAdminAccountsRepositoryPaginationMixin
   Future<void> _fetchAccountsPageMixin({
     required int page,
     required int pageSize,
+    TenantAdminOwnershipState? ownershipState,
   }) async {
     if (_mixinPaginationState.isFetchingAccountsPage) return;
     if (page > 1 && !_mixinPaginationState.hasMoreAccounts) return;
@@ -225,13 +389,14 @@ mixin TenantAdminAccountsRepositoryPaginationMixin
       final result = await fetchAccountsPage(
         page: page,
         pageSize: pageSize,
+        ownershipState: ownershipState,
       );
       if (page == 1) {
-        _mixinPaginationState.cachedAccounts
+        _mixinPaginationState.loadedAccounts
           ..clear()
           ..addAll(result.accounts);
       } else {
-        _mixinPaginationState.cachedAccounts.addAll(result.accounts);
+        _mixinPaginationState.loadedAccounts.addAll(result.accounts);
       }
       _mixinPaginationState.currentAccountsPage = page;
       _mixinPaginationState.hasMoreAccounts = result.hasMore;
@@ -239,7 +404,7 @@ mixin TenantAdminAccountsRepositoryPaginationMixin
           .addValue(_mixinPaginationState.hasMoreAccounts);
       accountsStreamValue.addValue(
         List<TenantAdminAccount>.unmodifiable(
-          _mixinPaginationState.cachedAccounts,
+          _mixinPaginationState.loadedAccounts,
         ),
       );
       accountsErrorStreamValue.addValue(null);
@@ -255,7 +420,7 @@ mixin TenantAdminAccountsRepositoryPaginationMixin
   }
 
   void _resetAccountsPaginationMixin() {
-    _mixinPaginationState.cachedAccounts.clear();
+    _mixinPaginationState.loadedAccounts.clear();
     _mixinPaginationState.currentAccountsPage = 0;
     _mixinPaginationState.hasMoreAccounts = true;
     _mixinPaginationState.isFetchingAccountsPage = false;
@@ -265,7 +430,7 @@ mixin TenantAdminAccountsRepositoryPaginationMixin
 }
 
 class _TenantAdminAccountsPaginationState {
-  final List<TenantAdminAccount> cachedAccounts = <TenantAdminAccount>[];
+  final List<TenantAdminAccount> loadedAccounts = <TenantAdminAccount>[];
   final StreamValue<List<TenantAdminAccount>?> accountsStreamValue =
       StreamValue<List<TenantAdminAccount>?>();
   final StreamValue<bool> hasMoreAccountsStreamValue =
