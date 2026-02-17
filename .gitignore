@@ -66,6 +66,10 @@ foundation_documentation
 
 # Compile-time lane define overrides (local only)
 config/defines/local.override.json
+config/defines/integration.tenant.json
+
+# VS Code per-developer overrides (local only)
+.vscode/settings.json
 
 # Guardrail: backend code must never live inside flutter-app.
 laravel-app-root
