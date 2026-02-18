@@ -252,7 +252,7 @@ jobs:
           fi
 
           if [[ -f "$WEB_OUTPUT/index.html" ]]; then
-            python3 -c 'import sys,re; path=sys.argv[1]; host=sys.argv[2]; sha=sys.argv[3]; marker="<!-- DELPHI_INJECT__LANDLORD_HOST__ -->"; inject=f"<script>window.__LANDLORD_HOST__ = \\"{host}\\"; window.__WEB_BUILD_SHA__ = \\"{sha}\\";</script>"; s=open(path,"r",encoding="utf-8").read(); s=s.replace(marker,inject,1) if marker in s else re.sub(r"(<head[^>]*>)", r"\\1\\n  "+inject, s, count=1, flags=re.I); open(path,"w",encoding="utf-8").write(s)' "$WEB_OUTPUT/index.html" "$landlord_host" "$short_sha"
+            python3 -c 'import sys,re; path=sys.argv[1]; host=sys.argv[2]; sha=sys.argv[3]; marker="<!-- DELPHI_INJECT__LANDLORD_HOST__ -->"; inject="<script>window.__LANDLORD_HOST__ = \\\"{}\\\"; window.__WEB_BUILD_SHA__ = \\\"{}\\\";</script>".format(host,sha); s=open(path,"r",encoding="utf-8").read(); s=s.replace(marker,inject,1) if marker in s else re.sub(r"(<head[^>]*>)", lambda m: m.group(1)+"\\n  "+inject, s, count=1, flags=re.I); open(path,"w",encoding="utf-8").write(s)' "$WEB_OUTPUT/index.html" "$landlord_host" "$short_sha"
           fi
 
       - name: Upload web artifact
