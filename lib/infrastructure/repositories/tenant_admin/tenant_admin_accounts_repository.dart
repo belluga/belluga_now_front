@@ -493,6 +493,7 @@ class TenantAdminAccountsRepository
       ),
       organizationId: dto.organizationId,
       ownershipState: ownershipState,
+      avatarUrl: dto.avatarUrl,
     );
   }
 

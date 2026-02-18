@@ -9,6 +9,7 @@ class TenantAdminAccount {
     required this.document,
     required this.ownershipState,
     this.organizationId,
+    this.avatarUrl,
   });
 
   final String id;
@@ -17,4 +18,5 @@ class TenantAdminAccount {
   final TenantAdminDocument document;
   final TenantAdminOwnershipState ownershipState;
   final String? organizationId;
+  final String? avatarUrl;
 }
