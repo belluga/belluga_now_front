@@ -194,11 +194,13 @@ jobs:
         run: fvm flutter pub get
 
       - name: Flutter unit/widget tests
+        if: ${{ !(github.event_name == 'push' && github.ref_name == 'dev') }}
         run: |
           fvm flutter test --no-pub \
             --dart-define-from-file="${{ steps.lane_defines.outputs.defines_file }}"
 
       - name: Build web artifact
+        if: ${{ !(github.event_name == 'pull_request' && github.base_ref == 'dev') }}
         env:
           WEB_OUTPUT: ${{ runner.temp }}/web-build
         run: |
@@ -267,6 +269,7 @@ jobs:
           fi
 
       - name: Upload web artifact
+        if: ${{ !(github.event_name == 'pull_request' && github.base_ref == 'dev') }}
         uses: actions/upload-artifact@v4
         with:
           name: web-build
