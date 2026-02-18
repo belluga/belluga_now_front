@@ -1,8 +1,7 @@
-import 'dart:async';
 import 'dart:io';
 
+import 'package:belluga_now/domain/services/tenant_admin_external_image_proxy_contract.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_image_ingestion_service.dart';
-import 'package:dio/dio.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image/image.dart' as img;
@@ -89,16 +88,14 @@ void main() {
     );
   });
 
-  test('importFromUrl returns fallback guidance when site blocks fetch',
+  test('fetchFromUrlForCrop returns fallback guidance when proxy fails',
       () async {
-    final dio = Dio()..httpClientAdapter = _ThrowingHttpClientAdapter();
-    final service = TenantAdminImageIngestionService(dio: dio);
+    final service = TenantAdminImageIngestionService(
+      externalImageProxy: _FailingExternalImageProxy(),
+    );
 
     expect(
-      () => service.importFromUrl(
-        imageUrl: 'https://example.com/image.jpg',
-        slot: TenantAdminImageSlot.avatar,
-      ),
+      () => service.fetchFromUrlForCrop(imageUrl: 'https://example.com/image.jpg'),
       throwsA(
         isA<TenantAdminImageIngestionException>().having(
           (error) => error.message,
@@ -107,6 +104,23 @@ void main() {
         ),
       ),
     );
+  });
+
+  test('fetchFromUrlForCrop returns XFile from proxy bytes', () async {
+    final image = img.Image(width: 120, height: 80);
+    img.fill(image, color: img.ColorRgb8(90, 160, 40));
+    final bytes = Uint8List.fromList(img.encodePng(image));
+
+    final service = TenantAdminImageIngestionService(
+      externalImageProxy: _FakeExternalImageProxy(bytes),
+    );
+
+    final file = await service.fetchFromUrlForCrop(
+      imageUrl: 'https://example.com/image.png',
+    );
+
+    final roundtrip = await file.readAsBytes();
+    expect(roundtrip, bytes);
   });
 
   test('buildUpload returns jpeg payload', () async {
@@ -132,12 +146,17 @@ void main() {
       imagePicker: _FakeImagePicker(source),
     );
 
-    final output = await service.pickFromDevice(
+    final picked = await service.pickFromDevice(
       slot: TenantAdminImageSlot.avatar,
     );
 
-    expect(output, isNotNull);
-    final decoded = img.decodeImage(await output!.readAsBytes());
+    expect(picked, isNotNull);
+    final output = await service.prepareXFile(
+      picked!,
+      slot: TenantAdminImageSlot.avatar,
+    );
+
+    final decoded = img.decodeImage(await output.readAsBytes());
     expect(decoded, isNotNull);
     expect(decoded!.width, decoded.height);
     expect(decoded.width, lessThanOrEqualTo(1024));
@@ -150,12 +169,17 @@ void main() {
       imagePicker: _FakeImagePicker(source),
     );
 
-    final output = await service.pickFromDevice(
+    final picked = await service.pickFromDevice(
       slot: TenantAdminImageSlot.cover,
     );
 
-    expect(output, isNotNull);
-    final decoded = img.decodeImage(await output!.readAsBytes());
+    expect(picked, isNotNull);
+    final output = await service.prepareXFile(
+      picked!,
+      slot: TenantAdminImageSlot.cover,
+    );
+
+    final decoded = img.decodeImage(await output.readAsBytes());
     expect(decoded, isNotNull);
     final ratio = decoded!.width / decoded.height;
     expect((ratio - (16 / 9)).abs(), lessThan(0.02));
@@ -182,20 +206,21 @@ Future<XFile> _writeBytes(Uint8List bytes, {required String name}) async {
   return XFile(file.path, name: name);
 }
 
-class _ThrowingHttpClientAdapter implements HttpClientAdapter {
+class _FailingExternalImageProxy implements TenantAdminExternalImageProxyContract {
   @override
-  void close({bool force = false}) {}
+  Future<Uint8List> fetchExternalImageBytes({required String imageUrl}) async {
+    throw StateError('blocked');
+  }
+}
+
+class _FakeExternalImageProxy implements TenantAdminExternalImageProxyContract {
+  _FakeExternalImageProxy(this._bytes);
+
+  final Uint8List _bytes;
 
   @override
-  Future<ResponseBody> fetch(
-    RequestOptions options,
-    Stream<Uint8List>? requestStream,
-    Future<void>? cancelFuture,
-  ) {
-    throw DioException.connectionError(
-      requestOptions: options,
-      reason: 'blocked',
-    );
+  Future<Uint8List> fetchExternalImageBytes({required String imageUrl}) async {
+    return _bytes;
   }
 }
 

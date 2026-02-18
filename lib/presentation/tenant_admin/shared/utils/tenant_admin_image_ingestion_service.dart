@@ -2,9 +2,10 @@ import 'dart:math' as math;
 import 'dart:typed_data';
 
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
-import 'package:dio/dio.dart';
+import 'package:belluga_now/domain/services/tenant_admin_external_image_proxy_contract.dart';
 import 'package:image/image.dart' as img;
 import 'package:image_picker/image_picker.dart';
+import 'package:get_it/get_it.dart';
 
 enum TenantAdminImageSlot {
   avatar,
@@ -23,27 +24,27 @@ class TenantAdminImageIngestionException implements Exception {
 class TenantAdminImageIngestionService {
   TenantAdminImageIngestionService({
     ImagePicker? imagePicker,
-    Dio? dio,
+    TenantAdminExternalImageProxyContract? externalImageProxy,
   })  : _imagePicker = imagePicker ?? ImagePicker(),
-        _dio = dio ?? Dio();
+        _externalImageProxy = externalImageProxy;
 
   final ImagePicker _imagePicker;
-  final Dio _dio;
+  final TenantAdminExternalImageProxyContract? _externalImageProxy;
 
   static const int _maxSourceBytes = 15 * 1024 * 1024;
   static const int _maxOutputBytes = 2 * 1024 * 1024;
 
+  /// Picks an image from the device gallery without transforming it.
+  ///
+  /// The caller is responsible for passing the selected file through the crop
+  /// + normalize pipeline before uploading.
   Future<XFile?> pickFromDevice({required TenantAdminImageSlot slot}) async {
     final selected = await _imagePicker.pickImage(source: ImageSource.gallery);
-    if (selected == null) {
-      return null;
-    }
-    return prepareXFile(selected, slot: slot);
+    return selected;
   }
 
-  Future<XFile> importFromUrl({
+  Future<XFile> fetchFromUrlForCrop({
     required String imageUrl,
-    required TenantAdminImageSlot slot,
   }) async {
     final uri = Uri.tryParse(imageUrl.trim());
     if (uri == null ||
@@ -53,25 +54,22 @@ class TenantAdminImageIngestionService {
     }
 
     try {
-      final response = await _dio.getUri<List<int>>(
-        uri,
-        options: Options(
-          responseType: ResponseType.bytes,
-          followRedirects: true,
-          receiveTimeout: const Duration(seconds: 20),
-          sendTimeout: const Duration(seconds: 20),
-          validateStatus: (status) => status != null && status < 400,
-        ),
-      );
-      final data = response.data;
-      if (data == null || data.isEmpty) {
+      final proxy = _externalImageProxy ??
+          GetIt.I.get<TenantAdminExternalImageProxyContract>();
+      final data = await proxy.fetchExternalImageBytes(imageUrl: uri.toString());
+      if (data.isEmpty) {
         throw TenantAdminImageIngestionException(
           'Nao foi possivel baixar a imagem da URL informada.',
         );
       }
-      return _prepareBytesAsFile(
-        Uint8List.fromList(data),
-        slot: slot,
+      if (data.length > _maxSourceBytes) {
+        throw TenantAdminImageIngestionException(
+          'Imagem muito grande para processamento. Maximo 15MB.',
+        );
+      }
+      return XFile.fromData(
+        data,
+        name: 'url_${DateTime.now().millisecondsSinceEpoch}',
       );
     } on TenantAdminImageIngestionException {
       rethrow;
@@ -88,7 +86,39 @@ class TenantAdminImageIngestionService {
     required TenantAdminImageSlot slot,
   }) async {
     final bytes = await file.readAsBytes();
-    return _prepareBytesAsFile(bytes, slot: slot);
+    return prepareBytesAsXFile(
+      bytes,
+      slot: slot,
+      applyAspectCrop: true,
+    );
+  }
+
+  Future<Uint8List> readBytesForCrop(XFile file) async {
+    final bytes = await file.readAsBytes();
+    if (bytes.length > _maxSourceBytes) {
+      throw TenantAdminImageIngestionException(
+        'Imagem muito grande para processamento. Maximo 15MB.',
+      );
+    }
+    final decoded = img.decodeImage(bytes);
+    if (decoded == null) {
+      throw TenantAdminImageIngestionException(
+        'Arquivo de imagem invalido. Use JPG, PNG ou WEBP.',
+      );
+    }
+    return bytes;
+  }
+
+  Future<XFile> prepareBytesAsXFile(
+    Uint8List sourceBytes, {
+    required TenantAdminImageSlot slot,
+    required bool applyAspectCrop,
+  }) async {
+    return _prepareBytesAsFile(
+      sourceBytes,
+      slot: slot,
+      applyAspectCrop: applyAspectCrop,
+    );
   }
 
   Future<TenantAdminMediaUpload?> buildUpload(
@@ -98,8 +128,11 @@ class TenantAdminImageIngestionService {
     if (file == null) {
       return null;
     }
-    final prepared = await prepareXFile(file, slot: slot);
-    final bytes = await prepared.readAsBytes();
+    var bytes = await file.readAsBytes();
+    if (bytes.length > _maxOutputBytes || file.mimeType != 'image/jpeg') {
+      final prepared = await prepareXFile(file, slot: slot);
+      bytes = await prepared.readAsBytes();
+    }
     return TenantAdminMediaUpload(
       bytes: bytes,
       fileName: _buildOutputFileName(slot),
@@ -110,6 +143,7 @@ class TenantAdminImageIngestionService {
   Future<XFile> _prepareBytesAsFile(
     Uint8List sourceBytes, {
     required TenantAdminImageSlot slot,
+    required bool applyAspectCrop,
   }) async {
     if (sourceBytes.length > _maxSourceBytes) {
       throw TenantAdminImageIngestionException(
@@ -125,7 +159,8 @@ class TenantAdminImageIngestionService {
     }
 
     final ratio = slot == TenantAdminImageSlot.avatar ? 1.0 : (16 / 9);
-    final cropped = _centerCropToRatio(decoded, ratio);
+    final cropped =
+        applyAspectCrop ? _centerCropToRatio(decoded, ratio) : decoded;
     final resized = _resizeToBounds(
       cropped,
       maxWidth: slot == TenantAdminImageSlot.avatar ? 1024 : 1920,
