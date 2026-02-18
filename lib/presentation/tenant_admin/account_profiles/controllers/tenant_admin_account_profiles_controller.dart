@@ -384,6 +384,14 @@ class TenantAdminAccountProfilesController implements Disposable {
     );
   }
 
+  void updateEditAvatarBusy(bool isBusy) {
+    _updateEditState(editStateStreamValue.value.copyWith(avatarBusy: isBusy));
+  }
+
+  void updateEditCoverBusy(bool isBusy) {
+    _updateEditState(editStateStreamValue.value.copyWith(coverBusy: isBusy));
+  }
+
   void updateAvatarRemoteUrl(String? url) {
     final trimmed = url?.trim();
     _updateEditState(
@@ -687,6 +695,18 @@ class TenantAdminAccountProfilesController implements Disposable {
         coverFile: file,
         coverWebUrl: null,
       ),
+    );
+  }
+
+  void updateCreateAvatarBusy(bool isBusy) {
+    _updateCreateState(
+      createStateStreamValue.value.copyWith(avatarBusy: isBusy),
+    );
+  }
+
+  void updateCreateCoverBusy(bool isBusy) {
+    _updateCreateState(
+      createStateStreamValue.value.copyWith(coverBusy: isBusy),
     );
   }
 
@@ -1034,6 +1054,8 @@ class TenantAdminAccountProfileEditDraft {
     required this.coverRemoteError,
     required this.avatarPreloadUrl,
     required this.coverPreloadUrl,
+    required this.avatarBusy,
+    required this.coverBusy,
   });
 
   factory TenantAdminAccountProfileEditDraft.initial() =>
@@ -1049,6 +1071,8 @@ class TenantAdminAccountProfileEditDraft {
         coverRemoteError: false,
         avatarPreloadUrl: null,
         coverPreloadUrl: null,
+        avatarBusy: false,
+        coverBusy: false,
       );
 
   final String? selectedProfileType;
@@ -1062,6 +1086,8 @@ class TenantAdminAccountProfileEditDraft {
   final bool coverRemoteError;
   final String? avatarPreloadUrl;
   final String? coverPreloadUrl;
+  final bool avatarBusy;
+  final bool coverBusy;
 
   TenantAdminAccountProfileEditDraft copyWith({
     Object? selectedProfileType = _unset,
@@ -1075,6 +1101,8 @@ class TenantAdminAccountProfileEditDraft {
     bool? coverRemoteError,
     Object? avatarPreloadUrl = _unset,
     Object? coverPreloadUrl = _unset,
+    bool? avatarBusy,
+    bool? coverBusy,
   }) {
     final nextSelectedProfileType = selectedProfileType == _unset
         ? this.selectedProfileType
@@ -1108,6 +1136,8 @@ class TenantAdminAccountProfileEditDraft {
       coverRemoteError: coverRemoteError ?? this.coverRemoteError,
       avatarPreloadUrl: nextAvatarPreloadUrl,
       coverPreloadUrl: nextCoverPreloadUrl,
+      avatarBusy: avatarBusy ?? this.avatarBusy,
+      coverBusy: coverBusy ?? this.coverBusy,
     );
   }
 
@@ -1138,6 +1168,8 @@ class TenantAdminAccountProfileCreateDraft {
     required this.coverFile,
     required this.avatarWebUrl,
     required this.coverWebUrl,
+    required this.avatarBusy,
+    required this.coverBusy,
   });
 
   factory TenantAdminAccountProfileCreateDraft.initial() =>
@@ -1147,6 +1179,8 @@ class TenantAdminAccountProfileCreateDraft {
         coverFile: null,
         avatarWebUrl: null,
         coverWebUrl: null,
+        avatarBusy: false,
+        coverBusy: false,
       );
 
   final String? selectedProfileType;
@@ -1154,6 +1188,8 @@ class TenantAdminAccountProfileCreateDraft {
   final XFile? coverFile;
   final String? avatarWebUrl;
   final String? coverWebUrl;
+  final bool avatarBusy;
+  final bool coverBusy;
 
   TenantAdminAccountProfileCreateDraft copyWith({
     Object? selectedProfileType = _unset,
@@ -1161,6 +1197,8 @@ class TenantAdminAccountProfileCreateDraft {
     Object? coverFile = _unset,
     Object? avatarWebUrl = _unset,
     Object? coverWebUrl = _unset,
+    bool? avatarBusy,
+    bool? coverBusy,
   }) {
     final nextSelectedProfileType = selectedProfileType == _unset
         ? this.selectedProfileType
@@ -1180,6 +1218,8 @@ class TenantAdminAccountProfileCreateDraft {
       coverFile: nextCoverFile,
       avatarWebUrl: nextAvatarWebUrl,
       coverWebUrl: nextCoverWebUrl,
+      avatarBusy: avatarBusy ?? this.avatarBusy,
+      coverBusy: coverBusy ?? this.coverBusy,
     );
   }
 }

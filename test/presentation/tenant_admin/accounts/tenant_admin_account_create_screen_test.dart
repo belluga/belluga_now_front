@@ -17,9 +17,11 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_definition.dart';
 import 'package:belluga_now/domain/services/tenant_admin_location_selection_contract.dart';
+import 'package:belluga_now/domain/services/tenant_admin_external_image_proxy_contract.dart';
 import 'package:belluga_now/infrastructure/services/tenant_admin/tenant_admin_location_selection_service.dart';
 import 'package:belluga_now/presentation/tenant_admin/accounts/controllers/tenant_admin_accounts_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/accounts/screens/tenant_admin_account_create_screen.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_image_ingestion_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -482,6 +484,12 @@ void main() {
     GetIt.I.registerSingleton<TenantAdminLocationSelectionContract>(
       locationSelectionService,
     );
+    GetIt.I.registerSingleton<TenantAdminExternalImageProxyContract>(
+      _FakeExternalImageProxy(),
+    );
+    GetIt.I.registerSingleton<TenantAdminImageIngestionService>(
+      TenantAdminImageIngestionService(),
+    );
     GetIt.I.registerSingleton<TenantAdminAccountsController>(
       TenantAdminAccountsController(
         locationSelectionService: locationSelectionService,
@@ -602,6 +610,34 @@ void main() {
     );
   });
 
+  testWidgets('disables avatar pick and shows progress when busy', (tester) async {
+    await _pumpWithAutoRoute(
+      tester,
+      const Scaffold(
+        body: TenantAdminAccountCreateScreen(),
+      ),
+    );
+
+    final profileTypeDropdown = find.byType(DropdownButtonFormField<String>);
+    await tester.ensureVisible(profileTypeDropdown.last);
+    await tester.tap(profileTypeDropdown.last, warnIfMissed: false);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Venue').last);
+    await tester.pumpAndSettle();
+
+    final controller = GetIt.I.get<TenantAdminAccountsController>();
+    controller.updateCreateAvatarBusy(true);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+
+    expect(find.byType(LinearProgressIndicator), findsAtLeastNWidgets(1));
+
+    final pickButton =
+        find.byKey(const ValueKey('tenant_admin_account_create_avatar_pick'));
+    final button = tester.widget<FilledButton>(pickButton);
+    expect(button.onPressed, isNull);
+  });
+
   testWidgets('shows bio and taxonomy fields in account create flow', (
     tester,
   ) async {
@@ -713,4 +749,11 @@ XFile _createTempImageFile(String name) {
   img.fill(image, color: img.ColorRgb8(120, 45, 180));
   file.writeAsBytesSync(img.encodePng(image), flush: true);
   return XFile(file.path, name: name, mimeType: 'image/png');
+}
+
+class _FakeExternalImageProxy implements TenantAdminExternalImageProxyContract {
+  @override
+  Future<Uint8List> fetchExternalImageBytes({required String imageUrl}) async {
+    throw UnimplementedError();
+  }
 }
