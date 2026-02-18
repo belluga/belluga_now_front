@@ -237,6 +237,52 @@ jobs:
             python3 -c 'import re,sys,functools; p=sys.argv[1]; v=sys.argv[2]; s=open(p,"r",encoding="utf-8").read(); names=("main.dart.js","flutter_bootstrap.js","flutter.js","flutter_service_worker.js"); f=lambda acc,n: re.sub(r"""(src=")"""+re.escape(n)+r"""(?:\?[^"]*)?(")""", r"\g<1>"+n+"?v="+v+r"\g<2>", acc, flags=re.I); s=functools.reduce(f,names,s); open(p,"w",encoding="utf-8").write(s)' "$WEB_OUTPUT/index.html" "$short_sha"
           fi
 
+          # Fail-closed host guard requires __LANDLORD_HOST__ injection.
+          landlord_domain="$(jq -r '.LANDLORD_DOMAIN // empty' "${{ steps.lane_defines.outputs.defines_file }}")"
+          if [[ -z "${landlord_domain}" || "${landlord_domain}" == "null" ]]; then
+            echo "ERROR: missing LANDLORD_DOMAIN in lane defines file (${{ steps.lane_defines.outputs.defines_file }})." >&2
+            exit 1
+          fi
+
+          landlord_host="$(
+            python3 - "$landlord_domain" <<'PY'
+import sys
+from urllib.parse import urlparse
+u = sys.argv[1]
+p = urlparse(u)
+if not p.scheme or not p.netloc:
+  raise SystemExit(1)
+if not p.hostname:
+  raise SystemExit(1)
+print(p.hostname.lower())
+PY
+          )"
+
+          if [[ ! "${landlord_host}" =~ ^[a-z0-9.-]+$ ]]; then
+            echo "ERROR: invalid landlord host parsed from LANDLORD_DOMAIN (${landlord_domain}): ${landlord_host}" >&2
+            exit 1
+          fi
+
+          if [[ -f "$WEB_OUTPUT/index.html" ]]; then
+            python3 - "$WEB_OUTPUT/index.html" "$landlord_host" "$short_sha" <<'PY'
+import sys, re
+path = sys.argv[1]
+host = sys.argv[2]
+sha = sys.argv[3]
+marker = "<!-- DELPHI_INJECT__LANDLORD_HOST__ -->"
+inject = f'<script>window.__LANDLORD_HOST__ = "{host}"; window.__WEB_BUILD_SHA__ = "{sha}";</script>'
+with open(path, "r", encoding="utf-8") as f:
+  s = f.read()
+if marker in s:
+  s = s.replace(marker, inject, 1)
+else:
+  # Best-effort insertion right after <head>.
+  s = re.sub(r"(<head[^>]*>)", r"\\1\\n  " + inject, s, count=1, flags=re.I)
+with open(path, "w", encoding="utf-8") as f:
+  f.write(s)
+PY
+          fi
+
       - name: Upload web artifact
         uses: actions/upload-artifact@v4
         with:

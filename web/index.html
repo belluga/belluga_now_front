@@ -17,6 +17,8 @@
   <link rel="manifest" href="manifest.json">
   <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport">
 
+  <!-- DELPHI_INJECT__LANDLORD_HOST__ -->
+
   <style>
     #splash-screen {
       position: fixed;
@@ -124,69 +126,31 @@
     // Host-based routing safety (pre-Flutter).
     // - Tenant hosts must never render landlord routes even via direct navigation.
     // - Landlord host must never render tenant-only routes even via direct navigation.
-    // Prefer runtime injection, but always run with a safe fallback.
-    // When injection is absent, infer the landlord host from the current hostname
-    // (tenant subdomain => base domain).
-    const inferLandlordHost = (hostname) => {
-      const lower = (hostname || '').toLowerCase().trim();
-      if (!lower) return null;
-
-      // localhost/IPs have no cross-host routing risk; treat them as "landlord".
-      if (lower === 'localhost') return lower;
-      if (/^\d{1,3}(\.\d{1,3}){3}$/.test(lower)) return lower;
-      if (lower.includes(':')) return lower;
-
-      const parts = lower.split('.').filter(Boolean);
-      // 2-label hosts are ambiguous (e.g. tenant.test in local host-based tests).
-      // If we cannot confidently infer a base landlord host, do nothing.
-      if (parts.length <= 2) return null;
-
-      const last2 = parts.slice(-2).join('.');
-
-      // Wildcard DNS for local envs (README recommends *.nip.io).
-      // For hosts like 192.168.15.4.nip.io, the base landlord host is the full
-      // <ipv4>.nip.io (6 labels), not just nip.io.
-      if (last2 === 'nip.io' || last2 === 'sslip.io') {
-        const isIpv4Label = (s) => {
-          if (!/^\d{1,3}$/.test(s)) return false;
-          const n = Number(s);
-          return n >= 0 && n <= 255;
-        };
-        if (parts.length >= 6) {
-          const last6 = parts.slice(-6);
-          const ipParts = last6.slice(0, 4);
-          if (ipParts.every(isIpv4Label)) return last6.join('.');
-        }
-        return null;
-      }
-
-      // Some public suffixes are "shared" and cannot be used to infer a base domain safely.
-      // Returning null is safer than misclassifying landlord/tenant hosts.
-      const multiTenantSuffixes = new Set([
-        'github.io',
-        'pages.dev',
-        'vercel.app',
-        'netlify.app',
-        'web.app',
-      ]);
-      if (multiTenantSuffixes.has(last2)) return null;
-
-      // ccTLD + 2nd-level domains (e.g. com.mx, co.uk, ac.jp) require 3 labels for the base domain.
-      // Without this, a hostname like tenant.example.com.mx would be mis-inferred as com.mx.
-      if (/^(ac|co|com|edu|gov|net|org)\.[a-z]{2}$/.test(last2)) {
-        return parts.slice(-3).join('.');
-      }
-
-      return last2;
-    };
-
     const landlordHostRaw = window.__LANDLORD_HOST__;
     const hostname = window.location.hostname.toLowerCase();
     const pathname = window.location.pathname || '/';
     const landlordHost =
       typeof landlordHostRaw === 'string' && landlordHostRaw.trim().length > 0
         ? landlordHostRaw.trim().toLowerCase()
-        : inferLandlordHost(hostname);
+        : null;
+
+    // Fail closed. Host inference is fragile (public suffixes, nip.io, etc.) and can
+    // mis-route users before Flutter has a chance to apply guards.
+    if (landlordHost == null) {
+      console.error('[belluga_now] Missing required window.__LANDLORD_HOST__ injection. Refusing to start.');
+
+      const splash = document.getElementById('splash-screen');
+      if (splash) {
+        splash.style.backgroundColor = '#111827';
+      }
+      const label = window.__appProgressLabel;
+      const progress = window.__appProgressUpdate;
+      if (typeof progress === 'function') progress(100);
+      if (typeof label === 'function') {
+        label('Config error: missing LANDLORD host injection.');
+      }
+      return;
+    }
 
     const isTenantHost =
       landlordHost != null &&
@@ -203,6 +167,17 @@
       window.location.replace('/landlord');
       return;
     }
+
+    const startFlutter = () => {
+      if (window.__bellugaFlutterBootstrapped) return;
+      window.__bellugaFlutterBootstrapped = true;
+      const script = document.createElement('script');
+      const v = window.__WEB_BUILD_SHA__;
+      const suffix = typeof v === 'string' && v.trim().length > 0 ? `?v=${encodeURIComponent(v.trim())}` : '';
+      script.src = `flutter_bootstrap.js${suffix}`;
+      script.async = true;
+      document.body.appendChild(script);
+    };
 
     const applyBranding = (branding) => {
       if (!branding) return;
@@ -248,6 +223,9 @@
         window.dispatchEvent(new CustomEvent('brandingReady', { detail: resolvedBranding }));
       }
     })();
+
+    // Bootstrap Flutter after pre-route safety checks are done.
+    startFlutter();
   });
 </script>
 </head>
@@ -335,8 +313,6 @@
       }, 20000);
     })();
   </script>
-
-  <script src="flutter_bootstrap.js" async></script>
 </body>
 
 </html>
