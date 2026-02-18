@@ -244,19 +244,7 @@ jobs:
             exit 1
           fi
 
-          landlord_host="$(
-            python3 - "$landlord_domain" <<'PY'
-import sys
-from urllib.parse import urlparse
-u = sys.argv[1]
-p = urlparse(u)
-if not p.scheme or not p.netloc:
-  raise SystemExit(1)
-if not p.hostname:
-  raise SystemExit(1)
-print(p.hostname.lower())
-PY
-          )"
+          landlord_host="$(python3 -c 'import sys; from urllib.parse import urlparse; p=urlparse(sys.argv[1]); assert p.scheme and p.netloc and p.hostname; print(p.hostname.lower())' "$landlord_domain")"
 
           if [[ ! "${landlord_host}" =~ ^[a-z0-9.-]+$ ]]; then
             echo "ERROR: invalid landlord host parsed from LANDLORD_DOMAIN (${landlord_domain}): ${landlord_host}" >&2
@@ -264,23 +252,7 @@ PY
           fi
 
           if [[ -f "$WEB_OUTPUT/index.html" ]]; then
-            python3 - "$WEB_OUTPUT/index.html" "$landlord_host" "$short_sha" <<'PY'
-import sys, re
-path = sys.argv[1]
-host = sys.argv[2]
-sha = sys.argv[3]
-marker = "<!-- DELPHI_INJECT__LANDLORD_HOST__ -->"
-inject = f'<script>window.__LANDLORD_HOST__ = "{host}"; window.__WEB_BUILD_SHA__ = "{sha}";</script>'
-with open(path, "r", encoding="utf-8") as f:
-  s = f.read()
-if marker in s:
-  s = s.replace(marker, inject, 1)
-else:
-  # Best-effort insertion right after <head>.
-  s = re.sub(r"(<head[^>]*>)", r"\\1\\n  " + inject, s, count=1, flags=re.I)
-with open(path, "w", encoding="utf-8") as f:
-  f.write(s)
-PY
+            python3 -c 'import sys,re; path=sys.argv[1]; host=sys.argv[2]; sha=sys.argv[3]; marker="<!-- DELPHI_INJECT__LANDLORD_HOST__ -->"; inject=f"<script>window.__LANDLORD_HOST__ = \\"{host}\\"; window.__WEB_BUILD_SHA__ = \\"{sha}\\";</script>"; s=open(path,"r",encoding="utf-8").read(); s=s.replace(marker,inject,1) if marker in s else re.sub(r"(<head[^>]*>)", r"\\1\\n  "+inject, s, count=1, flags=re.I); open(path,"w",encoding="utf-8").write(s)' "$WEB_OUTPUT/index.html" "$landlord_host" "$short_sha"
           fi
 
       - name: Upload web artifact
