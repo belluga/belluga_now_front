@@ -39,20 +39,10 @@ class ScheduleRepository extends ScheduleRepositoryContract
                 .schedule;
 
   final ScheduleBackendContract _backend;
-  List<EventDTO>? _cachedEvents;
-
-  Future<List<EventDTO>> _loadEvents() async {
-    if (_cachedEvents != null) {
-      return _cachedEvents!;
-    }
-    final events = await _backend.fetchEvents();
-    _cachedEvents = events;
-    return events;
-  }
 
   @override
   Future<List<EventModel>> getAllEvents() async {
-    final events = await _loadEvents();
+    final events = await _backend.fetchEvents();
     return events.map(mapEventDto).toList();
   }
 

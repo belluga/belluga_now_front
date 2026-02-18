@@ -86,6 +86,10 @@ class TenantAdminStaticAssetsController implements Disposable {
       StreamValue<bool>(defaultValue: false);
   final StreamValue<XFile?> avatarFileStreamValue = StreamValue<XFile?>();
   final StreamValue<XFile?> coverFileStreamValue = StreamValue<XFile?>();
+  final StreamValue<bool> avatarBusyStreamValue =
+      StreamValue<bool>(defaultValue: false);
+  final StreamValue<bool> coverBusyStreamValue =
+      StreamValue<bool>(defaultValue: false);
 
   final GlobalKey<FormState> formKey = GlobalKey<FormState>();
   final TextEditingController displayNameController = TextEditingController();
@@ -261,6 +265,14 @@ class TenantAdminStaticAssetsController implements Disposable {
     if (file != null) {
       coverUrlController.clear();
     }
+  }
+
+  void updateAvatarBusy(bool isBusy) {
+    avatarBusyStreamValue.addValue(isBusy);
+  }
+
+  void updateCoverBusy(bool isBusy) {
+    coverBusyStreamValue.addValue(isBusy);
   }
 
   void updateAvatarWebUrl(String? url) {
@@ -634,5 +646,7 @@ class TenantAdminStaticAssetsController implements Disposable {
     taxonomyAutosavingStreamValue.dispose();
     avatarFileStreamValue.dispose();
     coverFileStreamValue.dispose();
+    avatarBusyStreamValue.dispose();
+    coverBusyStreamValue.dispose();
   }
 }

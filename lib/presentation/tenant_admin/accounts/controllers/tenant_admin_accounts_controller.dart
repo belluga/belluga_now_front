@@ -270,6 +270,18 @@ class TenantAdminAccountsController implements Disposable {
     );
   }
 
+  void updateCreateAvatarBusy(bool isBusy) {
+    _updateCreateState(
+      createStateStreamValue.value.copyWith(avatarBusy: isBusy),
+    );
+  }
+
+  void updateCreateCoverBusy(bool isBusy) {
+    _updateCreateState(
+      createStateStreamValue.value.copyWith(coverBusy: isBusy),
+    );
+  }
+
   void updateCreateAvatarWebUrl(String? url) {
     final trimmed = url?.trim();
     _updateCreateState(
@@ -609,6 +621,8 @@ class TenantAdminAccountCreateDraft {
     required this.coverFile,
     required this.avatarWebUrl,
     required this.coverWebUrl,
+    required this.avatarBusy,
+    required this.coverBusy,
   });
 
   factory TenantAdminAccountCreateDraft.initial() =>
@@ -619,6 +633,8 @@ class TenantAdminAccountCreateDraft {
         coverFile: null,
         avatarWebUrl: null,
         coverWebUrl: null,
+        avatarBusy: false,
+        coverBusy: false,
       );
 
   final TenantAdminOwnershipState ownershipState;
@@ -627,6 +643,8 @@ class TenantAdminAccountCreateDraft {
   final XFile? coverFile;
   final String? avatarWebUrl;
   final String? coverWebUrl;
+  final bool avatarBusy;
+  final bool coverBusy;
 
   TenantAdminAccountCreateDraft copyWith({
     Object? ownershipState = _unset,
@@ -635,6 +653,8 @@ class TenantAdminAccountCreateDraft {
     Object? coverFile = _unset,
     Object? avatarWebUrl = _unset,
     Object? coverWebUrl = _unset,
+    bool? avatarBusy,
+    bool? coverBusy,
   }) {
     final nextOwnershipState = ownershipState == _unset
         ? this.ownershipState
@@ -658,6 +678,8 @@ class TenantAdminAccountCreateDraft {
       coverFile: nextCoverFile,
       avatarWebUrl: nextAvatarWebUrl,
       coverWebUrl: nextCoverWebUrl,
+      avatarBusy: avatarBusy ?? this.avatarBusy,
+      coverBusy: coverBusy ?? this.coverBusy,
     );
   }
 }
