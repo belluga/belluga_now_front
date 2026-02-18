@@ -137,7 +137,9 @@
       if (lower.includes(':')) return lower;
 
       const parts = lower.split('.').filter(Boolean);
-      if (parts.length <= 2) return lower;
+      // 2-label hosts are ambiguous (e.g. tenant.test in local host-based tests).
+      // If we cannot confidently infer a base landlord host, do nothing.
+      if (parts.length <= 2) return null;
 
       // Common multi-part TLDs where base domain needs 3 labels.
       const last2 = parts.slice(-2).join('.');
