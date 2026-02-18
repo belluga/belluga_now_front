@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_account_profiles_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_accounts_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_taxonomies_repository_contract.dart';
@@ -16,13 +17,17 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_definition.dart';
 import 'package:belluga_now/domain/services/tenant_admin_location_selection_contract.dart';
+import 'package:belluga_now/domain/services/tenant_admin_external_image_proxy_contract.dart';
 import 'package:belluga_now/infrastructure/services/tenant_admin/tenant_admin_location_selection_service.dart';
 import 'package:belluga_now/presentation/tenant_admin/accounts/controllers/tenant_admin_accounts_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/accounts/screens/tenant_admin_account_create_screen.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_image_ingestion_service.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
-import 'package:image_picker_platform_interface/image_picker_platform_interface.dart';
+import 'package:image/image.dart' as img;
+import 'package:image_picker/image_picker.dart';
 import 'package:stream_value/core/stream_value.dart';
 
 class _FakeAccountsRepository
@@ -44,10 +49,12 @@ class _FakeAccountsRepository
   final StreamValue<String?> accountsErrorStreamValue = StreamValue<String?>();
 
   @override
-  Future<void> loadAccounts({int pageSize = 20}) async {}
+  Future<void> loadAccounts(
+      {int pageSize = 20, TenantAdminOwnershipState? ownershipState}) async {}
 
   @override
-  Future<void> loadNextAccountsPage({int pageSize = 20}) async {}
+  Future<void> loadNextAccountsPage(
+      {int pageSize = 20, TenantAdminOwnershipState? ownershipState}) async {}
 
   @override
   void resetAccountsState() {}
@@ -93,6 +100,7 @@ class _FakeAccountsRepository
   Future<TenantAdminPagedAccountsResult> fetchAccountsPage({
     required int page,
     required int pageSize,
+    TenantAdminOwnershipState? ownershipState,
   }) async {
     return const TenantAdminPagedAccountsResult(
       accounts: <TenantAdminAccount>[],
@@ -148,7 +156,7 @@ class _FakeAccountProfilesRepository
                   isPoiEnabled: true,
                   hasBio: false,
                   hasContent: false,
-          hasTaxonomies: false,
+                  hasTaxonomies: false,
                   hasAvatar: true,
                   hasCover: true,
                   hasEvents: false,
@@ -284,7 +292,7 @@ class _FakeAccountProfilesRepository
             isPoiEnabled: true,
             hasBio: false,
             hasContent: false,
-          hasTaxonomies: false,
+            hasTaxonomies: false,
             hasAvatar: false,
             hasCover: false,
             hasEvents: false,
@@ -444,7 +452,21 @@ class _FakeTaxonomiesRepository
 }
 
 void main() {
-  final originalImagePicker = ImagePickerPlatform.instance;
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  const pathProviderChannel = MethodChannel('plugins.flutter.io/path_provider');
+  final fallbackTempDir =
+      Directory.systemTemp.createTempSync('tenant-admin-account-create-test');
+
+  setUpAll(() {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(pathProviderChannel, (call) async {
+      if (call.method == 'getTemporaryDirectory') {
+        return fallbackTempDir.path;
+      }
+      return null;
+    });
+  });
 
   setUp(() async {
     await GetIt.I.reset();
@@ -462,6 +484,12 @@ void main() {
     GetIt.I.registerSingleton<TenantAdminLocationSelectionContract>(
       locationSelectionService,
     );
+    GetIt.I.registerSingleton<TenantAdminExternalImageProxyContract>(
+      _FakeExternalImageProxy(),
+    );
+    GetIt.I.registerSingleton<TenantAdminImageIngestionService>(
+      TenantAdminImageIngestionService(),
+    );
     GetIt.I.registerSingleton<TenantAdminAccountsController>(
       TenantAdminAccountsController(
         locationSelectionService: locationSelectionService,
@@ -471,21 +499,25 @@ void main() {
 
   tearDown(() async {
     await GetIt.I.reset();
-    ImagePickerPlatform.instance = originalImagePicker;
+  });
+
+  tearDownAll(() async {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(pathProviderChannel, null);
+    if (fallbackTempDir.existsSync()) {
+      fallbackTempDir.deleteSync(recursive: true);
+    }
   });
 
   testWidgets(
       'requires location and shows map pick for POI-enabled profile type',
       (tester) async {
-    await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: TenantAdminAccountCreateScreen(),
-        ),
+    await _pumpWithAutoRoute(
+      tester,
+      Scaffold(
+        body: TenantAdminAccountCreateScreen(),
       ),
     );
-
-    await tester.pumpAndSettle();
 
     final profileTypeDropdown = find.byType(DropdownButtonFormField<String>);
     await tester.ensureVisible(profileTypeDropdown.last);
@@ -519,19 +551,12 @@ void main() {
   testWidgets('shows selected avatar and allows clear', (tester) async {
     final avatarFile = _createTempImageFile('avatar.png');
     final coverFile = _createTempImageFile('cover.png');
-    ImagePickerPlatform.instance = _FakeImagePickerPlatform([
-      avatarFile,
-      coverFile,
-    ]);
-    await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: TenantAdminAccountCreateScreen(),
-        ),
+    await _pumpWithAutoRoute(
+      tester,
+      Scaffold(
+        body: TenantAdminAccountCreateScreen(),
       ),
     );
-
-    await tester.pumpAndSettle();
 
     expect(
       find.byKey(const ValueKey('tenant_admin_account_create_avatar_pick')),
@@ -558,39 +583,59 @@ void main() {
       findsOneWidget,
     );
 
-    expect(find.byIcon(Icons.person_outline), findsOneWidget);
     expect(find.text('Remover'), findsNothing);
-
-    final avatarPick =
-        find.byKey(const ValueKey('tenant_admin_account_create_avatar_pick'));
-    await tester.ensureVisible(avatarPick);
-    await tester.tap(avatarPick);
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Do dispositivo').last);
+    final controller = GetIt.I.get<TenantAdminAccountsController>();
+    controller.updateCreateAvatarFile(avatarFile);
     await tester.pumpAndSettle();
 
-    expect(find.byIcon(Icons.person_outline), findsNothing);
-    expect(find.text('Remover'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('tenant_admin_account_create_avatar_remove')),
+      findsOneWidget,
+    );
 
     final avatarRemove = find.byKey(
       const ValueKey('tenant_admin_account_create_avatar_remove'),
     );
-    await tester.tap(avatarRemove);
+    await tester.ensureVisible(avatarRemove);
+    await tester.tap(avatarRemove, warnIfMissed: false);
     await tester.pumpAndSettle();
 
-    expect(find.byIcon(Icons.person_outline), findsOneWidget);
     expect(find.text('Remover'), findsNothing);
-
-    final coverPick =
-        find.byKey(const ValueKey('tenant_admin_account_create_cover_pick'));
-    await tester.ensureVisible(coverPick);
-    await tester.tap(coverPick);
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Do dispositivo').last);
+    controller.updateCreateCoverFile(coverFile);
     await tester.pumpAndSettle();
 
-    expect(find.byIcon(Icons.image_outlined), findsNothing);
-    expect(find.text('Remover'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('tenant_admin_account_create_cover_remove')),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('disables avatar pick and shows progress when busy', (tester) async {
+    await _pumpWithAutoRoute(
+      tester,
+      const Scaffold(
+        body: TenantAdminAccountCreateScreen(),
+      ),
+    );
+
+    final profileTypeDropdown = find.byType(DropdownButtonFormField<String>);
+    await tester.ensureVisible(profileTypeDropdown.last);
+    await tester.tap(profileTypeDropdown.last, warnIfMissed: false);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Venue').last);
+    await tester.pumpAndSettle();
+
+    final controller = GetIt.I.get<TenantAdminAccountsController>();
+    controller.updateCreateAvatarBusy(true);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+
+    expect(find.byType(LinearProgressIndicator), findsAtLeastNWidgets(1));
+
+    final pickButton =
+        find.byKey(const ValueKey('tenant_admin_account_create_avatar_pick'));
+    final button = tester.widget<FilledButton>(pickButton);
+    expect(button.onPressed, isNull);
   });
 
   testWidgets('shows bio and taxonomy fields in account create flow', (
@@ -641,14 +686,12 @@ void main() {
         ],
       };
 
-    await tester.pumpWidget(
-      const MaterialApp(
-        home: Scaffold(
-          body: TenantAdminAccountCreateScreen(),
-        ),
+    await _pumpWithAutoRoute(
+      tester,
+      const Scaffold(
+        body: TenantAdminAccountCreateScreen(),
       ),
     );
-    await tester.pumpAndSettle();
 
     await tester.tap(find.byType(DropdownButtonFormField<String>).last);
     await tester.pumpAndSettle();
@@ -676,24 +719,41 @@ void main() {
   });
 }
 
+Future<void> _pumpWithAutoRoute(
+  WidgetTester tester,
+  Widget child,
+) async {
+  final router = RootStackRouter.build(
+    routes: [
+      NamedRouteDef(
+        name: 'account-create-test',
+        path: '/',
+        builder: (_, __) => child,
+      ),
+    ],
+  );
+
+  await tester.pumpWidget(
+    MaterialApp.router(
+      routeInformationParser: router.defaultRouteParser(),
+      routerDelegate: router.delegate(),
+    ),
+  );
+  await tester.pumpAndSettle();
+}
+
 XFile _createTempImageFile(String name) {
   final dir = Directory.systemTemp.createTempSync('belluga_test_');
   final file = File('${dir.path}/$name');
-  file.writeAsBytesSync([0, 1, 2, 3, 4]);
+  final image = img.Image(width: 64, height: 64);
+  img.fill(image, color: img.ColorRgb8(120, 45, 180));
+  file.writeAsBytesSync(img.encodePng(image), flush: true);
   return XFile(file.path, name: name, mimeType: 'image/png');
 }
 
-class _FakeImagePickerPlatform extends ImagePickerPlatform {
-  _FakeImagePickerPlatform(this._queue);
-
-  final List<XFile> _queue;
-
+class _FakeExternalImageProxy implements TenantAdminExternalImageProxyContract {
   @override
-  Future<XFile?> getImageFromSource({
-    required ImageSource source,
-    ImagePickerOptions options = const ImagePickerOptions(),
-  }) async {
-    if (_queue.isEmpty) return null;
-    return _queue.removeAt(0);
+  Future<Uint8List> fetchExternalImageBytes({required String imageUrl}) async {
+    throw UnimplementedError();
   }
 }

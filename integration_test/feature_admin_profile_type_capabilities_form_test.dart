@@ -1,6 +1,9 @@
+import 'dart:typed_data';
+
 import 'package:belluga_now/domain/repositories/tenant_admin_account_profiles_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_accounts_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_taxonomies_repository_contract.dart';
+import 'package:belluga_now/domain/services/tenant_admin_external_image_proxy_contract.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_document.dart';
@@ -17,6 +20,7 @@ import 'package:belluga_now/domain/services/tenant_admin_location_selection_cont
 import 'package:belluga_now/infrastructure/services/tenant_admin/tenant_admin_location_selection_service.dart';
 import 'package:belluga_now/presentation/tenant_admin/account_profiles/controllers/tenant_admin_account_profiles_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/account_profiles/screens/tenant_admin_account_profile_create_screen.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_image_ingestion_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
@@ -44,6 +48,12 @@ void main() {
     if (getIt.isRegistered<TenantAdminTaxonomiesRepositoryContract>()) {
       getIt.unregister<TenantAdminTaxonomiesRepositoryContract>();
     }
+    if (getIt.isRegistered<TenantAdminExternalImageProxyContract>()) {
+      getIt.unregister<TenantAdminExternalImageProxyContract>();
+    }
+    if (getIt.isRegistered<TenantAdminImageIngestionService>()) {
+      getIt.unregister<TenantAdminImageIngestionService>();
+    }
 
     getIt.registerSingleton<TenantAdminAccountsRepositoryContract>(
       _FakeTenantAdminAccountsRepository(),
@@ -57,6 +67,12 @@ void main() {
 
     getIt.registerSingleton<TenantAdminLocationSelectionContract>(
       TenantAdminLocationSelectionService(),
+    );
+    getIt.registerSingleton<TenantAdminExternalImageProxyContract>(
+      _FakeExternalImageProxy(),
+    );
+    getIt.registerSingleton<TenantAdminImageIngestionService>(
+      TenantAdminImageIngestionService(),
     );
     getIt.registerSingleton<TenantAdminAccountProfilesController>(
       TenantAdminAccountProfilesController(
@@ -106,6 +122,13 @@ void main() {
   });
 }
 
+class _FakeExternalImageProxy implements TenantAdminExternalImageProxyContract {
+  @override
+  Future<Uint8List> fetchExternalImageBytes({required String imageUrl}) async {
+    throw UnimplementedError();
+  }
+}
+
 class _FakeTenantAdminAccountsRepository
     with TenantAdminAccountsRepositoryPaginationMixin
     implements TenantAdminAccountsRepositoryContract {
@@ -116,6 +139,7 @@ class _FakeTenantAdminAccountsRepository
   Future<TenantAdminPagedAccountsResult> fetchAccountsPage({
     required int page,
     required int pageSize,
+    TenantAdminOwnershipState? ownershipState,
   }) async {
     return const TenantAdminPagedAccountsResult(
       accounts: <TenantAdminAccount>[],
@@ -372,7 +396,7 @@ class _FakeTenantAdminAccountProfilesRepository
             isPoiEnabled: false,
             hasBio: false,
             hasContent: false,
-          hasTaxonomies: false,
+            hasTaxonomies: false,
             hasAvatar: false,
             hasCover: false,
             hasEvents: false,

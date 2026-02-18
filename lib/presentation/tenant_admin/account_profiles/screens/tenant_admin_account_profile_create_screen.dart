@@ -1,22 +1,22 @@
-import 'dart:io';
-
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
-import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
 import 'package:belluga_now/presentation/tenant_admin/account_profiles/controllers/tenant_admin_account_profiles_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_form_value_utils.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_image_ingestion_service.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_error_banner.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_field_edit_sheet.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_form_layout.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_image_crop_sheet.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_image_source_sheet.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_rich_text_editor.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_xfile_preview.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 
 class TenantAdminAccountProfileCreateScreen extends StatefulWidget {
@@ -36,6 +36,9 @@ class _TenantAdminAccountProfileCreateScreenState
     extends State<TenantAdminAccountProfileCreateScreen> {
   final TenantAdminAccountProfilesController _controller =
       GetIt.I.get<TenantAdminAccountProfilesController>();
+  final TenantAdminImageIngestionService _imageIngestionService =
+      GetIt.I.get<TenantAdminImageIngestionService>();
+  bool _routeParamNormalized = false;
 
   @override
   void initState() {
@@ -45,7 +48,59 @@ class _TenantAdminAccountProfileCreateScreenState
     _controller.resetFormControllers();
     _controller.loadProfileTypes();
     _controller.loadTaxonomies();
-    _controller.loadAccountForCreate(widget.accountSlug);
+    _controller.loadAccountForCreate(_currentAccountSlugForRequests());
+  }
+
+  bool _isResolvedSlug(String? value) {
+    if (value == null) {
+      return false;
+    }
+    final trimmed = value.trim();
+    return trimmed.isNotEmpty && !trimmed.startsWith(':');
+  }
+
+  String _currentAccountSlugForRequests() {
+    final routeSlug = widget.accountSlug;
+    if (_isResolvedSlug(routeSlug)) {
+      return routeSlug.trim();
+    }
+
+    final cached = _controller.accountStreamValue.value?.slug;
+    if (_isResolvedSlug(cached)) {
+      return cached!.trim();
+    }
+
+    return routeSlug;
+  }
+
+  bool _requiresPathNormalization() {
+    return kIsWeb && context.router.currentPath.contains('/:');
+  }
+
+  void _normalizeRouteParamIfNeeded() {
+    if (_routeParamNormalized || !mounted) {
+      return;
+    }
+    final needsPathNormalization = _requiresPathNormalization();
+    if (!needsPathNormalization && _isResolvedSlug(widget.accountSlug)) {
+      _routeParamNormalized = true;
+      return;
+    }
+    final resolved = _isResolvedSlug(widget.accountSlug)
+        ? widget.accountSlug
+        : _controller.accountStreamValue.value?.slug;
+    if (!_isResolvedSlug(resolved)) {
+      return;
+    }
+    _routeParamNormalized = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        return;
+      }
+      context.router.replace(
+        TenantAdminAccountProfileCreateRoute(accountSlug: resolved!.trim()),
+      );
+    });
   }
 
   @override
@@ -214,34 +269,49 @@ class _TenantAdminAccountProfileCreateScreenState
   }
 
   Future<void> _pickImageFromDevice({required bool isAvatar}) async {
-    final picker = ImagePicker();
-    final selected = await picker.pickImage(
-      source: ImageSource.gallery,
-      imageQuality: 85,
-    );
-    if (selected == null) {
+    final slot =
+        isAvatar ? TenantAdminImageSlot.avatar : TenantAdminImageSlot.cover;
+    if (isAvatar && _controller.createStateStreamValue.value.avatarBusy) {
       return;
     }
-    final lowerName = selected.name.toLowerCase();
-    const allowed = ['.jpg', '.jpeg', '.png', '.webp'];
-    if (!allowed.any(lowerName.endsWith)) {
-      _controller.reportCreateErrorMessage(
-        'Formato de imagem invalido. Use JPG, PNG ou WEBP.',
+    if (!isAvatar && _controller.createStateStreamValue.value.coverBusy) {
+      return;
+    }
+    try {
+      if (isAvatar) {
+        _controller.updateCreateAvatarBusy(true);
+      } else {
+        _controller.updateCreateCoverBusy(true);
+      }
+      final picked = await _imageIngestionService.pickFromDevice(slot: slot);
+      if (picked == null) {
+        return;
+      }
+      if (!mounted) {
+        return;
+      }
+      final cropped = await showTenantAdminImageCropSheet(
+        context: context,
+        sourceFile: picked,
+        slot: slot,
+        ingestionService: _imageIngestionService,
       );
-      return;
-    }
-    final size = await selected.length();
-    const maxBytes = 5 * 1024 * 1024;
-    if (size > maxBytes) {
-      _controller.reportCreateErrorMessage(
-        'Imagem muito grande. Maximo 5MB.',
-      );
-      return;
-    }
-    if (isAvatar) {
-      _controller.updateCreateAvatarFile(selected);
-    } else {
-      _controller.updateCreateCoverFile(selected);
+      if (cropped == null) {
+        return;
+      }
+      if (isAvatar) {
+        _controller.updateCreateAvatarFile(cropped);
+      } else {
+        _controller.updateCreateCoverFile(cropped);
+      }
+    } on TenantAdminImageIngestionException catch (error) {
+      _controller.reportCreateErrorMessage(error.message);
+    } finally {
+      if (isAvatar) {
+        _controller.updateCreateAvatarBusy(false);
+      } else {
+        _controller.updateCreateCoverBusy(false);
+      }
     }
   }
 
@@ -286,16 +356,54 @@ class _TenantAdminAccountProfileCreateScreenState
       await _pickImageFromDevice(isAvatar: isAvatar);
       return;
     }
+    await _pickImageFromWeb(isAvatar: isAvatar);
+  }
+
+  Future<void> _pickImageFromWeb({required bool isAvatar}) async {
+    final slot =
+        isAvatar ? TenantAdminImageSlot.avatar : TenantAdminImageSlot.cover;
+    if (isAvatar && _controller.createStateStreamValue.value.avatarBusy) {
+      return;
+    }
+    if (!isAvatar && _controller.createStateStreamValue.value.coverBusy) {
+      return;
+    }
     final url = await _promptWebImageUrl(
       title: isAvatar ? 'URL do avatar' : 'URL da capa',
     );
     if (url == null || !mounted) {
       return;
     }
-    if (isAvatar) {
-      _controller.updateCreateAvatarWebUrl(url);
-    } else {
-      _controller.updateCreateCoverWebUrl(url);
+    try {
+      if (isAvatar) {
+        _controller.updateCreateAvatarBusy(true);
+      } else {
+        _controller.updateCreateCoverBusy(true);
+      }
+      final sourceFile = await _imageIngestionService.fetchFromUrlForCrop(
+        imageUrl: url,
+      );
+      if (!mounted) return;
+      final cropped = await showTenantAdminImageCropSheet(
+        context: context,
+        sourceFile: sourceFile,
+        slot: slot,
+        ingestionService: _imageIngestionService,
+      );
+      if (cropped == null) return;
+      if (isAvatar) {
+        _controller.updateCreateAvatarFile(cropped);
+      } else {
+        _controller.updateCreateCoverFile(cropped);
+      }
+    } on TenantAdminImageIngestionException catch (error) {
+      _controller.reportCreateErrorMessage(error.message);
+    } finally {
+      if (isAvatar) {
+        _controller.updateCreateAvatarBusy(false);
+      } else {
+        _controller.updateCreateCoverBusy(false);
+      }
     }
   }
 
@@ -307,15 +415,6 @@ class _TenantAdminAccountProfileCreateScreenState
       _controller.updateCreateCoverFile(null);
       _controller.updateCreateCoverWebUrl(null);
     }
-  }
-
-  Future<TenantAdminMediaUpload?> _buildUpload(XFile? file) async {
-    if (file == null) return null;
-    final bytes = await file.readAsBytes();
-    return TenantAdminMediaUpload(
-      bytes: bytes,
-      fileName: file.name,
-    );
   }
 
   Future<void> _submit() async {
@@ -334,10 +433,16 @@ class _TenantAdminAccountProfileCreateScreenState
         ? _currentLocation()
         : null;
     final avatarUpload = _hasAvatar(state.selectedProfileType)
-        ? await _buildUpload(state.avatarFile)
+        ? await _imageIngestionService.buildUpload(
+            state.avatarFile,
+            slot: TenantAdminImageSlot.avatar,
+          )
         : null;
     final coverUpload = _hasCover(state.selectedProfileType)
-        ? await _buildUpload(state.coverFile)
+        ? await _imageIngestionService.buildUpload(
+            state.coverFile,
+            slot: TenantAdminImageSlot.cover,
+          )
         : null;
     _controller.submitCreateProfile(
       accountId: accountId,
@@ -353,9 +458,8 @@ class _TenantAdminAccountProfileCreateScreenState
       taxonomyTerms: _buildTaxonomyTerms(state.selectedProfileType),
       avatarUpload: avatarUpload,
       coverUpload: coverUpload,
-      avatarUrl:
-          _hasAvatar(state.selectedProfileType) ? state.avatarWebUrl : null,
-      coverUrl: _hasCover(state.selectedProfileType) ? state.coverWebUrl : null,
+      avatarUrl: null,
+      coverUrl: null,
     );
   }
 
@@ -372,6 +476,7 @@ class _TenantAdminAccountProfileCreateScreenState
             return StreamValueBuilder<TenantAdminAccountProfileCreateDraft>(
               streamValue: _controller.createStateStreamValue,
               builder: (context, state) {
+                _normalizeRouteParamIfNeeded();
                 final requiresLocation =
                     _requiresLocation(state.selectedProfileType);
                 final hasMedia = _hasAvatar(state.selectedProfileType) ||
@@ -379,8 +484,9 @@ class _TenantAdminAccountProfileCreateScreenState
                 final hasContent = _hasBio(state.selectedProfileType) ||
                     _hasContent(state.selectedProfileType) ||
                     _hasTaxonomies(state.selectedProfileType);
+                final accountSlugForUi = _currentAccountSlugForRequests();
                 return TenantAdminFormScaffold(
-                  title: 'Criar Perfil - ${widget.accountSlug}',
+                  title: 'Criar Perfil - $accountSlugForUi',
                   child: SingleChildScrollView(
                     child: Form(
                       key: _controller.createFormKey,
@@ -670,8 +776,8 @@ class _TenantAdminAccountProfileCreateScreenState
                 if (state.avatarFile != null)
                   ClipRRect(
                     borderRadius: BorderRadius.circular(36),
-                    child: Image.file(
-                      File(state.avatarFile!.path),
+                    child: TenantAdminXFilePreview(
+                      file: state.avatarFile!,
                       width: 72,
                       height: 72,
                       fit: BoxFit.cover,
@@ -712,10 +818,16 @@ class _TenantAdminAccountProfileCreateScreenState
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
+                      if (state.avatarBusy) ...[
+                        const SizedBox(height: 8),
+                        const LinearProgressIndicator(),
+                      ],
                       Row(
                         children: [
                           FilledButton.tonalIcon(
-                            onPressed: () => _pickImage(isAvatar: true),
+                            onPressed: state.avatarBusy
+                                ? null
+                                : () => _pickImage(isAvatar: true),
                             icon:
                                 const Icon(Icons.add_photo_alternate_outlined),
                             label: const Text('Adicionar avatar'),
@@ -725,7 +837,9 @@ class _TenantAdminAccountProfileCreateScreenState
                               (state.avatarWebUrl != null &&
                                   state.avatarWebUrl!.isNotEmpty))
                             TextButton(
-                              onPressed: () => _clearImage(isAvatar: true),
+                              onPressed: state.avatarBusy
+                                  ? null
+                                  : () => _clearImage(isAvatar: true),
                               child: const Text('Remover'),
                             ),
                         ],
@@ -741,8 +855,8 @@ class _TenantAdminAccountProfileCreateScreenState
             if (state.coverFile != null)
               ClipRRect(
                 borderRadius: BorderRadius.circular(12),
-                child: Image.file(
-                  File(state.coverFile!.path),
+                child: TenantAdminXFilePreview(
+                  file: state.coverFile!,
                   width: double.infinity,
                   height: 140,
                   fit: BoxFit.cover,
@@ -773,10 +887,15 @@ class _TenantAdminAccountProfileCreateScreenState
                 ),
               ),
             const SizedBox(height: 8),
+            if (state.coverBusy) ...[
+              const LinearProgressIndicator(),
+              const SizedBox(height: 8),
+            ],
             Row(
               children: [
                 FilledButton.tonalIcon(
-                  onPressed: () => _pickImage(isAvatar: false),
+                  onPressed:
+                      state.coverBusy ? null : () => _pickImage(isAvatar: false),
                   icon: const Icon(Icons.add_photo_alternate_outlined),
                   label: const Text('Adicionar capa'),
                 ),
@@ -785,7 +904,8 @@ class _TenantAdminAccountProfileCreateScreenState
                     (state.coverWebUrl != null &&
                         state.coverWebUrl!.isNotEmpty))
                   TextButton(
-                    onPressed: () => _clearImage(isAvatar: false),
+                    onPressed:
+                        state.coverBusy ? null : () => _clearImage(isAvatar: false),
                     child: const Text('Remover'),
                   ),
               ],

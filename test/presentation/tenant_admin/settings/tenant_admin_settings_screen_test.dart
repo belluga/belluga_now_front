@@ -1,3 +1,4 @@
+import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/app_data/value_object/platform_type_value.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
@@ -32,12 +33,10 @@ void main() {
       () => TenantAdminSettingsController(),
     );
 
-    await tester.pumpWidget(
-      const MaterialApp(
-        home: Scaffold(body: TenantAdminSettingsScreen()),
-      ),
+    await _pumpWithAutoRoute(
+      tester,
+      const Scaffold(body: TenantAdminSettingsScreen()),
     );
-    await tester.pumpAndSettle();
 
     expect(find.text('Configurações'), findsOneWidget);
     expect(find.text('Snapshot do environment'), findsOneWidget);
@@ -57,12 +56,10 @@ void main() {
       () => TenantAdminSettingsController(),
     );
 
-    await tester.pumpWidget(
-      const MaterialApp(
-        home: Scaffold(body: TenantAdminSettingsScreen()),
-      ),
+    await _pumpWithAutoRoute(
+      tester,
+      const Scaffold(body: TenantAdminSettingsScreen()),
     );
-    await tester.pumpAndSettle();
 
     await tester.tap(find.text('Escuro'));
     await tester.pumpAndSettle();
@@ -81,12 +78,10 @@ void main() {
       () => TenantAdminSettingsController(),
     );
 
-    await tester.pumpWidget(
-      const MaterialApp(
-        home: Scaffold(body: TenantAdminSettingsScreen()),
-      ),
+    await _pumpWithAutoRoute(
+      tester,
+      const Scaffold(body: TenantAdminSettingsScreen()),
     );
-    await tester.pumpAndSettle();
 
     final editProjectIdButton = find.byTooltip('Editar Project ID');
     final saveFirebaseButton = find.byKey(
@@ -121,6 +116,29 @@ void main() {
 
     expect(settingsRepository.updatedFirebaseProjectId, 'project-updated');
   });
+}
+
+Future<void> _pumpWithAutoRoute(
+  WidgetTester tester,
+  Widget child,
+) async {
+  final router = RootStackRouter.build(
+    routes: [
+      NamedRouteDef(
+        name: 'settings-test',
+        path: '/',
+        builder: (_, __) => child,
+      ),
+    ],
+  )..ignorePopCompleters = true;
+
+  await tester.pumpWidget(
+    MaterialApp.router(
+      routeInformationParser: router.defaultRouteParser(),
+      routerDelegate: router.delegate(),
+    ),
+  );
+  await tester.pumpAndSettle();
 }
 
 class _FakeAppDataRepository implements AppDataRepositoryContract {

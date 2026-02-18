@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
@@ -8,16 +6,19 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_static_profile_type
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_definition.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_form_value_utils.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_image_ingestion_service.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_confirmation_dialog.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_error_banner.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_field_edit_sheet.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_form_layout.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_image_crop_sheet.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_image_source_sheet.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_rich_text_editor.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_xfile_preview.dart';
 import 'package:belluga_now/presentation/tenant_admin/static_assets/controllers/tenant_admin_static_assets_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
-import 'package:image_picker/image_picker.dart';
+import 'package:image_picker/image_picker.dart' show XFile;
 import 'package:stream_value/core/stream_value_builder.dart';
 
 class TenantAdminStaticAssetEditScreen extends StatefulWidget {
@@ -37,6 +38,8 @@ class _TenantAdminStaticAssetEditScreenState
     extends State<TenantAdminStaticAssetEditScreen> {
   final TenantAdminStaticAssetsController _controller =
       GetIt.I.get<TenantAdminStaticAssetsController>();
+  final TenantAdminImageIngestionService _imageIngestionService =
+      GetIt.I.get<TenantAdminImageIngestionService>();
 
   @override
   void initState() {
@@ -320,18 +323,45 @@ class _TenantAdminStaticAssetEditScreenState
   }
 
   Future<void> _pickImageFromDevice({required bool isAvatar}) async {
-    final picker = ImagePicker();
-    final selected = await picker.pickImage(
-      source: ImageSource.gallery,
-      imageQuality: 85,
-    );
-    if (selected == null) {
-      return;
-    }
-    if (isAvatar) {
-      _controller.updateAvatarFile(selected);
-    } else {
-      _controller.updateCoverFile(selected);
+    final slot =
+        isAvatar ? TenantAdminImageSlot.avatar : TenantAdminImageSlot.cover;
+    if (isAvatar && _controller.avatarBusyStreamValue.value) return;
+    if (!isAvatar && _controller.coverBusyStreamValue.value) return;
+    try {
+      if (isAvatar) {
+        _controller.updateAvatarBusy(true);
+      } else {
+        _controller.updateCoverBusy(true);
+      }
+      final picked = await _imageIngestionService.pickFromDevice(slot: slot);
+      if (picked == null) {
+        return;
+      }
+      if (!mounted) {
+        return;
+      }
+      final cropped = await showTenantAdminImageCropSheet(
+        context: context,
+        sourceFile: picked,
+        slot: slot,
+        ingestionService: _imageIngestionService,
+      );
+      if (cropped == null) {
+        return;
+      }
+      if (isAvatar) {
+        _controller.updateAvatarFile(cropped);
+      } else {
+        _controller.updateCoverFile(cropped);
+      }
+    } on TenantAdminImageIngestionException catch (error) {
+      _controller.submitErrorStreamValue.addValue(error.message);
+    } finally {
+      if (isAvatar) {
+        _controller.updateAvatarBusy(false);
+      } else {
+        _controller.updateCoverBusy(false);
+      }
     }
   }
 
@@ -376,16 +406,54 @@ class _TenantAdminStaticAssetEditScreenState
       await _pickImageFromDevice(isAvatar: isAvatar);
       return;
     }
+    await _pickImageFromWeb(isAvatar: isAvatar);
+  }
+
+  Future<void> _pickImageFromWeb({required bool isAvatar}) async {
+    final slot =
+        isAvatar ? TenantAdminImageSlot.avatar : TenantAdminImageSlot.cover;
+    if (isAvatar && _controller.avatarBusyStreamValue.value) {
+      return;
+    }
+    if (!isAvatar && _controller.coverBusyStreamValue.value) {
+      return;
+    }
     final url = await _promptWebImageUrl(
       title: isAvatar ? 'URL do avatar' : 'URL da capa',
     );
     if (url == null || !mounted) {
       return;
     }
-    if (isAvatar) {
-      _controller.updateAvatarWebUrl(url);
-    } else {
-      _controller.updateCoverWebUrl(url);
+    try {
+      if (isAvatar) {
+        _controller.updateAvatarBusy(true);
+      } else {
+        _controller.updateCoverBusy(true);
+      }
+      final sourceFile = await _imageIngestionService.fetchFromUrlForCrop(
+        imageUrl: url,
+      );
+      if (!mounted) return;
+      final cropped = await showTenantAdminImageCropSheet(
+        context: context,
+        sourceFile: sourceFile,
+        slot: slot,
+        ingestionService: _imageIngestionService,
+      );
+      if (cropped == null) return;
+      if (isAvatar) {
+        _controller.updateAvatarFile(cropped);
+      } else {
+        _controller.updateCoverFile(cropped);
+      }
+    } on TenantAdminImageIngestionException catch (error) {
+      _controller.submitErrorStreamValue.addValue(error.message);
+    } finally {
+      if (isAvatar) {
+        _controller.updateAvatarBusy(false);
+      } else {
+        _controller.updateCoverBusy(false);
+      }
     }
   }
 
@@ -586,12 +654,18 @@ class _TenantAdminStaticAssetEditScreenState
     required bool hasAvatar,
     required bool hasCover,
   }) {
-    return StreamValueBuilder<XFile?>(
-      streamValue: _controller.avatarFileStreamValue,
-      builder: (context, avatarFile) {
-        return StreamValueBuilder<XFile?>(
-          streamValue: _controller.coverFileStreamValue,
-          builder: (context, coverFile) {
+    return StreamValueBuilder<bool>(
+      streamValue: _controller.avatarBusyStreamValue,
+      builder: (context, avatarBusy) {
+        return StreamValueBuilder<bool>(
+          streamValue: _controller.coverBusyStreamValue,
+          builder: (context, coverBusy) {
+            return StreamValueBuilder<XFile?>(
+              streamValue: _controller.avatarFileStreamValue,
+              builder: (context, avatarFile) {
+                return StreamValueBuilder<XFile?>(
+                  streamValue: _controller.coverFileStreamValue,
+                  builder: (context, coverFile) {
             final avatarUrl = _controller.avatarUrlController.text.trim();
             final coverUrl = _controller.coverUrlController.text.trim();
             return Card(
@@ -612,8 +686,8 @@ class _TenantAdminStaticAssetEditScreenState
                           if (avatarFile != null)
                             ClipRRect(
                               borderRadius: BorderRadius.circular(36),
-                              child: Image.file(
-                                File(avatarFile.path),
+                              child: TenantAdminXFilePreview(
+                                file: avatarFile,
                                 width: 72,
                                 height: 72,
                                 fit: BoxFit.cover,
@@ -648,12 +722,18 @@ class _TenantAdminStaticAssetEditScreenState
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                 ),
+                                if (avatarBusy) ...[
+                                  const SizedBox(height: 8),
+                                  const LinearProgressIndicator(),
+                                ],
                                 const SizedBox(height: 8),
                                 Row(
                                   children: [
                                     FilledButton.tonalIcon(
                                       onPressed: () =>
-                                          _pickImage(isAvatar: true),
+                                          avatarBusy
+                                              ? null
+                                              : _pickImage(isAvatar: true),
                                       icon: const Icon(
                                         Icons.add_photo_alternate_outlined,
                                       ),
@@ -664,7 +744,9 @@ class _TenantAdminStaticAssetEditScreenState
                                         avatarUrl.isNotEmpty)
                                       TextButton(
                                         onPressed: () =>
-                                            _clearImage(isAvatar: true),
+                                            avatarBusy
+                                                ? null
+                                                : _clearImage(isAvatar: true),
                                         child: const Text('Remover'),
                                       ),
                                   ],
@@ -680,8 +762,8 @@ class _TenantAdminStaticAssetEditScreenState
                       if (coverFile != null)
                         ClipRRect(
                           borderRadius: BorderRadius.circular(12),
-                          child: Image.file(
-                            File(coverFile.path),
+                          child: TenantAdminXFilePreview(
+                            file: coverFile,
                             width: double.infinity,
                             height: 140,
                             fit: BoxFit.cover,
@@ -706,10 +788,16 @@ class _TenantAdminStaticAssetEditScreenState
                           ),
                         ),
                       const SizedBox(height: 8),
+                      if (coverBusy) ...[
+                        const LinearProgressIndicator(),
+                        const SizedBox(height: 8),
+                      ],
                       Row(
                         children: [
                           FilledButton.tonalIcon(
-                            onPressed: () => _pickImage(isAvatar: false),
+                            onPressed: coverBusy
+                                ? null
+                                : () => _pickImage(isAvatar: false),
                             icon:
                                 const Icon(Icons.add_photo_alternate_outlined),
                             label: const Text('Adicionar capa'),
@@ -717,7 +805,9 @@ class _TenantAdminStaticAssetEditScreenState
                           const SizedBox(width: 8),
                           if (coverFile != null || coverUrl.isNotEmpty)
                             TextButton(
-                              onPressed: () => _clearImage(isAvatar: false),
+                              onPressed: coverBusy
+                                  ? null
+                                  : () => _clearImage(isAvatar: false),
                               child: const Text('Remover'),
                             ),
                         ],
@@ -726,6 +816,10 @@ class _TenantAdminStaticAssetEditScreenState
                   ],
                 ),
               ),
+            );
+                  },
+                );
+              },
             );
           },
         );

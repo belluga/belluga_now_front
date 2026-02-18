@@ -1,31 +1,33 @@
-import 'dart:io';
-
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
-import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
 import 'package:belluga_now/presentation/tenant_admin/account_profiles/controllers/tenant_admin_account_profiles_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_form_value_utils.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_image_ingestion_service.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_error_banner.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_field_edit_sheet.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_form_layout.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_image_crop_sheet.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_image_source_sheet.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_rich_text_editor.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_xfile_preview.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 
 class TenantAdminAccountProfileEditScreen extends StatefulWidget {
   const TenantAdminAccountProfileEditScreen({
     super.key,
+    required this.accountSlug,
     required this.accountProfileId,
   });
 
+  final String accountSlug;
   final String accountProfileId;
 
   @override
@@ -37,18 +39,21 @@ class _TenantAdminAccountProfileEditScreenState
     extends State<TenantAdminAccountProfileEditScreen> {
   final TenantAdminAccountProfilesController _controller =
       GetIt.I.get<TenantAdminAccountProfilesController>();
+  final TenantAdminImageIngestionService _imageIngestionService =
+      GetIt.I.get<TenantAdminImageIngestionService>();
   TenantAdminAccountProfile? _activeProfile;
   String? _syncedProfileId;
   bool _initialTaxonomiesSynced = false;
   String? _lastAvatarPreloadUrl;
   String? _lastCoverPreloadUrl;
+  bool _routeParamNormalized = false;
 
   @override
   void initState() {
     super.initState();
     _controller.bindEditFlow();
-    _controller.loadTaxonomies().whenComplete(
-        () => _controller.loadEditProfile(widget.accountProfileId));
+    _controller.loadTaxonomies().whenComplete(() =>
+        _controller.loadEditProfile(_currentAccountProfileIdForRequests()));
   }
 
   @override
@@ -151,6 +156,71 @@ class _TenantAdminAccountProfileEditScreenState
     _maybePreloadRemoteImages(state);
   }
 
+  bool _isResolvedSlug(String? value) {
+    return _isResolvedPathParam(value);
+  }
+
+  bool _isResolvedPathParam(String? value) {
+    if (value == null) {
+      return false;
+    }
+    final trimmed = value.trim();
+    return trimmed.isNotEmpty && !trimmed.startsWith(':');
+  }
+
+  String _currentAccountProfileIdForRequests() {
+    final routeId = widget.accountProfileId;
+    if (_isResolvedPathParam(routeId)) {
+      return routeId.trim();
+    }
+
+    final cached = _controller.accountProfileStreamValue.value?.id;
+    if (_isResolvedPathParam(cached)) {
+      return cached!.trim();
+    }
+
+    return routeId;
+  }
+
+  bool _requiresPathNormalization() {
+    return kIsWeb && context.router.currentPath.contains('/:');
+  }
+
+  void _normalizeRouteParamIfNeeded() {
+    if (_routeParamNormalized || !mounted) {
+      return;
+    }
+    final hasResolvedSlug = _isResolvedSlug(widget.accountSlug);
+    final hasResolvedProfileId = _isResolvedPathParam(widget.accountProfileId);
+    final needsPathNormalization = _requiresPathNormalization();
+    if (!needsPathNormalization && hasResolvedSlug && hasResolvedProfileId) {
+      _routeParamNormalized = true;
+      return;
+    }
+    final resolvedSlug = hasResolvedSlug
+        ? widget.accountSlug.trim()
+        : _controller.accountStreamValue.value?.slug.trim();
+    final resolvedProfileId = hasResolvedProfileId
+        ? widget.accountProfileId.trim()
+        : _controller.accountProfileStreamValue.value?.id.trim();
+    if (!_isResolvedSlug(resolvedSlug) ||
+        !_isResolvedPathParam(resolvedProfileId)) {
+      return;
+    }
+    _routeParamNormalized = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        return;
+      }
+      context.router.replace(
+        TenantAdminAccountProfileEditRoute(
+          accountSlug: resolvedSlug!,
+          accountProfileId: resolvedProfileId!,
+        ),
+      );
+    });
+  }
+
   void _syncFormControllers(TenantAdminAccountProfile profile) {
     _controller.slugController.text = profile.slug ?? '';
     _controller.displayNameController.text = profile.displayName;
@@ -251,8 +321,13 @@ class _TenantAdminAccountProfileEditScreenState
     final currentType =
         _controller.editStateStreamValue.value.selectedProfileType;
     final saved = await _controller.submitTaxonomySelectionUpdate(
-      accountProfileId: widget.accountProfileId,
+      accountProfileId: _currentAccountProfileIdForRequests(),
+      profileType: currentType,
       taxonomyTerms: _buildTaxonomyTerms(currentType),
+      bio: _hasBio(currentType) ? _controller.bioController.text.trim() : null,
+      content: _hasContent(currentType)
+          ? _controller.contentController.text.trim()
+          : null,
     );
     if (saved) {
       return;
@@ -335,53 +410,69 @@ class _TenantAdminAccountProfileEditScreenState
     }
     final state = _controller.editStateStreamValue.value;
     final avatarUpload = _hasAvatar(state.selectedProfileType)
-        ? await _buildUpload(state.avatarFile)
+        ? await _imageIngestionService.buildUpload(
+            state.avatarFile,
+            slot: TenantAdminImageSlot.avatar,
+          )
         : null;
     final coverUpload = _hasCover(state.selectedProfileType)
-        ? await _buildUpload(state.coverFile)
+        ? await _imageIngestionService.buildUpload(
+            state.coverFile,
+            slot: TenantAdminImageSlot.cover,
+          )
         : null;
     _controller.submitAutoSaveImages(
       accountProfileId: profile.id,
       avatarUpload: avatarUpload,
       coverUpload: coverUpload,
-      avatarUrl:
-          _hasAvatar(state.selectedProfileType) ? state.avatarRemoteUrl : null,
-      coverUrl:
-          _hasCover(state.selectedProfileType) ? state.coverRemoteUrl : null,
+      avatarUrl: null,
+      coverUrl: null,
     );
   }
 
   Future<void> _pickImageFromDevice({required bool isAvatar}) async {
-    final picker = ImagePicker();
-    final selected = await picker.pickImage(
-      source: ImageSource.gallery,
-      imageQuality: 85,
-    );
-    if (selected == null) {
-      return;
-    }
-    final lowerName = selected.name.toLowerCase();
-    const allowed = ['.jpg', '.jpeg', '.png', '.webp'];
-    if (!allowed.any(lowerName.endsWith)) {
-      _controller.reportEditErrorMessage(
-        'Formato de imagem invalido. Use JPG, PNG ou WEBP.',
+    final slot =
+        isAvatar ? TenantAdminImageSlot.avatar : TenantAdminImageSlot.cover;
+    final state = _controller.editStateStreamValue.value;
+    if (isAvatar && state.avatarBusy) return;
+    if (!isAvatar && state.coverBusy) return;
+    try {
+      if (isAvatar) {
+        _controller.updateEditAvatarBusy(true);
+      } else {
+        _controller.updateEditCoverBusy(true);
+      }
+      final picked = await _imageIngestionService.pickFromDevice(slot: slot);
+      if (picked == null) {
+        return;
+      }
+      if (!mounted) {
+        return;
+      }
+      final cropped = await showTenantAdminImageCropSheet(
+        context: context,
+        sourceFile: picked,
+        slot: slot,
+        ingestionService: _imageIngestionService,
       );
-      return;
+      if (cropped == null) {
+        return;
+      }
+      if (isAvatar) {
+        _controller.updateAvatarFile(cropped);
+      } else {
+        _controller.updateCoverFile(cropped);
+      }
+      await _autoSaveImages();
+    } on TenantAdminImageIngestionException catch (error) {
+      _controller.reportEditErrorMessage(error.message);
+    } finally {
+      if (isAvatar) {
+        _controller.updateEditAvatarBusy(false);
+      } else {
+        _controller.updateEditCoverBusy(false);
+      }
     }
-    final size = await selected.length();
-    const maxBytes = 5 * 1024 * 1024;
-    if (size > maxBytes) {
-      _controller.reportEditErrorMessage(
-        'Imagem muito grande. Maximo 5MB.',
-      );
-      return;
-    }
-    if (isAvatar) {
-      _controller.updateAvatarFile(selected);
-    } else {
-      _controller.updateCoverFile(selected);
-    }
-    await _autoSaveImages();
   }
 
   Future<String?> _promptWebImageUrl({
@@ -428,6 +519,19 @@ class _TenantAdminAccountProfileEditScreenState
       await _pickImageFromDevice(isAvatar: isAvatar);
       return;
     }
+    await _pickImageFromWeb(isAvatar: isAvatar);
+  }
+
+  Future<void> _pickImageFromWeb({required bool isAvatar}) async {
+    final slot =
+        isAvatar ? TenantAdminImageSlot.avatar : TenantAdminImageSlot.cover;
+    final currentState = _controller.editStateStreamValue.value;
+    if (isAvatar && currentState.avatarBusy) {
+      return;
+    }
+    if (!isAvatar && currentState.coverBusy) {
+      return;
+    }
     final state = _controller.editStateStreamValue.value;
     final initialUrl =
         isAvatar ? (state.avatarRemoteUrl ?? '') : (state.coverRemoteUrl ?? '');
@@ -438,12 +542,38 @@ class _TenantAdminAccountProfileEditScreenState
     if (url == null || !mounted) {
       return;
     }
-    if (isAvatar) {
-      _controller.updateAvatarRemoteUrl(url);
-    } else {
-      _controller.updateCoverRemoteUrl(url);
+    try {
+      if (isAvatar) {
+        _controller.updateEditAvatarBusy(true);
+      } else {
+        _controller.updateEditCoverBusy(true);
+      }
+      final sourceFile = await _imageIngestionService.fetchFromUrlForCrop(
+        imageUrl: url,
+      );
+      if (!mounted) return;
+      final cropped = await showTenantAdminImageCropSheet(
+        context: context,
+        sourceFile: sourceFile,
+        slot: slot,
+        ingestionService: _imageIngestionService,
+      );
+      if (cropped == null) return;
+      if (isAvatar) {
+        _controller.updateAvatarFile(cropped);
+      } else {
+        _controller.updateCoverFile(cropped);
+      }
+      await _autoSaveImages();
+    } on TenantAdminImageIngestionException catch (error) {
+      _controller.reportEditErrorMessage(error.message);
+    } finally {
+      if (isAvatar) {
+        _controller.updateEditAvatarBusy(false);
+      } else {
+        _controller.updateEditCoverBusy(false);
+      }
     }
-    await _autoSaveImages();
   }
 
   void _clearImage({required bool isAvatar}) {
@@ -456,15 +586,6 @@ class _TenantAdminAccountProfileEditScreenState
       _controller.updateCoverRemoteUrl(null);
       _controller.updateCoverRemoteError(false);
     }
-  }
-
-  Future<TenantAdminMediaUpload?> _buildUpload(XFile? file) async {
-    if (file == null) return null;
-    final bytes = await file.readAsBytes();
-    return TenantAdminMediaUpload(
-      bytes: bytes,
-      fileName: file.name,
-    );
   }
 
   void _preloadRemoteImage({
@@ -524,6 +645,7 @@ class _TenantAdminAccountProfileEditScreenState
                 return StreamValueBuilder<String?>(
                   streamValue: _controller.editLoadErrorStreamValue,
                   builder: (context, loadError) {
+                    _normalizeRouteParamIfNeeded();
                     return StreamValueBuilder<bool>(
                       streamValue: _controller.editLoadingStreamValue,
                       builder: (context, isLoading) {
@@ -559,7 +681,7 @@ class _TenantAdminAccountProfileEditScreenState
                                           'Não foi possível carregar os dados do perfil.',
                                       onRetry: () =>
                                           _controller.loadEditProfile(
-                                        widget.accountProfileId,
+                                        _currentAccountProfileIdForRequests(),
                                       ),
                                     ),
                                   );
@@ -626,21 +748,29 @@ class _TenantAdminAccountProfileEditScreenState
                                                     }
                                                     final avatarUpload =
                                                         _hasAvatar(selectedType)
-                                                            ? await _buildUpload(
+                                                            ? await _imageIngestionService
+                                                                .buildUpload(
                                                                 state
                                                                     .avatarFile,
+                                                                slot:
+                                                                    TenantAdminImageSlot
+                                                                        .avatar,
                                                               )
                                                             : null;
-                                                    final coverUpload =
-                                                        _hasCover(selectedType)
-                                                            ? await _buildUpload(
-                                                                state.coverFile,
-                                                              )
-                                                            : null;
+                                                    final coverUpload = _hasCover(
+                                                            selectedType)
+                                                        ? await _imageIngestionService
+                                                            .buildUpload(
+                                                            state.coverFile,
+                                                            slot:
+                                                                TenantAdminImageSlot
+                                                                    .cover,
+                                                          )
+                                                        : null;
                                                     _controller
                                                         .submitUpdateProfile(
-                                                      accountProfileId: widget
-                                                          .accountProfileId,
+                                                      accountProfileId:
+                                                          _currentAccountProfileIdForRequests(),
                                                       profileType: selectedType,
                                                       slug: _controller
                                                           .slugController.text
@@ -674,15 +804,8 @@ class _TenantAdminAccountProfileEditScreenState
                                                       avatarUpload:
                                                           avatarUpload,
                                                       coverUpload: coverUpload,
-                                                      avatarUrl: _hasAvatar(
-                                                              selectedType)
-                                                          ? state
-                                                              .avatarRemoteUrl
-                                                          : null,
-                                                      coverUrl: _hasCover(
-                                                              selectedType)
-                                                          ? state.coverRemoteUrl
-                                                          : null,
+                                                      avatarUrl: null,
+                                                      coverUrl: null,
                                                     );
                                                   },
                                           ),
@@ -984,8 +1107,8 @@ class _TenantAdminAccountProfileEditScreenState
                     children: [
                       ClipRRect(
                         borderRadius: BorderRadius.circular(36),
-                        child: Image.file(
-                          File(state.avatarFile!.path),
+                        child: TenantAdminXFilePreview(
+                          file: state.avatarFile!,
                           width: 72,
                           height: 72,
                           fit: BoxFit.cover,
@@ -1064,10 +1187,16 @@ class _TenantAdminAccountProfileEditScreenState
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
+                      if (state.avatarBusy) ...[
+                        const SizedBox(height: 8),
+                        const LinearProgressIndicator(),
+                      ],
                       Row(
                         children: [
                           FilledButton.tonalIcon(
-                            onPressed: () => _pickImage(isAvatar: true),
+                            onPressed: state.avatarBusy
+                                ? null
+                                : () => _pickImage(isAvatar: true),
                             icon:
                                 const Icon(Icons.add_photo_alternate_outlined),
                             label: const Text('Adicionar avatar'),
@@ -1075,7 +1204,9 @@ class _TenantAdminAccountProfileEditScreenState
                           const SizedBox(width: 8),
                           if (state.avatarFile != null || hasAvatarUrl)
                             TextButton(
-                              onPressed: () => _clearImage(isAvatar: true),
+                              onPressed: state.avatarBusy
+                                  ? null
+                                  : () => _clearImage(isAvatar: true),
                               child: const Text('Remover'),
                             ),
                         ],
@@ -1088,14 +1219,18 @@ class _TenantAdminAccountProfileEditScreenState
           ],
           if (hasAvatar && hasCover) const SizedBox(height: 16),
           if (hasCover) ...[
+            if (state.coverBusy) ...[
+              const LinearProgressIndicator(),
+              const SizedBox(height: 12),
+            ],
             if (state.coverFile != null)
               Stack(
                 alignment: Alignment.topRight,
                 children: [
                   ClipRRect(
                     borderRadius: BorderRadius.circular(12),
-                    child: Image.file(
-                      File(state.coverFile!.path),
+                    child: TenantAdminXFilePreview(
+                      file: state.coverFile!,
                       width: double.infinity,
                       height: 140,
                       fit: BoxFit.cover,
@@ -1165,14 +1300,16 @@ class _TenantAdminAccountProfileEditScreenState
             Row(
               children: [
                 FilledButton.tonalIcon(
-                  onPressed: () => _pickImage(isAvatar: false),
+                  onPressed:
+                      state.coverBusy ? null : () => _pickImage(isAvatar: false),
                   icon: const Icon(Icons.add_photo_alternate_outlined),
                   label: const Text('Adicionar capa'),
                 ),
                 const SizedBox(width: 8),
                 if (state.coverFile != null || hasCoverUrl)
                   TextButton(
-                    onPressed: () => _clearImage(isAvatar: false),
+                    onPressed:
+                        state.coverBusy ? null : () => _clearImage(isAvatar: false),
                     child: const Text('Remover'),
                   ),
               ],

@@ -126,6 +126,58 @@ void main() {
     expect(controller.typesStreamValue.value?.first.type, 'type-b');
     expect(controller.taxonomiesStreamValue.value.first.slug, 'slug-b');
   });
+
+  test('submitUpdateType keeps detail stream aligned with saved values',
+      () async {
+    final assetsRepository = _FakeStaticAssetsRepository(
+      types: const [
+        TenantAdminStaticProfileTypeDefinition(
+          type: 'place',
+          label: 'Place',
+          allowedTaxonomies: [],
+          capabilities: TenantAdminStaticProfileTypeCapabilities(
+            isPoiEnabled: false,
+            hasBio: false,
+            hasTaxonomies: false,
+            hasAvatar: false,
+            hasCover: false,
+            hasContent: false,
+          ),
+        ),
+      ],
+    );
+    final controller = TenantAdminStaticProfileTypesController(
+      repository: assetsRepository,
+      taxonomiesRepository: _FakeTaxonomiesRepository(taxonomies: const []),
+    );
+
+    controller.initDetailType(
+      const TenantAdminStaticProfileTypeDefinition(
+        type: 'place',
+        label: 'Place',
+        allowedTaxonomies: [],
+        capabilities: TenantAdminStaticProfileTypeCapabilities(
+          isPoiEnabled: false,
+          hasBio: false,
+          hasTaxonomies: false,
+          hasAvatar: false,
+          hasCover: false,
+          hasContent: false,
+        ),
+      ),
+    );
+
+    await controller.submitUpdateType(
+      type: 'place',
+      newType: 'venue',
+      label: 'Venue',
+    );
+
+    final detail = controller.detailTypeStreamValue.value;
+    expect(detail, isNotNull);
+    expect(detail!.type, 'venue');
+    expect(detail.label, 'Venue');
+  });
 }
 
 class _FakeStaticAssetsRepository
@@ -161,7 +213,14 @@ class _FakeStaticAssetsRepository
     List<String> allowedTaxonomies = const [],
     required TenantAdminStaticProfileTypeCapabilities capabilities,
   }) {
-    throw UnimplementedError();
+    final created = TenantAdminStaticProfileTypeDefinition(
+      type: type,
+      label: label,
+      allowedTaxonomies: allowedTaxonomies,
+      capabilities: capabilities,
+    );
+    types = [...types, created];
+    return Future.value(created);
   }
 
   @override
@@ -171,7 +230,7 @@ class _FakeStaticAssetsRepository
 
   @override
   Future<void> deleteStaticProfileType(String type) async {
-    throw UnimplementedError();
+    types = types.where((entry) => entry.type != type).toList(growable: false);
   }
 
   @override
@@ -268,7 +327,35 @@ class _FakeStaticAssetsRepository
     List<String>? allowedTaxonomies,
     TenantAdminStaticProfileTypeCapabilities? capabilities,
   }) {
-    throw UnimplementedError();
+    final current = types.firstWhere(
+      (entry) => entry.type == type,
+      orElse: () => TenantAdminStaticProfileTypeDefinition(
+        type: type,
+        label: type,
+        allowedTaxonomies: const [],
+        capabilities: const TenantAdminStaticProfileTypeCapabilities(
+          isPoiEnabled: false,
+          hasBio: false,
+          hasTaxonomies: false,
+          hasAvatar: false,
+          hasCover: false,
+          hasContent: false,
+        ),
+      ),
+    );
+    final updated = TenantAdminStaticProfileTypeDefinition(
+      type: newType ?? current.type,
+      label: label ?? current.label,
+      allowedTaxonomies: allowedTaxonomies ?? current.allowedTaxonomies,
+      capabilities: capabilities ?? current.capabilities,
+    );
+    types = types.map((entry) {
+      if (entry.type == type) {
+        return updated;
+      }
+      return entry;
+    }).toList(growable: false);
+    return Future.value(updated);
   }
 }
 

@@ -55,7 +55,7 @@ class TenantAdminAccountProfilesController implements Disposable {
   final StreamValue<bool> isLoadingStreamValue =
       StreamValue<bool>(defaultValue: false);
   final StreamValue<String?> errorStreamValue = StreamValue<String?>();
-  final StreamValue<TenantAdminAccount?> accountStreamValue =
+  final StreamValue<TenantAdminAccount?> _accountDetailStreamValue =
       StreamValue<TenantAdminAccount?>();
   final StreamValue<TenantAdminAccountProfile?> accountProfileStreamValue =
       StreamValue<TenantAdminAccountProfile?>();
@@ -104,6 +104,13 @@ class TenantAdminAccountProfilesController implements Disposable {
 
   bool _isDisposed = false;
   StreamSubscription<TenantAdminLocation?>? _locationSelectionSubscription;
+  StreamSubscription<TenantAdminAccount?>? _accountWatchSubscription;
+  TenantAdminLoadedAccountWatch? _accountWatch;
+  String? _watchedAccountId;
+  String? _watchedAccountSlug;
+
+  StreamValue<TenantAdminAccount?> get accountStreamValue =>
+      _accountDetailStreamValue;
 
   Future<TenantAdminAccount> resolveAccountBySlug(String slug) async {
     return _accountsRepository.fetchAccountBySlug(slug);
@@ -222,10 +229,7 @@ class TenantAdminAccountProfilesController implements Disposable {
         final terms =
             await _taxonomiesRepository.fetchTerms(taxonomyId: taxonomy.id);
         map[slug] = terms;
-      } catch (error) {
-        debugPrint(
-          '[TenantAdmin] Failed to load taxonomy terms for "$slug": $error',
-        );
+      } on Object {
         map[slug] = const [];
       }
     }
@@ -237,6 +241,10 @@ class TenantAdminAccountProfilesController implements Disposable {
     try {
       final account = await resolveAccountBySlug(slug);
       if (_isDisposed) return;
+      _bindAccountWatch(
+        accountId: account.id,
+        accountSlug: account.slug,
+      );
       createAccountIdStreamValue.addValue(account.id);
     } catch (error) {
       if (_isDisposed) return;
@@ -254,9 +262,12 @@ class TenantAdminAccountProfilesController implements Disposable {
     try {
       await loadProfileTypes();
       final account = await resolveAccountBySlug(accountSlug);
+      _bindAccountWatch(
+        accountId: account.id,
+        accountSlug: account.slug,
+      );
       final profile = await fetchProfileForAccount(account.id);
       if (_isDisposed) return;
-      accountStreamValue.addValue(account);
       accountProfileStreamValue.addValue(profile);
       accountDetailErrorStreamValue.addValue(null);
     } catch (error) {
@@ -284,7 +295,10 @@ class TenantAdminAccountProfilesController implements Disposable {
       if (_isDisposed) {
         return null;
       }
-      accountStreamValue.addValue(updated);
+      _bindAccountWatch(
+        accountId: updated.id,
+        accountSlug: updated.slug,
+      );
       accountDetailErrorStreamValue.addValue(null);
       return updated;
     } catch (error) {
@@ -368,6 +382,14 @@ class TenantAdminAccountProfilesController implements Disposable {
         coverPreloadUrl: null,
       ),
     );
+  }
+
+  void updateEditAvatarBusy(bool isBusy) {
+    _updateEditState(editStateStreamValue.value.copyWith(avatarBusy: isBusy));
+  }
+
+  void updateEditCoverBusy(bool isBusy) {
+    _updateEditState(editStateStreamValue.value.copyWith(coverBusy: isBusy));
   }
 
   void updateAvatarRemoteUrl(String? url) {
@@ -573,14 +595,37 @@ class TenantAdminAccountProfilesController implements Disposable {
 
   Future<bool> submitTaxonomySelectionUpdate({
     required String accountProfileId,
+    required String? profileType,
     required List<TenantAdminTaxonomyTerm> taxonomyTerms,
+    String? bio,
+    String? content,
   }) async {
     taxonomyAutosavingStreamValue.addValue(true);
     editSubmittingStreamValue.addValue(true);
     try {
+      final currentProfile = accountProfileStreamValue.value;
+      final resolvedProfileType =
+          (profileType ?? currentProfile?.profileType)?.trim();
+      if (resolvedProfileType == null || resolvedProfileType.isEmpty) {
+        editErrorMessageStreamValue.addValue(
+          'Nao foi possivel identificar o tipo do perfil para salvar taxonomias.',
+        );
+        return false;
+      }
+      final capabilities =
+          _resolveProfileType(resolvedProfileType)?.capabilities;
+      final resolvedBio = capabilities?.hasBio == true
+          ? (bio ?? currentProfile?.bio ?? '')
+          : null;
+      final resolvedContent = capabilities?.hasContent == true
+          ? (content ?? currentProfile?.content ?? '')
+          : null;
       final updated = await updateProfile(
         accountProfileId: accountProfileId,
+        profileType: resolvedProfileType,
         taxonomyTerms: taxonomyTerms,
+        bio: resolvedBio,
+        content: resolvedContent,
       );
       if (_isDisposed) return false;
       updateEditProfile(updated);
@@ -650,6 +695,18 @@ class TenantAdminAccountProfilesController implements Disposable {
         coverFile: file,
         coverWebUrl: null,
       ),
+    );
+  }
+
+  void updateCreateAvatarBusy(bool isBusy) {
+    _updateCreateState(
+      createStateStreamValue.value.copyWith(avatarBusy: isBusy),
+    );
+  }
+
+  void updateCreateCoverBusy(bool isBusy) {
+    _updateCreateState(
+      createStateStreamValue.value.copyWith(coverBusy: isBusy),
     );
   }
 
@@ -738,10 +795,54 @@ class TenantAdminAccountProfilesController implements Disposable {
   }
 
   void resetAccountDetail() {
-    accountStreamValue.addValue(null);
+    _clearAccountWatch();
+    _watchedAccountId = null;
+    _watchedAccountSlug = null;
+    _accountDetailStreamValue.addValue(null);
     accountProfileStreamValue.addValue(null);
     accountDetailErrorStreamValue.addValue(null);
     accountDetailLoadingStreamValue.addValue(false);
+  }
+
+  void _bindAccountWatch({
+    required String? accountId,
+    required String? accountSlug,
+  }) {
+    final normalizedId = accountId?.trim();
+    final normalizedSlug = accountSlug?.trim();
+    final isSameBinding = _accountWatch != null &&
+        _watchedAccountId == normalizedId &&
+        _watchedAccountSlug == normalizedSlug;
+    if (isSameBinding) {
+      _accountDetailStreamValue.addValue(_accountWatch!.streamValue.value);
+      return;
+    }
+    _clearAccountWatch();
+    _watchedAccountId = normalizedId;
+    _watchedAccountSlug = normalizedSlug;
+    _accountWatch = _accountsRepository.watchLoadedAccount(
+      accountId: normalizedId,
+      accountSlug: normalizedSlug,
+    );
+    _accountDetailStreamValue.addValue(_accountWatch!.streamValue.value);
+    _accountWatchSubscription = _accountWatch!.streamValue.stream.listen(
+      (account) {
+        if (_isDisposed) {
+          return;
+        }
+        _accountDetailStreamValue.addValue(account);
+      },
+    );
+  }
+
+  void _clearAccountWatch() {
+    final subscription = _accountWatchSubscription;
+    if (subscription != null) {
+      unawaited(subscription.cancel());
+      _accountWatchSubscription = null;
+    }
+    _accountWatch?.dispose();
+    _accountWatch = null;
   }
 
   Future<TenantAdminAccountProfile> createProfile({
@@ -781,6 +882,9 @@ class TenantAdminAccountProfilesController implements Disposable {
       avatarUpload: filtered.avatarUpload,
       coverUpload: filtered.coverUpload,
     );
+    if (!_isDisposed) {
+      accountProfileStreamValue.addValue(profile);
+    }
     await loadProfiles(accountId);
     return profile;
   }
@@ -896,6 +1000,7 @@ class TenantAdminAccountProfilesController implements Disposable {
   void dispose() {
     _isDisposed = true;
     _locationSelectionSubscription?.cancel();
+    _clearAccountWatch();
     slugController.dispose();
     displayNameController.dispose();
     bioController.dispose();
@@ -909,7 +1014,7 @@ class TenantAdminAccountProfilesController implements Disposable {
     taxonomySelectionStreamValue.dispose();
     isLoadingStreamValue.dispose();
     errorStreamValue.dispose();
-    accountStreamValue.dispose();
+    _accountDetailStreamValue.dispose();
     accountProfileStreamValue.dispose();
     accountDetailLoadingStreamValue.dispose();
     accountDetailErrorStreamValue.dispose();
@@ -949,6 +1054,8 @@ class TenantAdminAccountProfileEditDraft {
     required this.coverRemoteError,
     required this.avatarPreloadUrl,
     required this.coverPreloadUrl,
+    required this.avatarBusy,
+    required this.coverBusy,
   });
 
   factory TenantAdminAccountProfileEditDraft.initial() =>
@@ -964,6 +1071,8 @@ class TenantAdminAccountProfileEditDraft {
         coverRemoteError: false,
         avatarPreloadUrl: null,
         coverPreloadUrl: null,
+        avatarBusy: false,
+        coverBusy: false,
       );
 
   final String? selectedProfileType;
@@ -977,6 +1086,8 @@ class TenantAdminAccountProfileEditDraft {
   final bool coverRemoteError;
   final String? avatarPreloadUrl;
   final String? coverPreloadUrl;
+  final bool avatarBusy;
+  final bool coverBusy;
 
   TenantAdminAccountProfileEditDraft copyWith({
     Object? selectedProfileType = _unset,
@@ -990,6 +1101,8 @@ class TenantAdminAccountProfileEditDraft {
     bool? coverRemoteError,
     Object? avatarPreloadUrl = _unset,
     Object? coverPreloadUrl = _unset,
+    bool? avatarBusy,
+    bool? coverBusy,
   }) {
     final nextSelectedProfileType = selectedProfileType == _unset
         ? this.selectedProfileType
@@ -1023,6 +1136,8 @@ class TenantAdminAccountProfileEditDraft {
       coverRemoteError: coverRemoteError ?? this.coverRemoteError,
       avatarPreloadUrl: nextAvatarPreloadUrl,
       coverPreloadUrl: nextCoverPreloadUrl,
+      avatarBusy: avatarBusy ?? this.avatarBusy,
+      coverBusy: coverBusy ?? this.coverBusy,
     );
   }
 
@@ -1053,6 +1168,8 @@ class TenantAdminAccountProfileCreateDraft {
     required this.coverFile,
     required this.avatarWebUrl,
     required this.coverWebUrl,
+    required this.avatarBusy,
+    required this.coverBusy,
   });
 
   factory TenantAdminAccountProfileCreateDraft.initial() =>
@@ -1062,6 +1179,8 @@ class TenantAdminAccountProfileCreateDraft {
         coverFile: null,
         avatarWebUrl: null,
         coverWebUrl: null,
+        avatarBusy: false,
+        coverBusy: false,
       );
 
   final String? selectedProfileType;
@@ -1069,6 +1188,8 @@ class TenantAdminAccountProfileCreateDraft {
   final XFile? coverFile;
   final String? avatarWebUrl;
   final String? coverWebUrl;
+  final bool avatarBusy;
+  final bool coverBusy;
 
   TenantAdminAccountProfileCreateDraft copyWith({
     Object? selectedProfileType = _unset,
@@ -1076,6 +1197,8 @@ class TenantAdminAccountProfileCreateDraft {
     Object? coverFile = _unset,
     Object? avatarWebUrl = _unset,
     Object? coverWebUrl = _unset,
+    bool? avatarBusy,
+    bool? coverBusy,
   }) {
     final nextSelectedProfileType = selectedProfileType == _unset
         ? this.selectedProfileType
@@ -1095,6 +1218,8 @@ class TenantAdminAccountProfileCreateDraft {
       coverFile: nextCoverFile,
       avatarWebUrl: nextAvatarWebUrl,
       coverWebUrl: nextCoverWebUrl,
+      avatarBusy: avatarBusy ?? this.avatarBusy,
+      coverBusy: coverBusy ?? this.coverBusy,
     );
   }
 }

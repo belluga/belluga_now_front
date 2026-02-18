@@ -17,6 +17,8 @@
   <link rel="manifest" href="manifest.json">
   <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport">
 
+  <!-- DELPHI_INJECT__LANDLORD_HOST__ -->
+
   <style>
     #splash-screen {
       position: fixed;
@@ -124,13 +126,37 @@
     // Host-based routing safety (pre-Flutter).
     // - Tenant hosts must never render landlord routes even via direct navigation.
     // - Landlord host must never render tenant-only routes even via direct navigation.
-    // This protects against stale cached builds (where guards might not exist yet).
-    const landlordHost = 'belluga.app';
-    const hostname = window.location.hostname;
+    const landlordHostRaw = window.__LANDLORD_HOST__;
+    const hostname = window.location.hostname.toLowerCase();
     const pathname = window.location.pathname || '/';
+    const landlordHost =
+      typeof landlordHostRaw === 'string' && landlordHostRaw.trim().length > 0
+        ? landlordHostRaw.trim().toLowerCase()
+        : null;
+
+    // Fail closed. Host inference is fragile (public suffixes, nip.io, etc.) and can
+    // mis-route users before Flutter has a chance to apply guards.
+    if (landlordHost == null) {
+      console.error('[belluga_now] Missing required window.__LANDLORD_HOST__ injection. Refusing to start.');
+
+      const splash = document.getElementById('splash-screen');
+      if (splash) {
+        splash.style.backgroundColor = '#111827';
+      }
+      const label = window.__appProgressLabel;
+      const progress = window.__appProgressUpdate;
+      if (typeof progress === 'function') progress(100);
+      if (typeof label === 'function') {
+        label('Config error: missing LANDLORD host injection.');
+      }
+      return;
+    }
+
     const isTenantHost =
-      hostname.endsWith('.' + landlordHost) && hostname !== landlordHost;
-    const isLandlordHost = hostname === landlordHost;
+      landlordHost != null &&
+      hostname.endsWith('.' + landlordHost) &&
+      hostname !== landlordHost;
+    const isLandlordHost = landlordHost != null && hostname === landlordHost;
 
     if (isTenantHost && pathname.startsWith('/landlord')) {
       window.location.replace('/');
@@ -141,6 +167,17 @@
       window.location.replace('/landlord');
       return;
     }
+
+    const startFlutter = () => {
+      if (window.__bellugaFlutterBootstrapped) return;
+      window.__bellugaFlutterBootstrapped = true;
+      const script = document.createElement('script');
+      const v = window.__WEB_BUILD_SHA__;
+      const suffix = typeof v === 'string' && v.trim().length > 0 ? `?v=${encodeURIComponent(v.trim())}` : '';
+      script.src = `flutter_bootstrap.js${suffix}`;
+      script.async = true;
+      document.body.appendChild(script);
+    };
 
     const applyBranding = (branding) => {
       if (!branding) return;
@@ -186,6 +223,9 @@
         window.dispatchEvent(new CustomEvent('brandingReady', { detail: resolvedBranding }));
       }
     })();
+
+    // Bootstrap Flutter after pre-route safety checks are done.
+    startFlutter();
   });
 </script>
 </head>
@@ -273,8 +313,6 @@
       }, 20000);
     })();
   </script>
-
-  <script src="flutter_bootstrap.js" async></script>
 </body>
 
 </html>

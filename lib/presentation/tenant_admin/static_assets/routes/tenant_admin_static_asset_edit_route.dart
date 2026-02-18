@@ -6,7 +6,7 @@ import 'package:flutter/material.dart';
 class TenantAdminStaticAssetEditRoutePage extends StatelessWidget {
   const TenantAdminStaticAssetEditRoutePage({
     super.key,
-    required this.assetId,
+    @PathParam('assetId') required this.assetId,
   });
 
   final String assetId;

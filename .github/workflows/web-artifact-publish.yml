@@ -237,6 +237,24 @@ jobs:
             python3 -c 'import re,sys,functools; p=sys.argv[1]; v=sys.argv[2]; s=open(p,"r",encoding="utf-8").read(); names=("main.dart.js","flutter_bootstrap.js","flutter.js","flutter_service_worker.js"); f=lambda acc,n: re.sub(r"""(src=")"""+re.escape(n)+r"""(?:\?[^"]*)?(")""", r"\g<1>"+n+"?v="+v+r"\g<2>", acc, flags=re.I); s=functools.reduce(f,names,s); open(p,"w",encoding="utf-8").write(s)' "$WEB_OUTPUT/index.html" "$short_sha"
           fi
 
+          # Fail-closed host guard requires __LANDLORD_HOST__ injection.
+          landlord_domain="$(jq -r '.LANDLORD_DOMAIN // empty' "${{ steps.lane_defines.outputs.defines_file }}")"
+          if [[ -z "${landlord_domain}" || "${landlord_domain}" == "null" ]]; then
+            echo "ERROR: missing LANDLORD_DOMAIN in lane defines file (${{ steps.lane_defines.outputs.defines_file }})." >&2
+            exit 1
+          fi
+
+          landlord_host="$(python3 -c 'import sys; from urllib.parse import urlparse; p=urlparse(sys.argv[1]); assert p.scheme and p.netloc and p.hostname; print(p.hostname.lower())' "$landlord_domain")"
+
+          if [[ ! "${landlord_host}" =~ ^[a-z0-9.-]+$ ]]; then
+            echo "ERROR: invalid landlord host parsed from LANDLORD_DOMAIN (${landlord_domain}): ${landlord_host}" >&2
+            exit 1
+          fi
+
+          if [[ -f "$WEB_OUTPUT/index.html" ]]; then
+            python3 -c 'import sys,re; path=sys.argv[1]; host=sys.argv[2]; sha=sys.argv[3]; marker="<!-- DELPHI_INJECT__LANDLORD_HOST__ -->"; inject="<script>window.__LANDLORD_HOST__ = \\\"{}\\\"; window.__WEB_BUILD_SHA__ = \\\"{}\\\";</script>".format(host,sha); s=open(path,"r",encoding="utf-8").read(); s=s.replace(marker,inject,1) if marker in s else re.sub(r"(<head[^>]*>)", lambda m: m.group(1)+"\\n  "+inject, s, count=1, flags=re.I); open(path,"w",encoding="utf-8").write(s)' "$WEB_OUTPUT/index.html" "$landlord_host" "$short_sha"
+          fi
+
       - name: Upload web artifact
         uses: actions/upload-artifact@v4
         with:
@@ -305,11 +323,14 @@ jobs:
           git fetch origin "$TARGET_BRANCH" --quiet
           git checkout "$TARGET_BRANCH"
 
-          short_sha="$(echo "${GITHUB_SHA}" | cut -c1-7)"
-          pr_branch="ci/flutter-web-${TARGET_BRANCH}-${short_sha}"
+          # Use a stable head branch per lane so we never end up with multiple
+          # concurrent PRs touching index.html/build_metadata.json (which creates
+          # merge conflicts after one PR merges).
+          pr_branch="ci/flutter-web-${TARGET_BRANCH}"
           echo "PR_BRANCH=$pr_branch" >> "$GITHUB_ENV"
 
-          git checkout -b "$pr_branch"
+          # Reset the publish branch to the latest lane base every run.
+          git checkout -B "$pr_branch" "origin/$TARGET_BRANCH"
 
           # Preserve web-app CI files while refreshing generated web bundle output.
           find . -mindepth 1 -maxdepth 1 \
@@ -351,7 +372,7 @@ jobs:
 
           short_sha="$(echo "${GITHUB_SHA}" | cut -c1-7)"
           git commit -m "chore(web): publish Flutter web build from ${TARGET_BRANCH} (${short_sha})"
-          git push -u origin "$PR_BRANCH"
+          git push -u origin "$PR_BRANCH" --force-with-lease
 
       - name: Create PR in web-app repo
         id: create_web_pr

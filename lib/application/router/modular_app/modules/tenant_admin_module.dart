@@ -5,8 +5,10 @@ import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/application/router/guards/landlord_route_guard.dart';
 import 'package:belluga_now/application/router/resolvers/tenant_admin_static_asset_detail_route_resolver.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_static_asset.dart';
+import 'package:belluga_now/domain/services/tenant_admin_external_image_proxy_contract.dart';
 import 'package:belluga_now/domain/services/tenant_admin_location_selection_contract.dart';
 import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.dart';
+import 'package:belluga_now/infrastructure/services/tenant_admin/tenant_admin_external_image_proxy_service.dart';
 import 'package:belluga_now/presentation/tenant_admin/account_profiles/controllers/tenant_admin_account_profiles_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/accounts/controllers/tenant_admin_accounts_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/accounts/controllers/tenant_admin_location_picker_controller.dart';
@@ -19,6 +21,7 @@ import 'package:belluga_now/presentation/tenant_admin/shell/controllers/tenant_a
 import 'package:belluga_now/presentation/tenant_admin/static_assets/controllers/tenant_admin_static_assets_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/static_profile_types/controllers/tenant_admin_static_profile_types_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/taxonomies/controllers/tenant_admin_taxonomies_controller.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_image_ingestion_service.dart';
 import 'package:get_it_modular_with_auto_route/get_it_modular_with_auto_route.dart';
 
 class TenantAdminModule extends ModuleContract {
@@ -47,10 +50,16 @@ class TenantAdminModule extends ModuleContract {
     registerLazySingleton<TenantAdminTenantScopeContract>(
       () => TenantAdminTenantScopeService(),
     );
+    registerLazySingleton<TenantAdminExternalImageProxyContract>(
+      () => TenantAdminExternalImageProxyService(),
+    );
+    registerLazySingleton<TenantAdminImageIngestionService>(
+      () => TenantAdminImageIngestionService(),
+    );
     registerFactory<TenantAdminLocationPickerController>(
       () => TenantAdminLocationPickerController(),
     );
-    registerFactory<TenantAdminAccountProfilesController>(
+    registerLazySingleton<TenantAdminAccountProfilesController>(
       () => TenantAdminAccountProfilesController(),
     );
     registerFactory<TenantAdminOrganizationsController>(

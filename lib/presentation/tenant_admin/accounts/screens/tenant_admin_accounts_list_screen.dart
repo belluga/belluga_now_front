@@ -292,7 +292,12 @@ class _TenantAdminAccountsListScreenState
     required String query,
   }) {
     final byOwnership = loadedAccounts
-        .where((account) => account.ownershipState == selectedOwnership)
+        .where(
+          (account) => tenantAdminAccountMatchesOwnershipSegment(
+            selectedOwnership: selectedOwnership,
+            accountOwnership: account.ownershipState,
+          ),
+        )
         .toList(growable: false);
 
     if (query.isEmpty) {
@@ -309,4 +314,12 @@ class _TenantAdminAccountsListScreenState
         )
         .toList(growable: false);
   }
+}
+
+@visibleForTesting
+bool tenantAdminAccountMatchesOwnershipSegment({
+  required TenantAdminOwnershipState selectedOwnership,
+  required TenantAdminOwnershipState accountOwnership,
+}) {
+  return accountOwnership == selectedOwnership;
 }

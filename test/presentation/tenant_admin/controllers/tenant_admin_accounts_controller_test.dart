@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:typed_data';
 
 import 'package:belluga_now/domain/repositories/tenant_admin_account_profiles_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_accounts_repository_contract.dart';
@@ -29,8 +30,13 @@ class _FakeAccountsRepository
 
   List<TenantAdminAccount> _accounts;
   Completer<void>? fetchAccountsGate;
+  bool failNextLoadAccounts = false;
   int fetchAccountsCalls = 0;
   int createCalls = 0;
+  final List<TenantAdminOwnershipState?> loadAccountsOwnershipCalls =
+      <TenantAdminOwnershipState?>[];
+  final List<TenantAdminOwnershipState?> loadNextAccountsOwnershipCalls =
+      <TenantAdminOwnershipState?>[];
 
   @override
   final StreamValue<List<TenantAdminAccount>?> accountsStreamValue =
@@ -48,21 +54,42 @@ class _FakeAccountsRepository
   final StreamValue<String?> accountsErrorStreamValue = StreamValue<String?>();
 
   @override
-  Future<void> loadAccounts({int pageSize = 20}) async {
-    final result = await fetchAccountsPage(page: 1, pageSize: pageSize);
+  Future<void> loadAccounts({
+    int pageSize = 20,
+    TenantAdminOwnershipState? ownershipState,
+  }) async {
+    loadAccountsOwnershipCalls.add(ownershipState);
+    if (failNextLoadAccounts) {
+      failNextLoadAccounts = false;
+      accountsErrorStreamValue.addValue('backend error');
+      throw Exception('backend error');
+    }
+    final result = await fetchAccountsPage(
+      page: 1,
+      pageSize: pageSize,
+      ownershipState: ownershipState,
+    );
     accountsStreamValue.addValue(result.accounts);
     hasMoreAccountsStreamValue.addValue(result.hasMore);
     accountsErrorStreamValue.addValue(null);
   }
 
   @override
-  Future<void> loadNextAccountsPage({int pageSize = 20}) async {
+  Future<void> loadNextAccountsPage({
+    int pageSize = 20,
+    TenantAdminOwnershipState? ownershipState,
+  }) async {
+    loadNextAccountsOwnershipCalls.add(ownershipState);
     if (!hasMoreAccountsStreamValue.value) {
       return;
     }
     final loaded = accountsStreamValue.value ?? const <TenantAdminAccount>[];
     final page = (loaded.length ~/ pageSize) + 1;
-    final result = await fetchAccountsPage(page: page, pageSize: pageSize);
+    final result = await fetchAccountsPage(
+      page: page,
+      pageSize: pageSize,
+      ownershipState: ownershipState,
+    );
     accountsStreamValue.addValue(
       List<TenantAdminAccount>.unmodifiable([...loaded, ...result.accounts]),
     );
@@ -92,20 +119,27 @@ class _FakeAccountsRepository
   Future<TenantAdminPagedAccountsResult> fetchAccountsPage({
     required int page,
     required int pageSize,
+    TenantAdminOwnershipState? ownershipState,
   }) async {
     final all = await fetchAccounts();
+    final filtered = ownershipState == null
+        ? all
+        : all.where((account) {
+            return account.ownershipState == ownershipState;
+          }).toList(growable: false);
     final startIndex = (page - 1) * pageSize;
-    if (startIndex >= all.length || page <= 0 || pageSize <= 0) {
+    if (startIndex >= filtered.length || page <= 0 || pageSize <= 0) {
       return const TenantAdminPagedAccountsResult(
         accounts: <TenantAdminAccount>[],
         hasMore: false,
       );
     }
-    final endIndex =
-        startIndex + pageSize > all.length ? all.length : startIndex + pageSize;
+    final endIndex = startIndex + pageSize > filtered.length
+        ? filtered.length
+        : startIndex + pageSize;
     return TenantAdminPagedAccountsResult(
-      accounts: all.sublist(startIndex, endIndex),
-      hasMore: endIndex < all.length,
+      accounts: filtered.sublist(startIndex, endIndex),
+      hasMore: endIndex < filtered.length,
     );
   }
 
@@ -174,6 +208,10 @@ class _FakeAccountProfilesRepository
   int createProfileCalls = 0;
   String? lastCreateDisplayName;
   String? lastCreateBio;
+  String? lastCreateAvatarUrl;
+  String? lastCreateCoverUrl;
+  TenantAdminMediaUpload? lastCreateAvatarUpload;
+  TenantAdminMediaUpload? lastCreateCoverUpload;
   List<TenantAdminTaxonomyTerm> lastCreateTaxonomyTerms = const [];
 
   @override
@@ -219,6 +257,10 @@ class _FakeAccountProfilesRepository
     createProfileCalls += 1;
     lastCreateDisplayName = displayName;
     lastCreateBio = bio;
+    lastCreateAvatarUrl = avatarUrl;
+    lastCreateCoverUrl = coverUrl;
+    lastCreateAvatarUpload = avatarUpload;
+    lastCreateCoverUpload = coverUpload;
     lastCreateTaxonomyTerms = List<TenantAdminTaxonomyTerm>.from(taxonomyTerms);
     return TenantAdminAccountProfile(
       id: 'profile-$createProfileCalls',
@@ -322,7 +364,7 @@ class _FakeAccountProfilesRepository
             isPoiEnabled: true,
             hasBio: false,
             hasContent: false,
-          hasTaxonomies: false,
+            hasTaxonomies: false,
             hasAvatar: false,
             hasCover: false,
             hasEvents: false,
@@ -493,6 +535,49 @@ void main() {
     expect(controller.profileTypesStreamValue.value.length, 1);
   });
 
+  test('switching segment reloads accounts with ownership filter', () async {
+    final accountsRepository = _FakeAccountsRepository([
+      TenantAdminAccount(
+        id: 'acc-tenant',
+        name: 'Conta tenant',
+        slug: 'conta-tenant',
+        document: const TenantAdminDocument(type: 'cpf', number: '000'),
+        ownershipState: TenantAdminOwnershipState.tenantOwned,
+      ),
+      TenantAdminAccount(
+        id: 'acc-unmanaged',
+        name: 'Conta unmanaged',
+        slug: 'conta-unmanaged',
+        document: const TenantAdminDocument(type: 'cpf', number: '111'),
+        ownershipState: TenantAdminOwnershipState.unmanaged,
+      ),
+    ]);
+    final controller = TenantAdminAccountsController(
+      accountsRepository: accountsRepository,
+      profilesRepository: _FakeAccountProfilesRepository(const []),
+      taxonomiesRepository: _FakeTaxonomiesRepository(),
+      locationSelectionService: TenantAdminLocationSelectionService(),
+    );
+
+    await controller.init();
+    expect(accountsRepository.loadAccountsOwnershipCalls.last,
+        TenantAdminOwnershipState.tenantOwned);
+    expect(
+        controller.accountsStreamValue.value?.map((it) => it.slug).toList(), [
+      'conta-tenant',
+    ]);
+
+    controller.updateSelectedOwnership(TenantAdminOwnershipState.unmanaged);
+    await Future<void>.delayed(Duration.zero);
+
+    expect(accountsRepository.loadAccountsOwnershipCalls.last,
+        TenantAdminOwnershipState.unmanaged);
+    expect(
+        controller.accountsStreamValue.value?.map((it) => it.slug).toList(), [
+      'conta-unmanaged',
+    ]);
+  });
+
   test('createAccountWithProfile updates accounts list', () async {
     final accountsRepository = _FakeAccountsRepository([]);
     final profilesRepository = _FakeAccountProfilesRepository(const [
@@ -580,6 +665,70 @@ void main() {
     expect(profilesRepository.lastCreateTaxonomyTerms.length, 1);
     expect(profilesRepository.lastCreateTaxonomyTerms.first.type, 'genre');
     expect(profilesRepository.lastCreateTaxonomyTerms.first.value, 'urbana');
+  });
+
+  test('createAccountFromForm submits media as upload and never as direct URL',
+      () async {
+    final accountsRepository = _FakeAccountsRepository([]);
+    final profilesRepository = _FakeAccountProfilesRepository(const [
+      TenantAdminProfileTypeDefinition(
+        type: 'venue',
+        label: 'Venue',
+        allowedTaxonomies: [],
+        capabilities: TenantAdminProfileTypeCapabilities(
+          isFavoritable: true,
+          isPoiEnabled: false,
+          hasBio: false,
+          hasContent: false,
+          hasTaxonomies: false,
+          hasAvatar: true,
+          hasCover: true,
+          hasEvents: false,
+        ),
+      ),
+    ]);
+    final taxonomiesRepository = _FakeTaxonomiesRepository();
+    final TenantAdminLocationSelectionContract locationSelectionService =
+        TenantAdminLocationSelectionService();
+    final controller = TenantAdminAccountsController(
+      accountsRepository: accountsRepository,
+      profilesRepository: profilesRepository,
+      taxonomiesRepository: taxonomiesRepository,
+      locationSelectionService: locationSelectionService,
+    );
+
+    controller.nameController.text = 'Conta com imagem';
+    controller.updateCreateSelectedProfileType('venue');
+
+    final avatarUpload = TenantAdminMediaUpload(
+      bytes: Uint8List.fromList(const <int>[1, 2, 3]),
+      fileName: 'avatar.jpg',
+      mimeType: 'image/jpeg',
+    );
+    final coverUpload = TenantAdminMediaUpload(
+      bytes: Uint8List.fromList(const <int>[4, 5, 6]),
+      fileName: 'cover.jpg',
+      mimeType: 'image/jpeg',
+    );
+
+    await controller.createAccountFromForm(
+      location: null,
+      avatarUpload: avatarUpload,
+      coverUpload: coverUpload,
+    );
+
+    expect(profilesRepository.lastCreateAvatarUrl, isNull);
+    expect(profilesRepository.lastCreateCoverUrl, isNull);
+    expect(profilesRepository.lastCreateAvatarUpload, isNotNull);
+    expect(profilesRepository.lastCreateCoverUpload, isNotNull);
+    expect(
+      profilesRepository.lastCreateAvatarUpload!.mimeType,
+      'image/jpeg',
+    );
+    expect(
+      profilesRepository.lastCreateCoverUpload!.mimeType,
+      'image/jpeg',
+    );
   });
 
   test('init reloads when tenant scope changes', () async {
@@ -708,6 +857,40 @@ void main() {
     await controller.loadNextAccountsPage();
     expect(controller.accountsStreamValue.value?.length, 45);
     expect(accountsRepository.fetchAccountsCalls, 3);
+  });
+
+  test('keeps last successful list when reload fails', () async {
+    final accountsRepository = _FakeAccountsRepository([
+      TenantAdminAccount(
+        id: 'acc-1',
+        name: 'Conta',
+        slug: 'conta',
+        document: const TenantAdminDocument(type: 'cpf', number: '000'),
+        ownershipState: TenantAdminOwnershipState.tenantOwned,
+      ),
+    ]);
+    final profilesRepository = _FakeAccountProfilesRepository(const []);
+    final TenantAdminLocationSelectionContract locationSelectionService =
+        TenantAdminLocationSelectionService();
+    final taxonomiesRepository = _FakeTaxonomiesRepository();
+    final controller = TenantAdminAccountsController(
+      accountsRepository: accountsRepository,
+      profilesRepository: profilesRepository,
+      taxonomiesRepository: taxonomiesRepository,
+      locationSelectionService: locationSelectionService,
+    );
+
+    await controller.loadAccounts();
+    expect(controller.accountsStreamValue.value, hasLength(1));
+    expect(controller.errorStreamValue.value, isNull);
+
+    accountsRepository.failNextLoadAccounts = true;
+    await expectLater(controller.loadAccounts(), throwsException);
+    await Future<void>.microtask(() {});
+
+    expect(controller.accountsStreamValue.value, hasLength(1));
+    expect(controller.accountsStreamValue.value!.first.slug, 'conta');
+    expect(controller.errorStreamValue.value, contains('backend error'));
   });
 }
 

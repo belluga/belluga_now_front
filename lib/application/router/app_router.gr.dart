@@ -809,6 +809,7 @@ class TenantAdminAccountDetailRoute
             key: key,
             accountSlug: accountSlug,
           ),
+          rawPathParams: {'accountSlug': accountSlug},
           initialChildren: children,
         );
 
@@ -817,7 +818,12 @@ class TenantAdminAccountDetailRoute
   static _i50.PageInfo page = _i50.PageInfo(
     name,
     builder: (data) {
-      final args = data.argsAs<TenantAdminAccountDetailRouteArgs>();
+      final pathParams = data.inheritedPathParams;
+      final args = data.argsAs<TenantAdminAccountDetailRouteArgs>(
+        orElse: () => TenantAdminAccountDetailRouteArgs(
+          accountSlug: pathParams.getString('accountSlug'),
+        ),
+      );
       return _i19.TenantAdminAccountDetailRoutePage(
         key: args.key,
         accountSlug: args.accountSlug,
@@ -866,6 +872,7 @@ class TenantAdminAccountProfileCreateRoute
             key: key,
             accountSlug: accountSlug,
           ),
+          rawPathParams: {'accountSlug': accountSlug},
           initialChildren: children,
         );
 
@@ -874,7 +881,12 @@ class TenantAdminAccountProfileCreateRoute
   static _i50.PageInfo page = _i50.PageInfo(
     name,
     builder: (data) {
-      final args = data.argsAs<TenantAdminAccountProfileCreateRouteArgs>();
+      final pathParams = data.inheritedPathParams;
+      final args = data.argsAs<TenantAdminAccountProfileCreateRouteArgs>(
+        orElse: () => TenantAdminAccountProfileCreateRouteArgs(
+          accountSlug: pathParams.getString('accountSlug'),
+        ),
+      );
       return _i20.TenantAdminAccountProfileCreateRoutePage(
         key: args.key,
         accountSlug: args.accountSlug,
@@ -915,14 +927,20 @@ class TenantAdminAccountProfileEditRoute
     extends _i50.PageRouteInfo<TenantAdminAccountProfileEditRouteArgs> {
   TenantAdminAccountProfileEditRoute({
     _i51.Key? key,
+    required String accountSlug,
     required String accountProfileId,
     List<_i50.PageRouteInfo>? children,
   }) : super(
           TenantAdminAccountProfileEditRoute.name,
           args: TenantAdminAccountProfileEditRouteArgs(
             key: key,
+            accountSlug: accountSlug,
             accountProfileId: accountProfileId,
           ),
+          rawPathParams: {
+            'accountSlug': accountSlug,
+            'accountProfileId': accountProfileId,
+          },
           initialChildren: children,
         );
 
@@ -931,9 +949,16 @@ class TenantAdminAccountProfileEditRoute
   static _i50.PageInfo page = _i50.PageInfo(
     name,
     builder: (data) {
-      final args = data.argsAs<TenantAdminAccountProfileEditRouteArgs>();
+      final pathParams = data.inheritedPathParams;
+      final args = data.argsAs<TenantAdminAccountProfileEditRouteArgs>(
+        orElse: () => TenantAdminAccountProfileEditRouteArgs(
+          accountSlug: pathParams.getString('accountSlug'),
+          accountProfileId: pathParams.getString('accountProfileId'),
+        ),
+      );
       return _i21.TenantAdminAccountProfileEditRoutePage(
         key: args.key,
+        accountSlug: args.accountSlug,
         accountProfileId: args.accountProfileId,
       );
     },
@@ -943,27 +968,33 @@ class TenantAdminAccountProfileEditRoute
 class TenantAdminAccountProfileEditRouteArgs {
   const TenantAdminAccountProfileEditRouteArgs({
     this.key,
+    required this.accountSlug,
     required this.accountProfileId,
   });
 
   final _i51.Key? key;
 
+  final String accountSlug;
+
   final String accountProfileId;
 
   @override
   String toString() {
-    return 'TenantAdminAccountProfileEditRouteArgs{key: $key, accountProfileId: $accountProfileId}';
+    return 'TenantAdminAccountProfileEditRouteArgs{key: $key, accountSlug: $accountSlug, accountProfileId: $accountProfileId}';
   }
 
   @override
   bool operator ==(Object other) {
     if (identical(this, other)) return true;
     if (other is! TenantAdminAccountProfileEditRouteArgs) return false;
-    return key == other.key && accountProfileId == other.accountProfileId;
+    return key == other.key &&
+        accountSlug == other.accountSlug &&
+        accountProfileId == other.accountProfileId;
   }
 
   @override
-  int get hashCode => key.hashCode ^ accountProfileId.hashCode;
+  int get hashCode =>
+      key.hashCode ^ accountSlug.hashCode ^ accountProfileId.hashCode;
 }
 
 /// generated route for
@@ -1101,6 +1132,7 @@ class TenantAdminOrganizationDetailRoute
             key: key,
             organizationId: organizationId,
           ),
+          rawPathParams: {'organizationId': organizationId},
           initialChildren: children,
         );
 
@@ -1109,7 +1141,12 @@ class TenantAdminOrganizationDetailRoute
   static _i50.PageInfo page = _i50.PageInfo(
     name,
     builder: (data) {
-      final args = data.argsAs<TenantAdminOrganizationDetailRouteArgs>();
+      final pathParams = data.inheritedPathParams;
+      final args = data.argsAs<TenantAdminOrganizationDetailRouteArgs>(
+        orElse: () => TenantAdminOrganizationDetailRouteArgs(
+          organizationId: pathParams.getString('organizationId'),
+        ),
+      );
       return _i27.TenantAdminOrganizationDetailRoutePage(
         key: args.key,
         organizationId: args.organizationId,
@@ -1194,6 +1231,7 @@ class TenantAdminProfileTypeDetailRoute
             profileType: profileType,
             definition: definition,
           ),
+          rawPathParams: {'profileType': profileType},
           initialChildren: children,
         );
 
@@ -1259,6 +1297,7 @@ class TenantAdminProfileTypeEditRoute
             profileType: profileType,
             definition: definition,
           ),
+          rawPathParams: {'profileType': profileType},
           initialChildren: children,
         );
 
@@ -1447,6 +1486,7 @@ class TenantAdminStaticAssetEditRoute
   }) : super(
           TenantAdminStaticAssetEditRoute.name,
           args: TenantAdminStaticAssetEditRouteArgs(key: key, assetId: assetId),
+          rawPathParams: {'assetId': assetId},
           initialChildren: children,
         );
 
@@ -1455,7 +1495,12 @@ class TenantAdminStaticAssetEditRoute
   static _i50.PageInfo page = _i50.PageInfo(
     name,
     builder: (data) {
-      final args = data.argsAs<TenantAdminStaticAssetEditRouteArgs>();
+      final pathParams = data.inheritedPathParams;
+      final args = data.argsAs<TenantAdminStaticAssetEditRouteArgs>(
+        orElse: () => TenantAdminStaticAssetEditRouteArgs(
+          assetId: pathParams.getString('assetId'),
+        ),
+      );
       return _i37.TenantAdminStaticAssetEditRoutePage(
         key: args.key,
         assetId: args.assetId,
@@ -1539,6 +1584,7 @@ class TenantAdminStaticProfileTypeDetailRoute
             profileType: profileType,
             definition: definition,
           ),
+          rawPathParams: {'profileType': profileType},
           initialChildren: children,
         );
 
@@ -1604,6 +1650,7 @@ class TenantAdminStaticProfileTypeEditRoute
             profileType: profileType,
             definition: definition,
           ),
+          rawPathParams: {'profileType': profileType},
           initialChildren: children,
         );
 
@@ -1711,11 +1758,17 @@ class TenantAdminTaxonomyEditRoute
     extends _i50.PageRouteInfo<TenantAdminTaxonomyEditRouteArgs> {
   TenantAdminTaxonomyEditRoute({
     _i51.Key? key,
+    required String taxonomyId,
     required _i59.TenantAdminTaxonomyDefinition taxonomy,
     List<_i50.PageRouteInfo>? children,
   }) : super(
           TenantAdminTaxonomyEditRoute.name,
-          args: TenantAdminTaxonomyEditRouteArgs(key: key, taxonomy: taxonomy),
+          args: TenantAdminTaxonomyEditRouteArgs(
+            key: key,
+            taxonomyId: taxonomyId,
+            taxonomy: taxonomy,
+          ),
+          rawPathParams: {'taxonomyId': taxonomyId},
           initialChildren: children,
         );
 
@@ -1727,6 +1780,7 @@ class TenantAdminTaxonomyEditRoute
       final args = data.argsAs<TenantAdminTaxonomyEditRouteArgs>();
       return _i44.TenantAdminTaxonomyEditRoutePage(
         key: args.key,
+        taxonomyId: args.taxonomyId,
         taxonomy: args.taxonomy,
       );
     },
@@ -1734,26 +1788,34 @@ class TenantAdminTaxonomyEditRoute
 }
 
 class TenantAdminTaxonomyEditRouteArgs {
-  const TenantAdminTaxonomyEditRouteArgs({this.key, required this.taxonomy});
+  const TenantAdminTaxonomyEditRouteArgs({
+    this.key,
+    required this.taxonomyId,
+    required this.taxonomy,
+  });
 
   final _i51.Key? key;
+
+  final String taxonomyId;
 
   final _i59.TenantAdminTaxonomyDefinition taxonomy;
 
   @override
   String toString() {
-    return 'TenantAdminTaxonomyEditRouteArgs{key: $key, taxonomy: $taxonomy}';
+    return 'TenantAdminTaxonomyEditRouteArgs{key: $key, taxonomyId: $taxonomyId, taxonomy: $taxonomy}';
   }
 
   @override
   bool operator ==(Object other) {
     if (identical(this, other)) return true;
     if (other is! TenantAdminTaxonomyEditRouteArgs) return false;
-    return key == other.key && taxonomy == other.taxonomy;
+    return key == other.key &&
+        taxonomyId == other.taxonomyId &&
+        taxonomy == other.taxonomy;
   }
 
   @override
-  int get hashCode => key.hashCode ^ taxonomy.hashCode;
+  int get hashCode => key.hashCode ^ taxonomyId.hashCode ^ taxonomy.hashCode;
 }
 
 /// generated route for
@@ -1772,6 +1834,7 @@ class TenantAdminTaxonomyTermCreateRoute
             taxonomyId: taxonomyId,
             taxonomyName: taxonomyName,
           ),
+          rawPathParams: {'taxonomyId': taxonomyId},
           initialChildren: children,
         );
 
@@ -1842,6 +1905,7 @@ class TenantAdminTaxonomyTermDetailRoute
             termId: termId,
             term: term,
           ),
+          rawPathParams: {'taxonomyId': taxonomyId, 'termId': termId},
           initialChildren: children,
         );
 
@@ -1914,6 +1978,7 @@ class TenantAdminTaxonomyTermEditRoute
     _i51.Key? key,
     required String taxonomyId,
     required String taxonomyName,
+    required String termId,
     required _i60.TenantAdminTaxonomyTermDefinition term,
     List<_i50.PageRouteInfo>? children,
   }) : super(
@@ -1922,8 +1987,10 @@ class TenantAdminTaxonomyTermEditRoute
             key: key,
             taxonomyId: taxonomyId,
             taxonomyName: taxonomyName,
+            termId: termId,
             term: term,
           ),
+          rawPathParams: {'taxonomyId': taxonomyId, 'termId': termId},
           initialChildren: children,
         );
 
@@ -1937,6 +2004,7 @@ class TenantAdminTaxonomyTermEditRoute
         key: args.key,
         taxonomyId: args.taxonomyId,
         taxonomyName: args.taxonomyName,
+        termId: args.termId,
         term: args.term,
       );
     },
@@ -1948,6 +2016,7 @@ class TenantAdminTaxonomyTermEditRouteArgs {
     this.key,
     required this.taxonomyId,
     required this.taxonomyName,
+    required this.termId,
     required this.term,
   });
 
@@ -1957,11 +2026,13 @@ class TenantAdminTaxonomyTermEditRouteArgs {
 
   final String taxonomyName;
 
+  final String termId;
+
   final _i60.TenantAdminTaxonomyTermDefinition term;
 
   @override
   String toString() {
-    return 'TenantAdminTaxonomyTermEditRouteArgs{key: $key, taxonomyId: $taxonomyId, taxonomyName: $taxonomyName, term: $term}';
+    return 'TenantAdminTaxonomyTermEditRouteArgs{key: $key, taxonomyId: $taxonomyId, taxonomyName: $taxonomyName, termId: $termId, term: $term}';
   }
 
   @override
@@ -1971,6 +2042,7 @@ class TenantAdminTaxonomyTermEditRouteArgs {
     return key == other.key &&
         taxonomyId == other.taxonomyId &&
         taxonomyName == other.taxonomyName &&
+        termId == other.termId &&
         term == other.term;
   }
 
@@ -1979,6 +2051,7 @@ class TenantAdminTaxonomyTermEditRouteArgs {
       key.hashCode ^
       taxonomyId.hashCode ^
       taxonomyName.hashCode ^
+      termId.hashCode ^
       term.hashCode;
 }
 
@@ -1998,6 +2071,7 @@ class TenantAdminTaxonomyTermsRoute
             taxonomyId: taxonomyId,
             taxonomyName: taxonomyName,
           ),
+          rawPathParams: {'taxonomyId': taxonomyId},
           initialChildren: children,
         );
 

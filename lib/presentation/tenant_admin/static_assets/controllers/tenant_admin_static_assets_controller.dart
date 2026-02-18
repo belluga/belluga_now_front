@@ -86,6 +86,10 @@ class TenantAdminStaticAssetsController implements Disposable {
       StreamValue<bool>(defaultValue: false);
   final StreamValue<XFile?> avatarFileStreamValue = StreamValue<XFile?>();
   final StreamValue<XFile?> coverFileStreamValue = StreamValue<XFile?>();
+  final StreamValue<bool> avatarBusyStreamValue =
+      StreamValue<bool>(defaultValue: false);
+  final StreamValue<bool> coverBusyStreamValue =
+      StreamValue<bool>(defaultValue: false);
 
   final GlobalKey<FormState> formKey = GlobalKey<FormState>();
   final TextEditingController displayNameController = TextEditingController();
@@ -263,6 +267,14 @@ class TenantAdminStaticAssetsController implements Disposable {
     }
   }
 
+  void updateAvatarBusy(bool isBusy) {
+    avatarBusyStreamValue.addValue(isBusy);
+  }
+
+  void updateCoverBusy(bool isBusy) {
+    coverBusyStreamValue.addValue(isBusy);
+  }
+
   void updateAvatarWebUrl(String? url) {
     avatarUrlController.text = (url ?? '').trim();
     if (avatarUrlController.text.isNotEmpty) {
@@ -409,12 +421,8 @@ class TenantAdminStaticAssetsController implements Disposable {
         content: contentController.text.trim().isEmpty
             ? null
             : contentController.text.trim(),
-        avatarUrl: avatarUrlController.text.trim().isEmpty
-            ? null
-            : avatarUrlController.text.trim(),
-        coverUrl: coverUrlController.text.trim().isEmpty
-            ? null
-            : coverUrlController.text.trim(),
+        avatarUrl: null,
+        coverUrl: null,
         avatarUpload: avatarUpload,
         coverUpload: coverUpload,
       );
@@ -456,12 +464,8 @@ class TenantAdminStaticAssetsController implements Disposable {
         content: contentController.text.trim().isEmpty
             ? null
             : contentController.text.trim(),
-        avatarUrl: avatarUrlController.text.trim().isEmpty
-            ? null
-            : avatarUrlController.text.trim(),
-        coverUrl: coverUrlController.text.trim().isEmpty
-            ? null
-            : coverUrlController.text.trim(),
+        avatarUrl: null,
+        coverUrl: null,
         avatarUpload: avatarUpload,
         coverUpload: coverUpload,
       );
@@ -642,5 +646,7 @@ class TenantAdminStaticAssetsController implements Disposable {
     taxonomyAutosavingStreamValue.dispose();
     avatarFileStreamValue.dispose();
     coverFileStreamValue.dispose();
+    avatarBusyStreamValue.dispose();
+    coverBusyStreamValue.dispose();
   }
 }

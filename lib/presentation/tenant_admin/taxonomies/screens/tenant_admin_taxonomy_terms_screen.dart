@@ -70,6 +70,7 @@ class _TenantAdminTaxonomyTermsScreenState
       TenantAdminTaxonomyTermEditRoute(
         taxonomyId: widget.taxonomyId,
         taxonomyName: widget.taxonomyName,
+        termId: term.id,
         term: term,
       ),
     );

@@ -7,7 +7,7 @@ import 'package:flutter/material.dart';
 class TenantAdminTaxonomyTermCreateRoutePage extends StatelessWidget {
   const TenantAdminTaxonomyTermCreateRoutePage({
     super.key,
-    required this.taxonomyId,
+    @PathParam('taxonomyId') required this.taxonomyId,
     required this.taxonomyName,
   });
 
@@ -27,13 +27,15 @@ class TenantAdminTaxonomyTermCreateRoutePage extends StatelessWidget {
 class TenantAdminTaxonomyTermEditRoutePage extends StatelessWidget {
   const TenantAdminTaxonomyTermEditRoutePage({
     super.key,
-    required this.taxonomyId,
+    @PathParam('taxonomyId') required this.taxonomyId,
     required this.taxonomyName,
+    @PathParam('termId') required this.termId,
     required this.term,
   });
 
   final String taxonomyId;
   final String taxonomyName;
+  final String termId;
   final TenantAdminTaxonomyTermDefinition term;
 
   @override

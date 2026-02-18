@@ -8,6 +8,7 @@ import 'package:belluga_now/presentation/tenant_admin/account_profiles/controlle
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_error_banner.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_form_value_utils.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_field_edit_sheet.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
@@ -29,6 +30,7 @@ class _TenantAdminAccountDetailScreenState
     extends State<TenantAdminAccountDetailScreen> {
   final TenantAdminAccountProfilesController _profilesController =
       GetIt.I.get<TenantAdminAccountProfilesController>();
+  bool _routeParamNormalized = false;
 
   @override
   void initState() {
@@ -38,10 +40,48 @@ class _TenantAdminAccountDetailScreenState
 
   String _currentAccountSlugForRequests() {
     final current = _profilesController.accountStreamValue.value?.slug;
-    if (current != null && current.isNotEmpty) {
-      return current;
+    if (_isResolvedSlug(current)) {
+      return current!.trim();
     }
     return widget.accountSlug;
+  }
+
+  bool _isResolvedSlug(String? value) {
+    if (value == null) {
+      return false;
+    }
+    final trimmed = value.trim();
+    return trimmed.isNotEmpty && !trimmed.startsWith(':');
+  }
+
+  bool _requiresPathNormalization() {
+    return kIsWeb && context.router.currentPath.contains('/:');
+  }
+
+  void _normalizeRouteParamIfNeeded(TenantAdminAccount? account) {
+    if (_routeParamNormalized || !mounted) {
+      return;
+    }
+    final incoming = widget.accountSlug;
+    final resolved = account?.slug;
+    final needsPathNormalization = _requiresPathNormalization();
+    if (!needsPathNormalization && _isResolvedSlug(incoming)) {
+      _routeParamNormalized = true;
+      return;
+    }
+    final resolvedSlug = _isResolvedSlug(incoming) ? incoming : resolved;
+    if (!_isResolvedSlug(resolvedSlug)) {
+      return;
+    }
+    _routeParamNormalized = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        return;
+      }
+      context.router.replace(
+        TenantAdminAccountDetailRoute(accountSlug: resolvedSlug!.trim()),
+      );
+    });
   }
 
   String _profileTypeLabel(List<TenantAdminProfileTypeDefinition> types) {
@@ -56,15 +96,11 @@ class _TenantAdminAccountDetailScreenState
   }
 
   void _openCreate() {
-    context.router
-        .push(
-          TenantAdminAccountProfileCreateRoute(
-            accountSlug: _currentAccountSlugForRequests(),
-          ),
-        )
-        .then((_) => _profilesController.loadAccountDetail(
-              _currentAccountSlugForRequests(),
-            ));
+    context.router.push(
+      TenantAdminAccountProfileCreateRoute(
+        accountSlug: _currentAccountSlugForRequests(),
+      ),
+    );
   }
 
   void _openEdit() {
@@ -72,15 +108,12 @@ class _TenantAdminAccountDetailScreenState
     if (profile == null) {
       return;
     }
-    context.router
-        .push(
-          TenantAdminAccountProfileEditRoute(
-            accountProfileId: profile.id,
-          ),
-        )
-        .then((_) => _profilesController.loadAccountDetail(
-              _currentAccountSlugForRequests(),
-            ));
+    context.router.push(
+      TenantAdminAccountProfileEditRoute(
+        accountSlug: _currentAccountSlugForRequests(),
+        accountProfileId: profile.id,
+      ),
+    );
   }
 
   Future<void> _editAccountName(TenantAdminAccount account) async {
@@ -173,6 +206,7 @@ class _TenantAdminAccountDetailScreenState
             return StreamValueBuilder<TenantAdminAccount?>(
               streamValue: _profilesController.accountStreamValue,
               builder: (context, account) {
+                _normalizeRouteParamIfNeeded(account);
                 return StreamValueBuilder<TenantAdminAccountProfile?>(
                   streamValue: _profilesController.accountProfileStreamValue,
                   builder: (context, profile) {

@@ -1,5 +1,8 @@
+import 'package:auto_route/auto_route.dart';
+import 'dart:typed_data';
 import 'package:belluga_now/domain/repositories/tenant_admin_static_assets_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_taxonomies_repository_contract.dart';
+import 'package:belluga_now/domain/services/tenant_admin_external_image_proxy_contract.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_result.dart';
@@ -11,6 +14,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_defin
 import 'package:belluga_now/infrastructure/services/tenant_admin/tenant_admin_location_selection_service.dart';
 import 'package:belluga_now/presentation/tenant_admin/static_assets/controllers/tenant_admin_static_assets_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/static_assets/screens/tenant_admin_static_asset_edit_screen.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_image_ingestion_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
@@ -126,13 +130,35 @@ Future<void> _pumpScreen(
     locationSelection: TenantAdminLocationSelectionService(),
   );
   GetIt.I.registerSingleton<TenantAdminStaticAssetsController>(controller);
+  GetIt.I.registerSingleton<TenantAdminExternalImageProxyContract>(
+    _FakeExternalImageProxy(),
+  );
+  GetIt.I.registerSingleton<TenantAdminImageIngestionService>(
+    TenantAdminImageIngestionService(),
+  );
+  final router = _buildTestRouter(
+    const TenantAdminStaticAssetEditScreen(assetId: 'asset-1'),
+  );
 
   await tester.pumpWidget(
-    const MaterialApp(
-      home: TenantAdminStaticAssetEditScreen(assetId: 'asset-1'),
+    MaterialApp.router(
+      routeInformationParser: router.defaultRouteParser(),
+      routerDelegate: router.delegate(),
     ),
   );
   await tester.pumpAndSettle();
+}
+
+RootStackRouter _buildTestRouter(Widget child) {
+  return RootStackRouter.build(
+    routes: [
+      NamedRouteDef(
+        name: 'static-asset-edit-test',
+        path: '/',
+        builder: (_, __) => child,
+      ),
+    ],
+  )..ignorePopCompleters = true;
 }
 
 TenantAdminStaticAsset _sampleAsset() {
@@ -149,6 +175,13 @@ TenantAdminStaticAsset _sampleAsset() {
 bool _chipSelected(WidgetTester tester, Finder chipFinder) {
   final chip = tester.widget<FilterChip>(chipFinder);
   return chip.selected;
+}
+
+class _FakeExternalImageProxy implements TenantAdminExternalImageProxyContract {
+  @override
+  Future<Uint8List> fetchExternalImageBytes({required String imageUrl}) async {
+    throw UnimplementedError();
+  }
 }
 
 class _FakeStaticAssetsRepository

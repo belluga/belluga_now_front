@@ -4,6 +4,7 @@ import 'package:belluga_now/domain/repositories/landlord_tenants_repository_cont
 import 'package:belluga_now/presentation/tenant_admin/shell/controllers/tenant_admin_shell_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/shell/widgets/tenant_selection_gate.dart';
 import 'package:belluga_now/presentation/tenant_admin/shell/widgets/tenant_selection_loading_gate.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
@@ -19,6 +20,7 @@ class _TenantAdminShellScreenState extends State<TenantAdminShellScreen> {
   static const _railBreakpoint = 900.0;
   final TenantAdminShellController _controller =
       GetIt.I.get<TenantAdminShellController>();
+  String? _lastNormalizedPathEnqueued;
 
   final List<_AdminDestination> _destinations = const [
     _AdminDestination(
@@ -169,6 +171,72 @@ class _TenantAdminShellScreenState extends State<TenantAdminShellScreen> {
   String? _resolveCurrentRouteName(BuildContext context) =>
       context.topRoute.name;
 
+  void _ensureResolvedWebPath(BuildContext context) {
+    if (!kIsWeb) {
+      return;
+    }
+    final router = context.router;
+    final routeData = context.topRoute;
+    final currentPath = router.currentPath;
+    if (!currentPath.contains('/:')) {
+      return;
+    }
+
+    final resolved = _resolveRouteMatchPath(routeData);
+    if (resolved == null || resolved == currentPath) {
+      return;
+    }
+    if (_lastNormalizedPathEnqueued == resolved) {
+      return;
+    }
+    _lastNormalizedPathEnqueued = resolved;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        return;
+      }
+      final liveRouter = context.router;
+      if (liveRouter.currentPath == resolved) {
+        return;
+      }
+      liveRouter.replacePath(resolved);
+    });
+  }
+
+  String? _resolveRouteMatchPath(RouteData routeData) {
+    final rawMatch = routeData.match;
+    if (rawMatch.isEmpty) {
+      return null;
+    }
+    var resolved = rawMatch;
+    routeData.params.rawMap.forEach((key, value) {
+      if (value == null) {
+        return;
+      }
+      resolved = resolved.replaceAll(
+        ':$key',
+        Uri.encodeComponent(value.toString()),
+      );
+    });
+    if (resolved.contains('/:')) {
+      return null;
+    }
+    final query = routeData.queryParams.rawMap;
+    if (query.isEmpty) {
+      return resolved;
+    }
+    final queryParameters = <String, String>{};
+    query.forEach((key, value) {
+      if (value != null) {
+        queryParameters[key] = value.toString();
+      }
+    });
+    return Uri.parse(resolved)
+        .replace(
+          queryParameters: queryParameters.isEmpty ? null : queryParameters,
+        )
+        .toString();
+  }
+
   @override
   void initState() {
     super.initState();
@@ -199,6 +267,7 @@ class _TenantAdminShellScreenState extends State<TenantAdminShellScreen> {
 
                 final router = context.router;
                 final currentName = _resolveCurrentRouteName(context);
+                _ensureResolvedWebPath(context);
                 final selectedIndex = _selectedIndex(currentName);
                 final showShellScaffoldChrome =
                     !_fullScreenRoutes.contains(currentName);
