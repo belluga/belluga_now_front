@@ -141,13 +141,26 @@
       // If we cannot confidently infer a base landlord host, do nothing.
       if (parts.length <= 2) return null;
 
-      // Common multi-part TLDs where base domain needs 3 labels.
       const last2 = parts.slice(-2).join('.');
-      if (last2 === 'com.br' || last2 === 'co.uk' || last2 === 'com.au') {
+
+      // Some public suffixes are "shared" and cannot be used to infer a base domain safely.
+      // Returning null is safer than misclassifying landlord/tenant hosts.
+      const multiTenantSuffixes = new Set([
+        'github.io',
+        'pages.dev',
+        'vercel.app',
+        'netlify.app',
+        'web.app',
+      ]);
+      if (multiTenantSuffixes.has(last2)) return null;
+
+      // ccTLD + 2nd-level domains (e.g. com.mx, co.uk, ac.jp) require 3 labels for the base domain.
+      // Without this, a hostname like tenant.example.com.mx would be mis-inferred as com.mx.
+      if (/^(ac|co|com|edu|gov|net|org)\.[a-z]{2}$/.test(last2)) {
         return parts.slice(-3).join('.');
       }
 
-      return parts.slice(-2).join('.');
+      return last2;
     };
 
     const landlordHostRaw = window.__LANDLORD_HOST__;
