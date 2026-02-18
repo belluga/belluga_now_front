@@ -143,6 +143,23 @@
 
       const last2 = parts.slice(-2).join('.');
 
+      // Wildcard DNS for local envs (README recommends *.nip.io).
+      // For hosts like 192.168.15.4.nip.io, the base landlord host is the full
+      // <ipv4>.nip.io (6 labels), not just nip.io.
+      if (last2 === 'nip.io' || last2 === 'sslip.io') {
+        const isIpv4Label = (s) => {
+          if (!/^\d{1,3}$/.test(s)) return false;
+          const n = Number(s);
+          return n >= 0 && n <= 255;
+        };
+        if (parts.length >= 6) {
+          const last6 = parts.slice(-6);
+          const ipParts = last6.slice(0, 4);
+          if (ipParts.every(isIpv4Label)) return last6.join('.');
+        }
+        return null;
+      }
+
       // Some public suffixes are "shared" and cannot be used to infer a base domain safely.
       // Returning null is safer than misclassifying landlord/tenant hosts.
       const multiTenantSuffixes = new Set([
