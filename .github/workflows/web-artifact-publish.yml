@@ -385,6 +385,9 @@ jobs:
           git commit -m "chore(web): publish Flutter web build from ${TARGET_BRANCH} (${short_sha})"
           git push -u origin "$PR_BRANCH" --force-with-lease
 
+          pr_expected_sha="$(git rev-parse HEAD)"
+          echo "PR_EXPECTED_SHA=$pr_expected_sha" >> "$GITHUB_ENV"
+
       - name: Create PR in web-app repo
         id: create_web_pr
         if: steps.gate.outputs.enabled == 'true' && env.NO_CHANGES == 'false'
@@ -392,13 +395,27 @@ jobs:
           GH_TOKEN: ${{ secrets.WEB_APP_REPO_TOKEN }}
           WEB_APP_REPO: ${{ steps.gate.outputs.web_repo }}
           TARGET_BRANCH: ${{ github.ref_name }}
+          PR_EXPECTED_SHA: ${{ env.PR_EXPECTED_SHA }}
         run: |
+          set -euo pipefail
+
+          if [[ -z "${PR_EXPECTED_SHA:-}" ]]; then
+            echo "ERROR: missing PR_EXPECTED_SHA after pushing publish branch." >&2
+            exit 1
+          fi
+
+          if [[ ! "${PR_EXPECTED_SHA}" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "ERROR: invalid PR_EXPECTED_SHA '${PR_EXPECTED_SHA}'." >&2
+            exit 1
+          fi
+
           title="chore(web): publish Flutter web build from ${TARGET_BRANCH}"
-          body="Automated web bundle publication from flutter-app commit ${GITHUB_SHA}."
+          printf -v body 'Automated web bundle publication from flutter-app commit %s.\n\n- Expected SHA: %s' "${GITHUB_SHA}" "${PR_EXPECTED_SHA}"
 
           existing_pr="$(gh pr list --repo "$WEB_APP_REPO" --base "$TARGET_BRANCH" --head "$PR_BRANCH" --json number --jq '.[0].number // empty')"
 
           if [[ -n "$existing_pr" ]]; then
+            gh pr edit "$existing_pr" --repo "$WEB_APP_REPO" --title "$title" --body "$body" >/dev/null
             echo "PR already exists: #$existing_pr"
             echo "pr_number=$existing_pr" >> "$GITHUB_OUTPUT"
           else
