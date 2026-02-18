@@ -7,6 +7,7 @@ class TenantAdminAccountDTO {
     required this.documentNumber,
     this.organizationId,
     this.ownershipState,
+    this.avatarUrl,
   });
 
   final String id;
@@ -16,6 +17,7 @@ class TenantAdminAccountDTO {
   final String documentNumber;
   final String? organizationId;
   final String? ownershipState;
+  final String? avatarUrl;
 
   factory TenantAdminAccountDTO.fromJson(Map<String, dynamic> json) {
     final document = json['document'];
@@ -33,6 +35,7 @@ class TenantAdminAccountDTO {
       documentNumber: documentNumber ?? '',
       organizationId: json['organization_id']?.toString(),
       ownershipState: json['ownership_state']?.toString(),
+      avatarUrl: json['avatar_url']?.toString(),
     );
   }
 }
