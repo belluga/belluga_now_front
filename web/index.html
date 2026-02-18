@@ -124,31 +124,52 @@
     // Host-based routing safety (pre-Flutter).
     // - Tenant hosts must never render landlord routes even via direct navigation.
     // - Landlord host must never render tenant-only routes even via direct navigation.
-    // This check is optional and only runs when the host app injects a landlord
-    // host at runtime (window.__LANDLORD_HOST__). Keeping it dynamic avoids
-    // lane/domain drift caused by hardcoded hosts in the web bundle.
+    // Prefer runtime injection, but always run with a safe fallback.
+    // When injection is absent, infer the landlord host from the current hostname
+    // (tenant subdomain => base domain).
+    const inferLandlordHost = (hostname) => {
+      const lower = (hostname || '').toLowerCase().trim();
+      if (!lower) return null;
+
+      // localhost/IPs have no cross-host routing risk; treat them as "landlord".
+      if (lower === 'localhost') return lower;
+      if (/^\d{1,3}(\.\d{1,3}){3}$/.test(lower)) return lower;
+      if (lower.includes(':')) return lower;
+
+      const parts = lower.split('.').filter(Boolean);
+      if (parts.length <= 2) return lower;
+
+      // Common multi-part TLDs where base domain needs 3 labels.
+      const last2 = parts.slice(-2).join('.');
+      if (last2 === 'com.br' || last2 === 'co.uk' || last2 === 'com.au') {
+        return parts.slice(-3).join('.');
+      }
+
+      return parts.slice(-2).join('.');
+    };
+
     const landlordHostRaw = window.__LANDLORD_HOST__;
+    const hostname = window.location.hostname.toLowerCase();
+    const pathname = window.location.pathname || '/';
     const landlordHost =
       typeof landlordHostRaw === 'string' && landlordHostRaw.trim().length > 0
         ? landlordHostRaw.trim().toLowerCase()
-        : null;
+        : inferLandlordHost(hostname);
 
-    if (landlordHost) {
-      const hostname = window.location.hostname.toLowerCase();
-      const pathname = window.location.pathname || '/';
-      const isTenantHost =
-        hostname.endsWith('.' + landlordHost) && hostname !== landlordHost;
-      const isLandlordHost = hostname === landlordHost;
+    const isTenantHost =
+      landlordHost != null &&
+      hostname.endsWith('.' + landlordHost) &&
+      hostname !== landlordHost;
+    const isLandlordHost = landlordHost != null && hostname === landlordHost;
 
-      if (isTenantHost && pathname.startsWith('/landlord')) {
-        window.location.replace('/');
-        return;
-      }
+    if (isTenantHost && pathname.startsWith('/landlord')) {
+      window.location.replace('/');
+      return;
+    }
 
-      if (isLandlordHost && pathname.startsWith('/home')) {
-        window.location.replace('/landlord');
-        return;
-      }
+    if (isLandlordHost && pathname.startsWith('/home')) {
+      window.location.replace('/landlord');
+      return;
     }
 
     const applyBranding = (branding) => {

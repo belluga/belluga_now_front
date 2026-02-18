@@ -305,11 +305,14 @@ jobs:
           git fetch origin "$TARGET_BRANCH" --quiet
           git checkout "$TARGET_BRANCH"
 
-          short_sha="$(echo "${GITHUB_SHA}" | cut -c1-7)"
-          pr_branch="ci/flutter-web-${TARGET_BRANCH}-${short_sha}"
+          # Use a stable head branch per lane so we never end up with multiple
+          # concurrent PRs touching index.html/build_metadata.json (which creates
+          # merge conflicts after one PR merges).
+          pr_branch="ci/flutter-web-${TARGET_BRANCH}"
           echo "PR_BRANCH=$pr_branch" >> "$GITHUB_ENV"
 
-          git checkout -b "$pr_branch"
+          # Reset the publish branch to the latest lane base every run.
+          git checkout -B "$pr_branch" "origin/$TARGET_BRANCH"
 
           # Preserve web-app CI files while refreshing generated web bundle output.
           find . -mindepth 1 -maxdepth 1 \
@@ -351,7 +354,7 @@ jobs:
 
           short_sha="$(echo "${GITHUB_SHA}" | cut -c1-7)"
           git commit -m "chore(web): publish Flutter web build from ${TARGET_BRANCH} (${short_sha})"
-          git push -u origin "$PR_BRANCH"
+          git push -u origin "$PR_BRANCH" --force-with-lease
 
       - name: Create PR in web-app repo
         id: create_web_pr

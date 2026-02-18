@@ -169,11 +169,17 @@ class _TenantAdminAccountProfileEditScreenState
   }
 
   String _currentAccountProfileIdForRequests() {
-    final current = _controller.accountProfileStreamValue.value?.id;
-    if (_isResolvedPathParam(current)) {
-      return current!.trim();
+    final routeId = widget.accountProfileId;
+    if (_isResolvedPathParam(routeId)) {
+      return routeId.trim();
     }
-    return widget.accountProfileId;
+
+    final cached = _controller.accountProfileStreamValue.value?.id;
+    if (_isResolvedPathParam(cached)) {
+      return cached!.trim();
+    }
+
+    return routeId;
   }
 
   bool _requiresPathNormalization() {

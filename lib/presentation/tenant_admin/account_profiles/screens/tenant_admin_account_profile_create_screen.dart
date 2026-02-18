@@ -60,11 +60,17 @@ class _TenantAdminAccountProfileCreateScreenState
   }
 
   String _currentAccountSlugForRequests() {
-    final current = _controller.accountStreamValue.value?.slug;
-    if (_isResolvedSlug(current)) {
-      return current!.trim();
+    final routeSlug = widget.accountSlug;
+    if (_isResolvedSlug(routeSlug)) {
+      return routeSlug.trim();
     }
-    return widget.accountSlug;
+
+    final cached = _controller.accountStreamValue.value?.slug;
+    if (_isResolvedSlug(cached)) {
+      return cached!.trim();
+    }
+
+    return routeSlug;
   }
 
   bool _requiresPathNormalization() {
