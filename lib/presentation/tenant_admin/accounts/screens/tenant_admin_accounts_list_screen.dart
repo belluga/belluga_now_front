@@ -2,6 +2,7 @@ import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/domain/tenant_admin/ownership_state.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account.dart';
+import 'package:belluga_now/presentation/common/widgets/belluga_network_image.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_empty_state.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_error_banner.dart';
 import 'package:belluga_now/presentation/tenant_admin/accounts/controllers/tenant_admin_accounts_controller.dart';
@@ -269,9 +270,7 @@ class _TenantAdminAccountsListScreenState
         return Card(
           clipBehavior: Clip.antiAlias,
           child: ListTile(
-            leading: const CircleAvatar(
-              child: Icon(Icons.account_circle_outlined),
-            ),
+            leading: _buildAccountAvatar(context, account),
             title: Text(account.slug),
             subtitle: Text(account.ownershipState.subtitle),
             trailing: const Icon(Icons.chevron_right),
@@ -283,6 +282,28 @@ class _TenantAdminAccountsListScreenState
           ),
         );
       },
+    );
+  }
+
+  Widget _buildAccountAvatar(BuildContext context, TenantAdminAccount account) {
+    final avatarUrl = account.avatarUrl;
+    if (avatarUrl != null && avatarUrl.trim().isNotEmpty) {
+      return BellugaNetworkImage(
+        avatarUrl,
+        width: 40,
+        height: 40,
+        fit: BoxFit.cover,
+        clipBorderRadius: BorderRadius.circular(20),
+        errorWidget: CircleAvatar(
+          backgroundColor:
+              Theme.of(context).colorScheme.surfaceContainerHighest,
+          child: const Icon(Icons.account_circle_outlined),
+        ),
+      );
+    }
+    return CircleAvatar(
+      backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+      child: const Icon(Icons.account_circle_outlined),
     );
   }
 
