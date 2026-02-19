@@ -41,7 +41,8 @@ class _TenantAdminImageCropSheet extends StatefulWidget {
       _TenantAdminImageCropSheetState();
 }
 
-class _TenantAdminImageCropSheetState extends State<_TenantAdminImageCropSheet> {
+class _TenantAdminImageCropSheetState
+    extends State<_TenantAdminImageCropSheet> {
   final CropController _cropController = CropController();
 
   Uint8List? _bytes;
@@ -89,7 +90,25 @@ class _TenantAdminImageCropSheetState extends State<_TenantAdminImageCropSheet> 
 
   double get _aspectRatio => widget.slot == TenantAdminImageSlot.avatar
       ? 1.0
-      : (16 / 9);
+      : switch (widget.slot) {
+          TenantAdminImageSlot.cover => 16 / 9,
+          TenantAdminImageSlot.lightLogo => 18 / 5,
+          TenantAdminImageSlot.darkLogo => 18 / 5,
+          TenantAdminImageSlot.lightIcon => 1.0,
+          TenantAdminImageSlot.darkIcon => 1.0,
+          TenantAdminImageSlot.pwaIcon => 1.0,
+          TenantAdminImageSlot.avatar => 1.0,
+        };
+
+  String get _title => switch (widget.slot) {
+        TenantAdminImageSlot.avatar => 'Recortar avatar',
+        TenantAdminImageSlot.cover => 'Recortar capa',
+        TenantAdminImageSlot.lightLogo => 'Recortar logo claro',
+        TenantAdminImageSlot.darkLogo => 'Recortar logo escuro',
+        TenantAdminImageSlot.lightIcon => 'Recortar icone claro',
+        TenantAdminImageSlot.darkIcon => 'Recortar icone escuro',
+        TenantAdminImageSlot.pwaIcon => 'Recortar icone PWA',
+      };
 
   Future<void> _submit() async {
     if (_submitting || _bytes == null) return;
@@ -152,9 +171,7 @@ class _TenantAdminImageCropSheetState extends State<_TenantAdminImageCropSheet> 
               children: [
                 Expanded(
                   child: Text(
-                    widget.slot == TenantAdminImageSlot.avatar
-                        ? 'Recortar avatar'
-                        : 'Recortar capa',
+                    _title,
                     style: theme.textTheme.titleMedium,
                   ),
                 ),
@@ -187,7 +204,8 @@ class _TenantAdminImageCropSheetState extends State<_TenantAdminImageCropSheet> 
                       Crop(
                         image: _bytes!,
                         controller: _cropController,
-                        withCircleUi: widget.slot == TenantAdminImageSlot.avatar,
+                        withCircleUi:
+                            widget.slot == TenantAdminImageSlot.avatar,
                         aspectRatio: _aspectRatio,
                         onCropped: (result) {
                           unawaited(_handleCropResult(result));

@@ -2,8 +2,14 @@ import 'package:belluga_now/domain/app_data/environment_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_settings.dart';
 import 'package:belluga_now/presentation/tenant_admin/settings/controllers/tenant_admin_settings_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_field_edit_sheet.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_hex_color_field.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_image_crop_sheet.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_image_source_sheet.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_xfile_preview.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_image_ingestion_service.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 
 class TenantAdminSettingsScreen extends StatefulWidget {
@@ -17,11 +23,206 @@ class TenantAdminSettingsScreen extends StatefulWidget {
 class _TenantAdminSettingsScreenState extends State<TenantAdminSettingsScreen> {
   final TenantAdminSettingsController _controller =
       GetIt.I.get<TenantAdminSettingsController>();
+  final TenantAdminImageIngestionService _imageIngestionService =
+      GetIt.I.get<TenantAdminImageIngestionService>();
+
+  final Map<TenantAdminBrandingAssetSlot, bool> _brandingBusy = {
+    TenantAdminBrandingAssetSlot.lightLogo: false,
+    TenantAdminBrandingAssetSlot.darkLogo: false,
+    TenantAdminBrandingAssetSlot.lightIcon: false,
+    TenantAdminBrandingAssetSlot.darkIcon: false,
+    TenantAdminBrandingAssetSlot.pwaIcon: false,
+  };
 
   @override
   void initState() {
     super.initState();
     _controller.init();
+  }
+
+  bool _isBrandingBusy(TenantAdminBrandingAssetSlot slot) =>
+      _brandingBusy[slot] ?? false;
+
+  void _setBrandingBusy(TenantAdminBrandingAssetSlot slot, bool value) {
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _brandingBusy[slot] = value;
+    });
+  }
+
+  TenantAdminImageSlot _toImageSlot(TenantAdminBrandingAssetSlot slot) {
+    return switch (slot) {
+      TenantAdminBrandingAssetSlot.lightLogo => TenantAdminImageSlot.lightLogo,
+      TenantAdminBrandingAssetSlot.darkLogo => TenantAdminImageSlot.darkLogo,
+      TenantAdminBrandingAssetSlot.lightIcon => TenantAdminImageSlot.lightIcon,
+      TenantAdminBrandingAssetSlot.darkIcon => TenantAdminImageSlot.darkIcon,
+      TenantAdminBrandingAssetSlot.pwaIcon => TenantAdminImageSlot.pwaIcon,
+    };
+  }
+
+  String _brandingSlotTitle(TenantAdminBrandingAssetSlot slot) {
+    return switch (slot) {
+      TenantAdminBrandingAssetSlot.lightLogo => 'Logo claro',
+      TenantAdminBrandingAssetSlot.darkLogo => 'Logo escuro',
+      TenantAdminBrandingAssetSlot.lightIcon => 'Icone claro',
+      TenantAdminBrandingAssetSlot.darkIcon => 'Icone escuro',
+      TenantAdminBrandingAssetSlot.pwaIcon => 'Icone PWA',
+    };
+  }
+
+  Future<void> _pickBrandingImage({
+    required TenantAdminBrandingAssetSlot slot,
+  }) async {
+    if (_isBrandingBusy(slot)) {
+      return;
+    }
+    final source = await showTenantAdminImageSourceSheet(
+      context: context,
+      title: 'Selecionar ${_brandingSlotTitle(slot).toLowerCase()}',
+    );
+    if (!mounted || source == null) {
+      return;
+    }
+    if (source == TenantAdminImageSourceOption.device) {
+      await _pickBrandingImageFromDevice(slot: slot);
+      return;
+    }
+    await _pickBrandingImageFromWeb(slot: slot);
+  }
+
+  Future<void> _pickBrandingImageFromDevice({
+    required TenantAdminBrandingAssetSlot slot,
+  }) async {
+    _setBrandingBusy(slot, true);
+    try {
+      final imageSlot = _toImageSlot(slot);
+      final selected = await _imageIngestionService.pickFromDevice(
+        slot: imageSlot,
+      );
+      if (selected == null || !mounted) {
+        return;
+      }
+      final cropped = await showTenantAdminImageCropSheet(
+        context: context,
+        sourceFile: selected,
+        slot: imageSlot,
+        ingestionService: _imageIngestionService,
+      );
+      if (cropped == null) {
+        return;
+      }
+      _controller.updateBrandingFile(slot, cropped);
+    } on TenantAdminImageIngestionException catch (error) {
+      _controller.remoteErrorStreamValue.addValue(error.message);
+    } catch (_) {
+      _controller.remoteErrorStreamValue.addValue(
+        'Nao foi possivel selecionar a imagem.',
+      );
+    } finally {
+      _setBrandingBusy(slot, false);
+    }
+  }
+
+  Future<void> _pickBrandingImageFromWeb({
+    required TenantAdminBrandingAssetSlot slot,
+  }) async {
+    _setBrandingBusy(slot, true);
+    try {
+      final currentUrl = _controller.brandingUrlStream(slot).value ?? '';
+      final result = await showTenantAdminFieldEditSheet(
+        context: context,
+        title: 'URL da imagem',
+        label: _brandingSlotTitle(slot),
+        initialValue: currentUrl,
+        confirmLabel: 'Baixar e recortar',
+        keyboardType: TextInputType.url,
+        textCapitalization: TextCapitalization.none,
+        autocorrect: false,
+        enableSuggestions: false,
+        validator: (value) {
+          final trimmed = value?.trim() ?? '';
+          if (trimmed.isEmpty) {
+            return 'Informe a URL da imagem.';
+          }
+          final uri = Uri.tryParse(trimmed);
+          if (uri == null ||
+              (uri.scheme != 'http' && uri.scheme != 'https') ||
+              uri.host.trim().isEmpty) {
+            return 'Informe uma URL valida (http/https).';
+          }
+          return null;
+        },
+      );
+      if (!mounted || result == null) {
+        return;
+      }
+      final sourceFile = await _imageIngestionService.fetchFromUrlForCrop(
+        imageUrl: result.value.trim(),
+      );
+      if (!mounted) {
+        return;
+      }
+      final imageSlot = _toImageSlot(slot);
+      final cropped = await showTenantAdminImageCropSheet(
+        context: context,
+        sourceFile: sourceFile,
+        slot: imageSlot,
+        ingestionService: _imageIngestionService,
+      );
+      if (cropped == null) {
+        return;
+      }
+      _controller.updateBrandingFile(slot, cropped);
+    } on TenantAdminImageIngestionException catch (error) {
+      _controller.remoteErrorStreamValue.addValue(error.message);
+    } catch (_) {
+      _controller.remoteErrorStreamValue.addValue(
+        'Nao foi possivel processar a imagem da web.',
+      );
+    } finally {
+      _setBrandingBusy(slot, false);
+    }
+  }
+
+  Future<void> _saveBranding() async {
+    try {
+      final lightLogoUpload = await _imageIngestionService.buildUpload(
+        _controller.brandingLightLogoFileStreamValue.value,
+        slot: TenantAdminImageSlot.lightLogo,
+      );
+      final darkLogoUpload = await _imageIngestionService.buildUpload(
+        _controller.brandingDarkLogoFileStreamValue.value,
+        slot: TenantAdminImageSlot.darkLogo,
+      );
+      final lightIconUpload = await _imageIngestionService.buildUpload(
+        _controller.brandingLightIconFileStreamValue.value,
+        slot: TenantAdminImageSlot.lightIcon,
+      );
+      final darkIconUpload = await _imageIngestionService.buildUpload(
+        _controller.brandingDarkIconFileStreamValue.value,
+        slot: TenantAdminImageSlot.darkIcon,
+      );
+      final pwaIconUpload = await _imageIngestionService.buildUpload(
+        _controller.brandingPwaIconFileStreamValue.value,
+        slot: TenantAdminImageSlot.pwaIcon,
+      );
+
+      await _controller.saveBranding(
+        lightLogoUpload: lightLogoUpload,
+        darkLogoUpload: darkLogoUpload,
+        lightIconUpload: lightIconUpload,
+        darkIconUpload: darkIconUpload,
+        pwaIconUpload: pwaIconUpload,
+      );
+    } on TenantAdminImageIngestionException catch (error) {
+      _controller.remoteErrorStreamValue.addValue(error.message);
+    } catch (_) {
+      _controller.remoteErrorStreamValue.addValue(
+        'Nao foi possivel preparar as imagens de branding.',
+      );
+    }
   }
 
   @override
@@ -221,6 +422,15 @@ class _TenantAdminSettingsScreenState extends State<TenantAdminSettingsScreen> {
             const SizedBox(height: 12),
             _RemoteStatusPanel(controller: _controller),
             const SizedBox(height: 12),
+            _BrandingSettingsSection(
+              controller: _controller,
+              isSlotBusy: _isBrandingBusy,
+              onPickImage: _pickBrandingImage,
+              onClearLocalSelection: (slot) =>
+                  _controller.clearBrandingFile(slot),
+              onSave: _saveBranding,
+            ),
+            const Divider(height: 32),
             _FirebaseSettingsSection(controller: _controller),
             const Divider(height: 32),
             _PushSettingsSection(controller: _controller),
@@ -305,6 +515,337 @@ class _RemoteStatusPanel extends StatelessWidget {
                   ),
                 );
               },
+            );
+          },
+        );
+      },
+    );
+  }
+}
+
+typedef _BrandingBusyResolver = bool Function(
+  TenantAdminBrandingAssetSlot slot,
+);
+typedef _BrandingPickCallback = Future<void> Function({
+  required TenantAdminBrandingAssetSlot slot,
+});
+typedef _BrandingClearCallback = void Function(
+  TenantAdminBrandingAssetSlot slot,
+);
+
+class _BrandingSettingsSection extends StatelessWidget {
+  const _BrandingSettingsSection({
+    required this.controller,
+    required this.isSlotBusy,
+    required this.onPickImage,
+    required this.onClearLocalSelection,
+    required this.onSave,
+  });
+
+  final TenantAdminSettingsController controller;
+  final _BrandingBusyResolver isSlotBusy;
+  final _BrandingPickCallback onPickImage;
+  final _BrandingClearCallback onClearLocalSelection;
+  final Future<void> Function() onSave;
+
+  Listenable _controllersListenable() {
+    return Listenable.merge(
+      [
+        controller.brandingTenantNameController,
+        controller.brandingPrimarySeedColorController,
+        controller.brandingSecondarySeedColorController,
+      ],
+    );
+  }
+
+  Future<void> _editTenantName(BuildContext context) async {
+    final result = await showTenantAdminFieldEditSheet(
+      context: context,
+      title: 'Editar nome do tenant',
+      label: 'Nome',
+      initialValue: controller.brandingTenantNameController.text,
+      confirmLabel: 'Aplicar',
+      validator: (value) {
+        final trimmed = value?.trim() ?? '';
+        if (trimmed.isEmpty) {
+          return 'Nome obrigatorio.';
+        }
+        return null;
+      },
+    );
+    if (result == null) {
+      return;
+    }
+    controller.brandingTenantNameController.text = result.value.trim();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamValueBuilder<bool>(
+      streamValue: controller.brandingSubmittingStreamValue,
+      builder: (context, isSaving) {
+        return StreamValueBuilder<TenantAdminBrandingBrightness>(
+          streamValue: controller.brandingBrightnessStreamValue,
+          builder: (context, brightness) {
+            return AnimatedBuilder(
+              animation: _controllersListenable(),
+              builder: (context, _) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Branding',
+                      style: Theme.of(context).textTheme.titleSmall,
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'Edite nome, logos, icones e cores do tenant.',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        color: Theme.of(context)
+                            .colorScheme
+                            .surfaceContainerHighest,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      padding: const EdgeInsets.all(12),
+                      child: Text(
+                        'Observacao: o endpoint atual de branding salva tema e logos/icones. '
+                        'A persistencia do nome do tenant depende de endpoint dedicado.',
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    _SettingsEditableValueRow(
+                      key: const ValueKey(
+                          'tenant_admin_settings_branding_name_edit'),
+                      label: 'Nome do tenant',
+                      value: controller.brandingTenantNameController.text,
+                      onEdit: isSaving ? null : () => _editTenantName(context),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Tema default',
+                      style: Theme.of(context).textTheme.labelMedium,
+                    ),
+                    const SizedBox(height: 6),
+                    SegmentedButton<TenantAdminBrandingBrightness>(
+                      segments: const [
+                        ButtonSegment(
+                          value: TenantAdminBrandingBrightness.light,
+                          label: Text('Claro'),
+                        ),
+                        ButtonSegment(
+                          value: TenantAdminBrandingBrightness.dark,
+                          label: Text('Escuro'),
+                        ),
+                      ],
+                      selected: {brightness},
+                      onSelectionChanged: isSaving
+                          ? null
+                          : (selection) {
+                              if (selection.isEmpty) {
+                                return;
+                              }
+                              controller
+                                  .selectBrandingBrightness(selection.first);
+                            },
+                    ),
+                    const SizedBox(height: 8),
+                    TenantAdminHexColorField(
+                      key: const ValueKey(
+                          'tenant_admin_settings_branding_primary_field'),
+                      controller: controller.brandingPrimarySeedColorController,
+                      labelText: 'Cor primaria (#RRGGBB)',
+                      enabled: !isSaving,
+                    ),
+                    const SizedBox(height: 8),
+                    TenantAdminHexColorField(
+                      key: const ValueKey(
+                          'tenant_admin_settings_branding_secondary_field'),
+                      controller:
+                          controller.brandingSecondarySeedColorController,
+                      labelText: 'Cor secundaria (#RRGGBB)',
+                      enabled: !isSaving,
+                    ),
+                    const SizedBox(height: 12),
+                    _BrandingImageField(
+                      title: 'Logo claro',
+                      slot: TenantAdminBrandingAssetSlot.lightLogo,
+                      controller: controller,
+                      isBusy: isSaving ||
+                          isSlotBusy(TenantAdminBrandingAssetSlot.lightLogo),
+                      onPick: onPickImage,
+                      onClearLocalSelection: onClearLocalSelection,
+                    ),
+                    const SizedBox(height: 12),
+                    _BrandingImageField(
+                      title: 'Logo escuro',
+                      slot: TenantAdminBrandingAssetSlot.darkLogo,
+                      controller: controller,
+                      isBusy: isSaving ||
+                          isSlotBusy(TenantAdminBrandingAssetSlot.darkLogo),
+                      onPick: onPickImage,
+                      onClearLocalSelection: onClearLocalSelection,
+                    ),
+                    const SizedBox(height: 12),
+                    _BrandingImageField(
+                      title: 'Icone claro',
+                      slot: TenantAdminBrandingAssetSlot.lightIcon,
+                      controller: controller,
+                      isBusy: isSaving ||
+                          isSlotBusy(TenantAdminBrandingAssetSlot.lightIcon),
+                      onPick: onPickImage,
+                      onClearLocalSelection: onClearLocalSelection,
+                    ),
+                    const SizedBox(height: 12),
+                    _BrandingImageField(
+                      title: 'Icone escuro',
+                      slot: TenantAdminBrandingAssetSlot.darkIcon,
+                      controller: controller,
+                      isBusy: isSaving ||
+                          isSlotBusy(TenantAdminBrandingAssetSlot.darkIcon),
+                      onPick: onPickImage,
+                      onClearLocalSelection: onClearLocalSelection,
+                    ),
+                    const SizedBox(height: 12),
+                    _BrandingImageField(
+                      title: 'Icone PWA',
+                      slot: TenantAdminBrandingAssetSlot.pwaIcon,
+                      controller: controller,
+                      isBusy: isSaving ||
+                          isSlotBusy(TenantAdminBrandingAssetSlot.pwaIcon),
+                      onPick: onPickImage,
+                      onClearLocalSelection: onClearLocalSelection,
+                    ),
+                    const SizedBox(height: 12),
+                    FilledButton.icon(
+                      key:
+                          const ValueKey('tenant_admin_settings_save_branding'),
+                      onPressed: isSaving ? null : onSave,
+                      icon: isSaving
+                          ? const SizedBox(
+                              height: 16,
+                              width: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.save_outlined),
+                      label: const Text('Salvar Branding'),
+                    ),
+                  ],
+                );
+              },
+            );
+          },
+        );
+      },
+    );
+  }
+}
+
+class _BrandingImageField extends StatelessWidget {
+  const _BrandingImageField({
+    required this.title,
+    required this.slot,
+    required this.controller,
+    required this.isBusy,
+    required this.onPick,
+    required this.onClearLocalSelection,
+  });
+
+  final String title;
+  final TenantAdminBrandingAssetSlot slot;
+  final TenantAdminSettingsController controller;
+  final bool isBusy;
+  final _BrandingPickCallback onPick;
+  final _BrandingClearCallback onClearLocalSelection;
+
+  double get _aspectRatio => switch (slot) {
+        TenantAdminBrandingAssetSlot.lightLogo => 18 / 5,
+        TenantAdminBrandingAssetSlot.darkLogo => 18 / 5,
+        TenantAdminBrandingAssetSlot.lightIcon => 1.0,
+        TenantAdminBrandingAssetSlot.darkIcon => 1.0,
+        TenantAdminBrandingAssetSlot.pwaIcon => 1.0,
+      };
+
+  @override
+  Widget build(BuildContext context) {
+    final previewWidth = _aspectRatio > 1 ? 252.0 : 108.0;
+    final previewHeight = previewWidth / _aspectRatio;
+
+    return StreamValueBuilder<XFile?>(
+      streamValue: controller.brandingFileStream(slot),
+      builder: (context, localFile) {
+        return StreamValueBuilder<String?>(
+          streamValue: controller.brandingUrlStream(slot),
+          builder: (context, remoteUrl) {
+            final hasRemote = remoteUrl != null && remoteUrl.trim().isNotEmpty;
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: Theme.of(context).textTheme.labelMedium,
+                ),
+                const SizedBox(height: 6),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: Container(
+                    width: previewWidth,
+                    height: previewHeight,
+                    color:
+                        Theme.of(context).colorScheme.surfaceContainerHighest,
+                    child: localFile != null
+                        ? TenantAdminXFilePreview(
+                            file: localFile,
+                            width: previewWidth,
+                            height: previewHeight,
+                            fit: BoxFit.cover,
+                          )
+                        : hasRemote
+                            ? Image.network(
+                                remoteUrl,
+                                width: previewWidth,
+                                height: previewHeight,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) => Icon(
+                                  Icons.broken_image_outlined,
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurfaceVariant,
+                                ),
+                              )
+                            : Icon(
+                                Icons.image_outlined,
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onSurfaceVariant,
+                              ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    OutlinedButton.icon(
+                      onPressed: isBusy ? null : () => onPick(slot: slot),
+                      icon: const Icon(Icons.upload_outlined),
+                      label: const Text('Selecionar'),
+                    ),
+                    if (localFile != null)
+                      TextButton.icon(
+                        onPressed:
+                            isBusy ? null : () => onClearLocalSelection(slot),
+                        icon: const Icon(Icons.delete_outline),
+                        label: const Text('Limpar selecao'),
+                      ),
+                  ],
+                ),
+              ],
             );
           },
         );

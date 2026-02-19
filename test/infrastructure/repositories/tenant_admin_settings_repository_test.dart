@@ -1,7 +1,9 @@
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:belluga_now/domain/repositories/landlord_auth_repository_contract.dart';
 import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_settings.dart';
 import 'package:belluga_now/infrastructure/repositories/tenant_admin/tenant_admin_settings_repository.dart';
 import 'package:belluga_now/infrastructure/services/tenant_admin/tenant_admin_base_url_resolver.dart';
@@ -81,6 +83,51 @@ void main() {
     expect(snapshot.integrations, isNotEmpty);
     expect(snapshot.integrations.first.type, 'mixpanel');
     expect(snapshot.availableEvents, contains('app_opened'));
+  });
+
+  test('updateBranding sends multipart payload and parses branding data',
+      () async {
+    final adapter = _RoutingAdapter();
+    final scope = _MutableTenantScope('https://tenant-a.test');
+    final dio = Dio()..httpClientAdapter = adapter;
+    final repository = TenantAdminSettingsRepository(
+      dio: dio,
+      tenantScope: scope,
+    );
+
+    final updated = await repository.updateBranding(
+      input: TenantAdminBrandingUpdateInput(
+        tenantName: 'Guarappari',
+        brightnessDefault: TenantAdminBrandingBrightness.dark,
+        primarySeedColor: '#112233',
+        secondarySeedColor: '#445566',
+        lightLogoUpload: TenantAdminMediaUpload(
+          bytes: Uint8List.fromList(const [1, 2, 3]),
+          fileName: 'light_logo.png',
+          mimeType: 'image/png',
+        ),
+      ),
+    );
+
+    final requestData = adapter.requests.single.data;
+    expect(requestData, isA<FormData>());
+
+    final formData = requestData as FormData;
+    expect(
+      formData.fields.any((item) =>
+          item.key == 'theme_data_settings[brightness_default]' &&
+          item.value == 'dark'),
+      isTrue,
+    );
+    expect(
+      formData.files.any(
+        (entry) => entry.key == 'logo_settings[light_logo_uri]',
+      ),
+      isTrue,
+    );
+    expect(updated.brightnessDefault, TenantAdminBrandingBrightness.dark);
+    expect(updated.primarySeedColor, '#112233');
+    expect(updated.lightLogoUrl, contains('light-logo-updated'));
   });
 
   test('uses selected tenant scope dynamically between requests', () async {
@@ -214,6 +261,31 @@ class _RoutingAdapter implements HttpClientAdapter {
       return _jsonResponse({
         'data': const [],
         'available_events': const ['app_opened', 'invite_sent'],
+      });
+    }
+
+    if (path.endsWith('/branding/update') && method == 'POST') {
+      return _jsonResponse({
+        'branding_data': {
+          'theme_data_settings': {
+            'brightness_default': 'dark',
+            'primary_seed_color': '#112233',
+            'secondary_seed_color': '#445566',
+          },
+          'logo_settings': {
+            'light_logo_uri':
+                'https://tenant-a.test/storage/light-logo-updated.png',
+            'dark_logo_uri':
+                'https://tenant-a.test/storage/dark-logo-updated.png',
+            'light_icon_uri':
+                'https://tenant-a.test/storage/light-icon-updated.png',
+            'dark_icon_uri':
+                'https://tenant-a.test/storage/dark-icon-updated.png',
+          },
+          'pwa_icon': {
+            'icon512_uri': 'https://tenant-a.test/storage/pwa-512-updated.png',
+          },
+        },
       });
     }
 

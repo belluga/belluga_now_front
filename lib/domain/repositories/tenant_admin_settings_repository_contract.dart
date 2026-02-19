@@ -20,4 +20,8 @@ abstract class TenantAdminSettingsRepositoryContract {
   Future<TenantAdminTelemetrySettingsSnapshot> deleteTelemetryIntegration({
     required String type,
   });
+
+  Future<TenantAdminBrandingSettings> updateBranding({
+    required TenantAdminBrandingUpdateInput input,
+  });
 }
