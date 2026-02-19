@@ -1,3 +1,5 @@
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
+
 class TenantAdminFirebaseSettings {
   const TenantAdminFirebaseSettings({
     required this.apiKey,
@@ -87,4 +89,73 @@ class TenantAdminTelemetrySettingsSnapshot {
 
   final List<TenantAdminTelemetryIntegration> integrations;
   final List<String> availableEvents;
+}
+
+enum TenantAdminBrandingBrightness {
+  light,
+  dark;
+
+  String get rawValue => switch (this) {
+        TenantAdminBrandingBrightness.light => 'light',
+        TenantAdminBrandingBrightness.dark => 'dark',
+      };
+
+  static TenantAdminBrandingBrightness fromRaw(String? raw) {
+    if (raw?.trim().toLowerCase() == 'dark') {
+      return TenantAdminBrandingBrightness.dark;
+    }
+    return TenantAdminBrandingBrightness.light;
+  }
+}
+
+class TenantAdminBrandingSettings {
+  const TenantAdminBrandingSettings({
+    required this.tenantName,
+    required this.brightnessDefault,
+    required this.primarySeedColor,
+    required this.secondarySeedColor,
+    this.lightLogoUrl,
+    this.darkLogoUrl,
+    this.lightIconUrl,
+    this.darkIconUrl,
+    this.faviconUrl,
+    this.pwaIconUrl,
+  });
+
+  final String tenantName;
+  final TenantAdminBrandingBrightness brightnessDefault;
+  final String primarySeedColor;
+  final String secondarySeedColor;
+  final String? lightLogoUrl;
+  final String? darkLogoUrl;
+  final String? lightIconUrl;
+  final String? darkIconUrl;
+  final String? faviconUrl;
+  final String? pwaIconUrl;
+}
+
+class TenantAdminBrandingUpdateInput {
+  const TenantAdminBrandingUpdateInput({
+    required this.tenantName,
+    required this.brightnessDefault,
+    required this.primarySeedColor,
+    required this.secondarySeedColor,
+    this.lightLogoUpload,
+    this.darkLogoUpload,
+    this.lightIconUpload,
+    this.darkIconUpload,
+    this.faviconUpload,
+    this.pwaIconUpload,
+  });
+
+  final String tenantName;
+  final TenantAdminBrandingBrightness brightnessDefault;
+  final String primarySeedColor;
+  final String secondarySeedColor;
+  final TenantAdminMediaUpload? lightLogoUpload;
+  final TenantAdminMediaUpload? darkLogoUpload;
+  final TenantAdminMediaUpload? lightIconUpload;
+  final TenantAdminMediaUpload? darkIconUpload;
+  final TenantAdminMediaUpload? faviconUpload;
+  final TenantAdminMediaUpload? pwaIconUpload;
 }

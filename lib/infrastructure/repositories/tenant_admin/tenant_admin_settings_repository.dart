@@ -1,9 +1,11 @@
 import 'package:belluga_now/domain/repositories/landlord_auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_settings_repository_contract.dart';
 import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_settings.dart';
 import 'package:dio/dio.dart';
 import 'package:get_it/get_it.dart';
+import 'package:http_parser/http_parser.dart';
 
 class TenantAdminSettingsRepository
     implements TenantAdminSettingsRepositoryContract {
@@ -122,6 +124,64 @@ class TenantAdminSettingsRepository
       return _mapTelemetrySnapshot(response.data);
     } on DioException catch (error) {
       throw _wrapError(error, 'delete telemetry integration');
+    }
+  }
+
+  @override
+  Future<TenantAdminBrandingSettings> updateBranding({
+    required TenantAdminBrandingUpdateInput input,
+  }) async {
+    try {
+      final payload = FormData.fromMap({
+        'name': input.tenantName.trim(),
+        'theme_data_settings[brightness_default]':
+            input.brightnessDefault.rawValue,
+        'theme_data_settings[primary_seed_color]': input.primarySeedColor,
+        'theme_data_settings[secondary_seed_color]': input.secondarySeedColor,
+      });
+
+      _appendUpload(
+        payload,
+        fieldName: 'logo_settings[light_logo_uri]',
+        upload: input.lightLogoUpload,
+      );
+      _appendUpload(
+        payload,
+        fieldName: 'logo_settings[dark_logo_uri]',
+        upload: input.darkLogoUpload,
+      );
+      _appendUpload(
+        payload,
+        fieldName: 'logo_settings[light_icon_uri]',
+        upload: input.lightIconUpload,
+      );
+      _appendUpload(
+        payload,
+        fieldName: 'logo_settings[dark_icon_uri]',
+        upload: input.darkIconUpload,
+      );
+      _appendUpload(
+        payload,
+        fieldName: 'logo_settings[favicon_uri]',
+        upload: input.faviconUpload,
+      );
+      _appendUpload(
+        payload,
+        fieldName: 'logo_settings[pwa_icon]',
+        upload: input.pwaIconUpload,
+      );
+
+      final response = await _dio.post(
+        '$_apiBaseUrl/v1/branding/update',
+        data: payload,
+        options: Options(
+          headers: _buildHeaders(),
+          contentType: 'multipart/form-data',
+        ),
+      );
+      return _mapBrandingSettings(response.data);
+    } on DioException catch (error) {
+      throw _wrapError(error, 'update branding settings');
     }
   }
 
@@ -246,11 +306,96 @@ class TenantAdminSettingsRepository
     );
   }
 
+  TenantAdminBrandingSettings _mapBrandingSettings(dynamic raw) {
+    if (raw is! Map<String, dynamic>) {
+      throw Exception('Unexpected branding response shape.');
+    }
+    final brandingRaw = raw['branding_data'];
+    if (brandingRaw is! Map<String, dynamic>) {
+      throw Exception('Unexpected branding_data response shape.');
+    }
+
+    final themeSettingsRaw = brandingRaw['theme_data_settings'];
+    final themeSettings = themeSettingsRaw is Map<String, dynamic>
+        ? themeSettingsRaw
+        : const <String, dynamic>{};
+    final logoSettingsRaw = brandingRaw['logo_settings'];
+    final logoSettings = logoSettingsRaw is Map<String, dynamic>
+        ? logoSettingsRaw
+        : const <String, dynamic>{};
+    final pwaIconRaw = brandingRaw['pwa_icon'];
+    final pwaIcon = pwaIconRaw is Map<String, dynamic>
+        ? pwaIconRaw
+        : const <String, dynamic>{};
+
+    return TenantAdminBrandingSettings(
+      tenantName: '',
+      brightnessDefault: TenantAdminBrandingBrightness.fromRaw(
+        themeSettings['brightness_default']?.toString(),
+      ),
+      primarySeedColor:
+          themeSettings['primary_seed_color']?.toString().trim() ?? '#4FA0E3',
+      secondarySeedColor:
+          themeSettings['secondary_seed_color']?.toString().trim() ?? '#E80D5D',
+      lightLogoUrl: _normalizeOptionalString(logoSettings['light_logo_uri']),
+      darkLogoUrl: _normalizeOptionalString(logoSettings['dark_logo_uri']),
+      lightIconUrl: _normalizeOptionalString(logoSettings['light_icon_uri']),
+      darkIconUrl: _normalizeOptionalString(logoSettings['dark_icon_uri']),
+      faviconUrl: _normalizeOptionalString(logoSettings['favicon_uri']),
+      pwaIconUrl: _normalizeOptionalString(
+        pwaIcon['icon512_uri'] ?? pwaIcon['source_uri'],
+      ),
+    );
+  }
+
   bool _parseBool(dynamic value) {
     if (value is bool) return value;
     if (value is num) return value != 0;
     final raw = value?.toString().trim().toLowerCase();
     return raw == '1' || raw == 'true' || raw == 'yes';
+  }
+
+  void _appendUpload(
+    FormData formData, {
+    required String fieldName,
+    required TenantAdminMediaUpload? upload,
+  }) {
+    if (upload == null) {
+      return;
+    }
+    formData.files.add(
+      MapEntry(
+        fieldName,
+        MultipartFile.fromBytes(
+          upload.bytes,
+          filename: upload.fileName,
+          contentType: _resolveMediaType(upload),
+        ),
+      ),
+    );
+  }
+
+  MediaType _resolveMediaType(TenantAdminMediaUpload upload) {
+    final mime = upload.mimeType?.trim();
+    if (mime == null || mime.isEmpty) {
+      return MediaType('application', 'octet-stream');
+    }
+    final parts = mime.split('/');
+    if (parts.length != 2) {
+      return MediaType('application', 'octet-stream');
+    }
+    return MediaType(parts[0], parts[1]);
+  }
+
+  String? _normalizeOptionalString(dynamic raw) {
+    if (raw == null) {
+      return null;
+    }
+    final value = raw.toString().trim();
+    if (value.isEmpty) {
+      return null;
+    }
+    return value;
   }
 
   int? _parseInt(dynamic value) {

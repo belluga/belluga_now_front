@@ -10,6 +10,11 @@ import 'package:get_it/get_it.dart';
 enum TenantAdminImageSlot {
   avatar,
   cover,
+  lightLogo,
+  darkLogo,
+  lightIcon,
+  darkIcon,
+  pwaIcon,
 }
 
 class TenantAdminImageIngestionException implements Exception {
@@ -56,7 +61,8 @@ class TenantAdminImageIngestionService {
     try {
       final proxy = _externalImageProxy ??
           GetIt.I.get<TenantAdminExternalImageProxyContract>();
-      final data = await proxy.fetchExternalImageBytes(imageUrl: uri.toString());
+      final data =
+          await proxy.fetchExternalImageBytes(imageUrl: uri.toString());
       if (data.isEmpty) {
         throw TenantAdminImageIngestionException(
           'Nao foi possivel baixar a imagem da URL informada.',
@@ -128,15 +134,19 @@ class TenantAdminImageIngestionService {
     if (file == null) {
       return null;
     }
+    final spec = _specForSlot(slot);
     var bytes = await file.readAsBytes();
-    if (bytes.length > _maxOutputBytes || file.mimeType != 'image/jpeg') {
+    if (bytes.length > _maxOutputBytes || file.mimeType != spec.mimeType) {
       final prepared = await prepareXFile(file, slot: slot);
       bytes = await prepared.readAsBytes();
     }
     return TenantAdminMediaUpload(
       bytes: bytes,
-      fileName: _buildOutputFileName(slot),
-      mimeType: 'image/jpeg',
+      fileName: _buildOutputFileName(
+        slot,
+        extension: spec.fileExtension,
+      ),
+      mimeType: spec.mimeType,
     );
   }
 
@@ -158,20 +168,22 @@ class TenantAdminImageIngestionService {
       );
     }
 
-    final ratio = slot == TenantAdminImageSlot.avatar ? 1.0 : (16 / 9);
+    final spec = _specForSlot(slot);
+    final ratio = spec.aspectRatio;
     final cropped =
         applyAspectCrop ? _centerCropToRatio(decoded, ratio) : decoded;
     final resized = _resizeToBounds(
       cropped,
-      maxWidth: slot == TenantAdminImageSlot.avatar ? 1024 : 1920,
-      maxHeight: slot == TenantAdminImageSlot.avatar ? 1024 : 1080,
+      maxWidth: spec.maxWidth,
+      maxHeight: spec.maxHeight,
     );
-
-    final encoded = _encodeJpegWithinLimit(resized, _maxOutputBytes);
-    final fileName = _buildOutputFileName(slot);
+    final encoded = spec.mimeType == 'image/png'
+        ? _encodePngWithinLimit(resized, _maxOutputBytes)
+        : _encodeJpegWithinLimit(resized, _maxOutputBytes);
+    final fileName = _buildOutputFileName(slot, extension: spec.fileExtension);
     return XFile.fromData(
       encoded,
-      mimeType: 'image/jpeg',
+      mimeType: spec.mimeType,
       name: fileName,
     );
   }
@@ -261,7 +273,95 @@ class TenantAdminImageIngestionService {
     return fallback;
   }
 
-  String _buildOutputFileName(TenantAdminImageSlot slot) {
-    return '${slot.name}_${DateTime.now().millisecondsSinceEpoch}.jpg';
+  Uint8List _encodePngWithinLimit(img.Image source, int maxBytes) {
+    img.Image current = source;
+
+    for (var pass = 0; pass < 8; pass++) {
+      final bytes = Uint8List.fromList(img.encodePng(current, level: 6));
+      if (bytes.length <= maxBytes) {
+        return bytes;
+      }
+
+      final nextWidth = math.max(1, (current.width * 0.85).round());
+      final nextHeight = math.max(1, (current.height * 0.85).round());
+      if (nextWidth == current.width && nextHeight == current.height) {
+        break;
+      }
+      current = img.copyResize(
+        current,
+        width: nextWidth,
+        height: nextHeight,
+        interpolation: img.Interpolation.linear,
+      );
+    }
+
+    final fallback = Uint8List.fromList(img.encodePng(current, level: 9));
+    if (fallback.length > maxBytes) {
+      throw TenantAdminImageIngestionException(
+        'Nao foi possivel reduzir a imagem para o tamanho permitido.',
+      );
+    }
+    return fallback;
   }
+
+  _TenantAdminImageSlotSpec _specForSlot(TenantAdminImageSlot slot) {
+    return switch (slot) {
+      TenantAdminImageSlot.avatar => const _TenantAdminImageSlotSpec(
+          aspectRatio: 1.0,
+          maxWidth: 1024,
+          maxHeight: 1024,
+          mimeType: 'image/jpeg',
+          fileExtension: 'jpg',
+        ),
+      TenantAdminImageSlot.cover => const _TenantAdminImageSlotSpec(
+          aspectRatio: 16 / 9,
+          maxWidth: 1920,
+          maxHeight: 1080,
+          mimeType: 'image/jpeg',
+          fileExtension: 'jpg',
+        ),
+      TenantAdminImageSlot.lightLogo ||
+      TenantAdminImageSlot.darkLogo =>
+        const _TenantAdminImageSlotSpec(
+          aspectRatio: 18 / 5,
+          maxWidth: 1800,
+          maxHeight: 500,
+          mimeType: 'image/png',
+          fileExtension: 'png',
+        ),
+      TenantAdminImageSlot.lightIcon ||
+      TenantAdminImageSlot.darkIcon ||
+      TenantAdminImageSlot.pwaIcon =>
+        const _TenantAdminImageSlotSpec(
+          aspectRatio: 1.0,
+          maxWidth: 1024,
+          maxHeight: 1024,
+          mimeType: 'image/png',
+          fileExtension: 'png',
+        ),
+    };
+  }
+
+  String _buildOutputFileName(
+    TenantAdminImageSlot slot, {
+    required String extension,
+  }) {
+    return '${slot.name}_${DateTime.now().millisecondsSinceEpoch}.$extension';
+  }
+}
+
+class _TenantAdminImageSlotSpec {
+  const _TenantAdminImageSlotSpec({
+    required this.aspectRatio,
+    required this.maxWidth,
+    required this.maxHeight,
+    required this.mimeType,
+    required this.fileExtension,
+  });
+
+  final double aspectRatio;
+  final int maxWidth;
+  final int maxHeight;
+  final String mimeType;
+  final String fileExtension;
 }
