@@ -91,7 +91,7 @@ void main() {
         .pumpWidget(_buildTestApp(const TenantAdminAccountsListScreen()));
     await tester.pumpAndSettle();
 
-    expect(find.text('conta-1'), findsOneWidget);
+    expect(find.text('Conta 1'), findsOneWidget);
   });
 
   testWidgets('unmanaged filter does not include user_owned accounts',
@@ -154,7 +154,7 @@ void main() {
         .pumpWidget(_buildTestApp(const TenantAdminAccountsListScreen()));
     await tester.pumpAndSettle();
 
-    expect(find.text('conta-unmanaged'), findsNothing);
+    expect(find.text('Conta unmanaged'), findsNothing);
     expect(
       repository.loadAccountsOwnershipCalls.last,
       TenantAdminOwnershipState.tenantOwned,
@@ -163,7 +163,7 @@ void main() {
     await tester.tap(find.text('Nao gerenciadas'));
     await tester.pumpAndSettle();
 
-    expect(find.text('conta-unmanaged'), findsOneWidget);
+    expect(find.text('Conta unmanaged'), findsOneWidget);
     expect(
       repository.loadAccountsOwnershipCalls.last,
       TenantAdminOwnershipState.unmanaged,
