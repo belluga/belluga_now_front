@@ -1,21 +1,29 @@
 name: Dispatch Docker Submodule Sync
 
 on:
-  push:
-    branches:
-      - dev
-      - stage
-      - main
+  workflow_run:
+    workflows:
+      - Flutter Web Artifact Publish
+    types:
+      - completed
   workflow_dispatch:
 
 concurrency:
-  group: dispatch-docker-sync-${{ github.ref }}
+  group: dispatch-docker-sync-${{ github.event.workflow_run.head_branch || github.ref_name }}
   cancel-in-progress: true
 
 jobs:
   dispatch:
     name: Notify docker repo to open/update submodule pin PR
     runs-on: ubuntu-latest
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (
+        github.event_name == 'workflow_run' &&
+        github.event.workflow_run.conclusion == 'success' &&
+        github.event.workflow_run.event == 'push' &&
+        contains(fromJson('["dev","stage","main"]'), github.event.workflow_run.head_branch)
+      )
     env:
       # Prefer a dedicated dispatch token, but allow reusing the shared ecosystem token
       # to avoid mandatory secret renames across repos.
@@ -56,6 +64,38 @@ jobs:
           echo "submodule=${DOCKER_SYNC_SUBMODULE_PATH}" >> "$GITHUB_OUTPUT"
           echo "event_type=${event_type}" >> "$GITHUB_OUTPUT"
 
+      - name: Resolve source revision
+        id: source
+        run: |
+          set -euo pipefail
+
+          if [[ "${GITHUB_EVENT_NAME}" == "workflow_run" ]]; then
+            sha="${{ github.event.workflow_run.head_sha }}"
+            lane="${{ github.event.workflow_run.head_branch }}"
+            source_repo="${{ github.event.workflow_run.repository.full_name }}"
+          else
+            sha="${GITHUB_SHA}"
+            lane="${GITHUB_REF_NAME}"
+            source_repo="${GITHUB_REPOSITORY}"
+          fi
+
+          case "$lane" in
+            dev|stage|main) ;;
+            *)
+              echo "ERROR: unsupported source lane '$lane'. Allowed lanes: dev, stage, main." >&2
+              exit 1
+              ;;
+          esac
+
+          if [[ ! "${sha}" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "ERROR: invalid source SHA '${sha}'." >&2
+            exit 1
+          fi
+
+          echo "sha=${sha}" >> "$GITHUB_OUTPUT"
+          echo "lane=${lane}" >> "$GITHUB_OUTPUT"
+          echo "source_repo=${source_repo}" >> "$GITHUB_OUTPUT"
+
       - name: Dispatch repository event
         uses: peter-evans/repository-dispatch@v3
         with:
@@ -65,8 +105,8 @@ jobs:
           client-payload: >-
             {
               "submodule": "${{ steps.config.outputs.submodule }}",
-              "sha": "${{ github.sha }}",
-              "lane": "${{ github.ref_name }}",
-              "source_repo": "${{ github.repository }}",
-              "source_branch": "${{ github.ref_name }}"
+              "sha": "${{ steps.source.outputs.sha }}",
+              "lane": "${{ steps.source.outputs.lane }}",
+              "source_repo": "${{ steps.source.outputs.source_repo }}",
+              "source_branch": "${{ steps.source.outputs.lane }}"
             }
