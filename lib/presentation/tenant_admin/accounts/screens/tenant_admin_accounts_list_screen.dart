@@ -267,11 +267,14 @@ class _TenantAdminAccountsListScreenState
           return const SizedBox.shrink();
         }
         final account = filteredAccounts[index];
+        final displayName = account.name.trim().isNotEmpty
+            ? account.name
+            : account.slug;
         return Card(
           clipBehavior: Clip.antiAlias,
           child: ListTile(
             leading: _buildAccountAvatar(context, account),
-            title: Text(account.slug),
+            title: Text(displayName),
             subtitle: Text(account.ownershipState.subtitle),
             trailing: const Icon(Icons.chevron_right),
             onTap: () {
