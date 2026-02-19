@@ -532,11 +532,30 @@ jobs:
         id: web_artifact
         env:
           GH_TOKEN: ${{ env.WEB_APP_REPO_TOKEN }}
+          CURRENT_REPO_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
 
-          expected_flutter_sha="$(echo "${GITHUB_SHA}" | cut -c1-7)"
+          # Dispatch must target source-lane pins:
+          # dev -> stage promotion uses docker:dev
+          # stage -> main promotion uses docker:stage
           target_lane="${GITHUB_REF_NAME}"
+          case "${GITHUB_REF_NAME}" in
+            stage)
+              target_lane="dev"
+              ;;
+            main)
+              target_lane="stage"
+              ;;
+          esac
+
+          expected_flutter_sha="$(git ls-remote "https://x-access-token:${CURRENT_REPO_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "refs/heads/${target_lane}" | awk '{print $1}')"
+          if [[ ! "${expected_flutter_sha}" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "ERROR: could not resolve flutter-app SHA for source lane '${target_lane}'." >&2
+            exit 1
+          fi
+          expected_flutter_sha_short="$(echo "${expected_flutter_sha}" | cut -c1-7)"
+
           max_attempts=30
           sleep_seconds=5
 
@@ -555,24 +574,26 @@ jobs:
               fi
             fi
 
-            if [[ "${web_sha}" =~ ^[0-9a-f]{40}$ && "${web_flutter_sha}" == "${expected_flutter_sha}" ]]; then
+            if [[ "${web_sha}" =~ ^[0-9a-f]{40}$ && "${web_flutter_sha}" == "${expected_flutter_sha_short}" ]]; then
               resolved_web_sha="${web_sha}"
               resolved_web_flutter_sha="${web_flutter_sha}"
               break
             fi
 
-            echo "INFO: waiting web-app/${target_lane} to match flutter SHA ${expected_flutter_sha} (attempt ${attempt}/${max_attempts}, head=${web_sha:-none}, metadata.flutter_git_sha=${web_flutter_sha:-none})."
+            echo "INFO: waiting web-app/${target_lane} to match flutter SHA ${expected_flutter_sha_short} (attempt ${attempt}/${max_attempts}, head=${web_sha:-none}, metadata.flutter_git_sha=${web_flutter_sha:-none})."
             sleep "${sleep_seconds}"
           done
 
           if [[ -z "${resolved_web_sha}" ]]; then
-            echo "ERROR: web-app lane '${target_lane}' did not converge to flutter SHA ${expected_flutter_sha} within timeout." >&2
+            echo "ERROR: web-app lane '${target_lane}' did not converge to flutter SHA ${expected_flutter_sha_short} within timeout." >&2
             exit 1
           fi
 
           echo "INFO: resolved web-app SHA ${resolved_web_sha} with metadata.flutter_git_sha=${resolved_web_flutter_sha}."
           echo "sha=${resolved_web_sha}" >> "$GITHUB_OUTPUT"
           echo "flutter_git_sha_short=${resolved_web_flutter_sha}" >> "$GITHUB_OUTPUT"
+          echo "flutter_sha=${expected_flutter_sha}" >> "$GITHUB_OUTPUT"
+          echo "lane=${target_lane}" >> "$GITHUB_OUTPUT"
 
       - name: Dispatch repository event
         uses: peter-evans/repository-dispatch@v3
@@ -584,11 +605,11 @@ jobs:
             {
               "submodule": "${{ steps.config.outputs.submodule }}",
               "sha": "${{ steps.web_artifact.outputs.sha }}",
-              "flutter_sha": "${{ github.sha }}",
+              "flutter_sha": "${{ steps.web_artifact.outputs.flutter_sha }}",
               "flutter_git_sha_short": "${{ steps.web_artifact.outputs.flutter_git_sha_short }}",
-              "lane": "${{ github.ref_name }}",
+              "lane": "${{ steps.web_artifact.outputs.lane }}",
               "source_repo": "${{ github.repository }}",
-              "source_branch": "${{ github.ref_name }}"
+              "source_branch": "${{ steps.web_artifact.outputs.lane }}"
             }
 
   notify_orchestrator:
