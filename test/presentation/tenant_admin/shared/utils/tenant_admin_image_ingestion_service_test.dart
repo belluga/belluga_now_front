@@ -95,7 +95,8 @@ void main() {
     );
 
     expect(
-      () => service.fetchFromUrlForCrop(imageUrl: 'https://example.com/image.jpg'),
+      () => service.fetchFromUrlForCrop(
+          imageUrl: 'https://example.com/image.jpg'),
       throwsA(
         isA<TenantAdminImageIngestionException>().having(
           (error) => error.message,
@@ -137,6 +138,41 @@ void main() {
     expect(upload!.mimeType, 'image/jpeg');
     expect(upload.fileName, endsWith('.jpg'));
     expect(upload.bytes, isNotEmpty);
+  });
+
+  test('buildUpload for branding logo keeps png mime and extension', () async {
+    final service = TenantAdminImageIngestionService();
+    final source =
+        await _writeImage(width: 1800, height: 500, name: 'logo_upload.png');
+
+    final upload = await service.buildUpload(
+      source,
+      slot: TenantAdminImageSlot.lightLogo,
+    );
+
+    expect(upload, isNotNull);
+    expect(upload!.mimeType, 'image/png');
+    expect(upload.fileName, endsWith('.png'));
+    expect(upload.bytes, isNotEmpty);
+  });
+
+  test('prepareXFile normalizes branding logo to 18:5 and png output',
+      () async {
+    final service = TenantAdminImageIngestionService();
+    final source =
+        await _writeImage(width: 1200, height: 1200, name: 'logo_source.png');
+
+    final output = await service.prepareXFile(
+      source,
+      slot: TenantAdminImageSlot.darkLogo,
+    );
+
+    final bytes = await output.readAsBytes();
+    final decoded = img.decodeImage(bytes);
+    expect(decoded, isNotNull);
+    final ratio = decoded!.width / decoded.height;
+    expect((ratio - (18 / 5)).abs(), lessThan(0.03));
+    expect(output.mimeType, 'image/png');
   });
 
   test('pickFromDevice applies avatar 1:1 crop pipeline', () async {
@@ -206,7 +242,8 @@ Future<XFile> _writeBytes(Uint8List bytes, {required String name}) async {
   return XFile(file.path, name: name);
 }
 
-class _FailingExternalImageProxy implements TenantAdminExternalImageProxyContract {
+class _FailingExternalImageProxy
+    implements TenantAdminExternalImageProxyContract {
   @override
   Future<Uint8List> fetchExternalImageBytes({required String imageUrl}) async {
     throw StateError('blocked');
