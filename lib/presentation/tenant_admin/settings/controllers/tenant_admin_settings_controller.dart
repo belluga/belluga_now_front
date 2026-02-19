@@ -4,10 +4,20 @@ import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_settings_repository_contract.dart';
 import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_settings.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:stream_value/core/stream_value.dart';
+
+enum TenantAdminBrandingAssetSlot {
+  lightLogo,
+  darkLogo,
+  lightIcon,
+  darkIcon,
+  pwaIcon,
+}
 
 class TenantAdminSettingsController implements Disposable {
   TenantAdminSettingsController({
@@ -44,6 +54,34 @@ class TenantAdminSettingsController implements Disposable {
       StreamValue<bool>(defaultValue: false);
   final StreamValue<bool> telemetrySubmittingStreamValue =
       StreamValue<bool>(defaultValue: false);
+  final StreamValue<bool> brandingSubmittingStreamValue =
+      StreamValue<bool>(defaultValue: false);
+  final StreamValue<TenantAdminBrandingBrightness>
+      brandingBrightnessStreamValue =
+      StreamValue<TenantAdminBrandingBrightness>(
+    defaultValue: TenantAdminBrandingBrightness.light,
+  );
+  final StreamValue<XFile?> brandingLightLogoFileStreamValue =
+      StreamValue<XFile?>();
+  final StreamValue<XFile?> brandingDarkLogoFileStreamValue =
+      StreamValue<XFile?>();
+  final StreamValue<XFile?> brandingLightIconFileStreamValue =
+      StreamValue<XFile?>();
+  final StreamValue<XFile?> brandingDarkIconFileStreamValue =
+      StreamValue<XFile?>();
+  final StreamValue<XFile?> brandingPwaIconFileStreamValue =
+      StreamValue<XFile?>();
+
+  final StreamValue<String?> brandingLightLogoUrlStreamValue =
+      StreamValue<String?>();
+  final StreamValue<String?> brandingDarkLogoUrlStreamValue =
+      StreamValue<String?>();
+  final StreamValue<String?> brandingLightIconUrlStreamValue =
+      StreamValue<String?>();
+  final StreamValue<String?> brandingDarkIconUrlStreamValue =
+      StreamValue<String?>();
+  final StreamValue<String?> brandingPwaIconUrlStreamValue =
+      StreamValue<String?>();
 
   final StreamValue<TenantAdminTelemetrySettingsSnapshot>
       telemetrySnapshotStreamValue =
@@ -77,6 +115,12 @@ class TenantAdminSettingsController implements Disposable {
   final TextEditingController telemetryTokenController =
       TextEditingController();
   final TextEditingController telemetryUrlController = TextEditingController();
+  final TextEditingController brandingTenantNameController =
+      TextEditingController();
+  final TextEditingController brandingPrimarySeedColorController =
+      TextEditingController();
+  final TextEditingController brandingSecondarySeedColorController =
+      TextEditingController();
 
   bool _initialized = false;
   String? _initializedTenantDomain;
@@ -207,6 +251,80 @@ class TenantAdminSettingsController implements Disposable {
     }
   }
 
+  void selectBrandingBrightness(TenantAdminBrandingBrightness brightness) {
+    brandingBrightnessStreamValue.addValue(brightness);
+  }
+
+  StreamValue<XFile?> brandingFileStream(
+    TenantAdminBrandingAssetSlot slot,
+  ) {
+    return switch (slot) {
+      TenantAdminBrandingAssetSlot.lightLogo =>
+        brandingLightLogoFileStreamValue,
+      TenantAdminBrandingAssetSlot.darkLogo => brandingDarkLogoFileStreamValue,
+      TenantAdminBrandingAssetSlot.lightIcon =>
+        brandingLightIconFileStreamValue,
+      TenantAdminBrandingAssetSlot.darkIcon => brandingDarkIconFileStreamValue,
+      TenantAdminBrandingAssetSlot.pwaIcon => brandingPwaIconFileStreamValue,
+    };
+  }
+
+  StreamValue<String?> brandingUrlStream(
+    TenantAdminBrandingAssetSlot slot,
+  ) {
+    return switch (slot) {
+      TenantAdminBrandingAssetSlot.lightLogo => brandingLightLogoUrlStreamValue,
+      TenantAdminBrandingAssetSlot.darkLogo => brandingDarkLogoUrlStreamValue,
+      TenantAdminBrandingAssetSlot.lightIcon => brandingLightIconUrlStreamValue,
+      TenantAdminBrandingAssetSlot.darkIcon => brandingDarkIconUrlStreamValue,
+      TenantAdminBrandingAssetSlot.pwaIcon => brandingPwaIconUrlStreamValue,
+    };
+  }
+
+  void updateBrandingFile(
+    TenantAdminBrandingAssetSlot slot,
+    XFile? file,
+  ) {
+    brandingFileStream(slot).addValue(file);
+    if (file != null) {
+      brandingUrlStream(slot).addValue(null);
+    }
+  }
+
+  void clearBrandingFile(TenantAdminBrandingAssetSlot slot) {
+    brandingFileStream(slot).addValue(null);
+  }
+
+  Future<void> saveBranding({
+    required TenantAdminMediaUpload? lightLogoUpload,
+    required TenantAdminMediaUpload? darkLogoUpload,
+    required TenantAdminMediaUpload? lightIconUpload,
+    required TenantAdminMediaUpload? darkIconUpload,
+    required TenantAdminMediaUpload? pwaIconUpload,
+  }) async {
+    final input = _buildBrandingUpdateInput(
+      lightLogoUpload: lightLogoUpload,
+      darkLogoUpload: darkLogoUpload,
+      lightIconUpload: lightIconUpload,
+      darkIconUpload: darkIconUpload,
+      pwaIconUpload: pwaIconUpload,
+    );
+    if (input == null) {
+      return;
+    }
+
+    brandingSubmittingStreamValue.addValue(true);
+    try {
+      final updated = await _settingsRepository.updateBranding(input: input);
+      _applyBrandingSettings(updated);
+      _reportSuccess('Branding atualizado com sucesso.');
+    } catch (error) {
+      remoteErrorStreamValue.addValue(error.toString());
+    } finally {
+      brandingSubmittingStreamValue.addValue(false);
+    }
+  }
+
   void selectTelemetryType(String type) {
     if (!telemetryTypes.contains(type)) {
       return;
@@ -315,6 +433,32 @@ class TenantAdminSettingsController implements Disposable {
     pushMaxTtlDaysController.text = '30';
     pushMaxPerMinuteController.text = '$maxPerMinute';
     pushMaxPerHourController.text = '$maxPerHour';
+
+    brandingTenantNameController.text = appData.nameValue.value;
+    final lightScheme = appData.themeDataSettings.lightSchemeData;
+    brandingPrimarySeedColorController.text =
+        _colorToHex(lightScheme.primarySeedColorValue.value);
+    brandingSecondarySeedColorController.text =
+        _colorToHex(lightScheme.secondarySeedColorValue.value);
+    brandingBrightnessStreamValue.addValue(
+        _toBrandingBrightness(appData.themeDataSettings.brightnessDefault));
+    brandingLightLogoUrlStreamValue.addValue(
+      _tenantScopedAssetUrl('logo-light.png') ??
+          appData.mainLogoLightUrl.value?.toString(),
+    );
+    brandingDarkLogoUrlStreamValue.addValue(
+      _tenantScopedAssetUrl('logo-dark.png') ??
+          appData.mainLogoDarkUrl.value?.toString(),
+    );
+    brandingLightIconUrlStreamValue.addValue(
+      _tenantScopedAssetUrl('icon-light.png') ??
+          appData.mainIconLightUrl.value?.toString(),
+    );
+    brandingDarkIconUrlStreamValue.addValue(
+      _tenantScopedAssetUrl('icon-dark.png') ??
+          appData.mainIconDarkUrl.value?.toString(),
+    );
+    brandingPwaIconUrlStreamValue.addValue(null);
   }
 
   void _resetTenantScopedForms() {
@@ -322,6 +466,11 @@ class TenantAdminSettingsController implements Disposable {
     telemetrySnapshotStreamValue
         .addValue(const TenantAdminTelemetrySettingsSnapshot.empty());
     clearTelemetryForm();
+    clearBrandingFile(TenantAdminBrandingAssetSlot.lightLogo);
+    clearBrandingFile(TenantAdminBrandingAssetSlot.darkLogo);
+    clearBrandingFile(TenantAdminBrandingAssetSlot.lightIcon);
+    clearBrandingFile(TenantAdminBrandingAssetSlot.darkIcon);
+    clearBrandingFile(TenantAdminBrandingAssetSlot.pwaIcon);
     _seedFormsFromSnapshot();
   }
 
@@ -361,6 +510,48 @@ class TenantAdminSettingsController implements Disposable {
     );
   }
 
+  TenantAdminBrandingUpdateInput? _buildBrandingUpdateInput({
+    required TenantAdminMediaUpload? lightLogoUpload,
+    required TenantAdminMediaUpload? darkLogoUpload,
+    required TenantAdminMediaUpload? lightIconUpload,
+    required TenantAdminMediaUpload? darkIconUpload,
+    required TenantAdminMediaUpload? pwaIconUpload,
+  }) {
+    final tenantName = brandingTenantNameController.text.trim();
+    if (tenantName.isEmpty) {
+      remoteErrorStreamValue.addValue('Nome do tenant e obrigatorio.');
+      return null;
+    }
+
+    final primary = _normalizeHexColor(brandingPrimarySeedColorController.text);
+    if (primary == null) {
+      remoteErrorStreamValue.addValue(
+        'Cor primaria invalida. Use formato #RRGGBB.',
+      );
+      return null;
+    }
+    final secondary =
+        _normalizeHexColor(brandingSecondarySeedColorController.text);
+    if (secondary == null) {
+      remoteErrorStreamValue.addValue(
+        'Cor secundaria invalida. Use formato #RRGGBB.',
+      );
+      return null;
+    }
+
+    return TenantAdminBrandingUpdateInput(
+      tenantName: tenantName,
+      brightnessDefault: brandingBrightnessStreamValue.value,
+      primarySeedColor: primary,
+      secondarySeedColor: secondary,
+      lightLogoUpload: lightLogoUpload,
+      darkLogoUpload: darkLogoUpload,
+      lightIconUpload: lightIconUpload,
+      darkIconUpload: darkIconUpload,
+      pwaIconUpload: pwaIconUpload,
+    );
+  }
+
   void _applyFirebaseSettings(TenantAdminFirebaseSettings settings) {
     firebaseApiKeyController.text = settings.apiKey;
     firebaseAppIdController.text = settings.appId;
@@ -373,6 +564,56 @@ class TenantAdminSettingsController implements Disposable {
     pushMaxTtlDaysController.text = '${settings.maxTtlDays}';
     pushMaxPerMinuteController.text = '${settings.maxPerMinute}';
     pushMaxPerHourController.text = '${settings.maxPerHour}';
+  }
+
+  void _applyBrandingSettings(TenantAdminBrandingSettings settings) {
+    final cacheBuster = DateTime.now().millisecondsSinceEpoch.toString();
+    if (settings.tenantName.trim().isNotEmpty) {
+      brandingTenantNameController.text = settings.tenantName.trim();
+    }
+    brandingBrightnessStreamValue.addValue(settings.brightnessDefault);
+    brandingPrimarySeedColorController.text = settings.primarySeedColor;
+    brandingSecondarySeedColorController.text = settings.secondarySeedColor;
+    brandingLightLogoUrlStreamValue.addValue(
+      _withCacheBust(
+        _tenantScopedAssetUrl('logo-light.png') ??
+            appData.mainLogoLightUrl.value?.toString() ??
+            settings.lightLogoUrl,
+        cacheBuster,
+      ),
+    );
+    brandingDarkLogoUrlStreamValue.addValue(
+      _withCacheBust(
+        _tenantScopedAssetUrl('logo-dark.png') ??
+            appData.mainLogoDarkUrl.value?.toString() ??
+            settings.darkLogoUrl,
+        cacheBuster,
+      ),
+    );
+    brandingLightIconUrlStreamValue.addValue(
+      _withCacheBust(
+        _tenantScopedAssetUrl('icon-light.png') ??
+            appData.mainIconLightUrl.value?.toString() ??
+            settings.lightIconUrl,
+        cacheBuster,
+      ),
+    );
+    brandingDarkIconUrlStreamValue.addValue(
+      _withCacheBust(
+        _tenantScopedAssetUrl('icon-dark.png') ??
+            appData.mainIconDarkUrl.value?.toString() ??
+            settings.darkIconUrl,
+        cacheBuster,
+      ),
+    );
+    brandingPwaIconUrlStreamValue
+        .addValue(_withCacheBust(settings.pwaIconUrl, cacheBuster));
+
+    clearBrandingFile(TenantAdminBrandingAssetSlot.lightLogo);
+    clearBrandingFile(TenantAdminBrandingAssetSlot.darkLogo);
+    clearBrandingFile(TenantAdminBrandingAssetSlot.lightIcon);
+    clearBrandingFile(TenantAdminBrandingAssetSlot.darkIcon);
+    clearBrandingFile(TenantAdminBrandingAssetSlot.pwaIcon);
   }
 
   List<String> _parseCsv(String raw) {
@@ -398,6 +639,40 @@ class TenantAdminSettingsController implements Disposable {
     return null;
   }
 
+  String? _normalizeHexColor(String raw) {
+    final value = raw.trim();
+    final regex = RegExp(r'^#([a-fA-F0-9]{6})$');
+    if (!regex.hasMatch(value)) {
+      return null;
+    }
+    return value.toUpperCase();
+  }
+
+  String _colorToHex(Color color) {
+    final rgb = color.toARGB32() & 0x00FFFFFF;
+    return '#${rgb.toRadixString(16).padLeft(6, '0').toUpperCase()}';
+  }
+
+  TenantAdminBrandingBrightness _toBrandingBrightness(Brightness brightness) {
+    return brightness == Brightness.dark
+        ? TenantAdminBrandingBrightness.dark
+        : TenantAdminBrandingBrightness.light;
+  }
+
+  String? _withCacheBust(String? raw, String cacheBuster) {
+    final value = raw?.trim();
+    if (value == null || value.isEmpty) {
+      return null;
+    }
+    final uri = Uri.tryParse(value);
+    if (uri == null) {
+      return value;
+    }
+    final query = Map<String, String>.from(uri.queryParameters);
+    query['v'] = cacheBuster;
+    return uri.replace(queryParameters: query).toString();
+  }
+
   void _reportSuccess(String message) {
     remoteErrorStreamValue.addValue(null);
     remoteSuccessStreamValue.addValue(message);
@@ -416,6 +691,26 @@ class TenantAdminSettingsController implements Disposable {
     return trimmed;
   }
 
+  String? _tenantScopedAssetUrl(String assetName) {
+    final selected = _tenantScope?.selectedTenantDomain?.trim();
+    if (selected == null || selected.isEmpty) {
+      return null;
+    }
+    final uri = Uri.tryParse(
+      selected.contains('://') ? selected : 'https://$selected',
+    );
+    if (uri == null || uri.host.trim().isEmpty) {
+      return null;
+    }
+    final base = Uri(
+      scheme: uri.scheme.isEmpty ? 'https' : uri.scheme,
+      host: uri.host.trim(),
+      port: uri.hasPort ? uri.port : null,
+      path: '/$assetName',
+    );
+    return base.toString();
+  }
+
   @override
   void onDispose() {
     isRemoteLoadingStreamValue.dispose();
@@ -424,6 +719,18 @@ class TenantAdminSettingsController implements Disposable {
     firebaseSubmittingStreamValue.dispose();
     pushSubmittingStreamValue.dispose();
     telemetrySubmittingStreamValue.dispose();
+    brandingSubmittingStreamValue.dispose();
+    brandingBrightnessStreamValue.dispose();
+    brandingLightLogoFileStreamValue.dispose();
+    brandingDarkLogoFileStreamValue.dispose();
+    brandingLightIconFileStreamValue.dispose();
+    brandingDarkIconFileStreamValue.dispose();
+    brandingPwaIconFileStreamValue.dispose();
+    brandingLightLogoUrlStreamValue.dispose();
+    brandingDarkLogoUrlStreamValue.dispose();
+    brandingLightIconUrlStreamValue.dispose();
+    brandingDarkIconUrlStreamValue.dispose();
+    brandingPwaIconUrlStreamValue.dispose();
     telemetrySnapshotStreamValue.dispose();
     selectedTelemetryTypeStreamValue.dispose();
     telemetryTrackAllStreamValue.dispose();
@@ -438,6 +745,9 @@ class TenantAdminSettingsController implements Disposable {
     telemetryEventsController.dispose();
     telemetryTokenController.dispose();
     telemetryUrlController.dispose();
+    brandingTenantNameController.dispose();
+    brandingPrimarySeedColorController.dispose();
+    brandingSecondarySeedColorController.dispose();
     _tenantScopeSubscription?.cancel();
   }
 }
