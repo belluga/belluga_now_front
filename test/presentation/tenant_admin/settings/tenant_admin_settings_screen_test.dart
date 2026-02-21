@@ -10,7 +10,12 @@ import 'package:belluga_now/domain/services/tenant_admin_external_image_proxy_co
 import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_settings.dart';
 import 'package:belluga_now/presentation/tenant_admin/settings/controllers/tenant_admin_settings_controller.dart';
+import 'package:belluga_now/presentation/tenant_admin/settings/screens/tenant_admin_settings_environment_snapshot_screen.dart';
+import 'package:belluga_now/presentation/tenant_admin/settings/screens/tenant_admin_settings_local_preferences_screen.dart';
 import 'package:belluga_now/presentation/tenant_admin/settings/screens/tenant_admin_settings_screen.dart';
+import 'package:belluga_now/presentation/tenant_admin/settings/screens/tenant_admin_settings_technical_integrations_screen.dart';
+import 'package:belluga_now/presentation/tenant_admin/settings/screens/tenant_admin_settings_visual_identity_screen.dart';
+import 'package:belluga_now/presentation/tenant_admin/settings/tenant_admin_settings_keys.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_image_ingestion_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -29,7 +34,7 @@ void main() {
     await GetIt.I.reset();
   });
 
-  testWidgets('renders environment snapshot details', (tester) async {
+  testWidgets('renders hub hierarchy with stable keys', (tester) async {
     final repository = _FakeAppDataRepository(_buildAppData());
     final settingsRepository = _FakeTenantAdminSettingsRepository();
     GetIt.I.registerSingleton<AppDataRepositoryContract>(repository);
@@ -49,8 +54,99 @@ void main() {
       const Scaffold(body: TenantAdminSettingsScreen()),
     );
 
-    expect(find.text('Configurações'), findsOneWidget);
-    expect(find.text('Snapshot do environment'), findsOneWidget);
+    expect(find.byKey(TenantAdminSettingsKeys.hubList), findsOneWidget);
+    expect(
+      find.byKey(TenantAdminSettingsKeys.hubCardPreferences),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(TenantAdminSettingsKeys.hubCardVisualIdentity),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(TenantAdminSettingsKeys.hubActionPreferences),
+      findsNothing,
+    );
+    expect(
+      find.byKey(TenantAdminSettingsKeys.hubActionVisualIdentity),
+      findsNothing,
+    );
+    expect(find.text('Toque para editar preferências'), findsOneWidget);
+    expect(find.text('Toque para editar identidade visual'), findsOneWidget);
+
+    await tester.scrollUntilVisible(
+      find.byKey(TenantAdminSettingsKeys.hubCardTechnicalIntegrations),
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(TenantAdminSettingsKeys.hubCardTechnicalIntegrations),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(TenantAdminSettingsKeys.hubActionTechnicalIntegrations),
+      findsNothing,
+    );
+    expect(
+      find.byKey(TenantAdminSettingsKeys.hubIntegrationFirebase),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(TenantAdminSettingsKeys.hubIntegrationTelemetry),
+      findsOneWidget,
+    );
+
+    await tester.scrollUntilVisible(
+      find.byKey(TenantAdminSettingsKeys.hubCardEnvironmentSnapshot),
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(TenantAdminSettingsKeys.hubCardEnvironmentSnapshot),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(TenantAdminSettingsKeys.hubActionEnvironmentSnapshot),
+      findsNothing,
+    );
+    expect(find.text('Configurar'), findsNothing);
+  });
+
+  testWidgets('renders environment snapshot details', (tester) async {
+    final repository = _FakeAppDataRepository(_buildAppData());
+    final settingsRepository = _FakeTenantAdminSettingsRepository();
+    GetIt.I.registerSingleton<AppDataRepositoryContract>(repository);
+    GetIt.I.registerSingleton<TenantAdminSettingsRepositoryContract>(
+      settingsRepository,
+    );
+    GetIt.I.registerSingleton<TenantAdminImageIngestionService>(
+      TenantAdminImageIngestionService(
+        externalImageProxy: _FakeTenantAdminExternalImageProxy(),
+      ),
+    );
+    final controller = TenantAdminSettingsController();
+    GetIt.I.registerSingleton<TenantAdminSettingsController>(controller);
+
+    await _pumpWithAutoRoute(
+      tester,
+      const Scaffold(body: TenantAdminSettingsEnvironmentSnapshotScreen()),
+    );
+
+    expect(
+      find.byKey(TenantAdminSettingsKeys.environmentSnapshotScreen),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(TenantAdminSettingsKeys.environmentSnapshotScopedAppBar),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(TenantAdminSettingsKeys.environmentSnapshotBackButton),
+      findsOneWidget,
+    );
+    expect(find.text('Runtime do tenant'), findsOneWidget);
     expect(find.text('Tenant Test'), findsOneWidget);
     expect(find.text('guarappari.test'), findsWidgets);
     expect(find.text('project-test'), findsOneWidget);
@@ -73,7 +169,20 @@ void main() {
 
     await _pumpWithAutoRoute(
       tester,
-      const Scaffold(body: TenantAdminSettingsScreen()),
+      const Scaffold(body: TenantAdminSettingsLocalPreferencesScreen()),
+    );
+
+    expect(
+      find.byKey(TenantAdminSettingsKeys.localPreferencesScreen),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(TenantAdminSettingsKeys.localPreferencesScopedAppBar),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(TenantAdminSettingsKeys.localPreferencesBackButton),
+      findsOneWidget,
     );
 
     await tester.tap(find.text('Escuro'));
@@ -99,23 +208,45 @@ void main() {
 
     await _pumpWithAutoRoute(
       tester,
-      const Scaffold(body: TenantAdminSettingsScreen()),
+      const Scaffold(body: TenantAdminSettingsTechnicalIntegrationsScreen()),
+    );
+    expect(
+      find.byKey(
+        TenantAdminSettingsKeys.technicalIntegrationsScopedAppBar,
+        skipOffstage: false,
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(
+        TenantAdminSettingsKeys.technicalIntegrationsBackButton,
+        skipOffstage: false,
+      ),
+      findsOneWidget,
     );
 
-    final editProjectIdButton = find.byTooltip('Editar Project ID');
+    final projectIdRow = find.byKey(
+      const ValueKey('tenant_admin_settings_firebase_project_id_edit'),
+    );
     final saveFirebaseButton = find.byKey(
       const ValueKey('tenant_admin_settings_save_firebase'),
     );
 
     await tester.scrollUntilVisible(
-      editProjectIdButton,
+      projectIdRow,
       300,
       scrollable: find.byType(Scrollable).first,
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(editProjectIdButton);
+    await tester.tap(
+      find.descendant(
+        of: projectIdRow,
+        matching: find.byIcon(Icons.edit_outlined),
+      ),
+    );
     await tester.pumpAndSettle();
+
     await tester.enterText(
       find.widgetWithText(TextFormField, 'Project ID'),
       'project-updated',
@@ -153,8 +284,36 @@ void main() {
 
     await _pumpWithAutoRoute(
       tester,
-      const Scaffold(body: TenantAdminSettingsScreen()),
+      const Scaffold(body: TenantAdminSettingsVisualIdentityScreen()),
     );
+    expect(
+      find.byKey(TenantAdminSettingsKeys.visualIdentityScopedAppBar),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(TenantAdminSettingsKeys.visualIdentityBackButton),
+      findsOneWidget,
+    );
+    expect(find.byKey(TenantAdminSettingsKeys.brandingPrimaryField),
+        findsOneWidget);
+    expect(find.byKey(TenantAdminSettingsKeys.brandingSecondaryField),
+        findsOneWidget);
+    expect(
+      find.byKey(TenantAdminSettingsKeys.brandingPrimaryPickerButton),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(TenantAdminSettingsKeys.brandingSecondaryPickerButton),
+      findsOneWidget,
+    );
+
+    await tester.tap(
+      find.byKey(TenantAdminSettingsKeys.brandingPrimaryPickerButton),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Aplicar cor'), findsOneWidget);
+    await tester.tap(find.text('Aplicar cor'));
+    await tester.pumpAndSettle();
 
     final saveBrandingButton = find.byKey(
       const ValueKey('tenant_admin_settings_save_branding'),
@@ -232,7 +391,7 @@ void main() {
     expect(
       controller.brandingLightLogoUrlStreamValue.value,
       allOf(
-        contains('https://guarappari.test/logo-light.png'),
+        contains('https://guarappari.test/storage/light-logo.png'),
         contains('v='),
       ),
     );
@@ -257,7 +416,10 @@ void main() {
     await controller.init();
     expect(
       controller.brandingLightLogoUrlStreamValue.value,
-      'https://guarappari.test/logo-light.png',
+      allOf(
+        contains('https://guarappari.test/logo-light.png'),
+        contains('v='),
+      ),
     );
 
     await controller.saveBranding(
@@ -275,6 +437,71 @@ void main() {
         contains('v='),
       ),
     );
+    controller.onDispose();
+  });
+
+  test('controller rehydrates branding colors from repository after save',
+      () async {
+    final repository = _FakeAppDataRepository(_buildAppData());
+    final settingsRepository = _FakeTenantAdminSettingsRepository();
+    final controller = TenantAdminSettingsController(
+      appDataRepository: repository,
+      settingsRepository: settingsRepository,
+    );
+
+    await controller.init();
+    controller.brandingPrimarySeedColorController.text = '#A36CE3';
+    controller.brandingSecondarySeedColorController.text = '#03DAC6';
+
+    await controller.saveBranding(
+      lightLogoUpload: null,
+      darkLogoUpload: null,
+      lightIconUpload: null,
+      darkIconUpload: null,
+      pwaIconUpload: null,
+    );
+
+    final reloadedController = TenantAdminSettingsController(
+      appDataRepository: repository,
+      settingsRepository: settingsRepository,
+    );
+    await reloadedController.init();
+
+    expect(
+      reloadedController.brandingPrimarySeedColorController.text,
+      '#A36CE3',
+    );
+    expect(
+      reloadedController.brandingSecondarySeedColorController.text,
+      '#03DAC6',
+    );
+
+    controller.onDispose();
+    reloadedController.onDispose();
+  });
+
+  test(
+      'controller keeps branding draft empty and reports error when branding fetch fails',
+      () async {
+    final repository = _FakeAppDataRepository(_buildAppData());
+    final settingsRepository =
+        _FakeTenantAdminSettingsRepository(throwOnBrandingFetch: true);
+    final controller = TenantAdminSettingsController(
+      appDataRepository: repository,
+      settingsRepository: settingsRepository,
+    );
+
+    await controller.init();
+
+    expect(
+      controller.remoteErrorStreamValue.value,
+      contains('branding unavailable'),
+    );
+    expect(controller.brandingTenantNameController.text, isEmpty);
+    expect(controller.brandingPrimarySeedColorController.text, isEmpty);
+    expect(controller.brandingSecondarySeedColorController.text, isEmpty);
+    expect(controller.brandingLightLogoUrlStreamValue.value, isNull);
+
     controller.onDispose();
   });
 }
@@ -343,8 +570,36 @@ class _FakeAppDataRepository implements AppDataRepositoryContract {
 
 class _FakeTenantAdminSettingsRepository
     implements TenantAdminSettingsRepositoryContract {
+  _FakeTenantAdminSettingsRepository({
+    this.throwOnBrandingFetch = false,
+  });
+
+  final bool throwOnBrandingFetch;
   String? updatedFirebaseProjectId;
   TenantAdminBrandingUpdateInput? lastBrandingInput;
+  final StreamValue<TenantAdminBrandingSettings?> _brandingSettingsStreamValue =
+      StreamValue<TenantAdminBrandingSettings?>(defaultValue: null);
+  TenantAdminBrandingSettings _brandingSettings =
+      const TenantAdminBrandingSettings(
+    tenantName: 'Tenant Test',
+    brightnessDefault: TenantAdminBrandingBrightness.light,
+    primarySeedColor: '#009688',
+    secondarySeedColor: '#673AB7',
+    lightLogoUrl: 'https://guarappari.test/storage/light-logo.png',
+    darkLogoUrl: 'https://guarappari.test/storage/dark-logo.png',
+    lightIconUrl: 'https://guarappari.test/storage/light-icon.png',
+    darkIconUrl: 'https://guarappari.test/storage/dark-icon.png',
+    pwaIconUrl: 'https://guarappari.test/storage/pwa-icon.png',
+  );
+
+  @override
+  StreamValue<TenantAdminBrandingSettings?> get brandingSettingsStreamValue =>
+      _brandingSettingsStreamValue;
+
+  @override
+  void clearBrandingSettings() {
+    _brandingSettingsStreamValue.addValue(null);
+  }
 
   @override
   Future<TenantAdminTelemetrySettingsSnapshot> deleteTelemetryIntegration({
@@ -373,6 +628,15 @@ class _FakeTenantAdminSettingsRepository
       integrations: [],
       availableEvents: ['app_opened'],
     );
+  }
+
+  @override
+  Future<TenantAdminBrandingSettings> fetchBrandingSettings() async {
+    if (throwOnBrandingFetch) {
+      throw Exception('branding unavailable');
+    }
+    _brandingSettingsStreamValue.addValue(_brandingSettings);
+    return _brandingSettings;
   }
 
   @override
@@ -405,7 +669,7 @@ class _FakeTenantAdminSettingsRepository
     required TenantAdminBrandingUpdateInput input,
   }) async {
     lastBrandingInput = input;
-    return TenantAdminBrandingSettings(
+    _brandingSettings = TenantAdminBrandingSettings(
       tenantName: input.tenantName,
       brightnessDefault: input.brightnessDefault,
       primarySeedColor: input.primarySeedColor,
@@ -416,6 +680,8 @@ class _FakeTenantAdminSettingsRepository
       darkIconUrl: 'https://guarappari.test/storage/dark-icon.png',
       pwaIconUrl: 'https://guarappari.test/storage/pwa-icon.png',
     );
+    _brandingSettingsStreamValue.addValue(_brandingSettings);
+    return _brandingSettings;
   }
 }
 

@@ -1,10 +1,10 @@
 import 'dart:async';
 
 import 'package:belluga_now/application/configurations/belluga_constants.dart';
-import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/admin_mode_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/landlord_tenants_repository_contract.dart';
-import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.dart';
+import 'package:belluga_now/domain/repositories/tenant_admin_selected_tenant_repository_contract.dart';
 import 'package:flutter/foundation.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value.dart';
@@ -14,31 +14,31 @@ class TenantAdminShellController implements Disposable {
     AdminModeRepositoryContract? adminModeRepository,
     AppDataRepositoryContract? appDataRepository,
     LandlordTenantsRepositoryContract? landlordTenantsRepository,
-    TenantAdminTenantScopeContract? tenantScope,
+    TenantAdminSelectedTenantRepositoryContract? selectedTenantRepository,
   })  : _adminModeRepository =
             adminModeRepository ?? GetIt.I.get<AdminModeRepositoryContract>(),
         _appDataRepository =
             appDataRepository ?? GetIt.I.get<AppDataRepositoryContract>(),
         _landlordTenantsRepository = landlordTenantsRepository ??
             GetIt.I.get<LandlordTenantsRepositoryContract>(),
-        _tenantScope =
-            tenantScope ?? GetIt.I.get<TenantAdminTenantScopeContract>();
+        _selectedTenantRepository = selectedTenantRepository ??
+            GetIt.I.get<TenantAdminSelectedTenantRepositoryContract>();
 
   final AdminModeRepositoryContract _adminModeRepository;
   final AppDataRepositoryContract _appDataRepository;
   final LandlordTenantsRepositoryContract _landlordTenantsRepository;
-  final TenantAdminTenantScopeContract _tenantScope;
-
-  final StreamValue<List<LandlordTenantOption>> availableTenantsStreamValue =
-      StreamValue<List<LandlordTenantOption>>(defaultValue: const []);
+  final TenantAdminSelectedTenantRepositoryContract _selectedTenantRepository;
   final StreamValue<bool> isTenantSelectionResolvingStreamValue =
       StreamValue<bool>(defaultValue: false);
 
   StreamValue<AdminMode> get modeStreamValue =>
       _adminModeRepository.modeStreamValue;
+  StreamValue<List<LandlordTenantOption>> get availableTenantsStreamValue =>
+      _selectedTenantRepository.availableTenantsStreamValue;
   StreamValue<String?> get selectedTenantDomainStreamValue =>
-      _tenantScope.selectedTenantDomainStreamValue;
-  String? get selectedTenantDomain => _tenantScope.selectedTenantDomain;
+      _selectedTenantRepository.selectedTenantDomainStreamValue;
+  String? get selectedTenantDomain =>
+      _selectedTenantRepository.selectedTenantDomain;
 
   Future<void> switchToUserMode() => _adminModeRepository.setUserMode();
 
@@ -63,11 +63,11 @@ class TenantAdminShellController implements Disposable {
     if (normalized == null) {
       return;
     }
-    _tenantScope.selectTenantDomain(normalized);
+    _selectedTenantRepository.selectTenantDomain(normalized);
   }
 
   void clearTenantSelection() {
-    _tenantScope.clearSelectedTenantDomain();
+    _selectedTenantRepository.clearSelectedTenant();
   }
 
   String resolveTenantLabel({
@@ -133,45 +133,12 @@ class TenantAdminShellController implements Disposable {
   }
 
   void _setAvailableTenants(List<LandlordTenantOption> tenants) {
-    availableTenantsStreamValue.addValue(tenants);
-    _syncSelectionWithAvailableTenants(tenants);
-  }
-
-  void _syncSelectionWithAvailableTenants(List<LandlordTenantOption> tenants) {
-    final normalizedSelected =
-        _normalizeTenantDomain(_tenantScope.selectedTenantDomain ?? '');
-
-    if (tenants.isEmpty) {
-      return;
-    }
-
-    if (tenants.length == 1) {
-      final onlyTenantDomain = _normalizeTenantDomain(tenants.first.mainDomain);
-      if (onlyTenantDomain == null) {
-        return;
-      }
-      if (normalizedSelected == onlyTenantDomain) {
-        return;
-      }
-      _tenantScope.selectTenantDomain(onlyTenantDomain);
-      return;
-    }
-
-    if (normalizedSelected == null) {
-      return;
-    }
-
-    final hasSelectedTenant = tenants.any(
-      (tenant) =>
-          _normalizeTenantDomain(tenant.mainDomain) == normalizedSelected,
-    );
-    if (!hasSelectedTenant) {
-      _tenantScope.clearSelectedTenantDomain();
-    }
+    _selectedTenantRepository.setAvailableTenants(tenants);
   }
 
   bool _hasSelectedTenantDomain() {
-    return _normalizeTenantDomain(_tenantScope.selectedTenantDomain ?? '') !=
+    return _normalizeTenantDomain(
+            _selectedTenantRepository.selectedTenantDomain ?? '') !=
         null;
   }
 
@@ -221,7 +188,6 @@ class TenantAdminShellController implements Disposable {
 
   @override
   void onDispose() {
-    availableTenantsStreamValue.dispose();
     isTenantSelectionResolvingStreamValue.dispose();
   }
 }

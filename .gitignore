@@ -63,6 +63,9 @@ foundation_documentation
 .agent/logs
 .agent/test-run-progress.md
 .codex
+.cline/
+.clinerules
+CLINE.md
 
 # Compile-time lane define overrides (local only)
 config/defines/local.override.json

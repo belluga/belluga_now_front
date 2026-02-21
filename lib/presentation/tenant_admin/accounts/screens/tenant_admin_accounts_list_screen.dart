@@ -5,6 +5,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_account.dart';
 import 'package:belluga_now/presentation/common/widgets/belluga_network_image.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_empty_state.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_error_banner.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_list_controls_panel.dart';
 import 'package:belluga_now/presentation/tenant_admin/accounts/controllers/tenant_admin_accounts_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
@@ -29,6 +30,16 @@ class _TenantAdminAccountsListScreenState
   final TenantAdminAccountsController _controller =
       GetIt.I.get<TenantAdminAccountsController>();
   final ScrollController _scrollController = ScrollController();
+  static const ValueKey<String> _controlsPanelKey =
+      ValueKey<String>('tenant_admin_accounts_controls_panel');
+  static const ValueKey<String> _searchToggleKey =
+      ValueKey<String>('tenant_admin_accounts_search_toggle');
+  static const ValueKey<String> _searchFieldKey =
+      ValueKey<String>('tenant_admin_accounts_search_field');
+  static const ValueKey<String> _manageTypesButtonKey =
+      ValueKey<String>('tenant_admin_accounts_manage_types_button');
+  static const ValueKey<String> _ownershipSegmentedKey =
+      ValueKey<String>('tenant_admin_accounts_segmented_filter');
 
   @override
   void initState() {
@@ -52,6 +63,12 @@ class _TenantAdminAccountsListScreenState
     if (position.pixels + threshold >= position.maxScrollExtent) {
       _controller.loadNextAccountsPage();
     }
+  }
+
+  StackRouter _navigationRouter(BuildContext context) {
+    final shellRouter =
+        context.innerRouterOf<StackRouter>(TenantAdminShellRoute.name);
+    return shellRouter ?? context.router;
   }
 
   @override
@@ -144,7 +161,7 @@ class _TenantAdminAccountsListScreenState
     return Scaffold(
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () async {
-          final router = context.router;
+          final router = _navigationRouter(context);
           final messenger = ScaffoldMessenger.of(context);
           final created = await router.push<bool>(
             const TenantAdminAccountCreateRoute(),
@@ -164,36 +181,26 @@ class _TenantAdminAccountsListScreenState
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Segmento',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            Align(
-              alignment: Alignment.centerRight,
-              child: IconButton(
-                tooltip: showSearchField ? 'Ocultar busca' : 'Buscar',
-                onPressed: _controller.toggleSearchFieldVisibility,
-                icon: Icon(
-                  showSearchField ? Icons.close : Icons.search,
-                ),
-              ),
-            ),
-            if (showSearchField) ...[
-              TextField(
-                onChanged: _controller.updateSearchQuery,
-                decoration: const InputDecoration(
-                  prefixIcon: Icon(Icons.search),
-                  labelText: 'Buscar por nome, slug ou documento',
-                ),
-              ),
-              const SizedBox(height: 12),
-            ],
-            const SizedBox(height: 8),
-            Card(
-              margin: EdgeInsets.zero,
-              child: Padding(
-                padding: const EdgeInsets.all(12),
+            TenantAdminListControlsPanel(
+              key: _controlsPanelKey,
+              filterLabel: 'Segmentação de contas',
+              showSearchField: showSearchField,
+              onToggleSearch: _controller.toggleSearchFieldVisibility,
+              onSearchChanged: _controller.updateSearchQuery,
+              searchHintText: 'Nome, slug ou documento',
+              manageButtonLabel: 'Tipos de perfil',
+              onManagePressed: () {
+                _navigationRouter(context).push(
+                  const TenantAdminProfileTypesListRoute(),
+                );
+              },
+              searchToggleKey: _searchToggleKey,
+              searchFieldKey: _searchFieldKey,
+              manageButtonKey: _manageTypesButtonKey,
+              filterField: SizedBox(
+                width: double.infinity,
                 child: SegmentedButton<TenantAdminOwnershipState>(
+                  key: _ownershipSegmentedKey,
                   style: const ButtonStyle(
                     tapTargetSize: MaterialTapTargetSize.padded,
                     visualDensity: VisualDensity.standard,
@@ -216,20 +223,9 @@ class _TenantAdminAccountsListScreenState
                 ),
               ),
             ),
-            const SizedBox(height: 8),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: TextButton.icon(
-                onPressed: () {
-                  context.router.push(const TenantAdminProfileTypesListRoute());
-                },
-                icon: const Icon(Icons.category_outlined),
-                label: const Text('Gerenciar tipos de perfil'),
-              ),
-            ),
             if (error != null)
               Padding(
-                padding: const EdgeInsets.only(top: 8),
+                padding: const EdgeInsets.only(top: 12),
                 child: TenantAdminErrorBanner(
                   rawError: error,
                   fallbackMessage:
@@ -237,7 +233,7 @@ class _TenantAdminAccountsListScreenState
                   onRetry: _controller.loadAccounts,
                 ),
               ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 12),
             Expanded(child: content),
           ],
         ),
@@ -267,21 +263,73 @@ class _TenantAdminAccountsListScreenState
           return const SizedBox.shrink();
         }
         final account = filteredAccounts[index];
-        final displayName = account.name.trim().isNotEmpty
-            ? account.name
-            : account.slug;
+        final displayName =
+            account.name.trim().isNotEmpty ? account.name : account.slug;
         return Card(
           clipBehavior: Clip.antiAlias,
-          child: ListTile(
-            leading: _buildAccountAvatar(context, account),
-            title: Text(displayName),
-            subtitle: Text(account.ownershipState.subtitle),
-            trailing: const Icon(Icons.chevron_right),
+          child: InkWell(
+            key: ValueKey<String>('tenant_admin_account_card_${account.id}'),
             onTap: () {
-              context.router.push(
+              _navigationRouter(context).push(
                 TenantAdminAccountDetailRoute(accountSlug: account.slug),
               );
             },
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildAccountAvatar(context, account),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          displayName,
+                          style: Theme.of(context)
+                              .textTheme
+                              .titleMedium
+                              ?.copyWith(fontWeight: FontWeight.w600),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          account.slug,
+                          style:
+                              Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.onSurfaceVariant,
+                                  ),
+                        ),
+                        const SizedBox(height: 8),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            _buildAccountMetaChip(
+                              context,
+                              label: account.ownershipState.label,
+                            ),
+                            if (account.document.number.trim().isNotEmpty)
+                              _buildAccountMetaChip(
+                                context,
+                                label:
+                                    '${account.document.type.toUpperCase()}: ${account.document.number}',
+                              ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Icon(
+                    Icons.chevron_right,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                ],
+              ),
+            ),
           ),
         );
       },
@@ -307,6 +355,23 @@ class _TenantAdminAccountsListScreenState
     return CircleAvatar(
       backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
       child: const Icon(Icons.account_circle_outlined),
+    );
+  }
+
+  Widget _buildAccountMetaChip(
+    BuildContext context, {
+    required String label,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        label,
+        style: Theme.of(context).textTheme.labelMedium,
+      ),
     );
   }
 

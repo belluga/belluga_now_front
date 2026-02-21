@@ -85,9 +85,21 @@ void main() {
     expect(snapshot.availableEvents, contains('app_opened'));
   });
 
-  test('updateBranding sends multipart payload and parses branding data',
+  test(
+      'updateBranding sends multipart payload and reloads branding from tenant',
       () async {
-    final adapter = _RoutingAdapter();
+    final adapter = _RoutingAdapter(
+      environmentPayload: const {
+        'type': 'tenant',
+        'tenant_id': 'tenant-a',
+        'name': 'Guarappari',
+        'theme_data_settings': {
+          'brightness_default': 'dark',
+          'primary_seed_color': '#112233',
+          'secondary_seed_color': '#445566',
+        },
+      },
+    );
     final scope = _MutableTenantScope('https://tenant-a.test');
     final dio = Dio()..httpClientAdapter = adapter;
     final repository = TenantAdminSettingsRepository(
@@ -109,7 +121,14 @@ void main() {
       ),
     );
 
-    final requestData = adapter.requests.single.data;
+    expect(adapter.requests, hasLength(2));
+    final postRequest = adapter.requests.first;
+    final environmentRequest = adapter.requests.last;
+
+    expect(postRequest.path, contains('/branding/update'));
+    expect(environmentRequest.uri.path, '/api/v1/environment');
+
+    final requestData = postRequest.data;
     expect(requestData, isA<FormData>());
 
     final formData = requestData as FormData;
@@ -127,7 +146,12 @@ void main() {
     );
     expect(updated.brightnessDefault, TenantAdminBrandingBrightness.dark);
     expect(updated.primarySeedColor, '#112233');
-    expect(updated.lightLogoUrl, contains('light-logo-updated'));
+    expect(updated.secondarySeedColor, '#445566');
+    expect(updated.lightLogoUrl, contains('tenant-a.test/logo-light.png'));
+    expect(
+      repository.brandingSettingsStreamValue.value?.primarySeedColor,
+      '#112233',
+    );
   });
 
   test('uses selected tenant scope dynamically between requests', () async {
@@ -146,6 +170,124 @@ void main() {
     expect(adapter.requests, hasLength(2));
     expect(adapter.requests[0].uri.host, 'tenant-a.test');
     expect(adapter.requests[1].uri.host, 'tenant-b.test');
+  });
+
+  test(
+      'fetchBrandingSettings uses tenant-admin resolved origin for environment endpoint',
+      () async {
+    final adapter = _RoutingAdapter();
+    final scope = _FixedTenantScopeForOriginRead(
+      selectedTenantDomainValue: 'tenant-a.test',
+      selectedTenantAdminBaseUrlValue: 'http://tenant-a.test:8081/admin/api',
+    );
+    final dio = Dio()..httpClientAdapter = adapter;
+    final repository = TenantAdminSettingsRepository(
+      dio: dio,
+      tenantScope: scope,
+    );
+
+    final branding = await repository.fetchBrandingSettings();
+    final request = adapter.requests.single;
+
+    expect(request.uri.scheme, 'http');
+    expect(request.uri.host, 'tenant-a.test');
+    expect(request.uri.port, 8081);
+    expect(request.uri.path, '/api/v1/environment');
+    expect(request.uri.queryParameters['_ts'], isNotNull);
+    expect(request.headers['Authorization'], isNull);
+    expect(request.headers['Accept'], 'application/json');
+    expect(branding.primarySeedColor, '#A36CE3');
+    expect(branding.secondarySeedColor, '#03DAC6');
+    expect(
+      repository.brandingSettingsStreamValue.value?.secondarySeedColor,
+      '#03DAC6',
+    );
+  });
+
+  test('clearBrandingSettings clears repository canonical branding stream',
+      () async {
+    final adapter = _RoutingAdapter();
+    final scope = _MutableTenantScope('https://tenant-a.test');
+    final dio = Dio()..httpClientAdapter = adapter;
+    final repository = TenantAdminSettingsRepository(
+      dio: dio,
+      tenantScope: scope,
+    );
+
+    await repository.fetchBrandingSettings();
+    expect(repository.brandingSettingsStreamValue.value, isNotNull);
+
+    repository.clearBrandingSettings();
+    expect(repository.brandingSettingsStreamValue.value, isNull);
+  });
+
+  test('fetchBrandingSettings fails when tenant scope is missing (no fallback)',
+      () async {
+    final adapter = _RoutingAdapter();
+    final scope = _NoTenantScope();
+    final dio = Dio()..httpClientAdapter = adapter;
+    final repository = TenantAdminSettingsRepository(
+      dio: dio,
+      tenantScope: scope,
+    );
+
+    await expectLater(
+      repository.fetchBrandingSettings(),
+      throwsA(isA<StateError>()),
+    );
+    expect(adapter.requests, isEmpty);
+  });
+
+  test('fetchBrandingSettings fails for non-tenant environment payload',
+      () async {
+    final adapter = _RoutingAdapter(
+      environmentPayload: const {
+        'type': 'landlord',
+        'name': 'Belluga',
+        'theme_data_settings': {
+          'brightness_default': 'light',
+          'primary_seed_color': '#a36ce3',
+          'secondary_seed_color': '#03dac6',
+        },
+      },
+    );
+    final scope = _FixedTenantScopeForOriginRead(
+      selectedTenantDomainValue: 'tenant-a.test',
+      selectedTenantAdminBaseUrlValue: 'http://tenant-a.test:8081/admin/api',
+    );
+    final dio = Dio()..httpClientAdapter = adapter;
+    final repository = TenantAdminSettingsRepository(
+      dio: dio,
+      tenantScope: scope,
+    );
+
+    await expectLater(
+      repository.fetchBrandingSettings(),
+      throwsA(isA<Exception>()),
+    );
+  });
+
+  test('fetchBrandingSettings fails when theme settings are missing', () async {
+    final adapter = _RoutingAdapter(
+      environmentPayload: const {
+        'type': 'tenant',
+        'name': 'Guarappari Admin',
+      },
+    );
+    final scope = _FixedTenantScopeForOriginRead(
+      selectedTenantDomainValue: 'tenant-a.test',
+      selectedTenantAdminBaseUrlValue: 'http://tenant-a.test:8081/admin/api',
+    );
+    final dio = Dio()..httpClientAdapter = adapter;
+    final repository = TenantAdminSettingsRepository(
+      dio: dio,
+      tenantScope: scope,
+    );
+
+    await expectLater(
+      repository.fetchBrandingSettings(),
+      throwsA(isA<Exception>()),
+    );
   });
 }
 
@@ -196,7 +338,72 @@ class _MutableTenantScope implements TenantAdminTenantScopeContract {
   }
 }
 
+class _FixedTenantScopeForOriginRead implements TenantAdminTenantScopeContract {
+  _FixedTenantScopeForOriginRead({
+    required this.selectedTenantDomainValue,
+    required this.selectedTenantAdminBaseUrlValue,
+  }) {
+    _selectedTenantDomainStreamValue.addValue(selectedTenantDomainValue);
+  }
+
+  final String selectedTenantDomainValue;
+  final String selectedTenantAdminBaseUrlValue;
+  final StreamValue<String?> _selectedTenantDomainStreamValue =
+      StreamValue<String?>(defaultValue: null);
+
+  @override
+  String? get selectedTenantDomain => selectedTenantDomainValue;
+
+  @override
+  String get selectedTenantAdminBaseUrl => selectedTenantAdminBaseUrlValue;
+
+  @override
+  StreamValue<String?> get selectedTenantDomainStreamValue =>
+      _selectedTenantDomainStreamValue;
+
+  @override
+  void clearSelectedTenantDomain() {
+    _selectedTenantDomainStreamValue.addValue(null);
+  }
+
+  @override
+  void selectTenantDomain(String tenantDomain) {
+    _selectedTenantDomainStreamValue.addValue(tenantDomain.trim());
+  }
+}
+
+class _NoTenantScope implements TenantAdminTenantScopeContract {
+  final StreamValue<String?> _selectedTenantDomainStreamValue =
+      StreamValue<String?>(defaultValue: null);
+
+  @override
+  String? get selectedTenantDomain => null;
+
+  @override
+  String get selectedTenantAdminBaseUrl =>
+      resolveTenantAdminBaseUrl(selectedTenantDomain ?? '');
+
+  @override
+  StreamValue<String?> get selectedTenantDomainStreamValue =>
+      _selectedTenantDomainStreamValue;
+
+  @override
+  void clearSelectedTenantDomain() {
+    _selectedTenantDomainStreamValue.addValue(null);
+  }
+
+  @override
+  void selectTenantDomain(String tenantDomain) {
+    _selectedTenantDomainStreamValue.addValue(tenantDomain.trim());
+  }
+}
+
 class _RoutingAdapter implements HttpClientAdapter {
+  _RoutingAdapter({
+    this.environmentPayload,
+  });
+
+  final Map<String, dynamic>? environmentPayload;
   final List<RequestOptions> requests = [];
 
   @override
@@ -287,6 +494,22 @@ class _RoutingAdapter implements HttpClientAdapter {
           },
         },
       });
+    }
+
+    if (options.uri.path == '/api/v1/environment' && method == 'GET') {
+      return _jsonResponse(
+        environmentPayload ??
+            {
+              'type': 'tenant',
+              'tenant_id': 'tenant-a',
+              'name': 'Guarappari Admin',
+              'theme_data_settings': {
+                'brightness_default': 'light',
+                'primary_seed_color': '#a36ce3',
+                'secondary_seed_color': '#03dac6',
+              },
+            },
+      );
     }
 
     return _jsonResponse(const {});

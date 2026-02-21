@@ -25,16 +25,24 @@ class AuthLoginForm extends StatelessWidget {
           final isEnabled = fieldEnabled;
           return Column(
             children: [
-              AuthEmailField(
-                key: WidgetKeys.auth.loginEmailField,
-                formFieldController: _controller.authEmailFieldController,
-                isEnabled: isEnabled,
+              Semantics(
+                identifier: 'auth_login_email_field',
+                textField: true,
+                child: AuthEmailField(
+                  key: WidgetKeys.auth.loginEmailField,
+                  formFieldController: _controller.authEmailFieldController,
+                  isEnabled: isEnabled,
+                ),
               ),
               const SizedBox(height: 30),
-              AuthPasswordField(
-                key: WidgetKeys.auth.loginPasswordField,
-                formFieldController: _controller.passwordController,
-                isEnabled: isEnabled,
+              Semantics(
+                identifier: 'auth_login_password_field',
+                textField: true,
+                child: AuthPasswordField(
+                  key: WidgetKeys.auth.loginPasswordField,
+                  formFieldController: _controller.passwordController,
+                  isEnabled: isEnabled,
+                ),
               ),
             ],
           );
