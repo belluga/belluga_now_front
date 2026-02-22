@@ -483,7 +483,7 @@ jobs:
       - publish_pr_to_web_repo
     if: >-
       (github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&
-      github.ref_name == 'dev' &&
+      github.ref_name == 'stage' &&
       needs.validate_and_build.result == 'success' &&
       needs.publish_pr_to_web_repo.result == 'success'
     env:
@@ -529,9 +529,10 @@ jobs:
             {
               "submodule": "${{ steps.config.outputs.submodule }}",
               "sha": "${{ github.sha }}",
-              "lane": "dev",
+              "target_branch": "bot/next-version",
+              "base_branch": "dev",
               "source_repo": "${{ github.repository }}",
-              "source_branch": "dev"
+              "source_branch": "stage"
             }
 
   notify_orchestrator:
