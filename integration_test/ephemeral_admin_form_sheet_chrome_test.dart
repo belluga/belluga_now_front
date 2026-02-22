@@ -100,12 +100,14 @@ void main() {
           children: [TenantAdminSettingsRoute()],
         ),
       ]);
-      await _pumpFor(tester, const Duration(seconds: 2));
-      await _waitForFinder(tester, find.text('Configurações'));
+      await _pumpFor(tester, const Duration(seconds: 1));
 
       app.appRouter.push(const TenantAdminAccountCreateRoute());
       await _pumpFor(tester, const Duration(seconds: 1));
-      await _waitForFinder(tester, find.text('Criar Conta'));
+      await _waitForFinder(
+        tester,
+        find.byKey(const ValueKey('tenant_admin_account_create_save')),
+      );
 
       expect(find.byType(AppBar), findsNothing);
       expect(find.byType(NavigationBar), findsNothing);

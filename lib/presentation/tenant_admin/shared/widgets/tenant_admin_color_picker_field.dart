@@ -1,3 +1,4 @@
+import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 
@@ -174,18 +175,18 @@ class TenantAdminColorPickerField extends StatelessWidget {
                 Semantics(
                   identifier: _dialogCancelSemanticsIdentifier(),
                   button: true,
-                  onTap: () => Navigator.of(dialogContext).pop(),
+                  onTap: () => dialogContext.router.pop(),
                   child: TextButton(
-                    onPressed: () => Navigator.of(dialogContext).pop(),
+                    onPressed: () => dialogContext.router.pop(),
                     child: const Text('Cancelar'),
                   ),
                 ),
                 Semantics(
                   identifier: _dialogApplySemanticsIdentifier(),
                   button: true,
-                  onTap: () => Navigator.of(dialogContext).pop(selected),
+                  onTap: () => dialogContext.router.pop(selected),
                   child: FilledButton(
-                    onPressed: () => Navigator.of(dialogContext).pop(selected),
+                    onPressed: () => dialogContext.router.pop(selected),
                     child: const Text('Aplicar cor'),
                   ),
                 ),

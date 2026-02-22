@@ -74,6 +74,9 @@ void main() {
     });
   }
 
+  const ValueKey<String> ownershipSegmentedKey =
+      ValueKey<String>('tenant_admin_accounts_segmented_filter');
+
   testWidgets('Admin accounts ownership filters', (tester) async {
     if (GetIt.I.isRegistered<ApplicationContract>()) {
       GetIt.I.unregister<ApplicationContract>();
@@ -130,7 +133,7 @@ void main() {
       ),
     );
     await _pumpFor(tester, const Duration(seconds: 2));
-    await _waitForFinder(tester, find.text('Segmento'));
+    await _waitForFinder(tester, find.byKey(ownershipSegmentedKey));
     await _waitForFinder(tester, find.text('Do tenant'));
     await _waitForAny(
       tester,
