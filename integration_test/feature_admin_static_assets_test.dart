@@ -37,6 +37,10 @@ import 'package:stream_value/core/stream_value.dart';
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
+  const ValueKey<String> staticAssetsSearchToggleKey =
+      ValueKey<String>('tenant_admin_assets_search_toggle');
+  const ValueKey<String> staticAssetsSearchFieldKey =
+      ValueKey<String>('tenant_admin_assets_search_field');
 
   Future<void> _pumpFor(WidgetTester tester, Duration duration) async {
     final end = DateTime.now().add(duration);
@@ -288,7 +292,7 @@ void main() {
     );
     await _pumpFor(tester, const Duration(seconds: 2));
 
-    await _waitForFinder(tester, find.text('Ativos estaticos'));
+    await _waitForFinder(tester, find.byKey(staticAssetsSearchToggleKey));
     await _waitForFinder(tester, find.text('Praia do Morro'));
     await _waitForFinder(tester, find.text('Museu Vale'));
 
@@ -310,10 +314,10 @@ void main() {
     expect(find.text('Praia do Morro'), findsOneWidget);
     expect(find.text('Museu Vale'), findsOneWidget);
 
-    await tester.tap(find.byIcon(Icons.search));
+    await tester.tap(find.byKey(staticAssetsSearchToggleKey));
     await tester.pumpAndSettle();
     await tester.enterText(
-      find.widgetWithText(TextField, 'Buscar por nome ou slug'),
+      find.byKey(staticAssetsSearchFieldKey),
       'museu',
     );
     await tester.pumpAndSettle();

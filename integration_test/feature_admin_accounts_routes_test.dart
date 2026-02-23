@@ -84,6 +84,9 @@ void main() {
     });
   }
 
+  const ValueKey<String> ownershipSegmentedKey =
+      ValueKey<String>('tenant_admin_accounts_segmented_filter');
+
   testWidgets('Admin accounts list/detail/create routes', (tester) async {
     if (GetIt.I.isRegistered<ApplicationContract>()) {
       GetIt.I.unregister<ApplicationContract>();
@@ -146,7 +149,7 @@ void main() {
       ),
     );
     await _pumpFor(tester, const Duration(seconds: 2));
-    await _waitForFinder(tester, find.text('Segmento'));
+    await _waitForFinder(tester, find.byKey(ownershipSegmentedKey));
     await _waitForFinder(tester, find.text('Do tenant'));
     await _waitForAny(
       tester,
@@ -164,7 +167,10 @@ void main() {
       ],
     );
     await _pumpFor(tester, const Duration(seconds: 1));
-    await _waitForFinder(tester, find.text('Criar Conta'));
+    await _waitForFinder(
+      tester,
+      find.byKey(const ValueKey('tenant_admin_account_create_save')),
+    );
 
     await tester.tap(find.byIcon(Icons.close));
     await _pumpFor(tester, const Duration(seconds: 1));
@@ -201,7 +207,7 @@ void main() {
       ),
     ]);
     await _pumpFor(tester, const Duration(seconds: 2));
-    await _waitForFinder(tester, find.text('Segmento'));
+    await _waitForFinder(tester, find.byKey(ownershipSegmentedKey));
 
     await tester.tap(find.text('Nao gerenciadas'));
     await _pumpFor(tester, const Duration(seconds: 1));

@@ -6,7 +6,8 @@ import 'package:belluga_now/domain/app_data/value_object/domain_value.dart';
 import 'package:belluga_now/domain/repositories/admin_mode_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/landlord_tenants_repository_contract.dart';
-import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.dart';
+import 'package:belluga_now/domain/repositories/tenant_admin_selected_tenant_repository_contract.dart';
+import 'package:belluga_now/infrastructure/services/tenant_admin/tenant_admin_base_url_resolver.dart';
 import 'package:belluga_now/presentation/tenant_admin/shell/controllers/tenant_admin_shell_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -15,7 +16,7 @@ import 'package:stream_value/core/stream_value.dart';
 void main() {
   test('auto-selects the tenant when only one is available in bootstrap',
       () async {
-    final tenantScope = _FakeTenantScope();
+    final selectedTenantRepository = _FakeSelectedTenantRepository();
     final controller = TenantAdminShellController(
       adminModeRepository: _FakeAdminModeRepository(),
       appDataRepository: _FakeAppDataRepository(
@@ -23,20 +24,23 @@ void main() {
       ),
       landlordTenantsRepository:
           _FakeLandlordTenantsRepository(remoteTenants: const []),
-      tenantScope: tenantScope,
+      selectedTenantRepository: selectedTenantRepository,
     );
 
     controller.init();
     await Future<void>.delayed(Duration.zero);
 
-    expect(tenantScope.selectedTenantDomain, 'tenant-one.example.com');
+    expect(
+      selectedTenantRepository.selectedTenantDomain,
+      'tenant-one.example.com',
+    );
     expect(controller.availableTenantsStreamValue.value, hasLength(1));
     expect(controller.isTenantSelectionResolvingStreamValue.value, isFalse);
   });
 
   test('auto-selects remote tenant when backend returns a single tenant',
       () async {
-    final tenantScope = _FakeTenantScope();
+    final selectedTenantRepository = _FakeSelectedTenantRepository();
     final controller = TenantAdminShellController(
       adminModeRepository: _FakeAdminModeRepository(),
       appDataRepository: _FakeAppDataRepository(
@@ -51,13 +55,16 @@ void main() {
           ),
         ],
       ),
-      tenantScope: tenantScope,
+      selectedTenantRepository: selectedTenantRepository,
     );
 
     controller.init();
     await Future<void>.delayed(Duration.zero);
 
-    expect(tenantScope.selectedTenantDomain, 'tenant-a.example.com');
+    expect(
+      selectedTenantRepository.selectedTenantDomain,
+      'tenant-a.example.com',
+    );
     expect(controller.availableTenantsStreamValue.value, hasLength(1));
     expect(
         controller.availableTenantsStreamValue.value.single.name, 'Tenant A');
@@ -66,18 +73,18 @@ void main() {
 
   test('keeps resolving tenant selection until backend returns when needed',
       () async {
-    final tenantScope = _FakeTenantScope();
+    final selectedTenantRepository = _FakeSelectedTenantRepository();
     final backendRepository = _ControllableLandlordTenantsRepository();
     final controller = TenantAdminShellController(
       adminModeRepository: _FakeAdminModeRepository(),
       appDataRepository: _FakeAppDataRepository(domains: const []),
       landlordTenantsRepository: backendRepository,
-      tenantScope: tenantScope,
+      selectedTenantRepository: selectedTenantRepository,
     );
 
     controller.init();
     expect(controller.isTenantSelectionResolvingStreamValue.value, isTrue);
-    expect(tenantScope.selectedTenantDomain, isNull);
+    expect(selectedTenantRepository.selectedTenantDomain, isNull);
 
     backendRepository.complete(const [
       LandlordTenantOption(
@@ -89,29 +96,32 @@ void main() {
     await Future<void>.delayed(Duration.zero);
 
     expect(controller.isTenantSelectionResolvingStreamValue.value, isFalse);
-    expect(tenantScope.selectedTenantDomain, 'tenant-x.example.com');
+    expect(
+      selectedTenantRepository.selectedTenantDomain,
+      'tenant-x.example.com',
+    );
   });
 
   test('stops resolving and keeps no selection when backend returns empty list',
       () async {
-    final tenantScope = _FakeTenantScope();
+    final selectedTenantRepository = _FakeSelectedTenantRepository();
     final controller = TenantAdminShellController(
       adminModeRepository: _FakeAdminModeRepository(),
       appDataRepository: _FakeAppDataRepository(domains: const []),
       landlordTenantsRepository:
           _FakeLandlordTenantsRepository(remoteTenants: const []),
-      tenantScope: tenantScope,
+      selectedTenantRepository: selectedTenantRepository,
     );
 
     controller.init();
     await Future<void>.delayed(Duration.zero);
 
     expect(controller.isTenantSelectionResolvingStreamValue.value, isFalse);
-    expect(tenantScope.selectedTenantDomain, isNull);
+    expect(selectedTenantRepository.selectedTenantDomain, isNull);
   });
 
   test('does not bootstrap tenant selection from app domains', () async {
-    final tenantScope = _FakeTenantScope();
+    final selectedTenantRepository = _FakeSelectedTenantRepository();
     final controller = TenantAdminShellController(
       adminModeRepository: _FakeAdminModeRepository(),
       appDataRepository: _FakeAppDataRepository(
@@ -120,30 +130,30 @@ void main() {
       ),
       landlordTenantsRepository:
           _FakeLandlordTenantsRepository(remoteTenants: const []),
-      tenantScope: tenantScope,
+      selectedTenantRepository: selectedTenantRepository,
     );
 
     controller.init();
     await Future<void>.delayed(Duration.zero);
 
     expect(controller.availableTenantsStreamValue.value, isEmpty);
-    expect(tenantScope.selectedTenantDomain, isNull);
+    expect(selectedTenantRepository.selectedTenantDomain, isNull);
   });
 
   test('stops resolving when backend throws during tenant fetch', () async {
-    final tenantScope = _FakeTenantScope();
+    final selectedTenantRepository = _FakeSelectedTenantRepository();
     final controller = TenantAdminShellController(
       adminModeRepository: _FakeAdminModeRepository(),
       appDataRepository: _FakeAppDataRepository(domains: const []),
       landlordTenantsRepository: _ThrowingLandlordTenantsRepository(),
-      tenantScope: tenantScope,
+      selectedTenantRepository: selectedTenantRepository,
     );
 
     controller.init();
     await Future<void>.delayed(Duration.zero);
 
     expect(controller.isTenantSelectionResolvingStreamValue.value, isFalse);
-    expect(tenantScope.selectedTenantDomain, isNull);
+    expect(selectedTenantRepository.selectedTenantDomain, isNull);
   });
 }
 
@@ -270,33 +280,109 @@ class _ThrowingLandlordTenantsRepository
   }
 }
 
-class _FakeTenantScope implements TenantAdminTenantScopeContract {
+class _FakeSelectedTenantRepository
+    implements TenantAdminSelectedTenantRepositoryContract {
+  final StreamValue<List<LandlordTenantOption>> _availableTenantsStreamValue =
+      StreamValue<List<LandlordTenantOption>>(defaultValue: const []);
   final StreamValue<String?> _selectedTenantDomainStreamValue =
       StreamValue<String?>(defaultValue: null);
+  final StreamValue<LandlordTenantOption?> _selectedTenantStreamValue =
+      StreamValue<LandlordTenantOption?>(defaultValue: null);
+
+  @override
+  List<LandlordTenantOption> get availableTenants =>
+      _availableTenantsStreamValue.value;
+
+  @override
+  StreamValue<List<LandlordTenantOption>> get availableTenantsStreamValue =>
+      _availableTenantsStreamValue;
 
   @override
   String? get selectedTenantDomain => _selectedTenantDomainStreamValue.value;
 
   @override
-  String get selectedTenantAdminBaseUrl {
-    final selected = selectedTenantDomain;
-    if (selected == null || selected.isEmpty) {
-      throw StateError('Tenant admin scope is not selected.');
-    }
-    return 'https://$selected/admin/api';
-  }
+  LandlordTenantOption? get selectedTenant => _selectedTenantStreamValue.value;
+
+  @override
+  StreamValue<LandlordTenantOption?> get selectedTenantStreamValue =>
+      _selectedTenantStreamValue;
+
+  @override
+  String get selectedTenantAdminBaseUrl =>
+      resolveTenantAdminBaseUrl(selectedTenantDomain ?? '');
 
   @override
   StreamValue<String?> get selectedTenantDomainStreamValue =>
       _selectedTenantDomainStreamValue;
 
   @override
-  void clearSelectedTenantDomain() {
+  void clearSelectedTenant() {
     _selectedTenantDomainStreamValue.addValue(null);
+    _selectedTenantStreamValue.addValue(null);
+  }
+
+  @override
+  void selectTenant(LandlordTenantOption tenant) {
+    final normalizedDomain = _normalizeTenantDomain(tenant.mainDomain);
+    if (normalizedDomain == null) {
+      return;
+    }
+    _selectedTenantDomainStreamValue.addValue(normalizedDomain);
+    _selectedTenantStreamValue.addValue(tenant);
   }
 
   @override
   void selectTenantDomain(String tenantDomain) {
-    _selectedTenantDomainStreamValue.addValue(tenantDomain.trim());
+    final normalizedDomain = _normalizeTenantDomain(tenantDomain);
+    if (normalizedDomain == null) {
+      return;
+    }
+    _selectedTenantDomainStreamValue.addValue(normalizedDomain);
+    final selected = availableTenants.where((tenant) {
+      return _normalizeTenantDomain(tenant.mainDomain) == normalizedDomain;
+    }).firstOrNull;
+    _selectedTenantStreamValue.addValue(selected);
+  }
+
+  @override
+  void setAvailableTenants(List<LandlordTenantOption> tenants) {
+    _availableTenantsStreamValue.addValue(tenants);
+    if (tenants.length == 1) {
+      selectTenant(tenants.first);
+      return;
+    }
+    if (selectedTenantDomain == null) {
+      return;
+    }
+    final selected = tenants.where((tenant) {
+      return _normalizeTenantDomain(tenant.mainDomain) == selectedTenantDomain;
+    }).firstOrNull;
+    if (selected == null) {
+      clearSelectedTenant();
+      return;
+    }
+    _selectedTenantStreamValue.addValue(selected);
+  }
+
+  String? _normalizeTenantDomain(String? raw) {
+    final trimmed = raw?.trim();
+    if (trimmed == null || trimmed.isEmpty) {
+      return null;
+    }
+    final uri =
+        Uri.tryParse(trimmed.contains('://') ? trimmed : 'https://$trimmed');
+    if (uri != null && uri.host.trim().isNotEmpty) {
+      return uri.host.trim();
+    }
+    return trimmed;
+  }
+}
+
+extension<T> on Iterable<T> {
+  T? get firstOrNull {
+    if (this.isEmpty) {
+      return null;
+    }
+    return first;
   }
 }

@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:belluga_now/domain/repositories/landlord_auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_settings_repository_contract.dart';
 import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.dart';
@@ -6,6 +8,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_settings.dart';
 import 'package:dio/dio.dart';
 import 'package:get_it/get_it.dart';
 import 'package:http_parser/http_parser.dart';
+import 'package:stream_value/core/stream_value.dart';
 
 class TenantAdminSettingsRepository
     implements TenantAdminSettingsRepositoryContract {
@@ -17,6 +20,17 @@ class TenantAdminSettingsRepository
 
   final Dio _dio;
   final TenantAdminTenantScopeContract? _tenantScope;
+  final StreamValue<TenantAdminBrandingSettings?> _brandingSettingsStreamValue =
+      StreamValue<TenantAdminBrandingSettings?>(defaultValue: null);
+
+  @override
+  StreamValue<TenantAdminBrandingSettings?> get brandingSettingsStreamValue =>
+      _brandingSettingsStreamValue;
+
+  @override
+  void clearBrandingSettings() {
+    _brandingSettingsStreamValue.addValue(null);
+  }
 
   String get _apiBaseUrl =>
       (_tenantScope ?? GetIt.I.get<TenantAdminTenantScopeContract>())
@@ -128,6 +142,32 @@ class TenantAdminSettingsRepository
   }
 
   @override
+  Future<TenantAdminBrandingSettings> fetchBrandingSettings() async {
+    try {
+      final response = await _dio.getUri(
+        _buildEnvironmentEndpointUri(),
+        options: Options(
+          headers: _buildBrandingReadHeaders(),
+        ),
+      );
+      final payload = _extractEnvironmentMap(
+        _decodeJsonObject(
+          response.data,
+          endpoint: response.requestOptions.uri,
+        ),
+      );
+      final settings = _mapBrandingFromEnvironment(
+        payload,
+        tenantOrigin: _resolveTenantOriginUri(),
+      );
+      _brandingSettingsStreamValue.addValue(settings);
+      return settings;
+    } on DioException catch (error) {
+      throw _wrapError(error, 'load branding settings');
+    }
+  }
+
+  @override
   Future<TenantAdminBrandingSettings> updateBranding({
     required TenantAdminBrandingUpdateInput input,
   }) async {
@@ -179,7 +219,12 @@ class TenantAdminSettingsRepository
           contentType: 'multipart/form-data',
         ),
       );
-      return _mapBrandingSettings(response.data);
+      if (response.statusCode != null && response.statusCode! >= 400) {
+        throw Exception(
+          'Failed to update branding settings [status=${response.statusCode}]',
+        );
+      }
+      return fetchBrandingSettings();
     } on DioException catch (error) {
       throw _wrapError(error, 'update branding settings');
     }
@@ -197,6 +242,57 @@ class TenantAdminSettingsRepository
       return raw;
     }
     throw Exception('Unexpected settings response shape.');
+  }
+
+  Map<String, dynamic> _extractEnvironmentMap(dynamic raw) {
+    if (raw is! Map<String, dynamic>) {
+      throw Exception('Unexpected environment response shape.');
+    }
+    final data = raw['data'];
+    if (data == null) {
+      return raw;
+    }
+    if (data is Map<String, dynamic>) {
+      return data;
+    }
+    throw Exception('Unexpected environment data shape.');
+  }
+
+  Map<String, dynamic> _decodeJsonObject(
+    dynamic raw, {
+    required Uri endpoint,
+  }) {
+    if (raw is Map<String, dynamic>) {
+      return raw;
+    }
+    if (raw is Map) {
+      return Map<String, dynamic>.from(raw);
+    }
+    if (raw is String) {
+      final trimmed = raw.trim();
+      if (trimmed.isEmpty) {
+        throw Exception(
+          'Environment response body is empty for $endpoint.',
+        );
+      }
+      final decoded = jsonDecode(trimmed);
+      if (decoded is Map<String, dynamic>) {
+        return decoded;
+      }
+      if (decoded is Map) {
+        return Map<String, dynamic>.from(decoded);
+      }
+      throw Exception(
+        'Environment response is not an object for $endpoint.',
+      );
+    }
+    if (raw is List<int>) {
+      final decodedRaw = utf8.decode(raw, allowMalformed: true);
+      return _decodeJsonObject(decodedRaw, endpoint: endpoint);
+    }
+    throw Exception(
+      'Unexpected environment payload type (${raw.runtimeType}) for $endpoint.',
+    );
   }
 
   TenantAdminTelemetrySettingsSnapshot _mapTelemetrySnapshot(dynamic raw) {
@@ -306,45 +402,220 @@ class TenantAdminSettingsRepository
     );
   }
 
-  TenantAdminBrandingSettings _mapBrandingSettings(dynamic raw) {
-    if (raw is! Map<String, dynamic>) {
-      throw Exception('Unexpected branding response shape.');
-    }
-    final brandingRaw = raw['branding_data'];
-    if (brandingRaw is! Map<String, dynamic>) {
-      throw Exception('Unexpected branding_data response shape.');
+  TenantAdminBrandingSettings _mapBrandingFromEnvironment(
+    Map<String, dynamic> map, {
+    required Uri tenantOrigin,
+  }) {
+    final environmentType = map['type']?.toString().trim().toLowerCase();
+    if (environmentType != 'tenant') {
+      throw Exception(
+        'Unexpected environment type "$environmentType" for tenant branding read.',
+      );
     }
 
-    final themeSettingsRaw = brandingRaw['theme_data_settings'];
-    final themeSettings = themeSettingsRaw is Map<String, dynamic>
-        ? themeSettingsRaw
-        : const <String, dynamic>{};
-    final logoSettingsRaw = brandingRaw['logo_settings'];
-    final logoSettings = logoSettingsRaw is Map<String, dynamic>
-        ? logoSettingsRaw
-        : const <String, dynamic>{};
-    final pwaIconRaw = brandingRaw['pwa_icon'];
-    final pwaIcon = pwaIconRaw is Map<String, dynamic>
-        ? pwaIconRaw
-        : const <String, dynamic>{};
+    final themeSettingsRaw = map['theme_data_settings'];
+    if (themeSettingsRaw is! Map<String, dynamic>) {
+      throw Exception('Missing theme_data_settings in tenant environment.');
+    }
+    final themeSettings = themeSettingsRaw;
+
+    final tenantName = _requireNonEmptyString(
+      map['name'],
+      fieldName: 'name',
+    );
+    final primarySeedColor = _requireHexColor(
+      themeSettings['primary_seed_color'],
+      fieldName: 'theme_data_settings.primary_seed_color',
+    );
+    final secondarySeedColor = _requireHexColor(
+      themeSettings['secondary_seed_color'],
+      fieldName: 'theme_data_settings.secondary_seed_color',
+    );
+    final brightnessDefault = _parseBrandingBrightness(
+      themeSettings['brightness_default'],
+    );
 
     return TenantAdminBrandingSettings(
-      tenantName: '',
-      brightnessDefault: TenantAdminBrandingBrightness.fromRaw(
-        themeSettings['brightness_default']?.toString(),
-      ),
-      primarySeedColor:
-          themeSettings['primary_seed_color']?.toString().trim() ?? '#4FA0E3',
-      secondarySeedColor:
-          themeSettings['secondary_seed_color']?.toString().trim() ?? '#E80D5D',
-      lightLogoUrl: _normalizeOptionalString(logoSettings['light_logo_uri']),
-      darkLogoUrl: _normalizeOptionalString(logoSettings['dark_logo_uri']),
-      lightIconUrl: _normalizeOptionalString(logoSettings['light_icon_uri']),
-      darkIconUrl: _normalizeOptionalString(logoSettings['dark_icon_uri']),
-      faviconUrl: _normalizeOptionalString(logoSettings['favicon_uri']),
-      pwaIconUrl: _normalizeOptionalString(
-        pwaIcon['icon512_uri'] ?? pwaIcon['source_uri'],
-      ),
+      tenantName: tenantName,
+      brightnessDefault: brightnessDefault,
+      primarySeedColor: primarySeedColor,
+      secondarySeedColor: secondarySeedColor,
+      lightLogoUrl: _buildTenantAssetUrl(tenantOrigin, 'logo-light.png'),
+      darkLogoUrl: _buildTenantAssetUrl(tenantOrigin, 'logo-dark.png'),
+      lightIconUrl: _buildTenantAssetUrl(tenantOrigin, 'icon-light.png'),
+      darkIconUrl: _buildTenantAssetUrl(tenantOrigin, 'icon-dark.png'),
+      faviconUrl: _buildTenantAssetUrl(tenantOrigin, 'favicon.ico'),
+      pwaIconUrl: _resolvePwaIconUrl(map, tenantOrigin: tenantOrigin),
+    );
+  }
+
+  Uri _buildEnvironmentEndpointUri() {
+    final origin = _resolveTenantOriginUri();
+    return origin.replace(
+      path: '/api/v1/environment',
+      queryParameters: {
+        '_ts': DateTime.now().microsecondsSinceEpoch.toString(),
+      },
+    );
+  }
+
+  Uri _resolveTenantOriginUri() {
+    final adminBaseUri = _parseToOriginUri(_apiBaseUrl);
+    if (adminBaseUri != null) {
+      return adminBaseUri;
+    }
+    throw Exception(
+      'Could not resolve tenant-scoped admin origin for branding settings.',
+    );
+  }
+
+  Uri? _parseToOriginUri(String? raw) {
+    final trimmed = raw?.trim();
+    if (trimmed == null || trimmed.isEmpty) {
+      return null;
+    }
+    final normalized = trimmed.contains('://') ? trimmed : 'https://$trimmed';
+    final parsed = Uri.tryParse(normalized);
+    if (parsed == null || parsed.host.trim().isEmpty) {
+      return null;
+    }
+    return Uri(
+      scheme: parsed.scheme.isEmpty ? 'https' : parsed.scheme,
+      host: parsed.host.trim(),
+      port: parsed.hasPort ? parsed.port : null,
+    );
+  }
+
+  String _buildTenantAssetUrl(Uri origin, String assetName) {
+    return origin
+        .replace(path: '/$assetName', queryParameters: null)
+        .toString();
+  }
+
+  String? _resolvePwaIconUrl(
+    Map<String, dynamic> payload, {
+    required Uri tenantOrigin,
+  }) {
+    final logoSettings = payload['logo_settings'];
+    final fromLogoSettings = _extractPwaIconUrlFromNode(
+      logoSettings,
+      tenantOrigin: tenantOrigin,
+    );
+    if (fromLogoSettings != null) {
+      return fromLogoSettings;
+    }
+
+    return _extractPwaIconUrlFromNode(
+      payload['pwa_icon'],
+      tenantOrigin: tenantOrigin,
+    );
+  }
+
+  String? _extractPwaIconUrlFromNode(
+    dynamic node, {
+    required Uri tenantOrigin,
+  }) {
+    if (node is String) {
+      return _resolveAssetUrl(
+        node,
+        tenantOrigin: tenantOrigin,
+      );
+    }
+    if (node is! Map) {
+      return null;
+    }
+
+    final map = Map<String, dynamic>.from(node);
+    final direct = _resolveAssetUrl(
+      map['icon512_uri'],
+      tenantOrigin: tenantOrigin,
+    );
+    if (direct != null) {
+      return direct;
+    }
+
+    final uri = _resolveAssetUrl(
+      map['uri'],
+      tenantOrigin: tenantOrigin,
+    );
+    if (uri != null) {
+      return uri;
+    }
+
+    final pwaIconUri = _resolveAssetUrl(
+      map['pwa_icon_uri'],
+      tenantOrigin: tenantOrigin,
+    );
+    if (pwaIconUri != null) {
+      return pwaIconUri;
+    }
+
+    final nested = map['pwa_icon'];
+    if (nested != null && !identical(nested, node)) {
+      return _extractPwaIconUrlFromNode(
+        nested,
+        tenantOrigin: tenantOrigin,
+      );
+    }
+    return null;
+  }
+
+  String? _resolveAssetUrl(
+    dynamic raw, {
+    required Uri tenantOrigin,
+  }) {
+    final value = raw?.toString().trim();
+    if (value == null || value.isEmpty) {
+      return null;
+    }
+    final parsed = Uri.tryParse(value);
+    if (parsed == null) {
+      return null;
+    }
+    if (parsed.host.trim().isNotEmpty) {
+      return parsed.toString();
+    }
+    return tenantOrigin.resolveUri(parsed).toString();
+  }
+
+  Map<String, String> _buildBrandingReadHeaders() {
+    return {
+      'Accept': 'application/json',
+    };
+  }
+
+  String _requireNonEmptyString(
+    dynamic raw, {
+    required String fieldName,
+  }) {
+    final value = raw?.toString().trim();
+    if (value == null || value.isEmpty) {
+      throw Exception('Missing required environment field: $fieldName');
+    }
+    return value;
+  }
+
+  String _requireHexColor(
+    dynamic raw, {
+    required String fieldName,
+  }) {
+    final value = _normalizeHexColor(raw);
+    if (value == null) {
+      throw Exception('Invalid or missing color field: $fieldName');
+    }
+    return value;
+  }
+
+  TenantAdminBrandingBrightness _parseBrandingBrightness(dynamic raw) {
+    final value = raw?.toString().trim().toLowerCase();
+    if (value == 'light') {
+      return TenantAdminBrandingBrightness.light;
+    }
+    if (value == 'dark') {
+      return TenantAdminBrandingBrightness.dark;
+    }
+    throw Exception(
+      'Invalid or missing brightness field: theme_data_settings.brightness_default',
     );
   }
 
@@ -387,15 +658,23 @@ class TenantAdminSettingsRepository
     return MediaType(parts[0], parts[1]);
   }
 
-  String? _normalizeOptionalString(dynamic raw) {
-    if (raw == null) {
+  String? _normalizeHexColor(dynamic raw) {
+    final value = raw?.toString().trim();
+    if (value == null || value.isEmpty) {
       return null;
     }
-    final value = raw.toString().trim();
-    if (value.isEmpty) {
+    final sixDigit = RegExp(r'^#([a-fA-F0-9]{6})$');
+    if (sixDigit.hasMatch(value)) {
+      return value.toUpperCase();
+    }
+    final threeDigit = RegExp(r'^#([a-fA-F0-9]{3})$');
+    final match = threeDigit.firstMatch(value);
+    if (match == null) {
       return null;
     }
-    return value;
+    final compact = match.group(1)!;
+    final expanded = compact.split('').map((char) => '$char$char').join();
+    return '#${expanded.toUpperCase()}';
   }
 
   int? _parseInt(dynamic value) {
