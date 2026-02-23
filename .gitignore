@@ -27,6 +27,7 @@ migrate_working_dir/
 # Flutter/Dart/Pub related
 **/doc/api/
 **/ios/Flutter/.last_build_id
+**/test/**/failures/
 .dart_tool/
 .flutter-plugins
 .flutter-plugins-dependencies
@@ -63,6 +64,9 @@ foundation_documentation
 .agent/logs
 .agent/test-run-progress.md
 .codex
+.cline/
+.clinerules
+CLINE.md
 
 # Compile-time lane define overrides (local only)
 config/defines/local.override.json

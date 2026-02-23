@@ -84,11 +84,16 @@ class AuthLoginCanvaContent extends StatelessWidget {
         StreamValueBuilder<bool>(
           streamValue: _controller.buttonLoadingValue,
           builder: (context, isLoading) {
-            return ButtonLoading(
-              key: WidgetKeys.auth.loginButton,
-              onPressed: _tryLoginWithEmailPassword,
-              isLoading: isLoading,
-              label: 'Entrar',
+            return Semantics(
+              identifier: 'auth_login_submit_button',
+              button: true,
+              onTap: _tryLoginWithEmailPassword,
+              child: ButtonLoading(
+                key: WidgetKeys.auth.loginButton,
+                onPressed: _tryLoginWithEmailPassword,
+                isLoading: isLoading,
+                label: 'Entrar',
+              ),
             );
           },
         ),
@@ -98,9 +103,14 @@ class AuthLoginCanvaContent extends StatelessWidget {
           child: const Text('Criar conta'),
         ),
         if (_controller.isLandlordContext)
-          TextButton(
-            onPressed: () => _openLandlordLogin(context),
-            child: const Text('Entrar como Admin'),
+          Semantics(
+            identifier: 'auth_login_enter_as_admin_button',
+            button: true,
+            onTap: () => _openLandlordLogin(context),
+            child: TextButton(
+              onPressed: () => _openLandlordLogin(context),
+              child: const Text('Entrar como Admin'),
+            ),
           ),
       ],
     );

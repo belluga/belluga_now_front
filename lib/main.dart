@@ -3,12 +3,16 @@ import 'package:belluga_now/application/application_contract.dart';
 import 'package:belluga_now/application/configurations/belluga_constants.dart';
 import 'package:get_it/get_it.dart';
 import 'dart:async';
+import 'dart:ui' as ui;
 
 import 'package:flutter/widgets.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:belluga_now/application/application.dart';
 
 Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  ui.DartPluginRegistrant.ensureInitialized();
+
   GetIt.I.registerSingleton<ApplicationContract>(Application());
 
   await SentryFlutter.init(

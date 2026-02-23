@@ -62,50 +62,66 @@ Future<bool> _showLandlordLoginSheet(
                 style: Theme.of(ctx).textTheme.titleMedium,
               ),
               const SizedBox(height: 12),
-              TextField(
-                controller: emailController,
-                keyboardType: TextInputType.emailAddress,
-                textInputAction: TextInputAction.next,
-                decoration: const InputDecoration(
-                  labelText: 'E-mail',
-                  border: OutlineInputBorder(),
+              Semantics(
+                identifier: 'landlord_login_sheet_email_field',
+                textField: true,
+                child: TextField(
+                  key: const ValueKey('landlord_login_sheet_email_field'),
+                  controller: emailController,
+                  keyboardType: TextInputType.emailAddress,
+                  textInputAction: TextInputAction.next,
+                  decoration: const InputDecoration(
+                    labelText: 'E-mail',
+                    border: OutlineInputBorder(),
+                  ),
                 ),
               ),
               const SizedBox(height: 12),
-              TextField(
-                controller: passwordController,
-                obscureText: true,
-                textInputAction: TextInputAction.done,
-                decoration: const InputDecoration(
-                  labelText: 'Senha',
-                  border: OutlineInputBorder(),
+              Semantics(
+                identifier: 'landlord_login_sheet_password_field',
+                textField: true,
+                child: TextField(
+                  key: const ValueKey('landlord_login_sheet_password_field'),
+                  controller: passwordController,
+                  obscureText: true,
+                  textInputAction: TextInputAction.done,
+                  decoration: const InputDecoration(
+                    labelText: 'Senha',
+                    border: OutlineInputBorder(),
+                  ),
                 ),
               ),
               const SizedBox(height: 16),
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton(
-                  onPressed: () async {
-                    final email = emailController.text.trim();
-                    final password = passwordController.text.trim();
-                    final messenger = ScaffoldMessenger.of(ctx);
-                    final router = ctx.router;
-                    if (email.isEmpty || password.isEmpty) {
-                      messenger.showSnackBar(
-                        const SnackBar(content: Text('Informe e-mail e senha.')),
-                      );
-                      return;
-                    }
-                    try {
-                      didLogin = await onSubmit(email, password);
-                      router.pop();
-                    } catch (e) {
-                      messenger.showSnackBar(
-                        SnackBar(content: Text('Falha ao entrar: $e')),
-                      );
-                    }
-                  },
-                  child: const Text('Entrar'),
+              Semantics(
+                identifier: 'landlord_login_sheet_submit_button',
+                button: true,
+                child: SizedBox(
+                  width: double.infinity,
+                  child: FilledButton(
+                    key: const ValueKey('landlord_login_sheet_submit_button'),
+                    onPressed: () async {
+                      final email = emailController.text.trim();
+                      final password = passwordController.text.trim();
+                      final messenger = ScaffoldMessenger.of(ctx);
+                      final router = ctx.router;
+                      if (email.isEmpty || password.isEmpty) {
+                        messenger.showSnackBar(
+                          const SnackBar(
+                              content: Text('Informe e-mail e senha.')),
+                        );
+                        return;
+                      }
+                      try {
+                        didLogin = await onSubmit(email, password);
+                        router.pop();
+                      } catch (e) {
+                        messenger.showSnackBar(
+                          SnackBar(content: Text('Falha ao entrar: $e')),
+                        );
+                      }
+                    },
+                    child: const Text('Entrar'),
+                  ),
                 ),
               ),
             ],
