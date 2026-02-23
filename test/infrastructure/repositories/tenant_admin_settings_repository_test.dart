@@ -251,6 +251,57 @@ void main() {
     );
   });
 
+  test(
+      'fetchBrandingSettings ignores stale response from previous tenant scope',
+      () async {
+    final adapter = _RoutingAdapter(
+      environmentPayloadByHost: const {
+        'tenant-a.test': {
+          'type': 'tenant',
+          'tenant_id': 'tenant-a',
+          'name': 'Tenant A',
+          'theme_data_settings': {
+            'brightness_default': 'light',
+            'primary_seed_color': '#111111',
+            'secondary_seed_color': '#222222',
+          },
+        },
+        'tenant-b.test': {
+          'type': 'tenant',
+          'tenant_id': 'tenant-b',
+          'name': 'Tenant B',
+          'theme_data_settings': {
+            'brightness_default': 'dark',
+            'primary_seed_color': '#333333',
+            'secondary_seed_color': '#444444',
+          },
+        },
+      },
+      environmentDelayByHost: const {
+        'tenant-a.test': Duration(milliseconds: 80),
+        'tenant-b.test': Duration(milliseconds: 5),
+      },
+    );
+    final scope = _MutableTenantScope('https://tenant-a.test');
+    final dio = Dio()..httpClientAdapter = adapter;
+    final repository = TenantAdminSettingsRepository(
+      dio: dio,
+      tenantScope: scope,
+    );
+
+    final staleFetch = repository.fetchBrandingSettings();
+    scope.selectTenantDomain('https://tenant-b.test');
+    final currentFetch = repository.fetchBrandingSettings();
+
+    final current = await currentFetch;
+    final stale = await staleFetch;
+
+    expect(current.tenantName, 'Tenant B');
+    expect(stale.tenantName, 'Tenant A');
+    expect(
+        repository.brandingSettingsStreamValue.value?.tenantName, 'Tenant B');
+  });
+
   test('clearBrandingSettings clears repository canonical branding stream',
       () async {
     final adapter = _RoutingAdapter();
@@ -448,9 +499,13 @@ class _NoTenantScope implements TenantAdminTenantScopeContract {
 class _RoutingAdapter implements HttpClientAdapter {
   _RoutingAdapter({
     this.environmentPayload,
+    this.environmentPayloadByHost,
+    this.environmentDelayByHost,
   });
 
   final Map<String, dynamic>? environmentPayload;
+  final Map<String, Map<String, dynamic>>? environmentPayloadByHost;
+  final Map<String, Duration>? environmentDelayByHost;
   final List<RequestOptions> requests = [];
 
   @override
@@ -544,8 +599,14 @@ class _RoutingAdapter implements HttpClientAdapter {
     }
 
     if (options.uri.path == '/api/v1/environment' && method == 'GET') {
+      final host = options.uri.host.trim().toLowerCase();
+      final delay = environmentDelayByHost?[host];
+      if (delay != null && delay > Duration.zero) {
+        await Future<void>.delayed(delay);
+      }
       return _jsonResponse(
-        environmentPayload ??
+        environmentPayloadByHost?[host] ??
+            environmentPayload ??
             {
               'type': 'tenant',
               'tenant_id': 'tenant-a',

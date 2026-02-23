@@ -22,6 +22,7 @@ class TenantAdminSettingsRepository
   final TenantAdminTenantScopeContract? _tenantScope;
   final StreamValue<TenantAdminBrandingSettings?> _brandingSettingsStreamValue =
       StreamValue<TenantAdminBrandingSettings?>(defaultValue: null);
+  int _brandingFetchSequence = 0;
 
   @override
   StreamValue<TenantAdminBrandingSettings?> get brandingSettingsStreamValue =>
@@ -143,9 +144,13 @@ class TenantAdminSettingsRepository
 
   @override
   Future<TenantAdminBrandingSettings> fetchBrandingSettings() async {
+    final requestedApiBaseUrl = _apiBaseUrl;
+    final requestSequence = ++_brandingFetchSequence;
     try {
       final response = await _dio.getUri(
-        _buildEnvironmentEndpointUri(),
+        _buildEnvironmentEndpointUri(
+          apiBaseUrl: requestedApiBaseUrl,
+        ),
         options: Options(
           headers: _buildBrandingReadHeaders(),
         ),
@@ -158,9 +163,16 @@ class TenantAdminSettingsRepository
       );
       final settings = _mapBrandingFromEnvironment(
         payload,
-        tenantOrigin: _resolveTenantOriginUri(),
+        tenantOrigin: _resolveTenantOriginUri(
+          apiBaseUrl: requestedApiBaseUrl,
+        ),
       );
-      _brandingSettingsStreamValue.addValue(settings);
+      if (_shouldPublishBrandingResponse(
+        requestSequence: requestSequence,
+        requestedApiBaseUrl: requestedApiBaseUrl,
+      )) {
+        _brandingSettingsStreamValue.addValue(settings);
+      }
       return settings;
     } on DioException catch (error) {
       throw _wrapError(error, 'load branding settings');
@@ -449,8 +461,10 @@ class TenantAdminSettingsRepository
     );
   }
 
-  Uri _buildEnvironmentEndpointUri() {
-    final origin = _resolveTenantOriginUri();
+  Uri _buildEnvironmentEndpointUri({String? apiBaseUrl}) {
+    final origin = _resolveTenantOriginUri(
+      apiBaseUrl: apiBaseUrl,
+    );
     return origin.replace(
       path: '/api/v1/environment',
       queryParameters: {
@@ -459,14 +473,28 @@ class TenantAdminSettingsRepository
     );
   }
 
-  Uri _resolveTenantOriginUri() {
-    final adminBaseUri = _parseToOriginUri(_apiBaseUrl);
+  Uri _resolveTenantOriginUri({String? apiBaseUrl}) {
+    final adminBaseUri = _parseToOriginUri(apiBaseUrl ?? _apiBaseUrl);
     if (adminBaseUri != null) {
       return adminBaseUri;
     }
     throw Exception(
       'Could not resolve tenant-scoped admin origin for branding settings.',
     );
+  }
+
+  bool _shouldPublishBrandingResponse({
+    required int requestSequence,
+    required String requestedApiBaseUrl,
+  }) {
+    if (requestSequence != _brandingFetchSequence) {
+      return false;
+    }
+    try {
+      return requestedApiBaseUrl == _apiBaseUrl;
+    } catch (_) {
+      return false;
+    }
   }
 
   Uri? _parseToOriginUri(String? raw) {
