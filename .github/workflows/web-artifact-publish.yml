@@ -41,8 +41,7 @@ jobs:
           BASE_REF="${GITHUB_BASE_REF:-}"
           HEAD_REF="${GITHUB_HEAD_REF:-}"
           PR_HEAD_SHA="$(jq -r '.pull_request.head.sha // empty' "${GITHUB_EVENT_PATH}")"
-          PR_BODY="$(jq -r '.pull_request.body // ""' "${GITHUB_EVENT_PATH}")"
-          EXPECTED_SHA="$(printf '%s\n' "${PR_BODY}" | sed -n 's/^- Expected SHA:[[:space:]]*//p' | head -n1 | tr -d '\r' | tr '[:upper:]' '[:lower:]')"
+          EXPECTED_SHA="$(printf '%s\n' "${PR_HEAD_SHA}" | tr -d '\r' | tr '[:upper:]' '[:lower:]')"
 
           if [[ -z "$BASE_REF" || -z "$HEAD_REF" || -z "$PR_HEAD_SHA" ]]; then
             echo "ERROR: missing pull request branch context (base/head)." >&2
@@ -52,12 +51,8 @@ jobs:
           case "$BASE_REF" in
             stage)
               [[ "$HEAD_REF" == "dev" ]] || { echo "ERROR: only 'dev' may target 'stage' (received '$HEAD_REF' -> '$BASE_REF')." >&2; exit 1; }
-              if [[ -z "${EXPECTED_SHA}" ]]; then
-                echo "ERROR: promotion PR must declare '- Expected SHA: <40-char-sha>' in body." >&2
-                exit 1
-              fi
               if [[ ! "${EXPECTED_SHA}" =~ ^[0-9a-f]{40}$ ]]; then
-                echo "ERROR: invalid Expected SHA lock '${EXPECTED_SHA}' in PR body." >&2
+                echo "ERROR: invalid PR head SHA lock '${EXPECTED_SHA}'." >&2
                 exit 1
               fi
               git fetch origin "${PR_HEAD_SHA}" --quiet || true
@@ -77,12 +72,8 @@ jobs:
               ;;
             main)
               [[ "$HEAD_REF" == "stage" ]] || { echo "ERROR: only 'stage' may target 'main' (received '$HEAD_REF' -> '$BASE_REF')." >&2; exit 1; }
-              if [[ -z "${EXPECTED_SHA}" ]]; then
-                echo "ERROR: promotion PR must declare '- Expected SHA: <40-char-sha>' in body." >&2
-                exit 1
-              fi
               if [[ ! "${EXPECTED_SHA}" =~ ^[0-9a-f]{40}$ ]]; then
-                echo "ERROR: invalid Expected SHA lock '${EXPECTED_SHA}' in PR body." >&2
+                echo "ERROR: invalid PR head SHA lock '${EXPECTED_SHA}'." >&2
                 exit 1
               fi
               git fetch origin "${PR_HEAD_SHA}" --quiet || true
@@ -385,9 +376,6 @@ jobs:
           git commit -m "chore(web): publish Flutter web build from ${TARGET_BRANCH} (${short_sha})"
           git push -u origin "$PR_BRANCH" --force-with-lease
 
-          pr_expected_sha="$(git rev-parse HEAD)"
-          echo "PR_EXPECTED_SHA=$pr_expected_sha" >> "$GITHUB_ENV"
-
       - name: Create PR in web-app repo
         id: create_web_pr
         if: steps.gate.outputs.enabled == 'true' && env.NO_CHANGES == 'false'
@@ -395,22 +383,11 @@ jobs:
           GH_TOKEN: ${{ secrets.WEB_APP_REPO_TOKEN }}
           WEB_APP_REPO: ${{ steps.gate.outputs.web_repo }}
           TARGET_BRANCH: ${{ github.ref_name }}
-          PR_EXPECTED_SHA: ${{ env.PR_EXPECTED_SHA }}
         run: |
           set -euo pipefail
 
-          if [[ -z "${PR_EXPECTED_SHA:-}" ]]; then
-            echo "ERROR: missing PR_EXPECTED_SHA after pushing publish branch." >&2
-            exit 1
-          fi
-
-          if [[ ! "${PR_EXPECTED_SHA}" =~ ^[0-9a-f]{40}$ ]]; then
-            echo "ERROR: invalid PR_EXPECTED_SHA '${PR_EXPECTED_SHA}'." >&2
-            exit 1
-          fi
-
           title="chore(web): publish Flutter web build from ${TARGET_BRANCH}"
-          printf -v body 'Automated web bundle publication from flutter-app commit %s.\n\n- Expected SHA: %s' "${GITHUB_SHA}" "${PR_EXPECTED_SHA}"
+          printf -v body 'Automated web bundle publication from flutter-app commit %s.' "${GITHUB_SHA}"
 
           existing_pr="$(gh pr list --repo "$WEB_APP_REPO" --base "$TARGET_BRANCH" --head "$PR_BRANCH" --json number --jq '.[0].number // empty')"
 
@@ -578,8 +555,7 @@ jobs:
 
           pr_number="$(jq -r '.pull_request.number // empty' "${GITHUB_EVENT_PATH}")"
           pr_url="$(jq -r '.pull_request.html_url // empty' "${GITHUB_EVENT_PATH}")"
-          pr_body="$(jq -r '.pull_request.body // ""' "${GITHUB_EVENT_PATH}")"
-          expected_sha="$(printf '%s\n' "${pr_body}" | sed -n 's/^- Expected SHA:[[:space:]]*//p' | head -n1 | tr -d '\r' | tr '[:upper:]' '[:lower:]')"
+          expected_sha="$(jq -r '.pull_request.head.sha // empty' "${GITHUB_EVENT_PATH}" | tr -d '\r' | tr '[:upper:]' '[:lower:]')"
 
           echo "result=${result}" >> "$GITHUB_OUTPUT"
           echo "pr_number=${pr_number}" >> "$GITHUB_OUTPUT"
