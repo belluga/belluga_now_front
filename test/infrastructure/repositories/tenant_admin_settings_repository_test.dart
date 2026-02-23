@@ -160,6 +160,51 @@ void main() {
     );
   });
 
+  test(
+      'updateBranding succeeds when refresh fails after POST and returns optimistic settings',
+      () async {
+    final adapter = _RoutingAdapter(
+      environmentPayload: const {
+        'type': 'landlord',
+      },
+    );
+    final scope = _MutableTenantScope('https://tenant-a.test');
+    final dio = Dio()..httpClientAdapter = adapter;
+    final repository = TenantAdminSettingsRepository(
+      dio: dio,
+      tenantScope: scope,
+    );
+
+    final updated = await repository.updateBranding(
+      input: TenantAdminBrandingUpdateInput(
+        tenantName: 'Guarappari',
+        brightnessDefault: TenantAdminBrandingBrightness.dark,
+        primarySeedColor: '#112233',
+        secondarySeedColor: '#445566',
+        lightLogoUpload: TenantAdminMediaUpload(
+          bytes: Uint8List.fromList(const [1, 2, 3]),
+          fileName: 'light_logo.png',
+          mimeType: 'image/png',
+        ),
+      ),
+    );
+
+    expect(adapter.requests, hasLength(2));
+    expect(updated.tenantName, 'Guarappari');
+    expect(updated.brightnessDefault, TenantAdminBrandingBrightness.dark);
+    expect(updated.primarySeedColor, '#112233');
+    expect(updated.secondarySeedColor, '#445566');
+    expect(updated.lightLogoUrl, contains('tenant-a.test/logo-light.png'));
+    expect(
+      repository.brandingSettingsStreamValue.value?.tenantName,
+      'Guarappari',
+    );
+    expect(
+      repository.brandingSettingsStreamValue.value?.primarySeedColor,
+      '#112233',
+    );
+  });
+
   test('uses selected tenant scope dynamically between requests', () async {
     final adapter = _RoutingAdapter();
     final scope = _MutableTenantScope('https://tenant-a.test');
