@@ -76,10 +76,11 @@ packages:
   belluga_admin_ui:
     dependency: "direct main"
     description:
-      path: "../../../flutter-packages/belluga_admin_ui"
-      relative: true
-    source: path
-    version: "0.1.0"
+      name: belluga_admin_ui
+      sha256: c4348f36ef25745c01529ec10bacc27ce60c4548b72676624b127535f64c69e1
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.0.1"
   boolean_selector:
     dependency: transitive
     description:

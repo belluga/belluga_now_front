@@ -59,8 +59,7 @@ dependencies:
   flutter_quill_delta_from_html: ^1.5.3
   vsc_quill_delta_to_html: ^1.0.5
   crop_your_image: ^2.0.0
-  belluga_admin_ui:
-    path: ../../../flutter-packages/belluga_admin_ui
+  belluga_admin_ui: ^0.0.1
   
 dev_dependencies:
   flutter_test:
