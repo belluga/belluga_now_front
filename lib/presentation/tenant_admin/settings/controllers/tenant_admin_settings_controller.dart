@@ -125,29 +125,38 @@ class TenantAdminSettingsController implements Disposable {
   bool _initialized = false;
   String? _initializedTenantDomain;
   StreamSubscription<String?>? _tenantScopeSubscription;
+  StreamSubscription<TenantAdminBrandingSettings?>? _brandingSubscription;
 
   AppData get appData => _appDataRepository.appData;
   StreamValue<ThemeMode?> get themeModeStreamValue =>
       _appDataRepository.themeModeStreamValue;
   StreamValue<double> get maxRadiusMetersStreamValue =>
       _appDataRepository.maxRadiusMetersStreamValue;
+  StreamValue<TenantAdminBrandingSettings?> get brandingSettingsStreamValue =>
+      _settingsRepository.brandingSettingsStreamValue;
 
   Future<void> init() async {
     _bindTenantScope();
+    _bindBrandingRepositoryStream();
     final normalizedTenantDomain =
         _normalizeTenantDomain(_tenantScope?.selectedTenantDomain);
     if (_initialized) {
       if (_initializedTenantDomain != normalizedTenantDomain) {
         _initializedTenantDomain = normalizedTenantDomain;
         _resetTenantScopedForms();
-        await loadRemoteSettings();
+        if (normalizedTenantDomain != null || _tenantScope == null) {
+          await loadBrandingSettings();
+        }
       }
       return;
     }
     _initialized = true;
     _initializedTenantDomain = normalizedTenantDomain;
-    _seedFormsFromSnapshot();
-    await loadRemoteSettings();
+    _seedFirebaseAndPushFromSnapshot();
+    _clearBrandingDraftForRemoteLoad();
+    if (normalizedTenantDomain != null || _tenantScope == null) {
+      await loadBrandingSettings();
+    }
   }
 
   void _bindTenantScope() {
@@ -165,10 +174,24 @@ class TenantAdminSettingsController implements Disposable {
         _initializedTenantDomain = normalized;
         _resetTenantScopedForms();
         if (normalized != null) {
-          unawaited(loadRemoteSettings());
+          unawaited(loadBrandingSettings());
         }
       },
     );
+  }
+
+  void _bindBrandingRepositoryStream() {
+    if (_brandingSubscription != null) {
+      return;
+    }
+    _brandingSubscription = _settingsRepository
+        .brandingSettingsStreamValue.stream
+        .listen((settings) {
+      if (settings == null) {
+        return;
+      }
+      _applyBrandingSettings(settings);
+    });
   }
 
   Future<void> updateThemeMode(ThemeMode mode) {
@@ -179,30 +202,55 @@ class TenantAdminSettingsController implements Disposable {
     return _appDataRepository.setMaxRadiusMeters(meters);
   }
 
-  Future<void> loadRemoteSettings() async {
+  Future<void> loadTechnicalIntegrationsSettings() async {
     isRemoteLoadingStreamValue.addValue(true);
     remoteErrorStreamValue.addValue(null);
 
+    final errors = <String>[];
     try {
-      final results = await Future.wait<dynamic>([
-        _settingsRepository.fetchFirebaseSettings(),
-        _settingsRepository.fetchTelemetrySettings(),
-      ]);
-
-      final firebaseSettings = results[0] as TenantAdminFirebaseSettings?;
-      final telemetrySnapshot =
-          results[1] as TenantAdminTelemetrySettingsSnapshot;
-
-      if (firebaseSettings != null) {
-        _applyFirebaseSettings(firebaseSettings);
+      try {
+        final firebaseSettings =
+            await _settingsRepository.fetchFirebaseSettings();
+        if (firebaseSettings != null) {
+          _applyFirebaseSettings(firebaseSettings);
+        }
+      } catch (error) {
+        errors.add(error.toString());
       }
-      telemetrySnapshotStreamValue.addValue(telemetrySnapshot);
+
+      try {
+        final telemetrySnapshot =
+            await _settingsRepository.fetchTelemetrySettings();
+        telemetrySnapshotStreamValue.addValue(telemetrySnapshot);
+      } catch (error) {
+        errors.add(error.toString());
+      }
+
+      if (errors.isEmpty) {
+        remoteErrorStreamValue.addValue(null);
+      } else {
+        remoteErrorStreamValue.addValue(errors.first);
+      }
+    } finally {
+      isRemoteLoadingStreamValue.addValue(false);
+    }
+  }
+
+  Future<void> loadBrandingSettings() async {
+    isRemoteLoadingStreamValue.addValue(true);
+    remoteErrorStreamValue.addValue(null);
+    try {
+      await _settingsRepository.fetchBrandingSettings();
       remoteErrorStreamValue.addValue(null);
     } catch (error) {
       remoteErrorStreamValue.addValue(error.toString());
     } finally {
       isRemoteLoadingStreamValue.addValue(false);
     }
+  }
+
+  Future<void> loadRemoteSettings() async {
+    await loadBrandingSettings();
   }
 
   Future<void> saveFirebaseSettings() async {
@@ -315,8 +363,7 @@ class TenantAdminSettingsController implements Disposable {
 
     brandingSubmittingStreamValue.addValue(true);
     try {
-      final updated = await _settingsRepository.updateBranding(input: input);
-      _applyBrandingSettings(updated);
+      await _settingsRepository.updateBranding(input: input);
       _reportSuccess('Branding atualizado com sucesso.');
     } catch (error) {
       remoteErrorStreamValue.addValue(error.toString());
@@ -417,7 +464,7 @@ class TenantAdminSettingsController implements Disposable {
     remoteSuccessStreamValue.addValue(null);
   }
 
-  void _seedFormsFromSnapshot() {
+  void _seedFirebaseAndPushFromSnapshot() {
     final firebase = appData.firebaseSettings;
     if (firebase != null) {
       firebaseApiKeyController.text = firebase.apiKey;
@@ -433,35 +480,10 @@ class TenantAdminSettingsController implements Disposable {
     pushMaxTtlDaysController.text = '30';
     pushMaxPerMinuteController.text = '$maxPerMinute';
     pushMaxPerHourController.text = '$maxPerHour';
-
-    brandingTenantNameController.text = appData.nameValue.value;
-    final lightScheme = appData.themeDataSettings.lightSchemeData;
-    brandingPrimarySeedColorController.text =
-        _colorToHex(lightScheme.primarySeedColorValue.value);
-    brandingSecondarySeedColorController.text =
-        _colorToHex(lightScheme.secondarySeedColorValue.value);
-    brandingBrightnessStreamValue.addValue(
-        _toBrandingBrightness(appData.themeDataSettings.brightnessDefault));
-    brandingLightLogoUrlStreamValue.addValue(
-      _tenantScopedAssetUrl('logo-light.png') ??
-          appData.mainLogoLightUrl.value?.toString(),
-    );
-    brandingDarkLogoUrlStreamValue.addValue(
-      _tenantScopedAssetUrl('logo-dark.png') ??
-          appData.mainLogoDarkUrl.value?.toString(),
-    );
-    brandingLightIconUrlStreamValue.addValue(
-      _tenantScopedAssetUrl('icon-light.png') ??
-          appData.mainIconLightUrl.value?.toString(),
-    );
-    brandingDarkIconUrlStreamValue.addValue(
-      _tenantScopedAssetUrl('icon-dark.png') ??
-          appData.mainIconDarkUrl.value?.toString(),
-    );
-    brandingPwaIconUrlStreamValue.addValue(null);
   }
 
   void _resetTenantScopedForms() {
+    _settingsRepository.clearBrandingSettings();
     clearStatusMessages();
     telemetrySnapshotStreamValue
         .addValue(const TenantAdminTelemetrySettingsSnapshot.empty());
@@ -471,7 +493,20 @@ class TenantAdminSettingsController implements Disposable {
     clearBrandingFile(TenantAdminBrandingAssetSlot.lightIcon);
     clearBrandingFile(TenantAdminBrandingAssetSlot.darkIcon);
     clearBrandingFile(TenantAdminBrandingAssetSlot.pwaIcon);
-    _seedFormsFromSnapshot();
+    _seedFirebaseAndPushFromSnapshot();
+    _clearBrandingDraftForRemoteLoad();
+  }
+
+  void _clearBrandingDraftForRemoteLoad() {
+    brandingTenantNameController.clear();
+    brandingPrimarySeedColorController.clear();
+    brandingSecondarySeedColorController.clear();
+    brandingBrightnessStreamValue.addValue(TenantAdminBrandingBrightness.light);
+    brandingLightLogoUrlStreamValue.addValue(null);
+    brandingDarkLogoUrlStreamValue.addValue(null);
+    brandingLightIconUrlStreamValue.addValue(null);
+    brandingDarkIconUrlStreamValue.addValue(null);
+    brandingPwaIconUrlStreamValue.addValue(null);
   }
 
   TenantAdminFirebaseSettings? _buildFirebaseSettings() {
@@ -576,33 +611,25 @@ class TenantAdminSettingsController implements Disposable {
     brandingSecondarySeedColorController.text = settings.secondarySeedColor;
     brandingLightLogoUrlStreamValue.addValue(
       _withCacheBust(
-        _tenantScopedAssetUrl('logo-light.png') ??
-            appData.mainLogoLightUrl.value?.toString() ??
-            settings.lightLogoUrl,
+        _tenantScopedAssetUrl('logo-light.png') ?? settings.lightLogoUrl,
         cacheBuster,
       ),
     );
     brandingDarkLogoUrlStreamValue.addValue(
       _withCacheBust(
-        _tenantScopedAssetUrl('logo-dark.png') ??
-            appData.mainLogoDarkUrl.value?.toString() ??
-            settings.darkLogoUrl,
+        _tenantScopedAssetUrl('logo-dark.png') ?? settings.darkLogoUrl,
         cacheBuster,
       ),
     );
     brandingLightIconUrlStreamValue.addValue(
       _withCacheBust(
-        _tenantScopedAssetUrl('icon-light.png') ??
-            appData.mainIconLightUrl.value?.toString() ??
-            settings.lightIconUrl,
+        _tenantScopedAssetUrl('icon-light.png') ?? settings.lightIconUrl,
         cacheBuster,
       ),
     );
     brandingDarkIconUrlStreamValue.addValue(
       _withCacheBust(
-        _tenantScopedAssetUrl('icon-dark.png') ??
-            appData.mainIconDarkUrl.value?.toString() ??
-            settings.darkIconUrl,
+        _tenantScopedAssetUrl('icon-dark.png') ?? settings.darkIconUrl,
         cacheBuster,
       ),
     );
@@ -648,17 +675,6 @@ class TenantAdminSettingsController implements Disposable {
     return value.toUpperCase();
   }
 
-  String _colorToHex(Color color) {
-    final rgb = color.toARGB32() & 0x00FFFFFF;
-    return '#${rgb.toRadixString(16).padLeft(6, '0').toUpperCase()}';
-  }
-
-  TenantAdminBrandingBrightness _toBrandingBrightness(Brightness brightness) {
-    return brightness == Brightness.dark
-        ? TenantAdminBrandingBrightness.dark
-        : TenantAdminBrandingBrightness.light;
-  }
-
   String? _withCacheBust(String? raw, String cacheBuster) {
     final value = raw?.trim();
     if (value == null || value.isEmpty) {
@@ -683,10 +699,25 @@ class TenantAdminSettingsController implements Disposable {
     if (trimmed == null || trimmed.isEmpty) {
       return null;
     }
-    final uri =
-        Uri.tryParse(trimmed.contains('://') ? trimmed : 'https://$trimmed');
+    final hasExplicitScheme = trimmed.contains('://');
+    final uri = Uri.tryParse(hasExplicitScheme ? trimmed : 'https://$trimmed');
     if (uri != null && uri.host.trim().isNotEmpty) {
-      return uri.host.trim();
+      final host = uri.host.trim().toLowerCase();
+      if (hasExplicitScheme) {
+        final scheme = uri.scheme.toLowerCase();
+        if (scheme != 'http' && scheme != 'https') {
+          return null;
+        }
+        return Uri(
+          scheme: scheme,
+          host: host,
+          port: uri.hasPort ? uri.port : null,
+        ).toString();
+      }
+      if (uri.hasPort) {
+        return '$host:${uri.port}';
+      }
+      return host;
     }
     return trimmed;
   }
@@ -749,5 +780,6 @@ class TenantAdminSettingsController implements Disposable {
     brandingPrimarySeedColorController.dispose();
     brandingSecondarySeedColorController.dispose();
     _tenantScopeSubscription?.cancel();
+    _brandingSubscription?.cancel();
   }
 }

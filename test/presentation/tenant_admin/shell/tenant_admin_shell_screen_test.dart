@@ -6,7 +6,8 @@ import 'package:belluga_now/domain/app_data/value_object/domain_value.dart';
 import 'package:belluga_now/domain/repositories/admin_mode_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/landlord_tenants_repository_contract.dart';
-import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.dart';
+import 'package:belluga_now/domain/repositories/tenant_admin_selected_tenant_repository_contract.dart';
+import 'package:belluga_now/infrastructure/services/tenant_admin/tenant_admin_base_url_resolver.dart';
 import 'package:belluga_now/presentation/tenant_admin/shell/controllers/tenant_admin_shell_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/shell/tenant_admin_shell_screen.dart';
 import 'package:flutter/material.dart';
@@ -31,7 +32,7 @@ void main() {
       adminModeRepository: _FakeAdminModeRepository(),
       appDataRepository: _FakeAppDataRepository(domains: const []),
       landlordTenantsRepository: _PendingLandlordTenantsRepository(),
-      tenantScope: _FakeTenantScope(),
+      selectedTenantRepository: _FakeSelectedTenantRepository(),
     );
     GetIt.I.registerSingleton<TenantAdminShellController>(controller);
 
@@ -144,33 +145,74 @@ class _PendingLandlordTenantsRepository
   Future<List<LandlordTenantOption>> fetchTenants() => _completer.future;
 }
 
-class _FakeTenantScope implements TenantAdminTenantScopeContract {
+class _FakeSelectedTenantRepository
+    implements TenantAdminSelectedTenantRepositoryContract {
+  final StreamValue<List<LandlordTenantOption>> _availableTenantsStreamValue =
+      StreamValue<List<LandlordTenantOption>>(defaultValue: const []);
   final StreamValue<String?> _selectedTenantDomainStreamValue =
       StreamValue<String?>(defaultValue: null);
+  final StreamValue<LandlordTenantOption?> _selectedTenantStreamValue =
+      StreamValue<LandlordTenantOption?>(defaultValue: null);
+
+  @override
+  List<LandlordTenantOption> get availableTenants =>
+      _availableTenantsStreamValue.value;
+
+  @override
+  StreamValue<List<LandlordTenantOption>> get availableTenantsStreamValue =>
+      _availableTenantsStreamValue;
 
   @override
   String? get selectedTenantDomain => _selectedTenantDomainStreamValue.value;
 
   @override
-  String get selectedTenantAdminBaseUrl {
-    final selected = selectedTenantDomain;
-    if (selected == null || selected.isEmpty) {
-      throw StateError('Tenant admin scope is not selected.');
-    }
-    return 'https://$selected/admin/api';
-  }
+  LandlordTenantOption? get selectedTenant => _selectedTenantStreamValue.value;
+
+  @override
+  StreamValue<LandlordTenantOption?> get selectedTenantStreamValue =>
+      _selectedTenantStreamValue;
+
+  @override
+  String get selectedTenantAdminBaseUrl =>
+      resolveTenantAdminBaseUrl(selectedTenantDomain ?? '');
 
   @override
   StreamValue<String?> get selectedTenantDomainStreamValue =>
       _selectedTenantDomainStreamValue;
 
   @override
-  void clearSelectedTenantDomain() {
+  void clearSelectedTenant() {
     _selectedTenantDomainStreamValue.addValue(null);
+    _selectedTenantStreamValue.addValue(null);
+  }
+
+  @override
+  void selectTenant(LandlordTenantOption tenant) {
+    _selectedTenantDomainStreamValue.addValue(tenant.mainDomain.trim());
+    _selectedTenantStreamValue.addValue(tenant);
   }
 
   @override
   void selectTenantDomain(String tenantDomain) {
     _selectedTenantDomainStreamValue.addValue(tenantDomain.trim());
+    _selectedTenantStreamValue.addValue(
+      availableTenants.where((tenant) {
+        return tenant.mainDomain.trim() == tenantDomain.trim();
+      }).firstOrNull,
+    );
+  }
+
+  @override
+  void setAvailableTenants(List<LandlordTenantOption> tenants) {
+    _availableTenantsStreamValue.addValue(tenants);
+  }
+}
+
+extension<T> on Iterable<T> {
+  T? get firstOrNull {
+    if (this.isEmpty) {
+      return null;
+    }
+    return first;
   }
 }

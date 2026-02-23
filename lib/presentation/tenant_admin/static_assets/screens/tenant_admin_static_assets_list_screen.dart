@@ -5,6 +5,7 @@ import 'package:belluga_now/presentation/common/widgets/belluga_network_image.da
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_confirmation_dialog.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_empty_state.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_error_banner.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_list_controls_panel.dart';
 import 'package:belluga_now/presentation/tenant_admin/static_assets/controllers/tenant_admin_static_assets_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
@@ -23,6 +24,14 @@ class _TenantAdminStaticAssetsListScreenState
   final TenantAdminStaticAssetsController _controller =
       GetIt.I.get<TenantAdminStaticAssetsController>();
   final ScrollController _scrollController = ScrollController();
+  static const ValueKey<String> _controlsPanelKey =
+      ValueKey<String>('tenant_admin_assets_controls_panel');
+  static const ValueKey<String> _searchToggleKey =
+      ValueKey<String>('tenant_admin_assets_search_toggle');
+  static const ValueKey<String> _searchFieldKey =
+      ValueKey<String>('tenant_admin_assets_search_field');
+  static const ValueKey<String> _manageTypesButtonKey =
+      ValueKey<String>('tenant_admin_assets_manage_types_button');
 
   @override
   void initState() {
@@ -46,6 +55,12 @@ class _TenantAdminStaticAssetsListScreenState
     if (position.pixels + threshold >= position.maxScrollExtent) {
       _controller.loadNextAssetsPage();
     }
+  }
+
+  StackRouter _navigationRouter(BuildContext context) {
+    final shellRouter =
+        context.innerRouterOf<StackRouter>(TenantAdminShellRoute.name);
+    return shellRouter ?? context.router;
   }
 
   Future<void> _confirmDelete(TenantAdminStaticAsset asset) async {
@@ -188,8 +203,9 @@ class _TenantAdminStaticAssetsListScreenState
         return Card(
           clipBehavior: Clip.antiAlias,
           child: InkWell(
+            key: ValueKey<String>('tenant_admin_static_asset_card_${asset.id}'),
             onTap: () {
-              context.router.push(
+              _navigationRouter(context).push(
                 TenantAdminStaticAssetDetailRoute(
                   assetId: asset.id,
                 ),
@@ -215,21 +231,51 @@ class _TenantAdminStaticAssetsListScreenState
                               children: [
                                 Text(
                                   asset.displayName,
-                                  style: Theme.of(context).textTheme.titleSmall,
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .titleMedium
+                                      ?.copyWith(fontWeight: FontWeight.w600),
                                 ),
                                 const SizedBox(height: 2),
                                 Text(
-                                  '${asset.slug} • ${asset.profileType}',
-                                  style: Theme.of(context).textTheme.bodySmall,
+                                  asset.slug,
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .bodySmall
+                                      ?.copyWith(
+                                        color: Theme.of(
+                                          context,
+                                        ).colorScheme.onSurfaceVariant,
+                                      ),
+                                ),
+                                const SizedBox(height: 8),
+                                Wrap(
+                                  spacing: 8,
+                                  runSpacing: 8,
+                                  children: [
+                                    _buildAssetMetaChip(
+                                      context,
+                                      label: asset.profileType,
+                                      icon: Icons.layers_outlined,
+                                    ),
+                                    _buildAssetMetaChip(
+                                      context,
+                                      label:
+                                          asset.isActive ? 'Ativo' : 'Inativo',
+                                      icon: asset.isActive
+                                          ? Icons.check_circle_outline
+                                          : Icons.pause_circle_outline,
+                                      highlight: asset.isActive,
+                                    ),
+                                  ],
                                 ),
                               ],
                             ),
                           ),
-                          _buildStatusChip(context, asset.isActive),
                           PopupMenuButton<String>(
                             onSelected: (value) {
                               if (value == 'edit') {
-                                context.router.push(
+                                _navigationRouter(context).push(
                                   TenantAdminStaticAssetEditRoute(
                                     assetId: asset.id,
                                   ),
@@ -239,6 +285,12 @@ class _TenantAdminStaticAssetsListScreenState
                                 _confirmDelete(asset);
                               }
                             },
+                            icon: Icon(
+                              Icons.more_horiz_rounded,
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurfaceVariant,
+                            ),
                             itemBuilder: (context) => [
                               const PopupMenuItem(
                                 value: 'edit',
@@ -339,7 +391,7 @@ class _TenantAdminStaticAssetsListScreenState
     return Scaffold(
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () {
-          context.router.push(
+          _navigationRouter(context).push(
             const TenantAdminStaticAssetCreateRoute(),
           );
         },
@@ -351,71 +403,48 @@ class _TenantAdminStaticAssetsListScreenState
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Ativos estaticos',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            Row(
-              children: [
-                const Spacer(),
-                IconButton(
-                  tooltip: showSearchField ? 'Ocultar busca' : 'Buscar',
-                  onPressed: _controller.toggleSearchFieldVisibility,
-                  icon: Icon(
-                    showSearchField ? Icons.close : Icons.search,
-                  ),
-                ),
-              ],
-            ),
-            if (showSearchField) ...[
-              TextField(
-                onChanged: _controller.updateSearchQuery,
-                decoration: const InputDecoration(
-                  prefixIcon: Icon(Icons.search),
-                  labelText: 'Buscar por nome ou slug',
-                ),
-              ),
-              const SizedBox(height: 12),
-            ],
-            DropdownButtonFormField<String?>(
-              key: ValueKey(selectedTypeFilter),
-              initialValue: selectedTypeFilter,
-              decoration: const InputDecoration(
-                labelText: 'Filtrar por tipo',
-              ),
-              items: <DropdownMenuItem<String?>>[
-                const DropdownMenuItem<String?>(
-                  value: null,
-                  child: Text('Todos os tipos'),
-                ),
-                ...availableTypes.map(
-                  (profileType) => DropdownMenuItem<String?>(
-                    value: profileType,
-                    child: Text(profileType),
-                  ),
-                ),
-              ],
-              onChanged: (value) {
-                _controller.updateSelectedTypeFilter(value);
+            TenantAdminListControlsPanel(
+              key: _controlsPanelKey,
+              filterLabel: 'Filtros de ativos',
+              showSearchField: showSearchField,
+              onToggleSearch: _controller.toggleSearchFieldVisibility,
+              onSearchChanged: _controller.updateSearchQuery,
+              searchHintText: 'Nome ou slug do ativo',
+              manageButtonLabel: 'Tipos de ativo',
+              onManagePressed: () {
+                _navigationRouter(context).push(
+                  const TenantAdminStaticProfileTypesListRoute(),
+                );
               },
-            ),
-            const SizedBox(height: 8),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: TextButton.icon(
-                onPressed: () {
-                  context.router.push(
-                    const TenantAdminStaticProfileTypesListRoute(),
-                  );
+              searchToggleKey: _searchToggleKey,
+              searchFieldKey: _searchFieldKey,
+              manageButtonKey: _manageTypesButtonKey,
+              filterField: DropdownButtonFormField<String?>(
+                key: ValueKey(selectedTypeFilter),
+                initialValue: selectedTypeFilter,
+                decoration: const InputDecoration(
+                  labelText: 'Filtrar por tipo',
+                ),
+                items: <DropdownMenuItem<String?>>[
+                  const DropdownMenuItem<String?>(
+                    value: null,
+                    child: Text('Todos os tipos'),
+                  ),
+                  ...availableTypes.map(
+                    (profileType) => DropdownMenuItem<String?>(
+                      value: profileType,
+                      child: Text(profileType),
+                    ),
+                  ),
+                ],
+                onChanged: (value) {
+                  _controller.updateSelectedTypeFilter(value);
                 },
-                icon: const Icon(Icons.layers_outlined),
-                label: const Text('Gerenciar tipos de ativo'),
               ),
             ),
-            const SizedBox(height: 12),
             if (error != null)
               Padding(
-                padding: const EdgeInsets.only(top: 8),
+                padding: const EdgeInsets.only(top: 12),
                 child: TenantAdminErrorBanner(
                   rawError: error,
                   fallbackMessage:
@@ -423,7 +452,7 @@ class _TenantAdminStaticAssetsListScreenState
                   onRetry: _controller.loadAssets,
                 ),
               ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 12),
             Expanded(child: body),
           ],
         ),
@@ -447,12 +476,40 @@ class _TenantAdminStaticAssetsListScreenState
         .toList(growable: false);
   }
 
-  Widget _buildStatusChip(BuildContext context, bool isActive) {
+  Widget _buildAssetMetaChip(
+    BuildContext context, {
+    required String label,
+    required IconData icon,
+    bool highlight = false,
+  }) {
     final scheme = Theme.of(context).colorScheme;
-    return Chip(
-      label: Text(isActive ? 'Ativo' : 'Inativo'),
-      backgroundColor:
-          isActive ? scheme.primaryContainer : scheme.surfaceContainerHighest,
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: highlight
+            ? scheme.secondaryContainer.withValues(alpha: 0.8)
+            : scheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            icon,
+            size: 14,
+            color: highlight ? scheme.onSecondaryContainer : scheme.onSurface,
+          ),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                  color: highlight
+                      ? scheme.onSecondaryContainer
+                      : scheme.onSurface,
+                ),
+          ),
+        ],
+      ),
     );
   }
 }
