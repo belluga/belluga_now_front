@@ -152,7 +152,7 @@ class TenantAdminShellController implements Disposable {
     }
 
     for (final tenant in tenants) {
-      if (_normalizeTenantDomain(tenant.mainDomain) == normalizedTarget) {
+      if (_domainsMatch(tenant.mainDomain, normalizedTarget)) {
         return tenant;
       }
     }
@@ -160,18 +160,65 @@ class TenantAdminShellController implements Disposable {
     return null;
   }
 
+  bool _domainsMatch(String rawLeft, String rawRight) {
+    final left = _parseTenantDomain(rawLeft);
+    final right = _parseTenantDomain(rawRight);
+    if (left == null || right == null) {
+      return rawLeft.trim().toLowerCase() == rawRight.trim().toLowerCase();
+    }
+    if (left.host != right.host) {
+      return false;
+    }
+    if (!left.hasPort || !right.hasPort) {
+      return true;
+    }
+    return left.port == right.port;
+  }
+
   String? _normalizeTenantDomain(String raw) {
     final trimmed = raw.trim();
     if (trimmed.isEmpty) {
       return null;
     }
-    final uri = Uri.tryParse(
-      trimmed.contains('://') ? trimmed : 'https://$trimmed',
-    );
+    final hasExplicitScheme = trimmed.contains('://');
+    final uri = Uri.tryParse(hasExplicitScheme ? trimmed : 'https://$trimmed');
     if (uri != null && uri.host.trim().isNotEmpty) {
-      return uri.host.trim();
+      final host = uri.host.trim().toLowerCase();
+      if (hasExplicitScheme) {
+        final scheme = uri.scheme.toLowerCase();
+        if (scheme != 'http' && scheme != 'https') {
+          return null;
+        }
+        return Uri(
+          scheme: scheme,
+          host: host,
+          port: uri.hasPort ? uri.port : null,
+        ).toString();
+      }
+      if (uri.hasPort) {
+        return '$host:${uri.port}';
+      }
+      return host;
     }
     return trimmed;
+  }
+
+  _TenantDomain? _parseTenantDomain(String raw) {
+    final normalized = _normalizeTenantDomain(raw);
+    if (normalized == null) {
+      return null;
+    }
+    final parsed = Uri.tryParse(
+      normalized.contains('://') ? normalized : 'https://$normalized',
+    );
+    if (parsed == null || parsed.host.trim().isEmpty) {
+      return null;
+    }
+    return _TenantDomain(
+      host: parsed.host.trim().toLowerCase(),
+      hasPort: parsed.hasPort,
+      port: parsed.hasPort ? parsed.port : null,
+    );
   }
 
   String? _resolveHost(String raw) {
@@ -190,4 +237,16 @@ class TenantAdminShellController implements Disposable {
   void onDispose() {
     isTenantSelectionResolvingStreamValue.dispose();
   }
+}
+
+class _TenantDomain {
+  const _TenantDomain({
+    required this.host,
+    required this.hasPort,
+    required this.port,
+  });
+
+  final String host;
+  final bool hasPort;
+  final int? port;
 }

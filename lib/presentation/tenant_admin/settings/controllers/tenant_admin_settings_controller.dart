@@ -699,10 +699,25 @@ class TenantAdminSettingsController implements Disposable {
     if (trimmed == null || trimmed.isEmpty) {
       return null;
     }
-    final uri =
-        Uri.tryParse(trimmed.contains('://') ? trimmed : 'https://$trimmed');
+    final hasExplicitScheme = trimmed.contains('://');
+    final uri = Uri.tryParse(hasExplicitScheme ? trimmed : 'https://$trimmed');
     if (uri != null && uri.host.trim().isNotEmpty) {
-      return uri.host.trim();
+      final host = uri.host.trim().toLowerCase();
+      if (hasExplicitScheme) {
+        final scheme = uri.scheme.toLowerCase();
+        if (scheme != 'http' && scheme != 'https') {
+          return null;
+        }
+        return Uri(
+          scheme: scheme,
+          host: host,
+          port: uri.hasPort ? uri.port : null,
+        ).toString();
+      }
+      if (uri.hasPort) {
+        return '$host:${uri.port}';
+      }
+      return host;
     }
     return trimmed;
   }

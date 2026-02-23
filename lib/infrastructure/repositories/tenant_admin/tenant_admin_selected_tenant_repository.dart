@@ -103,10 +103,11 @@ class TenantAdminSelectedTenantRepository
     final tenantsByDomain = <String, LandlordTenantOption>{};
     for (final tenant in raw) {
       final normalizedDomain = _normalizeTenantDomain(tenant.mainDomain);
-      if (normalizedDomain == null) {
+      final identity = _domainIdentity(normalizedDomain);
+      if (normalizedDomain == null || identity == null) {
         continue;
       }
-      tenantsByDomain[normalizedDomain] = LandlordTenantOption(
+      tenantsByDomain[identity] = LandlordTenantOption(
         id: tenant.id,
         name: tenant.name,
         mainDomain: normalizedDomain,
@@ -128,7 +129,13 @@ class TenantAdminSelectedTenantRepository
     }
 
     if (tenants.length == 1) {
-      selectTenant(tenants.first);
+      final single = tenants.first;
+      if (normalizedSelected != null &&
+          _domainsMatch(normalizedSelected, single.mainDomain)) {
+        _selectedTenantStreamValue.addValue(single);
+      } else {
+        selectTenant(single);
+      }
       return;
     }
 
@@ -157,11 +164,31 @@ class TenantAdminSelectedTenantRepository
       return null;
     }
     for (final tenant in tenants) {
-      if (_normalizeTenantDomain(tenant.mainDomain) == normalizedTarget) {
+      if (_domainsMatch(tenant.mainDomain, normalizedTarget)) {
         return tenant;
       }
     }
     return null;
+  }
+
+  String? _domainIdentity(String? raw) {
+    final parsed = _parseTenantDomain(raw);
+    return parsed?.host;
+  }
+
+  bool _domainsMatch(String rawLeft, String rawRight) {
+    final left = _parseTenantDomain(rawLeft);
+    final right = _parseTenantDomain(rawRight);
+    if (left == null || right == null) {
+      return rawLeft.trim().toLowerCase() == rawRight.trim().toLowerCase();
+    }
+    if (left.host != right.host) {
+      return false;
+    }
+    if (!left.hasPort || !right.hasPort) {
+      return true;
+    }
+    return left.port == right.port;
   }
 
   String? _normalizeTenantDomain(String? raw) {
@@ -169,11 +196,56 @@ class TenantAdminSelectedTenantRepository
     if (trimmed == null || trimmed.isEmpty) {
       return null;
     }
-    final uri =
-        Uri.tryParse(trimmed.contains('://') ? trimmed : 'https://$trimmed');
+    final hasExplicitScheme = trimmed.contains('://');
+    final uri = Uri.tryParse(hasExplicitScheme ? trimmed : 'https://$trimmed');
     if (uri != null && uri.host.trim().isNotEmpty) {
-      return uri.host.trim();
+      final host = uri.host.trim().toLowerCase();
+      if (hasExplicitScheme) {
+        final scheme = uri.scheme.toLowerCase();
+        if (scheme != 'http' && scheme != 'https') {
+          return null;
+        }
+        return Uri(
+          scheme: scheme,
+          host: host,
+          port: uri.hasPort ? uri.port : null,
+        ).toString();
+      }
+      if (uri.hasPort) {
+        return '$host:${uri.port}';
+      }
+      return host;
     }
     return trimmed;
   }
+
+  _TenantDomain? _parseTenantDomain(String? raw) {
+    final normalized = _normalizeTenantDomain(raw);
+    if (normalized == null) {
+      return null;
+    }
+    final parsed = Uri.tryParse(
+      normalized.contains('://') ? normalized : 'https://$normalized',
+    );
+    if (parsed == null || parsed.host.trim().isEmpty) {
+      return null;
+    }
+    return _TenantDomain(
+      host: parsed.host.trim().toLowerCase(),
+      hasPort: parsed.hasPort,
+      port: parsed.hasPort ? parsed.port : null,
+    );
+  }
+}
+
+class _TenantDomain {
+  const _TenantDomain({
+    required this.host,
+    required this.hasPort,
+    required this.port,
+  });
+
+  final String host;
+  final bool hasPort;
+  final int? port;
 }

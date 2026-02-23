@@ -21,8 +21,7 @@ void main() {
     expect(repository.selectedTenant?.id, 'tenant-a');
   });
 
-  test('selectTenantDomain normalizes host-only values and resolves tenant',
-      () {
+  test('selectTenantDomain preserves explicit origin and resolves tenant', () {
     final repository = TenantAdminSelectedTenantRepository();
     repository.setAvailableTenants(
       const [
@@ -41,8 +40,58 @@ void main() {
 
     repository.selectTenantDomain('https://tenant-b.example.com');
 
-    expect(repository.selectedTenantDomain, 'tenant-b.example.com');
+    expect(repository.selectedTenantDomain, 'https://tenant-b.example.com');
     expect(repository.selectedTenant?.id, 'tenant-b');
+  });
+
+  test(
+      'selectTenantDomain preserves explicit scheme+port and computes matching admin base URL',
+      () {
+    final repository = TenantAdminSelectedTenantRepository();
+    repository.setAvailableTenants(
+      const [
+        LandlordTenantOption(
+          id: 'tenant-a',
+          name: 'Tenant A',
+          mainDomain: 'tenant-a.example.com',
+        ),
+      ],
+    );
+
+    repository.selectTenantDomain('http://tenant-a.example.com:8081');
+
+    expect(
+      repository.selectedTenantDomain,
+      'http://tenant-a.example.com:8081',
+    );
+    expect(
+      repository.selectedTenantAdminBaseUrl,
+      'http://tenant-a.example.com:8081/admin/api',
+    );
+    expect(repository.selectedTenant?.id, 'tenant-a');
+  });
+
+  test(
+      'single-tenant sync does not override explicit selected origin with host-only value',
+      () {
+    final repository = TenantAdminSelectedTenantRepository();
+    repository.selectTenantDomain('http://tenant-a.example.com:8081');
+
+    repository.setAvailableTenants(
+      const [
+        LandlordTenantOption(
+          id: 'tenant-a',
+          name: 'Tenant A',
+          mainDomain: 'tenant-a.example.com',
+        ),
+      ],
+    );
+
+    expect(
+      repository.selectedTenantDomain,
+      'http://tenant-a.example.com:8081',
+    );
+    expect(repository.selectedTenant?.id, 'tenant-a');
   });
 
   test('clears selection when selected tenant disappears from available list',

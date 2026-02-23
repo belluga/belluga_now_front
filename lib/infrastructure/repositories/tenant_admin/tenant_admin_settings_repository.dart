@@ -445,7 +445,7 @@ class TenantAdminSettingsRepository
       lightIconUrl: _buildTenantAssetUrl(tenantOrigin, 'icon-light.png'),
       darkIconUrl: _buildTenantAssetUrl(tenantOrigin, 'icon-dark.png'),
       faviconUrl: _buildTenantAssetUrl(tenantOrigin, 'favicon.ico'),
-      pwaIconUrl: null,
+      pwaIconUrl: _resolvePwaIconUrl(map, tenantOrigin: tenantOrigin),
     );
   }
 
@@ -490,6 +490,92 @@ class TenantAdminSettingsRepository
     return origin
         .replace(path: '/$assetName', queryParameters: null)
         .toString();
+  }
+
+  String? _resolvePwaIconUrl(
+    Map<String, dynamic> payload, {
+    required Uri tenantOrigin,
+  }) {
+    final logoSettings = payload['logo_settings'];
+    final fromLogoSettings = _extractPwaIconUrlFromNode(
+      logoSettings,
+      tenantOrigin: tenantOrigin,
+    );
+    if (fromLogoSettings != null) {
+      return fromLogoSettings;
+    }
+
+    return _extractPwaIconUrlFromNode(
+      payload['pwa_icon'],
+      tenantOrigin: tenantOrigin,
+    );
+  }
+
+  String? _extractPwaIconUrlFromNode(
+    dynamic node, {
+    required Uri tenantOrigin,
+  }) {
+    if (node is String) {
+      return _resolveAssetUrl(
+        node,
+        tenantOrigin: tenantOrigin,
+      );
+    }
+    if (node is! Map) {
+      return null;
+    }
+
+    final map = Map<String, dynamic>.from(node);
+    final direct = _resolveAssetUrl(
+      map['icon512_uri'],
+      tenantOrigin: tenantOrigin,
+    );
+    if (direct != null) {
+      return direct;
+    }
+
+    final uri = _resolveAssetUrl(
+      map['uri'],
+      tenantOrigin: tenantOrigin,
+    );
+    if (uri != null) {
+      return uri;
+    }
+
+    final pwaIconUri = _resolveAssetUrl(
+      map['pwa_icon_uri'],
+      tenantOrigin: tenantOrigin,
+    );
+    if (pwaIconUri != null) {
+      return pwaIconUri;
+    }
+
+    final nested = map['pwa_icon'];
+    if (nested != null && !identical(nested, node)) {
+      return _extractPwaIconUrlFromNode(
+        nested,
+        tenantOrigin: tenantOrigin,
+      );
+    }
+    return null;
+  }
+
+  String? _resolveAssetUrl(
+    dynamic raw, {
+    required Uri tenantOrigin,
+  }) {
+    final value = raw?.toString().trim();
+    if (value == null || value.isEmpty) {
+      return null;
+    }
+    final parsed = Uri.tryParse(value);
+    if (parsed == null) {
+      return null;
+    }
+    if (parsed.host.trim().isNotEmpty) {
+      return parsed.toString();
+    }
+    return tenantOrigin.resolveUri(parsed).toString();
   }
 
   Map<String, String> _buildBrandingReadHeaders() {

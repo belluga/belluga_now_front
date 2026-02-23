@@ -98,6 +98,11 @@ void main() {
           'primary_seed_color': '#112233',
           'secondary_seed_color': '#445566',
         },
+        'logo_settings': {
+          'pwa_icon': {
+            'icon512_uri': 'https://tenant-a.test/storage/pwa-icon.png',
+          },
+        },
       },
     );
     final scope = _MutableTenantScope('https://tenant-a.test');
@@ -148,6 +153,7 @@ void main() {
     expect(updated.primarySeedColor, '#112233');
     expect(updated.secondarySeedColor, '#445566');
     expect(updated.lightLogoUrl, contains('tenant-a.test/logo-light.png'));
+    expect(updated.pwaIconUrl, 'https://tenant-a.test/storage/pwa-icon.png');
     expect(
       repository.brandingSettingsStreamValue.value?.primarySeedColor,
       '#112233',
@@ -201,6 +207,47 @@ void main() {
     expect(
       repository.brandingSettingsStreamValue.value?.secondarySeedColor,
       '#03DAC6',
+    );
+  });
+
+  test('fetchBrandingSettings maps pwa icon URL from environment payload',
+      () async {
+    final adapter = _RoutingAdapter(
+      environmentPayload: const {
+        'type': 'tenant',
+        'tenant_id': 'tenant-a',
+        'name': 'Guarappari Admin',
+        'theme_data_settings': {
+          'brightness_default': 'light',
+          'primary_seed_color': '#a36ce3',
+          'secondary_seed_color': '#03dac6',
+        },
+        'logo_settings': {
+          'pwa_icon': {
+            'icon512_uri': '/storage/pwa-icon-512.png',
+          },
+        },
+      },
+    );
+    final scope = _FixedTenantScopeForOriginRead(
+      selectedTenantDomainValue: 'tenant-a.test',
+      selectedTenantAdminBaseUrlValue: 'http://tenant-a.test:8081/admin/api',
+    );
+    final dio = Dio()..httpClientAdapter = adapter;
+    final repository = TenantAdminSettingsRepository(
+      dio: dio,
+      tenantScope: scope,
+    );
+
+    final branding = await repository.fetchBrandingSettings();
+
+    expect(
+      branding.pwaIconUrl,
+      'http://tenant-a.test:8081/storage/pwa-icon-512.png',
+    );
+    expect(
+      repository.brandingSettingsStreamValue.value?.pwaIconUrl,
+      'http://tenant-a.test:8081/storage/pwa-icon-512.png',
     );
   });
 
