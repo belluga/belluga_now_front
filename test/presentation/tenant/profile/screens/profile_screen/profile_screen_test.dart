@@ -1,7 +1,7 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/domain/user/user_contract.dart';
-import 'package:belluga_now/presentation/tenant/profile/screens/profile_screen/controllers/profile_screen_controller.dart';
-import 'package:belluga_now/presentation/tenant/profile/screens/profile_screen/profile_screen.dart';
+import 'package:belluga_now/presentation/tenant_public/profile/screens/profile_screen/controllers/profile_screen_controller.dart';
+import 'package:belluga_now/presentation/tenant_public/profile/screens/profile_screen/profile_screen.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/user/profile_avatar_storage_contract.dart';

@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:belluga_now/application/configurations/belluga_constants.dart';
+import 'package:belluga_now/domain/app_data/environment_type.dart';
 import 'package:belluga_now/domain/repositories/admin_mode_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/landlord_tenants_repository_contract.dart';
@@ -43,6 +44,11 @@ class TenantAdminShellController implements Disposable {
   Future<void> switchToUserMode() => _adminModeRepository.setUserMode();
 
   void init() {
+    final tenantHostSelection = _resolveTenantHostSelection();
+    if (!_hasSelectedTenantDomain() && tenantHostSelection != null) {
+      _selectedTenantRepository.selectTenantDomain(tenantHostSelection);
+    }
+
     final bootstrapTenants = _resolveBootstrapTenants();
     _setAvailableTenants(bootstrapTenants);
 
@@ -140,6 +146,21 @@ class TenantAdminShellController implements Disposable {
     return _normalizeTenantDomain(
             _selectedTenantRepository.selectedTenantDomain ?? '') !=
         null;
+  }
+
+  String? _resolveTenantHostSelection() {
+    try {
+      final appData = _appDataRepository.appData;
+      if (appData.typeValue.value != EnvironmentType.tenant) {
+        return null;
+      }
+      return _normalizeTenantDomain(appData.hostname);
+    } catch (error) {
+      debugPrint(
+        '[TenantAdmin] Failed to resolve tenant host selection: $error',
+      );
+      return null;
+    }
   }
 
   LandlordTenantOption? _resolveTenantByDomain({

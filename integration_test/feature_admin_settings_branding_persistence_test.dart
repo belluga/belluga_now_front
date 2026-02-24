@@ -17,11 +17,11 @@ void main() {
 
   const adminEmailDefine = String.fromEnvironment(
     'LANDLORD_ADMIN_EMAIL',
-    defaultValue: '',
+    defaultValue: 'admin@bellugasolutions.com.br',
   );
   const adminPasswordDefine = String.fromEnvironment(
     'LANDLORD_ADMIN_PASSWORD',
-    defaultValue: '',
+    defaultValue: '765432e1',
   );
   const tenantDomainDefine = String.fromEnvironment(
     'TENANT_ADMIN_TEST_DOMAIN',

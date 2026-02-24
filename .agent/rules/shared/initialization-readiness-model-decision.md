@@ -7,6 +7,7 @@ description: "When a session starts or environment/setup tasks are requested."
 When the context indicates environment setup, repository verification, or session start:
 - Run the Initialization Checklist (`delphi-ai/initialization_checklist.md`) and `tools/verify_context.sh`.
 - Execute the Environment Readiness Workflow (`delphi-ai/workflows/docker/environment-readiness-method.md`) to confirm submodule links, permissions, and README guidance.
+- Verify `foundation_documentation/policies/scope_subscope_governance.md` exists and is loaded before any route/module/screen task.
 - Document any remediation (symlinks, ownership fixes) before moving to feature work.
  - If tactical TODO discipline is in use, ensure `foundation_documentation/todos/{active,completed}` exists (create via `tools/verify_context.sh --fix-todos` if desired).
 

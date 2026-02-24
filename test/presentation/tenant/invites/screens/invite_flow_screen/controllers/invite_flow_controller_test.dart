@@ -4,7 +4,7 @@ import 'package:belluga_now/domain/repositories/telemetry_repository_contract.da
 import 'package:belluga_now/domain/repositories/user_events_repository_contract.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
 import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
-import 'package:belluga_now/presentation/tenant/invites/screens/invite_flow_screen/controllers/invite_flow_controller.dart';
+import 'package:belluga_now/presentation/tenant_public/invites/screens/invite_flow_screen/controllers/invite_flow_controller.dart';
 import 'package:event_tracker_handler/event_tracker_handler.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:stream_value/core/stream_value.dart';

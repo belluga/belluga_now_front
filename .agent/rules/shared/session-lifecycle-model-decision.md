@@ -7,6 +7,7 @@ description: "At session start/end or when the user requests lifecycle actions."
 When a session begins, switches scope, or ends:
 - Load the Persona Selection Workflow to anchor the persona.
 - Execute the Session Lifecycle Workflow (`delphi-ai/workflows/docker/session-lifecycle-method.md`) to log purpose, freeze work during instruction edits, and manage transitions.
+- For any route/module/screen scope, confirm `foundation_documentation/policies/scope_subscope_governance.md` is loaded before implementation tasks proceed.
 - At session end, follow `delphi-ai/workflows/docker/post-session-review-method.md`: analyze new principles, update mandates if needed, and deliver English feedback before acknowledging closure.
 
 ## Rationale

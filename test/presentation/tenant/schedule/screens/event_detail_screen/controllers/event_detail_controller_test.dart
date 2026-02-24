@@ -16,7 +16,7 @@ import 'package:belluga_now/domain/value_objects/description_value.dart';
 import 'package:belluga_now/domain/value_objects/slug_value.dart';
 import 'package:belluga_now/domain/value_objects/title_value.dart';
 import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
-import 'package:belluga_now/presentation/tenant/schedule/screens/event_detail_screen/controllers/event_detail_controller.dart';
+import 'package:belluga_now/presentation/tenant_public/schedule/screens/event_detail_screen/controllers/event_detail_controller.dart';
 import 'package:event_tracker_handler/event_tracker_handler.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';

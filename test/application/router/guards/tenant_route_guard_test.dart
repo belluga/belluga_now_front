@@ -108,6 +108,56 @@ void main() {
     expect(router.lastRoutes, hasLength(1));
     expect(router.lastRoutes!.single.routeName, 'LandlordHomeRoute');
   });
+
+  test('redirects landlord host /home to landlord admin route', () {
+    _registerAppData(_buildAppData(
+      hostname: 'landlord.test',
+      envType: 'landlord',
+    ));
+    GetIt.I.registerSingleton<AdminModeRepositoryContract>(
+      _FakeAdminModeRepository(AdminMode.user),
+    );
+    GetIt.I.registerSingleton<LandlordAuthRepositoryContract>(
+      _FakeLandlordAuthRepository(hasValidSession: false),
+    );
+
+    final guard = TenantRouteGuard();
+    final resolver = MockNavigationResolver();
+    final router = RecordingStackRouter();
+    resolver.routeValue = _FakeRouteMatch(fullPath: '/home');
+
+    guard.onNavigation(resolver, router);
+
+    verify(resolver.next(false)).called(1);
+    expect(router.replaceAllCalled, isTrue);
+    expect(router.lastRoutes, hasLength(1));
+    expect(router.lastRoutes!.single.routeName, 'TenantAdminShellRoute');
+  });
+
+  test('redirects landlord host /landlord to landlord admin route', () {
+    _registerAppData(_buildAppData(
+      hostname: 'landlord.test',
+      envType: 'landlord',
+    ));
+    GetIt.I.registerSingleton<AdminModeRepositoryContract>(
+      _FakeAdminModeRepository(AdminMode.user),
+    );
+    GetIt.I.registerSingleton<LandlordAuthRepositoryContract>(
+      _FakeLandlordAuthRepository(hasValidSession: false),
+    );
+
+    final guard = TenantRouteGuard();
+    final resolver = MockNavigationResolver();
+    final router = RecordingStackRouter();
+    resolver.routeValue = _FakeRouteMatch(fullPath: '/landlord');
+
+    guard.onNavigation(resolver, router);
+
+    verify(resolver.next(false)).called(1);
+    expect(router.replaceAllCalled, isTrue);
+    expect(router.lastRoutes, hasLength(1));
+    expect(router.lastRoutes!.single.routeName, 'TenantAdminShellRoute');
+  });
 }
 
 void _registerAppData(AppData appData) {
@@ -148,7 +198,16 @@ AppData _buildAppData({
   );
 }
 
-class MockNavigationResolver extends Mock implements NavigationResolver {}
+class MockNavigationResolver extends Mock implements NavigationResolver {
+  RouteMatch _route = _FakeRouteMatch(fullPath: '');
+
+  set routeValue(RouteMatch value) {
+    _route = value;
+  }
+
+  @override
+  RouteMatch get route => _route;
+}
 
 class RecordingStackRouter extends Mock implements StackRouter {
   bool replaceAllCalled = false;
@@ -163,6 +222,13 @@ class RecordingStackRouter extends Mock implements StackRouter {
     replaceAllCalled = true;
     lastRoutes = routes;
   }
+}
+
+class _FakeRouteMatch extends Fake implements RouteMatch {
+  _FakeRouteMatch({required this.fullPath});
+
+  @override
+  final String fullPath;
 }
 
 class _FakeAdminModeRepository implements AdminModeRepositoryContract {

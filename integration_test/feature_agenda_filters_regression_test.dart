@@ -26,11 +26,11 @@ import 'package:belluga_now/infrastructure/dal/dto/schedule/event_artist_dto.dar
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_type_dto.dart';
 import 'package:belluga_now/infrastructure/repositories/app_data_repository.dart';
-import 'package:belluga_now/presentation/tenant/home/screens/tenant_home_screen/widgets/agenda_section/home_agenda_section.dart';
-import 'package:belluga_now/presentation/tenant/home/screens/tenant_home_screen/widgets/agenda_section/controllers/tenant_home_agenda_controller.dart';
-import 'package:belluga_now/presentation/tenant/schedule/screens/event_search_screen/controllers/event_search_screen_controller.dart';
-import 'package:belluga_now/presentation/tenant/schedule/screens/event_search_screen/event_search_screen.dart';
-import 'package:belluga_now/presentation/tenant/schedule/screens/event_search_screen/models/invite_filter.dart';
+import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/agenda_section/home_agenda_section.dart';
+import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/agenda_section/controllers/tenant_home_agenda_controller.dart';
+import 'package:belluga_now/presentation/tenant_public/schedule/screens/event_search_screen/controllers/event_search_screen_controller.dart';
+import 'package:belluga_now/presentation/tenant_public/schedule/screens/event_search_screen/event_search_screen.dart';
+import 'package:belluga_now/presentation/tenant_public/schedule/screens/event_search_screen/models/invite_filter.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';

@@ -245,9 +245,6 @@ class _TenantAdminRichTextEditorState extends State<TenantAdminRichTextEditor> {
                     showSubscript: false,
                     showSuperscript: false,
                     showDirection: false,
-                    showClipboardCut: false,
-                    showClipboardCopy: false,
-                    showClipboardPaste: false,
                   ),
                 ),
                 SizedBox(
