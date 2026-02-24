@@ -126,6 +126,33 @@ void main() {
       contains('https://guarappari.belluga.space/admin'),
     );
   });
+
+  test('tenant environment auto-selects current host on init', () {
+    final appDataRepository = _FakeAppDataRepository(
+      appData: _buildAppData(
+        envType: 'tenant',
+        hostname: 'guarappari.belluga.space',
+        domains: const [
+          'https://guarappari.belluga.space',
+          'https://belluga.space',
+        ],
+      ),
+    );
+    final selectedTenantRepository = _FakeSelectedTenantRepository();
+    final controller = TenantAdminShellController(
+      adminModeRepository: _FakeAdminModeRepository(),
+      appDataRepository: appDataRepository,
+      landlordTenantsRepository: _PendingLandlordTenantsRepository(),
+      selectedTenantRepository: selectedTenantRepository,
+    );
+
+    controller.init();
+
+    expect(
+      selectedTenantRepository.selectedTenantDomain,
+      'guarappari.belluga.space',
+    );
+  });
 }
 
 class _FakeAdminModeRepository implements AdminModeRepositoryContract {
