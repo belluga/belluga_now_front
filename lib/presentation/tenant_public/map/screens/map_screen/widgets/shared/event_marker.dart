@@ -1,8 +1,8 @@
 import 'package:belluga_now/domain/schedule/event_model.dart';
-import 'package:belluga_now/presentation/tenant/map/screens/map_screen/widgets/shared/event_badge_chip.dart';
-import 'package:belluga_now/presentation/tenant/map/screens/map_screen/widgets/shared/event_temporal_state.dart';
-import 'package:belluga_now/presentation/tenant/map/screens/map_screen/widgets/shared/marker_core.dart';
-import 'package:belluga_now/presentation/tenant/map/screens/map_screen/widgets/shared/marker_pulse_circle.dart';
+import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/shared/event_badge_chip.dart';
+import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/shared/event_temporal_state.dart';
+import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/shared/marker_core.dart';
+import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/shared/marker_pulse_circle.dart';
 import 'package:flutter/material.dart';
 
 class EventMarker extends StatefulWidget {

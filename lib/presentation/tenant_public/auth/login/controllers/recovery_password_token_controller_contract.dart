@@ -1,4 +1,4 @@
-import 'package:belluga_now/presentation/common/auth/screens/auth_login_screen/controllers/form_field_controller_email.dart';
+import 'package:belluga_now/presentation/shared/auth/screens/auth_login_screen/controllers/form_field_controller_email.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart' show Disposable;
 import 'package:stream_value/core/stream_value.dart';

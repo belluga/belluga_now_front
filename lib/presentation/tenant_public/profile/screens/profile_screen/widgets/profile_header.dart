@@ -1,5 +1,5 @@
 import 'package:belluga_now/application/icons/boora_icons.dart';
-import 'package:belluga_now/presentation/tenant/profile/screens/profile_screen/widgets/profile_metric_pill.dart';
+import 'package:belluga_now/presentation/tenant_public/profile/screens/profile_screen/widgets/profile_metric_pill.dart';
 import 'package:flutter/material.dart';
 
 class ProfileHeader extends StatelessWidget {

@@ -1,6 +1,6 @@
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
-import 'package:belluga_now/presentation/tenant/schedule/screens/immersive_event_detail/widgets/invite_avatar.dart';
-import 'package:belluga_now/presentation/tenant/schedule/screens/immersive_event_detail/widgets/invite_plus_avatar.dart';
+import 'package:belluga_now/presentation/tenant_public/schedule/screens/immersive_event_detail/widgets/invite_avatar.dart';
+import 'package:belluga_now/presentation/tenant_public/schedule/screens/immersive_event_detail/widgets/invite_plus_avatar.dart';
 import 'package:flutter/material.dart';
 
 class OverlappedInviteAvatars extends StatelessWidget {

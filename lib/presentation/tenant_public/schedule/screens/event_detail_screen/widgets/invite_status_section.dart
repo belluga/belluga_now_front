@@ -1,6 +1,6 @@
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
-import 'package:belluga_now/presentation/tenant/schedule/screens/event_detail_screen/widgets/invite_prompt_card.dart';
-import 'package:belluga_now/presentation/tenant/schedule/screens/event_detail_screen/widgets/sent_invites_list.dart';
+import 'package:belluga_now/presentation/tenant_public/schedule/screens/event_detail_screen/widgets/invite_prompt_card.dart';
+import 'package:belluga_now/presentation/tenant_public/schedule/screens/event_detail_screen/widgets/sent_invites_list.dart';
 import 'package:flutter/material.dart';
 
 /// Section showing sent invites status or invite prompt

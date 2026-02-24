@@ -1,4 +1,4 @@
-import 'package:belluga_now/presentation/tenant/schedule/screens/immersive_event_detail/widgets/immersive_tab_bar.dart';
+import 'package:belluga_now/presentation/tenant_public/schedule/screens/immersive_event_detail/widgets/immersive_tab_bar.dart';
 import 'package:flutter/material.dart';
 
 class ImmersiveHeaderDelegate extends SliverPersistentHeaderDelegate {

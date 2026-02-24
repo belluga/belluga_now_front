@@ -1,6 +1,6 @@
 import 'package:belluga_now/domain/schedule/invite_status.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
-import 'package:belluga_now/presentation/tenant/invites/screens/invite_share_screen/widgets/invite_share_overlapped_avatars.dart';
+import 'package:belluga_now/presentation/tenant_public/invites/screens/invite_share_screen/widgets/invite_share_overlapped_avatars.dart';
 import 'package:flutter/material.dart';
 
 class InviteShareSummary extends StatelessWidget {

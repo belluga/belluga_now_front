@@ -1,9 +1,9 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
-import 'package:belluga_now/presentation/landlord/auth/controllers/landlord_login_controller.dart';
-import 'package:belluga_now/presentation/landlord/auth/widgets/landlord_login_sheet.dart';
-import 'package:belluga_now/presentation/landlord/home/screens/landlord_home_screen/controllers/landlord_home_screen_controller.dart';
-import 'package:belluga_now/presentation/landlord/home/screens/landlord_home_screen/widgets/landlord_pill.dart';
+import 'package:belluga_now/presentation/landlord_area/auth/controllers/landlord_login_controller.dart';
+import 'package:belluga_now/presentation/landlord_area/auth/widgets/landlord_login_sheet.dart';
+import 'package:belluga_now/presentation/landlord_area/home/screens/landlord_home_screen/controllers/landlord_home_screen_controller.dart';
+import 'package:belluga_now/presentation/landlord_area/home/screens/landlord_home_screen/widgets/landlord_pill.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value_builder.dart';

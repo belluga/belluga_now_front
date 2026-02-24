@@ -1,5 +1,5 @@
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
-import 'package:belluga_now/presentation/tenant/discovery/widgets/discovery_partner_card.dart';
+import 'package:belluga_now/presentation/tenant_public/discovery/widgets/discovery_partner_card.dart';
 import 'package:flutter/material.dart';
 
 class DiscoveryPartnerGrid extends StatelessWidget {

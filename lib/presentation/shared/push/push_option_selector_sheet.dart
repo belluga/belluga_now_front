@@ -1,6 +1,6 @@
 import 'package:auto_route/auto_route.dart';
-import 'package:belluga_now/presentation/common/push/controllers/push_option_selector_controller.dart';
-import 'package:belluga_now/presentation/common/widgets/belluga_network_image.dart';
+import 'package:belluga_now/presentation/shared/push/controllers/push_option_selector_controller.dart';
+import 'package:belluga_now/presentation/shared/widgets/belluga_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:push_handler/push_handler.dart';
 import 'package:stream_value/core/stream_value_builder.dart';

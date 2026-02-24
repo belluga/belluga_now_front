@@ -1,10 +1,10 @@
 import 'package:belluga_now/domain/map/city_poi_category.dart';
 import 'package:belluga_now/domain/map/city_poi_model.dart';
 import 'package:belluga_now/domain/map/filters/poi_filter_mode.dart';
-import 'package:belluga_now/presentation/tenant/map/screens/map_screen/controllers/map_screen_controller.dart';
-import 'package:belluga_now/presentation/tenant/map/screens/map_screen/widgets/poi_detail_card_builder.dart';
-import 'package:belluga_now/presentation/tenant/map/screens/map_screen/widgets/size_reporting_widget.dart';
-import 'package:belluga_now/presentation/tenant/map/screens/map_screen/widgets/shared/poi_category_theme.dart';
+import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/controllers/map_screen_controller.dart';
+import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/poi_detail_card_builder.dart';
+import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/size_reporting_widget.dart';
+import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/shared/poi_category_theme.dart';
 import 'package:flutter/material.dart';
 
 class FilteredDeck extends StatelessWidget {

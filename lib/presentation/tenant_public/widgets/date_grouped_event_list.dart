@@ -1,5 +1,5 @@
 import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
-import 'package:belluga_now/presentation/tenant/widgets/upcoming_event_card.dart';
+import 'package:belluga_now/presentation/tenant_public/widgets/upcoming_event_card.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 

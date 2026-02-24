@@ -1,7 +1,7 @@
 import 'package:auto_route/auto_route.dart';
-import 'package:belluga_now/presentation/common/widgets/immersive_detail_screen/controllers/immersive_detail_screen_controller.dart';
-import 'package:belluga_now/presentation/common/widgets/immersive_detail_screen/models/immersive_tab_item.dart';
-import 'package:belluga_now/presentation/common/widgets/immersive_detail_screen/immersive_header_delegate.dart';
+import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/controllers/immersive_detail_screen_controller.dart';
+import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/models/immersive_tab_item.dart';
+import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/immersive_header_delegate.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:stream_value/core/stream_value_builder.dart';

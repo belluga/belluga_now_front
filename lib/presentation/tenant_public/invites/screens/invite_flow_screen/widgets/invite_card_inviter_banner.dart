@@ -3,9 +3,9 @@ import 'package:belluga_now/domain/invites/invite_inviter.dart';
 import 'package:belluga_now/domain/invites/invite_inviter_type.dart';
 import 'package:belluga_now/domain/invites/invite_model.dart';
 import 'package:belluga_now/domain/invites/invite_partner_summary.dart';
-import 'package:belluga_now/presentation/tenant/invites/screens/invite_flow_screen/widgets/invite_summary_avatar.dart';
-import 'package:belluga_now/presentation/tenant/invites/screens/invite_flow_screen/widgets/inviter_name_label.dart';
-import 'package:belluga_now/presentation/tenant/invites/screens/invite_flow_screen/widgets/partner_fallback.dart';
+import 'package:belluga_now/presentation/tenant_public/invites/screens/invite_flow_screen/widgets/invite_summary_avatar.dart';
+import 'package:belluga_now/presentation/tenant_public/invites/screens/invite_flow_screen/widgets/inviter_name_label.dart';
+import 'package:belluga_now/presentation/tenant_public/invites/screens/invite_flow_screen/widgets/partner_fallback.dart';
 import 'package:flutter/material.dart';
 
 class InviteCardInviterBanner extends StatelessWidget {

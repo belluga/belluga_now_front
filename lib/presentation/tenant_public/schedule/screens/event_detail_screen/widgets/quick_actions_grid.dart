@@ -1,4 +1,4 @@
-import 'package:belluga_now/presentation/tenant/schedule/screens/event_detail_screen/widgets/quick_action_button.dart';
+import 'package:belluga_now/presentation/tenant_public/schedule/screens/event_detail_screen/widgets/quick_action_button.dart';
 import 'package:flutter/material.dart';
 
 /// Grid of quick actions for confirmed events

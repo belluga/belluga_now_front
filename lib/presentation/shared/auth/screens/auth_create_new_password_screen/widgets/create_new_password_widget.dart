@@ -1,7 +1,7 @@
 import 'package:belluga_now/application/configurations/widget_keys.dart';
-import 'package:belluga_now/presentation/common/auth/screens/auth_create_new_password_screen/widgets/confirm_password_box_widget.dart';
-import 'package:belluga_now/presentation/common/auth/screens/auth_create_new_password_screen/widgets/new_password_box_widget.dart';
-import 'package:belluga_now/presentation/tenant/auth/login/controllers/create_password_controller_contract.dart';
+import 'package:belluga_now/presentation/shared/auth/screens/auth_create_new_password_screen/widgets/confirm_password_box_widget.dart';
+import 'package:belluga_now/presentation/shared/auth/screens/auth_create_new_password_screen/widgets/new_password_box_widget.dart';
+import 'package:belluga_now/presentation/tenant_public/auth/login/controllers/create_password_controller_contract.dart';
 import 'package:flutter/material.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 

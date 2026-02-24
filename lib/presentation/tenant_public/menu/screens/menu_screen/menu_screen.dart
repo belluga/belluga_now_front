@@ -1,11 +1,11 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/icons/boora_icons.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
-import 'package:belluga_now/presentation/tenant/menu/screens/menu_screen/models/menu_section.dart';
-import 'package:belluga_now/presentation/tenant/menu/screens/menu_screen/widgets/menu_profile_hero.dart';
-import 'package:belluga_now/presentation/tenant/menu/screens/menu_screen/widgets/menu_section_card.dart';
-import 'package:belluga_now/presentation/tenant/schedule/screens/event_search_screen/models/invite_filter.dart';
-import 'package:belluga_now/presentation/tenant/widgets/belluga_bottom_navigation_bar.dart';
+import 'package:belluga_now/presentation/tenant_public/menu/screens/menu_screen/models/menu_section.dart';
+import 'package:belluga_now/presentation/tenant_public/menu/screens/menu_screen/widgets/menu_profile_hero.dart';
+import 'package:belluga_now/presentation/tenant_public/menu/screens/menu_screen/widgets/menu_section_card.dart';
+import 'package:belluga_now/presentation/tenant_public/schedule/screens/event_search_screen/models/invite_filter.dart';
+import 'package:belluga_now/presentation/tenant_public/widgets/belluga_bottom_navigation_bar.dart';
 import 'package:flutter/material.dart';
 
 class MenuScreen extends StatefulWidget {

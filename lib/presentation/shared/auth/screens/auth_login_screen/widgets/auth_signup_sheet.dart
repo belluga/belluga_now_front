@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:belluga_now/presentation/tenant/auth/login/controllers/auth_login_controller_contract.dart';
+import 'package:belluga_now/presentation/tenant_public/auth/login/controllers/auth_login_controller_contract.dart';
 import 'package:flutter/material.dart';
 
 class AuthSignupSheet extends StatelessWidget {

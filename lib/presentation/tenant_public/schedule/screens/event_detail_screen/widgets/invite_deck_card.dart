@@ -1,6 +1,6 @@
 import 'package:belluga_now/application/icons/boora_icons.dart';
 import 'package:belluga_now/domain/invites/invite_model.dart';
-import 'package:belluga_now/presentation/common/widgets/belluga_network_image.dart';
+import 'package:belluga_now/presentation/shared/widgets/belluga_network_image.dart';
 import 'package:flutter/material.dart';
 
 class InviteDeckCard extends StatelessWidget {

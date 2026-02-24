@@ -1,4 +1,4 @@
-import 'package:belluga_now/presentation/common/push/controllers/push_options_controller.dart';
+import 'package:belluga_now/presentation/shared/push/controllers/push_options_controller.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:push_handler/push_handler.dart';
 

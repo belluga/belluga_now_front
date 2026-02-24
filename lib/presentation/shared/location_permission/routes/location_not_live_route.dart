@@ -1,6 +1,6 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/guards/location_permission_state.dart';
-import 'package:belluga_now/presentation/common/location_permission/screens/location_not_live_screen/location_not_live_screen.dart';
+import 'package:belluga_now/presentation/shared/location_permission/screens/location_not_live_screen/location_not_live_screen.dart';
 import 'package:flutter/material.dart';
 
 @RoutePage(name: 'LocationNotLiveRoute')

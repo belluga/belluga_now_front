@@ -3,7 +3,7 @@ import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/domain/partners/profile_type_registry.dart';
 import 'package:belluga_now/domain/repositories/account_profiles_repository_contract.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
-import 'package:belluga_now/presentation/tenant/discovery/models/curator_content.dart';
+import 'package:belluga_now/presentation/tenant_public/discovery/models/curator_content.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value.dart';

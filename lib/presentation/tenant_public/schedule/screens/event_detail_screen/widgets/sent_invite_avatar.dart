@@ -1,6 +1,6 @@
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
 import 'package:flutter/material.dart';
-import 'package:belluga_now/presentation/tenant/schedule/screens/event_detail_screen/widgets/sent_invite_status_badge.dart';
+import 'package:belluga_now/presentation/tenant_public/schedule/screens/event_detail_screen/widgets/sent_invite_status_badge.dart';
 
 /// Avatar with status badge for sent invites
 class SentInviteAvatar extends StatelessWidget {

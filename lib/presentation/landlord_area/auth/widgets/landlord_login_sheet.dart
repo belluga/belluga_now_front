@@ -1,5 +1,5 @@
 import 'package:auto_route/auto_route.dart';
-import 'package:belluga_now/presentation/landlord/auth/controllers/landlord_login_controller.dart';
+import 'package:belluga_now/presentation/landlord_area/auth/controllers/landlord_login_controller.dart';
 import 'package:flutter/material.dart';
 
 Future<bool> showLandlordLoginSheet(

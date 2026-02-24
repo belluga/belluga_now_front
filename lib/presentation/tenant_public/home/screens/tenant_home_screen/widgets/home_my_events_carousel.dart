@@ -1,7 +1,7 @@
 import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
-import 'package:belluga_now/presentation/tenant/home/screens/tenant_home_screen/widgets/my_events_carousel_card.dart';
-import 'package:belluga_now/presentation/tenant/home/screens/tenant_home_screen/widgets/see_more_my_events_card.dart';
-import 'package:belluga_now/presentation/tenant/widgets/carousel_section.dart';
+import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/my_events_carousel_card.dart';
+import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/see_more_my_events_card.dart';
+import 'package:belluga_now/presentation/tenant_public/widgets/carousel_section.dart';
 import 'package:flutter/material.dart';
 class HomeMyEventsCarousel extends StatelessWidget {
   const HomeMyEventsCarousel({

@@ -1,6 +1,6 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/modular_app/modules/schedule_module.dart';
-import 'package:belluga_now/presentation/tenant/schedule/routes/widgets/event_detail_loader.dart';
+import 'package:belluga_now/presentation/tenant_public/schedule/routes/widgets/event_detail_loader.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it_modular_with_auto_route/get_it_modular_with_auto_route.dart';
 

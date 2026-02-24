@@ -1,4 +1,4 @@
-import 'package:belluga_now/presentation/common/widgets/belluga_network_image.dart';
+import 'package:belluga_now/presentation/shared/widgets/belluga_network_image.dart';
 import 'package:flutter/material.dart';
 
 class UpcomingEventThumbnail extends StatelessWidget {

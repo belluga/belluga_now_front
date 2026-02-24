@@ -1,5 +1,5 @@
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
-import 'package:belluga_now/presentation/tenant/schedule/screens/event_detail_screen/widgets/sent_invite_item.dart';
+import 'package:belluga_now/presentation/tenant_public/schedule/screens/event_detail_screen/widgets/sent_invite_item.dart';
 import 'package:flutter/material.dart';
 
 class SentInvitesList extends StatelessWidget {

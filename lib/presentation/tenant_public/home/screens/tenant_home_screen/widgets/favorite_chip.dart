@@ -1,6 +1,6 @@
 import 'package:belluga_now/domain/favorite/favorite_badge.dart';
-import 'package:belluga_now/presentation/common/widgets/belluga_network_image.dart';
-import 'package:belluga_now/presentation/tenant/home/screens/tenant_home_screen/widgets/favorite_badge_glyph.dart';
+import 'package:belluga_now/presentation/shared/widgets/belluga_network_image.dart';
+import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/favorite_badge_glyph.dart';
 import 'package:flutter/material.dart';
 
 class FavoriteChip extends StatelessWidget {

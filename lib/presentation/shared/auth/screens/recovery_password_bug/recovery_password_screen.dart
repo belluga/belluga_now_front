@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:belluga_now/presentation/tenant/auth/login/controllers/recovery_password_token_controller_contract.dart';
+import 'package:belluga_now/presentation/tenant_public/auth/login/controllers/recovery_password_token_controller_contract.dart';
 import 'package:get_it/get_it.dart';
 
 class RecoveryPasswordScreen extends StatefulWidget {

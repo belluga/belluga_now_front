@@ -1,6 +1,6 @@
 import 'package:belluga_now/domain/map/city_poi_model.dart';
-import 'package:belluga_now/presentation/tenant/map/screens/map_screen/widgets/poi_detail_card_builder.dart';
-import 'package:belluga_now/presentation/tenant/map/screens/map_screen/widgets/size_reporting_widget.dart';
+import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/poi_detail_card_builder.dart';
+import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/size_reporting_widget.dart';
 import 'package:flutter/material.dart';
 
 class SinglePoiCard extends StatelessWidget {

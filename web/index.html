@@ -163,8 +163,18 @@
       return;
     }
 
+    if (isTenantHost && pathname.startsWith('/home')) {
+      window.location.replace('/');
+      return;
+    }
+
     if (isLandlordHost && pathname.startsWith('/home')) {
-      window.location.replace('/landlord');
+      window.location.replace('/admin');
+      return;
+    }
+
+    if (isLandlordHost && pathname.startsWith('/landlord')) {
+      window.location.replace('/admin');
       return;
     }
 

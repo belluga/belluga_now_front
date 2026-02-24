@@ -1,5 +1,5 @@
 import 'package:belluga_now/domain/map/city_poi_model.dart';
-import 'package:belluga_now/presentation/tenant/map/screens/map_screen/widgets/shared/poi_category_theme.dart';
+import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/shared/poi_category_theme.dart';
 import 'package:flutter/material.dart';
 import 'dart:ui';
 

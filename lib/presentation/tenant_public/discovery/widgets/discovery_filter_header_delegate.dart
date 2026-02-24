@@ -1,4 +1,4 @@
-import 'package:belluga_now/presentation/tenant/widgets/section_header.dart';
+import 'package:belluga_now/presentation/tenant_public/widgets/section_header.dart';
 import 'package:flutter/material.dart';
 
 /// Sticky header wrapper for the discovery filter chips.

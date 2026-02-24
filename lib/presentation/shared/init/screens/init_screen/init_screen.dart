@@ -1,8 +1,8 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/configurations/widget_keys.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
-import 'package:belluga_now/presentation/common/init/screens/init_screen/controllers/init_screen_controller.dart';
-import 'package:belluga_now/presentation/common/widgets/belluga_network_image.dart';
+import 'package:belluga_now/presentation/shared/init/screens/init_screen/controllers/init_screen_controller.dart';
+import 'package:belluga_now/presentation/shared/widgets/belluga_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value_builder.dart';

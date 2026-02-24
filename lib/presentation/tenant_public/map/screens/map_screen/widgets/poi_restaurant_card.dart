@@ -1,4 +1,4 @@
-import 'package:belluga_now/presentation/tenant/map/screens/map_screen/widgets/poi_base_card.dart';
+import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/poi_base_card.dart';
 import 'package:flutter/material.dart';
 
 class PoiRestaurantCard extends PoiBaseCard {

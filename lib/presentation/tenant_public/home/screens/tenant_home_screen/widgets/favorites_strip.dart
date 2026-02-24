@@ -1,5 +1,5 @@
 import 'package:belluga_now/domain/favorite/projections/favorite_resume.dart';
-import 'package:belluga_now/presentation/tenant/home/screens/tenant_home_screen/widgets/favorite_chip.dart';
+import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/favorite_chip.dart';
 import 'package:flutter/material.dart';
 
 class FavoritesStrip extends StatelessWidget {

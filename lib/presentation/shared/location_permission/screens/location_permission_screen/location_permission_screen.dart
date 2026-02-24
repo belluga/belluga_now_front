@@ -1,7 +1,7 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/guards/location_permission_state.dart';
-import 'package:belluga_now/presentation/common/location_permission/controllers/location_permission_controller.dart';
-import 'package:belluga_now/presentation/common/widgets/button_loading.dart';
+import 'package:belluga_now/presentation/shared/location_permission/controllers/location_permission_controller.dart';
+import 'package:belluga_now/presentation/shared/widgets/button_loading.dart';
 import 'package:flutter/material.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 import 'package:get_it/get_it.dart';

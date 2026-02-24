@@ -1,7 +1,7 @@
 import 'package:belluga_now/application/icons/boora_icons.dart';
-import 'package:belluga_now/presentation/common/widgets/belluga_network_image.dart';
-import 'package:belluga_now/presentation/tenant/invites/screens/invite_flow_screen/widgets/invite_info_row.dart';
-import 'package:belluga_now/presentation/tenant/invites/screens/invite_flow_screen/widgets/inviter_pill.dart';
+import 'package:belluga_now/presentation/shared/widgets/belluga_network_image.dart';
+import 'package:belluga_now/presentation/tenant_public/invites/screens/invite_flow_screen/widgets/invite_info_row.dart';
+import 'package:belluga_now/presentation/tenant_public/invites/screens/invite_flow_screen/widgets/inviter_pill.dart';
 import 'package:flutter/material.dart';
 
 class InviteContentCard extends StatelessWidget {

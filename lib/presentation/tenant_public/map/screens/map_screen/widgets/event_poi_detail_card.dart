@@ -1,5 +1,5 @@
 import 'package:belluga_now/domain/map/event_poi_model.dart';
-import 'package:belluga_now/presentation/tenant/map/screens/map_screen/widgets/shared/event_temporal_state.dart';
+import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/shared/event_temporal_state.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 

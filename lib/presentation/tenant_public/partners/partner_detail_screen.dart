@@ -1,8 +1,8 @@
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
-import 'package:belluga_now/presentation/tenant/partners/controllers/partner_detail_controller.dart';
-import 'package:belluga_now/presentation/common/widgets/belluga_network_image.dart';
-import 'package:belluga_now/presentation/common/widgets/immersive_detail_screen/immersive_detail_screen.dart';
-import 'package:belluga_now/presentation/common/widgets/immersive_detail_screen/models/immersive_tab_item.dart';
+import 'package:belluga_now/presentation/tenant_public/partners/controllers/partner_detail_controller.dart';
+import 'package:belluga_now/presentation/shared/widgets/belluga_network_image.dart';
+import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/immersive_detail_screen.dart';
+import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/models/immersive_tab_item.dart';
 import 'package:belluga_now/domain/partners/engagement_data.dart';
 import 'package:belluga_now/domain/partners/projections/partner_profile_config.dart';
 import 'package:belluga_now/domain/partners/projections/partner_profile_module_data.dart';

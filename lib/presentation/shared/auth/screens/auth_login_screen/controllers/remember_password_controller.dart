@@ -1,4 +1,4 @@
-import 'package:belluga_now/presentation/tenant/auth/login/controllers/remember_password_contract.dart';
+import 'package:belluga_now/presentation/tenant_public/auth/login/controllers/remember_password_contract.dart';
 import 'package:stream_value/core/stream_value.dart';
 
 class RememberPasswordController implements RememberPasswordContract {

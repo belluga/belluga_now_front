@@ -1,5 +1,5 @@
-import 'package:belluga_now/presentation/tenant/menu/screens/menu_screen/models/menu_section.dart';
-import 'package:belluga_now/presentation/tenant/menu/screens/menu_screen/widgets/menu_tile.dart';
+import 'package:belluga_now/presentation/tenant_public/menu/screens/menu_screen/models/menu_section.dart';
+import 'package:belluga_now/presentation/tenant_public/menu/screens/menu_screen/widgets/menu_tile.dart';
 import 'package:flutter/material.dart';
 
 class MenuSectionCard extends StatelessWidget {

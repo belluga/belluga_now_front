@@ -1,5 +1,5 @@
-import 'package:belluga_now/presentation/tenant/discovery/models/curator_content.dart';
-import 'package:belluga_now/presentation/common/widgets/belluga_network_image.dart';
+import 'package:belluga_now/presentation/tenant_public/discovery/models/curator_content.dart';
+import 'package:belluga_now/presentation/shared/widgets/belluga_network_image.dart';
 import 'package:flutter/material.dart';
 
 class CuratorContentCard extends StatelessWidget {

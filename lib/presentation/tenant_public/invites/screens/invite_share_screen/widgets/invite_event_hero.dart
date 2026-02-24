@@ -1,8 +1,8 @@
 import 'package:belluga_now/domain/invites/invite_model.dart';
 import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
 import 'package:belluga_now/domain/value_objects/description_value.dart';
-import 'package:belluga_now/presentation/tenant/widgets/carousel_card.dart';
-import 'package:belluga_now/presentation/tenant/widgets/event_details.dart';
+import 'package:belluga_now/presentation/tenant_public/widgets/carousel_card.dart';
+import 'package:belluga_now/presentation/tenant_public/widgets/event_details.dart';
 import 'package:flutter/material.dart';
 
 /// Hero card reusing the CarouselEventCard (Seus Eventos pattern).

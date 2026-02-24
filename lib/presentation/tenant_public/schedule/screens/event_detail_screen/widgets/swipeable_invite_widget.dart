@@ -1,7 +1,7 @@
 import 'package:belluga_now/domain/invites/invite_model.dart';
-import 'package:belluga_now/presentation/common/widgets/swipeable_card/swipeable_card.dart';
-import 'package:belluga_now/presentation/tenant/schedule/screens/event_detail_screen/controllers/event_detail_controller.dart';
-import 'package:belluga_now/presentation/tenant/schedule/screens/event_detail_screen/widgets/invite_deck_card.dart';
+import 'package:belluga_now/presentation/shared/widgets/swipeable_card/swipeable_card.dart';
+import 'package:belluga_now/presentation/tenant_public/schedule/screens/event_detail_screen/controllers/event_detail_controller.dart';
+import 'package:belluga_now/presentation/tenant_public/schedule/screens/event_detail_screen/widgets/invite_deck_card.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value_builder.dart';

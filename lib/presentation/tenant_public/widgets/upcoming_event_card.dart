@@ -1,9 +1,9 @@
 import 'package:belluga_now/application/extensions/event_data_formating.dart';
 import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
-import 'package:belluga_now/presentation/tenant/widgets/event_info_row.dart';
-import 'package:belluga_now/presentation/tenant/widgets/upcoming_event_participants.dart';
-import 'package:belluga_now/presentation/tenant/widgets/upcoming_event_thumbnail.dart';
-import 'package:belluga_now/presentation/tenant/widgets/invite_status_icon.dart';
+import 'package:belluga_now/presentation/tenant_public/widgets/event_info_row.dart';
+import 'package:belluga_now/presentation/tenant_public/widgets/upcoming_event_participants.dart';
+import 'package:belluga_now/presentation/tenant_public/widgets/upcoming_event_thumbnail.dart';
+import 'package:belluga_now/presentation/tenant_public/widgets/invite_status_icon.dart';
 import 'package:flutter/material.dart';
 
 class UpcomingEventCard extends StatelessWidget {

@@ -2,8 +2,8 @@ import 'dart:ui';
 
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/domain/schedule/event_type_model.dart';
-import 'package:belluga_now/presentation/common/widgets/belluga_network_image.dart';
-import 'package:belluga_now/presentation/tenant/schedule/screens/event_detail_screen/widgets/event_type_chip.dart';
+import 'package:belluga_now/presentation/shared/widgets/belluga_network_image.dart';
+import 'package:belluga_now/presentation/tenant_public/schedule/screens/event_detail_screen/widgets/event_type_chip.dart';
 import 'package:flutter/material.dart';
 
 class EventDetailHeader extends StatelessWidget {

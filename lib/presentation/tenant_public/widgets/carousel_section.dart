@@ -1,4 +1,4 @@
-import 'package:belluga_now/presentation/tenant/widgets/section_header.dart';
+import 'package:belluga_now/presentation/tenant_public/widgets/section_header.dart';
 import 'package:flutter/material.dart';
 
 /// Generic section that renders a title, optional "see all", and content built from a list.

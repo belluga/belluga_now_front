@@ -1,6 +1,7 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/guards/landlord_route_guard.dart';
 import 'package:belluga_now/application/configurations/belluga_constants.dart';
+import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/app_data/app_type.dart';
 import 'package:belluga_now/domain/app_data/value_object/platform_type_value.dart';
@@ -94,6 +95,24 @@ void main() {
     verifyNever(resolver.next(false));
     expect(router.replaceAllCalled, isFalse);
   });
+
+  test('allows tenant admin route on tenant host', () {
+    _registerAppData(_buildAppData(
+      hostname: 'tenant.test',
+      envType: 'tenant',
+    ));
+
+    final guard = LandlordRouteGuard();
+    final resolver = MockNavigationResolver();
+    resolver.routeValue = _FakeRouteMatch(name: TenantAdminShellRoute.name);
+    final router = RecordingStackRouter();
+
+    guard.onNavigation(resolver, router);
+
+    verify(resolver.next(true)).called(1);
+    verifyNever(resolver.next(false));
+    expect(router.replaceAllCalled, isFalse);
+  });
 }
 
 String _landlordHostForTest() {
@@ -146,7 +165,16 @@ AppData _buildAppData({
   );
 }
 
-class MockNavigationResolver extends Mock implements NavigationResolver {}
+class MockNavigationResolver extends Mock implements NavigationResolver {
+  RouteMatch _route = _FakeRouteMatch(name: '');
+
+  set routeValue(RouteMatch value) {
+    _route = value;
+  }
+
+  @override
+  RouteMatch get route => _route;
+}
 
 class RecordingStackRouter extends Mock implements StackRouter {
   bool replaceAllCalled = false;
@@ -161,4 +189,11 @@ class RecordingStackRouter extends Mock implements StackRouter {
     replaceAllCalled = true;
     lastRoutes = routes;
   }
+}
+
+class _FakeRouteMatch extends Fake implements RouteMatch {
+  _FakeRouteMatch({required this.name});
+
+  @override
+  final String name;
 }

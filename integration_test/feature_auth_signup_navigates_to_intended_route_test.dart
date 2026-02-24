@@ -20,9 +20,9 @@ import 'package:belluga_now/infrastructure/dal/dao/laravel_backend/app_data_back
 import 'package:belluga_now/infrastructure/dal/dao/local/app_data_local_info_source/app_data_local_info_source_stub.dart';
 import 'package:belluga_now/infrastructure/repositories/app_data_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/auth_repository.dart';
-import 'package:belluga_now/presentation/tenant/auth/login/controllers/auth_login_controller_contract.dart';
-import 'package:belluga_now/presentation/common/auth/screens/auth_login_screen/controllers/auth_login_controller.dart';
-import 'package:belluga_now/presentation/common/auth/screens/auth_login_screen/auth_login_screen.dart';
+import 'package:belluga_now/presentation/tenant_public/auth/login/controllers/auth_login_controller_contract.dart';
+import 'package:belluga_now/presentation/shared/auth/screens/auth_login_screen/controllers/auth_login_controller.dart';
+import 'package:belluga_now/presentation/shared/auth/screens/auth_login_screen/auth_login_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:geolocator/geolocator.dart';

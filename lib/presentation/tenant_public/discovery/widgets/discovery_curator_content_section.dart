@@ -1,6 +1,6 @@
-import 'package:belluga_now/presentation/tenant/discovery/models/curator_content.dart';
-import 'package:belluga_now/presentation/tenant/discovery/widgets/curator_content_card.dart';
-import 'package:belluga_now/presentation/tenant/widgets/section_header.dart';
+import 'package:belluga_now/presentation/tenant_public/discovery/models/curator_content.dart';
+import 'package:belluga_now/presentation/tenant_public/discovery/widgets/curator_content_card.dart';
+import 'package:belluga_now/presentation/tenant_public/widgets/section_header.dart';
 import 'package:flutter/material.dart';
 
 class DiscoveryCuratorContentSection extends StatelessWidget {

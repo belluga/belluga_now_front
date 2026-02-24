@@ -1,5 +1,5 @@
-import 'package:belluga_now/presentation/tenant/auth/login/controllers/form_field_controller_contract.dart';
-import 'package:belluga_now/presentation/common/auth/value_objects/auth_login_password_value.dart';
+import 'package:belluga_now/presentation/tenant_public/auth/login/controllers/form_field_controller_contract.dart';
+import 'package:belluga_now/presentation/shared/auth/value_objects/auth_login_password_value.dart';
 import 'package:value_object_pattern/domain/exceptions/value_exceptions.dart';
 
 class FormFieldControllerPasswordLogin

@@ -1,7 +1,7 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
-import 'package:belluga_now/presentation/common/widgets/main_logo.dart';
+import 'package:belluga_now/presentation/shared/widgets/main_logo.dart';
 import 'package:flutter/material.dart';
 
 class HomeAppBar extends StatelessWidget {
@@ -41,9 +41,8 @@ class HomeAppBar extends StatelessWidget {
                           Icon(
                             Icons.location_on_outlined,
                             size: 14,
-                            color: Theme.of(context)
-                                .colorScheme
-                                .onSurfaceVariant,
+                            color:
+                                Theme.of(context).colorScheme.onSurfaceVariant,
                           ),
                           const SizedBox(width: 4),
                           Flexible(
@@ -70,7 +69,14 @@ class HomeAppBar extends StatelessWidget {
           ),
         ],
       ),
-      actions: const [],
+      actions: [
+        IconButton(
+          tooltip: 'Workspace',
+          icon: const Icon(Icons.workspaces_outline),
+          onPressed: () =>
+              context.router.push(const AccountWorkspaceHomeRoute()),
+        ),
+      ],
     );
   }
 }

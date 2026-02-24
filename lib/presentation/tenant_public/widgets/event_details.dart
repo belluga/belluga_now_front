@@ -1,6 +1,6 @@
 import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
-import 'package:belluga_now/presentation/tenant/widgets/date_badge.dart';
-import 'package:belluga_now/presentation/tenant/widgets/event_info_row.dart';
+import 'package:belluga_now/presentation/tenant_public/widgets/date_badge.dart';
+import 'package:belluga_now/presentation/tenant_public/widgets/event_info_row.dart';
 import 'package:flutter/material.dart';
 
 class EventDetails extends StatelessWidget {

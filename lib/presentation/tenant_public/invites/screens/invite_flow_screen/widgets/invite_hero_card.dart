@@ -1,9 +1,9 @@
 import 'dart:ui';
 
 import 'package:belluga_now/domain/invites/invite_model.dart';
-import 'package:belluga_now/presentation/common/widgets/belluga_network_image.dart';
-import 'package:belluga_now/presentation/common/widgets/swipeable_card/swipeable_card.dart';
-import 'package:belluga_now/presentation/tenant/invites/screens/invite_flow_screen/widgets/invite_content_card.dart';
+import 'package:belluga_now/presentation/shared/widgets/belluga_network_image.dart';
+import 'package:belluga_now/presentation/shared/widgets/swipeable_card/swipeable_card.dart';
+import 'package:belluga_now/presentation/tenant_public/invites/screens/invite_flow_screen/widgets/invite_content_card.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
