@@ -317,7 +317,7 @@ class _TenantAdminShellScreenState extends State<TenantAdminShellScreen> {
 
     if (_isLandlordEnvironment() &&
         selectedTenantDomain != null &&
-        !_isCurrentHost(selectedTenantDomain)) {
+        !_isCurrentOrigin(selectedTenantDomain)) {
       final targetUrl = _buildTenantSurfaceUrl(
         tenantDomain: selectedTenantDomain,
         path: '/',
@@ -339,14 +339,27 @@ class _TenantAdminShellScreenState extends State<TenantAdminShellScreen> {
         EnvironmentType.landlord;
   }
 
-  bool _isCurrentHost(String tenantDomain) {
-    final currentHost =
-        _appDataRepository.appData.hostname.trim().toLowerCase();
+  bool _isCurrentOrigin(String tenantDomain) {
+    final current = Uri.tryParse(_appDataRepository.appData.href);
     final candidate = _parseAsUri(tenantDomain);
-    if (candidate == null) {
+    if (current == null || candidate == null) {
       return false;
     }
-    return candidate.host.trim().toLowerCase() == currentHost;
+
+    if (candidate.host.trim().toLowerCase() !=
+        current.host.trim().toLowerCase()) {
+      return false;
+    }
+
+    if (_effectivePort(candidate) != _effectivePort(current)) {
+      return false;
+    }
+
+    if (tenantDomain.contains('://')) {
+      return candidate.scheme.toLowerCase() == current.scheme.toLowerCase();
+    }
+
+    return true;
   }
 
   Future<void> _openRedirectLink(String url) async {
@@ -381,6 +394,8 @@ class _TenantAdminShellScreenState extends State<TenantAdminShellScreen> {
 
     final port = parsedTenant.hasPort
         ? parsedTenant.port
+        : hasScheme
+            ? null
         : (landlordOrigin != null && landlordOrigin.hasPort)
             ? landlordOrigin.port
             : null;
@@ -401,6 +416,17 @@ class _TenantAdminShellScreenState extends State<TenantAdminShellScreen> {
     return Uri.tryParse(
       normalized.contains('://') ? normalized : 'https://$normalized',
     );
+  }
+
+  int? _effectivePort(Uri uri) {
+    if (uri.hasPort) {
+      return uri.port;
+    }
+    return switch (uri.scheme.toLowerCase()) {
+      'http' => 80,
+      'https' => 443,
+      _ => null,
+    };
   }
 
   String? _resolveRouteMatchPath(RouteData routeData) {
