@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:belluga_now/application/router/modular_app/modules/auth_module.dart';
+import 'package:belluga_now/application/router/modular_app/modules/account_workspace_module.dart';
 import 'package:belluga_now/application/router/modular_app/modules/discovery_module.dart';
 import 'package:belluga_now/application/router/modular_app/modules/home_module.dart';
 import 'package:belluga_now/application/router/modular_app/modules/initialization_module.dart';
@@ -69,8 +70,8 @@ import 'package:belluga_now/infrastructure/services/http/laravel_map_poi_http_se
 import 'package:belluga_now/infrastructure/services/http/mock_http_service.dart';
 import 'package:belluga_now/infrastructure/services/networking/mock_web_socket_service.dart';
 import 'package:belluga_now/application/application_contract.dart';
-import 'package:belluga_now/presentation/common/location_permission/controllers/location_permission_controller.dart';
-import 'package:belluga_now/presentation/common/push/controllers/push_options_controller.dart';
+import 'package:belluga_now/presentation/shared/location_permission/controllers/location_permission_controller.dart';
+import 'package:belluga_now/presentation/shared/push/controllers/push_options_controller.dart';
 import 'package:belluga_now/infrastructure/services/push/push_answer_handler.dart';
 import 'package:belluga_now/infrastructure/services/push/push_answer_relay.dart';
 import 'package:belluga_now/infrastructure/services/push/push_answer_resolver.dart';
@@ -110,6 +111,7 @@ class ModuleSettings extends ModuleSettingsContract {
     await registerSubModule(ScheduleModule());
     await registerSubModule(MapModule());
     await registerSubModule(DiscoveryModule());
+    await registerSubModule(AccountWorkspaceModule());
     await registerSubModule(MenuModule());
   }
 

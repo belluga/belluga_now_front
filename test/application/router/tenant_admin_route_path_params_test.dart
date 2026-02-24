@@ -177,6 +177,18 @@ void main() {
       _expectResolvedRawParams(partner.rawPathParams);
     });
   });
+
+  group('Workspace route path params', () {
+    test('workspace scoped route encodes account slug path param', () {
+      const workspaceHome = AccountWorkspaceHomeRoute();
+      final workspaceScoped =
+          AccountWorkspaceScopedRoute(accountSlug: 'account-alpha');
+
+      expect(workspaceHome.rawPathParams, isEmpty);
+      expect(workspaceScoped.rawPathParams, {'accountSlug': 'account-alpha'});
+      _expectResolvedRawParams(workspaceScoped.rawPathParams);
+    });
+  });
 }
 
 void _expectResolvedRawParams(Map<String, dynamic> rawPathParams) {

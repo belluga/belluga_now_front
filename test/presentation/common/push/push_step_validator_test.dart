@@ -1,4 +1,4 @@
-import 'package:belluga_now/presentation/common/push/push_step_validator.dart';
+import 'package:belluga_now/presentation/shared/push/push_step_validator.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:push_handler/push_handler.dart';
 

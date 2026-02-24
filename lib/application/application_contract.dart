@@ -27,9 +27,9 @@ import 'package:belluga_now/infrastructure/services/push/push_answer_resolver.da
 import 'package:belluga_now/infrastructure/services/push/push_action_dispatcher.dart';
 import 'package:belluga_now/infrastructure/services/push/push_telemetry_forwarder.dart';
 import 'package:belluga_now/infrastructure/services/telemetry/telemetry_route_observer.dart';
-import 'package:belluga_now/presentation/common/push/controllers/push_options_controller.dart';
-import 'package:belluga_now/presentation/common/push/push_option_selector_sheet.dart';
-import 'package:belluga_now/presentation/common/push/push_step_validator.dart';
+import 'package:belluga_now/presentation/shared/push/controllers/push_options_controller.dart';
+import 'package:belluga_now/presentation/shared/push/push_option_selector_sheet.dart';
+import 'package:belluga_now/presentation/shared/push/push_step_validator.dart';
 import 'package:flutter/foundation.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';

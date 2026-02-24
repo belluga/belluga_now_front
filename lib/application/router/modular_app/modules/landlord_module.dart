@@ -3,8 +3,8 @@ import 'dart:async';
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/application/router/guards/landlord_route_guard.dart';
-import 'package:belluga_now/presentation/landlord/auth/controllers/landlord_login_controller.dart';
-import 'package:belluga_now/presentation/landlord/home/screens/landlord_home_screen/controllers/landlord_home_screen_controller.dart';
+import 'package:belluga_now/presentation/landlord_area/auth/controllers/landlord_login_controller.dart';
+import 'package:belluga_now/presentation/landlord_area/home/screens/landlord_home_screen/controllers/landlord_home_screen_controller.dart';
 import 'package:get_it/get_it.dart';
 import 'package:get_it_modular_with_auto_route/get_it_modular_with_auto_route.dart';
 
@@ -25,9 +25,13 @@ class LandlordModule extends ModuleContract {
   @override
   List<AutoRoute> get routes => [
         AutoRoute(
-          path: '/landlord',
+          path: '/',
           page: LandlordHomeRoute.page,
           guards: [LandlordRouteGuard()],
+        ),
+        RedirectRoute(
+          path: '/landlord',
+          redirectTo: '/admin',
         ),
       ];
 }

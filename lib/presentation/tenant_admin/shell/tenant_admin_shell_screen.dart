@@ -1,5 +1,10 @@
+import 'dart:async';
+
 import 'package:auto_route/auto_route.dart';
+import 'package:belluga_now/application/configurations/belluga_constants.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
+import 'package:belluga_now/domain/app_data/environment_type.dart';
+import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/landlord_tenants_repository_contract.dart';
 import 'package:belluga_now/presentation/tenant_admin/shell/controllers/tenant_admin_shell_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/shell/theme/tenant_admin_scope_theme.dart';
@@ -10,6 +15,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class TenantAdminShellScreen extends StatefulWidget {
   const TenantAdminShellScreen({super.key});
@@ -23,6 +29,8 @@ class _TenantAdminShellScreenState extends State<TenantAdminShellScreen> {
   static const _desktopMaxWidth = 1480.0;
   final TenantAdminShellController _controller =
       GetIt.I.get<TenantAdminShellController>();
+  final AppDataRepositoryContract _appDataRepository =
+      GetIt.I.get<AppDataRepositoryContract>();
   String? _lastNormalizedPathEnqueued;
 
   final List<_AdminDestination> _destinations = const [
@@ -278,6 +286,149 @@ class _TenantAdminShellScreenState extends State<TenantAdminShellScreen> {
     });
   }
 
+  void _handleTenantSelection(String tenantDomain) {
+    unawaited(_handleTenantSelectionAsync(tenantDomain));
+  }
+
+  Future<void> _handleTenantSelectionAsync(String tenantDomain) async {
+    if (!_isLandlordEnvironment()) {
+      _controller.selectTenantDomain(tenantDomain);
+      return;
+    }
+
+    final targetUrl = _buildTenantSurfaceUrl(
+      tenantDomain: tenantDomain,
+      path: '/admin',
+    );
+    if (targetUrl == null) {
+      _controller.selectTenantDomain(tenantDomain);
+      return;
+    }
+
+    await _openRedirectLink(targetUrl);
+  }
+
+  void _handlePreviewTenantPublic() {
+    unawaited(_handlePreviewTenantPublicAsync());
+  }
+
+  Future<void> _handlePreviewTenantPublicAsync() async {
+    final selectedTenantDomain = _controller.selectedTenantDomain;
+
+    if (_isLandlordEnvironment() &&
+        selectedTenantDomain != null &&
+        !_isCurrentOrigin(selectedTenantDomain)) {
+      final targetUrl = _buildTenantSurfaceUrl(
+        tenantDomain: selectedTenantDomain,
+        path: '/',
+      );
+      if (targetUrl != null) {
+        await _openRedirectLink(targetUrl);
+        return;
+      }
+    }
+
+    if (!mounted) {
+      return;
+    }
+    context.router.replaceAll([const TenantHomeRoute()]);
+  }
+
+  bool _isLandlordEnvironment() {
+    return _appDataRepository.appData.typeValue.value ==
+        EnvironmentType.landlord;
+  }
+
+  bool _isCurrentOrigin(String tenantDomain) {
+    final current = Uri.tryParse(_appDataRepository.appData.href);
+    final candidate = _parseAsUri(tenantDomain);
+    if (current == null || candidate == null) {
+      return false;
+    }
+
+    if (candidate.host.trim().toLowerCase() !=
+        current.host.trim().toLowerCase()) {
+      return false;
+    }
+
+    if (_effectivePort(candidate) != _effectivePort(current)) {
+      return false;
+    }
+
+    if (tenantDomain.contains('://')) {
+      return candidate.scheme.toLowerCase() == current.scheme.toLowerCase();
+    }
+
+    return true;
+  }
+
+  Future<void> _openRedirectLink(String url) async {
+    final uri = Uri.tryParse(url);
+    if (uri == null) {
+      return;
+    }
+
+    final launched = await launchUrl(uri, webOnlyWindowName: '_self');
+    if (!launched) {
+      debugPrint('[TenantAdmin] Redirect link failed for $url');
+    }
+  }
+
+  String? _buildTenantSurfaceUrl({
+    required String tenantDomain,
+    required String path,
+  }) {
+    final parsedTenant = _parseAsUri(tenantDomain);
+    if (parsedTenant == null || parsedTenant.host.trim().isEmpty) {
+      return null;
+    }
+
+    final hasScheme = tenantDomain.contains('://');
+    final landlordOrigin = _parseAsUri(BellugaConstants.landlordDomain);
+    final scheme = hasScheme
+        ? parsedTenant.scheme.toLowerCase()
+        : landlordOrigin?.scheme.toLowerCase();
+    if (scheme != 'http' && scheme != 'https') {
+      return null;
+    }
+
+    final port = parsedTenant.hasPort
+        ? parsedTenant.port
+        : hasScheme
+            ? null
+        : (landlordOrigin != null && landlordOrigin.hasPort)
+            ? landlordOrigin.port
+            : null;
+
+    return Uri(
+      scheme: scheme,
+      host: parsedTenant.host,
+      port: port,
+      path: path,
+    ).toString();
+  }
+
+  Uri? _parseAsUri(String raw) {
+    final normalized = raw.trim();
+    if (normalized.isEmpty) {
+      return null;
+    }
+    return Uri.tryParse(
+      normalized.contains('://') ? normalized : 'https://$normalized',
+    );
+  }
+
+  int? _effectivePort(Uri uri) {
+    if (uri.hasPort) {
+      return uri.port;
+    }
+    return switch (uri.scheme.toLowerCase()) {
+      'http' => 80,
+      'https' => 443,
+      _ => null,
+    };
+  }
+
   String? _resolveRouteMatchPath(RouteData routeData) {
     final rawMatch = routeData.match;
     if (rawMatch.isEmpty) {
@@ -446,7 +597,7 @@ class _TenantAdminShellScreenState extends State<TenantAdminShellScreen> {
                   }
                   return TenantSelectionGate(
                     tenants: availableTenants,
-                    onSelectTenant: _controller.selectTenantDomain,
+                    onSelectTenant: _handleTenantSelection,
                   );
                 }
 
@@ -478,6 +629,14 @@ class _TenantAdminShellScreenState extends State<TenantAdminShellScreen> {
                         context: scopeContext,
                         routeName: currentName,
                       );
+                      final shellActions = <Widget>[
+                        IconButton.filledTonal(
+                          tooltip: 'Preview tenant public',
+                          onPressed: _handlePreviewTenantPublic,
+                          icon: const Icon(Icons.visibility_outlined),
+                        ),
+                        ...scopedActions,
+                      ];
 
                       return LayoutBuilder(
                         builder: (context, constraints) {
@@ -544,7 +703,7 @@ class _TenantAdminShellScreenState extends State<TenantAdminShellScreen> {
                                                             canChangeTenant,
                                                         onChangeTenant: _controller
                                                             .clearTenantSelection,
-                                                        actions: scopedActions,
+                                                        actions: shellActions,
                                                       )
                                                     : const SizedBox.shrink(),
                                                 SizedBox(
@@ -595,7 +754,7 @@ class _TenantAdminShellScreenState extends State<TenantAdminShellScreen> {
                                             canChangeTenant: canChangeTenant,
                                             onChangeTenant: _controller
                                                 .clearTenantSelection,
-                                            actions: scopedActions,
+                                            actions: shellActions,
                                           )
                                         : const SizedBox.shrink(),
                                     SizedBox(

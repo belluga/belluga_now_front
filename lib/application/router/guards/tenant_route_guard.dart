@@ -19,11 +19,23 @@ class TenantRouteGuard extends AutoRouteGuard {
     }
 
     // Landlord host must never access tenant routes (even deep links).
+    String attemptedPath = '';
+    try {
+      attemptedPath = resolver.route.fullPath;
+    } catch (_) {
+      attemptedPath = '';
+    }
+
     resolver.next(false);
-    router.replaceAll([_resolveLandlordInitialRoute()]);
+    router.replaceAll([_resolveLandlordInitialRoute(attemptedPath)]);
   }
 
-  PageRouteInfo _resolveLandlordInitialRoute() {
+  PageRouteInfo _resolveLandlordInitialRoute(String attemptedPath) {
+    if (_isHistoricalTenantHomePath(attemptedPath) ||
+        _isHistoricalLandlordPath(attemptedPath)) {
+      return const TenantAdminShellRoute();
+    }
+
     if (!GetIt.I.isRegistered<AdminModeRepositoryContract>() ||
         !GetIt.I.isRegistered<LandlordAuthRepositoryContract>()) {
       return const LandlordHomeRoute();
@@ -40,5 +52,15 @@ class TenantRouteGuard extends AutoRouteGuard {
     }
 
     return const LandlordHomeRoute();
+  }
+
+  bool _isHistoricalTenantHomePath(String attemptedPath) {
+    final path = attemptedPath.trim();
+    return path == 'home' || path == '/home';
+  }
+
+  bool _isHistoricalLandlordPath(String attemptedPath) {
+    final path = attemptedPath.trim();
+    return path == 'landlord' || path == '/landlord';
   }
 }

@@ -13,6 +13,8 @@ Apply these Flutter architectural tenets on every task:
 - Maintain feature-first structure (`tenant/<feature>/screens/...`) with controllers registered via ModuleScope/GetIt; controllers never accept `BuildContext`.
 - Enforce DTO → Domain → Projection flow; DTOs never reach widgets, and projections expose UI-ready primitives only.
 - Register routes via AutoRoute with guards (tenant shell/auth); use RouteModelResolver for hydration and keep route docs updated.
+- Enforce canonical scope/subscope ownership from `foundation_documentation/policies/scope_subscope_governance.md` for any route/screen placement.
+- Never create implicit/undefined subscopes; new subscope introduction requires explicit decision and policy update first.
 - Align repos/contracts with documented pagination/filtering expectations and mirror them in Laravel roadmaps.
 - Analyzer/tests are mandatory: `fvm flutter analyze` must be clean; add targeted controller/widget tests when behaviour changes.
 

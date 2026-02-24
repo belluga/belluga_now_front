@@ -1,6 +1,6 @@
 import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
-import 'package:belluga_now/presentation/common/widgets/immersive_detail_screen/controllers/immersive_detail_screen_controller.dart';
-import 'package:belluga_now/presentation/common/widgets/immersive_detail_screen/models/immersive_tab_item.dart';
+import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/controllers/immersive_detail_screen_controller.dart';
+import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/models/immersive_tab_item.dart';
 import 'package:event_tracker_handler/event_tracker_handler.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';

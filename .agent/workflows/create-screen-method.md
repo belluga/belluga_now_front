@@ -10,11 +10,20 @@ Scaffold a new feature screen following the Feature-First architecture with prop
 ## Prerequisites
 - Feature domain entities defined
 - Repository contract defined (if needed)
+- Canonical scope policy loaded: `foundation_documentation/policies/scope_subscope_governance.md`
 
 ## Steps
 
 ### 1. Create Feature Directory Structure
 ```
+
+### 1.1 Validate Screen Scope/Subscope Placement (Mandatory)
+Before creating files, declare and document:
+- `EnvironmentType` ownership,
+- main scope ownership,
+- subscope ownership when applicable.
+
+Do not place new screens in ambiguous legacy folders or create undefined subscopes without explicit decision and policy update.
 lib/presentation/<module>/<feature>/
 ├── <feature>_screen.dart          # Pure UI
 ├── <feature>_controller.dart      # State management
@@ -169,6 +178,7 @@ fvm flutter pub run build_runner build --delete-conflicting-outputs
 - **StreamValue Pattern**: Use `StreamValue` for reactive state management
 - **Dependency Injection**: Controllers injected via GetIt, registered in modules
 - **Feature-First**: All feature code in one directory
+- **Scope Governance**: Screen placement/ownership must match canonical scope/subscope policy.
 
 ## Critical Rules
 - **NO StatefulWidget for business state** - only for UI state (animations, focus)
