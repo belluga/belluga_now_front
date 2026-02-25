@@ -1,7 +1,7 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_static_asset.dart';
-import 'package:belluga_now/presentation/common/widgets/belluga_network_image.dart';
+import 'package:belluga_now/presentation/shared/widgets/belluga_network_image.dart';
 import 'package:flutter/material.dart';
 
 class TenantAdminStaticAssetDetailScreen extends StatelessWidget {

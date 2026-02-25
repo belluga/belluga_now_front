@@ -8,6 +8,18 @@ import 'package:get_it/get_it.dart';
 class LandlordRouteGuard extends AutoRouteGuard {
   @override
   void onNavigation(NavigationResolver resolver, StackRouter router) {
+    String routeName = '';
+    try {
+      routeName = resolver.route.name;
+    } catch (_) {
+      routeName = '';
+    }
+
+    if (routeName == TenantAdminShellRoute.name) {
+      resolver.next(true);
+      return;
+    }
+
     final appData = GetIt.I.get<AppData>();
     final envType = appData.typeValue.value;
     final hostname = appData.hostname;

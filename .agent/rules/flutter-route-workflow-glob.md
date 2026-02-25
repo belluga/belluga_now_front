@@ -5,8 +5,11 @@ description: Apply the route workflow whenever Flutter routing files are edited.
 
 ## Rule
 Edits under `flutter-app/lib/**/routes/**` must follow the Route Workflow:
+- Load and reference `foundation_documentation/policies/scope_subscope_governance.md` before defining ownership.
 - Register new routes in AutoRoute with guards and ModuleScope wiring.
+- Validate and document target ownership for each route (`EnvironmentType`, main scope, subscope when applicable).
 - Use RouteModelResolver for hydration; update documentation (`screens/tenant_app.md`, route sections) accordingly.
+- Do not create or imply undefined subscopes/folders; explicit decision + policy update is required first.
 - Regenerate routes via build_runner and ensure analyzer passes.
 
 ## Rationale

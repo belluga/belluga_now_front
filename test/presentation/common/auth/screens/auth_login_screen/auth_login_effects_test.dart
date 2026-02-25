@@ -1,4 +1,4 @@
-import 'package:belluga_now/presentation/common/auth/screens/auth_login_screen/widgets/auth_login_effects.dart';
+import 'package:belluga_now/presentation/shared/auth/screens/auth_login_screen/widgets/auth_login_effects.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 

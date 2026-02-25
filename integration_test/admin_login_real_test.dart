@@ -5,7 +5,7 @@ import 'package:belluga_now/domain/repositories/admin_mode_repository_contract.d
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/landlord_auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/landlord_tenants_repository_contract.dart';
-import 'package:belluga_now/presentation/landlord/auth/controllers/landlord_login_controller.dart';
+import 'package:belluga_now/presentation/landlord_area/auth/controllers/landlord_login_controller.dart';
 import 'support/fake_landlord_app_data_backend.dart';
 import 'package:belluga_now/infrastructure/dal/dao/local/app_data_local_info_source/app_data_local_info_source_stub.dart';
 import 'package:belluga_now/infrastructure/repositories/app_data_repository.dart';

@@ -13,8 +13,8 @@ import 'package:belluga_now/infrastructure/services/http/laravel_map_poi_http_se
 import 'package:belluga_now/infrastructure/services/networking/mock_web_socket_service.dart';
 import 'package:belluga_now/infrastructure/repositories/schedule_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/poi_repository.dart';
-import 'package:belluga_now/presentation/tenant/map/screens/map_screen/controllers/fab_menu_controller.dart';
-import 'package:belluga_now/presentation/tenant/map/screens/map_screen/controllers/map_screen_controller.dart';
+import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/controllers/fab_menu_controller.dart';
+import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/controllers/map_screen_controller.dart';
 import 'package:get_it/get_it.dart';
 import 'package:get_it_modular_with_auto_route/get_it_modular_with_auto_route.dart';
 

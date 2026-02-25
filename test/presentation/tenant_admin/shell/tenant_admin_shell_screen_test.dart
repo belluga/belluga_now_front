@@ -1,8 +1,8 @@
 import 'dart:async';
 
 import 'package:belluga_now/domain/app_data/app_data.dart';
-import 'package:belluga_now/domain/app_data/value_object/app_domain_value.dart';
-import 'package:belluga_now/domain/app_data/value_object/domain_value.dart';
+import 'package:belluga_now/domain/app_data/app_type.dart';
+import 'package:belluga_now/domain/app_data/value_object/platform_type_value.dart';
 import 'package:belluga_now/domain/repositories/admin_mode_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/landlord_tenants_repository_contract.dart';
@@ -11,29 +11,44 @@ import 'package:belluga_now/infrastructure/services/tenant_admin/tenant_admin_ba
 import 'package:belluga_now/presentation/tenant_admin/shell/controllers/tenant_admin_shell_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/shell/tenant_admin_shell_screen.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+  const urlLauncherChannel = MethodChannel('plugins.flutter.io/url_launcher');
 
   setUp(() async {
     await GetIt.I.reset();
   });
 
   tearDown(() async {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(
+      urlLauncherChannel,
+      null,
+    );
     await GetIt.I.reset();
   });
 
   testWidgets('shows loading gate while tenant resolution is in progress',
       (tester) async {
+    final appDataRepository = _FakeAppDataRepository(
+      appData: _buildAppData(
+        envType: 'landlord',
+        hostname: 'belluga.space',
+        domains: const ['https://belluga.space'],
+      ),
+    );
     final controller = TenantAdminShellController(
       adminModeRepository: _FakeAdminModeRepository(),
-      appDataRepository: _FakeAppDataRepository(domains: const []),
+      appDataRepository: appDataRepository,
       landlordTenantsRepository: _PendingLandlordTenantsRepository(),
       selectedTenantRepository: _FakeSelectedTenantRepository(),
     );
+    GetIt.I.registerSingleton<AppDataRepositoryContract>(appDataRepository);
     GetIt.I.registerSingleton<TenantAdminShellController>(controller);
 
     await tester.pumpWidget(
@@ -46,6 +61,97 @@ void main() {
     expect(find.text('Preparando tenant'), findsOneWidget);
     expect(find.text('Carregando tenants disponíveis...'), findsOneWidget);
     expect(find.text('Selecionar tenant'), findsNothing);
+  });
+
+  testWidgets('tenant selection redirects landlord flow to tenant domain admin',
+      (tester) async {
+    final launchedUrls = <String>[];
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(
+      urlLauncherChannel,
+      (MethodCall call) async {
+        if (call.method == 'launch') {
+          final url = (call.arguments as Map)['url']?.toString();
+          if (url != null) {
+            launchedUrls.add(url);
+          }
+          return true;
+        }
+        if (call.method == 'canLaunch') {
+          return true;
+        }
+        return null;
+      },
+    );
+
+    final appDataRepository = _FakeAppDataRepository(
+      appData: _buildAppData(
+        envType: 'landlord',
+        hostname: 'belluga.space',
+        domains: const ['https://belluga.space'],
+      ),
+    );
+
+    final controller = TenantAdminShellController(
+      adminModeRepository: _FakeAdminModeRepository(),
+      appDataRepository: appDataRepository,
+      landlordTenantsRepository: _FixedLandlordTenantsRepository(
+        const [
+          LandlordTenantOption(
+            id: 'tenant-guarappari',
+            name: 'Guarappari',
+            mainDomain: 'https://guarappari.belluga.space',
+          ),
+        ],
+      ),
+      selectedTenantRepository: _FakeSelectedTenantRepository(),
+    );
+    GetIt.I.registerSingleton<AppDataRepositoryContract>(appDataRepository);
+    GetIt.I.registerSingleton<TenantAdminShellController>(controller);
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: TenantAdminShellScreen(),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+
+    expect(find.text('Selecionar tenant'), findsOneWidget);
+    await tester.tap(find.text('Guarappari'));
+    await tester.pump(const Duration(milliseconds: 200));
+
+    expect(
+      launchedUrls,
+      contains('https://guarappari.belluga.space/admin'),
+    );
+  });
+
+  test('tenant environment auto-selects current host on init', () {
+    final appDataRepository = _FakeAppDataRepository(
+      appData: _buildAppData(
+        envType: 'tenant',
+        hostname: 'guarappari.belluga.space',
+        domains: const [
+          'https://guarappari.belluga.space',
+          'https://belluga.space',
+        ],
+      ),
+    );
+    final selectedTenantRepository = _FakeSelectedTenantRepository();
+    final controller = TenantAdminShellController(
+      adminModeRepository: _FakeAdminModeRepository(),
+      appDataRepository: appDataRepository,
+      landlordTenantsRepository: _PendingLandlordTenantsRepository(),
+      selectedTenantRepository: selectedTenantRepository,
+    );
+
+    controller.init();
+
+    expect(
+      selectedTenantRepository.selectedTenantDomain,
+      'guarappari.belluga.space',
+    );
   });
 }
 
@@ -71,10 +177,7 @@ class _FakeAdminModeRepository implements AdminModeRepositoryContract {
 }
 
 class _FakeAppDataRepository implements AppDataRepositoryContract {
-  _FakeAppDataRepository({
-    required List<String> domains,
-    List<String> appDomains = const [],
-  }) : _appData = _FakeAppData(domains: domains, appDomains: appDomains);
+  _FakeAppDataRepository({required AppData appData}) : _appData = appData;
 
   final AppData _appData;
 
@@ -105,37 +208,6 @@ class _FakeAppDataRepository implements AppDataRepositoryContract {
   Future<void> setThemeMode(ThemeMode mode) async {}
 }
 
-class _FakeAppData extends Fake implements AppData {
-  _FakeAppData({
-    required List<String> domains,
-    required List<String> appDomains,
-  })  : _domains = domains
-            .map((domain) => DomainValue()..parse(_normalize(domain)))
-            .toList(growable: false),
-        _appDomains = appDomains
-            .map((domain) => AppDomainValue()..parse(domain))
-            .toList(growable: false);
-
-  final List<DomainValue> _domains;
-  final List<AppDomainValue> _appDomains;
-
-  @override
-  List<DomainValue> get domains => _domains;
-
-  @override
-  List<AppDomainValue>? get appDomains => _appDomains;
-
-  @override
-  String get hostname => 'landlord.example.com';
-
-  static String _normalize(String domain) {
-    if (domain.contains('://')) {
-      return domain;
-    }
-    return 'https://$domain';
-  }
-}
-
 class _PendingLandlordTenantsRepository
     implements LandlordTenantsRepositoryContract {
   final Completer<List<LandlordTenantOption>> _completer =
@@ -143,6 +215,16 @@ class _PendingLandlordTenantsRepository
 
   @override
   Future<List<LandlordTenantOption>> fetchTenants() => _completer.future;
+}
+
+class _FixedLandlordTenantsRepository
+    implements LandlordTenantsRepositoryContract {
+  const _FixedLandlordTenantsRepository(this._tenants);
+
+  final List<LandlordTenantOption> _tenants;
+
+  @override
+  Future<List<LandlordTenantOption>> fetchTenants() async => _tenants;
 }
 
 class _FakeSelectedTenantRepository
@@ -206,6 +288,39 @@ class _FakeSelectedTenantRepository
   void setAvailableTenants(List<LandlordTenantOption> tenants) {
     _availableTenantsStreamValue.addValue(tenants);
   }
+}
+
+AppData _buildAppData({
+  required String envType,
+  required String hostname,
+  required List<String> domains,
+  List<String> appDomains = const [],
+}) {
+  final platformType = PlatformTypeValue()..parse(AppType.mobile.name);
+  return AppData.fromInitialization(
+    remoteData: {
+      'name': 'Test',
+      'type': envType,
+      'main_domain': domains.isNotEmpty ? domains.first : 'https://$hostname',
+      'domains': domains,
+      'app_domains': appDomains,
+      'theme_data_settings': {
+        'primary_seed_color': '#4FA0E3',
+        'secondary_seed_color': '#E80D5D',
+        'brightness_default': 'light',
+      },
+      'main_color': '#4FA0E3',
+      'tenant_id': 'tenant-1',
+      'telemetry': {'trackers': []},
+    },
+    localInfo: {
+      'platformType': platformType,
+      'hostname': hostname,
+      'href': 'https://$hostname',
+      'port': null,
+      'device': 'test-device',
+    },
+  );
 }
 
 extension<T> on Iterable<T> {
