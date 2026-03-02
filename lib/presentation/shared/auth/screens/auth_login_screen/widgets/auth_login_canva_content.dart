@@ -6,7 +6,7 @@ import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/presentation/shared/auth/screens/auth_login_screen/widgets/auth_login_form.dart';
 import 'package:belluga_now/presentation/shared/auth/screens/auth_login_screen/widgets/auth_signup_sheet.dart';
 import 'package:belluga_now/presentation/shared/widgets/button_loading.dart';
-import 'package:belluga_now/presentation/landlord_area/auth/controllers/landlord_login_controller.dart';
+import 'package:belluga_now/presentation/landlord_area/auth/controllers/auth_login_landlord_controller.dart';
 import 'package:belluga_now/presentation/landlord_area/auth/widgets/landlord_login_sheet.dart';
 import 'package:belluga_now/presentation/tenant_public/auth/login/controllers/auth_login_controller_contract.dart';
 import 'package:flutter/material.dart';
@@ -23,12 +23,12 @@ class AuthLoginCanvaContent extends StatelessWidget {
 
   final Future<void> Function() navigateToPasswordRecover;
   final AuthLoginControllerContract? controller;
-  final LandlordLoginController? landlordLoginController;
+  final AuthLoginLandlordController? landlordLoginController;
 
   AuthLoginControllerContract get _controller =>
       controller ?? GetIt.I.get<AuthLoginControllerContract>();
-  LandlordLoginController get _landlordController =>
-      landlordLoginController ?? GetIt.I.get<LandlordLoginController>();
+  AuthLoginLandlordController get _landlordController =>
+      landlordLoginController ?? GetIt.I.get<AuthLoginLandlordController>();
 
   @override
   Widget build(BuildContext context) {

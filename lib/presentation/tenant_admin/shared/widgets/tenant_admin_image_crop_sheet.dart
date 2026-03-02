@@ -11,7 +11,11 @@ Future<XFile?> showTenantAdminImageCropSheet({
   required BuildContext context,
   required XFile sourceFile,
   required TenantAdminImageSlot slot,
-  required TenantAdminImageIngestionService ingestionService,
+  required Future<Uint8List> Function(XFile sourceFile) readBytesForCrop,
+  required Future<XFile> Function(
+    Uint8List croppedData,
+    TenantAdminImageSlot slot,
+  ) prepareCroppedFile,
 }) {
   return showModalBottomSheet<XFile?>(
     context: context,
@@ -20,7 +24,8 @@ Future<XFile?> showTenantAdminImageCropSheet({
     builder: (_) => _TenantAdminImageCropSheet(
       sourceFile: sourceFile,
       slot: slot,
-      ingestionService: ingestionService,
+      readBytesForCrop: readBytesForCrop,
+      prepareCroppedFile: prepareCroppedFile,
     ),
   );
 }
@@ -29,12 +34,17 @@ class _TenantAdminImageCropSheet extends StatefulWidget {
   const _TenantAdminImageCropSheet({
     required this.sourceFile,
     required this.slot,
-    required this.ingestionService,
+    required this.readBytesForCrop,
+    required this.prepareCroppedFile,
   });
 
   final XFile sourceFile;
   final TenantAdminImageSlot slot;
-  final TenantAdminImageIngestionService ingestionService;
+  final Future<Uint8List> Function(XFile sourceFile) readBytesForCrop;
+  final Future<XFile> Function(
+    Uint8List croppedData,
+    TenantAdminImageSlot slot,
+  ) prepareCroppedFile;
 
   @override
   State<_TenantAdminImageCropSheet> createState() =>
@@ -56,34 +66,34 @@ class _TenantAdminImageCropSheetState
     _loadBytes();
   }
 
+  void _requestRebuild() {
+    if (!mounted) {
+      return;
+    }
+    (context as Element).markNeedsBuild();
+  }
+
   Future<void> _loadBytes() async {
-    setState(() {
-      _loading = true;
-      _errorMessage = null;
-    });
+    _loading = true;
+    _errorMessage = null;
+    _requestRebuild();
     try {
-      final bytes = await widget.ingestionService.readBytesForCrop(
-        widget.sourceFile,
-      );
+      final bytes = await widget.readBytesForCrop(widget.sourceFile);
       if (!mounted) return;
-      setState(() {
-        _bytes = bytes;
-      });
+      _bytes = bytes;
+      _requestRebuild();
     } on TenantAdminImageIngestionException catch (error) {
       if (!mounted) return;
-      setState(() {
-        _errorMessage = error.message;
-      });
+      _errorMessage = error.message;
+      _requestRebuild();
     } catch (error) {
       if (!mounted) return;
-      setState(() {
-        _errorMessage = 'Nao foi possivel carregar a imagem selecionada.';
-      });
+      _errorMessage = 'Nao foi possivel carregar a imagem selecionada.';
+      _requestRebuild();
     } finally {
       if (mounted) {
-        setState(() {
-          _loading = false;
-        });
+        _loading = false;
+        _requestRebuild();
       }
     }
   }
@@ -112,9 +122,8 @@ class _TenantAdminImageCropSheetState
 
   Future<void> _submit() async {
     if (_submitting || _bytes == null) return;
-    setState(() {
-      _submitting = true;
-    });
+    _submitting = true;
+    _requestRebuild();
     _cropController.crop();
   }
 
@@ -124,33 +133,26 @@ class _TenantAdminImageCropSheetState
       return;
     }
     if (!mounted) return;
-    setState(() {
-      _errorMessage = 'Nao foi possivel recortar a imagem.';
-      _submitting = false;
-    });
+    _errorMessage = 'Nao foi possivel recortar a imagem.';
+    _submitting = false;
+    _requestRebuild();
   }
 
   Future<void> _handleCropped(Uint8List croppedData) async {
     try {
-      final output = await widget.ingestionService.prepareBytesAsXFile(
-        croppedData,
-        slot: widget.slot,
-        applyAspectCrop: false,
-      );
+      final output = await widget.prepareCroppedFile(croppedData, widget.slot);
       if (!mounted) return;
       context.router.maybePop(output);
     } on TenantAdminImageIngestionException catch (error) {
       if (!mounted) return;
-      setState(() {
-        _errorMessage = error.message;
-        _submitting = false;
-      });
+      _errorMessage = error.message;
+      _submitting = false;
+      _requestRebuild();
     } catch (error) {
       if (!mounted) return;
-      setState(() {
-        _errorMessage = 'Nao foi possivel preparar a imagem recortada.';
-        _submitting = false;
-      });
+      _errorMessage = 'Nao foi possivel preparar a imagem recortada.';
+      _submitting = false;
+      _requestRebuild();
     }
   }
 

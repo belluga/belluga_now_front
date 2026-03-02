@@ -3,9 +3,9 @@ import 'dart:async';
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/configurations/belluga_constants.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
-import 'package:belluga_now/domain/app_data/environment_type.dart';
-import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/landlord_tenants_repository_contract.dart';
+import 'package:belluga_now/presentation/landlord_area/auth/controllers/tenant_admin_landlord_login_controller.dart';
+import 'package:belluga_now/presentation/landlord_area/auth/widgets/landlord_login_sheet.dart';
 import 'package:belluga_now/presentation/tenant_admin/shell/controllers/tenant_admin_shell_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/shell/theme/tenant_admin_scope_theme.dart';
 import 'package:belluga_now/presentation/tenant_admin/shell/widgets/tenant_admin_shell_header.dart';
@@ -29,8 +29,6 @@ class _TenantAdminShellScreenState extends State<TenantAdminShellScreen> {
   static const _desktopMaxWidth = 1480.0;
   final TenantAdminShellController _controller =
       GetIt.I.get<TenantAdminShellController>();
-  final AppDataRepositoryContract _appDataRepository =
-      GetIt.I.get<AppDataRepositoryContract>();
   String? _lastNormalizedPathEnqueued;
 
   final List<_AdminDestination> _destinations = const [
@@ -52,6 +50,11 @@ class _TenantAdminShellScreenState extends State<TenantAdminShellScreen> {
       route: TenantAdminEventsRoute(),
       routeNames: {
         TenantAdminEventsRoute.name,
+        TenantAdminEventCreateRoute.name,
+        TenantAdminEventEditRoute.name,
+        TenantAdminEventTypesRoute.name,
+        TenantAdminEventTypeCreateRoute.name,
+        TenantAdminEventTypeEditRoute.name,
       },
     ),
     _AdminDestination(
@@ -138,6 +141,10 @@ class _TenantAdminShellScreenState extends State<TenantAdminShellScreen> {
     TenantAdminStaticAssetDetailRoute.name,
     TenantAdminStaticAssetCreateRoute.name,
     TenantAdminStaticAssetEditRoute.name,
+    TenantAdminEventCreateRoute.name,
+    TenantAdminEventEditRoute.name,
+    TenantAdminEventTypeCreateRoute.name,
+    TenantAdminEventTypeEditRoute.name,
   };
 
   final Set<String> _scopedSectionAppBarRoutes = const {
@@ -185,6 +192,7 @@ class _TenantAdminShellScreenState extends State<TenantAdminShellScreen> {
       TenantAdminProfileTypesListRoute.name => 'Tipos de perfil',
       TenantAdminStaticProfileTypesListRoute.name => 'Tipos de ativo',
       TenantAdminTaxonomiesListRoute.name => 'Taxonomias',
+      TenantAdminEventTypesRoute.name => 'Tipos de evento',
       _ => null,
     };
   }
@@ -249,6 +257,17 @@ class _TenantAdminShellScreenState extends State<TenantAdminShellScreen> {
         ),
       ];
     }
+    if (routeName == TenantAdminEventsRoute.name) {
+      return [
+        IconButton.filledTonal(
+          tooltip: 'Tipos de evento',
+          onPressed: () {
+            context.router.push(const TenantAdminEventTypesRoute());
+          },
+          icon: const Icon(Icons.category_outlined),
+        ),
+      ];
+    }
     return const [];
   }
 
@@ -291,7 +310,7 @@ class _TenantAdminShellScreenState extends State<TenantAdminShellScreen> {
   }
 
   Future<void> _handleTenantSelectionAsync(String tenantDomain) async {
-    if (!_isLandlordEnvironment()) {
+    if (!_controller.isLandlordEnvironment || !kIsWeb) {
       _controller.selectTenantDomain(tenantDomain);
       return;
     }
@@ -315,7 +334,7 @@ class _TenantAdminShellScreenState extends State<TenantAdminShellScreen> {
   Future<void> _handlePreviewTenantPublicAsync() async {
     final selectedTenantDomain = _controller.selectedTenantDomain;
 
-    if (_isLandlordEnvironment() &&
+    if (_controller.isLandlordEnvironment &&
         selectedTenantDomain != null &&
         !_isCurrentOrigin(selectedTenantDomain)) {
       final targetUrl = _buildTenantSurfaceUrl(
@@ -334,13 +353,84 @@ class _TenantAdminShellScreenState extends State<TenantAdminShellScreen> {
     context.router.replaceAll([const TenantHomeRoute()]);
   }
 
-  bool _isLandlordEnvironment() {
-    return _appDataRepository.appData.typeValue.value ==
-        EnvironmentType.landlord;
+  Future<void> _openTenantDomainAdminLogin() async {
+    if (!GetIt.I.isRegistered<TenantAdminLandlordLoginController>()) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Landlord login controller is not available.'),
+        ),
+      );
+      return;
+    }
+
+    final didLogin = await showLandlordLoginSheet(
+      context,
+      controller: GetIt.I.get<TenantAdminLandlordLoginController>(),
+    );
+    if (!mounted) {
+      return;
+    }
+    if (!didLogin) {
+      return;
+    }
+
+    _controller.init();
+  }
+
+  Widget _buildTenantAdminAuthGate() {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Tenant admin login'),
+      ),
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 520),
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Card(
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Admin access required on this domain',
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      'To access `/admin` on this tenant domain, sign in as landlord in this same domain.',
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                    const SizedBox(height: 18),
+                    FilledButton.icon(
+                      onPressed: _openTenantDomainAdminLogin,
+                      icon: const Icon(Icons.login),
+                      label: const Text('Entrar como Admin'),
+                    ),
+                    const SizedBox(height: 8),
+                    TextButton(
+                      onPressed: () {
+                        context.router.replaceAll([const TenantHomeRoute()]);
+                      },
+                      child: const Text('Voltar para home'),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   bool _isCurrentOrigin(String tenantDomain) {
-    final current = Uri.tryParse(_appDataRepository.appData.href);
+    final current = Uri.tryParse(_controller.currentAppHref);
     final candidate = _parseAsUri(tenantDomain);
     if (current == null || candidate == null) {
       return false;
@@ -396,9 +486,9 @@ class _TenantAdminShellScreenState extends State<TenantAdminShellScreen> {
         ? parsedTenant.port
         : hasScheme
             ? null
-        : (landlordOrigin != null && landlordOrigin.hasPort)
-            ? landlordOrigin.port
-            : null;
+            : (landlordOrigin != null && landlordOrigin.hasPort)
+                ? landlordOrigin.port
+                : null;
 
     return Uri(
       scheme: scheme,
@@ -581,6 +671,10 @@ class _TenantAdminShellScreenState extends State<TenantAdminShellScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (_controller.isTenantEnvironment && !_controller.hasLocalLandlordSession) {
+      return _buildTenantAdminAuthGate();
+    }
+
     return StreamValueBuilder<List<LandlordTenantOption>>(
       streamValue: _controller.availableTenantsStreamValue,
       builder: (context, availableTenants) {

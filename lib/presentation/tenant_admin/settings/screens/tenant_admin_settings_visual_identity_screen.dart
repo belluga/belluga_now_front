@@ -25,8 +25,6 @@ class _TenantAdminSettingsVisualIdentityScreenState
     extends State<TenantAdminSettingsVisualIdentityScreen> {
   final TenantAdminSettingsController _controller =
       GetIt.I.get<TenantAdminSettingsController>();
-  final TenantAdminImageIngestionService _imageIngestionService =
-      GetIt.I.get<TenantAdminImageIngestionService>();
 
   final Map<TenantAdminBrandingAssetSlot, bool> _brandingBusy = {
     TenantAdminBrandingAssetSlot.lightLogo: false,
@@ -53,13 +51,19 @@ class _TenantAdminSettingsVisualIdentityScreenState
   bool _isBrandingBusy(TenantAdminBrandingAssetSlot slot) =>
       _brandingBusy[slot] ?? false;
 
+  void _requestRebuild() {
+    if (!mounted) {
+      return;
+    }
+    (context as Element).markNeedsBuild();
+  }
+
   void _setBrandingBusy(TenantAdminBrandingAssetSlot slot, bool value) {
     if (!mounted) {
       return;
     }
-    setState(() {
-      _brandingBusy[slot] = value;
-    });
+    _brandingBusy[slot] = value;
+    _requestRebuild();
   }
 
   TenantAdminImageSlot _toImageSlot(TenantAdminBrandingAssetSlot slot) {
@@ -108,7 +112,7 @@ class _TenantAdminSettingsVisualIdentityScreenState
     _setBrandingBusy(slot, true);
     try {
       final imageSlot = _toImageSlot(slot);
-      final selected = await _imageIngestionService.pickFromDevice(
+      final selected = await _controller.pickBrandingImageFromDevice(
         slot: imageSlot,
       );
       if (selected == null || !mounted) {
@@ -118,7 +122,12 @@ class _TenantAdminSettingsVisualIdentityScreenState
         context: context,
         sourceFile: selected,
         slot: imageSlot,
-        ingestionService: _imageIngestionService,
+        readBytesForCrop: _controller.readImageBytesForCrop,
+        prepareCroppedFile: (croppedData, cropSlot) =>
+            _controller.prepareCroppedImage(
+          croppedData,
+          slot: cropSlot,
+        ),
       );
       if (cropped == null) {
         return;
@@ -168,7 +177,7 @@ class _TenantAdminSettingsVisualIdentityScreenState
       if (!mounted || result == null) {
         return;
       }
-      final sourceFile = await _imageIngestionService.fetchFromUrlForCrop(
+      final sourceFile = await _controller.fetchBrandingImageFromUrlForCrop(
         imageUrl: result.value.trim(),
       );
       if (!mounted) {
@@ -179,7 +188,12 @@ class _TenantAdminSettingsVisualIdentityScreenState
         context: context,
         sourceFile: sourceFile,
         slot: imageSlot,
-        ingestionService: _imageIngestionService,
+        readBytesForCrop: _controller.readImageBytesForCrop,
+        prepareCroppedFile: (croppedData, cropSlot) =>
+            _controller.prepareCroppedImage(
+          croppedData,
+          slot: cropSlot,
+        ),
       );
       if (cropped == null) {
         return;
@@ -198,23 +212,23 @@ class _TenantAdminSettingsVisualIdentityScreenState
 
   Future<void> _saveBranding() async {
     try {
-      final lightLogoUpload = await _imageIngestionService.buildUpload(
+      final lightLogoUpload = await _controller.buildBrandingUpload(
         _controller.brandingLightLogoFileStreamValue.value,
         slot: TenantAdminImageSlot.lightLogo,
       );
-      final darkLogoUpload = await _imageIngestionService.buildUpload(
+      final darkLogoUpload = await _controller.buildBrandingUpload(
         _controller.brandingDarkLogoFileStreamValue.value,
         slot: TenantAdminImageSlot.darkLogo,
       );
-      final lightIconUpload = await _imageIngestionService.buildUpload(
+      final lightIconUpload = await _controller.buildBrandingUpload(
         _controller.brandingLightIconFileStreamValue.value,
         slot: TenantAdminImageSlot.lightIcon,
       );
-      final darkIconUpload = await _imageIngestionService.buildUpload(
+      final darkIconUpload = await _controller.buildBrandingUpload(
         _controller.brandingDarkIconFileStreamValue.value,
         slot: TenantAdminImageSlot.darkIcon,
       );
-      final pwaIconUpload = await _imageIngestionService.buildUpload(
+      final pwaIconUpload = await _controller.buildBrandingUpload(
         _controller.brandingPwaIconFileStreamValue.value,
         slot: TenantAdminImageSlot.pwaIcon,
       );

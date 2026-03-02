@@ -39,8 +39,6 @@ class _TenantAdminAccountProfileEditScreenState
     extends State<TenantAdminAccountProfileEditScreen> {
   final TenantAdminAccountProfilesController _controller =
       GetIt.I.get<TenantAdminAccountProfilesController>();
-  final TenantAdminImageIngestionService _imageIngestionService =
-      GetIt.I.get<TenantAdminImageIngestionService>();
   TenantAdminAccountProfile? _activeProfile;
   String? _syncedProfileId;
   bool _initialTaxonomiesSynced = false;
@@ -410,13 +408,13 @@ class _TenantAdminAccountProfileEditScreenState
     }
     final state = _controller.editStateStreamValue.value;
     final avatarUpload = _hasAvatar(state.selectedProfileType)
-        ? await _imageIngestionService.buildUpload(
+        ? await _controller.buildImageUpload(
             state.avatarFile,
             slot: TenantAdminImageSlot.avatar,
           )
         : null;
     final coverUpload = _hasCover(state.selectedProfileType)
-        ? await _imageIngestionService.buildUpload(
+        ? await _controller.buildImageUpload(
             state.coverFile,
             slot: TenantAdminImageSlot.cover,
           )
@@ -442,7 +440,7 @@ class _TenantAdminAccountProfileEditScreenState
       } else {
         _controller.updateEditCoverBusy(true);
       }
-      final picked = await _imageIngestionService.pickFromDevice(slot: slot);
+      final picked = await _controller.pickImageFromDevice(slot: slot);
       if (picked == null) {
         return;
       }
@@ -453,7 +451,12 @@ class _TenantAdminAccountProfileEditScreenState
         context: context,
         sourceFile: picked,
         slot: slot,
-        ingestionService: _imageIngestionService,
+        readBytesForCrop: _controller.readImageBytesForCrop,
+        prepareCroppedFile: (croppedData, cropSlot) =>
+            _controller.prepareCroppedImage(
+          croppedData,
+          slot: cropSlot,
+        ),
       );
       if (cropped == null) {
         return;
@@ -548,7 +551,7 @@ class _TenantAdminAccountProfileEditScreenState
       } else {
         _controller.updateEditCoverBusy(true);
       }
-      final sourceFile = await _imageIngestionService.fetchFromUrlForCrop(
+      final sourceFile = await _controller.fetchImageFromUrlForCrop(
         imageUrl: url,
       );
       if (!mounted) return;
@@ -556,7 +559,12 @@ class _TenantAdminAccountProfileEditScreenState
         context: context,
         sourceFile: sourceFile,
         slot: slot,
-        ingestionService: _imageIngestionService,
+        readBytesForCrop: _controller.readImageBytesForCrop,
+        prepareCroppedFile: (croppedData, cropSlot) =>
+            _controller.prepareCroppedImage(
+          croppedData,
+          slot: cropSlot,
+        ),
       );
       if (cropped == null) return;
       if (isAvatar) {
@@ -748,8 +756,8 @@ class _TenantAdminAccountProfileEditScreenState
                                                     }
                                                     final avatarUpload =
                                                         _hasAvatar(selectedType)
-                                                            ? await _imageIngestionService
-                                                                .buildUpload(
+                                                            ? await _controller
+                                                                .buildImageUpload(
                                                                 state
                                                                     .avatarFile,
                                                                 slot:
@@ -759,8 +767,8 @@ class _TenantAdminAccountProfileEditScreenState
                                                             : null;
                                                     final coverUpload = _hasCover(
                                                             selectedType)
-                                                        ? await _imageIngestionService
-                                                            .buildUpload(
+                                                        ? await _controller
+                                                            .buildImageUpload(
                                                             state.coverFile,
                                                             slot:
                                                                 TenantAdminImageSlot

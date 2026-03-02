@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:typed_data';
 
 import 'package:belluga_now/domain/repositories/tenant_admin_account_profiles_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_accounts_repository_contract.dart';
@@ -13,6 +14,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_defin
 import 'package:belluga_now/domain/tenant_admin/ownership_state.dart';
 import 'package:belluga_now/domain/services/tenant_admin_location_selection_contract.dart';
 import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_image_ingestion_service.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart' show Disposable, GetIt;
 import 'package:image_picker/image_picker.dart';
@@ -25,6 +27,7 @@ class TenantAdminAccountsController implements Disposable {
     TenantAdminTaxonomiesRepositoryContract? taxonomiesRepository,
     TenantAdminLocationSelectionContract? locationSelectionService,
     TenantAdminTenantScopeContract? tenantScope,
+    TenantAdminImageIngestionService? imageIngestionService,
   })  : _accountsRepository = accountsRepository ??
             GetIt.I.get<TenantAdminAccountsRepositoryContract>(),
         _profilesRepository = profilesRepository ??
@@ -36,13 +39,18 @@ class TenantAdminAccountsController implements Disposable {
         _tenantScope = tenantScope ??
             (GetIt.I.isRegistered<TenantAdminTenantScopeContract>()
                 ? GetIt.I.get<TenantAdminTenantScopeContract>()
-                : null);
+                : null),
+        _imageIngestionService = imageIngestionService ??
+            (GetIt.I.isRegistered<TenantAdminImageIngestionService>()
+                ? GetIt.I.get<TenantAdminImageIngestionService>()
+                : TenantAdminImageIngestionService());
 
   final TenantAdminAccountsRepositoryContract _accountsRepository;
   final TenantAdminAccountProfilesRepositoryContract _profilesRepository;
   final TenantAdminTaxonomiesRepositoryContract _taxonomiesRepository;
   final TenantAdminLocationSelectionContract _locationSelectionService;
   final TenantAdminTenantScopeContract? _tenantScope;
+  final TenantAdminImageIngestionService _imageIngestionService;
 
   static const int _accountsPageSize = 20;
 
@@ -343,6 +351,40 @@ class TenantAdminAccountsController implements Disposable {
 
   void bindCreateFlow() {
     _bindLocationSelection();
+  }
+
+  Future<XFile?> pickImageFromDevice({
+    required TenantAdminImageSlot slot,
+  }) {
+    return _imageIngestionService.pickFromDevice(slot: slot);
+  }
+
+  Future<XFile> fetchImageFromUrlForCrop({
+    required String imageUrl,
+  }) {
+    return _imageIngestionService.fetchFromUrlForCrop(imageUrl: imageUrl);
+  }
+
+  Future<Uint8List> readImageBytesForCrop(XFile sourceFile) {
+    return _imageIngestionService.readBytesForCrop(sourceFile);
+  }
+
+  Future<XFile> prepareCroppedImage(
+    Uint8List croppedData, {
+    required TenantAdminImageSlot slot,
+  }) {
+    return _imageIngestionService.prepareBytesAsXFile(
+      croppedData,
+      slot: slot,
+      applyAspectCrop: false,
+    );
+  }
+
+  Future<TenantAdminMediaUpload?> buildImageUpload(
+    XFile? file, {
+    required TenantAdminImageSlot slot,
+  }) {
+    return _imageIngestionService.buildUpload(file, slot: slot);
   }
 
   Future<TenantAdminAccount> createAccountWithProfile({

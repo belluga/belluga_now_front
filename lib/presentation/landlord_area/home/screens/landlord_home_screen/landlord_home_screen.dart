@@ -1,6 +1,6 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
-import 'package:belluga_now/presentation/landlord_area/auth/controllers/landlord_login_controller.dart';
+import 'package:belluga_now/presentation/landlord_area/auth/controllers/landlord_home_login_controller.dart';
 import 'package:belluga_now/presentation/landlord_area/auth/widgets/landlord_login_sheet.dart';
 import 'package:belluga_now/presentation/landlord_area/home/screens/landlord_home_screen/controllers/landlord_home_screen_controller.dart';
 import 'package:belluga_now/presentation/landlord_area/home/screens/landlord_home_screen/widgets/landlord_pill.dart';
@@ -170,8 +170,8 @@ class _LandlordHomeScreenState extends State<LandlordHomeScreen> {
     );
   }
 
-  LandlordLoginController get _landlordLoginController =>
-      GetIt.I.get<LandlordLoginController>();
+  LandlordHomeLoginController get _landlordLoginController =>
+      GetIt.I.get<LandlordHomeLoginController>();
 
   Future<void> _openLogin() async {
     final didLogin = await showLandlordLoginSheet(

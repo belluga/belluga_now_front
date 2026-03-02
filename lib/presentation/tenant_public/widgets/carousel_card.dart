@@ -1,10 +1,9 @@
 import 'dart:ui';
 
-import 'package:belluga_now/application/extensions/color_scheme_generator.dart';
 import 'package:belluga_now/application/extensions/compute_on_color.dart';
 import 'package:flutter/material.dart';
 
-class CarouselCard extends StatefulWidget {
+class CarouselCard extends StatelessWidget {
   const CarouselCard({
     super.key,
     required this.imageUri,
@@ -18,67 +17,12 @@ class CarouselCard extends StatefulWidget {
   final CarouselCardOverlayMode overlayMode;
   final Alignment overlayAlignment;
 
-  @override
-  State<CarouselCard> createState() => _CarouselCardState();
-}
-
-class _CarouselCardState extends State<CarouselCard> {
-  ColorScheme? _derivedScheme;
-  ImageProvider get _provider => NetworkImage(widget.imageUri.toString());
-  bool _requested = false;
-  int _loadToken = 0;
-
-  @override
-  void initState() {
-    super.initState();
-    _scheduleSchemeLoad();
-  }
-
-  @override
-  void didUpdateWidget(covariant CarouselCard oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.imageUri != widget.imageUri) {
-      _derivedScheme = null;
-      _requested = false;
-      _loadToken++;
-      _scheduleSchemeLoad();
-    }
-  }
-
-  void _scheduleSchemeLoad() {
-    if (_requested) {
-      return;
-    }
-    _requested = true;
-    final token = ++_loadToken;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final scheme = Theme.of(context).colorScheme;
-      // Defer to next microtask to avoid sync blocking the init frame.
-      Future.microtask(() => _loadScheme(scheme, token));
-    });
-  }
-
-  Future<void> _loadScheme(ColorScheme fallback, int token) async {
-    final scheme = await ColorSchemeGenerator.fromImageProvider(
-      _provider,
-      fallback: fallback,
-    );
-    if (token != _loadToken) return;
-    setState(() {
-      _derivedScheme = scheme;
-    });
-  }
-
-  @override
-  void dispose() {
-    _loadToken++;
-    super.dispose();
-  }
+  ImageProvider get _provider => NetworkImage(imageUri.toString());
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final scheme = _derivedScheme ?? theme.colorScheme;
+    final scheme = theme.colorScheme;
     final overlayBase =
         Color.lerp(Colors.black, scheme.primary, 0.25) ?? Colors.black;
     final onOverlay = overlayBase.computeIconColor(
@@ -101,7 +45,7 @@ class _CarouselCardState extends State<CarouselCard> {
           style: TextStyle(color: onOverlay),
           child: IconTheme.merge(
             data: IconThemeData(color: onOverlay),
-            child: widget.contentOverlay,
+            child: contentOverlay,
           ),
         );
 
@@ -158,10 +102,10 @@ class _CarouselCardState extends State<CarouselCard> {
                 Positioned(
                   left: 0,
                   right: 0,
-                  top: widget.overlayMode == CarouselCardOverlayMode.fill ? 0 : null,
-                  bottom: widget.overlayMode == CarouselCardOverlayMode.bottom
+                  top: overlayMode == CarouselCardOverlayMode.fill ? 0 : null,
+                  bottom: overlayMode == CarouselCardOverlayMode.bottom
                       ? 0
-                      : (widget.overlayMode == CarouselCardOverlayMode.fill
+                      : (overlayMode == CarouselCardOverlayMode.fill
                           ? 0
                           : null),
                   child: isFullSize
@@ -180,13 +124,12 @@ class _CarouselCardState extends State<CarouselCard> {
                           child: ConstrainedBox(
                             key: const ValueKey('details'),
                             constraints: const BoxConstraints(minWidth: 0),
-                            child:
-                                widget.overlayMode == CarouselCardOverlayMode.fill
-                                    ? Align(
-                                        alignment: widget.overlayAlignment,
-                                        child: overlayChild,
-                                      )
-                                    : overlayChild,
+                            child: overlayMode == CarouselCardOverlayMode.fill
+                                ? Align(
+                                    alignment: overlayAlignment,
+                                    child: overlayChild,
+                                  )
+                                : overlayChild,
                           ),
                         )
                       : const SizedBox.shrink(key: ValueKey('empty')),

@@ -63,7 +63,8 @@ void main() {
     expect(find.text('Selecionar tenant'), findsNothing);
   });
 
-  testWidgets('tenant selection redirects landlord flow to tenant domain admin',
+  testWidgets(
+      'tenant selection on app keeps in-app scope without domain redirect',
       (tester) async {
     final launchedUrls = <String>[];
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
@@ -104,7 +105,9 @@ void main() {
           ),
         ],
       ),
-      selectedTenantRepository: _FakeSelectedTenantRepository(),
+      selectedTenantRepository: _FakeSelectedTenantRepository(
+        suppressSelectionStreamUpdates: true,
+      ),
     );
     GetIt.I.registerSingleton<AppDataRepositoryContract>(appDataRepository);
     GetIt.I.registerSingleton<TenantAdminShellController>(controller);
@@ -121,10 +124,8 @@ void main() {
     await tester.tap(find.text('Guarappari'));
     await tester.pump(const Duration(milliseconds: 200));
 
-    expect(
-      launchedUrls,
-      contains('https://guarappari.belluga.space/admin'),
-    );
+    expect(launchedUrls, isEmpty);
+    expect(controller.selectedTenantDomain, 'https://guarappari.belluga.space');
   });
 
   test('tenant environment auto-selects current host on init', () {
@@ -229,12 +230,19 @@ class _FixedLandlordTenantsRepository
 
 class _FakeSelectedTenantRepository
     implements TenantAdminSelectedTenantRepositoryContract {
+  _FakeSelectedTenantRepository({
+    this.suppressSelectionStreamUpdates = false,
+  });
+
+  final bool suppressSelectionStreamUpdates;
   final StreamValue<List<LandlordTenantOption>> _availableTenantsStreamValue =
       StreamValue<List<LandlordTenantOption>>(defaultValue: const []);
   final StreamValue<String?> _selectedTenantDomainStreamValue =
       StreamValue<String?>(defaultValue: null);
   final StreamValue<LandlordTenantOption?> _selectedTenantStreamValue =
       StreamValue<LandlordTenantOption?>(defaultValue: null);
+  String? _selectedTenantDomainValue;
+  LandlordTenantOption? _selectedTenantValue;
 
   @override
   List<LandlordTenantOption> get availableTenants =>
@@ -245,10 +253,12 @@ class _FakeSelectedTenantRepository
       _availableTenantsStreamValue;
 
   @override
-  String? get selectedTenantDomain => _selectedTenantDomainStreamValue.value;
+  String? get selectedTenantDomain =>
+      _selectedTenantDomainValue ?? _selectedTenantDomainStreamValue.value;
 
   @override
-  LandlordTenantOption? get selectedTenant => _selectedTenantStreamValue.value;
+  LandlordTenantOption? get selectedTenant =>
+      _selectedTenantValue ?? _selectedTenantStreamValue.value;
 
   @override
   StreamValue<LandlordTenantOption?> get selectedTenantStreamValue =>
@@ -264,24 +274,36 @@ class _FakeSelectedTenantRepository
 
   @override
   void clearSelectedTenant() {
-    _selectedTenantDomainStreamValue.addValue(null);
-    _selectedTenantStreamValue.addValue(null);
+    _selectedTenantDomainValue = null;
+    _selectedTenantValue = null;
+    if (!suppressSelectionStreamUpdates) {
+      _selectedTenantDomainStreamValue.addValue(null);
+      _selectedTenantStreamValue.addValue(null);
+    }
   }
 
   @override
   void selectTenant(LandlordTenantOption tenant) {
-    _selectedTenantDomainStreamValue.addValue(tenant.mainDomain.trim());
-    _selectedTenantStreamValue.addValue(tenant);
+    _selectedTenantDomainValue = tenant.mainDomain.trim();
+    _selectedTenantValue = tenant;
+    if (!suppressSelectionStreamUpdates) {
+      _selectedTenantDomainStreamValue.addValue(tenant.mainDomain.trim());
+      _selectedTenantStreamValue.addValue(tenant);
+    }
   }
 
   @override
   void selectTenantDomain(String tenantDomain) {
-    _selectedTenantDomainStreamValue.addValue(tenantDomain.trim());
-    _selectedTenantStreamValue.addValue(
-      availableTenants.where((tenant) {
-        return tenant.mainDomain.trim() == tenantDomain.trim();
-      }).firstOrNull,
-    );
+    _selectedTenantDomainValue = tenantDomain.trim();
+    _selectedTenantValue = availableTenants.where((tenant) {
+      return tenant.mainDomain.trim() == tenantDomain.trim();
+    }).firstOrNull;
+    if (!suppressSelectionStreamUpdates) {
+      _selectedTenantDomainStreamValue.addValue(tenantDomain.trim());
+      _selectedTenantStreamValue.addValue(
+        _selectedTenantValue,
+      );
+    }
   }
 
   @override

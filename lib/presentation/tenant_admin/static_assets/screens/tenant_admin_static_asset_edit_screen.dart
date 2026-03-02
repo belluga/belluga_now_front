@@ -38,8 +38,6 @@ class _TenantAdminStaticAssetEditScreenState
     extends State<TenantAdminStaticAssetEditScreen> {
   final TenantAdminStaticAssetsController _controller =
       GetIt.I.get<TenantAdminStaticAssetsController>();
-  final TenantAdminImageIngestionService _imageIngestionService =
-      GetIt.I.get<TenantAdminImageIngestionService>();
 
   @override
   void initState() {
@@ -333,7 +331,7 @@ class _TenantAdminStaticAssetEditScreenState
       } else {
         _controller.updateCoverBusy(true);
       }
-      final picked = await _imageIngestionService.pickFromDevice(slot: slot);
+      final picked = await _controller.pickImageFromDevice(slot: slot);
       if (picked == null) {
         return;
       }
@@ -344,7 +342,12 @@ class _TenantAdminStaticAssetEditScreenState
         context: context,
         sourceFile: picked,
         slot: slot,
-        ingestionService: _imageIngestionService,
+        readBytesForCrop: _controller.readImageBytesForCrop,
+        prepareCroppedFile: (croppedData, cropSlot) =>
+            _controller.prepareCroppedImage(
+          croppedData,
+          slot: cropSlot,
+        ),
       );
       if (cropped == null) {
         return;
@@ -430,7 +433,7 @@ class _TenantAdminStaticAssetEditScreenState
       } else {
         _controller.updateCoverBusy(true);
       }
-      final sourceFile = await _imageIngestionService.fetchFromUrlForCrop(
+      final sourceFile = await _controller.fetchImageFromUrlForCrop(
         imageUrl: url,
       );
       if (!mounted) return;
@@ -438,7 +441,12 @@ class _TenantAdminStaticAssetEditScreenState
         context: context,
         sourceFile: sourceFile,
         slot: slot,
-        ingestionService: _imageIngestionService,
+        readBytesForCrop: _controller.readImageBytesForCrop,
+        prepareCroppedFile: (croppedData, cropSlot) =>
+            _controller.prepareCroppedImage(
+          croppedData,
+          slot: cropSlot,
+        ),
       );
       if (cropped == null) return;
       if (isAvatar) {

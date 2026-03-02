@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:typed_data';
 
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
@@ -6,6 +7,7 @@ import 'package:belluga_now/domain/repositories/tenant_admin_settings_repository
 import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_settings.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_image_ingestion_service.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:image_picker/image_picker.dart';
@@ -24,6 +26,7 @@ class TenantAdminSettingsController implements Disposable {
     AppDataRepositoryContract? appDataRepository,
     TenantAdminSettingsRepositoryContract? settingsRepository,
     TenantAdminTenantScopeContract? tenantScope,
+    TenantAdminImageIngestionService? imageIngestionService,
   })  : _appDataRepository =
             appDataRepository ?? GetIt.I.get<AppDataRepositoryContract>(),
         _settingsRepository = settingsRepository ??
@@ -31,11 +34,16 @@ class TenantAdminSettingsController implements Disposable {
         _tenantScope = tenantScope ??
             (GetIt.I.isRegistered<TenantAdminTenantScopeContract>()
                 ? GetIt.I.get<TenantAdminTenantScopeContract>()
-                : null);
+                : null),
+        _imageIngestionService = imageIngestionService ??
+            (GetIt.I.isRegistered<TenantAdminImageIngestionService>()
+                ? GetIt.I.get<TenantAdminImageIngestionService>()
+                : TenantAdminImageIngestionService());
 
   final AppDataRepositoryContract _appDataRepository;
   final TenantAdminSettingsRepositoryContract _settingsRepository;
   final TenantAdminTenantScopeContract? _tenantScope;
+  final TenantAdminImageIngestionService _imageIngestionService;
 
   static const List<String> telemetryTypes = [
     'mixpanel',
@@ -377,6 +385,40 @@ class TenantAdminSettingsController implements Disposable {
       return;
     }
     selectedTelemetryTypeStreamValue.addValue(type);
+  }
+
+  Future<XFile?> pickBrandingImageFromDevice({
+    required TenantAdminImageSlot slot,
+  }) {
+    return _imageIngestionService.pickFromDevice(slot: slot);
+  }
+
+  Future<XFile> fetchBrandingImageFromUrlForCrop({
+    required String imageUrl,
+  }) {
+    return _imageIngestionService.fetchFromUrlForCrop(imageUrl: imageUrl);
+  }
+
+  Future<Uint8List> readImageBytesForCrop(XFile sourceFile) {
+    return _imageIngestionService.readBytesForCrop(sourceFile);
+  }
+
+  Future<XFile> prepareCroppedImage(
+    Uint8List croppedData, {
+    required TenantAdminImageSlot slot,
+  }) {
+    return _imageIngestionService.prepareBytesAsXFile(
+      croppedData,
+      slot: slot,
+      applyAspectCrop: false,
+    );
+  }
+
+  Future<TenantAdminMediaUpload?> buildBrandingUpload(
+    XFile? file, {
+    required TenantAdminImageSlot slot,
+  }) {
+    return _imageIngestionService.buildUpload(file, slot: slot);
   }
 
   void updateTelemetryTrackAll(bool value) {
