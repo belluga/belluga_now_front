@@ -205,7 +205,16 @@ class LaravelScheduleBackend implements ScheduleBackendContract {
       }
     }
     if (taxonomy != null && taxonomy.isNotEmpty) {
-      addParam('taxonomy', jsonEncode(taxonomy));
+      for (var index = 0; index < taxonomy.length; index++) {
+        final term = taxonomy[index];
+        final type = term['type']?.toString().trim();
+        final value = term['value']?.toString().trim();
+        if (type == null || type.isEmpty || value == null || value.isEmpty) {
+          continue;
+        }
+        addParam('taxonomy[$index][type]', type);
+        addParam('taxonomy[$index][value]', value);
+      }
     }
     if (originLat != null && originLng != null) {
       addParam('origin_lat', originLat.toString());

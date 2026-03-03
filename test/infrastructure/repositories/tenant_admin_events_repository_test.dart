@@ -188,6 +188,37 @@ void main() {
         .toList(growable: false);
     expect(candidateRequests, hasLength(1));
   });
+
+  test('fetchPartyCandidates throws when candidates endpoint is not found',
+      () async {
+    final adapter = _NotFoundAdminPartyCandidatesAdapter();
+    final dio = Dio()..httpClientAdapter = adapter;
+    final scope = _MutableTenantScope('https://tenant-a.test/admin/api');
+    final repository = TenantAdminEventsRepository(
+      dio: dio,
+      tenantScope: scope,
+    );
+
+    await expectLater(
+      () => repository.fetchPartyCandidates(search: 'main'),
+      throwsA(
+        isA<FormatException>().having(
+          (error) => error.message,
+          'message',
+          allOf(
+            contains('Failed to load event party candidates'),
+            contains('status=404'),
+          ),
+        ),
+      ),
+    );
+
+    final candidateRequests = adapter.requests
+        .where((request) =>
+            request.path.endsWith('/admin/api/v1/events/party_candidates'))
+        .toList(growable: false);
+    expect(candidateRequests, hasLength(1));
+  });
 }
 
 TenantAdminEventDraft _buildDraft({
@@ -541,6 +572,41 @@ class _UnauthorizedAdminPartyCandidatesAdapter implements HttpClientAdapter {
       return ResponseBody.fromString(
         jsonEncode({'message': 'Unauthorized.'}),
         403,
+        headers: {
+          Headers.contentTypeHeader: ['application/json'],
+        },
+      );
+    }
+
+    return ResponseBody.fromString(
+      jsonEncode({'data': const []}),
+      200,
+      headers: {
+        Headers.contentTypeHeader: ['application/json'],
+      },
+    );
+  }
+}
+
+class _NotFoundAdminPartyCandidatesAdapter implements HttpClientAdapter {
+  final List<RequestOptions> requests = <RequestOptions>[];
+
+  @override
+  void close({bool force = false}) {}
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<List<int>>? requestStream,
+    Future<void>? cancelFuture,
+  ) async {
+    requests.add(options);
+
+    if (options.path.endsWith('/admin/api/v1/events/party_candidates') &&
+        options.method == 'GET') {
+      return ResponseBody.fromString(
+        jsonEncode({'message': 'Not found.'}),
+        404,
         headers: {
           Headers.contentTypeHeader: ['application/json'],
         },

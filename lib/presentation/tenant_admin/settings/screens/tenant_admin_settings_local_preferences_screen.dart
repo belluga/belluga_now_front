@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:belluga_admin_ui/belluga_admin_ui.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/presentation/tenant_admin/settings/controllers/tenant_admin_settings_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/settings/tenant_admin_settings_keys.dart';
 import 'package:belluga_now/presentation/tenant_admin/settings/widgets/tenant_admin_settings_local_preferences_section.dart';
+import 'package:belluga_now/presentation/tenant_admin/settings/widgets/tenant_admin_settings_remote_status_panel.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_scoped_section_app_bar.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
@@ -24,7 +27,13 @@ class _TenantAdminSettingsLocalPreferencesScreenState
   @override
   void initState() {
     super.initState();
-    _controller.init();
+    _controller.bindLocalPreferencesFlow();
+    unawaited(_initialize());
+  }
+
+  Future<void> _initialize() async {
+    await _controller.init(loadBranding: false);
+    await _controller.loadMapUiSettings();
   }
 
   void _handleBack() {
@@ -33,6 +42,14 @@ class _TenantAdminSettingsLocalPreferencesScreenState
       return;
     }
     context.router.replace(const TenantAdminSettingsRoute());
+  }
+
+  Future<void> _openDefaultOriginPicker() async {
+    await context.router.push(
+      TenantAdminLocationPickerRoute(
+        initialLocation: _controller.currentMapDefaultOriginLocation(),
+      ),
+    );
   }
 
   @override
@@ -54,7 +71,13 @@ class _TenantAdminSettingsLocalPreferencesScreenState
           icon: Icons.tune_rounded,
           child: TenantAdminSettingsLocalPreferencesSection(
             controller: _controller,
+            onOpenDefaultOriginPicker: _openDefaultOriginPicker,
           ),
+        ),
+        const SizedBox(height: 12),
+        TenantAdminSettingsRemoteStatusPanel(
+          controller: _controller,
+          onReload: _controller.loadMapUiSettings,
         ),
       ],
     );

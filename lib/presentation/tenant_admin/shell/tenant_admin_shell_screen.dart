@@ -354,21 +354,10 @@ class _TenantAdminShellScreenState extends State<TenantAdminShellScreen> {
   }
 
   Future<void> _openTenantDomainAdminLogin() async {
-    if (!GetIt.I.isRegistered<TenantAdminLandlordLoginController>()) {
-      if (!mounted) {
-        return;
-      }
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Landlord login controller is not available.'),
-        ),
-      );
-      return;
-    }
-
+    final loginController = GetIt.I.get<TenantAdminLandlordLoginController>();
     final didLogin = await showLandlordLoginSheet(
       context,
-      controller: GetIt.I.get<TenantAdminLandlordLoginController>(),
+      controller: loginController,
     );
     if (!mounted) {
       return;
@@ -378,6 +367,9 @@ class _TenantAdminShellScreenState extends State<TenantAdminShellScreen> {
     }
 
     _controller.init();
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   Widget _buildTenantAdminAuthGate() {

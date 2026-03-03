@@ -62,6 +62,70 @@ void main() {
     expect(updated.maxPerHour, 120);
   });
 
+  test('fetchMapUiSettings parses default origin from settings values',
+      () async {
+    final adapter = _RoutingAdapter();
+    final scope = _MutableTenantScope('https://tenant-a.test');
+    final dio = Dio()..httpClientAdapter = adapter;
+    final repository = TenantAdminSettingsRepository(
+      dio: dio,
+      tenantScope: scope,
+    );
+
+    final settings = await repository.fetchMapUiSettings();
+
+    expect(settings.defaultOrigin, isNotNull);
+    expect(settings.defaultOrigin!.lat, closeTo(-20.6736, 0.000001));
+    expect(settings.defaultOrigin!.lng, closeTo(-40.4976, 0.000001));
+    expect(settings.defaultOrigin!.label, 'Centro');
+    final radius = settings.rawMapUi['radius'] as Map<String, dynamic>;
+    expect(radius['default_km'], 5);
+    expect(adapter.requests.single.uri.path, '/admin/api/v1/settings/values');
+  });
+
+  test('updateMapUiSettings patches map_ui namespace payload', () async {
+    final adapter = _RoutingAdapter();
+    final scope = _MutableTenantScope('https://tenant-a.test');
+    final dio = Dio()..httpClientAdapter = adapter;
+    final repository = TenantAdminSettingsRepository(
+      dio: dio,
+      tenantScope: scope,
+    );
+    const mapUi = TenantAdminMapUiSettings(
+      rawMapUi: {
+        'radius': {
+          'min_km': 1,
+          'default_km': 5,
+          'max_km': 50,
+        },
+        'default_origin': {
+          'lat': -20.611111,
+          'lng': -40.422222,
+          'label': 'Praia do Morro',
+        },
+      },
+      defaultOrigin: TenantAdminMapDefaultOrigin(
+        lat: -20.611111,
+        lng: -40.422222,
+        label: 'Praia do Morro',
+      ),
+    );
+
+    final updated = await repository.updateMapUiSettings(settings: mapUi);
+
+    final request = adapter.requests.single;
+    expect(request.uri.path, '/admin/api/v1/settings/values/map_ui');
+    final payload = request.data as Map<String, dynamic>;
+    expect(payload['radius.default_km'], 5);
+    expect(payload['default_origin.lat'], -20.611111);
+    expect(payload['default_origin.lng'], -40.422222);
+    expect(payload['default_origin.label'], 'Praia do Morro');
+    expect(updated.defaultOrigin, isNotNull);
+    expect(updated.defaultOrigin!.lat, closeTo(-20.611111, 0.000001));
+    expect(updated.defaultOrigin!.lng, closeTo(-40.422222, 0.000001));
+    expect(updated.defaultOrigin!.label, 'Praia do Morro');
+  });
+
   test('upsertTelemetryIntegration returns snapshot', () async {
     final adapter = _RoutingAdapter();
     final scope = _MutableTenantScope('https://tenant-a.test');
@@ -589,6 +653,38 @@ class _RoutingAdapter implements HttpClientAdapter {
       return _jsonResponse({'data': request['push']});
     }
 
+    if (path.endsWith('/settings/values') && method == 'GET') {
+      return _jsonResponse({
+        'data': {
+          'map_ui': {
+            'radius': {
+              'min_km': 1,
+              'default_km': 5,
+              'max_km': 50,
+            },
+            'poi_time_window_days': {
+              'past': 1,
+              'future': 30,
+            },
+            'default_origin': {
+              'lat': -20.6736,
+              'lng': -40.4976,
+              'label': 'Centro',
+            },
+          },
+        },
+      });
+    }
+
+    if (path.endsWith('/settings/values/map_ui') && method == 'PATCH') {
+      final request = Map<String, dynamic>.from(options.data as Map);
+      return _jsonResponse({
+        'data': {
+          'map_ui': _expandDotPayload(request),
+        },
+      });
+    }
+
     if (path.endsWith('/settings/telemetry') && method == 'GET') {
       return _jsonResponse({
         'data': const [
@@ -676,5 +772,35 @@ class _RoutingAdapter implements HttpClientAdapter {
         Headers.contentTypeHeader: ['application/json'],
       },
     );
+  }
+
+  Map<String, dynamic> _expandDotPayload(Map<String, dynamic> source) {
+    final expanded = <String, dynamic>{};
+    source.forEach((rawPath, value) {
+      if (rawPath.trim().isEmpty) {
+        return;
+      }
+      final segments = rawPath.split('.');
+      Map<String, dynamic> cursor = expanded;
+      for (var index = 0; index < segments.length; index++) {
+        final key = segments[index].trim();
+        if (key.isEmpty) {
+          continue;
+        }
+        if (index == segments.length - 1) {
+          cursor[key] = value;
+          continue;
+        }
+        final next = cursor[key];
+        if (next is Map<String, dynamic>) {
+          cursor = next;
+          continue;
+        }
+        final created = <String, dynamic>{};
+        cursor[key] = created;
+        cursor = created;
+      }
+    });
+    return expanded;
   }
 }

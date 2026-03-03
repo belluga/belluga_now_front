@@ -10,6 +10,7 @@ import 'package:belluga_now/domain/schedule/friend_resume.dart';
 import 'package:belluga_now/domain/schedule/schedule_summary_item_model.dart';
 import 'package:belluga_now/domain/schedule/schedule_summary_model.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
+import 'package:belluga_now/domain/schedule/value_objects/event_type_id_value.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_is_confirmed_value.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_total_confirmed_value.dart';
 import 'package:belluga_now/domain/thumb/thumb_model.dart';
@@ -69,7 +70,7 @@ mixin ScheduleDtoMapper
       id: MongoIDValue()..parse(dto.id),
       slugValue: SlugValue()..parse(dto.slug),
       type: EventTypeModel(
-        id: MongoIDValue()..parse(dto.type.id),
+        id: EventTypeIdValue()..parse(dto.type.id),
         name: TitleValue(minLenght: 1)..parse(dto.type.name),
         slug: SlugValue()..parse(dto.type.slug),
         description: DescriptionValue()..parse(dto.type.description),

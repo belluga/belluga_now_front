@@ -13,8 +13,7 @@ class AppDataBackend implements AppDataBackendContract {
   @override
   Future<AppDataDTO> fetch() async {
     final packageInfo = await PackageInfo.fromPlatform();
-    final url =
-        '/api/v1/environment?app_domain=${Uri.encodeComponent(packageInfo.packageName)}';
+    final url = '/api/v1/environment';
 
     final bootstrapBaseUrl = _resolveBootstrapBaseUrl();
     final client = _dio ??
@@ -27,7 +26,12 @@ class AppDataBackend implements AppDataBackendContract {
         );
 
     try {
-      final response = await client.get(url);
+      final response = await client.get(
+        url,
+        options: Options(
+          headers: {'X-App-Domain': packageInfo.packageName},
+        ),
+      );
       final raw = response.data;
       final Map<String, dynamic> payload;
       if (raw is Map<String, dynamic>) {

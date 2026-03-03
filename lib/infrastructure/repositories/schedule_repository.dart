@@ -4,8 +4,6 @@ import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/schedule/paged_events_result.dart';
 import 'package:belluga_now/domain/schedule/schedule_summary_model.dart';
 import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
-import 'package:belluga_now/domain/map/geo_distance.dart';
-import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_delta_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_dto.dart';
@@ -34,9 +32,8 @@ class ScheduleRepository extends ScheduleRepositoryContract
   ScheduleRepository({
     ScheduleBackendContract? backend,
     BackendContract? backendContract,
-  }) : _backend =
-            backend ?? (backendContract ?? GetIt.I.get<BackendContract>())
-                .schedule;
+  }) : _backend = backend ??
+            (backendContract ?? GetIt.I.get<BackendContract>()).schedule;
 
   final ScheduleBackendContract _backend;
 
@@ -152,9 +149,7 @@ class ScheduleRepository extends ScheduleRepositoryContract
       maxDistanceMeters: maxDistanceMeters,
     );
 
-    final events = pageDto.events
-        .map(mapEventDto)
-        .toList(growable: false);
+    final events = pageDto.events.map(mapEventDto).toList(growable: false);
 
     return PagedEventsResult(
       events: events,
@@ -180,7 +175,6 @@ class ScheduleRepository extends ScheduleRepositoryContract
     final events = await getAllEvents();
     final now = DateTime.now();
     const assumedDuration = Duration(hours: 3);
-    const radiusMeters = 50000.0;
 
     bool isHappeningNow(EventModel e) {
       final start = e.dateTimeStart.value;
@@ -198,9 +192,7 @@ class ScheduleRepository extends ScheduleRepositoryContract
     }).toList();
 
     final listToMap = upcomingOrNow.isNotEmpty ? upcomingOrNow : events;
-
-    final sorted =
-        _filterWithinRadiusThenSortByTime(listToMap, radiusMeters: radiusMeters);
+    final sorted = _sortByStartTime(listToMap);
 
     return sorted
         .map(
@@ -210,42 +202,6 @@ class ScheduleRepository extends ScheduleRepositoryContract
           ),
         )
         .toList(growable: false);
-  }
-
-  List<EventModel> _filterWithinRadiusThenSortByTime(
-    List<EventModel> input, {
-    required double radiusMeters,
-  }) {
-    if (!GetIt.I.isRegistered<UserLocationRepositoryContract>()) {
-      return _sortByStartTime(input);
-    }
-
-    final userCoordinate =
-        GetIt.I.get<UserLocationRepositoryContract>().userLocationStreamValue.value;
-    if (userCoordinate == null) {
-      return _sortByStartTime(input);
-    }
-
-    final withinRadius = <EventModel>[];
-    for (final event in input) {
-      final coordinate = event.coordinate;
-      if (coordinate == null) {
-        continue;
-      }
-      final distance = haversineDistanceMeters(
-        lat1: userCoordinate.latitude,
-        lon1: userCoordinate.longitude,
-        lat2: coordinate.latitude,
-        lon2: coordinate.longitude,
-      );
-      if (distance <= radiusMeters) {
-        withinRadius.add(event);
-      }
-    }
-
-    // Fallback: if nothing is inside the radius, keep the original list.
-    final filtered = withinRadius.isNotEmpty ? withinRadius : input;
-    return _sortByStartTime(filtered);
   }
 
   List<EventModel> _sortByStartTime(List<EventModel> input) {
@@ -359,7 +315,6 @@ class ScheduleRepository extends ScheduleRepositoryContract
 
     return matches;
   }
-
 
   DateTime? _parseDate(EventDTO event) {
     final parsed = DateTime.tryParse(event.dateTimeStart);

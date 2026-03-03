@@ -8,6 +8,9 @@ import 'package:belluga_now/domain/app_data/value_object/domain_value.dart';
 import 'package:belluga_now/domain/app_data/value_object/environment_name_value.dart';
 import 'package:belluga_now/domain/app_data/value_object/environment_type_value.dart';
 import 'package:belluga_now/domain/app_data/value_object/platform_type_value.dart';
+import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
+import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
+import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
 import 'package:belluga_now/domain/partners/profile_type_registry.dart';
 import 'package:belluga_now/domain/tenant/value_objects/icon_url_value.dart';
 import 'package:belluga_now/domain/tenant/value_objects/main_color_value.dart';
@@ -18,6 +21,10 @@ import 'package:value_object_pattern/value_object.dart';
 
 /// Unified application configuration model (all platforms).
 class AppData {
+  static const double _defaultMinRadiusKm = 1.0;
+  static const double _defaultRadiusKm = 5.0;
+  static const double _defaultMaxRadiusKm = 50.0;
+
   final PlatformTypeValue platformType;
   final String? port;
   final String hostname;
@@ -36,6 +43,10 @@ class AppData {
   final TelemetryContextSettings telemetryContextSettings;
   final FirebaseSettings? firebaseSettings;
   final PushSettings? pushSettings;
+  final CityCoordinate? tenantDefaultOrigin;
+  final double mapRadiusMinMeters;
+  final double mapRadiusDefaultMeters;
+  final double mapRadiusMaxMeters;
 
   // Branding fields
   final IconUrlValue mainIconLightUrl;
@@ -62,6 +73,10 @@ class AppData {
     required this.telemetryContextSettings,
     required this.firebaseSettings,
     required this.pushSettings,
+    required this.tenantDefaultOrigin,
+    required this.mapRadiusMinMeters,
+    required this.mapRadiusDefaultMeters,
+    required this.mapRadiusMaxMeters,
     required this.mainIconLightUrl,
     required this.mainIconDarkUrl,
     required this.mainColor,
@@ -90,7 +105,11 @@ class AppData {
             'telemetry_context': remoteData.telemetryContext,
             'firebase': remoteData.firebase,
             'push': remoteData.push,
+            'settings': remoteData.settings,
           };
+
+    final radiusBounds = _resolveRadiusBounds(map['settings']);
+    final tenantDefaultOrigin = _resolveTenantDefaultOrigin(map['settings']);
 
     final origin = _resolveOrigin(map: map);
     final mainIconLightRaw = '$origin/icon-light.png';
@@ -99,16 +118,15 @@ class AppData {
     final mainLogoDarkRaw = '$origin/logo-dark.png';
     final mainColorRaw = (map['main_color'] as String?) ??
         (map['theme_data_settings'] is Map<String, dynamic>
-            ? (map['theme_data_settings'] as Map<String, dynamic>)[
-                'primary_seed_color'] as String?
+            ? (map['theme_data_settings']
+                as Map<String, dynamic>)['primary_seed_color'] as String?
             : null);
 
-    final mainDomain =
-        DomainValue()..parse(DomainValue.coerceRaw(map['main_domain']));
-    final tenantIdValue = TenantIdValue()
-      ..parse(map['tenant_id']?.toString());
-    final profileTypeRegistry =
-        ProfileTypeRegistry.fromJsonList(map['profile_types'] as List<dynamic>?);
+    final mainDomain = DomainValue()
+      ..parse(DomainValue.coerceRaw(map['main_domain']));
+    final tenantIdValue = TenantIdValue()..parse(map['tenant_id']?.toString());
+    final profileTypeRegistry = ProfileTypeRegistry.fromJsonList(
+        map['profile_types'] as List<dynamic>?);
     final telemetryRaw = map['telemetry'];
     final telemetrySettings = TelemetrySettings.fromRaw(telemetryRaw);
     final telemetryContextRaw =
@@ -157,6 +175,10 @@ class AppData {
       telemetryContextSettings: telemetryContextSettings,
       firebaseSettings: firebaseSettings,
       pushSettings: pushSettings,
+      tenantDefaultOrigin: tenantDefaultOrigin,
+      mapRadiusMinMeters: radiusBounds.minMeters,
+      mapRadiusDefaultMeters: radiusBounds.defaultMeters,
+      mapRadiusMaxMeters: radiusBounds.maxMeters,
       mainIconLightUrl: _parseRequired(
         mainIconLightRaw,
         () => IconUrlValue(isRequired: true),
@@ -231,5 +253,77 @@ class AppData {
     }
 
     return domainValue.value.origin;
+  }
+
+  static ({double minMeters, double defaultMeters, double maxMeters})
+      _resolveRadiusBounds(dynamic rawSettings) {
+    final settings = rawSettings is Map
+        ? Map<String, dynamic>.from(rawSettings)
+        : const <String, dynamic>{};
+    final mapUi = settings['map_ui'] is Map
+        ? Map<String, dynamic>.from(settings['map_ui'] as Map)
+        : const <String, dynamic>{};
+    final radius = mapUi['radius'] is Map
+        ? Map<String, dynamic>.from(mapUi['radius'] as Map)
+        : const <String, dynamic>{};
+
+    final minKm = _parsePositiveDouble(radius['min_km'], _defaultMinRadiusKm);
+    final maxKmRaw =
+        _parsePositiveDouble(radius['max_km'], _defaultMaxRadiusKm);
+    final maxKm = maxKmRaw < minKm ? minKm : maxKmRaw;
+    final defaultKmRaw =
+        _parsePositiveDouble(radius['default_km'], _defaultRadiusKm);
+    final defaultKm = defaultKmRaw.clamp(minKm, maxKm).toDouble();
+
+    return (
+      minMeters: minKm * 1000,
+      defaultMeters: defaultKm * 1000,
+      maxMeters: maxKm * 1000,
+    );
+  }
+
+  static double _parsePositiveDouble(dynamic raw, double fallback) {
+    final value =
+        raw is num ? raw.toDouble() : double.tryParse(raw?.toString() ?? '');
+    if (value == null || value <= 0) {
+      return fallback;
+    }
+    return value;
+  }
+
+  static CityCoordinate? _resolveTenantDefaultOrigin(dynamic rawSettings) {
+    final settings = rawSettings is Map
+        ? Map<String, dynamic>.from(rawSettings)
+        : const <String, dynamic>{};
+    final mapUi = settings['map_ui'] is Map
+        ? Map<String, dynamic>.from(settings['map_ui'] as Map)
+        : const <String, dynamic>{};
+    final defaultOrigin = mapUi['default_origin'] is Map
+        ? Map<String, dynamic>.from(mapUi['default_origin'] as Map)
+        : const <String, dynamic>{};
+
+    final lat = _parseDouble(defaultOrigin['lat']);
+    final lng = _parseDouble(defaultOrigin['lng']);
+    if (lat == null || lng == null) {
+      return null;
+    }
+
+    try {
+      final latitude = LatitudeValue()..parse(lat.toString());
+      final longitude = LongitudeValue()..parse(lng.toString());
+      return CityCoordinate(
+        latitudeValue: latitude,
+        longitudeValue: longitude,
+      );
+    } on Object {
+      return null;
+    }
+  }
+
+  static double? _parseDouble(dynamic raw) {
+    if (raw is num) {
+      return raw.toDouble();
+    }
+    return double.tryParse(raw?.toString() ?? '');
   }
 }

@@ -117,8 +117,8 @@ void main() {
     controller.setInviteFilter(InviteFilter.none);
     await _pumpFor(tester);
 
-    final artistName =
-        controller.displayedEventsStreamValue.value.first.artists.first.displayName;
+    final artistName = controller
+        .displayedEventsStreamValue.value.first.artists.first.displayName;
     controller.searchController.text = artistName;
     controller.searchEvents(artistName);
     await _pumpFor(tester);
@@ -133,6 +133,29 @@ void main() {
           .toList(),
       ['Show Alpha'],
     );
+
+    const titleQuery = 'Show Alpha';
+    controller.searchController.text = titleQuery;
+    controller.searchEvents(titleQuery);
+    await _pumpFor(tester);
+    _expectOnlyTitleMatches(
+        controller.displayedEventsStreamValue.value, titleQuery);
+
+    const contentQuery = 'Content for Show Alpha';
+    controller.searchController.text = contentQuery;
+    controller.searchEvents(contentQuery);
+    await _pumpFor(tester);
+    _expectOnlyContentMatches(
+      controller.displayedEventsStreamValue.value,
+      contentQuery,
+    );
+
+    const venueQuery = 'Arena Alpha';
+    controller.searchController.text = venueQuery;
+    controller.searchEvents(venueQuery);
+    await _pumpFor(tester);
+    _expectOnlyVenueMatches(
+        controller.displayedEventsStreamValue.value, venueQuery);
     debugPrint('Home agenda test: search checked');
 
     harness.dispose();
@@ -204,8 +227,8 @@ void main() {
     controller.setInviteFilter(InviteFilter.none);
     await _pumpFor(tester);
 
-    final artistName =
-        controller.displayedEventsStreamValue.value.first.artists.first.displayName;
+    final artistName = controller
+        .displayedEventsStreamValue.value.first.artists.first.displayName;
     controller.searchController.text = artistName;
     controller.searchEvents(artistName);
     await _pumpFor(tester);
@@ -220,6 +243,29 @@ void main() {
           .toList(),
       ['Show Alpha'],
     );
+
+    const titleQuery = 'Show Alpha';
+    controller.searchController.text = titleQuery;
+    controller.searchEvents(titleQuery);
+    await _pumpFor(tester);
+    _expectOnlyTitleMatches(
+        controller.displayedEventsStreamValue.value, titleQuery);
+
+    const contentQuery = 'Content for Show Alpha';
+    controller.searchController.text = contentQuery;
+    controller.searchEvents(contentQuery);
+    await _pumpFor(tester);
+    _expectOnlyContentMatches(
+      controller.displayedEventsStreamValue.value,
+      contentQuery,
+    );
+
+    const venueQuery = 'Arena Alpha';
+    controller.searchController.text = venueQuery;
+    controller.searchEvents(venueQuery);
+    await _pumpFor(tester);
+    _expectOnlyVenueMatches(
+        controller.displayedEventsStreamValue.value, venueQuery);
     debugPrint('Agenda screen test: search checked');
 
     harness.dispose();
@@ -250,6 +296,30 @@ void _expectOnlyArtistMatches(List<EventModel> events, String artistName) {
   }
 }
 
+void _expectOnlyTitleMatches(List<EventModel> events, String titleQuery) {
+  expect(events, isNotEmpty);
+  for (final event in events) {
+    expect(event.title.value.toLowerCase(), contains(titleQuery.toLowerCase()));
+  }
+}
+
+void _expectOnlyContentMatches(List<EventModel> events, String contentQuery) {
+  expect(events, isNotEmpty);
+  for (final event in events) {
+    expect(
+      (event.content.value ?? '').toLowerCase(),
+      contains(contentQuery.toLowerCase()),
+    );
+  }
+}
+
+void _expectOnlyVenueMatches(List<EventModel> events, String venueQuery) {
+  expect(events, isNotEmpty);
+  for (final event in events) {
+    final venueDisplay = event.venue?.displayName ?? event.location.value;
+    expect(venueDisplay.toLowerCase(), contains(venueQuery.toLowerCase()));
+  }
+}
 
 class _AgendaFiltersHarness {
   _AgendaFiltersHarness()
@@ -263,8 +333,7 @@ class _AgendaFiltersHarness {
           localInfoSource: _TestAppDataLocalInfoSource(),
         );
 
-  static final String _pendingInviteEventId =
-      _mongoIdForSeed('event-invite');
+  static final String _pendingInviteEventId = _mongoIdForSeed('event-invite');
   final String pendingInviteEventId;
   final _TestScheduleRepository scheduleRepository;
   final _TestUserEventsRepository userEventsRepository;
@@ -382,12 +451,16 @@ class _TestScheduleRepository implements ScheduleRepositoryContract {
       if (query.isEmpty) return true;
 
       final title = event.title.value.toLowerCase();
+      final content = (event.content.value ?? '').toLowerCase();
       final location = event.location.value.toLowerCase();
+      final venueDisplay = event.venue?.displayName.toLowerCase() ?? '';
       final artists =
           event.artists.map((artist) => artist.displayName.toLowerCase());
 
       return title.contains(query) ||
+          content.contains(query) ||
           location.contains(query) ||
+          venueDisplay.contains(query) ||
           artists.any((name) => name.contains(query));
     }).toList();
 
@@ -470,7 +543,8 @@ class _TestInvitesRepository extends InvitesRepositoryContract {
   Future<List<InviteModel>> fetchInvites() async => _pendingInvites;
 
   @override
-  Future<List<SentInviteStatus>> getSentInvitesForEvent(String eventSlug) async {
+  Future<List<SentInviteStatus>> getSentInvitesForEvent(
+      String eventSlug) async {
     return const [];
   }
 
@@ -512,7 +586,8 @@ class _TestUserLocationRepository implements UserLocationRepositoryContract {
   Future<String?> resolveUserLocation() async => null;
 
   @override
-  Future<bool> refreshIfPermitted({Duration minInterval = const Duration(seconds: 30)}) async =>
+  Future<bool> refreshIfPermitted(
+          {Duration minInterval = const Duration(seconds: 30)}) async =>
       false;
 
   @override
@@ -555,24 +630,28 @@ List<EventModel> _buildEvents() {
       id: 'event-alpha',
       title: 'Show Alpha',
       artistName: 'Alpha',
+      location: 'Arena Alpha',
       date: now.add(const Duration(days: 1)),
     ),
     _buildEvent(
       id: 'event-invite',
       title: 'Show Beta',
       artistName: 'Beta',
+      location: 'Beta Hall',
       date: now.add(const Duration(days: 2)),
     ),
     _buildEvent(
       id: 'event-gamma',
       title: 'Show Gamma',
       artistName: 'Gamma',
+      location: 'Lounge Gamma',
       date: now.add(const Duration(days: 3)),
     ),
     _buildEvent(
       id: 'event-past',
       title: 'Past Alpha',
       artistName: 'Alpha',
+      location: 'Archive Hall',
       date: now.subtract(const Duration(days: 2)),
     ),
   ];
@@ -600,6 +679,7 @@ EventModel _buildEvent({
   required String id,
   required String title,
   required String artistName,
+  required String location,
   required DateTime date,
 }) {
   final dto = EventDTO(
@@ -615,7 +695,19 @@ EventModel _buildEvent({
     ),
     title: title,
     content: 'Content for $title',
-    location: 'Centro',
+    location: location,
+    venue: {
+      'id': _mongoIdForSeed('venue-$location'),
+      'display_name': location,
+      'avatar_url': 'https://example.com/$location.png',
+      'highlight': false,
+      'is_favorite': false,
+      'genres': const <String>[],
+      'city': 'Guarapari',
+      'state': 'ES',
+      'country': 'BR',
+      'partner_type': 'venue',
+    },
     dateTimeStart: date.toIso8601String(),
     artists: [
       EventArtistDTO(
@@ -695,15 +787,73 @@ class _TestHttpClient implements HttpClient {
   bool _autoUncompress = true;
 
   static final List<int> _transparentImage = <int>[
-    0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A,
-    0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52,
-    0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
-    0x08, 0x06, 0x00, 0x00, 0x00, 0x1F, 0x15, 0xC4,
-    0x89, 0x00, 0x00, 0x00, 0x0A, 0x49, 0x44, 0x41,
-    0x54, 0x78, 0x9C, 0x63, 0x00, 0x01, 0x00, 0x00,
-    0x05, 0x00, 0x01, 0x0D, 0x0A, 0x2D, 0xB4, 0x00,
-    0x00, 0x00, 0x00, 0x49, 0x45, 0x4E, 0x44, 0xAE,
-    0x42, 0x60, 0x82,
+    0x89,
+    0x50,
+    0x4E,
+    0x47,
+    0x0D,
+    0x0A,
+    0x1A,
+    0x0A,
+    0x00,
+    0x00,
+    0x00,
+    0x0D,
+    0x49,
+    0x48,
+    0x44,
+    0x52,
+    0x00,
+    0x00,
+    0x00,
+    0x01,
+    0x00,
+    0x00,
+    0x00,
+    0x01,
+    0x08,
+    0x06,
+    0x00,
+    0x00,
+    0x00,
+    0x1F,
+    0x15,
+    0xC4,
+    0x89,
+    0x00,
+    0x00,
+    0x00,
+    0x0A,
+    0x49,
+    0x44,
+    0x41,
+    0x54,
+    0x78,
+    0x9C,
+    0x63,
+    0x00,
+    0x01,
+    0x00,
+    0x00,
+    0x05,
+    0x00,
+    0x01,
+    0x0D,
+    0x0A,
+    0x2D,
+    0xB4,
+    0x00,
+    0x00,
+    0x00,
+    0x00,
+    0x49,
+    0x45,
+    0x4E,
+    0x44,
+    0xAE,
+    0x42,
+    0x60,
+    0x82,
   ];
 
   @override
@@ -828,6 +978,7 @@ class _TestHttpHeaders implements HttpHeaders {
   @override
   Object? noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
+
 Future<void> _pumpFor(WidgetTester tester) async {
   await tester.runAsync(() async {
     await Future<void>.delayed(const Duration(milliseconds: 50));

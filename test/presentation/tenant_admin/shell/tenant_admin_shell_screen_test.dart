@@ -5,6 +5,7 @@ import 'package:belluga_now/domain/app_data/app_type.dart';
 import 'package:belluga_now/domain/app_data/value_object/platform_type_value.dart';
 import 'package:belluga_now/domain/repositories/admin_mode_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/landlord_auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/landlord_tenants_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_selected_tenant_repository_contract.dart';
 import 'package:belluga_now/infrastructure/services/tenant_admin/tenant_admin_base_url_resolver.dart';
@@ -45,6 +46,7 @@ void main() {
     final controller = TenantAdminShellController(
       adminModeRepository: _FakeAdminModeRepository(),
       appDataRepository: appDataRepository,
+      landlordAuthRepository: _FakeLandlordAuthRepository(),
       landlordTenantsRepository: _PendingLandlordTenantsRepository(),
       selectedTenantRepository: _FakeSelectedTenantRepository(),
     );
@@ -96,6 +98,7 @@ void main() {
     final controller = TenantAdminShellController(
       adminModeRepository: _FakeAdminModeRepository(),
       appDataRepository: appDataRepository,
+      landlordAuthRepository: _FakeLandlordAuthRepository(),
       landlordTenantsRepository: _FixedLandlordTenantsRepository(
         const [
           LandlordTenantOption(
@@ -143,6 +146,7 @@ void main() {
     final controller = TenantAdminShellController(
       adminModeRepository: _FakeAdminModeRepository(),
       appDataRepository: appDataRepository,
+      landlordAuthRepository: _FakeLandlordAuthRepository(),
       landlordTenantsRepository: _PendingLandlordTenantsRepository(),
       selectedTenantRepository: selectedTenantRepository,
     );
@@ -152,6 +156,59 @@ void main() {
     expect(
       selectedTenantRepository.selectedTenantDomain,
       'guarappari.belluga.space',
+    );
+  });
+
+  testWidgets(
+      'tenant environment without local landlord session shows admin auth gate',
+      (tester) async {
+    final appDataRepository = _FakeAppDataRepository(
+      appData: _buildAppData(
+        envType: 'tenant',
+        hostname: 'guarapari.belluga.space',
+        domains: const ['https://guarapari.belluga.space'],
+      ),
+    );
+    final controller = TenantAdminShellController(
+      adminModeRepository: _FakeAdminModeRepository(),
+      appDataRepository: appDataRepository,
+      landlordAuthRepository:
+          _FakeLandlordAuthRepository(hasValidSession: false),
+      landlordTenantsRepository: _PendingLandlordTenantsRepository(),
+      selectedTenantRepository: _FakeSelectedTenantRepository(),
+    );
+
+    GetIt.I.registerSingleton<AppDataRepositoryContract>(appDataRepository);
+    GetIt.I.registerSingleton<TenantAdminShellController>(controller);
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: TenantAdminShellScreen(),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text('Tenant admin login'), findsOneWidget);
+    expect(find.text('Entrar como Admin'), findsOneWidget);
+  });
+
+  test('fails fast when landlord auth repository is missing', () {
+    final appDataRepository = _FakeAppDataRepository(
+      appData: _buildAppData(
+        envType: 'landlord',
+        hostname: 'belluga.space',
+        domains: const ['https://belluga.space'],
+      ),
+    );
+
+    expect(
+      () => TenantAdminShellController(
+        adminModeRepository: _FakeAdminModeRepository(),
+        appDataRepository: appDataRepository,
+        landlordTenantsRepository: _PendingLandlordTenantsRepository(),
+        selectedTenantRepository: _FakeSelectedTenantRepository(),
+      ),
+      throwsA(anything),
     );
   });
 }
@@ -226,6 +283,25 @@ class _FixedLandlordTenantsRepository
 
   @override
   Future<List<LandlordTenantOption>> fetchTenants() async => _tenants;
+}
+
+class _FakeLandlordAuthRepository implements LandlordAuthRepositoryContract {
+  _FakeLandlordAuthRepository({this.hasValidSession = true});
+
+  @override
+  final bool hasValidSession;
+
+  @override
+  String get token => hasValidSession ? 'token' : '';
+
+  @override
+  Future<void> init() async {}
+
+  @override
+  Future<void> loginWithEmailPassword(String email, String password) async {}
+
+  @override
+  Future<void> logout() async {}
 }
 
 class _FakeSelectedTenantRepository

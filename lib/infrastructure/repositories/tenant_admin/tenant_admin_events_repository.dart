@@ -223,6 +223,9 @@ class TenantAdminEventsRepository
           headers: isAccountScoped
               ? _buildAccountHeaders()
               : _buildLandlordHeaders(),
+          connectTimeout: const Duration(seconds: 20),
+          sendTimeout: const Duration(seconds: 20),
+          receiveTimeout: const Duration(seconds: 20),
         ),
       );
 
@@ -244,12 +247,6 @@ class TenantAdminEventsRepository
         artists: artists,
       );
     } on DioException catch (error) {
-      if (_isNotFound(error)) {
-        return const TenantAdminEventPartyCandidates(
-          venues: <TenantAdminAccountProfile>[],
-          artists: <TenantAdminAccountProfile>[],
-        );
-      }
       throw _wrapError(error, 'load event party candidates');
     }
   }
@@ -555,11 +552,15 @@ class TenantAdminEventsRepository
   }
 
   FormatException _wrapError(DioException error, String context) {
+    final status = error.response?.statusCode;
+    final uri = error.requestOptions.uri;
     final payload = error.response?.data;
     final message = payload is Map<String, dynamic>
         ? (payload['message'] as String?) ?? payload.toString()
         : (payload?.toString() ?? error.message ?? error.toString());
-    return FormatException('Failed to $context: $message');
+    return FormatException(
+      'Failed to $context [status=$status] ($uri): $message',
+    );
   }
 
   bool _isNotFound(DioException error) {

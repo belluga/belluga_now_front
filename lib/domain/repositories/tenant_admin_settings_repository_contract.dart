@@ -6,6 +6,12 @@ abstract class TenantAdminSettingsRepositoryContract {
 
   void clearBrandingSettings();
 
+  Future<TenantAdminMapUiSettings> fetchMapUiSettings();
+
+  Future<TenantAdminMapUiSettings> updateMapUiSettings({
+    required TenantAdminMapUiSettings settings,
+  });
+
   Future<TenantAdminFirebaseSettings?> fetchFirebaseSettings();
 
   Future<TenantAdminFirebaseSettings> updateFirebaseSettings({

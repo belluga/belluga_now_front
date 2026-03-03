@@ -33,6 +33,37 @@ class TenantAdminSettingsRepository
     _brandingSettingsStreamValue.addValue(null);
   }
 
+  @override
+  Future<TenantAdminMapUiSettings> fetchMapUiSettings() async {
+    try {
+      final response = await _dio.getUri(
+        _buildTenantSettingsValuesUri(),
+        options: Options(headers: _buildHeaders()),
+      );
+      final mapUi = _extractMapUiPayload(response.data);
+      return _mapMapUiSettings(mapUi);
+    } on DioException catch (error) {
+      throw _wrapError(error, 'load map_ui settings');
+    }
+  }
+
+  @override
+  Future<TenantAdminMapUiSettings> updateMapUiSettings({
+    required TenantAdminMapUiSettings settings,
+  }) async {
+    try {
+      final response = await _dio.patchUri(
+        _buildTenantSettingsValuesUri(namespace: 'map_ui'),
+        data: _toSettingsPatchPayload(settings.rawMapUi),
+        options: Options(headers: _buildHeaders()),
+      );
+      final mapUi = _extractMapUiPayload(response.data);
+      return _mapMapUiSettings(mapUi);
+    } on DioException catch (error) {
+      throw _wrapError(error, 'update map_ui settings');
+    }
+  }
+
   String get _apiBaseUrl =>
       (_tenantScope ?? GetIt.I.get<TenantAdminTenantScopeContract>())
           .selectedTenantAdminBaseUrl;
@@ -268,6 +299,51 @@ class TenantAdminSettingsRepository
     throw Exception('Unexpected settings response shape.');
   }
 
+  Map<String, dynamic> _extractMapUiPayload(dynamic raw) {
+    final payload = _extractDataMap(raw);
+    final mapUiRaw = payload['map_ui'];
+    if (mapUiRaw is Map) {
+      return Map<String, dynamic>.from(mapUiRaw);
+    }
+    return Map<String, dynamic>.from(payload);
+  }
+
+  TenantAdminMapUiSettings _mapMapUiSettings(Map<String, dynamic> mapUi) {
+    final defaultOriginRaw = mapUi['default_origin'];
+    TenantAdminMapDefaultOrigin? defaultOrigin;
+    if (defaultOriginRaw is Map) {
+      final originMap = Map<String, dynamic>.from(defaultOriginRaw);
+      final lat = _parseDouble(originMap['lat']);
+      final lng = _parseDouble(originMap['lng']);
+      if (lat != null && lng != null) {
+        final rawLabel = originMap['label']?.toString().trim();
+        defaultOrigin = TenantAdminMapDefaultOrigin(
+          lat: lat,
+          lng: lng,
+          label: rawLabel == null || rawLabel.isEmpty ? null : rawLabel,
+        );
+      }
+    } else {
+      final lat = _parseDouble(mapUi['default_origin.lat']);
+      final lng = _parseDouble(mapUi['default_origin.lng']);
+      if (lat != null && lng != null) {
+        final rawLabel = mapUi['default_origin.label']?.toString().trim();
+        defaultOrigin = TenantAdminMapDefaultOrigin(
+          lat: lat,
+          lng: lng,
+          label: rawLabel == null || rawLabel.isEmpty ? null : rawLabel,
+        );
+      }
+    }
+
+    return TenantAdminMapUiSettings(
+      rawMapUi: Map<String, dynamic>.unmodifiable(
+        Map<String, dynamic>.from(mapUi),
+      ),
+      defaultOrigin: defaultOrigin,
+    );
+  }
+
   Map<String, dynamic> _extractEnvironmentMap(dynamic raw) {
     if (raw is! Map<String, dynamic>) {
       throw Exception('Unexpected environment response shape.');
@@ -483,6 +559,19 @@ class TenantAdminSettingsRepository
         '_ts': DateTime.now().microsecondsSinceEpoch.toString(),
       },
     );
+  }
+
+  Uri _buildTenantSettingsValuesUri({
+    String? namespace,
+  }) {
+    final origin = _resolveTenantOriginUri();
+    final encodedNamespace = namespace == null || namespace.trim().isEmpty
+        ? null
+        : Uri.encodeComponent(namespace.trim());
+    final path = encodedNamespace == null
+        ? '/admin/api/v1/settings/values'
+        : '/admin/api/v1/settings/values/$encodedNamespace';
+    return origin.replace(path: path);
   }
 
   Uri _resolveTenantOriginUri({String? apiBaseUrl}) {
@@ -766,6 +855,49 @@ class TenantAdminSettingsRepository
     if (value is num) return value.toInt();
     if (value is String) return int.tryParse(value.trim());
     return null;
+  }
+
+  double? _parseDouble(dynamic value) {
+    if (value is double) return value;
+    if (value is int) return value.toDouble();
+    if (value is num) return value.toDouble();
+    if (value is String) return double.tryParse(value.trim());
+    return null;
+  }
+
+  Map<String, dynamic> _toSettingsPatchPayload(Map<String, dynamic> source) {
+    final flattened = <String, dynamic>{};
+    _flattenSettingsPayload(
+      source,
+      flattened,
+      prefix: null,
+    );
+    return flattened;
+  }
+
+  void _flattenSettingsPayload(
+    Map<String, dynamic> source,
+    Map<String, dynamic> output, {
+    required String? prefix,
+  }) {
+    source.forEach((rawKey, value) {
+      final key = rawKey.trim();
+      if (key.isEmpty) {
+        return;
+      }
+
+      final path = prefix == null ? key : '$prefix.$key';
+      if (value is Map) {
+        _flattenSettingsPayload(
+          Map<String, dynamic>.from(value),
+          output,
+          prefix: path,
+        );
+        return;
+      }
+
+      output[path] = value;
+    });
   }
 
   Exception _wrapError(DioException error, String label) {

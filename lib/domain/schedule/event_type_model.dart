@@ -2,10 +2,10 @@ import 'package:belluga_now/domain/value_objects/slug_value.dart';
 import 'package:belluga_now/domain/value_objects/color_value.dart';
 import 'package:belluga_now/domain/value_objects/description_value.dart';
 import 'package:belluga_now/domain/value_objects/title_value.dart';
-import 'package:value_object_pattern/domain/value_objects/mongo_id_value.dart';
+import 'package:belluga_now/domain/schedule/value_objects/event_type_id_value.dart';
 
 class EventTypeModel {
-  final MongoIDValue id;
+  final EventTypeIdValue id;
   final TitleValue name;
   final SlugValue slug;
   final DescriptionValue description;

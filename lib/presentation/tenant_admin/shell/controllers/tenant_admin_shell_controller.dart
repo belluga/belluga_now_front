@@ -23,9 +23,7 @@ class TenantAdminShellController implements Disposable {
         _appDataRepository =
             appDataRepository ?? GetIt.I.get<AppDataRepositoryContract>(),
         _landlordAuthRepository = landlordAuthRepository ??
-            (GetIt.I.isRegistered<LandlordAuthRepositoryContract>()
-                ? GetIt.I.get<LandlordAuthRepositoryContract>()
-                : null),
+            GetIt.I.get<LandlordAuthRepositoryContract>(),
         _landlordTenantsRepository = landlordTenantsRepository ??
             GetIt.I.get<LandlordTenantsRepositoryContract>(),
         _selectedTenantRepository = selectedTenantRepository ??
@@ -33,7 +31,7 @@ class TenantAdminShellController implements Disposable {
 
   final AdminModeRepositoryContract _adminModeRepository;
   final AppDataRepositoryContract _appDataRepository;
-  final LandlordAuthRepositoryContract? _landlordAuthRepository;
+  final LandlordAuthRepositoryContract _landlordAuthRepository;
   final LandlordTenantsRepositoryContract _landlordTenantsRepository;
   final TenantAdminSelectedTenantRepositoryContract _selectedTenantRepository;
   final StreamValue<bool> isTenantSelectionResolvingStreamValue =
@@ -56,7 +54,7 @@ class TenantAdminShellController implements Disposable {
       _appDataRepository.appData.typeValue.value == EnvironmentType.tenant;
 
   bool get hasLocalLandlordSession =>
-      _landlordAuthRepository?.hasValidSession ?? true;
+      _landlordAuthRepository.hasValidSession;
 
   Future<void> switchToUserMode() => _adminModeRepository.setUserMode();
 

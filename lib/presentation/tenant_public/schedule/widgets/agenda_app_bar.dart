@@ -97,6 +97,7 @@ class AgendaAppBar extends StatelessWidget {
                         onPressed: () => _showRadiusSelector(
                           context,
                           radiusMeters,
+                          controller.minRadiusMeters,
                           maxRadiusMeters,
                         ),
                         icon: Icon(
@@ -192,10 +193,11 @@ class AgendaAppBar extends StatelessWidget {
   Future<void> _showRadiusSelector(
     BuildContext context,
     double _selectedMeters,
+    double minRadiusMeters,
     double maxRadiusMeters,
   ) async {
     final theme = Theme.of(context);
-    const minRadiusKm = 1.0;
+    final minRadiusKm = minRadiusMeters / 1000;
     final maxKm = (maxRadiusMeters / 1000) < minRadiusKm
         ? minRadiusKm
         : (maxRadiusMeters / 1000);
