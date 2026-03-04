@@ -39,11 +39,6 @@ class _TenantAdminEventFormScreenState
     super.initState();
     _controller.initEventForm(existingEvent: widget.existingEvent);
 
-    if (widget.existingEvent?.type.slug.trim().isNotEmpty == true &&
-        widget.existingEvent?.type.name.trim().isNotEmpty == true) {
-      _controller.upsertEventTypeCatalogItem(widget.existingEvent!.type);
-    }
-
     _controller.clearSubmitMessages();
     _controller.loadFormDependencies(
       accountSlug: widget.accountSlugForOwnCreate,
@@ -944,6 +939,21 @@ class _TenantAdminEventFormScreenState
       return;
     }
 
+    final selectedTypeId = selectedType.id?.trim();
+    if (selectedTypeId == null || selectedTypeId.isEmpty) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Tipo de evento inválido. Selecione um tipo cadastrado no tenant.',
+          ),
+        ),
+      );
+      return;
+    }
+
     final selectedVenue = venues.firstWhereOrNull(
       (venue) => venue.id == formState.selectedVenueId,
     );
@@ -977,7 +987,7 @@ class _TenantAdminEventFormScreenState
       title: _controller.eventTitleController.text.trim(),
       content: _controller.eventContentController.text.trim(),
       type: TenantAdminEventType(
-        id: selectedType.id,
+        id: selectedTypeId,
         name: selectedType.name,
         slug: selectedType.slug,
         description: selectedType.description,

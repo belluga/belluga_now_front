@@ -48,7 +48,7 @@ void main() {
   });
 
   test(
-      'account-scoped loadFormDependencies skips admin event catalog fetch and uses account party candidates',
+      'account-scoped loadFormDependencies uses dedicated event types endpoint and account party candidates',
       () async {
     final eventsRepository = _AccountScopedEventsRepository();
     final controller = TenantAdminEventsController(
@@ -58,6 +58,7 @@ void main() {
 
     await controller.loadFormDependencies(accountSlug: 'my-account');
 
+    expect(eventsRepository.fetchEventTypesCalls, 1);
     expect(eventsRepository.fetchEventsCalls, 0);
     expect(eventsRepository.partyCandidatesCalls, 1);
     expect(eventsRepository.lastPartyCandidatesAccountSlug, 'my-account');
@@ -420,6 +421,7 @@ class _FakeLandlordAuthRepositoryWithToken
 class _AccountScopedEventsRepository
     with TenantAdminEventsPaginationMixin
     implements TenantAdminEventsRepositoryContract {
+  int fetchEventTypesCalls = 0;
   int fetchEventsCalls = 0;
   int fetchEventsPageCalls = 0;
   int partyCandidatesCalls = 0;
@@ -460,6 +462,19 @@ class _AccountScopedEventsRepository
   @override
   Future<TenantAdminEvent> fetchEvent(String eventIdOrSlug) async {
     throw UnimplementedError();
+  }
+
+  @override
+  Future<List<TenantAdminEventType>> fetchEventTypes() async {
+    fetchEventTypesCalls += 1;
+    return const [
+      TenantAdminEventType(
+        id: '507f1f77bcf86cd799439099',
+        name: 'Show',
+        slug: 'show',
+        description: 'Tipo de evento: Show',
+      ),
+    ];
   }
 
   @override

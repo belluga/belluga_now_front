@@ -302,8 +302,10 @@ class AppData {
         ? Map<String, dynamic>.from(mapUi['default_origin'] as Map)
         : const <String, dynamic>{};
 
-    final lat = _parseDouble(defaultOrigin['lat']);
-    final lng = _parseDouble(defaultOrigin['lng']);
+    final lat = _parseDouble(defaultOrigin['lat']) ??
+        _parseDouble(mapUi['default_origin.lat']);
+    final lng = _parseDouble(defaultOrigin['lng']) ??
+        _parseDouble(mapUi['default_origin.lng']);
     if (lat == null || lng == null) {
       return null;
     }

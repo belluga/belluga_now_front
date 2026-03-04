@@ -379,6 +379,7 @@ class TenantAdminSettingsController implements Disposable {
         settings: nextSettings,
       );
       _applyMapUiSettings(updated);
+      await _refreshAppDataSnapshot();
       _reportSuccess('Origem padrão atualizada com sucesso.');
     } catch (error) {
       remoteErrorStreamValue.addValue(error.toString());
@@ -841,6 +842,16 @@ class TenantAdminSettingsController implements Disposable {
     mapDefaultOriginLatitudeController.clear();
     mapDefaultOriginLongitudeController.clear();
     mapDefaultOriginLabelController.clear();
+  }
+
+  Future<void> _refreshAppDataSnapshot() async {
+    try {
+      await _appDataRepository.init();
+    } on Object catch (error) {
+      debugPrint(
+        'TenantAdminSettingsController._refreshAppDataSnapshot failed: $error',
+      );
+    }
   }
 
   List<String> _parseCsv(String raw) {

@@ -31,13 +31,14 @@ void main() {
       taxonomiesRepository: taxonomiesRepository,
     );
 
-    controller.upsertEventTypeCatalogItem(
-      const TenantAdminEventType(
+    eventsRepository.eventTypes = const [
+      TenantAdminEventType(
+        id: '507f1f77bcf86cd799439011',
         name: 'Feira',
         slug: 'feira',
         description: 'Tipo default do teste',
       ),
-    );
+    ];
 
     GetIt.I.registerSingleton<TenantAdminEventsController>(controller);
 
@@ -86,12 +87,14 @@ void main() {
       taxonomiesRepository: taxonomiesRepository,
     );
 
-    controller.upsertEventTypeCatalogItem(
-      const TenantAdminEventType(
+    eventsRepository.eventTypes = const [
+      TenantAdminEventType(
+        id: '507f1f77bcf86cd799439012',
         name: 'Workshop',
         slug: 'workshop',
+        description: 'Tipo de evento: Workshop',
       ),
-    );
+    ];
 
     GetIt.I.registerSingleton<TenantAdminEventsController>(controller);
 
@@ -128,12 +131,14 @@ void main() {
       taxonomiesRepository: taxonomiesRepository,
     );
 
-    controller.upsertEventTypeCatalogItem(
-      const TenantAdminEventType(
+    eventsRepository.eventTypes = const [
+      TenantAdminEventType(
+        id: '507f1f77bcf86cd799439013',
         name: 'Show',
         slug: 'show',
+        description: 'Tipo de evento: Show',
       ),
-    );
+    ];
 
     GetIt.I.registerSingleton<TenantAdminEventsController>(controller);
 
@@ -174,12 +179,14 @@ void main() {
       taxonomiesRepository: taxonomiesRepository,
     );
 
-    controller.upsertEventTypeCatalogItem(
-      const TenantAdminEventType(
+    eventsRepository.eventTypes = const [
+      TenantAdminEventType(
+        id: '507f1f77bcf86cd799439014',
         name: 'Show',
         slug: 'show',
+        description: 'Tipo de evento: Show',
       ),
-    );
+    ];
 
     GetIt.I.registerSingleton<TenantAdminEventsController>(controller);
 
@@ -271,6 +278,7 @@ Future<void> _fillRequiredFields(WidgetTester tester) async {
 class _FakeEventsRepository
     with TenantAdminEventsPaginationMixin
     implements TenantAdminEventsRepositoryContract {
+  List<TenantAdminEventType> eventTypes = const <TenantAdminEventType>[];
   TenantAdminEventDraft? lastCreateDraft;
   TenantAdminEventDraft? lastCreateOwnDraft;
   String? lastCreateOwnAccountSlug;
@@ -322,6 +330,11 @@ class _FakeEventsRepository
       items: <TenantAdminEvent>[],
       hasMore: false,
     );
+  }
+
+  @override
+  Future<List<TenantAdminEventType>> fetchEventTypes() async {
+    return List<TenantAdminEventType>.unmodifiable(eventTypes);
   }
 
   @override

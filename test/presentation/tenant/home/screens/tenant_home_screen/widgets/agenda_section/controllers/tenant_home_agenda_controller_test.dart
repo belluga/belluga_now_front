@@ -147,6 +147,36 @@ void main() {
       controller.onDispose();
     });
 
+    test('uses tenant default origin when map_ui default origin is flattened',
+        () async {
+      final appData = _buildAppData(
+        minKm: 1,
+        defaultKm: 5,
+        maxKm: 10,
+        flattenDefaultOrigin: true,
+      );
+      final appDataRepository = _FakeAppDataRepository(appData);
+      final scheduleRepository = _FakeScheduleRepository();
+      final locationRepository = _FakeUserLocationRepository()
+        ..warmUpResult = false;
+
+      final controller = TenantHomeAgendaController(
+        scheduleRepository: scheduleRepository,
+        userEventsRepository: _FakeUserEventsRepository(),
+        invitesRepository: _FakeInvitesRepository(),
+        userLocationRepository: locationRepository,
+        appDataRepository: appDataRepository,
+      );
+
+      await controller.init();
+
+      expect(scheduleRepository.getEventsPageCallCount, 1);
+      expect(scheduleRepository.lastOriginLat, closeTo(-20.671339, 0.000001));
+      expect(scheduleRepository.lastOriginLng, closeTo(-40.495395, 0.000001));
+
+      controller.onDispose();
+    });
+
     test('does not fetch when neither user location nor tenant default exists',
         () async {
       final appData = _buildAppData(
@@ -224,6 +254,7 @@ AppData _buildAppData({
   required num defaultKm,
   required num maxKm,
   bool includeDefaultOrigin = true,
+  bool flattenDefaultOrigin = false,
 }) {
   final mapUi = <String, dynamic>{
     'radius': {
@@ -233,11 +264,17 @@ AppData _buildAppData({
     },
   };
   if (includeDefaultOrigin) {
-    mapUi['default_origin'] = const {
-      'lat': -20.671339,
-      'lng': -40.495395,
-      'label': 'Praia do Morro',
-    };
+    if (flattenDefaultOrigin) {
+      mapUi['default_origin.lat'] = -20.671339;
+      mapUi['default_origin.lng'] = -40.495395;
+      mapUi['default_origin.label'] = 'Praia do Morro';
+    } else {
+      mapUi['default_origin'] = const {
+        'lat': -20.671339,
+        'lng': -40.495395,
+        'label': 'Praia do Morro',
+      };
+    }
   }
 
   final remoteData = {

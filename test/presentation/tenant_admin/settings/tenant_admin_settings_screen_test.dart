@@ -260,6 +260,7 @@ void main() {
       settingsRepository.updatedMapUiSettings!.defaultOrigin!.label,
       'Centro',
     );
+    expect(repository.initCallCount, 1);
   });
 
   testWidgets('saves firebase settings via remote repository', (tester) async {
@@ -636,6 +637,7 @@ class _FakeAppDataRepository implements AppDataRepositoryContract {
   _FakeAppDataRepository(this._appData);
 
   final AppData _appData;
+  int initCallCount = 0;
 
   @override
   AppData get appData => _appData;
@@ -658,7 +660,9 @@ class _FakeAppDataRepository implements AppDataRepositoryContract {
   ThemeMode get themeMode => themeModeStreamValue.value ?? ThemeMode.system;
 
   @override
-  Future<void> init() async {}
+  Future<void> init() async {
+    initCallCount += 1;
+  }
 
   @override
   Future<void> setMaxRadiusMeters(double meters) async {

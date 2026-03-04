@@ -23,7 +23,7 @@ void main() {
     await GetIt.I.reset();
   });
 
-  testWidgets('reacts when a new event type is upserted in controller stream',
+  testWidgets('reacts when event type catalog stream receives backend entries',
       (tester) async {
     final controller = TenantAdminEventsController(
       eventsRepository: _NoopEventsRepository(),
@@ -51,12 +51,14 @@ void main() {
 
     expect(find.text('Nenhum tipo cadastrado'), findsOneWidget);
 
-    controller.upsertEventTypeCatalogItem(
-      const TenantAdminEventType(
+    controller.eventTypeCatalogStreamValue.addValue(const [
+      TenantAdminEventType(
+        id: '507f1f77bcf86cd799439021',
         name: 'Festival',
         slug: 'festival',
+        description: 'Tipo de evento: Festival',
       ),
-    );
+    ]);
 
     await tester.pumpAndSettle();
 

@@ -223,7 +223,8 @@ class TenantAdminEventsController implements Disposable {
     final selectedTaxonomyTerms = <String, Set<String>>{};
     for (final term
         in existingEvent?.taxonomyTerms ?? const <TenantAdminTaxonomyTerm>[]) {
-      final bucket = selectedTaxonomyTerms.putIfAbsent(term.type, () => <String>{});
+      final bucket =
+          selectedTaxonomyTerms.putIfAbsent(term.type, () => <String>{});
       bucket.add(term.value);
     }
     final nextState = TenantAdminEventFormState(
@@ -362,7 +363,8 @@ class TenantAdminEventsController implements Disposable {
   }
 
   void applyEventPublishAt(DateTime value) {
-    final nextState = eventFormStateStreamValue.value.copyWith(publishAt: value);
+    final nextState =
+        eventFormStateStreamValue.value.copyWith(publishAt: value);
     _replaceEventFormState(nextState);
     _syncEventDateTimeControllers(nextState);
   }
@@ -385,7 +387,8 @@ class TenantAdminEventsController implements Disposable {
       );
       return;
     }
-    if ((current.locationMode == 'physical' || current.locationMode == 'hybrid') &&
+    if ((current.locationMode == 'physical' ||
+            current.locationMode == 'hybrid') &&
         venues.isNotEmpty) {
       _replaceEventFormState(
         current.copyWith(
@@ -401,13 +404,17 @@ class TenantAdminEventsController implements Disposable {
   }
 
   void hydrateDefaultEventType(List<TenantAdminEventType> eventTypes) {
+    final current = eventFormStateStreamValue.value;
     if (eventTypes.isEmpty) {
+      final selectedTypeSlug = current.selectedTypeSlug?.trim();
+      if (selectedTypeSlug == null || selectedTypeSlug.isEmpty) {
+        return;
+      }
       _replaceEventFormState(
-        eventFormStateStreamValue.value.copyWith(selectedTypeSlug: null),
+        current.copyWith(selectedTypeSlug: null),
       );
       return;
     }
-    final current = eventFormStateStreamValue.value;
     final selectedTypeSlug = current.selectedTypeSlug?.trim();
     if (selectedTypeSlug != null &&
         selectedTypeSlug.isNotEmpty &&
@@ -472,6 +479,48 @@ class TenantAdminEventsController implements Disposable {
     );
   }
 
+  Future<TenantAdminEventType> saveEventType({
+    required String name,
+    required String slug,
+    required String description,
+    TenantAdminEventType? existingType,
+  }) async {
+    final normalizedName = name.trim();
+    final normalizedSlug = slug.trim();
+    final normalizedDescription = description.trim();
+
+    final eventTypeId = existingType?.id?.trim();
+    final isEdit = eventTypeId != null && eventTypeId.isNotEmpty;
+
+    final saved = isEdit
+        ? await _eventsRepository.updateEventType(
+            eventTypeId: eventTypeId,
+            name: normalizedName,
+            slug: normalizedSlug,
+            description: normalizedDescription,
+          )
+        : await _eventsRepository.createEventType(
+            name: normalizedName,
+            slug: normalizedSlug,
+            description: normalizedDescription,
+          );
+
+    await _loadEventTypeCatalog();
+    return saved;
+  }
+
+  Future<void> submitDeleteEventType(TenantAdminEventType type) async {
+    final eventTypeId = type.id?.trim();
+    if (eventTypeId == null || eventTypeId.isEmpty) {
+      throw const FormatException(
+        'Event type id is required to delete this entry.',
+      );
+    }
+
+    await _eventsRepository.deleteEventType(eventTypeId);
+    await _loadEventTypeCatalog();
+  }
+
   Future<void> loadEventDetail(String eventIdOrSlug) async {
     eventDetailLoadingStreamValue.addValue(true);
     eventDetailErrorStreamValue.addValue(null);
@@ -498,83 +547,33 @@ class TenantAdminEventsController implements Disposable {
   }) async {
     final normalizedAccountSlug = accountSlug?.trim();
     final tasks = <Future<void>>[
+      _loadEventTypeCatalog(),
       _loadTaxonomies(),
       _loadPartyCandidates(accountSlug: normalizedAccountSlug),
     ];
-
-    final isAccountScoped =
-        normalizedAccountSlug != null && normalizedAccountSlug.isNotEmpty;
-    if (!isAccountScoped) {
-      tasks.add(_loadEventTypeCatalog());
-    }
 
     await Future.wait<void>(tasks);
   }
 
   Future<void> _loadEventTypeCatalog() async {
     try {
-      final events = await _eventsRepository.fetchEvents();
+      final eventTypes = await _eventsRepository.fetchEventTypes();
       if (_isDisposed) {
         return;
       }
-      final nextBySlug = <String, TenantAdminEventType>{};
-      for (final type in eventTypeCatalogStreamValue.value) {
-        final slug = type.slug.trim();
-        if (slug.isEmpty) {
-          continue;
-        }
-        nextBySlug[slug] = type;
-      }
-      for (final event in events) {
-        final type = event.type;
-        final slug = type.slug.trim();
-        final name = type.name.trim();
-        if (slug.isEmpty || name.isEmpty) {
-          continue;
-        }
-        nextBySlug[slug] = type;
-      }
-      final sorted = nextBySlug.values.toList(growable: false)
+      final sorted = eventTypes.toList(growable: false)
         ..sort(
           (left, right) => left.name.toLowerCase().compareTo(
                 right.name.toLowerCase(),
               ),
         );
       eventTypeCatalogStreamValue.addValue(List.unmodifiable(sorted));
-    } catch (_) {
-      // keep form usable even when catalog inference fails
+    } catch (error) {
+      if (_isDisposed) {
+        return;
+      }
+      submitErrorMessageStreamValue.addValue(error.toString());
     }
-  }
-
-  void upsertEventTypeCatalogItem(TenantAdminEventType type) {
-    final slug = type.slug.trim();
-    final name = type.name.trim();
-    if (slug.isEmpty || name.isEmpty) {
-      return;
-    }
-    final nextBySlug = <String, TenantAdminEventType>{
-      for (final item in eventTypeCatalogStreamValue.value)
-        if (item.slug.trim().isNotEmpty) item.slug.trim(): item,
-    };
-    nextBySlug[slug] = type;
-    final sorted = nextBySlug.values.toList(growable: false)
-      ..sort(
-        (left, right) => left.name.toLowerCase().compareTo(
-              right.name.toLowerCase(),
-            ),
-      );
-    eventTypeCatalogStreamValue.addValue(List.unmodifiable(sorted));
-  }
-
-  void removeEventTypeCatalogItem(String slug) {
-    final normalized = slug.trim();
-    if (normalized.isEmpty) {
-      return;
-    }
-    final retained = eventTypeCatalogStreamValue.value
-        .where((item) => item.slug.trim() != normalized)
-        .toList(growable: false);
-    eventTypeCatalogStreamValue.addValue(List.unmodifiable(retained));
   }
 
   Future<void> _loadTaxonomies() async {
@@ -793,9 +792,8 @@ class TenantAdminEventsController implements Disposable {
     final builder = StringBuffer();
     var previousWasHyphen = false;
     for (final codeUnit in lower.codeUnits) {
-      final isAlphaNumeric =
-          (codeUnit >= 48 && codeUnit <= 57) ||
-              (codeUnit >= 97 && codeUnit <= 122);
+      final isAlphaNumeric = (codeUnit >= 48 && codeUnit <= 57) ||
+          (codeUnit >= 97 && codeUnit <= 122);
       if (isAlphaNumeric) {
         builder.writeCharCode(codeUnit);
         previousWasHyphen = false;

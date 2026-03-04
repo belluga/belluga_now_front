@@ -56,6 +56,32 @@ class TenantAdminEventsRepository
     };
   }
 
+  Map<String, String> _buildEventTypesReadHeaders() {
+    final landlordToken = GetIt.I.isRegistered<LandlordAuthRepositoryContract>()
+        ? GetIt.I.get<LandlordAuthRepositoryContract>().token.trim()
+        : '';
+    if (landlordToken.isNotEmpty) {
+      return {
+        'Authorization': 'Bearer $landlordToken',
+        'Accept': 'application/json',
+      };
+    }
+
+    final accountToken = GetIt.I.isRegistered<AuthRepositoryContract>()
+        ? GetIt.I.get<AuthRepositoryContract>().userToken.trim()
+        : '';
+    if (accountToken.isNotEmpty) {
+      return {
+        'Authorization': 'Bearer $accountToken',
+        'Accept': 'application/json',
+      };
+    }
+
+    throw const FormatException(
+      'Failed to resolve auth token for event types request.',
+    );
+  }
+
   @override
   Future<List<TenantAdminEvent>> fetchEvents({
     String? search,
@@ -198,6 +224,86 @@ class TenantAdminEventsRepository
       );
     } on DioException catch (error) {
       throw _wrapError(error, 'delete event');
+    }
+  }
+
+  @override
+  Future<List<TenantAdminEventType>> fetchEventTypes() async {
+    try {
+      final response = await _dio.get(
+        '$_apiBaseUrl/v1/event_types',
+        options: Options(headers: _buildEventTypesReadHeaders()),
+      );
+      final rows = _extractList(response.data);
+      final types = rows.map(_mapEventType).toList(growable: false);
+      return List<TenantAdminEventType>.unmodifiable(types);
+    } on DioException catch (error) {
+      throw _wrapError(error, 'load event types');
+    }
+  }
+
+  @override
+  Future<TenantAdminEventType> createEventType({
+    required String name,
+    required String slug,
+    required String description,
+  }) async {
+    try {
+      final response = await _dio.post(
+        '$_apiBaseUrl/v1/event_types',
+        data: {
+          'name': name,
+          'slug': slug,
+          'description': description,
+        },
+        options: Options(headers: _buildLandlordHeaders()),
+      );
+      return _mapEventType(_extractItem(response.data));
+    } on DioException catch (error) {
+      throw _wrapError(error, 'create event type');
+    }
+  }
+
+  @override
+  Future<TenantAdminEventType> updateEventType({
+    required String eventTypeId,
+    String? name,
+    String? slug,
+    String? description,
+  }) async {
+    try {
+      final payload = <String, dynamic>{};
+      if (name != null) {
+        payload['name'] = name;
+      }
+      if (slug != null) {
+        payload['slug'] = slug;
+      }
+      if (description != null) {
+        payload['description'] = description;
+      }
+
+      final response = await _dio.patch(
+        '$_apiBaseUrl/v1/event_types/$eventTypeId',
+        data: payload,
+        options: Options(headers: _buildLandlordHeaders()),
+      );
+
+      return _mapEventType(_extractItem(response.data));
+    } on DioException catch (error) {
+      throw _wrapError(error, 'update event type');
+    }
+  }
+
+  @override
+  Future<void> deleteEventType(String eventTypeId) async {
+    try {
+      await _dio.delete(
+        '$_apiBaseUrl/v1/event_types/$eventTypeId',
+        options: Options(headers: _buildLandlordHeaders()),
+      );
+    } on DioException catch (error) {
+      throw _wrapError(error, 'delete event type');
     }
   }
 
@@ -406,6 +512,17 @@ class TenantAdminEventsRepository
       createdAt: _parseDate(row['created_at']),
       updatedAt: _parseDate(row['updated_at']),
       deletedAt: _parseDate(row['deleted_at']),
+    );
+  }
+
+  TenantAdminEventType _mapEventType(Map<String, dynamic> row) {
+    return TenantAdminEventType(
+      id: _asString(row['id']),
+      name: _asString(row['name']) ?? '',
+      slug: _asString(row['slug']) ?? '',
+      description: _asString(row['description']),
+      icon: _asString(row['icon']),
+      color: _asString(row['color']),
     );
   }
 

@@ -48,23 +48,12 @@ class _TenantAdminEventTypeFormScreenState
     _controller.setEventTypeFormError(null);
 
     try {
-      if (_isEdit) {
-        final previousSlug = widget.existingType!.slug.trim();
-        if (previousSlug.isNotEmpty && previousSlug != slug) {
-          _controller.removeEventTypeCatalogItem(previousSlug);
-        }
-      }
-
-      final type = TenantAdminEventType(
-        id: widget.existingType?.id,
+      final type = await _controller.saveEventType(
         name: name,
         slug: slug,
-        description: description.isEmpty ? null : description,
-        icon: widget.existingType?.icon,
-        color: widget.existingType?.color,
+        description: description,
+        existingType: widget.existingType,
       );
-
-      _controller.upsertEventTypeCatalogItem(type);
 
       if (!mounted) {
         return;
@@ -146,10 +135,20 @@ class _TenantAdminEventTypeFormScreenState
                         TextFormField(
                           controller: _controller.eventTypeDescriptionController,
                           decoration: const InputDecoration(
-                            labelText: 'Descrição (opcional)',
+                            labelText: 'Descrição',
                           ),
                           minLines: 2,
                           maxLines: 4,
+                          validator: (value) {
+                            final trimmed = value?.trim() ?? '';
+                            if (trimmed.isEmpty) {
+                              return 'Descrição é obrigatória.';
+                            }
+                            if (trimmed.length < 10) {
+                              return 'Descrição deve ter pelo menos 10 caracteres.';
+                            }
+                            return null;
+                          },
                         ),
                       ],
                     ),

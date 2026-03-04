@@ -38,7 +38,7 @@ class _TenantAdminEventTypesListScreenState
     if (!confirmed) {
       return;
     }
-    _controller.removeEventTypeCatalogItem(type.slug);
+    await _controller.submitDeleteEventType(type);
   }
 
   Future<void> _openCreateType() async {
@@ -46,9 +46,8 @@ class _TenantAdminEventTypesListScreenState
       const TenantAdminEventTypeCreateRoute(),
     );
     if (created != null) {
-      _controller.upsertEventTypeCatalogItem(created);
+      await _controller.loadFormDependencies();
     }
-    await _controller.loadFormDependencies();
   }
 
   Future<void> _openEditType(TenantAdminEventType type) async {
@@ -56,9 +55,8 @@ class _TenantAdminEventTypesListScreenState
       TenantAdminEventTypeEditRoute(type: type),
     );
     if (updated != null) {
-      _controller.upsertEventTypeCatalogItem(updated);
+      await _controller.loadFormDependencies();
     }
-    await _controller.loadFormDependencies();
   }
 
   @override

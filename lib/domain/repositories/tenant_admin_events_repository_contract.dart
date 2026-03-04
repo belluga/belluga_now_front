@@ -125,6 +125,29 @@ abstract class TenantAdminEventsRepositoryContract {
 
   Future<void> deleteEvent(String eventId);
 
+  Future<List<TenantAdminEventType>> fetchEventTypes() async {
+    return const <TenantAdminEventType>[];
+  }
+
+  Future<TenantAdminEventType> createEventType({
+    required String name,
+    required String slug,
+    required String description,
+  }) {
+    throw UnimplementedError();
+  }
+
+  Future<TenantAdminEventType> updateEventType({
+    required String eventTypeId,
+    String? name,
+    String? slug,
+    String? description,
+  }) {
+    throw UnimplementedError();
+  }
+
+  Future<void> deleteEventType(String eventTypeId) async {}
+
   Future<TenantAdminEventPartyCandidates> fetchPartyCandidates({
     String? search,
     String? accountSlug,
@@ -271,6 +294,33 @@ mixin TenantAdminEventsPaginationMixin
     eventsStreamValue.addValue(null);
     eventsErrorStreamValue.addValue(null);
   }
+
+  @override
+  Future<List<TenantAdminEventType>> fetchEventTypes() async {
+    return const <TenantAdminEventType>[];
+  }
+
+  @override
+  Future<TenantAdminEventType> createEventType({
+    required String name,
+    required String slug,
+    required String description,
+  }) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<TenantAdminEventType> updateEventType({
+    required String eventTypeId,
+    String? name,
+    String? slug,
+    String? description,
+  }) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<void> deleteEventType(String eventTypeId) async {}
 
   Future<void> _waitForEventsFetchMixin() async {
     while (_mixinEventsPaginationState.isFetchingEventsPage) {
