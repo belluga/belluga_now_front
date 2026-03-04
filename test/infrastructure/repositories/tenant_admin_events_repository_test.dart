@@ -13,11 +13,30 @@ import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value.dart';
 
 void main() {
+  Future<void> registerAuth({
+    required String landlordToken,
+    required String accountToken,
+  }) async {
+    if (GetIt.I.isRegistered<LandlordAuthRepositoryContract>()) {
+      GetIt.I.unregister<LandlordAuthRepositoryContract>();
+    }
+    if (GetIt.I.isRegistered<AuthRepositoryContract>()) {
+      GetIt.I.unregister<AuthRepositoryContract>();
+    }
+
+    GetIt.I.registerSingleton<LandlordAuthRepositoryContract>(
+      _StubAuthRepo(tokenValue: landlordToken),
+    );
+    GetIt.I.registerSingleton<AuthRepositoryContract>(
+      _StubAccountAuthRepo(tokenValue: accountToken),
+    );
+  }
+
   setUp(() async {
     await GetIt.I.reset();
-    GetIt.I.registerSingleton<LandlordAuthRepositoryContract>(_StubAuthRepo());
-    GetIt.I.registerSingleton<AuthRepositoryContract>(
-      _StubAccountAuthRepo(),
+    await registerAuth(
+      landlordToken: 'test-token',
+      accountToken: 'account-token',
     );
   });
 
@@ -100,6 +119,84 @@ void main() {
 
     expect(result.items, isEmpty);
     expect(result.hasMore, isFalse);
+  });
+
+  test('fetchEventTypes prefers landlord token and maps payload', () async {
+    final adapter = _EventTypesAdapter();
+    final dio = Dio()..httpClientAdapter = adapter;
+    final scope = _MutableTenantScope('https://tenant-a.test/admin/api');
+    final repository = TenantAdminEventsRepository(
+      dio: dio,
+      tenantScope: scope,
+    );
+
+    final eventTypes = await repository.fetchEventTypes();
+
+    expect(eventTypes, hasLength(2));
+    expect(eventTypes[0].id, '507f1f77bcf86cd799439011');
+    expect(eventTypes[0].name, 'Show');
+    expect(eventTypes[0].slug, 'show');
+    expect(eventTypes[1].id, '507f1f77bcf86cd799439012');
+    expect(eventTypes[1].name, 'Workshop');
+    expect(eventTypes[1].slug, 'workshop');
+
+    expect(adapter.requests, hasLength(1));
+    final request = adapter.requests.first;
+    expect(request.method, 'GET');
+    expect(request.path, endsWith('/admin/api/v1/event_types'));
+    expect(request.headers['Authorization'], 'Bearer test-token');
+  });
+
+  test('fetchEventTypes falls back to account token when landlord token empty',
+      () async {
+    await registerAuth(
+      landlordToken: '',
+      accountToken: 'account-token',
+    );
+
+    final adapter = _EventTypesAdapter();
+    final dio = Dio()..httpClientAdapter = adapter;
+    final scope = _MutableTenantScope('https://tenant-a.test/admin/api');
+    final repository = TenantAdminEventsRepository(
+      dio: dio,
+      tenantScope: scope,
+    );
+
+    final eventTypes = await repository.fetchEventTypes();
+
+    expect(eventTypes, hasLength(2));
+    expect(adapter.requests, hasLength(1));
+    final request = adapter.requests.first;
+    expect(request.method, 'GET');
+    expect(request.path, endsWith('/admin/api/v1/event_types'));
+    expect(request.headers['Authorization'], 'Bearer account-token');
+  });
+
+  test('fetchEventTypes throws when both landlord and account token are empty',
+      () async {
+    await registerAuth(
+      landlordToken: '',
+      accountToken: '',
+    );
+
+    final adapter = _EventTypesAdapter();
+    final dio = Dio()..httpClientAdapter = adapter;
+    final scope = _MutableTenantScope('https://tenant-a.test/admin/api');
+    final repository = TenantAdminEventsRepository(
+      dio: dio,
+      tenantScope: scope,
+    );
+
+    await expectLater(
+      () => repository.fetchEventTypes(),
+      throwsA(
+        isA<FormatException>().having(
+          (error) => error.message,
+          'message',
+          contains('Failed to resolve auth token for event types request.'),
+        ),
+      ),
+    );
   });
 
   test('fetchPartyCandidates uses dedicated events candidates endpoint',
@@ -244,11 +341,15 @@ TenantAdminEventDraft _buildDraft({
 }
 
 class _StubAuthRepo implements LandlordAuthRepositoryContract {
-  @override
-  bool get hasValidSession => true;
+  _StubAuthRepo({required this.tokenValue});
+
+  final String tokenValue;
 
   @override
-  String get token => 'test-token';
+  bool get hasValidSession => tokenValue.trim().isNotEmpty;
+
+  @override
+  String get token => tokenValue;
 
   @override
   Future<void> init() async {}
@@ -261,6 +362,10 @@ class _StubAuthRepo implements LandlordAuthRepositoryContract {
 }
 
 class _StubAccountAuthRepo implements AuthRepositoryContract<UserContract> {
+  _StubAccountAuthRepo({required this.tokenValue});
+
+  final String tokenValue;
+
   @override
   Object get backend => Object();
 
@@ -271,7 +376,7 @@ class _StubAccountAuthRepo implements AuthRepositoryContract<UserContract> {
   UserContract get user => throw UnimplementedError();
 
   @override
-  String get userToken => 'account-token';
+  String get userToken => tokenValue;
 
   @override
   void setUserToken(String? token) {}
@@ -455,6 +560,56 @@ class _NotFoundEventsAdapter implements HttpClientAdapter {
 
     return ResponseBody.fromString(
       jsonEncode({'data': const []}),
+      200,
+      headers: {
+        Headers.contentTypeHeader: ['application/json'],
+      },
+    );
+  }
+}
+
+class _EventTypesAdapter implements HttpClientAdapter {
+  final List<RequestOptions> requests = <RequestOptions>[];
+
+  @override
+  void close({bool force = false}) {}
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<List<int>>? requestStream,
+    Future<void>? cancelFuture,
+  ) async {
+    requests.add(options);
+
+    if (options.path.endsWith('/admin/api/v1/event_types') &&
+        options.method == 'GET') {
+      return ResponseBody.fromString(
+        jsonEncode({
+          'data': const [
+            {
+              'id': '507f1f77bcf86cd799439011',
+              'name': 'Show',
+              'slug': 'show',
+              'description': 'Tipo de evento: Show',
+            },
+            {
+              'id': '507f1f77bcf86cd799439012',
+              'name': 'Workshop',
+              'slug': 'workshop',
+              'description': 'Tipo de evento: Workshop',
+            },
+          ],
+        }),
+        200,
+        headers: {
+          Headers.contentTypeHeader: ['application/json'],
+        },
+      );
+    }
+
+    return ResponseBody.fromString(
+      jsonEncode({'data': const {}}),
       200,
       headers: {
         Headers.contentTypeHeader: ['application/json'],

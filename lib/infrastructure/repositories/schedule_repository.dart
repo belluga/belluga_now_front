@@ -1,4 +1,7 @@
 import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
+import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/domain/schedule/event_delta_model.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/schedule/paged_events_result.dart';
@@ -28,14 +31,44 @@ class ScheduleRepository extends ScheduleRepositoryContract
   static final Uri _defaultEventImage = Uri.parse(
     'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?w=800',
   );
+  static const int _maxPagedFetches = 8;
+  static const int _defaultPageSize = 25;
 
   ScheduleRepository({
     ScheduleBackendContract? backend,
     BackendContract? backendContract,
-  }) : _backend = backend ??
-            (backendContract ?? GetIt.I.get<BackendContract>()).schedule;
+    UserLocationRepositoryContract? userLocationRepository,
+    AppDataRepositoryContract? appDataRepository,
+  })  : _backend = backend ??
+            (backendContract ?? GetIt.I.get<BackendContract>()).schedule,
+        _userLocationRepository = userLocationRepository,
+        _appDataRepository = appDataRepository;
 
   final ScheduleBackendContract _backend;
+  UserLocationRepositoryContract? _userLocationRepository;
+  AppDataRepositoryContract? _appDataRepository;
+
+  UserLocationRepositoryContract? get _resolvedUserLocationRepository {
+    if (_userLocationRepository != null) {
+      return _userLocationRepository;
+    }
+    if (!GetIt.I.isRegistered<UserLocationRepositoryContract>()) {
+      return null;
+    }
+    _userLocationRepository = GetIt.I.get<UserLocationRepositoryContract>();
+    return _userLocationRepository;
+  }
+
+  AppDataRepositoryContract? get _resolvedAppDataRepository {
+    if (_appDataRepository != null) {
+      return _appDataRepository;
+    }
+    if (!GetIt.I.isRegistered<AppDataRepositoryContract>()) {
+      return null;
+    }
+    _appDataRepository = GetIt.I.get<AppDataRepositoryContract>();
+    return _appDataRepository;
+  }
 
   @override
   Future<List<EventModel>> getAllEvents() async {
@@ -172,7 +205,14 @@ class ScheduleRepository extends ScheduleRepositoryContract
 
   @override
   Future<List<VenueEventResume>> fetchUpcomingEvents() async {
-    final events = await getAllEvents();
+    final effectiveOrigin = await _resolveEffectiveOrigin();
+    if (effectiveOrigin == null) {
+      return const [];
+    }
+    final events = await _fetchAllEventsWithOrigin(
+      originLat: effectiveOrigin.latitude,
+      originLng: effectiveOrigin.longitude,
+    );
     final now = DateTime.now();
     const assumedDuration = Duration(hours: 3);
 
@@ -278,12 +318,10 @@ class ScheduleRepository extends ScheduleRepositoryContract
     final matches = <EventModel>[];
     var page = 1;
     var hasMore = true;
-    const pageSize = 25;
-
-    while (hasMore && page <= 8) {
+    while (hasMore && page <= _maxPagedFetches) {
       final pageDto = await _backend.fetchEventsPage(
         page: page,
-        pageSize: pageSize,
+        pageSize: _defaultPageSize,
         showPastOnly: showPastOnly,
         originLat: originLat,
         originLng: originLng,
@@ -314,6 +352,67 @@ class ScheduleRepository extends ScheduleRepositoryContract
     }
 
     return matches;
+  }
+
+  Future<List<EventModel>> _fetchAllEventsWithOrigin({
+    required double originLat,
+    required double originLng,
+  }) async {
+    final events = <EventModel>[];
+    var page = 1;
+    var hasMore = true;
+
+    while (hasMore && page <= _maxPagedFetches) {
+      final pageDto = await _backend.fetchEventsPage(
+        page: page,
+        pageSize: _defaultPageSize,
+        showPastOnly: false,
+        originLat: originLat,
+        originLng: originLng,
+      );
+      events.addAll(pageDto.events.map(mapEventDto));
+      hasMore = pageDto.hasMore;
+      if (pageDto.events.isEmpty) {
+        break;
+      }
+      page += 1;
+    }
+
+    return events;
+  }
+
+  Future<CityCoordinate?> _resolveEffectiveOrigin() async {
+    final userCoordinate = await _resolveUserCoordinate();
+    if (userCoordinate != null) {
+      return userCoordinate;
+    }
+    return _resolveTenantDefaultOriginCoordinate();
+  }
+
+  Future<CityCoordinate?> _resolveUserCoordinate() async {
+    final repository = _resolvedUserLocationRepository;
+    if (repository == null) {
+      return null;
+    }
+    try {
+      await repository.warmUpIfPermitted();
+    } on Object {
+      // Best-effort warm-up.
+    }
+    return repository.userLocationStreamValue.value ??
+        repository.lastKnownLocationStreamValue.value;
+  }
+
+  CityCoordinate? _resolveTenantDefaultOriginCoordinate() {
+    final appDataRepository = _resolvedAppDataRepository;
+    if (appDataRepository == null) {
+      return null;
+    }
+    try {
+      return appDataRepository.appData.tenantDefaultOrigin;
+    } on Object {
+      return null;
+    }
   }
 
   DateTime? _parseDate(EventDTO event) {
