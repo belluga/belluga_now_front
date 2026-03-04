@@ -1,0 +1,51 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Pub Get: flutter-app",
+      "type": "shell",
+      "command": "fvm flutter pub get",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Pub Get: belluga_custom_lint",
+      "type": "shell",
+      "command": "fvm dart pub get --no-example",
+      "options": {
+        "cwd": "${workspaceFolder}/tool/belluga_custom_lint"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Pub Get: all",
+      "dependsOn": [
+        "Pub Get: flutter-app",
+        "Pub Get: belluga_custom_lint"
+      ],
+      "dependsOrder": "sequence",
+      "problemMatcher": []
+    },
+    {
+      "label": "Custom Lint: check",
+      "type": "shell",
+      "command": "fvm dart run custom_lint",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Custom Lint: watch",
+      "type": "shell",
+      "command": "fvm dart run custom_lint --watch",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "isBackground": true,
+      "problemMatcher": []
+    }
+  ]
+}

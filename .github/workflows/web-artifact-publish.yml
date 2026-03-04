@@ -184,6 +184,11 @@ jobs:
       - name: Flutter dependencies
         run: fvm flutter pub get
 
+      - name: Flutter architecture custom lint (blocking)
+        run: |
+          set -euo pipefail
+          fvm dart run custom_lint --fatal-infos --fatal-warnings
+
       - name: Flutter unit/widget tests
         run: |
           fvm flutter test --no-pub \
