@@ -84,17 +84,131 @@ void main() {
     expect(events, isEmpty);
     expect(backend.requests, isEmpty);
   });
+
+  test(
+      'fetchUpcomingEvents falls back to last-known user coordinate when warm-up throws',
+      () async {
+    final backend = _CapturingScheduleBackend();
+    final lastKnownOrigin = _buildCoordinate(
+      latitude: -20.622222,
+      longitude: -40.477777,
+    );
+    final tenantDefault = _buildCoordinate(
+      latitude: -20.671339,
+      longitude: -40.495395,
+    );
+    final repository = ScheduleRepository(
+      backend: backend,
+      userLocationRepository: _FakeUserLocationRepository(
+        lastKnownCoordinate: lastKnownOrigin,
+        throwOnWarmUp: true,
+      ),
+      appDataRepository: _FakeAppDataRepository(
+        _buildAppData(defaultOrigin: tenantDefault),
+      ),
+    );
+
+    final events = await repository.fetchUpcomingEvents();
+
+    expect(events, isNotEmpty);
+    expect(backend.requests, isNotEmpty);
+    expect(
+      backend.requests.first.originLat,
+      closeTo(lastKnownOrigin.latitude, 0.000001),
+    );
+    expect(
+      backend.requests.first.originLng,
+      closeTo(lastKnownOrigin.longitude, 0.000001),
+    );
+  });
+
+  test('fetchUpcomingEvents keeps origin across paginated requests', () async {
+    final backend = _CapturingScheduleBackend(
+      pagedResponses: [
+        EventPageDTO(
+          events: [
+            _buildEventDto(
+              eventId: '507f1f77bcf86cd799439011',
+              occurrenceId: '507f1f77bcf86cd799439012',
+              startsAtIso: '2099-01-01T20:00:00+00:00',
+            ),
+          ],
+          hasMore: true,
+        ),
+        EventPageDTO(
+          events: [
+            _buildEventDto(
+              eventId: '507f1f77bcf86cd799439021',
+              occurrenceId: '507f1f77bcf86cd799439022',
+              startsAtIso: '2099-01-02T20:00:00+00:00',
+            ),
+          ],
+          hasMore: false,
+        ),
+      ],
+    );
+    final userOrigin = _buildCoordinate(
+      latitude: -20.611121,
+      longitude: -40.498617,
+    );
+    final repository = ScheduleRepository(
+      backend: backend,
+      userLocationRepository: _FakeUserLocationRepository(
+        userCoordinate: userOrigin,
+      ),
+      appDataRepository: _FakeAppDataRepository(_buildAppData()),
+    );
+
+    final events = await repository.fetchUpcomingEvents();
+
+    expect(events, hasLength(2));
+    expect(backend.requests, hasLength(2));
+    expect(backend.requests.map((request) => request.page), [1, 2]);
+    for (final request in backend.requests) {
+      expect(request.originLat, closeTo(userOrigin.latitude, 0.000001));
+      expect(request.originLng, closeTo(userOrigin.longitude, 0.000001));
+    }
+  });
+
+  test('fetchUpcomingEvents does not call unscoped fetchEvents endpoint',
+      () async {
+    final backend = _CapturingScheduleBackend();
+    final userOrigin = _buildCoordinate(
+      latitude: -20.611121,
+      longitude: -40.498617,
+    );
+    final repository = ScheduleRepository(
+      backend: backend,
+      userLocationRepository: _FakeUserLocationRepository(
+        userCoordinate: userOrigin,
+      ),
+      appDataRepository: _FakeAppDataRepository(_buildAppData()),
+    );
+
+    await repository.fetchUpcomingEvents();
+
+    expect(backend.fetchEventsCalls, 0);
+  });
 }
 
 class _CapturingScheduleBackend implements ScheduleBackendContract {
+  _CapturingScheduleBackend({
+    this.pagedResponses,
+  });
+
+  final List<EventPageDTO>? pagedResponses;
   final List<_AgendaRequestSample> requests = <_AgendaRequestSample>[];
+  int fetchEventsCalls = 0;
 
   @override
   Future<EventSummaryDTO> fetchSummary() async =>
       EventSummaryDTO(items: const []);
 
   @override
-  Future<List<EventDTO>> fetchEvents() async => const [];
+  Future<List<EventDTO>> fetchEvents() async {
+    fetchEventsCalls += 1;
+    return const [];
+  }
 
   @override
   Future<EventDTO?> fetchEventDetail({required String eventIdOrSlug}) async =>
@@ -121,6 +235,13 @@ class _CapturingScheduleBackend implements ScheduleBackendContract {
         originLng: originLng,
       ),
     );
+    if (pagedResponses != null) {
+      final index = page - 1;
+      if (index < 0 || index >= pagedResponses!.length) {
+        return EventPageDTO(events: const [], hasMore: false);
+      }
+      return pagedResponses![index];
+    }
     if (page > 1) {
       return EventPageDTO(events: const [], hasMore: false);
     }
@@ -163,10 +284,13 @@ class _FakeUserLocationRepository implements UserLocationRepositoryContract {
   _FakeUserLocationRepository({
     CityCoordinate? userCoordinate,
     CityCoordinate? lastKnownCoordinate,
+    this.throwOnWarmUp = false,
   })  : userLocationStreamValue =
             StreamValue<CityCoordinate?>(defaultValue: userCoordinate),
         lastKnownLocationStreamValue =
             StreamValue<CityCoordinate?>(defaultValue: lastKnownCoordinate);
+
+  final bool throwOnWarmUp;
 
   @override
   final StreamValue<CityCoordinate?> userLocationStreamValue;
@@ -196,6 +320,9 @@ class _FakeUserLocationRepository implements UserLocationRepositoryContract {
 
   @override
   Future<bool> warmUpIfPermitted() async {
+    if (throwOnWarmUp) {
+      throw Exception('warm-up failed');
+    }
     return userLocationStreamValue.value != null ||
         lastKnownLocationStreamValue.value != null;
   }
@@ -332,10 +459,14 @@ CityCoordinate _buildCoordinate({
   );
 }
 
-EventDTO _buildEventDto() {
+EventDTO _buildEventDto({
+  String eventId = '507f1f77bcf86cd799439011',
+  String occurrenceId = '507f1f77bcf86cd799439012',
+  String startsAtIso = '2099-01-01T20:00:00+00:00',
+}) {
   return EventDTO.fromJson({
-    'event_id': '507f1f77bcf86cd799439011',
-    'occurrence_id': '507f1f77bcf86cd799439012',
+    'event_id': eventId,
+    'occurrence_id': occurrenceId,
     'slug': 'evento-teste',
     'title': 'Evento Teste',
     'content': 'Conteudo do evento completo',
@@ -354,7 +485,7 @@ EventDTO _buildEventDto() {
         'coordinates': [-40.495395, -20.671339],
       },
     },
-    'date_time_start': '2099-01-01T20:00:00+00:00',
+    'date_time_start': startsAtIso,
     'artists': const [],
     'tags': const ['music'],
   });

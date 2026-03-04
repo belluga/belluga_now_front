@@ -71,6 +71,40 @@ void main() {
 
     controller.onDispose();
   });
+
+  test(
+      'my-events home flow skips agenda request when no user or tenant origin is available',
+      () async {
+    final appData = _buildAppData(defaultOrigin: null);
+    final appDataRepository = _FakeAppDataRepository(appData);
+    final userLocationRepository = _FakeUserLocationRepository();
+    final backend = _CapturingScheduleBackend();
+
+    GetIt.I.registerSingleton<AppData>(appData);
+
+    final scheduleRepository = ScheduleRepository(
+      backend: backend,
+      userLocationRepository: userLocationRepository,
+      appDataRepository: appDataRepository,
+    );
+    final userEventsRepository = UserEventsRepository(
+      scheduleRepository: scheduleRepository,
+    );
+    await userEventsRepository
+        .confirmEventAttendance(_CapturingScheduleBackend.eventId);
+
+    final controller = TenantHomeController(
+      userEventsRepository: userEventsRepository,
+      userLocationRepository: userLocationRepository,
+    );
+
+    await controller.init();
+
+    expect(backend.requests, isEmpty);
+    expect(controller.myEventsFilteredStreamValue.value, isEmpty);
+
+    controller.onDispose();
+  });
 }
 
 class _CapturingScheduleBackend implements ScheduleBackendContract {

@@ -66,6 +66,34 @@ void main() {
 
     controller.onDispose();
   });
+
+  test(
+      'favorites home flow skips agenda request when user and tenant default origins are unavailable',
+      () async {
+    final appData = _buildAppData(defaultOrigin: null);
+    final appDataRepository = _FakeAppDataRepository(appData);
+    final userLocationRepository = _FakeUserLocationRepository();
+    final backend = _CapturingScheduleBackend();
+    final scheduleRepository = ScheduleRepository(
+      backend: backend,
+      userLocationRepository: userLocationRepository,
+      appDataRepository: appDataRepository,
+    );
+
+    final controller = FavoritesSectionController(
+      favoriteRepository: _FakeFavoriteRepository(),
+      partnersRepository: _FakeAccountProfilesRepository(),
+      scheduleRepository: scheduleRepository,
+      appDataRepository: appDataRepository,
+    );
+
+    await controller.init();
+
+    expect(backend.requests, isEmpty);
+    expect(controller.favoritesStreamValue.value, isNotNull);
+
+    controller.onDispose();
+  });
 }
 
 class _FakeFavoriteRepository implements FavoriteRepositoryContract {
