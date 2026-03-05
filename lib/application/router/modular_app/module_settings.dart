@@ -72,12 +72,11 @@ import 'package:belluga_now/infrastructure/services/http/laravel_map_poi_http_se
 import 'package:belluga_now/infrastructure/services/http/mock_http_service.dart';
 import 'package:belluga_now/infrastructure/services/networking/mock_web_socket_service.dart';
 import 'package:belluga_now/application/application_contract.dart';
-import 'package:belluga_now/presentation/shared/location_permission/controllers/location_permission_controller.dart';
-import 'package:belluga_now/presentation/shared/push/controllers/push_options_controller.dart';
 import 'package:belluga_now/infrastructure/services/push/push_answer_handler.dart';
 import 'package:belluga_now/infrastructure/services/push/push_answer_relay.dart';
 import 'package:belluga_now/infrastructure/services/push/push_answer_resolver.dart';
 import 'package:belluga_now/infrastructure/services/push/push_presentation_gate.dart';
+import 'package:belluga_now/presentation/shared/push/controllers/push_options_resolver.dart';
 import 'package:belluga_now/infrastructure/services/user/profile_avatar_storage.dart';
 import 'package:flutter/foundation.dart';
 import 'package:get_it/get_it.dart';
@@ -97,7 +96,6 @@ class ModuleSettings extends ModuleSettingsContract {
   FutureOr<void> registerGlobalDependencies() async {
     _registerBackend();
     await _registerRepositories();
-    _registerGlobalControllerDependencies();
     _registerPushDependencies();
   }
 
@@ -122,21 +120,6 @@ class ModuleSettings extends ModuleSettingsContract {
     _registerLazySingletonIfAbsent<BackendContract>(_backendBuilder);
   }
 
-  // Only app-lifecycle controllers stay in global scope.
-  // Feature controllers must be registered by their owning module.
-  void _registerGlobalControllerDependencies() {
-    if (!GetIt.I.isRegistered<LocationPermissionController>()) {
-      GetIt.I.registerFactory<LocationPermissionController>(
-        () => LocationPermissionController(),
-      );
-    }
-    if (!GetIt.I.isRegistered<PushOptionsController>()) {
-      GetIt.I.registerLazySingleton<PushOptionsController>(
-        () => PushOptionsController(),
-      );
-    }
-  }
-
   void _registerPushDependencies() {
     _registerLazySingletonIfAbsent<PushPresentationGateContract>(
       () => PushPresentationGate(),
@@ -144,6 +127,9 @@ class ModuleSettings extends ModuleSettingsContract {
     final relay = _registerIfAbsent<PushAnswerRelay>(() => PushAnswerRelay());
     _registerLazySingletonIfAbsent<PushAnswerHandler>(() => relay);
     _registerLazySingletonIfAbsent<PushAnswerResolver>(() => relay);
+    _registerLazySingletonIfAbsent<PushOptionsResolver>(
+      () => PushOptionsResolver(),
+    );
   }
 
   PushNavigationResolver buildPushNavigationResolver() {

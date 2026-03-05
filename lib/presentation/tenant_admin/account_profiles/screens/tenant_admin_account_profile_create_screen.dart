@@ -623,14 +623,17 @@ class _TenantAdminAccountProfileCreateScreenState
                           Align(
                             alignment: Alignment.centerLeft,
                             child: TextButton.icon(
-                              onPressed: () async {
-                                await context.router.push(
+                              onPressed: () {
+                                context.router
+                                    .push(
                                   const TenantAdminProfileTypeCreateRoute(),
-                                );
-                                if (!mounted) {
-                                  return;
-                                }
-                                await _controller.loadProfileTypes();
+                                )
+                                    .then((_) {
+                                  if (!mounted) {
+                                    return;
+                                  }
+                                  _controller.loadProfileTypes();
+                                });
                               },
                               icon: const Icon(Icons.add),
                               label: const Text('Criar tipo de perfil'),

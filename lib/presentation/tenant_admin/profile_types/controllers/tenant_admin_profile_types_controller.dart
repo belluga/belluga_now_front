@@ -77,8 +77,10 @@ class TenantAdminProfileTypesController implements Disposable {
   final TextEditingController typeController = TextEditingController();
   final TextEditingController labelController = TextEditingController();
   final TextEditingController taxonomiesController = TextEditingController();
+  final ScrollController typesListScrollController = ScrollController();
 
   bool _isDisposed = false;
+  bool _typesListScrollBound = false;
   StreamSubscription<String?>? _tenantScopeSubscription;
   String? _lastTenantDomain;
 
@@ -242,6 +244,33 @@ class TenantAdminProfileTypesController implements Disposable {
       return;
     }
     await _repository.loadNextProfileTypesPage(pageSize: _typesPageSize);
+  }
+
+  void bindTypesListScrollPagination() {
+    if (_typesListScrollBound) {
+      return;
+    }
+    _typesListScrollBound = true;
+    typesListScrollController.addListener(_handleTypesListScroll);
+  }
+
+  void unbindTypesListScrollPagination() {
+    if (!_typesListScrollBound) {
+      return;
+    }
+    _typesListScrollBound = false;
+    typesListScrollController.removeListener(_handleTypesListScroll);
+  }
+
+  void _handleTypesListScroll() {
+    if (!typesListScrollController.hasClients) {
+      return;
+    }
+    final position = typesListScrollController.position;
+    const threshold = 320.0;
+    if (position.pixels + threshold >= position.maxScrollExtent) {
+      unawaited(loadNextTypesPage());
+    }
   }
 
   Future<TenantAdminProfileTypeDefinition> createType({
@@ -452,10 +481,12 @@ class TenantAdminProfileTypesController implements Disposable {
 
   void dispose() {
     _isDisposed = true;
+    unbindTypesListScrollPagination();
     _tenantScopeSubscription?.cancel();
     typeController.dispose();
     labelController.dispose();
     taxonomiesController.dispose();
+    typesListScrollController.dispose();
     availableTaxonomiesStreamValue.dispose();
     selectedAllowedTaxonomiesStreamValue.dispose();
     isTaxonomiesLoadingStreamValue.dispose();

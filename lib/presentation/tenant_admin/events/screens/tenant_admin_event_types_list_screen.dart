@@ -41,22 +41,28 @@ class _TenantAdminEventTypesListScreenState
     await _controller.submitDeleteEventType(type);
   }
 
-  Future<void> _openCreateType() async {
-    final created = await context.router.push<TenantAdminEventType>(
+  void _openCreateType() {
+    context.router
+        .push<TenantAdminEventType>(
       const TenantAdminEventTypeCreateRoute(),
-    );
-    if (created != null) {
-      await _controller.loadFormDependencies();
-    }
+    )
+        .then((created) {
+      if (created != null) {
+        _controller.loadFormDependencies();
+      }
+    });
   }
 
-  Future<void> _openEditType(TenantAdminEventType type) async {
-    final updated = await context.router.push<TenantAdminEventType>(
+  void _openEditType(TenantAdminEventType type) {
+    context.router
+        .push<TenantAdminEventType>(
       TenantAdminEventTypeEditRoute(type: type),
-    );
-    if (updated != null) {
-      await _controller.loadFormDependencies();
-    }
+    )
+        .then((updated) {
+      if (updated != null) {
+        _controller.loadFormDependencies();
+      }
+    });
   }
 
   @override
@@ -113,7 +119,7 @@ class _TenantAdminEventTypesListScreenState
                                 trailing: PopupMenuButton<String>(
                                   onSelected: (value) async {
                                     if (value == 'edit') {
-                                      await _openEditType(type);
+                                      _openEditType(type);
                                       return;
                                     }
                                     if (value == 'delete') {

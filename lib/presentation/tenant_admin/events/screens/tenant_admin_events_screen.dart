@@ -46,32 +46,36 @@ class _TenantAdminEventsScreenState extends State<TenantAdminEventsScreen> {
     }
   }
 
-  Future<void> _openCreateForm() async {
-    final created = await context.router.push<TenantAdminEvent>(
+  void _openCreateForm() {
+    context.router
+        .push<TenantAdminEvent>(
       const TenantAdminEventCreateRoute(),
-    );
+    )
+        .then((created) {
+      if (created == null || !mounted) {
+        return;
+      }
 
-    if (created == null || !mounted) {
-      return;
-    }
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Evento criado com sucesso.')),
-    );
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Evento criado com sucesso.')),
+      );
+    });
   }
 
-  Future<void> _openEditForm(TenantAdminEvent event) async {
-    final updated = await context.router.push<TenantAdminEvent>(
+  void _openEditForm(TenantAdminEvent event) {
+    context.router
+        .push<TenantAdminEvent>(
       TenantAdminEventEditRoute(event: event),
-    );
+    )
+        .then((updated) {
+      if (updated == null || !mounted) {
+        return;
+      }
 
-    if (updated == null || !mounted) {
-      return;
-    }
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Evento atualizado com sucesso.')),
-    );
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Evento atualizado com sucesso.')),
+      );
+    });
   }
 
   Future<void> _confirmDelete(TenantAdminEvent event) async {
@@ -107,12 +111,13 @@ class _TenantAdminEventsScreenState extends State<TenantAdminEventsScreen> {
     }
   }
 
-  Future<void> _openEventTypes() async {
-    await context.router.push(const TenantAdminEventTypesRoute());
-    if (!mounted) {
-      return;
-    }
-    await _controller.loadFormDependencies();
+  void _openEventTypes() {
+    context.router.push(const TenantAdminEventTypesRoute()).then((_) {
+      if (!mounted) {
+        return;
+      }
+      _controller.loadFormDependencies();
+    });
   }
 
   @override

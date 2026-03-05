@@ -13,6 +13,7 @@ import 'package:belluga_now/infrastructure/repositories/tenant_admin/tenant_admi
 import 'package:belluga_now/infrastructure/services/tenant_admin/tenant_admin_external_image_proxy_service.dart';
 import 'package:belluga_now/presentation/landlord_area/auth/controllers/tenant_admin_landlord_login_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/account_profiles/controllers/tenant_admin_account_profiles_controller.dart';
+import 'package:belluga_now/presentation/tenant_admin/accounts/controllers/tenant_admin_account_detail_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/accounts/controllers/tenant_admin_accounts_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/accounts/controllers/tenant_admin_location_picker_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/events/controllers/tenant_admin_events_controller.dart';
@@ -21,6 +22,7 @@ import 'package:belluga_now/presentation/tenant_admin/organizations/controllers/
 import 'package:belluga_now/presentation/tenant_admin/profile_types/controllers/tenant_admin_profile_types_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/settings/controllers/tenant_admin_settings_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/shell/controllers/tenant_admin_shell_controller.dart';
+import 'package:belluga_now/presentation/tenant_admin/shell/controllers/tenant_admin_shell_login_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/static_assets/controllers/tenant_admin_static_assets_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/static_profile_types/controllers/tenant_admin_static_profile_types_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/taxonomies/controllers/tenant_admin_taxonomies_controller.dart';
@@ -43,8 +45,13 @@ class TenantAdminModule extends ModuleContract {
 
   void _registerControllersAndServices() {
     if (!GetIt.I.isRegistered<TenantAdminLandlordLoginController>()) {
-      GetIt.I.registerLazySingleton<TenantAdminLandlordLoginController>(
+      registerLazySingleton<TenantAdminLandlordLoginController>(
         () => TenantAdminLandlordLoginController(),
+      );
+    }
+    if (!GetIt.I.isRegistered<TenantAdminShellLoginController>()) {
+      registerLazySingleton<TenantAdminShellLoginController>(
+        () => TenantAdminShellLoginController(),
       );
     }
 
@@ -78,6 +85,9 @@ class TenantAdminModule extends ModuleContract {
     );
     registerLazySingleton<TenantAdminAccountProfilesController>(
       () => TenantAdminAccountProfilesController(),
+    );
+    registerFactory<TenantAdminAccountDetailController>(
+      () => TenantAdminAccountDetailController(),
     );
     registerFactory<TenantAdminOrganizationsController>(
       () => TenantAdminOrganizationsController(),

@@ -320,16 +320,27 @@ class _TenantAdminAccountCreateScreenState
     if (!context.mounted || !created) {
       return;
     }
+    _closeCreateScreenOrShowSuccess(
+      context: context,
+      messenger: messenger,
+    );
+  }
 
+  void _closeCreateScreenOrShowSuccess({
+    required BuildContext context,
+    required ScaffoldMessengerState messenger,
+  }) {
     final router = context.router;
-    final closed = await router.maybePop(true);
-    if (!closed && context.mounted) {
+    router.maybePop(true).then((closed) {
+      if (!context.mounted || closed) {
+        return;
+      }
       messenger.showSnackBar(
         const SnackBar(
           content: Text('Conta e perfil salvos.'),
         ),
       );
-    }
+    });
   }
 
   @override
@@ -505,14 +516,17 @@ class _TenantAdminAccountCreateScreenState
                           Align(
                             alignment: Alignment.centerLeft,
                             child: TextButton.icon(
-                              onPressed: () async {
-                                await context.router.push(
+                              onPressed: () {
+                                context.router
+                                    .push(
                                   const TenantAdminProfileTypeCreateRoute(),
-                                );
-                                if (!mounted) {
-                                  return;
-                                }
-                                await _controller.loadProfileTypes();
+                                )
+                                    .then((_) {
+                                  if (!mounted) {
+                                    return;
+                                  }
+                                  _controller.loadProfileTypes();
+                                });
                               },
                               icon: const Icon(Icons.add),
                               label: const Text('Criar tipo de perfil'),

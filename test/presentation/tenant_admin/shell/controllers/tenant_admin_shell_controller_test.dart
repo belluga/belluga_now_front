@@ -5,6 +5,7 @@ import 'package:belluga_now/domain/app_data/value_object/app_domain_value.dart';
 import 'package:belluga_now/domain/app_data/value_object/domain_value.dart';
 import 'package:belluga_now/domain/repositories/admin_mode_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/landlord_auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/landlord_tenants_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_selected_tenant_repository_contract.dart';
 import 'package:belluga_now/infrastructure/services/tenant_admin/tenant_admin_base_url_resolver.dart';
@@ -24,6 +25,7 @@ void main() {
       ),
       landlordTenantsRepository:
           _FakeLandlordTenantsRepository(remoteTenants: const []),
+      landlordAuthRepository: _FakeLandlordAuthRepository(),
       selectedTenantRepository: selectedTenantRepository,
     );
 
@@ -55,6 +57,7 @@ void main() {
           ),
         ],
       ),
+      landlordAuthRepository: _FakeLandlordAuthRepository(),
       selectedTenantRepository: selectedTenantRepository,
     );
 
@@ -79,6 +82,7 @@ void main() {
       adminModeRepository: _FakeAdminModeRepository(),
       appDataRepository: _FakeAppDataRepository(domains: const []),
       landlordTenantsRepository: backendRepository,
+      landlordAuthRepository: _FakeLandlordAuthRepository(),
       selectedTenantRepository: selectedTenantRepository,
     );
 
@@ -110,6 +114,7 @@ void main() {
       appDataRepository: _FakeAppDataRepository(domains: const []),
       landlordTenantsRepository:
           _FakeLandlordTenantsRepository(remoteTenants: const []),
+      landlordAuthRepository: _FakeLandlordAuthRepository(),
       selectedTenantRepository: selectedTenantRepository,
     );
 
@@ -130,6 +135,7 @@ void main() {
       ),
       landlordTenantsRepository:
           _FakeLandlordTenantsRepository(remoteTenants: const []),
+      landlordAuthRepository: _FakeLandlordAuthRepository(),
       selectedTenantRepository: selectedTenantRepository,
     );
 
@@ -146,6 +152,7 @@ void main() {
       adminModeRepository: _FakeAdminModeRepository(),
       appDataRepository: _FakeAppDataRepository(domains: const []),
       landlordTenantsRepository: _ThrowingLandlordTenantsRepository(),
+      landlordAuthRepository: _FakeLandlordAuthRepository(),
       selectedTenantRepository: selectedTenantRepository,
     );
 
@@ -176,6 +183,23 @@ class _FakeAdminModeRepository implements AdminModeRepositoryContract {
 
   @override
   Future<void> setUserMode() async {}
+}
+
+class _FakeLandlordAuthRepository implements LandlordAuthRepositoryContract {
+  @override
+  bool get hasValidSession => true;
+
+  @override
+  String get token => 'token';
+
+  @override
+  Future<void> init() async {}
+
+  @override
+  Future<void> loginWithEmailPassword(String email, String password) async {}
+
+  @override
+  Future<void> logout() async {}
 }
 
 class _FakeAppDataRepository implements AppDataRepositoryContract {

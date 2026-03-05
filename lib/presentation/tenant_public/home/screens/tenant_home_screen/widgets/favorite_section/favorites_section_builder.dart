@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/favorite_section/controllers/favorites_section_controller.dart';
@@ -59,7 +57,7 @@ class _FavoritesSectionBuilderState extends State<FavoritesSectionBuilder> {
                   router.push(DiscoveryRoute());
                 },
                 onFavoriteTap: (favorite) {
-                  unawaited(_openFavoriteTarget(router, favorite));
+                  _openFavoriteTarget(router, favorite);
                 },
                 onPinnedTap: () {
                   // TODO(Delphi): Route to About screen once available in AutoRoute map.
@@ -72,29 +70,30 @@ class _FavoritesSectionBuilderState extends State<FavoritesSectionBuilder> {
     );
   }
 
-  Future<void> _openFavoriteTarget(
+  void _openFavoriteTarget(
     StackRouter router,
     FavoriteResume favorite,
-  ) async {
-    final target = await _controller.resolveNavigationTarget(favorite);
-    switch (target) {
-      case FavoriteNavigationPrimary():
-        return;
-      case FavoriteNavigationPartner():
-        router.push(
-          PartnerDetailRoute(slug: target.slug),
-        );
-        return;
-      case FavoriteNavigationSearch():
-        router.replaceAll(
-          [
-            EventSearchRoute(
-              startSearchActive: true,
-              initialSearchQuery: target.query,
-            ),
-          ],
-        );
-        return;
-    }
+  ) {
+    _controller.resolveNavigationTarget(favorite).then((target) {
+      switch (target) {
+        case FavoriteNavigationPrimary():
+          return;
+        case FavoriteNavigationPartner():
+          router.push(
+            PartnerDetailRoute(slug: target.slug),
+          );
+          return;
+        case FavoriteNavigationSearch():
+          router.replaceAll(
+            [
+              EventSearchRoute(
+                startSearchActive: true,
+                initialSearchQuery: target.query,
+              ),
+            ],
+          );
+          return;
+      }
+    });
   }
 }

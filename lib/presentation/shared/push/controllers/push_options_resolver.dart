@@ -1,7 +1,7 @@
 import 'package:push_handler/push_handler.dart';
 
-class PushOptionsController {
-  PushOptionsController();
+class PushOptionsResolver {
+  PushOptionsResolver();
 
   Future<List<OptionItem>> resolve(OptionSource source) async {
     if (source.type.trim().toLowerCase() != 'method') {
@@ -39,8 +39,8 @@ class PushOptionsController {
       {'value': 'vida_noturna', 'label': 'Vida Noturna'},
     ];
     return entries
-        .map((entry) =>
-            OptionItem(value: entry['value'], label: entry['label']))
+        .map(
+            (entry) => OptionItem(value: entry['value'], label: entry['label']))
         .toList(growable: false);
   }
 
@@ -58,5 +58,4 @@ class PushOptionsController {
         .map((tag) => OptionItem(value: tag, label: tag))
         .toList(growable: false);
   }
-
 }

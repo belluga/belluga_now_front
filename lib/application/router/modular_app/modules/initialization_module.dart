@@ -9,21 +9,25 @@ import 'package:belluga_now/domain/repositories/user_events_repository_contract.
 import 'package:belluga_now/infrastructure/repositories/friends_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/invites_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/user_events_repository.dart';
+import 'package:belluga_now/presentation/shared/location_permission/controllers/location_permission_controller.dart';
 import 'package:belluga_now/presentation/shared/init/screens/init_screen/controllers/init_screen_controller.dart';
 import 'package:get_it_modular_with_auto_route/get_it_modular_with_auto_route.dart';
 
 class InitializationModule extends ModuleContract {
   @override
   FutureOr<void> registerDependencies() {
-    
     registerLazySingleton<FriendsRepositoryContract>(FriendsRepository.new);
-    
+
     registerLazySingleton<InvitesRepositoryContract>(
       () => InvitesRepository()..init(),
     );
 
     registerLazySingleton<UserEventsRepositoryContract>(
       () => UserEventsRepository(),
+    );
+
+    registerFactory<LocationPermissionController>(
+      () => LocationPermissionController(),
     );
 
     registerLazySingleton<InitScreenController>(

@@ -29,7 +29,7 @@ import 'package:belluga_now/infrastructure/dal/dto/schedule/event_delta_dto.dart
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_page_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_summary_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/venue_event/venue_event_preview_dto.dart';
-import 'package:belluga_now/presentation/shared/push/controllers/push_options_controller.dart';
+import 'package:belluga_now/presentation/shared/push/controllers/push_options_resolver.dart';
 import 'package:belluga_now/infrastructure/services/push/push_transport_configurator.dart';
 import 'package:belluga_now/infrastructure/services/schedule_backend_contract.dart';
 import 'package:belluga_now/infrastructure/user/dtos/user_dto.dart';
@@ -61,7 +61,7 @@ void main() {
     GetIt.I.registerSingleton<ContactsRepositoryContract>(
       _FakeContactsRepository(),
     );
-    GetIt.I.registerSingleton<PushOptionsController>(PushOptionsController());
+    GetIt.I.registerSingleton<PushOptionsResolver>(PushOptionsResolver());
   });
 
   tearDown(() async {
@@ -112,8 +112,8 @@ void main() {
     expect(capture.factoryCalled, isTrue);
     expect(capture.initCalled, isTrue);
     expect(await capture.transportConfig?.tokenProvider?.call(), 'token-123');
-    expect(capture.platformResolver?.call(),
-        BellugaConstants.settings.platform);
+    expect(
+        capture.platformResolver?.call(), BellugaConstants.settings.platform);
   });
 
   test('ApplicationContract skips push init on web override', () async {
@@ -244,14 +244,17 @@ class _FakeUserLocationRepository implements UserLocationRepositoryContract {
   Future<bool> warmUpIfPermitted() async => false;
 
   @override
-  Future<bool> refreshIfPermitted({Duration minInterval = const Duration(seconds: 30)}) async =>
+  Future<bool> refreshIfPermitted(
+          {Duration minInterval = const Duration(seconds: 30)}) async =>
       false;
 
   @override
   Future<String?> resolveUserLocation() async => null;
 
   @override
-  Future<bool> startTracking({LocationTrackingMode mode = LocationTrackingMode.mapForeground}) async =>
+  Future<bool> startTracking(
+          {LocationTrackingMode mode =
+              LocationTrackingMode.mapForeground}) async =>
       false;
 
   @override
@@ -397,7 +400,8 @@ class _NoopBackend extends BackendContract {
   TenantBackendContract get tenant => _NoopTenantBackend();
 
   @override
-  AccountProfilesBackendContract get accountProfiles => _NoopAccountProfilesBackend();
+  AccountProfilesBackendContract get accountProfiles =>
+      _NoopAccountProfilesBackend();
 
   @override
   FavoriteBackendContract get favorites => _NoopFavoriteBackend();
@@ -416,7 +420,8 @@ class _NoopAppDataBackend extends AppDataBackendContract {
 
 class _NoopAccountProfilesBackend implements AccountProfilesBackendContract {
   @override
-  Future<List<AccountProfileModel>> fetchAccountProfiles() => throw UnimplementedError();
+  Future<List<AccountProfileModel>> fetchAccountProfiles() =>
+      throw UnimplementedError();
 
   @override
   Future<List<AccountProfileModel>> searchAccountProfiles({

@@ -34,7 +34,7 @@ class _TenantAdminEventTypeFormScreenState
     _controller.initEventTypeForm(existingType: widget.existingType);
   }
 
-  Future<void> _save() async {
+  void _save() {
     final form = _controller.eventTypeFormKey.currentState;
     if (form == null || !form.validate()) {
       return;
@@ -47,23 +47,23 @@ class _TenantAdminEventTypeFormScreenState
     _controller.setEventTypeFormSaving(true);
     _controller.setEventTypeFormError(null);
 
-    try {
-      final type = await _controller.saveEventType(
-        name: name,
-        slug: slug,
-        description: description,
-        existingType: widget.existingType,
-      );
-
+    _controller
+        .saveEventType(
+      name: name,
+      slug: slug,
+      description: description,
+      existingType: widget.existingType,
+    )
+        .then((type) {
       if (!mounted) {
         return;
       }
       context.router.maybePop(type);
-    } catch (error) {
+    }).catchError((error) {
       _controller.setEventTypeFormError(error.toString());
-    } finally {
+    }).whenComplete(() {
       _controller.setEventTypeFormSaving(false);
-    }
+    });
   }
 
   @override

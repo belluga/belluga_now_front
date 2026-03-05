@@ -694,14 +694,15 @@ class _TenantAdminEventFormScreenState
     );
   }
 
-  Future<void> _openEventTypeManagement() async {
-    await context.router.push(const TenantAdminEventTypesRoute());
-    if (!mounted) {
-      return;
-    }
-    await _controller.loadFormDependencies(
-      accountSlug: widget.accountSlugForOwnCreate,
-    );
+  void _openEventTypeManagement() {
+    context.router.push(const TenantAdminEventTypesRoute()).then((_) {
+      if (!mounted) {
+        return;
+      }
+      _controller.loadFormDependencies(
+        accountSlug: widget.accountSlugForOwnCreate,
+      );
+    });
   }
 
   Future<void> _openArtistPickerSheet(
@@ -1012,24 +1013,22 @@ class _TenantAdminEventFormScreenState
       taxonomyTerms: taxonomyTerms,
     );
 
-    TenantAdminEvent? result;
-    if (_isEditing) {
-      result = await _controller.submitUpdate(
-        eventId: widget.existingEvent!.eventId,
-        draft: draft,
-      );
-    } else {
-      result = await _controller.submitCreate(
-        draft,
-        accountSlug: widget.accountSlugForOwnCreate,
-      );
-    }
+    final Future<TenantAdminEvent?> resultFuture = _isEditing
+        ? _controller.submitUpdate(
+            eventId: widget.existingEvent!.eventId,
+            draft: draft,
+          )
+        : _controller.submitCreate(
+            draft,
+            accountSlug: widget.accountSlugForOwnCreate,
+          );
 
-    if (result == null || !mounted) {
-      return;
-    }
-
-    context.router.maybePop<TenantAdminEvent>(result);
+    resultFuture.then((result) {
+      if (result == null || !mounted) {
+        return;
+      }
+      context.router.maybePop<TenantAdminEvent>(result);
+    });
   }
 
   TenantAdminEventLocation _buildLocationFromSelection(

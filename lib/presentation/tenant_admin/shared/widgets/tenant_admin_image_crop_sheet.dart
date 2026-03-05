@@ -139,21 +139,19 @@ class _TenantAdminImageCropSheetState
   }
 
   Future<void> _handleCropped(Uint8List croppedData) async {
-    try {
-      final output = await widget.prepareCroppedFile(croppedData, widget.slot);
+    widget.prepareCroppedFile(croppedData, widget.slot).then((output) {
       if (!mounted) return;
       context.router.maybePop(output);
-    } on TenantAdminImageIngestionException catch (error) {
+    }).catchError((error) {
       if (!mounted) return;
-      _errorMessage = error.message;
+      if (error is TenantAdminImageIngestionException) {
+        _errorMessage = error.message;
+      } else {
+        _errorMessage = 'Nao foi possivel preparar a imagem recortada.';
+      }
       _submitting = false;
       _requestRebuild();
-    } catch (error) {
-      if (!mounted) return;
-      _errorMessage = 'Nao foi possivel preparar a imagem recortada.';
-      _submitting = false;
-      _requestRebuild();
-    }
+    });
   }
 
   @override

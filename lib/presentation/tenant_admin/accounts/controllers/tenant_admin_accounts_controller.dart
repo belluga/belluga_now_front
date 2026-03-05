@@ -102,9 +102,11 @@ class TenantAdminAccountsController implements Disposable {
   final TextEditingController contentController = TextEditingController();
   final TextEditingController latitudeController = TextEditingController();
   final TextEditingController longitudeController = TextEditingController();
+  final ScrollController accountsListScrollController = ScrollController();
 
   bool _isDisposed = false;
   bool _initialized = false;
+  bool _accountsListScrollBound = false;
   String? _initializedTenantDomain;
   StreamSubscription<TenantAdminLocation?>? _locationSelectionSubscription;
   StreamSubscription<String?>? _tenantScopeSubscription;
@@ -186,6 +188,33 @@ class TenantAdminAccountsController implements Disposable {
       pageSize: _accountsPageSize,
       ownershipState: ownershipState ?? selectedOwnershipStreamValue.value,
     );
+  }
+
+  void bindAccountsListScrollPagination() {
+    if (_accountsListScrollBound) {
+      return;
+    }
+    _accountsListScrollBound = true;
+    accountsListScrollController.addListener(_handleAccountsListScroll);
+  }
+
+  void unbindAccountsListScrollPagination() {
+    if (!_accountsListScrollBound) {
+      return;
+    }
+    _accountsListScrollBound = false;
+    accountsListScrollController.removeListener(_handleAccountsListScroll);
+  }
+
+  void _handleAccountsListScroll() {
+    if (!accountsListScrollController.hasClients) {
+      return;
+    }
+    final position = accountsListScrollController.position;
+    const threshold = 320.0;
+    if (position.pixels + threshold >= position.maxScrollExtent) {
+      unawaited(loadNextAccountsPage());
+    }
   }
 
   Future<void> loadProfileTypes() async {
@@ -537,6 +566,7 @@ class TenantAdminAccountsController implements Disposable {
 
   void dispose() {
     _isDisposed = true;
+    unbindAccountsListScrollPagination();
     _locationSelectionSubscription?.cancel();
     _tenantScopeSubscription?.cancel();
     _accountsRepositoryErrorSubscription?.cancel();
@@ -545,6 +575,7 @@ class TenantAdminAccountsController implements Disposable {
     contentController.dispose();
     latitudeController.dispose();
     longitudeController.dispose();
+    accountsListScrollController.dispose();
     profileTypesStreamValue.dispose();
     isProfileTypesLoadingStreamValue.dispose();
     errorStreamValue.dispose();

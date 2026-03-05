@@ -23,42 +23,30 @@ class _TenantAdminTaxonomiesListScreenState
     extends State<TenantAdminTaxonomiesListScreen> {
   final TenantAdminTaxonomiesController _controller =
       GetIt.I.get<TenantAdminTaxonomiesController>();
-  final ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
     super.initState();
-    _scrollController.addListener(_handleScroll);
+    _controller.bindTaxonomiesListScrollPagination();
     _controller.loadTaxonomies();
   }
 
   @override
   void dispose() {
-    _scrollController
-      ..removeListener(_handleScroll)
-      ..dispose();
+    _controller.unbindTaxonomiesListScrollPagination();
     super.dispose();
   }
 
-  void _handleScroll() {
-    if (!_scrollController.hasClients) return;
-    final position = _scrollController.position;
-    const threshold = 320.0;
-    if (position.pixels + threshold >= position.maxScrollExtent) {
-      _controller.loadNextTaxonomiesPage();
-    }
-  }
-
-  Future<void> _openTaxonomyForm({
+  void _openTaxonomyForm({
     TenantAdminTaxonomyDefinition? taxonomy,
-  }) async {
+  }) {
     if (taxonomy == null) {
-      await context.router.push(
+      context.router.push(
         const TenantAdminTaxonomyCreateRoute(),
       );
       return;
     }
-    await context.router.push(
+    context.router.push(
       TenantAdminTaxonomyEditRoute(
         taxonomyId: taxonomy.id,
         taxonomy: taxonomy,
@@ -242,7 +230,7 @@ class _TenantAdminTaxonomiesListScreenState
   }) {
     final itemCount = loadedTaxonomies.length + (hasMore ? 1 : 0);
     return ListView.separated(
-      controller: _scrollController,
+      controller: _controller.taxonomiesListScrollController,
       padding: const EdgeInsets.only(bottom: 112),
       itemCount: itemCount,
       separatorBuilder: (_, __) => const SizedBox(height: 12),
@@ -283,7 +271,7 @@ class _TenantAdminTaxonomiesListScreenState
                   return;
                 }
                 if (value == 'edit') {
-                  await _openTaxonomyForm(taxonomy: taxonomy);
+                  _openTaxonomyForm(taxonomy: taxonomy);
                   return;
                 }
                 if (value == 'edit-name') {

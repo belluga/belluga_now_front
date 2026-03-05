@@ -4,9 +4,9 @@ import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/configurations/belluga_constants.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/domain/repositories/landlord_tenants_repository_contract.dart';
-import 'package:belluga_now/presentation/landlord_area/auth/controllers/tenant_admin_landlord_login_controller.dart';
 import 'package:belluga_now/presentation/landlord_area/auth/widgets/landlord_login_sheet.dart';
 import 'package:belluga_now/presentation/tenant_admin/shell/controllers/tenant_admin_shell_controller.dart';
+import 'package:belluga_now/presentation/tenant_admin/shell/controllers/tenant_admin_shell_login_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/shell/theme/tenant_admin_scope_theme.dart';
 import 'package:belluga_now/presentation/tenant_admin/shell/widgets/tenant_admin_shell_header.dart';
 import 'package:belluga_now/presentation/tenant_admin/shell/widgets/tenant_selection_gate.dart';
@@ -328,10 +328,6 @@ class _TenantAdminShellScreenState extends State<TenantAdminShellScreen> {
   }
 
   void _handlePreviewTenantPublic() {
-    unawaited(_handlePreviewTenantPublicAsync());
-  }
-
-  Future<void> _handlePreviewTenantPublicAsync() async {
     final selectedTenantDomain = _controller.selectedTenantDomain;
 
     if (_controller.isLandlordEnvironment &&
@@ -342,7 +338,7 @@ class _TenantAdminShellScreenState extends State<TenantAdminShellScreen> {
         path: '/',
       );
       if (targetUrl != null) {
-        await _openRedirectLink(targetUrl);
+        unawaited(_openRedirectLink(targetUrl));
         return;
       }
     }
@@ -354,7 +350,7 @@ class _TenantAdminShellScreenState extends State<TenantAdminShellScreen> {
   }
 
   Future<void> _openTenantDomainAdminLogin() async {
-    final loginController = GetIt.I.get<TenantAdminLandlordLoginController>();
+    final loginController = GetIt.I.get<TenantAdminShellLoginController>();
     final didLogin = await showLandlordLoginSheet(
       context,
       controller: loginController,

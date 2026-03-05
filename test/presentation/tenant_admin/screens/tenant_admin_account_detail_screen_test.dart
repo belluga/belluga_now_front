@@ -17,6 +17,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_defin
 import 'package:belluga_now/domain/services/tenant_admin_location_selection_contract.dart';
 import 'package:belluga_now/infrastructure/services/tenant_admin/tenant_admin_location_selection_service.dart';
 import 'package:belluga_now/presentation/tenant_admin/account_profiles/controllers/tenant_admin_account_profiles_controller.dart';
+import 'package:belluga_now/presentation/tenant_admin/accounts/controllers/tenant_admin_account_detail_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/accounts/screens/tenant_admin_account_detail_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -74,7 +75,7 @@ void main() {
   });
 }
 
-TenantAdminAccountProfilesController _registerController({
+TenantAdminAccountDetailController _registerController({
   required _FakeAccountsRepository accountsRepository,
 }) {
   final profilesRepository = _FakeAccountProfilesRepository();
@@ -89,8 +90,15 @@ TenantAdminAccountProfilesController _registerController({
     locationSelectionService: locationSelectionService,
   );
 
+  final detailController = TenantAdminAccountDetailController(
+    delegate: controller,
+  );
+
   GetIt.I.registerSingleton<TenantAdminAccountProfilesController>(controller);
-  return controller;
+  GetIt.I.registerSingleton<TenantAdminAccountDetailController>(
+    detailController,
+  );
+  return detailController;
 }
 
 Future<void> _pumpScreen(WidgetTester tester, Widget child) async {

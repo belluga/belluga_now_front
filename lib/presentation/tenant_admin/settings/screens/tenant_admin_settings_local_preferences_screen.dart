@@ -44,8 +44,8 @@ class _TenantAdminSettingsLocalPreferencesScreenState
     context.router.replace(const TenantAdminSettingsRoute());
   }
 
-  Future<void> _openDefaultOriginPicker() async {
-    await context.router.push(
+  Future<void> _openDefaultOriginPicker() {
+    return context.router.push(
       TenantAdminLocationPickerRoute(
         initialLocation: _controller.currentMapDefaultOriginLocation(),
       ),

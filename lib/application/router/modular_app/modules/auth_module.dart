@@ -19,13 +19,13 @@ class AuthModule extends ModuleContract {
   @override
   FutureOr<void> registerDependencies() {
     if (!GetIt.I.isRegistered<AuthLoginControllerContract>()) {
-      GetIt.I.registerSingleton<AuthLoginControllerContract>(
-        AuthLoginController(),
+      registerLazySingleton<AuthLoginControllerContract>(
+        () => AuthLoginController(),
       );
     }
 
     if (!GetIt.I.isRegistered<RememberPasswordContract>()) {
-      GetIt.I.registerLazySingleton<RememberPasswordContract>(
+      registerLazySingleton<RememberPasswordContract>(
         () => RememberPasswordController(),
       );
     }
@@ -39,7 +39,7 @@ class AuthModule extends ModuleContract {
     );
 
     if (!GetIt.I.isRegistered<AuthLoginLandlordController>()) {
-      GetIt.I.registerLazySingleton<AuthLoginLandlordController>(
+      registerLazySingleton<AuthLoginLandlordController>(
         () => AuthLoginLandlordController(),
       );
     }

@@ -3,6 +3,8 @@ import 'dart:io';
 
 import 'package:belluga_now/domain/invites/invite_model.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
+import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
+import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_events_repository_contract.dart';
@@ -76,6 +78,10 @@ void main() {
 
     await _pumpFor(tester);
     debugPrint('Home agenda test: widget pumped');
+    await _waitForDisplayedEvents(
+      tester,
+      harness.homeController.displayedEventsStreamValue,
+    );
 
     final controller = harness.homeController;
     expect(controller.displayedEventsStreamValue.value, isNotEmpty);
@@ -176,6 +182,10 @@ void main() {
 
     await _pumpFor(tester);
     debugPrint('Agenda screen test: widget pumped');
+    await _waitForDisplayedEvents(
+      tester,
+      harness.agendaController.displayedEventsStreamValue,
+    );
 
     final controller = harness.agendaController;
     expect(controller.displayedEventsStreamValue.value, isNotEmpty);
@@ -553,8 +563,13 @@ class _TestInvitesRepository extends InvitesRepositoryContract {
 }
 
 class _TestUserLocationRepository implements UserLocationRepositoryContract {
-  final StreamValue<CityCoordinate?> _nullLocationStream =
-      StreamValue<CityCoordinate?>(defaultValue: null);
+  static final CityCoordinate _defaultCoordinate = CityCoordinate(
+    latitudeValue: LatitudeValue()..parse('-20.6772'),
+    longitudeValue: LongitudeValue()..parse('-40.5093'),
+  );
+
+  final StreamValue<CityCoordinate?> _locationStream =
+      StreamValue<CityCoordinate?>(defaultValue: _defaultCoordinate);
   final StreamValue<DateTime?> _nullDateStream =
       StreamValue<DateTime?>(defaultValue: null);
   final StreamValue<double?> _nullDoubleStream =
@@ -573,11 +588,10 @@ class _TestUserLocationRepository implements UserLocationRepositoryContract {
 
   @override
   StreamValue<CityCoordinate?> get lastKnownLocationStreamValue =>
-      _nullLocationStream;
+      _locationStream;
 
   @override
-  StreamValue<CityCoordinate?> get userLocationStreamValue =>
-      _nullLocationStream;
+  StreamValue<CityCoordinate?> get userLocationStreamValue => _locationStream;
 
   @override
   Future<void> ensureLoaded() async {}
@@ -979,8 +993,29 @@ class _TestHttpHeaders implements HttpHeaders {
   Object? noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-Future<void> _pumpFor(WidgetTester tester) async {
-  await tester.runAsync(() async {
-    await Future<void>.delayed(const Duration(milliseconds: 50));
-  });
+Future<void> _pumpFor(
+  WidgetTester tester, {
+  Duration duration = const Duration(milliseconds: 250),
+}) async {
+  final end = DateTime.now().add(duration);
+  while (DateTime.now().isBefore(end)) {
+    await tester.pump(const Duration(milliseconds: 50));
+    await tester.runAsync(() async {
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+    });
+  }
+}
+
+Future<void> _waitForDisplayedEvents(
+  WidgetTester tester,
+  StreamValue<List<EventModel>> eventsStreamValue, {
+  Duration timeout = const Duration(seconds: 5),
+}) async {
+  final deadline = DateTime.now().add(timeout);
+  while (DateTime.now().isBefore(deadline)) {
+    if (eventsStreamValue.value.isNotEmpty) {
+      return;
+    }
+    await _pumpFor(tester);
+  }
 }

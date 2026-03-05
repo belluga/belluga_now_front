@@ -20,6 +20,7 @@ import 'package:belluga_now/presentation/shared/location_permission/screens/loca
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/agenda_section/home_agenda_section.dart';
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/agenda_section/controllers/tenant_home_agenda_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/event_search_screen/controllers/event_search_screen_controller.dart';
+import 'package:belluga_now/presentation/tenant_public/schedule/screens/event_search_screen/models/invite_filter.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/event_search_screen/event_search_screen.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/widgets/agenda_app_bar.dart';
 import 'package:flutter/material.dart';
@@ -105,6 +106,13 @@ void main() {
         ),
       ),
     );
+    addTearDown(() {
+      if (getIt.isRegistered<EventSearchScreenController>()) {
+        getIt.unregister<EventSearchScreenController>(
+          disposingFunction: (controller) => controller.onDispose(),
+        );
+      }
+    });
 
     await tester.pumpWidget(
       MediaQuery(
@@ -115,7 +123,10 @@ void main() {
       ),
     );
 
-    await tester.pumpAndSettle();
+    await _pumpUntilFound(
+      tester,
+      find.byType(PreferredSize),
+    );
 
     final preferred =
         tester.widget<PreferredSize>(find.byType(PreferredSize).first);
@@ -139,6 +150,13 @@ void main() {
       ),
     );
     getIt.registerSingleton<TenantHomeAgendaController>(controller);
+    addTearDown(() {
+      if (getIt.isRegistered<TenantHomeAgendaController>()) {
+        getIt.unregister<TenantHomeAgendaController>(
+          disposingFunction: (value) => value.onDispose(),
+        );
+      }
+    });
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
@@ -158,14 +176,25 @@ void main() {
 
     await tester.pump();
 
-    final agendaAppBar =
-        tester.widget<AgendaAppBar>(find.byType(AgendaAppBar));
+    final agendaAppBar = tester.widget<AgendaAppBar>(find.byType(AgendaAppBar));
     expect(agendaAppBar.controller, same(controller));
-
-    if (getIt.isRegistered<TenantHomeAgendaController>()) {
-      getIt.unregister<TenantHomeAgendaController>();
-    }
   });
+}
+
+Future<void> _pumpUntilFound(
+  WidgetTester tester,
+  Finder finder, {
+  Duration timeout = const Duration(seconds: 5),
+  Duration step = const Duration(milliseconds: 100),
+}) async {
+  final deadline = DateTime.now().add(timeout);
+  while (DateTime.now().isBefore(deadline)) {
+    await tester.pump(step);
+    if (finder.evaluate().isNotEmpty) {
+      return;
+    }
+  }
+  throw TestFailure('Timed out waiting for ${finder.description}.');
 }
 
 class FakeEventSearchScreenController extends EventSearchScreenController {
@@ -189,6 +218,11 @@ class FakeEventSearchScreenController extends EventSearchScreenController {
     radiusMetersStreamValue.addValue(maxRadiusMetersStreamValue.value);
     isInitialLoadingStreamValue.addValue(false);
     displayedEventsStreamValue.addValue(const []);
+  }
+
+  @override
+  void setInviteFilter(InviteFilter filter) {
+    inviteFilterStreamValue.addValue(filter);
   }
 }
 
@@ -250,7 +284,8 @@ class FakeScheduleRepository implements ScheduleRepositoryContract {
     String? lastEventId,
     bool showPastOnly = false,
   }) {
-    return const Stream<EventDeltaModel>.empty();
+    // Keep the stream open in tests; a closed stream triggers reconnect loops.
+    return Stream<EventDeltaModel>.multi((_) {});
   }
 }
 
@@ -277,6 +312,11 @@ class FakeTenantHomeAgendaController extends TenantHomeAgendaController {
     isInitialLoadingStreamValue.addValue(false);
     hasMoreStreamValue.addValue(false);
     displayedEventsStreamValue.addValue(const []);
+  }
+
+  @override
+  void setInviteFilter(InviteFilter filter) {
+    inviteFilterStreamValue.addValue(filter);
   }
 
   @override
@@ -316,7 +356,8 @@ class FakeInvitesRepository extends InvitesRepositoryContract {
   Future<List<InviteModel>> fetchInvites() async => const [];
 
   @override
-  Future<List<SentInviteStatus>> getSentInvitesForEvent(String eventSlug) async {
+  Future<List<SentInviteStatus>> getSentInvitesForEvent(
+      String eventSlug) async {
     return const [];
   }
 
@@ -363,7 +404,8 @@ class FakeUserLocationRepository implements UserLocationRepositoryContract {
   Future<String?> resolveUserLocation() async => null;
 
   @override
-  Future<bool> refreshIfPermitted({Duration minInterval = const Duration(seconds: 30)}) async =>
+  Future<bool> refreshIfPermitted(
+          {Duration minInterval = const Duration(seconds: 30)}) async =>
       false;
 
   @override

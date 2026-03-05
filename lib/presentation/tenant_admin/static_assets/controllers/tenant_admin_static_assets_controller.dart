@@ -107,8 +107,10 @@ class TenantAdminStaticAssetsController implements Disposable {
   final TextEditingController coverUrlController = TextEditingController();
   final TextEditingController latitudeController = TextEditingController();
   final TextEditingController longitudeController = TextEditingController();
+  final ScrollController assetsListScrollController = ScrollController();
 
   bool _isDisposed = false;
+  bool _assetsListScrollBound = false;
   StreamSubscription<TenantAdminLocation?>? _locationSubscription;
   StreamSubscription<String?>? _tenantScopeSubscription;
   String? _lastTenantDomain;
@@ -163,6 +165,33 @@ class TenantAdminStaticAssetsController implements Disposable {
     }
     await _repository.loadNextStaticAssetsPage(pageSize: _assetsPageSize);
     errorStreamValue.addValue(_repository.staticAssetsErrorStreamValue.value);
+  }
+
+  void bindAssetsListScrollPagination() {
+    if (_assetsListScrollBound) {
+      return;
+    }
+    _assetsListScrollBound = true;
+    assetsListScrollController.addListener(_handleAssetsListScroll);
+  }
+
+  void unbindAssetsListScrollPagination() {
+    if (!_assetsListScrollBound) {
+      return;
+    }
+    _assetsListScrollBound = false;
+    assetsListScrollController.removeListener(_handleAssetsListScroll);
+  }
+
+  void _handleAssetsListScroll() {
+    if (!assetsListScrollController.hasClients) {
+      return;
+    }
+    final position = assetsListScrollController.position;
+    const threshold = 320.0;
+    if (position.pixels + threshold >= position.maxScrollExtent) {
+      unawaited(loadNextAssetsPage());
+    }
   }
 
   Future<void> loadProfileTypes() async {
@@ -653,6 +682,7 @@ class TenantAdminStaticAssetsController implements Disposable {
   @override
   void onDispose() {
     _isDisposed = true;
+    unbindAssetsListScrollPagination();
     _locationSubscription?.cancel();
     _tenantScopeSubscription?.cancel();
     displayNameController.dispose();
@@ -662,6 +692,7 @@ class TenantAdminStaticAssetsController implements Disposable {
     coverUrlController.dispose();
     latitudeController.dispose();
     longitudeController.dispose();
+    assetsListScrollController.dispose();
     profileTypesStreamValue.dispose();
     taxonomiesStreamValue.dispose();
     taxonomyTermsStreamValue.dispose();
