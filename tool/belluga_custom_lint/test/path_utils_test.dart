@@ -18,5 +18,13 @@ void main() {
 
       expect(root, 'tenant_public/map');
     });
+
+    test('resolves feature root from generic URI-like path', () {
+      final root = presentationRootKey(
+        'asset:lint_matrix_fixture/lib/presentation/tenant_public/schedule/controllers/schedule_controller.dart',
+      );
+
+      expect(root, 'tenant_public/schedule');
+    });
   });
 }

@@ -103,6 +103,13 @@ String? presentationRootKey(String path) {
         relative = packageRelative.substring(relativeMarker.length);
       }
     }
+  } else {
+    const genericPresentationMarker = 'presentation/';
+    final genericIndex = normalized.indexOf(genericPresentationMarker);
+    if (genericIndex != -1) {
+      relative =
+          normalized.substring(genericIndex + genericPresentationMarker.length);
+    }
   }
 
   if (relative == null || relative.isEmpty) {
