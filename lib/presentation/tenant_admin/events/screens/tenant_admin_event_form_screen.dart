@@ -1048,8 +1048,12 @@ class _TenantAdminEventFormScreenState
           )
         : null;
 
-    final latitude = selectedVenue?.location?.latitude;
-    final longitude = selectedVenue?.location?.longitude;
+    final includesPhysicalVenue = formState.locationMode == 'physical' ||
+        formState.locationMode == 'hybrid';
+    final latitude =
+        includesPhysicalVenue ? selectedVenue?.location?.latitude : null;
+    final longitude =
+        includesPhysicalVenue ? selectedVenue?.location?.longitude : null;
 
     return TenantAdminEventLocation(
       mode: formState.locationMode,

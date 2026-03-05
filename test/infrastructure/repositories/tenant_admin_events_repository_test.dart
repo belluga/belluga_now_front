@@ -82,6 +82,41 @@ void main() {
         contains('music_genre'));
   });
 
+  test(
+      'createEvent omits geo payload for online mode even when coordinates exist',
+      () async {
+    final adapter = _EventsRoutingAdapter();
+    final dio = Dio()..httpClientAdapter = adapter;
+    final scope = _MutableTenantScope('https://tenant-a.test/admin/api');
+    final repository = TenantAdminEventsRepository(
+      dio: dio,
+      tenantScope: scope,
+    );
+
+    await repository.createEvent(
+      draft: _buildDraft(
+        location: const TenantAdminEventLocation(
+          mode: 'online',
+          latitude: -20.611121,
+          longitude: -40.498617,
+          online: TenantAdminEventOnlineLocation(
+            url: 'https://example.com/live',
+          ),
+        ),
+      ),
+    );
+
+    expect(adapter.requests, isNotEmpty);
+    final request = adapter.requests.last;
+    expect(request.method, 'POST');
+    expect(request.path, endsWith('/admin/api/v1/events'));
+    final payload = request.data as Map<String, dynamic>;
+    final location = payload['location'] as Map<String, dynamic>;
+    expect(location['mode'], 'online');
+    expect(location.containsKey('geo'), isFalse);
+    expect(location['online'], {'url': 'https://example.com/live'});
+  });
+
   test('createOwnEvent uses account-scoped endpoint', () async {
     final adapter = _EventsRoutingAdapter();
     final dio = Dio()..httpClientAdapter = adapter;
@@ -320,6 +355,7 @@ void main() {
 
 TenantAdminEventDraft _buildDraft({
   List<TenantAdminTaxonomyTerm> taxonomyTerms = const [],
+  TenantAdminEventLocation? location,
 }) {
   return TenantAdminEventDraft(
     title: 'My event',
@@ -336,6 +372,7 @@ TenantAdminEventDraft _buildDraft({
     publication: const TenantAdminEventPublication(
       status: 'draft',
     ),
+    location: location,
     taxonomyTerms: taxonomyTerms,
   );
 }
