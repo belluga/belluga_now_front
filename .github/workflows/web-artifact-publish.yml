@@ -184,6 +184,10 @@ jobs:
       - name: Flutter dependencies
         run: fvm flutter pub get
 
+      - name: Prepare custom lint fixture workspace
+        run: |
+          fvm dart pub get --directory tool/belluga_custom_lint/test_fixtures/lint_matrix
+
       - name: Flutter architecture custom lint (blocking)
         run: |
           set -euo pipefail
