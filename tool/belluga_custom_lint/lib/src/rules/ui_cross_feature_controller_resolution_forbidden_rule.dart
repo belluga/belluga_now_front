@@ -1,6 +1,7 @@
 // ignore_for_file: deprecated_member_use
 import 'package:analyzer/error/error.dart' hide LintCode;
 import 'package:analyzer/dart/ast/ast.dart';
+import 'package:analyzer/dart/element/type.dart';
 import 'package:analyzer/error/listener.dart';
 import 'package:custom_lint_builder/custom_lint_builder.dart';
 
@@ -90,7 +91,8 @@ class UiCrossFeatureControllerResolutionForbiddenRule extends DartLintRule {
     });
   }
 
-  String? _controllerSourcePathFromTypeArgument(TypeArgumentList? typeArguments) {
+  String? _controllerSourcePathFromTypeArgument(
+      TypeArgumentList? typeArguments) {
     final args = typeArguments?.arguments;
     if (args == null || args.isEmpty) {
       return null;
@@ -102,12 +104,21 @@ class UiCrossFeatureControllerResolutionForbiddenRule extends DartLintRule {
     }
 
     final element = type.element;
-    if (element == null) {
-      return null;
+    if (element != null) {
+      final source = element.firstFragment.libraryFragment?.source ??
+          element.library?.firstFragment.source;
+      if (source != null) {
+        return normalizePath(source.fullName);
+      }
     }
 
-    final source = element.firstFragment.libraryFragment?.source ??
-        element.library?.firstFragment.source;
-    return source == null ? null : normalizePath(source.fullName);
+    final namedType = type.type;
+    if (namedType is InterfaceType) {
+      final interfaceElement = namedType.element3;
+      final interfaceSource = interfaceElement.library.firstFragment.source;
+      return normalizePath(interfaceSource.fullName);
+    }
+
+    return null;
   }
 }
