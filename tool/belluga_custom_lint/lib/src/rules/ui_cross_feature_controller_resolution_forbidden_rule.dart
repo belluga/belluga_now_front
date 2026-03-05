@@ -106,7 +106,8 @@ class UiCrossFeatureControllerResolutionForbiddenRule extends DartLintRule {
       return null;
     }
 
-    final source = element.firstFragment.libraryFragment?.source;
+    final source = element.firstFragment.libraryFragment?.source ??
+        element.library?.firstFragment.source;
     return source == null ? null : normalizePath(source.fullName);
   }
 }
