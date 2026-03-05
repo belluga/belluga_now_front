@@ -75,19 +75,40 @@ bool isAllowedGlobalRegistrationFilePath(String path) {
   final normalized = normalizePath(path);
 
   return normalized.endsWith('/lib/main.dart') ||
-      normalized.endsWith('/lib/application/router/modular_app/module_settings.dart') ||
-      normalized.endsWith('/lib/infrastructure/repositories/app_data_repository.dart');
+      normalized.endsWith(
+          '/lib/application/router/modular_app/module_settings.dart') ||
+      normalized.endsWith(
+          '/lib/infrastructure/repositories/app_data_repository.dart');
 }
 
 String? presentationRootKey(String path) {
   final normalized = normalizePath(path);
-  const marker = '/lib/presentation/';
-  final markerIndex = normalized.indexOf(marker);
-  if (markerIndex == -1) {
+  const absoluteMarker = '/lib/presentation/';
+  const relativeMarker = 'lib/presentation/';
+  const packageMarker = 'package:';
+
+  String? relative;
+  final absoluteIndex = normalized.indexOf(absoluteMarker);
+  if (absoluteIndex != -1) {
+    relative = normalized.substring(absoluteIndex + absoluteMarker.length);
+  } else if (normalized.startsWith(relativeMarker)) {
+    relative = normalized.substring(relativeMarker.length);
+  } else if (normalized.startsWith(packageMarker)) {
+    final packageSeparatorIndex = normalized.indexOf('/');
+    if (packageSeparatorIndex != -1) {
+      final packageRelative = normalized.substring(packageSeparatorIndex + 1);
+      if (packageRelative.startsWith('presentation/')) {
+        relative = packageRelative.substring('presentation/'.length);
+      } else if (packageRelative.startsWith(relativeMarker)) {
+        relative = packageRelative.substring(relativeMarker.length);
+      }
+    }
+  }
+
+  if (relative == null || relative.isEmpty) {
     return null;
   }
 
-  final relative = normalized.substring(markerIndex + marker.length);
   final segments = relative.split('/');
   if (segments.length < 2) {
     return null;
