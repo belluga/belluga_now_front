@@ -3,6 +3,7 @@ import 'package:belluga_now/domain/repositories/tenant_admin_events_repository_c
 import 'package:belluga_now/domain/repositories/tenant_admin_taxonomies_repository_contract.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_definition.dart';
@@ -119,6 +120,51 @@ void main() {
 
     expect(eventsRepository.lastCreateOwnAccountSlug, 'school-account');
     expect(eventsRepository.lastCreateOwnDraft, isNotNull);
+  });
+
+  testWidgets('online mode omits venue coordinates on submit', (tester) async {
+    final eventsRepository = _FakeEventsRepository();
+    final taxonomiesRepository = _FakeTaxonomiesRepository();
+    final controller = TenantAdminEventsController(
+      eventsRepository: eventsRepository,
+      taxonomiesRepository: taxonomiesRepository,
+    );
+
+    eventsRepository.eventTypes = const [
+      TenantAdminEventType(
+        id: '507f1f77bcf86cd799439015',
+        name: 'Live',
+        slug: 'live',
+        description: 'Tipo de evento: Live',
+      ),
+    ];
+
+    GetIt.I.registerSingleton<TenantAdminEventsController>(controller);
+
+    await _pumpWithAutoRoute(
+      tester,
+      const Scaffold(
+        body: TenantAdminEventFormScreen(),
+      ),
+    );
+
+    await _fillRequiredFields(tester);
+    await tester.scrollUntilVisible(
+      find.widgetWithText(FilledButton, 'Criar evento'),
+      250,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'Criar evento'));
+    await tester.pumpAndSettle();
+
+    final draft = eventsRepository.lastCreateDraft;
+    expect(draft, isNotNull);
+    expect(draft!.location?.mode, 'online');
+    expect(draft.location?.latitude, isNull);
+    expect(draft.location?.longitude, isNull);
+    expect(draft.location?.online?.url, 'https://example.com/live');
+    expect(draft.placeRef, isNull);
   });
 
   testWidgets(
@@ -349,6 +395,10 @@ class _FakeEventsRepository
           accountId: 'acc-venue',
           profileType: 'venue',
           displayName: 'Venue A',
+          location: TenantAdminLocation(
+            latitude: -20.611121,
+            longitude: -40.498617,
+          ),
         ),
       ],
       artists: [

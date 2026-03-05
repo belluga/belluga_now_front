@@ -606,7 +606,11 @@ class TenantAdminEventsRepository
       final locationPayload = <String, dynamic>{
         'mode': location.mode,
       };
-      if (location.latitude != null && location.longitude != null) {
+      final includesPhysicalGeometry =
+          location.mode == 'physical' || location.mode == 'hybrid';
+      if (includesPhysicalGeometry &&
+          location.latitude != null &&
+          location.longitude != null) {
         locationPayload['geo'] = {
           'type': 'Point',
           'coordinates': [location.longitude, location.latitude],
