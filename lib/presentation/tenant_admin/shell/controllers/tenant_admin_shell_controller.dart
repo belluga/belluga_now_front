@@ -4,6 +4,7 @@ import 'package:belluga_now/application/configurations/belluga_constants.dart';
 import 'package:belluga_now/domain/app_data/environment_type.dart';
 import 'package:belluga_now/domain/repositories/admin_mode_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/landlord_auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/landlord_tenants_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_selected_tenant_repository_contract.dart';
 import 'package:flutter/foundation.dart';
@@ -14,12 +15,15 @@ class TenantAdminShellController implements Disposable {
   TenantAdminShellController({
     AdminModeRepositoryContract? adminModeRepository,
     AppDataRepositoryContract? appDataRepository,
+    LandlordAuthRepositoryContract? landlordAuthRepository,
     LandlordTenantsRepositoryContract? landlordTenantsRepository,
     TenantAdminSelectedTenantRepositoryContract? selectedTenantRepository,
   })  : _adminModeRepository =
             adminModeRepository ?? GetIt.I.get<AdminModeRepositoryContract>(),
         _appDataRepository =
             appDataRepository ?? GetIt.I.get<AppDataRepositoryContract>(),
+        _landlordAuthRepository = landlordAuthRepository ??
+            GetIt.I.get<LandlordAuthRepositoryContract>(),
         _landlordTenantsRepository = landlordTenantsRepository ??
             GetIt.I.get<LandlordTenantsRepositoryContract>(),
         _selectedTenantRepository = selectedTenantRepository ??
@@ -27,6 +31,7 @@ class TenantAdminShellController implements Disposable {
 
   final AdminModeRepositoryContract _adminModeRepository;
   final AppDataRepositoryContract _appDataRepository;
+  final LandlordAuthRepositoryContract _landlordAuthRepository;
   final LandlordTenantsRepositoryContract _landlordTenantsRepository;
   final TenantAdminSelectedTenantRepositoryContract _selectedTenantRepository;
   final StreamValue<bool> isTenantSelectionResolvingStreamValue =
@@ -40,6 +45,16 @@ class TenantAdminShellController implements Disposable {
       _selectedTenantRepository.selectedTenantDomainStreamValue;
   String? get selectedTenantDomain =>
       _selectedTenantRepository.selectedTenantDomain;
+  String get currentAppHref => _appDataRepository.appData.href;
+
+  bool get isLandlordEnvironment =>
+      _appDataRepository.appData.typeValue.value == EnvironmentType.landlord;
+
+  bool get isTenantEnvironment =>
+      _appDataRepository.appData.typeValue.value == EnvironmentType.tenant;
+
+  bool get hasLocalLandlordSession =>
+      _landlordAuthRepository.hasValidSession;
 
   Future<void> switchToUserMode() => _adminModeRepository.setUserMode();
 

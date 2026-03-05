@@ -29,7 +29,6 @@ class _TenantAdminAccountsListScreenState
 
   final TenantAdminAccountsController _controller =
       GetIt.I.get<TenantAdminAccountsController>();
-  final ScrollController _scrollController = ScrollController();
   static const ValueKey<String> _controlsPanelKey =
       ValueKey<String>('tenant_admin_accounts_controls_panel');
   static const ValueKey<String> _searchToggleKey =
@@ -44,25 +43,14 @@ class _TenantAdminAccountsListScreenState
   @override
   void initState() {
     super.initState();
-    _scrollController.addListener(_handleScroll);
+    _controller.bindAccountsListScrollPagination();
     _controller.init();
   }
 
   @override
   void dispose() {
-    _scrollController
-      ..removeListener(_handleScroll)
-      ..dispose();
+    _controller.unbindAccountsListScrollPagination();
     super.dispose();
-  }
-
-  void _handleScroll() {
-    if (!_scrollController.hasClients) return;
-    final position = _scrollController.position;
-    const threshold = 320.0;
-    if (position.pixels + threshold >= position.maxScrollExtent) {
-      _controller.loadNextAccountsPage();
-    }
   }
 
   StackRouter _navigationRouter(BuildContext context) {
@@ -160,18 +148,21 @@ class _TenantAdminAccountsListScreenState
   }) {
     return Scaffold(
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () async {
+        onPressed: () {
           final router = _navigationRouter(context);
           final messenger = ScaffoldMessenger.of(context);
-          final created = await router.push<bool>(
+          router
+              .push<bool>(
             const TenantAdminAccountCreateRoute(),
-          );
-          if (!mounted || created != true) {
-            return;
-          }
-          messenger.showSnackBar(
-            const SnackBar(content: Text('Conta e perfil salvos.')),
-          );
+          )
+              .then((created) {
+            if (!mounted || created != true) {
+              return;
+            }
+            messenger.showSnackBar(
+              const SnackBar(content: Text('Conta e perfil salvos.')),
+            );
+          });
         },
         icon: const Icon(Icons.add),
         label: const Text('Criar conta'),
@@ -248,7 +239,7 @@ class _TenantAdminAccountsListScreenState
   }) {
     final itemCount = filteredAccounts.length + (hasMore ? 1 : 0);
     return ListView.separated(
-      controller: _scrollController,
+      controller: _controller.accountsListScrollController,
       padding: const EdgeInsets.only(bottom: 112),
       itemCount: itemCount,
       separatorBuilder: (_, __) => const SizedBox(height: 12),

@@ -8,6 +8,7 @@ abstract class AgendaAppBarController {
   FocusNode get focusNode;
   void toggleSearchMode();
   Future<void> searchEvents(String query);
+  double get minRadiusMeters;
   StreamValue<double> get maxRadiusMetersStreamValue;
   StreamValue<double> get radiusMetersStreamValue;
   void setRadiusMeters(double meters);

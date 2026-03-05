@@ -112,7 +112,7 @@ void main() {
     await tester.pumpAndSettle(const Duration(seconds: 1));
     await tester.tap(find.text('Eventos').first);
     await tester.pumpAndSettle(const Duration(seconds: 1));
-    await _waitForFinder(tester, find.text('Gestão de eventos em evolução'));
+    await _waitForFinder(tester, find.text('Novo evento'));
     await _waitForFinder(
       tester,
       _tenantAdminShellRouterFinder(),

@@ -5,6 +5,7 @@ import 'package:belluga_now/domain/app_data/app_type.dart';
 import 'package:belluga_now/domain/app_data/value_object/platform_type_value.dart';
 import 'package:belluga_now/domain/repositories/admin_mode_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/landlord_auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/landlord_tenants_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_selected_tenant_repository_contract.dart';
 import 'package:belluga_now/infrastructure/services/tenant_admin/tenant_admin_base_url_resolver.dart';
@@ -45,6 +46,7 @@ void main() {
     final controller = TenantAdminShellController(
       adminModeRepository: _FakeAdminModeRepository(),
       appDataRepository: appDataRepository,
+      landlordAuthRepository: _FakeLandlordAuthRepository(),
       landlordTenantsRepository: _PendingLandlordTenantsRepository(),
       selectedTenantRepository: _FakeSelectedTenantRepository(),
     );
@@ -63,7 +65,8 @@ void main() {
     expect(find.text('Selecionar tenant'), findsNothing);
   });
 
-  testWidgets('tenant selection redirects landlord flow to tenant domain admin',
+  testWidgets(
+      'tenant selection on app keeps in-app scope without domain redirect',
       (tester) async {
     final launchedUrls = <String>[];
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
@@ -95,6 +98,7 @@ void main() {
     final controller = TenantAdminShellController(
       adminModeRepository: _FakeAdminModeRepository(),
       appDataRepository: appDataRepository,
+      landlordAuthRepository: _FakeLandlordAuthRepository(),
       landlordTenantsRepository: _FixedLandlordTenantsRepository(
         const [
           LandlordTenantOption(
@@ -104,7 +108,9 @@ void main() {
           ),
         ],
       ),
-      selectedTenantRepository: _FakeSelectedTenantRepository(),
+      selectedTenantRepository: _FakeSelectedTenantRepository(
+        suppressSelectionStreamUpdates: true,
+      ),
     );
     GetIt.I.registerSingleton<AppDataRepositoryContract>(appDataRepository);
     GetIt.I.registerSingleton<TenantAdminShellController>(controller);
@@ -121,10 +127,8 @@ void main() {
     await tester.tap(find.text('Guarappari'));
     await tester.pump(const Duration(milliseconds: 200));
 
-    expect(
-      launchedUrls,
-      contains('https://guarappari.belluga.space/admin'),
-    );
+    expect(launchedUrls, isEmpty);
+    expect(controller.selectedTenantDomain, 'https://guarappari.belluga.space');
   });
 
   test('tenant environment auto-selects current host on init', () {
@@ -142,6 +146,7 @@ void main() {
     final controller = TenantAdminShellController(
       adminModeRepository: _FakeAdminModeRepository(),
       appDataRepository: appDataRepository,
+      landlordAuthRepository: _FakeLandlordAuthRepository(),
       landlordTenantsRepository: _PendingLandlordTenantsRepository(),
       selectedTenantRepository: selectedTenantRepository,
     );
@@ -151,6 +156,59 @@ void main() {
     expect(
       selectedTenantRepository.selectedTenantDomain,
       'guarappari.belluga.space',
+    );
+  });
+
+  testWidgets(
+      'tenant environment without local landlord session shows admin auth gate',
+      (tester) async {
+    final appDataRepository = _FakeAppDataRepository(
+      appData: _buildAppData(
+        envType: 'tenant',
+        hostname: 'guarapari.belluga.space',
+        domains: const ['https://guarapari.belluga.space'],
+      ),
+    );
+    final controller = TenantAdminShellController(
+      adminModeRepository: _FakeAdminModeRepository(),
+      appDataRepository: appDataRepository,
+      landlordAuthRepository:
+          _FakeLandlordAuthRepository(hasValidSession: false),
+      landlordTenantsRepository: _PendingLandlordTenantsRepository(),
+      selectedTenantRepository: _FakeSelectedTenantRepository(),
+    );
+
+    GetIt.I.registerSingleton<AppDataRepositoryContract>(appDataRepository);
+    GetIt.I.registerSingleton<TenantAdminShellController>(controller);
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: TenantAdminShellScreen(),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text('Tenant admin login'), findsOneWidget);
+    expect(find.text('Entrar como Admin'), findsOneWidget);
+  });
+
+  test('fails fast when landlord auth repository is missing', () {
+    final appDataRepository = _FakeAppDataRepository(
+      appData: _buildAppData(
+        envType: 'landlord',
+        hostname: 'belluga.space',
+        domains: const ['https://belluga.space'],
+      ),
+    );
+
+    expect(
+      () => TenantAdminShellController(
+        adminModeRepository: _FakeAdminModeRepository(),
+        appDataRepository: appDataRepository,
+        landlordTenantsRepository: _PendingLandlordTenantsRepository(),
+        selectedTenantRepository: _FakeSelectedTenantRepository(),
+      ),
+      throwsA(anything),
     );
   });
 }
@@ -227,14 +285,40 @@ class _FixedLandlordTenantsRepository
   Future<List<LandlordTenantOption>> fetchTenants() async => _tenants;
 }
 
+class _FakeLandlordAuthRepository implements LandlordAuthRepositoryContract {
+  _FakeLandlordAuthRepository({this.hasValidSession = true});
+
+  @override
+  final bool hasValidSession;
+
+  @override
+  String get token => hasValidSession ? 'token' : '';
+
+  @override
+  Future<void> init() async {}
+
+  @override
+  Future<void> loginWithEmailPassword(String email, String password) async {}
+
+  @override
+  Future<void> logout() async {}
+}
+
 class _FakeSelectedTenantRepository
     implements TenantAdminSelectedTenantRepositoryContract {
+  _FakeSelectedTenantRepository({
+    this.suppressSelectionStreamUpdates = false,
+  });
+
+  final bool suppressSelectionStreamUpdates;
   final StreamValue<List<LandlordTenantOption>> _availableTenantsStreamValue =
       StreamValue<List<LandlordTenantOption>>(defaultValue: const []);
   final StreamValue<String?> _selectedTenantDomainStreamValue =
       StreamValue<String?>(defaultValue: null);
   final StreamValue<LandlordTenantOption?> _selectedTenantStreamValue =
       StreamValue<LandlordTenantOption?>(defaultValue: null);
+  String? _selectedTenantDomainValue;
+  LandlordTenantOption? _selectedTenantValue;
 
   @override
   List<LandlordTenantOption> get availableTenants =>
@@ -245,10 +329,12 @@ class _FakeSelectedTenantRepository
       _availableTenantsStreamValue;
 
   @override
-  String? get selectedTenantDomain => _selectedTenantDomainStreamValue.value;
+  String? get selectedTenantDomain =>
+      _selectedTenantDomainValue ?? _selectedTenantDomainStreamValue.value;
 
   @override
-  LandlordTenantOption? get selectedTenant => _selectedTenantStreamValue.value;
+  LandlordTenantOption? get selectedTenant =>
+      _selectedTenantValue ?? _selectedTenantStreamValue.value;
 
   @override
   StreamValue<LandlordTenantOption?> get selectedTenantStreamValue =>
@@ -264,24 +350,36 @@ class _FakeSelectedTenantRepository
 
   @override
   void clearSelectedTenant() {
-    _selectedTenantDomainStreamValue.addValue(null);
-    _selectedTenantStreamValue.addValue(null);
+    _selectedTenantDomainValue = null;
+    _selectedTenantValue = null;
+    if (!suppressSelectionStreamUpdates) {
+      _selectedTenantDomainStreamValue.addValue(null);
+      _selectedTenantStreamValue.addValue(null);
+    }
   }
 
   @override
   void selectTenant(LandlordTenantOption tenant) {
-    _selectedTenantDomainStreamValue.addValue(tenant.mainDomain.trim());
-    _selectedTenantStreamValue.addValue(tenant);
+    _selectedTenantDomainValue = tenant.mainDomain.trim();
+    _selectedTenantValue = tenant;
+    if (!suppressSelectionStreamUpdates) {
+      _selectedTenantDomainStreamValue.addValue(tenant.mainDomain.trim());
+      _selectedTenantStreamValue.addValue(tenant);
+    }
   }
 
   @override
   void selectTenantDomain(String tenantDomain) {
-    _selectedTenantDomainStreamValue.addValue(tenantDomain.trim());
-    _selectedTenantStreamValue.addValue(
-      availableTenants.where((tenant) {
-        return tenant.mainDomain.trim() == tenantDomain.trim();
-      }).firstOrNull,
-    );
+    _selectedTenantDomainValue = tenantDomain.trim();
+    _selectedTenantValue = availableTenants.where((tenant) {
+      return tenant.mainDomain.trim() == tenantDomain.trim();
+    }).firstOrNull;
+    if (!suppressSelectionStreamUpdates) {
+      _selectedTenantDomainStreamValue.addValue(tenantDomain.trim());
+      _selectedTenantStreamValue.addValue(
+        _selectedTenantValue,
+      );
+    }
   }
 
   @override

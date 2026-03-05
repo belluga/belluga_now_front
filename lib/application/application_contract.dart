@@ -27,7 +27,7 @@ import 'package:belluga_now/infrastructure/services/push/push_answer_resolver.da
 import 'package:belluga_now/infrastructure/services/push/push_action_dispatcher.dart';
 import 'package:belluga_now/infrastructure/services/push/push_telemetry_forwarder.dart';
 import 'package:belluga_now/infrastructure/services/telemetry/telemetry_route_observer.dart';
-import 'package:belluga_now/presentation/shared/push/controllers/push_options_controller.dart';
+import 'package:belluga_now/presentation/shared/push/controllers/push_options_resolver.dart';
 import 'package:belluga_now/presentation/shared/push/push_option_selector_sheet.dart';
 import 'package:belluga_now/presentation/shared/push/push_step_validator.dart';
 import 'package:flutter/foundation.dart';
@@ -142,11 +142,11 @@ abstract class ApplicationContract extends ModularAppContract {
       contextProvider: () => appRouter.navigatorKey.currentContext,
       answerResolver: answerResolver,
     );
-    final optionsController = GetIt.I.get<PushOptionsController>();
+    final optionsResolver = GetIt.I.get<PushOptionsResolver>();
     final telemetryForwarder = PushTelemetryForwarder();
     final stepValidator = PushStepValidator();
     final actionDispatcher = PushActionDispatcher(
-      optionsBuilder: optionsController.resolve,
+      optionsBuilder: optionsResolver.resolve,
       onStepSubmit: (answer, step) async {
         await _handlePushAnswer(answer, step);
       },
@@ -206,7 +206,7 @@ abstract class ApplicationContract extends ModularAppContract {
       authChangeStream: authRepository.userStreamValue.stream,
       platformResolver: () => BellugaConstants.settings.platform,
       gatekeeper: gatekeeper.check,
-      optionsBuilder: optionsController.resolve,
+      optionsBuilder: optionsResolver.resolve,
       onStepSubmit: (answer, step) => _handlePushAnswer(answer, step),
       stepValidator: stepValidator.validate,
       onCustomAction: (button, step) => actionDispatcher.dispatch(
@@ -253,7 +253,8 @@ abstract class ApplicationContract extends ModularAppContract {
       return;
     }
     final context = appRouter.navigatorKey.currentContext;
-    final messenger = context != null ? ScaffoldMessenger.maybeOf(context) : null;
+    final messenger =
+        context != null ? ScaffoldMessenger.maybeOf(context) : null;
     messenger?.showSnackBar(
       SnackBar(
         content: Text(message),

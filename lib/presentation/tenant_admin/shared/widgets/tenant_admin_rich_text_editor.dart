@@ -72,10 +72,16 @@ class _TenantAdminRichTextEditorState extends State<TenantAdminRichTextEditor> {
 
   void _replaceQuillController(QuillController nextController) {
     _documentChangesSubscription?.cancel();
-    setState(() {
-      _quillController = nextController;
-    });
+    _quillController = nextController;
     _bindDocumentChanges();
+    _requestRebuild();
+  }
+
+  void _requestRebuild() {
+    if (!mounted) {
+      return;
+    }
+    (context as Element).markNeedsBuild();
   }
 
   void _handleExternalHtmlChange() {

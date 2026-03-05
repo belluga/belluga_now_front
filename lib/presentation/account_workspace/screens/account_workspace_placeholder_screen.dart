@@ -1,4 +1,5 @@
 import 'package:auto_route/auto_route.dart';
+import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:flutter/material.dart';
 
 class AccountWorkspacePlaceholderScreen extends StatelessWidget {
@@ -33,6 +34,20 @@ class AccountWorkspacePlaceholderScreen extends StatelessWidget {
                 icon: const Icon(Icons.arrow_back),
                 label: const Text('Back'),
               ),
+              if (accountSlug != null && accountSlug!.trim().isNotEmpty) ...[
+                const SizedBox(height: 12),
+                FilledButton.icon(
+                  onPressed: () {
+                    context.router.push(
+                      AccountWorkspaceCreateEventRoute(
+                        accountSlug: accountSlug!.trim(),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.event_available_outlined),
+                  label: const Text('Create Own Event'),
+                ),
+              ],
             ],
           ),
         ),

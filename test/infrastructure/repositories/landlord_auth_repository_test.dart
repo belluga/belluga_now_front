@@ -88,6 +88,45 @@ void main() {
     expect(storedUserId, isNull);
     expect(repository.hasValidSession, isFalse);
   });
+
+  test(
+      'login uses runtime admin origin when repository resolves internal dio client',
+      () async {
+    final adapter = QueueHttpClientAdapter();
+    final capturedBaseUrls = <String>[];
+
+    final repository = LandlordAuthRepository(
+      dioFactory: (baseUrl) {
+        capturedBaseUrls.add(baseUrl);
+        final dio = Dio(BaseOptions(baseUrl: baseUrl));
+        dio.httpClientAdapter = adapter;
+        return dio;
+      },
+    );
+
+    adapter.enqueuePost(
+      path: '/v1/auth/login',
+      response: {
+        'data': {
+          'token': 'tenant-scoped-token',
+          'user': {'id': '507f1f77bcf86cd799439099'},
+        },
+      },
+    );
+    adapter.enqueueGet(path: '/v1/auth/token_validate', response: {'data': {}});
+    adapter.enqueueGet(
+      path: '/v1/me',
+      response: {'data': {'user_id': '507f1f77bcf86cd799439099'}},
+    );
+
+    await repository.loginWithEmailPassword('admin@test.com', 'Secret!234');
+
+    expect(
+      capturedBaseUrls,
+      equals(['https://admin.test/admin/api']),
+    );
+    expect(repository.hasValidSession, isTrue);
+  });
 }
 
 class QueueHttpClientAdapter implements HttpClientAdapter {
@@ -123,6 +162,18 @@ class QueueHttpClientAdapter implements HttpClientAdapter {
     Future<void>? cancelFuture,
   ) async {
     final stub = _stubs.removeAt(0);
+    final requestMethod = options.method.toLowerCase();
+    if (requestMethod != stub.method) {
+      throw TestFailure(
+        'Unexpected method. Expected ${stub.method}, got $requestMethod',
+      );
+    }
+    if (options.path != stub.path) {
+      throw TestFailure(
+        'Unexpected path. Expected ${stub.path}, got ${options.path}',
+      );
+    }
+
     if (stub.throwError) {
       return ResponseBody.fromString(
         jsonEncode({'message': 'Unauthorized'}),

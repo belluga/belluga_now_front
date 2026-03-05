@@ -97,6 +97,7 @@ class AgendaAppBar extends StatelessWidget {
                         onPressed: () => _showRadiusSelector(
                           context,
                           radiusMeters,
+                          controller.minRadiusMeters,
                           maxRadiusMeters,
                         ),
                         icon: Icon(
@@ -191,22 +192,24 @@ class AgendaAppBar extends StatelessWidget {
 
   Future<void> _showRadiusSelector(
     BuildContext context,
-    double selectedMeters,
+    double _selectedMeters,
+    double minRadiusMeters,
     double maxRadiusMeters,
   ) async {
     final theme = Theme.of(context);
-    const minRadiusKm = 1.0;
+    final minRadiusKm = minRadiusMeters / 1000;
     final maxKm = (maxRadiusMeters / 1000) < minRadiusKm
         ? minRadiusKm
         : (maxRadiusMeters / 1000);
-    double currentKm = (selectedMeters / 1000).clamp(minRadiusKm, maxKm);
     await showModalBottomSheet<void>(
       context: context,
       showDragHandle: true,
       builder: (context) {
         return SafeArea(
-          child: StatefulBuilder(
-            builder: (context, setState) {
+          child: StreamValueBuilder<double>(
+            streamValue: controller.radiusMetersStreamValue,
+            builder: (context, radiusMeters) {
+              final currentKm = (radiusMeters / 1000).clamp(minRadiusKm, maxKm);
               return Padding(
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
                 child: Column(
@@ -231,9 +234,6 @@ class AgendaAppBar extends StatelessWidget {
                       max: maxKm,
                       divisions: (maxKm - minRadiusKm).round().clamp(1, 200),
                       onChanged: (value) {
-                        setState(() {
-                          currentKm = value;
-                        });
                         controller.setRadiusMeters(value * 1000);
                       },
                     ),

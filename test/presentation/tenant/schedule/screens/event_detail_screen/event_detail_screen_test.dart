@@ -13,6 +13,7 @@ import 'package:belluga_now/domain/schedule/event_type_model.dart';
 import 'package:belluga_now/domain/schedule/paged_events_result.dart';
 import 'package:belluga_now/domain/schedule/schedule_summary_model.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
+import 'package:belluga_now/domain/schedule/value_objects/event_type_id_value.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_is_confirmed_value.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_total_confirmed_value.dart';
 import 'package:belluga_now/domain/value_objects/color_value.dart';
@@ -250,7 +251,7 @@ EventModel _buildEvent() {
     id: MongoIDValue()..parse('507f1f77bcf86cd799439112'),
     slugValue: SlugValue()..parse('evento-teste'),
     type: EventTypeModel(
-      id: MongoIDValue()..parse('507f1f77bcf86cd799439113'),
+      id: EventTypeIdValue()..parse('event-type-1'),
       name: TitleValue()..parse('Evento Tipo'),
       slug: SlugValue()..parse('evento-tipo'),
       description: DescriptionValue()..parse('Descricao do tipo de evento'),

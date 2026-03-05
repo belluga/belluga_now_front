@@ -45,9 +45,14 @@ class AppDataRepository implements AppDataRepositoryContract {
     appData = await _fetchRemoteOrFail(localInfo);
     final initialThemeMode = _resolveInitialThemeMode();
     themeModeStreamValue.addValue(initialThemeMode);
+    maxRadiusMetersStreamValue.addValue(appData.mapRadiusMaxMeters);
     final storedRadius = await _loadMaxRadiusMeters();
     if (storedRadius != null) {
-      maxRadiusMetersStreamValue.addValue(storedRadius);
+      final clamped = storedRadius.clamp(
+        appData.mapRadiusMinMeters,
+        appData.mapRadiusMaxMeters,
+      );
+      maxRadiusMetersStreamValue.addValue(clamped.toDouble());
     }
     await _precacheLogos();
     await _persistRuntimeMetadata();
@@ -67,11 +72,15 @@ class AppDataRepository implements AppDataRepositoryContract {
   @override
   Future<void> setMaxRadiusMeters(double meters) async {
     if (meters <= 0) return;
+    final clamped = meters.clamp(
+      appData.mapRadiusMinMeters,
+      appData.mapRadiusMaxMeters,
+    );
     // TODO(Delphi): Persist radius preference per user/per device via flutter_secure_storage (and sync backend) once contracts are defined.
-    maxRadiusMetersStreamValue.addValue(meters);
+    maxRadiusMetersStreamValue.addValue(clamped.toDouble());
     await _storage.write(
       key: _maxRadiusStorageKey,
-      value: meters.toString(),
+      value: clamped.toString(),
     );
   }
 

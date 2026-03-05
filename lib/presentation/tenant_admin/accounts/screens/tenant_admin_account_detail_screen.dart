@@ -4,7 +4,7 @@ import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
-import 'package:belluga_now/presentation/tenant_admin/account_profiles/controllers/tenant_admin_account_profiles_controller.dart';
+import 'package:belluga_now/presentation/tenant_admin/accounts/controllers/tenant_admin_account_detail_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_error_banner.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_form_value_utils.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_field_edit_sheet.dart';
@@ -28,8 +28,8 @@ class TenantAdminAccountDetailScreen extends StatefulWidget {
 
 class _TenantAdminAccountDetailScreenState
     extends State<TenantAdminAccountDetailScreen> {
-  final TenantAdminAccountProfilesController _profilesController =
-      GetIt.I.get<TenantAdminAccountProfilesController>();
+  final TenantAdminAccountDetailController _profilesController =
+      GetIt.I.get<TenantAdminAccountDetailController>();
   bool _routeParamNormalized = false;
 
   @override

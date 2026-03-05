@@ -100,99 +100,90 @@ class TenantAdminColorPickerField extends StatelessWidget {
     final picked = await showDialog<Color>(
       context: context,
       builder: (dialogContext) {
-        return StatefulBuilder(
-          builder: (dialogContext, setState) {
-            return AlertDialog(
-              title: Text(labelText),
-              content: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Semantics(
-                      identifier: _dialogPickerSemanticsIdentifier(),
-                      child: ColorPicker(
-                        pickerColor: selected,
-                        onColorChanged: (color) {
-                          setState(() {
-                            selected = Color(
-                              0xFF000000 | (color.toARGB32() & 0x00FFFFFF),
-                            );
-                          });
-                        },
-                        enableAlpha: false,
-                        displayThumbColor: true,
-                        hexInputBar: false,
-                        pickerAreaBorderRadius: const BorderRadius.all(
-                          Radius.circular(12),
+        return AlertDialog(
+          title: Text(labelText),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Semantics(
+                  identifier: _dialogPickerSemanticsIdentifier(),
+                  child: ColorPicker(
+                    pickerColor: selected,
+                    onColorChanged: (color) {
+                      selected = Color(
+                        0xFF000000 | (color.toARGB32() & 0x00FFFFFF),
+                      );
+                    },
+                    enableAlpha: false,
+                    displayThumbColor: true,
+                    hexInputBar: false,
+                    pickerAreaBorderRadius: const BorderRadius.all(
+                      Radius.circular(12),
+                    ),
+                    portraitOnly: true,
+                    labelTypes: const [],
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Semantics(
+                  identifier: _dialogHexSemanticsIdentifier(),
+                  child: Text(
+                    _toHex(selected),
+                    style: Theme.of(dialogContext)
+                        .textTheme
+                        .labelLarge
+                        ?.copyWith(fontWeight: FontWeight.w700),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: _presetColors.map((color) {
+                    return Semantics(
+                      identifier: _dialogPresetSemanticsIdentifier(color),
+                      button: true,
+                      onTap: () {
+                        selected = color;
+                      },
+                      child: FilterChip(
+                        label: Text(_toHex(color)),
+                        selected: false,
+                        avatar: CircleAvatar(
+                          radius: 6,
+                          backgroundColor: color,
                         ),
-                        portraitOnly: true,
-                        labelTypes: const [],
+                        onSelected: (_) {
+                          selected = color;
+                        },
                       ),
-                    ),
-                    const SizedBox(height: 12),
-                    Semantics(
-                      identifier: _dialogHexSemanticsIdentifier(),
-                      child: Text(
-                        _toHex(selected),
-                        style: Theme.of(dialogContext)
-                            .textTheme
-                            .labelLarge
-                            ?.copyWith(fontWeight: FontWeight.w700),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: _presetColors.map((color) {
-                        final isSelected = _toHex(color) == _toHex(selected);
-                        return Semantics(
-                          identifier: _dialogPresetSemanticsIdentifier(color),
-                          button: true,
-                          onTap: () => setState(() {
-                            selected = color;
-                          }),
-                          child: FilterChip(
-                            label: Text(_toHex(color)),
-                            selected: isSelected,
-                            avatar: CircleAvatar(
-                              radius: 6,
-                              backgroundColor: color,
-                            ),
-                            onSelected: (_) {
-                              setState(() {
-                                selected = color;
-                              });
-                            },
-                          ),
-                        );
-                      }).toList(growable: false),
-                    ),
-                  ],
-                ),
-              ),
-              actions: [
-                Semantics(
-                  identifier: _dialogCancelSemanticsIdentifier(),
-                  button: true,
-                  onTap: () => dialogContext.router.pop(),
-                  child: TextButton(
-                    onPressed: () => dialogContext.router.pop(),
-                    child: const Text('Cancelar'),
-                  ),
-                ),
-                Semantics(
-                  identifier: _dialogApplySemanticsIdentifier(),
-                  button: true,
-                  onTap: () => dialogContext.router.pop(selected),
-                  child: FilledButton(
-                    onPressed: () => dialogContext.router.pop(selected),
-                    child: const Text('Aplicar cor'),
-                  ),
+                    );
+                  }).toList(growable: false),
                 ),
               ],
-            );
-          },
+            ),
+          ),
+          actions: [
+            Semantics(
+              identifier: _dialogCancelSemanticsIdentifier(),
+              button: true,
+              onTap: () => dialogContext.router.pop(),
+              child: TextButton(
+                onPressed: () => dialogContext.router.pop(),
+                child: const Text('Cancelar'),
+              ),
+            ),
+            Semantics(
+              identifier: _dialogApplySemanticsIdentifier(),
+              button: true,
+              onTap: () => dialogContext.router.pop(selected),
+              child: FilledButton(
+                onPressed: () => dialogContext.router.pop(selected),
+                child: const Text('Aplicar cor'),
+              ),
+            ),
+          ],
         );
       },
     );

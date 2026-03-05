@@ -1,3 +1,4 @@
+import 'package:integration_test/integration_test.dart';
 import 'dart:typed_data';
 
 import 'package:belluga_now/domain/repositories/tenant_admin_account_profiles_repository_contract.dart';
@@ -24,7 +25,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
 import 'package:image_picker_platform_interface/image_picker_platform_interface.dart';
-import 'package:integration_test/integration_test.dart';
+
 
 import 'support/tenant_admin_image_crop_harness.dart';
 

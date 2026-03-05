@@ -6,6 +6,7 @@ import 'package:belluga_now/domain/repositories/user_location_repository_contrac
 import 'package:belluga_now/domain/repositories/user_events_repository_contract.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/map/geo_distance.dart';
+import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/event_search_screen/models/agenda_app_bar_controller.dart';
@@ -14,7 +15,8 @@ import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart' show Disposable, GetIt;
 import 'package:stream_value/core/stream_value.dart';
 
-class EventSearchScreenController implements Disposable, AgendaAppBarController {
+class EventSearchScreenController
+    implements Disposable, AgendaAppBarController {
   EventSearchScreenController({
     ScheduleRepositoryContract? scheduleRepository,
     UserEventsRepositoryContract? userEventsRepository,
@@ -43,7 +45,7 @@ class EventSearchScreenController implements Disposable, AgendaAppBarController 
   final AppDataRepositoryContract _appDataRepository;
 
   static const int _pageSize = 10;
-  static const double _defaultRadiusMeters = 50000.0;
+  static const double _fallbackRadiusMeters = 50000.0;
 
   @override
   late TextEditingController searchController;
@@ -78,6 +80,13 @@ class EventSearchScreenController implements Disposable, AgendaAppBarController 
   bool _isScrollListenerAttached = false;
   bool _isDisposed = false;
   bool _isAutoPaging = false;
+  double? _effectiveOriginLat;
+  double? _effectiveOriginLng;
+
+  void _setValue<T>(StreamValue<T> stream, T value) {
+    if (_isDisposed) return;
+    stream.addValue(value);
+  }
 
   void _initializeStateHolders() {
     searchController = TextEditingController();
@@ -93,7 +102,7 @@ class EventSearchScreenController implements Disposable, AgendaAppBarController 
     inviteFilterStreamValue =
         StreamValue<InviteFilter>(defaultValue: InviteFilter.none);
     radiusMetersStreamValue =
-        StreamValue<double>(defaultValue: _defaultRadiusMeters);
+        StreamValue<double>(defaultValue: _fallbackRadiusMeters);
     _isScrollListenerAttached = false;
   }
 
@@ -111,13 +120,13 @@ class EventSearchScreenController implements Disposable, AgendaAppBarController 
     }
     await _invitesRepository.init();
     _resetInternalState();
-    showHistoryStreamValue.addValue(startWithHistory);
-    final maxRadius = _appDataRepository.maxRadiusMeters;
-    radiusMetersStreamValue.addValue(maxRadius);
+    _setValue(showHistoryStreamValue, startWithHistory);
+    _setValue(radiusMetersStreamValue, _resolveDefaultRadiusMeters());
     _attachScrollListener();
     _listenForStatusChanges();
     _listenForLocationChanges();
     _listenForRadiusChanges();
+    await _resolveEffectiveOrigin(warmUpIfPossible: true);
     await _refresh();
     _restartEventStream();
   }
@@ -141,16 +150,31 @@ class EventSearchScreenController implements Disposable, AgendaAppBarController 
     });
   }
 
-  Future<void> _refresh() async {
+  Future<void> _refresh({bool warmUpIfPossible = true}) async {
     await _waitForOngoingFetch();
     _currentPage = 1;
     _hasMore = true;
-    hasMoreStreamValue.addValue(true);
+    _setValue(hasMoreStreamValue, true);
     _fetchedEvents.clear();
-    displayedEventsStreamValue.addValue(const []);
-    isInitialLoadingStreamValue.addValue(true);
-    await _fetchPage(page: 1);
-    isInitialLoadingStreamValue.addValue(false);
+    _setValue(displayedEventsStreamValue, const <EventModel>[]);
+    _setValue(isInitialLoadingStreamValue, true);
+    try {
+      await _resolveEffectiveOrigin(warmUpIfPossible: warmUpIfPossible);
+      if (!_hasEffectiveOrigin) {
+        _hasMore = false;
+        _setValue(hasMoreStreamValue, false);
+        _setValue(displayedEventsStreamValue, const <EventModel>[]);
+        return;
+      }
+
+      _hasMore = true;
+      _setValue(hasMoreStreamValue, true);
+      await _fetchPage(page: 1);
+    } catch (error) {
+      debugPrint('EventSearchScreenController._refresh failed: $error');
+    } finally {
+      _setValue(isInitialLoadingStreamValue, false);
+    }
   }
 
   Future<void> _waitForOngoingFetch() async {
@@ -160,15 +184,15 @@ class EventSearchScreenController implements Disposable, AgendaAppBarController 
   }
 
   Future<void> loadNextPage() async {
-    if (!_hasMore || _isFetching) return;
+    if (!_hasEffectiveOrigin || !_hasMore || _isFetching) return;
     await _fetchPage(page: _currentPage + 1);
   }
 
   Future<void> _fetchPage({required int page}) async {
-    if (_isFetching) return;
+    if (_isFetching || !_hasEffectiveOrigin) return;
     _isFetching = true;
     if (page > 1 && !_isDisposed) {
-      isPageLoadingStreamValue.addValue(true);
+      _setValue(isPageLoadingStreamValue, true);
     }
 
     try {
@@ -179,8 +203,8 @@ class EventSearchScreenController implements Disposable, AgendaAppBarController 
         searchQuery: searchController.text,
         confirmedOnly:
             inviteFilterStreamValue.value == InviteFilter.confirmedOnly,
-        originLat: _userLocationRepository?.userLocationStreamValue.value?.latitude,
-        originLng: _userLocationRepository?.userLocationStreamValue.value?.longitude,
+        originLat: _effectiveOriginLat,
+        originLng: _effectiveOriginLng,
         maxDistanceMeters: radiusMetersStreamValue.value,
       );
 
@@ -194,13 +218,13 @@ class EventSearchScreenController implements Disposable, AgendaAppBarController 
       }
 
       _hasMore = result.hasMore;
-      hasMoreStreamValue.addValue(_hasMore);
+      _setValue(hasMoreStreamValue, _hasMore);
       _currentPage = page;
       _applyFiltersAndPublish();
     } finally {
       _isFetching = false;
       if (!_isDisposed) {
-        isPageLoadingStreamValue.addValue(false);
+        _setValue(isPageLoadingStreamValue, false);
       }
     }
   }
@@ -208,13 +232,13 @@ class EventSearchScreenController implements Disposable, AgendaAppBarController 
   @override
   void toggleHistory() {
     final currentValue = showHistoryStreamValue.value;
-    showHistoryStreamValue.addValue(!currentValue);
+    _setValue(showHistoryStreamValue, !currentValue);
     _refresh();
     _restartEventStream();
   }
 
   void setInviteFilter(InviteFilter filter) {
-    inviteFilterStreamValue.addValue(filter);
+    _setValue(inviteFilterStreamValue, filter);
     _applyFiltersAndPublish();
     _restartEventStream();
   }
@@ -236,7 +260,7 @@ class EventSearchScreenController implements Disposable, AgendaAppBarController 
   }
 
   void setSearchActive(bool active) {
-    searchActiveStreamValue.addValue(active);
+    _setValue(searchActiveStreamValue, active);
     if (active) {
       focusNode.requestFocus();
     } else {
@@ -252,8 +276,8 @@ class EventSearchScreenController implements Disposable, AgendaAppBarController 
   @override
   void setRadiusMeters(double meters) {
     if (meters <= 0) return;
-    radiusMetersStreamValue.addValue(meters);
-    _applyFiltersAndPublish();
+    _setValue(radiusMetersStreamValue, _clampRadiusMeters(meters));
+    unawaited(_refresh());
     _restartEventStream();
   }
 
@@ -269,7 +293,7 @@ class EventSearchScreenController implements Disposable, AgendaAppBarController 
 
   @override
   Future<void> searchEvents(String query) async {
-    await _refresh();
+    await _refresh(warmUpIfPossible: false);
     _restartEventStream();
   }
 
@@ -298,29 +322,11 @@ class EventSearchScreenController implements Disposable, AgendaAppBarController 
     }).toList();
   }
 
-  List<EventModel> _applyRadiusFilter(List<EventModel> events) {
-    final userCoordinate = _userLocationRepository?.userLocationStreamValue.value;
-    if (userCoordinate == null) return events;
-    final radiusMeters = radiusMetersStreamValue.value;
-    return events.where((event) {
-      final eventCoordinate = event.coordinate;
-      if (eventCoordinate == null) return false;
-      final distanceMeters = haversineDistanceMeters(
-        lat1: userCoordinate.latitude,
-        lon1: userCoordinate.longitude,
-        lat2: eventCoordinate.latitude,
-        lon2: eventCoordinate.longitude,
-      );
-      return distanceMeters <= radiusMeters;
-    }).toList();
-  }
-
   void _applyFiltersAndPublish() {
     if (_isDisposed) return;
     final inviteFiltered = _applyInviteFilter(_fetchedEvents);
-    final radiusFiltered = _applyRadiusFilter(inviteFiltered);
-    displayedEventsStreamValue.addValue(radiusFiltered);
-    _maybeAutoPage(radiusFiltered);
+    _setValue(displayedEventsStreamValue, inviteFiltered);
+    _maybeAutoPage(inviteFiltered);
   }
 
   void _maybeAutoPage(List<EventModel> filtered) {
@@ -359,7 +365,9 @@ class EventSearchScreenController implements Disposable, AgendaAppBarController 
   bool hasPendingInvite(String eventId) => pendingInviteCount(eventId) > 0;
 
   String? distanceLabelFor(VenueEventResume event) {
-    final userCoordinate = _userLocationRepository?.userLocationStreamValue.value;
+    final userCoordinate =
+        _userLocationRepository?.userLocationStreamValue.value ??
+            _userLocationRepository?.lastKnownLocationStreamValue.value;
     final eventCoordinate = event.coordinate;
     if (userCoordinate == null || eventCoordinate == null) {
       return null;
@@ -399,59 +407,171 @@ class EventSearchScreenController implements Disposable, AgendaAppBarController 
     if (repo == null) return;
     _userLocationSubscription?.cancel();
     _userLocationSubscription = repo.userLocationStreamValue.stream.listen((_) {
-      _applyFiltersAndPublish();
-      _restartEventStream();
+      unawaited(_handleLocationUpdate());
     });
   }
 
   void _listenForRadiusChanges() {
     _radiusSubscription?.cancel();
     _radiusSubscription =
-        _appDataRepository.maxRadiusMetersStreamValue.stream.listen((meters) {
+        _appDataRepository.maxRadiusMetersStreamValue.stream.listen((_) {
       final current = radiusMetersStreamValue.value;
-      final clamped = current > meters ? meters : current;
-      radiusMetersStreamValue.addValue(clamped);
-      _applyFiltersAndPublish();
+      final clamped = _clampRadiusMeters(current);
+      _setValue(radiusMetersStreamValue, clamped);
+      unawaited(_refresh());
       _restartEventStream();
     });
   }
+
+  bool get _hasEffectiveOrigin =>
+      _effectiveOriginLat != null && _effectiveOriginLng != null;
+
+  Future<void> _handleLocationUpdate() async {
+    final changed = await _resolveEffectiveOrigin(warmUpIfPossible: false);
+    if (!changed) {
+      return;
+    }
+
+    await _refresh();
+    _restartEventStream();
+  }
+
+  Future<bool> _resolveEffectiveOrigin({
+    required bool warmUpIfPossible,
+  }) async {
+    final currentLat = _effectiveOriginLat;
+    final currentLng = _effectiveOriginLng;
+
+    final userCoordinate = await _resolveUserCoordinate(
+      warmUpIfPossible: warmUpIfPossible,
+    );
+    if (userCoordinate != null) {
+      _effectiveOriginLat = userCoordinate.latitude;
+      _effectiveOriginLng = userCoordinate.longitude;
+      return _effectiveOriginLat != currentLat ||
+          _effectiveOriginLng != currentLng;
+    }
+
+    final tenantDefaultOrigin = _resolveTenantDefaultOriginCoordinate();
+    if (tenantDefaultOrigin != null) {
+      _effectiveOriginLat = tenantDefaultOrigin.latitude;
+      _effectiveOriginLng = tenantDefaultOrigin.longitude;
+      return _effectiveOriginLat != currentLat ||
+          _effectiveOriginLng != currentLng;
+    }
+
+    _effectiveOriginLat = null;
+    _effectiveOriginLng = null;
+    return currentLat != null || currentLng != null;
+  }
+
+  Future<CityCoordinate?> _resolveUserCoordinate({
+    required bool warmUpIfPossible,
+  }) async {
+    final repository = _userLocationRepository;
+    if (repository == null) {
+      return null;
+    }
+
+    if (warmUpIfPossible) {
+      try {
+        await repository.warmUpIfPermitted();
+      } on Object {
+        // Best-effort warm up.
+      }
+    }
+
+    return repository.userLocationStreamValue.value ??
+        repository.lastKnownLocationStreamValue.value;
+  }
+
+  CityCoordinate? _resolveTenantDefaultOriginCoordinate() {
+    try {
+      return _appDataRepository.appData.tenantDefaultOrigin;
+    } on Object {
+      return null;
+    }
+  }
+
+  @override
+  double get minRadiusMeters => _resolveMinRadiusMeters();
 
   @override
   StreamValue<double> get maxRadiusMetersStreamValue =>
       _appDataRepository.maxRadiusMetersStreamValue;
 
+  double _resolveMinRadiusMeters() {
+    final configured = _configuredMinRadiusMeters();
+    return configured > 0 ? configured : 1000;
+  }
+
+  double _resolveDefaultRadiusMeters() {
+    final configured = _configuredDefaultRadiusMeters();
+    if (configured > 0) {
+      return _clampRadiusMeters(configured);
+    }
+    return _clampRadiusMeters(_appDataRepository.maxRadiusMeters);
+  }
+
+  double _configuredMinRadiusMeters() {
+    try {
+      return _appDataRepository.appData.mapRadiusMinMeters;
+    } on Object {
+      return 1000;
+    }
+  }
+
+  double _configuredDefaultRadiusMeters() {
+    try {
+      return _appDataRepository.appData.mapRadiusDefaultMeters;
+    } on Object {
+      return _appDataRepository.maxRadiusMeters;
+    }
+  }
+
+  double _clampRadiusMeters(double meters) {
+    final min = _resolveMinRadiusMeters();
+    final max = _appDataRepository.maxRadiusMeters;
+    final effectiveMax = max < min ? min : max;
+    return meters.clamp(min, effectiveMax).toDouble();
+  }
+
   void _restartEventStream() {
     if (_isDisposed) return;
     _eventsStreamSubscription?.cancel();
+    if (!_hasEffectiveOrigin) {
+      _lastEventStreamId = null;
+      return;
+    }
     _eventsStreamSubscription = _scheduleRepository
         .watchEventsStream(
-          searchQuery: searchController.text,
-          confirmedOnly:
-              inviteFilterStreamValue.value == InviteFilter.confirmedOnly,
-          originLat: _userLocationRepository?.userLocationStreamValue.value?.latitude,
-          originLng: _userLocationRepository?.userLocationStreamValue.value?.longitude,
-          maxDistanceMeters: radiusMetersStreamValue.value,
-          lastEventId: _lastEventStreamId,
-          showPastOnly: showHistoryStreamValue.value,
-        )
+      searchQuery: searchController.text,
+      confirmedOnly:
+          inviteFilterStreamValue.value == InviteFilter.confirmedOnly,
+      originLat: _effectiveOriginLat,
+      originLng: _effectiveOriginLng,
+      maxDistanceMeters: radiusMetersStreamValue.value,
+      lastEventId: _lastEventStreamId,
+      showPastOnly: showHistoryStreamValue.value,
+    )
         .listen(
-          (delta) {
-            if (delta.lastEventId != null && delta.lastEventId!.isNotEmpty) {
-              _lastEventStreamId = delta.lastEventId;
-            }
-            _refreshFromStream();
-          },
-          onError: (_) {
-            _lastEventStreamId = null;
-            _refreshFromStream();
-            _scheduleStreamReconnect();
-          },
-          onDone: () {
-            _lastEventStreamId = null;
-            _refreshFromStream();
-            _scheduleStreamReconnect();
-          },
-        );
+      (delta) {
+        if (delta.lastEventId != null && delta.lastEventId!.isNotEmpty) {
+          _lastEventStreamId = delta.lastEventId;
+        }
+        _refreshFromStream();
+      },
+      onError: (_) {
+        _lastEventStreamId = null;
+        _refreshFromStream();
+        _scheduleStreamReconnect();
+      },
+      onDone: () {
+        _lastEventStreamId = null;
+        _refreshFromStream();
+        _scheduleStreamReconnect();
+      },
+    );
 
     if (_lastEventStreamId == null) {
       _refreshFromStream();
@@ -462,7 +582,7 @@ class EventSearchScreenController implements Disposable, AgendaAppBarController 
     if (_isStreamRefreshing || _isDisposed) return;
     _isStreamRefreshing = true;
     try {
-      await _refresh();
+      await _refresh(warmUpIfPossible: false);
     } finally {
       _isStreamRefreshing = false;
     }
@@ -479,6 +599,11 @@ class EventSearchScreenController implements Disposable, AgendaAppBarController 
   @override
   void onDispose() {
     _isDisposed = true;
+    _confirmedEventsSubscription?.cancel();
+    _pendingInvitesSubscription?.cancel();
+    _userLocationSubscription?.cancel();
+    _radiusSubscription?.cancel();
+    _eventsStreamSubscription?.cancel();
     displayedEventsStreamValue.dispose();
     isInitialLoadingStreamValue.dispose();
     isPageLoadingStreamValue.dispose();
@@ -487,11 +612,6 @@ class EventSearchScreenController implements Disposable, AgendaAppBarController 
     searchActiveStreamValue.dispose();
     inviteFilterStreamValue.dispose();
     radiusMetersStreamValue.dispose();
-    _confirmedEventsSubscription?.cancel();
-    _pendingInvitesSubscription?.cancel();
-    _userLocationSubscription?.cancel();
-    _radiusSubscription?.cancel();
-    _eventsStreamSubscription?.cancel();
     focusNode.dispose();
     searchController.dispose();
     scrollController.dispose();

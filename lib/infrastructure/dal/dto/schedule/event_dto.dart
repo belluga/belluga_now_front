@@ -46,63 +46,208 @@ class EventDTO {
   final List<String> tags;
 
   factory EventDTO.fromJson(Map<String, dynamic> json) {
+    final typePayload = _asMap(json['type']);
+    final venuePayload = _asMap(json['venue']);
+    final locationPayload = _asMap(json['location']);
+    final geoLocationPayload = _asMap(json['geo_location']);
+    final location = _resolveLocation(
+      rawLocation: json['location'],
+      venuePayload: venuePayload,
+    );
+    final coordinates = _resolveCoordinates(
+      latitude: _asDouble(json['latitude']),
+      longitude: _asDouble(json['longitude']),
+      locationPayload: locationPayload,
+      geoLocationPayload: geoLocationPayload,
+    );
+
     return EventDTO(
-      id: json['id'] as String,
-      slug: json['slug'] as String? ?? '',
+      id: _asString(json['id']) ??
+          _asString(json['event_id']) ??
+          _asString(json['occurrence_id']) ??
+          '',
+      slug: _asString(json['slug']) ?? '',
       type: EventTypeDTO(
-        id: json['type']['id'] as String,
-        name: json['type']['name'] as String? ?? '',
-        slug: json['type']['slug'] as String? ?? '',
-        description: json['type']['description'] as String? ?? '',
-        icon: json['type']['icon'] as String?,
-        color: json['type']['color'] as String?,
+        id: _asString(typePayload['id']) ?? '',
+        name: _asString(typePayload['name']) ?? '',
+        slug: _asString(typePayload['slug']) ?? '',
+        description: _asString(typePayload['description']) ?? '',
+        icon: _asNullableString(typePayload['icon']),
+        color: _asNullableString(typePayload['color']),
       ),
-      title: json['title'] as String? ?? '',
-      content: json['content'] as String? ?? '',
-      venue: json['venue'] as Map<String, dynamic>?,
-      location: json['location'] as String? ??
-          (json['venue'] is Map<String, dynamic>
-              ? (json['venue'] as Map<String, dynamic>)['display_name'] as String?
-              : null) ??
-          '',
-      latitude: (json['latitude'] as num?)?.toDouble(),
-      longitude: (json['longitude'] as num?)?.toDouble(),
-      thumb: json['thumb'] != null
-          ? ThumbDTO.fromJson(json['thumb'] as Map<String, dynamic>)
+      title: _asString(json['title']) ?? '',
+      content: _asString(json['content']) ?? '',
+      venue: venuePayload.isEmpty ? null : venuePayload,
+      location: location,
+      latitude: coordinates.latitude,
+      longitude: coordinates.longitude,
+      thumb: _asMap(json['thumb']).isNotEmpty
+          ? ThumbDTO.fromJson(_asMap(json['thumb']))
           : null,
-      dateTimeStart: json['date_time_start'] as String? ??
-          json['start_time'] as String? ??
+      dateTimeStart: _asString(json['date_time_start']) ??
+          _asString(json['starts_at']) ??
+          _asString(json['start_time']) ??
           '',
-      dateTimeEnd:
-          json['date_time_end'] as String? ?? json['end_time'] as String?,
+      dateTimeEnd: _asNullableString(json['date_time_end']) ??
+          _asNullableString(json['ends_at']) ??
+          _asNullableString(json['end_time']),
       artists: (json['artists'] as List<dynamic>? ?? [])
           .map(
             (artist) => EventArtistDTO(
-              id: artist['id'] as String,
-              name: artist['display_name'] as String? ??
-                  artist['name'] as String? ??
+              id: _asString(_asMap(artist)['id']) ?? '',
+              name: _asString(_asMap(artist)['display_name']) ??
+                  _asString(_asMap(artist)['name']) ??
                   '',
-              avatarUrl: artist['avatar_url'] as String?,
-              highlight: artist['highlight'] as bool?,
+              avatarUrl: _asNullableString(_asMap(artist)['avatar_url']),
+              highlight: _asMap(artist)['highlight'] == null
+                  ? null
+                  : _asBool(_asMap(artist)['highlight']),
             ),
           )
           .toList(),
-      isConfirmed: json['is_confirmed'] as bool? ?? false,
-      totalConfirmed: json['total_confirmed'] as int? ?? 0,
-      receivedInvites: (json['received_invites'] as List<dynamic>?)
-          ?.map((e) => e as Map<String, dynamic>)
-          .toList(),
-      sentInvites: (json['sent_invites'] as List<dynamic>?)
-          ?.map((e) => e as Map<String, dynamic>)
-          .toList(),
-      friendsGoing: (json['friends_going'] as List<dynamic>?)
-          ?.map((e) => e as Map<String, dynamic>)
-          .toList(),
+      isConfirmed: _asBool(json['is_confirmed']),
+      totalConfirmed: _asInt(json['total_confirmed']),
+      receivedInvites: _asMapList(json['received_invites']),
+      sentInvites: _asMapList(json['sent_invites']),
+      friendsGoing: _asMapList(json['friends_going']),
       tags: (json['tags'] as List<dynamic>?)
               ?.map((e) => e.toString())
               .toList() ??
           const [],
     );
+  }
+
+  static Map<String, dynamic> _asMap(dynamic value) {
+    if (value is Map<String, dynamic>) {
+      return value;
+    }
+    if (value is Map) {
+      return Map<String, dynamic>.from(value);
+    }
+    return <String, dynamic>{};
+  }
+
+  static String? _asString(dynamic value) {
+    if (value == null) return null;
+    if (value is String) {
+      return value;
+    }
+    if (value is num || value is bool) {
+      return value.toString();
+    }
+    return null;
+  }
+
+  static String? _asNullableString(dynamic value) {
+    if (value == null) {
+      return null;
+    }
+    if (value is String) {
+      return value;
+    }
+    if (value is num || value is bool) {
+      return value.toString();
+    }
+    return null;
+  }
+
+  static int _asInt(dynamic value) {
+    if (value is int) {
+      return value;
+    }
+    if (value is num) {
+      return value.toInt();
+    }
+    if (value is String) {
+      return int.tryParse(value) ?? 0;
+    }
+    return 0;
+  }
+
+  static double? _asDouble(dynamic value) {
+    if (value is double) {
+      return value;
+    }
+    if (value is num) {
+      return value.toDouble();
+    }
+    if (value is String) {
+      return double.tryParse(value);
+    }
+    return null;
+  }
+
+  static bool _asBool(dynamic value) {
+    if (value is bool) {
+      return value;
+    }
+    if (value is num) {
+      return value != 0;
+    }
+    if (value is String) {
+      final normalized = value.trim().toLowerCase();
+      return normalized == 'true' || normalized == '1';
+    }
+    return false;
+  }
+
+  static List<Map<String, dynamic>>? _asMapList(dynamic value) {
+    if (value is! List) {
+      return null;
+    }
+
+    return value
+        .whereType<Map>()
+        .map((item) => Map<String, dynamic>.from(item))
+        .toList();
+  }
+
+  static String _resolveLocation({
+    required dynamic rawLocation,
+    required Map<String, dynamic> venuePayload,
+  }) {
+    final locationAsString = _asString(rawLocation);
+    if (locationAsString != null) {
+      return locationAsString;
+    }
+
+    final locationMap = _asMap(rawLocation);
+    final locationFromMap = _asString(locationMap['display_name']) ??
+        _asString(locationMap['name']) ??
+        _asString(locationMap['label']) ??
+        _asString(locationMap['address']) ??
+        _asString(locationMap['address_line']);
+    if (locationFromMap != null) {
+      return locationFromMap;
+    }
+
+    return _asString(venuePayload['display_name']) ??
+        _asString(venuePayload['name']) ??
+        '';
+  }
+
+  static ({double? latitude, double? longitude}) _resolveCoordinates({
+    required double? latitude,
+    required double? longitude,
+    required Map<String, dynamic> locationPayload,
+    required Map<String, dynamic> geoLocationPayload,
+  }) {
+    if (latitude != null && longitude != null) {
+      return (latitude: latitude, longitude: longitude);
+    }
+
+    final locationGeo = _asMap(locationPayload['geo']);
+    final geoSource = locationGeo.isNotEmpty ? locationGeo : geoLocationPayload;
+    final coordinates = geoSource['coordinates'];
+    if (coordinates is List && coordinates.length >= 2) {
+      final lng = _asDouble(coordinates[0]);
+      final lat = _asDouble(coordinates[1]);
+      if (lat != null && lng != null) {
+        return (latitude: lat, longitude: lng);
+      }
+    }
+
+    return (latitude: latitude, longitude: longitude);
   }
 
   Map<String, dynamic> toJson() {

@@ -1,4 +1,6 @@
 import 'package:belluga_now/presentation/tenant_admin/settings/controllers/tenant_admin_settings_controller.dart';
+import 'package:belluga_now/presentation/tenant_admin/settings/tenant_admin_settings_keys.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_form_value_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 
@@ -6,9 +8,11 @@ class TenantAdminSettingsLocalPreferencesSection extends StatelessWidget {
   const TenantAdminSettingsLocalPreferencesSection({
     super.key,
     required this.controller,
+    required this.onOpenDefaultOriginPicker,
   });
 
   final TenantAdminSettingsController controller;
+  final Future<void> Function() onOpenDefaultOriginPicker;
 
   @override
   Widget build(BuildContext context) {
@@ -85,7 +89,99 @@ class TenantAdminSettingsLocalPreferencesSection extends StatelessWidget {
             );
           },
         ),
+        const SizedBox(height: 20),
+        _buildDefaultOriginEditor(context),
       ],
+    );
+  }
+
+  Widget _buildDefaultOriginEditor(BuildContext context) {
+    final theme = Theme.of(context);
+    return Card(
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Origem padrão de localização',
+              style: theme.textTheme.titleMedium,
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Usada quando a localização do usuário não estiver disponível.',
+              style: theme.textTheme.bodySmall,
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
+              key:
+                  TenantAdminSettingsKeys.localPreferencesDefaultOriginLatField,
+              controller: controller.mapDefaultOriginLatitudeController,
+              keyboardType:
+                  const TextInputType.numberWithOptions(decimal: true),
+              inputFormatters: tenantAdminCoordinateInputFormatters,
+              decoration: const InputDecoration(
+                labelText: 'Latitude',
+                hintText: 'Ex: -20.673600',
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
+              key:
+                  TenantAdminSettingsKeys.localPreferencesDefaultOriginLngField,
+              controller: controller.mapDefaultOriginLongitudeController,
+              keyboardType:
+                  const TextInputType.numberWithOptions(decimal: true),
+              inputFormatters: tenantAdminCoordinateInputFormatters,
+              decoration: const InputDecoration(
+                labelText: 'Longitude',
+                hintText: 'Ex: -40.497600',
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
+              key: TenantAdminSettingsKeys
+                  .localPreferencesDefaultOriginLabelField,
+              controller: controller.mapDefaultOriginLabelController,
+              decoration: const InputDecoration(
+                labelText: 'Rótulo (opcional)',
+                hintText: 'Ex: Centro de Guarapari',
+              ),
+            ),
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              key: TenantAdminSettingsKeys.localPreferencesSelectOnMapButton,
+              onPressed: onOpenDefaultOriginPicker,
+              icon: const Icon(Icons.map_outlined),
+              label: const Text('Selecionar no mapa'),
+            ),
+            const SizedBox(height: 12),
+            StreamValueBuilder<bool>(
+              streamValue: controller.mapUiSubmittingStreamValue,
+              builder: (context, isSubmitting) {
+                return Align(
+                  alignment: Alignment.centerRight,
+                  child: FilledButton.icon(
+                    key: TenantAdminSettingsKeys
+                        .localPreferencesSaveOriginButton,
+                    onPressed:
+                        isSubmitting ? null : controller.saveMapUiSettings,
+                    icon: isSubmitting
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.save_outlined),
+                    label: const Text('Salvar origem padrão'),
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
