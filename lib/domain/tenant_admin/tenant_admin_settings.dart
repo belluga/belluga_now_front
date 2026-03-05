@@ -1,5 +1,58 @@
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 
+class TenantAdminMapDefaultOrigin {
+  const TenantAdminMapDefaultOrigin({
+    required this.lat,
+    required this.lng,
+    this.label,
+  });
+
+  final double lat;
+  final double lng;
+  final String? label;
+
+  Map<String, dynamic> toJson() {
+    return {
+      'lat': lat,
+      'lng': lng,
+      if (label != null && label!.trim().isNotEmpty) 'label': label!.trim(),
+    };
+  }
+}
+
+class TenantAdminMapUiSettings {
+  const TenantAdminMapUiSettings({
+    required this.rawMapUi,
+    required this.defaultOrigin,
+  });
+
+  const TenantAdminMapUiSettings.empty()
+      : rawMapUi = const <String, dynamic>{},
+        defaultOrigin = null;
+
+  final Map<String, dynamic> rawMapUi;
+  final TenantAdminMapDefaultOrigin? defaultOrigin;
+
+  TenantAdminMapUiSettings applyDefaultOrigin(
+    TenantAdminMapDefaultOrigin? origin,
+  ) {
+    final nextRaw = Map<String, dynamic>.from(rawMapUi);
+    if (origin == null) {
+      nextRaw['default_origin'] = const <String, dynamic>{
+        'lat': null,
+        'lng': null,
+        'label': null,
+      };
+    } else {
+      nextRaw['default_origin'] = origin.toJson();
+    }
+    return TenantAdminMapUiSettings(
+      rawMapUi: Map<String, dynamic>.unmodifiable(nextRaw),
+      defaultOrigin: origin,
+    );
+  }
+}
+
 class TenantAdminFirebaseSettings {
   const TenantAdminFirebaseSettings({
     required this.apiKey,

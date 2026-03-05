@@ -1,10 +1,10 @@
 import 'package:auto_route/auto_route.dart';
-import 'package:belluga_now/presentation/landlord_area/auth/controllers/landlord_login_controller.dart';
+import 'package:belluga_now/presentation/landlord_area/auth/controllers/landlord_login_sheet_controller_contract.dart';
 import 'package:flutter/material.dart';
 
 Future<bool> showLandlordLoginSheet(
   BuildContext context, {
-  required LandlordLoginController controller,
+  required LandlordLoginSheetControllerContract controller,
 }) async {
   controller.resetForm();
   return _showLandlordLoginSheet(
@@ -99,7 +99,7 @@ Future<bool> _showLandlordLoginSheet(
                   width: double.infinity,
                   child: FilledButton(
                     key: const ValueKey('landlord_login_sheet_submit_button'),
-                    onPressed: () async {
+                    onPressed: () {
                       final email = emailController.text.trim();
                       final password = passwordController.text.trim();
                       final messenger = ScaffoldMessenger.of(ctx);
@@ -111,14 +111,20 @@ Future<bool> _showLandlordLoginSheet(
                         );
                         return;
                       }
-                      try {
-                        didLogin = await onSubmit(email, password);
+                      onSubmit(email, password).then((submitted) {
+                        didLogin = submitted;
+                        if (!ctx.mounted) {
+                          return;
+                        }
                         router.pop();
-                      } catch (e) {
+                      }).catchError((e) {
+                        if (!ctx.mounted) {
+                          return;
+                        }
                         messenger.showSnackBar(
                           SnackBar(content: Text('Falha ao entrar: $e')),
                         );
-                      }
+                      });
                     },
                     child: const Text('Entrar'),
                   ),

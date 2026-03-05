@@ -31,8 +31,6 @@ class _TenantAdminAccountCreateScreenState
     extends State<TenantAdminAccountCreateScreen> {
   final TenantAdminAccountsController _controller =
       GetIt.I.get<TenantAdminAccountsController>();
-  final TenantAdminImageIngestionService _imageIngestionService =
-      GetIt.I.get<TenantAdminImageIngestionService>();
 
   @override
   void initState() {
@@ -140,7 +138,7 @@ class _TenantAdminAccountCreateScreenState
       } else {
         _controller.updateCreateCoverBusy(true);
       }
-      final picked = await _imageIngestionService.pickFromDevice(slot: slot);
+      final picked = await _controller.pickImageFromDevice(slot: slot);
       if (picked == null) {
         return;
       }
@@ -152,7 +150,12 @@ class _TenantAdminAccountCreateScreenState
         context: context,
         sourceFile: picked,
         slot: slot,
-        ingestionService: _imageIngestionService,
+        readBytesForCrop: _controller.readImageBytesForCrop,
+        prepareCroppedFile: (croppedData, cropSlot) =>
+            _controller.prepareCroppedImage(
+          croppedData,
+          slot: cropSlot,
+        ),
       );
       if (cropped == null) {
         return;
@@ -212,7 +215,7 @@ class _TenantAdminAccountCreateScreenState
       } else {
         _controller.updateCreateCoverBusy(true);
       }
-      final sourceFile = await _imageIngestionService.fetchFromUrlForCrop(
+      final sourceFile = await _controller.fetchImageFromUrlForCrop(
         imageUrl: url,
       );
       if (!mounted) {
@@ -222,7 +225,12 @@ class _TenantAdminAccountCreateScreenState
         context: context,
         sourceFile: sourceFile,
         slot: slot,
-        ingestionService: _imageIngestionService,
+        readBytesForCrop: _controller.readImageBytesForCrop,
+        prepareCroppedFile: (croppedData, cropSlot) =>
+            _controller.prepareCroppedImage(
+          croppedData,
+          slot: cropSlot,
+        ),
       );
       if (cropped == null) return;
       if (isAvatar) _controller.updateCreateAvatarFile(cropped);
@@ -295,11 +303,11 @@ class _TenantAdminAccountCreateScreenState
       return;
     }
     final location = _currentLocation();
-    final avatarUpload = await _imageIngestionService.buildUpload(
+    final avatarUpload = await _controller.buildImageUpload(
       state.avatarFile,
       slot: TenantAdminImageSlot.avatar,
     );
-    final coverUpload = await _imageIngestionService.buildUpload(
+    final coverUpload = await _controller.buildImageUpload(
       state.coverFile,
       slot: TenantAdminImageSlot.cover,
     );
@@ -312,16 +320,27 @@ class _TenantAdminAccountCreateScreenState
     if (!context.mounted || !created) {
       return;
     }
+    _closeCreateScreenOrShowSuccess(
+      context: context,
+      messenger: messenger,
+    );
+  }
 
+  void _closeCreateScreenOrShowSuccess({
+    required BuildContext context,
+    required ScaffoldMessengerState messenger,
+  }) {
     final router = context.router;
-    final closed = await router.maybePop(true);
-    if (!closed && context.mounted) {
+    router.maybePop(true).then((closed) {
+      if (!context.mounted || closed) {
+        return;
+      }
       messenger.showSnackBar(
         const SnackBar(
           content: Text('Conta e perfil salvos.'),
         ),
       );
-    }
+    });
   }
 
   @override
@@ -497,14 +516,17 @@ class _TenantAdminAccountCreateScreenState
                           Align(
                             alignment: Alignment.centerLeft,
                             child: TextButton.icon(
-                              onPressed: () async {
-                                await context.router.push(
+                              onPressed: () {
+                                context.router
+                                    .push(
                                   const TenantAdminProfileTypeCreateRoute(),
-                                );
-                                if (!mounted) {
-                                  return;
-                                }
-                                await _controller.loadProfileTypes();
+                                )
+                                    .then((_) {
+                                  if (!mounted) {
+                                    return;
+                                  }
+                                  _controller.loadProfileTypes();
+                                });
                               },
                               icon: const Icon(Icons.add),
                               label: const Text('Criar tipo de perfil'),

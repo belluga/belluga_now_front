@@ -1,6 +1,7 @@
 import 'package:belluga_now/domain/repositories/landlord_auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/landlord_tenants_repository_contract.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_settings.dart';
+import 'package:dio/dio.dart';
 import 'package:belluga_now/infrastructure/repositories/landlord_auth_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/landlord_tenants_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/tenant_admin/tenant_admin_selected_tenant_repository.dart';
@@ -47,6 +48,16 @@ void main() {
       fail('Invalid tenant host value: "$raw"');
     }
     return uri.host.trim().toLowerCase();
+  }
+
+  String deriveLandlordOriginFromTenantHost(String tenantHost) {
+    final labels = tenantHost.trim().toLowerCase().split('.');
+    if (labels.length < 2) {
+      fail('Invalid tenant host for landlord derivation: "$tenantHost"');
+    }
+    final landlordHost =
+        labels.length >= 3 ? labels.sublist(1).join('.') : labels.join('.');
+    return 'https://$landlordHost';
   }
 
   String mutateHexColor(
@@ -118,8 +129,16 @@ void main() {
       final adminPassword =
           requireDefine('LANDLORD_ADMIN_PASSWORD', adminPasswordDefine);
       final expectedTenantHost = normalizeHost(tenantDomainDefine);
+      final landlordOrigin =
+          deriveLandlordOriginFromTenantHost(expectedTenantHost);
 
-      final authRepository = LandlordAuthRepository();
+      final authRepository = LandlordAuthRepository(
+        dio: Dio(
+          BaseOptions(
+            baseUrl: '$landlordOrigin/admin/api',
+          ),
+        ),
+      );
       GetIt.I.registerSingleton<LandlordAuthRepositoryContract>(authRepository);
 
       TenantAdminBrandingSettings? originalBranding;
@@ -130,8 +149,10 @@ void main() {
         await authRepository.loginWithEmailPassword(adminEmail, adminPassword);
         expect(authRepository.hasValidSession, isTrue);
 
-        final tenantsRepository =
-            LandlordTenantsRepository(landlordAuthRepository: authRepository);
+        final tenantsRepository = LandlordTenantsRepository(
+          landlordAuthRepository: authRepository,
+          landlordOriginOverride: landlordOrigin,
+        );
         final tenants = await tenantsRepository.fetchTenants();
         expect(tenants, isNotEmpty);
 

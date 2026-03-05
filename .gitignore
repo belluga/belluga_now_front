@@ -59,10 +59,7 @@ AGENTS.md
 scripts
 delphi-ai
 foundation_documentation
-!.agent/
-!.agent/**
-.agent/logs
-.agent/test-run-progress.md
+.agent/
 .codex
 .cline/
 .clinerules

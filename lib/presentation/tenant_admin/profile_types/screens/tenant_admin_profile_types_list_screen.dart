@@ -21,30 +21,18 @@ class _TenantAdminProfileTypesListScreenState
     extends State<TenantAdminProfileTypesListScreen> {
   final TenantAdminProfileTypesController _controller =
       GetIt.I.get<TenantAdminProfileTypesController>();
-  final ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
     super.initState();
-    _scrollController.addListener(_handleScroll);
+    _controller.bindTypesListScrollPagination();
     _controller.loadTypes();
   }
 
   @override
   void dispose() {
-    _scrollController
-      ..removeListener(_handleScroll)
-      ..dispose();
+    _controller.unbindTypesListScrollPagination();
     super.dispose();
-  }
-
-  void _handleScroll() {
-    if (!_scrollController.hasClients) return;
-    final position = _scrollController.position;
-    const threshold = 320.0;
-    if (position.pixels + threshold >= position.maxScrollExtent) {
-      _controller.loadNextTypesPage();
-    }
   }
 
   Future<void> _confirmDelete(String type, String label) async {
@@ -173,7 +161,7 @@ class _TenantAdminProfileTypesListScreenState
   }) {
     final itemCount = loadedTypes.length + (hasMore ? 1 : 0);
     return ListView.separated(
-      controller: _scrollController,
+      controller: _controller.typesListScrollController,
       padding: const EdgeInsets.only(bottom: 112),
       itemCount: itemCount,
       separatorBuilder: (_, __) => const SizedBox(height: 12),

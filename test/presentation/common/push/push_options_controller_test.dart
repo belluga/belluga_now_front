@@ -1,10 +1,10 @@
-import 'package:belluga_now/presentation/shared/push/controllers/push_options_controller.dart';
+import 'package:belluga_now/presentation/shared/push/controllers/push_options_resolver.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:push_handler/push_handler.dart';
 
 void main() {
   test('returns static favorites for getFavorites method', () async {
-    final controller = PushOptionsController();
+    final controller = PushOptionsResolver();
 
     final items = await controller.resolve(
       const OptionSource(
@@ -20,7 +20,7 @@ void main() {
   });
 
   test('returns static tags for getTags method', () async {
-    final controller = PushOptionsController();
+    final controller = PushOptionsResolver();
 
     final items = await controller.resolve(
       const OptionSource(
@@ -35,7 +35,7 @@ void main() {
   });
 
   test('returns empty list for unknown source type', () async {
-    final controller = PushOptionsController();
+    final controller = PushOptionsResolver();
 
     final items = await controller.resolve(
       const OptionSource(

@@ -28,37 +28,25 @@ class _TenantAdminTaxonomyTermsScreenState
     extends State<TenantAdminTaxonomyTermsScreen> {
   final TenantAdminTaxonomiesController _controller =
       GetIt.I.get<TenantAdminTaxonomiesController>();
-  final ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
     super.initState();
-    _scrollController.addListener(_handleScroll);
+    _controller.bindTermsListScrollPagination();
     _controller.loadTerms(widget.taxonomyId);
   }
 
   @override
   void dispose() {
-    _scrollController
-      ..removeListener(_handleScroll)
-      ..dispose();
+    _controller.unbindTermsListScrollPagination();
     super.dispose();
   }
 
-  void _handleScroll() {
-    if (!_scrollController.hasClients) return;
-    final position = _scrollController.position;
-    const threshold = 320.0;
-    if (position.pixels + threshold >= position.maxScrollExtent) {
-      _controller.loadNextTermsPage();
-    }
-  }
-
-  Future<void> _openTermForm({
+  void _openTermForm({
     TenantAdminTaxonomyTermDefinition? term,
-  }) async {
+  }) {
     if (term == null) {
-      await context.router.push(
+      context.router.push(
         TenantAdminTaxonomyTermCreateRoute(
           taxonomyId: widget.taxonomyId,
           taxonomyName: widget.taxonomyName,
@@ -66,7 +54,7 @@ class _TenantAdminTaxonomyTermsScreenState
       );
       return;
     }
-    await context.router.push(
+    context.router.push(
       TenantAdminTaxonomyTermEditRoute(
         taxonomyId: widget.taxonomyId,
         taxonomyName: widget.taxonomyName,
@@ -201,7 +189,7 @@ class _TenantAdminTaxonomyTermsScreenState
   }) {
     final itemCount = loadedTerms.length + (hasMore ? 1 : 0);
     return ListView.separated(
-      controller: _scrollController,
+      controller: _controller.termsListScrollController,
       padding: const EdgeInsets.only(bottom: 112),
       itemCount: itemCount,
       separatorBuilder: (_, __) => const SizedBox(height: 12),
@@ -234,7 +222,7 @@ class _TenantAdminTaxonomyTermsScreenState
             trailing: PopupMenuButton<String>(
               onSelected: (value) async {
                 if (value == 'edit') {
-                  await _openTermForm(term: term);
+                  _openTermForm(term: term);
                 }
                 if (value == 'delete') {
                   await _confirmDelete(term);

@@ -1,3 +1,4 @@
+import 'package:integration_test/integration_test.dart';
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:auto_route/auto_route.dart';
@@ -25,7 +26,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
 import 'package:image/image.dart' as img;
-import 'package:integration_test/integration_test.dart';
+
 import 'package:image_picker_platform_interface/image_picker_platform_interface.dart';
 
 void main() {
@@ -78,6 +79,7 @@ void main() {
     await _pumpUntilFound(tester, find.text('Recortar avatar'));
     expect(find.text('Recortar avatar'), findsOneWidget);
     expect(find.text('Usar'), findsOneWidget);
+    await _pumpUntilFound(tester, find.byType(Crop));
     final crop = tester.widget<Crop>(find.byType(Crop));
     expect(crop.aspectRatio, 1.0);
   });
@@ -124,6 +126,7 @@ void main() {
     await _pumpUntilFound(tester, find.text('Recortar capa'));
     expect(find.text('Recortar capa'), findsOneWidget);
     expect(find.text('Usar'), findsOneWidget);
+    await _pumpUntilFound(tester, find.byType(Crop));
     final crop = tester.widget<Crop>(find.byType(Crop));
     expect(crop.aspectRatio, closeTo(16 / 9, 0.0001));
   });
@@ -155,6 +158,7 @@ void main() {
       urlSheetTitle: 'URL do avatar',
       expectedCropTitle: 'Recortar avatar',
     );
+    await _pumpUntilFound(tester, find.byType(Crop));
     final crop = tester.widget<Crop>(find.byType(Crop));
     expect(crop.aspectRatio, 1.0);
   });
@@ -186,6 +190,7 @@ void main() {
       urlSheetTitle: 'URL da capa',
       expectedCropTitle: 'Recortar capa',
     );
+    await _pumpUntilFound(tester, find.byType(Crop));
     final crop = tester.widget<Crop>(find.byType(Crop));
     expect(crop.aspectRatio, closeTo(16 / 9, 0.0001));
   });

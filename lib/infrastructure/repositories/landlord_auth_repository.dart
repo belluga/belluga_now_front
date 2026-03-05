@@ -1,13 +1,19 @@
 import 'package:belluga_now/domain/repositories/landlord_auth_repository_contract.dart';
-import 'package:belluga_now/application/configurations/belluga_constants.dart';
+import 'package:belluga_now/domain/app_data/app_data.dart';
+import 'package:belluga_now/infrastructure/dal/dao/backend_context.dart';
 import 'package:belluga_now/infrastructure/repositories/auth_repository.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:get_it/get_it.dart';
 import 'package:stream_value/main.dart';
 
 class LandlordAuthRepository implements LandlordAuthRepositoryContract {
-  LandlordAuthRepository({Dio? dio}) : _dio = dio;
+  LandlordAuthRepository({
+    Dio? dio,
+    Dio Function(String baseUrl)? dioFactory,
+  })  : _dio = dio,
+        _dioFactory = dioFactory;
 
   static const String _tokenStorageKey = 'landlord_token';
   static const String _userIdStorageKey = 'landlord_user_id';
@@ -15,6 +21,7 @@ class LandlordAuthRepository implements LandlordAuthRepositoryContract {
   final StreamValue<String?> _tokenStreamValue = StreamValue<String?>();
   final StreamValue<String?> _userIdStreamValue = StreamValue<String?>();
   Dio? _dio;
+  final Dio Function(String baseUrl)? _dioFactory;
 
   static FlutterSecureStorage get storage => FlutterSecureStorage();
 
@@ -28,12 +35,15 @@ class LandlordAuthRepository implements LandlordAuthRepositoryContract {
     if (_dio != null) {
       return _dio!;
     }
-    final landlordOrigin = _resolveLandlordOrigin();
-    _dio = Dio(
-      BaseOptions(
-        baseUrl: '$landlordOrigin/admin/api',
-      ),
-    );
+    final adminApiBaseUrl = _resolveAdminApiBaseUrl();
+    final dioFactory = _dioFactory;
+    _dio = dioFactory != null
+        ? dioFactory(adminApiBaseUrl)
+        : Dio(
+            BaseOptions(
+              baseUrl: adminApiBaseUrl,
+            ),
+          );
     return _dio!;
   }
 
@@ -175,57 +185,64 @@ class LandlordAuthRepository implements LandlordAuthRepositoryContract {
     }
   }
 
-  String _resolveLandlordOrigin() {
-    final raw = BellugaConstants.landlordDomain.trim();
-    final uri = Uri.tryParse(raw);
-    if (raw.isEmpty ||
-        uri == null ||
-        !uri.hasScheme ||
-        (uri.scheme != 'http' && uri.scheme != 'https') ||
-        uri.host.trim().isEmpty ||
-        uri.userInfo.isNotEmpty ||
-        (uri.path.isNotEmpty && uri.path != '/') ||
-        uri.query.isNotEmpty ||
-        uri.fragment.isNotEmpty) {
-      throw StateError(
-        'Invalid LANDLORD_DOMAIN: "$raw". '
-        'Expected a full origin, e.g. https://belluga.app',
-      );
+  String _resolveAdminApiBaseUrl() {
+    final appDataAdminUrl = _resolveAppDataAdminApiBaseUrl();
+    if (appDataAdminUrl != null) {
+      return appDataAdminUrl;
     }
 
-    if (_isIpLiteralHost(uri.host)) {
-      throw StateError(
-        'LANDLORD_DOMAIN host "${uri.host}" is IP-only and cannot resolve tenant subdomains. '
-        'Use a wildcard DNS host such as http://192.168.0.10.nip.io:8081.',
-      );
+    final runtimeAdminUrl = _resolveRuntimeAdminApiBaseUrl();
+    if (runtimeAdminUrl != null) {
+      return runtimeAdminUrl;
     }
 
-    final origin =
-        uri.replace(path: '', query: null, fragment: null).toString();
-    return origin.endsWith('/')
-        ? origin.substring(0, origin.length - 1)
-        : origin;
+    throw StateError(
+      'Failed to resolve landlord auth admin base URL. '
+      'Root cause: runtime app context is unavailable (AppData/BackendContext).',
+    );
   }
 
-  bool _isIpLiteralHost(String host) {
-    final normalized = host.trim();
-    if (normalized.isEmpty) {
-      return false;
+  String? _resolveAppDataAdminApiBaseUrl() {
+    if (!GetIt.I.isRegistered<AppData>()) {
+      return null;
     }
 
-    if (normalized.contains(':')) {
-      return true;
+    final rawHref = GetIt.I.get<AppData>().href.trim();
+    if (rawHref.isEmpty) {
+      return null;
     }
 
-    final ipv4Pattern = RegExp(r'^\d{1,3}(?:\.\d{1,3}){3}$');
-    if (!ipv4Pattern.hasMatch(normalized)) {
-      return false;
+    final hrefUri = Uri.tryParse(rawHref);
+    if (hrefUri == null || !hrefUri.hasScheme || hrefUri.host.trim().isEmpty) {
+      return null;
     }
 
-    return normalized
-        .split('.')
-        .map(int.tryParse)
-        .every((segment) => segment != null && segment >= 0 && segment <= 255);
+    return hrefUri.resolve('/admin/api').toString();
+  }
+
+  String? _resolveRuntimeAdminApiBaseUrl() {
+    if (!GetIt.I.isRegistered<BackendContext>()) {
+      return null;
+    }
+
+    final raw = GetIt.I.get<BackendContext>().adminUrl.trim();
+    if (raw.isEmpty) {
+      return null;
+    }
+
+    final uri = Uri.tryParse(raw);
+    if (uri == null ||
+        !uri.hasScheme ||
+        (uri.scheme != 'http' && uri.scheme != 'https') ||
+        uri.host.trim().isEmpty) {
+      return null;
+    }
+
+    final normalized =
+        uri.replace(query: null, fragment: null).toString();
+    return normalized.endsWith('/')
+        ? normalized.substring(0, normalized.length - 1)
+        : normalized;
   }
 }
 

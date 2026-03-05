@@ -49,8 +49,10 @@ class TenantAdminOrganizationsController implements Disposable {
   final GlobalKey<FormState> formKey = GlobalKey<FormState>();
   final TextEditingController nameController = TextEditingController();
   final TextEditingController descriptionController = TextEditingController();
+  final ScrollController organizationsListScrollController = ScrollController();
 
   bool _isDisposed = false;
+  bool _organizationsListScrollBound = false;
   StreamSubscription<String?>? _tenantScopeSubscription;
   String? _lastTenantDomain;
 
@@ -92,6 +94,34 @@ class TenantAdminOrganizationsController implements Disposable {
     await _organizationsRepository.loadNextOrganizationsPage(
       pageSize: _organizationsPageSize,
     );
+  }
+
+  void bindOrganizationsListScrollPagination() {
+    if (_organizationsListScrollBound) {
+      return;
+    }
+    _organizationsListScrollBound = true;
+    organizationsListScrollController.addListener(_handleOrganizationsListScroll);
+  }
+
+  void unbindOrganizationsListScrollPagination() {
+    if (!_organizationsListScrollBound) {
+      return;
+    }
+    _organizationsListScrollBound = false;
+    organizationsListScrollController
+        .removeListener(_handleOrganizationsListScroll);
+  }
+
+  void _handleOrganizationsListScroll() {
+    if (!organizationsListScrollController.hasClients) {
+      return;
+    }
+    final position = organizationsListScrollController.position;
+    const threshold = 320.0;
+    if (position.pixels + threshold >= position.maxScrollExtent) {
+      unawaited(loadNextOrganizationsPage());
+    }
   }
 
   Future<TenantAdminOrganization> createOrganization({
@@ -217,9 +247,11 @@ class TenantAdminOrganizationsController implements Disposable {
 
   void dispose() {
     _isDisposed = true;
+    unbindOrganizationsListScrollPagination();
     _tenantScopeSubscription?.cancel();
     nameController.dispose();
     descriptionController.dispose();
+    organizationsListScrollController.dispose();
     organizationDetailStreamValue.dispose();
     organizationDetailLoadingStreamValue.dispose();
     organizationDetailErrorStreamValue.dispose();

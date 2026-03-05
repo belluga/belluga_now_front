@@ -51,11 +51,10 @@ class _SwipeableCardState extends State<SwipeableCard>
         .animate(_controller);
 
     _controller.addListener(() {
-      setState(() {
-        if (!_isDragging) {
-          _dragOffset = _animation.value;
-        }
-      });
+      if (!_isDragging) {
+        _dragOffset = _animation.value;
+        _requestRebuild();
+      }
     });
     _controller.addStatusListener((status) {
       if (status != AnimationStatus.completed) return;
@@ -65,7 +64,15 @@ class _SwipeableCardState extends State<SwipeableCard>
       callback();
       _isAnimatingOut = false;
       _dragOffset = Offset.zero;
+      _requestRebuild();
     });
+  }
+
+  void _requestRebuild() {
+    if (!mounted) {
+      return;
+    }
+    (context as Element).markNeedsBuild();
   }
 
   @override
@@ -78,13 +85,13 @@ class _SwipeableCardState extends State<SwipeableCard>
     if (_isAnimatingOut) return;
     _isDragging = true;
     _controller.stop();
+    _requestRebuild();
   }
 
   void _onPanUpdate(DragUpdateDetails details) {
     if (_isAnimatingOut) return;
-    setState(() {
-      _dragOffset += details.delta;
-    });
+    _dragOffset += details.delta;
+    _requestRebuild();
   }
 
   void _onPanEnd(DragEndDetails details) {
@@ -155,6 +162,7 @@ class _SwipeableCardState extends State<SwipeableCard>
       CurvedAnimation(parent: _controller, curve: Curves.easeOut),
     );
     _controller.forward(from: 0);
+    _requestRebuild();
   }
 
   void _animateOut(Offset target, VoidCallback onComplete) {
@@ -164,6 +172,7 @@ class _SwipeableCardState extends State<SwipeableCard>
       CurvedAnimation(parent: _controller, curve: Curves.easeIn),
     );
     _controller.forward(from: 0);
+    _requestRebuild();
   }
 
   @override

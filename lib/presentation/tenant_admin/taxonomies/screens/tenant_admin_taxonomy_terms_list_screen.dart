@@ -28,30 +28,18 @@ class _TenantAdminTaxonomyTermsListScreenState
     extends State<TenantAdminTaxonomyTermsListScreen> {
   final TenantAdminTaxonomyTermsController _controller =
       GetIt.I.get<TenantAdminTaxonomyTermsController>();
-  final ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
     super.initState();
-    _scrollController.addListener(_handleScroll);
+    _controller.bindTermsListScrollPagination();
     _controller.loadTerms(widget.taxonomyId);
   }
 
   @override
   void dispose() {
-    _scrollController
-      ..removeListener(_handleScroll)
-      ..dispose();
+    _controller.unbindTermsListScrollPagination();
     super.dispose();
-  }
-
-  void _handleScroll() {
-    if (!_scrollController.hasClients) return;
-    final position = _scrollController.position;
-    const threshold = 320.0;
-    if (position.pixels + threshold >= position.maxScrollExtent) {
-      _controller.loadNextTermsPage();
-    }
   }
 
   Future<void> _confirmDelete(TenantAdminTaxonomyTermDefinition term) async {
@@ -69,9 +57,9 @@ class _TenantAdminTaxonomyTermsListScreenState
     );
   }
 
-  Future<void> _openForm({TenantAdminTaxonomyTermDefinition? term}) async {
+  void _openForm({TenantAdminTaxonomyTermDefinition? term}) {
     if (term == null) {
-      await context.router.push(
+      context.router.push(
         TenantAdminTaxonomyTermCreateRoute(
           taxonomyId: widget.taxonomyId,
           taxonomyName: widget.taxonomyName,
@@ -79,7 +67,7 @@ class _TenantAdminTaxonomyTermsListScreenState
       );
       return;
     }
-    await context.router.push(
+    context.router.push(
       TenantAdminTaxonomyTermEditRoute(
         taxonomyId: widget.taxonomyId,
         taxonomyName: widget.taxonomyName,
@@ -199,7 +187,7 @@ class _TenantAdminTaxonomyTermsListScreenState
   }) {
     final itemCount = loadedTerms.length + (hasMore ? 1 : 0);
     return ListView.separated(
-      controller: _scrollController,
+      controller: _controller.termsListScrollController,
       padding: const EdgeInsets.only(bottom: 112),
       itemCount: itemCount,
       separatorBuilder: (_, __) => const SizedBox(height: 12),

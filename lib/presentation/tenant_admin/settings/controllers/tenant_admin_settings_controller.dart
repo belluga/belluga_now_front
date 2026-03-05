@@ -1,11 +1,16 @@
 import 'dart:async';
+import 'dart:typed_data';
 
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_settings_repository_contract.dart';
+import 'package:belluga_now/domain/services/tenant_admin_location_selection_contract.dart';
 import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_settings.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_form_value_utils.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_image_ingestion_service.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:image_picker/image_picker.dart';
@@ -24,6 +29,8 @@ class TenantAdminSettingsController implements Disposable {
     AppDataRepositoryContract? appDataRepository,
     TenantAdminSettingsRepositoryContract? settingsRepository,
     TenantAdminTenantScopeContract? tenantScope,
+    TenantAdminLocationSelectionContract? locationSelectionService,
+    TenantAdminImageIngestionService? imageIngestionService,
   })  : _appDataRepository =
             appDataRepository ?? GetIt.I.get<AppDataRepositoryContract>(),
         _settingsRepository = settingsRepository ??
@@ -31,11 +38,19 @@ class TenantAdminSettingsController implements Disposable {
         _tenantScope = tenantScope ??
             (GetIt.I.isRegistered<TenantAdminTenantScopeContract>()
                 ? GetIt.I.get<TenantAdminTenantScopeContract>()
-                : null);
+                : null),
+        _locationSelectionService = locationSelectionService ??
+            GetIt.I.get<TenantAdminLocationSelectionContract>(),
+        _imageIngestionService = imageIngestionService ??
+            (GetIt.I.isRegistered<TenantAdminImageIngestionService>()
+                ? GetIt.I.get<TenantAdminImageIngestionService>()
+                : TenantAdminImageIngestionService());
 
   final AppDataRepositoryContract _appDataRepository;
   final TenantAdminSettingsRepositoryContract _settingsRepository;
   final TenantAdminTenantScopeContract? _tenantScope;
+  final TenantAdminLocationSelectionContract _locationSelectionService;
+  final TenantAdminImageIngestionService _imageIngestionService;
 
   static const List<String> telemetryTypes = [
     'mixpanel',
@@ -47,6 +62,12 @@ class TenantAdminSettingsController implements Disposable {
       StreamValue<bool>(defaultValue: false);
   final StreamValue<String?> remoteErrorStreamValue = StreamValue<String?>();
   final StreamValue<String?> remoteSuccessStreamValue = StreamValue<String?>();
+  final StreamValue<bool> mapUiSubmittingStreamValue =
+      StreamValue<bool>(defaultValue: false);
+  final StreamValue<TenantAdminMapUiSettings> mapUiSettingsStreamValue =
+      StreamValue<TenantAdminMapUiSettings>(
+    defaultValue: const TenantAdminMapUiSettings.empty(),
+  );
 
   final StreamValue<bool> firebaseSubmittingStreamValue =
       StreamValue<bool>(defaultValue: false);
@@ -121,11 +142,21 @@ class TenantAdminSettingsController implements Disposable {
       TextEditingController();
   final TextEditingController brandingSecondarySeedColorController =
       TextEditingController();
+  final TextEditingController mapDefaultOriginLatitudeController =
+      TextEditingController();
+  final TextEditingController mapDefaultOriginLongitudeController =
+      TextEditingController();
+  final TextEditingController mapDefaultOriginLabelController =
+      TextEditingController();
 
   bool _initialized = false;
   String? _initializedTenantDomain;
   StreamSubscription<String?>? _tenantScopeSubscription;
   StreamSubscription<TenantAdminBrandingSettings?>? _brandingSubscription;
+  StreamSubscription<TenantAdminLocation?>? _locationSelectionSubscription;
+  TenantAdminMapUiSettings _mapUiSettings =
+      const TenantAdminMapUiSettings.empty();
+  bool _localPreferencesFlowBound = false;
 
   AppData get appData => _appDataRepository.appData;
   StreamValue<ThemeMode?> get themeModeStreamValue =>
@@ -135,7 +166,9 @@ class TenantAdminSettingsController implements Disposable {
   StreamValue<TenantAdminBrandingSettings?> get brandingSettingsStreamValue =>
       _settingsRepository.brandingSettingsStreamValue;
 
-  Future<void> init() async {
+  Future<void> init({
+    bool loadBranding = true,
+  }) async {
     _bindTenantScope();
     _bindBrandingRepositoryStream();
     final normalizedTenantDomain =
@@ -144,7 +177,8 @@ class TenantAdminSettingsController implements Disposable {
       if (_initializedTenantDomain != normalizedTenantDomain) {
         _initializedTenantDomain = normalizedTenantDomain;
         _resetTenantScopedForms();
-        if (normalizedTenantDomain != null || _tenantScope == null) {
+        if (loadBranding &&
+            (normalizedTenantDomain != null || _tenantScope == null)) {
           await loadBrandingSettings();
         }
       }
@@ -154,7 +188,8 @@ class TenantAdminSettingsController implements Disposable {
     _initializedTenantDomain = normalizedTenantDomain;
     _seedFirebaseAndPushFromSnapshot();
     _clearBrandingDraftForRemoteLoad();
-    if (normalizedTenantDomain != null || _tenantScope == null) {
+    if (loadBranding &&
+        (normalizedTenantDomain != null || _tenantScope == null)) {
       await loadBrandingSettings();
     }
   }
@@ -175,9 +210,35 @@ class TenantAdminSettingsController implements Disposable {
         _resetTenantScopedForms();
         if (normalized != null) {
           unawaited(loadBrandingSettings());
+          if (_localPreferencesFlowBound) {
+            unawaited(loadMapUiSettings());
+          }
         }
       },
     );
+  }
+
+  void _bindLocationSelection() {
+    if (_locationSelectionSubscription != null) {
+      return;
+    }
+    _locationSelectionSubscription = _locationSelectionService
+        .confirmedLocationStreamValue.stream
+        .listen((location) {
+      if (location == null) {
+        return;
+      }
+      mapDefaultOriginLatitudeController.text =
+          location.latitude.toStringAsFixed(6);
+      mapDefaultOriginLongitudeController.text =
+          location.longitude.toStringAsFixed(6);
+      _locationSelectionService.clearConfirmedLocation();
+    });
+  }
+
+  void bindLocalPreferencesFlow() {
+    _localPreferencesFlowBound = true;
+    _bindLocationSelection();
   }
 
   void _bindBrandingRepositoryStream() {
@@ -246,6 +307,84 @@ class TenantAdminSettingsController implements Disposable {
       remoteErrorStreamValue.addValue(error.toString());
     } finally {
       isRemoteLoadingStreamValue.addValue(false);
+    }
+  }
+
+  Future<void> loadMapUiSettings() async {
+    isRemoteLoadingStreamValue.addValue(true);
+    remoteErrorStreamValue.addValue(null);
+    try {
+      final settings = await _settingsRepository.fetchMapUiSettings();
+      _applyMapUiSettings(settings);
+    } catch (error) {
+      remoteErrorStreamValue.addValue(error.toString());
+    } finally {
+      isRemoteLoadingStreamValue.addValue(false);
+    }
+  }
+
+  TenantAdminLocation? currentMapDefaultOriginLocation() {
+    final lat =
+        tenantAdminParseLatitude(mapDefaultOriginLatitudeController.text);
+    final lng =
+        tenantAdminParseLongitude(mapDefaultOriginLongitudeController.text);
+    if (lat == null || lng == null) {
+      return null;
+    }
+    return TenantAdminLocation(latitude: lat, longitude: lng);
+  }
+
+  Future<void> saveMapUiSettings() async {
+    final latitudeRaw = mapDefaultOriginLatitudeController.text.trim();
+    if (latitudeRaw.isEmpty) {
+      remoteErrorStreamValue.addValue(
+        'Latitude da origem padrão é obrigatória.',
+      );
+      return;
+    }
+    final latitude = tenantAdminParseLatitude(latitudeRaw);
+    if (latitude == null) {
+      remoteErrorStreamValue.addValue(
+        'Latitude da origem padrão inválida.',
+      );
+      return;
+    }
+
+    final longitudeRaw = mapDefaultOriginLongitudeController.text.trim();
+    if (longitudeRaw.isEmpty) {
+      remoteErrorStreamValue.addValue(
+        'Longitude da origem padrão é obrigatória.',
+      );
+      return;
+    }
+    final longitude = tenantAdminParseLongitude(longitudeRaw);
+    if (longitude == null) {
+      remoteErrorStreamValue.addValue(
+        'Longitude da origem padrão inválida.',
+      );
+      return;
+    }
+
+    mapUiSubmittingStreamValue.addValue(true);
+    try {
+      final label = mapDefaultOriginLabelController.text.trim();
+      final nextSettings = _mapUiSettings.applyDefaultOrigin(
+        TenantAdminMapDefaultOrigin(
+          lat: latitude,
+          lng: longitude,
+          label: label.isEmpty ? null : label,
+        ),
+      );
+      final updated = await _settingsRepository.updateMapUiSettings(
+        settings: nextSettings,
+      );
+      _applyMapUiSettings(updated);
+      await _refreshAppDataSnapshot();
+      _reportSuccess('Origem padrão atualizada com sucesso.');
+    } catch (error) {
+      remoteErrorStreamValue.addValue(error.toString());
+    } finally {
+      mapUiSubmittingStreamValue.addValue(false);
     }
   }
 
@@ -379,6 +518,40 @@ class TenantAdminSettingsController implements Disposable {
     selectedTelemetryTypeStreamValue.addValue(type);
   }
 
+  Future<XFile?> pickBrandingImageFromDevice({
+    required TenantAdminImageSlot slot,
+  }) {
+    return _imageIngestionService.pickFromDevice(slot: slot);
+  }
+
+  Future<XFile> fetchBrandingImageFromUrlForCrop({
+    required String imageUrl,
+  }) {
+    return _imageIngestionService.fetchFromUrlForCrop(imageUrl: imageUrl);
+  }
+
+  Future<Uint8List> readImageBytesForCrop(XFile sourceFile) {
+    return _imageIngestionService.readBytesForCrop(sourceFile);
+  }
+
+  Future<XFile> prepareCroppedImage(
+    Uint8List croppedData, {
+    required TenantAdminImageSlot slot,
+  }) {
+    return _imageIngestionService.prepareBytesAsXFile(
+      croppedData,
+      slot: slot,
+      applyAspectCrop: false,
+    );
+  }
+
+  Future<TenantAdminMediaUpload?> buildBrandingUpload(
+    XFile? file, {
+    required TenantAdminImageSlot slot,
+  }) {
+    return _imageIngestionService.buildUpload(file, slot: slot);
+  }
+
   void updateTelemetryTrackAll(bool value) {
     telemetryTrackAllStreamValue.addValue(value);
   }
@@ -495,6 +668,7 @@ class TenantAdminSettingsController implements Disposable {
     clearBrandingFile(TenantAdminBrandingAssetSlot.pwaIcon);
     _seedFirebaseAndPushFromSnapshot();
     _clearBrandingDraftForRemoteLoad();
+    _resetMapUiDraft();
   }
 
   void _clearBrandingDraftForRemoteLoad() {
@@ -643,6 +817,43 @@ class TenantAdminSettingsController implements Disposable {
     clearBrandingFile(TenantAdminBrandingAssetSlot.pwaIcon);
   }
 
+  void _applyMapUiSettings(TenantAdminMapUiSettings settings) {
+    _mapUiSettings = settings;
+    mapUiSettingsStreamValue.addValue(settings);
+    final defaultOrigin = settings.defaultOrigin;
+    if (defaultOrigin == null) {
+      mapDefaultOriginLatitudeController.clear();
+      mapDefaultOriginLongitudeController.clear();
+      mapDefaultOriginLabelController.clear();
+      return;
+    }
+
+    mapDefaultOriginLatitudeController.text =
+        defaultOrigin.lat.toStringAsFixed(6);
+    mapDefaultOriginLongitudeController.text =
+        defaultOrigin.lng.toStringAsFixed(6);
+    mapDefaultOriginLabelController.text = defaultOrigin.label ?? '';
+  }
+
+  void _resetMapUiDraft() {
+    _mapUiSettings = const TenantAdminMapUiSettings.empty();
+    mapUiSettingsStreamValue.addValue(const TenantAdminMapUiSettings.empty());
+    mapUiSubmittingStreamValue.addValue(false);
+    mapDefaultOriginLatitudeController.clear();
+    mapDefaultOriginLongitudeController.clear();
+    mapDefaultOriginLabelController.clear();
+  }
+
+  Future<void> _refreshAppDataSnapshot() async {
+    try {
+      await _appDataRepository.init();
+    } on Object catch (error) {
+      debugPrint(
+        'TenantAdminSettingsController._refreshAppDataSnapshot failed: $error',
+      );
+    }
+  }
+
   List<String> _parseCsv(String raw) {
     return raw
         .split(',')
@@ -747,6 +958,8 @@ class TenantAdminSettingsController implements Disposable {
     isRemoteLoadingStreamValue.dispose();
     remoteErrorStreamValue.dispose();
     remoteSuccessStreamValue.dispose();
+    mapUiSubmittingStreamValue.dispose();
+    mapUiSettingsStreamValue.dispose();
     firebaseSubmittingStreamValue.dispose();
     pushSubmittingStreamValue.dispose();
     telemetrySubmittingStreamValue.dispose();
@@ -779,7 +992,11 @@ class TenantAdminSettingsController implements Disposable {
     brandingTenantNameController.dispose();
     brandingPrimarySeedColorController.dispose();
     brandingSecondarySeedColorController.dispose();
+    mapDefaultOriginLatitudeController.dispose();
+    mapDefaultOriginLongitudeController.dispose();
+    mapDefaultOriginLabelController.dispose();
     _tenantScopeSubscription?.cancel();
     _brandingSubscription?.cancel();
+    _locationSelectionSubscription?.cancel();
   }
 }

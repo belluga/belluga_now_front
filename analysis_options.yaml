@@ -1,9 +1,13 @@
 include: package:flutter_lints/flutter.yaml
 
 analyzer:
+  plugins:
+    - custom_lint
   exclude:
     - lib/application/configurations/belluga_nattive_icons.dart
     - "**/*.mocks.dart"
+    - tool/belluga_custom_lint/test_fixtures/**
+    - "**/test_fixtures/**"
 
 linter:
   rules:

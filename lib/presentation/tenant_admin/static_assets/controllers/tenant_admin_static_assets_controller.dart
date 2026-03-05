@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:typed_data';
 
 import 'package:belluga_now/domain/repositories/tenant_admin_static_assets_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_taxonomies_repository_contract.dart';
@@ -12,6 +13,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_definition.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_form_value_utils.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_image_ingestion_service.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart' show Disposable, GetIt;
 import 'package:image_picker/image_picker.dart';
@@ -23,6 +25,7 @@ class TenantAdminStaticAssetsController implements Disposable {
     TenantAdminTaxonomiesRepositoryContract? taxonomiesRepository,
     TenantAdminLocationSelectionContract? locationSelection,
     TenantAdminTenantScopeContract? tenantScope,
+    TenantAdminImageIngestionService? imageIngestionService,
   })  : _repository = repository ??
             GetIt.I.get<TenantAdminStaticAssetsRepositoryContract>(),
         _taxonomiesRepository = taxonomiesRepository ??
@@ -32,7 +35,11 @@ class TenantAdminStaticAssetsController implements Disposable {
         _tenantScope = tenantScope ??
             (GetIt.I.isRegistered<TenantAdminTenantScopeContract>()
                 ? GetIt.I.get<TenantAdminTenantScopeContract>()
-                : null) {
+                : null),
+        _imageIngestionService = imageIngestionService ??
+            (GetIt.I.isRegistered<TenantAdminImageIngestionService>()
+                ? GetIt.I.get<TenantAdminImageIngestionService>()
+                : TenantAdminImageIngestionService()) {
     _bindTenantScope();
   }
 
@@ -40,6 +47,7 @@ class TenantAdminStaticAssetsController implements Disposable {
   final TenantAdminTaxonomiesRepositoryContract _taxonomiesRepository;
   final TenantAdminLocationSelectionContract _locationSelection;
   final TenantAdminTenantScopeContract? _tenantScope;
+  final TenantAdminImageIngestionService _imageIngestionService;
   static const int _assetsPageSize = 20;
 
   StreamValue<List<TenantAdminStaticAsset>?> get assetsStreamValue =>
@@ -99,8 +107,10 @@ class TenantAdminStaticAssetsController implements Disposable {
   final TextEditingController coverUrlController = TextEditingController();
   final TextEditingController latitudeController = TextEditingController();
   final TextEditingController longitudeController = TextEditingController();
+  final ScrollController assetsListScrollController = ScrollController();
 
   bool _isDisposed = false;
+  bool _assetsListScrollBound = false;
   StreamSubscription<TenantAdminLocation?>? _locationSubscription;
   StreamSubscription<String?>? _tenantScopeSubscription;
   String? _lastTenantDomain;
@@ -155,6 +165,33 @@ class TenantAdminStaticAssetsController implements Disposable {
     }
     await _repository.loadNextStaticAssetsPage(pageSize: _assetsPageSize);
     errorStreamValue.addValue(_repository.staticAssetsErrorStreamValue.value);
+  }
+
+  void bindAssetsListScrollPagination() {
+    if (_assetsListScrollBound) {
+      return;
+    }
+    _assetsListScrollBound = true;
+    assetsListScrollController.addListener(_handleAssetsListScroll);
+  }
+
+  void unbindAssetsListScrollPagination() {
+    if (!_assetsListScrollBound) {
+      return;
+    }
+    _assetsListScrollBound = false;
+    assetsListScrollController.removeListener(_handleAssetsListScroll);
+  }
+
+  void _handleAssetsListScroll() {
+    if (!assetsListScrollController.hasClients) {
+      return;
+    }
+    final position = assetsListScrollController.position;
+    const threshold = 320.0;
+    if (position.pixels + threshold >= position.maxScrollExtent) {
+      unawaited(loadNextAssetsPage());
+    }
   }
 
   Future<void> loadProfileTypes() async {
@@ -379,6 +416,33 @@ class TenantAdminStaticAssetsController implements Disposable {
       }
     }
     return false;
+  }
+
+  Future<XFile?> pickImageFromDevice({
+    required TenantAdminImageSlot slot,
+  }) {
+    return _imageIngestionService.pickFromDevice(slot: slot);
+  }
+
+  Future<XFile> fetchImageFromUrlForCrop({
+    required String imageUrl,
+  }) {
+    return _imageIngestionService.fetchFromUrlForCrop(imageUrl: imageUrl);
+  }
+
+  Future<Uint8List> readImageBytesForCrop(XFile sourceFile) {
+    return _imageIngestionService.readBytesForCrop(sourceFile);
+  }
+
+  Future<XFile> prepareCroppedImage(
+    Uint8List croppedData, {
+    required TenantAdminImageSlot slot,
+  }) {
+    return _imageIngestionService.prepareBytesAsXFile(
+      croppedData,
+      slot: slot,
+      applyAspectCrop: false,
+    );
   }
 
   TenantAdminLocation? _parseLocation() {
@@ -618,6 +682,7 @@ class TenantAdminStaticAssetsController implements Disposable {
   @override
   void onDispose() {
     _isDisposed = true;
+    unbindAssetsListScrollPagination();
     _locationSubscription?.cancel();
     _tenantScopeSubscription?.cancel();
     displayNameController.dispose();
@@ -627,6 +692,7 @@ class TenantAdminStaticAssetsController implements Disposable {
     coverUrlController.dispose();
     latitudeController.dispose();
     longitudeController.dispose();
+    assetsListScrollController.dispose();
     profileTypesStreamValue.dispose();
     taxonomiesStreamValue.dispose();
     taxonomyTermsStreamValue.dispose();

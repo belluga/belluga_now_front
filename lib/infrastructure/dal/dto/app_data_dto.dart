@@ -19,14 +19,17 @@ class AppDataDTO {
     Map<String, dynamic>? telemetryContext,
     Map<String, dynamic>? firebase,
     Map<String, dynamic>? push,
+    Map<String, dynamic>? settings,
   })  : profileTypes = List.unmodifiable(profileTypes ?? const []),
         domains = List.unmodifiable(domains ?? const []),
         appDomains = List.unmodifiable(appDomains ?? const []),
         telemetry = telemetry == null ? null : Map.unmodifiable(telemetry),
-        telemetryContext =
-            telemetryContext == null ? null : Map.unmodifiable(telemetryContext),
+        telemetryContext = telemetryContext == null
+            ? null
+            : Map.unmodifiable(telemetryContext),
         firebase = firebase == null ? null : Map.unmodifiable(firebase),
-        push = push == null ? null : Map.unmodifiable(push);
+        push = push == null ? null : Map.unmodifiable(push),
+        settings = settings == null ? null : Map.unmodifiable(settings);
 
   final String? tenantId;
   final String name;
@@ -37,6 +40,7 @@ class AppDataDTO {
   final List<String> appDomains;
   final Map<String, dynamic> themeDataSettings;
   final String? iconUrl;
+
   /// Sourced from `theme_data_settings.primary_seed_color` (backend omits `main_color`).
   final String? mainColor;
   final String? mainLogoUrl;
@@ -48,6 +52,7 @@ class AppDataDTO {
   final Map<String, dynamic>? telemetryContext;
   final Map<String, dynamic>? firebase;
   final Map<String, dynamic>? push;
+  final Map<String, dynamic>? settings;
 
   factory AppDataDTO.fromJson(Map<String, dynamic> json) {
     final themeSettings = Map<String, dynamic>.unmodifiable(
@@ -90,6 +95,9 @@ class AppDataDTO {
       push: json['push'] is Map<String, dynamic>
           ? Map<String, dynamic>.from(json['push'] as Map)
           : null,
+      settings: json['settings'] is Map<String, dynamic>
+          ? Map<String, dynamic>.from(json['settings'] as Map)
+          : null,
     );
   }
 
@@ -114,14 +122,14 @@ class AppDataDTO {
       'telemetry_context': telemetryContext,
       'firebase': firebase,
       'push': push,
+      'settings': settings,
     };
   }
 
   static Map<String, dynamic>? _normalizeTelemetry(Object? raw) {
     if (raw is Map) {
-      final map = raw is Map<String, dynamic>
-          ? raw
-          : Map<String, dynamic>.from(raw);
+      final map =
+          raw is Map<String, dynamic> ? raw : Map<String, dynamic>.from(raw);
       if (map['trackers'] is List) {
         final trackers = (map['trackers'] as List)
             .whereType<Map>()

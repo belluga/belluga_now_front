@@ -20,30 +20,18 @@ class _TenantAdminOrganizationsListScreenState
     extends State<TenantAdminOrganizationsListScreen> {
   final TenantAdminOrganizationsController _controller =
       GetIt.I.get<TenantAdminOrganizationsController>();
-  final ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
     super.initState();
-    _scrollController.addListener(_handleScroll);
+    _controller.bindOrganizationsListScrollPagination();
     _controller.loadOrganizations();
   }
 
   @override
   void dispose() {
-    _scrollController
-      ..removeListener(_handleScroll)
-      ..dispose();
+    _controller.unbindOrganizationsListScrollPagination();
     super.dispose();
-  }
-
-  void _handleScroll() {
-    if (!_scrollController.hasClients) return;
-    final position = _scrollController.position;
-    const threshold = 320.0;
-    if (position.pixels + threshold >= position.maxScrollExtent) {
-      _controller.loadNextOrganizationsPage();
-    }
   }
 
   @override
@@ -100,7 +88,7 @@ class _TenantAdminOrganizationsListScreenState
   }) {
     final itemCount = organizations.length + (hasMore ? 1 : 0);
     return ListView.separated(
-      controller: _scrollController,
+      controller: _controller.organizationsListScrollController,
       padding: const EdgeInsets.only(bottom: 112),
       itemCount: itemCount,
       separatorBuilder: (_, __) => const SizedBox(height: 12),
