@@ -190,6 +190,7 @@ Override local (não versionado):
 Regras importantes:
 - `LANDLORD_DOMAIN` deve ser uma origem completa (`http://` ou `https://`), sem path/query.
 - Em ambiente local com tenant por subdomínio, não use host IP puro (`http://192.168.x.x:8081`), pois subdomínios não resolvem. Use um host wildcard DNS, por exemplo `http://192.168.0.10.nip.io:8081`.
+- Em fluxo web/browser, `LANDLORD_DOMAIN` deve refletir a origem que o navegador realmente abre. Se o acesso local estiver passando por `belluga.space` / `guarappari.belluga.space`, use essas URLs sem vazar portas internas do ingress. Só use `:8081`/outra porta quando essa for a origem efetivamente aberta no navegador.
 
 Execução local recomendada (override local):
 
