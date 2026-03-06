@@ -15,12 +15,41 @@ void main() {
     expect(baseUrl, 'http://guarappari.192.168.15.5.nip.io:8081/admin/api');
   });
 
-  test('uses landlord port when selected domain omits port', () {
+  test('uses browser-facing origin when selected domain omits port', () {
+    final baseUrl = resolveTenantAdminBaseUrl(
+      'guarappari.belluga.space',
+      landlordOriginOverride: 'https://belluga.space:8043',
+      browserOriginOverride: 'https://belluga.space',
+    );
+    expect(baseUrl, 'https://guarappari.belluga.space/admin/api');
+  });
+
+  test('uses browser-facing port when current browser origin has explicit port',
+      () {
+    final baseUrl = resolveTenantAdminBaseUrl(
+      'guarappari.192.168.15.5.nip.io',
+      landlordOriginOverride: 'http://192.168.15.5.nip.io:8081',
+      browserOriginOverride: 'http://192.168.15.5.nip.io:8081',
+    );
+    expect(baseUrl, 'http://guarappari.192.168.15.5.nip.io:8081/admin/api');
+  });
+
+  test('falls back to landlord origin when browser origin is unavailable', () {
     final baseUrl = resolveTenantAdminBaseUrl(
       'guarappari.192.168.15.5.nip.io',
       landlordOriginOverride: 'http://192.168.15.5.nip.io:8081',
     );
     expect(baseUrl, 'http://guarappari.192.168.15.5.nip.io:8081/admin/api');
+  });
+
+  test('throws when browser origin override is invalid', () {
+    expect(
+      () => resolveTenantAdminBaseUrl(
+        'guarappari.belluga.space',
+        browserOriginOverride: 'belluga.space',
+      ),
+      throwsA(isA<StateError>()),
+    );
   });
 
   test('throws when tenant domain has no scheme and landlord is missing', () {
