@@ -105,8 +105,6 @@ void main() {
         await tester.pumpAndSettle(const Duration(seconds: 1));
       }
 
-      await _waitForFinder(tester, find.text('Buscar eventos'));
-
       const eventTitle = 'Delete Visibility Event';
       await _waitForFinder(tester, find.text(eventTitle));
 
@@ -295,7 +293,6 @@ class _FakeTenantAdminEventsRepository
     bool archived = false,
   }) async {
     return _filterEvents(
-      search: search,
       status: status,
       archived: archived,
     );
@@ -310,7 +307,6 @@ class _FakeTenantAdminEventsRepository
     bool archived = false,
   }) async {
     final filtered = _filterEvents(
-      search: search,
       status: status,
       archived: archived,
     );
@@ -337,11 +333,9 @@ class _FakeTenantAdminEventsRepository
   }
 
   List<TenantAdminEvent> _filterEvents({
-    String? search,
     String? status,
     required bool archived,
   }) {
-    final normalizedSearch = search?.trim().toLowerCase() ?? '';
     final normalizedStatus = status?.trim();
 
     return _events.where((event) {
@@ -354,11 +348,7 @@ class _FakeTenantAdminEventsRepository
           event.publication.status != normalizedStatus) {
         return false;
       }
-      if (normalizedSearch.isEmpty) {
-        return true;
-      }
-      final haystack = '${event.title} ${event.content}'.toLowerCase();
-      return haystack.contains(normalizedSearch);
+      return true;
     }).toList(growable: false);
   }
 

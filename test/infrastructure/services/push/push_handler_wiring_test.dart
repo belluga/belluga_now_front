@@ -94,6 +94,22 @@ void main() {
     expect(await config.tokenProvider?.call(), isNull);
   });
 
+  test('BackendContext uses canonical main domain instead of current href',
+      () async {
+    final appData = _buildTestAppData(
+      platform: PlatformType.web,
+      mainDomain: 'https://guarappari.belluga.space',
+      domains: ['https://guarappari.belluga.space'],
+      localHostname: 'belluga.space',
+      localHref: 'https://belluga.space/admin',
+    );
+
+    final context = BackendContext.fromAppData(appData);
+
+    expect(context.baseUrl, 'https://guarappari.belluga.space/api');
+    expect(context.adminUrl, 'https://guarappari.belluga.space/admin/api');
+  });
+
   test('ApplicationContract initializes push repository on non-web path',
       () async {
     final authRepository =
@@ -535,14 +551,20 @@ class _NoopScheduleBackend extends ScheduleBackendContract {
       const Stream.empty();
 }
 
-AppData _buildTestAppData() {
-  final platformType = PlatformTypeValue()..parse(PlatformType.mobile.name);
+AppData _buildTestAppData({
+  PlatformType platform = PlatformType.mobile,
+  String mainDomain = 'https://guarappari.com.br',
+  List<String> domains = const ['https://guarappari.com.br'],
+  String localHostname = 'guarappari.com.br',
+  String localHref = 'https://guarappari.com.br',
+}) {
+  final platformType = PlatformTypeValue()..parse(platform.name);
   return AppData.fromInitialization(
     remoteData: {
       'name': 'Guarappari',
       'type': 'tenant',
-      'main_domain': 'https://guarappari.com.br',
-      'domains': ['https://guarappari.com.br'],
+      'main_domain': mainDomain,
+      'domains': domains,
       'app_domains': [],
       'theme_data_settings': {
         'primary_seed_color': '#4FA0E3',
@@ -555,8 +577,8 @@ AppData _buildTestAppData() {
     },
     localInfo: {
       'platformType': platformType,
-      'hostname': 'guarappari.com.br',
-      'href': 'https://guarappari.com.br',
+      'hostname': localHostname,
+      'href': localHref,
       'port': null,
       'device': 'test-device',
     },

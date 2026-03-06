@@ -50,8 +50,6 @@ class TenantAdminEventsController implements Disposable {
   StreamValue<String?> get eventsErrorStreamValue =>
       _eventsRepository.eventsErrorStreamValue;
 
-  final StreamValue<String> searchQueryStreamValue =
-      StreamValue<String>(defaultValue: '');
   final StreamValue<String?> statusFilterStreamValue =
       StreamValue<String?>(defaultValue: null);
   final StreamValue<bool> archivedFilterStreamValue =
@@ -98,7 +96,6 @@ class TenantAdminEventsController implements Disposable {
       StreamValue<String?>();
 
   final ScrollController eventsScrollController = ScrollController();
-  final TextEditingController eventsSearchController = TextEditingController();
 
   final GlobalKey<FormState> eventFormKey = GlobalKey<FormState>();
   final TextEditingController eventTitleController = TextEditingController();
@@ -170,7 +167,6 @@ class TenantAdminEventsController implements Disposable {
     }
     await _eventsRepository.loadEvents(
       pageSize: _eventsPageSize,
-      search: searchQueryStreamValue.value,
       status: statusFilterStreamValue.value,
       archived: archivedFilterStreamValue.value,
     );
@@ -185,14 +181,9 @@ class TenantAdminEventsController implements Disposable {
     }
     await _eventsRepository.loadNextEventsPage(
       pageSize: _eventsPageSize,
-      search: searchQueryStreamValue.value,
       status: statusFilterStreamValue.value,
       archived: archivedFilterStreamValue.value,
     );
-  }
-
-  void updateSearchQuery(String value) {
-    searchQueryStreamValue.addValue(value);
   }
 
   void updateStatusFilter(String? value) {
@@ -210,10 +201,6 @@ class TenantAdminEventsController implements Disposable {
 
   Future<void> applyFilters() async {
     await loadEvents();
-  }
-
-  void initEventsListState() {
-    eventsSearchController.text = searchQueryStreamValue.value;
   }
 
   void initEventForm({
@@ -739,8 +726,6 @@ class TenantAdminEventsController implements Disposable {
 
   void _resetTenantScopedState() {
     _eventsRepository.resetEventsState();
-    searchQueryStreamValue.addValue('');
-    eventsSearchController.clear();
     statusFilterStreamValue.addValue(null);
     archivedFilterStreamValue.addValue(false);
     eventDetailStreamValue.addValue(null);
@@ -857,7 +842,6 @@ class TenantAdminEventsController implements Disposable {
       eventTypeNameController.removeListener(_eventTypeNameSyncListener!);
       _eventTypeNameSyncListener = null;
     }
-    searchQueryStreamValue.dispose();
     statusFilterStreamValue.dispose();
     archivedFilterStreamValue.dispose();
     eventDetailStreamValue.dispose();
@@ -876,7 +860,6 @@ class TenantAdminEventsController implements Disposable {
     partyCandidatesLoadingStreamValue.dispose();
     partyCandidatesErrorStreamValue.dispose();
     eventsScrollController.dispose();
-    eventsSearchController.dispose();
     eventFormStateStreamValue.dispose();
     eventTitleController.dispose();
     eventContentController.dispose();

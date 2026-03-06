@@ -37,8 +37,7 @@ class _HomeAgendaBodyState extends State<HomeAgendaBody> {
       streamValue: controller.isInitialLoadingStreamValue,
       builder: (context, isInitialLoading) {
         final hasActiveFilters =
-            controller.searchController.text.trim().isNotEmpty ||
-                controller.inviteFilterStreamValue.value != InviteFilter.none ||
+            controller.inviteFilterStreamValue.value != InviteFilter.none ||
                 controller.showHistoryStreamValue.value;
         return StreamValueBuilder<List<EventModel>>(
           streamValue: controller.displayedEventsStreamValue,
