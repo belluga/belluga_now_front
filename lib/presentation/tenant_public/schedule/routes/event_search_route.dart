@@ -9,14 +9,10 @@ import 'package:get_it_modular_with_auto_route/get_it_modular_with_auto_route.da
 class EventSearchRoute extends StatelessWidget {
   const EventSearchRoute({
     super.key,
-    this.startSearchActive = false,
-    this.initialSearchQuery,
     this.inviteFilter = InviteFilter.none,
     this.startWithHistory = false,
   });
 
-  final bool startSearchActive;
-  final String? initialSearchQuery;
   final InviteFilter inviteFilter;
   final bool startWithHistory;
 
@@ -24,8 +20,6 @@ class EventSearchRoute extends StatelessWidget {
   Widget build(BuildContext context) {
     return ModuleScope<ScheduleModule>(
       child: EventSearchScreen(
-        startSearchActive: startSearchActive,
-        initialSearchQuery: initialSearchQuery,
         inviteFilter: inviteFilter,
         startWithHistory: startWithHistory,
       ),

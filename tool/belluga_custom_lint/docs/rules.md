@@ -42,6 +42,7 @@
 - `multi_widget_file_warning` (`P2`): screen files should avoid multiple widget classes.
 - `controller_buildcontext_dependency_forbidden` (`P2`): controllers cannot use `BuildContext` in API/signatures.
 - `global_ui_controller_naming_forbidden` (`P2`): sanctioned global registrations cannot use UI controller naming (`*Controller`, `*ControllerContract`).
+- `tenant_canonical_domain_required` (`P0`): tenant-scoped networking/config code must derive API/admin origins from `AppData.mainDomainValue`, not `href`/`hostname`/`schema`.
 
 ## Violation/Fix Examples
 
@@ -256,6 +257,18 @@ GetIt.I.registerFactory<AuthController>(() => AuthController());
 Fix:
 ```dart
 GetIt.I.registerFactory<AuthSessionService>(() => AuthSessionService());
+```
+
+### `tenant_canonical_domain_required`
+Violation:
+```dart
+final origin = Uri.parse(appData.href);
+return origin.resolve('/api').toString();
+```
+Fix:
+```dart
+final origin = appData.mainDomainValue.value;
+return origin.resolve('/api').toString();
 ```
 
 ## Allowlist Policy

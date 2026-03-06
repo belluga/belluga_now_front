@@ -8,6 +8,7 @@ import 'rules/module_direct_getit_registration_forbidden_rule.dart';
 import 'rules/module_scoped_controller_dispose_forbidden_rule.dart';
 import 'rules/multi_widget_file_warning_rule.dart';
 import 'rules/screen_controller_resolution_pattern_required_rule.dart';
+import 'rules/tenant_canonical_domain_required_rule.dart';
 import 'rules/ui_build_side_effects_forbidden_rule.dart';
 import 'rules/ui_cross_feature_controller_resolution_forbidden_rule.dart';
 import 'rules/ui_direct_repository_service_resolution_forbidden_rule.dart';
@@ -40,5 +41,6 @@ class BellugaCustomLintPlugin extends PluginBase {
         ControllerDirectNavigationForbiddenRule(),
         ScreenControllerResolutionPatternRequiredRule(),
         MultiWidgetFileWarningRule(),
+        TenantCanonicalDomainRequiredRule(),
       ];
 }

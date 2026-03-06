@@ -13,14 +13,10 @@ import 'package:stream_value/core/stream_value_builder.dart';
 class EventSearchScreen extends StatefulWidget {
   const EventSearchScreen({
     super.key,
-    this.startSearchActive = false,
-    this.initialSearchQuery,
     this.inviteFilter = InviteFilter.none,
     this.startWithHistory = false,
   });
 
-  final bool startSearchActive;
-  final String? initialSearchQuery;
   final InviteFilter inviteFilter;
   final bool startWithHistory;
 
@@ -40,8 +36,6 @@ class _EventSearchScreenState extends State<EventSearchScreen> {
   void initState() {
     super.initState();
     _controller.init(startWithHistory: widget.startWithHistory);
-    _controller.setInitialSearchQuery(widget.initialSearchQuery);
-    _controller.setSearchActive(widget.startSearchActive);
     _controller.setInviteFilter(widget.inviteFilter);
   }
 
@@ -74,7 +68,7 @@ class _EventSearchScreenState extends State<EventSearchScreen> {
               onBack: _handleBack,
               actions: const AgendaAppBarActions(
                 showBack: true,
-                showSearch: true,
+                showSearch: false,
                 showRadius: true,
                 showInviteFilter: true,
                 showHistory: true,
@@ -93,15 +87,12 @@ class _EventSearchScreenState extends State<EventSearchScreen> {
                   return StreamValueBuilder<bool>(
                     streamValue: _controller.isPageLoadingStreamValue,
                     builder: (context, isPageLoading) {
-                      final hasSearchQuery =
-                          _controller.searchController.text.trim().isNotEmpty;
                       final hasInviteFilter =
                           _controller.inviteFilterStreamValue.value !=
                               InviteFilter.none;
                       final showHistory =
                           _controller.showHistoryStreamValue.value;
-                      final hasActiveFilters =
-                          hasSearchQuery || hasInviteFilter || showHistory;
+                      final hasActiveFilters = hasInviteFilter || showHistory;
                       final emptyLabel = hasActiveFilters
                           ? 'Nenhum resultado encontrado'
                           : 'Nenhum evento disponível no momento';

@@ -9,7 +9,7 @@ class BackendContext {
   }) : dio = dio ?? Dio(BaseOptions(baseUrl: baseUrl));
 
   factory BackendContext.fromAppData(AppData appData) {
-    final origin = Uri.parse(appData.href);
+    final origin = appData.mainDomainValue.value;
     return BackendContext(
       baseUrl: origin.resolve('/api').toString(),
       adminUrl: origin.resolve('/admin/api').toString(),

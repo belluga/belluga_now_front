@@ -24,7 +24,6 @@ class _TenantAdminEventsScreenState extends State<TenantAdminEventsScreen> {
   @override
   void initState() {
     super.initState();
-    _controller.initEventsListState();
     _controller.eventsScrollController.addListener(_handleScroll);
     _controller.loadEvents();
   }
@@ -194,18 +193,6 @@ class _TenantAdminEventsScreenState extends State<TenantAdminEventsScreen> {
     required String? error,
     required bool isCompactLayout,
   }) {
-    final searchField = TextField(
-      controller: _controller.eventsSearchController,
-      decoration: const InputDecoration(
-        labelText: 'Buscar eventos',
-        prefixIcon: Icon(Icons.search),
-      ),
-      onSubmitted: (value) {
-        _controller.updateSearchQuery(value);
-        _controller.applyFilters();
-      },
-    );
-
     final statusFilter = StreamValueBuilder<String?>(
       streamValue: _controller.statusFilterStreamValue,
       builder: (context, selectedStatus) {
@@ -284,8 +271,6 @@ class _TenantAdminEventsScreenState extends State<TenantAdminEventsScreen> {
               ),
             ),
           if (isCompactLayout) ...[
-            searchField,
-            const SizedBox(height: 12),
             Row(
               children: [
                 Expanded(child: statusFilter),
@@ -305,8 +290,6 @@ class _TenantAdminEventsScreenState extends State<TenantAdminEventsScreen> {
           ] else
             Row(
               children: [
-                Expanded(child: searchField),
-                const SizedBox(width: 12),
                 SizedBox(
                   width: 180,
                   child: statusFilter,

@@ -413,8 +413,6 @@ class EventDetailRouteArgs {
 class EventSearchRoute extends _i62.PageRouteInfo<EventSearchRouteArgs> {
   EventSearchRoute({
     _i63.Key? key,
-    bool startSearchActive = false,
-    String? initialSearchQuery,
     _i64.InviteFilter inviteFilter = _i64.InviteFilter.none,
     bool startWithHistory = false,
     List<_i62.PageRouteInfo>? children,
@@ -422,8 +420,6 @@ class EventSearchRoute extends _i62.PageRouteInfo<EventSearchRouteArgs> {
           EventSearchRoute.name,
           args: EventSearchRouteArgs(
             key: key,
-            startSearchActive: startSearchActive,
-            initialSearchQuery: initialSearchQuery,
             inviteFilter: inviteFilter,
             startWithHistory: startWithHistory,
           ),
@@ -440,8 +436,6 @@ class EventSearchRoute extends _i62.PageRouteInfo<EventSearchRouteArgs> {
       );
       return _i9.EventSearchRoute(
         key: args.key,
-        startSearchActive: args.startSearchActive,
-        initialSearchQuery: args.initialSearchQuery,
         inviteFilter: args.inviteFilter,
         startWithHistory: args.startWithHistory,
       );
@@ -452,17 +446,11 @@ class EventSearchRoute extends _i62.PageRouteInfo<EventSearchRouteArgs> {
 class EventSearchRouteArgs {
   const EventSearchRouteArgs({
     this.key,
-    this.startSearchActive = false,
-    this.initialSearchQuery,
     this.inviteFilter = _i64.InviteFilter.none,
     this.startWithHistory = false,
   });
 
   final _i63.Key? key;
-
-  final bool startSearchActive;
-
-  final String? initialSearchQuery;
 
   final _i64.InviteFilter inviteFilter;
 
@@ -470,7 +458,7 @@ class EventSearchRouteArgs {
 
   @override
   String toString() {
-    return 'EventSearchRouteArgs{key: $key, startSearchActive: $startSearchActive, initialSearchQuery: $initialSearchQuery, inviteFilter: $inviteFilter, startWithHistory: $startWithHistory}';
+    return 'EventSearchRouteArgs{key: $key, inviteFilter: $inviteFilter, startWithHistory: $startWithHistory}';
   }
 
   @override
@@ -478,19 +466,13 @@ class EventSearchRouteArgs {
     if (identical(this, other)) return true;
     if (other is! EventSearchRouteArgs) return false;
     return key == other.key &&
-        startSearchActive == other.startSearchActive &&
-        initialSearchQuery == other.initialSearchQuery &&
         inviteFilter == other.inviteFilter &&
         startWithHistory == other.startWithHistory;
   }
 
   @override
   int get hashCode =>
-      key.hashCode ^
-      startSearchActive.hashCode ^
-      initialSearchQuery.hashCode ^
-      inviteFilter.hashCode ^
-      startWithHistory.hashCode;
+      key.hashCode ^ inviteFilter.hashCode ^ startWithHistory.hashCode;
 }
 
 /// generated route for

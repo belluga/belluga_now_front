@@ -81,6 +81,33 @@ bool isAllowedGlobalRegistrationFilePath(String path) {
           '/lib/infrastructure/repositories/app_data_repository.dart');
 }
 
+bool isTenantCanonicalDomainEnforcementFilePath(String path) {
+  final normalized = normalizePath(path);
+
+  if (normalized
+      .endsWith('/lib/application/configurations/belluga_constants.dart')) {
+    return true;
+  }
+
+  final isInfrastructureNetworkingFile =
+      _containsSegment(normalized, '/lib/infrastructure/repositories/') ||
+          _containsSegment(normalized, '/lib/infrastructure/dal/dao/');
+  if (!isInfrastructureNetworkingFile) {
+    return false;
+  }
+
+  if (_containsSegment(normalized, '/mock_backend/')) {
+    return false;
+  }
+
+  if (normalized.endsWith(
+      '/lib/infrastructure/repositories/landlord_auth_repository.dart')) {
+    return false;
+  }
+
+  return true;
+}
+
 String? presentationRootKey(String path) {
   final normalized = normalizePath(path);
   const absoluteMarker = '/lib/presentation/';

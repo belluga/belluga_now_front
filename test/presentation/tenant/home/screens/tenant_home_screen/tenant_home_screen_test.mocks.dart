@@ -683,6 +683,13 @@ class MockTenantHomeAgendaController extends _i1.Mock
       ) as _i2.StreamValue<double>);
 
   @override
+  double get minRadiusMeters => (super.noSuchMethod(
+        Invocation.getter(#minRadiusMeters),
+        returnValue: 0.0,
+        returnValueForMissingStub: 0.0,
+      ) as double);
+
+  @override
   _i23.Future<void> init({bool? startWithHistory = false}) =>
       (super.noSuchMethod(
         Invocation.method(
@@ -2283,6 +2290,27 @@ class MockAppData extends _i1.Mock implements _i4.AppData {
           Invocation.getter(#telemetryContextSettings),
         ),
       ) as _i17.TelemetryContextSettings);
+
+  @override
+  double get mapRadiusMinMeters => (super.noSuchMethod(
+        Invocation.getter(#mapRadiusMinMeters),
+        returnValue: 0.0,
+        returnValueForMissingStub: 0.0,
+      ) as double);
+
+  @override
+  double get mapRadiusDefaultMeters => (super.noSuchMethod(
+        Invocation.getter(#mapRadiusDefaultMeters),
+        returnValue: 0.0,
+        returnValueForMissingStub: 0.0,
+      ) as double);
+
+  @override
+  double get mapRadiusMaxMeters => (super.noSuchMethod(
+        Invocation.getter(#mapRadiusMaxMeters),
+        returnValue: 0.0,
+        returnValueForMissingStub: 0.0,
+      ) as double);
 
   @override
   _i18.IconUrlValue get mainIconLightUrl => (super.noSuchMethod(
