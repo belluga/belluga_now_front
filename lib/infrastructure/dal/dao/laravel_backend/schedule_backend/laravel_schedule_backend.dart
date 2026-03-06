@@ -119,9 +119,9 @@ class LaravelScheduleBackend implements ScheduleBackendContract {
       'confirmed_only': confirmedOnly ? 1 : 0,
     };
 
-    final trimmedQuery = searchQuery?.trim();
-    if (trimmedQuery != null && trimmedQuery.isNotEmpty) {
-      params['search'] = trimmedQuery;
+    final ignoredSearchQuery = searchQuery?.trim();
+    if (ignoredSearchQuery != null && ignoredSearchQuery.isNotEmpty) {
+      // MVP contract: agenda/events listing does not accept text search.
     }
     if (categories != null && categories.isNotEmpty) {
       params['categories'] = categories;
@@ -190,9 +190,9 @@ class LaravelScheduleBackend implements ScheduleBackendContract {
 
     addParam('past_only', showPastOnly ? '1' : '0');
     addParam('confirmed_only', confirmedOnly ? '1' : '0');
-    final trimmedQuery = searchQuery?.trim();
-    if (trimmedQuery != null && trimmedQuery.isNotEmpty) {
-      addParam('search', trimmedQuery);
+    final ignoredSearchQuery = searchQuery?.trim();
+    if (ignoredSearchQuery != null && ignoredSearchQuery.isNotEmpty) {
+      // MVP contract: agenda/events stream does not accept text search.
     }
     if (categories != null && categories.isNotEmpty) {
       for (final category in categories) {

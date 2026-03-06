@@ -25,6 +25,7 @@ class AgendaAppBar extends StatelessWidget {
     return StreamValueBuilder<bool>(
       streamValue: controller.searchActiveStreamValue,
       builder: (context, isActive) {
+        final isSearchActive = actions.showSearch && isActive;
         final showBack = actions.showBack;
         return AppBar(
           primary: false,
@@ -43,7 +44,7 @@ class AgendaAppBar extends StatelessWidget {
           leadingWidth: showBack ? null : 0,
           title: AnimatedSwitcher(
             duration: const Duration(milliseconds: 200),
-            child: isActive
+            child: isSearchActive
                 ? TextField(
                     key: const ValueKey('searchField'),
                     controller: controller.searchController,
@@ -76,7 +77,7 @@ class AgendaAppBar extends StatelessWidget {
           ),
           actionsPadding: const EdgeInsets.only(right: 8),
           actions: [
-            if (!isActive && actions.showSearch)
+            if (!isSearchActive && actions.showSearch)
               IconButton(
                 tooltip: 'Buscar eventos',
                 onPressed: controller.toggleSearchMode,
@@ -85,7 +86,7 @@ class AgendaAppBar extends StatelessWidget {
                   color: colorScheme.onSurfaceVariant,
                 ),
               ),
-            if (!isActive && actions.showRadius)
+            if (!isSearchActive && actions.showRadius)
               StreamValueBuilder<double>(
                 streamValue: controller.maxRadiusMetersStreamValue,
                 builder: (context, maxRadiusMeters) {
@@ -109,7 +110,7 @@ class AgendaAppBar extends StatelessWidget {
                   );
                 },
               ),
-            if (!isActive && actions.showInviteFilter)
+            if (!isSearchActive && actions.showInviteFilter)
               StreamValueBuilder<InviteFilter>(
                 streamValue: controller.inviteFilterStreamValue,
                 builder: (context, filter) {
@@ -120,7 +121,7 @@ class AgendaAppBar extends StatelessWidget {
                   );
                 },
               ),
-            if (!isActive && actions.showHistory)
+            if (!isSearchActive && actions.showHistory)
               StreamValueBuilder<bool>(
                 streamValue: controller.showHistoryStreamValue,
                 builder: (context, showHistory) {

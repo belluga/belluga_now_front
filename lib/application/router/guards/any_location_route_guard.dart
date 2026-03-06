@@ -61,4 +61,3 @@ class AnyLocationRouteGuard extends AutoRouteGuard {
     return null;
   }
 }
-

@@ -52,7 +52,7 @@ void main() {
     HttpOverrides.global = null;
   });
 
-  testWidgets('Home agenda filters (invites, confirmed, search)',
+  testWidgets('Home agenda filters (invites, confirmed) hide text search',
       (tester) async {
     debugPrint('Home agenda test: start');
     final harness = _AgendaFiltersHarness();
@@ -122,53 +122,16 @@ void main() {
 
     controller.setInviteFilter(InviteFilter.none);
     await _pumpFor(tester);
-
-    final artistName = controller
-        .displayedEventsStreamValue.value.first.artists.first.displayName;
-    controller.searchController.text = artistName;
-    controller.searchEvents(artistName);
-    await _pumpFor(tester);
-
-    _expectOnlyArtistMatches(
-      controller.displayedEventsStreamValue.value,
-      artistName,
-    );
-    expect(
-      controller.displayedEventsStreamValue.value
-          .map((event) => event.title.value)
-          .toList(),
-      ['Show Alpha'],
-    );
-
-    const titleQuery = 'Show Alpha';
-    controller.searchController.text = titleQuery;
-    controller.searchEvents(titleQuery);
-    await _pumpFor(tester);
-    _expectOnlyTitleMatches(
-        controller.displayedEventsStreamValue.value, titleQuery);
-
-    const contentQuery = 'Content for Show Alpha';
-    controller.searchController.text = contentQuery;
-    controller.searchEvents(contentQuery);
-    await _pumpFor(tester);
-    _expectOnlyContentMatches(
-      controller.displayedEventsStreamValue.value,
-      contentQuery,
-    );
-
-    const venueQuery = 'Arena Alpha';
-    controller.searchController.text = venueQuery;
-    controller.searchEvents(venueQuery);
-    await _pumpFor(tester);
-    _expectOnlyVenueMatches(
-        controller.displayedEventsStreamValue.value, venueQuery);
-    debugPrint('Home agenda test: search checked');
+    expect(find.byTooltip('Buscar eventos'), findsNothing);
+    expect(find.byKey(const ValueKey('searchField')), findsNothing);
+    debugPrint('Home agenda test: search affordance hidden');
 
     harness.dispose();
     debugPrint('Home agenda test: done');
   });
 
-  testWidgets('Agenda screen filters (past, invites, confirmed, search)',
+  testWidgets(
+      'Agenda screen filters (past, invites, confirmed) hide text search',
       (tester) async {
     debugPrint('Agenda screen test: start');
     final harness = _AgendaFiltersHarness();
@@ -236,47 +199,9 @@ void main() {
 
     controller.setInviteFilter(InviteFilter.none);
     await _pumpFor(tester);
-
-    final artistName = controller
-        .displayedEventsStreamValue.value.first.artists.first.displayName;
-    controller.searchController.text = artistName;
-    controller.searchEvents(artistName);
-    await _pumpFor(tester);
-
-    _expectOnlyArtistMatches(
-      controller.displayedEventsStreamValue.value,
-      artistName,
-    );
-    expect(
-      controller.displayedEventsStreamValue.value
-          .map((event) => event.title.value)
-          .toList(),
-      ['Show Alpha'],
-    );
-
-    const titleQuery = 'Show Alpha';
-    controller.searchController.text = titleQuery;
-    controller.searchEvents(titleQuery);
-    await _pumpFor(tester);
-    _expectOnlyTitleMatches(
-        controller.displayedEventsStreamValue.value, titleQuery);
-
-    const contentQuery = 'Content for Show Alpha';
-    controller.searchController.text = contentQuery;
-    controller.searchEvents(contentQuery);
-    await _pumpFor(tester);
-    _expectOnlyContentMatches(
-      controller.displayedEventsStreamValue.value,
-      contentQuery,
-    );
-
-    const venueQuery = 'Arena Alpha';
-    controller.searchController.text = venueQuery;
-    controller.searchEvents(venueQuery);
-    await _pumpFor(tester);
-    _expectOnlyVenueMatches(
-        controller.displayedEventsStreamValue.value, venueQuery);
-    debugPrint('Agenda screen test: search checked');
+    expect(find.byTooltip('Buscar eventos'), findsNothing);
+    expect(find.byKey(const ValueKey('searchField')), findsNothing);
+    debugPrint('Agenda screen test: search affordance hidden');
 
     harness.dispose();
     debugPrint('Agenda screen test: done');
@@ -294,40 +219,6 @@ void _expectOnlyInviteFiltered(
     final isPending = id == pendingEventId;
     final isConfirmed = confirmedEventIds.contains(id);
     expect(isPending || isConfirmed, isTrue);
-  }
-}
-
-void _expectOnlyArtistMatches(List<EventModel> events, String artistName) {
-  expect(events, isNotEmpty);
-  for (final event in events) {
-    final matchesArtist =
-        event.artists.any((artist) => artist.displayName == artistName);
-    expect(matchesArtist, isTrue);
-  }
-}
-
-void _expectOnlyTitleMatches(List<EventModel> events, String titleQuery) {
-  expect(events, isNotEmpty);
-  for (final event in events) {
-    expect(event.title.value.toLowerCase(), contains(titleQuery.toLowerCase()));
-  }
-}
-
-void _expectOnlyContentMatches(List<EventModel> events, String contentQuery) {
-  expect(events, isNotEmpty);
-  for (final event in events) {
-    expect(
-      (event.content.value ?? '').toLowerCase(),
-      contains(contentQuery.toLowerCase()),
-    );
-  }
-}
-
-void _expectOnlyVenueMatches(List<EventModel> events, String venueQuery) {
-  expect(events, isNotEmpty);
-  for (final event in events) {
-    final venueDisplay = event.venue?.displayName ?? event.location.value;
-    expect(venueDisplay.toLowerCase(), contains(venueQuery.toLowerCase()));
   }
 }
 
@@ -451,27 +342,11 @@ class _TestScheduleRepository implements ScheduleRepositoryContract {
     double? maxDistanceMeters,
   }) async {
     final now = DateTime.now();
-    final query = searchQuery.trim().toLowerCase();
 
     final filtered = _events.where((event) {
       final start = event.dateTimeStart.value!;
       final isPast = start.isBefore(now);
-      if (showPastOnly != isPast) return false;
-
-      if (query.isEmpty) return true;
-
-      final title = event.title.value.toLowerCase();
-      final content = (event.content.value ?? '').toLowerCase();
-      final location = event.location.value.toLowerCase();
-      final venueDisplay = event.venue?.displayName.toLowerCase() ?? '';
-      final artists =
-          event.artists.map((artist) => artist.displayName.toLowerCase());
-
-      return title.contains(query) ||
-          content.contains(query) ||
-          location.contains(query) ||
-          venueDisplay.contains(query) ||
-          artists.any((name) => name.contains(query));
+      return showPastOnly == isPast;
     }).toList();
 
     return PagedEventsResult(events: filtered, hasMore: false);

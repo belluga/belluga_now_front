@@ -37,4 +37,3 @@ class LiveLocationRouteGuard extends AutoRouteGuard {
     return null;
   }
 }
-

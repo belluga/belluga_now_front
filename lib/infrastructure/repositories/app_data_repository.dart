@@ -150,7 +150,7 @@ class AppDataRepository implements AppDataRepositoryContract {
   }
 
   Future<void> _persistRuntimeMetadata() async {
-    final apiBaseUrl = '${appData.schema}://${appData.hostname}/api';
+    final apiBaseUrl = appData.mainDomainValue.value.resolve('/api').toString();
     await _storage.write(
       key: _apiBaseUrlStorageKey,
       value: apiBaseUrl,
