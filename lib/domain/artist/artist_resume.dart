@@ -30,10 +30,16 @@ class ArtistResume {
     bool isHighlight = false,
     List<String> genres = const [],
   }) {
+    final avatarValue = ArtistAvatarValue();
+    final normalizedAvatarUrl = avatarUrl?.trim();
+    if (normalizedAvatarUrl != null && normalizedAvatarUrl.isNotEmpty) {
+      avatarValue.parse(normalizedAvatarUrl);
+    }
+
     return ArtistResume(
       idValue: ArtistIdValue()..parse(id),
       nameValue: ArtistNameValue()..parse(name),
-      avatarValue: ArtistAvatarValue()..parse(avatarUrl ?? ''),
+      avatarValue: avatarValue,
       isHighlightValue: ArtistIsHighlightValue()
         ..parse(isHighlight.toString()),
       genres: genres,

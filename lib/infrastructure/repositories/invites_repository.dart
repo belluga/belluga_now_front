@@ -78,11 +78,16 @@ class InvitesRepository extends InvitesRepositoryContract
 
   /// Helper to convert Friend to EventFriendResume for event context
   EventFriendResume _friendToEventFriendResume(Friend friend) {
+    final avatarUrlValue = UserAvatarValue();
+    final normalizedAvatarUrl = friend.avatarValue.value?.toString().trim();
+    if (normalizedAvatarUrl != null && normalizedAvatarUrl.isNotEmpty) {
+      avatarUrlValue.parse(normalizedAvatarUrl);
+    }
+
     return EventFriendResume(
       idValue: UserIdValue()..parse(friend.idValue.value),
       displayNameValue: UserDisplayNameValue()..parse(friend.nameValue.value),
-      avatarUrlValue: UserAvatarValue()
-        ..parse(friend.avatarValue.value?.toString() ?? ''),
+      avatarUrlValue: avatarUrlValue,
     );
   }
 
