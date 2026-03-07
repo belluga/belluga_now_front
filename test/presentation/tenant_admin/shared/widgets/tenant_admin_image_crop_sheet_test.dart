@@ -30,7 +30,13 @@ void main() {
                     context: context,
                     sourceFile: file,
                     slot: TenantAdminImageSlot.avatar,
-                    ingestionService: service,
+                    readBytesForCrop: service.readBytesForCrop,
+                    prepareCroppedFile: (croppedData, slot) =>
+                        service.prepareBytesAsXFile(
+                      croppedData,
+                      slot: slot,
+                      applyAspectCrop: false,
+                    ),
                   );
                 },
                 child: const Text('open'),
@@ -75,7 +81,13 @@ void main() {
                     context: context,
                     sourceFile: file,
                     slot: TenantAdminImageSlot.cover,
-                    ingestionService: service,
+                    readBytesForCrop: service.readBytesForCrop,
+                    prepareCroppedFile: (croppedData, slot) =>
+                        service.prepareBytesAsXFile(
+                      croppedData,
+                      slot: slot,
+                      applyAspectCrop: false,
+                    ),
                   );
                 },
                 child: const Text('open'),

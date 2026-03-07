@@ -42,8 +42,10 @@ class TenantAdminTaxonomyTermsController implements Disposable {
   final GlobalKey<FormState> formKey = GlobalKey<FormState>();
   final TextEditingController slugController = TextEditingController();
   final TextEditingController nameController = TextEditingController();
+  final ScrollController termsListScrollController = ScrollController();
 
   bool _isDisposed = false;
+  bool _termsListScrollBound = false;
   StreamSubscription<String?>? _tenantScopeSubscription;
   String? _lastTenantDomain;
   String? _activeTaxonomyId;
@@ -101,6 +103,33 @@ class TenantAdminTaxonomyTermsController implements Disposable {
     }
     await _repository.loadNextTermsPage(pageSize: _termsPageSize);
     errorStreamValue.addValue(_repository.termsErrorStreamValue.value);
+  }
+
+  void bindTermsListScrollPagination() {
+    if (_termsListScrollBound) {
+      return;
+    }
+    _termsListScrollBound = true;
+    termsListScrollController.addListener(_handleTermsListScroll);
+  }
+
+  void unbindTermsListScrollPagination() {
+    if (!_termsListScrollBound) {
+      return;
+    }
+    _termsListScrollBound = false;
+    termsListScrollController.removeListener(_handleTermsListScroll);
+  }
+
+  void _handleTermsListScroll() {
+    if (!termsListScrollController.hasClients) {
+      return;
+    }
+    final position = termsListScrollController.position;
+    const threshold = 320.0;
+    if (position.pixels + threshold >= position.maxScrollExtent) {
+      unawaited(loadNextTermsPage());
+    }
   }
 
   Future<TenantAdminTaxonomyTermDefinition> createTerm({
@@ -273,9 +302,11 @@ class TenantAdminTaxonomyTermsController implements Disposable {
 
   void dispose() {
     _isDisposed = true;
+    unbindTermsListScrollPagination();
     _tenantScopeSubscription?.cancel();
     slugController.dispose();
     nameController.dispose();
+    termsListScrollController.dispose();
     errorStreamValue.dispose();
     successMessageStreamValue.dispose();
     actionErrorMessageStreamValue.dispose();

@@ -15,7 +15,7 @@ class HomeAgendaAppBar extends StatelessWidget {
     return AgendaAppBar(
       controller: controller,
       actions: const AgendaAppBarActions(
-        showSearch: true,
+        showSearch: false,
         showRadius: true,
         showInviteFilter: true,
         showHistory: false,

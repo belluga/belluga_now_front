@@ -23,7 +23,6 @@ class _TenantAdminStaticAssetsListScreenState
     extends State<TenantAdminStaticAssetsListScreen> {
   final TenantAdminStaticAssetsController _controller =
       GetIt.I.get<TenantAdminStaticAssetsController>();
-  final ScrollController _scrollController = ScrollController();
   static const ValueKey<String> _controlsPanelKey =
       ValueKey<String>('tenant_admin_assets_controls_panel');
   static const ValueKey<String> _searchToggleKey =
@@ -36,25 +35,14 @@ class _TenantAdminStaticAssetsListScreenState
   @override
   void initState() {
     super.initState();
-    _scrollController.addListener(_handleScroll);
+    _controller.bindAssetsListScrollPagination();
     _controller.loadAssets();
   }
 
   @override
   void dispose() {
-    _scrollController
-      ..removeListener(_handleScroll)
-      ..dispose();
+    _controller.unbindAssetsListScrollPagination();
     super.dispose();
-  }
-
-  void _handleScroll() {
-    if (!_scrollController.hasClients) return;
-    final position = _scrollController.position;
-    const threshold = 320.0;
-    if (position.pixels + threshold >= position.maxScrollExtent) {
-      _controller.loadNextAssetsPage();
-    }
   }
 
   StackRouter _navigationRouter(BuildContext context) {
@@ -185,7 +173,7 @@ class _TenantAdminStaticAssetsListScreenState
   }) {
     final itemCount = filteredAssets.length + (hasMore ? 1 : 0);
     return ListView.separated(
-      controller: _scrollController,
+      controller: _controller.assetsListScrollController,
       padding: const EdgeInsets.only(bottom: 112),
       itemCount: itemCount,
       separatorBuilder: (_, __) => const SizedBox(height: 12),

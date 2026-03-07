@@ -33,7 +33,6 @@ class _HomeAgendaSectionState extends State<HomeAgendaSection> {
   Future<void> _initController() async {
     await _controller.init(startWithHistory: false);
     _controller.setInviteFilter(InviteFilter.none);
-    _controller.setSearchActive(false);
   }
 
   @override

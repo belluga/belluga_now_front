@@ -25,6 +25,7 @@ class AgendaAppBar extends StatelessWidget {
     return StreamValueBuilder<bool>(
       streamValue: controller.searchActiveStreamValue,
       builder: (context, isActive) {
+        final isSearchActive = actions.showSearch && isActive;
         final showBack = actions.showBack;
         return AppBar(
           primary: false,
@@ -43,7 +44,7 @@ class AgendaAppBar extends StatelessWidget {
           leadingWidth: showBack ? null : 0,
           title: AnimatedSwitcher(
             duration: const Duration(milliseconds: 200),
-            child: isActive
+            child: isSearchActive
                 ? TextField(
                     key: const ValueKey('searchField'),
                     controller: controller.searchController,
@@ -76,7 +77,7 @@ class AgendaAppBar extends StatelessWidget {
           ),
           actionsPadding: const EdgeInsets.only(right: 8),
           actions: [
-            if (!isActive && actions.showSearch)
+            if (!isSearchActive && actions.showSearch)
               IconButton(
                 tooltip: 'Buscar eventos',
                 onPressed: controller.toggleSearchMode,
@@ -85,7 +86,7 @@ class AgendaAppBar extends StatelessWidget {
                   color: colorScheme.onSurfaceVariant,
                 ),
               ),
-            if (!isActive && actions.showRadius)
+            if (!isSearchActive && actions.showRadius)
               StreamValueBuilder<double>(
                 streamValue: controller.maxRadiusMetersStreamValue,
                 builder: (context, maxRadiusMeters) {
@@ -97,6 +98,7 @@ class AgendaAppBar extends StatelessWidget {
                         onPressed: () => _showRadiusSelector(
                           context,
                           radiusMeters,
+                          controller.minRadiusMeters,
                           maxRadiusMeters,
                         ),
                         icon: Icon(
@@ -108,7 +110,7 @@ class AgendaAppBar extends StatelessWidget {
                   );
                 },
               ),
-            if (!isActive && actions.showInviteFilter)
+            if (!isSearchActive && actions.showInviteFilter)
               StreamValueBuilder<InviteFilter>(
                 streamValue: controller.inviteFilterStreamValue,
                 builder: (context, filter) {
@@ -119,7 +121,7 @@ class AgendaAppBar extends StatelessWidget {
                   );
                 },
               ),
-            if (!isActive && actions.showHistory)
+            if (!isSearchActive && actions.showHistory)
               StreamValueBuilder<bool>(
                 streamValue: controller.showHistoryStreamValue,
                 builder: (context, showHistory) {
@@ -191,22 +193,24 @@ class AgendaAppBar extends StatelessWidget {
 
   Future<void> _showRadiusSelector(
     BuildContext context,
-    double selectedMeters,
+    double _selectedMeters,
+    double minRadiusMeters,
     double maxRadiusMeters,
   ) async {
     final theme = Theme.of(context);
-    const minRadiusKm = 1.0;
+    final minRadiusKm = minRadiusMeters / 1000;
     final maxKm = (maxRadiusMeters / 1000) < minRadiusKm
         ? minRadiusKm
         : (maxRadiusMeters / 1000);
-    double currentKm = (selectedMeters / 1000).clamp(minRadiusKm, maxKm);
     await showModalBottomSheet<void>(
       context: context,
       showDragHandle: true,
       builder: (context) {
         return SafeArea(
-          child: StatefulBuilder(
-            builder: (context, setState) {
+          child: StreamValueBuilder<double>(
+            streamValue: controller.radiusMetersStreamValue,
+            builder: (context, radiusMeters) {
+              final currentKm = (radiusMeters / 1000).clamp(minRadiusKm, maxKm);
               return Padding(
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
                 child: Column(
@@ -231,9 +235,6 @@ class AgendaAppBar extends StatelessWidget {
                       max: maxKm,
                       divisions: (maxKm - minRadiusKm).round().clamp(1, 200),
                       onChanged: (value) {
-                        setState(() {
-                          currentKm = value;
-                        });
                         controller.setRadiusMeters(value * 1000);
                       },
                     ),

@@ -1,0 +1,462 @@
+import 'package:belluga_now/application/application.dart';
+import 'package:belluga_now/application/application_contract.dart';
+import 'package:belluga_now/application/router/app_router.gr.dart';
+import 'package:belluga_now/domain/repositories/admin_mode_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/landlord_auth_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/landlord_tenants_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/tenant_admin_events_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/tenant_admin_taxonomies_repository_contract.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_event.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_result.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_definition.dart';
+import 'package:belluga_now/infrastructure/dal/dao/local/app_data_local_info_source/app_data_local_info_source_stub.dart';
+import 'package:belluga_now/infrastructure/repositories/app_data_repository.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:get_it/get_it.dart';
+import 'package:integration_test/integration_test.dart';
+import 'package:stream_value/core/stream_value.dart';
+
+import 'support/fake_landlord_app_data_backend.dart';
+import 'support/integration_test_bootstrap.dart';
+
+void main() {
+  IntegrationTestWidgetsFlutterBinding.ensureInitialized();
+  IntegrationTestBootstrap.ensureNonProductionLandlordDomain();
+
+  Future<void> _waitForFinder(
+    WidgetTester tester,
+    Finder finder, {
+    Duration timeout = const Duration(seconds: 20),
+    Duration step = const Duration(milliseconds: 200),
+  }) async {
+    final deadline = DateTime.now().add(timeout);
+    while (DateTime.now().isBefore(deadline)) {
+      await tester.pump(step);
+      if (finder.evaluate().isNotEmpty) {
+        return;
+      }
+    }
+    throw TestFailure(
+      'Timed out waiting for ${finder.describeMatch(Plurality.one)}.',
+    );
+  }
+
+  testWidgets(
+    'event soft delete hides from active list and appears in archived list',
+    (tester) async {
+      final getIt = GetIt.I;
+      await getIt.reset();
+
+      getIt.registerSingleton<AppDataRepositoryContract>(
+        AppDataRepository(
+          backend: const FakeLandlordAppDataBackend(),
+          localInfoSource: AppDataLocalInfoSource(),
+        ),
+      );
+      getIt.registerSingleton<AdminModeRepositoryContract>(
+        _InMemoryAdminModeRepository(),
+      );
+      getIt.registerSingleton<LandlordAuthRepositoryContract>(
+        _FakeLandlordAuthRepository(hasValidSession: true),
+      );
+      getIt.registerSingleton<LandlordTenantsRepositoryContract>(
+        _FakeLandlordTenantsRepository(),
+      );
+      getIt.registerSingleton<TenantAdminEventsRepositoryContract>(
+        _FakeTenantAdminEventsRepository(),
+      );
+      getIt.registerSingleton<TenantAdminTaxonomiesRepositoryContract>(
+        _NoopTaxonomiesRepository(),
+      );
+
+      final app = Application();
+      getIt.registerSingleton<ApplicationContract>(app);
+      await app.init();
+
+      await tester.runAsync(() async {
+        final adminModeRepo = getIt<AdminModeRepositoryContract>();
+        await adminModeRepo.setLandlordMode();
+      });
+
+      app.appRouter.replaceAll(
+        const [
+          TenantAdminShellRoute(
+            children: [TenantAdminEventsRoute()],
+          ),
+        ],
+      );
+
+      await tester.pumpWidget(app);
+      await tester.pumpAndSettle(const Duration(seconds: 2));
+
+      final tenantOption = find.text('Guarappari');
+      if (tenantOption.evaluate().isNotEmpty) {
+        await tester.tap(tenantOption.first);
+        await tester.pumpAndSettle(const Duration(seconds: 2));
+      }
+
+      final eventsNav = find.text('Eventos');
+      if (eventsNav.evaluate().isNotEmpty) {
+        await tester.tap(eventsNav.first);
+        await tester.pumpAndSettle(const Duration(seconds: 1));
+      }
+
+      const eventTitle = 'Delete Visibility Event';
+      await _waitForFinder(tester, find.text(eventTitle));
+
+      final eventTile = find.ancestor(
+        of: find.text(eventTitle).first,
+        matching: find.byType(ListTile),
+      );
+      final deleteMenuButton = find.descendant(
+        of: eventTile,
+        matching: find.byType(PopupMenuButton<String>),
+      );
+      await tester.tap(deleteMenuButton.first);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Remover').first);
+      await tester.pumpAndSettle();
+
+      await _waitForFinder(tester, find.byType(AlertDialog));
+      final dialogDeleteButton = find.descendant(
+        of: find.byType(AlertDialog).first,
+        matching: find.text('Remover'),
+      );
+      await tester.tap(dialogDeleteButton.first);
+      await tester.pumpAndSettle();
+
+      expect(find.byType(AlertDialog), findsNothing);
+      expect(find.text(eventTitle), findsNothing);
+
+      final visibilityField = find.text('Ativos');
+      await tester.ensureVisible(visibilityField.first);
+      await tester.tap(visibilityField.first);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Arquivados').last);
+      await tester.pumpAndSettle();
+
+      await _waitForFinder(tester, find.text(eventTitle));
+    },
+  );
+}
+
+class _InMemoryAdminModeRepository implements AdminModeRepositoryContract {
+  final StreamValue<AdminMode> _modeStreamValue =
+      StreamValue<AdminMode>(defaultValue: AdminMode.user);
+
+  @override
+  StreamValue<AdminMode> get modeStreamValue => _modeStreamValue;
+
+  @override
+  AdminMode get mode => _modeStreamValue.value;
+
+  @override
+  bool get isLandlordMode => mode == AdminMode.landlord;
+
+  @override
+  Future<void> init() async {}
+
+  @override
+  Future<void> setLandlordMode() async {
+    _modeStreamValue.addValue(AdminMode.landlord);
+  }
+
+  @override
+  Future<void> setUserMode() async {
+    _modeStreamValue.addValue(AdminMode.user);
+  }
+}
+
+class _FakeLandlordAuthRepository implements LandlordAuthRepositoryContract {
+  _FakeLandlordAuthRepository({required bool hasValidSession})
+      : _hasValidSession = hasValidSession;
+
+  bool _hasValidSession;
+
+  @override
+  bool get hasValidSession => _hasValidSession;
+
+  @override
+  String get token => _hasValidSession ? 'token' : '';
+
+  @override
+  Future<void> init() async {}
+
+  @override
+  Future<void> loginWithEmailPassword(String email, String password) async {
+    _hasValidSession = true;
+  }
+
+  @override
+  Future<void> logout() async {
+    _hasValidSession = false;
+  }
+}
+
+class _FakeLandlordTenantsRepository
+    implements LandlordTenantsRepositoryContract {
+  @override
+  Future<List<LandlordTenantOption>> fetchTenants() async {
+    return const [
+      LandlordTenantOption(
+        id: 'tenant-guarappari',
+        name: 'Guarappari',
+        mainDomain: 'guarappari.local.test',
+      ),
+    ];
+  }
+}
+
+class _FakeTenantAdminEventsRepository
+    with TenantAdminEventsPaginationMixin
+    implements TenantAdminEventsRepositoryContract {
+  _FakeTenantAdminEventsRepository()
+      : _events = <TenantAdminEvent>[
+          TenantAdminEvent(
+            eventId: 'event-delete-1',
+            slug: 'delete-visibility-event',
+            title: 'Delete Visibility Event',
+            content: 'Event used to validate soft delete visibility.',
+            type: const TenantAdminEventType(
+              name: 'Show',
+              slug: 'show',
+            ),
+            occurrences: [
+              TenantAdminEventOccurrence(
+                dateTimeStart: DateTime(2026, 3, 5, 20),
+              ),
+            ],
+            publication: const TenantAdminEventPublication(status: 'published'),
+            deletedAt: null,
+          ),
+        ];
+
+  final List<TenantAdminEvent> _events;
+
+  @override
+  Future<TenantAdminEvent> createEvent({
+    required TenantAdminEventDraft draft,
+  }) async {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<TenantAdminEvent> createOwnEvent({
+    required String accountSlug,
+    required TenantAdminEventDraft draft,
+  }) async {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<TenantAdminEvent> updateEvent({
+    required String eventId,
+    required TenantAdminEventDraft draft,
+  }) async {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<void> deleteEvent(String eventId) async {
+    final index = _events.indexWhere((event) => event.eventId == eventId);
+    if (index < 0) {
+      return;
+    }
+    final current = _events[index];
+    _events[index] = TenantAdminEvent(
+      eventId: current.eventId,
+      slug: current.slug,
+      title: current.title,
+      content: current.content,
+      type: current.type,
+      occurrences: current.occurrences,
+      publication: current.publication,
+      location: current.location,
+      placeRef: current.placeRef,
+      artistIds: current.artistIds,
+      eventParties: current.eventParties,
+      taxonomyTerms: current.taxonomyTerms,
+      createdAt: current.createdAt,
+      updatedAt: DateTime.now().toUtc(),
+      deletedAt: DateTime.now().toUtc(),
+    );
+  }
+
+  @override
+  Future<List<TenantAdminEvent>> fetchEvents({
+    String? search,
+    String? status,
+    bool archived = false,
+  }) async {
+    return _filterEvents(
+      status: status,
+      archived: archived,
+    );
+  }
+
+  @override
+  Future<TenantAdminPagedResult<TenantAdminEvent>> fetchEventsPage({
+    required int page,
+    required int pageSize,
+    String? search,
+    String? status,
+    bool archived = false,
+  }) async {
+    final filtered = _filterEvents(
+      status: status,
+      archived: archived,
+    );
+    if (page <= 0 || pageSize <= 0) {
+      return const TenantAdminPagedResult<TenantAdminEvent>(
+        items: <TenantAdminEvent>[],
+        hasMore: false,
+      );
+    }
+    final start = (page - 1) * pageSize;
+    if (start >= filtered.length) {
+      return const TenantAdminPagedResult<TenantAdminEvent>(
+        items: <TenantAdminEvent>[],
+        hasMore: false,
+      );
+    }
+    final end = (start + pageSize) > filtered.length
+        ? filtered.length
+        : (start + pageSize);
+    return TenantAdminPagedResult<TenantAdminEvent>(
+      items: filtered.sublist(start, end),
+      hasMore: end < filtered.length,
+    );
+  }
+
+  List<TenantAdminEvent> _filterEvents({
+    String? status,
+    required bool archived,
+  }) {
+    final normalizedStatus = status?.trim();
+
+    return _events.where((event) {
+      final isArchived = event.deletedAt != null;
+      if (archived != isArchived) {
+        return false;
+      }
+      if (normalizedStatus != null &&
+          normalizedStatus.isNotEmpty &&
+          event.publication.status != normalizedStatus) {
+        return false;
+      }
+      return true;
+    }).toList(growable: false);
+  }
+
+  @override
+  Future<TenantAdminEvent> fetchEvent(String eventIdOrSlug) async {
+    return _events.first;
+  }
+
+  @override
+  Future<TenantAdminEventPartyCandidates> fetchPartyCandidates({
+    String? search,
+    String? accountSlug,
+  }) async {
+    return const TenantAdminEventPartyCandidates(
+      venues: <TenantAdminAccountProfile>[],
+      artists: <TenantAdminAccountProfile>[],
+    );
+  }
+}
+
+class _NoopTaxonomiesRepository
+    with TenantAdminTaxonomiesPaginationMixin
+    implements TenantAdminTaxonomiesRepositoryContract {
+  @override
+  Future<TenantAdminTaxonomyDefinition> createTaxonomy({
+    required String slug,
+    required String name,
+    required List<String> appliesTo,
+    String? icon,
+    String? color,
+  }) async {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<TenantAdminTaxonomyTermDefinition> createTerm({
+    required String taxonomyId,
+    required String slug,
+    required String name,
+  }) async {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<void> deleteTaxonomy(String taxonomyId) async {}
+
+  @override
+  Future<void> deleteTerm({
+    required String taxonomyId,
+    required String termId,
+  }) async {}
+
+  @override
+  Future<List<TenantAdminTaxonomyDefinition>> fetchTaxonomies() async {
+    return const <TenantAdminTaxonomyDefinition>[];
+  }
+
+  @override
+  Future<TenantAdminPagedResult<TenantAdminTaxonomyDefinition>>
+      fetchTaxonomiesPage({
+    required int page,
+    required int pageSize,
+  }) async {
+    return const TenantAdminPagedResult<TenantAdminTaxonomyDefinition>(
+      items: <TenantAdminTaxonomyDefinition>[],
+      hasMore: false,
+    );
+  }
+
+  @override
+  Future<List<TenantAdminTaxonomyTermDefinition>> fetchTerms({
+    required String taxonomyId,
+  }) async {
+    return const <TenantAdminTaxonomyTermDefinition>[];
+  }
+
+  @override
+  Future<TenantAdminPagedResult<TenantAdminTaxonomyTermDefinition>>
+      fetchTermsPage({
+    required String taxonomyId,
+    required int page,
+    required int pageSize,
+  }) async {
+    return const TenantAdminPagedResult<TenantAdminTaxonomyTermDefinition>(
+      items: <TenantAdminTaxonomyTermDefinition>[],
+      hasMore: false,
+    );
+  }
+
+  @override
+  Future<TenantAdminTaxonomyDefinition> updateTaxonomy({
+    required String taxonomyId,
+    String? slug,
+    String? name,
+    List<String>? appliesTo,
+    String? icon,
+    String? color,
+  }) async {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<TenantAdminTaxonomyTermDefinition> updateTerm({
+    required String taxonomyId,
+    required String termId,
+    String? slug,
+    String? name,
+  }) async {
+    throw UnimplementedError();
+  }
+}

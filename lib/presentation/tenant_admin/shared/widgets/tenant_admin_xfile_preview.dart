@@ -23,12 +23,13 @@ class TenantAdminXFilePreview extends StatefulWidget {
 }
 
 class _TenantAdminXFilePreviewState extends State<TenantAdminXFilePreview> {
-  late Future<Uint8List> _bytesFuture;
+  Uint8List? _bytes;
+  int _loadToken = 0;
 
   @override
   void initState() {
     super.initState();
-    _bytesFuture = widget.file.readAsBytes();
+    _loadBytes();
   }
 
   @override
@@ -36,29 +37,43 @@ class _TenantAdminXFilePreviewState extends State<TenantAdminXFilePreview> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.file.path != widget.file.path ||
         oldWidget.file.name != widget.file.name) {
-      _bytesFuture = widget.file.readAsBytes();
+      _loadBytes();
+    }
+  }
+
+  Future<void> _loadBytes() async {
+    final token = ++_loadToken;
+    try {
+      final bytes = await widget.file.readAsBytes();
+      if (!mounted || token != _loadToken) {
+        return;
+      }
+      _bytes = bytes;
+      (context as Element).markNeedsBuild();
+    } catch (_) {
+      if (!mounted || token != _loadToken) {
+        return;
+      }
+      _bytes = null;
+      (context as Element).markNeedsBuild();
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<Uint8List>(
-      future: _bytesFuture,
-      builder: (context, snapshot) {
-        if (snapshot.hasData) {
-          return Image.memory(
-            snapshot.data!,
-            width: widget.width,
-            height: widget.height,
-            fit: widget.fit,
-          );
-        }
-        return SizedBox(
-          width: widget.width,
-          height: widget.height,
-          child: const Icon(Icons.image_outlined),
-        );
-      },
+    final bytes = _bytes;
+    if (bytes != null) {
+      return Image.memory(
+        bytes,
+        width: widget.width,
+        height: widget.height,
+        fit: widget.fit,
+      );
+    }
+    return SizedBox(
+      width: widget.width,
+      height: widget.height,
+      child: const Icon(Icons.image_outlined),
     );
   }
 }

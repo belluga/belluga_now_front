@@ -5,6 +5,7 @@ import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/app_data/app_type.dart';
 import 'package:belluga_now/domain/app_data/value_object/platform_type_value.dart';
+import 'package:belluga_now/domain/repositories/landlord_auth_repository_contract.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
 import 'package:mockito/mockito.dart';
@@ -101,6 +102,9 @@ void main() {
       hostname: 'tenant.test',
       envType: 'tenant',
     ));
+    GetIt.I.registerSingleton<LandlordAuthRepositoryContract>(
+      _FakeLandlordAuthRepository(hasValidSession: true),
+    );
 
     final guard = LandlordRouteGuard();
     final resolver = MockNavigationResolver();
@@ -112,6 +116,52 @@ void main() {
     verify(resolver.next(true)).called(1);
     verifyNever(resolver.next(false));
     expect(router.replaceAllCalled, isFalse);
+  });
+
+  test('allows tenant admin route on tenant host when landlord session is missing',
+      () {
+    _registerAppData(_buildAppData(
+      hostname: 'tenant.test',
+      envType: 'tenant',
+    ));
+    GetIt.I.registerSingleton<LandlordAuthRepositoryContract>(
+      _FakeLandlordAuthRepository(hasValidSession: false),
+    );
+
+    final guard = LandlordRouteGuard();
+    final resolver = MockNavigationResolver();
+    resolver.routeValue = _FakeRouteMatch(name: TenantAdminShellRoute.name);
+    final router = RecordingStackRouter();
+
+    guard.onNavigation(resolver, router);
+
+    verify(resolver.next(true)).called(1);
+    verifyNever(resolver.next(false));
+    expect(router.replaceAllCalled, isFalse);
+  });
+
+  test('blocks tenant admin route on landlord host when landlord session is missing',
+      () {
+    _registerAppData(_buildAppData(
+      hostname: _landlordHostForTest(),
+      envType: 'landlord',
+    ));
+    GetIt.I.registerSingleton<LandlordAuthRepositoryContract>(
+      _FakeLandlordAuthRepository(hasValidSession: false),
+    );
+
+    final guard = LandlordRouteGuard();
+    final resolver = MockNavigationResolver();
+    resolver.routeValue = _FakeRouteMatch(name: TenantAdminShellRoute.name);
+    final router = RecordingStackRouter();
+
+    guard.onNavigation(resolver, router);
+
+    verify(resolver.next(false)).called(1);
+    verifyNever(resolver.next(true));
+    expect(router.replaceAllCalled, isTrue);
+    expect(router.lastRoutes, isNotNull);
+    expect(router.lastRoutes!.single.routeName, LandlordHomeRoute.name);
   });
 }
 
@@ -196,4 +246,23 @@ class _FakeRouteMatch extends Fake implements RouteMatch {
 
   @override
   final String name;
+}
+
+class _FakeLandlordAuthRepository implements LandlordAuthRepositoryContract {
+  _FakeLandlordAuthRepository({required this.hasValidSession});
+
+  @override
+  final bool hasValidSession;
+
+  @override
+  String get token => hasValidSession ? 'token' : '';
+
+  @override
+  Future<void> init() async {}
+
+  @override
+  Future<void> loginWithEmailPassword(String email, String password) async {}
+
+  @override
+  Future<void> logout() async {}
 }

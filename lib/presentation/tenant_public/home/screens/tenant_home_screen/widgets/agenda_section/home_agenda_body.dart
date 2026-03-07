@@ -37,8 +37,7 @@ class _HomeAgendaBodyState extends State<HomeAgendaBody> {
       streamValue: controller.isInitialLoadingStreamValue,
       builder: (context, isInitialLoading) {
         final hasActiveFilters =
-            controller.searchController.text.trim().isNotEmpty ||
-                controller.inviteFilterStreamValue.value != InviteFilter.none ||
+            controller.inviteFilterStreamValue.value != InviteFilter.none ||
                 controller.showHistoryStreamValue.value;
         return StreamValueBuilder<List<EventModel>>(
           streamValue: controller.displayedEventsStreamValue,
@@ -137,10 +136,21 @@ class _HomeAgendaBodyState extends State<HomeAgendaBody> {
     ScrollNotification notification,
     TenantHomeAgendaController controller,
   ) {
+    final isUserDriven = switch (notification) {
+      ScrollUpdateNotification update => update.dragDetails != null,
+      ScrollEndNotification _ => true,
+      OverscrollNotification _ => true,
+      UserScrollNotification _ => true,
+      _ => false,
+    };
+    if (!isUserDriven) return false;
+
     final isLoading = controller.isPageLoadingStreamValue.value ||
         controller.isInitialLoadingStreamValue.value;
     final hasMore = controller.hasMoreStreamValue.value;
     if (isLoading || !hasMore) return false;
+    if (notification.metrics.axis != Axis.vertical) return false;
+    if (notification.metrics.pixels <= 0) return false;
     if (notification.metrics.extentAfter < 320) {
       if (_agendaLoadScheduled) return false;
       _agendaLoadScheduled = true;

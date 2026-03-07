@@ -36,8 +36,6 @@ class _TenantAdminAccountProfileCreateScreenState
     extends State<TenantAdminAccountProfileCreateScreen> {
   final TenantAdminAccountProfilesController _controller =
       GetIt.I.get<TenantAdminAccountProfilesController>();
-  final TenantAdminImageIngestionService _imageIngestionService =
-      GetIt.I.get<TenantAdminImageIngestionService>();
   bool _routeParamNormalized = false;
 
   @override
@@ -283,7 +281,7 @@ class _TenantAdminAccountProfileCreateScreenState
       } else {
         _controller.updateCreateCoverBusy(true);
       }
-      final picked = await _imageIngestionService.pickFromDevice(slot: slot);
+      final picked = await _controller.pickImageFromDevice(slot: slot);
       if (picked == null) {
         return;
       }
@@ -294,7 +292,12 @@ class _TenantAdminAccountProfileCreateScreenState
         context: context,
         sourceFile: picked,
         slot: slot,
-        ingestionService: _imageIngestionService,
+        readBytesForCrop: _controller.readImageBytesForCrop,
+        prepareCroppedFile: (croppedData, cropSlot) =>
+            _controller.prepareCroppedImage(
+          croppedData,
+          slot: cropSlot,
+        ),
       );
       if (cropped == null) {
         return;
@@ -380,7 +383,7 @@ class _TenantAdminAccountProfileCreateScreenState
       } else {
         _controller.updateCreateCoverBusy(true);
       }
-      final sourceFile = await _imageIngestionService.fetchFromUrlForCrop(
+      final sourceFile = await _controller.fetchImageFromUrlForCrop(
         imageUrl: url,
       );
       if (!mounted) return;
@@ -388,7 +391,12 @@ class _TenantAdminAccountProfileCreateScreenState
         context: context,
         sourceFile: sourceFile,
         slot: slot,
-        ingestionService: _imageIngestionService,
+        readBytesForCrop: _controller.readImageBytesForCrop,
+        prepareCroppedFile: (croppedData, cropSlot) =>
+            _controller.prepareCroppedImage(
+          croppedData,
+          slot: cropSlot,
+        ),
       );
       if (cropped == null) return;
       if (isAvatar) {
@@ -433,13 +441,13 @@ class _TenantAdminAccountProfileCreateScreenState
         ? _currentLocation()
         : null;
     final avatarUpload = _hasAvatar(state.selectedProfileType)
-        ? await _imageIngestionService.buildUpload(
+        ? await _controller.buildImageUpload(
             state.avatarFile,
             slot: TenantAdminImageSlot.avatar,
           )
         : null;
     final coverUpload = _hasCover(state.selectedProfileType)
-        ? await _imageIngestionService.buildUpload(
+        ? await _controller.buildImageUpload(
             state.coverFile,
             slot: TenantAdminImageSlot.cover,
           )
@@ -615,14 +623,17 @@ class _TenantAdminAccountProfileCreateScreenState
                           Align(
                             alignment: Alignment.centerLeft,
                             child: TextButton.icon(
-                              onPressed: () async {
-                                await context.router.push(
+                              onPressed: () {
+                                context.router
+                                    .push(
                                   const TenantAdminProfileTypeCreateRoute(),
-                                );
-                                if (!mounted) {
-                                  return;
-                                }
-                                await _controller.loadProfileTypes();
+                                )
+                                    .then((_) {
+                                  if (!mounted) {
+                                    return;
+                                  }
+                                  _controller.loadProfileTypes();
+                                });
                               },
                               icon: const Icon(Icons.add),
                               label: const Text('Criar tipo de perfil'),

@@ -11,14 +11,18 @@ import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.d
 import 'package:belluga_now/domain/repositories/tenant_admin_selected_tenant_repository_contract.dart';
 import 'package:belluga_now/infrastructure/repositories/tenant_admin/tenant_admin_selected_tenant_repository.dart';
 import 'package:belluga_now/infrastructure/services/tenant_admin/tenant_admin_external_image_proxy_service.dart';
+import 'package:belluga_now/presentation/landlord_area/auth/controllers/tenant_admin_landlord_login_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/account_profiles/controllers/tenant_admin_account_profiles_controller.dart';
+import 'package:belluga_now/presentation/tenant_admin/accounts/controllers/tenant_admin_account_detail_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/accounts/controllers/tenant_admin_accounts_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/accounts/controllers/tenant_admin_location_picker_controller.dart';
+import 'package:belluga_now/presentation/tenant_admin/events/controllers/tenant_admin_events_controller.dart';
 import 'package:belluga_now/infrastructure/services/tenant_admin/tenant_admin_location_selection_service.dart';
 import 'package:belluga_now/presentation/tenant_admin/organizations/controllers/tenant_admin_organizations_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/profile_types/controllers/tenant_admin_profile_types_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/settings/controllers/tenant_admin_settings_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/shell/controllers/tenant_admin_shell_controller.dart';
+import 'package:belluga_now/presentation/tenant_admin/shell/controllers/tenant_admin_shell_login_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/static_assets/controllers/tenant_admin_static_assets_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/static_profile_types/controllers/tenant_admin_static_profile_types_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/taxonomies/controllers/tenant_admin_taxonomies_controller.dart';
@@ -40,11 +44,25 @@ class TenantAdminModule extends ModuleContract {
   }
 
   void _registerControllersAndServices() {
+    if (!GetIt.I.isRegistered<TenantAdminLandlordLoginController>()) {
+      registerLazySingleton<TenantAdminLandlordLoginController>(
+        () => TenantAdminLandlordLoginController(),
+      );
+    }
+    if (!GetIt.I.isRegistered<TenantAdminShellLoginController>()) {
+      registerLazySingleton<TenantAdminShellLoginController>(
+        () => TenantAdminShellLoginController(),
+      );
+    }
+
     registerLazySingleton<TenantAdminShellController>(
       () => TenantAdminShellController(),
     );
     registerLazySingleton<TenantAdminAccountsController>(
       () => TenantAdminAccountsController(),
+    );
+    registerLazySingleton<TenantAdminEventsController>(
+      () => TenantAdminEventsController(),
     );
     registerLazySingleton<TenantAdminLocationSelectionContract>(
       () => TenantAdminLocationSelectionService(),
@@ -67,6 +85,9 @@ class TenantAdminModule extends ModuleContract {
     );
     registerLazySingleton<TenantAdminAccountProfilesController>(
       () => TenantAdminAccountProfilesController(),
+    );
+    registerFactory<TenantAdminAccountDetailController>(
+      () => TenantAdminAccountDetailController(),
     );
     registerFactory<TenantAdminOrganizationsController>(
       () => TenantAdminOrganizationsController(),
@@ -103,6 +124,38 @@ class TenantAdminModule extends ModuleContract {
             AutoRoute(
               path: 'events',
               page: TenantAdminEventsRoute.page,
+            ),
+            CustomRoute(
+              path: 'events/create',
+              page: TenantAdminEventCreateRoute.page,
+              transitionsBuilder: TransitionsBuilders.slideBottom,
+              duration: const Duration(milliseconds: 260),
+              reverseDuration: const Duration(milliseconds: 220),
+            ),
+            CustomRoute(
+              path: 'events/edit',
+              page: TenantAdminEventEditRoute.page,
+              transitionsBuilder: TransitionsBuilders.slideBottom,
+              duration: const Duration(milliseconds: 260),
+              reverseDuration: const Duration(milliseconds: 220),
+            ),
+            AutoRoute(
+              path: 'events/types',
+              page: TenantAdminEventTypesRoute.page,
+            ),
+            CustomRoute(
+              path: 'events/types/create',
+              page: TenantAdminEventTypeCreateRoute.page,
+              transitionsBuilder: TransitionsBuilders.slideBottom,
+              duration: const Duration(milliseconds: 260),
+              reverseDuration: const Duration(milliseconds: 220),
+            ),
+            CustomRoute(
+              path: 'events/types/edit',
+              page: TenantAdminEventTypeEditRoute.page,
+              transitionsBuilder: TransitionsBuilders.slideBottom,
+              duration: const Duration(milliseconds: 260),
+              reverseDuration: const Duration(milliseconds: 220),
             ),
             AutoRoute(
               path: 'accounts',

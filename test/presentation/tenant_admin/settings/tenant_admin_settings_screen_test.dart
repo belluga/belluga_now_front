@@ -7,8 +7,11 @@ import 'package:belluga_now/domain/app_data/value_object/platform_type_value.dar
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_settings_repository_contract.dart';
 import 'package:belluga_now/domain/services/tenant_admin_external_image_proxy_contract.dart';
+import 'package:belluga_now/domain/services/tenant_admin_location_selection_contract.dart';
 import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_settings.dart';
+import 'package:belluga_now/infrastructure/services/tenant_admin/tenant_admin_location_selection_service.dart';
 import 'package:belluga_now/presentation/tenant_admin/settings/controllers/tenant_admin_settings_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/settings/screens/tenant_admin_settings_environment_snapshot_screen.dart';
 import 'package:belluga_now/presentation/tenant_admin/settings/screens/tenant_admin_settings_local_preferences_screen.dart';
@@ -28,6 +31,9 @@ void main() {
 
   setUp(() async {
     await GetIt.I.reset();
+    GetIt.I.registerSingleton<TenantAdminLocationSelectionContract>(
+      TenantAdminLocationSelectionService(),
+    );
   });
 
   tearDown(() async {
@@ -189,6 +195,72 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(repository.themeMode, ThemeMode.dark);
+  });
+
+  testWidgets('saves default origin via local preferences map_ui flow',
+      (tester) async {
+    final repository = _FakeAppDataRepository(_buildAppData());
+    final settingsRepository = _FakeTenantAdminSettingsRepository();
+    GetIt.I.registerSingleton<AppDataRepositoryContract>(repository);
+    GetIt.I.registerSingleton<TenantAdminSettingsRepositoryContract>(
+      settingsRepository,
+    );
+    GetIt.I.registerSingleton<TenantAdminImageIngestionService>(
+      TenantAdminImageIngestionService(
+        externalImageProxy: _FakeTenantAdminExternalImageProxy(),
+      ),
+    );
+    final controller = TenantAdminSettingsController();
+    GetIt.I.registerSingleton<TenantAdminSettingsController>(controller);
+
+    await _pumpWithAutoRoute(
+      tester,
+      const Scaffold(body: TenantAdminSettingsLocalPreferencesScreen()),
+    );
+
+    await tester.enterText(
+      find.byKey(TenantAdminSettingsKeys.localPreferencesDefaultOriginLatField),
+      '-20.673600',
+    );
+    await tester.enterText(
+      find.byKey(TenantAdminSettingsKeys.localPreferencesDefaultOriginLngField),
+      '-40.497600',
+    );
+    await tester.enterText(
+      find.byKey(
+        TenantAdminSettingsKeys.localPreferencesDefaultOriginLabelField,
+      ),
+      'Centro',
+    );
+    await tester.scrollUntilVisible(
+      find.byKey(TenantAdminSettingsKeys.localPreferencesSaveOriginButton),
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(TenantAdminSettingsKeys.localPreferencesSaveOriginButton),
+    );
+    await tester.pumpAndSettle();
+
+    expect(settingsRepository.updatedMapUiSettings, isNotNull);
+    expect(
+      settingsRepository.updatedMapUiSettings!.defaultOrigin,
+      isNotNull,
+    );
+    expect(
+      settingsRepository.updatedMapUiSettings!.defaultOrigin!.lat,
+      closeTo(-20.6736, 0.000001),
+    );
+    expect(
+      settingsRepository.updatedMapUiSettings!.defaultOrigin!.lng,
+      closeTo(-40.4976, 0.000001),
+    );
+    expect(
+      settingsRepository.updatedMapUiSettings!.defaultOrigin!.label,
+      'Centro',
+    );
+    expect(repository.initCallCount, 1);
   });
 
   testWidgets('saves firebase settings via remote repository', (tester) async {
@@ -504,6 +576,38 @@ void main() {
 
     controller.onDispose();
   });
+
+  test('controller consumes shared location picker confirmation stream',
+      () async {
+    final repository = _FakeAppDataRepository(_buildAppData());
+    final settingsRepository = _FakeTenantAdminSettingsRepository();
+    final locationSelection = TenantAdminLocationSelectionService();
+    final controller = TenantAdminSettingsController(
+      appDataRepository: repository,
+      settingsRepository: settingsRepository,
+      locationSelectionService: locationSelection,
+    );
+
+    controller.bindLocalPreferencesFlow();
+    locationSelection.setInitialLocation(
+      const TenantAdminLocation(
+        latitude: -20.612345,
+        longitude: -40.487654,
+      ),
+    );
+    locationSelection.confirmSelection();
+    await Future<void>.delayed(Duration.zero);
+
+    expect(
+      controller.mapDefaultOriginLatitudeController.text,
+      '-20.612345',
+    );
+    expect(
+      controller.mapDefaultOriginLongitudeController.text,
+      '-40.487654',
+    );
+    controller.onDispose();
+  });
 }
 
 Future<void> _pumpWithAutoRoute(
@@ -533,6 +637,7 @@ class _FakeAppDataRepository implements AppDataRepositoryContract {
   _FakeAppDataRepository(this._appData);
 
   final AppData _appData;
+  int initCallCount = 0;
 
   @override
   AppData get appData => _appData;
@@ -555,7 +660,9 @@ class _FakeAppDataRepository implements AppDataRepositoryContract {
   ThemeMode get themeMode => themeModeStreamValue.value ?? ThemeMode.system;
 
   @override
-  Future<void> init() async {}
+  Future<void> init() async {
+    initCallCount += 1;
+  }
 
   @override
   Future<void> setMaxRadiusMeters(double meters) async {
@@ -577,8 +684,24 @@ class _FakeTenantAdminSettingsRepository
   final bool throwOnBrandingFetch;
   String? updatedFirebaseProjectId;
   TenantAdminBrandingUpdateInput? lastBrandingInput;
+  TenantAdminMapUiSettings? updatedMapUiSettings;
   final StreamValue<TenantAdminBrandingSettings?> _brandingSettingsStreamValue =
       StreamValue<TenantAdminBrandingSettings?>(defaultValue: null);
+  TenantAdminMapUiSettings _mapUiSettings = const TenantAdminMapUiSettings(
+    rawMapUi: {
+      'radius': 15000,
+      'default_origin': {
+        'lat': -20.6736,
+        'lng': -40.4976,
+        'label': 'Centro',
+      },
+    },
+    defaultOrigin: TenantAdminMapDefaultOrigin(
+      lat: -20.6736,
+      lng: -40.4976,
+      label: 'Centro',
+    ),
+  );
   TenantAdminBrandingSettings _brandingSettings =
       const TenantAdminBrandingSettings(
     tenantName: 'Tenant Test',
@@ -599,6 +722,11 @@ class _FakeTenantAdminSettingsRepository
   @override
   void clearBrandingSettings() {
     _brandingSettingsStreamValue.addValue(null);
+  }
+
+  @override
+  Future<TenantAdminMapUiSettings> fetchMapUiSettings() async {
+    return _mapUiSettings;
   }
 
   @override
@@ -637,6 +765,15 @@ class _FakeTenantAdminSettingsRepository
     }
     _brandingSettingsStreamValue.addValue(_brandingSettings);
     return _brandingSettings;
+  }
+
+  @override
+  Future<TenantAdminMapUiSettings> updateMapUiSettings({
+    required TenantAdminMapUiSettings settings,
+  }) async {
+    updatedMapUiSettings = settings;
+    _mapUiSettings = settings;
+    return settings;
   }
 
   @override

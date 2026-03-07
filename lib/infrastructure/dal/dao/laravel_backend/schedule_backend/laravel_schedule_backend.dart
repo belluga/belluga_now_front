@@ -119,9 +119,9 @@ class LaravelScheduleBackend implements ScheduleBackendContract {
       'confirmed_only': confirmedOnly ? 1 : 0,
     };
 
-    final trimmedQuery = searchQuery?.trim();
-    if (trimmedQuery != null && trimmedQuery.isNotEmpty) {
-      params['search'] = trimmedQuery;
+    final ignoredSearchQuery = searchQuery?.trim();
+    if (ignoredSearchQuery != null && ignoredSearchQuery.isNotEmpty) {
+      // MVP contract: agenda/events listing does not accept text search.
     }
     if (categories != null && categories.isNotEmpty) {
       params['categories'] = categories;
@@ -190,9 +190,9 @@ class LaravelScheduleBackend implements ScheduleBackendContract {
 
     addParam('past_only', showPastOnly ? '1' : '0');
     addParam('confirmed_only', confirmedOnly ? '1' : '0');
-    final trimmedQuery = searchQuery?.trim();
-    if (trimmedQuery != null && trimmedQuery.isNotEmpty) {
-      addParam('search', trimmedQuery);
+    final ignoredSearchQuery = searchQuery?.trim();
+    if (ignoredSearchQuery != null && ignoredSearchQuery.isNotEmpty) {
+      // MVP contract: agenda/events stream does not accept text search.
     }
     if (categories != null && categories.isNotEmpty) {
       for (final category in categories) {
@@ -205,7 +205,16 @@ class LaravelScheduleBackend implements ScheduleBackendContract {
       }
     }
     if (taxonomy != null && taxonomy.isNotEmpty) {
-      addParam('taxonomy', jsonEncode(taxonomy));
+      for (var index = 0; index < taxonomy.length; index++) {
+        final term = taxonomy[index];
+        final type = term['type']?.toString().trim();
+        final value = term['value']?.toString().trim();
+        if (type == null || type.isEmpty || value == null || value.isEmpty) {
+          continue;
+        }
+        addParam('taxonomy[$index][type]', type);
+        addParam('taxonomy[$index][value]', value);
+      }
     }
     if (originLat != null && originLng != null) {
       addParam('origin_lat', originLat.toString());

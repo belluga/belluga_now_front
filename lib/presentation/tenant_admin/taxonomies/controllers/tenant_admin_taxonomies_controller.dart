@@ -62,8 +62,12 @@ class TenantAdminTaxonomiesController implements Disposable {
   final GlobalKey<FormState> termFormKey = GlobalKey<FormState>();
   final TextEditingController termSlugController = TextEditingController();
   final TextEditingController termNameController = TextEditingController();
+  final ScrollController taxonomiesListScrollController = ScrollController();
+  final ScrollController termsListScrollController = ScrollController();
 
   bool _isDisposed = false;
+  bool _taxonomiesListScrollBound = false;
+  bool _termsListScrollBound = false;
   StreamSubscription<String?>? _tenantScopeSubscription;
   String? _lastTenantDomain;
   String? _activeTaxonomyId;
@@ -125,6 +129,60 @@ class TenantAdminTaxonomiesController implements Disposable {
     }
     await _repository.loadNextTermsPage(pageSize: _termsPageSize);
     errorStreamValue.addValue(_repository.termsErrorStreamValue.value);
+  }
+
+  void bindTaxonomiesListScrollPagination() {
+    if (_taxonomiesListScrollBound) {
+      return;
+    }
+    _taxonomiesListScrollBound = true;
+    taxonomiesListScrollController.addListener(_handleTaxonomiesListScroll);
+  }
+
+  void unbindTaxonomiesListScrollPagination() {
+    if (!_taxonomiesListScrollBound) {
+      return;
+    }
+    _taxonomiesListScrollBound = false;
+    taxonomiesListScrollController.removeListener(_handleTaxonomiesListScroll);
+  }
+
+  void bindTermsListScrollPagination() {
+    if (_termsListScrollBound) {
+      return;
+    }
+    _termsListScrollBound = true;
+    termsListScrollController.addListener(_handleTermsListScroll);
+  }
+
+  void unbindTermsListScrollPagination() {
+    if (!_termsListScrollBound) {
+      return;
+    }
+    _termsListScrollBound = false;
+    termsListScrollController.removeListener(_handleTermsListScroll);
+  }
+
+  void _handleTaxonomiesListScroll() {
+    if (!taxonomiesListScrollController.hasClients) {
+      return;
+    }
+    final position = taxonomiesListScrollController.position;
+    const threshold = 320.0;
+    if (position.pixels + threshold >= position.maxScrollExtent) {
+      unawaited(loadNextTaxonomiesPage());
+    }
+  }
+
+  void _handleTermsListScroll() {
+    if (!termsListScrollController.hasClients) {
+      return;
+    }
+    final position = termsListScrollController.position;
+    const threshold = 320.0;
+    if (position.pixels + threshold >= position.maxScrollExtent) {
+      unawaited(loadNextTermsPage());
+    }
   }
 
   Future<void> submitCreateTaxonomy({
@@ -407,6 +465,8 @@ class TenantAdminTaxonomiesController implements Disposable {
 
   void dispose() {
     _isDisposed = true;
+    unbindTaxonomiesListScrollPagination();
+    unbindTermsListScrollPagination();
     _tenantScopeSubscription?.cancel();
     slugController.dispose();
     nameController.dispose();
@@ -414,6 +474,8 @@ class TenantAdminTaxonomiesController implements Disposable {
     colorController.dispose();
     termSlugController.dispose();
     termNameController.dispose();
+    taxonomiesListScrollController.dispose();
+    termsListScrollController.dispose();
     errorStreamValue.dispose();
     successMessageStreamValue.dispose();
     actionErrorMessageStreamValue.dispose();

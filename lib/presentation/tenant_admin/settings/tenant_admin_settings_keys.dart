@@ -40,6 +40,16 @@ class TenantAdminSettingsKeys {
       ValueKey('tenant_admin_settings_local_preferences_scoped_app_bar');
   static const localPreferencesBackButton =
       ValueKey('tenant_admin_settings_local_preferences_back_button');
+  static const localPreferencesDefaultOriginLatField =
+      ValueKey('tenant_admin_settings_local_preferences_default_origin_lat');
+  static const localPreferencesDefaultOriginLngField =
+      ValueKey('tenant_admin_settings_local_preferences_default_origin_lng');
+  static const localPreferencesDefaultOriginLabelField =
+      ValueKey('tenant_admin_settings_local_preferences_default_origin_label');
+  static const localPreferencesSelectOnMapButton =
+      ValueKey('tenant_admin_settings_local_preferences_select_on_map');
+  static const localPreferencesSaveOriginButton =
+      ValueKey('tenant_admin_settings_local_preferences_save_origin');
   static const visualIdentityScopedAppBar =
       ValueKey('tenant_admin_settings_visual_identity_scoped_app_bar');
   static const visualIdentityBackButton =

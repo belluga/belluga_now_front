@@ -29,7 +29,7 @@ import 'package:belluga_now/infrastructure/dal/dto/schedule/event_delta_dto.dart
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_page_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_summary_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/venue_event/venue_event_preview_dto.dart';
-import 'package:belluga_now/presentation/shared/push/controllers/push_options_controller.dart';
+import 'package:belluga_now/presentation/shared/push/controllers/push_options_resolver.dart';
 import 'package:belluga_now/infrastructure/services/push/push_transport_configurator.dart';
 import 'package:belluga_now/infrastructure/services/schedule_backend_contract.dart';
 import 'package:belluga_now/infrastructure/user/dtos/user_dto.dart';
@@ -61,7 +61,7 @@ void main() {
     GetIt.I.registerSingleton<ContactsRepositoryContract>(
       _FakeContactsRepository(),
     );
-    GetIt.I.registerSingleton<PushOptionsController>(PushOptionsController());
+    GetIt.I.registerSingleton<PushOptionsResolver>(PushOptionsResolver());
   });
 
   tearDown(() async {
@@ -94,6 +94,22 @@ void main() {
     expect(await config.tokenProvider?.call(), isNull);
   });
 
+  test('BackendContext uses canonical main domain instead of current href',
+      () async {
+    final appData = _buildTestAppData(
+      platform: PlatformType.web,
+      mainDomain: 'https://guarappari.belluga.space',
+      domains: ['https://guarappari.belluga.space'],
+      localHostname: 'belluga.space',
+      localHref: 'https://belluga.space/admin',
+    );
+
+    final context = BackendContext.fromAppData(appData);
+
+    expect(context.baseUrl, 'https://guarappari.belluga.space/api');
+    expect(context.adminUrl, 'https://guarappari.belluga.space/admin/api');
+  });
+
   test('ApplicationContract initializes push repository on non-web path',
       () async {
     final authRepository =
@@ -112,8 +128,8 @@ void main() {
     expect(capture.factoryCalled, isTrue);
     expect(capture.initCalled, isTrue);
     expect(await capture.transportConfig?.tokenProvider?.call(), 'token-123');
-    expect(capture.platformResolver?.call(),
-        BellugaConstants.settings.platform);
+    expect(
+        capture.platformResolver?.call(), BellugaConstants.settings.platform);
   });
 
   test('ApplicationContract skips push init on web override', () async {
@@ -244,14 +260,17 @@ class _FakeUserLocationRepository implements UserLocationRepositoryContract {
   Future<bool> warmUpIfPermitted() async => false;
 
   @override
-  Future<bool> refreshIfPermitted({Duration minInterval = const Duration(seconds: 30)}) async =>
+  Future<bool> refreshIfPermitted(
+          {Duration minInterval = const Duration(seconds: 30)}) async =>
       false;
 
   @override
   Future<String?> resolveUserLocation() async => null;
 
   @override
-  Future<bool> startTracking({LocationTrackingMode mode = LocationTrackingMode.mapForeground}) async =>
+  Future<bool> startTracking(
+          {LocationTrackingMode mode =
+              LocationTrackingMode.mapForeground}) async =>
       false;
 
   @override
@@ -397,7 +416,8 @@ class _NoopBackend extends BackendContract {
   TenantBackendContract get tenant => _NoopTenantBackend();
 
   @override
-  AccountProfilesBackendContract get accountProfiles => _NoopAccountProfilesBackend();
+  AccountProfilesBackendContract get accountProfiles =>
+      _NoopAccountProfilesBackend();
 
   @override
   FavoriteBackendContract get favorites => _NoopFavoriteBackend();
@@ -416,7 +436,8 @@ class _NoopAppDataBackend extends AppDataBackendContract {
 
 class _NoopAccountProfilesBackend implements AccountProfilesBackendContract {
   @override
-  Future<List<AccountProfileModel>> fetchAccountProfiles() => throw UnimplementedError();
+  Future<List<AccountProfileModel>> fetchAccountProfiles() =>
+      throw UnimplementedError();
 
   @override
   Future<List<AccountProfileModel>> searchAccountProfiles({
@@ -530,14 +551,20 @@ class _NoopScheduleBackend extends ScheduleBackendContract {
       const Stream.empty();
 }
 
-AppData _buildTestAppData() {
-  final platformType = PlatformTypeValue()..parse(PlatformType.mobile.name);
+AppData _buildTestAppData({
+  PlatformType platform = PlatformType.mobile,
+  String mainDomain = 'https://guarappari.com.br',
+  List<String> domains = const ['https://guarappari.com.br'],
+  String localHostname = 'guarappari.com.br',
+  String localHref = 'https://guarappari.com.br',
+}) {
+  final platformType = PlatformTypeValue()..parse(platform.name);
   return AppData.fromInitialization(
     remoteData: {
       'name': 'Guarappari',
       'type': 'tenant',
-      'main_domain': 'https://guarappari.com.br',
-      'domains': ['https://guarappari.com.br'],
+      'main_domain': mainDomain,
+      'domains': domains,
       'app_domains': [],
       'theme_data_settings': {
         'primary_seed_color': '#4FA0E3',
@@ -550,8 +577,8 @@ AppData _buildTestAppData() {
     },
     localInfo: {
       'platformType': platformType,
-      'hostname': 'guarappari.com.br',
-      'href': 'https://guarappari.com.br',
+      'hostname': localHostname,
+      'href': localHref,
       'port': null,
       'device': 'test-device',
     },

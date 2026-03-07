@@ -8,14 +8,14 @@ import 'package:belluga_now/domain/repositories/user_location_repository_contrac
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
+import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/event_search_screen/models/agenda_app_bar_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/event_search_screen/models/invite_filter.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart' show Disposable, GetIt;
 import 'package:stream_value/core/stream_value.dart';
 
-class TenantHomeAgendaController
-    implements Disposable, AgendaAppBarController {
+class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
   TenantHomeAgendaController({
     ScheduleRepositoryContract? scheduleRepository,
     UserEventsRepositoryContract? userEventsRepository,
@@ -42,7 +42,7 @@ class TenantHomeAgendaController
   final AppDataRepositoryContract _appDataRepository;
 
   static const int _pageSize = 10;
-  static const double _defaultRadiusMeters = 50000.0;
+  static const double _fallbackRadiusMeters = 50000.0;
 
   @override
   final searchController = TextEditingController();
@@ -63,11 +63,14 @@ class TenantHomeAgendaController
       StreamValue<InviteFilter>(defaultValue: InviteFilter.none);
   @override
   final radiusMetersStreamValue =
-      StreamValue<double>(defaultValue: _defaultRadiusMeters);
+      StreamValue<double>(defaultValue: _fallbackRadiusMeters);
 
   @override
   StreamValue<double> get maxRadiusMetersStreamValue =>
       _appDataRepository.maxRadiusMetersStreamValue;
+
+  @override
+  double get minRadiusMeters => _resolveMinRadiusMeters();
 
   StreamSubscription? _confirmedEventsSubscription;
   StreamSubscription? _pendingInvitesSubscription;
@@ -77,8 +80,9 @@ class TenantHomeAgendaController
   int _currentPage = 1;
   bool _isFetching = false;
   bool _hasMore = true;
-  bool _isAutoPaging = false;
   bool _isDisposed = false;
+  double? _effectiveOriginLat;
+  double? _effectiveOriginLng;
 
   void _setValue<T>(StreamValue<T> stream, T value) {
     if (_isDisposed) return;
@@ -88,11 +92,11 @@ class TenantHomeAgendaController
   Future<void> init({bool startWithHistory = false}) async {
     await _invitesRepository.init();
     _setValue(showHistoryStreamValue, startWithHistory);
-    final maxRadius = _appDataRepository.maxRadiusMeters;
-    _setValue(radiusMetersStreamValue, maxRadius);
+    _setValue(radiusMetersStreamValue, _resolveDefaultRadiusMeters());
     _listenForStatusChanges();
     _listenForLocationChanges();
     _listenForRadiusChanges();
+    await _resolveEffectiveOrigin(warmUpIfPossible: true);
     await _refresh();
   }
 
@@ -104,8 +108,23 @@ class TenantHomeAgendaController
     _fetchedEvents.clear();
     _setValue(displayedEventsStreamValue, const <EventModel>[]);
     _setValue(isInitialLoadingStreamValue, true);
-    await _fetchPage(page: 1);
-    _setValue(isInitialLoadingStreamValue, false);
+    try {
+      await _resolveEffectiveOrigin(warmUpIfPossible: true);
+      if (!_hasEffectiveOrigin) {
+        _hasMore = false;
+        _setValue(hasMoreStreamValue, false);
+        _setValue(displayedEventsStreamValue, const <EventModel>[]);
+        return;
+      }
+
+      _hasMore = true;
+      _setValue(hasMoreStreamValue, true);
+      await _fetchPage(page: 1);
+    } catch (error) {
+      debugPrint('TenantHomeAgendaController._refresh failed: $error');
+    } finally {
+      _setValue(isInitialLoadingStreamValue, false);
+    }
   }
 
   Future<void> _waitForOngoingFetch() async {
@@ -115,12 +134,12 @@ class TenantHomeAgendaController
   }
 
   Future<void> loadNextPage() async {
-    if (!_hasMore || _isFetching) return;
+    if (!_hasEffectiveOrigin || !_hasMore || _isFetching) return;
     await _fetchPage(page: _currentPage + 1);
   }
 
   Future<void> _fetchPage({required int page}) async {
-    if (_isFetching) return;
+    if (_isFetching || !_hasEffectiveOrigin) return;
     _isFetching = true;
     if (page > 1) {
       _setValue(isPageLoadingStreamValue, true);
@@ -134,8 +153,8 @@ class TenantHomeAgendaController
         searchQuery: searchController.text,
         confirmedOnly:
             inviteFilterStreamValue.value == InviteFilter.confirmedOnly,
-        originLat: _userLocationRepository?.userLocationStreamValue.value?.latitude,
-        originLng: _userLocationRepository?.userLocationStreamValue.value?.longitude,
+        originLat: _effectiveOriginLat,
+        originLng: _effectiveOriginLng,
         maxDistanceMeters: radiusMetersStreamValue.value,
       );
 
@@ -147,7 +166,7 @@ class TenantHomeAgendaController
         _fetchedEvents.addAll(result.events);
       }
 
-      _hasMore = result.hasMore;
+      _hasMore = result.hasMore && result.events.length >= _pageSize;
       _setValue(hasMoreStreamValue, _hasMore);
       _currentPage = page;
       _applyFiltersAndPublish();
@@ -202,8 +221,8 @@ class TenantHomeAgendaController
   @override
   void setRadiusMeters(double meters) {
     if (meters <= 0) return;
-    _setValue(radiusMetersStreamValue, meters);
-    _applyFiltersAndPublish();
+    _setValue(radiusMetersStreamValue, _clampRadiusMeters(meters));
+    unawaited(_refresh());
   }
 
   void setInitialSearchQuery(String? query) {
@@ -245,53 +264,9 @@ class TenantHomeAgendaController
     }).toList();
   }
 
-  List<EventModel> _applyRadiusFilter(List<EventModel> events) {
-    final userCoordinate = _userLocationRepository?.userLocationStreamValue.value;
-    if (userCoordinate == null) return events;
-    final radiusMeters = radiusMetersStreamValue.value;
-    return events.where((event) {
-      final eventCoordinate = event.coordinate;
-      if (eventCoordinate == null) return false;
-      final distanceMeters = haversineDistanceMeters(
-        lat1: userCoordinate.latitude,
-        lon1: userCoordinate.longitude,
-        lat2: eventCoordinate.latitude,
-        lon2: eventCoordinate.longitude,
-      );
-      return distanceMeters <= radiusMeters;
-    }).toList();
-  }
-
   void _applyFiltersAndPublish() {
     final inviteFiltered = _applyInviteFilter(_fetchedEvents);
-    final radiusFiltered = _applyRadiusFilter(inviteFiltered);
-    _setValue(displayedEventsStreamValue, radiusFiltered);
-    _maybeAutoPage(radiusFiltered);
-  }
-
-  void _maybeAutoPage(List<EventModel> filtered) {
-    if (filtered.isNotEmpty || !_hasMore || _isAutoPaging) {
-      return;
-    }
-    unawaited(_autoPageToFirstMatch());
-  }
-
-  Future<void> _autoPageToFirstMatch() async {
-    _isAutoPaging = true;
-    try {
-      while (_hasMore) {
-        await _waitForOngoingFetch();
-        if (!_hasMore) {
-          break;
-        }
-        await _fetchPage(page: _currentPage + 1);
-        if (displayedEventsStreamValue.value.isNotEmpty || !_hasMore) {
-          break;
-        }
-      }
-    } finally {
-      _isAutoPaging = false;
-    }
+    _setValue(displayedEventsStreamValue, inviteFiltered);
   }
 
   bool isEventConfirmed(String eventId) =>
@@ -303,7 +278,9 @@ class TenantHomeAgendaController
           .length;
 
   String? distanceLabelFor(VenueEventResume event) {
-    final userCoordinate = _userLocationRepository?.userLocationStreamValue.value;
+    final userCoordinate =
+        _userLocationRepository?.userLocationStreamValue.value ??
+            _userLocationRepository?.lastKnownLocationStreamValue.value;
     final eventCoordinate = event.coordinate;
     if (userCoordinate == null || eventCoordinate == null) {
       return null;
@@ -343,24 +320,132 @@ class TenantHomeAgendaController
     if (repo == null) return;
     _userLocationSubscription?.cancel();
     _userLocationSubscription = repo.userLocationStreamValue.stream.listen((_) {
-      _applyFiltersAndPublish();
+      unawaited(_handleLocationUpdate());
     });
   }
 
   void _listenForRadiusChanges() {
     _radiusSubscription?.cancel();
     _radiusSubscription =
-        _appDataRepository.maxRadiusMetersStreamValue.stream.listen((meters) {
+        _appDataRepository.maxRadiusMetersStreamValue.stream.listen((_) {
       final current = radiusMetersStreamValue.value;
-      final clamped = current > meters ? meters : current;
+      final clamped = _clampRadiusMeters(current);
       _setValue(radiusMetersStreamValue, clamped);
-      _applyFiltersAndPublish();
+      unawaited(_refresh());
     });
+  }
+
+  bool get _hasEffectiveOrigin =>
+      _effectiveOriginLat != null && _effectiveOriginLng != null;
+
+  Future<void> _handleLocationUpdate() async {
+    final changed = await _resolveEffectiveOrigin(warmUpIfPossible: false);
+    if (!changed) {
+      return;
+    }
+    await _refresh();
+  }
+
+  Future<bool> _resolveEffectiveOrigin({
+    required bool warmUpIfPossible,
+  }) async {
+    final currentLat = _effectiveOriginLat;
+    final currentLng = _effectiveOriginLng;
+
+    final userCoordinate = await _resolveUserCoordinate(
+      warmUpIfPossible: warmUpIfPossible,
+    );
+    if (userCoordinate != null) {
+      _effectiveOriginLat = userCoordinate.latitude;
+      _effectiveOriginLng = userCoordinate.longitude;
+      return _effectiveOriginLat != currentLat ||
+          _effectiveOriginLng != currentLng;
+    }
+
+    final tenantDefaultOrigin = _resolveTenantDefaultOriginCoordinate();
+    if (tenantDefaultOrigin != null) {
+      _effectiveOriginLat = tenantDefaultOrigin.latitude;
+      _effectiveOriginLng = tenantDefaultOrigin.longitude;
+      return _effectiveOriginLat != currentLat ||
+          _effectiveOriginLng != currentLng;
+    }
+
+    _effectiveOriginLat = null;
+    _effectiveOriginLng = null;
+    return currentLat != null || currentLng != null;
+  }
+
+  Future<CityCoordinate?> _resolveUserCoordinate({
+    required bool warmUpIfPossible,
+  }) async {
+    final repository = _userLocationRepository;
+    if (repository == null) {
+      return null;
+    }
+
+    if (warmUpIfPossible) {
+      try {
+        await repository.warmUpIfPermitted();
+      } on Object {
+        // Best-effort warm up.
+      }
+    }
+
+    return repository.userLocationStreamValue.value ??
+        repository.lastKnownLocationStreamValue.value;
+  }
+
+  CityCoordinate? _resolveTenantDefaultOriginCoordinate() {
+    try {
+      return _appDataRepository.appData.tenantDefaultOrigin;
+    } on Object {
+      return null;
+    }
+  }
+
+  double _resolveMinRadiusMeters() {
+    final configured = _configuredMinRadiusMeters();
+    return configured > 0 ? configured : 1000;
+  }
+
+  double _resolveDefaultRadiusMeters() {
+    final configured = _configuredDefaultRadiusMeters();
+    if (configured > 0) {
+      return _clampRadiusMeters(configured);
+    }
+    return _clampRadiusMeters(_appDataRepository.maxRadiusMeters);
+  }
+
+  double _configuredMinRadiusMeters() {
+    try {
+      return _appDataRepository.appData.mapRadiusMinMeters;
+    } on Object {
+      return 1000;
+    }
+  }
+
+  double _configuredDefaultRadiusMeters() {
+    try {
+      return _appDataRepository.appData.mapRadiusDefaultMeters;
+    } on Object {
+      return _appDataRepository.maxRadiusMeters;
+    }
+  }
+
+  double _clampRadiusMeters(double meters) {
+    final min = _resolveMinRadiusMeters();
+    final max = _appDataRepository.maxRadiusMeters;
+    final effectiveMax = max < min ? min : max;
+    return meters.clamp(min, effectiveMax).toDouble();
   }
 
   @override
   void onDispose() {
     _isDisposed = true;
+    _confirmedEventsSubscription?.cancel();
+    _pendingInvitesSubscription?.cancel();
+    _userLocationSubscription?.cancel();
+    _radiusSubscription?.cancel();
     displayedEventsStreamValue.dispose();
     isInitialLoadingStreamValue.dispose();
     isPageLoadingStreamValue.dispose();
@@ -369,10 +454,6 @@ class TenantHomeAgendaController
     searchActiveStreamValue.dispose();
     inviteFilterStreamValue.dispose();
     radiusMetersStreamValue.dispose();
-    _confirmedEventsSubscription?.cancel();
-    _pendingInvitesSubscription?.cancel();
-    _userLocationSubscription?.cancel();
-    _radiusSubscription?.cancel();
     focusNode.dispose();
     searchController.dispose();
   }
