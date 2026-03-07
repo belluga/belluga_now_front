@@ -301,9 +301,18 @@ class TenantAdminSettingsRepository
 
   Map<String, dynamic> _extractMapUiPayload(dynamic raw) {
     final payload = _extractDataMap(raw);
-    final mapUiRaw = payload['map_ui'];
-    if (mapUiRaw is Map) {
-      return Map<String, dynamic>.from(mapUiRaw);
+    if (payload.containsKey('map_ui')) {
+      final mapUiRaw = payload['map_ui'];
+      if (mapUiRaw is Map) {
+        return Map<String, dynamic>.from(mapUiRaw);
+      }
+      if (mapUiRaw == null) {
+        return const <String, dynamic>{};
+      }
+      if (mapUiRaw is List && mapUiRaw.isEmpty) {
+        return const <String, dynamic>{};
+      }
+      throw Exception('Unexpected map_ui payload shape.');
     }
     return Map<String, dynamic>.from(payload);
   }
