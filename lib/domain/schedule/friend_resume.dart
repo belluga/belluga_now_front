@@ -23,10 +23,16 @@ class EventFriendResume {
     required String displayName,
     String? avatarUrl,
   }) {
+    final avatarUrlValue = UserAvatarValue();
+    final normalizedAvatarUrl = avatarUrl?.trim();
+    if (normalizedAvatarUrl != null && normalizedAvatarUrl.isNotEmpty) {
+      avatarUrlValue.parse(normalizedAvatarUrl);
+    }
+
     return EventFriendResume(
       idValue: UserIdValue()..parse(id),
       displayNameValue: UserDisplayNameValue()..parse(displayName),
-      avatarUrlValue: UserAvatarValue()..parse(avatarUrl ?? ''),
+      avatarUrlValue: avatarUrlValue,
     );
   }
 

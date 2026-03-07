@@ -80,7 +80,6 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
   int _currentPage = 1;
   bool _isFetching = false;
   bool _hasMore = true;
-  bool _isAutoPaging = false;
   bool _isDisposed = false;
   double? _effectiveOriginLat;
   double? _effectiveOriginLng;
@@ -167,7 +166,7 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
         _fetchedEvents.addAll(result.events);
       }
 
-      _hasMore = result.hasMore;
+      _hasMore = result.hasMore && result.events.length >= _pageSize;
       _setValue(hasMoreStreamValue, _hasMore);
       _currentPage = page;
       _applyFiltersAndPublish();
@@ -268,32 +267,6 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
   void _applyFiltersAndPublish() {
     final inviteFiltered = _applyInviteFilter(_fetchedEvents);
     _setValue(displayedEventsStreamValue, inviteFiltered);
-    _maybeAutoPage(inviteFiltered);
-  }
-
-  void _maybeAutoPage(List<EventModel> filtered) {
-    if (filtered.isNotEmpty || !_hasMore || _isAutoPaging) {
-      return;
-    }
-    unawaited(_autoPageToFirstMatch());
-  }
-
-  Future<void> _autoPageToFirstMatch() async {
-    _isAutoPaging = true;
-    try {
-      while (_hasMore) {
-        await _waitForOngoingFetch();
-        if (!_hasMore) {
-          break;
-        }
-        await _fetchPage(page: _currentPage + 1);
-        if (displayedEventsStreamValue.value.isNotEmpty || !_hasMore) {
-          break;
-        }
-      }
-    } finally {
-      _isAutoPaging = false;
-    }
   }
 
   bool isEventConfirmed(String eventId) =>

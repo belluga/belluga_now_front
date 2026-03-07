@@ -128,7 +128,7 @@ class TenantAdminEventsRepository
           'page': page,
           'page_size': pageSize,
           if (status != null && status.trim().isNotEmpty) 'status': status,
-          if (archived) 'archived': true,
+          if (archived) 'archived': 1,
         },
         options: Options(headers: _buildLandlordHeaders()),
       );
