@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:belluga_form_validation/belluga_form_validation.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/app_data/value_object/platform_type_value.dart';
 import 'package:belluga_now/domain/repositories/landlord_auth_repository_contract.dart';
@@ -139,6 +140,31 @@ void main() {
       readError: () => repository.profileTypesErrorStreamValue.value,
       expectedCountsPerStep: const [2, 3],
       loadNextCalls: 1,
+    );
+  });
+
+  test('createAccountProfile preserves structured 422 validation failure',
+      () async {
+    final adapter = _ProfileCreateValidationAdapter();
+    final dio = Dio()..httpClientAdapter = adapter;
+    final repository = TenantAdminAccountProfilesRepository(dio: dio);
+
+    expect(
+      repository.createAccountProfile(
+        accountId: 'account-1',
+        profileType: 'venue',
+        displayName: 'Perfil',
+      ),
+      throwsA(
+        isA<FormValidationFailure>()
+            .having((error) => error.message, 'message',
+                'The given data was invalid.')
+            .having(
+          (error) => error.fieldErrors['location.lat'],
+          'location.lat error',
+          <String>['Latitude obrigatoria.'],
+        ),
+      ),
     );
   });
 }
@@ -289,6 +315,31 @@ class _ProfileTypesRoutingAdapter implements HttpClientAdapter {
     return ResponseBody.fromString(
       jsonEncode(payload),
       200,
+      headers: {
+        Headers.contentTypeHeader: ['application/json'],
+      },
+    );
+  }
+}
+
+class _ProfileCreateValidationAdapter implements HttpClientAdapter {
+  @override
+  void close({bool force = false}) {}
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<List<int>>? requestStream,
+    Future? cancelFuture,
+  ) async {
+    return ResponseBody.fromString(
+      jsonEncode({
+        'message': 'The given data was invalid.',
+        'errors': {
+          'location.lat': ['Latitude obrigatoria.'],
+        },
+      }),
+      422,
       headers: {
         Headers.contentTypeHeader: ['application/json'],
       },

@@ -1,6 +1,8 @@
 import 'dart:io';
 
 import 'package:auto_route/auto_route.dart';
+import 'package:belluga_form_validation/belluga_form_validation.dart'
+    show FormValidationFailure;
 import 'package:belluga_now/domain/repositories/tenant_admin_account_profiles_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_accounts_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_taxonomies_repository_contract.dart';
@@ -19,7 +21,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_defin
 import 'package:belluga_now/domain/services/tenant_admin_location_selection_contract.dart';
 import 'package:belluga_now/domain/services/tenant_admin_external_image_proxy_contract.dart';
 import 'package:belluga_now/infrastructure/services/tenant_admin/tenant_admin_location_selection_service.dart';
-import 'package:belluga_now/presentation/tenant_admin/accounts/controllers/tenant_admin_accounts_controller.dart';
+import 'package:belluga_now/presentation/tenant_admin/accounts/controllers/tenant_admin_account_create_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/accounts/screens/tenant_admin_account_create_screen.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_image_ingestion_service.dart';
 import 'package:flutter/material.dart';
@@ -33,6 +35,8 @@ import 'package:stream_value/core/stream_value.dart';
 class _FakeAccountsRepository
     with TenantAdminAccountsRepositoryPaginationMixin
     implements TenantAdminAccountsRepositoryContract {
+  Object? createAccountError;
+
   @override
   final StreamValue<List<TenantAdminAccount>?> accountsStreamValue =
       StreamValue<List<TenantAdminAccount>?>(defaultValue: const []);
@@ -66,6 +70,10 @@ class _FakeAccountsRepository
     required TenantAdminOwnershipState ownershipState,
     String? organizationId,
   }) async {
+    final error = createAccountError;
+    if (error != null) {
+      throw error;
+    }
     return TenantAdminAccount(
       id: 'acc-1',
       name: name,
@@ -167,6 +175,7 @@ class _FakeAccountProfilesRepository
   List<TenantAdminProfileTypeDefinition> _profileTypes;
   String? lastCreateBio;
   List<TenantAdminTaxonomyTerm> lastCreateTaxonomyTerms = const [];
+  Object? createProfileError;
 
   @override
   Future<List<TenantAdminProfileTypeDefinition>> fetchProfileTypes() async {
@@ -209,6 +218,10 @@ class _FakeAccountProfilesRepository
     TenantAdminMediaUpload? avatarUpload,
     TenantAdminMediaUpload? coverUpload,
   }) async {
+    final error = createProfileError;
+    if (error != null) {
+      throw error;
+    }
     lastCreateBio = bio;
     lastCreateTaxonomyTerms = List<TenantAdminTaxonomyTerm>.from(taxonomyTerms);
     return TenantAdminAccountProfile(
@@ -490,8 +503,8 @@ void main() {
     GetIt.I.registerSingleton<TenantAdminImageIngestionService>(
       TenantAdminImageIngestionService(),
     );
-    GetIt.I.registerSingleton<TenantAdminAccountsController>(
-      TenantAdminAccountsController(
+    GetIt.I.registerSingleton<TenantAdminAccountCreateController>(
+      TenantAdminAccountCreateController(
         locationSelectionService: locationSelectionService,
       ),
     );
@@ -543,7 +556,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(
-      find.text('Localização é obrigatória para este perfil.'),
+      find.text('Localizacao e obrigatoria para este perfil.'),
       findsOneWidget,
     );
   });
@@ -584,7 +597,7 @@ void main() {
     );
 
     expect(find.text('Remover'), findsNothing);
-    final controller = GetIt.I.get<TenantAdminAccountsController>();
+    final controller = GetIt.I.get<TenantAdminAccountCreateController>();
     controller.updateCreateAvatarFile(avatarFile);
     await tester.pumpAndSettle();
 
@@ -610,7 +623,8 @@ void main() {
     );
   });
 
-  testWidgets('disables avatar pick and shows progress when busy', (tester) async {
+  testWidgets('disables avatar pick and shows progress when busy',
+      (tester) async {
     await _pumpWithAutoRoute(
       tester,
       const Scaffold(
@@ -625,7 +639,7 @@ void main() {
     await tester.tap(find.text('Venue').last);
     await tester.pumpAndSettle();
 
-    final controller = GetIt.I.get<TenantAdminAccountsController>();
+    final controller = GetIt.I.get<TenantAdminAccountCreateController>();
     controller.updateCreateAvatarBusy(true);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 50));
@@ -704,7 +718,7 @@ void main() {
 
     await tester.enterText(
         find.widgetWithText(TextFormField, 'Nome'), 'Conta A');
-    final controller = GetIt.I.get<TenantAdminAccountsController>();
+    final controller = GetIt.I.get<TenantAdminAccountCreateController>();
     controller.bioController.text = '<p>Bio teste</p>';
     await tester.pump();
     final urbanaChip = find.text('Urbana').last;
@@ -716,6 +730,152 @@ void main() {
       controller.selectedTaxonomyTermsStreamValue.value['genre'],
       equals({'urbana'}),
     );
+  });
+
+  testWidgets('renders backend global validation inline without snackbar',
+      (tester) async {
+    final profilesRepository =
+        GetIt.I.get<TenantAdminAccountProfilesRepositoryContract>()
+            as _FakeAccountProfilesRepository;
+    profilesRepository._profileTypes = const [
+      TenantAdminProfileTypeDefinition(
+        type: 'venue',
+        label: 'Venue',
+        allowedTaxonomies: [],
+        capabilities: TenantAdminProfileTypeCapabilities(
+          isFavoritable: true,
+          isPoiEnabled: false,
+          hasBio: false,
+          hasContent: false,
+          hasTaxonomies: false,
+          hasAvatar: false,
+          hasCover: false,
+          hasEvents: false,
+        ),
+      ),
+    ];
+    profilesRepository.createProfileError = FormValidationFailure(
+      statusCode: 422,
+      message: 'The given data was invalid.',
+      fieldErrors: <String, List<String>>{
+        'account_profile': <String>['Conta invalida.', 'Tente novamente.'],
+      },
+    );
+
+    await _pumpWithAutoRoute(
+      tester,
+      const Scaffold(
+        body: TenantAdminAccountCreateScreen(),
+      ),
+    );
+
+    await _selectProfileType(tester, 'Venue');
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Nome'),
+      'Conta teste',
+    );
+    await tester.tap(
+      find.byKey(const ValueKey('tenant_admin_account_create_save')),
+      warnIfMissed: false,
+    );
+    await tester.pump();
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('Conta invalida.'), findsOneWidget);
+    expect(find.text('Ver todos'), findsOneWidget);
+    expect(find.byType(SnackBar), findsNothing);
+  });
+
+  testWidgets('shows operational submit failures in snackbar', (tester) async {
+    final profilesRepository =
+        GetIt.I.get<TenantAdminAccountProfilesRepositoryContract>()
+            as _FakeAccountProfilesRepository;
+    profilesRepository._profileTypes = const [
+      TenantAdminProfileTypeDefinition(
+        type: 'venue',
+        label: 'Venue',
+        allowedTaxonomies: [],
+        capabilities: TenantAdminProfileTypeCapabilities(
+          isFavoritable: true,
+          isPoiEnabled: false,
+          hasBio: false,
+          hasContent: false,
+          hasTaxonomies: false,
+          hasAvatar: false,
+          hasCover: false,
+          hasEvents: false,
+        ),
+      ),
+    ];
+    profilesRepository.createProfileError = Exception('backend exploded');
+
+    await _pumpWithAutoRoute(
+      tester,
+      const Scaffold(
+        body: TenantAdminAccountCreateScreen(),
+      ),
+    );
+
+    await _selectProfileType(tester, 'Venue');
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Nome'),
+      'Conta teste',
+    );
+    await tester.tap(
+      find.byKey(const ValueKey('tenant_admin_account_create_save')),
+      warnIfMissed: false,
+    );
+    await tester.pump();
+    await tester.pumpAndSettle();
+
+    expect(find.byType(SnackBar), findsOneWidget);
+    expect(find.textContaining('backend exploded'), findsOneWidget);
+  });
+
+  testWidgets('shows success feedback when create route cannot pop',
+      (tester) async {
+    final profilesRepository =
+        GetIt.I.get<TenantAdminAccountProfilesRepositoryContract>()
+            as _FakeAccountProfilesRepository;
+    profilesRepository._profileTypes = const [
+      TenantAdminProfileTypeDefinition(
+        type: 'venue',
+        label: 'Venue',
+        allowedTaxonomies: [],
+        capabilities: TenantAdminProfileTypeCapabilities(
+          isFavoritable: true,
+          isPoiEnabled: false,
+          hasBio: false,
+          hasContent: false,
+          hasTaxonomies: false,
+          hasAvatar: false,
+          hasCover: false,
+          hasEvents: false,
+        ),
+      ),
+    ];
+
+    await _pumpWithAutoRoute(
+      tester,
+      const Scaffold(
+        body: TenantAdminAccountCreateScreen(),
+      ),
+    );
+
+    await _selectProfileType(tester, 'Venue');
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Nome'),
+      'Conta criada',
+    );
+    await tester.tap(
+      find.byKey(const ValueKey('tenant_admin_account_create_save')),
+      warnIfMissed: false,
+    );
+    await tester.pump();
+    await tester.pumpAndSettle();
+
+    expect(find.byType(SnackBar), findsOneWidget);
+    expect(find.text('Conta e perfil salvos.'), findsOneWidget);
   });
 }
 
@@ -739,6 +899,15 @@ Future<void> _pumpWithAutoRoute(
       routerDelegate: router.delegate(),
     ),
   );
+  await tester.pumpAndSettle();
+}
+
+Future<void> _selectProfileType(WidgetTester tester, String label) async {
+  final profileTypeDropdown = find.byType(DropdownButtonFormField<String>);
+  await tester.ensureVisible(profileTypeDropdown.last);
+  await tester.tap(profileTypeDropdown.last, warnIfMissed: false);
+  await tester.pumpAndSettle();
+  await tester.tap(find.text(label).last);
   await tester.pumpAndSettle();
 }
 

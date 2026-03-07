@@ -13,6 +13,7 @@ import 'package:belluga_now/infrastructure/repositories/tenant_admin/tenant_admi
 import 'package:belluga_now/infrastructure/services/tenant_admin/tenant_admin_external_image_proxy_service.dart';
 import 'package:belluga_now/presentation/landlord_area/auth/controllers/tenant_admin_landlord_login_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/account_profiles/controllers/tenant_admin_account_profiles_controller.dart';
+import 'package:belluga_now/presentation/tenant_admin/accounts/controllers/tenant_admin_account_create_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/accounts/controllers/tenant_admin_account_detail_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/accounts/controllers/tenant_admin_accounts_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/accounts/controllers/tenant_admin_location_picker_controller.dart';
@@ -58,8 +59,11 @@ class TenantAdminModule extends ModuleContract {
     registerLazySingleton<TenantAdminShellController>(
       () => TenantAdminShellController(),
     );
-    registerLazySingleton<TenantAdminAccountsController>(
+    registerFactory<TenantAdminAccountsController>(
       () => TenantAdminAccountsController(),
+    );
+    registerFactory<TenantAdminAccountCreateController>(
+      () => TenantAdminAccountCreateController(),
     );
     registerLazySingleton<TenantAdminEventsController>(
       () => TenantAdminEventsController(),

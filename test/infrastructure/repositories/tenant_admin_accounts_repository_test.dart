@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:belluga_form_validation/belluga_form_validation.dart';
 import 'package:belluga_now/domain/repositories/landlord_auth_repository_contract.dart';
 import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.dart';
 import 'package:belluga_now/domain/tenant_admin/ownership_state.dart';
@@ -232,6 +233,33 @@ void main() {
       ),
     );
   });
+
+  test('createAccount preserves structured 422 validation failure', () async {
+    final adapter = _AccountsCreateValidationAdapter();
+    final dio = Dio()..httpClientAdapter = adapter;
+    final scope = _MutableTenantScope('https://tenant-a.test/admin/api');
+    final repository = TenantAdminAccountsRepository(
+      dio: dio,
+      tenantScope: scope,
+    );
+
+    expect(
+      repository.createAccount(
+        name: '',
+        ownershipState: TenantAdminOwnershipState.tenantOwned,
+      ),
+      throwsA(
+        isA<FormValidationFailure>()
+            .having((error) => error.message, 'message',
+                'The given data was invalid.')
+            .having(
+          (error) => error.fieldErrors['name'],
+          'name error',
+          <String>['Nome e obrigatorio.'],
+        ),
+      ),
+    );
+  });
 }
 
 class _StubAuthRepo implements LandlordAuthRepositoryContract {
@@ -391,6 +419,31 @@ class _AccountsRoutingAdapter implements HttpClientAdapter {
     return ResponseBody.fromString(
       jsonEncode(payload),
       200,
+      headers: {
+        Headers.contentTypeHeader: ['application/json'],
+      },
+    );
+  }
+}
+
+class _AccountsCreateValidationAdapter implements HttpClientAdapter {
+  @override
+  void close({bool force = false}) {}
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<List<int>>? requestStream,
+    Future<dynamic>? cancelFuture,
+  ) async {
+    return ResponseBody.fromString(
+      jsonEncode({
+        'message': 'The given data was invalid.',
+        'errors': {
+          'name': ['Nome e obrigatorio.'],
+        },
+      }),
+      422,
       headers: {
         Headers.contentTypeHeader: ['application/json'],
       },

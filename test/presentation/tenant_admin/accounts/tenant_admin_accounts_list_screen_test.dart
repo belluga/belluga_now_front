@@ -1,20 +1,9 @@
 import 'package:auto_route/auto_route.dart';
-import 'package:belluga_now/domain/repositories/tenant_admin_account_profiles_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_accounts_repository_contract.dart';
-import 'package:belluga_now/domain/repositories/tenant_admin_taxonomies_repository_contract.dart';
 import 'package:belluga_now/domain/tenant_admin/ownership_state.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account.dart';
-import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_document.dart';
-import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
-import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_accounts_result.dart';
-import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_result.dart';
-import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
-import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
-import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
-import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_definition.dart';
-import 'package:belluga_now/infrastructure/services/tenant_admin/tenant_admin_location_selection_service.dart';
 import 'package:belluga_now/presentation/tenant_admin/accounts/controllers/tenant_admin_accounts_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/accounts/screens/tenant_admin_accounts_list_screen.dart';
 import 'package:flutter/material.dart';
@@ -36,9 +25,6 @@ void main() {
       accountsRepository: _FakeAccountsRepository(
         initialAccounts: null,
       ),
-      profilesRepository: _FakeProfilesRepository(),
-      taxonomiesRepository: _FakeTaxonomiesRepository(),
-      locationSelectionService: TenantAdminLocationSelectionService(),
     );
     GetIt.I.registerSingleton<TenantAdminAccountsController>(controller);
 
@@ -54,9 +40,6 @@ void main() {
       (tester) async {
     final controller = TenantAdminAccountsController(
       accountsRepository: _FakeAccountsRepository(initialAccounts: const []),
-      profilesRepository: _FakeProfilesRepository(),
-      taxonomiesRepository: _FakeTaxonomiesRepository(),
-      locationSelectionService: TenantAdminLocationSelectionService(),
     );
     GetIt.I.registerSingleton<TenantAdminAccountsController>(controller);
 
@@ -81,9 +64,6 @@ void main() {
           ),
         ],
       ),
-      profilesRepository: _FakeProfilesRepository(),
-      taxonomiesRepository: _FakeTaxonomiesRepository(),
-      locationSelectionService: TenantAdminLocationSelectionService(),
     );
     GetIt.I.registerSingleton<TenantAdminAccountsController>(controller);
 
@@ -108,9 +88,6 @@ void main() {
           ),
         ],
       ),
-      profilesRepository: _FakeProfilesRepository(),
-      taxonomiesRepository: _FakeTaxonomiesRepository(),
-      locationSelectionService: TenantAdminLocationSelectionService(),
     );
     GetIt.I.registerSingleton<TenantAdminAccountsController>(controller);
 
@@ -144,9 +121,6 @@ void main() {
     );
     final controller = TenantAdminAccountsController(
       accountsRepository: repository,
-      profilesRepository: _FakeProfilesRepository(),
-      taxonomiesRepository: _FakeTaxonomiesRepository(),
-      locationSelectionService: TenantAdminLocationSelectionService(),
     );
     GetIt.I.registerSingleton<TenantAdminAccountsController>(controller);
 
@@ -327,197 +301,4 @@ class _FakeAccountsRepository
     final selected = ownershipState ?? TenantAdminOwnershipState.tenantOwned;
     return accountsByOwnership[selected] ?? const <TenantAdminAccount>[];
   }
-}
-
-class _FakeProfilesRepository
-    with TenantAdminProfileTypesPaginationMixin
-    implements TenantAdminAccountProfilesRepositoryContract {
-  @override
-  Future<List<TenantAdminAccountProfile>> fetchAccountProfiles({
-    String? accountId,
-  }) async =>
-      const [];
-
-  @override
-  Future<TenantAdminAccountProfile> fetchAccountProfile(
-      String accountProfileId) {
-    throw UnimplementedError();
-  }
-
-  @override
-  Future<TenantAdminAccountProfile> createAccountProfile({
-    required String accountId,
-    required String profileType,
-    required String displayName,
-    TenantAdminLocation? location,
-    List<TenantAdminTaxonomyTerm> taxonomyTerms = const [],
-    String? bio,
-    String? content,
-    String? avatarUrl,
-    String? coverUrl,
-    TenantAdminMediaUpload? avatarUpload,
-    TenantAdminMediaUpload? coverUpload,
-  }) {
-    throw UnimplementedError();
-  }
-
-  @override
-  Future<TenantAdminAccountProfile> updateAccountProfile({
-    required String accountProfileId,
-    String? profileType,
-    String? displayName,
-    String? slug,
-    TenantAdminLocation? location,
-    List<TenantAdminTaxonomyTerm>? taxonomyTerms,
-    String? bio,
-    String? content,
-    String? avatarUrl,
-    String? coverUrl,
-    TenantAdminMediaUpload? avatarUpload,
-    TenantAdminMediaUpload? coverUpload,
-  }) {
-    throw UnimplementedError();
-  }
-
-  @override
-  Future<void> deleteAccountProfile(String accountProfileId) async {}
-
-  @override
-  Future<TenantAdminAccountProfile> restoreAccountProfile(
-      String accountProfileId) {
-    throw UnimplementedError();
-  }
-
-  @override
-  Future<void> forceDeleteAccountProfile(String accountProfileId) async {}
-
-  @override
-  Future<List<TenantAdminProfileTypeDefinition>> fetchProfileTypes() async =>
-      const [];
-
-  @override
-  Future<TenantAdminPagedResult<TenantAdminProfileTypeDefinition>>
-      fetchProfileTypesPage({
-    required int page,
-    required int pageSize,
-  }) async {
-    return const TenantAdminPagedResult<TenantAdminProfileTypeDefinition>(
-      items: <TenantAdminProfileTypeDefinition>[],
-      hasMore: false,
-    );
-  }
-
-  @override
-  Future<TenantAdminProfileTypeDefinition> createProfileType({
-    required String type,
-    required String label,
-    List<String> allowedTaxonomies = const [],
-    required TenantAdminProfileTypeCapabilities capabilities,
-  }) {
-    throw UnimplementedError();
-  }
-
-  @override
-  Future<TenantAdminProfileTypeDefinition> updateProfileType({
-    required String type,
-    String? newType,
-    String? label,
-    List<String>? allowedTaxonomies,
-    TenantAdminProfileTypeCapabilities? capabilities,
-  }) {
-    throw UnimplementedError();
-  }
-
-  @override
-  Future<void> deleteProfileType(String type) async {}
-}
-
-class _FakeTaxonomiesRepository
-    with TenantAdminTaxonomiesPaginationMixin
-    implements TenantAdminTaxonomiesRepositoryContract {
-  @override
-  Future<List<TenantAdminTaxonomyDefinition>> fetchTaxonomies() async =>
-      const [];
-
-  @override
-  Future<TenantAdminPagedResult<TenantAdminTaxonomyDefinition>>
-      fetchTaxonomiesPage({
-    required int page,
-    required int pageSize,
-  }) async {
-    return const TenantAdminPagedResult<TenantAdminTaxonomyDefinition>(
-      items: <TenantAdminTaxonomyDefinition>[],
-      hasMore: false,
-    );
-  }
-
-  @override
-  Future<List<TenantAdminTaxonomyTermDefinition>> fetchTerms({
-    required String taxonomyId,
-  }) async =>
-      const [];
-
-  @override
-  Future<TenantAdminPagedResult<TenantAdminTaxonomyTermDefinition>>
-      fetchTermsPage({
-    required String taxonomyId,
-    required int page,
-    required int pageSize,
-  }) async {
-    return const TenantAdminPagedResult<TenantAdminTaxonomyTermDefinition>(
-      items: <TenantAdminTaxonomyTermDefinition>[],
-      hasMore: false,
-    );
-  }
-
-  @override
-  Future<TenantAdminTaxonomyDefinition> createTaxonomy({
-    required String slug,
-    required String name,
-    required List<String> appliesTo,
-    String? icon,
-    String? color,
-  }) {
-    throw UnimplementedError();
-  }
-
-  @override
-  Future<TenantAdminTaxonomyDefinition> updateTaxonomy({
-    required String taxonomyId,
-    String? slug,
-    String? name,
-    List<String>? appliesTo,
-    String? icon,
-    String? color,
-  }) {
-    throw UnimplementedError();
-  }
-
-  @override
-  Future<void> deleteTaxonomy(String taxonomyId) async {}
-
-  @override
-  Future<TenantAdminTaxonomyTermDefinition> createTerm({
-    required String taxonomyId,
-    required String slug,
-    required String name,
-  }) {
-    throw UnimplementedError();
-  }
-
-  @override
-  Future<TenantAdminTaxonomyTermDefinition> updateTerm({
-    required String taxonomyId,
-    required String termId,
-    String? slug,
-    String? name,
-  }) {
-    throw UnimplementedError();
-  }
-
-  @override
-  Future<void> deleteTerm({
-    required String taxonomyId,
-    required String termId,
-  }) async {}
 }
