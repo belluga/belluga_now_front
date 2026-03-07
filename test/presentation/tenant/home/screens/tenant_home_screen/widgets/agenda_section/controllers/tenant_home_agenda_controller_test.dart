@@ -21,7 +21,9 @@ import 'package:belluga_now/infrastructure/dal/dto/schedule/event_page_dto.dart'
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_summary_dto.dart';
 import 'package:belluga_now/infrastructure/repositories/schedule_repository.dart';
 import 'package:belluga_now/infrastructure/services/schedule_backend_contract.dart';
+import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/agenda_section/home_agenda_body.dart';
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/agenda_section/controllers/tenant_home_agenda_controller.dart';
+import 'package:belluga_now/presentation/tenant_public/schedule/screens/event_search_screen/models/invite_filter.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:stream_value/core/stream_value.dart';
@@ -243,6 +245,84 @@ void main() {
       expect(event.coordinate, isNotNull);
       expect(event.coordinate!.latitude, closeTo(-20.671339, 0.000001));
       expect(event.coordinate!.longitude, closeTo(-40.495395, 0.000001));
+      expect(event.artists.single.avatarUri, isNull);
+
+      controller.onDispose();
+    });
+
+    test('does not auto-page when current filter leaves first page empty',
+        () async {
+      final appData = _buildAppData(
+        minKm: 1,
+        defaultKm: 5,
+        maxKm: 10,
+      );
+      final appDataRepository = _FakeAppDataRepository(appData);
+      final locationRepository = _FakeUserLocationRepository()
+        ..userLocationStreamValue.addValue(
+          CityCoordinate(
+            latitudeValue: LatitudeValue()..parse('-20.671339'),
+            longitudeValue: LongitudeValue()..parse('-40.495395'),
+          ),
+        );
+      final backend = _AutoPageRegressionBackend();
+      final controller = TenantHomeAgendaController(
+        scheduleRepository: ScheduleRepository(backend: backend),
+        userEventsRepository: _FakeUserEventsRepository(),
+        invitesRepository: _FakeInvitesRepository(),
+        userLocationRepository: locationRepository,
+        appDataRepository: appDataRepository,
+      );
+
+      await controller.init();
+      expect(backend.requestedPages, [1]);
+
+      controller.setInviteFilter(InviteFilter.confirmedOnly);
+
+      expect(controller.displayedEventsStreamValue.value, isEmpty);
+      expect(backend.requestedPages, [1]);
+
+      controller.onDispose();
+    });
+
+    testWidgets('home agenda body does not load next page on initial build',
+        (tester) async {
+      final appData = _buildAppData(
+        minKm: 1,
+        defaultKm: 5,
+        maxKm: 10,
+      );
+      final appDataRepository = _FakeAppDataRepository(appData);
+      final locationRepository = _FakeUserLocationRepository()
+        ..userLocationStreamValue.addValue(
+          CityCoordinate(
+            latitudeValue: LatitudeValue()..parse('-20.671339'),
+            longitudeValue: LongitudeValue()..parse('-40.495395'),
+          ),
+        );
+      final backend = _AutoPageRegressionBackend();
+      final controller = TenantHomeAgendaController(
+        scheduleRepository: ScheduleRepository(backend: backend),
+        userEventsRepository: _FakeUserEventsRepository(),
+        invitesRepository: _FakeInvitesRepository(),
+        userLocationRepository: locationRepository,
+        appDataRepository: appDataRepository,
+      );
+
+      await controller.init();
+      expect(backend.requestedPages, [1]);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: HomeAgendaBody(controller: controller),
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+
+      expect(backend.requestedPages, [1]);
 
       controller.onDispose();
     });
@@ -522,6 +602,125 @@ class _PayloadScheduleBackend implements ScheduleBackendContract {
         },
       },
       'date_time_start': '2026-03-03T20:00:00+00:00',
+      'artists': const [
+        {
+          'id': '507f1f77bcf86cd799439013',
+          'name': 'Main Artist',
+          'avatar_url': null,
+          'genres': ['rock'],
+        },
+      ],
+      'tags': const ['music'],
+    });
+  }
+}
+
+class _AutoPageRegressionBackend implements ScheduleBackendContract {
+  final List<int> requestedPages = <int>[];
+
+  @override
+  Future<EventSummaryDTO> fetchSummary() async =>
+      EventSummaryDTO(items: const []);
+
+  @override
+  Future<List<EventDTO>> fetchEvents() async => [_pageOneEvent()];
+
+  @override
+  Future<EventDTO?> fetchEventDetail({required String eventIdOrSlug}) async =>
+      _pageOneEvent();
+
+  @override
+  Future<EventPageDTO> fetchEventsPage({
+    required int page,
+    required int pageSize,
+    required bool showPastOnly,
+    String? searchQuery,
+    List<String>? categories,
+    List<String>? tags,
+    List<Map<String, String>>? taxonomy,
+    bool confirmedOnly = false,
+    double? originLat,
+    double? originLng,
+    double? maxDistanceMeters,
+  }) async {
+    requestedPages.add(page);
+    if (page == 1) {
+      return EventPageDTO(
+        events: [_pageOneEvent()],
+        hasMore: true,
+      );
+    }
+
+    return EventPageDTO(
+      events: [_pageTwoEvent()],
+      hasMore: false,
+    );
+  }
+
+  @override
+  Stream<EventDeltaDTO> watchEventsStream({
+    String? searchQuery,
+    List<String>? categories,
+    List<String>? tags,
+    List<Map<String, String>>? taxonomy,
+    bool confirmedOnly = false,
+    double? originLat,
+    double? originLng,
+    double? maxDistanceMeters,
+    String? lastEventId,
+    bool showPastOnly = false,
+  }) =>
+      const Stream<EventDeltaDTO>.empty();
+
+  EventDTO _pageOneEvent() {
+    return EventDTO.fromJson({
+      'event_id': '507f1f77bcf86cd799439111',
+      'occurrence_id': '507f1f77bcf86cd799439112',
+      'slug': 'pagina-um',
+      'title': 'Pagina Um',
+      'content': 'Conteudo',
+      'type': {
+        'id': 'type-1',
+        'name': 'Show',
+        'slug': 'show',
+        'description': 'Show type description',
+      },
+      'location': {
+        'mode': 'physical',
+        'display_name': 'Praia do Morro',
+        'geo': {
+          'type': 'Point',
+          'coordinates': [-40.495395, -20.671339],
+        },
+      },
+      'date_time_start': '2026-03-03T20:00:00+00:00',
+      'artists': const [],
+      'tags': const ['music'],
+    });
+  }
+
+  EventDTO _pageTwoEvent() {
+    return EventDTO.fromJson({
+      'event_id': '507f1f77bcf86cd799439121',
+      'occurrence_id': '507f1f77bcf86cd799439122',
+      'slug': 'pagina-dois',
+      'title': 'Pagina Dois',
+      'content': 'Conteudo',
+      'type': {
+        'id': 'type-1',
+        'name': 'Show',
+        'slug': 'show',
+        'description': 'Show type description',
+      },
+      'location': {
+        'mode': 'physical',
+        'display_name': 'Praia do Morro',
+        'geo': {
+          'type': 'Point',
+          'coordinates': [-40.495395, -20.671339],
+        },
+      },
+      'date_time_start': '2026-03-04T20:00:00+00:00',
       'artists': const [],
       'tags': const ['music'],
     });

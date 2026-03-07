@@ -156,6 +156,29 @@ void main() {
     expect(result.hasMore, isFalse);
   });
 
+  test('fetchEventsPage serializes archived filter as integer boolean', () async {
+    final adapter = _EventsRoutingAdapter();
+    final dio = Dio()..httpClientAdapter = adapter;
+    final scope = _MutableTenantScope('https://tenant-a.test/admin/api');
+    final repository = TenantAdminEventsRepository(
+      dio: dio,
+      tenantScope: scope,
+    );
+
+    await repository.fetchEventsPage(
+      page: 1,
+      pageSize: 20,
+      archived: true,
+    );
+
+    final request = adapter.requests.lastWhere(
+      (request) =>
+          request.method == 'GET' &&
+          request.path.endsWith('/admin/api/v1/events'),
+    );
+    expect(request.queryParameters['archived'], 1);
+  });
+
   test('fetchEventTypes prefers landlord token and maps payload', () async {
     final adapter = _EventTypesAdapter();
     final dio = Dio()..httpClientAdapter = adapter;
