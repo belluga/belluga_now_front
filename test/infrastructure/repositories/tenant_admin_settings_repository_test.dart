@@ -83,6 +83,36 @@ void main() {
     expect(adapter.requests.single.uri.path, '/admin/api/v1/settings/values');
   });
 
+  test(
+      'fetchMapUiSettings treats empty map_ui namespace payload as empty settings only',
+      () async {
+    final adapter = _RoutingAdapter(
+      settingsValuesPayload: const {
+        'data': {
+          'map_ui': [],
+          'events': [],
+          'telemetry': [],
+          'push': [],
+          'firebase': [],
+        },
+      },
+    );
+    final scope = _MutableTenantScope('https://tenant-a.test');
+    final dio = Dio()..httpClientAdapter = adapter;
+    final repository = TenantAdminSettingsRepository(
+      dio: dio,
+      tenantScope: scope,
+    );
+
+    final settings = await repository.fetchMapUiSettings();
+
+    expect(settings.defaultOrigin, isNull);
+    expect(settings.rawMapUi, isEmpty);
+    expect(settings.rawMapUi.containsKey('events'), isFalse);
+    expect(settings.rawMapUi.containsKey('telemetry'), isFalse);
+    expect(adapter.requests.single.uri.path, '/admin/api/v1/settings/values');
+  });
+
   test('updateMapUiSettings patches map_ui namespace payload', () async {
     final adapter = _RoutingAdapter();
     final scope = _MutableTenantScope('https://tenant-a.test');
@@ -120,6 +150,59 @@ void main() {
     expect(payload['default_origin.lat'], -20.611111);
     expect(payload['default_origin.lng'], -40.422222);
     expect(payload['default_origin.label'], 'Praia do Morro');
+    expect(updated.defaultOrigin, isNotNull);
+    expect(updated.defaultOrigin!.lat, closeTo(-20.611111, 0.000001));
+    expect(updated.defaultOrigin!.lng, closeTo(-40.422222, 0.000001));
+    expect(updated.defaultOrigin!.label, 'Praia do Morro');
+  });
+
+  test(
+      'updateMapUiSettings after empty namespace fetch does not leak sibling namespaces',
+      () async {
+    final adapter = _RoutingAdapter(
+      settingsValuesPayload: const {
+        'data': {
+          'map_ui': [],
+          'events': [],
+          'map_ingest': [],
+          'map_security': [],
+          'telemetry': [],
+          'push': [],
+          'firebase': [],
+        },
+      },
+    );
+    final scope = _MutableTenantScope('https://tenant-a.test');
+    final dio = Dio()..httpClientAdapter = adapter;
+    final repository = TenantAdminSettingsRepository(
+      dio: dio,
+      tenantScope: scope,
+    );
+
+    final fetched = await repository.fetchMapUiSettings();
+    final updated = await repository.updateMapUiSettings(
+      settings: fetched.applyDefaultOrigin(
+        const TenantAdminMapDefaultOrigin(
+          lat: -20.611111,
+          lng: -40.422222,
+          label: 'Praia do Morro',
+        ),
+      ),
+    );
+
+    expect(adapter.requests, hasLength(2));
+    final request = adapter.requests.last;
+    final payload = Map<String, dynamic>.from(request.data as Map);
+    expect(
+        payload.keys,
+        unorderedEquals(const [
+          'default_origin.lat',
+          'default_origin.lng',
+          'default_origin.label',
+        ]));
+    expect(payload.containsKey('events'), isFalse);
+    expect(payload.containsKey('telemetry'), isFalse);
+    expect(payload.containsKey('push'), isFalse);
     expect(updated.defaultOrigin, isNotNull);
     expect(updated.defaultOrigin!.lat, closeTo(-20.611111, 0.000001));
     expect(updated.defaultOrigin!.lng, closeTo(-40.422222, 0.000001));
@@ -610,11 +693,13 @@ class _RoutingAdapter implements HttpClientAdapter {
     this.environmentPayload,
     this.environmentPayloadByHost,
     this.environmentDelayByHost,
+    this.settingsValuesPayload,
   });
 
   final Map<String, dynamic>? environmentPayload;
   final Map<String, Map<String, dynamic>>? environmentPayloadByHost;
   final Map<String, Duration>? environmentDelayByHost;
+  final Map<String, dynamic>? settingsValuesPayload;
   final List<RequestOptions> requests = [];
 
   @override
@@ -654,26 +739,29 @@ class _RoutingAdapter implements HttpClientAdapter {
     }
 
     if (path.endsWith('/settings/values') && method == 'GET') {
-      return _jsonResponse({
-        'data': {
-          'map_ui': {
-            'radius': {
-              'min_km': 1,
-              'default_km': 5,
-              'max_km': 50,
+      return _jsonResponse(
+        settingsValuesPayload ??
+            {
+              'data': {
+                'map_ui': {
+                  'radius': {
+                    'min_km': 1,
+                    'default_km': 5,
+                    'max_km': 50,
+                  },
+                  'poi_time_window_days': {
+                    'past': 1,
+                    'future': 30,
+                  },
+                  'default_origin': {
+                    'lat': -20.6736,
+                    'lng': -40.4976,
+                    'label': 'Centro',
+                  },
+                },
+              },
             },
-            'poi_time_window_days': {
-              'past': 1,
-              'future': 30,
-            },
-            'default_origin': {
-              'lat': -20.6736,
-              'lng': -40.4976,
-              'label': 'Centro',
-            },
-          },
-        },
-      });
+      );
     }
 
     if (path.endsWith('/settings/values/map_ui') && method == 'PATCH') {
