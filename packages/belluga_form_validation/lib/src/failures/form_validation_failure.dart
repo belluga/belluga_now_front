@@ -20,7 +20,26 @@ class FormValidationFailure implements Exception {
 
   @override
   String toString() {
-    return 'FormValidationFailure(statusCode: $statusCode, message: $message)';
+    final segments = <String>[
+      'statusCode: $statusCode',
+      'message: $message',
+    ];
+    if (errorCode != null && errorCode!.trim().isNotEmpty) {
+      segments.add('errorCode: $errorCode');
+    }
+    if (requestId != null && requestId!.trim().isNotEmpty) {
+      segments.add('requestId: $requestId');
+    }
+    if (hints.isNotEmpty) {
+      segments.add('hints: ${hints.join('|')}');
+    }
+    if (fieldErrors.isNotEmpty) {
+      final renderedFieldErrors = fieldErrors.entries
+          .map((entry) => '${entry.key}: ${entry.value.join('|')}')
+          .join('; ');
+      segments.add('fieldErrors: $renderedFieldErrors');
+    }
+    return 'FormValidationFailure(${segments.join(', ')})';
   }
 
   static Map<String, List<String>> _freeze(

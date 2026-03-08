@@ -167,6 +167,30 @@ void main() {
       ),
     );
   });
+
+  test('createAccountProfile surfaces structured 403 security failure',
+      () async {
+    final adapter = _ProfileCreateOriginDeniedAdapter();
+    final dio = Dio()..httpClientAdapter = adapter;
+    final repository = TenantAdminAccountProfilesRepository(dio: dio);
+
+    expect(
+      repository.createAccountProfile(
+        accountId: 'account-1',
+        profileType: 'venue',
+        displayName: 'Perfil',
+      ),
+      throwsA(
+        isA<FormApiFailure>()
+            .having((error) => error.statusCode, 'statusCode', 403)
+            .having(
+              (error) => error.errorCode,
+              'errorCode',
+              'origin_access_denied',
+            ),
+      ),
+    );
+  });
 }
 
 class _StubAuthRepo implements LandlordAuthRepositoryContract {
@@ -340,6 +364,30 @@ class _ProfileCreateValidationAdapter implements HttpClientAdapter {
         },
       }),
       422,
+      headers: {
+        Headers.contentTypeHeader: ['application/json'],
+      },
+    );
+  }
+}
+
+class _ProfileCreateOriginDeniedAdapter implements HttpClientAdapter {
+  @override
+  void close({bool force = false}) {}
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<List<int>>? requestStream,
+    Future? cancelFuture,
+  ) async {
+    return ResponseBody.fromString(
+      jsonEncode({
+        'code': 'origin_access_denied',
+        'message': 'Direct origin access is not allowed.',
+        'correlation_id': 'corr-origin-1',
+      }),
+      403,
       headers: {
         Headers.contentTypeHeader: ['application/json'],
       },
