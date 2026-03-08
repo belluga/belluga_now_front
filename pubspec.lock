@@ -96,6 +96,13 @@ packages:
       relative: true
     source: path
     version: "0.0.1"
+  belluga_form_validation:
+    dependency: "direct main"
+    description:
+      path: "packages/belluga_form_validation"
+      relative: true
+    source: path
+    version: "0.0.1"
   boolean_selector:
     dependency: transitive
     description:
