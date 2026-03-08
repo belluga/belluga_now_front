@@ -17,6 +17,7 @@ void main() {
     expect(failure, isNotNull);
     expect(failure!.message, 'The given data was invalid.');
     expect(failure.fieldErrors['name'], <String>['Nome e obrigatorio.']);
+    expect(failure.toString(), contains('fieldErrors: name: Nome e obrigatorio.'));
   });
 
   test(
