@@ -8,6 +8,7 @@ import 'package:belluga_now/domain/repositories/tenant_admin_accounts_repository
 import 'package:belluga_now/domain/repositories/tenant_admin_taxonomies_repository_contract.dart';
 import 'package:belluga_now/domain/tenant_admin/ownership_state.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_onboarding_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_document.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
@@ -37,7 +38,14 @@ class _FakeAccountsRepository
   bool failNextLoadAccounts = false;
   int fetchAccountsCalls = 0;
   int createCalls = 0;
+  int createOnboardingCalls = 0;
   Object? createAccountError;
+  String? lastOnboardingBio;
+  String? lastOnboardingContent;
+  List<TenantAdminTaxonomyTerm> lastOnboardingTaxonomyTerms =
+      const <TenantAdminTaxonomyTerm>[];
+  TenantAdminMediaUpload? lastOnboardingAvatarUpload;
+  TenantAdminMediaUpload? lastOnboardingCoverUpload;
   final List<TenantAdminOwnershipState?> loadAccountsOwnershipCalls =
       <TenantAdminOwnershipState?>[];
   final List<TenantAdminOwnershipState?> loadNextAccountsOwnershipCalls =
@@ -184,6 +192,60 @@ class _FakeAccountsRepository
           List<TenantAdminAccount>.unmodifiable([...loaded, created]));
     }
     return created;
+  }
+
+  @override
+  Future<TenantAdminAccountOnboardingResult> createAccountOnboarding({
+    required String name,
+    required TenantAdminOwnershipState ownershipState,
+    required String profileType,
+    TenantAdminLocation? location,
+    List<TenantAdminTaxonomyTerm> taxonomyTerms = const [],
+    String? bio,
+    String? content,
+    TenantAdminMediaUpload? avatarUpload,
+    TenantAdminMediaUpload? coverUpload,
+  }) async {
+    final error = createAccountError;
+    if (error != null) {
+      throw error;
+    }
+    createOnboardingCalls += 1;
+    lastOnboardingBio = bio;
+    lastOnboardingContent = content;
+    lastOnboardingTaxonomyTerms =
+        List<TenantAdminTaxonomyTerm>.from(taxonomyTerms);
+    lastOnboardingAvatarUpload = avatarUpload;
+    lastOnboardingCoverUpload = coverUpload;
+
+    final account = TenantAdminAccount(
+      id: 'acc-onboarding-$createOnboardingCalls',
+      name: name,
+      slug: 'acc-onboarding-$createOnboardingCalls',
+      document: const TenantAdminDocument(type: 'cpf', number: '000'),
+      ownershipState: ownershipState,
+    );
+    final profile = TenantAdminAccountProfile(
+      id: 'profile-onboarding-$createOnboardingCalls',
+      accountId: account.id,
+      profileType: profileType,
+      displayName: name,
+      location: location,
+      taxonomyTerms: taxonomyTerms,
+      bio: bio,
+      content: content,
+    );
+    _accounts = [..._accounts, account];
+    final loaded = accountsStreamValue.value;
+    if (loaded != null) {
+      accountsStreamValue.addValue(
+        List<TenantAdminAccount>.unmodifiable([...loaded, account]),
+      );
+    }
+    return TenantAdminAccountOnboardingResult(
+      account: account,
+      accountProfile: profile,
+    );
   }
 
   @override
@@ -719,7 +781,7 @@ void main() {
   });
 
   group('TenantAdminAccountCreateController', () {
-    test('createAccountWithProfile creates account and profile', () async {
+    test('createAccountOnboarding creates account and profile', () async {
       final accountsRepository = _FakeAccountsRepository([]);
       final profilesRepository = _FakeAccountProfilesRepository(const [
         TenantAdminProfileTypeDefinition(
@@ -743,20 +805,21 @@ void main() {
         profilesRepository: profilesRepository,
       );
 
-      final account = await controller.createAccountWithProfile(
+      final onboarding = await controller.createAccountOnboarding(
         name: 'Nova Conta',
         ownershipState: TenantAdminOwnershipState.tenantOwned,
         profileType: 'venue',
         location: const TenantAdminLocation(latitude: -20.0, longitude: -40.0),
       );
 
-      expect(account.name, 'Nova Conta');
-      expect(accountsRepository.createCalls, 1);
-      expect(profilesRepository.createProfileCalls, 1);
-      expect(profilesRepository.lastCreateDisplayName, 'Nova Conta');
+      expect(onboarding.account.name, 'Nova Conta');
+      expect(onboarding.accountProfile.displayName, 'Nova Conta');
+      expect(accountsRepository.createOnboardingCalls, 1);
+      expect(profilesRepository.createProfileCalls, 0);
     });
 
-    test('createAccountWithProfile forwards bio and taxonomy terms', () async {
+    test('createAccountOnboarding forwards bio and taxonomy terms', () async {
+      final accountsRepository = _FakeAccountsRepository([]);
       final profilesRepository = _FakeAccountProfilesRepository(const [
         TenantAdminProfileTypeDefinition(
           type: 'venue',
@@ -775,11 +838,11 @@ void main() {
         ),
       ]);
       final controller = _buildCreateController(
-        accountsRepository: _FakeAccountsRepository([]),
+        accountsRepository: accountsRepository,
         profilesRepository: profilesRepository,
       );
 
-      await controller.createAccountWithProfile(
+      await controller.createAccountOnboarding(
         name: 'Nova Conta',
         ownershipState: TenantAdminOwnershipState.tenantOwned,
         profileType: 'venue',
@@ -790,15 +853,20 @@ void main() {
         ],
       );
 
-      expect(profilesRepository.lastCreateBio, '<p>Bio teste</p>');
-      expect(profilesRepository.lastCreateTaxonomyTerms.length, 1);
-      expect(profilesRepository.lastCreateTaxonomyTerms.first.type, 'genre');
-      expect(profilesRepository.lastCreateTaxonomyTerms.first.value, 'urbana');
+      expect(accountsRepository.lastOnboardingBio, '<p>Bio teste</p>');
+      expect(accountsRepository.lastOnboardingTaxonomyTerms.length, 1);
+      expect(
+          accountsRepository.lastOnboardingTaxonomyTerms.first.type, 'genre');
+      expect(
+        accountsRepository.lastOnboardingTaxonomyTerms.first.value,
+        'urbana',
+      );
     });
 
     test(
         'createAccountFromForm submits media as upload and never as direct URL',
         () async {
+      final accountsRepository = _FakeAccountsRepository([]);
       final profilesRepository = _FakeAccountProfilesRepository(const [
         TenantAdminProfileTypeDefinition(
           type: 'venue',
@@ -817,7 +885,7 @@ void main() {
         ),
       ]);
       final controller = _buildCreateController(
-        accountsRepository: _FakeAccountsRepository([]),
+        accountsRepository: accountsRepository,
         profilesRepository: profilesRepository,
       );
 
@@ -828,12 +896,16 @@ void main() {
 
       await controller.createAccountFromForm(location: null);
 
-      expect(profilesRepository.lastCreateAvatarUrl, isNull);
-      expect(profilesRepository.lastCreateCoverUrl, isNull);
-      expect(profilesRepository.lastCreateAvatarUpload, isNotNull);
-      expect(profilesRepository.lastCreateCoverUpload, isNotNull);
-      expect(profilesRepository.lastCreateAvatarUpload!.mimeType, 'image/jpeg');
-      expect(profilesRepository.lastCreateCoverUpload!.mimeType, 'image/jpeg');
+      expect(accountsRepository.lastOnboardingAvatarUpload, isNotNull);
+      expect(accountsRepository.lastOnboardingCoverUpload, isNotNull);
+      expect(
+        accountsRepository.lastOnboardingAvatarUpload!.mimeType,
+        'image/jpeg',
+      );
+      expect(
+        accountsRepository.lastOnboardingCoverUpload!.mimeType,
+        'image/jpeg',
+      );
     });
 
     test('validateCreateBeforeSubmit writes local validation into shared state',
@@ -861,6 +933,14 @@ void main() {
     test(
         'submitCreateAccountFromForm applies backend validation failures without global error text',
         () async {
+      final accountsRepository = _FakeAccountsRepository([])
+        ..createAccountError = FormValidationFailure(
+          statusCode: 422,
+          message: 'The given data was invalid.',
+          fieldErrors: <String, List<String>>{
+            'location.lat': <String>['Latitude obrigatoria.'],
+          },
+        );
       final profilesRepository = _FakeAccountProfilesRepository(const [
         TenantAdminProfileTypeDefinition(
           type: 'venue',
@@ -877,16 +957,9 @@ void main() {
             hasEvents: false,
           ),
         ),
-      ])
-        ..createProfileError = FormValidationFailure(
-          statusCode: 422,
-          message: 'The given data was invalid.',
-          fieldErrors: <String, List<String>>{
-            'location.lat': <String>['Latitude obrigatoria.'],
-          },
-        );
+      ]);
       final controller = _buildCreateController(
-        accountsRepository: _FakeAccountsRepository([]),
+        accountsRepository: accountsRepository,
         profilesRepository: profilesRepository,
       );
 
@@ -909,6 +982,8 @@ void main() {
     test(
         'submitCreateAccountFromForm keeps operational failures separate from validation state',
         () async {
+      final accountsRepository = _FakeAccountsRepository([])
+        ..createAccountError = Exception('backend exploded');
       final profilesRepository = _FakeAccountProfilesRepository(const [
         TenantAdminProfileTypeDefinition(
           type: 'venue',
@@ -925,10 +1000,9 @@ void main() {
             hasEvents: false,
           ),
         ),
-      ])
-        ..createProfileError = Exception('backend exploded');
+      ]);
       final controller = _buildCreateController(
-        accountsRepository: _FakeAccountsRepository([]),
+        accountsRepository: accountsRepository,
         profilesRepository: profilesRepository,
       );
 
@@ -987,7 +1061,9 @@ void main() {
       expect(controller.createValidationStreamValue.value.hasErrors, isFalse);
       expect(controller.createErrorMessageStreamValue.value, isNull);
       expect(
-          controller.createSuccessAccountStreamValue.value?.name, 'Conta ok');
+        controller.createSuccessAccountStreamValue.value?.account.name,
+        'Conta ok',
+      );
     });
   });
 }

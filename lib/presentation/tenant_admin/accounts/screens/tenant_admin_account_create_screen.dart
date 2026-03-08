@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_form_validation/belluga_form_validation.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
-import 'package:belluga_now/domain/tenant_admin/tenant_admin_account.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_onboarding_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/ownership_state.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
@@ -39,7 +39,8 @@ class _TenantAdminAccountCreateScreenState
   final FormValidationAnchors _validationAnchors = FormValidationAnchors();
 
   StreamSubscription<String?>? _createErrorSubscription;
-  StreamSubscription<TenantAdminAccount?>? _createSuccessSubscription;
+  StreamSubscription<TenantAdminAccountOnboardingResult?>?
+      _createSuccessSubscription;
 
   @override
   void initState() {
@@ -320,30 +321,15 @@ class _TenantAdminAccountCreateScreenState
     _controller.clearCreateErrorMessage();
   }
 
-  void _closeCreateScreenOrShowSuccess({
-    required BuildContext context,
-    required ScaffoldMessengerState messenger,
-  }) {
-    final router = context.router;
-    if (router.canPop()) {
-      router.pop(true);
-      return;
-    }
-    messenger.showSnackBar(
-      const SnackBar(
-        content: Text('Conta e perfil salvos.'),
-      ),
-    );
-  }
-
-  void _handleCreateSuccess(TenantAdminAccount? account) {
-    if (account == null || !mounted) {
+  void _handleCreateSuccess(TenantAdminAccountOnboardingResult? result) {
+    if (result == null || !mounted) {
       return;
     }
     _controller.clearCreateSuccessAccount();
-    _closeCreateScreenOrShowSuccess(
-      context: context,
-      messenger: ScaffoldMessenger.of(context),
+    context.router.replace(
+      TenantAdminAccountDetailRoute(
+        accountSlug: result.account.slug,
+      ),
     );
   }
 

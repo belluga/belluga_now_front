@@ -119,6 +119,6 @@ The first adopter is Tenant Admin Account Create.
 Related tactical TODOs:
 
 - `foundation_documentation/todos/completed/TODO-flutter-forms-422-validation-wrapper.md`
-- `foundation_documentation/todos/active/mvp_slices/TODO-account-profile-transaction-unified-create.md`
+- `foundation_documentation/todos/completed/TODO-account-profile-transaction-unified-create.md`
 
 Broader form replacement remains a separate follow-up session.

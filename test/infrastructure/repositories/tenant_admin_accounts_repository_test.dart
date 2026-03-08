@@ -4,6 +4,8 @@ import 'package:belluga_form_validation/belluga_form_validation.dart';
 import 'package:belluga_now/domain/repositories/landlord_auth_repository_contract.dart';
 import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.dart';
 import 'package:belluga_now/domain/tenant_admin/ownership_state.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
 import 'package:belluga_now/infrastructure/repositories/tenant_admin/tenant_admin_accounts_repository.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -260,6 +262,33 @@ void main() {
       ),
     );
   });
+
+  test('createAccountOnboarding calls onboarding endpoint and maps result',
+      () async {
+    final adapter = _AccountsRoutingAdapter();
+    final dio = Dio()..httpClientAdapter = adapter;
+    final scope = _MutableTenantScope('https://tenant-a.test/admin/api');
+    final repository = TenantAdminAccountsRepository(
+      dio: dio,
+      tenantScope: scope,
+    );
+
+    final result = await repository.createAccountOnboarding(
+      name: 'Conta onboarding',
+      ownershipState: TenantAdminOwnershipState.unmanaged,
+      profileType: 'venue',
+      location: const TenantAdminLocation(latitude: -20.31, longitude: -40.29),
+      taxonomyTerms: const [
+        TenantAdminTaxonomyTerm(type: 'genre', value: 'urbana'),
+      ],
+      bio: '<p>Bio</p>',
+    );
+
+    expect(result.account.name, 'Conta onboarding');
+    expect(result.accountProfile.accountId, result.account.id);
+    expect(result.accountProfile.profileType, 'venue');
+    expect(adapter.requests.last.path, contains('/v1/account_onboardings'));
+  });
 }
 
 class _StubAuthRepo implements LandlordAuthRepositoryContract {
@@ -387,6 +416,33 @@ class _AccountsRoutingAdapter implements HttpClientAdapter {
         ],
         'current_page': 2,
         'last_page': 2,
+      });
+    }
+
+    if (options.path.endsWith('/v1/account_onboardings')) {
+      return _jsonResponse({
+        'data': {
+          'account': _accountJson(
+            id: 'onboarding-1',
+            slug: 'acc-onboarding-1',
+            ownershipState: 'unmanaged',
+          )..['name'] = 'Conta onboarding',
+          'account_profile': {
+            'id': 'profile-onboarding-1',
+            'account_id': 'onboarding-1',
+            'profile_type': 'venue',
+            'display_name': 'Conta onboarding',
+            'location': {'lat': -20.31, 'lng': -40.29},
+            'taxonomy_terms': [
+              {'type': 'genre', 'value': 'urbana'}
+            ],
+            'ownership_state': 'unmanaged',
+          },
+          'role': {
+            'id': 'role-1',
+            'slug': 'admin',
+          },
+        },
       });
     }
 

@@ -3,11 +3,13 @@ import 'dart:io';
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_form_validation/belluga_form_validation.dart'
     show FormValidationFailure;
+import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_account_profiles_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_accounts_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_taxonomies_repository_contract.dart';
 import 'package:belluga_now/domain/tenant_admin/ownership_state.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_onboarding_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_document.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
@@ -82,6 +84,45 @@ class _FakeAccountsRepository
           document ?? const TenantAdminDocument(type: 'cpf', number: '000'),
       ownershipState: ownershipState,
       organizationId: organizationId,
+    );
+  }
+
+  @override
+  Future<TenantAdminAccountOnboardingResult> createAccountOnboarding({
+    required String name,
+    required TenantAdminOwnershipState ownershipState,
+    required String profileType,
+    TenantAdminLocation? location,
+    List<TenantAdminTaxonomyTerm> taxonomyTerms = const [],
+    String? bio,
+    String? content,
+    TenantAdminMediaUpload? avatarUpload,
+    TenantAdminMediaUpload? coverUpload,
+  }) async {
+    final error = createAccountError;
+    if (error != null) {
+      throw error;
+    }
+    final account = TenantAdminAccount(
+      id: 'acc-1',
+      name: name,
+      slug: 'acc-1',
+      document: const TenantAdminDocument(type: 'cpf', number: '000'),
+      ownershipState: ownershipState,
+    );
+    final profile = TenantAdminAccountProfile(
+      id: 'profile-1',
+      accountId: account.id,
+      profileType: profileType,
+      displayName: name,
+      location: location,
+      taxonomyTerms: taxonomyTerms,
+      bio: bio,
+      content: content,
+    );
+    return TenantAdminAccountOnboardingResult(
+      account: account,
+      accountProfile: profile,
     );
   }
 
@@ -734,6 +775,9 @@ void main() {
 
   testWidgets('renders backend global validation inline without snackbar',
       (tester) async {
+    final accountsRepository =
+        GetIt.I.get<TenantAdminAccountsRepositoryContract>()
+            as _FakeAccountsRepository;
     final profilesRepository =
         GetIt.I.get<TenantAdminAccountProfilesRepositoryContract>()
             as _FakeAccountProfilesRepository;
@@ -754,7 +798,7 @@ void main() {
         ),
       ),
     ];
-    profilesRepository.createProfileError = FormValidationFailure(
+    accountsRepository.createAccountError = FormValidationFailure(
       statusCode: 422,
       message: 'The given data was invalid.',
       fieldErrors: <String, List<String>>{
@@ -787,6 +831,9 @@ void main() {
   });
 
   testWidgets('shows operational submit failures in snackbar', (tester) async {
+    final accountsRepository =
+        GetIt.I.get<TenantAdminAccountsRepositoryContract>()
+            as _FakeAccountsRepository;
     final profilesRepository =
         GetIt.I.get<TenantAdminAccountProfilesRepositoryContract>()
             as _FakeAccountProfilesRepository;
@@ -807,7 +854,7 @@ void main() {
         ),
       ),
     ];
-    profilesRepository.createProfileError = Exception('backend exploded');
+    accountsRepository.createAccountError = Exception('backend exploded');
 
     await _pumpWithAutoRoute(
       tester,
@@ -832,7 +879,7 @@ void main() {
     expect(find.textContaining('backend exploded'), findsOneWidget);
   });
 
-  testWidgets('shows success feedback when create route cannot pop',
+  testWidgets('replaces create route with account detail on success',
       (tester) async {
     final profilesRepository =
         GetIt.I.get<TenantAdminAccountProfilesRepositoryContract>()
@@ -874,8 +921,8 @@ void main() {
     await tester.pump();
     await tester.pumpAndSettle();
 
-    expect(find.byType(SnackBar), findsOneWidget);
-    expect(find.text('Conta e perfil salvos.'), findsOneWidget);
+    expect(find.byType(TenantAdminAccountCreateScreen), findsNothing);
+    expect(find.text('Detail: acc-1'), findsOneWidget);
   });
 }
 
@@ -886,9 +933,16 @@ Future<void> _pumpWithAutoRoute(
   final router = RootStackRouter.build(
     routes: [
       NamedRouteDef(
-        name: 'account-create-test',
+        name: TenantAdminAccountCreateRoute.name,
         path: '/',
         builder: (_, __) => child,
+      ),
+      NamedRouteDef(
+        name: TenantAdminAccountDetailRoute.name,
+        path: '/admin/accounts/:accountSlug',
+        builder: (_, data) => Scaffold(
+          body: Text('Detail: ${data.params.getString('accountSlug')}'),
+        ),
       ),
     ],
   );

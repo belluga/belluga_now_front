@@ -6,7 +6,7 @@ import 'package:belluga_now/domain/repositories/tenant_admin_account_profiles_re
 import 'package:belluga_now/domain/repositories/tenant_admin_accounts_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_taxonomies_repository_contract.dart';
 import 'package:belluga_now/domain/tenant_admin/ownership_state.dart';
-import 'package:belluga_now/domain/tenant_admin/tenant_admin_account.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_onboarding_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
@@ -60,8 +60,9 @@ class TenantAdminAccountCreateController implements Disposable {
       StreamValue<bool>(defaultValue: false);
   final StreamValue<String?> createErrorMessageStreamValue =
       StreamValue<String?>();
-  final StreamValue<TenantAdminAccount?> createSuccessAccountStreamValue =
-      StreamValue<TenantAdminAccount?>(defaultValue: null);
+  final StreamValue<TenantAdminAccountOnboardingResult?>
+      createSuccessAccountStreamValue =
+      StreamValue<TenantAdminAccountOnboardingResult?>(defaultValue: null);
   final StreamValue<TenantAdminAccountCreateDraft> createStateStreamValue =
       StreamValue<TenantAdminAccountCreateDraft>(
     defaultValue: TenantAdminAccountCreateDraft.initial(),
@@ -305,7 +306,7 @@ class TenantAdminAccountCreateController implements Disposable {
     return _imageIngestionService.buildUpload(file, slot: slot);
   }
 
-  Future<TenantAdminAccount> createAccountWithProfile({
+  Future<TenantAdminAccountOnboardingResult> createAccountOnboarding({
     required String name,
     required TenantAdminOwnershipState ownershipState,
     required String profileType,
@@ -313,33 +314,23 @@ class TenantAdminAccountCreateController implements Disposable {
     String? bio,
     String? content,
     List<TenantAdminTaxonomyTerm> taxonomyTerms = const [],
-    String? avatarUrl,
-    String? coverUrl,
     TenantAdminMediaUpload? avatarUpload,
     TenantAdminMediaUpload? coverUpload,
   }) async {
-    final trimmedName = name.trim();
-    final account = await _accountsRepository.createAccount(
-      name: trimmedName,
+    return _accountsRepository.createAccountOnboarding(
+      name: name.trim(),
       ownershipState: ownershipState,
-    );
-    await _profilesRepository.createAccountProfile(
-      accountId: account.id,
       profileType: profileType,
-      displayName: trimmedName,
       location: location,
       taxonomyTerms: taxonomyTerms,
       bio: bio,
       content: content,
-      avatarUrl: avatarUrl,
-      coverUrl: coverUrl,
       avatarUpload: avatarUpload,
       coverUpload: coverUpload,
     );
-    return account;
   }
 
-  Future<TenantAdminAccount> createAccountFromForm({
+  Future<TenantAdminAccountOnboardingResult> createAccountFromForm({
     required TenantAdminLocation? location,
   }) async {
     final selectedProfileType =
@@ -362,7 +353,7 @@ class TenantAdminAccountCreateController implements Disposable {
       createStateStreamValue.value.coverFile,
       slot: TenantAdminImageSlot.cover,
     );
-    return createAccountWithProfile(
+    return createAccountOnboarding(
       name: nameController.text.trim(),
       ownershipState: createStateStreamValue.value.ownershipState,
       profileType: selectedProfileType,
@@ -370,8 +361,6 @@ class TenantAdminAccountCreateController implements Disposable {
       bio: filteredBio,
       content: filteredContent,
       taxonomyTerms: filteredTaxonomyTerms,
-      avatarUrl: null,
-      coverUrl: null,
       avatarUpload: avatarUpload,
       coverUpload: coverUpload,
     );
@@ -448,13 +437,13 @@ class TenantAdminAccountCreateController implements Disposable {
     createSubmittingStreamValue.addValue(true);
     clearCreateSuccessAccount();
     try {
-      final account = await createAccountFromForm(
+      final onboardingResult = await createAccountFromForm(
         location: location,
       );
       if (_isDisposed) return false;
       clearCreateValidation();
       createErrorMessageStreamValue.addValue(null);
-      createSuccessAccountStreamValue.addValue(account);
+      createSuccessAccountStreamValue.addValue(onboardingResult);
       return true;
     } on FormValidationFailure catch (error) {
       if (_isDisposed) return false;

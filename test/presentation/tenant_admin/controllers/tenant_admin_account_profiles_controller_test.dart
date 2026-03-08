@@ -3,6 +3,7 @@ import 'package:belluga_now/domain/repositories/tenant_admin_accounts_repository
 import 'package:belluga_now/domain/repositories/tenant_admin_taxonomies_repository_contract.dart';
 import 'package:belluga_now/domain/tenant_admin/ownership_state.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_onboarding_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_document.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
@@ -108,6 +109,37 @@ class _FakeAccountsRepository
     );
     _upsertAccount(account);
     return account;
+  }
+
+  @override
+  Future<TenantAdminAccountOnboardingResult> createAccountOnboarding({
+    required String name,
+    required TenantAdminOwnershipState ownershipState,
+    required String profileType,
+    TenantAdminLocation? location,
+    List<TenantAdminTaxonomyTerm> taxonomyTerms = const [],
+    String? bio,
+    String? content,
+    TenantAdminMediaUpload? avatarUpload,
+    TenantAdminMediaUpload? coverUpload,
+  }) async {
+    final account = await createAccount(
+      name: name,
+      ownershipState: ownershipState,
+    );
+    return TenantAdminAccountOnboardingResult(
+      account: account,
+      accountProfile: TenantAdminAccountProfile(
+        id: 'profile-onboarding',
+        accountId: account.id,
+        profileType: profileType,
+        displayName: name,
+        location: location,
+        taxonomyTerms: taxonomyTerms,
+        bio: bio,
+        content: content,
+      ),
+    );
   }
 
   @override

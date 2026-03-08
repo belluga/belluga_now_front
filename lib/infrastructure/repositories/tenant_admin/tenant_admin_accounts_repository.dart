@@ -3,12 +3,19 @@ import 'package:belluga_now/domain/repositories/tenant_admin_accounts_repository
 import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.dart';
 import 'package:belluga_now/domain/tenant_admin/ownership_state.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_onboarding_result.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_document.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_accounts_result.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
+import 'package:belluga_now/infrastructure/dal/dto/tenant_admin/tenant_admin_account_profile_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/tenant_admin/tenant_admin_account_dto.dart';
 import 'package:belluga_now/infrastructure/repositories/tenant_admin/support/tenant_admin_validation_failure_resolver.dart';
 import 'package:dio/dio.dart';
 import 'package:get_it/get_it.dart';
+import 'package:http_parser/http_parser.dart';
 import 'package:stream_value/core/stream_value.dart';
 
 class TenantAdminAccountsRepository
@@ -212,6 +219,61 @@ class TenantAdminAccountsRepository
       return created;
     } on DioException catch (error) {
       throw _wrapError(error, 'create account');
+    }
+  }
+
+  @override
+  Future<TenantAdminAccountOnboardingResult> createAccountOnboarding({
+    required String name,
+    required TenantAdminOwnershipState ownershipState,
+    required String profileType,
+    TenantAdminLocation? location,
+    List<TenantAdminTaxonomyTerm> taxonomyTerms = const [],
+    String? bio,
+    String? content,
+    TenantAdminMediaUpload? avatarUpload,
+    TenantAdminMediaUpload? coverUpload,
+  }) async {
+    try {
+      final payload = <String, dynamic>{
+        'name': name,
+        'ownership_state': ownershipState.apiValue,
+        'profile_type': profileType,
+        if (location != null)
+          'location': {
+            'lat': location.latitude,
+            'lng': location.longitude,
+          },
+        if (taxonomyTerms.isNotEmpty)
+          'taxonomy_terms': taxonomyTerms
+              .map((term) => {'type': term.type, 'value': term.value})
+              .toList(),
+        if (bio != null) 'bio': bio,
+        if (content != null) 'content': content,
+      };
+
+      final uploadPayload = _buildMultipartPayload(
+        payload,
+        avatarUpload: avatarUpload,
+        coverUpload: coverUpload,
+      );
+
+      final response = await _dio.post(
+        '$_apiBaseUrl/v1/account_onboardings',
+        data: uploadPayload ?? payload,
+        options: Options(headers: _buildHeaders()),
+      );
+      final onboardingData = _extractOnboardingData(response.data);
+      final account = _mapAccount(onboardingData['account']!);
+      final accountProfile =
+          _mapAccountProfile(onboardingData['account_profile']!);
+      _appendLoadedAccount(account);
+      return TenantAdminAccountOnboardingResult(
+        account: account,
+        accountProfile: accountProfile,
+      );
+    } on DioException catch (error) {
+      throw _wrapError(error, 'create account onboarding');
     }
   }
 
@@ -427,6 +489,26 @@ class TenantAdminAccountsRepository
     throw Exception('Unexpected account create response shape.');
   }
 
+  Map<String, Map<String, dynamic>> _extractOnboardingData(dynamic raw) {
+    if (raw is! Map<String, dynamic>) {
+      throw Exception('Unexpected account onboarding response shape.');
+    }
+    final data = raw['data'];
+    if (data is! Map<String, dynamic>) {
+      throw Exception('Unexpected account onboarding response shape.');
+    }
+    final account = data['account'];
+    final accountProfile = data['account_profile'];
+    if (account is! Map<String, dynamic> ||
+        accountProfile is! Map<String, dynamic>) {
+      throw Exception('Unexpected account onboarding response shape.');
+    }
+    return <String, Map<String, dynamic>>{
+      'account': account,
+      'account_profile': accountProfile,
+    };
+  }
+
   List<Map<String, dynamic>> _extractList(dynamic raw) {
     if (raw is Map<String, dynamic>) {
       final data = raw['data'];
@@ -496,6 +578,92 @@ class TenantAdminAccountsRepository
       ownershipState: ownershipState,
       avatarUrl: dto.avatarUrl,
     );
+  }
+
+  TenantAdminAccountProfile _mapAccountProfile(Map<String, dynamic> json) {
+    final dto = TenantAdminAccountProfileDTO.fromJson(json);
+    final location = (dto.locationLat != null && dto.locationLng != null)
+        ? TenantAdminLocation(
+            latitude: dto.locationLat!,
+            longitude: dto.locationLng!,
+          )
+        : null;
+    final taxonomy = dto.taxonomyTerms
+        .map((term) =>
+            TenantAdminTaxonomyTerm(type: term.type, value: term.value))
+        .toList(growable: false);
+    return TenantAdminAccountProfile(
+      id: dto.id,
+      accountId: dto.accountId,
+      profileType: dto.profileType,
+      displayName: dto.displayName,
+      slug: dto.slug,
+      avatarUrl: dto.avatarUrl,
+      coverUrl: dto.coverUrl,
+      bio: dto.bio,
+      content: dto.content,
+      location: location,
+      taxonomyTerms: taxonomy,
+      ownershipState: dto.ownershipState == null
+          ? null
+          : TenantAdminOwnershipState.fromApiValue(dto.ownershipState),
+    );
+  }
+
+  FormData? _buildMultipartPayload(
+    Map<String, dynamic> payload, {
+    TenantAdminMediaUpload? avatarUpload,
+    TenantAdminMediaUpload? coverUpload,
+  }) {
+    if (avatarUpload == null && coverUpload == null) {
+      return null;
+    }
+    final formData = FormData.fromMap(payload, ListFormat.multiCompatible);
+    if (avatarUpload != null) {
+      formData.files.add(
+        MapEntry(
+          'avatar',
+          MultipartFile.fromBytes(
+            avatarUpload.bytes,
+            filename: avatarUpload.fileName,
+            contentType: _resolveMediaType(avatarUpload),
+          ),
+        ),
+      );
+    }
+    if (coverUpload != null) {
+      formData.files.add(
+        MapEntry(
+          'cover',
+          MultipartFile.fromBytes(
+            coverUpload.bytes,
+            filename: coverUpload.fileName,
+            contentType: _resolveMediaType(coverUpload),
+          ),
+        ),
+      );
+    }
+    return formData;
+  }
+
+  MediaType _resolveMediaType(TenantAdminMediaUpload upload) {
+    final mimeType = upload.mimeType ?? _inferMimeType(upload.fileName);
+    if (mimeType == null) {
+      return MediaType('application', 'octet-stream');
+    }
+    final parts = mimeType.split('/');
+    if (parts.length != 2) {
+      return MediaType('application', 'octet-stream');
+    }
+    return MediaType(parts[0], parts[1]);
+  }
+
+  String? _inferMimeType(String fileName) {
+    final lower = fileName.toLowerCase();
+    if (lower.endsWith('.png')) return 'image/png';
+    if (lower.endsWith('.jpg') || lower.endsWith('.jpeg')) return 'image/jpeg';
+    if (lower.endsWith('.webp')) return 'image/webp';
+    return null;
   }
 
   Exception _wrapError(DioException error, String label) {

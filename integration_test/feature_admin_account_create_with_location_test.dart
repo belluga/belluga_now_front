@@ -9,6 +9,7 @@ import 'package:belluga_now/domain/repositories/tenant_admin_accounts_repository
 import 'package:belluga_now/domain/repositories/tenant_admin_taxonomies_repository_contract.dart';
 import 'package:belluga_now/domain/tenant_admin/ownership_state.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_onboarding_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_document.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
@@ -20,7 +21,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_definition.dart';
 import 'support/fake_landlord_app_data_backend.dart';
-import 'package:belluga_now/infrastructure/dal/dao/local/app_data_local_info_source/app_data_local_info_source_stub.dart';
+import 'package:belluga_now/infrastructure/dal/dao/local/app_data_local_info_source/app_data_local_info_source.dart';
 import 'package:belluga_now/infrastructure/repositories/app_data_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -216,6 +217,37 @@ class _FakeAccountsRepository
           document ?? const TenantAdminDocument(type: 'cpf', number: '000'),
       ownershipState: ownershipState,
       organizationId: organizationId,
+    );
+  }
+
+  @override
+  Future<TenantAdminAccountOnboardingResult> createAccountOnboarding({
+    required String name,
+    required TenantAdminOwnershipState ownershipState,
+    required String profileType,
+    TenantAdminLocation? location,
+    List<TenantAdminTaxonomyTerm> taxonomyTerms = const [],
+    String? bio,
+    String? content,
+    TenantAdminMediaUpload? avatarUpload,
+    TenantAdminMediaUpload? coverUpload,
+  }) async {
+    final account = await createAccount(
+      name: name,
+      ownershipState: ownershipState,
+    );
+    return TenantAdminAccountOnboardingResult(
+      account: account,
+      accountProfile: TenantAdminAccountProfile(
+        id: 'profile-1',
+        accountId: account.id,
+        profileType: profileType,
+        displayName: name,
+        location: location,
+        taxonomyTerms: taxonomyTerms,
+        bio: bio,
+        content: content,
+      ),
     );
   }
 

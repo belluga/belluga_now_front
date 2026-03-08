@@ -2,8 +2,12 @@ import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_accounts_repository_contract.dart';
 import 'package:belluga_now/domain/tenant_admin/ownership_state.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_onboarding_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_document.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_accounts_result.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
 import 'package:belluga_now/presentation/tenant_admin/accounts/controllers/tenant_admin_accounts_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/accounts/screens/tenant_admin_accounts_list_screen.dart';
 import 'package:flutter/material.dart';
@@ -263,6 +267,21 @@ class _FakeAccountsRepository
     TenantAdminDocument? document,
     required TenantAdminOwnershipState ownershipState,
     String? organizationId,
+  }) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<TenantAdminAccountOnboardingResult> createAccountOnboarding({
+    required String name,
+    required TenantAdminOwnershipState ownershipState,
+    required String profileType,
+    TenantAdminLocation? location,
+    List<TenantAdminTaxonomyTerm> taxonomyTerms = const [],
+    String? bio,
+    String? content,
+    TenantAdminMediaUpload? avatarUpload,
+    TenantAdminMediaUpload? coverUpload,
   }) {
     throw UnimplementedError();
   }

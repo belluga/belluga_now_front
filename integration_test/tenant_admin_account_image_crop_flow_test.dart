@@ -9,6 +9,7 @@ import 'package:belluga_now/domain/services/tenant_admin_location_selection_cont
 import 'package:belluga_now/domain/services/tenant_admin_external_image_proxy_contract.dart';
 import 'package:belluga_now/domain/tenant_admin/ownership_state.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_onboarding_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_document.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
@@ -18,7 +19,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_definition.dart';
 import 'package:belluga_now/infrastructure/services/tenant_admin/tenant_admin_location_selection_service.dart';
-import 'package:belluga_now/presentation/tenant_admin/accounts/controllers/tenant_admin_accounts_controller.dart';
+import 'package:belluga_now/presentation/tenant_admin/accounts/controllers/tenant_admin_account_create_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/accounts/screens/tenant_admin_account_create_screen.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_image_ingestion_service.dart';
 import 'package:crop_your_image/crop_your_image.dart';
@@ -282,8 +283,8 @@ void _registerFakes() {
     ..registerSingleton<TenantAdminImageIngestionService>(
       TenantAdminImageIngestionService(),
     )
-    ..registerSingleton<TenantAdminAccountsController>(
-      TenantAdminAccountsController(),
+    ..registerFactory<TenantAdminAccountCreateController>(
+      TenantAdminAccountCreateController.new,
     );
 }
 
@@ -339,6 +340,21 @@ class _FakeAccountsRepository extends TenantAdminAccountsRepositoryContract {
     TenantAdminDocument? document,
     required TenantAdminOwnershipState ownershipState,
     String? organizationId,
+  }) async {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<TenantAdminAccountOnboardingResult> createAccountOnboarding({
+    required String name,
+    required TenantAdminOwnershipState ownershipState,
+    required String profileType,
+    TenantAdminLocation? location,
+    List<TenantAdminTaxonomyTerm> taxonomyTerms = const [],
+    String? bio,
+    String? content,
+    TenantAdminMediaUpload? avatarUpload,
+    TenantAdminMediaUpload? coverUpload,
   }) async {
     throw UnimplementedError();
   }
