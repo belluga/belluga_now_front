@@ -263,6 +263,33 @@ void main() {
     );
   });
 
+  test('createAccount surfaces structured 429 security failure', () async {
+    final adapter = _AccountsCreateRateLimitedAdapter();
+    final dio = Dio()..httpClientAdapter = adapter;
+    final scope = _MutableTenantScope('https://tenant-a.test/admin/api');
+    final repository = TenantAdminAccountsRepository(
+      dio: dio,
+      tenantScope: scope,
+    );
+
+    expect(
+      repository.createAccount(
+        name: 'Conta',
+        ownershipState: TenantAdminOwnershipState.tenantOwned,
+      ),
+      throwsA(
+        isA<FormApiFailure>()
+            .having((error) => error.statusCode, 'statusCode', 429)
+            .having((error) => error.errorCode, 'errorCode', 'rate_limited')
+            .having(
+              (error) => error.retryAfterSeconds,
+              'retryAfterSeconds',
+              12,
+            ),
+      ),
+    );
+  });
+
   test('createAccountOnboarding calls onboarding endpoint and maps result',
       () async {
     final adapter = _AccountsRoutingAdapter();
@@ -500,6 +527,31 @@ class _AccountsCreateValidationAdapter implements HttpClientAdapter {
         },
       }),
       422,
+      headers: {
+        Headers.contentTypeHeader: ['application/json'],
+      },
+    );
+  }
+}
+
+class _AccountsCreateRateLimitedAdapter implements HttpClientAdapter {
+  @override
+  void close({bool force = false}) {}
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<List<int>>? requestStream,
+    Future<dynamic>? cancelFuture,
+  ) async {
+    return ResponseBody.fromString(
+      jsonEncode({
+        'code': 'rate_limited',
+        'message': 'Too many requests. Retry later.',
+        'retry_after': 12,
+        'correlation_id': 'corr-rate-1',
+      }),
+      429,
       headers: {
         Headers.contentTypeHeader: ['application/json'],
       },
