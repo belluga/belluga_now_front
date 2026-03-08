@@ -134,9 +134,14 @@
         ? landlordHostRaw.trim().toLowerCase()
         : null;
 
-    // Fail closed. Host inference is fragile (public suffixes, nip.io, etc.) and can
-    // mis-route users before Flutter has a chance to apply guards.
-    if (landlordHost == null) {
+    const isLocalDebugHost =
+      hostname === 'localhost' ||
+      hostname === '127.0.0.1' ||
+      hostname === '[::1]';
+
+    // Fail closed for real hosts. Local debug/integration runners serve the app from
+    // localhost and do not perform the build-time landlord-host injection.
+    if (landlordHost == null && !isLocalDebugHost) {
       console.error('[belluga_now] Missing required window.__LANDLORD_HOST__ injection. Refusing to start.');
 
       const splash = document.getElementById('splash-screen');
@@ -149,6 +154,10 @@
       if (typeof label === 'function') {
         label('Config error: missing LANDLORD host injection.');
       }
+      return;
+    }
+
+    if (landlordHost == null && isLocalDebugHost) {
       return;
     }
 

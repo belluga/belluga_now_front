@@ -8,6 +8,7 @@ import 'package:belluga_now/domain/services/tenant_admin_external_image_proxy_co
 import 'package:belluga_now/domain/services/tenant_admin_location_selection_contract.dart';
 import 'package:belluga_now/domain/tenant_admin/ownership_state.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_onboarding_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_document.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
@@ -144,6 +145,21 @@ class _FakeAccountsRepository extends TenantAdminAccountsRepositoryContract {
   }
 
   @override
+  Future<TenantAdminAccountOnboardingResult> createAccountOnboarding({
+    required String name,
+    required TenantAdminOwnershipState ownershipState,
+    required String profileType,
+    TenantAdminLocation? location,
+    List<TenantAdminTaxonomyTerm> taxonomyTerms = const [],
+    String? bio,
+    String? content,
+    TenantAdminMediaUpload? avatarUpload,
+    TenantAdminMediaUpload? coverUpload,
+  }) {
+    throw UnimplementedError();
+  }
+
+  @override
   Future<TenantAdminAccount> updateAccount({
     required String accountSlug,
     String? name,
@@ -274,7 +290,8 @@ class _FakeAccountProfilesRepository
   }
 }
 
-class _FakeTaxonomiesRepository extends TenantAdminTaxonomiesRepositoryContract {
+class _FakeTaxonomiesRepository
+    extends TenantAdminTaxonomiesRepositoryContract {
   @override
   Future<List<TenantAdminTaxonomyDefinition>> fetchTaxonomies() async {
     return const [];
@@ -359,4 +376,3 @@ TenantAdminAccountProfile _profile({required String id}) {
     ownershipState: TenantAdminOwnershipState.tenantOwned,
   );
 }
-

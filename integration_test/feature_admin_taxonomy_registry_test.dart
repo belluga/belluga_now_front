@@ -10,6 +10,7 @@ import 'package:belluga_now/domain/repositories/tenant_admin_accounts_repository
 import 'package:belluga_now/domain/repositories/tenant_admin_taxonomies_repository_contract.dart';
 import 'package:belluga_now/domain/tenant_admin/ownership_state.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_onboarding_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_document.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
@@ -22,7 +23,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart'
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_definition.dart';
 import 'package:belluga_now/presentation/tenant_admin/taxonomies/controllers/tenant_admin_taxonomies_controller.dart';
 import 'support/fake_landlord_app_data_backend.dart';
-import 'package:belluga_now/infrastructure/dal/dao/local/app_data_local_info_source/app_data_local_info_source_stub.dart';
+import 'package:belluga_now/infrastructure/dal/dao/local/app_data_local_info_source/app_data_local_info_source.dart';
 import 'package:belluga_now/infrastructure/repositories/app_data_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -217,7 +218,7 @@ void main() {
     );
   });
 
-  testWidgets('Account profile creation selects taxonomy terms by registry',
+  testWidgets('Account onboarding selects taxonomy terms by registry',
       (tester) async {
     final repository = _FakeTaxonomiesRepository()
       ..seedTaxonomy(
@@ -250,10 +251,11 @@ void main() {
         const [],
       );
 
+    final accountsRepository = _FakeAccountsRepository();
     final profilesRepository = _FakeAccountProfilesRepository();
     await _registerCommonDependencies(
       taxonomiesRepository: repository,
-      accountsRepository: _FakeAccountsRepository(),
+      accountsRepository: accountsRepository,
       profilesRepository: profilesRepository,
     );
 
@@ -262,22 +264,14 @@ void main() {
     await app.init();
 
     app.appRouter.replaceAll([
-      TenantAdminShellRoute(
-        children: [
-          TenantAdminAccountProfileCreateRoute(accountSlug: 'account-1'),
-        ],
-      ),
+      const TenantAdminShellRoute(children: [TenantAdminAccountCreateRoute()]),
     ]);
 
     await tester.pumpWidget(app);
     await tester.pumpAndSettle(const Duration(seconds: 2));
     await _waitForFinder(tester, _tenantAdminShellRouterFinder());
     app.appRouter.navigate(
-      TenantAdminShellRoute(
-        children: [
-          TenantAdminAccountProfileCreateRoute(accountSlug: 'account-1'),
-        ],
-      ),
+      const TenantAdminShellRoute(children: [TenantAdminAccountCreateRoute()]),
     );
     await tester.pumpAndSettle(const Duration(seconds: 1));
 
@@ -295,11 +289,17 @@ void main() {
     await tester.tap(find.text('Samba'));
     await tester.pumpAndSettle();
 
-    await tester.enterText(find.byType(TextFormField).at(0), 'Perfil Teste');
-    await tester.tap(find.text('Salvar perfil'));
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Nome'),
+      'Perfil Teste',
+    );
+    final saveButton =
+        find.byKey(const ValueKey('tenant_admin_account_create_save'));
+    await tester.ensureVisible(saveButton);
+    await tester.tap(saveButton, warnIfMissed: false);
     await tester.pumpAndSettle();
 
-    final hasSamba = profilesRepository.lastCreatedTerms.any(
+    final hasSamba = accountsRepository.lastOnboardingTerms.any(
       (term) => term.type == 'music_genre' && term.value == 'samba',
     );
     expect(hasSamba, true);
@@ -353,6 +353,8 @@ class _FakeLandlordAuthRepository implements LandlordAuthRepositoryContract {
 class _FakeAccountsRepository
     with TenantAdminAccountsRepositoryPaginationMixin
     implements TenantAdminAccountsRepositoryContract {
+  List<TenantAdminTaxonomyTerm> lastOnboardingTerms = const [];
+
   @override
   Future<List<TenantAdminAccount>> fetchAccounts() async => const [];
 
@@ -394,6 +396,38 @@ class _FakeAccountsRepository
           document ?? const TenantAdminDocument(type: 'cpf', number: '000'),
       ownershipState: ownershipState,
       organizationId: organizationId,
+    );
+  }
+
+  @override
+  Future<TenantAdminAccountOnboardingResult> createAccountOnboarding({
+    required String name,
+    required TenantAdminOwnershipState ownershipState,
+    required String profileType,
+    TenantAdminLocation? location,
+    List<TenantAdminTaxonomyTerm> taxonomyTerms = const [],
+    String? bio,
+    String? content,
+    TenantAdminMediaUpload? avatarUpload,
+    TenantAdminMediaUpload? coverUpload,
+  }) async {
+    lastOnboardingTerms = taxonomyTerms;
+    final account = await createAccount(
+      name: name,
+      ownershipState: ownershipState,
+    );
+    return TenantAdminAccountOnboardingResult(
+      account: account,
+      accountProfile: TenantAdminAccountProfile(
+        id: 'profile-1',
+        accountId: account.id,
+        profileType: profileType,
+        displayName: name,
+        location: location,
+        taxonomyTerms: taxonomyTerms,
+        bio: bio,
+        content: content,
+      ),
     );
   }
 

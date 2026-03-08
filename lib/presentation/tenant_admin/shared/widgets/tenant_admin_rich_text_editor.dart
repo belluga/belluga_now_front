@@ -12,12 +12,14 @@ class TenantAdminRichTextEditor extends StatefulWidget {
     required this.label,
     this.placeholder,
     this.minHeight = 180,
+    this.errorText,
   });
 
   final TextEditingController controller;
   final String label;
   final String? placeholder;
   final double minHeight;
+  final String? errorText;
 
   @override
   State<TenantAdminRichTextEditor> createState() =>
@@ -202,7 +204,9 @@ class _TenantAdminRichTextEditorState extends State<TenantAdminRichTextEditor> {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final borderColor = colorScheme.outlineVariant;
+    final borderColor = widget.errorText == null || widget.errorText!.isEmpty
+        ? colorScheme.outlineVariant
+        : colorScheme.error;
     final locale = Localizations.maybeLocaleOf(context) ?? const Locale('en');
     return Localizations.override(
       context: context,
@@ -268,6 +272,15 @@ class _TenantAdminRichTextEditorState extends State<TenantAdminRichTextEditor> {
               ],
             ),
           ),
+          if (widget.errorText != null && widget.errorText!.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Text(
+              widget.errorText!,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: colorScheme.error,
+                  ),
+            ),
+          ],
         ],
       ),
     );

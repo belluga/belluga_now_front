@@ -95,14 +95,6 @@ class _TenantAdminAccountDetailScreenState
     return profile.profileType;
   }
 
-  void _openCreate() {
-    context.router.push(
-      TenantAdminAccountProfileCreateRoute(
-        accountSlug: _currentAccountSlugForRequests(),
-      ),
-    );
-  }
-
   void _openEdit() {
     final profile = _profilesController.accountProfileStreamValue.value;
     if (profile == null) {
@@ -306,20 +298,14 @@ class _TenantAdminAccountDetailScreenState
                                                       CrossAxisAlignment.start,
                                                   children: [
                                                     Text(
-                                                      'Perfil da conta',
+                                                      'Inconsistência de dados',
                                                       style: Theme.of(context)
                                                           .textTheme
                                                           .titleMedium,
                                                     ),
                                                     const SizedBox(height: 8),
                                                     const Text(
-                                                      'Nenhum perfil associado a esta conta.',
-                                                    ),
-                                                    const SizedBox(height: 12),
-                                                    FilledButton(
-                                                      onPressed: _openCreate,
-                                                      child: const Text(
-                                                          'Criar Perfil'),
+                                                      'Conta sem perfil detectada. Este estado é inválido para tenant-admin e deve ser corrigido por rotina de reparo backend.',
                                                     ),
                                                   ],
                                                 ),

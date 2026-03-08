@@ -11,6 +11,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart'
 import 'package:belluga_now/infrastructure/dal/dto/tenant_admin/tenant_admin_account_profile_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/tenant_admin/tenant_admin_profile_type_dto.dart';
 import 'package:belluga_now/infrastructure/repositories/tenant_admin/tenant_admin_pagination_utils.dart';
+import 'package:belluga_now/infrastructure/repositories/tenant_admin/support/tenant_admin_validation_failure_resolver.dart';
 import 'package:dio/dio.dart';
 import 'package:get_it/get_it.dart';
 import 'package:http_parser/http_parser.dart';
@@ -496,39 +497,10 @@ class TenantAdminAccountProfilesRepository
   }
 
   Exception _wrapError(DioException error, String label) {
-    final status = error.response?.statusCode;
-    final data = error.response?.data;
-    if (status == 422 && data is Map) {
-      final message = data['message']?.toString().trim();
-      final errors = data['errors'];
-      final buffer = StringBuffer();
-      if (message != null && message.isNotEmpty) {
-        buffer.write(message);
-      } else {
-        buffer.write('Validation failed.');
-      }
-      if (errors is Map) {
-        for (final entry in errors.entries) {
-          final field = entry.key?.toString();
-          final value = entry.value;
-          if (field == null || field.isEmpty) continue;
-          if (value is List && value.isNotEmpty) {
-            buffer.write(' ');
-            buffer.write('$field: ${value.first}');
-          } else if (value != null) {
-            buffer.write(' ');
-            buffer.write('$field: $value');
-          }
-        }
-      }
-      return Exception(
-        'Failed to $label [status=$status] (${error.requestOptions.uri}): '
-        '${buffer.toString()}',
-      );
+    final validationFailure = tenantAdminTryResolveValidationFailure(error);
+    if (validationFailure != null) {
+      return validationFailure;
     }
-    return Exception(
-      'Failed to $label [status=$status] (${error.requestOptions.uri}): '
-      '${data ?? error.message}',
-    );
+    return tenantAdminWrapRepositoryError(error, label);
   }
 }
