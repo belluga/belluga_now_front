@@ -21,9 +21,47 @@ TenantAdminErrorState resolveTenantAdminErrorState(
   }
 
   if (normalized.contains('status=401') || normalized.contains('status=403')) {
+    if (normalized.contains('origin_access_denied')) {
+      return TenantAdminErrorState(
+        userMessage:
+            'A origem da solicitação foi bloqueada pela política de segurança. Tente novamente pelo tenant correto.',
+        technicalDetails: rawError,
+      );
+    }
+
     return TenantAdminErrorState(
       userMessage:
           'Você não tem permissão para esta ação no tenant selecionado.',
+      technicalDetails: rawError,
+    );
+  }
+
+  if (normalized.contains('status=429') ||
+      normalized.contains('code=rate_limited') ||
+      normalized.contains('rate_limited')) {
+    final retryAfterSeconds = _parseRetryAfterSeconds(rawError);
+    return TenantAdminErrorState(
+      userMessage: retryAfterSeconds == null
+          ? 'Muitas requisições em sequência. Aguarde alguns segundos e tente novamente.'
+          : 'Muitas requisições em sequência. Aguarde ${retryAfterSeconds}s e tente novamente.',
+      technicalDetails: rawError,
+    );
+  }
+
+  if (normalized.contains('idempotency_replayed') ||
+      normalized.contains('status=409')) {
+    return TenantAdminErrorState(
+      userMessage:
+          'A operação já foi recebida anteriormente. Aguarde e atualize a tela antes de tentar novamente.',
+      technicalDetails: rawError,
+    );
+  }
+
+  if (normalized.contains('idempotency_missing') ||
+      normalized.contains('idempotency_malformed')) {
+    return TenantAdminErrorState(
+      userMessage:
+          'A operação foi bloqueada por proteção de segurança da API. Tente novamente a partir da tela atual.',
       technicalDetails: rawError,
     );
   }
@@ -66,4 +104,14 @@ TenantAdminErrorState resolveTenantAdminErrorState(
     userMessage: fallbackMessage,
     technicalDetails: rawError,
   );
+}
+
+int? _parseRetryAfterSeconds(String rawError) {
+  final retryAfterPattern =
+      RegExp(r'(retry_after|retryAfterSeconds)\s*[=:]\s*(\d+)');
+  final match = retryAfterPattern.firstMatch(rawError);
+  if (match == null) {
+    return null;
+  }
+  return int.tryParse(match.group(2) ?? '');
 }

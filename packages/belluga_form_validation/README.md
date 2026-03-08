@@ -6,7 +6,8 @@ Internal reusable Flutter package for Belluga form validation.
 
 This package standardizes how Belluga Flutter forms render and manage validation. It is intentionally transport-agnostic.
 
-- Repositories/infrastructure parse backend `422` responses.
+- Repositories/infrastructure parse backend `422` responses into `FormValidationFailure`.
+- Repositories/infrastructure can parse structured non-`422` API/security envelopes into `FormApiFailure` (`code`, `message`, `retry_after`, `correlation_id`, `cf_ray_id`).
 - Controllers own one validation `StreamValue` per form.
 - Screens render validation through package builders/widgets.
 
@@ -81,6 +82,23 @@ Use it to:
 - `global` -> inline form-level validation summary/banner
 
 `422` validation must not use snackbars.
+
+## Structured API Failure Parsing
+
+The package exposes transport-agnostic parsers:
+
+- `tryParseFormValidationFailure(statusCode, rawData)` for `422` payloads.
+- `tryParseFormApiFailure(statusCode, rawData)` for structured non-`422` payloads.
+
+Expected non-`422` contract keys (when present):
+
+- `code`
+- `message`
+- `hints[]` (optional)
+- `retry_after` (optional)
+- `request_id` / `metadata.request_id` (optional)
+- `correlation_id` (optional)
+- `cf_ray_id` (optional)
 
 ## Anchors and Scroll
 

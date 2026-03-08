@@ -5,6 +5,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_organization.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_result.dart';
 import 'package:belluga_now/infrastructure/dal/dto/tenant_admin/tenant_admin_organization_dto.dart';
 import 'package:belluga_now/infrastructure/repositories/tenant_admin/tenant_admin_pagination_utils.dart';
+import 'package:belluga_now/infrastructure/repositories/tenant_admin/support/tenant_admin_validation_failure_resolver.dart';
 import 'package:dio/dio.dart';
 import 'package:get_it/get_it.dart';
 
@@ -220,11 +221,6 @@ class TenantAdminOrganizationsRepository
   }
 
   Exception _wrapError(DioException error, String label) {
-    final status = error.response?.statusCode;
-    final data = error.response?.data;
-    return Exception(
-      'Failed to $label [status=$status] (${error.requestOptions.uri}): '
-      '${data ?? error.message}',
-    );
+    return tenantAdminWrapRepositoryError(error, label);
   }
 }

@@ -1,3 +1,5 @@
+export 'src/failures/form_api_failure.dart';
+export 'src/failures/form_api_failure_parsers.dart';
 export 'src/config/form_validation_binding.dart';
 export 'src/config/form_validation_config.dart';
 export 'src/controller/form_validation_controller_adapter.dart';
