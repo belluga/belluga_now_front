@@ -148,6 +148,7 @@ class TenantAdminSettingsController implements Disposable {
       TextEditingController();
   final TextEditingController mapDefaultOriginLabelController =
       TextEditingController();
+  static const int _mapFilterKeyMaxLength = 64;
 
   bool _initialized = false;
   String? _initializedTenantDomain;
@@ -385,6 +386,151 @@ class TenantAdminSettingsController implements Disposable {
       remoteErrorStreamValue.addValue(error.toString());
     } finally {
       mapUiSubmittingStreamValue.addValue(false);
+    }
+  }
+
+  void addMapFilterItem() {
+    final current = List<TenantAdminMapFilterCatalogItem>.from(
+      _mapUiSettings.filters,
+    );
+    final nextIndex = current.length + 1;
+    final defaultKey = _buildMapFilterDefaultKey(nextIndex, current);
+    current.add(
+      TenantAdminMapFilterCatalogItem(
+        key: defaultKey,
+        label: 'Filtro ${nextIndex.toString()}',
+      ),
+    );
+    _replaceMapFilters(current);
+  }
+
+  void removeMapFilterItem(int index) {
+    if (index < 0 || index >= _mapUiSettings.filters.length) {
+      return;
+    }
+    final current = List<TenantAdminMapFilterCatalogItem>.from(
+      _mapUiSettings.filters,
+    )..removeAt(index);
+    _replaceMapFilters(current);
+  }
+
+  void moveMapFilterItemUp(int index) {
+    if (index <= 0 || index >= _mapUiSettings.filters.length) {
+      return;
+    }
+    final current = List<TenantAdminMapFilterCatalogItem>.from(
+      _mapUiSettings.filters,
+    );
+    final item = current.removeAt(index);
+    current.insert(index - 1, item);
+    _replaceMapFilters(current);
+  }
+
+  void moveMapFilterItemDown(int index) {
+    if (index < 0 || index >= _mapUiSettings.filters.length - 1) {
+      return;
+    }
+    final current = List<TenantAdminMapFilterCatalogItem>.from(
+      _mapUiSettings.filters,
+    );
+    final item = current.removeAt(index);
+    current.insert(index + 1, item);
+    _replaceMapFilters(current);
+  }
+
+  void updateMapFilterItemKey(int index, String rawKey) {
+    final item = _mapFilterAt(index);
+    if (item == null) {
+      return;
+    }
+    final normalized = _normalizeMapFilterKey(rawKey);
+    if (normalized.isEmpty) {
+      remoteErrorStreamValue.addValue(
+        'A chave do filtro deve conter letras, números, hífen ou underscore.',
+      );
+      return;
+    }
+    final current = List<TenantAdminMapFilterCatalogItem>.from(
+      _mapUiSettings.filters,
+    );
+    current[index] = item.copyWith(key: normalized);
+    _replaceMapFilters(current);
+    remoteErrorStreamValue.addValue(null);
+  }
+
+  void updateMapFilterItemLabel(int index, String rawLabel) {
+    final item = _mapFilterAt(index);
+    if (item == null) {
+      return;
+    }
+    final label = rawLabel.trim();
+    if (label.isEmpty) {
+      remoteErrorStreamValue.addValue('O rótulo do filtro é obrigatório.');
+      return;
+    }
+    final current = List<TenantAdminMapFilterCatalogItem>.from(
+      _mapUiSettings.filters,
+    );
+    current[index] = item.copyWith(label: label);
+    _replaceMapFilters(current);
+    remoteErrorStreamValue.addValue(null);
+  }
+
+  void clearMapFilterItemImage(int index) {
+    final item = _mapFilterAt(index);
+    if (item == null) {
+      return;
+    }
+    final current = List<TenantAdminMapFilterCatalogItem>.from(
+      _mapUiSettings.filters,
+    );
+    current[index] = item.copyWith(clearImageUri: true);
+    _replaceMapFilters(current);
+  }
+
+  Future<void> uploadMapFilterItemImage({
+    required int index,
+    required XFile file,
+  }) async {
+    final item = _mapFilterAt(index);
+    if (item == null) {
+      return;
+    }
+    final key = _normalizeMapFilterKey(item.key);
+    if (key.isEmpty) {
+      remoteErrorStreamValue.addValue(
+        'Defina uma chave válida para o filtro antes de enviar a imagem.',
+      );
+      return;
+    }
+
+    final upload = await _imageIngestionService.buildUpload(
+      file,
+      slot: TenantAdminImageSlot.mapFilter,
+    );
+    if (upload == null) {
+      remoteErrorStreamValue.addValue(
+        'Não foi possível preparar a imagem do filtro.',
+      );
+      return;
+    }
+
+    try {
+      final imageUri = await _settingsRepository.uploadMapFilterImage(
+        key: key,
+        upload: upload,
+      );
+      final current = List<TenantAdminMapFilterCatalogItem>.from(
+        _mapUiSettings.filters,
+      );
+      current[index] = item.copyWith(
+        key: key,
+        imageUri: imageUri,
+      );
+      _replaceMapFilters(current);
+      _reportSuccess('Imagem do filtro atualizada.');
+    } catch (error) {
+      remoteErrorStreamValue.addValue(error.toString());
     }
   }
 
@@ -833,6 +979,49 @@ class TenantAdminSettingsController implements Disposable {
     mapDefaultOriginLongitudeController.text =
         defaultOrigin.lng.toStringAsFixed(6);
     mapDefaultOriginLabelController.text = defaultOrigin.label ?? '';
+  }
+
+  TenantAdminMapFilterCatalogItem? _mapFilterAt(int index) {
+    if (index < 0 || index >= _mapUiSettings.filters.length) {
+      return null;
+    }
+    return _mapUiSettings.filters[index];
+  }
+
+  void _replaceMapFilters(List<TenantAdminMapFilterCatalogItem> nextFilters) {
+    final nextSettings = _mapUiSettings.applyFilters(nextFilters);
+    _applyMapUiSettings(nextSettings);
+  }
+
+  String _buildMapFilterDefaultKey(
+    int sequence,
+    List<TenantAdminMapFilterCatalogItem> existing,
+  ) {
+    final existingKeys = existing.map((item) => item.key).toSet();
+    var attempt = sequence;
+    while (attempt < 999) {
+      final candidate = 'filter_$attempt';
+      if (!existingKeys.contains(candidate)) {
+        return candidate;
+      }
+      attempt += 1;
+    }
+    return 'filter_${DateTime.now().millisecondsSinceEpoch}';
+  }
+
+  String _normalizeMapFilterKey(String raw) {
+    var normalized = raw.trim().toLowerCase();
+    if (normalized.isEmpty) {
+      return '';
+    }
+    normalized = normalized.replaceAll(RegExp(r'[^a-z0-9_-]+'), '-');
+    normalized = normalized.replaceAll(RegExp(r'-{2,}'), '-');
+    normalized = normalized.replaceAll(RegExp(r'^[-_]+|[-_]+$'), '');
+    if (normalized.length > _mapFilterKeyMaxLength) {
+      normalized = normalized.substring(0, _mapFilterKeyMaxLength);
+      normalized = normalized.replaceAll(RegExp(r'^[-_]+|[-_]+$'), '');
+    }
+    return normalized;
   }
 
   void _resetMapUiDraft() {

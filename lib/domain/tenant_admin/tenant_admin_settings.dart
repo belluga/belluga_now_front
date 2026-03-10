@@ -20,18 +20,55 @@ class TenantAdminMapDefaultOrigin {
   }
 }
 
+class TenantAdminMapFilterCatalogItem {
+  const TenantAdminMapFilterCatalogItem({
+    required this.key,
+    required this.label,
+    this.imageUri,
+  });
+
+  final String key;
+  final String label;
+  final String? imageUri;
+
+  TenantAdminMapFilterCatalogItem copyWith({
+    String? key,
+    String? label,
+    String? imageUri,
+    bool clearImageUri = false,
+  }) {
+    return TenantAdminMapFilterCatalogItem(
+      key: key ?? this.key,
+      label: label ?? this.label,
+      imageUri: clearImageUri ? null : (imageUri ?? this.imageUri),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'key': key.trim(),
+      'label': label.trim(),
+      if (imageUri != null && imageUri!.trim().isNotEmpty)
+        'image_uri': imageUri!.trim(),
+    };
+  }
+}
+
 class TenantAdminMapUiSettings {
   const TenantAdminMapUiSettings({
     required this.rawMapUi,
     required this.defaultOrigin,
+    required this.filters,
   });
 
   const TenantAdminMapUiSettings.empty()
       : rawMapUi = const <String, dynamic>{},
-        defaultOrigin = null;
+        defaultOrigin = null,
+        filters = const <TenantAdminMapFilterCatalogItem>[];
 
   final Map<String, dynamic> rawMapUi;
   final TenantAdminMapDefaultOrigin? defaultOrigin;
+  final List<TenantAdminMapFilterCatalogItem> filters;
 
   TenantAdminMapUiSettings applyDefaultOrigin(
     TenantAdminMapDefaultOrigin? origin,
@@ -49,6 +86,32 @@ class TenantAdminMapUiSettings {
     return TenantAdminMapUiSettings(
       rawMapUi: Map<String, dynamic>.unmodifiable(nextRaw),
       defaultOrigin: origin,
+      filters: List<TenantAdminMapFilterCatalogItem>.unmodifiable(filters),
+    );
+  }
+
+  TenantAdminMapUiSettings applyFilters(
+    List<TenantAdminMapFilterCatalogItem> nextFilters,
+  ) {
+    final sanitized = nextFilters
+        .map(
+          (item) => TenantAdminMapFilterCatalogItem(
+            key: item.key.trim(),
+            label: item.label.trim(),
+            imageUri: item.imageUri?.trim().isEmpty ?? true
+                ? null
+                : item.imageUri?.trim(),
+          ),
+        )
+        .where((item) => item.key.isNotEmpty && item.label.isNotEmpty)
+        .toList(growable: false);
+
+    final nextRaw = Map<String, dynamic>.from(rawMapUi);
+    nextRaw['filters'] = sanitized.map((item) => item.toJson()).toList();
+    return TenantAdminMapUiSettings(
+      rawMapUi: Map<String, dynamic>.unmodifiable(nextRaw),
+      defaultOrigin: defaultOrigin,
+      filters: List<TenantAdminMapFilterCatalogItem>.unmodifiable(sanitized),
     );
   }
 }

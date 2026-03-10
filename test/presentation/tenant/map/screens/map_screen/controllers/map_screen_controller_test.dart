@@ -18,14 +18,8 @@ import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
 import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_priority_value.dart';
 import 'package:belluga_now/domain/repositories/city_map_repository_contract.dart';
-import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
-import 'package:belluga_now/domain/schedule/event_delta_model.dart';
-import 'package:belluga_now/domain/schedule/event_model.dart';
-import 'package:belluga_now/domain/schedule/paged_events_result.dart';
-import 'package:belluga_now/domain/schedule/schedule_summary_model.dart';
-import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
 import 'package:belluga_now/infrastructure/repositories/poi_repository.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/controllers/map_screen_controller.dart';
 import 'package:event_tracker_handler/event_tracker_handler.dart';
@@ -162,7 +156,8 @@ class _FakeUserLocationRepository implements UserLocationRepositoryContract {
   Future<bool> warmUpIfPermitted() async => false;
 
   @override
-  Future<bool> refreshIfPermitted({Duration minInterval = const Duration(seconds: 30)}) async {
+  Future<bool> refreshIfPermitted(
+      {Duration minInterval = const Duration(seconds: 30)}) async {
     return false;
   }
 
@@ -170,7 +165,8 @@ class _FakeUserLocationRepository implements UserLocationRepositoryContract {
   Future<String?> resolveUserLocation() async => null;
 
   @override
-  Future<bool> startTracking({LocationTrackingMode mode = LocationTrackingMode.mapForeground}) async {
+  Future<bool> startTracking(
+      {LocationTrackingMode mode = LocationTrackingMode.mapForeground}) async {
     return true;
   }
 
@@ -191,9 +187,20 @@ class _FakeCityMapRepository implements CityMapRepositoryContract {
   late final CityCoordinate _defaultCenter;
   final StreamController<PoiUpdateEvent?> _poiEventsController =
       StreamController<PoiUpdateEvent?>.broadcast();
+  PoiQuery? lastQuery;
 
   @override
-  Future<List<CityPoiModel>> fetchPoints(PoiQuery query) async => const [];
+  Future<List<CityPoiModel>> fetchPoints(PoiQuery query) async {
+    lastQuery = query;
+    return const [];
+  }
+
+  @override
+  Future<List<CityPoiModel>> fetchStackItems({
+    required PoiQuery query,
+    required String stackKey,
+  }) async =>
+      const [];
 
   @override
   Future<PoiFilterOptions> fetchFilters() async =>
@@ -218,67 +225,6 @@ class _FakeCityMapRepository implements CityMapRepositoryContract {
   void dispose() {
     _poiEventsController.close();
   }
-}
-
-class _FakeScheduleRepository implements ScheduleRepositoryContract {
-  @override
-  Future<ScheduleSummaryModel> getScheduleSummary() async {
-    return ScheduleSummaryModel(items: const []);
-  }
-
-  @override
-  Future<List<EventModel>> getEventsByDate(
-    DateTime date, {
-    double? originLat,
-    double? originLng,
-    double? maxDistanceMeters,
-  }) async =>
-      const [];
-
-  @override
-  Future<List<EventModel>> getAllEvents() async => const [];
-
-  @override
-  Future<EventModel?> getEventBySlug(String slug) async => null;
-
-  @override
-  Future<PagedEventsResult> getEventsPage({
-    required int page,
-    required int pageSize,
-    required bool showPastOnly,
-    String searchQuery = '',
-    List<String>? categories,
-    List<String>? tags,
-    List<Map<String, String>>? taxonomy,
-    bool confirmedOnly = false,
-    double? originLat,
-    double? originLng,
-    double? maxDistanceMeters,
-  }) async {
-    return const PagedEventsResult(events: [], hasMore: false);
-  }
-
-  @override
-  Future<List<VenueEventResume>> getEventResumesByDate(DateTime date) async =>
-      const [];
-
-  @override
-  Future<List<VenueEventResume>> fetchUpcomingEvents() async => const [];
-
-  @override
-  Stream<EventDeltaModel> watchEventsStream({
-    String searchQuery = '',
-    List<String>? categories,
-    List<String>? tags,
-    List<Map<String, String>>? taxonomy,
-    bool confirmedOnly = false,
-    double? originLat,
-    double? originLng,
-    double? maxDistanceMeters,
-    String? lastEventId,
-    bool showPastOnly = false,
-  }) =>
-      const Stream.empty();
 }
 
 CityPoiModel _buildPoi({String id = 'poi-1'}) {
@@ -322,7 +268,6 @@ void main() {
       mapRepository = _FakeCityMapRepository();
       final poiRepository = PoiRepository(
         dataSource: mapRepository,
-        scheduleRepository: _FakeScheduleRepository(),
       );
       controller = MapScreenController(
         poiRepository: poiRepository,
@@ -380,6 +325,40 @@ void main() {
       expect(telemetry.events[0].properties?['filter_mode'], 'events');
       expect(telemetry.events[1].eventName, 'map_main_filter_cleared');
       expect(telemetry.events[1].event, EventTrackerEvents.buttonClick);
+    });
+
+    test('applies dynamic category filters using category keys', () async {
+      controller.toggleCatalogCategoryFilter(
+        PoiFilterCategory(
+          key: 'nature',
+          label: 'Natureza',
+          tags: const {},
+        ),
+      );
+      await _flushMicrotasks();
+
+      expect(mapRepository.lastQuery, isNotNull);
+      expect(mapRepository.lastQuery?.categoryKeys, equals({'nature'}));
+      expect(controller.filterModeStreamValue.value, PoiFilterMode.server);
+    });
+
+    test('applies taxonomy filter tokens to map query', () async {
+      controller.toggleTaxonomyFilter(
+        const PoiFilterTaxonomyTerm(
+          type: 'cuisine',
+          value: 'italian',
+          label: 'Italiana',
+          count: 4,
+        ),
+      );
+      await _flushMicrotasks();
+
+      expect(mapRepository.lastQuery, isNotNull);
+      expect(
+        mapRepository.lastQuery?.taxonomy,
+        equals({'cuisine:italian'}),
+      );
+      expect(controller.filterModeStreamValue.value, PoiFilterMode.server);
     });
 
     test('logs directions and ride share events', () async {

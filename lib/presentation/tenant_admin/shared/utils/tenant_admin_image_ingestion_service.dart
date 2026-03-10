@@ -15,6 +15,7 @@ enum TenantAdminImageSlot {
   lightIcon,
   darkIcon,
   pwaIcon,
+  mapFilter,
 }
 
 class TenantAdminImageIngestionException implements Exception {
@@ -331,7 +332,8 @@ class TenantAdminImageIngestionService {
         ),
       TenantAdminImageSlot.lightIcon ||
       TenantAdminImageSlot.darkIcon ||
-      TenantAdminImageSlot.pwaIcon =>
+      TenantAdminImageSlot.pwaIcon ||
+      TenantAdminImageSlot.mapFilter =>
         const _TenantAdminImageSlotSpec(
           aspectRatio: 1.0,
           maxWidth: 1024,

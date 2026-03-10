@@ -71,10 +71,19 @@ class MapScreenController implements Disposable {
   StreamValue<List<MainFilterOption>> get mainFilterOptionsStreamValue =>
       _poiRepository.mainFilterOptionsStreamValue;
 
+  final StreamValue<Set<String>> activeCategoryKeysStreamValue =
+      StreamValue<Set<String>>(defaultValue: const <String>{});
+  final StreamValue<Set<String>> activeTaxonomyTokensStreamValue =
+      StreamValue<Set<String>>(defaultValue: const <String>{});
+  final StreamValue<String?> activeFilterLabelStreamValue =
+      StreamValue<String?>();
+
   CityCoordinate get defaultCenter => _poiRepository.defaultCenter;
 
   PoiQuery _currentQuery = const PoiQuery();
   bool _filtersLoadFailed = false;
+  Set<String> _activeCategoryKeys = <String>{};
+  Set<String> _activeTaxonomyTokens = <String>{};
   StreamSubscription<MapEvent>? _mapEventSubscription;
   StreamSubscription<List<CityPoiModel>>? _filteredPoisSubscription;
 
@@ -238,15 +247,16 @@ class MapScreenController implements Disposable {
     PoiQuery query, {
     String? loadingMessage,
   }) async {
-    _currentQuery = query;
-    searchTermStreamValue.addValue(query.searchTerm);
+    final resolvedQuery = _resolveRuntimeQuery(query);
+    _currentQuery = resolvedQuery;
+    searchTermStreamValue.addValue(resolvedQuery.searchTerm);
 
     _setMapStatus(MapStatus.fetching);
     _setMapMessage(loadingMessage ?? 'Carregando pontos...');
     _setLoadingState();
 
     try {
-      await _poiRepository.fetchPoints(query);
+      await _poiRepository.fetchPoints(resolvedQuery);
       _setIdleState();
       _setMapStatus(MapStatus.ready);
       _setMapMessage(null);
@@ -259,6 +269,21 @@ class MapScreenController implements Disposable {
     }
   }
 
+  PoiQuery _resolveRuntimeQuery(PoiQuery query) {
+    final origin = query.origin ?? userLocationStreamValue.value;
+    return PoiQuery(
+      northEast: query.northEast,
+      southWest: query.southWest,
+      origin: origin,
+      maxDistanceMeters: query.maxDistanceMeters,
+      categories: query.categories,
+      categoryKeys: query.categoryKeys,
+      tags: query.tags,
+      taxonomy: query.taxonomy,
+      searchTerm: query.searchTerm,
+    );
+  }
+
   void selectPoi(CityPoiModel? poi) {
     _poiRepository.selectPoi(poi);
     if (poi == null) {
@@ -269,6 +294,63 @@ class MapScreenController implements Disposable {
       _finishPoiTimedEvent();
     }
     unawaited(_startPoiTimedEvent(poi));
+  }
+
+  Future<void> handleMarkerTap(CityPoiModel poi) async {
+    final hasStackCandidates = poi.stackCount > 1 && poi.stackKey.isNotEmpty;
+    if (!hasStackCandidates) {
+      selectPoi(poi);
+      return;
+    }
+
+    try {
+      final stackItems = await _poiRepository.fetchStackItems(
+        stackKey: poi.stackKey,
+        query: _currentQuery,
+      );
+      if (stackItems.isEmpty) {
+        selectPoi(poi);
+        return;
+      }
+      final enrichedItems = _attachStackContext(
+        stackItems,
+        stackKey: poi.stackKey,
+        stackCount: poi.stackCount,
+      );
+      final selected = enrichedItems.firstWhere(
+        (candidate) => candidate.id == poi.id,
+        orElse: () => enrichedItems.first,
+      );
+      final selectedIndex = enrichedItems.indexOf(selected);
+      setPoiDeckIndex(selectedIndex == -1 ? 0 : selectedIndex);
+      selectPoi(selected);
+    } catch (error) {
+      debugPrint('Failed to load stack ${poi.stackKey}: $error');
+      selectPoi(poi);
+    }
+  }
+
+  List<CityPoiModel> _attachStackContext(
+    List<CityPoiModel> items, {
+    required String stackKey,
+    required int stackCount,
+  }) {
+    final normalizedStackKey =
+        stackKey.trim().isNotEmpty ? stackKey.trim() : items.first.stackKey;
+    final normalizedCount = stackCount > 0 ? stackCount : items.length;
+    final seeded = items
+        .map(
+          (item) => item.copyWith(
+            stackKey: normalizedStackKey,
+            stackCount: normalizedCount,
+          ),
+        )
+        .toList(growable: false);
+    return seeded
+        .map(
+          (item) => item.copyWith(stackItems: seeded),
+        )
+        .toList(growable: false);
   }
 
   void clearSelectedPoi() {
@@ -286,6 +368,17 @@ class MapScreenController implements Disposable {
       clearFilters();
       return;
     }
+
+    final categoryKeys = _categoryKeysForMode(mode);
+    if (categoryKeys.isEmpty) {
+      clearFilters();
+      return;
+    }
+
+    _activeCategoryKeys = categoryKeys;
+    _activeTaxonomyTokens = <String>{};
+    _publishActiveFilters();
+    activeFilterLabelStreamValue.addValue(_labelForMode(mode));
     _poiRepository.applyFilterMode(mode);
     _logMapTelemetry(
       EventTrackerEvents.selectItem,
@@ -294,18 +387,134 @@ class MapScreenController implements Disposable {
         'filter_mode': mode.name,
       },
     );
+    unawaited(
+      loadPois(
+        _composeQuery(
+          categoryKeys: _activeCategoryKeys,
+          taxonomy: const <String>{},
+        ),
+        loadingMessage: 'Aplicando filtros...',
+      ),
+    );
   }
 
   void clearFilters() {
-    final wasFiltered = filterModeStreamValue.value != PoiFilterMode.none;
+    final wasFiltered = filterModeStreamValue.value != PoiFilterMode.none ||
+        _activeCategoryKeys.isNotEmpty ||
+        _activeTaxonomyTokens.isNotEmpty;
+    _activeCategoryKeys = <String>{};
+    _activeTaxonomyTokens = <String>{};
+    _publishActiveFilters();
+    activeFilterLabelStreamValue.addValue(null);
     _poiRepository.clearFilters();
     if (!wasFiltered) {
       return;
     }
+    unawaited(
+      loadPois(
+        _composeQuery(
+          categoryKeys: const <String>{},
+          taxonomy: const <String>{},
+        ),
+        loadingMessage: 'Carregando pontos...',
+      ),
+    );
     _logMapTelemetry(
       EventTrackerEvents.buttonClick,
       eventName: 'map_main_filter_cleared',
     );
+  }
+
+  void toggleCatalogCategoryFilter(PoiFilterCategory category) {
+    final key = category.key.trim().toLowerCase();
+    if (key.isEmpty) {
+      return;
+    }
+
+    if (_activeCategoryKeys.length == 1 &&
+        _activeCategoryKeys.contains(key) &&
+        _activeTaxonomyTokens.isEmpty) {
+      clearFilters();
+      return;
+    }
+
+    _activeCategoryKeys = <String>{key};
+    _activeTaxonomyTokens = <String>{};
+    _publishActiveFilters();
+    activeFilterLabelStreamValue.addValue(category.label);
+    _poiRepository.applyFilterMode(PoiFilterMode.server);
+    _logMapTelemetry(
+      EventTrackerEvents.selectItem,
+      eventName: 'map_catalog_filter_applied',
+      properties: {
+        'category_key': key,
+      },
+    );
+    unawaited(
+      loadPois(
+        _composeQuery(
+          categoryKeys: _activeCategoryKeys,
+          taxonomy: const <String>{},
+        ),
+        loadingMessage: 'Aplicando filtros...',
+      ),
+    );
+  }
+
+  void toggleTaxonomyFilter(PoiFilterTaxonomyTerm taxonomyTerm) {
+    final token = taxonomyTerm.token;
+    if (token.isEmpty) {
+      return;
+    }
+
+    final next = <String>{..._activeTaxonomyTokens};
+    final selected = !next.remove(token);
+    if (selected) {
+      next.add(token);
+    }
+    _activeTaxonomyTokens = next;
+
+    if (_activeTaxonomyTokens.isEmpty && _activeCategoryKeys.isEmpty) {
+      clearFilters();
+      return;
+    }
+
+    _publishActiveFilters();
+    activeFilterLabelStreamValue.addValue(
+      _resolveActiveFilterLabel(
+        fallbackTaxonomyLabel: taxonomyTerm.label,
+      ),
+    );
+    _poiRepository.applyFilterMode(PoiFilterMode.server);
+    _logMapTelemetry(
+      EventTrackerEvents.selectItem,
+      eventName: 'map_taxonomy_filter_toggled',
+      properties: {
+        'taxonomy_token': token,
+        'selected': selected,
+      },
+    );
+    unawaited(
+      loadPois(
+        _composeQuery(
+          categoryKeys: _activeCategoryKeys,
+          taxonomy: _activeTaxonomyTokens,
+        ),
+        loadingMessage: 'Aplicando filtros...',
+      ),
+    );
+  }
+
+  bool isCategoryFilterActive(PoiFilterCategory category) {
+    final key = category.key.trim().toLowerCase();
+    if (key.isEmpty) {
+      return false;
+    }
+    return _activeCategoryKeys.contains(key);
+  }
+
+  bool isTaxonomyFilterActive(PoiFilterTaxonomyTerm taxonomyTerm) {
+    return _activeTaxonomyTokens.contains(taxonomyTerm.token);
   }
 
   void logDirectionsOpened(CityPoiModel poi) {
@@ -344,18 +553,88 @@ class MapScreenController implements Disposable {
   PoiQuery _composeQuery({
     CityCoordinate? northEast,
     CityCoordinate? southWest,
+    CityCoordinate? origin,
+    double? maxDistanceMeters,
     Iterable<CityPoiCategory>? categories,
+    Iterable<String>? categoryKeys,
     Iterable<String>? tags,
+    Iterable<String>? taxonomy,
     String? searchTerm,
   }) {
     return PoiQuery.compose(
       currentQuery: _currentQuery,
       northEast: northEast,
       southWest: southWest,
+      origin: origin,
+      maxDistanceMeters: maxDistanceMeters,
       categories: categories,
+      categoryKeys: categoryKeys,
       tags: tags,
+      taxonomy: taxonomy,
       searchTerm: searchTerm,
     );
+  }
+
+  Set<String> _categoryKeysForMode(PoiFilterMode mode) {
+    switch (mode) {
+      case PoiFilterMode.events:
+        return const <String>{'event'};
+      case PoiFilterMode.restaurants:
+        return const <String>{'restaurant'};
+      case PoiFilterMode.beaches:
+        return const <String>{'beach'};
+      case PoiFilterMode.lodging:
+        return const <String>{'lodging'};
+      case PoiFilterMode.none:
+      case PoiFilterMode.server:
+        return const <String>{};
+    }
+  }
+
+  String _labelForMode(PoiFilterMode mode) {
+    switch (mode) {
+      case PoiFilterMode.events:
+        return 'Eventos agora';
+      case PoiFilterMode.restaurants:
+        return 'Restaurantes';
+      case PoiFilterMode.beaches:
+        return 'Praias';
+      case PoiFilterMode.lodging:
+        return 'Hospedagens';
+      case PoiFilterMode.none:
+      case PoiFilterMode.server:
+        return 'Filtros personalizados';
+    }
+  }
+
+  void _publishActiveFilters() {
+    activeCategoryKeysStreamValue.addValue(
+      Set<String>.unmodifiable(_activeCategoryKeys),
+    );
+    activeTaxonomyTokensStreamValue.addValue(
+      Set<String>.unmodifiable(_activeTaxonomyTokens),
+    );
+  }
+
+  String _resolveActiveFilterLabel({required String fallbackTaxonomyLabel}) {
+    if (_activeTaxonomyTokens.isNotEmpty) {
+      if (_activeTaxonomyTokens.length == 1 && _activeCategoryKeys.isEmpty) {
+        return fallbackTaxonomyLabel;
+      }
+      return 'Filtros personalizados';
+    }
+
+    if (_activeCategoryKeys.length == 1) {
+      final key = _activeCategoryKeys.first;
+      final options = filterOptionsStreamValue.value;
+      final category = options?.categories.firstWhere(
+        (item) => item.key.trim().toLowerCase() == key,
+        orElse: () => PoiFilterCategory(key: key, label: key, tags: const {}),
+      );
+      return category?.label ?? key;
+    }
+
+    return 'Filtros personalizados';
   }
 
   void _setMapStatus(MapStatus status) {
@@ -404,6 +683,9 @@ class MapScreenController implements Disposable {
     _finishPoiTimedEvent();
     await _mapEventSubscription?.cancel();
     await _filteredPoisSubscription?.cancel();
+    activeCategoryKeysStreamValue.dispose();
+    activeTaxonomyTokensStreamValue.dispose();
+    activeFilterLabelStreamValue.dispose();
     poiDeckIndexStreamValue.dispose();
   }
 

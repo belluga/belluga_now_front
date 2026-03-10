@@ -1,7 +1,8 @@
+import 'dart:ui';
+
 import 'package:belluga_now/domain/map/city_poi_model.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/shared/poi_category_theme.dart';
 import 'package:flutter/material.dart';
-import 'dart:ui';
 
 class PoiMarker extends StatelessWidget {
   const PoiMarker({
@@ -19,6 +20,9 @@ class PoiMarker extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final theme = categoryTheme(poi.category, scheme);
+    final hasStack = poi.stackCount > 1;
+    final stackLabel = '+${poi.stackCount - 1}';
+    final markerColor = poi.isDynamic ? const Color(0xFFE53935) : theme.color;
 
     if (poi.assetPath != null) {
       final isDynamicSponsor = poi.isDynamic;
@@ -34,17 +38,16 @@ class PoiMarker extends StatelessWidget {
             final imageDiameter = side * (isDynamicSponsor ? 0.82 : 0.9);
             final badgeDiameter =
                 (side * (isDynamicSponsor ? 0.32 : 0.28)).clamp(12.0, 24.0);
-            final badgeColor = isDynamicSponsor
-                ? theme.color.withValues(alpha: 0.85)
-                : theme.color;
-            final badgeIcon = isDynamicSponsor
-                ? Icons.shopping_bag_outlined
-                : Icons.storefront;
+            final badgeColor =
+                isDynamicSponsor ? theme.color.withValues(alpha: 0.85) : theme.color;
+            final badgeIcon =
+                isDynamicSponsor ? Icons.shopping_bag_outlined : Icons.storefront;
 
             return SizedBox(
               width: side,
               height: side,
               child: Stack(
+                clipBehavior: Clip.none,
                 alignment: Alignment.bottomRight,
                 children: [
                   Container(
@@ -98,6 +101,15 @@ class PoiMarker extends StatelessWidget {
                       ),
                     ),
                   ),
+                  if (hasStack)
+                    Positioned(
+                      top: -2,
+                      left: -2,
+                      child: _buildStackBadge(
+                        context: context,
+                        label: stackLabel,
+                      ),
+                    ),
                 ],
               ),
             );
@@ -115,32 +127,72 @@ class PoiMarker extends StatelessWidget {
       child: LayoutBuilder(
         builder: (context, constraints) {
           final side = constraints.biggest.shortestSide;
-          // Linear map icon size: 26px -> 16px, 65px -> 36px
           final iconSize =
               lerpDouble(16, 36, ((side - 26) / (65 - 26)).clamp(0.0, 1.0))!;
           final padding = (side - iconSize) / 2;
-          return DecoratedBox(
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: theme.color.withValues(alpha: 0.92),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: shadowOpacity),
-                  blurRadius: isSelected ? 10 : 6,
-                  offset: const Offset(0, 4),
+          return Stack(
+            clipBehavior: Clip.none,
+            children: [
+              DecoratedBox(
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: markerColor.withValues(alpha: 0.92),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: shadowOpacity),
+                      blurRadius: isSelected ? 10 : 6,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-            child: Padding(
-              padding: EdgeInsets.all(padding),
-              child: Icon(
-                theme.icon,
-                size: iconSize,
-                color: Colors.white,
+                child: Padding(
+                  padding: EdgeInsets.all(padding),
+                  child: Icon(
+                    poi.isDynamic ? Icons.local_activity : theme.icon,
+                    size: iconSize,
+                    color: Colors.white,
+                  ),
+                ),
               ),
-            ),
+              if (hasStack)
+                Positioned(
+                  top: -2,
+                  left: -2,
+                  child: _buildStackBadge(
+                    context: context,
+                    label: stackLabel,
+                  ),
+                ),
+            ],
           );
         },
+      ),
+    );
+  }
+
+  Widget _buildStackBadge({
+    required BuildContext context,
+    required String label,
+  }) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: Colors.black87,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(
+          color: Theme.of(context).colorScheme.surface,
+          width: 1.5,
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+        child: Text(
+          label,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 10,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
       ),
     );
   }

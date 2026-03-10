@@ -205,6 +205,19 @@ Com helper script (quando precisar de lane específica):
 ./tool/with_lane_defines.sh dev run --flavor <novo_tenant>
 ```
 
+Execução de integração (WSL + device), com define tenant por padrão:
+
+```bash
+./tool/run_integration_test_wsl.sh integration_test/feature_shell_navigation_smoke_test.dart
+```
+
+Notas:
+- O script usa `config/defines/integration.tenant.json` por padrão para evitar rodar integração em domínio landlord raiz.
+- Overrides opcionais por ambiente:
+  - `ADB_DEVICE=<ip:porta>`
+  - `FLUTTER_INTEGRATION_FLAVOR=<flavor>`
+  - `INTEGRATION_DEFINE_FILE=<arquivo-json>`
+
 Nota de operação CI/CD: este commit inclui um ajuste documental mínimo para disparar a simulação ponta a ponta do fluxo de promoção de lanes.
 
 Nota de simulação CI/CD (flutter): alteração documental mínima para validar o fluxo integrado com backend no mesmo ciclo.

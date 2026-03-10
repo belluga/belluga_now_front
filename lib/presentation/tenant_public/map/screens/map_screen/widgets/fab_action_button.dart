@@ -4,7 +4,8 @@ class FabActionButton extends StatelessWidget {
   const FabActionButton({
     super.key,
     required this.label,
-    required this.icon,
+    this.icon,
+    this.iconWidget,
     required this.backgroundColor,
     required this.foregroundColor,
     required this.onTap,
@@ -12,7 +13,8 @@ class FabActionButton extends StatelessWidget {
   });
 
   final String label;
-  final IconData icon;
+  final IconData? icon;
+  final Widget? iconWidget;
   final Color backgroundColor;
   final Color foregroundColor;
   final VoidCallback onTap;
@@ -20,23 +22,29 @@ class FabActionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final resolvedIcon = iconWidget ??
+        Icon(
+          icon ?? Icons.tune,
+          color: foregroundColor,
+        );
+    final heroSuffix = icon?.codePoint ?? label.hashCode;
     if (condensed) {
       return FloatingActionButton.small(
-        heroTag: 'condensed-${label.hashCode}-${icon.codePoint}',
+        heroTag: 'condensed-${label.hashCode}-$heroSuffix',
         backgroundColor: backgroundColor,
         foregroundColor: foregroundColor,
         elevation: 0.5,
         onPressed: onTap,
-        child: Icon(icon),
+        child: resolvedIcon,
       );
     }
     return FloatingActionButton.extended(
-      heroTag: 'expanded-${label.hashCode}-${icon.codePoint}',
+      heroTag: 'expanded-${label.hashCode}-$heroSuffix',
       backgroundColor: backgroundColor,
       foregroundColor: foregroundColor,
       elevation: 0.5,
       onPressed: onTap,
-      icon: Icon(icon),
+      icon: resolvedIcon,
       label: Text(label),
     );
   }

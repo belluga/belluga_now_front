@@ -16,6 +16,10 @@ abstract class PoiRepositoryContract {
   CityCoordinate get defaultCenter;
 
   Future<List<CityPoiModel>> fetchPoints(PoiQuery query);
+  Future<List<CityPoiModel>> fetchStackItems({
+    required String stackKey,
+    required PoiQuery query,
+  });
   Future<PoiFilterOptions> fetchFilters();
   Future<List<MainFilterOption>> fetchMainFilters();
 

@@ -1,7 +1,10 @@
+import 'package:belluga_now/domain/map/city_poi_category.dart';
+import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/backend_context.dart';
 import 'package:belluga_now/domain/map/queries/poi_query.dart';
 import 'package:belluga_now/infrastructure/dal/dto/map/city_poi_dto.dart';
+import 'package:belluga_now/infrastructure/dal/dto/map/map_filters_dto.dart';
 import 'package:dio/dio.dart';
 import 'package:get_it/get_it.dart';
 
@@ -9,8 +12,7 @@ class LaravelMapPoiHttpService {
   LaravelMapPoiHttpService({
     BackendContext? context,
     Dio? dio,
-  })  : _context = context,
-        _dio = dio ??
+  }) : _dio = dio ??
             Dio(
               BaseOptions(
                 baseUrl: _resolveBaseUrl(context),
@@ -20,7 +22,6 @@ class LaravelMapPoiHttpService {
               ),
             );
 
-  final BackendContext? _context;
   final Dio _dio;
 
   static String _resolveBaseUrl(BackendContext? context) {
@@ -36,12 +37,61 @@ class LaravelMapPoiHttpService {
     return resolved.baseUrl;
   }
 
-  Future<List<CityPoiDTO>> getPois(PoiQuery query) async {
-    final baseUrl = _resolveBaseUrl(_context);
-    final url = baseUrl.endsWith('/')
-        ? '${baseUrl}v1/app/map/pois'
-        : '$baseUrl/v1/app/map/pois';
+  Future<List<CityPoiDTO>> getPois(
+    PoiQuery query, {
+    String? stackKey,
+  }) async {
+    final params = _buildQueryParams(
+      query,
+      stackKey: stackKey,
+    );
 
+    final response = await _dio.get(
+      '/v1/map/pois',
+      queryParameters: params,
+      options: Options(headers: _buildHeaders()),
+    );
+
+    final raw = response.data;
+    if (raw is! Map<String, dynamic>) {
+      throw Exception('Unexpected /v1/map/pois response envelope');
+    }
+
+    final stacks = raw['stacks'];
+    if (stacks is! List) {
+      throw Exception('Unexpected /v1/map/pois stacks payload');
+    }
+
+    final shouldExpandItems = (stackKey ?? '').trim().isNotEmpty;
+    return stacks
+        .whereType<Map<String, dynamic>>()
+        .map(
+          (stack) => CityPoiDTO.fromStackedApiJson(
+            stack,
+            includeItems: shouldExpandItems,
+          ),
+        )
+        .toList(growable: false);
+  }
+
+  Future<MapFiltersDTO> getFilters(PoiQuery query) async {
+    final response = await _dio.get(
+      '/v1/map/filters',
+      queryParameters: _buildQueryParams(query),
+      options: Options(headers: _buildHeaders()),
+    );
+
+    final raw = response.data;
+    if (raw is! Map<String, dynamic>) {
+      throw Exception('Unexpected /v1/map/filters response envelope');
+    }
+    return MapFiltersDTO.fromJson(raw);
+  }
+
+  Map<String, dynamic> _buildQueryParams(
+    PoiQuery query, {
+    String? stackKey,
+  }) {
     final params = <String, dynamic>{};
 
     if (query.hasBounds) {
@@ -49,21 +99,48 @@ class LaravelMapPoiHttpService {
       params['ne_lng'] = query.northEast!.longitude;
       params['sw_lat'] = query.southWest!.latitude;
       params['sw_lng'] = query.southWest!.longitude;
+    }
 
+    final origin = query.origin;
+    if (origin != null) {
+      params['origin_lat'] = origin.latitude;
+      params['origin_lng'] = origin.longitude;
+    } else if (query.hasBounds) {
       params['origin_lat'] =
           (query.northEast!.latitude + query.southWest!.latitude) / 2;
       params['origin_lng'] =
           (query.northEast!.longitude + query.southWest!.longitude) / 2;
     }
 
-    final categories = query.categories;
-    if (categories != null && categories.isNotEmpty) {
-      params['categories'] = categories.map((c) => c.name).toList();
+    if (query.maxDistanceMeters != null && query.maxDistanceMeters! > 0) {
+      params['max_distance_meters'] = query.maxDistanceMeters;
+    }
+
+    final categoryKeys = query.categoryKeys;
+    if (categoryKeys != null && categoryKeys.isNotEmpty) {
+      params['categories'] = categoryKeys.toList(growable: false);
+    } else {
+      final categories = query.categories;
+      if (categories != null && categories.isNotEmpty) {
+        final categoryTokens = categories
+            .map(_mapCategoryToken)
+            .whereType<String>()
+            .toSet()
+            .toList(growable: false);
+        if (categoryTokens.isNotEmpty) {
+          params['categories'] = categoryTokens;
+        }
+      }
     }
 
     final tags = query.tags;
     if (tags != null && tags.isNotEmpty) {
-      params['tags'] = tags.toList();
+      params['tags'] = tags.toList(growable: false);
+    }
+
+    final taxonomy = query.taxonomy;
+    if (taxonomy != null && taxonomy.isNotEmpty) {
+      params['taxonomy'] = taxonomy.toList(growable: false);
     }
 
     final search = query.searchTerm;
@@ -71,18 +148,45 @@ class LaravelMapPoiHttpService {
       params['search'] = search.trim();
     }
 
-    final response = await _dio.get(url, queryParameters: params);
-
-    final raw = response.data;
-    final dynamic list = raw is Map<String, dynamic> ? raw['data'] : raw;
-
-    if (list is! List) {
-      throw Exception('Unexpected /v1/app/map/pois response shape');
+    final normalizedStackKey = stackKey?.trim();
+    if (normalizedStackKey != null && normalizedStackKey.isNotEmpty) {
+      params['stack_key'] = normalizedStackKey;
     }
 
-    return list
-        .whereType<Map<String, dynamic>>()
-        .map(CityPoiDTO.fromJson)
-        .toList(growable: false);
+    return params;
+  }
+
+  String? _mapCategoryToken(CityPoiCategory category) {
+    switch (category) {
+      case CityPoiCategory.restaurant:
+        return 'restaurant';
+      case CityPoiCategory.beach:
+        return 'beach';
+      case CityPoiCategory.nature:
+        return 'nature';
+      case CityPoiCategory.culture:
+        return 'culture';
+      case CityPoiCategory.monument:
+      case CityPoiCategory.church:
+        return 'historic';
+      case CityPoiCategory.health:
+      case CityPoiCategory.lodging:
+      case CityPoiCategory.attraction:
+      case CityPoiCategory.sponsor:
+        return null;
+    }
+  }
+
+  Map<String, String> _buildHeaders() {
+    final headers = <String, String>{
+      'Accept': 'application/json',
+    };
+    if (GetIt.I.isRegistered<AuthRepositoryContract>()) {
+      final token = GetIt.I.get<AuthRepositoryContract>().userToken.trim();
+      if (token.isNotEmpty) {
+        headers['Authorization'] = 'Bearer $token';
+      }
+    }
+    return headers;
   }
 }

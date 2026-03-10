@@ -65,6 +65,40 @@ class TenantAdminSettingsRepository
     }
   }
 
+  @override
+  Future<String> uploadMapFilterImage({
+    required String key,
+    required TenantAdminMediaUpload upload,
+  }) async {
+    try {
+      final payload = FormData.fromMap({
+        'key': key.trim(),
+      });
+      _appendUpload(
+        payload,
+        fieldName: 'image',
+        upload: upload,
+      );
+
+      final response = await _dio.post(
+        '$_apiBaseUrl/v1/media/map-filter-image',
+        data: payload,
+        options: Options(
+          headers: _buildHeaders(),
+          contentType: 'multipart/form-data',
+        ),
+      );
+      final payloadMap = _extractDataMap(response.data);
+      final imageUri = payloadMap['image_uri']?.toString().trim() ?? '';
+      if (imageUri.isEmpty) {
+        throw Exception('Map filter image upload response is empty.');
+      }
+      return imageUri;
+    } on DioException catch (error) {
+      throw _wrapError(error, 'upload map filter image');
+    }
+  }
+
   String get _apiBaseUrl =>
       (_tenantScope ?? GetIt.I.get<TenantAdminTenantScopeContract>())
           .selectedTenantAdminBaseUrl;
@@ -346,11 +380,36 @@ class TenantAdminSettingsRepository
       }
     }
 
+    final filters = <TenantAdminMapFilterCatalogItem>[];
+    final rawFilters = mapUi['filters'];
+    if (rawFilters is List) {
+      for (final entry in rawFilters) {
+        if (entry is! Map) {
+          continue;
+        }
+        final filterMap = Map<String, dynamic>.from(entry);
+        final key = filterMap['key']?.toString().trim() ?? '';
+        final label = filterMap['label']?.toString().trim() ?? '';
+        final imageUri = filterMap['image_uri']?.toString().trim();
+        if (key.isEmpty || label.isEmpty) {
+          continue;
+        }
+        filters.add(
+          TenantAdminMapFilterCatalogItem(
+            key: key,
+            label: label,
+            imageUri: imageUri == null || imageUri.isEmpty ? null : imageUri,
+          ),
+        );
+      }
+    }
+
     return TenantAdminMapUiSettings(
       rawMapUi: Map<String, dynamic>.unmodifiable(
         Map<String, dynamic>.from(mapUi),
       ),
       defaultOrigin: defaultOrigin,
+      filters: List<TenantAdminMapFilterCatalogItem>.unmodifiable(filters),
     );
   }
 

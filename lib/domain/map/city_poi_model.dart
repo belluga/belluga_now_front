@@ -23,7 +23,18 @@ class CityPoiModel implements MapPoi {
     this.isDynamic = false,
     this.movementRadiusValue,
     List<PoiTagValue>? tagValues,
-  }) : tagValues = List.unmodifiable(tagValues ?? const <PoiTagValue>[]);
+    this.refType = 'static',
+    this.refId = '',
+    this.refSlug,
+    this.refPath,
+    this.stackKey = '',
+    this.stackCount = 1,
+    List<CityPoiModel>? stackItems,
+    this.isHappeningNow = false,
+    this.updatedAt,
+    this.distanceMeters,
+  })  : tagValues = List.unmodifiable(tagValues ?? const <PoiTagValue>[]),
+        stackItems = List.unmodifiable(stackItems ?? const <CityPoiModel>[]);
 
   final CityPoiIdValue idValue;
   final CityPoiNameValue nameValue;
@@ -40,6 +51,16 @@ class CityPoiModel implements MapPoi {
   final bool isDynamic;
   final DistanceInMetersValue? movementRadiusValue;
   final List<PoiTagValue> tagValues;
+  final String refType;
+  final String refId;
+  final String? refSlug;
+  final String? refPath;
+  final String stackKey;
+  final int stackCount;
+  final List<CityPoiModel> stackItems;
+  final bool isHappeningNow;
+  final DateTime? updatedAt;
+  final double? distanceMeters;
 
   @override
   String get id => idValue.value;
@@ -70,4 +91,54 @@ class CityPoiModel implements MapPoi {
       .map((tag) => tag.trim())
       .where((tag) => tag.isNotEmpty)
       .toList(growable: false);
+
+  bool get hasStack => stackCount > 1 && stackItems.isNotEmpty;
+
+  CityPoiModel copyWith({
+    CityPoiIdValue? idValue,
+    CityPoiNameValue? nameValue,
+    CityPoiDescriptionValue? descriptionValue,
+    CityPoiAddressValue? addressValue,
+    CityPoiCategory? category,
+    CityCoordinate? coordinate,
+    PoiPriorityValue? priorityValue,
+    AssetPathValue? assetPathValue,
+    bool? isDynamic,
+    DistanceInMetersValue? movementRadiusValue,
+    List<PoiTagValue>? tagValues,
+    String? refType,
+    String? refId,
+    String? refSlug,
+    String? refPath,
+    String? stackKey,
+    int? stackCount,
+    List<CityPoiModel>? stackItems,
+    bool? isHappeningNow,
+    DateTime? updatedAt,
+    double? distanceMeters,
+  }) {
+    return CityPoiModel(
+      idValue: idValue ?? this.idValue,
+      nameValue: nameValue ?? this.nameValue,
+      descriptionValue: descriptionValue ?? this.descriptionValue,
+      addressValue: addressValue ?? this.addressValue,
+      category: category ?? this.category,
+      coordinate: coordinate ?? this.coordinate,
+      priorityValue: priorityValue ?? this.priorityValue,
+      assetPathValue: assetPathValue ?? this.assetPathValue,
+      isDynamic: isDynamic ?? this.isDynamic,
+      movementRadiusValue: movementRadiusValue ?? this.movementRadiusValue,
+      tagValues: tagValues ?? this.tagValues,
+      refType: refType ?? this.refType,
+      refId: refId ?? this.refId,
+      refSlug: refSlug ?? this.refSlug,
+      refPath: refPath ?? this.refPath,
+      stackKey: stackKey ?? this.stackKey,
+      stackCount: stackCount ?? this.stackCount,
+      stackItems: stackItems ?? this.stackItems,
+      isHappeningNow: isHappeningNow ?? this.isHappeningNow,
+      updatedAt: updatedAt ?? this.updatedAt,
+      distanceMeters: distanceMeters ?? this.distanceMeters,
+    );
+  }
 }

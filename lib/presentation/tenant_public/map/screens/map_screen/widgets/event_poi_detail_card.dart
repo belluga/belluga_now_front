@@ -1,19 +1,17 @@
-import 'package:belluga_now/domain/map/event_poi_model.dart';
-import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/shared/event_temporal_state.dart';
+import 'package:belluga_now/domain/map/city_poi_model.dart';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 
 class EventPoiDetailCard extends StatelessWidget {
   const EventPoiDetailCard({
     super.key,
-    required this.eventPoi,
+    required this.poi,
     required this.colorScheme,
     required this.onPrimaryAction,
     required this.onShare,
     required this.onRoute,
   });
 
-  final EventPoiModel eventPoi;
+  final CityPoiModel poi;
   final ColorScheme colorScheme;
   final VoidCallback onPrimaryAction;
   final VoidCallback onShare;
@@ -21,26 +19,8 @@ class EventPoiDetailCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final event = eventPoi.event;
-    final start = event.dateTimeStart.value;
-    final formattedDate =
-        start != null ? DateFormat('dd MMM, HH:mm').format(start) : '--:--';
-    final badgeState =
-        resolveEventTemporalState(event, reference: DateTime.now());
-    final badgeLabel = switch (badgeState) {
-      CityEventTemporalState.now => 'AGORA',
-      CityEventTemporalState.past => 'Encerrado',
-      CityEventTemporalState.upcoming =>
-        start != null ? DateFormat('HH:mm').format(start) : '--:--',
-    };
-    final badgeColor = switch (badgeState) {
-      CityEventTemporalState.now => const Color(0xFFE53935),
-      CityEventTemporalState.past => Colors.grey,
-      CityEventTemporalState.upcoming => event.type.color.value,
-    };
-
-    final artists =
-        event.artists.map((artist) => artist.displayName).join(', ');
+    final badgeLabel = poi.isHappeningNow ? 'AGORA' : 'EVENTO';
+    final badgeColor = poi.isHappeningNow ? const Color(0xFFE53935) : colorScheme.primary;
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 250),
@@ -72,14 +52,16 @@ class EventPoiDetailCard extends StatelessWidget {
               ),
               const SizedBox(width: 8),
               Text(
-                formattedDate,
+                poi.updatedAt == null
+                    ? 'Atualização indisponível'
+                    : 'Atualizado recentemente',
                 style: Theme.of(context).textTheme.labelMedium,
               ),
             ],
           ),
           const SizedBox(height: 8),
           Text(
-            eventPoi.name,
+            poi.name,
             style: Theme.of(context).textTheme.titleMedium?.copyWith(
                   fontWeight: FontWeight.w700,
                 ),
@@ -92,32 +74,23 @@ class EventPoiDetailCard extends StatelessWidget {
               const SizedBox(width: 6),
               Expanded(
                 child: Text(
-                  eventPoi.address,
+                  poi.address,
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
               ),
             ],
           ),
-          if (artists.isNotEmpty) ...[
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                const Icon(Icons.music_note_outlined, size: 18),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Text(
-                    artists,
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                ),
-              ],
-            ),
-          ],
+          const SizedBox(height: 12),
+          Text(
+            poi.description,
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
           const SizedBox(height: 16),
           FilledButton(
             onPressed: onPrimaryAction,
-            style:
-                FilledButton.styleFrom(minimumSize: const Size.fromHeight(48)),
+            style: FilledButton.styleFrom(
+              minimumSize: const Size.fromHeight(48),
+            ),
             child: const Text('Ver detalhes'),
           ),
           const SizedBox(height: 8),

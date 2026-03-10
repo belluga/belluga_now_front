@@ -5,15 +5,23 @@ class PoiQuery {
   const PoiQuery({
     this.northEast,
     this.southWest,
+    this.origin,
+    this.maxDistanceMeters,
     this.categories,
+    this.categoryKeys,
     this.tags,
+    this.taxonomy,
     this.searchTerm,
   });
 
   final CityCoordinate? northEast;
   final CityCoordinate? southWest;
+  final CityCoordinate? origin;
+  final double? maxDistanceMeters;
   final Set<CityPoiCategory>? categories;
+  final Set<String>? categoryKeys;
   final Set<String>? tags;
+  final Set<String>? taxonomy;
   final String? searchTerm;
 
   bool get hasBounds => northEast != null && southWest != null;
@@ -64,8 +72,12 @@ class PoiQuery {
     required PoiQuery currentQuery,
     CityCoordinate? northEast,
     CityCoordinate? southWest,
+    CityCoordinate? origin,
+    double? maxDistanceMeters,
     Iterable<CityPoiCategory>? categories,
+    Iterable<String>? categoryKeys,
     Iterable<String>? tags,
+    Iterable<String>? taxonomy,
     String? searchTerm,
   }) {
     Set<CityPoiCategory>? resolvedCategories;
@@ -76,6 +88,17 @@ class PoiQuery {
     } else {
       resolvedCategories =
           Set<CityPoiCategory>.unmodifiable(categories.toSet());
+    }
+
+    Set<String>? resolvedCategoryKeys;
+    if (categoryKeys == null) {
+      resolvedCategoryKeys = currentQuery.categoryKeys;
+    } else if (categoryKeys.isEmpty) {
+      resolvedCategoryKeys = null;
+    } else {
+      resolvedCategoryKeys = Set<String>.unmodifiable(
+        categoryKeys.map((key) => key.trim().toLowerCase()).toSet(),
+      );
     }
 
     Set<String>? resolvedTags;
@@ -89,6 +112,17 @@ class PoiQuery {
       );
     }
 
+    Set<String>? resolvedTaxonomy;
+    if (taxonomy == null) {
+      resolvedTaxonomy = currentQuery.taxonomy;
+    } else if (taxonomy.isEmpty) {
+      resolvedTaxonomy = null;
+    } else {
+      resolvedTaxonomy = Set<String>.unmodifiable(
+        taxonomy.map((token) => token.trim().toLowerCase()).toSet(),
+      );
+    }
+
     final sanitizedSearch = searchTerm == null
         ? currentQuery.searchTerm
         : (searchTerm.trim().isEmpty ? null : searchTerm.trim());
@@ -96,8 +130,12 @@ class PoiQuery {
     return PoiQuery(
       northEast: northEast ?? currentQuery.northEast,
       southWest: southWest ?? currentQuery.southWest,
+      origin: origin ?? currentQuery.origin,
+      maxDistanceMeters: maxDistanceMeters ?? currentQuery.maxDistanceMeters,
       categories: resolvedCategories,
+      categoryKeys: resolvedCategoryKeys,
       tags: resolvedTags,
+      taxonomy: resolvedTaxonomy,
       searchTerm: sanitizedSearch,
     );
   }
