@@ -85,6 +85,15 @@ void main() {
       settings.filters.first.imageUri,
       'https://tenant-a.test/storage/map-filters/events.png',
     );
+    expect(
+      settings.filters.first.query.source,
+      TenantAdminMapFilterSource.event,
+    );
+    expect(settings.filters.first.query.types, equals(const ['show']));
+    expect(
+      settings.filters.first.query.taxonomy,
+      equals(const ['music_genre:rock']),
+    );
     final radius = settings.rawMapUi['radius'] as Map<String, dynamic>;
     expect(radius['default_km'], 5);
     expect(adapter.requests.single.uri.path, '/admin/api/v1/settings/values');
@@ -145,6 +154,11 @@ void main() {
             'key': 'events',
             'label': 'Eventos',
             'image_uri': 'https://tenant-a.test/storage/map-filters/events.png',
+            'query': {
+              'source': 'event',
+              'types': ['show'],
+              'taxonomy': ['music_genre:rock'],
+            },
           },
         ],
       },
@@ -158,6 +172,11 @@ void main() {
           key: 'events',
           label: 'Eventos',
           imageUri: 'https://tenant-a.test/storage/map-filters/events.png',
+          query: TenantAdminMapFilterQuery(
+            source: TenantAdminMapFilterSource.event,
+            types: ['show'],
+            taxonomy: ['music_genre:rock'],
+          ),
         ),
       ],
     );
@@ -172,6 +191,16 @@ void main() {
     expect(payload['default_origin.lng'], -40.422222);
     expect(payload['default_origin.label'], 'Praia do Morro');
     expect(payload['filters'], isA<List<dynamic>>());
+    final filtersPayload = payload['filters'] as List<dynamic>;
+    expect(filtersPayload, hasLength(1));
+    final firstFilterPayload =
+        Map<String, dynamic>.from(filtersPayload.first as Map);
+    final queryPayload = Map<String, dynamic>.from(
+      firstFilterPayload['query'] as Map,
+    );
+    expect(queryPayload['source'], 'event');
+    expect(queryPayload['types'], equals(const ['show']));
+    expect(queryPayload['taxonomy'], equals(const ['music_genre:rock']));
     expect(updated.defaultOrigin, isNotNull);
     expect(updated.defaultOrigin!.lat, closeTo(-20.611111, 0.000001));
     expect(updated.defaultOrigin!.lng, closeTo(-40.422222, 0.000001));
@@ -179,6 +208,13 @@ void main() {
     expect(updated.filters, hasLength(1));
     expect(updated.filters.first.key, 'events');
     expect(updated.filters.first.label, 'Eventos');
+    expect(
+        updated.filters.first.query.source, TenantAdminMapFilterSource.event);
+    expect(updated.filters.first.query.types, equals(const ['show']));
+    expect(
+      updated.filters.first.query.taxonomy,
+      equals(const ['music_genre:rock']),
+    );
   });
 
   test(
@@ -828,6 +864,11 @@ class _RoutingAdapter implements HttpClientAdapter {
                       'label': 'Eventos',
                       'image_uri':
                           'https://tenant-a.test/storage/map-filters/events.png',
+                      'query': {
+                        'source': 'event',
+                        'types': ['show'],
+                        'taxonomy': ['music_genre:rock'],
+                      },
                     },
                   ],
                 },

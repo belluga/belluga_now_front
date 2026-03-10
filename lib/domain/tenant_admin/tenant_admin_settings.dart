@@ -25,22 +25,26 @@ class TenantAdminMapFilterCatalogItem {
     required this.key,
     required this.label,
     this.imageUri,
+    this.query = const TenantAdminMapFilterQuery(),
   });
 
   final String key;
   final String label;
   final String? imageUri;
+  final TenantAdminMapFilterQuery query;
 
   TenantAdminMapFilterCatalogItem copyWith({
     String? key,
     String? label,
     String? imageUri,
     bool clearImageUri = false,
+    TenantAdminMapFilterQuery? query,
   }) {
     return TenantAdminMapFilterCatalogItem(
       key: key ?? this.key,
       label: label ?? this.label,
       imageUri: clearImageUri ? null : (imageUri ?? this.imageUri),
+      query: query ?? this.query,
     );
   }
 
@@ -50,8 +54,146 @@ class TenantAdminMapFilterCatalogItem {
       'label': label.trim(),
       if (imageUri != null && imageUri!.trim().isNotEmpty)
         'image_uri': imageUri!.trim(),
+      if (!query.isEmpty) 'query': query.toJson(),
     };
   }
+}
+
+enum TenantAdminMapFilterSource {
+  accountProfile('account_profile', 'Conta'),
+  staticAsset('static_asset', 'Asset'),
+  event('event', 'Evento');
+
+  const TenantAdminMapFilterSource(this.apiValue, this.label);
+
+  final String apiValue;
+  final String label;
+
+  static TenantAdminMapFilterSource? fromRaw(String? raw) {
+    final normalized = raw?.trim().toLowerCase();
+    for (final candidate in TenantAdminMapFilterSource.values) {
+      if (candidate.apiValue == normalized) {
+        return candidate;
+      }
+    }
+    return null;
+  }
+}
+
+class TenantAdminMapFilterQuery {
+  const TenantAdminMapFilterQuery({
+    this.source,
+    this.types = const <String>[],
+    this.taxonomy = const <String>[],
+  });
+
+  final TenantAdminMapFilterSource? source;
+  final List<String> types;
+  final List<String> taxonomy;
+
+  bool get isEmpty =>
+      source == null && types.isEmpty && taxonomy.isEmpty;
+
+  TenantAdminMapFilterQuery copyWith({
+    TenantAdminMapFilterSource? source,
+    List<String>? types,
+    List<String>? taxonomy,
+    bool clearSource = false,
+  }) {
+    return TenantAdminMapFilterQuery(
+      source: clearSource ? null : (source ?? this.source),
+      types: types ?? this.types,
+      taxonomy: taxonomy ?? this.taxonomy,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      if (source != null) 'source': source!.apiValue,
+      if (types.isNotEmpty) 'types': types,
+      if (taxonomy.isNotEmpty) 'taxonomy': taxonomy,
+    };
+  }
+
+  static TenantAdminMapFilterQuery fromJson(Map<String, dynamic>? json) {
+    if (json == null) {
+      return const TenantAdminMapFilterQuery();
+    }
+
+    List<String> _asStringList(dynamic raw) {
+      if (raw is! List) {
+        return const <String>[];
+      }
+      return raw
+          .map((entry) => entry.toString().trim().toLowerCase())
+          .where((entry) => entry.isNotEmpty)
+          .toSet()
+          .toList(growable: false);
+    }
+
+    return TenantAdminMapFilterQuery(
+      source: TenantAdminMapFilterSource.fromRaw(json['source']?.toString()),
+      types: _asStringList(json['types']),
+      taxonomy: _asStringList(json['taxonomy']),
+    );
+  }
+}
+
+class TenantAdminMapFilterRuleCatalog {
+  const TenantAdminMapFilterRuleCatalog({
+    required this.typesBySource,
+    required this.taxonomyTermsBySource,
+  });
+
+  const TenantAdminMapFilterRuleCatalog.empty()
+      : typesBySource = const <TenantAdminMapFilterSource,
+            List<TenantAdminMapFilterTypeOption>>{},
+        taxonomyTermsBySource = const <TenantAdminMapFilterSource,
+            List<TenantAdminMapFilterTaxonomyTermOption>>{};
+
+  final Map<TenantAdminMapFilterSource, List<TenantAdminMapFilterTypeOption>>
+      typesBySource;
+  final Map<TenantAdminMapFilterSource,
+      List<TenantAdminMapFilterTaxonomyTermOption>> taxonomyTermsBySource;
+
+  bool get isEmpty => typesBySource.isEmpty && taxonomyTermsBySource.isEmpty;
+
+  List<TenantAdminMapFilterTypeOption> typesForSource(
+    TenantAdminMapFilterSource source,
+  ) {
+    return typesBySource[source] ?? const <TenantAdminMapFilterTypeOption>[];
+  }
+
+  List<TenantAdminMapFilterTaxonomyTermOption> taxonomyForSource(
+    TenantAdminMapFilterSource source,
+  ) {
+    return taxonomyTermsBySource[source] ??
+        const <TenantAdminMapFilterTaxonomyTermOption>[];
+  }
+}
+
+class TenantAdminMapFilterTypeOption {
+  const TenantAdminMapFilterTypeOption({
+    required this.slug,
+    required this.label,
+  });
+
+  final String slug;
+  final String label;
+}
+
+class TenantAdminMapFilterTaxonomyTermOption {
+  const TenantAdminMapFilterTaxonomyTermOption({
+    required this.token,
+    required this.label,
+    required this.taxonomySlug,
+    required this.taxonomyLabel,
+  });
+
+  final String token;
+  final String label;
+  final String taxonomySlug;
+  final String taxonomyLabel;
 }
 
 class TenantAdminMapUiSettings {
@@ -101,6 +243,19 @@ class TenantAdminMapUiSettings {
             imageUri: item.imageUri?.trim().isEmpty ?? true
                 ? null
                 : item.imageUri?.trim(),
+            query: TenantAdminMapFilterQuery(
+              source: item.query.source,
+              types: item.query.types
+                  .map((entry) => entry.trim().toLowerCase())
+                  .where((entry) => entry.isNotEmpty)
+                  .toSet()
+                  .toList(growable: false),
+              taxonomy: item.query.taxonomy
+                  .map((entry) => entry.trim().toLowerCase())
+                  .where((entry) => entry.isNotEmpty)
+                  .toSet()
+                  .toList(growable: false),
+            ),
           ),
         )
         .where((item) => item.key.isNotEmpty && item.label.isNotEmpty)

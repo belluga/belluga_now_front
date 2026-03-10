@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:belluga_now/domain/map/filters/poi_filter_options.dart';
-import 'package:belluga_now/application/icons/boora_icons.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/controllers/fab_menu_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/controllers/map_screen_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/fab_action_button.dart';
@@ -81,7 +80,6 @@ class _FabMenuState extends State<FabMenu> {
               streamValue: _mapController.filterOptionsStreamValue,
               builder: (_, options) {
                 final categories = options?.sortedCategories ?? const [];
-                final taxonomyGroups = options?.taxonomyGroups ?? const [];
                 return StreamValueBuilder<Set<String>>(
                   streamValue: _mapController.activeCategoryKeysStreamValue,
                   builder: (_, activeCategoryKeys) {
@@ -89,83 +87,100 @@ class _FabMenuState extends State<FabMenu> {
                       streamValue:
                           _mapController.activeTaxonomyTokensStreamValue,
                       builder: (_, activeTaxonomyTokens) {
-                        return Column(
-                          mainAxisSize: MainAxisSize.min,
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            if (expanded) ...[
-                              FabActionButton(
-                                label: 'Ir para você',
-                                icon: Icons.my_location,
-                                backgroundColor: scheme.secondaryContainer,
-                                foregroundColor: scheme.onSecondaryContainer,
-                                onTap: widget.onNavigateToUser,
-                                condensed: condensed,
-                              ),
-                              const SizedBox(height: 8),
-                              ...categories.map((category) {
-                                final isActive = activeCategoryKeys.contains(
-                                    category.key.trim().toLowerCase());
-                                final activeColor =
-                                    _colorForCategoryKey(category.key, scheme);
-                                final activeFg = isActive
-                                    ? _foregroundForColor(activeColor)
-                                    : scheme.onSurfaceVariant;
-                                return Padding(
-                                  padding: const EdgeInsets.only(bottom: 8),
-                                  child: FabActionButton(
-                                    label: category.label,
-                                    icon: _iconForCategoryKey(category.key),
-                                    iconWidget: _categoryImage(
-                                      category,
-                                      fallbackIcon: _iconForCategoryKey(
-                                        category.key,
+                        return StreamValueBuilder<bool>(
+                          streamValue: _mapController.isLoading,
+                          builder: (_, isLoading) {
+                            return StreamValueBuilder<bool>(
+                              streamValue: _mapController
+                                  .filterInteractionLockedStreamValue,
+                              builder: (_, isFilterInteractionLocked) {
+                                final interactionsEnabled =
+                                    !isLoading && !isFilterInteractionLocked;
+                                return Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  crossAxisAlignment: CrossAxisAlignment.end,
+                                  children: [
+                                    if (expanded) ...[
+                                      FabActionButton(
+                                        label: 'Ir para você',
+                                        icon: Icons.my_location,
+                                        backgroundColor:
+                                            scheme.secondaryContainer,
+                                        foregroundColor:
+                                            scheme.onSecondaryContainer,
+                                        onTap: interactionsEnabled
+                                            ? widget.onNavigateToUser
+                                            : null,
+                                        condensed: condensed,
                                       ),
-                                      fallbackColor: activeFg,
+                                      const SizedBox(height: 8),
+                                      ...categories.map((category) {
+                                        final normalizedKey =
+                                            category.key.trim().toLowerCase();
+                                        final isActive = activeCategoryKeys
+                                            .contains(normalizedKey);
+                                        final backgroundColor = isActive
+                                            ? scheme.primaryContainer
+                                            : scheme.surface;
+                                        final foregroundColor = isActive
+                                            ? scheme.onPrimaryContainer
+                                            : scheme.onSurfaceVariant;
+                                        const fallbackIcon = Icons.filter_alt;
+                                        return Padding(
+                                          padding:
+                                              const EdgeInsets.only(bottom: 8),
+                                          child: FabActionButton(
+                                            label: _resolveCategoryLabel(
+                                              category,
+                                            ),
+                                            icon: fallbackIcon,
+                                            iconWidget: _categoryImage(
+                                              category,
+                                              fallbackIcon: fallbackIcon,
+                                              fallbackColor: foregroundColor,
+                                            ),
+                                            backgroundColor: backgroundColor,
+                                            foregroundColor: foregroundColor,
+                                            onTap: interactionsEnabled
+                                                ? () => _mapController
+                                                        .toggleCatalogCategoryFilter(
+                                                      category,
+                                                    )
+                                                : null,
+                                            condensed: condensed,
+                                          ),
+                                        );
+                                      }),
+                                      if (activeCategoryKeys.isNotEmpty ||
+                                          activeTaxonomyTokens.isNotEmpty)
+                                        Padding(
+                                          padding:
+                                              const EdgeInsets.only(bottom: 8),
+                                          child: FabActionButton(
+                                            label: 'Limpar filtros',
+                                            icon: Icons.filter_alt_off,
+                                            backgroundColor: scheme.surface,
+                                            foregroundColor:
+                                                scheme.onSurfaceVariant,
+                                            onTap: interactionsEnabled
+                                                ? _mapController.clearFilters
+                                                : null,
+                                            condensed: condensed,
+                                          ),
+                                        ),
+                                      const SizedBox(height: 4),
+                                    ],
+                                    FloatingActionButton(
+                                      heroTag: 'map-fab-main',
+                                      onPressed: _fabController.toggleExpanded,
+                                      child: Icon(
+                                          expanded ? Icons.close : Icons.tune),
                                     ),
-                                    backgroundColor:
-                                        isActive ? activeColor : scheme.surface,
-                                    foregroundColor: activeFg,
-                                    onTap: () => _mapController
-                                        .toggleCatalogCategoryFilter(category),
-                                    condensed: condensed,
-                                  ),
+                                  ],
                                 );
-                              }),
-                              if (taxonomyGroups.isNotEmpty)
-                                Padding(
-                                  padding: const EdgeInsets.only(
-                                    top: 4,
-                                    bottom: 8,
-                                  ),
-                                  child: _TaxonomyFiltersCard(
-                                    groups: taxonomyGroups,
-                                    activeTokens: activeTaxonomyTokens,
-                                    onToggle:
-                                        _mapController.toggleTaxonomyFilter,
-                                  ),
-                                ),
-                              if (activeCategoryKeys.isNotEmpty ||
-                                  activeTaxonomyTokens.isNotEmpty)
-                                Padding(
-                                  padding: const EdgeInsets.only(bottom: 8),
-                                  child: FabActionButton(
-                                    label: 'Limpar filtros',
-                                    icon: Icons.filter_alt_off,
-                                    backgroundColor: scheme.surface,
-                                    foregroundColor: scheme.onSurfaceVariant,
-                                    onTap: _mapController.clearFilters,
-                                    condensed: condensed,
-                                  ),
-                                ),
-                              const SizedBox(height: 4),
-                            ],
-                            FloatingActionButton(
-                              heroTag: 'map-fab-main',
-                              onPressed: _fabController.toggleExpanded,
-                              child: Icon(expanded ? Icons.close : Icons.tune),
-                            ),
-                          ],
+                              },
+                            );
+                          },
                         );
                       },
                     );
@@ -204,118 +219,11 @@ class _FabMenuState extends State<FabMenu> {
     );
   }
 
-  IconData _iconForCategoryKey(String key) {
-    switch (key.trim().toLowerCase()) {
-      case 'event':
-        return BooraIcons.audiotrack;
-      case 'restaurant':
-        return Icons.restaurant;
-      case 'beach':
-        return Icons.beach_access;
-      case 'lodging':
-        return Icons.hotel;
-      case 'nature':
-        return Icons.park;
-      case 'historic':
-      case 'culture':
-        return Icons.account_balance;
-      default:
-        return Icons.place;
+  String _resolveCategoryLabel(PoiFilterCategory category) {
+    final label = category.label.trim();
+    if (label.isNotEmpty) {
+      return label;
     }
-  }
-
-  Color _colorForCategoryKey(String key, ColorScheme scheme) {
-    switch (key.trim().toLowerCase()) {
-      case 'event':
-        return scheme.primary;
-      case 'restaurant':
-        return const Color(0xFFFF7043);
-      case 'beach':
-        return const Color(0xFF03A9F4);
-      case 'lodging':
-        return const Color(0xFF7E57C2);
-      case 'nature':
-        return const Color(0xFF66BB6A);
-      case 'historic':
-      case 'culture':
-        return const Color(0xFF8D6E63);
-      default:
-        return scheme.primary;
-    }
-  }
-}
-
-Color _foregroundForColor(Color color) {
-  final brightness = ThemeData.estimateBrightnessForColor(color);
-  return brightness == Brightness.dark ? Colors.white : Colors.black87;
-}
-
-class _TaxonomyFiltersCard extends StatelessWidget {
-  const _TaxonomyFiltersCard({
-    required this.groups,
-    required this.activeTokens,
-    required this.onToggle,
-  });
-
-  final List<PoiFilterTaxonomyGroup> groups;
-  final Set<String> activeTokens;
-  final ValueChanged<PoiFilterTaxonomyTerm> onToggle;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: 280),
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: scheme.surface,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: scheme.outlineVariant),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'Taxonomias',
-                style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
-              ),
-              const SizedBox(height: 8),
-              ...groups.map((group) {
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        group.label,
-                        style: Theme.of(context).textTheme.labelMedium,
-                      ),
-                      const SizedBox(height: 6),
-                      Wrap(
-                        spacing: 6,
-                        runSpacing: 6,
-                        children: group.terms.map((term) {
-                          final selected = activeTokens.contains(term.token);
-                          return FilterChip(
-                            selected: selected,
-                            label: Text(term.label),
-                            onSelected: (_) => onToggle(term),
-                          );
-                        }).toList(growable: false),
-                      ),
-                    ],
-                  ),
-                );
-              }),
-            ],
-          ),
-        ),
-      ),
-    );
+    return category.key.trim();
   }
 }

@@ -17,7 +17,7 @@ class FabActionButton extends StatelessWidget {
   final Widget? iconWidget;
   final Color backgroundColor;
   final Color foregroundColor;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
   final bool condensed;
 
   @override

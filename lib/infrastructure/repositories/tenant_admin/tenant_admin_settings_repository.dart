@@ -391,6 +391,11 @@ class TenantAdminSettingsRepository
         final key = filterMap['key']?.toString().trim() ?? '';
         final label = filterMap['label']?.toString().trim() ?? '';
         final imageUri = filterMap['image_uri']?.toString().trim();
+        final query = TenantAdminMapFilterQuery.fromJson(
+          filterMap['query'] is Map
+              ? Map<String, dynamic>.from(filterMap['query'] as Map)
+              : null,
+        );
         if (key.isEmpty || label.isEmpty) {
           continue;
         }
@@ -399,6 +404,7 @@ class TenantAdminSettingsRepository
             key: key,
             label: label,
             imageUri: imageUri == null || imageUri.isEmpty ? null : imageUri,
+            query: query,
           ),
         );
       }

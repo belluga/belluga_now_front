@@ -41,6 +41,8 @@ class MapScreenController implements Disposable {
   final mapStatusStreamValue =
       StreamValue<MapStatus>(defaultValue: MapStatus.locating);
   final isLoading = StreamValue<bool>(defaultValue: false);
+  final filterInteractionLockedStreamValue =
+      StreamValue<bool>(defaultValue: false);
   final errorMessage = StreamValue<String?>();
   final searchTermStreamValue = StreamValue<String?>();
   final zoomStreamValue = StreamValue<double>(defaultValue: 16);
@@ -84,14 +86,19 @@ class MapScreenController implements Disposable {
   bool _filtersLoadFailed = false;
   Set<String> _activeCategoryKeys = <String>{};
   Set<String> _activeTaxonomyTokens = <String>{};
+  Set<String> _activeTags = <String>{};
+  String? _activeSource;
+  Set<String> _activeTypes = <String>{};
   StreamSubscription<MapEvent>? _mapEventSubscription;
   StreamSubscription<List<CityPoiModel>>? _filteredPoisSubscription;
+  int _poiRequestSequence = 0;
+  bool _filterInteractionLocked = false;
 
   Future<void> init() async {
     _bindFilteredPoisClamp();
     await Future.wait([
       loadMainFilters(),
-      loadFilters(),
+      loadFilters(force: true),
       loadPois(const PoiQuery()),
     ]);
     await _userLocationRepository.refreshIfPermitted(
@@ -135,8 +142,10 @@ class MapScreenController implements Disposable {
     await _userLocationRepository.stopTracking();
   }
 
-  Future<void> loadFilters() async {
-    if (filterOptionsStreamValue.value != null && !_filtersLoadFailed) {
+  Future<void> loadFilters({bool force = false}) async {
+    if (!force &&
+        filterOptionsStreamValue.value != null &&
+        !_filtersLoadFailed) {
       return;
     }
     try {
@@ -247,6 +256,7 @@ class MapScreenController implements Disposable {
     PoiQuery query, {
     String? loadingMessage,
   }) async {
+    final requestSequence = ++_poiRequestSequence;
     final resolvedQuery = _resolveRuntimeQuery(query);
     _currentQuery = resolvedQuery;
     searchTermStreamValue.addValue(resolvedQuery.searchTerm);
@@ -257,16 +267,28 @@ class MapScreenController implements Disposable {
 
     try {
       await _poiRepository.fetchPoints(resolvedQuery);
+      if (!_isLatestPoiRequest(requestSequence)) {
+        return;
+      }
       _setIdleState();
       _setMapStatus(MapStatus.ready);
       _setMapMessage(null);
     } catch (error) {
+      if (!_isLatestPoiRequest(requestSequence)) {
+        return;
+      }
       const errorMessage = 'Nao foi possivel carregar os pontos de interesse.';
+      _poiRepository.clearLoadedPois();
+      resetPoiDeckIndex();
       _setErrorState(errorMessage);
       _setMapStatus(MapStatus.error);
       _setMapMessage(errorMessage);
       debugPrint('Failed to load POIs: $error');
     }
+  }
+
+  bool _isLatestPoiRequest(int requestSequence) {
+    return requestSequence == _poiRequestSequence;
   }
 
   PoiQuery _resolveRuntimeQuery(PoiQuery query) {
@@ -278,6 +300,8 @@ class MapScreenController implements Disposable {
       maxDistanceMeters: query.maxDistanceMeters,
       categories: query.categories,
       categoryKeys: query.categoryKeys,
+      source: query.source,
+      types: query.types,
       tags: query.tags,
       taxonomy: query.taxonomy,
       searchTerm: query.searchTerm,
@@ -359,6 +383,9 @@ class MapScreenController implements Disposable {
   }
 
   void applyFilterMode(PoiFilterMode mode) {
+    if (_filterInteractionLocked) {
+      return;
+    }
     final current = filterModeStreamValue.value;
     if (current == mode) {
       clearFilters();
@@ -377,6 +404,9 @@ class MapScreenController implements Disposable {
 
     _activeCategoryKeys = categoryKeys;
     _activeTaxonomyTokens = <String>{};
+    _activeTags = <String>{};
+    _activeSource = null;
+    _activeTypes = <String>{};
     _publishActiveFilters();
     activeFilterLabelStreamValue.addValue(_labelForMode(mode));
     _poiRepository.applyFilterMode(mode);
@@ -388,10 +418,13 @@ class MapScreenController implements Disposable {
       },
     );
     unawaited(
-      loadPois(
+      _runFilterReload(
         _composeQuery(
           categoryKeys: _activeCategoryKeys,
           taxonomy: const <String>{},
+          tags: const <String>{},
+          source: '',
+          types: const <String>{},
         ),
         loadingMessage: 'Aplicando filtros...',
       ),
@@ -399,11 +432,20 @@ class MapScreenController implements Disposable {
   }
 
   void clearFilters() {
+    if (_filterInteractionLocked) {
+      return;
+    }
     final wasFiltered = filterModeStreamValue.value != PoiFilterMode.none ||
         _activeCategoryKeys.isNotEmpty ||
-        _activeTaxonomyTokens.isNotEmpty;
+        _activeTaxonomyTokens.isNotEmpty ||
+        _activeTags.isNotEmpty ||
+        (_activeSource?.trim().isNotEmpty ?? false) ||
+        _activeTypes.isNotEmpty;
     _activeCategoryKeys = <String>{};
     _activeTaxonomyTokens = <String>{};
+    _activeTags = <String>{};
+    _activeSource = null;
+    _activeTypes = <String>{};
     _publishActiveFilters();
     activeFilterLabelStreamValue.addValue(null);
     _poiRepository.clearFilters();
@@ -411,10 +453,13 @@ class MapScreenController implements Disposable {
       return;
     }
     unawaited(
-      loadPois(
+      _runFilterReload(
         _composeQuery(
           categoryKeys: const <String>{},
           taxonomy: const <String>{},
+          tags: const <String>{},
+          source: '',
+          types: const <String>{},
         ),
         loadingMessage: 'Carregando pontos...',
       ),
@@ -426,20 +471,43 @@ class MapScreenController implements Disposable {
   }
 
   void toggleCatalogCategoryFilter(PoiFilterCategory category) {
-    final key = category.key.trim().toLowerCase();
-    if (key.isEmpty) {
+    if (_filterInteractionLocked) {
       return;
     }
+    final categoryKeys = _categoryKeysForCatalogFilter(category);
+    if (categoryKeys.isEmpty) {
+      final source = _sourceForCatalogFilter(category);
+      final types = _typesForCatalogFilter(category);
+      final taxonomyTokens = _taxonomyTokensForCatalogFilter(category);
+      final tags = _tagsForCatalogFilter(category);
+      if (source == null &&
+          types.isEmpty &&
+          taxonomyTokens.isEmpty &&
+          tags.isEmpty) {
+        return;
+      }
+    }
+    final source = _sourceForCatalogFilter(category);
+    final types = _typesForCatalogFilter(category);
+    final taxonomyTokens = _taxonomyTokensForCatalogFilter(category);
+    final tags = _tagsForCatalogFilter(category);
 
-    if (_activeCategoryKeys.length == 1 &&
-        _activeCategoryKeys.contains(key) &&
-        _activeTaxonomyTokens.isEmpty) {
+    if (_isCatalogFilterActive(
+      categoryKeys: categoryKeys,
+      source: source,
+      types: types,
+      taxonomyTokens: taxonomyTokens,
+      tags: tags,
+    )) {
       clearFilters();
       return;
     }
 
-    _activeCategoryKeys = <String>{key};
-    _activeTaxonomyTokens = <String>{};
+    _activeCategoryKeys = categoryKeys;
+    _activeSource = source;
+    _activeTypes = types;
+    _activeTaxonomyTokens = taxonomyTokens;
+    _activeTags = tags;
     _publishActiveFilters();
     activeFilterLabelStreamValue.addValue(category.label);
     _poiRepository.applyFilterMode(PoiFilterMode.server);
@@ -447,14 +515,21 @@ class MapScreenController implements Disposable {
       EventTrackerEvents.selectItem,
       eventName: 'map_catalog_filter_applied',
       properties: {
-        'category_key': key,
+        'category_keys': categoryKeys.toList(growable: false),
+        if (source != null) 'source': source,
+        'types': types.toList(growable: false),
+        'taxonomy': taxonomyTokens.toList(growable: false),
+        'tags': tags.toList(growable: false),
       },
     );
     unawaited(
-      loadPois(
+      _runFilterReload(
         _composeQuery(
           categoryKeys: _activeCategoryKeys,
-          taxonomy: const <String>{},
+          source: _activeSource ?? '',
+          types: _activeTypes,
+          taxonomy: _activeTaxonomyTokens,
+          tags: _activeTags,
         ),
         loadingMessage: 'Aplicando filtros...',
       ),
@@ -462,6 +537,9 @@ class MapScreenController implements Disposable {
   }
 
   void toggleTaxonomyFilter(PoiFilterTaxonomyTerm taxonomyTerm) {
+    if (_filterInteractionLocked) {
+      return;
+    }
     final token = taxonomyTerm.token;
     if (token.isEmpty) {
       return;
@@ -474,7 +552,11 @@ class MapScreenController implements Disposable {
     }
     _activeTaxonomyTokens = next;
 
-    if (_activeTaxonomyTokens.isEmpty && _activeCategoryKeys.isEmpty) {
+    if (_activeTaxonomyTokens.isEmpty &&
+        _activeCategoryKeys.isEmpty &&
+        _activeTags.isEmpty &&
+        (_activeSource == null || _activeSource!.isEmpty) &&
+        _activeTypes.isEmpty) {
       clearFilters();
       return;
     }
@@ -495,9 +577,12 @@ class MapScreenController implements Disposable {
       },
     );
     unawaited(
-      loadPois(
+      _runFilterReload(
         _composeQuery(
           categoryKeys: _activeCategoryKeys,
+          source: _activeSource ?? '',
+          types: _activeTypes,
+          tags: _activeTags,
           taxonomy: _activeTaxonomyTokens,
         ),
         loadingMessage: 'Aplicando filtros...',
@@ -505,12 +590,43 @@ class MapScreenController implements Disposable {
     );
   }
 
+  Future<void> _runFilterReload(
+    PoiQuery query, {
+    required String loadingMessage,
+  }) async {
+    if (_filterInteractionLocked) {
+      return;
+    }
+    _filterInteractionLocked = true;
+    filterInteractionLockedStreamValue.addValue(true);
+    try {
+      await loadPois(query, loadingMessage: loadingMessage);
+    } finally {
+      _filterInteractionLocked = false;
+      filterInteractionLockedStreamValue.addValue(false);
+    }
+  }
+
   bool isCategoryFilterActive(PoiFilterCategory category) {
-    final key = category.key.trim().toLowerCase();
-    if (key.isEmpty) {
+    final categoryKeys = _categoryKeysForCatalogFilter(category);
+    final source = _sourceForCatalogFilter(category);
+    final types = _typesForCatalogFilter(category);
+    final taxonomyTokens = _taxonomyTokensForCatalogFilter(category);
+    final tags = _tagsForCatalogFilter(category);
+    if (categoryKeys.isEmpty &&
+        source == null &&
+        types.isEmpty &&
+        taxonomyTokens.isEmpty &&
+        tags.isEmpty) {
       return false;
     }
-    return _activeCategoryKeys.contains(key);
+    return _isCatalogFilterActive(
+      categoryKeys: categoryKeys,
+      source: source,
+      types: types,
+      taxonomyTokens: taxonomyTokens,
+      tags: tags,
+    );
   }
 
   bool isTaxonomyFilterActive(PoiFilterTaxonomyTerm taxonomyTerm) {
@@ -557,6 +673,8 @@ class MapScreenController implements Disposable {
     double? maxDistanceMeters,
     Iterable<CityPoiCategory>? categories,
     Iterable<String>? categoryKeys,
+    String? source,
+    Iterable<String>? types,
     Iterable<String>? tags,
     Iterable<String>? taxonomy,
     String? searchTerm,
@@ -569,6 +687,8 @@ class MapScreenController implements Disposable {
       maxDistanceMeters: maxDistanceMeters,
       categories: categories,
       categoryKeys: categoryKeys,
+      source: source,
+      types: types,
       tags: tags,
       taxonomy: taxonomy,
       searchTerm: searchTerm,
@@ -591,6 +711,84 @@ class MapScreenController implements Disposable {
     }
   }
 
+  Set<String> _categoryKeysForCatalogFilter(PoiFilterCategory category) {
+    final serverQuery = category.serverQuery;
+    final configured = category.serverQuery?.categoryKeys
+            .map((entry) => entry.trim().toLowerCase())
+            .where((entry) => entry.isNotEmpty)
+            .toSet() ??
+        const <String>{};
+    if (configured.isNotEmpty) {
+      return configured;
+    }
+    if (serverQuery != null && !serverQuery.isEmpty) {
+      return const <String>{};
+    }
+    final key = category.key.trim().toLowerCase();
+    if (key.isEmpty) {
+      return const <String>{};
+    }
+    return <String>{key};
+  }
+
+  String? _sourceForCatalogFilter(PoiFilterCategory category) {
+    final source = category.serverQuery?.source?.trim().toLowerCase();
+    if (source == null || source.isEmpty) {
+      return null;
+    }
+    return source;
+  }
+
+  Set<String> _typesForCatalogFilter(PoiFilterCategory category) {
+    return category.serverQuery?.types
+            .map((entry) => entry.trim().toLowerCase())
+            .where((entry) => entry.isNotEmpty)
+            .toSet() ??
+        const <String>{};
+  }
+
+  Set<String> _tagsForCatalogFilter(PoiFilterCategory category) {
+    return category.serverQuery?.tags
+            .map((entry) => entry.trim().toLowerCase())
+            .where((entry) => entry.isNotEmpty)
+            .toSet() ??
+        const <String>{};
+  }
+
+  Set<String> _taxonomyTokensForCatalogFilter(PoiFilterCategory category) {
+    return category.serverQuery?.taxonomy
+            .map((entry) => entry.trim().toLowerCase())
+            .where((entry) => entry.isNotEmpty)
+            .toSet() ??
+        const <String>{};
+  }
+
+  bool _isCatalogFilterActive({
+    required Set<String> categoryKeys,
+    required String? source,
+    required Set<String> types,
+    required Set<String> taxonomyTokens,
+    required Set<String> tags,
+  }) {
+    return _activeCategoryKeys.length == categoryKeys.length &&
+        _activeCategoryKeys.containsAll(categoryKeys) &&
+        (_normalizeSource(_activeSource) == _normalizeSource(source)) &&
+        _activeTypes.length == types.length &&
+        _activeTypes.containsAll(types) &&
+        _activeTaxonomyTokens.length == taxonomyTokens.length &&
+        _activeTaxonomyTokens.containsAll(taxonomyTokens) &&
+        _activeTags.length == tags.length &&
+        _activeTags.containsAll(tags);
+  }
+
+  String? _normalizeSource(String? raw) {
+    final source = raw?.trim().toLowerCase();
+    if (source == null || source.isEmpty) {
+      return null;
+    }
+    return source;
+  }
+
   String _labelForMode(PoiFilterMode mode) {
     switch (mode) {
       case PoiFilterMode.events:
@@ -603,7 +801,7 @@ class MapScreenController implements Disposable {
         return 'Hospedagens';
       case PoiFilterMode.none:
       case PoiFilterMode.server:
-        return 'Filtros personalizados';
+        return 'Filtro do mapa';
     }
   }
 
@@ -621,7 +819,7 @@ class MapScreenController implements Disposable {
       if (_activeTaxonomyTokens.length == 1 && _activeCategoryKeys.isEmpty) {
         return fallbackTaxonomyLabel;
       }
-      return 'Filtros personalizados';
+      return 'Filtros do mapa';
     }
 
     if (_activeCategoryKeys.length == 1) {
@@ -634,7 +832,7 @@ class MapScreenController implements Disposable {
       return category?.label ?? key;
     }
 
-    return 'Filtros personalizados';
+    return 'Filtros do mapa';
   }
 
   void _setMapStatus(MapStatus status) {
@@ -687,6 +885,7 @@ class MapScreenController implements Disposable {
     activeTaxonomyTokensStreamValue.dispose();
     activeFilterLabelStreamValue.dispose();
     poiDeckIndexStreamValue.dispose();
+    filterInteractionLockedStreamValue.dispose();
   }
 
   void _attachZoomListener() {

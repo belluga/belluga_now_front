@@ -13,6 +13,7 @@ class TenantAdminSettingsLocalPreferencesSection extends StatelessWidget {
     required this.onAddMapFilter,
     required this.onEditMapFilterKey,
     required this.onEditMapFilterLabel,
+    required this.onEditMapFilterRule,
     required this.onEditMapFilterImage,
     required this.onRemoveMapFilter,
     required this.onMoveMapFilterUp,
@@ -26,6 +27,7 @@ class TenantAdminSettingsLocalPreferencesSection extends StatelessWidget {
   final VoidCallback onAddMapFilter;
   final Future<void> Function(int index) onEditMapFilterKey;
   final Future<void> Function(int index) onEditMapFilterLabel;
+  final Future<void> Function(int index) onEditMapFilterRule;
   final Future<void> Function(int index) onEditMapFilterImage;
   final void Function(int index) onRemoveMapFilter;
   final void Function(int index) onMoveMapFilterUp;
@@ -136,7 +138,8 @@ class TenantAdminSettingsLocalPreferencesSection extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             TextFormField(
-              key: TenantAdminSettingsKeys.localPreferencesDefaultOriginLatField,
+              key:
+                  TenantAdminSettingsKeys.localPreferencesDefaultOriginLatField,
               controller: controller.mapDefaultOriginLatitudeController,
               keyboardType:
                   const TextInputType.numberWithOptions(decimal: true),
@@ -148,7 +151,8 @@ class TenantAdminSettingsLocalPreferencesSection extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             TextFormField(
-              key: TenantAdminSettingsKeys.localPreferencesDefaultOriginLngField,
+              key:
+                  TenantAdminSettingsKeys.localPreferencesDefaultOriginLngField,
               controller: controller.mapDefaultOriginLongitudeController,
               keyboardType:
                   const TextInputType.numberWithOptions(decimal: true),
@@ -160,7 +164,8 @@ class TenantAdminSettingsLocalPreferencesSection extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             TextFormField(
-              key: TenantAdminSettingsKeys.localPreferencesDefaultOriginLabelField,
+              key: TenantAdminSettingsKeys
+                  .localPreferencesDefaultOriginLabelField,
               controller: controller.mapDefaultOriginLabelController,
               decoration: const InputDecoration(
                 labelText: 'Rótulo (opcional)',
@@ -181,8 +186,10 @@ class TenantAdminSettingsLocalPreferencesSection extends StatelessWidget {
                 return Align(
                   alignment: Alignment.centerRight,
                   child: FilledButton.icon(
-                    key: TenantAdminSettingsKeys.localPreferencesSaveOriginButton,
-                    onPressed: isSubmitting ? null : controller.saveMapUiSettings,
+                    key: TenantAdminSettingsKeys
+                        .localPreferencesSaveOriginButton,
+                    onPressed:
+                        isSubmitting ? null : controller.saveMapUiSettings,
                     icon: isSubmitting
                         ? const SizedBox(
                             width: 16,
@@ -224,7 +231,8 @@ class TenantAdminSettingsLocalPreferencesSection extends StatelessWidget {
                       ),
                     ),
                     FilledButton.icon(
-                      key: TenantAdminSettingsKeys.localPreferencesAddMapFilterButton,
+                      key: TenantAdminSettingsKeys
+                          .localPreferencesAddMapFilterButton,
                       onPressed: onAddMapFilter,
                       icon: const Icon(Icons.add),
                       label: const Text('Adicionar'),
@@ -256,6 +264,28 @@ class TenantAdminSettingsLocalPreferencesSection extends StatelessWidget {
                       hasNext: index < filters.length - 1,
                     ),
                   ),
+                ),
+                const SizedBox(height: 12),
+                StreamValueBuilder<bool>(
+                  streamValue: controller.mapUiSubmittingStreamValue,
+                  builder: (context, isSubmitting) {
+                    return Align(
+                      alignment: Alignment.centerRight,
+                      child: FilledButton.icon(
+                        onPressed:
+                            isSubmitting ? null : controller.saveMapFilters,
+                        icon: isSubmitting
+                            ? const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child:
+                                    CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : const Icon(Icons.save_outlined),
+                        label: const Text('Salvar filtros do mapa'),
+                      ),
+                    );
+                  },
                 ),
               ],
             ),
@@ -328,6 +358,13 @@ class TenantAdminSettingsLocalPreferencesSection extends StatelessWidget {
                         color: theme.colorScheme.onSurfaceVariant,
                       ),
                     ),
+                    const SizedBox(height: 4),
+                    Text(
+                      _ruleSummary(item.query),
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -340,6 +377,10 @@ class TenantAdminSettingsLocalPreferencesSection extends StatelessWidget {
                   PopupMenuItem(
                     value: 'edit_label',
                     child: Text('Editar rótulo'),
+                  ),
+                  PopupMenuItem(
+                    value: 'edit_rule',
+                    child: Text('Editar regra'),
                   ),
                   PopupMenuItem(
                     value: 'edit_image',
@@ -361,6 +402,9 @@ class TenantAdminSettingsLocalPreferencesSection extends StatelessWidget {
                       return;
                     case 'edit_label':
                       onEditMapFilterLabel(index);
+                      return;
+                    case 'edit_rule':
+                      onEditMapFilterRule(index);
                       return;
                     case 'edit_image':
                       onEditMapFilterImage(index);
@@ -390,6 +434,11 @@ class TenantAdminSettingsLocalPreferencesSection extends StatelessWidget {
                 onPressed: () => onEditMapFilterLabel(index),
                 icon: const Icon(Icons.label_outline),
                 label: const Text('Rótulo'),
+              ),
+              OutlinedButton.icon(
+                onPressed: () => onEditMapFilterRule(index),
+                icon: const Icon(Icons.rule_outlined),
+                label: const Text('Regra'),
               ),
               OutlinedButton.icon(
                 onPressed: imageBusy ? null : () => onEditMapFilterImage(index),
@@ -428,5 +477,12 @@ class TenantAdminSettingsLocalPreferencesSection extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  String _ruleSummary(TenantAdminMapFilterQuery query) {
+    final source = query.source?.label ?? 'Origem não definida';
+    final typesCount = query.types.length;
+    final taxonomyCount = query.taxonomy.length;
+    return '$source · tipos: $typesCount · taxonomias: $taxonomyCount';
   }
 }

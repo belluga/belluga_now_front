@@ -133,6 +133,16 @@ class LaravelMapPoiHttpService {
       }
     }
 
+    final source = query.source?.trim();
+    if (source != null && source.isNotEmpty) {
+      params['source'] = source;
+    }
+
+    final types = query.types;
+    if (types != null && types.isNotEmpty) {
+      params['types'] = types.toList(growable: false);
+    }
+
     final tags = query.tags;
     if (tags != null && tags.isNotEmpty) {
       params['tags'] = tags.toList(growable: false);

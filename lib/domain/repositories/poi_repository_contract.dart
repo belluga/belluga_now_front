@@ -25,6 +25,7 @@ abstract class PoiRepositoryContract {
 
   void selectPoi(CityPoiModel? poi);
   void clearSelection();
+  void clearLoadedPois();
   void applyFilterMode(PoiFilterMode mode);
   void clearFilters();
 }

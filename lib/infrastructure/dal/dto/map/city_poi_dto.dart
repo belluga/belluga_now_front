@@ -85,6 +85,11 @@ class CityPoiDTO {
     final poiId = (json['id'] ?? '').toString().trim().isNotEmpty
         ? (json['id'] ?? '').toString().trim()
         : '${refType.isEmpty ? 'poi' : refType}_${refId.isEmpty ? 'unknown' : refId}';
+    final title = (json['name'] ?? json['title'] ?? '').toString().trim();
+    final subtitle =
+        (json['subtitle'] ?? json['description'] ?? json['address'] ?? '')
+            .toString()
+            .trim();
     final fallbackName = refId.isNotEmpty ? 'POI $refId' : 'POI no mapa';
     final fallbackDescription = 'Ponto de interesse no mapa';
     final fallbackAddress = 'Mapa';
@@ -94,18 +99,13 @@ class CityPoiDTO {
 
     return CityPoiDTO(
       id: poiId,
-      name: ((json['name'] ?? '').toString().trim().isNotEmpty
-              ? (json['name'] ?? '').toString()
-              : fallbackName)
-          .trim(),
-      description: ((json['description'] ?? '').toString().trim().isNotEmpty
-              ? (json['description'] ?? '').toString()
-              : fallbackDescription)
-          .trim(),
-      address: ((json['address'] ?? '').toString().trim().isNotEmpty
-              ? (json['address'] ?? '').toString()
-              : fallbackAddress)
-          .trim(),
+      name: (title.isNotEmpty ? title : fallbackName).trim(),
+      description: (json['description']?.toString().trim().isNotEmpty ?? false)
+          ? json['description'].toString().trim()
+          : (subtitle.isNotEmpty ? subtitle : fallbackDescription).trim(),
+      address: (json['address']?.toString().trim().isNotEmpty ?? false)
+          ? json['address'].toString().trim()
+          : (subtitle.isNotEmpty ? subtitle : fallbackAddress).trim(),
       category: parseCategory(json['category'] ?? json['category_slug']),
       latitude: parseDouble(latitudeRaw),
       longitude: parseDouble(longitudeRaw),

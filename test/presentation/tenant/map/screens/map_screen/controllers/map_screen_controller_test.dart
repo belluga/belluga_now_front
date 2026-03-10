@@ -188,11 +188,24 @@ class _FakeCityMapRepository implements CityMapRepositoryContract {
   final StreamController<PoiUpdateEvent?> _poiEventsController =
       StreamController<PoiUpdateEvent?>.broadcast();
   PoiQuery? lastQuery;
+  List<CityPoiModel> nextPois = const <CityPoiModel>[];
+  bool throwOnFetchPoints = false;
+  int fetchPointsCallCount = 0;
+  final List<Completer<List<CityPoiModel>>> queuedFetchCompleters =
+      <Completer<List<CityPoiModel>>>[];
 
   @override
   Future<List<CityPoiModel>> fetchPoints(PoiQuery query) async {
+    fetchPointsCallCount += 1;
     lastQuery = query;
-    return const [];
+    if (queuedFetchCompleters.isNotEmpty) {
+      final completer = queuedFetchCompleters.removeAt(0);
+      return completer.future;
+    }
+    if (throwOnFetchPoints) {
+      throw Exception('forced fetch failure');
+    }
+    return nextPois;
   }
 
   @override
@@ -342,6 +355,82 @@ void main() {
       expect(controller.filterModeStreamValue.value, PoiFilterMode.server);
     });
 
+    test('applies catalog filter query metadata when available', () async {
+      controller.toggleCatalogCategoryFilter(
+        PoiFilterCategory(
+          key: 'event',
+          label: 'Eventos agora',
+          tags: const {},
+          serverQuery: const PoiFilterServerQuery(
+            source: 'event',
+            types: {'show'},
+            categoryKeys: {'culture'},
+            taxonomy: {'music_genre:rock'},
+            tags: {'live'},
+          ),
+        ),
+      );
+      await _flushMicrotasks();
+
+      expect(mapRepository.lastQuery, isNotNull);
+      expect(mapRepository.lastQuery?.source, equals('event'));
+      expect(mapRepository.lastQuery?.types, equals({'show'}));
+      expect(mapRepository.lastQuery?.categoryKeys, equals({'culture'}));
+      expect(mapRepository.lastQuery?.tags, equals({'live'}));
+      expect(
+        mapRepository.lastQuery?.taxonomy,
+        equals({'music_genre:rock'}),
+      );
+      expect(controller.filterModeStreamValue.value, PoiFilterMode.server);
+    });
+
+    test(
+      'supports source/types query metadata without category key fallback',
+      () async {
+        controller.toggleCatalogCategoryFilter(
+          PoiFilterCategory(
+            key: 'artists',
+            label: 'Artistas',
+            tags: const {},
+            serverQuery: const PoiFilterServerQuery(
+              source: 'account_profile',
+              types: {'artist'},
+              taxonomy: {'music_genre:jazz'},
+              tags: {'live'},
+            ),
+          ),
+        );
+        await _flushMicrotasks();
+
+        expect(mapRepository.lastQuery, isNotNull);
+        expect(mapRepository.lastQuery?.categoryKeys, isNull);
+        expect(mapRepository.lastQuery?.source, equals('account_profile'));
+        expect(mapRepository.lastQuery?.types, equals({'artist'}));
+        expect(mapRepository.lastQuery?.tags, equals({'live'}));
+        expect(mapRepository.lastQuery?.taxonomy, equals({'music_genre:jazz'}));
+      },
+    );
+
+    test('clears stale map data when loadPois fails', () async {
+      mapRepository.nextPois = <CityPoiModel>[
+        _buildPoi(id: 'poi-a'),
+      ];
+      await controller.loadPois(const PoiQuery());
+      expect(controller.filteredPoisStreamValue.value, hasLength(1));
+
+      controller.selectPoi(_buildPoi(id: 'poi-a'));
+      expect(controller.selectedPoiStreamValue.value, isNotNull);
+
+      mapRepository.throwOnFetchPoints = true;
+      await controller.loadPois(
+        const PoiQuery(categoryKeys: {'event'}),
+        loadingMessage: 'Aplicando filtros...',
+      );
+
+      expect(controller.filteredPoisStreamValue.value, isEmpty);
+      expect(controller.selectedPoiStreamValue.value, isNull);
+    });
+
     test('applies taxonomy filter tokens to map query', () async {
       controller.toggleTaxonomyFilter(
         const PoiFilterTaxonomyTerm(
@@ -359,6 +448,98 @@ void main() {
         equals({'cuisine:italian'}),
       );
       expect(controller.filterModeStreamValue.value, PoiFilterMode.server);
+    });
+
+    test('locks filter interactions while a filter reload is in flight',
+        () async {
+      final firstRequest = Completer<List<CityPoiModel>>();
+      mapRepository.queuedFetchCompleters.add(firstRequest);
+
+      controller.toggleCatalogCategoryFilter(
+        PoiFilterCategory(
+          key: 'events',
+          label: 'Eventos',
+          tags: const {},
+          serverQuery: const PoiFilterServerQuery(
+            source: 'event',
+          ),
+        ),
+      );
+      await _flushMicrotasks();
+
+      controller.toggleCatalogCategoryFilter(
+        PoiFilterCategory(
+          key: 'beach',
+          label: 'Praias',
+          tags: const {},
+          serverQuery: const PoiFilterServerQuery(
+            source: 'static_asset',
+            types: {'beach_spot'},
+          ),
+        ),
+      );
+      await _flushMicrotasks();
+
+      expect(mapRepository.fetchPointsCallCount, 1);
+      expect(
+        controller.filterInteractionLockedStreamValue.value,
+        isTrue,
+      );
+
+      firstRequest.complete(<CityPoiModel>[]);
+      await _flushMicrotasks();
+      await _flushMicrotasks();
+
+      expect(
+        controller.filterInteractionLockedStreamValue.value,
+        isFalse,
+      );
+
+      controller.toggleCatalogCategoryFilter(
+        PoiFilterCategory(
+          key: 'beach',
+          label: 'Praias',
+          tags: const {},
+          serverQuery: const PoiFilterServerQuery(
+            source: 'static_asset',
+            types: {'beach_spot'},
+          ),
+        ),
+      );
+      await _flushMicrotasks();
+
+      expect(mapRepository.fetchPointsCallCount, 2);
+    });
+
+    test('keeps the latest loadPois result after overlapping requests',
+        () async {
+      final firstRequest = Completer<List<CityPoiModel>>();
+      final secondRequest = Completer<List<CityPoiModel>>();
+      mapRepository.queuedFetchCompleters
+        ..add(firstRequest)
+        ..add(secondRequest);
+
+      final firstPoi = _buildPoi(id: 'poi-first');
+      final secondPoi = _buildPoi(id: 'poi-second');
+
+      final firstFuture = controller.loadPois(const PoiQuery());
+      await _flushMicrotasks();
+      final secondFuture = controller.loadPois(
+        const PoiQuery(categoryKeys: {'event'}),
+      );
+      await _flushMicrotasks();
+
+      firstRequest.complete(<CityPoiModel>[firstPoi]);
+      await _flushMicrotasks();
+
+      secondRequest.complete(<CityPoiModel>[secondPoi]);
+      await Future.wait<void>([firstFuture, secondFuture]);
+      await _flushMicrotasks();
+
+      expect(
+        controller.filteredPoisStreamValue.value.map((poi) => poi.id),
+        equals(<String>['poi-second']),
+      );
     });
 
     test('logs directions and ride share events', () async {

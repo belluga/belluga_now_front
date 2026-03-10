@@ -9,6 +9,8 @@ class PoiQuery {
     this.maxDistanceMeters,
     this.categories,
     this.categoryKeys,
+    this.source,
+    this.types,
     this.tags,
     this.taxonomy,
     this.searchTerm,
@@ -20,6 +22,8 @@ class PoiQuery {
   final double? maxDistanceMeters;
   final Set<CityPoiCategory>? categories;
   final Set<String>? categoryKeys;
+  final String? source;
+  final Set<String>? types;
   final Set<String>? tags;
   final Set<String>? taxonomy;
   final String? searchTerm;
@@ -76,6 +80,8 @@ class PoiQuery {
     double? maxDistanceMeters,
     Iterable<CityPoiCategory>? categories,
     Iterable<String>? categoryKeys,
+    String? source,
+    Iterable<String>? types,
     Iterable<String>? tags,
     Iterable<String>? taxonomy,
     String? searchTerm,
@@ -123,6 +129,24 @@ class PoiQuery {
       );
     }
 
+    Set<String>? resolvedTypes;
+    if (types == null) {
+      resolvedTypes = currentQuery.types;
+    } else if (types.isEmpty) {
+      resolvedTypes = null;
+    } else {
+      resolvedTypes = Set<String>.unmodifiable(
+        types
+            .map((type) => type.trim().toLowerCase())
+            .where((type) => type.isNotEmpty)
+            .toSet(),
+      );
+    }
+
+    final resolvedSource = source == null
+        ? currentQuery.source
+        : (source.trim().isEmpty ? null : source.trim().toLowerCase());
+
     final sanitizedSearch = searchTerm == null
         ? currentQuery.searchTerm
         : (searchTerm.trim().isEmpty ? null : searchTerm.trim());
@@ -134,6 +158,8 @@ class PoiQuery {
       maxDistanceMeters: maxDistanceMeters ?? currentQuery.maxDistanceMeters,
       categories: resolvedCategories,
       categoryKeys: resolvedCategoryKeys,
+      source: resolvedSource,
+      types: resolvedTypes,
       tags: resolvedTags,
       taxonomy: resolvedTaxonomy,
       searchTerm: sanitizedSearch,

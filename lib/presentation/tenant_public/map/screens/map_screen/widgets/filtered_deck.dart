@@ -121,7 +121,7 @@ class FilteredDeck extends StatelessWidget {
         return 'Hospedagens parceiras';
       case PoiFilterMode.server:
         return controller.activeFilterLabelStreamValue.value ??
-            'Filtros personalizados';
+            'Filtro do mapa';
       case PoiFilterMode.none:
         return 'Pontos selecionados';
     }

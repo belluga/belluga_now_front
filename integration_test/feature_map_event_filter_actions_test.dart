@@ -2,9 +2,9 @@ import 'dart:developer' as developer;
 
 import 'package:belluga_now/application/application.dart';
 import 'package:belluga_now/application/application_contract.dart';
-import 'package:belluga_now/application/icons/boora_icons.dart';
 import 'package:belluga_now/domain/invites/invite_model.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
+import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_events_repository_contract.dart';
@@ -18,6 +18,7 @@ import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.da
 import 'package:belluga_now/infrastructure/dal/dao/laravel_backend/app_data_backend/app_data_backend_stub.dart';
 import 'package:belluga_now/infrastructure/dal/dao/local/app_data_local_info_source/app_data_local_info_source.dart';
 import 'package:belluga_now/infrastructure/repositories/app_data_repository.dart';
+import 'package:belluga_now/infrastructure/repositories/auth_repository.dart';
 import 'package:belluga_now/presentation/shared/location_permission/screens/location_not_live_screen/location_not_live_screen.dart';
 import 'package:belluga_now/presentation/shared/location_permission/screens/location_permission_screen/location_permission_screen.dart';
 import 'package:belluga_now/presentation/shared/widgets/button_loading.dart';
@@ -41,6 +42,9 @@ void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
   IntegrationTestBootstrap.ensureNonProductionLandlordDomain();
   final originalGeolocator = GeolocatorPlatform.instance;
+  const userTokenKey = 'user_token';
+  const userIdKey = 'user_id';
+  const deviceIdKey = 'device_id';
 
   setUpAll(() {
     GeolocatorPlatform.instance = _TestGeolocatorPlatform();
@@ -125,12 +129,49 @@ void main() {
     );
   }
 
+  Finder _mapExpandedActionFinder() {
+    return find.byWidgetPredicate((widget) {
+      if (widget is! FloatingActionButton) {
+        return false;
+      }
+      final heroTag = widget.heroTag?.toString() ?? '';
+      return heroTag.startsWith('expanded-');
+    });
+  }
+
+  bool _containsMyLocationIcon(Element root) {
+    var found = false;
+
+    void visit(Element element) {
+      if (found) {
+        return;
+      }
+      final widget = element.widget;
+      if (widget is Icon && widget.icon == Icons.my_location) {
+        found = true;
+        return;
+      }
+      element.visitChildren(visit);
+    }
+
+    visit(root);
+    return found;
+  }
+
+  Future<void> _clearAuthStorage() async {
+    await AuthRepository.storage.delete(key: userTokenKey);
+    await AuthRepository.storage.delete(key: userIdKey);
+    await AuthRepository.storage.delete(key: deviceIdKey);
+  }
+
   testWidgets(
     'Map event carousel, details sheet, filters, and marker border',
     (tester) async {
+      await _clearAuthStorage();
       final getIt = GetIt.I;
       _unregisterIfRegistered<ApplicationContract>();
       _unregisterIfRegistered<AppDataRepository>();
+      _unregisterIfRegistered<AuthRepositoryContract>();
       _unregisterIfRegistered<ScheduleRepositoryContract>();
       _unregisterIfRegistered<UserEventsRepositoryContract>();
       _unregisterIfRegistered<InvitesRepositoryContract>();
@@ -157,6 +198,20 @@ void main() {
       final app = Application();
       getIt.registerSingleton<ApplicationContract>(app);
       await app.init();
+      final authRepository = GetIt.I.get<AuthRepositoryContract>();
+      final now = DateTime.now().millisecondsSinceEpoch;
+      final email = 'map-filter-$now@belluga.test';
+      const password = 'SecurePass!123';
+
+      await authRepository.signUpWithEmailPassword(
+        'Map Integration',
+        email,
+        password,
+      );
+      if (authRepository.userToken.trim().isEmpty) {
+        await authRepository.loginWithEmailPassword(email, password);
+      }
+      expect(authRepository.userToken.trim(), isNotEmpty);
 
       await tester.pumpWidget(app);
       await _pumpFor(tester, const Duration(seconds: 2));
@@ -173,27 +228,58 @@ void main() {
       await _waitForFinder(tester, find.byType(MapScreen));
       await _waitForFinder(tester, _mainFabFinder());
 
-      final eventFilterIcon = find.byIcon(BooraIcons.audiotrack);
-      await _waitForFinder(tester, eventFilterIcon);
-      await tester.tap(eventFilterIcon.first);
-      await _pumpFor(tester, const Duration(seconds: 1));
-      final hasCarousel = await _waitForMaybeFinder(
+      final expandedActions = _mapExpandedActionFinder();
+      var hasExpandedActions = await _waitForMaybeFinder(
         tester,
-        find.byType(CarouselCard),
-        timeout: const Duration(seconds: 10),
+        expandedActions,
+        timeout: const Duration(seconds: 3),
       );
-      if (hasCarousel) {
-        expect(find.byType(CarouselCard), findsWidgets);
-        final detailsButton = find.widgetWithText(FilledButton, 'Detalhes');
-        if (await _waitForMaybeFinder(tester, detailsButton)) {
-          await tester.tap(detailsButton.first);
-          await _pumpFor(tester, const Duration(seconds: 1));
-          await _waitForFinder(tester, find.byType(ImmersiveEventDetailScreen));
+      if (!hasExpandedActions) {
+        await tester.tap(_mainFabFinder());
+        await _pumpFor(tester, const Duration(seconds: 1));
+        hasExpandedActions = await _waitForMaybeFinder(
+          tester,
+          expandedActions,
+          timeout: const Duration(seconds: 3),
+        );
+      }
+      var hasCarousel = false;
+      if (hasExpandedActions) {
+        final expandedWidgets =
+            expandedActions.evaluate().toList(growable: false);
+        final filterCandidates = expandedWidgets
+            .where((element) => !_containsMyLocationIcon(element))
+            .toList(growable: false);
 
-          final barrier = find.byType(ModalBarrier);
-          if (barrier.evaluate().isNotEmpty) {
-            await tester.tap(barrier.first);
-            await _pumpFor(tester, const Duration(seconds: 1));
+        if (filterCandidates.isNotEmpty) {
+          final categoryFilter = find.byWidget(
+            filterCandidates.last.widget,
+            skipOffstage: false,
+          );
+          await tester.tap(categoryFilter.first);
+          await _pumpFor(tester, const Duration(seconds: 1));
+          hasCarousel = await _waitForMaybeFinder(
+            tester,
+            find.byType(CarouselCard),
+            timeout: const Duration(seconds: 10),
+          );
+          if (hasCarousel) {
+            expect(find.byType(CarouselCard), findsWidgets);
+            final detailsButton = find.widgetWithText(FilledButton, 'Detalhes');
+            if (await _waitForMaybeFinder(tester, detailsButton)) {
+              await tester.tap(detailsButton.first);
+              await _pumpFor(tester, const Duration(seconds: 1));
+              await _waitForFinder(
+                tester,
+                find.byType(ImmersiveEventDetailScreen),
+              );
+
+              final barrier = find.byType(ModalBarrier);
+              if (barrier.evaluate().isNotEmpty) {
+                await tester.tap(barrier.first);
+                await _pumpFor(tester, const Duration(seconds: 1));
+              }
+            }
           }
         }
       }
@@ -209,8 +295,7 @@ void main() {
           of: markerCore.first,
           matching: find.byType(Container),
         );
-        final containerWidget =
-            tester.widget<Container>(markerContainer.first);
+        final containerWidget = tester.widget<Container>(markerContainer.first);
         final decoration = containerWidget.decoration as BoxDecoration;
         expect(decoration.border, isNull);
       }
@@ -220,11 +305,9 @@ void main() {
       if (hasCarousel) {
         expect(find.byType(CarouselCard), findsNothing);
       }
-      expect(eventFilterIcon, findsWidgets);
 
       await tester.tap(_mainFabFinder());
       await _pumpFor(tester, const Duration(seconds: 1));
-      expect(eventFilterIcon, findsNothing);
       expect(find.byIcon(Icons.tune), findsOneWidget);
     },
   );

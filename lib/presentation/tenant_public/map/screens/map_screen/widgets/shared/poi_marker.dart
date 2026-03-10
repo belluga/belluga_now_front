@@ -1,5 +1,3 @@
-import 'dart:ui';
-
 import 'package:belluga_now/domain/map/city_poi_model.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/shared/poi_category_theme.dart';
 import 'package:flutter/material.dart';
@@ -127,8 +125,8 @@ class PoiMarker extends StatelessWidget {
       child: LayoutBuilder(
         builder: (context, constraints) {
           final side = constraints.biggest.shortestSide;
-          final iconSize =
-              lerpDouble(16, 36, ((side - 26) / (65 - 26)).clamp(0.0, 1.0))!;
+          final iconMax = poi.isDynamic ? 40.0 : 36.0;
+          final iconSize = (side * 0.52).clamp(16.0, iconMax);
           final padding = (side - iconSize) / 2;
           return Stack(
             clipBehavior: Clip.none,

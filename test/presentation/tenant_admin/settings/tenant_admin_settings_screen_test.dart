@@ -78,7 +78,10 @@ void main() {
       find.byKey(TenantAdminSettingsKeys.hubActionVisualIdentity),
       findsNothing,
     );
-    expect(find.text('Toque para editar preferências'), findsOneWidget);
+    expect(
+      find.text('Toque para editar preferências e filtros do mapa'),
+      findsOneWidget,
+    );
     expect(find.text('Toque para editar identidade visual'), findsOneWidget);
 
     await tester.scrollUntilVisible(

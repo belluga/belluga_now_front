@@ -92,6 +92,12 @@ class PoiRepository implements PoiRepositoryContract {
   void clearSelection() => selectPoi(null);
 
   @override
+  void clearLoadedPois() {
+    _setAllPois(const <CityPoiModel>[]);
+    clearSelection();
+  }
+
+  @override
   void applyFilterMode(PoiFilterMode mode) {
     if (_filterMode == mode) {
       return;

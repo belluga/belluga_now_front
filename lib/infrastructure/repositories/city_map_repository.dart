@@ -1,4 +1,3 @@
-import 'package:belluga_now/domain/map/city_poi_category.dart';
 import 'package:belluga_now/domain/map/city_poi_model.dart';
 import 'package:belluga_now/domain/map/events/poi_update_event.dart';
 import 'package:belluga_now/domain/map/filters/main_filter_option.dart';
@@ -93,7 +92,24 @@ class CityMapRepository extends CityMapRepositoryContract with MapDtoMapper {
       if (key.isEmpty || categoryKeys.contains(key)) {
         continue;
       }
-      final parsedCategory = _parseCategoryKey(category.key);
+      final resolvedQuery = category.query;
+      final queryCategoryKeys = resolvedQuery.categoryKeys
+          .map((entry) => entry.trim().toLowerCase())
+          .where((entry) => entry.isNotEmpty)
+          .toSet();
+      final queryTaxonomy = resolvedQuery.taxonomy
+          .map((entry) => entry.trim().toLowerCase())
+          .where((entry) => entry.isNotEmpty)
+          .toSet();
+      final queryTags = resolvedQuery.tags
+          .map((entry) => entry.trim().toLowerCase())
+          .where((entry) => entry.isNotEmpty)
+          .toSet();
+      final querySource = resolvedQuery.source?.trim().toLowerCase();
+      final queryTypes = resolvedQuery.types
+          .map((entry) => entry.trim().toLowerCase())
+          .where((entry) => entry.isNotEmpty)
+          .toSet();
       categoryKeys.add(key);
       categories.add(
         PoiFilterCategory(
@@ -101,8 +117,15 @@ class CityMapRepository extends CityMapRepositoryContract with MapDtoMapper {
           label: category.label.trim().isEmpty ? key : category.label.trim(),
           imageUri: category.imageUri,
           count: category.count,
-          category: parsedCategory,
           tags: tags,
+          serverQuery: PoiFilterServerQuery(
+            source:
+                querySource == null || querySource.isEmpty ? null : querySource,
+            types: queryTypes,
+            categoryKeys: queryCategoryKeys,
+            taxonomy: queryTaxonomy,
+            tags: queryTags,
+          ),
         ),
       );
     }
@@ -136,27 +159,9 @@ class CityMapRepository extends CityMapRepositoryContract with MapDtoMapper {
       ..sort((left, right) => left.label.compareTo(right.label));
 
     return PoiFilterOptions(
-      categories: categories,
+      categories: List<PoiFilterCategory>.unmodifiable(categories),
       taxonomyGroups: taxonomyGroups,
     );
-  }
-
-  CityPoiCategory? _parseCategoryKey(String rawKey) {
-    switch (rawKey.trim().toLowerCase()) {
-      case 'restaurant':
-        return CityPoiCategory.restaurant;
-      case 'beach':
-        return CityPoiCategory.beach;
-      case 'nature':
-        return CityPoiCategory.nature;
-      case 'culture':
-      case 'event':
-        return CityPoiCategory.culture;
-      case 'historic':
-        return CityPoiCategory.monument;
-      default:
-        return null;
-    }
   }
 
   String _humanizeTaxonomyType(String type) {

@@ -47,6 +47,7 @@ class AppData {
   final double mapRadiusMinMeters;
   final double mapRadiusDefaultMeters;
   final double mapRadiusMaxMeters;
+  final List<String> mapFilterCatalogKeys;
 
   // Branding fields
   final IconUrlValue mainIconLightUrl;
@@ -77,6 +78,7 @@ class AppData {
     required this.mapRadiusMinMeters,
     required this.mapRadiusDefaultMeters,
     required this.mapRadiusMaxMeters,
+    required this.mapFilterCatalogKeys,
     required this.mainIconLightUrl,
     required this.mainIconDarkUrl,
     required this.mainColor,
@@ -110,6 +112,7 @@ class AppData {
 
     final radiusBounds = _resolveRadiusBounds(map['settings']);
     final tenantDefaultOrigin = _resolveTenantDefaultOrigin(map['settings']);
+    final mapFilterCatalogKeys = _resolveMapFilterCatalogKeys(map['settings']);
 
     final origin = _resolveOrigin(map: map);
     final mainIconLightRaw = '$origin/icon-light.png';
@@ -179,6 +182,7 @@ class AppData {
       mapRadiusMinMeters: radiusBounds.minMeters,
       mapRadiusDefaultMeters: radiusBounds.defaultMeters,
       mapRadiusMaxMeters: radiusBounds.maxMeters,
+      mapFilterCatalogKeys: mapFilterCatalogKeys,
       mainIconLightUrl: _parseRequired(
         mainIconLightRaw,
         () => IconUrlValue(isRequired: true),
@@ -320,6 +324,34 @@ class AppData {
     } on Object {
       return null;
     }
+  }
+
+  static List<String> _resolveMapFilterCatalogKeys(dynamic rawSettings) {
+    final settings = rawSettings is Map
+        ? Map<String, dynamic>.from(rawSettings)
+        : const <String, dynamic>{};
+    final mapUi = settings['map_ui'] is Map
+        ? Map<String, dynamic>.from(settings['map_ui'] as Map)
+        : const <String, dynamic>{};
+    final rawFilters = mapUi['filters'];
+    if (rawFilters is! List) {
+      return const <String>[];
+    }
+
+    final ordered = <String>[];
+    final seen = <String>{};
+    for (final entry in rawFilters) {
+      if (entry is! Map) {
+        continue;
+      }
+      final map = Map<String, dynamic>.from(entry);
+      final key = map['key']?.toString().trim().toLowerCase() ?? '';
+      if (key.isEmpty || !seen.add(key)) {
+        continue;
+      }
+      ordered.add(key);
+    }
+    return List<String>.unmodifiable(ordered);
   }
 
   static double? _parseDouble(dynamic raw) {

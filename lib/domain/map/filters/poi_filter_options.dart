@@ -35,6 +35,7 @@ class PoiFilterCategory {
     String? label,
     this.imageUri,
     this.count = 0,
+    this.serverQuery,
   })  : key = _resolveKey(key, category),
         label = _resolveLabel(label, key, category),
         tags = tags
@@ -51,6 +52,7 @@ class PoiFilterCategory {
   final int count;
   final CityPoiCategory? category;
   final Set<String> tags;
+  final PoiFilterServerQuery? serverQuery;
 
   static String _resolveKey(String? rawKey, CityPoiCategory? category) {
     final normalized = (rawKey ?? '').trim().toLowerCase();
@@ -92,6 +94,29 @@ class PoiFilterCategory {
     }
     return key;
   }
+}
+
+class PoiFilterServerQuery {
+  const PoiFilterServerQuery({
+    this.source,
+    this.types = const <String>{},
+    this.categoryKeys = const <String>{},
+    this.taxonomy = const <String>{},
+    this.tags = const <String>{},
+  });
+
+  final String? source;
+  final Set<String> types;
+  final Set<String> categoryKeys;
+  final Set<String> taxonomy;
+  final Set<String> tags;
+
+  bool get isEmpty =>
+      (source == null || source!.trim().isEmpty) &&
+      types.isEmpty &&
+      categoryKeys.isEmpty &&
+      taxonomy.isEmpty &&
+      tags.isEmpty;
 }
 
 class PoiFilterTaxonomyGroup {

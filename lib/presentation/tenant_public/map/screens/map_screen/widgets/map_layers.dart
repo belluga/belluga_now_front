@@ -44,11 +44,10 @@ class MapLayers extends StatelessWidget {
                       minSize: 26,
                       maxSize: 65,
                     );
-                    final eventSize = _scaledSize(
-                      currentZoom,
-                      minSize: 70,
-                      maxSize: 100,
-                    );
+                    // Keep event markers slightly larger than regular POIs, but
+                    // bound to the same zoom curve so they still shrink/grow
+                    // proportionally while zooming.
+                    final eventSize = (poiSize * 1.18).clamp(30.0, 78.0);
                     final userSize = _scaledSize(
                       currentZoom,
                       minSize: 36,
