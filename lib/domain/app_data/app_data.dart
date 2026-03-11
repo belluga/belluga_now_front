@@ -3,12 +3,18 @@ import 'package:belluga_now/domain/app_data/firebase_settings.dart';
 import 'package:belluga_now/domain/app_data/push_settings.dart';
 import 'package:belluga_now/domain/app_data/telemetry_context_settings.dart';
 import 'package:belluga_now/domain/app_data/telemetry_settings.dart';
+import 'package:belluga_now/domain/app_data/value_object/app_data_hostname_value.dart';
+import 'package:belluga_now/domain/app_data/value_object/app_data_href_value.dart';
+import 'package:belluga_now/domain/app_data/value_object/app_data_map_filter_catalog_keys_value.dart';
+import 'package:belluga_now/domain/app_data/value_object/app_data_port_value.dart';
+import 'package:belluga_now/domain/app_data/value_object/app_data_required_text_value.dart';
 import 'package:belluga_now/domain/app_data/value_object/app_domain_value.dart';
 import 'package:belluga_now/domain/app_data/value_object/domain_value.dart';
 import 'package:belluga_now/domain/app_data/value_object/environment_name_value.dart';
 import 'package:belluga_now/domain/app_data/value_object/environment_type_value.dart';
 import 'package:belluga_now/domain/app_data/value_object/platform_type_value.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
+import 'package:belluga_now/domain/map/value_objects/distance_in_meters_value.dart';
 import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
 import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
 import 'package:belluga_now/domain/partners/profile_type_registry.dart';
@@ -26,10 +32,10 @@ class AppData {
   static const double _defaultMaxRadiusKm = 50.0;
 
   final PlatformTypeValue platformType;
-  final String? port;
-  final String hostname;
-  final String href;
-  final String device;
+  final AppDataPortValue portValue;
+  final AppDataHostnameValue hostnameValue;
+  final AppDataHrefValue hrefValue;
+  final AppDataRequiredTextValue deviceValue;
 
   final EnvironmentNameValue nameValue;
   final EnvironmentTypeValue typeValue;
@@ -44,12 +50,11 @@ class AppData {
   final FirebaseSettings? firebaseSettings;
   final PushSettings? pushSettings;
   final CityCoordinate? tenantDefaultOrigin;
-  final double mapRadiusMinMeters;
-  final double mapRadiusDefaultMeters;
-  final double mapRadiusMaxMeters;
-  final List<String> mapFilterCatalogKeys;
+  final DistanceInMetersValue mapRadiusMinMetersValue;
+  final DistanceInMetersValue mapRadiusDefaultMetersValue;
+  final DistanceInMetersValue mapRadiusMaxMetersValue;
+  final AppDataMapFilterCatalogKeysValue mapFilterCatalogKeysValue;
 
-  // Branding fields
   final IconUrlValue mainIconLightUrl;
   final IconUrlValue mainIconDarkUrl;
   final MainColorValue mainColor;
@@ -58,10 +63,10 @@ class AppData {
 
   AppData._({
     required this.platformType,
-    required this.port,
-    required this.hostname,
-    required this.href,
-    required this.device,
+    required this.portValue,
+    required this.hostnameValue,
+    required this.hrefValue,
+    required this.deviceValue,
     required this.nameValue,
     required this.typeValue,
     required this.themeDataSettings,
@@ -75,10 +80,10 @@ class AppData {
     required this.firebaseSettings,
     required this.pushSettings,
     required this.tenantDefaultOrigin,
-    required this.mapRadiusMinMeters,
-    required this.mapRadiusDefaultMeters,
-    required this.mapRadiusMaxMeters,
-    required this.mapFilterCatalogKeys,
+    required this.mapRadiusMinMetersValue,
+    required this.mapRadiusDefaultMetersValue,
+    required this.mapRadiusMaxMetersValue,
+    required this.mapFilterCatalogKeysValue,
     required this.mainIconLightUrl,
     required this.mainIconDarkUrl,
     required this.mainColor,
@@ -90,7 +95,6 @@ class AppData {
     required dynamic remoteData,
     required Map<String, dynamic> localInfo,
   }) {
-    // Accept DTO or map
     final Map<String, dynamic> map = remoteData is Map<String, dynamic>
         ? remoteData
         : {
@@ -129,7 +133,8 @@ class AppData {
       ..parse(DomainValue.coerceRaw(map['main_domain']));
     final tenantIdValue = TenantIdValue()..parse(map['tenant_id']?.toString());
     final profileTypeRegistry = ProfileTypeRegistry.fromJsonList(
-        map['profile_types'] as List<dynamic>?);
+      map['profile_types'] as List<dynamic>?,
+    );
     final telemetryRaw = map['telemetry'];
     final telemetrySettings = TelemetrySettings.fromRaw(telemetryRaw);
     final telemetryContextRaw =
@@ -152,10 +157,10 @@ class AppData {
 
     return AppData._(
       platformType: platformType,
-      port: localInfo['port'] as String?,
-      hostname: resolvedHostname,
-      href: resolvedHref,
-      device: localInfo['device'] as String,
+      portValue: _buildPortValue(localInfo['port'] as String?),
+      hostnameValue: _buildHostnameValue(resolvedHostname),
+      hrefValue: _buildHrefValue(resolvedHref),
+      deviceValue: _buildDeviceValue(localInfo['device'] as String),
       nameValue: EnvironmentNameValue()..parse(map['name']),
       themeDataSettings: ThemeDataSettings.fromJson(map['theme_data_settings']),
       tenantIdValue: tenantIdValue,
@@ -179,10 +184,12 @@ class AppData {
       firebaseSettings: firebaseSettings,
       pushSettings: pushSettings,
       tenantDefaultOrigin: tenantDefaultOrigin,
-      mapRadiusMinMeters: radiusBounds.minMeters,
-      mapRadiusDefaultMeters: radiusBounds.defaultMeters,
-      mapRadiusMaxMeters: radiusBounds.maxMeters,
-      mapFilterCatalogKeys: mapFilterCatalogKeys,
+      mapRadiusMinMetersValue: _buildDistanceValue(radiusBounds.minMeters),
+      mapRadiusDefaultMetersValue:
+          _buildDistanceValue(radiusBounds.defaultMeters),
+      mapRadiusMaxMetersValue: _buildDistanceValue(radiusBounds.maxMeters),
+      mapFilterCatalogKeysValue:
+          AppDataMapFilterCatalogKeysValue(mapFilterCatalogKeys),
       mainIconLightUrl: _parseRequired(
         mainIconLightRaw,
         () => IconUrlValue(isRequired: true),
@@ -214,6 +221,15 @@ class AppData {
   AppType get appType =>
       platformType.value ?? platformType.defaultValue ?? AppType.mobile;
 
+  String? get port => portValue.nullableValue;
+  String get hostname => hostnameValue.value;
+  String get href => hrefValue.value;
+  String get device => deviceValue.value;
+  double get mapRadiusMinMeters => mapRadiusMinMetersValue.value;
+  double get mapRadiusDefaultMeters => mapRadiusDefaultMetersValue.value;
+  double get mapRadiusMaxMeters => mapRadiusMaxMetersValue.value;
+  List<String> get mapFilterCatalogKeys => mapFilterCatalogKeysValue.value;
+
   IconUrlValue get iconUrl => mainIconDarkUrl;
 
   MainLogoUrlValue get mainLogoUrl => mainLogoDarkUrl;
@@ -239,6 +255,31 @@ class AppData {
       throw ArgumentError('AppData has invalid value for: $fieldName');
     }
     return valueObject;
+  }
+
+  static AppDataPortValue _buildPortValue(String? rawValue) {
+    final value = AppDataPortValue()..parse(rawValue);
+    return value;
+  }
+
+  static AppDataHostnameValue _buildHostnameValue(String rawValue) {
+    final value = AppDataHostnameValue()..parse(rawValue);
+    return value;
+  }
+
+  static AppDataHrefValue _buildHrefValue(String rawValue) {
+    final value = AppDataHrefValue()..parse(rawValue);
+    return value;
+  }
+
+  static AppDataRequiredTextValue _buildDeviceValue(String rawValue) {
+    final value = AppDataRequiredTextValue()..parse(rawValue);
+    return value;
+  }
+
+  static DistanceInMetersValue _buildDistanceValue(double rawValue) {
+    final value = DistanceInMetersValue()..parse(rawValue.toString());
+    return value;
   }
 
   static String _resolveOrigin({

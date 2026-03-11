@@ -1,32 +1,53 @@
 import 'package:belluga_now/domain/map/city_poi_category.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
+import 'package:belluga_now/domain/map/value_objects/distance_in_meters_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_filter_key_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_filter_search_term_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_filter_source_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_filter_taxonomy_token_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_filter_type_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_tag_value.dart';
 
 class PoiQuery {
-  const PoiQuery({
+  PoiQuery({
     this.northEast,
     this.southWest,
     this.origin,
-    this.maxDistanceMeters,
+    double? maxDistanceMeters,
     this.categories,
-    this.categoryKeys,
-    this.source,
-    this.types,
-    this.tags,
-    this.taxonomy,
-    this.searchTerm,
-  });
+    Set<String>? categoryKeys,
+    String? source,
+    Set<String>? types,
+    Set<String>? tags,
+    Set<String>? taxonomy,
+    String? searchTerm,
+  })  : maxDistanceMetersValue = _buildDistanceValue(maxDistanceMeters),
+        categoryKeyValues = _buildCategoryKeyValues(categoryKeys),
+        sourceValue = _buildSourceValue(source),
+        typeValues = _buildTypeValues(types),
+        tagValues = _buildTagValues(tags),
+        taxonomyTokenValues = _buildTaxonomyValues(taxonomy),
+        searchTermValue = _buildSearchTermValue(searchTerm);
 
   final CityCoordinate? northEast;
   final CityCoordinate? southWest;
   final CityCoordinate? origin;
-  final double? maxDistanceMeters;
+  final DistanceInMetersValue? maxDistanceMetersValue;
   final Set<CityPoiCategory>? categories;
-  final Set<String>? categoryKeys;
-  final String? source;
-  final Set<String>? types;
-  final Set<String>? tags;
-  final Set<String>? taxonomy;
-  final String? searchTerm;
+  final Set<PoiFilterKeyValue>? categoryKeyValues;
+  final PoiFilterSourceValue? sourceValue;
+  final Set<PoiFilterTypeValue>? typeValues;
+  final Set<PoiTagValue>? tagValues;
+  final Set<PoiFilterTaxonomyTokenValue>? taxonomyTokenValues;
+  final PoiFilterSearchTermValue? searchTermValue;
+
+  double? get maxDistanceMeters => maxDistanceMetersValue?.value;
+  Set<String>? get categoryKeys => _readStringSet(categoryKeyValues);
+  String? get source => _readNullableValue(sourceValue);
+  Set<String>? get types => _readStringSet(typeValues);
+  Set<String>? get tags => _readStringSet(tagValues);
+  Set<String>? get taxonomy => _readStringSet(taxonomyTokenValues);
+  String? get searchTerm => _readNullableValue(searchTermValue);
 
   bool get hasBounds => northEast != null && southWest != null;
 
@@ -164,5 +185,115 @@ class PoiQuery {
       taxonomy: resolvedTaxonomy,
       searchTerm: sanitizedSearch,
     );
+  }
+
+  static DistanceInMetersValue? _buildDistanceValue(double? raw) {
+    if (raw == null) {
+      return null;
+    }
+    final value = DistanceInMetersValue()..parse(raw.toString());
+    return value;
+  }
+
+  static Set<PoiFilterKeyValue>? _buildCategoryKeyValues(
+    Iterable<String>? rawValues,
+  ) {
+    return _buildStringValueSet(
+      rawValues,
+      () => PoiFilterKeyValue(),
+    );
+  }
+
+  static PoiFilterSourceValue? _buildSourceValue(String? raw) {
+    final normalized = raw?.trim().toLowerCase();
+    if (normalized == null || normalized.isEmpty) {
+      return null;
+    }
+    final value = PoiFilterSourceValue()..parse(normalized);
+    return value;
+  }
+
+  static Set<PoiFilterTypeValue>? _buildTypeValues(Iterable<String>? rawValues) {
+    return _buildStringValueSet(
+      rawValues,
+      () => PoiFilterTypeValue(),
+    );
+  }
+
+  static Set<PoiTagValue>? _buildTagValues(Iterable<String>? rawValues) {
+    return _buildStringValueSet(
+      rawValues,
+      () => PoiTagValue(),
+    );
+  }
+
+  static Set<PoiFilterTaxonomyTokenValue>? _buildTaxonomyValues(
+    Iterable<String>? rawValues,
+  ) {
+    return _buildStringValueSet(
+      rawValues,
+      () => PoiFilterTaxonomyTokenValue(),
+    );
+  }
+
+  static PoiFilterSearchTermValue? _buildSearchTermValue(String? raw) {
+    final normalized = raw?.trim();
+    if (normalized == null || normalized.isEmpty) {
+      return null;
+    }
+    final value = PoiFilterSearchTermValue()..parse(normalized);
+    return value;
+  }
+
+  static Set<T>? _buildStringValueSet<T>(
+    Iterable<String>? rawValues,
+    T Function() createValue,
+  ) {
+    if (rawValues == null) {
+      return null;
+    }
+    final values = <T>{};
+    for (final entry in rawValues) {
+      final normalized = entry.trim().toLowerCase();
+      if (normalized.isEmpty) {
+        continue;
+      }
+      final value = createValue();
+      if (value is PoiFilterKeyValue) {
+        value.parse(normalized);
+        values.add(value as T);
+      } else if (value is PoiFilterTypeValue) {
+        value.parse(normalized);
+        values.add(value as T);
+      } else if (value is PoiTagValue) {
+        value.parse(normalized);
+        values.add(value as T);
+      } else if (value is PoiFilterTaxonomyTokenValue) {
+        value.parse(normalized);
+        values.add(value as T);
+      }
+    }
+    return Set<T>.unmodifiable(values);
+  }
+
+  static Set<String>? _readStringSet(Iterable<dynamic>? values) {
+    if (values == null) {
+      return null;
+    }
+    return Set<String>.unmodifiable(
+      values
+          .map((value) => value.value as String?)
+          .whereType<String>()
+          .map((value) => value.trim())
+          .where((value) => value.isNotEmpty),
+    );
+  }
+
+  static String? _readNullableValue(dynamic valueObject) {
+    final raw = valueObject?.value as String?;
+    if (raw == null || raw.trim().isEmpty) {
+      return null;
+    }
+    return raw;
   }
 }

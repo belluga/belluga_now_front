@@ -82,7 +82,7 @@ class MapScreenController implements Disposable {
 
   CityCoordinate get defaultCenter => _poiRepository.defaultCenter;
 
-  PoiQuery _currentQuery = const PoiQuery();
+  PoiQuery _currentQuery = PoiQuery();
   bool _filtersLoadFailed = false;
   Set<String> _activeCategoryKeys = <String>{};
   Set<String> _activeTaxonomyTokens = <String>{};
@@ -99,7 +99,7 @@ class MapScreenController implements Disposable {
     await Future.wait([
       loadMainFilters(),
       loadFilters(force: true),
-      loadPois(const PoiQuery()),
+      loadPois(PoiQuery()),
     ]);
     await _userLocationRepository.refreshIfPermitted(
       minInterval: Duration.zero,

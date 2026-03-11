@@ -4,7 +4,7 @@ import 'package:belluga_now/domain/map/queries/poi_query.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/user/user_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/backend_context.dart';
-import 'package:belluga_now/infrastructure/services/http/laravel_map_poi_http_service.dart';
+import 'package:belluga_now/infrastructure/dal/dao/laravel_backend/map/laravel_map_poi_http_service.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
@@ -21,7 +21,9 @@ void main() {
     await GetIt.I.reset();
   });
 
-  test('getPois sends authenticated array query params with Laravel-compatible encoding', () async {
+  test(
+      'getPois sends authenticated array query params with Laravel-compatible encoding',
+      () async {
     final adapter = _RecordingAdapter();
     final dio = Dio()..httpClientAdapter = adapter;
     final service = LaravelMapPoiHttpService(
@@ -33,7 +35,7 @@ void main() {
     );
 
     await service.getPois(
-      const PoiQuery(
+      PoiQuery(
         source: 'static_asset',
         categoryKeys: <String>{'beach'},
         types: <String>{'beach_spot'},
@@ -64,7 +66,9 @@ void main() {
     );
   });
 
-  test('getFilters keeps server-query arrays compatible with Laravel validation', () async {
+  test(
+      'getFilters keeps server-query arrays compatible with Laravel validation',
+      () async {
     final adapter = _RecordingAdapter();
     final dio = Dio()..httpClientAdapter = adapter;
     final service = LaravelMapPoiHttpService(
@@ -76,7 +80,7 @@ void main() {
     );
 
     await service.getFilters(
-      const PoiQuery(
+      PoiQuery(
         source: 'event',
         types: <String>{'showcase'},
       ),
@@ -141,7 +145,8 @@ class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
   Future<void> logout() async {}
 
   @override
-  Future<void> createNewPassword(String newPassword, String confirmPassword) async {}
+  Future<void> createNewPassword(
+      String newPassword, String confirmPassword) async {}
 
   @override
   Future<void> sendPasswordResetEmail(String email) async {}
@@ -165,13 +170,13 @@ class _RecordingAdapter implements HttpClientAdapter {
     requests.add(options);
     final body = switch (options.path) {
       '/v1/map/filters' => <String, dynamic>{
-        'categories': const <Object>[],
-        'tags': const <Object>[],
-        'taxonomy_terms': const <Object>[],
-      },
+          'categories': const <Object>[],
+          'tags': const <Object>[],
+          'taxonomy_terms': const <Object>[],
+        },
       _ => <String, dynamic>{
-        'stacks': const <Object>[],
-      },
+          'stacks': const <Object>[],
+        },
     };
     return ResponseBody.fromString(
       jsonEncode(body),

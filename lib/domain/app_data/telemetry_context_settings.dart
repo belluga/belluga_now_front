@@ -1,19 +1,23 @@
-class TelemetryContextSettings {
-  const TelemetryContextSettings({
-    required this.locationFreshness,
-  });
+import 'package:belluga_now/domain/app_data/value_object/telemetry_location_freshness_value.dart';
 
-  final Duration locationFreshness;
+class TelemetryContextSettings {
+  TelemetryContextSettings({
+    required Duration locationFreshness,
+  }) : locationFreshnessValue = _buildLocationFreshnessValue(locationFreshness);
+
+  final TelemetryLocationFreshnessValue locationFreshnessValue;
+
+  Duration get locationFreshness => locationFreshnessValue.value;
 
   static const int defaultLocationFreshnessMinutes = 5;
 
   static TelemetryContextSettings fromRaw(Object? raw) {
     if (raw is Map) {
-      final map = raw is Map<String, dynamic>
-          ? raw
-          : Map<String, dynamic>.from(raw);
+      final map =
+          raw is Map<String, dynamic> ? raw : Map<String, dynamic>.from(raw);
       final minutes = _parsePositiveInt(
-        map['location_freshness_minutes'] ?? map['telemetry_location_freshness_minutes'],
+        map['location_freshness_minutes'] ??
+            map['telemetry_location_freshness_minutes'],
       );
       if (minutes != null) {
         return TelemetryContextSettings(
@@ -22,8 +26,10 @@ class TelemetryContextSettings {
       }
     }
 
-    return const TelemetryContextSettings(
-      locationFreshness: Duration(minutes: defaultLocationFreshnessMinutes),
+    return TelemetryContextSettings(
+      locationFreshness: const Duration(
+        minutes: defaultLocationFreshnessMinutes,
+      ),
     );
   }
 
@@ -40,5 +46,14 @@ class TelemetryContextSettings {
       return value != null && value > 0 ? value : null;
     }
     return null;
+  }
+
+  static TelemetryLocationFreshnessValue _buildLocationFreshnessValue(
+    Duration raw,
+  ) {
+    final value = TelemetryLocationFreshnessValue(
+      defaultValue: const Duration(minutes: defaultLocationFreshnessMinutes),
+    )..parse(raw.inMinutes.toString());
+    return value;
   }
 }

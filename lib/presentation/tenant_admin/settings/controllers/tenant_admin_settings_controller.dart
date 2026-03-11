@@ -93,7 +93,7 @@ class TenantAdminSettingsController implements Disposable {
       StreamValue<bool>(defaultValue: false);
   final StreamValue<TenantAdminMapUiSettings> mapUiSettingsStreamValue =
       StreamValue<TenantAdminMapUiSettings>(
-    defaultValue: const TenantAdminMapUiSettings.empty(),
+    defaultValue: TenantAdminMapUiSettings.empty(),
   );
   final StreamValue<TenantAdminMapFilterRuleCatalog>
       mapFilterRuleCatalogStreamValue =
@@ -141,7 +141,7 @@ class TenantAdminSettingsController implements Disposable {
   final StreamValue<TenantAdminTelemetrySettingsSnapshot>
       telemetrySnapshotStreamValue =
       StreamValue<TenantAdminTelemetrySettingsSnapshot>(
-    defaultValue: const TenantAdminTelemetrySettingsSnapshot.empty(),
+    defaultValue: TenantAdminTelemetrySettingsSnapshot.empty(),
   );
   final StreamValue<String> selectedTelemetryTypeStreamValue =
       StreamValue<String>(defaultValue: telemetryTypes.first);
@@ -189,8 +189,7 @@ class TenantAdminSettingsController implements Disposable {
   StreamSubscription<String?>? _tenantScopeSubscription;
   StreamSubscription<TenantAdminBrandingSettings?>? _brandingSubscription;
   StreamSubscription<TenantAdminLocation?>? _locationSelectionSubscription;
-  TenantAdminMapUiSettings _mapUiSettings =
-      const TenantAdminMapUiSettings.empty();
+  TenantAdminMapUiSettings _mapUiSettings = TenantAdminMapUiSettings.empty();
   bool _localPreferencesFlowBound = false;
 
   AppData get appData => _appDataRepository.appData;
@@ -937,7 +936,7 @@ class TenantAdminSettingsController implements Disposable {
     _settingsRepository.clearBrandingSettings();
     clearStatusMessages();
     telemetrySnapshotStreamValue
-        .addValue(const TenantAdminTelemetrySettingsSnapshot.empty());
+        .addValue(TenantAdminTelemetrySettingsSnapshot.empty());
     clearTelemetryForm();
     clearBrandingFile(TenantAdminBrandingAssetSlot.lightLogo);
     clearBrandingFile(TenantAdminBrandingAssetSlot.darkLogo);
@@ -1288,8 +1287,8 @@ class TenantAdminSettingsController implements Disposable {
   }
 
   void _resetMapUiDraft() {
-    _mapUiSettings = const TenantAdminMapUiSettings.empty();
-    mapUiSettingsStreamValue.addValue(const TenantAdminMapUiSettings.empty());
+    _mapUiSettings = TenantAdminMapUiSettings.empty();
+    mapUiSettingsStreamValue.addValue(TenantAdminMapUiSettings.empty());
     mapFilterRuleCatalogStreamValue
         .addValue(const TenantAdminMapFilterRuleCatalog.empty());
     mapFilterRuleCatalogLoadingStreamValue.addValue(false);

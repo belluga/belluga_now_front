@@ -9,7 +9,7 @@ import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
 import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
 import 'package:belluga_now/domain/repositories/city_map_repository_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dto/mappers/map_dto_mapper.dart';
-import 'package:belluga_now/infrastructure/services/http/laravel_map_poi_http_service.dart';
+import 'package:belluga_now/infrastructure/dal/dao/laravel_backend/map/laravel_map_poi_http_service.dart';
 
 class CityMapRepository extends CityMapRepositoryContract with MapDtoMapper {
   CityMapRepository({
@@ -79,7 +79,7 @@ class CityMapRepository extends CityMapRepositoryContract with MapDtoMapper {
 
   @override
   Future<PoiFilterOptions> fetchFilters() async {
-    final filters = await _laravelHttpService.getFilters(const PoiQuery());
+    final filters = await _laravelHttpService.getFilters(PoiQuery());
     final tags = filters.tags
         .map((tag) => tag.key.trim())
         .where((tag) => tag.isNotEmpty)

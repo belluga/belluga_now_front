@@ -1,10 +1,9 @@
-import 'dart:convert';
-
 import 'package:belluga_now/domain/repositories/landlord_auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_settings_repository_contract.dart';
 import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_settings.dart';
+import 'package:belluga_now/infrastructure/dal/dao/http/json_object_response_decoder.dart';
 import 'package:belluga_now/infrastructure/repositories/tenant_admin/support/tenant_admin_validation_failure_resolver.dart';
 import 'package:dio/dio.dart';
 import 'package:get_it/get_it.dart';
@@ -21,6 +20,8 @@ class TenantAdminSettingsRepository
 
   final Dio _dio;
   final TenantAdminTenantScopeContract? _tenantScope;
+  final JsonObjectResponseDecoder _jsonObjectResponseDecoder =
+      const JsonObjectResponseDecoder();
   final StreamValue<TenantAdminBrandingSettings?> _brandingSettingsStreamValue =
       StreamValue<TenantAdminBrandingSettings?>(defaultValue: null);
   int _brandingFetchSequence = 0;
@@ -226,7 +227,7 @@ class TenantAdminSettingsRepository
         ),
       );
       final payload = _extractEnvironmentMap(
-        _decodeJsonObject(
+        _jsonObjectResponseDecoder.decode(
           response.data,
           endpoint: response.requestOptions.uri,
         ),
@@ -398,7 +399,7 @@ class TenantAdminSettingsRepository
           key: key,
           rawImageUri: filterMap['image_uri'],
         );
-        final query = TenantAdminMapFilterQuery.fromJson(
+        final query = _mapMapFilterQuery(
           filterMap['query'] is Map
               ? Map<String, dynamic>.from(filterMap['query'] as Map)
               : null,
@@ -440,43 +441,6 @@ class TenantAdminSettingsRepository
     throw Exception('Unexpected environment data shape.');
   }
 
-  Map<String, dynamic> _decodeJsonObject(
-    dynamic raw, {
-    required Uri endpoint,
-  }) {
-    if (raw is Map<String, dynamic>) {
-      return raw;
-    }
-    if (raw is Map) {
-      return Map<String, dynamic>.from(raw);
-    }
-    if (raw is String) {
-      final trimmed = raw.trim();
-      if (trimmed.isEmpty) {
-        throw Exception(
-          'Environment response body is empty for $endpoint.',
-        );
-      }
-      final decoded = jsonDecode(trimmed);
-      if (decoded is Map<String, dynamic>) {
-        return decoded;
-      }
-      if (decoded is Map) {
-        return Map<String, dynamic>.from(decoded);
-      }
-      throw Exception(
-        'Environment response is not an object for $endpoint.',
-      );
-    }
-    if (raw is List<int>) {
-      final decodedRaw = utf8.decode(raw, allowMalformed: true);
-      return _decodeJsonObject(decodedRaw, endpoint: endpoint);
-    }
-    throw Exception(
-      'Unexpected environment payload type (${raw.runtimeType}) for $endpoint.',
-    );
-  }
-
   TenantAdminTelemetrySettingsSnapshot _mapTelemetrySnapshot(dynamic raw) {
     if (raw is! Map<String, dynamic>) {
       throw Exception('Unexpected telemetry response shape.');
@@ -511,6 +475,29 @@ class TenantAdminSettingsRepository
           .toList(growable: false);
     }
     return const [];
+  }
+
+  TenantAdminMapFilterQuery _mapMapFilterQuery(Map<String, dynamic>? json) {
+    if (json == null) {
+      return TenantAdminMapFilterQuery();
+    }
+
+    List<String> asStringList(dynamic raw) {
+      if (raw is! List) {
+        return const <String>[];
+      }
+      return raw
+          .map((entry) => entry.toString().trim().toLowerCase())
+          .where((entry) => entry.isNotEmpty)
+          .toSet()
+          .toList(growable: false);
+    }
+
+    return TenantAdminMapFilterQuery(
+      source: TenantAdminMapFilterSource.fromRaw(json['source']?.toString()),
+      types: asStringList(json['types']),
+      taxonomy: asStringList(json['taxonomy']),
+    );
   }
 
   TenantAdminFirebaseSettings? _mapFirebaseSettings(Map<String, dynamic> map) {

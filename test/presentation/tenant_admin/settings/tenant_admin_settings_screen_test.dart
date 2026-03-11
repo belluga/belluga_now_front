@@ -752,7 +752,7 @@ class _FakeTenantAdminSettingsRepository
   TenantAdminMediaUpload? uploadedMapFilterPayload;
   final StreamValue<TenantAdminBrandingSettings?> _brandingSettingsStreamValue =
       StreamValue<TenantAdminBrandingSettings?>(defaultValue: null);
-  TenantAdminMapUiSettings _mapUiSettings = const TenantAdminMapUiSettings(
+  TenantAdminMapUiSettings _mapUiSettings = TenantAdminMapUiSettings(
     rawMapUi: {
       'radius': 15000,
       'default_origin': {
@@ -768,8 +768,7 @@ class _FakeTenantAdminSettingsRepository
     ),
     filters: [],
   );
-  TenantAdminBrandingSettings _brandingSettings =
-      const TenantAdminBrandingSettings(
+  TenantAdminBrandingSettings _brandingSettings = TenantAdminBrandingSettings(
     tenantName: 'Tenant Test',
     brightnessDefault: TenantAdminBrandingBrightness.light,
     primarySeedColor: '#009688',
@@ -799,7 +798,7 @@ class _FakeTenantAdminSettingsRepository
   Future<TenantAdminTelemetrySettingsSnapshot> deleteTelemetryIntegration({
     required String type,
   }) async {
-    return const TenantAdminTelemetrySettingsSnapshot(
+    return TenantAdminTelemetrySettingsSnapshot(
       integrations: [],
       availableEvents: ['app_opened'],
     );
@@ -807,7 +806,7 @@ class _FakeTenantAdminSettingsRepository
 
   @override
   Future<TenantAdminFirebaseSettings?> fetchFirebaseSettings() async {
-    return const TenantAdminFirebaseSettings(
+    return TenantAdminFirebaseSettings(
       apiKey: 'apikey',
       appId: 'appid',
       projectId: 'project-test',
@@ -818,7 +817,7 @@ class _FakeTenantAdminSettingsRepository
 
   @override
   Future<TenantAdminTelemetrySettingsSnapshot> fetchTelemetrySettings() async {
-    return const TenantAdminTelemetrySettingsSnapshot(
+    return TenantAdminTelemetrySettingsSnapshot(
       integrations: [],
       availableEvents: ['app_opened'],
     );

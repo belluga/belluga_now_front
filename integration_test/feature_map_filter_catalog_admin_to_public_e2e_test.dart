@@ -201,7 +201,7 @@ void main() {
         settingsController.updateMapFilterItemLabel(1, eventFilterLabel);
         settingsController.updateMapFilterItemRule(
           1,
-          const TenantAdminMapFilterQuery(
+          TenantAdminMapFilterQuery(
             source: TenantAdminMapFilterSource.event,
           ),
         );
@@ -300,14 +300,14 @@ void main() {
             }
             final assetFilter = settings.filters.firstWhere(
               (item) => item.key == assetFilterKey,
-              orElse: () => const TenantAdminMapFilterCatalogItem(
+              orElse: () => TenantAdminMapFilterCatalogItem(
                 key: '',
                 label: '',
               ),
             );
             final eventFilter = settings.filters.firstWhere(
               (item) => item.key == eventFilterKey,
-              orElse: () => const TenantAdminMapFilterCatalogItem(
+              orElse: () => TenantAdminMapFilterCatalogItem(
                 key: '',
                 label: '',
               ),

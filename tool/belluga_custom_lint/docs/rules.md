@@ -267,6 +267,12 @@ Fix:
 ```
 
 ### `domain_primitive_field_forbidden`
+Rollout note:
+```yaml
+custom_lint:
+  rules:
+    - domain_primitive_field_forbidden: false
+```
 Violation:
 ```dart
 class EventModel {

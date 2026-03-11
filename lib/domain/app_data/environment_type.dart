@@ -1,4 +1,1 @@
-enum EnvironmentType {
-  tenant,
-  landlord
-}
+enum EnvironmentType { tenant, landlord }

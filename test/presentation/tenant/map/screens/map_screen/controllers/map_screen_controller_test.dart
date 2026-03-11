@@ -361,7 +361,7 @@ void main() {
           key: 'event',
           label: 'Eventos agora',
           tags: const {},
-          serverQuery: const PoiFilterServerQuery(
+          serverQuery: PoiFilterServerQuery(
             source: 'event',
             types: {'show'},
             categoryKeys: {'culture'},
@@ -392,7 +392,7 @@ void main() {
             key: 'artists',
             label: 'Artistas',
             tags: const {},
-            serverQuery: const PoiFilterServerQuery(
+            serverQuery: PoiFilterServerQuery(
               source: 'account_profile',
               types: {'artist'},
               taxonomy: {'music_genre:jazz'},
@@ -415,7 +415,7 @@ void main() {
       mapRepository.nextPois = <CityPoiModel>[
         _buildPoi(id: 'poi-a'),
       ];
-      await controller.loadPois(const PoiQuery());
+      await controller.loadPois(PoiQuery());
       expect(controller.filteredPoisStreamValue.value, hasLength(1));
 
       controller.selectPoi(_buildPoi(id: 'poi-a'));
@@ -423,7 +423,7 @@ void main() {
 
       mapRepository.throwOnFetchPoints = true;
       await controller.loadPois(
-        const PoiQuery(categoryKeys: {'event'}),
+        PoiQuery(categoryKeys: {'event'}),
         loadingMessage: 'Aplicando filtros...',
       );
 
@@ -433,7 +433,7 @@ void main() {
 
     test('applies taxonomy filter tokens to map query', () async {
       controller.toggleTaxonomyFilter(
-        const PoiFilterTaxonomyTerm(
+        PoiFilterTaxonomyTerm(
           type: 'cuisine',
           value: 'italian',
           label: 'Italiana',
@@ -460,7 +460,7 @@ void main() {
           key: 'events',
           label: 'Eventos',
           tags: const {},
-          serverQuery: const PoiFilterServerQuery(
+          serverQuery: PoiFilterServerQuery(
             source: 'event',
           ),
         ),
@@ -472,7 +472,7 @@ void main() {
           key: 'beach',
           label: 'Praias',
           tags: const {},
-          serverQuery: const PoiFilterServerQuery(
+          serverQuery: PoiFilterServerQuery(
             source: 'static_asset',
             types: {'beach_spot'},
           ),
@@ -500,7 +500,7 @@ void main() {
           key: 'beach',
           label: 'Praias',
           tags: const {},
-          serverQuery: const PoiFilterServerQuery(
+          serverQuery: PoiFilterServerQuery(
             source: 'static_asset',
             types: {'beach_spot'},
           ),
@@ -522,10 +522,10 @@ void main() {
       final firstPoi = _buildPoi(id: 'poi-first');
       final secondPoi = _buildPoi(id: 'poi-second');
 
-      final firstFuture = controller.loadPois(const PoiQuery());
+      final firstFuture = controller.loadPois(PoiQuery());
       await _flushMicrotasks();
       final secondFuture = controller.loadPois(
-        const PoiQuery(categoryKeys: {'event'}),
+        PoiQuery(categoryKeys: {'event'}),
       );
       await _flushMicrotasks();
 

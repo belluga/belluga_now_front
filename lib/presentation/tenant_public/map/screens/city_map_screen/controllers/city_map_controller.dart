@@ -86,7 +86,7 @@ class CityMapController implements Disposable {
 
   CityCoordinate get defaultCenter => _repository.defaultCenter();
 
-  PoiQuery _currentQuery = const PoiQuery();
+  PoiQuery _currentQuery = PoiQuery();
   PoiQuery? _previousQueryBeforeMainFilter;
   Set<CityPoiCategory>? _previousSelectedCategories;
   Set<String>? _previousSelectedTags;
@@ -449,7 +449,7 @@ class CityMapController implements Disposable {
       );
     }
 
-    final fallbackQuery = _previousQueryBeforeMainFilter ?? const PoiQuery();
+    final fallbackQuery = _previousQueryBeforeMainFilter ?? PoiQuery();
     _previousQueryBeforeMainFilter = null;
     _previousSelectedCategories = null;
     _previousSelectedTags = null;
@@ -770,7 +770,7 @@ class CityMapController implements Disposable {
     if (shouldLoad) {
       _hasRequestedPois = true;
       await loadPois(
-        const PoiQuery(),
+        PoiQuery(),
         loadingMessage: 'Carregando pontos...',
       );
       await initialize();

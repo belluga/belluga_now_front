@@ -1,5 +1,13 @@
 import 'package:belluga_now/domain/map/city_poi_category.dart';
 
+import 'package:belluga_now/domain/map/filters/poi_filter_category.dart';
+import 'package:belluga_now/domain/map/filters/poi_filter_taxonomy_group.dart';
+
+export 'package:belluga_now/domain/map/filters/poi_filter_category.dart';
+export 'package:belluga_now/domain/map/filters/poi_filter_server_query.dart';
+export 'package:belluga_now/domain/map/filters/poi_filter_taxonomy_group.dart';
+export 'package:belluga_now/domain/map/filters/poi_filter_taxonomy_term.dart';
+
 class PoiFilterOptions {
   PoiFilterOptions({
     required this.categories,
@@ -25,125 +33,4 @@ class PoiFilterOptions {
     }
     return tags;
   }
-}
-
-class PoiFilterCategory {
-  PoiFilterCategory({
-    this.category,
-    required Set<String> tags,
-    String? key,
-    String? label,
-    this.imageUri,
-    this.count = 0,
-    this.serverQuery,
-  })  : key = _resolveKey(key, category),
-        label = _resolveLabel(label, key, category),
-        tags = tags
-            .map((tag) => tag.trim())
-            .where((tag) => tag.isNotEmpty)
-            .map(
-              (tag) => tag,
-            )
-            .toSet();
-
-  final String key;
-  final String label;
-  final String? imageUri;
-  final int count;
-  final CityPoiCategory? category;
-  final Set<String> tags;
-  final PoiFilterServerQuery? serverQuery;
-
-  static String _resolveKey(String? rawKey, CityPoiCategory? category) {
-    final normalized = (rawKey ?? '').trim().toLowerCase();
-    if (normalized.isNotEmpty) {
-      return normalized;
-    }
-    if (category == null) {
-      return '';
-    }
-    return category.name;
-  }
-
-  static String _resolveLabel(
-    String? rawLabel,
-    String? rawKey,
-    CityPoiCategory? category,
-  ) {
-    final trimmed = (rawLabel ?? '').trim();
-    if (trimmed.isNotEmpty) {
-      return trimmed;
-    }
-    if (category != null) {
-      return switch (category) {
-        CityPoiCategory.restaurant => 'Restaurantes',
-        CityPoiCategory.beach => 'Praias',
-        CityPoiCategory.nature => 'Natureza',
-        CityPoiCategory.culture => 'Cultura',
-        CityPoiCategory.monument => 'Histórico',
-        CityPoiCategory.church => 'Histórico',
-        CityPoiCategory.health => 'Saúde',
-        CityPoiCategory.lodging => 'Hospedagem',
-        CityPoiCategory.attraction => 'Atrações',
-        CityPoiCategory.sponsor => 'Parceiros',
-      };
-    }
-    final key = (rawKey ?? '').trim();
-    if (key.isEmpty) {
-      return 'Filtro';
-    }
-    return key;
-  }
-}
-
-class PoiFilterServerQuery {
-  const PoiFilterServerQuery({
-    this.source,
-    this.types = const <String>{},
-    this.categoryKeys = const <String>{},
-    this.taxonomy = const <String>{},
-    this.tags = const <String>{},
-  });
-
-  final String? source;
-  final Set<String> types;
-  final Set<String> categoryKeys;
-  final Set<String> taxonomy;
-  final Set<String> tags;
-
-  bool get isEmpty =>
-      (source == null || source!.trim().isEmpty) &&
-      types.isEmpty &&
-      categoryKeys.isEmpty &&
-      taxonomy.isEmpty &&
-      tags.isEmpty;
-}
-
-class PoiFilterTaxonomyGroup {
-  const PoiFilterTaxonomyGroup({
-    required this.type,
-    required this.label,
-    required this.terms,
-  });
-
-  final String type;
-  final String label;
-  final List<PoiFilterTaxonomyTerm> terms;
-}
-
-class PoiFilterTaxonomyTerm {
-  const PoiFilterTaxonomyTerm({
-    required this.type,
-    required this.value,
-    required this.label,
-    required this.count,
-  });
-
-  final String type;
-  final String value;
-  final String label;
-  final int count;
-
-  String get token =>
-      '${type.trim().toLowerCase()}:${value.trim().toLowerCase()}';
 }

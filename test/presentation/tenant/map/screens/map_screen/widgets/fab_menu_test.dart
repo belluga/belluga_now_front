@@ -261,7 +261,7 @@ void main() {
               key: 'praia_filtro',
               label: 'Praia',
               tags: const <String>{},
-              serverQuery: const PoiFilterServerQuery(
+              serverQuery: PoiFilterServerQuery(
                 source: 'static_asset',
                 types: {'beach_spot'},
               ),
@@ -305,7 +305,7 @@ void main() {
             key: 'praia_filtro',
             label: 'Praia',
             tags: const <String>{},
-            serverQuery: const PoiFilterServerQuery(
+            serverQuery: PoiFilterServerQuery(
               source: 'static_asset',
               types: {'beach_spot'},
             ),

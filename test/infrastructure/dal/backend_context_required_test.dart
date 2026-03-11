@@ -1,5 +1,5 @@
 import 'package:belluga_now/infrastructure/dal/dao/laravel_backend/auth_backend/auth_backend.dart';
-import 'package:belluga_now/infrastructure/services/http/laravel_map_poi_http_service.dart';
+import 'package:belluga_now/infrastructure/dal/dao/laravel_backend/map/laravel_map_poi_http_service.dart';
 import 'package:belluga_now/infrastructure/services/push/push_option_source_resolver.dart';
 import 'package:belluga_now/infrastructure/services/push/push_transport_configurator.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
@@ -145,7 +145,8 @@ class _NoopBackend extends BackendContract {
   TenantBackendContract get tenant => throw UnimplementedError();
 
   @override
-  AccountProfilesBackendContract get accountProfiles => _NoopAccountProfilesBackend();
+  AccountProfilesBackendContract get accountProfiles =>
+      _NoopAccountProfilesBackend();
 
   @override
   FavoriteBackendContract get favorites => throw UnimplementedError();
@@ -164,7 +165,8 @@ class _NoopAppDataBackend extends AppDataBackendContract {
 
 class _NoopAccountProfilesBackend implements AccountProfilesBackendContract {
   @override
-  Future<List<AccountProfileModel>> fetchAccountProfiles() => throw UnimplementedError();
+  Future<List<AccountProfileModel>> fetchAccountProfiles() =>
+      throw UnimplementedError();
 
   @override
   Future<List<AccountProfileModel>> searchAccountProfiles({

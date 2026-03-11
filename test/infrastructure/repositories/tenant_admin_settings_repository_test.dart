@@ -48,7 +48,7 @@ void main() {
     );
 
     final updated = await repository.updatePushSettings(
-      settings: const TenantAdminPushSettings(
+      settings: TenantAdminPushSettings(
         maxTtlDays: 14,
         maxPerMinute: 20,
         maxPerHour: 120,
@@ -137,7 +137,7 @@ void main() {
       dio: dio,
       tenantScope: scope,
     );
-    const mapUi = TenantAdminMapUiSettings(
+    final mapUi = TenantAdminMapUiSettings(
       rawMapUi: {
         'radius': {
           'min_km': 1,
@@ -289,7 +289,7 @@ void main() {
     final fetched = await repository.fetchMapUiSettings();
     final updated = await repository.updateMapUiSettings(
       settings: fetched.applyDefaultOrigin(
-        const TenantAdminMapDefaultOrigin(
+        TenantAdminMapDefaultOrigin(
           lat: -20.611111,
           lng: -40.422222,
           label: 'Praia do Morro',
@@ -326,7 +326,7 @@ void main() {
     );
 
     final snapshot = await repository.upsertTelemetryIntegration(
-      integration: const TenantAdminTelemetryIntegration(
+      integration: TenantAdminTelemetryIntegration(
         type: 'mixpanel',
         trackAll: false,
         events: ['app_opened'],
