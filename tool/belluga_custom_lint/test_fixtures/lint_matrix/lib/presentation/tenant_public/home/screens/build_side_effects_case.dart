@@ -1,26 +1,28 @@
-class BuildContext {}
+// ignore_for_file: unused_element
 
-class Widget {}
+class _BuildContext {}
+
+class _Widget {}
 
 class StatelessWidget {
   const StatelessWidget();
 
-  Widget build(BuildContext context) => Widget();
+  _Widget build(_BuildContext context) => _Widget();
 }
 
-class SideEffectService {
+class _SideEffectService {
   void fetchData() {}
 }
 
-class BuildSideEffectsScreen extends StatelessWidget {
-  BuildSideEffectsScreen(this.service);
+class _BuildSideEffectsScreen extends StatelessWidget {
+  _BuildSideEffectsScreen(this.service);
 
-  final SideEffectService service;
+  final _SideEffectService service;
 
   @override
-  Widget build(BuildContext context) {
+  _Widget build(_BuildContext context) {
     // expect_lint: ui_build_side_effects_forbidden
     service.fetchData();
-    return Widget();
+    return _Widget();
   }
 }

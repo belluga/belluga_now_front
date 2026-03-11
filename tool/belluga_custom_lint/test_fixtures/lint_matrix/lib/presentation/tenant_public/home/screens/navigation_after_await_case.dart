@@ -1,9 +1,9 @@
-class Router {
+class _Router {
   void push(Object route) {}
 }
 
 class NavAfterAwaitScreen {
-  final Router router = Router();
+  final _Router router = _Router();
 
   Future<void> open(Object route) async {
     await Future<void>.value();

@@ -31,6 +31,10 @@
 - `ui_streamvalue_ownership_forbidden` (`P0`): UI cannot own `StreamValue`/`StreamController`.
 - `ui_dto_import_forbidden` (`P0`): presentation cannot import DTO artifacts.
 - `domain_dto_dependency_forbidden` (`P0`): domain cannot depend on DTO artifacts.
+- `domain_json_factory_forbidden` (`P0`): domain cannot declare `fromJson`/`fromMap` factories.
+- `repository_json_parsing_forbidden` (`P0`): repositories cannot parse raw JSON or hydrate DTOs directly.
+- `service_json_parsing_forbidden` (`P0`): services cannot parse raw JSON or hydrate DTOs directly.
+- `repository_inline_dto_to_domain_mapper_forbidden` (`P0`): repositories cannot own inline DTO -> domain mapper methods.
 - `module_direct_getit_registration_forbidden` (`P0`): classes extending `ModuleContract` cannot use direct `GetIt.I.register*`.
 - `controller_direct_navigation_forbidden` (`P1`): controllers cannot call Navigator/router navigation methods.
 - `ui_navigator_usage_forbidden` (`P1`): UI cannot call `Navigator.*` directly.
@@ -38,7 +42,9 @@
 - `ui_build_side_effects_forbidden` (`P1`): side effects in `build`/`didChangeDependencies` are forbidden.
 - `ui_future_stream_builder_forbidden` (`P1`): `FutureBuilder`/`StreamBuilder` are forbidden under `StreamValue` architecture.
 - `ui_controller_ownership_forbidden` (`P1`): Screen files cannot own UI controllers/keys; auxiliary widgets can own them only when isolated from feature controller interactions.
+- `domain_primitive_field_forbidden` (`P1`): domain fields cannot use primitive transport-oriented types directly.
 - `screen_controller_resolution_pattern_required` (`P2`): screen classes must not receive controller params; resolve controller in screen file.
+- `multi_public_class_file_warning` (`P2`): files under `lib/` should keep one public class per file.
 - `multi_widget_file_warning` (`P2`): screen files should avoid multiple widget classes.
 - `controller_buildcontext_dependency_forbidden` (`P2`): controllers cannot use `BuildContext` in API/signatures.
 - `global_ui_controller_naming_forbidden` (`P2`): sanctioned global registrations cannot use UI controller naming (`*Controller`, `*ControllerContract`).
@@ -116,6 +122,54 @@ Fix:
 class Event {
   const Event({required this.id});
   final String id;
+}
+```
+
+### `domain_json_factory_forbidden`
+Violation:
+```dart
+class EventConfig {
+  factory EventConfig.fromJson(Map<String, dynamic> json) => EventConfig();
+}
+```
+Fix:
+```dart
+class EventConfig {
+  factory EventConfig.fromPrimitives({required EventNameValue nameValue}) =>
+      EventConfig();
+}
+```
+
+### `repository_json_parsing_forbidden`
+Violation:
+```dart
+final dto = EventDTO.fromJson(json);
+```
+Fix:
+```dart
+final dto = await backend.fetchEventDto();
+return mapEventDto(dto);
+```
+
+### `service_json_parsing_forbidden`
+Violation:
+```dart
+final payload = jsonDecode(raw);
+```
+Fix:
+```dart
+return backend.decodePayload(raw);
+```
+
+### `repository_inline_dto_to_domain_mapper_forbidden`
+Violation:
+```dart
+EventModel mapEvent(EventDTO dto) => EventModel.fromPrimitives(...);
+```
+Fix:
+```dart
+class EventRepository with EventDtoMapper {
+  EventModel read(EventDTO dto) => mapEventDto(dto);
 }
 ```
 
@@ -212,6 +266,20 @@ Fix:
 // keep local only if it does not pass/bridge this controller to feature controller calls.
 ```
 
+### `domain_primitive_field_forbidden`
+Violation:
+```dart
+class EventModel {
+  final String id;
+}
+```
+Fix:
+```dart
+class EventModel {
+  final EventIdValue idValue;
+}
+```
+
 ### `screen_controller_resolution_pattern_required`
 Violation:
 ```dart
@@ -226,6 +294,19 @@ class HomeScreen extends StatelessWidget {
   HomeScreen({super.key});
   final HomeController controller = GetIt.I.get<HomeController>();
 }
+```
+
+### `multi_public_class_file_warning`
+Violation:
+```dart
+class EventCard {}
+class EventBadge {}
+```
+Fix:
+```dart
+class EventCard {}
+
+class _EventBadge {}
 ```
 
 ### `multi_widget_file_warning`
