@@ -849,7 +849,7 @@ class _FakeTenantAdminSettingsRepository
   }) async {
     uploadedMapFilterKey = key;
     uploadedMapFilterPayload = upload;
-    return 'https://guarappari.test/storage/map-filters/$key.png';
+    return 'https://guarappari.test/api/v1/media/map-filters/$key?v=1';
   }
 
   @override

@@ -83,7 +83,7 @@ void main() {
     expect(settings.filters.first.label, 'Eventos');
     expect(
       settings.filters.first.imageUri,
-      'https://tenant-a.test/storage/map-filters/events.png',
+      'https://tenant-a.test/api/v1/media/map-filters/events?v=1710000000',
     );
     expect(
       settings.filters.first.query.source,
@@ -153,7 +153,8 @@ void main() {
           {
             'key': 'events',
             'label': 'Eventos',
-            'image_uri': 'https://tenant-a.test/storage/map-filters/events.png',
+            'image_uri':
+                'https://tenant-a.test/map-filters/events/image?v=1710000000',
             'query': {
               'source': 'event',
               'types': ['show'],
@@ -171,7 +172,8 @@ void main() {
         TenantAdminMapFilterCatalogItem(
           key: 'events',
           label: 'Eventos',
-          imageUri: 'https://tenant-a.test/storage/map-filters/events.png',
+          imageUri:
+              'https://tenant-a.test/map-filters/events/image?v=1710000000',
           query: TenantAdminMapFilterQuery(
             source: TenantAdminMapFilterSource.event,
             types: ['show'],
@@ -209,6 +211,10 @@ void main() {
     expect(updated.filters.first.key, 'events');
     expect(updated.filters.first.label, 'Eventos');
     expect(
+      updated.filters.first.imageUri,
+      'https://tenant-a.test/api/v1/media/map-filters/events?v=1710000000',
+    );
+    expect(
         updated.filters.first.query.source, TenantAdminMapFilterSource.event);
     expect(updated.filters.first.query.types, equals(const ['show']));
     expect(
@@ -237,7 +243,8 @@ void main() {
       ),
     );
 
-    expect(imageUri, 'https://tenant-a.test/storage/map-filters/events.png');
+    expect(imageUri,
+        'https://tenant-a.test/api/v1/media/map-filters/events?v=1710000000');
     final request = adapter.requests.single;
     expect(request.uri.path, '/admin/api/v1/media/map-filter-image');
     expect(request.headers['Authorization'], 'Bearer test-token');
@@ -863,7 +870,7 @@ class _RoutingAdapter implements HttpClientAdapter {
                       'key': 'events',
                       'label': 'Eventos',
                       'image_uri':
-                          'https://tenant-a.test/storage/map-filters/events.png',
+                          'https://tenant-a.test/map-filters/events/image?v=1710000000',
                       'query': {
                         'source': 'event',
                         'types': ['show'],
@@ -901,7 +908,7 @@ class _RoutingAdapter implements HttpClientAdapter {
       return _jsonResponse({
         'data': {
           'image_uri':
-              'https://tenant-a.test/storage/map-filters/$normalizedKey.png',
+              'https://tenant-a.test/map-filters/$normalizedKey/image?v=1710000000',
         },
       });
     }

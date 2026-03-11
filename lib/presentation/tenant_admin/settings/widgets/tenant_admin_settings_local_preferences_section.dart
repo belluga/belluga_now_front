@@ -329,6 +329,7 @@ class TenantAdminSettingsLocalPreferencesSection extends StatelessWidget {
                   color: theme.colorScheme.surfaceContainerHighest,
                   child: hasImage
                       ? Image.network(
+                          key: ValueKey(item.imageUri),
                           item.imageUri!,
                           fit: BoxFit.cover,
                           errorBuilder: (_, __, ___) => Icon(

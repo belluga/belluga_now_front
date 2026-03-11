@@ -115,15 +115,13 @@ class _FabMenuState extends State<FabMenu> {
                                       ),
                                       const SizedBox(height: 8),
                                       ...categories.map((category) {
-                                        final normalizedKey =
-                                            category.key.trim().toLowerCase();
-                                        final isActive = activeCategoryKeys
-                                            .contains(normalizedKey);
+                                        final isActive = _mapController
+                                            .isCategoryFilterActive(category);
                                         final backgroundColor = isActive
-                                            ? scheme.primaryContainer
-                                            : scheme.surface;
+                                            ? scheme.primary
+                                            : scheme.surfaceContainerHigh;
                                         final foregroundColor = isActive
-                                            ? scheme.onPrimaryContainer
+                                            ? scheme.onPrimary
                                             : scheme.onSurfaceVariant;
                                         const fallbackIcon = Icons.filter_alt;
                                         return Padding(
@@ -205,15 +203,14 @@ class _FabMenuState extends State<FabMenu> {
     }
     return SizedBox.square(
       dimension: 20,
-      child: ClipOval(
-        child: Image.network(
-          imageUri,
-          fit: BoxFit.cover,
-          errorBuilder: (_, __, ___) => Icon(
-            fallbackIcon,
-            size: 18,
-            color: fallbackColor,
-          ),
+      child: Image.network(
+        key: ValueKey(imageUri),
+        imageUri,
+        fit: BoxFit.contain,
+        errorBuilder: (_, __, ___) => Icon(
+          fallbackIcon,
+          size: 18,
+          color: fallbackColor,
         ),
       ),
     );

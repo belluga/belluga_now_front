@@ -19,6 +19,7 @@ class LaravelMapPoiHttpService {
                 connectTimeout: const Duration(seconds: 2),
                 receiveTimeout: const Duration(seconds: 4),
                 sendTimeout: const Duration(seconds: 4),
+                listFormat: ListFormat.multiCompatible,
               ),
             );
 
@@ -49,7 +50,10 @@ class LaravelMapPoiHttpService {
     final response = await _dio.get(
       '/v1/map/pois',
       queryParameters: params,
-      options: Options(headers: _buildHeaders()),
+      options: Options(
+        headers: _buildHeaders(),
+        listFormat: ListFormat.multiCompatible,
+      ),
     );
 
     final raw = response.data;
@@ -78,7 +82,10 @@ class LaravelMapPoiHttpService {
     final response = await _dio.get(
       '/v1/map/filters',
       queryParameters: _buildQueryParams(query),
-      options: Options(headers: _buildHeaders()),
+      options: Options(
+        headers: _buildHeaders(),
+        listFormat: ListFormat.multiCompatible,
+      ),
     );
 
     final raw = response.data;

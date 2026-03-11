@@ -89,7 +89,11 @@ class TenantAdminSettingsRepository
         ),
       );
       final payloadMap = _extractDataMap(response.data);
-      final imageUri = payloadMap['image_uri']?.toString().trim() ?? '';
+      final imageUri = _normalizeMapFilterImageUri(
+            key: key,
+            rawImageUri: payloadMap['image_uri'],
+          ) ??
+          '';
       if (imageUri.isEmpty) {
         throw Exception('Map filter image upload response is empty.');
       }
@@ -390,7 +394,10 @@ class TenantAdminSettingsRepository
         final filterMap = Map<String, dynamic>.from(entry);
         final key = filterMap['key']?.toString().trim() ?? '';
         final label = filterMap['label']?.toString().trim() ?? '';
-        final imageUri = filterMap['image_uri']?.toString().trim();
+        final imageUri = _normalizeMapFilterImageUri(
+          key: key,
+          rawImageUri: filterMap['image_uri'],
+        );
         final query = TenantAdminMapFilterQuery.fromJson(
           filterMap['query'] is Map
               ? Map<String, dynamic>.from(filterMap['query'] as Map)
@@ -823,6 +830,41 @@ class TenantAdminSettingsRepository
     if (parsed.host.trim().isNotEmpty) {
       return parsed.toString();
     }
+    return tenantOrigin.resolveUri(parsed).toString();
+  }
+
+  String? _normalizeMapFilterImageUri({
+    required String key,
+    required dynamic rawImageUri,
+  }) {
+    final normalizedKey = key.trim().toLowerCase();
+    final value = rawImageUri?.toString().trim();
+    if (normalizedKey.isEmpty || value == null || value.isEmpty) {
+      return null;
+    }
+
+    final tenantOrigin = _resolveTenantOriginUri();
+    final parsed = Uri.tryParse(value);
+    if (parsed == null) {
+      return value;
+    }
+
+    final path = parsed.path.trim();
+    final legacyPath = '/map-filters/$normalizedKey/image';
+    final canonicalPath = '/api/v1/media/map-filters/$normalizedKey';
+
+    if (path == legacyPath || path == canonicalPath) {
+      final canonicalUri = tenantOrigin.resolve(canonicalPath);
+      final query = parsed.hasQuery ? parsed.query : null;
+      return canonicalUri
+          .replace(query: query == null || query.isEmpty ? null : query)
+          .toString();
+    }
+
+    if (parsed.host.trim().isNotEmpty) {
+      return parsed.toString();
+    }
+
     return tenantOrigin.resolveUri(parsed).toString();
   }
 
