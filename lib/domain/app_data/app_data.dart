@@ -132,7 +132,7 @@ class AppData {
     final mainDomain = DomainValue()
       ..parse(DomainValue.coerceRaw(map['main_domain']));
     final tenantIdValue = TenantIdValue()..parse(map['tenant_id']?.toString());
-    final profileTypeRegistry = ProfileTypeRegistry.fromJsonList(
+    final profileTypeRegistry = ProfileTypeRegistry.fromPrimitivesList(
       map['profile_types'] as List<dynamic>?,
     );
     final telemetryRaw = map['telemetry'];
@@ -162,7 +162,17 @@ class AppData {
       hrefValue: _buildHrefValue(resolvedHref),
       deviceValue: _buildDeviceValue(localInfo['device'] as String),
       nameValue: EnvironmentNameValue()..parse(map['name']),
-      themeDataSettings: ThemeDataSettings.fromJson(map['theme_data_settings']),
+      themeDataSettings: ThemeDataSettings.fromPrimitives(
+        brightnessDefault:
+            (map['theme_data_settings'] as Map<String, dynamic>?)
+                ?['brightness_default'] as String?,
+        primarySeedColor:
+            (map['theme_data_settings'] as Map<String, dynamic>?)
+                ?['primary_seed_color'] as String?,
+        secondarySeedColor:
+            (map['theme_data_settings'] as Map<String, dynamic>?)
+                ?['secondary_seed_color'] as String?,
+      ),
       tenantIdValue: tenantIdValue,
       profileTypeRegistry: profileTypeRegistry,
       mainDomainValue: mainDomain,

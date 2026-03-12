@@ -1,32 +1,9 @@
+export 'anonymous_identity_response.dart';
+export 'auth_registration_response.dart';
+
 import 'package:belluga_now/infrastructure/user/dtos/user_dto.dart';
-
-class AnonymousIdentityResponse {
-  const AnonymousIdentityResponse({
-    required this.token,
-    this.userId,
-    this.identityState,
-    this.expiresAt,
-  });
-
-  final String token;
-  final String? userId;
-  final String? identityState;
-  final String? expiresAt;
-}
-
-class AuthRegistrationResponse {
-  const AuthRegistrationResponse({
-    required this.token,
-    this.userId,
-    this.identityState,
-    this.expiresAt,
-  });
-
-  final String token;
-  final String? userId;
-  final String? identityState;
-  final String? expiresAt;
-}
+import 'package:belluga_now/infrastructure/dal/dao/anonymous_identity_response.dart';
+import 'package:belluga_now/infrastructure/dal/dao/auth_registration_response.dart';
 
 abstract class AuthBackendContract {
   Future<(UserDto, String)> loginWithEmailPassword(

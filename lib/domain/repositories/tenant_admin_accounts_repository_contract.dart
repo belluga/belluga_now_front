@@ -1,3 +1,5 @@
+export 'tenant_admin_loaded_account_watch.dart';
+
 import 'dart:async';
 import 'dart:math' as math;
 
@@ -9,27 +11,8 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_accounts_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
+import 'package:belluga_now/domain/repositories/tenant_admin_loaded_account_watch.dart';
 import 'package:stream_value/core/stream_value.dart';
-
-class TenantAdminLoadedAccountWatch {
-  TenantAdminLoadedAccountWatch({
-    required this.streamValue,
-    required void Function() onDispose,
-  }) : _onDispose = onDispose;
-
-  final StreamValue<TenantAdminAccount?> streamValue;
-  final void Function() _onDispose;
-  bool _disposed = false;
-
-  void dispose() {
-    if (_disposed) {
-      return;
-    }
-    _disposed = true;
-    _onDispose();
-    streamValue.dispose();
-  }
-}
 
 abstract class TenantAdminAccountsRepositoryContract {
   static final Expando<_TenantAdminAccountsPaginationState>

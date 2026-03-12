@@ -1,3 +1,5 @@
+export 'tenant_admin_branding_asset_slot.dart';
+
 import 'dart:async';
 import 'dart:typed_data';
 
@@ -16,20 +18,13 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_settings.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_static_profile_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_definition.dart';
+import 'package:belluga_now/presentation/tenant_admin/settings/controllers/tenant_admin_branding_asset_slot.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_form_value_utils.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_image_ingestion_service.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:stream_value/core/stream_value.dart';
-
-enum TenantAdminBrandingAssetSlot {
-  lightLogo,
-  darkLogo,
-  lightIcon,
-  darkIcon,
-  pwaIcon,
-}
 
 class TenantAdminSettingsController implements Disposable {
   TenantAdminSettingsController({

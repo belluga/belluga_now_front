@@ -1,3 +1,5 @@
+export 'invite_decision_result.dart';
+
 import 'dart:async';
 import 'dart:collection';
 
@@ -10,6 +12,7 @@ import 'package:belluga_now/domain/repositories/user_events_repository_contract.
 import 'package:card_stack_swiper/card_stack_swiper.dart';
 import 'package:event_tracker_handler/event_tracker_handler.dart';
 import 'package:get_it/get_it.dart';
+import 'package:belluga_now/presentation/tenant_public/invites/screens/invite_flow_screen/controllers/invite_decision_result.dart';
 import 'package:stream_value/core/stream_value.dart';
 
 class InviteFlowScreenController with Disposable {
@@ -372,14 +375,4 @@ class _RetryJob {
 
   final Future<void> Function() task;
   final Completer<bool> completer;
-}
-
-class InviteDecisionResult {
-  const InviteDecisionResult({
-    required this.invite,
-    required this.queued,
-  });
-
-  final InviteModel? invite;
-  final bool queued;
 }

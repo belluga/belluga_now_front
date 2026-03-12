@@ -1,3 +1,5 @@
+export 'favorite_navigation_target.dart';
+
 import 'dart:async';
 
 import 'package:belluga_now/domain/favorite/favorite_badge.dart';
@@ -10,6 +12,7 @@ import 'package:belluga_now/domain/repositories/favorite_repository_contract.dar
 import 'package:belluga_now/domain/repositories/account_profiles_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
+import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/favorite_section/controllers/favorite_navigation_target.dart';
 import 'package:belluga_now/domain/value_objects/asset_path_value.dart';
 import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
 import 'package:belluga_now/domain/value_objects/title_value.dart';
@@ -300,24 +303,4 @@ class FavoritesSectionController implements Disposable {
     favoritesStreamValue.dispose();
     navigationTargetStreamValue.dispose();
   }
-}
-
-sealed class FavoriteNavigationTarget {
-  const FavoriteNavigationTarget();
-}
-
-class FavoriteNavigationPrimary extends FavoriteNavigationTarget {
-  const FavoriteNavigationPrimary();
-}
-
-class FavoriteNavigationPartner extends FavoriteNavigationTarget {
-  const FavoriteNavigationPartner({required this.slug});
-
-  final String slug;
-}
-
-class FavoriteNavigationSearch extends FavoriteNavigationTarget {
-  const FavoriteNavigationSearch({required this.query});
-
-  final String query;
 }

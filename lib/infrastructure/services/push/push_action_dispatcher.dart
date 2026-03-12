@@ -1,31 +1,10 @@
+export 'push_option_selector_payload.dart';
+
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
+import 'package:belluga_now/infrastructure/services/push/push_option_selector_payload.dart';
 import 'package:get_it/get_it.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:push_handler/push_handler.dart';
-
-class PushOptionSelectorPayload {
-  const PushOptionSelectorPayload({
-    required this.title,
-    required this.body,
-    required this.layout,
-    required this.gridColumns,
-    required this.selectionMode,
-    required this.options,
-    required this.minSelected,
-    required this.maxSelected,
-    required this.initialSelected,
-  });
-
-  final String title;
-  final String body;
-  final String layout;
-  final int gridColumns;
-  final String selectionMode;
-  final List<OptionItem> options;
-  final int minSelected;
-  final int maxSelected;
-  final List<dynamic> initialSelected;
-}
 
 class PushActionDispatcher {
   PushActionDispatcher({

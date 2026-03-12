@@ -119,25 +119,28 @@ class ThemeDataSettings {
     );
   }
 
-  factory ThemeDataSettings.fromJson(Map<String, dynamic> json) {
+  factory ThemeDataSettings.fromPrimitives({
+    required String? brightnessDefault,
+    String? primarySeedColor,
+    String? secondarySeedColor,
+  }) {
     final brightnessDefaultValue = BrightnessValue()
-      ..parse(json['brightness_default']);
+      ..parse(brightnessDefault);
 
-    final primarySeedColor = json['primary_seed_color'] as String? ?? '#4FA0E3';
-    final secondarySeedColor =
-        json['secondary_seed_color'] as String? ?? '#E80D5D';
+    final resolvedPrimarySeedColor = primarySeedColor ?? '#4FA0E3';
+    final resolvedSecondarySeedColor = secondarySeedColor ?? '#E80D5D';
 
-    final darkSchemeData = ColorSchemeData.fromJson({
-      'brightness': 'dark',
-      'primary_seed_color': primarySeedColor,
-      'secondary_seed_color': secondarySeedColor,
-    });
+    final darkSchemeData = ColorSchemeData.fromPrimitives(
+      brightness: 'dark',
+      primarySeedColor: resolvedPrimarySeedColor,
+      secondarySeedColor: resolvedSecondarySeedColor,
+    );
 
-    final lightSchemeData = ColorSchemeData.fromJson({
-      'brightness': 'light',
-      'primary_seed_color': primarySeedColor,
-      'secondary_seed_color': secondarySeedColor,
-    });
+    final lightSchemeData = ColorSchemeData.fromPrimitives(
+      brightness: 'light',
+      primarySeedColor: resolvedPrimarySeedColor,
+      secondarySeedColor: resolvedSecondarySeedColor,
+    );
 
     return ThemeDataSettings(
       darkSchemeData: darkSchemeData,

@@ -1,9 +1,12 @@
+export 'init_screen_ui_state.dart';
+
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/domain/controllers/belluga_init_screen_controller_contract.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/push/push_presentation_gate_contract.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
+import 'package:belluga_now/presentation/shared/init/screens/init_screen/controllers/init_screen_ui_state.dart';
 import 'package:stream_value/core/stream_value.dart';
 
 import 'package:get_it/get_it.dart';
@@ -88,31 +91,4 @@ final class InitScreenController extends BellugaInitScreenControllerContract {
   // openAPPEvent() {
   //   _behaviorController.saveEvent(type: EventTrackingTypes.openApp);
   // }
-}
-
-class InitScreenUiState {
-  static const _unset = Object();
-
-  const InitScreenUiState({
-    required this.errorMessage,
-    required this.isRetrying,
-  });
-
-  factory InitScreenUiState.initial() =>
-      const InitScreenUiState(errorMessage: null, isRetrying: false);
-
-  final String? errorMessage;
-  final bool isRetrying;
-
-  InitScreenUiState copyWith({
-    Object? errorMessage = _unset,
-    bool? isRetrying,
-  }) {
-    final nextErrorMessage =
-        errorMessage == _unset ? this.errorMessage : errorMessage as String?;
-    return InitScreenUiState(
-      errorMessage: nextErrorMessage,
-      isRetrying: isRetrying ?? this.isRetrying,
-    );
-  }
 }

@@ -1,3 +1,6 @@
+export 'tenant_admin_account_profile_create_draft.dart';
+export 'tenant_admin_account_profile_edit_draft.dart';
+
 import 'dart:async';
 import 'dart:typed_data';
 
@@ -13,6 +16,8 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_definition.dart';
 import 'package:belluga_now/domain/services/tenant_admin_location_selection_contract.dart';
+import 'package:belluga_now/presentation/tenant_admin/account_profiles/controllers/tenant_admin_account_profile_create_draft.dart';
+import 'package:belluga_now/presentation/tenant_admin/account_profiles/controllers/tenant_admin_account_profile_edit_draft.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_image_ingestion_service.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart' show Disposable, GetIt;
@@ -1078,191 +1083,6 @@ class TenantAdminAccountProfilesController implements Disposable {
   @override
   void onDispose() {
     dispose();
-  }
-}
-
-class TenantAdminAccountProfileEditDraft {
-  static const _unset = Object();
-
-  const TenantAdminAccountProfileEditDraft({
-    required this.selectedProfileType,
-    required this.avatarFile,
-    required this.coverFile,
-    required this.avatarRemoteUrl,
-    required this.coverRemoteUrl,
-    required this.avatarRemoteReady,
-    required this.coverRemoteReady,
-    required this.avatarRemoteError,
-    required this.coverRemoteError,
-    required this.avatarPreloadUrl,
-    required this.coverPreloadUrl,
-    required this.avatarBusy,
-    required this.coverBusy,
-  });
-
-  factory TenantAdminAccountProfileEditDraft.initial() =>
-      const TenantAdminAccountProfileEditDraft(
-        selectedProfileType: null,
-        avatarFile: null,
-        coverFile: null,
-        avatarRemoteUrl: null,
-        coverRemoteUrl: null,
-        avatarRemoteReady: false,
-        coverRemoteReady: false,
-        avatarRemoteError: false,
-        coverRemoteError: false,
-        avatarPreloadUrl: null,
-        coverPreloadUrl: null,
-        avatarBusy: false,
-        coverBusy: false,
-      );
-
-  final String? selectedProfileType;
-  final XFile? avatarFile;
-  final XFile? coverFile;
-  final String? avatarRemoteUrl;
-  final String? coverRemoteUrl;
-  final bool avatarRemoteReady;
-  final bool coverRemoteReady;
-  final bool avatarRemoteError;
-  final bool coverRemoteError;
-  final String? avatarPreloadUrl;
-  final String? coverPreloadUrl;
-  final bool avatarBusy;
-  final bool coverBusy;
-
-  TenantAdminAccountProfileEditDraft copyWith({
-    Object? selectedProfileType = _unset,
-    Object? avatarFile = _unset,
-    Object? coverFile = _unset,
-    Object? avatarRemoteUrl = _unset,
-    Object? coverRemoteUrl = _unset,
-    bool? avatarRemoteReady,
-    bool? coverRemoteReady,
-    bool? avatarRemoteError,
-    bool? coverRemoteError,
-    Object? avatarPreloadUrl = _unset,
-    Object? coverPreloadUrl = _unset,
-    bool? avatarBusy,
-    bool? coverBusy,
-  }) {
-    final nextSelectedProfileType = selectedProfileType == _unset
-        ? this.selectedProfileType
-        : selectedProfileType as String?;
-    final nextAvatarFile =
-        avatarFile == _unset ? this.avatarFile : avatarFile as XFile?;
-    final nextCoverFile =
-        coverFile == _unset ? this.coverFile : coverFile as XFile?;
-    final nextAvatarRemoteUrl = avatarRemoteUrl == _unset
-        ? this.avatarRemoteUrl
-        : avatarRemoteUrl as String?;
-    final nextCoverRemoteUrl = coverRemoteUrl == _unset
-        ? this.coverRemoteUrl
-        : coverRemoteUrl as String?;
-    final nextAvatarPreloadUrl = avatarPreloadUrl == _unset
-        ? this.avatarPreloadUrl
-        : avatarPreloadUrl as String?;
-    final nextCoverPreloadUrl = coverPreloadUrl == _unset
-        ? this.coverPreloadUrl
-        : coverPreloadUrl as String?;
-
-    return TenantAdminAccountProfileEditDraft(
-      selectedProfileType: nextSelectedProfileType,
-      avatarFile: nextAvatarFile,
-      coverFile: nextCoverFile,
-      avatarRemoteUrl: nextAvatarRemoteUrl,
-      coverRemoteUrl: nextCoverRemoteUrl,
-      avatarRemoteReady: avatarRemoteReady ?? this.avatarRemoteReady,
-      coverRemoteReady: coverRemoteReady ?? this.coverRemoteReady,
-      avatarRemoteError: avatarRemoteError ?? this.avatarRemoteError,
-      coverRemoteError: coverRemoteError ?? this.coverRemoteError,
-      avatarPreloadUrl: nextAvatarPreloadUrl,
-      coverPreloadUrl: nextCoverPreloadUrl,
-      avatarBusy: avatarBusy ?? this.avatarBusy,
-      coverBusy: coverBusy ?? this.coverBusy,
-    );
-  }
-
-  TenantAdminAccountProfileEditDraft syncRemoteState(
-    TenantAdminAccountProfile updated,
-  ) {
-    final avatarUrl = updated.avatarUrl;
-    final coverUrl = updated.coverUrl;
-    return copyWith(
-      avatarRemoteUrl: avatarUrl,
-      coverRemoteUrl: coverUrl,
-      avatarRemoteReady: false,
-      coverRemoteReady: false,
-      avatarRemoteError: false,
-      coverRemoteError: false,
-      avatarPreloadUrl: null,
-      coverPreloadUrl: null,
-    );
-  }
-}
-
-class TenantAdminAccountProfileCreateDraft {
-  static const _unset = Object();
-
-  const TenantAdminAccountProfileCreateDraft({
-    required this.selectedProfileType,
-    required this.avatarFile,
-    required this.coverFile,
-    required this.avatarWebUrl,
-    required this.coverWebUrl,
-    required this.avatarBusy,
-    required this.coverBusy,
-  });
-
-  factory TenantAdminAccountProfileCreateDraft.initial() =>
-      const TenantAdminAccountProfileCreateDraft(
-        selectedProfileType: null,
-        avatarFile: null,
-        coverFile: null,
-        avatarWebUrl: null,
-        coverWebUrl: null,
-        avatarBusy: false,
-        coverBusy: false,
-      );
-
-  final String? selectedProfileType;
-  final XFile? avatarFile;
-  final XFile? coverFile;
-  final String? avatarWebUrl;
-  final String? coverWebUrl;
-  final bool avatarBusy;
-  final bool coverBusy;
-
-  TenantAdminAccountProfileCreateDraft copyWith({
-    Object? selectedProfileType = _unset,
-    Object? avatarFile = _unset,
-    Object? coverFile = _unset,
-    Object? avatarWebUrl = _unset,
-    Object? coverWebUrl = _unset,
-    bool? avatarBusy,
-    bool? coverBusy,
-  }) {
-    final nextSelectedProfileType = selectedProfileType == _unset
-        ? this.selectedProfileType
-        : selectedProfileType as String?;
-    final nextAvatarFile =
-        avatarFile == _unset ? this.avatarFile : avatarFile as XFile?;
-    final nextCoverFile =
-        coverFile == _unset ? this.coverFile : coverFile as XFile?;
-    final nextAvatarWebUrl =
-        avatarWebUrl == _unset ? this.avatarWebUrl : avatarWebUrl as String?;
-    final nextCoverWebUrl =
-        coverWebUrl == _unset ? this.coverWebUrl : coverWebUrl as String?;
-
-    return TenantAdminAccountProfileCreateDraft(
-      selectedProfileType: nextSelectedProfileType,
-      avatarFile: nextAvatarFile,
-      coverFile: nextCoverFile,
-      avatarWebUrl: nextAvatarWebUrl,
-      coverWebUrl: nextCoverWebUrl,
-      avatarBusy: avatarBusy ?? this.avatarBusy,
-      coverBusy: coverBusy ?? this.coverBusy,
-    );
   }
 }
 

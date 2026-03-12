@@ -1,7 +1,10 @@
+export 'landlord_home_ui_state.dart';
+
 import 'package:belluga_now/application/configurations/belluga_constants.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/admin_mode_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/landlord_auth_repository_contract.dart';
+import 'package:belluga_now/presentation/landlord_area/home/screens/landlord_home_screen/controllers/landlord_home_ui_state.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value.dart';
 
@@ -102,24 +105,4 @@ class LandlordHomeScreenController implements Disposable {
   void onDispose() {
     uiStateStreamValue.dispose();
   }
-}
-
-class LandlordHomeUiState {
-  const LandlordHomeUiState({
-    required this.tenants,
-    required this.hasValidSession,
-    required this.isLandlordMode,
-  });
-
-  factory LandlordHomeUiState.initial() => const LandlordHomeUiState(
-        tenants: <String>[],
-        hasValidSession: false,
-        isLandlordMode: false,
-      );
-
-  final List<String> tenants;
-  final bool hasValidSession;
-  final bool isLandlordMode;
-
-  bool get canAccessAdminArea => hasValidSession && isLandlordMode;
 }

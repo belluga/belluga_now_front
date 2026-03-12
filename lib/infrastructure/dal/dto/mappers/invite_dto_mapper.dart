@@ -5,6 +5,18 @@ import 'package:belluga_now/domain/invites/value_objects/invite_inviter_id_value
 import 'package:belluga_now/infrastructure/dal/dto/invites/invite_dto.dart';
 
 mixin InviteDtoMapper {
+  InviteDto parseInviteDtoJson(Map<String, dynamic> json) {
+    return InviteDto.fromJson(json);
+  }
+
+  InviteDto? tryParseInviteDtoJson(Map<String, dynamic> json) {
+    try {
+      return parseInviteDtoJson(json);
+    } catch (_) {
+      return null;
+    }
+  }
+
   InviteModel mapInviteDto(InviteDto dto) {
     final inviterPrincipal = _parseInviterPrincipal(
       inviterKind: dto.inviterPrincipalKind,

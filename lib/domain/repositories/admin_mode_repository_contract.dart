@@ -1,9 +1,7 @@
-import 'package:stream_value/core/stream_value.dart';
+export 'admin_mode.dart';
 
-enum AdminMode {
-  user,
-  landlord,
-}
+import 'package:belluga_now/domain/repositories/admin_mode.dart';
+import 'package:stream_value/core/stream_value.dart';
 
 abstract class AdminModeRepositoryContract {
   StreamValue<AdminMode> get modeStreamValue;

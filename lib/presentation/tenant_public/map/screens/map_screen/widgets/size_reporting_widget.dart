@@ -12,20 +12,20 @@ class SizeReportingWidget extends SingleChildRenderObjectWidget {
 
   @override
   RenderObject createRenderObject(BuildContext context) {
-    return RenderSizeReporting(onSizeChanged);
+    return _RenderSizeReporting(onSizeChanged);
   }
 
   @override
   void updateRenderObject(
     BuildContext context,
-    covariant RenderSizeReporting renderObject,
+    covariant RenderObject renderObject,
   ) {
-    renderObject.onSizeChanged = onSizeChanged;
+    (renderObject as _RenderSizeReporting).onSizeChanged = onSizeChanged;
   }
 }
 
-class RenderSizeReporting extends RenderProxyBox {
-  RenderSizeReporting(this.onSizeChanged);
+class _RenderSizeReporting extends RenderProxyBox {
+  _RenderSizeReporting(this.onSizeChanged);
 
   ValueChanged<Size> onSizeChanged;
   Size? _oldSize;
