@@ -1,9 +1,13 @@
+import 'dart:async';
+
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/domain/invites/invite_model.dart';
+import 'package:belluga_now/domain/invites/invite_next_step.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
 import 'package:belluga_now/domain/schedule/invite_status.dart';
+import 'package:belluga_now/presentation/tenant_public/invites/widgets/invite_candidate_picker.dart';
 import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/models/immersive_tab_item.dart';
 import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/immersive_detail_screen.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/immersive_event_detail/controllers/immersive_event_detail_controller.dart';
@@ -81,8 +85,8 @@ class _ImmersiveEventDetailScreenState
                             padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
                             child: SwipeableInviteWidget(
                               invites: receivedInvites,
-                              onAccept: _controller.acceptInvite,
-                              onDecline: _controller.declineInvite,
+                              onAccept: _handleAcceptInvite,
+                              onDecline: _handleDeclineInvite,
                             ),
                           )
                         : null;
@@ -179,6 +183,64 @@ class _ImmersiveEventDetailScreenState
   void _openInviteFlow(EventModel event) {
     final invite = _buildInviteFromEvent(event);
     context.router.push(InviteShareRoute(invite: invite));
+  }
+
+  Future<void> _handleAcceptInvite(InviteModel invite) {
+    final router = context.router;
+    final messenger = ScaffoldMessenger.of(context);
+
+    return showInviteCandidatePicker(
+      context,
+      invite: invite,
+      actionLabel: 'Aceitar',
+    ).then((inviteId) {
+      if (inviteId == null || inviteId.isEmpty) {
+        return Future<void>.value();
+      }
+
+      return _controller.acceptInvite(inviteId).then<void>((result) {
+        if (result.nextStep == InviteNextStep.reservationRequired ||
+            result.nextStep == InviteNextStep.commitmentChoiceRequired ||
+            result.nextStep == InviteNextStep.openAppToContinue) {
+          _showInviteNextStepToast(messenger, invite, result.nextStep);
+          return;
+        }
+
+        router.push(
+          InviteShareRoute(invite: invite.prioritizeInviter(inviteId)),
+        );
+      });
+    });
+  }
+
+  Future<void> _handleDeclineInvite(InviteModel invite) {
+    return showInviteCandidatePicker(
+      context,
+      invite: invite,
+      actionLabel: 'Recusar',
+    ).then((inviteId) {
+      if (inviteId == null || inviteId.isEmpty) {
+        return Future<void>.value();
+      }
+      return _controller.declineInvite(inviteId).then<void>((_) {});
+    });
+  }
+
+  void _showInviteNextStepToast(
+    ScaffoldMessengerState messenger,
+    InviteModel invite,
+    InviteNextStep nextStep,
+  ) {
+    messenger.hideCurrentSnackBar();
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(
+          nextStep == InviteNextStep.openAppToContinue
+              ? 'Convite aceito para ${invite.eventName}. Continue pelo app.'
+              : 'Convite aceito para ${invite.eventName}. A proxima etapa ainda nao esta disponivel nesta versao.',
+        ),
+      ),
+    );
   }
 
   InviteModel _buildInviteFromEvent(EventModel event) {

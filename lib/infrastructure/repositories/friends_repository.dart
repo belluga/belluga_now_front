@@ -1,16 +1,16 @@
 import 'package:belluga_now/domain/invites/projections/friend_resume.dart';
 import 'package:belluga_now/domain/repositories/friends_repository_contract.dart';
 import 'package:belluga_now/domain/user/friend.dart';
-import 'package:belluga_now/infrastructure/dal/datasources/mock_invites_database.dart';
+import 'package:belluga_now/infrastructure/dal/datasources/mock_friends_database.dart';
 import 'package:stream_value/core/stream_value.dart';
 
 /// Repository implementation for managing friends data with app-wide caching
 class FriendsRepository extends FriendsRepositoryContract {
   FriendsRepository({
-    MockInvitesDatabase? database,
-  }) : _database = database ?? MockInvitesDatabase();
+    MockFriendsDatabase? database,
+  }) : _database = database ?? MockFriendsDatabase();
 
-  final MockInvitesDatabase _database;
+  final MockFriendsDatabase _database;
 
   @override
   final friendsStreamValue = StreamValue<List<InviteFriendResume>>(

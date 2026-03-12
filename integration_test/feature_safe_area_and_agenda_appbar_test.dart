@@ -1,4 +1,11 @@
+import 'package:belluga_now/domain/contacts/contact_model.dart';
+import 'package:belluga_now/domain/invites/invite_accept_result.dart';
+import 'package:belluga_now/domain/invites/invite_contact_match.dart';
+import 'package:belluga_now/domain/invites/invite_decline_result.dart';
 import 'package:belluga_now/domain/invites/invite_model.dart';
+import 'package:belluga_now/domain/invites/invite_next_step.dart';
+import 'package:belluga_now/domain/invites/invite_runtime_settings.dart';
+import 'package:belluga_now/domain/invites/invite_share_code_result.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
@@ -6,6 +13,7 @@ import 'package:belluga_now/domain/repositories/user_events_repository_contract.
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
 import 'package:belluga_now/domain/schedule/event_delta_model.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
+import 'package:belluga_now/domain/schedule/friend_resume.dart';
 import 'package:belluga_now/domain/schedule/paged_events_result.dart';
 import 'package:belluga_now/domain/schedule/schedule_summary_model.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
@@ -355,16 +363,83 @@ class FakeUserEventsRepository implements UserEventsRepositoryContract {
 
 class FakeInvitesRepository extends InvitesRepositoryContract {
   @override
-  Future<List<InviteModel>> fetchInvites() async => const [];
+  Future<List<InviteModel>> fetchInvites({
+    int page = 1,
+    int pageSize = 20,
+  }) async =>
+      const [];
+
+  @override
+  Future<InviteRuntimeSettings> fetchSettings() async =>
+      const InviteRuntimeSettings(
+        tenantId: null,
+        limits: {},
+        cooldowns: {},
+        overQuotaMessage: null,
+      );
+
+  @override
+  Future<InviteAcceptResult> acceptInvite(String inviteId) async =>
+      InviteAcceptResult(
+        inviteId: inviteId,
+        status: 'accepted',
+        creditedAcceptance: true,
+        attendancePolicy: 'free_confirmation_only',
+        nextStep: InviteNextStep.freeConfirmationCreated,
+        closedDuplicateInviteIds: const [],
+      );
+
+  @override
+  Future<InviteDeclineResult> declineInvite(String inviteId) async =>
+      InviteDeclineResult(
+        inviteId: inviteId,
+        status: 'declined',
+        groupHasOtherPending: false,
+      );
+
+  @override
+  Future<InviteAcceptResult> acceptShareCode(String code) async =>
+      InviteAcceptResult(
+        inviteId: code,
+        status: 'accepted',
+        creditedAcceptance: true,
+        attendancePolicy: 'free_confirmation_only',
+        nextStep: InviteNextStep.openAppToContinue,
+        closedDuplicateInviteIds: const [],
+      );
+
+  @override
+  Future<List<InviteContactMatch>> importContacts(
+    List<ContactModel> contacts,
+  ) async =>
+      const [];
+
+  @override
+  Future<InviteShareCodeResult> createShareCode({
+    required String eventId,
+    String? occurrenceId,
+    String? accountProfileId,
+  }) async =>
+      InviteShareCodeResult(
+        code: 'test-share-code',
+        eventId: eventId,
+        occurrenceId: occurrenceId,
+      );
 
   @override
   Future<List<SentInviteStatus>> getSentInvitesForEvent(
-      String eventSlug) async {
+    String eventSlug,
+  ) async {
     return const [];
   }
 
   @override
-  Future<void> sendInvites(String eventSlug, List<String> friendIds) async {}
+  Future<void> sendInvites(
+    String eventSlug,
+    List<EventFriendResume> recipients, {
+    String? occurrenceId,
+    String? message,
+  }) async {}
 }
 
 class FakeUserLocationRepository implements UserLocationRepositoryContract {

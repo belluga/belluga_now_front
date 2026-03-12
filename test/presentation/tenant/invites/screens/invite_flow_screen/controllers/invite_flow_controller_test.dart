@@ -1,7 +1,15 @@
+import 'package:belluga_now/domain/contacts/contact_model.dart';
+import 'package:belluga_now/domain/invites/invite_accept_result.dart';
+import 'package:belluga_now/domain/invites/invite_contact_match.dart';
+import 'package:belluga_now/domain/invites/invite_decline_result.dart';
 import 'package:belluga_now/domain/invites/invite_model.dart';
+import 'package:belluga_now/domain/invites/invite_next_step.dart';
+import 'package:belluga_now/domain/invites/invite_runtime_settings.dart';
+import 'package:belluga_now/domain/invites/invite_share_code_result.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_events_repository_contract.dart';
+import 'package:belluga_now/domain/schedule/friend_resume.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
 import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
 import 'package:belluga_now/presentation/tenant_public/invites/screens/invite_flow_screen/controllers/invite_flow_controller.dart';
@@ -71,16 +79,86 @@ class _FakeTelemetryRepository implements TelemetryRepositoryContract {
 }
 
 class _FakeInvitesRepository extends InvitesRepositoryContract {
-  _FakeInvitesRepository({required List<InviteModel> initialInvites})
-      : _initialInvites = initialInvites;
+  _FakeInvitesRepository({
+    required List<InviteModel> initialInvites,
+    this.shareAcceptInviteId = '',
+  }) : _initialInvites = initialInvites;
 
   final List<InviteModel> _initialInvites;
+  final String shareAcceptInviteId;
+  final List<String> acceptedShareCodes = <String>[];
 
   @override
-  Future<List<InviteModel>> fetchInvites() async => _initialInvites;
+  Future<List<InviteModel>> fetchInvites(
+          {int page = 1, int pageSize = 20}) async =>
+      _initialInvites;
 
   @override
-  Future<void> sendInvites(String eventSlug, List<String> friendIds) async {}
+  Future<InviteRuntimeSettings> fetchSettings() async =>
+      const InviteRuntimeSettings(
+        tenantId: null,
+        limits: {},
+        cooldowns: {},
+        overQuotaMessage: null,
+      );
+
+  @override
+  Future<InviteAcceptResult> acceptInvite(String inviteId) async =>
+      InviteAcceptResult(
+        inviteId: inviteId,
+        status: 'accepted',
+        creditedAcceptance: true,
+        attendancePolicy: 'free_confirmation_only',
+        nextStep: InviteNextStep.freeConfirmationCreated,
+        closedDuplicateInviteIds: const [],
+      );
+
+  @override
+  Future<InviteDeclineResult> declineInvite(String inviteId) async =>
+      InviteDeclineResult(
+        inviteId: inviteId,
+        status: 'declined',
+        groupHasOtherPending: false,
+      );
+
+  @override
+  Future<InviteAcceptResult> acceptShareCode(String code) async {
+    acceptedShareCodes.add(code);
+    final inviteId = shareAcceptInviteId.isEmpty ? code : shareAcceptInviteId;
+    return InviteAcceptResult(
+      inviteId: inviteId,
+      status: 'accepted',
+      creditedAcceptance: true,
+      attendancePolicy: 'free_confirmation_only',
+      nextStep: InviteNextStep.openAppToContinue,
+      closedDuplicateInviteIds: const [],
+    );
+  }
+
+  @override
+  Future<List<InviteContactMatch>> importContacts(
+          List<ContactModel> contacts) async =>
+      const [];
+
+  @override
+  Future<InviteShareCodeResult> createShareCode({
+    required String eventId,
+    String? occurrenceId,
+    String? accountProfileId,
+  }) async =>
+      InviteShareCodeResult(
+        code: 'CODE123',
+        eventId: eventId,
+        occurrenceId: occurrenceId,
+      );
+
+  @override
+  Future<void> sendInvites(
+    String eventSlug,
+    List<EventFriendResume> recipients, {
+    String? occurrenceId,
+    String? message,
+  }) async {}
 
   @override
   Future<List<SentInviteStatus>> getSentInvitesForEvent(
@@ -121,6 +199,7 @@ InviteModel _buildInvite(String id) {
     hostName: 'Host $id',
     message: 'Invite $id',
     tags: const ['music'],
+    inviterName: 'Inviter $id',
   );
 }
 
@@ -155,6 +234,24 @@ void main() {
       'event-2',
     );
 
+    await controller.onDispose();
+  });
+
+  test('init accepts share code and prioritizes accepted invite', () async {
+    final repository = _FakeInvitesRepository(
+      initialInvites: [_buildInvite('1'), _buildInvite('2')],
+      shareAcceptInviteId: '2',
+    );
+    final controller = InviteFlowScreenController(
+      repository: repository,
+      userEventsRepository: _FakeUserEventsRepository(),
+      telemetryRepository: _FakeTelemetryRepository(),
+    );
+
+    await controller.init(shareCode: 'SHARE-ABC');
+
+    expect(repository.acceptedShareCodes, ['SHARE-ABC']);
+    expect(controller.pendingInvitesStreamValue.value.first.id, '2');
     await controller.onDispose();
   });
 }

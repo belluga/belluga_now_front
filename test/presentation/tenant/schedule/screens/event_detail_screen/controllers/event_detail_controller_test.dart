@@ -1,10 +1,18 @@
+import 'package:belluga_now/domain/contacts/contact_model.dart';
+import 'package:belluga_now/domain/invites/invite_accept_result.dart';
+import 'package:belluga_now/domain/invites/invite_contact_match.dart';
+import 'package:belluga_now/domain/invites/invite_decline_result.dart';
 import 'package:belluga_now/domain/invites/invite_model.dart';
+import 'package:belluga_now/domain/invites/invite_next_step.dart';
+import 'package:belluga_now/domain/invites/invite_runtime_settings.dart';
+import 'package:belluga_now/domain/invites/invite_share_code_result.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_events_repository_contract.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/schedule/event_delta_model.dart';
+import 'package:belluga_now/domain/schedule/friend_resume.dart';
 import 'package:belluga_now/domain/schedule/event_type_model.dart';
 import 'package:belluga_now/domain/schedule/paged_events_result.dart';
 import 'package:belluga_now/domain/schedule/schedule_summary_model.dart';
@@ -35,8 +43,7 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
   Future<EventModel?> getEventBySlug(String slug) async => _event;
 
   @override
-  Future<List<EventModel>> getAllEvents() async =>
-      throw UnimplementedError();
+  Future<List<EventModel>> getAllEvents() async => throw UnimplementedError();
 
   @override
   Future<List<EventModel>> getEventsByDate(
@@ -118,19 +125,90 @@ class _FakeUserEventsRepository implements UserEventsRepositoryContract {
       <VenueEventResume>[];
 
   @override
-  Future<List<VenueEventResume>> fetchMyEvents() async =>
-      <VenueEventResume>[];
+  Future<List<VenueEventResume>> fetchMyEvents() async => <VenueEventResume>[];
 }
 
 class _FakeInvitesRepository extends InvitesRepositoryContract {
-  @override
-  Future<List<InviteModel>> fetchInvites() async => <InviteModel>[];
+  _FakeInvitesRepository({
+    this.acceptStatus = 'accepted',
+    this.acceptNextStep = InviteNextStep.freeConfirmationCreated,
+  });
+
+  final String acceptStatus;
+  final InviteNextStep acceptNextStep;
 
   @override
-  Future<void> sendInvites(String eventSlug, List<String> friendIds) async {}
+  Future<List<InviteModel>> fetchInvites(
+          {int page = 1, int pageSize = 20}) async =>
+      <InviteModel>[];
 
   @override
-  Future<List<SentInviteStatus>> getSentInvitesForEvent(String eventSlug) async =>
+  Future<InviteRuntimeSettings> fetchSettings() async =>
+      const InviteRuntimeSettings(
+        tenantId: null,
+        limits: {},
+        cooldowns: {},
+        overQuotaMessage: null,
+      );
+
+  @override
+  Future<InviteAcceptResult> acceptInvite(String inviteId) async =>
+      InviteAcceptResult(
+        inviteId: inviteId,
+        status: acceptStatus,
+        creditedAcceptance: true,
+        attendancePolicy: 'free_confirmation_only',
+        nextStep: acceptNextStep,
+        closedDuplicateInviteIds: const [],
+      );
+
+  @override
+  Future<InviteDeclineResult> declineInvite(String inviteId) async =>
+      InviteDeclineResult(
+        inviteId: inviteId,
+        status: 'declined',
+        groupHasOtherPending: false,
+      );
+
+  @override
+  Future<InviteAcceptResult> acceptShareCode(String code) async =>
+      InviteAcceptResult(
+        inviteId: code,
+        status: 'accepted',
+        creditedAcceptance: true,
+        attendancePolicy: 'free_confirmation_only',
+        nextStep: InviteNextStep.openAppToContinue,
+        closedDuplicateInviteIds: const [],
+      );
+
+  @override
+  Future<List<InviteContactMatch>> importContacts(
+          List<ContactModel> contacts) async =>
+      const [];
+
+  @override
+  Future<InviteShareCodeResult> createShareCode({
+    required String eventId,
+    String? occurrenceId,
+    String? accountProfileId,
+  }) async =>
+      InviteShareCodeResult(
+        code: 'CODE123',
+        eventId: eventId,
+        occurrenceId: occurrenceId,
+      );
+
+  @override
+  Future<void> sendInvites(
+    String eventSlug,
+    List<EventFriendResume> recipients, {
+    String? occurrenceId,
+    String? message,
+  }) async {}
+
+  @override
+  Future<List<SentInviteStatus>> getSentInvitesForEvent(
+          String eventSlug) async =>
       <SentInviteStatus>[];
 }
 
@@ -192,6 +270,48 @@ void main() {
     expect(telemetryRepository.startCount, 1);
     expect(telemetryRepository.lastEvent, EventTrackerEvents.eventOpened);
     expect(telemetryRepository.lastProperties?['event_id'], event.id.value);
+  });
+
+  test(
+      'acceptInvite marks event confirmed only when free confirmation is created',
+      () async {
+    final event = _buildEvent();
+    final controller = EventDetailController(
+      repository: _FakeScheduleRepository(event),
+      userEventsRepository: _FakeUserEventsRepository(),
+      invitesRepository: _FakeInvitesRepository(
+        acceptStatus: 'accepted',
+        acceptNextStep: InviteNextStep.freeConfirmationCreated,
+      ),
+      telemetryRepository: _FakeTelemetryRepository(),
+    );
+
+    await controller.loadEventBySlug(event.slug);
+    await controller.acceptInvite('invite-1');
+
+    expect(controller.isConfirmedStreamValue.value, isTrue);
+    expect(controller.totalConfirmedStreamValue.value, 1);
+  });
+
+  test(
+      'acceptInvite keeps event unconfirmed when next step requires reservation',
+      () async {
+    final event = _buildEvent();
+    final controller = EventDetailController(
+      repository: _FakeScheduleRepository(event),
+      userEventsRepository: _FakeUserEventsRepository(),
+      invitesRepository: _FakeInvitesRepository(
+        acceptStatus: 'accepted',
+        acceptNextStep: InviteNextStep.reservationRequired,
+      ),
+      telemetryRepository: _FakeTelemetryRepository(),
+    );
+
+    await controller.loadEventBySlug(event.slug);
+    await controller.acceptInvite('invite-2');
+
+    expect(controller.isConfirmedStreamValue.value, isFalse);
+    expect(controller.totalConfirmedStreamValue.value, 0);
   });
 }
 

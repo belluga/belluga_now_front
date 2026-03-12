@@ -3,10 +3,18 @@ import 'dart:io';
 
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
+import 'package:belluga_now/domain/contacts/contact_model.dart';
+import 'package:belluga_now/domain/invites/invite_accept_result.dart';
+import 'package:belluga_now/domain/invites/invite_contact_match.dart';
+import 'package:belluga_now/domain/invites/invite_decline_result.dart';
 import 'package:belluga_now/domain/invites/invite_model.dart';
+import 'package:belluga_now/domain/invites/invite_next_step.dart';
+import 'package:belluga_now/domain/invites/invite_runtime_settings.dart';
+import 'package:belluga_now/domain/invites/invite_share_code_result.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_events_repository_contract.dart';
+import 'package:belluga_now/domain/schedule/friend_resume.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
 import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
 import 'package:belluga_now/presentation/tenant_public/invites/screens/invite_flow_screen/controllers/invite_flow_controller.dart';
@@ -26,10 +34,73 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
   final List<InviteModel> _initialInvites;
 
   @override
-  Future<List<InviteModel>> fetchInvites() async => _initialInvites;
+  Future<List<InviteModel>> fetchInvites(
+          {int page = 1, int pageSize = 20}) async =>
+      _initialInvites;
 
   @override
-  Future<void> sendInvites(String eventSlug, List<String> friendIds) async {}
+  Future<InviteRuntimeSettings> fetchSettings() async =>
+      const InviteRuntimeSettings(
+        tenantId: null,
+        limits: {},
+        cooldowns: {},
+        overQuotaMessage: null,
+      );
+
+  @override
+  Future<InviteAcceptResult> acceptInvite(String inviteId) async =>
+      InviteAcceptResult(
+        inviteId: inviteId,
+        status: 'accepted',
+        creditedAcceptance: true,
+        attendancePolicy: 'free_confirmation_only',
+        nextStep: InviteNextStep.freeConfirmationCreated,
+        closedDuplicateInviteIds: const [],
+      );
+
+  @override
+  Future<InviteDeclineResult> declineInvite(String inviteId) async =>
+      InviteDeclineResult(
+        inviteId: inviteId,
+        status: 'declined',
+        groupHasOtherPending: false,
+      );
+
+  @override
+  Future<InviteAcceptResult> acceptShareCode(String code) async =>
+      InviteAcceptResult(
+        inviteId: code,
+        status: 'accepted',
+        creditedAcceptance: true,
+        attendancePolicy: 'free_confirmation_only',
+        nextStep: InviteNextStep.openAppToContinue,
+        closedDuplicateInviteIds: const [],
+      );
+
+  @override
+  Future<List<InviteContactMatch>> importContacts(
+          List<ContactModel> contacts) async =>
+      const [];
+
+  @override
+  Future<InviteShareCodeResult> createShareCode({
+    required String eventId,
+    String? occurrenceId,
+    String? accountProfileId,
+  }) async =>
+      InviteShareCodeResult(
+        code: 'CODE123',
+        eventId: eventId,
+        occurrenceId: occurrenceId,
+      );
+
+  @override
+  Future<void> sendInvites(
+    String eventSlug,
+    List<EventFriendResume> recipients, {
+    String? occurrenceId,
+    String? message,
+  }) async {}
 
   @override
   Future<List<SentInviteStatus>> getSentInvitesForEvent(
@@ -263,15 +334,73 @@ class _TestHttpClient implements HttpClient {
   bool _autoUncompress = true;
 
   static final List<int> _transparentImage = <int>[
-    0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A,
-    0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52,
-    0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
-    0x08, 0x06, 0x00, 0x00, 0x00, 0x1F, 0x15, 0xC4,
-    0x89, 0x00, 0x00, 0x00, 0x0A, 0x49, 0x44, 0x41,
-    0x54, 0x78, 0x9C, 0x63, 0x00, 0x01, 0x00, 0x00,
-    0x05, 0x00, 0x01, 0x0D, 0x0A, 0x2D, 0xB4, 0x00,
-    0x00, 0x00, 0x00, 0x49, 0x45, 0x4E, 0x44, 0xAE,
-    0x42, 0x60, 0x82,
+    0x89,
+    0x50,
+    0x4E,
+    0x47,
+    0x0D,
+    0x0A,
+    0x1A,
+    0x0A,
+    0x00,
+    0x00,
+    0x00,
+    0x0D,
+    0x49,
+    0x48,
+    0x44,
+    0x52,
+    0x00,
+    0x00,
+    0x00,
+    0x01,
+    0x00,
+    0x00,
+    0x00,
+    0x01,
+    0x08,
+    0x06,
+    0x00,
+    0x00,
+    0x00,
+    0x1F,
+    0x15,
+    0xC4,
+    0x89,
+    0x00,
+    0x00,
+    0x00,
+    0x0A,
+    0x49,
+    0x44,
+    0x41,
+    0x54,
+    0x78,
+    0x9C,
+    0x63,
+    0x00,
+    0x01,
+    0x00,
+    0x00,
+    0x05,
+    0x00,
+    0x01,
+    0x0D,
+    0x0A,
+    0x2D,
+    0xB4,
+    0x00,
+    0x00,
+    0x00,
+    0x00,
+    0x49,
+    0x45,
+    0x4E,
+    0x44,
+    0xAE,
+    0x42,
+    0x60,
+    0x82,
   ];
 
   @override
@@ -339,11 +468,11 @@ class _TestHttpClientResponse extends Stream<List<int>>
     controller.add(_imageBytes);
     controller.close();
     return controller.stream.listen(
-          onData,
-          onError: onError,
-          onDone: onDone,
-          cancelOnError: cancelOnError,
-        );
+      onData,
+      onError: onError,
+      onDone: onDone,
+      cancelOnError: cancelOnError,
+    );
   }
 
   @override

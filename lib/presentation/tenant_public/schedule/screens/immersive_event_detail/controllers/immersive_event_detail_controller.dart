@@ -1,7 +1,10 @@
 import 'dart:async';
 
 import 'package:belluga_now/domain/gamification/mission_resume.dart';
+import 'package:belluga_now/domain/invites/invite_accept_result.dart';
+import 'package:belluga_now/domain/invites/invite_decline_result.dart';
 import 'package:belluga_now/domain/invites/invite_model.dart';
+import 'package:belluga_now/domain/invites/invite_next_step.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_events_repository_contract.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
@@ -69,16 +72,10 @@ class ImmersiveEventDetailController implements Disposable {
   }
 
   void _updateReceivedInvites(List<InviteModel> invites, String eventId) {
-    final filtered =
-        invites.where((invite) => invite.eventIdValue.value == eventId).toList();
+    final filtered = invites
+        .where((invite) => invite.eventIdValue.value == eventId)
+        .toList();
     receivedInvitesStreamValue.addValue(filtered);
-  }
-
-  void _pruneInviteFromRepository(String inviteId) {
-    final current = _invitesRepository.pendingInvitesStreamValue.value;
-    final updated =
-        current.where((invite) => invite.id != inviteId).toList(growable: false);
-    _invitesRepository.pendingInvitesStreamValue.addValue(updated);
   }
 
   /// Confirm attendance at this event
@@ -110,16 +107,27 @@ class ImmersiveEventDetailController implements Disposable {
     }
   }
 
-  Future<void> acceptInvite(String inviteId) async {
-    _pruneInviteFromRepository(inviteId);
-    await confirmAttendance();
-  }
-
-  Future<void> declineInvite(String inviteId) async {
+  Future<InviteAcceptResult> acceptInvite(String inviteId) async {
     isLoadingStreamValue.addValue(true);
     try {
-      _pruneInviteFromRepository(inviteId);
-      receivedInvitesStreamValue.addValue(const []);
+      final result = await _invitesRepository.acceptInvite(inviteId);
+      final autoConfirmed =
+          result.nextStep == InviteNextStep.freeConfirmationCreated;
+      if (result.status == 'accepted' && autoConfirmed) {
+        isConfirmedStreamValue.addValue(true);
+        final newTotal = totalConfirmedStreamValue.value + 1;
+        totalConfirmedStreamValue.addValue(newTotal);
+      }
+      return result;
+    } finally {
+      isLoadingStreamValue.addValue(false);
+    }
+  }
+
+  Future<InviteDeclineResult> declineInvite(String inviteId) async {
+    isLoadingStreamValue.addValue(true);
+    try {
+      return await _invitesRepository.declineInvite(inviteId);
     } finally {
       isLoadingStreamValue.addValue(false);
     }

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/domain/invites/invite_model.dart';
+import 'package:belluga_now/domain/invites/invite_next_step.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/schedule/event_type_model.dart';
 import 'package:belluga_now/domain/schedule/friend_resume.dart';
@@ -19,6 +20,7 @@ import 'package:belluga_now/presentation/tenant_public/schedule/screens/event_de
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/event_detail_screen/widgets/social_proof_section.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/event_detail_screen/widgets/venue_card.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/event_detail_screen/controllers/event_detail_controller.dart';
+import 'package:belluga_now/presentation/tenant_public/invites/widgets/invite_candidate_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_html/flutter_html.dart';
 import 'package:get_it/get_it.dart';
@@ -54,7 +56,8 @@ class EventDetailScreen extends StatefulWidget {
 }
 
 class _EventDetailScreenState extends State<EventDetailScreen> {
-  final EventDetailController _controller = GetIt.I.get<EventDetailController>();
+  final EventDetailController _controller =
+      GetIt.I.get<EventDetailController>();
 
   @override
   void initState() {
@@ -306,7 +309,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                     controller: _controller,
                     isConfirmed: isConfirmed && receivedInvites.isEmpty,
                     onPressed: receivedInvites.isNotEmpty
-                        ? () => _handleAcceptInvite(receivedInvites.first.id)
+                        ? () => _handleAcceptInvite(receivedInvites.first)
                         : (isConfirmed ? null : _handleInviteAction),
                     text: _getCTAButtonText(),
                   ),
@@ -336,13 +339,45 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     _openInviteFlow();
   }
 
-  Future<void> _handleAcceptInvite(String inviteId) async {
-    unawaited(_controller.acceptInvite(inviteId));
-    _openInviteFlow();
+  Future<void> _handleAcceptInvite(InviteModel invite) {
+    final router = context.router;
+    final messenger = ScaffoldMessenger.of(context);
+
+    return showInviteCandidatePicker(
+      context,
+      invite: invite,
+      actionLabel: 'Aceitar',
+    ).then((inviteId) {
+      if (inviteId == null || inviteId.isEmpty) {
+        return Future<void>.value();
+      }
+
+      return _controller.acceptInvite(inviteId).then<void>((result) {
+        if (result.nextStep == InviteNextStep.reservationRequired ||
+            result.nextStep == InviteNextStep.commitmentChoiceRequired ||
+            result.nextStep == InviteNextStep.openAppToContinue) {
+          _showInviteNextStepToast(messenger, invite, result.nextStep);
+          return;
+        }
+
+        router.push(
+          InviteShareRoute(invite: invite.prioritizeInviter(inviteId)),
+        );
+      });
+    });
   }
 
-  Future<void> _handleDeclineInvite(String inviteId) {
-    return _controller.declineInvite(inviteId);
+  Future<void> _handleDeclineInvite(InviteModel invite) {
+    return showInviteCandidatePicker(
+      context,
+      invite: invite,
+      actionLabel: 'Recusar',
+    ).then((inviteId) {
+      if (inviteId == null || inviteId.isEmpty) {
+        return Future<void>.value();
+      }
+      return _controller.declineInvite(inviteId).then<void>((_) {});
+    });
   }
 
   void _handleInviteFriends() {
@@ -351,5 +386,22 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
 
   void _openInviteFlow() {
     context.router.push(const InviteFlowRoute());
+  }
+
+  void _showInviteNextStepToast(
+    ScaffoldMessengerState messenger,
+    InviteModel invite,
+    InviteNextStep nextStep,
+  ) {
+    messenger.hideCurrentSnackBar();
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(
+          nextStep == InviteNextStep.openAppToContinue
+              ? 'Convite aceito para ${invite.eventName}. Continue pelo app.'
+              : 'Convite aceito para ${invite.eventName}. A proxima etapa ainda nao esta disponivel nesta versao.',
+        ),
+      ),
+    );
   }
 }

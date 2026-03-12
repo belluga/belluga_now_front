@@ -17,8 +17,8 @@ class SwipeableInviteWidget extends StatefulWidget {
 
   final EventDetailController? controller;
   final List<InviteModel> invites;
-  final Future<void> Function(String) onAccept;
-  final Future<void> Function(String) onDecline;
+  final Future<void> Function(InviteModel) onAccept;
+  final Future<void> Function(InviteModel) onDecline;
 
   @override
   State<SwipeableInviteWidget> createState() => _SwipeableInviteWidgetState();
@@ -38,8 +38,9 @@ class _SwipeableInviteWidgetState extends State<SwipeableInviteWidget> {
         }
 
         final currentInvite = widget.invites[index];
-        final nextInvite =
-            index + 1 < widget.invites.length ? widget.invites[index + 1] : null;
+        final nextInvite = index + 1 < widget.invites.length
+            ? widget.invites[index + 1]
+            : null;
 
         return SizedBox(
           height: 180,
@@ -59,24 +60,18 @@ class _SwipeableInviteWidgetState extends State<SwipeableInviteWidget> {
               SwipeableCard(
                 key: ValueKey(currentInvite.id),
                 onSwipeRight: () async {
-                  await widget.onAccept(currentInvite.id);
-                  _controller.setInviteDeckIndex(index + 1);
+                  await widget.onAccept(currentInvite);
                 },
                 onSwipeLeft: () async {
-                  await widget.onDecline(currentInvite.id);
-                  _controller.setInviteDeckIndex(index + 1);
+                  await widget.onDecline(currentInvite);
                 },
                 child: InviteDeckCard(
                   invite: currentInvite,
                   onAccept: () async {
-                    // Manual button press
-                    await widget.onAccept(currentInvite.id);
-                    _controller.setInviteDeckIndex(index + 1);
+                    await widget.onAccept(currentInvite);
                   },
                   onDecline: () async {
-                    // Manual button press
-                    await widget.onDecline(currentInvite.id);
-                    _controller.setInviteDeckIndex(index + 1);
+                    await widget.onDecline(currentInvite);
                   },
                 ),
               ),

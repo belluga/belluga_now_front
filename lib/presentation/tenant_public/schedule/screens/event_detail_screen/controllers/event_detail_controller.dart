@@ -1,13 +1,15 @@
 import 'dart:async';
 
+import 'package:belluga_now/domain/invites/invite_accept_result.dart';
+import 'package:belluga_now/domain/invites/invite_decline_result.dart';
 import 'package:belluga_now/domain/invites/invite_model.dart';
+import 'package:belluga_now/domain/invites/invite_next_step.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_events_repository_contract.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/schedule/friend_resume.dart';
-import 'package:belluga_now/domain/schedule/invite_status.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
 import 'package:event_tracker_handler/event_tracker_handler.dart';
 import 'package:get_it/get_it.dart';
@@ -35,6 +37,7 @@ class EventDetailController implements Disposable {
   final TelemetryRepositoryContract _telemetryRepository;
   Future<EventTrackerTimedEventHandle?>? _eventOpenedHandleFuture;
   String? _telemetryEventId;
+  StreamSubscription<List<InviteModel>>? _pendingInvitesSubscription;
 
   // Reactive state
   final eventStreamValue = StreamValue<EventModel?>();
@@ -72,12 +75,7 @@ class EventDetailController implements Disposable {
             .addValue(isConfirmedLocally || event.isConfirmedValue.value);
 
         // Load received invites from repository (same source as swipe screen)
-        final allInvites = _invitesRepository.pendingInvitesStreamValue.value;
-        final eventInvites = allInvites
-            .where((invite) => invite.eventIdValue.value == event.id.value)
-            .toList();
-        receivedInvitesStreamValue.addValue(eventInvites);
-        _syncInviteDeckIndex(eventInvites.length);
+        _bindPendingInvites(event.id.value);
 
         // Populate repository with initial data from event model if missing
         // This ensures we have data even before a refresh
@@ -158,49 +156,39 @@ class EventDetailController implements Disposable {
   }
 
   /// Accept a received invite
-  /// TODO: Wire to real repository when backend is ready
-  Future<void> acceptInvite(String inviteId) async {
-    final event = eventStreamValue.value;
-    if (event == null) return;
-
+  Future<InviteAcceptResult> acceptInvite(String inviteId) async {
     isLoadingStreamValue.addValue(true);
 
     try {
-      // TODO: await _inviteRepository.acceptInvite(inviteId);
-
-      // Persist confirmation
-      await _userEventsRepository.confirmEventAttendance(event.id.value);
-
-      // Optimistic update: remove from received invites and confirm
-      receivedInvitesStreamValue.addValue(const []);
-      _syncInviteDeckIndex(0);
-      isConfirmedStreamValue.addValue(true);
-
-      final newTotal = totalConfirmedStreamValue.value + 1;
-      totalConfirmedStreamValue.addValue(newTotal);
+      final result = await _invitesRepository.acceptInvite(inviteId);
+      final autoConfirmed =
+          result.nextStep == InviteNextStep.freeConfirmationCreated;
+      if (result.status == 'accepted' && autoConfirmed) {
+        isConfirmedStreamValue.addValue(true);
+        final newTotal = totalConfirmedStreamValue.value + 1;
+        totalConfirmedStreamValue.addValue(newTotal);
+      }
+      _syncInviteDeckIndex(receivedInvitesStreamValue.value.length);
+      return result;
     } finally {
       isLoadingStreamValue.addValue(false);
     }
   }
 
   /// Decline a received invite
-  /// TODO: Wire to real repository when backend is ready
-  Future<void> declineInvite(String inviteId) async {
+  Future<InviteDeclineResult> declineInvite(String inviteId) async {
     isLoadingStreamValue.addValue(true);
 
     try {
-      // TODO: await _inviteRepository.declineInvite(inviteId);
-
-      // Optimistic update: remove from received invites
-      receivedInvitesStreamValue.addValue(const []);
-      _syncInviteDeckIndex(0);
+      final result = await _invitesRepository.declineInvite(inviteId);
+      _applyDeclineDeckState(result);
+      return result;
     } finally {
       isLoadingStreamValue.addValue(false);
     }
   }
 
   /// Send invites to friends
-  /// TODO: Wire to real repository when backend is ready
   Future<void> inviteFriends(List<EventFriendResume> friends) async {
     if (friends.isEmpty) return;
     final event = eventStreamValue.value;
@@ -209,30 +197,7 @@ class EventDetailController implements Disposable {
     isLoadingStreamValue.addValue(true);
 
     try {
-      // TODO: await _inviteRepository.sendInvites(
-      //   event.id.value,
-      //   friends.map((f) => f.id.value).toList(),
-      // );
-
-      // Optimistic update: add to sent invites with pending status
-      final now = DateTime.now();
-      final newInvites = friends
-          .map(
-            (friend) => SentInviteStatus(
-              friend: friend,
-              status: InviteStatus.pending,
-              sentAt: now,
-            ),
-          )
-          .toList();
-
-      final currentMap = Map<String, List<SentInviteStatus>>.from(
-          _invitesRepository.sentInvitesByEventStreamValue.value);
-
-      final currentList = currentMap[event.id.value] ?? [];
-      currentMap[event.id.value] = [...currentList, ...newInvites];
-
-      _invitesRepository.sentInvitesByEventStreamValue.addValue(currentMap);
+      await _invitesRepository.sendInvites(event.id.value, friends);
     } finally {
       isLoadingStreamValue.addValue(false);
     }
@@ -254,8 +219,38 @@ class EventDetailController implements Disposable {
     setInviteDeckIndex(clamped);
   }
 
+  void _bindPendingInvites(String eventId) {
+    _pendingInvitesSubscription?.cancel();
+    _pendingInvitesSubscription = _invitesRepository
+        .pendingInvitesStreamValue.stream
+        .listen((invites) => _syncReceivedInvitesForEvent(invites, eventId));
+    _syncReceivedInvitesForEvent(
+      _invitesRepository.pendingInvitesStreamValue.value,
+      eventId,
+    );
+  }
+
+  void _syncReceivedInvitesForEvent(List<InviteModel> invites, String eventId) {
+    final eventInvites = invites
+        .where((invite) => invite.eventIdValue.value == eventId)
+        .toList();
+    receivedInvitesStreamValue.addValue(eventInvites);
+    _syncInviteDeckIndex(eventInvites.length);
+  }
+
+  void _applyDeclineDeckState(InviteDeclineResult result) {
+    if (result.groupHasOtherPending) {
+      _syncInviteDeckIndex(receivedInvitesStreamValue.value.length);
+      return;
+    }
+
+    final remaining = receivedInvitesStreamValue.value;
+    _syncInviteDeckIndex(remaining.length);
+  }
+
   @override
   void onDispose() {
+    _pendingInvitesSubscription?.cancel();
     eventStreamValue.dispose();
     isConfirmedStreamValue.dispose();
     receivedInvitesStreamValue.dispose();

@@ -1,4 +1,5 @@
 import 'package:belluga_now/domain/invites/invite_model.dart';
+import 'package:belluga_now/domain/invites/invite_share_code_result.dart';
 import 'package:belluga_now/domain/invites/projections/friend_resume_with_status.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
 import 'package:belluga_now/presentation/tenant_public/invites/screens/invite_share_screen/controllers/invite_share_screen_controller.dart';
@@ -30,7 +31,7 @@ class _InviteShareScreenState extends State<InviteShareScreen> {
   @override
   void initState() {
     super.initState();
-    _controller.init(widget.invite.eventId);
+    _controller.init(widget.invite);
   }
 
   @override
@@ -66,7 +67,7 @@ class _InviteShareScreenState extends State<InviteShareScreen> {
                                 onInvite: item.isPlaceholder
                                     ? null
                                     : () => _controller.sendInviteToFriend(
-                                          item.friend.friend.id,
+                                          item.friend.friend,
                                         ),
                                 isPlaceholder: item.isPlaceholder,
                               ),
@@ -76,7 +77,15 @@ class _InviteShareScreenState extends State<InviteShareScreen> {
                     ),
                     Padding(
                       padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                      child: InviteShareFooter(invite: widget.invite),
+                      child: StreamValueBuilder<InviteShareCodeResult?>(
+                        streamValue: _controller.shareCodeStreamValue,
+                        builder: (context, shareCode) {
+                          return InviteShareFooter(
+                            invite: widget.invite,
+                            shareUri: _controller.buildShareUri(shareCode),
+                          );
+                        },
+                      ),
                     ),
                   ],
                 );
