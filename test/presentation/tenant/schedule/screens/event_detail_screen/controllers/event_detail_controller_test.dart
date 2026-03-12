@@ -104,12 +104,14 @@ class _FakeUserEventsRepository implements UserEventsRepositoryContract {
       StreamValue<Set<String>>(defaultValue: <String>{});
 
   final Set<String> _confirmed = <String>{};
+  final List<String> confirmedCalls = <String>[];
 
   @override
   bool isEventConfirmed(String eventId) => _confirmed.contains(eventId);
 
   @override
   Future<void> confirmEventAttendance(String eventId) async {
+    confirmedCalls.add(eventId);
     _confirmed.add(eventId);
     confirmedEventIdsStream.addValue(Set<String>.from(_confirmed));
   }
@@ -132,15 +134,24 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
   _FakeInvitesRepository({
     this.acceptStatus = 'accepted',
     this.acceptNextStep = InviteNextStep.freeConfirmationCreated,
-  });
+    this.initialPendingInvites = const <InviteModel>[],
+  }) {
+    pendingInvitesStreamValue.addValue(initialPendingInvites);
+  }
 
   final String acceptStatus;
   final InviteNextStep acceptNextStep;
+  final List<InviteModel> initialPendingInvites;
+  final List<String> acceptedInviteIds = <String>[];
+  final List<String> declinedInviteIds = <String>[];
+  int sendInvitesCallCount = 0;
+  String? lastSentEventId;
+  List<EventFriendResume> lastSentRecipients = const <EventFriendResume>[];
 
   @override
   Future<List<InviteModel>> fetchInvites(
           {int page = 1, int pageSize = 20}) async =>
-      <InviteModel>[];
+      initialPendingInvites;
 
   @override
   Future<InviteRuntimeSettings> fetchSettings() async =>
@@ -152,23 +163,27 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
       );
 
   @override
-  Future<InviteAcceptResult> acceptInvite(String inviteId) async =>
-      InviteAcceptResult(
-        inviteId: inviteId,
-        status: acceptStatus,
-        creditedAcceptance: true,
-        attendancePolicy: 'free_confirmation_only',
-        nextStep: acceptNextStep,
-        closedDuplicateInviteIds: const [],
-      );
+  Future<InviteAcceptResult> acceptInvite(String inviteId) async {
+    acceptedInviteIds.add(inviteId);
+    return InviteAcceptResult(
+      inviteId: inviteId,
+      status: acceptStatus,
+      creditedAcceptance: true,
+      attendancePolicy: 'free_confirmation_only',
+      nextStep: acceptNextStep,
+      closedDuplicateInviteIds: const [],
+    );
+  }
 
   @override
-  Future<InviteDeclineResult> declineInvite(String inviteId) async =>
-      InviteDeclineResult(
-        inviteId: inviteId,
-        status: 'declined',
-        groupHasOtherPending: false,
-      );
+  Future<InviteDeclineResult> declineInvite(String inviteId) async {
+    declinedInviteIds.add(inviteId);
+    return InviteDeclineResult(
+      inviteId: inviteId,
+      status: 'declined',
+      groupHasOtherPending: false,
+    );
+  }
 
   @override
   Future<InviteAcceptResult> acceptShareCode(String code) async =>
@@ -200,11 +215,15 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
 
   @override
   Future<void> sendInvites(
-    String eventSlug,
+    String eventId,
     List<EventFriendResume> recipients, {
     String? occurrenceId,
     String? message,
-  }) async {}
+  }) async {
+    sendInvitesCallCount += 1;
+    lastSentEventId = eventId;
+    lastSentRecipients = List<EventFriendResume>.from(recipients);
+  }
 
   @override
   Future<List<SentInviteStatus>> getSentInvitesForEvent(
@@ -309,6 +328,118 @@ void main() {
 
     await controller.loadEventBySlug(event.slug);
     await controller.acceptInvite('invite-2');
+
+    expect(controller.isConfirmedStreamValue.value, isFalse);
+    expect(controller.totalConfirmedStreamValue.value, 0);
+  });
+
+  test('confirmAttendance persists confirmation and clears invite deck',
+      () async {
+    final event = _buildEvent();
+    final userEventsRepository = _FakeUserEventsRepository();
+    final invitesRepository = _FakeInvitesRepository(
+      initialPendingInvites: [
+        InviteModel.fromPrimitives(
+          id: 'invite-11',
+          eventId: event.id.value,
+          eventName: event.title.value,
+          eventDateTime: event.dateTimeStart.value!,
+          eventImageUrl: 'https://example.org/event-11.jpg',
+          location: event.location.value,
+          hostName: 'Host',
+          message: 'Join us',
+          tags: const ['music'],
+          inviterName: 'Ana',
+        ),
+      ],
+    );
+    final controller = EventDetailController(
+      repository: _FakeScheduleRepository(event),
+      userEventsRepository: userEventsRepository,
+      invitesRepository: invitesRepository,
+      telemetryRepository: _FakeTelemetryRepository(),
+    );
+
+    await controller.loadEventBySlug(event.slug);
+    expect(controller.receivedInvitesStreamValue.value, hasLength(1));
+
+    await controller.confirmAttendance();
+
+    expect(userEventsRepository.confirmedCalls, [event.id.value]);
+    expect(controller.isConfirmedStreamValue.value, isTrue);
+    expect(controller.totalConfirmedStreamValue.value, 1);
+    expect(controller.receivedInvitesStreamValue.value, isEmpty);
+    expect(controller.inviteDeckIndexStreamValue.value, 0);
+  });
+
+  test('inviteFriends sends invite payload with event id and recipients',
+      () async {
+    final event = _buildEvent();
+    final invitesRepository = _FakeInvitesRepository();
+    final controller = EventDetailController(
+      repository: _FakeScheduleRepository(event),
+      userEventsRepository: _FakeUserEventsRepository(),
+      invitesRepository: invitesRepository,
+      telemetryRepository: _FakeTelemetryRepository(),
+    );
+    final recipients = <EventFriendResume>[
+      EventFriendResume.fromPrimitives(
+        id: 'friend-1',
+        displayName: 'Friend One',
+      ),
+      EventFriendResume.fromPrimitives(
+        id: 'friend-2',
+        displayName: 'Friend Two',
+      ),
+    ];
+
+    await controller.loadEventBySlug(event.slug);
+    await controller.inviteFriends(recipients);
+
+    expect(invitesRepository.sendInvitesCallCount, 1);
+    expect(invitesRepository.lastSentEventId, event.id.value);
+    expect(
+      invitesRepository.lastSentRecipients.map((friend) => friend.id).toList(),
+      ['friend-1', 'friend-2'],
+    );
+  });
+
+  test(
+      'inviteFriends is a no-op when event is not loaded or recipients are empty',
+      () async {
+    final event = _buildEvent();
+    final invitesRepository = _FakeInvitesRepository();
+    final controller = EventDetailController(
+      repository: _FakeScheduleRepository(event),
+      userEventsRepository: _FakeUserEventsRepository(),
+      invitesRepository: invitesRepository,
+      telemetryRepository: _FakeTelemetryRepository(),
+    );
+
+    await controller.inviteFriends([
+      EventFriendResume.fromPrimitives(id: 'friend-1', displayName: 'Friend'),
+    ]);
+    await controller.loadEventBySlug(event.slug);
+    await controller.inviteFriends(const <EventFriendResume>[]);
+
+    expect(invitesRepository.sendInvitesCallCount, 0);
+  });
+
+  test('acceptInvite does not auto-confirm when status is already_accepted',
+      () async {
+    final event = _buildEvent();
+    final controller = EventDetailController(
+      repository: _FakeScheduleRepository(event),
+      userEventsRepository: _FakeUserEventsRepository(),
+      invitesRepository: _FakeInvitesRepository(
+        acceptStatus: 'already_accepted',
+        acceptNextStep: InviteNextStep.freeConfirmationCreated,
+      ),
+      telemetryRepository: _FakeTelemetryRepository(),
+    );
+
+    await controller.loadEventBySlug(event.slug);
+    await controller.acceptInvite('invite-3');
 
     expect(controller.isConfirmedStreamValue.value, isFalse);
     expect(controller.totalConfirmedStreamValue.value, 0);
