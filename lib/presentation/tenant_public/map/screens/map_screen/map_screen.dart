@@ -69,22 +69,22 @@ class _MapScreenState extends State<MapScreen> {
                     ),
                   ],
                 ),
-              // SafeArea(
-              //   child: SizedBox(
-              //     height: 120,
-              //     child: Padding(
-              //       padding: const EdgeInsets.symmetric(horizontal: 16),
-              //       child: Column(
-              //         crossAxisAlignment: CrossAxisAlignment.stretch,
-              //         children: [
-              //           MapHeader(onSearch: _openSearchDialog),
-              //           const SizedBox(height: 8),
-              //           StatusBanner(),
-              //         ],
-              //       ),
-              //     ),
-              //   ),
-              // ),
+                // SafeArea(
+                //   child: SizedBox(
+                //     height: 120,
+                //     child: Padding(
+                //       padding: const EdgeInsets.symmetric(horizontal: 16),
+                //       child: Column(
+                //         crossAxisAlignment: CrossAxisAlignment.stretch,
+                //         children: [
+                //           MapHeader(onSearch: _openSearchDialog),
+                //           const SizedBox(height: 8),
+                //           StatusBanner(),
+                //         ],
+                //       ),
+                //     ),
+                //   ),
+                // ),
                 SafeArea(
                   child: Align(
                     alignment: Alignment.topLeft,
@@ -113,10 +113,10 @@ class _MapScreenState extends State<MapScreen> {
                 ),
               ],
             ),
-            floatingActionButtonLocation:
-                FloatingActionButtonLocation.endFloat,
+            floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
             floatingActionButton: FabMenu(
               onNavigateToUser: _centerOnUser,
+              mapController: _controller,
             ),
             bottomNavigationBar:
                 const BellugaBottomNavigationBar(currentIndex: 1),
@@ -133,5 +133,4 @@ class _MapScreenState extends State<MapScreen> {
   void _centerOnUser() {
     _controller.centerOnUser();
   }
-
 }

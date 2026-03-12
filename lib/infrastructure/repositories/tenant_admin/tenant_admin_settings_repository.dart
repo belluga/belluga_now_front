@@ -1,10 +1,9 @@
-import 'dart:convert';
-
 import 'package:belluga_now/domain/repositories/landlord_auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_settings_repository_contract.dart';
 import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_settings.dart';
+import 'package:belluga_now/infrastructure/dal/dao/http/json_object_response_decoder.dart';
 import 'package:belluga_now/infrastructure/repositories/tenant_admin/support/tenant_admin_validation_failure_resolver.dart';
 import 'package:dio/dio.dart';
 import 'package:get_it/get_it.dart';
@@ -21,6 +20,8 @@ class TenantAdminSettingsRepository
 
   final Dio _dio;
   final TenantAdminTenantScopeContract? _tenantScope;
+  final JsonObjectResponseDecoder _jsonObjectResponseDecoder =
+      const JsonObjectResponseDecoder();
   final StreamValue<TenantAdminBrandingSettings?> _brandingSettingsStreamValue =
       StreamValue<TenantAdminBrandingSettings?>(defaultValue: null);
   int _brandingFetchSequence = 0;
@@ -62,6 +63,44 @@ class TenantAdminSettingsRepository
       return _mapMapUiSettings(mapUi);
     } on DioException catch (error) {
       throw _wrapError(error, 'update map_ui settings');
+    }
+  }
+
+  @override
+  Future<String> uploadMapFilterImage({
+    required String key,
+    required TenantAdminMediaUpload upload,
+  }) async {
+    try {
+      final payload = FormData.fromMap({
+        'key': key.trim(),
+      });
+      _appendUpload(
+        payload,
+        fieldName: 'image',
+        upload: upload,
+      );
+
+      final response = await _dio.post(
+        '$_apiBaseUrl/v1/media/map-filter-image',
+        data: payload,
+        options: Options(
+          headers: _buildHeaders(),
+          contentType: 'multipart/form-data',
+        ),
+      );
+      final payloadMap = _extractDataMap(response.data);
+      final imageUri = _normalizeMapFilterImageUri(
+            key: key,
+            rawImageUri: payloadMap['image_uri'],
+          ) ??
+          '';
+      if (imageUri.isEmpty) {
+        throw Exception('Map filter image upload response is empty.');
+      }
+      return imageUri;
+    } on DioException catch (error) {
+      throw _wrapError(error, 'upload map filter image');
     }
   }
 
@@ -188,7 +227,7 @@ class TenantAdminSettingsRepository
         ),
       );
       final payload = _extractEnvironmentMap(
-        _decodeJsonObject(
+        _jsonObjectResponseDecoder.decode(
           response.data,
           endpoint: response.requestOptions.uri,
         ),
@@ -346,11 +385,45 @@ class TenantAdminSettingsRepository
       }
     }
 
+    final filters = <TenantAdminMapFilterCatalogItem>[];
+    final rawFilters = mapUi['filters'];
+    if (rawFilters is List) {
+      for (final entry in rawFilters) {
+        if (entry is! Map) {
+          continue;
+        }
+        final filterMap = Map<String, dynamic>.from(entry);
+        final key = filterMap['key']?.toString().trim() ?? '';
+        final label = filterMap['label']?.toString().trim() ?? '';
+        final imageUri = _normalizeMapFilterImageUri(
+          key: key,
+          rawImageUri: filterMap['image_uri'],
+        );
+        final query = _mapMapFilterQuery(
+          filterMap['query'] is Map
+              ? Map<String, dynamic>.from(filterMap['query'] as Map)
+              : null,
+        );
+        if (key.isEmpty || label.isEmpty) {
+          continue;
+        }
+        filters.add(
+          TenantAdminMapFilterCatalogItem(
+            key: key,
+            label: label,
+            imageUri: imageUri == null || imageUri.isEmpty ? null : imageUri,
+            query: query,
+          ),
+        );
+      }
+    }
+
     return TenantAdminMapUiSettings(
       rawMapUi: Map<String, dynamic>.unmodifiable(
         Map<String, dynamic>.from(mapUi),
       ),
       defaultOrigin: defaultOrigin,
+      filters: List<TenantAdminMapFilterCatalogItem>.unmodifiable(filters),
     );
   }
 
@@ -366,43 +439,6 @@ class TenantAdminSettingsRepository
       return data;
     }
     throw Exception('Unexpected environment data shape.');
-  }
-
-  Map<String, dynamic> _decodeJsonObject(
-    dynamic raw, {
-    required Uri endpoint,
-  }) {
-    if (raw is Map<String, dynamic>) {
-      return raw;
-    }
-    if (raw is Map) {
-      return Map<String, dynamic>.from(raw);
-    }
-    if (raw is String) {
-      final trimmed = raw.trim();
-      if (trimmed.isEmpty) {
-        throw Exception(
-          'Environment response body is empty for $endpoint.',
-        );
-      }
-      final decoded = jsonDecode(trimmed);
-      if (decoded is Map<String, dynamic>) {
-        return decoded;
-      }
-      if (decoded is Map) {
-        return Map<String, dynamic>.from(decoded);
-      }
-      throw Exception(
-        'Environment response is not an object for $endpoint.',
-      );
-    }
-    if (raw is List<int>) {
-      final decodedRaw = utf8.decode(raw, allowMalformed: true);
-      return _decodeJsonObject(decodedRaw, endpoint: endpoint);
-    }
-    throw Exception(
-      'Unexpected environment payload type (${raw.runtimeType}) for $endpoint.',
-    );
   }
 
   TenantAdminTelemetrySettingsSnapshot _mapTelemetrySnapshot(dynamic raw) {
@@ -439,6 +475,29 @@ class TenantAdminSettingsRepository
           .toList(growable: false);
     }
     return const [];
+  }
+
+  TenantAdminMapFilterQuery _mapMapFilterQuery(Map<String, dynamic>? json) {
+    if (json == null) {
+      return TenantAdminMapFilterQuery();
+    }
+
+    List<String> asStringList(dynamic raw) {
+      if (raw is! List) {
+        return const <String>[];
+      }
+      return raw
+          .map((entry) => entry.toString().trim().toLowerCase())
+          .where((entry) => entry.isNotEmpty)
+          .toSet()
+          .toList(growable: false);
+    }
+
+    return TenantAdminMapFilterQuery(
+      source: TenantAdminMapFilterSource.fromRaw(json['source']?.toString()),
+      types: asStringList(json['types']),
+      taxonomy: asStringList(json['taxonomy']),
+    );
   }
 
   TenantAdminFirebaseSettings? _mapFirebaseSettings(Map<String, dynamic> map) {
@@ -758,6 +817,41 @@ class TenantAdminSettingsRepository
     if (parsed.host.trim().isNotEmpty) {
       return parsed.toString();
     }
+    return tenantOrigin.resolveUri(parsed).toString();
+  }
+
+  String? _normalizeMapFilterImageUri({
+    required String key,
+    required dynamic rawImageUri,
+  }) {
+    final normalizedKey = key.trim().toLowerCase();
+    final value = rawImageUri?.toString().trim();
+    if (normalizedKey.isEmpty || value == null || value.isEmpty) {
+      return null;
+    }
+
+    final tenantOrigin = _resolveTenantOriginUri();
+    final parsed = Uri.tryParse(value);
+    if (parsed == null) {
+      return value;
+    }
+
+    final path = parsed.path.trim();
+    final legacyPath = '/map-filters/$normalizedKey/image';
+    final canonicalPath = '/api/v1/media/map-filters/$normalizedKey';
+
+    if (path == legacyPath || path == canonicalPath) {
+      final canonicalUri = tenantOrigin.resolve(canonicalPath);
+      final query = parsed.hasQuery ? parsed.query : null;
+      return canonicalUri
+          .replace(query: query == null || query.isEmpty ? null : query)
+          .toString();
+    }
+
+    if (parsed.host.trim().isNotEmpty) {
+      return parsed.toString();
+    }
+
     return tenantOrigin.resolveUri(parsed).toString();
   }
 

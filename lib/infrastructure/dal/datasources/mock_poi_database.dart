@@ -1984,8 +1984,9 @@ class MockPoiDatabase {
   List<MapRegionDefinition> availableRegions() => _regions;
 
   String eventFallbackImage() => _eventFallbackImage;
-  List<CityPoiDTO> findPois({PoiQuery query = const PoiQuery()}) {
-    final searchTerm = query.searchTerm?.trim().toLowerCase();
+  List<CityPoiDTO> findPois({PoiQuery? query}) {
+    final resolvedQuery = query ?? PoiQuery();
+    final searchTerm = resolvedQuery.searchTerm?.trim().toLowerCase();
     return _catalog.where((poi) {
       if (searchTerm != null && searchTerm.isNotEmpty) {
         final matchesText = poi.name.toLowerCase().contains(searchTerm) ||
@@ -1997,18 +1998,18 @@ class MockPoiDatabase {
           return false;
         }
       }
-      if (!query.matchesCategory(poi.category)) {
+      if (!resolvedQuery.matchesCategory(poi.category)) {
         return false;
       }
-      if (!query.matchesTags(poi.tags)) {
+      if (!resolvedQuery.matchesTags(poi.tags)) {
         return false;
       }
-      if (query.hasBounds) {
+      if (resolvedQuery.hasBounds) {
         final coordinate = CityCoordinate(
           latitudeValue: LatitudeValue()..parse(poi.latitude.toString()),
           longitudeValue: LongitudeValue()..parse(poi.longitude.toString()),
         );
-        if (!query.containsCoordinate(coordinate)) {
+        if (!resolvedQuery.containsCoordinate(coordinate)) {
           return false;
         }
       }

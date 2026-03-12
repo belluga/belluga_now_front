@@ -1,19 +1,9 @@
+export 'main_filter_behavior.dart';
+export 'main_filter_type.dart';
+
 import 'package:belluga_now/domain/map/city_poi_category.dart';
-
-/// Identifies a high-level, discoverable filter that can be surfaced as a FAB.
-enum MainFilterType {
-  promotions,
-  events,
-  music,
-  regions,
-  cuisines,
-}
-
-/// Describes how a main filter should behave when activated.
-enum MainFilterBehavior {
-  quickApply,
-  opensPanel,
-}
+import 'package:belluga_now/domain/map/filters/main_filter_behavior.dart';
+import 'package:belluga_now/domain/map/filters/main_filter_type.dart';
 
 class MainFilterOption {
   const MainFilterOption({

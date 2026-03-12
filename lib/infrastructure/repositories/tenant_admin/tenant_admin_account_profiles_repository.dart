@@ -1,15 +1,13 @@
 import 'package:belluga_now/domain/repositories/landlord_auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_account_profiles_repository_contract.dart';
 import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.dart';
-import 'package:belluga_now/domain/tenant_admin/ownership_state.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
-import 'package:belluga_now/infrastructure/dal/dto/tenant_admin/tenant_admin_account_profile_dto.dart';
-import 'package:belluga_now/infrastructure/dal/dto/tenant_admin/tenant_admin_profile_type_dto.dart';
+import 'package:belluga_now/infrastructure/dal/dto/mappers/tenant_admin_dto_mapper.dart';
 import 'package:belluga_now/infrastructure/repositories/tenant_admin/tenant_admin_pagination_utils.dart';
 import 'package:belluga_now/infrastructure/repositories/tenant_admin/support/tenant_admin_validation_failure_resolver.dart';
 import 'package:dio/dio.dart';
@@ -17,7 +15,7 @@ import 'package:get_it/get_it.dart';
 import 'package:http_parser/http_parser.dart';
 
 class TenantAdminAccountProfilesRepository
-    with TenantAdminProfileTypesPaginationMixin
+    with TenantAdminProfileTypesPaginationMixin, TenantAdminDtoMapper
     implements TenantAdminAccountProfilesRepositoryContract {
   TenantAdminAccountProfilesRepository({
     Dio? dio,
@@ -387,56 +385,13 @@ class TenantAdminAccountProfilesRepository
   }
 
   TenantAdminAccountProfile _mapProfile(Map<String, dynamic> json) {
-    final dto = TenantAdminAccountProfileDTO.fromJson(json);
-    final location = (dto.locationLat != null && dto.locationLng != null)
-        ? TenantAdminLocation(
-            latitude: dto.locationLat!,
-            longitude: dto.locationLng!,
-          )
-        : null;
-    final taxonomy = dto.taxonomyTerms
-        .map((term) => TenantAdminTaxonomyTerm(
-              type: term.type,
-              value: term.value,
-            ))
-        .toList(growable: false);
-    return TenantAdminAccountProfile(
-      id: dto.id,
-      accountId: dto.accountId,
-      profileType: dto.profileType,
-      displayName: dto.displayName,
-      slug: dto.slug,
-      avatarUrl: dto.avatarUrl,
-      coverUrl: dto.coverUrl,
-      bio: dto.bio,
-      content: dto.content,
-      location: location,
-      taxonomyTerms: taxonomy,
-      ownershipState: dto.ownershipState == null
-          ? null
-          : TenantAdminOwnershipState.fromApiValue(dto.ownershipState),
-    );
+    return mapTenantAdminAccountProfileJson(json);
   }
 
   TenantAdminProfileTypeDefinition _mapProfileType(
     Map<String, dynamic> json,
   ) {
-    final dto = TenantAdminProfileTypeDTO.fromJson(json);
-    return TenantAdminProfileTypeDefinition(
-      type: dto.type,
-      label: dto.label,
-      allowedTaxonomies: dto.allowedTaxonomies,
-      capabilities: TenantAdminProfileTypeCapabilities(
-        isFavoritable: dto.isFavoritable,
-        isPoiEnabled: dto.isPoiEnabled,
-        hasBio: dto.hasBio,
-        hasContent: dto.hasContent,
-        hasTaxonomies: dto.hasTaxonomies,
-        hasAvatar: dto.hasAvatar,
-        hasCover: dto.hasCover,
-        hasEvents: dto.hasEvents,
-      ),
-    );
+    return mapTenantAdminProfileTypeJson(json);
   }
 
   FormData? _buildMultipartPayload(

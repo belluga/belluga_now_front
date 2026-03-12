@@ -1,8 +1,10 @@
+// ignore_for_file: unused_element
+
 class BuildContext {}
 
-class ContextController {
+class _ContextController {
   // expect_lint: controller_buildcontext_dependency_forbidden
   final BuildContext context;
 
-  ContextController(this.context);
+  _ContextController(this.context);
 }

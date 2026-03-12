@@ -41,12 +41,16 @@ class ColorSchemeData {
     }
   }
 
-  factory ColorSchemeData.fromJson(Map<String, dynamic> json) {
-    final primaryHex = json['primary_seed_color'] as String? ?? '#4FA0E3';
-    final secondaryHex = json['secondary_seed_color'] as String? ?? '#E80D5D';
+  factory ColorSchemeData.fromPrimitives({
+    required String? brightness,
+    String? primarySeedColor,
+    String? secondarySeedColor,
+  }) {
+    final primaryHex = primarySeedColor ?? '#4FA0E3';
+    final secondaryHex = secondarySeedColor ?? '#E80D5D';
 
     return ColorSchemeData(
-      brightnessValue: BrightnessValue()..parse(json['brightness']),
+      brightnessValue: BrightnessValue()..parse(brightness),
       primarySeedColorValue:
           ColorRequiredValue(defaultValue: primaryHex.toColor()),
       secondarySeedColorValue:

@@ -1,3 +1,5 @@
+// ignore_for_file: unused_element
+
 import 'package:get_it/get_it.dart';
 
 abstract class ModuleContract {
@@ -8,29 +10,29 @@ abstract class ModuleContract {
   void registerRouteResolver<TModel>(Object Function() factory) {}
 }
 
-class AnyService {}
+class _AnyService {}
 
-class AnyController {}
+class _AnyController {}
 
-class ModuleRegistrationCase extends ModuleContract {
+class _ModuleRegistrationCase extends ModuleContract {
   void bad() {
     // expect_lint: module_direct_getit_registration_forbidden
-    GetIt.I.registerLazySingleton<AnyService>(() => AnyService());
+    GetIt.I.registerLazySingleton<_AnyService>(() => _AnyService());
 
     // expect_lint: module_direct_getit_registration_forbidden
-    GetIt.instance.registerFactory<AnyService>(() => AnyService());
+    GetIt.instance.registerFactory<_AnyService>(() => _AnyService());
   }
 
   void good() {
-    registerLazySingleton<AnyService>(() => AnyService());
-    registerFactory<AnyController>(() => AnyController());
+    registerLazySingleton<_AnyService>(() => _AnyService());
+    registerFactory<_AnyController>(() => _AnyController());
     registerRouteResolver<String>(() => Object());
   }
 }
 
-class NonModuleRegistrationCase {
+class _NonModuleRegistrationCase {
   void allowedForNow() {
     // Non-ModuleContract classes are outside this rule scope.
-    GetIt.I.registerLazySingleton<AnyService>(() => AnyService());
+    GetIt.I.registerLazySingleton<_AnyService>(() => _AnyService());
   }
 }

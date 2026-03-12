@@ -1,13 +1,24 @@
 import 'package:belluga_now/domain/map/city_poi_category.dart';
 
+import 'package:belluga_now/domain/map/filters/poi_filter_category.dart';
+import 'package:belluga_now/domain/map/filters/poi_filter_taxonomy_group.dart';
+
+export 'package:belluga_now/domain/map/filters/poi_filter_category.dart';
+export 'package:belluga_now/domain/map/filters/poi_filter_server_query.dart';
+export 'package:belluga_now/domain/map/filters/poi_filter_taxonomy_group.dart';
+export 'package:belluga_now/domain/map/filters/poi_filter_taxonomy_term.dart';
+
 class PoiFilterOptions {
-  PoiFilterOptions({required this.categories});
+  PoiFilterOptions({
+    required this.categories,
+    this.taxonomyGroups = const <PoiFilterTaxonomyGroup>[],
+  });
 
   final List<PoiFilterCategory> categories;
+  final List<PoiFilterTaxonomyGroup> taxonomyGroups;
 
   List<PoiFilterCategory> get sortedCategories =>
-      List<PoiFilterCategory>.from(categories)
-        ..sort((a, b) => a.category.index.compareTo(b.category.index));
+      List<PoiFilterCategory>.from(categories);
 
   Set<String> tagsForCategories(Iterable<CityPoiCategory> selected) {
     if (selected.isEmpty) {
@@ -16,24 +27,10 @@ class PoiFilterOptions {
     final normalized = selected.toSet();
     final tags = <String>{};
     for (final option in categories) {
-      if (normalized.contains(option.category)) {
+      if (option.category != null && normalized.contains(option.category)) {
         tags.addAll(option.tags);
       }
     }
     return tags;
   }
-}
-
-class PoiFilterCategory {
-  PoiFilterCategory({required this.category, required Set<String> tags})
-      : tags = tags
-            .map((tag) => tag.trim())
-            .where((tag) => tag.isNotEmpty)
-            .map(
-              (tag) => tag,
-            )
-            .toSet();
-
-  final CityPoiCategory category;
-  final Set<String> tags;
 }

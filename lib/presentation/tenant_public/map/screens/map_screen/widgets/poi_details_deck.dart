@@ -4,7 +4,6 @@ import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/domain/map/city_poi_model.dart';
 import 'package:belluga_now/domain/map/direction_info.dart';
-import 'package:belluga_now/domain/map/event_poi_model.dart';
 import 'package:belluga_now/domain/map/filters/poi_filter_mode.dart';
 import 'package:belluga_now/domain/map/ride_share_option.dart';
 import 'package:belluga_now/domain/map/ride_share_provider.dart';
@@ -146,9 +145,57 @@ class _PoiDetailDeckState extends State<PoiDetailDeck>
           streamValue: _controller.selectedPoiStreamValue,
           onNullWidget: const SizedBox.shrink(),
           builder: (_, poi) {
-            final deckHeight = _heightForPoi(context, poi!);
+            final selectedPoi = poi!;
+            final stackPois = _stackDeckItems(selectedPoi);
+            if (stackPois.length > 1) {
+              return StreamValueBuilder<int>(
+                streamValue: _controller.poiDeckIndexStreamValue,
+                builder: (_, pageIndex) {
+                  final selectedIndex = stackPois.indexWhere(
+                    (candidate) => candidate.id == selectedPoi.id,
+                  );
+                  final desiredIndex =
+                      selectedIndex == -1 ? pageIndex : selectedIndex;
+                  final clampedIndex =
+                      desiredIndex.clamp(0, stackPois.length - 1).toInt();
+                  if (clampedIndex != pageIndex) {
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      _controller.setPoiDeckIndex(clampedIndex);
+                    });
+                  }
+                  if (_lastPoiDeckIndex != clampedIndex) {
+                    _lastPoiDeckIndex = clampedIndex;
+                    _applyPoiDeckIndex(clampedIndex);
+                  }
+                  final currentPoi = stackPois[clampedIndex];
+                  final deckHeight = _heightForPoi(context, currentPoi);
+                  return FilteredDeck(
+                    pois: stackPois,
+                    controller: _controller,
+                    colorScheme: scheme,
+                    pageController: _pageController,
+                    cardBuilder: _cardBuilder,
+                    onPrimaryAction: _handlePoiAction,
+                    onShare: _handleShare,
+                    onRoute: _handleRoute,
+                    onChanged: (index) {
+                      _controller.setPoiDeckIndex(index);
+                      final poi = stackPois[index];
+                      _controller.selectPoi(poi);
+                      unawaited(_controller.focusOnPoi(poi));
+                    },
+                    deckHeight: deckHeight,
+                    onCardHeightChanged: (poiId, height) =>
+                        _handleMeasuredHeight(context, poiId, height),
+                    deckMeasurementPadding: _kDeckMeasurementPadding,
+                  );
+                },
+              );
+            }
+
+            final deckHeight = _heightForPoi(context, selectedPoi);
             return SinglePoiCard(
-              poi: poi,
+              poi: selectedPoi,
               colorScheme: scheme,
               cardBuilder: _cardBuilder,
               onPrimaryAction: _handlePoiAction,
@@ -175,14 +222,18 @@ class _PoiDetailDeckState extends State<PoiDetailDeck>
   }
 
   void _handlePoiAction(CityPoiModel poi) {
-    if (poi is EventPoiModel) {
-      final slug = poi.event.slug;
-      if (slug.isNotEmpty) {
-        context.router.push(ImmersiveEventDetailRoute(eventSlug: slug));
+    if (_isEventPoi(poi)) {
+      final eventSlug = _resolveEventSlug(poi);
+      if (eventSlug.isNotEmpty) {
+        context.router.push(ImmersiveEventDetailRoute(eventSlug: eventSlug));
+        return;
       }
+      _controller.statusMessageStreamValue.addValue(
+        'Evento sem referência para abrir detalhes.',
+      );
       return;
     }
-    _controller.statusMessageStreamValue.addValue('Abrindo ${poi.name}');
+    context.router.push(PoiDetailsRoute(poi: poi));
   }
 
   Future<void> _handleShare(CityPoiModel poi) async {
@@ -207,7 +258,6 @@ class _PoiDetailDeckState extends State<PoiDetailDeck>
     }
     await _presentDirectionsOptions(info, poi);
   }
-
 
   Future<DirectionsInfo?> _prepareDirections(CityPoiModel poi) async {
     final coordinate = poi.coordinate;
@@ -474,26 +524,107 @@ class _PoiDetailDeckState extends State<PoiDetailDeck>
     }
   }
 
-  _SharePayload _buildSharePayload(CityPoiModel poi) {
-    if (poi is EventPoiModel) {
-      final event = poi.event;
-      final lines = <String>[
-        event.title.value,
-        if (event.location.value.isNotEmpty) event.location.value,
-      ];
-      final start = event.dateTimeStart.value;
-      if (start != null) {
-        lines.add('Início: ${DateFormat('dd/MM/yyyy HH:mm').format(start)}');
+  bool _isEventPoi(CityPoiModel poi) {
+    if (poi.refType.trim().toLowerCase() == 'event') {
+      return true;
+    }
+    return poi.isDynamic;
+  }
+
+  String _resolveEventSlug(CityPoiModel poi) {
+    final slug = poi.refSlug?.trim() ?? '';
+    if (slug.isNotEmpty) {
+      return slug;
+    }
+    final fromPath = _extractSlugFromPath(poi.refPath);
+    if (fromPath.isNotEmpty) {
+      return fromPath;
+    }
+    return poi.refId.trim();
+  }
+
+  String _extractSlugFromPath(String? refPath) {
+    final path = refPath?.trim() ?? '';
+    if (path.isEmpty) {
+      return '';
+    }
+    try {
+      final segments = Uri.parse(path)
+          .pathSegments
+          .where((segment) => segment.trim().isNotEmpty)
+          .toList(growable: false);
+      if (segments.isEmpty) {
+        return '';
       }
-      final coordinate = event.coordinate;
-      if (coordinate != null) {
+      return segments.last.trim();
+    } catch (_) {
+      return '';
+    }
+  }
+
+  List<CityPoiModel> _stackDeckItems(CityPoiModel selectedPoi) {
+    if (selectedPoi.stackItems.isEmpty) {
+      return const <CityPoiModel>[];
+    }
+
+    final fallbackStackKey = selectedPoi.stackItems.first.stackKey.trim();
+    final normalizedStackKey = selectedPoi.stackKey.trim().isNotEmpty
+        ? selectedPoi.stackKey.trim()
+        : fallbackStackKey;
+    final normalizedStackCount = selectedPoi.stackCount > 0
+        ? selectedPoi.stackCount
+        : selectedPoi.stackItems.length;
+
+    final uniqueById = <String, CityPoiModel>{};
+    for (final item in selectedPoi.stackItems) {
+      uniqueById[item.id] = item;
+    }
+    uniqueById[selectedPoi.id] = selectedPoi;
+
+    final ordered = uniqueById.values.toList(growable: false)
+      ..sort((a, b) {
+        final byPriority = b.priority.compareTo(a.priority);
+        if (byPriority != 0) {
+          return byPriority;
+        }
+        return a.id.compareTo(b.id);
+      });
+
+    final seeded = ordered
+        .map(
+          (item) => item.copyWith(
+            stackKey: normalizedStackKey,
+            stackCount: normalizedStackCount,
+          ),
+        )
+        .toList(growable: false);
+    return seeded
+        .map((item) => item.copyWith(stackItems: seeded))
+        .toList(growable: false);
+  }
+
+  _SharePayload _buildSharePayload(CityPoiModel poi) {
+    if (_isEventPoi(poi)) {
+      final lines = <String>[
+        poi.name,
+        if (poi.address.isNotEmpty) poi.address,
+        if (poi.description.isNotEmpty) poi.description,
+      ];
+      if (poi.updatedAt != null) {
         lines.add(
-          'Mapa: https://maps.google.com/?q='
-          '${coordinate.latitude},${coordinate.longitude}',
+          'Atualizado em ${DateFormat('dd/MM/yyyy HH:mm').format(poi.updatedAt!)}',
         );
       }
+      final eventPath = poi.refPath?.trim() ?? '';
+      if (eventPath.isNotEmpty) {
+        lines.add('Detalhes: $eventPath');
+      }
+      lines.add(
+        'Mapa: https://maps.google.com/?q='
+        '${poi.coordinate.latitude},${poi.coordinate.longitude}',
+      );
       final message = lines.where((line) => line.trim().isNotEmpty).join('\n');
-      return _SharePayload(subject: event.title.value, message: message);
+      return _SharePayload(subject: poi.name, message: message);
     }
 
     final details = <String>[

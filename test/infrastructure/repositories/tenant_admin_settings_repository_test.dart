@@ -48,7 +48,7 @@ void main() {
     );
 
     final updated = await repository.updatePushSettings(
-      settings: const TenantAdminPushSettings(
+      settings: TenantAdminPushSettings(
         maxTtlDays: 14,
         maxPerMinute: 20,
         maxPerHour: 120,
@@ -78,6 +78,22 @@ void main() {
     expect(settings.defaultOrigin!.lat, closeTo(-20.6736, 0.000001));
     expect(settings.defaultOrigin!.lng, closeTo(-40.4976, 0.000001));
     expect(settings.defaultOrigin!.label, 'Centro');
+    expect(settings.filters, hasLength(1));
+    expect(settings.filters.first.key, 'events');
+    expect(settings.filters.first.label, 'Eventos');
+    expect(
+      settings.filters.first.imageUri,
+      'https://tenant-a.test/api/v1/media/map-filters/events?v=1710000000',
+    );
+    expect(
+      settings.filters.first.query.source,
+      TenantAdminMapFilterSource.event,
+    );
+    expect(settings.filters.first.query.types, equals(const ['show']));
+    expect(
+      settings.filters.first.query.taxonomy,
+      equals(const ['music_genre:rock']),
+    );
     final radius = settings.rawMapUi['radius'] as Map<String, dynamic>;
     expect(radius['default_km'], 5);
     expect(adapter.requests.single.uri.path, '/admin/api/v1/settings/values');
@@ -121,7 +137,7 @@ void main() {
       dio: dio,
       tenantScope: scope,
     );
-    const mapUi = TenantAdminMapUiSettings(
+    final mapUi = TenantAdminMapUiSettings(
       rawMapUi: {
         'radius': {
           'min_km': 1,
@@ -133,12 +149,38 @@ void main() {
           'lng': -40.422222,
           'label': 'Praia do Morro',
         },
+        'filters': [
+          {
+            'key': 'events',
+            'label': 'Eventos',
+            'image_uri':
+                'https://tenant-a.test/map-filters/events/image?v=1710000000',
+            'query': {
+              'source': 'event',
+              'types': ['show'],
+              'taxonomy': ['music_genre:rock'],
+            },
+          },
+        ],
       },
       defaultOrigin: TenantAdminMapDefaultOrigin(
         lat: -20.611111,
         lng: -40.422222,
         label: 'Praia do Morro',
       ),
+      filters: [
+        TenantAdminMapFilterCatalogItem(
+          key: 'events',
+          label: 'Eventos',
+          imageUri:
+              'https://tenant-a.test/map-filters/events/image?v=1710000000',
+          query: TenantAdminMapFilterQuery(
+            source: TenantAdminMapFilterSource.event,
+            types: ['show'],
+            taxonomy: ['music_genre:rock'],
+          ),
+        ),
+      ],
     );
 
     final updated = await repository.updateMapUiSettings(settings: mapUi);
@@ -150,10 +192,75 @@ void main() {
     expect(payload['default_origin.lat'], -20.611111);
     expect(payload['default_origin.lng'], -40.422222);
     expect(payload['default_origin.label'], 'Praia do Morro');
+    expect(payload['filters'], isA<List<dynamic>>());
+    final filtersPayload = payload['filters'] as List<dynamic>;
+    expect(filtersPayload, hasLength(1));
+    final firstFilterPayload =
+        Map<String, dynamic>.from(filtersPayload.first as Map);
+    final queryPayload = Map<String, dynamic>.from(
+      firstFilterPayload['query'] as Map,
+    );
+    expect(queryPayload['source'], 'event');
+    expect(queryPayload['types'], equals(const ['show']));
+    expect(queryPayload['taxonomy'], equals(const ['music_genre:rock']));
     expect(updated.defaultOrigin, isNotNull);
     expect(updated.defaultOrigin!.lat, closeTo(-20.611111, 0.000001));
     expect(updated.defaultOrigin!.lng, closeTo(-40.422222, 0.000001));
     expect(updated.defaultOrigin!.label, 'Praia do Morro');
+    expect(updated.filters, hasLength(1));
+    expect(updated.filters.first.key, 'events');
+    expect(updated.filters.first.label, 'Eventos');
+    expect(
+      updated.filters.first.imageUri,
+      'https://tenant-a.test/api/v1/media/map-filters/events?v=1710000000',
+    );
+    expect(
+        updated.filters.first.query.source, TenantAdminMapFilterSource.event);
+    expect(updated.filters.first.query.types, equals(const ['show']));
+    expect(
+      updated.filters.first.query.taxonomy,
+      equals(const ['music_genre:rock']),
+    );
+  });
+
+  test(
+      'uploadMapFilterImage sends authenticated multipart payload and returns image uri',
+      () async {
+    final adapter = _RoutingAdapter();
+    final scope = _MutableTenantScope('https://tenant-a.test');
+    final dio = Dio()..httpClientAdapter = adapter;
+    final repository = TenantAdminSettingsRepository(
+      dio: dio,
+      tenantScope: scope,
+    );
+
+    final imageUri = await repository.uploadMapFilterImage(
+      key: 'events',
+      upload: TenantAdminMediaUpload(
+        bytes: Uint8List.fromList(const [1, 2, 3, 4]),
+        fileName: 'events.png',
+        mimeType: 'image/png',
+      ),
+    );
+
+    expect(imageUri,
+        'https://tenant-a.test/api/v1/media/map-filters/events?v=1710000000');
+    final request = adapter.requests.single;
+    expect(request.uri.path, '/admin/api/v1/media/map-filter-image');
+    expect(request.headers['Authorization'], 'Bearer test-token');
+    expect(request.headers['Accept'], 'application/json');
+    expect(request.data, isA<FormData>());
+    final formData = request.data as FormData;
+    expect(
+      formData.fields.any(
+        (entry) => entry.key == 'key' && entry.value == 'events',
+      ),
+      isTrue,
+    );
+    expect(
+      formData.files.any((entry) => entry.key == 'image'),
+      isTrue,
+    );
   });
 
   test(
@@ -182,7 +289,7 @@ void main() {
     final fetched = await repository.fetchMapUiSettings();
     final updated = await repository.updateMapUiSettings(
       settings: fetched.applyDefaultOrigin(
-        const TenantAdminMapDefaultOrigin(
+        TenantAdminMapDefaultOrigin(
           lat: -20.611111,
           lng: -40.422222,
           label: 'Praia do Morro',
@@ -219,7 +326,7 @@ void main() {
     );
 
     final snapshot = await repository.upsertTelemetryIntegration(
-      integration: const TenantAdminTelemetryIntegration(
+      integration: TenantAdminTelemetryIntegration(
         type: 'mixpanel',
         trackAll: false,
         events: ['app_opened'],
@@ -758,6 +865,19 @@ class _RoutingAdapter implements HttpClientAdapter {
                     'lng': -40.4976,
                     'label': 'Centro',
                   },
+                  'filters': [
+                    {
+                      'key': 'events',
+                      'label': 'Eventos',
+                      'image_uri':
+                          'https://tenant-a.test/map-filters/events/image?v=1710000000',
+                      'query': {
+                        'source': 'event',
+                        'types': ['show'],
+                        'taxonomy': ['music_genre:rock'],
+                      },
+                    },
+                  ],
                 },
               },
             },
@@ -769,6 +889,26 @@ class _RoutingAdapter implements HttpClientAdapter {
       return _jsonResponse({
         'data': {
           'map_ui': _expandDotPayload(request),
+        },
+      });
+    }
+
+    if (path.endsWith('/media/map-filter-image') && method == 'POST') {
+      final requestData = options.data;
+      String key = '';
+      if (requestData is FormData) {
+        for (final field in requestData.fields) {
+          if (field.key == 'key') {
+            key = field.value.trim();
+            break;
+          }
+        }
+      }
+      final normalizedKey = key.isEmpty ? 'uploaded-filter' : key;
+      return _jsonResponse({
+        'data': {
+          'image_uri':
+              'https://tenant-a.test/map-filters/$normalizedKey/image?v=1710000000',
         },
       });
     }

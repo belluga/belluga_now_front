@@ -7,8 +7,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_static_asset.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_static_profile_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
-import 'package:belluga_now/infrastructure/dal/dto/tenant_admin/tenant_admin_static_asset_dto.dart';
-import 'package:belluga_now/infrastructure/dal/dto/tenant_admin/tenant_admin_static_profile_type_dto.dart';
+import 'package:belluga_now/infrastructure/dal/dto/mappers/tenant_admin_dto_mapper.dart';
 import 'package:belluga_now/infrastructure/repositories/tenant_admin/tenant_admin_pagination_utils.dart';
 import 'package:belluga_now/infrastructure/repositories/tenant_admin/support/tenant_admin_validation_failure_resolver.dart';
 import 'package:dio/dio.dart';
@@ -16,7 +15,7 @@ import 'package:get_it/get_it.dart';
 import 'package:http_parser/http_parser.dart';
 
 class TenantAdminStaticAssetsRepository
-    with TenantAdminStaticAssetsPaginationMixin
+    with TenantAdminStaticAssetsPaginationMixin, TenantAdminDtoMapper
     implements TenantAdminStaticAssetsRepositoryContract {
   TenantAdminStaticAssetsRepository({
     Dio? dio,
@@ -411,55 +410,13 @@ class TenantAdminStaticAssetsRepository
   }
 
   TenantAdminStaticAsset _mapStaticAsset(Map<String, dynamic> json) {
-    final dto = TenantAdminStaticAssetDTO.fromJson(json);
-    final location = (dto.locationLat != null && dto.locationLng != null)
-        ? TenantAdminLocation(
-            latitude: dto.locationLat!,
-            longitude: dto.locationLng!,
-          )
-        : null;
-    final taxonomy = dto.taxonomyTerms
-        .map(
-          (term) => TenantAdminTaxonomyTerm(
-            type: term.type,
-            value: term.value,
-          ),
-        )
-        .toList(growable: false);
-    return TenantAdminStaticAsset(
-      id: dto.id,
-      profileType: dto.profileType,
-      displayName: dto.displayName,
-      slug: dto.slug,
-      avatarUrl: dto.avatarUrl,
-      coverUrl: dto.coverUrl,
-      bio: dto.bio,
-      content: dto.content,
-      tags: dto.tags,
-      categories: dto.categories,
-      taxonomyTerms: taxonomy,
-      location: location,
-      isActive: dto.isActive,
-    );
+    return mapTenantAdminStaticAssetJson(json);
   }
 
   TenantAdminStaticProfileTypeDefinition _mapStaticProfileType(
     Map<String, dynamic> json,
   ) {
-    final dto = TenantAdminStaticProfileTypeDTO.fromJson(json);
-    return TenantAdminStaticProfileTypeDefinition(
-      type: dto.type,
-      label: dto.label,
-      allowedTaxonomies: dto.allowedTaxonomies,
-      capabilities: TenantAdminStaticProfileTypeCapabilities(
-        isPoiEnabled: dto.isPoiEnabled,
-        hasBio: dto.hasBio,
-        hasTaxonomies: dto.hasTaxonomies,
-        hasAvatar: dto.hasAvatar,
-        hasCover: dto.hasCover,
-        hasContent: dto.hasContent,
-      ),
-    );
+    return mapTenantAdminStaticProfileTypeJson(json);
   }
 
   Map<String, dynamic> _buildStaticProfileTypePayload({

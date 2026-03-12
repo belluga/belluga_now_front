@@ -97,10 +97,6 @@ mixin PushInvitePayloadMixin on PushPayloadUpsertMixin<InviteModel>, InviteDtoMa
   }
 
   InviteDto? _tryParseInviteDto(Map<String, dynamic> entry) {
-    try {
-      return InviteDto.fromJson(entry);
-    } catch (_) {
-      return null;
-    }
+    return tryParseInviteDtoJson(entry);
   }
 }

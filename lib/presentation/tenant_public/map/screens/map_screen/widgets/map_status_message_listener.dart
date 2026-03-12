@@ -19,21 +19,54 @@ class MapStatusMessageListener extends StatefulWidget {
 }
 
 class _MapStatusMessageListenerState extends State<MapStatusMessageListener> {
+  static const Duration _dedupeWindow = Duration(seconds: 2);
+
   late final MapScreenController _controller =
       widget.controller ?? GetIt.I.get<MapScreenController>();
+  String? _lastShownMessage;
+  DateTime? _lastShownAt;
+  bool _snackBarScheduled = false;
 
   @override
   void initState() => super.initState();
 
   void _handleMessage(String? message) {
-    if (message == null || message.isEmpty) return;
+    if (message == null || message.isEmpty) {
+      return;
+    }
+    if (_isDuplicate(message)) {
+      _controller.clearStatusMessage();
+      return;
+    }
+    if (_snackBarScheduled) {
+      return;
+    }
+    _snackBarScheduled = true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      _snackBarScheduled = false;
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message)),
-      );
+      if (_isDuplicate(message)) {
+        _controller.clearStatusMessage();
+        return;
+      }
+      final messenger = ScaffoldMessenger.of(context);
+      messenger
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(content: Text(message)),
+        );
+      _lastShownMessage = message;
+      _lastShownAt = DateTime.now();
       _controller.clearStatusMessage();
     });
+  }
+
+  bool _isDuplicate(String message) {
+    final lastShownAt = _lastShownAt;
+    if (_lastShownMessage != message || lastShownAt == null) {
+      return false;
+    }
+    return DateTime.now().difference(lastShownAt) <= _dedupeWindow;
   }
 
   @override

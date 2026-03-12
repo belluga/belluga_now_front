@@ -1,4 +1,5 @@
-import 'package:belluga_now/infrastructure/dal/dto/schedule/event_artist_dto.dart';
+export 'mock_artist_seed.dart';
+
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_delta_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_page_dto.dart';
@@ -6,12 +7,15 @@ import 'package:belluga_now/infrastructure/dal/dto/schedule/event_summary_dto.da
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_summary_item_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_type_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/thumb_dto.dart';
+import 'package:belluga_now/infrastructure/dal/dao/mock_backend/mock_artist_seed.dart';
 import 'package:belluga_now/infrastructure/services/schedule_backend_contract.dart';
 import 'package:belluga_now/application/configurations/belluga_constants.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/map/geo_distance.dart';
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
 import 'package:get_it/get_it.dart';
+
+part 'mock_event_seed.dart';
 
 class MockScheduleBackend implements ScheduleBackendContract {
   MockScheduleBackend();
@@ -266,7 +270,7 @@ class MockScheduleBackend implements ScheduleBackendContract {
       seeds.length,
       (index) {
         final venue = venues[index % venues.length];
-        return seeds[index].toDto(_today, venue);
+        return seeds[index]._toDto(_today, venue);
       },
     )..sort((a, b) => DateTime.parse(a.dateTimeStart)
         .compareTo(DateTime.parse(b.dateTimeStart)));
@@ -275,7 +279,7 @@ class MockScheduleBackend implements ScheduleBackendContract {
     return events;
   }
 
-  List<EventVenue> _selectEventVenuesForCurrentTenant() {
+  List<_EventVenue> _selectEventVenuesForCurrentTenant() {
     String? hostname;
     try {
       hostname = GetIt.I.get<AppData>().hostname;
@@ -286,7 +290,7 @@ class MockScheduleBackend implements ScheduleBackendContract {
     final tenantSubdomain =
         hostname != null ? _tenantSubdomainFromHostname(hostname) : null;
 
-    final List<EventVenue> selected;
+    final List<_EventVenue> selected;
     if (tenantSubdomain == 'alfredochaves') {
       selected = _eventVenues
           .where((venue) => venue.id.startsWith('alfredo-'))
@@ -426,148 +430,148 @@ class MockScheduleBackend implements ScheduleBackendContract {
     color: '#FFE80D5D',
   );
 
-  static const List<EventVenue> _eventVenues = [
-    EventVenue(
+  static const List<_EventVenue> _eventVenues = [
+    _EventVenue(
       id: 'american-grill',
       name: 'American Grill',
       address: 'Guarapari',
       latitude: -20.6600241,
       longitude: -40.502093,
     ),
-    EventVenue(
+    _EventVenue(
       id: 'alfredo-adega-restaurante',
       name: 'Adega Restaurante',
       address: 'Matilde, Alfredo Chaves - ES',
       latitude: -20.555612,
       longitude: -40.816068,
     ),
-    EventVenue(
+    _EventVenue(
       id: 'alfredo-restaurante-prainha',
       name: 'Restaurante Prainha',
       address: 'Matilde, Alfredo Chaves - ES',
       latitude: -20.556303,
       longitude: -40.81689,
     ),
-    EventVenue(
+    _EventVenue(
       id: 'alfredo-restaurante-boldrini',
       name: 'Restaurante Boldrini',
       address: 'Centro, Alfredo Chaves - ES',
       latitude: -20.634608,
       longitude: -40.751046,
     ),
-    EventVenue(
+    _EventVenue(
       id: 'alfredo-padaria-confeitaria-boldrini',
       name: 'Padaria e Confeitaria Boldrini',
       address: 'Centro, Alfredo Chaves - ES',
       latitude: -20.634671,
       longitude: -40.751134,
     ),
-    EventVenue(
+    _EventVenue(
       id: 'alfredo-padaria-ki-pao',
       name: 'Padaria Ki-pão',
       address: 'Centro, Alfredo Chaves - ES',
       latitude: -20.634985,
       longitude: -40.750269,
     ),
-    EventVenue(
+    _EventVenue(
       id: 'alfredo-sitio-recanto-das-videiras',
       name: 'Sitio Recanto das Videiras',
       address: 'Alfredo Chaves - ES',
       latitude: -20.5524902,
       longitude: -40.8487666,
     ),
-    EventVenue(
+    _EventVenue(
       id: 'bolinhas-bar',
       name: 'Bolinhas Bar e Restaurante',
       address: 'Av. Des. Laurival de Almeida, Centro',
       latitude: -20.6739006,
       longitude: -40.4980227,
     ),
-    EventVenue(
+    _EventVenue(
       id: 'box-mineiro',
       name: 'Box Mineiro',
       address: 'Rua Henrique Coutinho, Centro',
       latitude: -20.6703232,
       longitude: -40.4965388,
     ),
-    EventVenue(
+    _EventVenue(
       id: 'barraca-do-marcelo',
       name: 'Barraca do Marcelo',
       address: 'Praia de Meaípe',
       latitude: -20.7381371,
       longitude: -40.5430268,
     ),
-    EventVenue(
+    _EventVenue(
       id: 'le-cave',
       name: 'Le Cave',
       address: 'Enseada Azul',
       latitude: -20.6520423,
       longitude: -40.4859819,
     ),
-    EventVenue(
+    _EventVenue(
       id: 'donatello',
       name: 'Donatello Restaurante e Pizzaria',
       address: 'Avenida Maria de Lourdes Carvalho Dantas',
       latitude: -20.6534829,
       longitude: -40.4894282,
     ),
-    EventVenue(
+    _EventVenue(
       id: 'deck',
       name: 'Deck',
       address: 'Centro',
       latitude: -20.6720688,
       longitude: -40.4976626,
     ),
-    EventVenue(
+    _EventVenue(
       id: 'kibe-lanches',
       name: 'Kibe Lanches',
       address: 'Centro',
       latitude: -20.671917,
       longitude: -40.4979096,
     ),
-    EventVenue(
+    _EventVenue(
       id: 'herois-burger',
       name: 'Heróis Burger',
       address: 'Guarapari',
       latitude: -20.6513284,
       longitude: -40.4792761,
     ),
-    EventVenue(
+    _EventVenue(
       id: 'bistro-sal-e-tal',
       name: 'Bistro Sal e Tal',
       address: 'Guarapari',
       latitude: -20.7217392,
       longitude: -40.5241274,
     ),
-    EventVenue(
+    _EventVenue(
       id: 'benfica',
       name: 'Benfica',
       address: 'Rua Henrique Coutinho, Centro',
       latitude: -20.6708241,
       longitude: -40.496421,
     ),
-    EventVenue(
+    _EventVenue(
       id: 'cia-comida',
       name: 'Cia & Comida',
       address: 'Guarapari',
       latitude: -20.6703032,
       longitude: -40.4984612,
     ),
-    EventVenue(
+    _EventVenue(
       id: 'gostoso',
       name: 'Gostoso',
       address: 'Guarapari',
       latitude: -20.6731777,
       longitude: -40.4982096,
     ),
-    EventVenue(
+    _EventVenue(
       id: 'free-dog',
       name: 'Free Dog Pizzaria e Lanchonete',
       address: 'Avenida José Ferreira Ferro',
       latitude: -20.6562124,
       longitude: -40.4922658,
     ),
-    EventVenue(
+    _EventVenue(
       id: 'restaurante-boqueirao',
       name: 'Restaurante Boqueirão',
       address: 'Meaípe',
@@ -763,8 +767,8 @@ class MockScheduleBackend implements ScheduleBackendContract {
   }
 }
 
-class EventVenue {
-  const EventVenue({
+class _EventVenue {
+  const _EventVenue({
     required this.id,
     required this.name,
     required this.address,
@@ -777,148 +781,6 @@ class EventVenue {
   final String address;
   final double latitude;
   final double longitude;
-}
-
-class MockEventSeed {
-  const MockEventSeed({
-    required this.id,
-    required this.type,
-    required this.title,
-    required this.content,
-    required this.location,
-    required this.latitude,
-    required this.longitude,
-    required this.thumbUrl,
-    required this.offsetDays,
-    required this.startHour,
-    this.durationMinutes = 90,
-    required this.artists,
-    this.isConfirmed = false,
-    this.totalConfirmed = 0,
-    this.receivedInvites = const [],
-    this.sentInvites = const [],
-    this.friendsGoing = const [],
-    this.tags = const [],
-  });
-
-  final String id;
-  final EventTypeDTO type;
-  final String title;
-  final String content;
-  final String location;
-  final double latitude;
-  final double longitude;
-  final String thumbUrl;
-  final int offsetDays;
-  final int startHour;
-  final int durationMinutes;
-  final List<MockArtistSeed> artists;
-  final bool isConfirmed;
-  final int totalConfirmed;
-  final List<Map<String, dynamic>> receivedInvites;
-  final List<Map<String, dynamic>> sentInvites;
-  final List<Map<String, dynamic>> friendsGoing;
-  final List<String> tags;
-
-  MockEventSeed copyWith({
-    String? id,
-    int? offsetDays,
-    int? startHour,
-    int? durationMinutes,
-    List<String>? tags,
-    List<Map<String, dynamic>>? receivedInvites,
-  }) {
-    return MockEventSeed(
-      id: id ?? this.id,
-      type: type,
-      title: title,
-      content: content,
-      location: location,
-      latitude: latitude,
-      longitude: longitude,
-      thumbUrl: thumbUrl,
-      offsetDays: offsetDays ?? this.offsetDays,
-      startHour: startHour ?? this.startHour,
-      durationMinutes: durationMinutes ?? this.durationMinutes,
-      artists: artists,
-      isConfirmed: isConfirmed,
-      totalConfirmed: totalConfirmed,
-      receivedInvites: receivedInvites ?? this.receivedInvites,
-      sentInvites: sentInvites,
-      friendsGoing: friendsGoing,
-      tags: tags ?? this.tags,
-    );
-  }
-
-  EventDTO toDto(DateTime today, EventVenue venue) {
-    final start = today
-        .add(Duration(days: offsetDays))
-        .add(Duration(hours: startHour))
-        .toIso8601String();
-    final end = today
-        .add(Duration(days: offsetDays))
-        .add(Duration(hours: startHour, minutes: durationMinutes))
-        .toIso8601String();
-
-    final venueSlug = MockScheduleBackend._slugify(venue.name);
-    return EventDTO(
-      id: MockScheduleBackend.generateMongoId(id),
-      slug: id,
-      type: type,
-      title: title,
-      content: content,
-      dateTimeStart: start,
-      dateTimeEnd: end,
-      location: location.isNotEmpty ? location : venue.name,
-      latitude: latitude,
-      longitude: longitude,
-      venue: {
-        'id': MockScheduleBackend.generateMongoId(venueSlug),
-        'display_name': venue.name,
-        'tagline': venue.address,
-        'slug': venueSlug,
-        'logo_url': thumbUrl,
-        'hero_image_url': thumbUrl,
-      },
-      thumb: ThumbDTO(
-        type: 'image',
-        data: {'url': thumbUrl},
-      ),
-      artists: artists.map((a) => a.toDto()).toList(),
-      isConfirmed: isConfirmed,
-      totalConfirmed: totalConfirmed,
-      friendsGoing: friendsGoing,
-      receivedInvites: receivedInvites,
-      sentInvites: sentInvites,
-      tags: tags,
-    );
-  }
-}
-
-class MockArtistSeed {
-  const MockArtistSeed({
-    required this.id,
-    required this.name,
-    required this.avatarUrl,
-    this.highlight = false,
-    this.genres = const [],
-  });
-
-  final String id;
-  final String name;
-  final String avatarUrl;
-  final bool highlight;
-  final List<String> genres;
-
-  EventArtistDTO toDto() {
-    return EventArtistDTO(
-      id: id,
-      name: name,
-      avatarUrl: avatarUrl,
-      highlight: highlight,
-      genres: genres,
-    );
-  }
 }
 
 class _VenueSeed {

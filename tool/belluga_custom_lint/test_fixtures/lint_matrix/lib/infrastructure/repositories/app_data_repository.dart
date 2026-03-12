@@ -1,12 +1,14 @@
 import 'package:get_it/get_it.dart';
 
-class AppDataRepository {}
+class _AppDataRepository {}
 
-class AppDataSyncController {}
+class _AppDataSyncController {}
 
 void registerAppDataGlobals() {
-  GetIt.I.registerSingleton<AppDataRepository>(AppDataRepository());
+  GetIt.I.registerSingleton<_AppDataRepository>(_AppDataRepository());
 
   // expect_lint: global_ui_controller_naming_forbidden
-  GetIt.I.registerSingleton<AppDataSyncController>(AppDataSyncController());
+  GetIt.I.registerSingleton<_AppDataSyncController>(
+    _AppDataSyncController(),
+  );
 }

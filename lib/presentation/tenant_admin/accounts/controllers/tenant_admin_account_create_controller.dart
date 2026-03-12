@@ -1,3 +1,5 @@
+export 'tenant_admin_account_create_draft.dart';
+
 import 'dart:async';
 import 'dart:typed_data';
 
@@ -15,6 +17,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart'
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_definition.dart';
 import 'package:belluga_now/domain/services/tenant_admin_location_selection_contract.dart';
 import 'package:belluga_now/presentation/tenant_admin/accounts/models/tenant_admin_account_create_validation_config.dart';
+import 'package:belluga_now/presentation/tenant_admin/accounts/controllers/tenant_admin_account_create_draft.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_form_value_utils.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_image_ingestion_service.dart';
 import 'package:flutter/material.dart';
@@ -639,78 +642,5 @@ extension on TenantAdminAccountCreateController {
   void _updateCreateState(TenantAdminAccountCreateDraft state) {
     if (_isDisposed) return;
     createStateStreamValue.addValue(state);
-  }
-}
-
-class TenantAdminAccountCreateDraft {
-  static const _unset = Object();
-
-  const TenantAdminAccountCreateDraft({
-    required this.ownershipState,
-    required this.selectedProfileType,
-    required this.avatarFile,
-    required this.coverFile,
-    required this.avatarWebUrl,
-    required this.coverWebUrl,
-    required this.avatarBusy,
-    required this.coverBusy,
-  });
-
-  factory TenantAdminAccountCreateDraft.initial() =>
-      const TenantAdminAccountCreateDraft(
-        ownershipState: TenantAdminOwnershipState.tenantOwned,
-        selectedProfileType: null,
-        avatarFile: null,
-        coverFile: null,
-        avatarWebUrl: null,
-        coverWebUrl: null,
-        avatarBusy: false,
-        coverBusy: false,
-      );
-
-  final TenantAdminOwnershipState ownershipState;
-  final String? selectedProfileType;
-  final XFile? avatarFile;
-  final XFile? coverFile;
-  final String? avatarWebUrl;
-  final String? coverWebUrl;
-  final bool avatarBusy;
-  final bool coverBusy;
-
-  TenantAdminAccountCreateDraft copyWith({
-    Object? ownershipState = _unset,
-    Object? selectedProfileType = _unset,
-    Object? avatarFile = _unset,
-    Object? coverFile = _unset,
-    Object? avatarWebUrl = _unset,
-    Object? coverWebUrl = _unset,
-    bool? avatarBusy,
-    bool? coverBusy,
-  }) {
-    final nextOwnershipState = ownershipState == _unset
-        ? this.ownershipState
-        : ownershipState as TenantAdminOwnershipState;
-    final nextSelectedProfileType = selectedProfileType == _unset
-        ? this.selectedProfileType
-        : selectedProfileType as String?;
-    final nextAvatarFile =
-        avatarFile == _unset ? this.avatarFile : avatarFile as XFile?;
-    final nextCoverFile =
-        coverFile == _unset ? this.coverFile : coverFile as XFile?;
-    final nextAvatarWebUrl =
-        avatarWebUrl == _unset ? this.avatarWebUrl : avatarWebUrl as String?;
-    final nextCoverWebUrl =
-        coverWebUrl == _unset ? this.coverWebUrl : coverWebUrl as String?;
-
-    return TenantAdminAccountCreateDraft(
-      ownershipState: nextOwnershipState,
-      selectedProfileType: nextSelectedProfileType,
-      avatarFile: nextAvatarFile,
-      coverFile: nextCoverFile,
-      avatarWebUrl: nextAvatarWebUrl,
-      coverWebUrl: nextCoverWebUrl,
-      avatarBusy: avatarBusy ?? this.avatarBusy,
-      coverBusy: coverBusy ?? this.coverBusy,
-    );
   }
 }
