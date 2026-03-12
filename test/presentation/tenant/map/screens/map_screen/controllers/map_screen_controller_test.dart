@@ -172,6 +172,14 @@ class _FakeUserLocationRepository implements UserLocationRepositoryContract {
 
   @override
   Future<void> stopTracking() async {}
+
+  void dispose() {
+    userLocationStreamValue.dispose();
+    lastKnownLocationStreamValue.dispose();
+    lastKnownCapturedAtStreamValue.dispose();
+    lastKnownAccuracyStreamValue.dispose();
+    lastKnownAddressStreamValue.dispose();
+  }
 }
 
 class _FakeCityMapRepository implements CityMapRepositoryContract {
@@ -268,29 +276,41 @@ Future<void> _flushMicrotasks() async {
   await Future<void>.delayed(Duration.zero);
 }
 
+CityCoordinate _buildCoordinate(String latitudeRaw, String longitudeRaw) {
+  final latitude = LatitudeValue()..parse(latitudeRaw);
+  final longitude = LongitudeValue()..parse(longitudeRaw);
+  return CityCoordinate(
+    latitudeValue: latitude,
+    longitudeValue: longitude,
+  );
+}
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   group('MapScreenController telemetry', () {
     late _FakeTelemetryRepository telemetry;
     late _FakeCityMapRepository mapRepository;
+    late _FakeUserLocationRepository userLocationRepository;
     late MapScreenController controller;
 
     setUp(() {
       telemetry = _FakeTelemetryRepository();
       mapRepository = _FakeCityMapRepository();
+      userLocationRepository = _FakeUserLocationRepository();
       final poiRepository = PoiRepository(
         dataSource: mapRepository,
       );
       controller = MapScreenController(
         poiRepository: poiRepository,
-        userLocationRepository: _FakeUserLocationRepository(),
+        userLocationRepository: userLocationRepository,
         telemetryRepository: telemetry,
       );
     });
 
     tearDown(() {
       mapRepository.dispose();
+      userLocationRepository.dispose();
       controller.onDispose();
     });
 
@@ -540,6 +560,22 @@ void main() {
         controller.filteredPoisStreamValue.value.map((poi) => poi.id),
         equals(<String>['poi-second']),
       );
+    });
+
+    test('refreshes query origin from the latest tracked user location',
+        () async {
+      final firstOrigin = _buildCoordinate('-20.1000', '-40.1000');
+      final latestOrigin = _buildCoordinate('-20.2000', '-40.2000');
+
+      userLocationRepository.userLocationStreamValue.addValue(firstOrigin);
+      await controller.loadPois(PoiQuery());
+      expect(mapRepository.lastQuery?.origin, firstOrigin);
+
+      userLocationRepository.userLocationStreamValue.addValue(latestOrigin);
+      await controller.searchPois('pizza');
+
+      expect(mapRepository.lastQuery?.origin, latestOrigin);
+      expect(mapRepository.lastQuery?.searchTerm, 'pizza');
     });
 
     test('logs directions and ride share events', () async {

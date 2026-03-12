@@ -321,4 +321,63 @@ void main() {
       userLocationRepository.dispose();
     },
   );
+
+  testWidgets(
+    'category fabs keep unique hero tags when labels repeat',
+    (tester) async {
+      final poiRepository = _FakePoiRepository();
+      final userLocationRepository = _FakeUserLocationRepository();
+      final telemetryRepository = _FakeTelemetryRepository();
+      final mapController = MapScreenController(
+        poiRepository: poiRepository,
+        userLocationRepository: userLocationRepository,
+        telemetryRepository: telemetryRepository,
+      );
+      final fabController = FabMenuController(poiRepository: poiRepository)
+        ..setExpanded(true)
+        ..setCondensed(false);
+
+      poiRepository.filterOptionsStreamValue.addValue(
+        PoiFilterOptions(
+          categories: [
+            PoiFilterCategory(
+              key: 'praia-a',
+              label: 'Praia',
+              tags: const <String>{},
+            ),
+            PoiFilterCategory(
+              key: 'praia-b',
+              label: 'Praia',
+              tags: const <String>{},
+            ),
+          ],
+        ),
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: FabMenu(
+              onNavigateToUser: () {},
+              mapController: mapController,
+              controller: fabController,
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      final heroTags = tester
+          .widgetList<FloatingActionButton>(find.byType(FloatingActionButton))
+          .map((fab) => fab.heroTag)
+          .toList(growable: false);
+
+      expect(heroTags.length, heroTags.toSet().length);
+
+      fabController.dispose();
+      await mapController.onDispose();
+      poiRepository.dispose();
+      userLocationRepository.dispose();
+    },
+  );
 }

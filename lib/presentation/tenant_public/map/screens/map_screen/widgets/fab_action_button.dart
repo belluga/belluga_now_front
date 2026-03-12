@@ -4,6 +4,7 @@ class FabActionButton extends StatelessWidget {
   const FabActionButton({
     super.key,
     required this.label,
+    this.heroId,
     this.icon,
     this.iconWidget,
     required this.backgroundColor,
@@ -13,6 +14,7 @@ class FabActionButton extends StatelessWidget {
   });
 
   final String label;
+  final String? heroId;
   final IconData? icon;
   final Widget? iconWidget;
   final Color backgroundColor;
@@ -27,10 +29,11 @@ class FabActionButton extends StatelessWidget {
           icon ?? Icons.tune,
           color: foregroundColor,
         );
-    final heroSuffix = icon?.codePoint ?? label.hashCode;
+    final heroIdentity =
+        heroId ?? '${label.hashCode}-${icon?.codePoint ?? label.hashCode}';
     if (condensed) {
       return FloatingActionButton.small(
-        heroTag: 'condensed-${label.hashCode}-$heroSuffix',
+        heroTag: 'condensed-$heroIdentity',
         backgroundColor: backgroundColor,
         foregroundColor: foregroundColor,
         elevation: 0.5,
@@ -39,7 +42,7 @@ class FabActionButton extends StatelessWidget {
       );
     }
     return FloatingActionButton.extended(
-      heroTag: 'expanded-${label.hashCode}-$heroSuffix',
+      heroTag: 'expanded-$heroIdentity',
       backgroundColor: backgroundColor,
       foregroundColor: foregroundColor,
       elevation: 0.5,

@@ -292,7 +292,7 @@ class MapScreenController implements Disposable {
   }
 
   PoiQuery _resolveRuntimeQuery(PoiQuery query) {
-    final origin = query.origin ?? userLocationStreamValue.value;
+    final origin = userLocationStreamValue.value ?? query.origin;
     return PoiQuery(
       northEast: query.northEast,
       southWest: query.southWest,

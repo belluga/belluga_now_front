@@ -103,6 +103,7 @@ class _FabMenuState extends State<FabMenu> {
                                     if (expanded) ...[
                                       FabActionButton(
                                         label: 'Ir para você',
+                                        heroId: 'navigate-to-user',
                                         icon: Icons.my_location,
                                         backgroundColor:
                                             scheme.secondaryContainer,
@@ -128,6 +129,8 @@ class _FabMenuState extends State<FabMenu> {
                                           padding:
                                               const EdgeInsets.only(bottom: 8),
                                           child: FabActionButton(
+                                            heroId:
+                                                'category-filter-${category.key}',
                                             label: _resolveCategoryLabel(
                                               category,
                                             ),
@@ -156,6 +159,7 @@ class _FabMenuState extends State<FabMenu> {
                                               const EdgeInsets.only(bottom: 8),
                                           child: FabActionButton(
                                             label: 'Limpar filtros',
+                                            heroId: 'clear-filters',
                                             icon: Icons.filter_alt_off,
                                             backgroundColor: scheme.surface,
                                             foregroundColor:
