@@ -8,8 +8,6 @@ import 'package:belluga_now/domain/schedule/paged_events_result.dart';
 import 'package:belluga_now/domain/schedule/schedule_summary_model.dart';
 import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
 import 'package:belluga_now/infrastructure/dal/dao/backend_contract.dart';
-import 'package:belluga_now/infrastructure/dal/dto/schedule/event_delta_dto.dart';
-import 'package:belluga_now/infrastructure/dal/dto/schedule/event_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_page_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/mappers/artist_dto_mapper.dart';
 import 'package:belluga_now/infrastructure/dal/dto/mappers/invite_dto_mapper.dart';
@@ -283,29 +281,7 @@ class ScheduleRepository extends ScheduleRepositoryContract
           lastEventId: lastEventId,
           showPastOnly: showPastOnly,
         )
-        .map(_mapDelta);
-  }
-
-  EventDeltaModel _mapDelta(EventDeltaDTO dto) {
-    return EventDeltaModel(
-      eventId: dto.eventId,
-      type: _parseDeltaType(dto.type),
-      updatedAt: dto.updatedAt,
-      lastEventId: dto.lastEventId,
-    );
-  }
-
-  EventDeltaType _parseDeltaType(String type) {
-    switch (type) {
-      case 'event.created':
-        return EventDeltaType.created;
-      case 'event.updated':
-        return EventDeltaType.updated;
-      case 'event.deleted':
-        return EventDeltaType.deleted;
-      default:
-        return EventDeltaType.unknown;
-    }
+        .map(mapEventDeltaDto);
   }
 
   Future<List<EventModel>> _fetchEventsForDate(
@@ -339,7 +315,7 @@ class ScheduleRepository extends ScheduleRepositoryContract
 
       hasMore = pageDto.hasMore;
       if (pageDto.events.isEmpty) break;
-      final lastDate = _parseDate(pageDto.events.last);
+      final lastDate = parseEventDateOnly(pageDto.events.last);
       if (lastDate != null) {
         if (!showPastOnly && lastDate.isAfter(date)) {
           break;
@@ -413,12 +389,6 @@ class ScheduleRepository extends ScheduleRepositoryContract
     } on Object {
       return null;
     }
-  }
-
-  DateTime? _parseDate(EventDTO event) {
-    final parsed = DateTime.tryParse(event.dateTimeStart);
-    if (parsed == null) return null;
-    return DateTime(parsed.year, parsed.month, parsed.day);
   }
 
   bool _isSameDate(DateTime a, DateTime b) {

@@ -1,6 +1,9 @@
+export 'home_agenda_section_slots.dart';
+
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/agenda_section/controllers/tenant_home_agenda_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/agenda_section/home_agenda_app_bar.dart';
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/agenda_section/home_agenda_body.dart';
+import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/agenda_section/home_agenda_section_slots.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/event_search_screen/models/invite_filter.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
@@ -52,16 +55,6 @@ class _HomeAgendaSectionState extends State<HomeAgendaSection> {
       ),
     );
   }
-}
-
-class HomeAgendaSectionSlots {
-  HomeAgendaSectionSlots({
-    required this.header,
-    required this.body,
-  });
-
-  final Widget header;
-  final Widget body;
 }
 
 class _PinnedHeaderDelegate extends SliverPersistentHeaderDelegate {

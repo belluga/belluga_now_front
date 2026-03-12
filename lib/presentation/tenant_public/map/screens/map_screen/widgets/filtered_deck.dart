@@ -119,6 +119,9 @@ class FilteredDeck extends StatelessWidget {
         return 'Praias recomendadas';
       case PoiFilterMode.lodging:
         return 'Hospedagens parceiras';
+      case PoiFilterMode.server:
+        return controller.activeFilterLabelStreamValue.value ??
+            'Filtro do mapa';
       case PoiFilterMode.none:
         return 'Pontos selecionados';
     }
@@ -134,6 +137,8 @@ class FilteredDeck extends StatelessWidget {
         return Icons.beach_access;
       case PoiFilterMode.lodging:
         return Icons.hotel;
+      case PoiFilterMode.server:
+        return Icons.tune;
       case PoiFilterMode.none:
         return Icons.map;
     }
@@ -152,6 +157,8 @@ class FilteredDeck extends StatelessWidget {
         return categoryTheme(CityPoiCategory.beach, scheme).color;
       case PoiFilterMode.lodging:
         return categoryTheme(CityPoiCategory.lodging, scheme).color;
+      case PoiFilterMode.server:
+        return scheme.primary;
       case PoiFilterMode.none:
         return scheme.primary;
     }

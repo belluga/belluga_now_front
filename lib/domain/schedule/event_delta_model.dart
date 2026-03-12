@@ -1,9 +1,6 @@
-enum EventDeltaType {
-  created,
-  updated,
-  deleted,
-  unknown,
-}
+export 'event_delta_type.dart';
+
+import 'package:belluga_now/domain/schedule/event_delta_type.dart';
 
 class EventDeltaModel {
   EventDeltaModel({

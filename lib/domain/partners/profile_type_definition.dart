@@ -13,16 +13,17 @@ class ProfileTypeDefinition {
   final ProfileTypeCapabilities capabilities;
   final Map<String, dynamic> raw;
 
-  factory ProfileTypeDefinition.fromJson(Map<String, dynamic> json) {
-    final type = json['type']?.toString() ?? '';
-    final label = json['label']?.toString() ?? type;
-    final capabilities =
-        ProfileTypeCapabilities.fromJson(json['capabilities'] as Map<String, dynamic>?);
+  factory ProfileTypeDefinition.fromPrimitives({
+    required String type,
+    String? label,
+    required ProfileTypeCapabilities capabilities,
+    Map<String, dynamic>? raw,
+  }) {
     return ProfileTypeDefinition(
       type: type,
-      label: label,
+      label: label ?? type,
       capabilities: capabilities,
-      raw: json,
+      raw: raw,
     );
   }
 }

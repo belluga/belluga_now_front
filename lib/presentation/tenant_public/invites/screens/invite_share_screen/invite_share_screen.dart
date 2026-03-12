@@ -88,19 +88,19 @@ class _InviteShareScreenState extends State<InviteShareScreen> {
     );
   }
 
-  List<InviteShareFriendItem> _paddedFriends(
+  List<_InviteShareFriendItem> _paddedFriends(
     List<InviteFriendResumeWithStatus> friends,
   ) {
     if (friends.isEmpty) return [];
-    final items = <InviteShareFriendItem>[
+    final items = <_InviteShareFriendItem>[
       ...friends.map(
-        (f) => InviteShareFriendItem(friend: f, isPlaceholder: false),
+        (f) => _InviteShareFriendItem(friend: f, isPlaceholder: false),
       ),
     ];
     var idx = 0;
     while (items.length < 20) {
       items.add(
-        InviteShareFriendItem(
+        _InviteShareFriendItem(
           friend: friends[idx % friends.length],
           isPlaceholder: true,
         ),
@@ -111,8 +111,8 @@ class _InviteShareScreenState extends State<InviteShareScreen> {
   }
 }
 
-class InviteShareFriendItem {
-  InviteShareFriendItem({required this.friend, required this.isPlaceholder});
+class _InviteShareFriendItem {
+  _InviteShareFriendItem({required this.friend, required this.isPlaceholder});
 
   final InviteFriendResumeWithStatus friend;
   final bool isPlaceholder;

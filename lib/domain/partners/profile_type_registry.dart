@@ -34,18 +34,35 @@ class ProfileTypeRegistry {
   List<String> enabledAccountProfileTypes() =>
       List<String>.unmodifiable(_typesByKey.keys);
 
-  static ProfileTypeRegistry fromJsonList(List<dynamic>? raw) {
+  static ProfileTypeRegistry fromPrimitivesList(List<dynamic>? raw) {
     if (raw == null || raw.isEmpty) {
       return ProfileTypeRegistry(types: const []);
     }
     final entries = raw
         .whereType<Map>()
-        .map((entry) => ProfileTypeDefinition.fromJson(
-              Map<String, dynamic>.from(entry),
-            ))
+        .map((entry) {
+          final map = Map<String, dynamic>.from(entry);
+          final capabilitiesRaw = map['capabilities'] is Map
+              ? Map<String, dynamic>.from(map['capabilities'] as Map)
+              : const <String, dynamic>{};
+          return ProfileTypeDefinition.fromPrimitives(
+            type: map['type']?.toString() ?? '',
+            label: map['label']?.toString(),
+            capabilities: ProfileTypeCapabilities(
+              isFavoritable: capabilitiesRaw['is_favoritable'] == true,
+              isPoiEnabled: capabilitiesRaw['is_poi_enabled'] == true,
+              hasBio: capabilitiesRaw['has_bio'] == true,
+              hasContent: capabilitiesRaw['has_content'] == true,
+              hasTaxonomies: capabilitiesRaw['has_taxonomies'] == true,
+              hasAvatar: capabilitiesRaw['has_avatar'] == true,
+              hasCover: capabilitiesRaw['has_cover'] == true,
+              hasEvents: capabilitiesRaw['has_events'] == true,
+            ),
+            raw: map,
+          );
+        })
         .where((entry) => entry.type.trim().isNotEmpty)
         .toList(growable: false);
     return ProfileTypeRegistry(types: entries);
   }
-
 }

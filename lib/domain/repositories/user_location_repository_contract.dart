@@ -1,13 +1,8 @@
+export 'location_tracking_mode.dart';
+
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
+import 'package:belluga_now/domain/repositories/location_tracking_mode.dart';
 import 'package:stream_value/core/stream_value.dart';
-
-enum LocationTrackingMode {
-  /// High accuracy, foreground usage (e.g., map open).
-  mapForeground,
-
-  /// Low accuracy / lower update rate (e.g., background-ish UI needs).
-  lowPower,
-}
 
 abstract class UserLocationRepositoryContract {
   StreamValue<CityCoordinate?> get userLocationStreamValue;

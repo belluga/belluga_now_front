@@ -18,14 +18,8 @@ import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
 import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_priority_value.dart';
 import 'package:belluga_now/domain/repositories/city_map_repository_contract.dart';
-import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
-import 'package:belluga_now/domain/schedule/event_delta_model.dart';
-import 'package:belluga_now/domain/schedule/event_model.dart';
-import 'package:belluga_now/domain/schedule/paged_events_result.dart';
-import 'package:belluga_now/domain/schedule/schedule_summary_model.dart';
-import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
 import 'package:belluga_now/infrastructure/repositories/poi_repository.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/controllers/map_screen_controller.dart';
 import 'package:event_tracker_handler/event_tracker_handler.dart';
@@ -162,7 +156,8 @@ class _FakeUserLocationRepository implements UserLocationRepositoryContract {
   Future<bool> warmUpIfPermitted() async => false;
 
   @override
-  Future<bool> refreshIfPermitted({Duration minInterval = const Duration(seconds: 30)}) async {
+  Future<bool> refreshIfPermitted(
+      {Duration minInterval = const Duration(seconds: 30)}) async {
     return false;
   }
 
@@ -170,12 +165,21 @@ class _FakeUserLocationRepository implements UserLocationRepositoryContract {
   Future<String?> resolveUserLocation() async => null;
 
   @override
-  Future<bool> startTracking({LocationTrackingMode mode = LocationTrackingMode.mapForeground}) async {
+  Future<bool> startTracking(
+      {LocationTrackingMode mode = LocationTrackingMode.mapForeground}) async {
     return true;
   }
 
   @override
   Future<void> stopTracking() async {}
+
+  void dispose() {
+    userLocationStreamValue.dispose();
+    lastKnownLocationStreamValue.dispose();
+    lastKnownCapturedAtStreamValue.dispose();
+    lastKnownAccuracyStreamValue.dispose();
+    lastKnownAddressStreamValue.dispose();
+  }
 }
 
 class _FakeCityMapRepository implements CityMapRepositoryContract {
@@ -191,9 +195,33 @@ class _FakeCityMapRepository implements CityMapRepositoryContract {
   late final CityCoordinate _defaultCenter;
   final StreamController<PoiUpdateEvent?> _poiEventsController =
       StreamController<PoiUpdateEvent?>.broadcast();
+  PoiQuery? lastQuery;
+  List<CityPoiModel> nextPois = const <CityPoiModel>[];
+  bool throwOnFetchPoints = false;
+  int fetchPointsCallCount = 0;
+  final List<Completer<List<CityPoiModel>>> queuedFetchCompleters =
+      <Completer<List<CityPoiModel>>>[];
 
   @override
-  Future<List<CityPoiModel>> fetchPoints(PoiQuery query) async => const [];
+  Future<List<CityPoiModel>> fetchPoints(PoiQuery query) async {
+    fetchPointsCallCount += 1;
+    lastQuery = query;
+    if (queuedFetchCompleters.isNotEmpty) {
+      final completer = queuedFetchCompleters.removeAt(0);
+      return completer.future;
+    }
+    if (throwOnFetchPoints) {
+      throw Exception('forced fetch failure');
+    }
+    return nextPois;
+  }
+
+  @override
+  Future<List<CityPoiModel>> fetchStackItems({
+    required PoiQuery query,
+    required String stackKey,
+  }) async =>
+      const [];
 
   @override
   Future<PoiFilterOptions> fetchFilters() async =>
@@ -218,67 +246,6 @@ class _FakeCityMapRepository implements CityMapRepositoryContract {
   void dispose() {
     _poiEventsController.close();
   }
-}
-
-class _FakeScheduleRepository implements ScheduleRepositoryContract {
-  @override
-  Future<ScheduleSummaryModel> getScheduleSummary() async {
-    return ScheduleSummaryModel(items: const []);
-  }
-
-  @override
-  Future<List<EventModel>> getEventsByDate(
-    DateTime date, {
-    double? originLat,
-    double? originLng,
-    double? maxDistanceMeters,
-  }) async =>
-      const [];
-
-  @override
-  Future<List<EventModel>> getAllEvents() async => const [];
-
-  @override
-  Future<EventModel?> getEventBySlug(String slug) async => null;
-
-  @override
-  Future<PagedEventsResult> getEventsPage({
-    required int page,
-    required int pageSize,
-    required bool showPastOnly,
-    String searchQuery = '',
-    List<String>? categories,
-    List<String>? tags,
-    List<Map<String, String>>? taxonomy,
-    bool confirmedOnly = false,
-    double? originLat,
-    double? originLng,
-    double? maxDistanceMeters,
-  }) async {
-    return const PagedEventsResult(events: [], hasMore: false);
-  }
-
-  @override
-  Future<List<VenueEventResume>> getEventResumesByDate(DateTime date) async =>
-      const [];
-
-  @override
-  Future<List<VenueEventResume>> fetchUpcomingEvents() async => const [];
-
-  @override
-  Stream<EventDeltaModel> watchEventsStream({
-    String searchQuery = '',
-    List<String>? categories,
-    List<String>? tags,
-    List<Map<String, String>>? taxonomy,
-    bool confirmedOnly = false,
-    double? originLat,
-    double? originLng,
-    double? maxDistanceMeters,
-    String? lastEventId,
-    bool showPastOnly = false,
-  }) =>
-      const Stream.empty();
 }
 
 CityPoiModel _buildPoi({String id = 'poi-1'}) {
@@ -309,30 +276,41 @@ Future<void> _flushMicrotasks() async {
   await Future<void>.delayed(Duration.zero);
 }
 
+CityCoordinate _buildCoordinate(String latitudeRaw, String longitudeRaw) {
+  final latitude = LatitudeValue()..parse(latitudeRaw);
+  final longitude = LongitudeValue()..parse(longitudeRaw);
+  return CityCoordinate(
+    latitudeValue: latitude,
+    longitudeValue: longitude,
+  );
+}
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   group('MapScreenController telemetry', () {
     late _FakeTelemetryRepository telemetry;
     late _FakeCityMapRepository mapRepository;
+    late _FakeUserLocationRepository userLocationRepository;
     late MapScreenController controller;
 
     setUp(() {
       telemetry = _FakeTelemetryRepository();
       mapRepository = _FakeCityMapRepository();
+      userLocationRepository = _FakeUserLocationRepository();
       final poiRepository = PoiRepository(
         dataSource: mapRepository,
-        scheduleRepository: _FakeScheduleRepository(),
       );
       controller = MapScreenController(
         poiRepository: poiRepository,
-        userLocationRepository: _FakeUserLocationRepository(),
+        userLocationRepository: userLocationRepository,
         telemetryRepository: telemetry,
       );
     });
 
     tearDown(() {
       mapRepository.dispose();
+      userLocationRepository.dispose();
       controller.onDispose();
     });
 
@@ -380,6 +358,224 @@ void main() {
       expect(telemetry.events[0].properties?['filter_mode'], 'events');
       expect(telemetry.events[1].eventName, 'map_main_filter_cleared');
       expect(telemetry.events[1].event, EventTrackerEvents.buttonClick);
+    });
+
+    test('applies dynamic category filters using category keys', () async {
+      controller.toggleCatalogCategoryFilter(
+        PoiFilterCategory(
+          key: 'nature',
+          label: 'Natureza',
+          tags: const {},
+        ),
+      );
+      await _flushMicrotasks();
+
+      expect(mapRepository.lastQuery, isNotNull);
+      expect(mapRepository.lastQuery?.categoryKeys, equals({'nature'}));
+      expect(controller.filterModeStreamValue.value, PoiFilterMode.server);
+    });
+
+    test('applies catalog filter query metadata when available', () async {
+      controller.toggleCatalogCategoryFilter(
+        PoiFilterCategory(
+          key: 'event',
+          label: 'Eventos agora',
+          tags: const {},
+          serverQuery: PoiFilterServerQuery(
+            source: 'event',
+            types: {'show'},
+            categoryKeys: {'culture'},
+            taxonomy: {'music_genre:rock'},
+            tags: {'live'},
+          ),
+        ),
+      );
+      await _flushMicrotasks();
+
+      expect(mapRepository.lastQuery, isNotNull);
+      expect(mapRepository.lastQuery?.source, equals('event'));
+      expect(mapRepository.lastQuery?.types, equals({'show'}));
+      expect(mapRepository.lastQuery?.categoryKeys, equals({'culture'}));
+      expect(mapRepository.lastQuery?.tags, equals({'live'}));
+      expect(
+        mapRepository.lastQuery?.taxonomy,
+        equals({'music_genre:rock'}),
+      );
+      expect(controller.filterModeStreamValue.value, PoiFilterMode.server);
+    });
+
+    test(
+      'supports source/types query metadata without category key fallback',
+      () async {
+        controller.toggleCatalogCategoryFilter(
+          PoiFilterCategory(
+            key: 'artists',
+            label: 'Artistas',
+            tags: const {},
+            serverQuery: PoiFilterServerQuery(
+              source: 'account_profile',
+              types: {'artist'},
+              taxonomy: {'music_genre:jazz'},
+              tags: {'live'},
+            ),
+          ),
+        );
+        await _flushMicrotasks();
+
+        expect(mapRepository.lastQuery, isNotNull);
+        expect(mapRepository.lastQuery?.categoryKeys, isNull);
+        expect(mapRepository.lastQuery?.source, equals('account_profile'));
+        expect(mapRepository.lastQuery?.types, equals({'artist'}));
+        expect(mapRepository.lastQuery?.tags, equals({'live'}));
+        expect(mapRepository.lastQuery?.taxonomy, equals({'music_genre:jazz'}));
+      },
+    );
+
+    test('clears stale map data when loadPois fails', () async {
+      mapRepository.nextPois = <CityPoiModel>[
+        _buildPoi(id: 'poi-a'),
+      ];
+      await controller.loadPois(PoiQuery());
+      expect(controller.filteredPoisStreamValue.value, hasLength(1));
+
+      controller.selectPoi(_buildPoi(id: 'poi-a'));
+      expect(controller.selectedPoiStreamValue.value, isNotNull);
+
+      mapRepository.throwOnFetchPoints = true;
+      await controller.loadPois(
+        PoiQuery(categoryKeys: {'event'}),
+        loadingMessage: 'Aplicando filtros...',
+      );
+
+      expect(controller.filteredPoisStreamValue.value, isEmpty);
+      expect(controller.selectedPoiStreamValue.value, isNull);
+    });
+
+    test('applies taxonomy filter tokens to map query', () async {
+      controller.toggleTaxonomyFilter(
+        PoiFilterTaxonomyTerm(
+          type: 'cuisine',
+          value: 'italian',
+          label: 'Italiana',
+          count: 4,
+        ),
+      );
+      await _flushMicrotasks();
+
+      expect(mapRepository.lastQuery, isNotNull);
+      expect(
+        mapRepository.lastQuery?.taxonomy,
+        equals({'cuisine:italian'}),
+      );
+      expect(controller.filterModeStreamValue.value, PoiFilterMode.server);
+    });
+
+    test('locks filter interactions while a filter reload is in flight',
+        () async {
+      final firstRequest = Completer<List<CityPoiModel>>();
+      mapRepository.queuedFetchCompleters.add(firstRequest);
+
+      controller.toggleCatalogCategoryFilter(
+        PoiFilterCategory(
+          key: 'events',
+          label: 'Eventos',
+          tags: const {},
+          serverQuery: PoiFilterServerQuery(
+            source: 'event',
+          ),
+        ),
+      );
+      await _flushMicrotasks();
+
+      controller.toggleCatalogCategoryFilter(
+        PoiFilterCategory(
+          key: 'beach',
+          label: 'Praias',
+          tags: const {},
+          serverQuery: PoiFilterServerQuery(
+            source: 'static_asset',
+            types: {'beach_spot'},
+          ),
+        ),
+      );
+      await _flushMicrotasks();
+
+      expect(mapRepository.fetchPointsCallCount, 1);
+      expect(
+        controller.filterInteractionLockedStreamValue.value,
+        isTrue,
+      );
+
+      firstRequest.complete(<CityPoiModel>[]);
+      await _flushMicrotasks();
+      await _flushMicrotasks();
+
+      expect(
+        controller.filterInteractionLockedStreamValue.value,
+        isFalse,
+      );
+
+      controller.toggleCatalogCategoryFilter(
+        PoiFilterCategory(
+          key: 'beach',
+          label: 'Praias',
+          tags: const {},
+          serverQuery: PoiFilterServerQuery(
+            source: 'static_asset',
+            types: {'beach_spot'},
+          ),
+        ),
+      );
+      await _flushMicrotasks();
+
+      expect(mapRepository.fetchPointsCallCount, 2);
+    });
+
+    test('keeps the latest loadPois result after overlapping requests',
+        () async {
+      final firstRequest = Completer<List<CityPoiModel>>();
+      final secondRequest = Completer<List<CityPoiModel>>();
+      mapRepository.queuedFetchCompleters
+        ..add(firstRequest)
+        ..add(secondRequest);
+
+      final firstPoi = _buildPoi(id: 'poi-first');
+      final secondPoi = _buildPoi(id: 'poi-second');
+
+      final firstFuture = controller.loadPois(PoiQuery());
+      await _flushMicrotasks();
+      final secondFuture = controller.loadPois(
+        PoiQuery(categoryKeys: {'event'}),
+      );
+      await _flushMicrotasks();
+
+      firstRequest.complete(<CityPoiModel>[firstPoi]);
+      await _flushMicrotasks();
+
+      secondRequest.complete(<CityPoiModel>[secondPoi]);
+      await Future.wait<void>([firstFuture, secondFuture]);
+      await _flushMicrotasks();
+
+      expect(
+        controller.filteredPoisStreamValue.value.map((poi) => poi.id),
+        equals(<String>['poi-second']),
+      );
+    });
+
+    test('refreshes query origin from the latest tracked user location',
+        () async {
+      final firstOrigin = _buildCoordinate('-20.1000', '-40.1000');
+      final latestOrigin = _buildCoordinate('-20.2000', '-40.2000');
+
+      userLocationRepository.userLocationStreamValue.addValue(firstOrigin);
+      await controller.loadPois(PoiQuery());
+      expect(mapRepository.lastQuery?.origin, firstOrigin);
+
+      userLocationRepository.userLocationStreamValue.addValue(latestOrigin);
+      await controller.searchPois('pizza');
+
+      expect(mapRepository.lastQuery?.origin, latestOrigin);
+      expect(mapRepository.lastQuery?.searchTerm, 'pizza');
     });
 
     test('logs directions and ride share events', () async {

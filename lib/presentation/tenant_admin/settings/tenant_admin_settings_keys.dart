@@ -50,6 +50,14 @@ class TenantAdminSettingsKeys {
       ValueKey('tenant_admin_settings_local_preferences_select_on_map');
   static const localPreferencesSaveOriginButton =
       ValueKey('tenant_admin_settings_local_preferences_save_origin');
+  static const localPreferencesMapFiltersCard =
+      ValueKey('tenant_admin_settings_local_preferences_map_filters_card');
+  static const localPreferencesAddMapFilterButton =
+      ValueKey('tenant_admin_settings_local_preferences_add_map_filter_button');
+  static ValueKey<String> localPreferencesMapFilterRow(int index) =>
+      ValueKey(
+        'tenant_admin_settings_local_preferences_map_filter_row_$index',
+      );
   static const visualIdentityScopedAppBar =
       ValueKey('tenant_admin_settings_visual_identity_scoped_app_bar');
   static const visualIdentityBackButton =

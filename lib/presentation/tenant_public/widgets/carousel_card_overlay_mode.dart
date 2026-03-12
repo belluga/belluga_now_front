@@ -1,0 +1,4 @@
+enum CarouselCardOverlayMode {
+  bottom,
+  fill,
+}

@@ -10,6 +10,7 @@ import 'package:belluga_now/domain/services/tenant_admin_external_image_proxy_co
 import 'package:belluga_now/domain/services/tenant_admin_location_selection_contract.dart';
 import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_settings.dart';
 import 'package:belluga_now/infrastructure/services/tenant_admin/tenant_admin_location_selection_service.dart';
 import 'package:belluga_now/presentation/tenant_admin/settings/controllers/tenant_admin_settings_controller.dart';
@@ -77,7 +78,10 @@ void main() {
       find.byKey(TenantAdminSettingsKeys.hubActionVisualIdentity),
       findsNothing,
     );
-    expect(find.text('Toque para editar preferências'), findsOneWidget);
+    expect(
+      find.text('Toque para editar preferências e filtros do mapa'),
+      findsOneWidget,
+    );
     expect(find.text('Toque para editar identidade visual'), findsOneWidget);
 
     await tester.scrollUntilVisible(
@@ -261,6 +265,65 @@ void main() {
       'Centro',
     );
     expect(repository.initCallCount, 1);
+  });
+
+  testWidgets('adds map filter item and persists catalog on map_ui save',
+      (tester) async {
+    final repository = _FakeAppDataRepository(_buildAppData());
+    final settingsRepository = _FakeTenantAdminSettingsRepository();
+    GetIt.I.registerSingleton<AppDataRepositoryContract>(repository);
+    GetIt.I.registerSingleton<TenantAdminSettingsRepositoryContract>(
+      settingsRepository,
+    );
+    GetIt.I.registerSingleton<TenantAdminImageIngestionService>(
+      TenantAdminImageIngestionService(
+        externalImageProxy: _FakeTenantAdminExternalImageProxy(),
+      ),
+    );
+    final controller = TenantAdminSettingsController();
+    GetIt.I.registerSingleton<TenantAdminSettingsController>(controller);
+
+    await _pumpWithAutoRoute(
+      tester,
+      const Scaffold(body: TenantAdminSettingsLocalPreferencesScreen()),
+    );
+
+    await tester.scrollUntilVisible(
+      find.byKey(TenantAdminSettingsKeys.localPreferencesAddMapFilterButton),
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(TenantAdminSettingsKeys.localPreferencesAddMapFilterButton),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(TenantAdminSettingsKeys.localPreferencesMapFiltersCard),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(TenantAdminSettingsKeys.localPreferencesMapFilterRow(0)),
+      findsOneWidget,
+    );
+
+    await tester.scrollUntilVisible(
+      find.byKey(TenantAdminSettingsKeys.localPreferencesSaveOriginButton),
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(TenantAdminSettingsKeys.localPreferencesSaveOriginButton),
+    );
+    await tester.pumpAndSettle();
+
+    expect(settingsRepository.updatedMapUiSettings, isNotNull);
+    final filters = settingsRepository.updatedMapUiSettings!.filters;
+    expect(filters, hasLength(1));
+    expect(filters.first.key, 'filter_1');
+    expect(filters.first.label, 'Filtro 1');
   });
 
   testWidgets('saves firebase settings via remote repository', (tester) async {
@@ -685,9 +748,11 @@ class _FakeTenantAdminSettingsRepository
   String? updatedFirebaseProjectId;
   TenantAdminBrandingUpdateInput? lastBrandingInput;
   TenantAdminMapUiSettings? updatedMapUiSettings;
+  String? uploadedMapFilterKey;
+  TenantAdminMediaUpload? uploadedMapFilterPayload;
   final StreamValue<TenantAdminBrandingSettings?> _brandingSettingsStreamValue =
       StreamValue<TenantAdminBrandingSettings?>(defaultValue: null);
-  TenantAdminMapUiSettings _mapUiSettings = const TenantAdminMapUiSettings(
+  TenantAdminMapUiSettings _mapUiSettings = TenantAdminMapUiSettings(
     rawMapUi: {
       'radius': 15000,
       'default_origin': {
@@ -701,9 +766,9 @@ class _FakeTenantAdminSettingsRepository
       lng: -40.4976,
       label: 'Centro',
     ),
+    filters: [],
   );
-  TenantAdminBrandingSettings _brandingSettings =
-      const TenantAdminBrandingSettings(
+  TenantAdminBrandingSettings _brandingSettings = TenantAdminBrandingSettings(
     tenantName: 'Tenant Test',
     brightnessDefault: TenantAdminBrandingBrightness.light,
     primarySeedColor: '#009688',
@@ -733,7 +798,7 @@ class _FakeTenantAdminSettingsRepository
   Future<TenantAdminTelemetrySettingsSnapshot> deleteTelemetryIntegration({
     required String type,
   }) async {
-    return const TenantAdminTelemetrySettingsSnapshot(
+    return TenantAdminTelemetrySettingsSnapshot(
       integrations: [],
       availableEvents: ['app_opened'],
     );
@@ -741,7 +806,7 @@ class _FakeTenantAdminSettingsRepository
 
   @override
   Future<TenantAdminFirebaseSettings?> fetchFirebaseSettings() async {
-    return const TenantAdminFirebaseSettings(
+    return TenantAdminFirebaseSettings(
       apiKey: 'apikey',
       appId: 'appid',
       projectId: 'project-test',
@@ -752,7 +817,7 @@ class _FakeTenantAdminSettingsRepository
 
   @override
   Future<TenantAdminTelemetrySettingsSnapshot> fetchTelemetrySettings() async {
-    return const TenantAdminTelemetrySettingsSnapshot(
+    return TenantAdminTelemetrySettingsSnapshot(
       integrations: [],
       availableEvents: ['app_opened'],
     );
@@ -774,6 +839,16 @@ class _FakeTenantAdminSettingsRepository
     updatedMapUiSettings = settings;
     _mapUiSettings = settings;
     return settings;
+  }
+
+  @override
+  Future<String> uploadMapFilterImage({
+    required String key,
+    required TenantAdminMediaUpload upload,
+  }) async {
+    uploadedMapFilterKey = key;
+    uploadedMapFilterPayload = upload;
+    return 'https://guarappari.test/api/v1/media/map-filters/$key?v=1';
   }
 
   @override

@@ -18,6 +18,7 @@ class FabMenuController {
   PoiFilterMode previousFilterMode = PoiFilterMode.none;
   PoiFilterMode? lastFilterMode;
   bool? lastExpanded;
+  bool _isDisposed = false;
 
   StreamValue<PoiFilterMode> get filterModeStreamValue =>
       _poiRepository.filterModeStreamValue;
@@ -32,27 +33,46 @@ class FabMenuController {
   }
 
   void toggleExpanded() {
+    if (_isDisposed) {
+      return;
+    }
     final current = expandedStreamValue.value;
     expandedStreamValue.addValue(!current);
   }
 
   void setExpanded(bool expanded) {
+    if (_isDisposed) {
+      return;
+    }
     expandedStreamValue.addValue(expanded);
   }
 
   void setCondensed(bool condensed) {
+    if (_isDisposed) {
+      return;
+    }
     condensedStreamValue.addValue(condensed);
   }
 
   void setRevertedOnClose(bool reverted) {
+    if (_isDisposed) {
+      return;
+    }
     revertedOnCloseStreamValue.addValue(reverted);
   }
 
   void setIgnoreNextFilterChange(bool value) {
+    if (_isDisposed) {
+      return;
+    }
     ignoreNextFilterChangeStreamValue.addValue(value);
   }
 
   void dispose() {
+    if (_isDisposed) {
+      return;
+    }
+    _isDisposed = true;
     expandedStreamValue.dispose();
     condensedStreamValue.dispose();
     revertedOnCloseStreamValue.dispose();

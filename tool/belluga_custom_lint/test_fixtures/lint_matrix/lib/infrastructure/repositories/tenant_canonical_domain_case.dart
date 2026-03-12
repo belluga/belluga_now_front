@@ -1,5 +1,7 @@
-class DomainValue {
-  const DomainValue(this.value);
+// ignore_for_file: unused_element
+
+class _DomainValue {
+  const _DomainValue(this.value);
 
   final Uri value;
 }
@@ -15,10 +17,10 @@ class AppData {
   final String href;
   final String hostname;
   final String schema;
-  final DomainValue mainDomainValue;
+  final _DomainValue mainDomainValue;
 }
 
-class TenantCanonicalDomainCase {
+class _TenantCanonicalDomainCase {
   String resolveFromCanonicalMainDomain(AppData appData) {
     return appData.mainDomainValue.value.resolve('/api').toString();
   }

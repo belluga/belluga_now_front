@@ -1,7 +1,4 @@
-import 'package:auto_route/auto_route.dart';
-import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/domain/map/city_poi_model.dart';
-import 'package:belluga_now/domain/map/event_poi_model.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/controllers/map_screen_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/poi_marker_builder.dart';
@@ -47,11 +44,10 @@ class MapLayers extends StatelessWidget {
                       minSize: 26,
                       maxSize: 65,
                     );
-                    final eventSize = _scaledSize(
-                      currentZoom,
-                      minSize: 70,
-                      maxSize: 100,
-                    );
+                    // Keep event markers slightly larger than regular POIs, but
+                    // bound to the same zoom curve so they still shrink/grow
+                    // proportionally while zooming.
+                    final eventSize = (poiSize * 1.18).clamp(30.0, 78.0);
                     final userSize = _scaledSize(
                       currentZoom,
                       minSize: 36,
@@ -67,14 +63,12 @@ class MapLayers extends StatelessWidget {
                     final poiMarkers = pois.map(
                       (poi) => _markerBuilder.build(
                         poi: poi,
-                        isSelected: selectedPoi?.id == poi.id,
-                        onTap: () {
-                          _controller.selectPoi(poi);
-                          if (poi is EventPoiModel) {
-                            _openEventDetails(context, poi.event.slug);
-                          }
-                        },
-                        size: poi is EventPoiModel ? eventSize : poiSize,
+                        isSelected: _isPoiSelected(
+                          selectedPoi: selectedPoi,
+                          markerPoi: poi,
+                        ),
+                        onTap: () => _controller.handleMarkerTap(poi),
+                        size: poi.isDynamic ? eventSize : poiSize,
                       ),
                     );
 
@@ -152,10 +146,17 @@ class MapLayers extends StatelessWidget {
     return minSize + (maxSize - minSize) * t;
   }
 
-  void _openEventDetails(BuildContext context, String slug) {
-    if (slug.isEmpty) {
-      return;
+  bool _isPoiSelected({
+    required CityPoiModel? selectedPoi,
+    required CityPoiModel markerPoi,
+  }) {
+    if (selectedPoi == null) {
+      return false;
     }
-    context.router.push(ImmersiveEventDetailRoute(eventSlug: slug));
+    if (selectedPoi.id == markerPoi.id) {
+      return true;
+    }
+    return selectedPoi.stackKey.isNotEmpty &&
+        selectedPoi.stackKey == markerPoi.stackKey;
   }
 }

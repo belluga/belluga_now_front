@@ -4,15 +4,14 @@ import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.d
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_definition.dart';
-import 'package:belluga_now/infrastructure/dal/dto/tenant_admin/tenant_admin_taxonomy_dto.dart';
-import 'package:belluga_now/infrastructure/dal/dto/tenant_admin/tenant_admin_taxonomy_term_definition_dto.dart';
+import 'package:belluga_now/infrastructure/dal/dto/mappers/tenant_admin_dto_mapper.dart';
 import 'package:belluga_now/infrastructure/repositories/tenant_admin/tenant_admin_pagination_utils.dart';
 import 'package:belluga_now/infrastructure/repositories/tenant_admin/support/tenant_admin_validation_failure_resolver.dart';
 import 'package:dio/dio.dart';
 import 'package:get_it/get_it.dart';
 
 class TenantAdminTaxonomiesRepository
-    with TenantAdminTaxonomiesPaginationMixin
+    with TenantAdminTaxonomiesPaginationMixin, TenantAdminDtoMapper
     implements TenantAdminTaxonomiesRepositoryContract {
   TenantAdminTaxonomiesRepository({
     Dio? dio,
@@ -299,25 +298,11 @@ class TenantAdminTaxonomiesRepository
   }
 
   TenantAdminTaxonomyDefinition _mapTaxonomy(Map<String, dynamic> json) {
-    final dto = TenantAdminTaxonomyDTO.fromJson(json);
-    return TenantAdminTaxonomyDefinition(
-      id: dto.id,
-      slug: dto.slug,
-      name: dto.name,
-      appliesTo: dto.appliesTo,
-      icon: dto.icon,
-      color: dto.color,
-    );
+    return mapTenantAdminTaxonomyJson(json);
   }
 
   TenantAdminTaxonomyTermDefinition _mapTerm(Map<String, dynamic> json) {
-    final dto = TenantAdminTaxonomyTermDefinitionDTO.fromJson(json);
-    return TenantAdminTaxonomyTermDefinition(
-      id: dto.id,
-      taxonomyId: dto.taxonomyId,
-      slug: dto.slug,
-      name: dto.name,
-    );
+    return mapTenantAdminTaxonomyTermDefinitionJson(json);
   }
 
   Exception _wrapError(DioException error, String label) {

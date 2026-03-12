@@ -10,8 +10,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_accounts_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
-import 'package:belluga_now/infrastructure/dal/dto/tenant_admin/tenant_admin_account_profile_dto.dart';
-import 'package:belluga_now/infrastructure/dal/dto/tenant_admin/tenant_admin_account_dto.dart';
+import 'package:belluga_now/infrastructure/dal/dto/mappers/tenant_admin_dto_mapper.dart';
 import 'package:belluga_now/infrastructure/repositories/tenant_admin/support/tenant_admin_validation_failure_resolver.dart';
 import 'package:dio/dio.dart';
 import 'package:get_it/get_it.dart';
@@ -19,7 +18,7 @@ import 'package:http_parser/http_parser.dart';
 import 'package:stream_value/core/stream_value.dart';
 
 class TenantAdminAccountsRepository
-    with TenantAdminAccountsRepositoryPaginationMixin
+    with TenantAdminAccountsRepositoryPaginationMixin, TenantAdminDtoMapper
     implements TenantAdminAccountsRepositoryContract {
   TenantAdminAccountsRepository({
     Dio? dio,
@@ -560,54 +559,11 @@ class TenantAdminAccountsRepository
   }
 
   TenantAdminAccount _mapAccount(Map<String, dynamic> json) {
-    final dto = TenantAdminAccountDTO.fromJson(json);
-    final ownershipStateRaw = dto.ownershipState?.trim();
-    final ownershipState =
-        (ownershipStateRaw == null || ownershipStateRaw.isEmpty)
-            ? TenantAdminOwnershipState.unmanaged
-            : TenantAdminOwnershipState.fromApiValue(ownershipStateRaw);
-    return TenantAdminAccount(
-      id: dto.id,
-      name: dto.name,
-      slug: dto.slug,
-      document: TenantAdminDocument(
-        type: dto.documentType,
-        number: dto.documentNumber,
-      ),
-      organizationId: dto.organizationId,
-      ownershipState: ownershipState,
-      avatarUrl: dto.avatarUrl,
-    );
+    return mapTenantAdminAccountJson(json);
   }
 
   TenantAdminAccountProfile _mapAccountProfile(Map<String, dynamic> json) {
-    final dto = TenantAdminAccountProfileDTO.fromJson(json);
-    final location = (dto.locationLat != null && dto.locationLng != null)
-        ? TenantAdminLocation(
-            latitude: dto.locationLat!,
-            longitude: dto.locationLng!,
-          )
-        : null;
-    final taxonomy = dto.taxonomyTerms
-        .map((term) =>
-            TenantAdminTaxonomyTerm(type: term.type, value: term.value))
-        .toList(growable: false);
-    return TenantAdminAccountProfile(
-      id: dto.id,
-      accountId: dto.accountId,
-      profileType: dto.profileType,
-      displayName: dto.displayName,
-      slug: dto.slug,
-      avatarUrl: dto.avatarUrl,
-      coverUrl: dto.coverUrl,
-      bio: dto.bio,
-      content: dto.content,
-      location: location,
-      taxonomyTerms: taxonomy,
-      ownershipState: dto.ownershipState == null
-          ? null
-          : TenantAdminOwnershipState.fromApiValue(dto.ownershipState),
-    );
+    return mapTenantAdminAccountProfileJson(json);
   }
 
   FormData? _buildMultipartPayload(

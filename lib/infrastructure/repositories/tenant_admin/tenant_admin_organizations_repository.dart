@@ -3,14 +3,14 @@ import 'package:belluga_now/domain/repositories/tenant_admin_organizations_repos
 import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_organization.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_result.dart';
-import 'package:belluga_now/infrastructure/dal/dto/tenant_admin/tenant_admin_organization_dto.dart';
+import 'package:belluga_now/infrastructure/dal/dto/mappers/tenant_admin_dto_mapper.dart';
 import 'package:belluga_now/infrastructure/repositories/tenant_admin/tenant_admin_pagination_utils.dart';
 import 'package:belluga_now/infrastructure/repositories/tenant_admin/support/tenant_admin_validation_failure_resolver.dart';
 import 'package:dio/dio.dart';
 import 'package:get_it/get_it.dart';
 
 class TenantAdminOrganizationsRepository
-    with TenantAdminOrganizationsPaginationMixin
+    with TenantAdminOrganizationsPaginationMixin, TenantAdminDtoMapper
     implements TenantAdminOrganizationsRepositoryContract {
   TenantAdminOrganizationsRepository({
     Dio? dio,
@@ -211,13 +211,7 @@ class TenantAdminOrganizationsRepository
   }
 
   TenantAdminOrganization _mapOrganization(Map<String, dynamic> json) {
-    final dto = TenantAdminOrganizationDTO.fromJson(json);
-    return TenantAdminOrganization(
-      id: dto.id,
-      name: dto.name,
-      slug: dto.slug,
-      description: dto.description,
-    );
+    return mapTenantAdminOrganizationJson(json);
   }
 
   Exception _wrapError(DioException error, String label) {

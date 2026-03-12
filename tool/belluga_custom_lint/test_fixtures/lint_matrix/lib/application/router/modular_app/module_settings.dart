@@ -1,14 +1,16 @@
 import 'package:get_it/get_it.dart';
 
-class ModuleSettingsService {}
+class _ModuleSettingsService {}
 
-class ModuleSettingsControllerContract {}
+class _ModuleSettingsControllerContract {}
 
 void registerModuleSettingsGlobals() {
-  GetIt.I.registerFactory<ModuleSettingsService>(() => ModuleSettingsService());
+  GetIt.I.registerFactory<_ModuleSettingsService>(
+    () => _ModuleSettingsService(),
+  );
 
   // expect_lint: global_ui_controller_naming_forbidden
-  GetIt.I.registerFactory<ModuleSettingsControllerContract>(
-    () => ModuleSettingsControllerContract(),
+  GetIt.I.registerFactory<_ModuleSettingsControllerContract>(
+    () => _ModuleSettingsControllerContract(),
   );
 }

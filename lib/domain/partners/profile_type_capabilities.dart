@@ -18,18 +18,4 @@ class ProfileTypeCapabilities {
   final bool hasAvatar;
   final bool hasCover;
   final bool hasEvents;
-
-  factory ProfileTypeCapabilities.fromJson(Map<String, dynamic>? json) {
-    final raw = json ?? const <String, dynamic>{};
-    return ProfileTypeCapabilities(
-      isFavoritable: raw['is_favoritable'] == true,
-      isPoiEnabled: raw['is_poi_enabled'] == true,
-      hasBio: raw['has_bio'] == true,
-      hasContent: raw['has_content'] == true,
-      hasTaxonomies: raw['has_taxonomies'] == true,
-      hasAvatar: raw['has_avatar'] == true,
-      hasCover: raw['has_cover'] == true,
-      hasEvents: raw['has_events'] == true,
-    );
-  }
 }

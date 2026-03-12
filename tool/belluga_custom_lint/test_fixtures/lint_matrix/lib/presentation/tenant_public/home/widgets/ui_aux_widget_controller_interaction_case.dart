@@ -1,10 +1,12 @@
+// ignore_for_file: unused_element
+
 import 'package:lint_matrix_fixture/presentation/tenant_public/home/controllers/home_controller.dart';
 
 class ScrollController {
   Object get position => Object();
 }
 
-class AuxiliaryWidgetLocalOwnershipCase {
+class _AuxiliaryWidgetLocalOwnershipCase {
   final scroll = ScrollController();
 
   void localOnly() {
@@ -12,7 +14,7 @@ class AuxiliaryWidgetLocalOwnershipCase {
   }
 }
 
-class AuxiliaryWidgetControllerInteractionCase {
+class _AuxiliaryWidgetControllerInteractionCase {
   final scroll = ScrollController();
   final homeController = const HomeController();
 

@@ -38,6 +38,10 @@ mixin MapDtoMapper {
     final tagValues = dto.tags
         .map((tag) => PoiTagValue()..parse(tag))
         .toList(growable: false);
+    final stackItems = dto.items.map(mapCityPoi).toList(growable: false);
+    final resolvedStackKey = dto.stackKey.trim().isNotEmpty
+        ? dto.stackKey.trim()
+        : '${dto.refType}:${dto.refId}';
 
     return CityPoiModel(
       idValue: idValue,
@@ -51,6 +55,16 @@ mixin MapDtoMapper {
       isDynamic: dto.isDynamic,
       movementRadiusValue: movementRadiusValue,
       tagValues: tagValues,
+      refType: dto.refType,
+      refId: dto.refId,
+      refSlug: dto.refSlug,
+      refPath: dto.refPath,
+      stackKey: resolvedStackKey,
+      stackCount: dto.stackCount,
+      stackItems: stackItems,
+      isHappeningNow: dto.isHappeningNow,
+      updatedAt: dto.updatedAt,
+      distanceMeters: dto.distanceMeters,
     );
   }
 }
