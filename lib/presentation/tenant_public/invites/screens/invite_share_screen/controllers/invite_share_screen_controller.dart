@@ -31,7 +31,7 @@ class InviteShareScreenController with Disposable {
   InviteModel? _currentInvite;
 
   final friendsSuggestionsStreamValue =
-      StreamValue<List<InviteFriendResumeWithStatus>?>();
+      StreamValue<List<InviteFriendResumeWithStatus>>(defaultValue: const []);
   final selectedFriendsSuggestionsStreamValue =
       StreamValue<List<InviteFriendResume>>(defaultValue: const []);
   final contactsStreamValue =
@@ -47,29 +47,35 @@ class InviteShareScreenController with Disposable {
   Future<void> init(InviteModel invite) async {
     _currentInvite = invite;
     await Future.wait([
-      _loadInviteTargetsWithStatus(),
-      _loadShareCode(),
+      _loadInviteTargetsWithStatusSafe(),
+      _loadShareCodeSafe(),
     ]);
   }
 
   Future<void> loadContacts() async {
-    final granted = await _contactsRepository.requestPermission();
-    if (_isDisposed) return;
-    contactsPermissionGranted.addValue(granted);
+    try {
+      final granted = await _contactsRepository.requestPermission();
+      if (_isDisposed) return;
+      contactsPermissionGranted.addValue(granted);
 
-    if (!granted) {
+      if (!granted) {
+        contactsStreamValue.addValue(const []);
+        return;
+      }
+
+      final contacts = await _contactsRepository.getContacts();
+      if (_isDisposed) return;
+
+      final validContacts = contacts
+          .where((contact) =>
+              contact.phones.isNotEmpty || contact.emails.isNotEmpty)
+          .toList(growable: false);
+      contactsStreamValue.addValue(validContacts);
+    } catch (_) {
+      if (_isDisposed) return;
+      contactsPermissionGranted.addValue(false);
       contactsStreamValue.addValue(const []);
-      return;
     }
-
-    final contacts = await _contactsRepository.getContacts();
-    if (_isDisposed) return;
-
-    final validContacts = contacts
-        .where(
-            (contact) => contact.phones.isNotEmpty || contact.emails.isNotEmpty)
-        .toList(growable: false);
-    contactsStreamValue.addValue(validContacts);
   }
 
   void toggleContact(ContactModel contact) {
@@ -94,7 +100,7 @@ class InviteShareScreenController with Disposable {
   }
 
   Future<void> refreshFriends() async {
-    await _loadInviteTargetsWithStatus(forceReloadContacts: true);
+    await _loadInviteTargetsWithStatusSafe(forceReloadContacts: true);
   }
 
   Future<void> sendInvites() async {
@@ -161,6 +167,20 @@ class InviteShareScreenController with Disposable {
     friendsSuggestionsStreamValue.addValue(friendsWithStatus);
   }
 
+  Future<void> _loadInviteTargetsWithStatusSafe({
+    bool forceReloadContacts = false,
+  }) async {
+    try {
+      await _loadInviteTargetsWithStatus(
+        forceReloadContacts: forceReloadContacts,
+      );
+    } catch (_) {
+      if (_isDisposed) return;
+      sentInvitesStreamValue.addValue(const []);
+      friendsSuggestionsStreamValue.addValue(const []);
+    }
+  }
+
   Future<void> _syncSentInvites() async {
     final invite = _currentInvite;
     if (invite == null) return;
@@ -171,9 +191,8 @@ class InviteShareScreenController with Disposable {
 
     sentInvitesStreamValue.addValue(sentInvites);
     final currentFriends = friendsSuggestionsStreamValue.value
-            ?.map((entry) => entry.friend)
-            .toList(growable: false) ??
-        const <InviteFriendResume>[];
+        .map((entry) => entry.friend)
+        .toList(growable: false);
     friendsSuggestionsStreamValue
         .addValue(_mergeFriendsWithStatus(currentFriends, sentInvites));
   }
@@ -188,6 +207,15 @@ class InviteShareScreenController with Disposable {
     );
     if (_isDisposed) return;
     shareCodeStreamValue.addValue(shareCode);
+  }
+
+  Future<void> _loadShareCodeSafe() async {
+    try {
+      await _loadShareCode();
+    } catch (_) {
+      if (_isDisposed) return;
+      shareCodeStreamValue.addValue(null);
+    }
   }
 
   Uri? buildShareUri(InviteShareCodeResult? shareCode) {

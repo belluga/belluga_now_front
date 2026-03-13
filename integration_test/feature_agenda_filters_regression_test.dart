@@ -417,6 +417,9 @@ class _TestUserEventsRepository implements UserEventsRepositoryContract {
     final updated = {..._confirmedEventIdsStream.value}..remove(eventId);
     _confirmedEventIdsStream.addValue(updated);
   }
+
+  @override
+  Future<void> refreshConfirmedEventIds() async {}
 }
 
 class _TestInvitesRepository extends InvitesRepositoryContract {

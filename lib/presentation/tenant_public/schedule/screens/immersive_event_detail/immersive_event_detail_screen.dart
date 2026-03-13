@@ -19,7 +19,7 @@ import 'package:belluga_now/presentation/tenant_public/schedule/screens/immersiv
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/immersive_event_detail/widgets/location_section.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/immersive_event_detail/widgets/mission_widget.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/immersive_event_detail/widgets/overlapped_invite_avatars.dart';
-import 'package:belluga_now/presentation/tenant_public/schedule/screens/event_detail_screen/widgets/swipeable_invite_widget.dart';
+import 'package:belluga_now/presentation/tenant_public/schedule/screens/immersive_event_detail/widgets/swipeable_invite_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
@@ -150,10 +150,12 @@ class _ImmersiveEventDetailScreenState
                         ? _buildInviteFooter(
                             context, () => _openInviteFlow(event), sentForEvent)
                         : DynamicFooter(
-                            buttonText: 'Convidar amigos',
-                            buttonIcon: BooraIcons.invite_solid,
+                            buttonText: 'Bóora! Confirmar Presença!',
+                            buttonIcon: Icons.celebration,
                             buttonColor: colorScheme.primary,
-                            onActionPressed: () => _openInviteFlow(event),
+                            onActionPressed: () {
+                              unawaited(_controller.confirmAttendance());
+                            },
                           );
 
                     return Theme(

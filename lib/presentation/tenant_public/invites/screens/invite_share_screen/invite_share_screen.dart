@@ -41,9 +41,8 @@ class _InviteShareScreenState extends State<InviteShareScreen> {
         title: InviteShareAppBarTitle(invite: widget.invite),
       ),
       body: SafeArea(
-        child: StreamValueBuilder<List<InviteFriendResumeWithStatus>?>(
+        child: StreamValueBuilder<List<InviteFriendResumeWithStatus>>(
           streamValue: _controller.friendsSuggestionsStreamValue,
-          onNullWidget: const Center(child: CircularProgressIndicator()),
           builder: (context, friendsWithStatus) {
             return StreamValueBuilder<List<SentInviteStatus>>(
               streamValue: _controller.sentInvitesStreamValue,
@@ -59,19 +58,18 @@ class _InviteShareScreenState extends State<InviteShareScreen> {
                           const SizedBox(height: 16),
                           InviteShareSummary(invites: sentInvites),
                           const SizedBox(height: 16),
-                          if (friendsWithStatus != null)
-                            ..._paddedFriends(friendsWithStatus).map(
-                              (item) => InviteShareFriendCard(
-                                friend: item.friend.friend,
-                                status: item.friend.inviteStatus,
-                                onInvite: item.isPlaceholder
-                                    ? null
-                                    : () => _controller.sendInviteToFriend(
-                                          item.friend.friend,
-                                        ),
-                                isPlaceholder: item.isPlaceholder,
-                              ),
+                          ..._paddedFriends(friendsWithStatus).map(
+                            (item) => InviteShareFriendCard(
+                              friend: item.friend.friend,
+                              status: item.friend.inviteStatus,
+                              onInvite: item.isPlaceholder
+                                  ? null
+                                  : () => _controller.sendInviteToFriend(
+                                        item.friend.friend,
+                                      ),
+                              isPlaceholder: item.isPlaceholder,
                             ),
+                          ),
                         ],
                       ),
                     ),

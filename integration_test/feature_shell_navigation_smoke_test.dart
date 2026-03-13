@@ -365,6 +365,9 @@ class _FakeUserEventsRepository implements UserEventsRepositoryContract {
   Future<void> unconfirmEventAttendance(String eventId) async {}
 
   @override
+  Future<void> refreshConfirmedEventIds() async {}
+
+  @override
   bool isEventConfirmed(String eventId) => false;
 }
 

@@ -1,18 +1,23 @@
 import 'package:belluga_now/domain/repositories/user_events_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
 import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
+import 'package:belluga_now/infrastructure/dal/dao/laravel_backend/user_events_backend/laravel_user_events_backend.dart';
+import 'package:belluga_now/infrastructure/services/user_events_backend_contract.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value.dart';
 
 /// Implementation of UserEventsRepositoryContract
-/// Tracks user-event relationships in memory (mock implementation)
+/// Uses backend-authoritative attendance commitments for confirmation state.
 class UserEventsRepository implements UserEventsRepositoryContract {
   UserEventsRepository({
     ScheduleRepositoryContract? scheduleRepository,
+    UserEventsBackendContract? backend,
   }) : _scheduleRepository =
-            scheduleRepository ?? GetIt.I.get<ScheduleRepositoryContract>();
+            scheduleRepository ?? GetIt.I.get<ScheduleRepositoryContract>(),
+       _backend = backend ?? LaravelUserEventsBackend();
 
   final ScheduleRepositoryContract _scheduleRepository;
+  final UserEventsBackendContract _backend;
 
   /// Stream of confirmed event IDs
   @override
@@ -24,8 +29,23 @@ class UserEventsRepository implements UserEventsRepositoryContract {
   Set<String> get _confirmedEventIds => confirmedEventIdsStream.value;
 
   @override
+  Future<void> refreshConfirmedEventIds() async {
+    final response = await _backend.fetchConfirmedEventIds();
+    final eventIdsRaw = response['confirmed_event_ids'];
+    if (eventIdsRaw is! List) {
+      confirmedEventIdsStream.addValue(const {});
+      return;
+    }
+
+    final next = eventIdsRaw
+        .map((item) => item?.toString().trim() ?? '')
+        .where((value) => value.isNotEmpty)
+        .toSet();
+    confirmedEventIdsStream.addValue(next);
+  }
+
+  @override
   Future<List<VenueEventResume>> fetchMyEvents() async {
-    // Fetch all upcoming events and filter by confirmed IDs
     final allEvents = await _scheduleRepository.fetchUpcomingEvents();
     return allEvents
         .where((event) => _confirmedEventIds.contains(event.id))
@@ -34,23 +54,19 @@ class UserEventsRepository implements UserEventsRepositoryContract {
 
   @override
   Future<List<VenueEventResume>> fetchFeaturedEvents() async {
-    // For now, return empty list
-    // TODO: Implement featured events logic (recommendations, etc.)
     return [];
   }
 
   @override
   Future<void> confirmEventAttendance(String eventId) async {
-    final newSet = Set<String>.from(_confirmedEventIds)..add(eventId);
-    confirmedEventIdsStream.addValue(newSet);
-    // TODO: Call backend API when available
+    await _backend.confirmAttendance(eventId: eventId);
+    await refreshConfirmedEventIds();
   }
 
   @override
   Future<void> unconfirmEventAttendance(String eventId) async {
-    final newSet = Set<String>.from(_confirmedEventIds)..remove(eventId);
-    confirmedEventIdsStream.addValue(newSet);
-    // TODO: Call backend API when available
+    await _backend.unconfirmAttendance(eventId: eventId);
+    await refreshConfirmedEventIds();
   }
 
   @override

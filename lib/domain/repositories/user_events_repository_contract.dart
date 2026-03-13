@@ -7,6 +7,9 @@ abstract class UserEventsRepositoryContract {
   /// Stream of confirmed event IDs to notify listeners of changes
   StreamValue<Set<String>> get confirmedEventIdsStream;
 
+  /// Refresh confirmed event IDs from backend authoritative source.
+  Future<void> refreshConfirmedEventIds();
+
   /// Fetch events that the user has confirmed attendance for
   Future<List<VenueEventResume>> fetchMyEvents();
 
