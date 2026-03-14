@@ -119,7 +119,7 @@ class TenantAdminTaxonomiesRepository
     String? color,
   }) async {
     try {
-      final payload = <String, dynamic>{};
+      final payload = <String, Object?>{};
       if (slug != null && slug.trim().isNotEmpty) {
         payload['slug'] = slug.trim();
       }
@@ -241,7 +241,7 @@ class TenantAdminTaxonomiesRepository
     String? name,
   }) async {
     try {
-      final payload = <String, dynamic>{};
+      final payload = <String, Object?>{};
       if (slug != null && slug.trim().isNotEmpty) {
         payload['slug'] = slug.trim();
       }
@@ -275,33 +275,33 @@ class TenantAdminTaxonomiesRepository
     }
   }
 
-  Map<String, dynamic> _extractItem(dynamic raw) {
-    if (raw is Map<String, dynamic>) {
+  Map<String, Object?> _extractItem(Object? raw) {
+    if (raw is Map<String, Object?>) {
       final data = raw['data'];
-      if (data is Map<String, dynamic>) return data;
+      if (data is Map<String, Object?>) return data;
       return raw;
     }
     throw Exception('Unexpected taxonomy response shape.');
   }
 
-  List<Map<String, dynamic>> _extractList(dynamic raw) {
-    if (raw is Map<String, dynamic>) {
+  List<Map<String, Object?>> _extractList(Object? raw) {
+    if (raw is Map<String, Object?>) {
       final data = raw['data'];
       if (data is List) {
         return data
             .whereType<Map>()
-            .map((entry) => Map<String, dynamic>.from(entry))
+            .map((entry) => Map<String, Object?>.from(entry))
             .toList();
       }
     }
     throw Exception('Unexpected taxonomy list response shape.');
   }
 
-  TenantAdminTaxonomyDefinition _mapTaxonomy(Map<String, dynamic> json) {
+  TenantAdminTaxonomyDefinition _mapTaxonomy(Map<String, Object?> json) {
     return mapTenantAdminTaxonomyJson(json);
   }
 
-  TenantAdminTaxonomyTermDefinition _mapTerm(Map<String, dynamic> json) {
+  TenantAdminTaxonomyTermDefinition _mapTerm(Map<String, Object?> json) {
     return mapTenantAdminTaxonomyTermDefinitionJson(json);
   }
 

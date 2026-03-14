@@ -33,6 +33,7 @@
 - `domain_dto_dependency_forbidden` (`P0`): domain cannot depend on DTO artifacts.
 - `domain_json_factory_forbidden` (`P0`): domain cannot declare `fromJson`/`fromMap` factories.
 - `repository_json_parsing_forbidden` (`P0`): repositories cannot parse raw JSON or hydrate DTOs directly.
+- `repository_raw_transport_typing_forbidden` (`P0`): repositories cannot declare raw transport typing such as `dynamic` or `Map<String, dynamic>`.
 - `service_json_parsing_forbidden` (`P0`): services cannot parse raw JSON or hydrate DTOs directly.
 - `repository_inline_dto_to_domain_mapper_forbidden` (`P0`): repositories cannot own inline DTO -> domain mapper methods.
 - `module_direct_getit_registration_forbidden` (`P0`): classes extending `ModuleContract` cannot use direct `GetIt.I.register*`.
@@ -149,6 +150,16 @@ Fix:
 ```dart
 final dto = await backend.fetchEventDto();
 return mapEventDto(dto);
+```
+
+### `repository_raw_transport_typing_forbidden`
+Violation:
+```dart
+Map<String, dynamic> _extractItem(dynamic raw) { ... }
+```
+Fix:
+```dart
+Future<EventDto> fetchEventDto() => _dao.fetchEventDto();
 ```
 
 ### `service_json_parsing_forbidden`

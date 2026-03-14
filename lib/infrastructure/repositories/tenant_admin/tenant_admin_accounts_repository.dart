@@ -194,7 +194,7 @@ class TenantAdminAccountsRepository
     required TenantAdminOwnershipState ownershipState,
     String? organizationId,
   }) async {
-    final payload = <String, dynamic>{
+    final payload = <String, Object?>{
       'name': name,
       'ownership_state': ownershipState.apiValue,
       if (organizationId != null && organizationId.trim().isNotEmpty)
@@ -234,7 +234,7 @@ class TenantAdminAccountsRepository
     TenantAdminMediaUpload? coverUpload,
   }) async {
     try {
-      final payload = <String, dynamic>{
+      final payload = <String, Object?>{
         'name': name,
         'ownership_state': ownershipState.apiValue,
         'profile_type': profileType,
@@ -284,7 +284,7 @@ class TenantAdminAccountsRepository
     TenantAdminDocument? document,
   }) async {
     try {
-      final payload = <String, dynamic>{};
+      final payload = <String, Object?>{};
       if (name != null && name.trim().isNotEmpty) {
         payload['name'] = name.trim();
       }
@@ -465,21 +465,21 @@ class TenantAdminAccountsRepository
     }
   }
 
-  Map<String, dynamic> _extractItem(dynamic raw) {
-    if (raw is Map<String, dynamic>) {
+  Map<String, Object?> _extractItem(Object? raw) {
+    if (raw is Map<String, Object?>) {
       final data = raw['data'];
-      if (data is Map<String, dynamic>) return data;
+      if (data is Map<String, Object?>) return data;
       return raw;
     }
     throw Exception('Unexpected account response shape.');
   }
 
-  Map<String, dynamic> _extractAccountFromCreate(dynamic raw) {
-    if (raw is Map<String, dynamic>) {
+  Map<String, Object?> _extractAccountFromCreate(Object? raw) {
+    if (raw is Map<String, Object?>) {
       final data = raw['data'];
-      if (data is Map<String, dynamic>) {
+      if (data is Map<String, Object?>) {
         final account = data['account'];
-        if (account is Map<String, dynamic>) {
+        if (account is Map<String, Object?>) {
           return account;
         }
         return data;
@@ -488,33 +488,33 @@ class TenantAdminAccountsRepository
     throw Exception('Unexpected account create response shape.');
   }
 
-  Map<String, Map<String, dynamic>> _extractOnboardingData(dynamic raw) {
-    if (raw is! Map<String, dynamic>) {
+  Map<String, Map<String, Object?>> _extractOnboardingData(Object? raw) {
+    if (raw is! Map<String, Object?>) {
       throw Exception('Unexpected account onboarding response shape.');
     }
     final data = raw['data'];
-    if (data is! Map<String, dynamic>) {
+    if (data is! Map<String, Object?>) {
       throw Exception('Unexpected account onboarding response shape.');
     }
     final account = data['account'];
     final accountProfile = data['account_profile'];
-    if (account is! Map<String, dynamic> ||
-        accountProfile is! Map<String, dynamic>) {
+    if (account is! Map<String, Object?> ||
+        accountProfile is! Map<String, Object?>) {
       throw Exception('Unexpected account onboarding response shape.');
     }
-    return <String, Map<String, dynamic>>{
+    return <String, Map<String, Object?>>{
       'account': account,
       'account_profile': accountProfile,
     };
   }
 
-  List<Map<String, dynamic>> _extractList(dynamic raw) {
-    if (raw is Map<String, dynamic>) {
+  List<Map<String, Object?>> _extractList(Object? raw) {
+    if (raw is Map<String, Object?>) {
       final data = raw['data'];
       if (data is List) {
         return data
             .whereType<Map>()
-            .map((entry) => Map<String, dynamic>.from(entry))
+            .map((entry) => Map<String, Object?>.from(entry))
             .toList();
       }
     }
@@ -522,26 +522,26 @@ class TenantAdminAccountsRepository
   }
 
   int? _extractCurrentPage({
-    required dynamic raw,
+    required Object? raw,
     int? fallback,
   }) {
-    if (raw is! Map<String, dynamic>) return fallback;
+    if (raw is! Map<String, Object?>) return fallback;
     return _readInt(raw, 'current_page') ??
         _readInt(raw['meta'], 'current_page') ??
         fallback;
   }
 
   int? _extractLastPage({
-    required dynamic raw,
+    required Object? raw,
     int? fallback,
   }) {
-    if (raw is! Map<String, dynamic>) return fallback;
+    if (raw is! Map<String, Object?>) return fallback;
     return _readInt(raw, 'last_page') ??
         _readInt(raw['meta'], 'last_page') ??
         fallback;
   }
 
-  int? _readInt(dynamic source, String key) {
+  int? _readInt(Object? source, String key) {
     if (source is! Map) {
       return null;
     }
@@ -558,16 +558,16 @@ class TenantAdminAccountsRepository
     return null;
   }
 
-  TenantAdminAccount _mapAccount(Map<String, dynamic> json) {
+  TenantAdminAccount _mapAccount(Map<String, Object?> json) {
     return mapTenantAdminAccountJson(json);
   }
 
-  TenantAdminAccountProfile _mapAccountProfile(Map<String, dynamic> json) {
+  TenantAdminAccountProfile _mapAccountProfile(Map<String, Object?> json) {
     return mapTenantAdminAccountProfileJson(json);
   }
 
   FormData? _buildMultipartPayload(
-    Map<String, dynamic> payload, {
+    Map<String, Object?> payload, {
     TenantAdminMediaUpload? avatarUpload,
     TenantAdminMediaUpload? coverUpload,
   }) {

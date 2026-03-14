@@ -3,7 +3,7 @@ import 'package:belluga_now/infrastructure/dal/dto/invites/invite_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/mappers/invite_dto_mapper.dart';
 
 abstract class PushInvitePayloadAware {
-  void applyInvitePushPayload(Map<String, dynamic> payload);
+  void applyInvitePushPayload(Map<String, Object?> payload);
 }
 
 mixin PushPayloadUpsertMixin<T> {
@@ -39,10 +39,11 @@ mixin PushPayloadUpsertMixin<T> {
   }
 }
 
-mixin PushInvitePayloadMixin on PushPayloadUpsertMixin<InviteModel>, InviteDtoMapper {
+mixin PushInvitePayloadMixin
+    on PushPayloadUpsertMixin<InviteModel>, InviteDtoMapper {
   List<InviteModel> mergeInvitePayload({
     required List<InviteModel> current,
-    required Map<String, dynamic> payload,
+    required Map<String, Object?> payload,
   }) {
     final invites = _resolveInvitesFromPayload(payload);
     if (invites.isEmpty) {
@@ -55,20 +56,20 @@ mixin PushInvitePayloadMixin on PushPayloadUpsertMixin<InviteModel>, InviteDtoMa
     );
   }
 
-  List<InviteModel> _resolveInvitesFromPayload(Map<String, dynamic> payload) {
+  List<InviteModel> _resolveInvitesFromPayload(Map<String, Object?> payload) {
     final resolvedPayload = _resolvePayloadRoot(payload);
     final invitesRaw = resolvedPayload['invites'];
     final inviteRaw = resolvedPayload['invite'];
-    final entries = <Map<String, dynamic>>[];
+    final entries = <Map<String, Object?>>[];
     if (invitesRaw is List) {
       for (final item in invitesRaw) {
-        if (item is Map<String, dynamic>) {
-          entries.add(Map<String, dynamic>.from(item));
+        if (item is Map<String, Object?>) {
+          entries.add(Map<String, Object?>.from(item));
         }
       }
     }
-    if (inviteRaw is Map<String, dynamic>) {
-      entries.add(Map<String, dynamic>.from(inviteRaw));
+    if (inviteRaw is Map<String, Object?>) {
+      entries.add(Map<String, Object?>.from(inviteRaw));
     }
     if (entries.isEmpty) {
       return const [];
@@ -88,15 +89,15 @@ mixin PushInvitePayloadMixin on PushPayloadUpsertMixin<InviteModel>, InviteDtoMa
     return invites;
   }
 
-  Map<String, dynamic> _resolvePayloadRoot(Map<String, dynamic> payload) {
+  Map<String, Object?> _resolvePayloadRoot(Map<String, Object?> payload) {
     final nested = payload['data'];
-    if (nested is Map<String, dynamic>) {
-      return Map<String, dynamic>.from(nested);
+    if (nested is Map<String, Object?>) {
+      return Map<String, Object?>.from(nested);
     }
     return payload;
   }
 
-  InviteDto? _tryParseInviteDto(Map<String, dynamic> entry) {
+  InviteDto? _tryParseInviteDto(Map<String, Object?> entry) {
     return tryParseInviteDtoJson(entry);
   }
 }

@@ -66,6 +66,7 @@ void main() {
       );
       final crop = tester.widget<Crop>(find.byType(Crop));
       expect(crop.aspectRatio, closeTo(1.0, 0.0001));
+      await confirmCropAndDismiss(tester);
     });
 
     testWidgets('create: cover opens crop sheet (16:9)', (tester) async {
@@ -96,6 +97,7 @@ void main() {
       );
       final crop = tester.widget<Crop>(find.byType(Crop));
       expect(crop.aspectRatio, closeTo(16 / 9, 0.0001));
+      await confirmCropAndDismiss(tester);
     });
 
     testWidgets('edit: avatar opens crop sheet (1:1)', (tester) async {
@@ -125,6 +127,7 @@ void main() {
       );
       final crop = tester.widget<Crop>(find.byType(Crop));
       expect(crop.aspectRatio, closeTo(1.0, 0.0001));
+      await confirmCropAndDismiss(tester);
     });
 
     testWidgets('edit: cover opens crop sheet (16:9)', (tester) async {
@@ -154,6 +157,7 @@ void main() {
       );
       final crop = tester.widget<Crop>(find.byType(Crop));
       expect(crop.aspectRatio, closeTo(16 / 9, 0.0001));
+      await confirmCropAndDismiss(tester);
     });
   });
 
@@ -180,6 +184,7 @@ void main() {
         expectedCropTitle: 'Recortar avatar',
       );
       expectCropAspectRatio(tester, 1.0);
+      await confirmCropAndDismiss(tester);
     });
 
     testWidgets('create: cover opens crop sheet (16:9)', (tester) async {
@@ -204,6 +209,7 @@ void main() {
         expectedCropTitle: 'Recortar capa',
       );
       expectCropAspectRatio(tester, 16 / 9);
+      await confirmCropAndDismiss(tester);
     });
 
     testWidgets('edit: avatar opens crop sheet (1:1)', (tester) async {
@@ -227,6 +233,7 @@ void main() {
         expectedCropTitle: 'Recortar avatar',
       );
       expectCropAspectRatio(tester, 1.0);
+      await confirmCropAndDismiss(tester);
     });
 
     testWidgets('edit: cover opens crop sheet (16:9)', (tester) async {
@@ -250,6 +257,7 @@ void main() {
         expectedCropTitle: 'Recortar capa',
       );
       expectCropAspectRatio(tester, 16 / 9);
+      await confirmCropAndDismiss(tester);
     });
   });
 }

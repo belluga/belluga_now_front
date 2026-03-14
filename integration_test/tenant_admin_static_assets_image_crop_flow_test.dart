@@ -13,16 +13,17 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_definition.dart';
 import 'package:belluga_now/infrastructure/services/tenant_admin/tenant_admin_location_selection_service.dart';
+import 'package:belluga_now/presentation/shared/widgets/belluga_network_image.dart';
 import 'package:belluga_now/presentation/tenant_admin/static_assets/controllers/tenant_admin_static_assets_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/static_assets/screens/tenant_admin_static_asset_create_screen.dart';
 import 'package:belluga_now/presentation/tenant_admin/static_assets/screens/tenant_admin_static_asset_edit_screen.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_image_ingestion_service.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_xfile_preview.dart';
 import 'package:crop_your_image/crop_your_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
 import 'package:image_picker_platform_interface/image_picker_platform_interface.dart';
-
 
 import 'support/tenant_admin_image_crop_harness.dart';
 
@@ -62,6 +63,7 @@ void main() {
       );
       final crop = tester.widget<Crop>(find.byType(Crop));
       expect(crop.aspectRatio, closeTo(1.0, 0.0001));
+      await confirmCropAndDismiss(tester);
     });
 
     testWidgets('create: cover opens crop sheet (16:9)', (tester) async {
@@ -92,6 +94,7 @@ void main() {
       );
       final crop = tester.widget<Crop>(find.byType(Crop));
       expect(crop.aspectRatio, closeTo(16 / 9, 0.0001));
+      await confirmCropAndDismiss(tester);
     });
 
     testWidgets('edit: avatar opens crop sheet (1:1)', (tester) async {
@@ -118,6 +121,7 @@ void main() {
       );
       final crop = tester.widget<Crop>(find.byType(Crop));
       expect(crop.aspectRatio, closeTo(1.0, 0.0001));
+      await confirmCropAndDismiss(tester);
     });
 
     testWidgets('edit: cover opens crop sheet (16:9)', (tester) async {
@@ -144,6 +148,7 @@ void main() {
       );
       final crop = tester.widget<Crop>(find.byType(Crop));
       expect(crop.aspectRatio, closeTo(16 / 9, 0.0001));
+      await confirmCropAndDismiss(tester);
     });
   });
 
@@ -170,6 +175,7 @@ void main() {
         expectedCropTitle: 'Recortar avatar',
       );
       expectCropAspectRatio(tester, 1.0);
+      await confirmCropAndDismiss(tester);
     });
 
     testWidgets('create: cover opens crop sheet (16:9)', (tester) async {
@@ -194,6 +200,7 @@ void main() {
         expectedCropTitle: 'Recortar capa',
       );
       expectCropAspectRatio(tester, 16 / 9);
+      await confirmCropAndDismiss(tester);
     });
 
     testWidgets('edit: avatar opens crop sheet (1:1)', (tester) async {
@@ -214,6 +221,7 @@ void main() {
         expectedCropTitle: 'Recortar avatar',
       );
       expectCropAspectRatio(tester, 1.0);
+      await confirmCropAndDismiss(tester);
     });
 
     testWidgets('edit: cover opens crop sheet (16:9)', (tester) async {
@@ -234,13 +242,68 @@ void main() {
         expectedCropTitle: 'Recortar capa',
       );
       expectCropAspectRatio(tester, 16 / 9);
+      await confirmCropAndDismiss(tester);
+    });
+  });
+
+  group('Static Asset Media Persistence', () {
+    testWidgets(
+        'uploaded cover preview is shown and persists on edit reload/list',
+        (tester) async {
+      final repository = await _registerEditFakes();
+      final controller = GetIt.I.get<TenantAdminStaticAssetsController>();
+
+      await pumpWithAutoRoute(
+        tester,
+        const Scaffold(
+          body: TenantAdminStaticAssetEditScreen(assetId: 'asset-1'),
+        ),
+      );
+      await pumpUntilFound(tester, find.text('Editar ativo'));
+
+      final uploadedFile = writeTempPng(
+        name: 'uploaded-cover.png',
+        width: 1400,
+        height: 900,
+      );
+      controller.updateCoverFile(
+        XFile(
+          uploadedFile.path,
+          name: 'uploaded-cover.png',
+          mimeType: 'image/png',
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byType(TenantAdminXFilePreview), findsOneWidget);
+
+      final saveButton = find.text('Salvar ativo');
+      await tester.ensureVisible(saveButton);
+      await tester.tap(saveButton);
+      await tester.pumpAndSettle();
+      await pumpUntilFound(tester, find.text('Ativo atualizado.'));
+      final persisted = await repository.fetchStaticAsset('asset-1');
+      expect(
+        persisted.coverUrl,
+        _FakeStaticAssetsRepository.generatedCoverUploadUrl,
+      );
+      await controller.initEdit('asset-1');
+      await tester.pumpAndSettle();
+
+      final editCoverImageFinder = find.byWidgetPredicate((widget) {
+        return widget is BellugaNetworkImage &&
+            widget.url == _FakeStaticAssetsRepository.generatedCoverUploadUrl;
+      });
+      await pumpUntilFound(tester, editCoverImageFinder, maxPumps: 300);
+      expect(editCoverImageFinder, findsOneWidget);
     });
   });
 }
 
-Future<void> _registerCreateFakes() async {
+Future<_FakeStaticAssetsRepository> _registerCreateFakes() async {
   await GetIt.I.reset();
   final proxyBytes = writeTempPng(name: 'proxy.png').readAsBytesSync();
+  final repository = _FakeStaticAssetsRepository();
   GetIt.I.registerSingleton<TenantAdminExternalImageProxyContract>(
     _FakeExternalImageProxy(proxyBytes),
   );
@@ -249,16 +312,18 @@ Future<void> _registerCreateFakes() async {
   );
   GetIt.I.registerSingleton<TenantAdminStaticAssetsController>(
     TenantAdminStaticAssetsController(
-      repository: _FakeStaticAssetsRepository(),
+      repository: repository,
       taxonomiesRepository: _FakeTaxonomiesRepository(),
       locationSelection: TenantAdminLocationSelectionService(),
     ),
   );
+  return repository;
 }
 
-Future<void> _registerEditFakes() async {
+Future<_FakeStaticAssetsRepository> _registerEditFakes() async {
   await GetIt.I.reset();
   final proxyBytes = writeTempPng(name: 'proxy.png').readAsBytesSync();
+  final repository = _FakeStaticAssetsRepository();
   GetIt.I.registerSingleton<TenantAdminExternalImageProxyContract>(
     _FakeExternalImageProxy(proxyBytes),
   );
@@ -267,11 +332,12 @@ Future<void> _registerEditFakes() async {
   );
   GetIt.I.registerSingleton<TenantAdminStaticAssetsController>(
     TenantAdminStaticAssetsController(
-      repository: _FakeStaticAssetsRepository(),
+      repository: repository,
       taxonomiesRepository: _FakeTaxonomiesRepository(),
       locationSelection: TenantAdminLocationSelectionService(),
     ),
   );
+  return repository;
 }
 
 class _FakeExternalImageProxy implements TenantAdminExternalImageProxyContract {
@@ -288,8 +354,29 @@ class _FakeExternalImageProxy implements TenantAdminExternalImageProxyContract {
 class _FakeStaticAssetsRepository
     with TenantAdminStaticAssetsPaginationMixin
     implements TenantAdminStaticAssetsRepositoryContract {
+  _FakeStaticAssetsRepository({
+    List<TenantAdminStaticAsset> seededAssets = const [
+      TenantAdminStaticAsset(
+        id: 'asset-1',
+        profileType: 'poi',
+        displayName: 'Praia',
+        slug: 'praia',
+        isActive: true,
+        taxonomyTerms: [],
+      ),
+    ],
+  }) : _assets = List<TenantAdminStaticAsset>.of(seededAssets);
+
+  static const String generatedAvatarUploadUrl =
+      'https://tenant-a.test/media/static-assets/avatar-uploaded.png';
+  static const String generatedCoverUploadUrl =
+      'https://tenant-a.test/media/static-assets/cover-uploaded.png';
+
+  final List<TenantAdminStaticAsset> _assets;
+
   @override
-  Future<List<TenantAdminStaticAsset>> fetchStaticAssets() async => const [];
+  Future<List<TenantAdminStaticAsset>> fetchStaticAssets() async =>
+      List<TenantAdminStaticAsset>.unmodifiable(_assets);
 
   @override
   Future<TenantAdminPagedResult<TenantAdminStaticAsset>> fetchStaticAssetsPage({
@@ -320,13 +407,18 @@ class _FakeStaticAssetsRepository
 
   @override
   Future<TenantAdminStaticAsset> fetchStaticAsset(String assetId) async {
-    return const TenantAdminStaticAsset(
-      id: 'asset-1',
+    for (final asset in _assets) {
+      if (asset.id == assetId) {
+        return asset;
+      }
+    }
+    return TenantAdminStaticAsset(
+      id: assetId,
       profileType: 'poi',
       displayName: 'Praia',
       slug: 'praia',
       isActive: true,
-      taxonomyTerms: [],
+      taxonomyTerms: const [],
     );
   }
 
@@ -394,7 +486,26 @@ class _FakeStaticAssetsRepository
     TenantAdminMediaUpload? avatarUpload,
     TenantAdminMediaUpload? coverUpload,
   }) async {
-    throw UnimplementedError();
+    final resolvedAvatarUrl =
+        avatarUpload != null ? generatedAvatarUploadUrl : avatarUrl;
+    final resolvedCoverUrl =
+        coverUpload != null ? generatedCoverUploadUrl : coverUrl;
+    final asset = TenantAdminStaticAsset(
+      id: 'asset-created',
+      profileType: profileType,
+      displayName: displayName,
+      slug: 'asset-created',
+      isActive: true,
+      location: location,
+      taxonomyTerms: taxonomyTerms,
+      tags: tags,
+      bio: bio,
+      content: content,
+      avatarUrl: resolvedAvatarUrl,
+      coverUrl: resolvedCoverUrl,
+    );
+    _assets.add(asset);
+    return asset;
   }
 
   @override
@@ -413,7 +524,42 @@ class _FakeStaticAssetsRepository
     TenantAdminMediaUpload? avatarUpload,
     TenantAdminMediaUpload? coverUpload,
   }) async {
-    throw UnimplementedError();
+    TenantAdminStaticAsset? existing;
+    for (final asset in _assets) {
+      if (asset.id == assetId) {
+        existing = asset;
+        break;
+      }
+    }
+
+    final resolvedAvatarUrl = avatarUpload != null
+        ? generatedAvatarUploadUrl
+        : avatarUrl ?? existing?.avatarUrl;
+    final resolvedCoverUrl = coverUpload != null
+        ? generatedCoverUploadUrl
+        : coverUrl ?? existing?.coverUrl;
+
+    final updated = TenantAdminStaticAsset(
+      id: assetId,
+      profileType: profileType ?? existing?.profileType ?? 'poi',
+      displayName: displayName ?? existing?.displayName ?? 'Praia',
+      slug: slug ?? existing?.slug ?? 'praia',
+      isActive: true,
+      location: location ?? existing?.location,
+      taxonomyTerms: taxonomyTerms ?? existing?.taxonomyTerms ?? const [],
+      tags: tags ?? existing?.tags ?? const [],
+      bio: bio ?? existing?.bio,
+      content: content ?? existing?.content,
+      avatarUrl: resolvedAvatarUrl,
+      coverUrl: resolvedCoverUrl,
+    );
+    final index = _assets.indexWhere((asset) => asset.id == assetId);
+    if (index >= 0) {
+      _assets[index] = updated;
+    } else {
+      _assets.add(updated);
+    }
+    return updated;
   }
 
   @override

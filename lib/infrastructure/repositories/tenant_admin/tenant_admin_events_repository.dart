@@ -275,7 +275,7 @@ class TenantAdminEventsRepository
     String? description,
   }) async {
     try {
-      final payload = <String, dynamic>{};
+      final payload = <String, Object?>{};
       if (name != null) {
         payload['name'] = name;
       }
@@ -344,11 +344,11 @@ class TenantAdminEventsRepository
 
       final venues = venuesRaw
           .whereType<Map>()
-          .map((row) => _mapAccountProfile(row.cast<String, dynamic>()))
+          .map((row) => _mapAccountProfile(row.cast<String, Object?>()))
           .toList(growable: false);
       final artists = artistsRaw
           .whereType<Map>()
-          .map((row) => _mapAccountProfile(row.cast<String, dynamic>()))
+          .map((row) => _mapAccountProfile(row.cast<String, Object?>()))
           .toList(growable: false);
 
       return TenantAdminEventPartyCandidates(
@@ -360,7 +360,7 @@ class TenantAdminEventsRepository
     }
   }
 
-  TenantAdminEvent _mapEvent(Map<String, dynamic> row) {
+  TenantAdminEvent _mapEvent(Map<String, Object?> row) {
     final typeRow = _asMap(row['type']);
     final publicationRow = _asMap(row['publication']);
     final locationRow = _asMap(row['location']);
@@ -518,7 +518,7 @@ class TenantAdminEventsRepository
     );
   }
 
-  TenantAdminEventType _mapEventType(Map<String, dynamic> row) {
+  TenantAdminEventType _mapEventType(Map<String, Object?> row) {
     return TenantAdminEventType(
       id: _asString(row['id']),
       name: _asString(row['name']) ?? '',
@@ -529,7 +529,7 @@ class TenantAdminEventsRepository
     );
   }
 
-  TenantAdminAccountProfile _mapAccountProfile(Map<String, dynamic> row) {
+  TenantAdminAccountProfile _mapAccountProfile(Map<String, Object?> row) {
     final locationRow = _asMap(row['location']);
     final lat = _toDouble(locationRow['lat']);
     final lng = _toDouble(locationRow['lng']);
@@ -561,8 +561,8 @@ class TenantAdminEventsRepository
     );
   }
 
-  Map<String, dynamic> _buildDraftPayload(TenantAdminEventDraft draft) {
-    final payload = <String, dynamic>{
+  Map<String, Object?> _buildDraftPayload(TenantAdminEventDraft draft) {
+    final payload = <String, Object?>{
       'title': draft.title,
       'content': draft.content,
       'type': {
@@ -606,7 +606,7 @@ class TenantAdminEventsRepository
 
     final location = draft.location;
     if (location != null) {
-      final locationPayload = <String, dynamic>{
+      final locationPayload = <String, Object?>{
         'mode': location.mode,
       };
       final includesPhysicalGeometry =
@@ -645,41 +645,41 @@ class TenantAdminEventsRepository
     return payload;
   }
 
-  List<Map<String, dynamic>> _extractList(dynamic raw) {
-    if (raw is Map<String, dynamic>) {
+  List<Map<String, Object?>> _extractList(Object? raw) {
+    if (raw is Map<String, Object?>) {
       final data = raw['data'];
       if (data is List) {
         return data
             .whereType<Map>()
-            .map((item) => item.cast<String, dynamic>())
+            .map((item) => item.cast<String, Object?>())
             .toList(growable: false);
       }
     }
     if (raw is List) {
       return raw
           .whereType<Map>()
-          .map((item) => item.cast<String, dynamic>())
+          .map((item) => item.cast<String, Object?>())
           .toList(growable: false);
     }
-    return const <Map<String, dynamic>>[];
+    return const <Map<String, Object?>>[];
   }
 
-  Map<String, dynamic> _extractItem(dynamic raw) {
-    if (raw is Map<String, dynamic>) {
+  Map<String, Object?> _extractItem(Object? raw) {
+    if (raw is Map<String, Object?>) {
       final data = raw['data'];
       if (data is Map) {
-        return data.cast<String, dynamic>();
+        return data.cast<String, Object?>();
       }
       return raw;
     }
-    return const <String, dynamic>{};
+    return const <String, Object?>{};
   }
 
   FormatException _wrapError(DioException error, String context) {
     final status = error.response?.statusCode;
     final uri = error.requestOptions.uri;
     final payload = error.response?.data;
-    final message = payload is Map<String, dynamic>
+    final message = payload is Map<String, Object?>
         ? (payload['message'] as String?) ?? payload.toString()
         : (payload?.toString() ?? error.message ?? error.toString());
     return FormatException(
@@ -691,24 +691,24 @@ class TenantAdminEventsRepository
     return error.response?.statusCode == 404;
   }
 
-  Map<String, dynamic> _asMap(dynamic value) {
-    if (value is Map<String, dynamic>) {
+  Map<String, Object?> _asMap(Object? value) {
+    if (value is Map<String, Object?>) {
       return value;
     }
     if (value is Map) {
-      return value.cast<String, dynamic>();
+      return value.cast<String, Object?>();
     }
-    return const <String, dynamic>{};
+    return const <String, Object?>{};
   }
 
-  List<dynamic> _asList(dynamic value) {
+  List<Object?> _asList(Object? value) {
     if (value is List) {
       return value;
     }
-    return const <dynamic>[];
+    return const <Object?>[];
   }
 
-  String? _asString(dynamic value) {
+  String? _asString(Object? value) {
     if (value == null) {
       return null;
     }
@@ -719,7 +719,7 @@ class TenantAdminEventsRepository
     return normalized;
   }
 
-  double? _toDouble(dynamic value) {
+  double? _toDouble(Object? value) {
     if (value is double) {
       return value;
     }
@@ -732,7 +732,7 @@ class TenantAdminEventsRepository
     return null;
   }
 
-  DateTime? _parseDate(dynamic value) {
+  DateTime? _parseDate(Object? value) {
     if (value is DateTime) {
       return value;
     }

@@ -7,6 +7,8 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_static_asset.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_static_profile_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
+import 'package:belluga_now/infrastructure/dal/dto/tenant_admin/tenant_admin_static_asset_dto.dart';
+import 'package:belluga_now/infrastructure/dal/dto/tenant_admin/tenant_admin_static_assets_response_decoder.dart';
 import 'package:belluga_now/infrastructure/dal/dto/mappers/tenant_admin_dto_mapper.dart';
 import 'package:belluga_now/infrastructure/repositories/tenant_admin/tenant_admin_pagination_utils.dart';
 import 'package:belluga_now/infrastructure/repositories/tenant_admin/support/tenant_admin_validation_failure_resolver.dart';
@@ -25,6 +27,8 @@ class TenantAdminStaticAssetsRepository
 
   final Dio _dio;
   final TenantAdminTenantScopeContract? _tenantScope;
+  final TenantAdminStaticAssetsResponseDecoder _responseDecoder =
+      const TenantAdminStaticAssetsResponseDecoder();
 
   String get _apiBaseUrl =>
       (_tenantScope ?? GetIt.I.get<TenantAdminTenantScopeContract>())
@@ -72,9 +76,15 @@ class TenantAdminStaticAssetsRepository
         },
         options: Options(headers: _buildHeaders()),
       );
-      final data = _extractList(response.data);
+      final dtos = _responseDecoder.decodeStaticAssetList(response.data);
       return TenantAdminPagedResult<TenantAdminStaticAsset>(
-        items: data.map(_mapStaticAsset).toList(growable: false),
+        items: dtos
+            .map(
+              (dto) => mapTenantAdminStaticAssetDto(
+                _normalizeStaticAssetMediaUrls(dto),
+              ),
+            )
+            .toList(growable: false),
         hasMore: tenantAdminResolveHasMore(
           rawResponse: response.data,
           requestedPage: page,
@@ -92,8 +102,10 @@ class TenantAdminStaticAssetsRepository
         '$_apiBaseUrl/v1/static_assets/$assetId',
         options: Options(headers: _buildHeaders()),
       );
-      final item = _extractItem(response.data);
-      return _mapStaticAsset(item);
+      final dto = _responseDecoder.decodeStaticAssetItem(response.data);
+      return mapTenantAdminStaticAssetDto(
+        _normalizeStaticAssetMediaUrls(dto),
+      );
     } on DioException catch (error) {
       throw _wrapError(error, 'load static asset');
     }
@@ -135,8 +147,10 @@ class TenantAdminStaticAssetsRepository
         data: uploadPayload ?? payload,
         options: Options(headers: _buildHeaders()),
       );
-      final item = _extractItem(response.data);
-      return _mapStaticAsset(item);
+      final dto = _responseDecoder.decodeStaticAssetItem(response.data);
+      return mapTenantAdminStaticAssetDto(
+        _normalizeStaticAssetMediaUrls(dto),
+      );
     } on DioException catch (error) {
       throw _wrapError(error, 'create static asset');
     }
@@ -191,8 +205,10 @@ class TenantAdminStaticAssetsRepository
                 contentType: 'multipart/form-data',
               ),
             );
-      final item = _extractItem(response.data);
-      return _mapStaticAsset(item);
+      final dto = _responseDecoder.decodeStaticAssetItem(response.data);
+      return mapTenantAdminStaticAssetDto(
+        _normalizeStaticAssetMediaUrls(dto),
+      );
     } on DioException catch (error) {
       throw _wrapError(error, 'update static asset');
     }
@@ -217,8 +233,10 @@ class TenantAdminStaticAssetsRepository
         '$_apiBaseUrl/v1/static_assets/$assetId/restore',
         options: Options(headers: _buildHeaders()),
       );
-      final item = _extractItem(response.data);
-      return _mapStaticAsset(item);
+      final dto = _responseDecoder.decodeStaticAssetItem(response.data);
+      return mapTenantAdminStaticAssetDto(
+        _normalizeStaticAssetMediaUrls(dto),
+      );
     } on DioException catch (error) {
       throw _wrapError(error, 'restore static asset');
     }
@@ -272,9 +290,11 @@ class TenantAdminStaticAssetsRepository
         },
         options: Options(headers: _buildHeaders()),
       );
-      final data = _extractList(response.data);
+      final dtos = _responseDecoder.decodeStaticProfileTypeList(response.data);
       return TenantAdminPagedResult<TenantAdminStaticProfileTypeDefinition>(
-        items: data.map(_mapStaticProfileType).toList(growable: false),
+        items: dtos
+            .map(mapTenantAdminStaticProfileTypeDto)
+            .toList(growable: false),
         hasMore: tenantAdminResolveHasMore(
           rawResponse: response.data,
           requestedPage: page,
@@ -304,8 +324,8 @@ class TenantAdminStaticAssetsRepository
         data: payload,
         options: Options(headers: _buildHeaders()),
       );
-      final item = _extractItem(response.data);
-      return _mapStaticProfileType(item);
+      final dto = _responseDecoder.decodeStaticProfileTypeItem(response.data);
+      return mapTenantAdminStaticProfileTypeDto(dto);
     } on DioException catch (error) {
       throw _wrapError(error, 'create static profile type');
     }
@@ -332,8 +352,8 @@ class TenantAdminStaticAssetsRepository
         data: payload,
         options: Options(headers: _buildHeaders()),
       );
-      final item = _extractItem(response.data);
-      return _mapStaticProfileType(item);
+      final dto = _responseDecoder.decodeStaticProfileTypeItem(response.data);
+      return mapTenantAdminStaticProfileTypeDto(dto);
     } on DioException catch (error) {
       throw _wrapError(error, 'update static profile type');
     }
@@ -352,7 +372,7 @@ class TenantAdminStaticAssetsRepository
     }
   }
 
-  Map<String, dynamic> _buildPayload({
+  Map<String, Object?> _buildPayload({
     String? profileType,
     String? displayName,
     String? slug,
@@ -364,7 +384,7 @@ class TenantAdminStaticAssetsRepository
     String? avatarUrl,
     String? coverUrl,
   }) {
-    final payload = <String, dynamic>{};
+    final payload = <String, Object?>{};
     if (profileType != null) payload['profile_type'] = profileType;
     if (displayName != null) payload['display_name'] = displayName;
     if (slug != null) payload['slug'] = slug;
@@ -387,45 +407,73 @@ class TenantAdminStaticAssetsRepository
     return payload;
   }
 
-  Map<String, dynamic> _extractItem(dynamic raw) {
-    if (raw is Map<String, dynamic>) {
-      final data = raw['data'];
-      if (data is Map<String, dynamic>) return data;
-      return raw;
-    }
-    throw Exception('Unexpected static asset response shape.');
-  }
-
-  List<Map<String, dynamic>> _extractList(dynamic raw) {
-    if (raw is Map<String, dynamic>) {
-      final data = raw['data'];
-      if (data is List) {
-        return data
-            .whereType<Map>()
-            .map((entry) => Map<String, dynamic>.from(entry))
-            .toList();
-      }
-    }
-    throw Exception('Unexpected static assets list response shape.');
-  }
-
-  TenantAdminStaticAsset _mapStaticAsset(Map<String, dynamic> json) {
-    return mapTenantAdminStaticAssetJson(json);
-  }
-
-  TenantAdminStaticProfileTypeDefinition _mapStaticProfileType(
-    Map<String, dynamic> json,
+  TenantAdminStaticAssetDTO _normalizeStaticAssetMediaUrls(
+    TenantAdminStaticAssetDTO dto,
   ) {
-    return mapTenantAdminStaticProfileTypeJson(json);
+    return TenantAdminStaticAssetDTO(
+      id: dto.id,
+      profileType: dto.profileType,
+      displayName: dto.displayName,
+      slug: dto.slug,
+      isActive: dto.isActive,
+      tags: dto.tags,
+      categories: dto.categories,
+      taxonomyTerms: dto.taxonomyTerms,
+      bio: dto.bio,
+      content: dto.content,
+      locationLat: dto.locationLat,
+      locationLng: dto.locationLng,
+      avatarUrl: _normalizeStaticAssetMediaUrl(dto.avatarUrl),
+      coverUrl: _normalizeStaticAssetMediaUrl(dto.coverUrl),
+    );
   }
 
-  Map<String, dynamic> _buildStaticProfileTypePayload({
+  String? _normalizeStaticAssetMediaUrl(String? rawUrl) {
+    final value = rawUrl?.trim();
+    if (value == null || value.isEmpty) {
+      return null;
+    }
+
+    final parsed = Uri.tryParse(value);
+    if (parsed == null) {
+      return value;
+    }
+
+    if (parsed.host.trim().isNotEmpty) {
+      return parsed.toString();
+    }
+
+    final path = parsed.path.trim();
+    final tenantOrigin = _resolveTenantOriginUri();
+
+    if (path.startsWith('/')) {
+      final canonical = tenantOrigin.resolve(path);
+      return canonical
+          .replace(
+            query: parsed.hasQuery ? parsed.query : null,
+            fragment: parsed.hasFragment ? parsed.fragment : null,
+          )
+          .toString();
+    }
+
+    return tenantOrigin.resolveUri(parsed).toString();
+  }
+
+  Uri _resolveTenantOriginUri() {
+    final parsed = Uri.tryParse(_apiBaseUrl);
+    if (parsed == null || parsed.host.trim().isEmpty) {
+      throw Exception('Invalid tenant admin base URL: $_apiBaseUrl');
+    }
+    return parsed.replace(path: '/', query: null, fragment: null);
+  }
+
+  Map<String, Object?> _buildStaticProfileTypePayload({
     String? type,
     String? label,
     List<String>? allowedTaxonomies,
     TenantAdminStaticProfileTypeCapabilities? capabilities,
   }) {
-    final payload = <String, dynamic>{};
+    final payload = <String, Object?>{};
     if (type != null) payload['type'] = type;
     if (label != null) payload['label'] = label;
     if (allowedTaxonomies != null) {
@@ -445,7 +493,7 @@ class TenantAdminStaticAssetsRepository
   }
 
   FormData? _buildMultipartPayload(
-    Map<String, dynamic> payload, {
+    Map<String, Object?> payload, {
     TenantAdminMediaUpload? avatarUpload,
     TenantAdminMediaUpload? coverUpload,
   }) {

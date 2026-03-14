@@ -42,10 +42,10 @@ class InvitesRepository extends InvitesRepositoryContract
 
     if (invitesRaw is List) {
       for (final item in invitesRaw) {
-        if (item is! Map<String, dynamic>) {
+        if (item is! Map<String, Object?>) {
           continue;
         }
-        final dto = tryParseInviteDtoJson(Map<String, dynamic>.from(item));
+        final dto = tryParseInviteDtoJson(Map<String, Object?>.from(item));
         if (dto == null) {
           continue;
         }
@@ -142,7 +142,7 @@ class InvitesRepository extends InvitesRepositoryContract
 
     final dedupedByUserId = <String, InviteContactMatch>{};
     for (final item in matchesRaw) {
-      if (item is! Map<String, dynamic>) {
+      if (item is! Map<String, Object?>) {
         continue;
       }
       final userId = _stringOrEmpty(item['user_id']);
@@ -183,7 +183,7 @@ class InvitesRepository extends InvitesRepositoryContract
 
     final targetRef = response['target_ref'];
     final targetRefMap =
-        targetRef is Map<String, dynamic> ? targetRef : const {};
+        targetRef is Map<String, Object?> ? targetRef : const {};
 
     return InviteShareCodeResult(
       code: _stringOrEmpty(response['code']),
@@ -262,7 +262,7 @@ class InvitesRepository extends InvitesRepositoryContract
   }
 
   @override
-  void applyInvitePushPayload(Map<String, dynamic> payload) {
+  void applyInvitePushPayload(Map<String, Object?> payload) {
     final current = pendingInvitesStreamValue.value;
     final next = mergeInvitePayload(current: current, payload: payload);
     if (identical(current, next)) {
@@ -307,19 +307,19 @@ class InvitesRepository extends InvitesRepositoryContract
     return items;
   }
 
-  List<String> _parseRecipientIds(dynamic raw) {
+  List<String> _parseRecipientIds(Object? raw) {
     if (raw is! List) {
       return const <String>[];
     }
 
     return raw
-        .whereType<Map<String, dynamic>>()
+        .whereType<Map<String, Object?>>()
         .map((item) => _stringOrEmpty(item['receiver_user_id']))
         .where((value) => value.isNotEmpty)
         .toList(growable: false);
   }
 
-  List<String> _parseStringList(dynamic raw) {
+  List<String> _parseStringList(Object? raw) {
     if (raw is! List) {
       return const <String>[];
     }
@@ -329,7 +329,7 @@ class InvitesRepository extends InvitesRepositoryContract
         .toList(growable: false);
   }
 
-  Map<String, int> _parseIntMap(dynamic raw) {
+  Map<String, int> _parseIntMap(Object? raw) {
     if (raw is! Map) {
       return const <String, int>{};
     }
@@ -351,7 +351,7 @@ class InvitesRepository extends InvitesRepositoryContract
     return result;
   }
 
-  DateTime? _parseDateTime(dynamic raw) {
+  DateTime? _parseDateTime(Object? raw) {
     final value = raw?.toString();
     if (value == null || value.trim().isEmpty) {
       return null;
@@ -359,9 +359,9 @@ class InvitesRepository extends InvitesRepositoryContract
     return DateTime.tryParse(value);
   }
 
-  String _stringOrEmpty(dynamic raw) => raw?.toString() ?? '';
+  String _stringOrEmpty(Object? raw) => raw?.toString() ?? '';
 
-  String? _stringOrNull(dynamic raw) {
+  String? _stringOrNull(Object? raw) {
     final value = raw?.toString().trim();
     if (value == null || value.isEmpty) {
       return null;

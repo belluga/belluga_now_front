@@ -12,6 +12,7 @@ import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admi
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_field_edit_sheet.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_form_layout.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_image_crop_sheet.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_image_upload_field.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_image_source_sheet.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_rich_text_editor.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_xfile_preview.dart';
@@ -765,16 +766,16 @@ class _TenantAdminAccountProfileEditScreenState
                                                                         .avatar,
                                                               )
                                                             : null;
-                                                    final coverUpload = _hasCover(
-                                                            selectedType)
-                                                        ? await _controller
-                                                            .buildImageUpload(
-                                                            state.coverFile,
-                                                            slot:
-                                                                TenantAdminImageSlot
-                                                                    .cover,
-                                                          )
-                                                        : null;
+                                                    final coverUpload =
+                                                        _hasCover(selectedType)
+                                                            ? await _controller
+                                                                .buildImageUpload(
+                                                                state.coverFile,
+                                                                slot:
+                                                                    TenantAdminImageSlot
+                                                                        .cover,
+                                                              )
+                                                            : null;
                                                     _controller
                                                         .submitUpdateProfile(
                                                       accountProfileId:
@@ -1110,220 +1111,180 @@ class _TenantAdminAccountProfileEditScreenState
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (hasAvatar) ...[
-            Row(
-              children: [
-                if (state.avatarFile != null)
-                  Stack(
-                    alignment: Alignment.bottomRight,
-                    children: [
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(36),
-                        child: TenantAdminXFilePreview(
-                          file: state.avatarFile!,
-                          width: 72,
-                          height: 72,
-                          fit: BoxFit.cover,
-                        ),
-                      ),
-                      if (state.avatarRemoteError)
-                        Container(
-                          margin: const EdgeInsets.all(2),
-                          decoration: BoxDecoration(
-                            color: Theme.of(context).colorScheme.errorContainer,
-                            shape: BoxShape.circle,
-                          ),
-                          padding: const EdgeInsets.all(4),
-                          child: Icon(
-                            Icons.warning_amber_rounded,
-                            size: 16,
-                            color:
-                                Theme.of(context).colorScheme.onErrorContainer,
+            TenantAdminImageUploadField(
+              variant: TenantAdminImageUploadVariant.avatar,
+              preview: state.avatarFile != null
+                  ? Stack(
+                      alignment: Alignment.bottomRight,
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(36),
+                          child: TenantAdminXFilePreview(
+                            file: state.avatarFile!,
+                            width: 72,
+                            height: 72,
+                            fit: BoxFit.cover,
                           ),
                         ),
-                    ],
-                  )
-                else if (hasAvatarUrl)
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(36),
-                    child: Image.network(
-                      avatarUrl,
-                      width: 72,
-                      height: 72,
-                      fit: BoxFit.cover,
-                      loadingBuilder: (context, child, loadingProgress) {
-                        if (loadingProgress == null) return child;
-                        return Container(
-                          width: 72,
-                          height: 72,
-                          decoration: BoxDecoration(
-                            color: Theme.of(context)
-                                .colorScheme
-                                .surfaceContainerHighest,
-                            borderRadius: BorderRadius.circular(36),
-                          ),
-                          child: const Icon(Icons.person_outline),
-                        );
-                      },
-                      errorBuilder: (context, error, stackTrace) {
-                        if (!state.avatarRemoteError) {
-                          _controller.updateAvatarRemoteError(true);
-                        }
-                        return _buildAvatarError(context);
-                      },
-                    ),
-                  )
-                else if (state.avatarRemoteError)
-                  _buildAvatarError(context)
-                else
-                  Container(
-                    width: 72,
-                    height: 72,
-                    decoration: BoxDecoration(
-                      color:
-                          Theme.of(context).colorScheme.surfaceContainerHighest,
-                      borderRadius: BorderRadius.circular(36),
-                    ),
-                    child: const Icon(Icons.person_outline),
-                  ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        state.avatarFile?.name ??
-                            (hasAvatarUrl
-                                ? avatarUrl
-                                : 'Nenhuma imagem selecionada'),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      if (state.avatarBusy) ...[
-                        const SizedBox(height: 8),
-                        const LinearProgressIndicator(),
-                      ],
-                      Row(
-                        children: [
-                          FilledButton.tonalIcon(
-                            onPressed: state.avatarBusy
-                                ? null
-                                : () => _pickImage(isAvatar: true),
-                            icon:
-                                const Icon(Icons.add_photo_alternate_outlined),
-                            label: const Text('Adicionar avatar'),
-                          ),
-                          const SizedBox(width: 8),
-                          if (state.avatarFile != null || hasAvatarUrl)
-                            TextButton(
-                              onPressed: state.avatarBusy
-                                  ? null
-                                  : () => _clearImage(isAvatar: true),
-                              child: const Text('Remover'),
+                        if (state.avatarRemoteError)
+                          Container(
+                            margin: const EdgeInsets.all(2),
+                            decoration: BoxDecoration(
+                              color:
+                                  Theme.of(context).colorScheme.errorContainer,
+                              shape: BoxShape.circle,
                             ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+                            padding: const EdgeInsets.all(4),
+                            child: Icon(
+                              Icons.warning_amber_rounded,
+                              size: 16,
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onErrorContainer,
+                            ),
+                          ),
+                      ],
+                    )
+                  : hasAvatarUrl
+                      ? ClipRRect(
+                          borderRadius: BorderRadius.circular(36),
+                          child: Image.network(
+                            avatarUrl,
+                            width: 72,
+                            height: 72,
+                            fit: BoxFit.cover,
+                            loadingBuilder: (context, child, loadingProgress) {
+                              if (loadingProgress == null) return child;
+                              return Container(
+                                width: 72,
+                                height: 72,
+                                decoration: BoxDecoration(
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .surfaceContainerHighest,
+                                  borderRadius: BorderRadius.circular(36),
+                                ),
+                                child: const Icon(Icons.person_outline),
+                              );
+                            },
+                            errorBuilder: (context, error, stackTrace) {
+                              if (!state.avatarRemoteError) {
+                                _controller.updateAvatarRemoteError(true);
+                              }
+                              return _buildAvatarError(context);
+                            },
+                          ),
+                        )
+                      : state.avatarRemoteError
+                          ? _buildAvatarError(context)
+                          : Container(
+                              width: 72,
+                              height: 72,
+                              decoration: BoxDecoration(
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .surfaceContainerHighest,
+                                borderRadius: BorderRadius.circular(36),
+                              ),
+                              child: const Icon(Icons.person_outline),
+                            ),
+              selectedLabel: state.avatarFile?.name ??
+                  (hasAvatarUrl ? avatarUrl : 'Nenhuma imagem selecionada'),
+              addLabel: 'Adicionar avatar',
+              onAdd: () => _pickImage(isAvatar: true),
+              busy: state.avatarBusy,
+              canRemove: state.avatarFile != null || hasAvatarUrl,
+              onRemove: () => _clearImage(isAvatar: true),
             ),
           ],
           if (hasAvatar && hasCover) const SizedBox(height: 16),
           if (hasCover) ...[
-            if (state.coverBusy) ...[
-              const LinearProgressIndicator(),
-              const SizedBox(height: 12),
-            ],
-            if (state.coverFile != null)
-              Stack(
-                alignment: Alignment.topRight,
-                children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: TenantAdminXFilePreview(
-                      file: state.coverFile!,
-                      width: double.infinity,
-                      height: 140,
-                      fit: BoxFit.cover,
-                    ),
-                  ),
-                  if (state.coverRemoteError)
-                    Container(
-                      margin: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.errorContainer,
-                        shape: BoxShape.circle,
-                      ),
-                      padding: const EdgeInsets.all(6),
-                      child: Icon(
-                        Icons.warning_amber_rounded,
-                        size: 18,
-                        color: Theme.of(context).colorScheme.onErrorContainer,
-                      ),
-                    ),
-                ],
-              )
-            else if (hasCoverUrl)
-              ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: Image.network(
-                  coverUrl,
-                  width: double.infinity,
-                  height: 140,
-                  fit: BoxFit.cover,
-                  loadingBuilder: (context, child, loadingProgress) {
-                    if (loadingProgress == null) return child;
-                    return Container(
-                      width: double.infinity,
-                      height: 140,
-                      decoration: BoxDecoration(
-                        color: Theme.of(context)
-                            .colorScheme
-                            .surfaceContainerHighest,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Icon(Icons.image_outlined),
-                    );
-                  },
-                  errorBuilder: (context, error, stackTrace) {
-                    if (!state.coverRemoteError) {
-                      _controller.updateCoverRemoteError(true);
-                    }
-                    return _buildCoverError(context);
-                  },
-                ),
-              )
-            else if (state.coverRemoteError)
-              _buildCoverError(context)
-            else
-              Container(
-                width: double.infinity,
-                height: 140,
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Center(
-                  child: Icon(Icons.image_outlined),
-                ),
-              ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                FilledButton.tonalIcon(
-                  onPressed:
-                      state.coverBusy ? null : () => _pickImage(isAvatar: false),
-                  icon: const Icon(Icons.add_photo_alternate_outlined),
-                  label: const Text('Adicionar capa'),
-                ),
-                const SizedBox(width: 8),
-                if (state.coverFile != null || hasCoverUrl)
-                  TextButton(
-                    onPressed:
-                        state.coverBusy ? null : () => _clearImage(isAvatar: false),
-                    child: const Text('Remover'),
-                  ),
-              ],
+            TenantAdminImageUploadField(
+              variant: TenantAdminImageUploadVariant.cover,
+              preview: state.coverFile != null
+                  ? Stack(
+                      alignment: Alignment.topRight,
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: TenantAdminXFilePreview(
+                            file: state.coverFile!,
+                            width: double.infinity,
+                            height: 140,
+                            fit: BoxFit.cover,
+                          ),
+                        ),
+                        if (state.coverRemoteError)
+                          Container(
+                            margin: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color:
+                                  Theme.of(context).colorScheme.errorContainer,
+                              shape: BoxShape.circle,
+                            ),
+                            padding: const EdgeInsets.all(6),
+                            child: Icon(
+                              Icons.warning_amber_rounded,
+                              size: 18,
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onErrorContainer,
+                            ),
+                          ),
+                      ],
+                    )
+                  : hasCoverUrl
+                      ? ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: Image.network(
+                            coverUrl,
+                            width: double.infinity,
+                            height: 140,
+                            fit: BoxFit.cover,
+                            loadingBuilder: (context, child, loadingProgress) {
+                              if (loadingProgress == null) return child;
+                              return Container(
+                                width: double.infinity,
+                                height: 140,
+                                decoration: BoxDecoration(
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .surfaceContainerHighest,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: const Icon(Icons.image_outlined),
+                              );
+                            },
+                            errorBuilder: (context, error, stackTrace) {
+                              if (!state.coverRemoteError) {
+                                _controller.updateCoverRemoteError(true);
+                              }
+                              return _buildCoverError(context);
+                            },
+                          ),
+                        )
+                      : state.coverRemoteError
+                          ? _buildCoverError(context)
+                          : Container(
+                              width: double.infinity,
+                              height: 140,
+                              decoration: BoxDecoration(
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .surfaceContainerHighest,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: const Center(
+                                child: Icon(Icons.image_outlined),
+                              ),
+                            ),
+              selectedLabel: state.coverFile?.name ??
+                  (hasCoverUrl ? coverUrl : 'Nenhuma imagem selecionada'),
+              addLabel: 'Adicionar capa',
+              onAdd: () => _pickImage(isAvatar: false),
+              busy: state.coverBusy,
+              canRemove: state.coverFile != null || hasCoverUrl,
+              onRemove: () => _clearImage(isAvatar: false),
             ),
           ],
         ],

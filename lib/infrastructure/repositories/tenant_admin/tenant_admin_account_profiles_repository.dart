@@ -86,7 +86,7 @@ class TenantAdminAccountProfilesRepository
     TenantAdminMediaUpload? coverUpload,
   }) async {
     try {
-      final payload = <String, dynamic>{
+      final payload = <String, Object?>{
         'account_id': accountId,
         'profile_type': profileType,
         'display_name': displayName,
@@ -137,7 +137,7 @@ class TenantAdminAccountProfilesRepository
     TenantAdminMediaUpload? coverUpload,
   }) async {
     try {
-      final payload = <String, dynamic>{};
+      final payload = <String, Object?>{};
       if (profileType != null) payload['profile_type'] = profileType;
       if (displayName != null) payload['display_name'] = displayName;
       if (slug != null && slug.trim().isNotEmpty) payload['slug'] = slug.trim();
@@ -315,7 +315,7 @@ class TenantAdminAccountProfilesRepository
   }) async {
     try {
       final encodedType = Uri.encodeComponent(type);
-      final payload = <String, dynamic>{};
+      final payload = <String, Object?>{};
       if (newType != null && newType.trim().isNotEmpty) {
         payload['type'] = newType.trim();
       }
@@ -362,40 +362,40 @@ class TenantAdminAccountProfilesRepository
     }
   }
 
-  Map<String, dynamic> _extractItem(dynamic raw) {
-    if (raw is Map<String, dynamic>) {
+  Map<String, Object?> _extractItem(Object? raw) {
+    if (raw is Map<String, Object?>) {
       final data = raw['data'];
-      if (data is Map<String, dynamic>) return data;
+      if (data is Map<String, Object?>) return data;
       return raw;
     }
     throw Exception('Unexpected account profile response shape.');
   }
 
-  List<Map<String, dynamic>> _extractList(dynamic raw) {
-    if (raw is Map<String, dynamic>) {
+  List<Map<String, Object?>> _extractList(Object? raw) {
+    if (raw is Map<String, Object?>) {
       final data = raw['data'];
       if (data is List) {
         return data
             .whereType<Map>()
-            .map((entry) => Map<String, dynamic>.from(entry))
+            .map((entry) => Map<String, Object?>.from(entry))
             .toList();
       }
     }
     throw Exception('Unexpected account profiles list response shape.');
   }
 
-  TenantAdminAccountProfile _mapProfile(Map<String, dynamic> json) {
+  TenantAdminAccountProfile _mapProfile(Map<String, Object?> json) {
     return mapTenantAdminAccountProfileJson(json);
   }
 
   TenantAdminProfileTypeDefinition _mapProfileType(
-    Map<String, dynamic> json,
+    Map<String, Object?> json,
   ) {
     return mapTenantAdminProfileTypeJson(json);
   }
 
   FormData? _buildMultipartPayload(
-    Map<String, dynamic> payload, {
+    Map<String, Object?> payload, {
     TenantAdminMediaUpload? avatarUpload,
     TenantAdminMediaUpload? coverUpload,
   }) {

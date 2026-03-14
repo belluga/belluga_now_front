@@ -1,4 +1,4 @@
-int? tenantAdminReadPageValue(dynamic source, String key) {
+int? tenantAdminReadPageValue(Object? source, String key) {
   if (source is! Map) {
     return null;
   }
@@ -10,10 +10,10 @@ int? tenantAdminReadPageValue(dynamic source, String key) {
 }
 
 bool tenantAdminResolveHasMore({
-  required dynamic rawResponse,
+  required Object? rawResponse,
   required int requestedPage,
 }) {
-  if (rawResponse is! Map<String, dynamic>) {
+  if (rawResponse is! Map<String, Object?>) {
     return false;
   }
   final currentPage = tenantAdminReadPageValue(rawResponse, 'current_page') ??

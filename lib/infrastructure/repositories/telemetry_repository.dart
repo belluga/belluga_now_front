@@ -31,7 +31,7 @@ class TelemetryRepository implements TelemetryRepositoryContract {
   EventTrackerHandlerContract? _handler;
   EventTrackerTimedEventManager? _timedEventManager;
   EventTrackerLifecycleObserver? _lifecycleObserver;
-  Map<String, dynamic>? _screenContext;
+  Map<String, Object?>? _screenContext;
 
   void _debugWebTelemetry(String message, [Object? details]) {
     if (kIsWeb) {
@@ -64,7 +64,7 @@ class TelemetryRepository implements TelemetryRepositoryContract {
   Future<bool> logEvent(
     EventTrackerEvents event, {
     String? eventName,
-    Map<String, dynamic>? properties,
+    Map<String, Object?>? properties,
   }) async {
     final handler = _trackerHandler;
     if (handler == null) {
@@ -98,8 +98,8 @@ class TelemetryRepository implements TelemetryRepositoryContract {
     );
 
     return _queue.enqueue(() async {
-      final outcomes =
-          await handler.logEvent(type: event, userData: userData, data: payload);
+      final outcomes = await handler.logEvent(
+          type: event, userData: userData, data: payload);
       final hasFailures = outcomes.any((outcome) => outcome.isFailure);
       if (hasFailures) {
         throw Exception('Telemetry delivery failed');
@@ -114,7 +114,7 @@ class TelemetryRepository implements TelemetryRepositoryContract {
   Future<EventTrackerTimedEventHandle?> startTimedEvent(
     EventTrackerEvents event, {
     String? eventName,
-    Map<String, dynamic>? properties,
+    Map<String, Object?>? properties,
   }) async {
     final manager = _timedEventManagerOrNull;
     if (manager == null) {
@@ -197,7 +197,7 @@ class TelemetryRepository implements TelemetryRepositoryContract {
   }
 
   @override
-  void setScreenContext(Map<String, dynamic>? screenContext) {
+  void setScreenContext(Map<String, Object?>? screenContext) {
     _screenContext = screenContext;
   }
 
@@ -243,10 +243,10 @@ class TelemetryRepository implements TelemetryRepositoryContract {
     );
   }
 
-  Future<Map<String, dynamic>> _mergeContextProperties(
-    Map<String, dynamic>? properties,
+  Future<Map<String, Object?>> _mergeContextProperties(
+    Map<String, Object?>? properties,
   ) async {
-    final merged = <String, dynamic>{};
+    final merged = <String, Object?>{};
     if (_screenContext != null &&
         !(properties?.containsKey('screen_context') ?? false)) {
       merged['screen_context'] = _screenContext;
@@ -266,13 +266,12 @@ class TelemetryRepository implements TelemetryRepositoryContract {
     return merged;
   }
 
-  Future<Map<String, dynamic>?> _buildLocationContext() async {
+  Future<Map<String, Object?>?> _buildLocationContext() async {
     if (!GetIt.I.isRegistered<UserLocationRepositoryContract>()) {
       return null;
     }
 
-    final locationRepository =
-        GetIt.I.get<UserLocationRepositoryContract>();
+    final locationRepository = GetIt.I.get<UserLocationRepositoryContract>();
     try {
       await locationRepository.ensureLoaded();
     } catch (_) {
@@ -280,8 +279,7 @@ class TelemetryRepository implements TelemetryRepositoryContract {
     }
 
     final coordinate = locationRepository.lastKnownLocationStreamValue.value;
-    final capturedAt =
-        locationRepository.lastKnownCapturedAtStreamValue.value;
+    final capturedAt = locationRepository.lastKnownCapturedAtStreamValue.value;
     if (coordinate == null || capturedAt == null) {
       return null;
     }
@@ -292,8 +290,7 @@ class TelemetryRepository implements TelemetryRepositoryContract {
       return null;
     }
 
-    final accuracy =
-        locationRepository.lastKnownAccuracyStreamValue.value;
+    final accuracy = locationRepository.lastKnownAccuracyStreamValue.value;
 
     return {
       'lat': coordinate.latitude,

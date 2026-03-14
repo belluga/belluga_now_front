@@ -97,7 +97,7 @@ class AppDataRepository implements AppDataRepositoryContract {
           ? ThemeMode.dark
           : ThemeMode.light;
 
-  Future<AppData> _fetchRemoteOrFail(Map<String, dynamic> localInfo) async {
+  Future<AppData> _fetchRemoteOrFail(Map<String, Object?> localInfo) async {
     final dto = await _backend.fetch();
     return AppData.fromInitialization(remoteData: dto, localInfo: localInfo);
   }

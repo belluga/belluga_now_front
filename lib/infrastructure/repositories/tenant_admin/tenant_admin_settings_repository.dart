@@ -325,10 +325,10 @@ class TenantAdminSettingsRepository
     }
   }
 
-  Map<String, dynamic> _extractDataMap(dynamic raw) {
-    if (raw is Map<String, dynamic>) {
+  Map<String, Object?> _extractDataMap(Object? raw) {
+    if (raw is Map<String, Object?>) {
       final data = raw['data'];
-      if (data is Map<String, dynamic>) {
+      if (data is Map<String, Object?>) {
         return data;
       }
       if (raw.containsKey('data')) {
@@ -339,29 +339,29 @@ class TenantAdminSettingsRepository
     throw Exception('Unexpected settings response shape.');
   }
 
-  Map<String, dynamic> _extractMapUiPayload(dynamic raw) {
+  Map<String, Object?> _extractMapUiPayload(Object? raw) {
     final payload = _extractDataMap(raw);
     if (payload.containsKey('map_ui')) {
       final mapUiRaw = payload['map_ui'];
       if (mapUiRaw is Map) {
-        return Map<String, dynamic>.from(mapUiRaw);
+        return Map<String, Object?>.from(mapUiRaw);
       }
       if (mapUiRaw == null) {
-        return const <String, dynamic>{};
+        return const <String, Object?>{};
       }
       if (mapUiRaw is List && mapUiRaw.isEmpty) {
-        return const <String, dynamic>{};
+        return const <String, Object?>{};
       }
       throw Exception('Unexpected map_ui payload shape.');
     }
-    return Map<String, dynamic>.from(payload);
+    return Map<String, Object?>.from(payload);
   }
 
-  TenantAdminMapUiSettings _mapMapUiSettings(Map<String, dynamic> mapUi) {
+  TenantAdminMapUiSettings _mapMapUiSettings(Map<String, Object?> mapUi) {
     final defaultOriginRaw = mapUi['default_origin'];
     TenantAdminMapDefaultOrigin? defaultOrigin;
     if (defaultOriginRaw is Map) {
-      final originMap = Map<String, dynamic>.from(defaultOriginRaw);
+      final originMap = Map<String, Object?>.from(defaultOriginRaw);
       final lat = _parseDouble(originMap['lat']);
       final lng = _parseDouble(originMap['lng']);
       if (lat != null && lng != null) {
@@ -392,7 +392,7 @@ class TenantAdminSettingsRepository
         if (entry is! Map) {
           continue;
         }
-        final filterMap = Map<String, dynamic>.from(entry);
+        final filterMap = Map<String, Object?>.from(entry);
         final key = filterMap['key']?.toString().trim() ?? '';
         final label = filterMap['label']?.toString().trim() ?? '';
         final imageUri = _normalizeMapFilterImageUri(
@@ -401,7 +401,7 @@ class TenantAdminSettingsRepository
         );
         final query = _mapMapFilterQuery(
           filterMap['query'] is Map
-              ? Map<String, dynamic>.from(filterMap['query'] as Map)
+              ? Map<String, Object?>.from(filterMap['query'] as Map)
               : null,
         );
         if (key.isEmpty || label.isEmpty) {
@@ -419,30 +419,30 @@ class TenantAdminSettingsRepository
     }
 
     return TenantAdminMapUiSettings(
-      rawMapUi: Map<String, dynamic>.unmodifiable(
-        Map<String, dynamic>.from(mapUi),
+      rawMapUi: Map<String, Object?>.unmodifiable(
+        Map<String, Object?>.from(mapUi),
       ),
       defaultOrigin: defaultOrigin,
       filters: List<TenantAdminMapFilterCatalogItem>.unmodifiable(filters),
     );
   }
 
-  Map<String, dynamic> _extractEnvironmentMap(dynamic raw) {
-    if (raw is! Map<String, dynamic>) {
+  Map<String, Object?> _extractEnvironmentMap(Object? raw) {
+    if (raw is! Map<String, Object?>) {
       throw Exception('Unexpected environment response shape.');
     }
     final data = raw['data'];
     if (data == null) {
       return raw;
     }
-    if (data is Map<String, dynamic>) {
+    if (data is Map<String, Object?>) {
       return data;
     }
     throw Exception('Unexpected environment data shape.');
   }
 
-  TenantAdminTelemetrySettingsSnapshot _mapTelemetrySnapshot(dynamic raw) {
-    if (raw is! Map<String, dynamic>) {
+  TenantAdminTelemetrySettingsSnapshot _mapTelemetrySnapshot(Object? raw) {
+    if (raw is! Map<String, Object?>) {
       throw Exception('Unexpected telemetry response shape.');
     }
 
@@ -457,17 +457,17 @@ class TenantAdminSettingsRepository
     );
   }
 
-  List<Map<String, dynamic>> _extractDataList(dynamic raw) {
+  List<Map<String, Object?>> _extractDataList(Object? raw) {
     if (raw is List) {
       return raw
           .whereType<Map>()
-          .map((entry) => Map<String, dynamic>.from(entry))
+          .map((entry) => Map<String, Object?>.from(entry))
           .toList(growable: false);
     }
     return const [];
   }
 
-  List<String> _extractStringList(dynamic raw) {
+  List<String> _extractStringList(Object? raw) {
     if (raw is List) {
       return raw
           .map((entry) => entry.toString().trim())
@@ -477,12 +477,12 @@ class TenantAdminSettingsRepository
     return const [];
   }
 
-  TenantAdminMapFilterQuery _mapMapFilterQuery(Map<String, dynamic>? json) {
+  TenantAdminMapFilterQuery _mapMapFilterQuery(Map<String, Object?>? json) {
     if (json == null) {
       return TenantAdminMapFilterQuery();
     }
 
-    List<String> asStringList(dynamic raw) {
+    List<String> asStringList(Object? raw) {
       if (raw is! List) {
         return const <String>[];
       }
@@ -500,7 +500,7 @@ class TenantAdminSettingsRepository
     );
   }
 
-  TenantAdminFirebaseSettings? _mapFirebaseSettings(Map<String, dynamic> map) {
+  TenantAdminFirebaseSettings? _mapFirebaseSettings(Map<String, Object?> map) {
     final apiKey = map['apiKey']?.toString().trim();
     final appId = map['appId']?.toString().trim();
     final projectId = map['projectId']?.toString().trim();
@@ -527,12 +527,12 @@ class TenantAdminSettingsRepository
     );
   }
 
-  TenantAdminPushSettings _mapPushSettings(Map<String, dynamic> map) {
+  TenantAdminPushSettings _mapPushSettings(Map<String, Object?> map) {
     final ttlDays = _parseInt(map['max_ttl_days']) ?? 30;
     final throttlesRaw = map['throttles'];
-    final throttles = throttlesRaw is Map<String, dynamic>
+    final throttles = throttlesRaw is Map<String, Object?>
         ? throttlesRaw
-        : const <String, dynamic>{};
+        : const <String, Object?>{};
     final maxPerMinute = _parseInt(throttles['max_per_minute']) ?? 60;
     final maxPerHour = _parseInt(throttles['max_per_hour']) ?? 600;
     return TenantAdminPushSettings(
@@ -542,14 +542,14 @@ class TenantAdminSettingsRepository
     );
   }
 
-  TenantAdminTelemetryIntegration _mapTelemetry(Map<String, dynamic> map) {
+  TenantAdminTelemetryIntegration _mapTelemetry(Map<String, Object?> map) {
     final type = map['type']?.toString().trim() ?? '';
     final trackAll = _parseBool(map['track_all']);
     final events = _extractStringList(map['events']);
     final token = map['token']?.toString().trim();
     final url = map['url']?.toString().trim();
 
-    final extra = <String, dynamic>{};
+    final extra = <String, Object?>{};
     for (final entry in map.entries) {
       if (entry.key == 'type' ||
           entry.key == 'track_all' ||
@@ -572,7 +572,7 @@ class TenantAdminSettingsRepository
   }
 
   TenantAdminBrandingSettings _mapBrandingFromEnvironment(
-    Map<String, dynamic> map, {
+    Map<String, Object?> map, {
     required Uri tenantOrigin,
   }) {
     final environmentType = map['type']?.toString().trim().toLowerCase();
@@ -583,7 +583,7 @@ class TenantAdminSettingsRepository
     }
 
     final themeSettingsRaw = map['theme_data_settings'];
-    if (themeSettingsRaw is! Map<String, dynamic>) {
+    if (themeSettingsRaw is! Map<String, Object?>) {
       throw Exception('Missing theme_data_settings in tenant environment.');
     }
     final themeSettings = themeSettingsRaw;
@@ -735,7 +735,7 @@ class TenantAdminSettingsRepository
   }
 
   String? _resolvePwaIconUrl(
-    Map<String, dynamic> payload, {
+    Map<String, Object?> payload, {
     required Uri tenantOrigin,
   }) {
     final logoSettings = payload['logo_settings'];
@@ -754,7 +754,7 @@ class TenantAdminSettingsRepository
   }
 
   String? _extractPwaIconUrlFromNode(
-    dynamic node, {
+    Object? node, {
     required Uri tenantOrigin,
   }) {
     if (node is String) {
@@ -767,7 +767,7 @@ class TenantAdminSettingsRepository
       return null;
     }
 
-    final map = Map<String, dynamic>.from(node);
+    final map = Map<String, Object?>.from(node);
     final direct = _resolveAssetUrl(
       map['icon512_uri'],
       tenantOrigin: tenantOrigin,
@@ -803,7 +803,7 @@ class TenantAdminSettingsRepository
   }
 
   String? _resolveAssetUrl(
-    dynamic raw, {
+    Object? raw, {
     required Uri tenantOrigin,
   }) {
     final value = raw?.toString().trim();
@@ -822,7 +822,7 @@ class TenantAdminSettingsRepository
 
   String? _normalizeMapFilterImageUri({
     required String key,
-    required dynamic rawImageUri,
+    required Object? rawImageUri,
   }) {
     final normalizedKey = key.trim().toLowerCase();
     final value = rawImageUri?.toString().trim();
@@ -862,7 +862,7 @@ class TenantAdminSettingsRepository
   }
 
   String _requireNonEmptyString(
-    dynamic raw, {
+    Object? raw, {
     required String fieldName,
   }) {
     final value = raw?.toString().trim();
@@ -873,7 +873,7 @@ class TenantAdminSettingsRepository
   }
 
   String _requireHexColor(
-    dynamic raw, {
+    Object? raw, {
     required String fieldName,
   }) {
     final value = _normalizeHexColor(raw);
@@ -883,7 +883,7 @@ class TenantAdminSettingsRepository
     return value;
   }
 
-  TenantAdminBrandingBrightness _parseBrandingBrightness(dynamic raw) {
+  TenantAdminBrandingBrightness _parseBrandingBrightness(Object? raw) {
     final value = raw?.toString().trim().toLowerCase();
     if (value == 'light') {
       return TenantAdminBrandingBrightness.light;
@@ -896,7 +896,7 @@ class TenantAdminSettingsRepository
     );
   }
 
-  bool _parseBool(dynamic value) {
+  bool _parseBool(Object? value) {
     if (value is bool) return value;
     if (value is num) return value != 0;
     final raw = value?.toString().trim().toLowerCase();
@@ -935,7 +935,7 @@ class TenantAdminSettingsRepository
     return MediaType(parts[0], parts[1]);
   }
 
-  String? _normalizeHexColor(dynamic raw) {
+  String? _normalizeHexColor(Object? raw) {
     final value = raw?.toString().trim();
     if (value == null || value.isEmpty) {
       return null;
@@ -954,14 +954,14 @@ class TenantAdminSettingsRepository
     return '#${expanded.toUpperCase()}';
   }
 
-  int? _parseInt(dynamic value) {
+  int? _parseInt(Object? value) {
     if (value is int) return value;
     if (value is num) return value.toInt();
     if (value is String) return int.tryParse(value.trim());
     return null;
   }
 
-  double? _parseDouble(dynamic value) {
+  double? _parseDouble(Object? value) {
     if (value is double) return value;
     if (value is int) return value.toDouble();
     if (value is num) return value.toDouble();
@@ -969,8 +969,8 @@ class TenantAdminSettingsRepository
     return null;
   }
 
-  Map<String, dynamic> _toSettingsPatchPayload(Map<String, dynamic> source) {
-    final flattened = <String, dynamic>{};
+  Map<String, Object?> _toSettingsPatchPayload(Map<String, Object?> source) {
+    final flattened = <String, Object?>{};
     _flattenSettingsPayload(
       source,
       flattened,
@@ -980,8 +980,8 @@ class TenantAdminSettingsRepository
   }
 
   void _flattenSettingsPayload(
-    Map<String, dynamic> source,
-    Map<String, dynamic> output, {
+    Map<String, Object?> source,
+    Map<String, Object?> output, {
     required String? prefix,
   }) {
     source.forEach((rawKey, value) {
@@ -993,7 +993,7 @@ class TenantAdminSettingsRepository
       final path = prefix == null ? key : '$prefix.$key';
       if (value is Map) {
         _flattenSettingsPayload(
-          Map<String, dynamic>.from(value),
+          Map<String, Object?>.from(value),
           output,
           prefix: path,
         );

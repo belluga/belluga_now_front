@@ -109,6 +109,25 @@ void main() {
     expect(data['display_name'], 'New Name');
   });
 
+  test('fetchAccountProfiles maps list media fields without detail fallback',
+      () async {
+    final adapter = _ProfileListMediaAdapter();
+    final dio = Dio()..httpClientAdapter = adapter;
+    final repository = TenantAdminAccountProfilesRepository(dio: dio);
+
+    final profiles = await repository.fetchAccountProfiles(accountId: 'acc-1');
+
+    expect(profiles, hasLength(1));
+    expect(profiles.first.id, 'profile-1');
+    expect(profiles.first.avatarUrl, 'https://cdn.test/profile-1-avatar.png');
+    expect(profiles.first.coverUrl, 'https://cdn.test/profile-1-cover.png');
+    expect(adapter.requests, hasLength(1));
+    expect(
+      adapter.requests.first.path,
+      contains('/admin/api/v1/account_profiles'),
+    );
+  });
+
   test('fetchProfileTypesPage sends pagination params and parses hasMore',
       () async {
     final adapter = _ProfileTypesRoutingAdapter();
@@ -333,6 +352,50 @@ class _ProfileTypesRoutingAdapter implements HttpClientAdapter {
         'has_events': false,
       },
     };
+  }
+
+  ResponseBody _jsonResponse(Map<String, dynamic> payload) {
+    return ResponseBody.fromString(
+      jsonEncode(payload),
+      200,
+      headers: {
+        Headers.contentTypeHeader: ['application/json'],
+      },
+    );
+  }
+}
+
+class _ProfileListMediaAdapter implements HttpClientAdapter {
+  final List<RequestOptions> requests = <RequestOptions>[];
+
+  @override
+  void close({bool force = false}) {}
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<List<int>>? requestStream,
+    Future? cancelFuture,
+  ) async {
+    requests.add(options);
+
+    if (options.path.endsWith('/v1/account_profiles')) {
+      return _jsonResponse({
+        'data': [
+          {
+            'id': 'profile-1',
+            'account_id': 'acc-1',
+            'profile_type': 'artist',
+            'display_name': 'Profile 1',
+            'slug': 'profile-1',
+            'avatar_url': 'https://cdn.test/profile-1-avatar.png',
+            'cover_url': 'https://cdn.test/profile-1-cover.png',
+          },
+        ],
+      });
+    }
+
+    return _jsonResponse({'data': const []});
   }
 
   ResponseBody _jsonResponse(Map<String, dynamic> payload) {

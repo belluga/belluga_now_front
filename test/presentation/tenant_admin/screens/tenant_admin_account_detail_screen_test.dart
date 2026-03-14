@@ -1,4 +1,5 @@
 import 'package:auto_route/auto_route.dart';
+import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_account_profiles_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_accounts_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_taxonomies_repository_contract.dart';
@@ -75,6 +76,29 @@ void main() {
     expect(accountsRepository.fetchAccountBySlugCalls, 1);
   });
 
+  testWidgets('reloads account detail after returning from profile edit route',
+      (tester) async {
+    final accountsRepository = _FakeAccountsRepository();
+    _registerController(accountsRepository: accountsRepository);
+
+    await _pumpScreen(
+      tester,
+      const TenantAdminAccountDetailScreen(accountSlug: 'yuri-dias'),
+    );
+
+    expect(accountsRepository.fetchAccountBySlugCalls, 1);
+
+    await tester.tap(find.text('Editar'));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey<String>('profile_edit_close')),
+        findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey<String>('profile_edit_close')));
+    await tester.pumpAndSettle();
+
+    expect(accountsRepository.fetchAccountBySlugCalls, 2);
+  });
+
   testWidgets(
       'missing profile renders invariant-broken state and no create CTA',
       (tester) async {
@@ -132,6 +156,11 @@ Future<void> _pumpScreen(WidgetTester tester, Widget child) async {
         path: '/',
         builder: (_, __) => child,
       ),
+      NamedRouteDef(
+        name: TenantAdminAccountProfileEditRoute.name,
+        path: '/accounts/:accountSlug/profile/:accountProfileId/edit',
+        builder: (_, __) => const _TestProfileEditRouteScreen(),
+      ),
     ],
   )..ignorePopCompleters = true;
 
@@ -142,6 +171,23 @@ Future<void> _pumpScreen(WidgetTester tester, Widget child) async {
     ),
   );
   await tester.pumpAndSettle();
+}
+
+class _TestProfileEditRouteScreen extends StatelessWidget {
+  const _TestProfileEditRouteScreen();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Center(
+        child: FilledButton(
+          key: const ValueKey<String>('profile_edit_close'),
+          onPressed: () => context.router.maybePop(),
+          child: const Text('Voltar'),
+        ),
+      ),
+    );
+  }
 }
 
 class _FakeAccountsRepository

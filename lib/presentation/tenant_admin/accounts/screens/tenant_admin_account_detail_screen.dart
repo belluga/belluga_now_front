@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/presentation/shared/widgets/belluga_network_image.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
@@ -100,12 +102,21 @@ class _TenantAdminAccountDetailScreenState
     if (profile == null) {
       return;
     }
-    context.router.push(
+    context.router
+        .push(
       TenantAdminAccountProfileEditRoute(
         accountSlug: _currentAccountSlugForRequests(),
         accountProfileId: profile.id,
       ),
-    );
+    )
+        .then((_) {
+      if (!mounted) {
+        return;
+      }
+      unawaited(
+        _profilesController.loadAccountDetail(_currentAccountSlugForRequests()),
+      );
+    });
   }
 
   Future<void> _editAccountName(TenantAdminAccount account) async {

@@ -26,6 +26,7 @@ import 'package:belluga_now/infrastructure/services/tenant_admin/tenant_admin_lo
 import 'package:belluga_now/presentation/tenant_admin/accounts/controllers/tenant_admin_account_create_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/accounts/screens/tenant_admin_account_create_screen.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_image_ingestion_service.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_image_upload_field.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -636,6 +637,7 @@ void main() {
       find.byKey(const ValueKey('tenant_admin_account_create_cover_pick')),
       findsOneWidget,
     );
+    expect(find.byType(TenantAdminImageUploadField), findsNWidgets(2));
 
     expect(find.text('Remover'), findsNothing);
     final controller = GetIt.I.get<TenantAdminAccountCreateController>();

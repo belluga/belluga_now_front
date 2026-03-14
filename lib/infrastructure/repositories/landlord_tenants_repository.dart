@@ -82,31 +82,31 @@ class LandlordTenantsRepository implements LandlordTenantsRepositoryContract {
     return '$normalized/admin/api';
   }
 
-  Map<String, dynamic> _asMap(dynamic raw) {
-    if (raw is Map<String, dynamic>) {
+  Map<String, Object?> _asMap(Object? raw) {
+    if (raw is Map<String, Object?>) {
       return raw;
     }
     throw Exception('Unexpected landlord tenants response shape.');
   }
 
-  List<Map<String, dynamic>> _extractDataList(dynamic raw) {
+  List<Map<String, Object?>> _extractDataList(Object? raw) {
     if (raw is List) {
       return raw
           .whereType<Map>()
-          .map((entry) => Map<String, dynamic>.from(entry))
+          .map((entry) => Map<String, Object?>.from(entry))
           .toList(growable: false);
     }
     return const [];
   }
 
-  int? _parseInt(dynamic value) {
+  int? _parseInt(Object? value) {
     if (value is int) return value;
     if (value is String) return int.tryParse(value);
     return null;
   }
 
   LandlordTenantOption? _mapTenant(
-    Map<String, dynamic> tenantMap,
+    Map<String, Object?> tenantMap,
   ) {
     final slug = tenantMap['slug']?.toString().trim();
     final tenantName = tenantMap['name']?.toString().trim();
@@ -133,7 +133,7 @@ class LandlordTenantsRepository implements LandlordTenantsRepositoryContract {
     );
   }
 
-  String? _resolveMainDomain(Map<String, dynamic> tenantMap) {
+  String? _resolveMainDomain(Map<String, Object?> tenantMap) {
     final mainDomainField = _normalizeDomainEntry(
       tenantMap['main_domain'] ?? tenantMap['mainDomain'],
     );
@@ -149,8 +149,8 @@ class LandlordTenantsRepository implements LandlordTenantsRepositoryContract {
     // Prefer tenant web domain from subdomain over mobile app-domain aliases.
     final subdomain = tenantMap['subdomain']?.toString().trim();
     if (subdomain != null && subdomain.isNotEmpty) {
-      final landlordHost =
-          _resolveHost(_landlordOriginOverride ?? BellugaConstants.landlordDomain);
+      final landlordHost = _resolveHost(
+          _landlordOriginOverride ?? BellugaConstants.landlordDomain);
       if (landlordHost != null && landlordHost.isNotEmpty) {
         return '$subdomain.$landlordHost';
       }
@@ -159,7 +159,7 @@ class LandlordTenantsRepository implements LandlordTenantsRepositoryContract {
     return null;
   }
 
-  String? _resolveDomainFromDomains(dynamic raw) {
+  String? _resolveDomainFromDomains(Object? raw) {
     if (raw is! List) {
       return null;
     }
@@ -178,11 +178,11 @@ class LandlordTenantsRepository implements LandlordTenantsRepositoryContract {
     return firstValid;
   }
 
-  bool _isPrimaryDomainEntry(dynamic entry) {
+  bool _isPrimaryDomainEntry(Object? entry) {
     if (entry is! Map) {
       return false;
     }
-    final map = Map<String, dynamic>.from(entry);
+    final map = Map<String, Object?>.from(entry);
     return _isTruthy(map['is_main']) ||
         _isTruthy(map['main']) ||
         _isTruthy(map['is_primary']) ||
@@ -190,7 +190,7 @@ class LandlordTenantsRepository implements LandlordTenantsRepositoryContract {
         _isTruthy(map['default']);
   }
 
-  bool _isTruthy(dynamic value) {
+  bool _isTruthy(Object? value) {
     if (value is bool) {
       return value;
     }
@@ -204,7 +204,7 @@ class LandlordTenantsRepository implements LandlordTenantsRepositoryContract {
         normalized == 'y';
   }
 
-  String? _normalizeDomainEntry(dynamic raw) {
+  String? _normalizeDomainEntry(Object? raw) {
     String? candidate;
     if (raw is String) {
       candidate = raw.trim();

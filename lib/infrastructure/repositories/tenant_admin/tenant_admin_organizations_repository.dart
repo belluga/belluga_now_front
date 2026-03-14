@@ -126,7 +126,7 @@ class TenantAdminOrganizationsRepository
     String? description,
   }) async {
     try {
-      final payload = <String, dynamic>{};
+      final payload = <String, Object?>{};
       if (name != null && name.trim().isNotEmpty) {
         payload['name'] = name.trim();
       }
@@ -188,29 +188,29 @@ class TenantAdminOrganizationsRepository
     }
   }
 
-  Map<String, dynamic> _extractItem(dynamic raw) {
-    if (raw is Map<String, dynamic>) {
+  Map<String, Object?> _extractItem(Object? raw) {
+    if (raw is Map<String, Object?>) {
       final data = raw['data'];
-      if (data is Map<String, dynamic>) return data;
+      if (data is Map<String, Object?>) return data;
       return raw;
     }
     throw Exception('Unexpected organization response shape.');
   }
 
-  List<Map<String, dynamic>> _extractList(dynamic raw) {
-    if (raw is Map<String, dynamic>) {
+  List<Map<String, Object?>> _extractList(Object? raw) {
+    if (raw is Map<String, Object?>) {
       final data = raw['data'];
       if (data is List) {
         return data
             .whereType<Map>()
-            .map((entry) => Map<String, dynamic>.from(entry))
+            .map((entry) => Map<String, Object?>.from(entry))
             .toList();
       }
     }
     throw Exception('Unexpected organizations list response shape.');
   }
 
-  TenantAdminOrganization _mapOrganization(Map<String, dynamic> json) {
+  TenantAdminOrganization _mapOrganization(Map<String, Object?> json) {
     return mapTenantAdminOrganizationJson(json);
   }
 

@@ -191,3 +191,77 @@ bool isUiControllerTypeName(String? typeName) {
 
   return blockedUiControllers.contains(typeName);
 }
+
+bool containsForbiddenRepositoryRawTransportType(TypeAnnotation? type) {
+  if (type == null) {
+    return false;
+  }
+
+  if (type is GenericFunctionType) {
+    if (containsForbiddenRepositoryRawTransportType(type.returnType)) {
+      return true;
+    }
+
+    for (final parameter in type.parameters.parameters) {
+      final parameterType = _formalParameterType(parameter);
+      if (containsForbiddenRepositoryRawTransportType(parameterType)) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  final typeName = topLevelTypeName(type);
+  if (typeName == null || typeName.isEmpty) {
+    return false;
+  }
+
+  if (typeName == 'dynamic') {
+    return true;
+  }
+
+  final args = typeArgumentListOf(type)?.arguments;
+  if (typeName == 'Map') {
+    if (args == null || args.isEmpty) {
+      return true;
+    }
+
+    if (args.length >= 2) {
+      final keyTypeName = topLevelTypeName(args.first);
+      if (keyTypeName == 'String' &&
+          containsForbiddenRepositoryRawTransportType(args[1])) {
+        return true;
+      }
+    }
+  }
+
+  if (args == null || args.isEmpty) {
+    return false;
+  }
+
+  return args.any(containsForbiddenRepositoryRawTransportType);
+}
+
+TypeAnnotation? _formalParameterType(FormalParameter parameter) {
+  final normalized =
+      parameter is DefaultFormalParameter ? parameter.parameter : parameter;
+
+  if (normalized is SimpleFormalParameter) {
+    return normalized.type;
+  }
+
+  if (normalized is SuperFormalParameter) {
+    return normalized.type;
+  }
+
+  if (normalized is FieldFormalParameter) {
+    return normalized.type;
+  }
+
+  if (normalized is FunctionTypedFormalParameter) {
+    return normalized.returnType;
+  }
+
+  return null;
+}

@@ -76,7 +76,7 @@ class LandlordAuthRepository implements LandlordAuthRepositoryContract {
       final token = data['token']?.toString() ?? '';
       final user = data['user'];
       final userId =
-          user is Map<String, dynamic> ? user['id']?.toString() : null;
+          user is Map<String, Object?> ? user['id']?.toString() : null;
       if (token.isEmpty) {
         throw Exception('Landlord token missing.');
       }
@@ -132,9 +132,9 @@ class LandlordAuthRepository implements LandlordAuthRepositoryContract {
       options: Options(headers: {'Authorization': 'Bearer $token'}),
     );
     final raw = response.data;
-    if (raw is Map<String, dynamic>) {
+    if (raw is Map<String, Object?>) {
       final data = raw['data'];
-      if (data is Map<String, dynamic>) {
+      if (data is Map<String, Object?>) {
         final userId = data['user_id']?.toString();
         if (userId != null && userId.isNotEmpty) {
           _userIdStreamValue.addValue(userId);
@@ -238,18 +238,17 @@ class LandlordAuthRepository implements LandlordAuthRepositoryContract {
       return null;
     }
 
-    final normalized =
-        uri.replace(query: null, fragment: null).toString();
+    final normalized = uri.replace(query: null, fragment: null).toString();
     return normalized.endsWith('/')
         ? normalized.substring(0, normalized.length - 1)
         : normalized;
   }
 }
 
-Map<String, dynamic> _extractDataMap(dynamic raw) {
-  if (raw is Map<String, dynamic>) {
+Map<String, Object?> _extractDataMap(Object? raw) {
+  if (raw is Map<String, Object?>) {
     final data = raw['data'];
-    if (data is Map<String, dynamic>) {
+    if (data is Map<String, Object?>) {
       return data;
     }
   }
