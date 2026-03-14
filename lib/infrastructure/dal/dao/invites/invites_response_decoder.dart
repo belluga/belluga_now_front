@@ -1,5 +1,6 @@
 import 'package:belluga_now/domain/invites/invite_contact_match.dart';
 import 'package:belluga_now/infrastructure/dal/dto/invites/invite_dto.dart';
+import 'package:belluga_now/infrastructure/dal/dao/invites/invite_share_code_target_ref.dart';
 
 class InvitesResponseDecoder {
   const InvitesResponseDecoder();
@@ -120,14 +121,4 @@ class InvitesResponseDecoder {
     }
     return value;
   }
-}
-
-class InviteShareCodeTargetRef {
-  const InviteShareCodeTargetRef({
-    required this.eventId,
-    this.occurrenceId,
-  });
-
-  final String eventId;
-  final String? occurrenceId;
 }

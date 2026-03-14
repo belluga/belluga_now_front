@@ -1,4 +1,5 @@
 import 'package:belluga_now/infrastructure/dal/dao/http/raw_json_envelope_decoder.dart';
+import 'package:belluga_now/infrastructure/dal/dao/landlord/landlord_auth_login_payload.dart';
 
 class LandlordAuthResponseDecoder {
   const LandlordAuthResponseDecoder({
@@ -30,14 +31,4 @@ class LandlordAuthResponseDecoder {
     );
     return data['user_id']?.toString();
   }
-}
-
-class LandlordAuthLoginPayload {
-  const LandlordAuthLoginPayload({
-    required this.token,
-    required this.userId,
-  });
-
-  final String token;
-  final String? userId;
 }

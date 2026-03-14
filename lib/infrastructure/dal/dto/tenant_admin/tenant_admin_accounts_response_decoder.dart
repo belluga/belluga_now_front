@@ -1,6 +1,7 @@
 import 'package:belluga_now/infrastructure/dal/dao/http/raw_json_envelope_decoder.dart';
 import 'package:belluga_now/infrastructure/dal/dto/tenant_admin/tenant_admin_account_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/tenant_admin/tenant_admin_account_profile_dto.dart';
+import 'package:belluga_now/infrastructure/dal/dto/tenant_admin/tenant_admin_account_onboarding_response_dto.dart';
 
 class TenantAdminAccountsResponseDecoder {
   const TenantAdminAccountsResponseDecoder({
@@ -61,14 +62,4 @@ class TenantAdminAccountsResponseDecoder {
       ),
     );
   }
-}
-
-class TenantAdminAccountOnboardingResponseDTO {
-  const TenantAdminAccountOnboardingResponseDTO({
-    required this.account,
-    required this.accountProfile,
-  });
-
-  final TenantAdminAccountDTO account;
-  final TenantAdminAccountProfileDTO accountProfile;
 }
