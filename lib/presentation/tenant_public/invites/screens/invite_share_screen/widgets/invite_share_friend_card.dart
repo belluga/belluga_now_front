@@ -22,6 +22,7 @@ class InviteShareFriendCard extends StatelessWidget {
     final subtitle = friend.matchLabel.isNotEmpty
         ? friend.matchLabel
         : 'Convide para viver o rolê juntos';
+    final avatarUrl = friend.avatarValue.value?.toString();
 
     final (label, color, enabled) = _cta(status);
     final disabled = !enabled || isPlaceholder;
@@ -35,7 +36,16 @@ class InviteShareFriendCard extends StatelessWidget {
           children: [
             CircleAvatar(
               radius: 20,
-              backgroundImage: NetworkImage(friend.avatarUri.toString()),
+              backgroundImage: avatarUrl != null && avatarUrl.isNotEmpty
+                  ? NetworkImage(avatarUrl)
+                  : null,
+              child: avatarUrl == null || avatarUrl.isEmpty
+                  ? Text(
+                      friend.name.isNotEmpty
+                          ? friend.name[0].toUpperCase()
+                          : '?',
+                    )
+                  : null,
             ),
             const SizedBox(width: 12),
             Expanded(

@@ -119,6 +119,7 @@ class EventSearchScreenController
       _isDisposed = false;
     }
     await _invitesRepository.init();
+    await _userEventsRepository.refreshConfirmedEventIds();
     _resetInternalState();
     _setValue(showHistoryStreamValue, startWithHistory);
     _setValue(radiusMetersStreamValue, _resolveDefaultRadiusMeters());

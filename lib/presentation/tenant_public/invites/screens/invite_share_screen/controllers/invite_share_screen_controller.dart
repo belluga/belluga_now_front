@@ -1,65 +1,80 @@
 import 'dart:async';
 
+import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/contacts/contact_model.dart';
+import 'package:belluga_now/domain/invites/invite_model.dart';
+import 'package:belluga_now/domain/invites/invite_share_code_result.dart';
 import 'package:belluga_now/domain/invites/projections/friend_resume.dart';
 import 'package:belluga_now/domain/invites/projections/friend_resume_with_status.dart';
 import 'package:belluga_now/domain/repositories/contacts_repository_contract.dart';
-import 'package:belluga_now/domain/repositories/friends_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
+import 'package:belluga_now/domain/schedule/friend_resume.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value.dart';
 
 class InviteShareScreenController with Disposable {
   InviteShareScreenController({
-    FriendsRepositoryContract? friendsRepository,
     InvitesRepositoryContract? invitesRepository,
     ContactsRepositoryContract? contactsRepository,
-  })  : _friendsRepository =
-            friendsRepository ?? GetIt.I.get<FriendsRepositoryContract>(),
-        _invitesRepository =
+    AppData? appData,
+  })  : _invitesRepository =
             invitesRepository ?? GetIt.I.get<InvitesRepositoryContract>(),
         _contactsRepository =
-            contactsRepository ?? GetIt.I.get<ContactsRepositoryContract>();
+            contactsRepository ?? GetIt.I.get<ContactsRepositoryContract>(),
+        _appData = appData ?? GetIt.I.get<AppData>();
 
-  final FriendsRepositoryContract _friendsRepository;
   final InvitesRepositoryContract _invitesRepository;
   final ContactsRepositoryContract _contactsRepository;
+  final AppData _appData;
 
-  // Store event ID for refresh functionality
-  String? _currentEventId;
+  InviteModel? _currentInvite;
 
   final friendsSuggestionsStreamValue =
-      StreamValue<List<InviteFriendResumeWithStatus>?>();
+      StreamValue<List<InviteFriendResumeWithStatus>>(defaultValue: const []);
   final selectedFriendsSuggestionsStreamValue =
-      StreamValue<List<InviteFriendResume>>(defaultValue: []);
-
-  final contactsStreamValue = StreamValue<List<ContactModel>>(defaultValue: []);
+      StreamValue<List<InviteFriendResume>>(defaultValue: const []);
+  final contactsStreamValue =
+      StreamValue<List<ContactModel>>(defaultValue: const []);
   final selectedContactsStreamValue =
-      StreamValue<List<ContactModel>>(defaultValue: []);
+      StreamValue<List<ContactModel>>(defaultValue: const []);
   final contactsPermissionGranted = StreamValue<bool>(defaultValue: false);
   final sentInvitesStreamValue =
       StreamValue<List<SentInviteStatus>>(defaultValue: const []);
+  final shareCodeStreamValue =
+      StreamValue<InviteShareCodeResult?>(defaultValue: null);
 
-  /// Initialize controller with event ID to fetch friends and their invite status
-  /// eventId should be the ID of the event (not the invite ID)
-  Future<void> init(String eventId) async {
-    _currentEventId = eventId;
-    await _loadFriendsWithStatus();
-    await loadContacts();
+  Future<void> init(InviteModel invite) async {
+    _currentInvite = invite;
+    await Future.wait([
+      _loadInviteTargetsWithStatusSafe(),
+      _loadShareCodeSafe(),
+    ]);
   }
 
   Future<void> loadContacts() async {
-    final granted = await _contactsRepository.requestPermission();
-    if (_isDisposed) return;
-    contactsPermissionGranted.addValue(granted);
+    try {
+      final granted = await _contactsRepository.requestPermission();
+      if (_isDisposed) return;
+      contactsPermissionGranted.addValue(granted);
 
-    if (granted) {
+      if (!granted) {
+        contactsStreamValue.addValue(const []);
+        return;
+      }
+
       final contacts = await _contactsRepository.getContacts();
       if (_isDisposed) return;
-      // Filter contacts that have at least one phone number
-      final validContacts = contacts.where((c) => c.phones.isNotEmpty).toList();
+
+      final validContacts = contacts
+          .where((contact) =>
+              contact.phones.isNotEmpty || contact.emails.isNotEmpty)
+          .toList(growable: false);
       contactsStreamValue.addValue(validContacts);
+    } catch (_) {
+      if (_isDisposed) return;
+      contactsPermissionGranted.addValue(false);
+      contactsStreamValue.addValue(const []);
     }
   }
 
@@ -74,90 +89,170 @@ class InviteShareScreenController with Disposable {
   }
 
   void toggleFriend(InviteFriendResume friend) {
-    final _selectedFriends = List<InviteFriendResume>.from(
+    final selected = List<InviteFriendResume>.from(
         selectedFriendsSuggestionsStreamValue.value);
-    if (_selectedFriends.contains(friend)) {
-      _selectedFriends.remove(friend);
+    if (selected.contains(friend)) {
+      selected.remove(friend);
     } else {
-      _selectedFriends.add(friend);
+      selected.add(friend);
     }
-    selectedFriendsSuggestionsStreamValue.addValue(_selectedFriends);
+    selectedFriendsSuggestionsStreamValue.addValue(selected);
   }
 
-  /// Refresh friends list from server
   Future<void> refreshFriends() async {
-    if (_currentEventId == null) return;
-    await _friendsRepository.fetchAndCacheFriends(forceRefresh: true);
-    await _loadFriendsWithStatus();
+    await _loadInviteTargetsWithStatusSafe(forceReloadContacts: true);
   }
 
-  /// Send invites to selected friends
   Future<void> sendInvites() async {
-    if (_currentEventId == null) return;
+    final invite = _currentInvite;
+    if (invite == null) return;
 
     final selectedFriends = selectedFriendsSuggestionsStreamValue.value;
     if (selectedFriends.isEmpty) return;
 
-    final friendIds = selectedFriends.map((f) => f.id).toList();
-
-    // Send invites via repository
-    await _invitesRepository.sendInvites(_currentEventId!, friendIds);
-
-    // Clear selection
-    selectedFriendsSuggestionsStreamValue.addValue([]);
-
-    // Refresh list to show new status
-    await _loadFriendsWithStatus();
-  }
-
-  Future<void> sendInviteToFriend(String friendId) async {
-    if (_currentEventId == null) return;
-    await _invitesRepository.sendInvites(_currentEventId!, [friendId]);
-    await _loadFriendsWithStatus();
-  }
-
-  /// Load friends and merge with event-specific invite status
-  Future<void> _loadFriendsWithStatus() async {
-    if (_currentEventId == null) return;
-
-    // 1. Ensure friends are cached
-    await _friendsRepository.fetchAndCacheFriends();
-
-    // 2. Fetch sent invites for this specific event
-    final sentInvites =
-        await _invitesRepository.getSentInvitesForEvent(_currentEventId!);
-    sentInvitesStreamValue.addValue(sentInvites);
-
-    // 3. Merge friends with invite status
-    final friendsWithStatus = _mergeFriendsWithStatus(
-      _friendsRepository.friendsStreamValue.value,
-      sentInvites,
+    await _invitesRepository.sendInvites(
+      invite.eventId,
+      selectedFriends.map(_toEventFriendResume).toList(growable: false),
+      occurrenceId: invite.occurrenceId,
     );
 
-    if (!_isDisposed) {
-      friendsSuggestionsStreamValue.addValue(friendsWithStatus);
+    selectedFriendsSuggestionsStreamValue.addValue(const []);
+    await _syncSentInvites();
+  }
+
+  Future<void> sendInviteToFriend(InviteFriendResume friend) async {
+    final invite = _currentInvite;
+    if (invite == null) return;
+
+    await _invitesRepository.sendInvites(
+      invite.eventId,
+      <EventFriendResume>[_toEventFriendResume(friend)],
+      occurrenceId: invite.occurrenceId,
+    );
+    await _syncSentInvites();
+  }
+
+  Future<void> _loadInviteTargetsWithStatus({
+    bool forceReloadContacts = false,
+  }) async {
+    final invite = _currentInvite;
+    if (invite == null) return;
+
+    if (forceReloadContacts || contactsStreamValue.value.isEmpty) {
+      await loadContacts();
+    }
+
+    final contacts = contactsStreamValue.value;
+    final matches = await _invitesRepository.importContacts(contacts);
+    if (_isDisposed) return;
+
+    final recipients = matches
+        .map(
+          (match) => InviteFriendResume.fromPrimitives(
+            id: match.userId,
+            name: match.displayName,
+            avatarUrl: match.avatarUrl,
+            matchLabel: 'Contato no Belluga',
+          ),
+        )
+        .toList(growable: false)
+      ..sort((left, right) => left.name.compareTo(right.name));
+
+    final sentInvites =
+        await _invitesRepository.getSentInvitesForEvent(invite.eventId);
+    if (_isDisposed) return;
+    sentInvitesStreamValue.addValue(sentInvites);
+
+    final friendsWithStatus = _mergeFriendsWithStatus(recipients, sentInvites);
+    friendsSuggestionsStreamValue.addValue(friendsWithStatus);
+  }
+
+  Future<void> _loadInviteTargetsWithStatusSafe({
+    bool forceReloadContacts = false,
+  }) async {
+    try {
+      await _loadInviteTargetsWithStatus(
+        forceReloadContacts: forceReloadContacts,
+      );
+    } catch (_) {
+      if (_isDisposed) return;
+      sentInvitesStreamValue.addValue(const []);
+      friendsSuggestionsStreamValue.addValue(const []);
     }
   }
 
-  /// Merge friends list with invite status for the current event
+  Future<void> _syncSentInvites() async {
+    final invite = _currentInvite;
+    if (invite == null) return;
+
+    final sentInvites =
+        await _invitesRepository.getSentInvitesForEvent(invite.eventId);
+    if (_isDisposed) return;
+
+    sentInvitesStreamValue.addValue(sentInvites);
+    final currentFriends = friendsSuggestionsStreamValue.value
+        .map((entry) => entry.friend)
+        .toList(growable: false);
+    friendsSuggestionsStreamValue
+        .addValue(_mergeFriendsWithStatus(currentFriends, sentInvites));
+  }
+
+  Future<void> _loadShareCode() async {
+    final invite = _currentInvite;
+    if (invite == null) return;
+
+    final shareCode = await _invitesRepository.createShareCode(
+      eventId: invite.eventId,
+      occurrenceId: invite.occurrenceId,
+    );
+    if (_isDisposed) return;
+    shareCodeStreamValue.addValue(shareCode);
+  }
+
+  Future<void> _loadShareCodeSafe() async {
+    try {
+      await _loadShareCode();
+    } catch (_) {
+      if (_isDisposed) return;
+      shareCodeStreamValue.addValue(null);
+    }
+  }
+
+  Uri? buildShareUri(InviteShareCodeResult? shareCode) {
+    if (shareCode == null || shareCode.code.trim().isEmpty) {
+      return null;
+    }
+    final origin = _appData.mainDomainValue.value.origin;
+    final base = origin.toString().replaceFirst(RegExp(r'/$'), '');
+    return Uri.parse(
+      '$base/invite?code=${Uri.encodeQueryComponent(shareCode.code)}',
+    );
+  }
+
   List<InviteFriendResumeWithStatus> _mergeFriendsWithStatus(
     List<InviteFriendResume> friends,
     List<SentInviteStatus> sentInvites,
   ) {
-    // Create a map of friend ID -> invite status
-    final inviteStatusMap = <String, SentInviteStatus>{};
-    for (final invite in sentInvites) {
-      inviteStatusMap[invite.friend.id] = invite;
-    }
+    final inviteStatusMap = <String, SentInviteStatus>{
+      for (final invite in sentInvites) invite.friend.id: invite,
+    };
 
-    // Map each friend to FriendResumeWithStatus
-    return friends.map((friend) {
-      final sentInvite = inviteStatusMap[friend.id];
-      return InviteFriendResumeWithStatus(
-        friend: friend,
-        inviteStatus: sentInvite?.status, // null if not invited yet
-      );
-    }).toList();
+    return friends
+        .map(
+          (friend) => InviteFriendResumeWithStatus(
+            friend: friend,
+            inviteStatus: inviteStatusMap[friend.id]?.status,
+          ),
+        )
+        .toList(growable: false);
+  }
+
+  EventFriendResume _toEventFriendResume(InviteFriendResume friend) {
+    return EventFriendResume.fromPrimitives(
+      id: friend.id,
+      displayName: friend.name,
+      avatarUrl: friend.avatarValue.value?.toString(),
+    );
   }
 
   bool _isDisposed = false;
@@ -171,5 +266,6 @@ class InviteShareScreenController with Disposable {
     selectedContactsStreamValue.dispose();
     contactsPermissionGranted.dispose();
     sentInvitesStreamValue.dispose();
+    shareCodeStreamValue.dispose();
   }
 }

@@ -48,6 +48,10 @@ class InvitesModule extends ModuleContract {
           path: '/convites',
           page: InviteFlowRoute.page,
         ),
+        RedirectRoute(
+          path: '/invite',
+          redirectTo: '/convites',
+        ),
         AutoRoute(
           path: '/convites/compartilhar',
           page: InviteShareRoute.page,

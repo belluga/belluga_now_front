@@ -12,6 +12,7 @@ import 'package:belluga_now/infrastructure/dal/dto/schedule/event_summary_dto.da
 import 'package:belluga_now/infrastructure/repositories/schedule_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/user_events_repository.dart';
 import 'package:belluga_now/infrastructure/services/schedule_backend_contract.dart';
+import 'package:belluga_now/infrastructure/services/user_events_backend_contract.dart';
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/controllers/tenant_home_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -44,6 +45,7 @@ void main() {
     );
     final userEventsRepository = UserEventsRepository(
       scheduleRepository: scheduleRepository,
+      backend: _FakeUserEventsBackend(),
     );
     await userEventsRepository
         .confirmEventAttendance(_CapturingScheduleBackend.eventId);
@@ -89,6 +91,7 @@ void main() {
     );
     final userEventsRepository = UserEventsRepository(
       scheduleRepository: scheduleRepository,
+      backend: _FakeUserEventsBackend(),
     );
     await userEventsRepository
         .confirmEventAttendance(_CapturingScheduleBackend.eventId);
@@ -167,6 +170,43 @@ class _CapturingScheduleBackend implements ScheduleBackendContract {
     bool showPastOnly = false,
   }) =>
       const Stream<EventDeltaDTO>.empty();
+}
+
+class _FakeUserEventsBackend implements UserEventsBackendContract {
+  final Set<String> _confirmed = <String>{};
+
+  @override
+  Future<Map<String, dynamic>> fetchConfirmedEventIds() async {
+    return {'confirmed_event_ids': _confirmed.toList(growable: false)};
+  }
+
+  @override
+  Future<Map<String, dynamic>> confirmAttendance({
+    required String eventId,
+    String? occurrenceId,
+  }) async {
+    _confirmed.add(eventId);
+    return {
+      'event_id': eventId,
+      'occurrence_id': occurrenceId,
+      'status': 'active',
+      'kind': 'free_confirmation',
+    };
+  }
+
+  @override
+  Future<Map<String, dynamic>> unconfirmAttendance({
+    required String eventId,
+    String? occurrenceId,
+  }) async {
+    _confirmed.remove(eventId);
+    return {
+      'event_id': eventId,
+      'occurrence_id': occurrenceId,
+      'status': 'canceled',
+      'kind': 'free_confirmation',
+    };
+  }
 }
 
 class _AgendaRequestSample {
