@@ -19,7 +19,11 @@ class FormData {
 }
 
 class _RepositoryJsonParsingCase {
-  void parse(Map<String, Object?> payload, String raw) {
+  void parse(
+    // expect_lint: repository_raw_payload_map_forbidden
+    Map<String, Object?> payload,
+    String raw,
+  ) {
     // expect_lint: repository_json_parsing_forbidden
     _RepositoryDto.fromJson(payload);
 

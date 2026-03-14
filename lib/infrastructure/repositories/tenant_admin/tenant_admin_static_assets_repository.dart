@@ -7,6 +7,8 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_static_asset.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_static_profile_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
+import 'package:belluga_now/infrastructure/dal/dao/tenant_admin/tenant_admin_media_form_data_builder.dart';
+import 'package:belluga_now/infrastructure/dal/dao/tenant_admin/tenant_admin_static_assets_request_encoder.dart';
 import 'package:belluga_now/infrastructure/dal/dto/tenant_admin/tenant_admin_static_asset_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/tenant_admin/tenant_admin_static_assets_response_decoder.dart';
 import 'package:belluga_now/infrastructure/dal/dto/mappers/tenant_admin_dto_mapper.dart';
@@ -14,7 +16,6 @@ import 'package:belluga_now/infrastructure/repositories/tenant_admin/tenant_admi
 import 'package:belluga_now/infrastructure/repositories/tenant_admin/support/tenant_admin_validation_failure_resolver.dart';
 import 'package:dio/dio.dart';
 import 'package:get_it/get_it.dart';
-import 'package:http_parser/http_parser.dart';
 
 class TenantAdminStaticAssetsRepository
     with TenantAdminStaticAssetsPaginationMixin, TenantAdminDtoMapper
@@ -29,6 +30,10 @@ class TenantAdminStaticAssetsRepository
   final TenantAdminTenantScopeContract? _tenantScope;
   final TenantAdminStaticAssetsResponseDecoder _responseDecoder =
       const TenantAdminStaticAssetsResponseDecoder();
+  final TenantAdminStaticAssetsRequestEncoder _requestEncoder =
+      const TenantAdminStaticAssetsRequestEncoder();
+  final TenantAdminMediaFormDataBuilder _mediaFormDataBuilder =
+      const TenantAdminMediaFormDataBuilder();
 
   String get _apiBaseUrl =>
       (_tenantScope ?? GetIt.I.get<TenantAdminTenantScopeContract>())
@@ -126,7 +131,7 @@ class TenantAdminStaticAssetsRepository
     TenantAdminMediaUpload? coverUpload,
   }) async {
     try {
-      final payload = _buildPayload(
+      final payload = _requestEncoder.encodeStaticAssetPayload(
         profileType: profileType,
         displayName: displayName,
         location: location,
@@ -137,8 +142,8 @@ class TenantAdminStaticAssetsRepository
         avatarUrl: avatarUrl,
         coverUrl: coverUrl,
       );
-      final uploadPayload = _buildMultipartPayload(
-        payload,
+      final uploadPayload = _mediaFormDataBuilder.buildAvatarCoverPayload(
+        payload: payload,
         avatarUpload: avatarUpload,
         coverUpload: coverUpload,
       );
@@ -173,7 +178,7 @@ class TenantAdminStaticAssetsRepository
     TenantAdminMediaUpload? coverUpload,
   }) async {
     try {
-      final payload = _buildPayload(
+      final payload = _requestEncoder.encodeStaticAssetPayload(
         profileType: profileType,
         displayName: displayName,
         slug: slug,
@@ -185,8 +190,8 @@ class TenantAdminStaticAssetsRepository
         avatarUrl: avatarUrl,
         coverUrl: coverUrl,
       );
-      final uploadPayload = _buildMultipartPayload(
-        payload,
+      final uploadPayload = _mediaFormDataBuilder.buildAvatarCoverPayload(
+        payload: payload,
         avatarUpload: avatarUpload,
         coverUpload: coverUpload,
       );
@@ -313,7 +318,7 @@ class TenantAdminStaticAssetsRepository
     required TenantAdminStaticProfileTypeCapabilities capabilities,
   }) async {
     try {
-      final payload = _buildStaticProfileTypePayload(
+      final payload = _requestEncoder.encodeStaticProfileTypePayload(
         type: type,
         label: label,
         allowedTaxonomies: allowedTaxonomies,
@@ -341,7 +346,7 @@ class TenantAdminStaticAssetsRepository
   }) async {
     try {
       final encodedType = Uri.encodeComponent(type);
-      final payload = _buildStaticProfileTypePayload(
+      final payload = _requestEncoder.encodeStaticProfileTypePayload(
         type: newType,
         label: label,
         allowedTaxonomies: allowedTaxonomies,
@@ -370,41 +375,6 @@ class TenantAdminStaticAssetsRepository
     } on DioException catch (error) {
       throw _wrapError(error, 'delete static profile type');
     }
-  }
-
-  Map<String, Object?> _buildPayload({
-    String? profileType,
-    String? displayName,
-    String? slug,
-    TenantAdminLocation? location,
-    List<TenantAdminTaxonomyTerm>? taxonomyTerms,
-    List<String>? tags,
-    String? bio,
-    String? content,
-    String? avatarUrl,
-    String? coverUrl,
-  }) {
-    final payload = <String, Object?>{};
-    if (profileType != null) payload['profile_type'] = profileType;
-    if (displayName != null) payload['display_name'] = displayName;
-    if (slug != null) payload['slug'] = slug;
-    if (location != null) {
-      payload['location'] = {
-        'lat': location.latitude,
-        'lng': location.longitude,
-      };
-    }
-    if (taxonomyTerms != null) {
-      payload['taxonomy_terms'] = taxonomyTerms
-          .map((term) => {'type': term.type, 'value': term.value})
-          .toList();
-    }
-    if (tags != null) payload['tags'] = tags;
-    if (bio != null) payload['bio'] = bio;
-    if (content != null) payload['content'] = content;
-    if (avatarUrl != null) payload['avatar_url'] = avatarUrl;
-    if (coverUrl != null) payload['cover_url'] = coverUrl;
-    return payload;
   }
 
   TenantAdminStaticAssetDTO _normalizeStaticAssetMediaUrls(
@@ -465,88 +435,6 @@ class TenantAdminStaticAssetsRepository
       throw Exception('Invalid tenant admin base URL: $_apiBaseUrl');
     }
     return parsed.replace(path: '/', query: null, fragment: null);
-  }
-
-  Map<String, Object?> _buildStaticProfileTypePayload({
-    String? type,
-    String? label,
-    List<String>? allowedTaxonomies,
-    TenantAdminStaticProfileTypeCapabilities? capabilities,
-  }) {
-    final payload = <String, Object?>{};
-    if (type != null) payload['type'] = type;
-    if (label != null) payload['label'] = label;
-    if (allowedTaxonomies != null) {
-      payload['allowed_taxonomies'] = allowedTaxonomies;
-    }
-    if (capabilities != null) {
-      payload['capabilities'] = {
-        'is_poi_enabled': capabilities.isPoiEnabled,
-        'has_bio': capabilities.hasBio,
-        'has_taxonomies': capabilities.hasTaxonomies,
-        'has_avatar': capabilities.hasAvatar,
-        'has_cover': capabilities.hasCover,
-        'has_content': capabilities.hasContent,
-      };
-    }
-    return payload;
-  }
-
-  FormData? _buildMultipartPayload(
-    Map<String, Object?> payload, {
-    TenantAdminMediaUpload? avatarUpload,
-    TenantAdminMediaUpload? coverUpload,
-  }) {
-    if (avatarUpload == null && coverUpload == null) {
-      return null;
-    }
-
-    final formData = FormData.fromMap(payload, ListFormat.multiCompatible);
-    if (avatarUpload != null) {
-      formData.files.add(
-        MapEntry(
-          'avatar',
-          MultipartFile.fromBytes(
-            avatarUpload.bytes,
-            filename: avatarUpload.fileName,
-            contentType: _resolveMediaType(avatarUpload),
-          ),
-        ),
-      );
-    }
-    if (coverUpload != null) {
-      formData.files.add(
-        MapEntry(
-          'cover',
-          MultipartFile.fromBytes(
-            coverUpload.bytes,
-            filename: coverUpload.fileName,
-            contentType: _resolveMediaType(coverUpload),
-          ),
-        ),
-      );
-    }
-    return formData;
-  }
-
-  MediaType _resolveMediaType(TenantAdminMediaUpload upload) {
-    final mimeType = upload.mimeType ?? _inferMimeType(upload.fileName);
-    if (mimeType == null) {
-      return MediaType('application', 'octet-stream');
-    }
-    final parts = mimeType.split('/');
-    if (parts.length != 2) {
-      return MediaType('application', 'octet-stream');
-    }
-    return MediaType(parts[0], parts[1]);
-  }
-
-  String? _inferMimeType(String fileName) {
-    final lower = fileName.toLowerCase();
-    if (lower.endsWith('.png')) return 'image/png';
-    if (lower.endsWith('.jpg') || lower.endsWith('.jpeg')) return 'image/jpeg';
-    if (lower.endsWith('.webp')) return 'image/webp';
-    return null;
   }
 
   Exception _wrapError(DioException error, String label) {

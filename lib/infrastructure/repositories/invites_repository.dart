@@ -12,6 +12,7 @@ import 'package:belluga_now/domain/repositories/invites_repository_contract.dart
 import 'package:belluga_now/domain/schedule/friend_resume.dart';
 import 'package:belluga_now/domain/schedule/invite_status.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
+import 'package:belluga_now/infrastructure/dal/dao/invites/invites_response_decoder.dart';
 import 'package:belluga_now/infrastructure/dal/dao/laravel_backend/invites_backend/laravel_invites_backend.dart';
 import 'package:belluga_now/infrastructure/dal/dto/mappers/invite_dto_mapper.dart';
 import 'package:belluga_now/infrastructure/repositories/push/push_payload_upsert_mixin.dart';
@@ -31,6 +32,7 @@ class InvitesRepository extends InvitesRepositoryContract
   }) : _backend = backend ?? LaravelInvitesBackend();
 
   final InvitesBackendContract _backend;
+  final InvitesResponseDecoder _responseDecoder = const InvitesResponseDecoder();
 
   @override
   Future<List<InviteModel>> fetchInvites(
@@ -38,20 +40,10 @@ class InvitesRepository extends InvitesRepositoryContract
     final response =
         await _backend.fetchInvites(page: page, pageSize: pageSize);
     final invitesRaw = response['invites'];
-    final invites = <InviteModel>[];
-
-    if (invitesRaw is List) {
-      for (final item in invitesRaw) {
-        if (item is! Map<String, Object?>) {
-          continue;
-        }
-        final dto = tryParseInviteDtoJson(Map<String, Object?>.from(item));
-        if (dto == null) {
-          continue;
-        }
-        invites.add(mapInviteDto(dto));
-      }
-    }
+    final invites = _responseDecoder
+        .decodeInviteDtos(invitesRaw)
+        .map(mapInviteDto)
+        .toList(growable: false);
 
     if (page == 1) {
       pendingInvitesStreamValue.addValue(invites);
@@ -136,33 +128,7 @@ class InvitesRepository extends InvitesRepositoryContract
       'contacts': importItems,
     });
     final matchesRaw = response['matches'];
-    if (matchesRaw is! List) {
-      return const <InviteContactMatch>[];
-    }
-
-    final dedupedByUserId = <String, InviteContactMatch>{};
-    for (final item in matchesRaw) {
-      if (item is! Map<String, Object?>) {
-        continue;
-      }
-      final userId = _stringOrEmpty(item['user_id']);
-      final displayName = _stringOrEmpty(item['display_name']);
-      if (userId.isEmpty || displayName.isEmpty) {
-        continue;
-      }
-      dedupedByUserId.putIfAbsent(
-        userId,
-        () => InviteContactMatch(
-          contactHash: _stringOrEmpty(item['contact_hash']),
-          type: _stringOrEmpty(item['type']),
-          userId: userId,
-          displayName: displayName,
-          avatarUrl: _stringOrNull(item['avatar_url']),
-        ),
-      );
-    }
-
-    return dedupedByUserId.values.toList(growable: false);
+    return _responseDecoder.decodeContactMatches(matchesRaw);
   }
 
   @override
@@ -181,16 +147,15 @@ class InvitesRepository extends InvitesRepositoryContract
         'account_profile_id': accountProfileId.trim(),
     });
 
-    final targetRef = response['target_ref'];
-    final targetRefMap =
-        targetRef is Map<String, Object?> ? targetRef : const {};
+    final targetRef = _responseDecoder.decodeShareCodeTargetRef(
+      response['target_ref'],
+      fallbackEventId: eventId,
+    );
 
     return InviteShareCodeResult(
       code: _stringOrEmpty(response['code']),
-      eventId: _stringOrEmpty(targetRefMap['event_id']).isEmpty
-          ? eventId
-          : _stringOrEmpty(targetRefMap['event_id']),
-      occurrenceId: _stringOrNull(targetRefMap['occurrence_id']),
+      eventId: targetRef.eventId,
+      occurrenceId: targetRef.occurrenceId,
     );
   }
 
@@ -227,10 +192,9 @@ class InvitesRepository extends InvitesRepositoryContract
       return;
     }
 
-    final currentMap = Map<String, List<SentInviteStatus>>.from(
-        sentInvitesByEventStreamValue.value);
+    final currentByEvent = sentInvitesByEventStreamValue.value;
     final existing =
-        List<SentInviteStatus>.from(currentMap[eventId] ?? const []);
+        List<SentInviteStatus>.from(currentByEvent[eventId] ?? const []);
     final existingByRecipient = <String, SentInviteStatus>{
       for (final invite in existing) invite.friend.id: invite,
     };
@@ -248,8 +212,10 @@ class InvitesRepository extends InvitesRepositoryContract
       );
     }
 
-    currentMap[eventId] = existingByRecipient.values.toList(growable: false);
-    sentInvitesByEventStreamValue.addValue(currentMap);
+    sentInvitesByEventStreamValue.addValue({
+      ...currentByEvent,
+      eventId: existingByRecipient.values.toList(growable: false),
+    });
   }
 
   @override
@@ -262,7 +228,7 @@ class InvitesRepository extends InvitesRepositoryContract
   }
 
   @override
-  void applyInvitePushPayload(Map<String, Object?> payload) {
+  void applyInvitePushPayload(Object? payload) {
     final current = pendingInvitesStreamValue.value;
     final next = mergeInvitePayload(current: current, payload: payload);
     if (identical(current, next)) {
@@ -308,15 +274,7 @@ class InvitesRepository extends InvitesRepositoryContract
   }
 
   List<String> _parseRecipientIds(Object? raw) {
-    if (raw is! List) {
-      return const <String>[];
-    }
-
-    return raw
-        .whereType<Map<String, Object?>>()
-        .map((item) => _stringOrEmpty(item['receiver_user_id']))
-        .where((value) => value.isNotEmpty)
-        .toList(growable: false);
+    return _responseDecoder.decodeRecipientIds(raw);
   }
 
   List<String> _parseStringList(Object? raw) {
@@ -330,25 +288,7 @@ class InvitesRepository extends InvitesRepositoryContract
   }
 
   Map<String, int> _parseIntMap(Object? raw) {
-    if (raw is! Map) {
-      return const <String, int>{};
-    }
-    final result = <String, int>{};
-    raw.forEach((key, value) {
-      final normalizedKey = key?.toString();
-      if (normalizedKey == null || normalizedKey.isEmpty) {
-        return;
-      }
-      if (value is num) {
-        result[normalizedKey] = value.toInt();
-        return;
-      }
-      final parsed = int.tryParse(value?.toString() ?? '');
-      if (parsed != null) {
-        result[normalizedKey] = parsed;
-      }
-    });
-    return result;
+    return _responseDecoder.decodeIntMap(raw);
   }
 
   DateTime? _parseDateTime(Object? raw) {

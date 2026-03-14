@@ -4,6 +4,8 @@ import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.d
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_definition.dart';
+import 'package:belluga_now/infrastructure/dal/dao/tenant_admin/tenant_admin_taxonomies_request_encoder.dart';
+import 'package:belluga_now/infrastructure/dal/dto/tenant_admin/tenant_admin_taxonomies_response_decoder.dart';
 import 'package:belluga_now/infrastructure/dal/dto/mappers/tenant_admin_dto_mapper.dart';
 import 'package:belluga_now/infrastructure/repositories/tenant_admin/tenant_admin_pagination_utils.dart';
 import 'package:belluga_now/infrastructure/repositories/tenant_admin/support/tenant_admin_validation_failure_resolver.dart';
@@ -21,6 +23,10 @@ class TenantAdminTaxonomiesRepository
 
   final Dio _dio;
   final TenantAdminTenantScopeContract? _tenantScope;
+  final TenantAdminTaxonomiesResponseDecoder _responseDecoder =
+      const TenantAdminTaxonomiesResponseDecoder();
+  final TenantAdminTaxonomiesRequestEncoder _requestEncoder =
+      const TenantAdminTaxonomiesRequestEncoder();
 
   String get _apiBaseUrl =>
       (_tenantScope ?? GetIt.I.get<TenantAdminTenantScopeContract>())
@@ -69,9 +75,9 @@ class TenantAdminTaxonomiesRepository
         },
         options: Options(headers: _buildHeaders()),
       );
-      final data = _extractList(response.data);
+      final dtos = _responseDecoder.decodeTaxonomyList(response.data);
       return TenantAdminPagedResult<TenantAdminTaxonomyDefinition>(
-        items: data.map(_mapTaxonomy).toList(growable: false),
+        items: dtos.map(mapTenantAdminTaxonomyDto).toList(growable: false),
         hasMore: tenantAdminResolveHasMore(
           rawResponse: response.data,
           requestedPage: page,
@@ -102,8 +108,8 @@ class TenantAdminTaxonomiesRepository
         },
         options: Options(headers: _buildHeaders()),
       );
-      final item = _extractItem(response.data);
-      return _mapTaxonomy(item);
+      final dto = _responseDecoder.decodeTaxonomyItem(response.data);
+      return mapTenantAdminTaxonomyDto(dto);
     } on DioException catch (error) {
       throw _wrapError(error, 'create taxonomy');
     }
@@ -119,29 +125,20 @@ class TenantAdminTaxonomiesRepository
     String? color,
   }) async {
     try {
-      final payload = <String, Object?>{};
-      if (slug != null && slug.trim().isNotEmpty) {
-        payload['slug'] = slug.trim();
-      }
-      if (name != null && name.trim().isNotEmpty) {
-        payload['name'] = name.trim();
-      }
-      if (appliesTo != null) {
-        payload['applies_to'] = appliesTo;
-      }
-      if (icon != null) {
-        payload['icon'] = icon.trim();
-      }
-      if (color != null) {
-        payload['color'] = color.trim();
-      }
+      final payload = _requestEncoder.encodeTaxonomyUpdate(
+        slug: slug,
+        name: name,
+        appliesTo: appliesTo,
+        icon: icon,
+        color: color,
+      );
       final response = await _dio.patch(
         '$_apiBaseUrl/v1/taxonomies/$taxonomyId',
         data: payload,
         options: Options(headers: _buildHeaders()),
       );
-      final item = _extractItem(response.data);
-      return _mapTaxonomy(item);
+      final dto = _responseDecoder.decodeTaxonomyItem(response.data);
+      return mapTenantAdminTaxonomyDto(dto);
     } on DioException catch (error) {
       throw _wrapError(error, 'update taxonomy');
     }
@@ -198,9 +195,11 @@ class TenantAdminTaxonomiesRepository
         },
         options: Options(headers: _buildHeaders()),
       );
-      final data = _extractList(response.data);
+      final dtos = _responseDecoder.decodeTermList(response.data);
       return TenantAdminPagedResult<TenantAdminTaxonomyTermDefinition>(
-        items: data.map(_mapTerm).toList(growable: false),
+        items: dtos
+            .map(mapTenantAdminTaxonomyTermDefinitionDto)
+            .toList(growable: false),
         hasMore: tenantAdminResolveHasMore(
           rawResponse: response.data,
           requestedPage: page,
@@ -226,8 +225,8 @@ class TenantAdminTaxonomiesRepository
         },
         options: Options(headers: _buildHeaders()),
       );
-      final item = _extractItem(response.data);
-      return _mapTerm(item);
+      final dto = _responseDecoder.decodeTermItem(response.data);
+      return mapTenantAdminTaxonomyTermDefinitionDto(dto);
     } on DioException catch (error) {
       throw _wrapError(error, 'create taxonomy term');
     }
@@ -241,20 +240,17 @@ class TenantAdminTaxonomiesRepository
     String? name,
   }) async {
     try {
-      final payload = <String, Object?>{};
-      if (slug != null && slug.trim().isNotEmpty) {
-        payload['slug'] = slug.trim();
-      }
-      if (name != null && name.trim().isNotEmpty) {
-        payload['name'] = name.trim();
-      }
+      final payload = _requestEncoder.encodeTermUpdate(
+        slug: slug,
+        name: name,
+      );
       final response = await _dio.patch(
         '$_apiBaseUrl/v1/taxonomies/$taxonomyId/terms/$termId',
         data: payload,
         options: Options(headers: _buildHeaders()),
       );
-      final item = _extractItem(response.data);
-      return _mapTerm(item);
+      final dto = _responseDecoder.decodeTermItem(response.data);
+      return mapTenantAdminTaxonomyTermDefinitionDto(dto);
     } on DioException catch (error) {
       throw _wrapError(error, 'update taxonomy term');
     }
@@ -273,36 +269,6 @@ class TenantAdminTaxonomiesRepository
     } on DioException catch (error) {
       throw _wrapError(error, 'delete taxonomy term');
     }
-  }
-
-  Map<String, Object?> _extractItem(Object? raw) {
-    if (raw is Map<String, Object?>) {
-      final data = raw['data'];
-      if (data is Map<String, Object?>) return data;
-      return raw;
-    }
-    throw Exception('Unexpected taxonomy response shape.');
-  }
-
-  List<Map<String, Object?>> _extractList(Object? raw) {
-    if (raw is Map<String, Object?>) {
-      final data = raw['data'];
-      if (data is List) {
-        return data
-            .whereType<Map>()
-            .map((entry) => Map<String, Object?>.from(entry))
-            .toList();
-      }
-    }
-    throw Exception('Unexpected taxonomy list response shape.');
-  }
-
-  TenantAdminTaxonomyDefinition _mapTaxonomy(Map<String, Object?> json) {
-    return mapTenantAdminTaxonomyJson(json);
-  }
-
-  TenantAdminTaxonomyTermDefinition _mapTerm(Map<String, Object?> json) {
-    return mapTenantAdminTaxonomyTermDefinitionJson(json);
   }
 
   Exception _wrapError(DioException error, String label) {

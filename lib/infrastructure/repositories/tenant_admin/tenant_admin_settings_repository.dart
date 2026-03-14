@@ -4,6 +4,9 @@ import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.d
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_settings.dart';
 import 'package:belluga_now/infrastructure/dal/dao/http/json_object_response_decoder.dart';
+import 'package:belluga_now/infrastructure/dal/dao/http/raw_json_envelope_decoder.dart';
+import 'package:belluga_now/infrastructure/dal/dao/tenant_admin/tenant_admin_settings_request_encoder.dart';
+import 'package:belluga_now/infrastructure/dal/dao/tenant_admin/tenant_admin_settings_response_decoder.dart';
 import 'package:belluga_now/infrastructure/repositories/tenant_admin/support/tenant_admin_validation_failure_resolver.dart';
 import 'package:dio/dio.dart';
 import 'package:get_it/get_it.dart';
@@ -22,6 +25,12 @@ class TenantAdminSettingsRepository
   final TenantAdminTenantScopeContract? _tenantScope;
   final JsonObjectResponseDecoder _jsonObjectResponseDecoder =
       const JsonObjectResponseDecoder();
+  final RawJsonEnvelopeDecoder _envelopeDecoder =
+      const RawJsonEnvelopeDecoder();
+  final TenantAdminSettingsRequestEncoder _requestEncoder =
+      const TenantAdminSettingsRequestEncoder();
+  final TenantAdminSettingsResponseDecoder _responseDecoder =
+      const TenantAdminSettingsResponseDecoder();
   final StreamValue<TenantAdminBrandingSettings?> _brandingSettingsStreamValue =
       StreamValue<TenantAdminBrandingSettings?>(defaultValue: null);
   int _brandingFetchSequence = 0;
@@ -42,8 +51,10 @@ class TenantAdminSettingsRepository
         _buildTenantSettingsValuesUri(),
         options: Options(headers: _buildHeaders()),
       );
-      final mapUi = _extractMapUiPayload(response.data);
-      return _mapMapUiSettings(mapUi);
+      return _responseDecoder.decodeMapUiSettings(
+        response.data,
+        tenantOrigin: _resolveTenantOriginUri(),
+      );
     } on DioException catch (error) {
       throw _wrapError(error, 'load map_ui settings');
     }
@@ -56,11 +67,13 @@ class TenantAdminSettingsRepository
     try {
       final response = await _dio.patchUri(
         _buildTenantSettingsValuesUri(namespace: 'map_ui'),
-        data: _toSettingsPatchPayload(settings.rawMapUi),
+        data: _requestEncoder.encodeMapUiSettingsPatch(settings),
         options: Options(headers: _buildHeaders()),
       );
-      final mapUi = _extractMapUiPayload(response.data);
-      return _mapMapUiSettings(mapUi);
+      return _responseDecoder.decodeMapUiSettings(
+        response.data,
+        tenantOrigin: _resolveTenantOriginUri(),
+      );
     } on DioException catch (error) {
       throw _wrapError(error, 'update map_ui settings');
     }
@@ -89,16 +102,11 @@ class TenantAdminSettingsRepository
           contentType: 'multipart/form-data',
         ),
       );
-      final payloadMap = _extractDataMap(response.data);
-      final imageUri = _normalizeMapFilterImageUri(
-            key: key,
-            rawImageUri: payloadMap['image_uri'],
-          ) ??
-          '';
-      if (imageUri.isEmpty) {
-        throw Exception('Map filter image upload response is empty.');
-      }
-      return imageUri;
+      return _responseDecoder.decodeMapFilterImageUpload(
+        response.data,
+        key: key,
+        tenantOrigin: _resolveTenantOriginUri(),
+      );
     } on DioException catch (error) {
       throw _wrapError(error, 'upload map filter image');
     }
@@ -123,8 +131,9 @@ class TenantAdminSettingsRepository
         '$_apiBaseUrl/v1/settings/firebase',
         options: Options(headers: _buildHeaders()),
       );
-      final payload = _extractDataMap(response.data);
-      return _mapFirebaseSettings(payload);
+      return _responseDecoder.decodeFirebaseSettings(
+        response.data,
+      );
     } on DioException catch (error) {
       throw _wrapError(error, 'load firebase settings');
     }
@@ -140,8 +149,9 @@ class TenantAdminSettingsRepository
         data: {'firebase': settings.toJson()},
         options: Options(headers: _buildHeaders()),
       );
-      final payload = _extractDataMap(response.data);
-      final mapped = _mapFirebaseSettings(payload);
+      final mapped = _responseDecoder.decodeFirebaseSettings(
+        response.data,
+      );
       if (mapped == null) {
         throw Exception('Firebase settings response is empty.');
       }
@@ -161,8 +171,7 @@ class TenantAdminSettingsRepository
         data: {'push': settings.toJson()},
         options: Options(headers: _buildHeaders()),
       );
-      final payload = _extractDataMap(response.data);
-      return _mapPushSettings(payload);
+      return _responseDecoder.decodePushSettings(response.data);
     } on DioException catch (error) {
       throw _wrapError(error, 'update push settings');
     }
@@ -175,7 +184,7 @@ class TenantAdminSettingsRepository
         '$_apiBaseUrl/v1/settings/telemetry',
         options: Options(headers: _buildHeaders()),
       );
-      return _mapTelemetrySnapshot(response.data);
+      return _responseDecoder.decodeTelemetrySnapshot(response.data);
     } on DioException catch (error) {
       throw _wrapError(error, 'load telemetry settings');
     }
@@ -191,7 +200,7 @@ class TenantAdminSettingsRepository
         data: integration.toUpsertPayload(),
         options: Options(headers: _buildHeaders()),
       );
-      return _mapTelemetrySnapshot(response.data);
+      return _responseDecoder.decodeTelemetrySnapshot(response.data);
     } on DioException catch (error) {
       throw _wrapError(error, 'save telemetry integration');
     }
@@ -207,7 +216,7 @@ class TenantAdminSettingsRepository
         '$_apiBaseUrl/v1/settings/telemetry/$encodedType',
         options: Options(headers: _buildHeaders()),
       );
-      return _mapTelemetrySnapshot(response.data);
+      return _responseDecoder.decodeTelemetrySnapshot(response.data);
     } on DioException catch (error) {
       throw _wrapError(error, 'delete telemetry integration');
     }
@@ -226,13 +235,14 @@ class TenantAdminSettingsRepository
           headers: _buildBrandingReadHeaders(),
         ),
       );
-      final payload = _extractEnvironmentMap(
+      final payload = _envelopeDecoder.decodeEnvironmentMap(
         _jsonObjectResponseDecoder.decode(
           response.data,
           endpoint: response.requestOptions.uri,
         ),
+        label: 'environment',
       );
-      final settings = _mapBrandingFromEnvironment(
+      final settings = _responseDecoder.decodeBrandingFromEnvironment(
         payload,
         tenantOrigin: _resolveTenantOriginUri(
           apiBaseUrl: requestedApiBaseUrl,
@@ -323,299 +333,6 @@ class TenantAdminSettingsRepository
     } on DioException catch (error) {
       throw _wrapError(error, 'update branding settings');
     }
-  }
-
-  Map<String, Object?> _extractDataMap(Object? raw) {
-    if (raw is Map<String, Object?>) {
-      final data = raw['data'];
-      if (data is Map<String, Object?>) {
-        return data;
-      }
-      if (raw.containsKey('data')) {
-        return const {};
-      }
-      return raw;
-    }
-    throw Exception('Unexpected settings response shape.');
-  }
-
-  Map<String, Object?> _extractMapUiPayload(Object? raw) {
-    final payload = _extractDataMap(raw);
-    if (payload.containsKey('map_ui')) {
-      final mapUiRaw = payload['map_ui'];
-      if (mapUiRaw is Map) {
-        return Map<String, Object?>.from(mapUiRaw);
-      }
-      if (mapUiRaw == null) {
-        return const <String, Object?>{};
-      }
-      if (mapUiRaw is List && mapUiRaw.isEmpty) {
-        return const <String, Object?>{};
-      }
-      throw Exception('Unexpected map_ui payload shape.');
-    }
-    return Map<String, Object?>.from(payload);
-  }
-
-  TenantAdminMapUiSettings _mapMapUiSettings(Map<String, Object?> mapUi) {
-    final defaultOriginRaw = mapUi['default_origin'];
-    TenantAdminMapDefaultOrigin? defaultOrigin;
-    if (defaultOriginRaw is Map) {
-      final originMap = Map<String, Object?>.from(defaultOriginRaw);
-      final lat = _parseDouble(originMap['lat']);
-      final lng = _parseDouble(originMap['lng']);
-      if (lat != null && lng != null) {
-        final rawLabel = originMap['label']?.toString().trim();
-        defaultOrigin = TenantAdminMapDefaultOrigin(
-          lat: lat,
-          lng: lng,
-          label: rawLabel == null || rawLabel.isEmpty ? null : rawLabel,
-        );
-      }
-    } else {
-      final lat = _parseDouble(mapUi['default_origin.lat']);
-      final lng = _parseDouble(mapUi['default_origin.lng']);
-      if (lat != null && lng != null) {
-        final rawLabel = mapUi['default_origin.label']?.toString().trim();
-        defaultOrigin = TenantAdminMapDefaultOrigin(
-          lat: lat,
-          lng: lng,
-          label: rawLabel == null || rawLabel.isEmpty ? null : rawLabel,
-        );
-      }
-    }
-
-    final filters = <TenantAdminMapFilterCatalogItem>[];
-    final rawFilters = mapUi['filters'];
-    if (rawFilters is List) {
-      for (final entry in rawFilters) {
-        if (entry is! Map) {
-          continue;
-        }
-        final filterMap = Map<String, Object?>.from(entry);
-        final key = filterMap['key']?.toString().trim() ?? '';
-        final label = filterMap['label']?.toString().trim() ?? '';
-        final imageUri = _normalizeMapFilterImageUri(
-          key: key,
-          rawImageUri: filterMap['image_uri'],
-        );
-        final query = _mapMapFilterQuery(
-          filterMap['query'] is Map
-              ? Map<String, Object?>.from(filterMap['query'] as Map)
-              : null,
-        );
-        if (key.isEmpty || label.isEmpty) {
-          continue;
-        }
-        filters.add(
-          TenantAdminMapFilterCatalogItem(
-            key: key,
-            label: label,
-            imageUri: imageUri == null || imageUri.isEmpty ? null : imageUri,
-            query: query,
-          ),
-        );
-      }
-    }
-
-    return TenantAdminMapUiSettings(
-      rawMapUi: Map<String, Object?>.unmodifiable(
-        Map<String, Object?>.from(mapUi),
-      ),
-      defaultOrigin: defaultOrigin,
-      filters: List<TenantAdminMapFilterCatalogItem>.unmodifiable(filters),
-    );
-  }
-
-  Map<String, Object?> _extractEnvironmentMap(Object? raw) {
-    if (raw is! Map<String, Object?>) {
-      throw Exception('Unexpected environment response shape.');
-    }
-    final data = raw['data'];
-    if (data == null) {
-      return raw;
-    }
-    if (data is Map<String, Object?>) {
-      return data;
-    }
-    throw Exception('Unexpected environment data shape.');
-  }
-
-  TenantAdminTelemetrySettingsSnapshot _mapTelemetrySnapshot(Object? raw) {
-    if (raw is! Map<String, Object?>) {
-      throw Exception('Unexpected telemetry response shape.');
-    }
-
-    final integrations =
-        _extractDataList(raw['data']).map(_mapTelemetry).toList(
-              growable: false,
-            );
-    final availableEvents = _extractStringList(raw['available_events']);
-    return TenantAdminTelemetrySettingsSnapshot(
-      integrations: integrations,
-      availableEvents: availableEvents,
-    );
-  }
-
-  List<Map<String, Object?>> _extractDataList(Object? raw) {
-    if (raw is List) {
-      return raw
-          .whereType<Map>()
-          .map((entry) => Map<String, Object?>.from(entry))
-          .toList(growable: false);
-    }
-    return const [];
-  }
-
-  List<String> _extractStringList(Object? raw) {
-    if (raw is List) {
-      return raw
-          .map((entry) => entry.toString().trim())
-          .where((value) => value.isNotEmpty)
-          .toList(growable: false);
-    }
-    return const [];
-  }
-
-  TenantAdminMapFilterQuery _mapMapFilterQuery(Map<String, Object?>? json) {
-    if (json == null) {
-      return TenantAdminMapFilterQuery();
-    }
-
-    List<String> asStringList(Object? raw) {
-      if (raw is! List) {
-        return const <String>[];
-      }
-      return raw
-          .map((entry) => entry.toString().trim().toLowerCase())
-          .where((entry) => entry.isNotEmpty)
-          .toSet()
-          .toList(growable: false);
-    }
-
-    return TenantAdminMapFilterQuery(
-      source: TenantAdminMapFilterSource.fromRaw(json['source']?.toString()),
-      types: asStringList(json['types']),
-      taxonomy: asStringList(json['taxonomy']),
-    );
-  }
-
-  TenantAdminFirebaseSettings? _mapFirebaseSettings(Map<String, Object?> map) {
-    final apiKey = map['apiKey']?.toString().trim();
-    final appId = map['appId']?.toString().trim();
-    final projectId = map['projectId']?.toString().trim();
-    final sender = map['messagingSenderId']?.toString().trim();
-    final storageBucket = map['storageBucket']?.toString().trim();
-    if (apiKey == null ||
-        appId == null ||
-        projectId == null ||
-        sender == null ||
-        storageBucket == null ||
-        apiKey.isEmpty ||
-        appId.isEmpty ||
-        projectId.isEmpty ||
-        sender.isEmpty ||
-        storageBucket.isEmpty) {
-      return null;
-    }
-    return TenantAdminFirebaseSettings(
-      apiKey: apiKey,
-      appId: appId,
-      projectId: projectId,
-      messagingSenderId: sender,
-      storageBucket: storageBucket,
-    );
-  }
-
-  TenantAdminPushSettings _mapPushSettings(Map<String, Object?> map) {
-    final ttlDays = _parseInt(map['max_ttl_days']) ?? 30;
-    final throttlesRaw = map['throttles'];
-    final throttles = throttlesRaw is Map<String, Object?>
-        ? throttlesRaw
-        : const <String, Object?>{};
-    final maxPerMinute = _parseInt(throttles['max_per_minute']) ?? 60;
-    final maxPerHour = _parseInt(throttles['max_per_hour']) ?? 600;
-    return TenantAdminPushSettings(
-      maxTtlDays: ttlDays,
-      maxPerMinute: maxPerMinute,
-      maxPerHour: maxPerHour,
-    );
-  }
-
-  TenantAdminTelemetryIntegration _mapTelemetry(Map<String, Object?> map) {
-    final type = map['type']?.toString().trim() ?? '';
-    final trackAll = _parseBool(map['track_all']);
-    final events = _extractStringList(map['events']);
-    final token = map['token']?.toString().trim();
-    final url = map['url']?.toString().trim();
-
-    final extra = <String, Object?>{};
-    for (final entry in map.entries) {
-      if (entry.key == 'type' ||
-          entry.key == 'track_all' ||
-          entry.key == 'events' ||
-          entry.key == 'token' ||
-          entry.key == 'url') {
-        continue;
-      }
-      extra[entry.key] = entry.value;
-    }
-
-    return TenantAdminTelemetryIntegration(
-      type: type,
-      trackAll: trackAll,
-      events: events,
-      token: token == null || token.isEmpty ? null : token,
-      url: url == null || url.isEmpty ? null : url,
-      extra: extra.isEmpty ? null : extra,
-    );
-  }
-
-  TenantAdminBrandingSettings _mapBrandingFromEnvironment(
-    Map<String, Object?> map, {
-    required Uri tenantOrigin,
-  }) {
-    final environmentType = map['type']?.toString().trim().toLowerCase();
-    if (environmentType != 'tenant') {
-      throw Exception(
-        'Unexpected environment type "$environmentType" for tenant branding read.',
-      );
-    }
-
-    final themeSettingsRaw = map['theme_data_settings'];
-    if (themeSettingsRaw is! Map<String, Object?>) {
-      throw Exception('Missing theme_data_settings in tenant environment.');
-    }
-    final themeSettings = themeSettingsRaw;
-
-    final tenantName = _requireNonEmptyString(
-      map['name'],
-      fieldName: 'name',
-    );
-    final primarySeedColor = _requireHexColor(
-      themeSettings['primary_seed_color'],
-      fieldName: 'theme_data_settings.primary_seed_color',
-    );
-    final secondarySeedColor = _requireHexColor(
-      themeSettings['secondary_seed_color'],
-      fieldName: 'theme_data_settings.secondary_seed_color',
-    );
-    final brightnessDefault = _parseBrandingBrightness(
-      themeSettings['brightness_default'],
-    );
-
-    return TenantAdminBrandingSettings(
-      tenantName: tenantName,
-      brightnessDefault: brightnessDefault,
-      primarySeedColor: primarySeedColor,
-      secondarySeedColor: secondarySeedColor,
-      lightLogoUrl: _buildTenantAssetUrl(tenantOrigin, 'logo-light.png'),
-      darkLogoUrl: _buildTenantAssetUrl(tenantOrigin, 'logo-dark.png'),
-      lightIconUrl: _buildTenantAssetUrl(tenantOrigin, 'icon-light.png'),
-      darkIconUrl: _buildTenantAssetUrl(tenantOrigin, 'icon-dark.png'),
-      faviconUrl: _buildTenantAssetUrl(tenantOrigin, 'favicon.ico'),
-      pwaIconUrl: _resolvePwaIconUrl(map, tenantOrigin: tenantOrigin),
-    );
   }
 
   Uri _buildEnvironmentEndpointUri({String? apiBaseUrl}) {
@@ -734,173 +451,10 @@ class TenantAdminSettingsRepository
         .toString();
   }
 
-  String? _resolvePwaIconUrl(
-    Map<String, Object?> payload, {
-    required Uri tenantOrigin,
-  }) {
-    final logoSettings = payload['logo_settings'];
-    final fromLogoSettings = _extractPwaIconUrlFromNode(
-      logoSettings,
-      tenantOrigin: tenantOrigin,
-    );
-    if (fromLogoSettings != null) {
-      return fromLogoSettings;
-    }
-
-    return _extractPwaIconUrlFromNode(
-      payload['pwa_icon'],
-      tenantOrigin: tenantOrigin,
-    );
-  }
-
-  String? _extractPwaIconUrlFromNode(
-    Object? node, {
-    required Uri tenantOrigin,
-  }) {
-    if (node is String) {
-      return _resolveAssetUrl(
-        node,
-        tenantOrigin: tenantOrigin,
-      );
-    }
-    if (node is! Map) {
-      return null;
-    }
-
-    final map = Map<String, Object?>.from(node);
-    final direct = _resolveAssetUrl(
-      map['icon512_uri'],
-      tenantOrigin: tenantOrigin,
-    );
-    if (direct != null) {
-      return direct;
-    }
-
-    final uri = _resolveAssetUrl(
-      map['uri'],
-      tenantOrigin: tenantOrigin,
-    );
-    if (uri != null) {
-      return uri;
-    }
-
-    final pwaIconUri = _resolveAssetUrl(
-      map['pwa_icon_uri'],
-      tenantOrigin: tenantOrigin,
-    );
-    if (pwaIconUri != null) {
-      return pwaIconUri;
-    }
-
-    final nested = map['pwa_icon'];
-    if (nested != null && !identical(nested, node)) {
-      return _extractPwaIconUrlFromNode(
-        nested,
-        tenantOrigin: tenantOrigin,
-      );
-    }
-    return null;
-  }
-
-  String? _resolveAssetUrl(
-    Object? raw, {
-    required Uri tenantOrigin,
-  }) {
-    final value = raw?.toString().trim();
-    if (value == null || value.isEmpty) {
-      return null;
-    }
-    final parsed = Uri.tryParse(value);
-    if (parsed == null) {
-      return null;
-    }
-    if (parsed.host.trim().isNotEmpty) {
-      return parsed.toString();
-    }
-    return tenantOrigin.resolveUri(parsed).toString();
-  }
-
-  String? _normalizeMapFilterImageUri({
-    required String key,
-    required Object? rawImageUri,
-  }) {
-    final normalizedKey = key.trim().toLowerCase();
-    final value = rawImageUri?.toString().trim();
-    if (normalizedKey.isEmpty || value == null || value.isEmpty) {
-      return null;
-    }
-
-    final tenantOrigin = _resolveTenantOriginUri();
-    final parsed = Uri.tryParse(value);
-    if (parsed == null) {
-      return value;
-    }
-
-    final path = parsed.path.trim();
-    final legacyPath = '/map-filters/$normalizedKey/image';
-    final canonicalPath = '/api/v1/media/map-filters/$normalizedKey';
-
-    if (path == legacyPath || path == canonicalPath) {
-      final canonicalUri = tenantOrigin.resolve(canonicalPath);
-      final query = parsed.hasQuery ? parsed.query : null;
-      return canonicalUri
-          .replace(query: query == null || query.isEmpty ? null : query)
-          .toString();
-    }
-
-    if (parsed.host.trim().isNotEmpty) {
-      return parsed.toString();
-    }
-
-    return tenantOrigin.resolveUri(parsed).toString();
-  }
-
   Map<String, String> _buildBrandingReadHeaders() {
     return {
       'Accept': 'application/json',
     };
-  }
-
-  String _requireNonEmptyString(
-    Object? raw, {
-    required String fieldName,
-  }) {
-    final value = raw?.toString().trim();
-    if (value == null || value.isEmpty) {
-      throw Exception('Missing required environment field: $fieldName');
-    }
-    return value;
-  }
-
-  String _requireHexColor(
-    Object? raw, {
-    required String fieldName,
-  }) {
-    final value = _normalizeHexColor(raw);
-    if (value == null) {
-      throw Exception('Invalid or missing color field: $fieldName');
-    }
-    return value;
-  }
-
-  TenantAdminBrandingBrightness _parseBrandingBrightness(Object? raw) {
-    final value = raw?.toString().trim().toLowerCase();
-    if (value == 'light') {
-      return TenantAdminBrandingBrightness.light;
-    }
-    if (value == 'dark') {
-      return TenantAdminBrandingBrightness.dark;
-    }
-    throw Exception(
-      'Invalid or missing brightness field: theme_data_settings.brightness_default',
-    );
-  }
-
-  bool _parseBool(Object? value) {
-    if (value is bool) return value;
-    if (value is num) return value != 0;
-    final raw = value?.toString().trim().toLowerCase();
-    return raw == '1' || raw == 'true' || raw == 'yes';
   }
 
   void _appendUpload(
@@ -933,75 +487,6 @@ class TenantAdminSettingsRepository
       return MediaType('application', 'octet-stream');
     }
     return MediaType(parts[0], parts[1]);
-  }
-
-  String? _normalizeHexColor(Object? raw) {
-    final value = raw?.toString().trim();
-    if (value == null || value.isEmpty) {
-      return null;
-    }
-    final sixDigit = RegExp(r'^#([a-fA-F0-9]{6})$');
-    if (sixDigit.hasMatch(value)) {
-      return value.toUpperCase();
-    }
-    final threeDigit = RegExp(r'^#([a-fA-F0-9]{3})$');
-    final match = threeDigit.firstMatch(value);
-    if (match == null) {
-      return null;
-    }
-    final compact = match.group(1)!;
-    final expanded = compact.split('').map((char) => '$char$char').join();
-    return '#${expanded.toUpperCase()}';
-  }
-
-  int? _parseInt(Object? value) {
-    if (value is int) return value;
-    if (value is num) return value.toInt();
-    if (value is String) return int.tryParse(value.trim());
-    return null;
-  }
-
-  double? _parseDouble(Object? value) {
-    if (value is double) return value;
-    if (value is int) return value.toDouble();
-    if (value is num) return value.toDouble();
-    if (value is String) return double.tryParse(value.trim());
-    return null;
-  }
-
-  Map<String, Object?> _toSettingsPatchPayload(Map<String, Object?> source) {
-    final flattened = <String, Object?>{};
-    _flattenSettingsPayload(
-      source,
-      flattened,
-      prefix: null,
-    );
-    return flattened;
-  }
-
-  void _flattenSettingsPayload(
-    Map<String, Object?> source,
-    Map<String, Object?> output, {
-    required String? prefix,
-  }) {
-    source.forEach((rawKey, value) {
-      final key = rawKey.trim();
-      if (key.isEmpty) {
-        return;
-      }
-
-      final path = prefix == null ? key : '$prefix.$key';
-      if (value is Map) {
-        _flattenSettingsPayload(
-          Map<String, Object?>.from(value),
-          output,
-          prefix: path,
-        );
-        return;
-      }
-
-      output[path] = value;
-    });
   }
 
   Exception _wrapError(DioException error, String label) {

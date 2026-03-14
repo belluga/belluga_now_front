@@ -243,6 +243,69 @@ bool containsForbiddenRepositoryRawTransportType(TypeAnnotation? type) {
   return args.any(containsForbiddenRepositoryRawTransportType);
 }
 
+bool containsRepositoryRawPayloadMapType(TypeAnnotation? type) {
+  if (type == null) {
+    return false;
+  }
+
+  if (type is GenericFunctionType) {
+    if (containsRepositoryRawPayloadMapType(type.returnType)) {
+      return true;
+    }
+
+    for (final parameter in type.parameters.parameters) {
+      final parameterType = _formalParameterType(parameter);
+      if (containsRepositoryRawPayloadMapType(parameterType)) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  final typeName = topLevelTypeName(type);
+  if (typeName == null || typeName.isEmpty) {
+    return false;
+  }
+
+  if (typeName == 'dynamic') {
+    return true;
+  }
+
+  final args = typeArgumentListOf(type)?.arguments;
+  if (typeName == 'Map') {
+    if (args == null || args.length < 2) {
+      // Bare `Map` in repositories is treated as raw transport workaround.
+      return true;
+    }
+
+    final keyTypeName = topLevelTypeName(args.first);
+    final valueType = args[1];
+    final valueTypeName = topLevelTypeName(valueType);
+    if (keyTypeName == 'String') {
+      if (valueTypeName == 'Object' || valueTypeName == 'dynamic') {
+        return true;
+      }
+
+      if (valueTypeName == 'Map' ||
+          valueTypeName == 'List' ||
+          valueTypeName == 'Iterable') {
+        return true;
+      }
+
+      if (containsRepositoryRawPayloadMapType(valueType)) {
+        return true;
+      }
+    }
+  }
+
+  if (args == null || args.isEmpty) {
+    return false;
+  }
+
+  return args.any(containsRepositoryRawPayloadMapType);
+}
+
 TypeAnnotation? _formalParameterType(FormalParameter parameter) {
   final normalized =
       parameter is DefaultFormalParameter ? parameter.parameter : parameter;

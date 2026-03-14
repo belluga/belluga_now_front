@@ -33,6 +33,7 @@
 - `domain_dto_dependency_forbidden` (`P0`): domain cannot depend on DTO artifacts.
 - `domain_json_factory_forbidden` (`P0`): domain cannot declare `fromJson`/`fromMap` factories.
 - `repository_json_parsing_forbidden` (`P0`): repositories cannot parse raw JSON or hydrate DTOs directly.
+- `repository_raw_payload_map_forbidden` (`P0`): repositories cannot own raw payload map typing/parsing/building (`Map<String, Object?>`).
 - `repository_raw_transport_typing_forbidden` (`P0`): repositories cannot declare raw transport typing such as `dynamic` or `Map<String, dynamic>`.
 - `service_json_parsing_forbidden` (`P0`): services cannot parse raw JSON or hydrate DTOs directly.
 - `repository_inline_dto_to_domain_mapper_forbidden` (`P0`): repositories cannot own inline DTO -> domain mapper methods.
@@ -50,6 +51,8 @@
 - `controller_buildcontext_dependency_forbidden` (`P2`): controllers cannot use `BuildContext` in API/signatures.
 - `global_ui_controller_naming_forbidden` (`P2`): sanctioned global registrations cannot use UI controller naming (`*Controller`, `*ControllerContract`).
 - `tenant_canonical_domain_required` (`P0`): tenant-scoped networking/config code must derive API/admin origins from `AppData.mainDomainValue`, not `href`/`hostname`/`schema`.
+
+Rollout note: `repository_raw_payload_map_forbidden` is currently kept disabled in root `analysis_options.yaml` and enforced via branch-delta checks during the debt burndown program.
 
 ## Violation/Fix Examples
 
@@ -161,6 +164,30 @@ Fix:
 ```dart
 Future<EventDto> fetchEventDto() => _dao.fetchEventDto();
 ```
+
+### `repository_raw_payload_map_forbidden`
+Violation:
+```dart
+Map<String, Object?> _extractItem(Object? raw) { ... }
+final payload = <String, Object?>{'name': name};
+```
+Fix:
+```dart
+final response = await dao.fetchAccountItemDto();
+return mapAccountDto(response);
+```
+
+Resolution playbook:
+1. Create or extend a DAO/DTO **response decoder** that receives raw HTTP payload and outputs typed DTOs (or typed decoder models).
+2. Move all repository `_extract*` map/envelope/list parsing into that decoder (including `is Map`, `as/cast`, `whereType<Map>`).
+3. For write flows, create a DAO-side **request encoder/builder** that assembles transport maps/multipart payloads.
+4. Make repository methods consume typed decoder outputs and return domain/projections only (no raw map ownership).
+5. During debt-lane rollout, run branch-delta guard (`bash tool/belluga_custom_lint/bin/check_branch_delta_raw_payload_map.sh`) even when the rule is disabled globally in root config.
+
+No-workaround policy (linted as violations in repositories):
+- `Map` without generics as a replacement for `Map<String, Object?>`.
+- `is Map` / `is! Map` used for envelope parsing in repositories.
+- `cast<String, Object?>()` or `whereType<Map>()` used to bypass typed raw-map checks.
 
 ### `service_json_parsing_forbidden`
 Violation:
