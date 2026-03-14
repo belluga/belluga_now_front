@@ -85,6 +85,21 @@ void main() {
     expect(adapter.requests, hasLength(2));
   });
 
+  test('fetchAccountsPage maps account avatar_url when provided', () async {
+    final adapter = _AccountsRoutingAdapter();
+    final dio = Dio()..httpClientAdapter = adapter;
+    final scope = _MutableTenantScope('https://tenant-a.test/admin/api');
+    final repository = TenantAdminAccountsRepository(
+      dio: dio,
+      tenantScope: scope,
+    );
+
+    final page = await repository.fetchAccountsPage(page: 1, pageSize: 2);
+
+    expect(page.accounts, isNotEmpty);
+    expect(page.accounts.first.avatarUrl, 'https://cdn.test/avatars/acc-1.png');
+  });
+
   test('fetchAccountsPage maps missing ownership_state to unmanaged', () async {
     final adapter = _AccountsRoutingAdapter(includeOwnershipState: false);
     final dio = Dio()..httpClientAdapter = adapter;
@@ -484,11 +499,13 @@ class _AccountsRoutingAdapter implements HttpClientAdapter {
     required String id,
     required String slug,
     String? ownershipState,
+    String? avatarUrl,
   }) {
     return {
       'id': id,
       'name': 'Conta $id',
       'slug': slug,
+      'avatar_url': avatarUrl ?? 'https://cdn.test/avatars/$slug.png',
       'document': {
         'type': 'cpf',
         'number': '000$id',

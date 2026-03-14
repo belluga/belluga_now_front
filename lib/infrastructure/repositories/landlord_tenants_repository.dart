@@ -1,6 +1,7 @@
 import 'package:belluga_now/application/configurations/belluga_constants.dart';
 import 'package:belluga_now/domain/repositories/landlord_auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/landlord_tenants_repository_contract.dart';
+import 'package:belluga_now/infrastructure/dal/dao/landlord/landlord_tenants_response_decoder.dart';
 import 'package:dio/dio.dart';
 import 'package:get_it/get_it.dart';
 
@@ -16,6 +17,8 @@ class LandlordTenantsRepository implements LandlordTenantsRepositoryContract {
   final Dio _dio;
   final LandlordAuthRepositoryContract? _landlordAuthRepository;
   final String? _landlordOriginOverride;
+  final LandlordTenantsResponseDecoder _responseDecoder =
+      const LandlordTenantsResponseDecoder();
 
   LandlordAuthRepositoryContract get _authRepository =>
       _landlordAuthRepository ?? GetIt.I.get<LandlordAuthRepositoryContract>();
@@ -36,10 +39,14 @@ class LandlordTenantsRepository implements LandlordTenantsRepositoryContract {
         options: Options(headers: _buildHeaders()),
       );
 
-      final responseMap = _asMap(response.data);
-      final data = _extractDataList(responseMap['data']);
+      final responseMap = _responseDecoder.decodeRoot(response.data);
+      final data = _responseDecoder.decodeTenantList(response.data);
       for (final tenantMap in data) {
-        final tenant = _mapTenant(tenantMap);
+        final tenant = _responseDecoder.mapTenantOption(
+          tenantMap,
+          landlordHost:
+              _resolveHost(_landlordOriginOverride ?? BellugaConstants.landlordDomain),
+        );
         if (tenant == null) {
           continue;
         }
@@ -82,152 +89,10 @@ class LandlordTenantsRepository implements LandlordTenantsRepositoryContract {
     return '$normalized/admin/api';
   }
 
-  Map<String, dynamic> _asMap(dynamic raw) {
-    if (raw is Map<String, dynamic>) {
-      return raw;
-    }
-    throw Exception('Unexpected landlord tenants response shape.');
-  }
-
-  List<Map<String, dynamic>> _extractDataList(dynamic raw) {
-    if (raw is List) {
-      return raw
-          .whereType<Map>()
-          .map((entry) => Map<String, dynamic>.from(entry))
-          .toList(growable: false);
-    }
-    return const [];
-  }
-
-  int? _parseInt(dynamic value) {
+  int? _parseInt(Object? value) {
     if (value is int) return value;
     if (value is String) return int.tryParse(value);
     return null;
-  }
-
-  LandlordTenantOption? _mapTenant(
-    Map<String, dynamic> tenantMap,
-  ) {
-    final slug = tenantMap['slug']?.toString().trim();
-    final tenantName = tenantMap['name']?.toString().trim();
-    final subdomain = tenantMap['subdomain']?.toString().trim();
-    if (subdomain == null || subdomain.isEmpty) {
-      // Tenant admin routing requires a valid tenant subdomain contract.
-      return null;
-    }
-
-    final mainDomain = _resolveMainDomain(tenantMap);
-    if (mainDomain == null || mainDomain.isEmpty) {
-      return null;
-    }
-
-    final normalizedName = (tenantName == null || tenantName.isEmpty)
-        ? (slug == null || slug.isEmpty ? mainDomain : slug)
-        : tenantName;
-
-    final tenantId = (slug == null || slug.isEmpty) ? mainDomain : slug;
-    return LandlordTenantOption(
-      id: tenantId,
-      name: normalizedName,
-      mainDomain: mainDomain,
-    );
-  }
-
-  String? _resolveMainDomain(Map<String, dynamic> tenantMap) {
-    final mainDomainField = _normalizeDomainEntry(
-      tenantMap['main_domain'] ?? tenantMap['mainDomain'],
-    );
-    if (mainDomainField != null) {
-      return mainDomainField;
-    }
-
-    final domains = _resolveDomainFromDomains(tenantMap['domains']);
-    if (domains != null) {
-      return domains;
-    }
-
-    // Prefer tenant web domain from subdomain over mobile app-domain aliases.
-    final subdomain = tenantMap['subdomain']?.toString().trim();
-    if (subdomain != null && subdomain.isNotEmpty) {
-      final landlordHost =
-          _resolveHost(_landlordOriginOverride ?? BellugaConstants.landlordDomain);
-      if (landlordHost != null && landlordHost.isNotEmpty) {
-        return '$subdomain.$landlordHost';
-      }
-    }
-
-    return null;
-  }
-
-  String? _resolveDomainFromDomains(dynamic raw) {
-    if (raw is! List) {
-      return null;
-    }
-
-    String? firstValid;
-    for (final entry in raw) {
-      final normalized = _normalizeDomainEntry(entry);
-      if (normalized == null) {
-        continue;
-      }
-      firstValid ??= normalized;
-      if (_isPrimaryDomainEntry(entry)) {
-        return normalized;
-      }
-    }
-    return firstValid;
-  }
-
-  bool _isPrimaryDomainEntry(dynamic entry) {
-    if (entry is! Map) {
-      return false;
-    }
-    final map = Map<String, dynamic>.from(entry);
-    return _isTruthy(map['is_main']) ||
-        _isTruthy(map['main']) ||
-        _isTruthy(map['is_primary']) ||
-        _isTruthy(map['primary']) ||
-        _isTruthy(map['default']);
-  }
-
-  bool _isTruthy(dynamic value) {
-    if (value is bool) {
-      return value;
-    }
-    if (value is num) {
-      return value != 0;
-    }
-    final normalized = value?.toString().trim().toLowerCase();
-    return normalized == '1' ||
-        normalized == 'true' ||
-        normalized == 'yes' ||
-        normalized == 'y';
-  }
-
-  String? _normalizeDomainEntry(dynamic raw) {
-    String? candidate;
-    if (raw is String) {
-      candidate = raw.trim();
-    } else if (raw is Map) {
-      candidate = raw['path']?.toString() ??
-          raw['domain']?.toString() ??
-          raw['url']?.toString() ??
-          raw['href']?.toString();
-      candidate = candidate?.trim();
-    }
-
-    if (candidate == null || candidate.isEmpty) {
-      return null;
-    }
-
-    final uri = Uri.tryParse(
-      candidate.contains('://') ? candidate : 'https://$candidate',
-    );
-    if (uri != null && uri.host.trim().isNotEmpty) {
-      return uri.host.trim();
-    }
-
-    return candidate;
   }
 
   String? _resolveHost(String raw) {

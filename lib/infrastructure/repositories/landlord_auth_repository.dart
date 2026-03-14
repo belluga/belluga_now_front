@@ -1,6 +1,7 @@
 import 'package:belluga_now/domain/repositories/landlord_auth_repository_contract.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/infrastructure/dal/dao/backend_context.dart';
+import 'package:belluga_now/infrastructure/dal/dao/landlord/landlord_auth_response_decoder.dart';
 import 'package:belluga_now/infrastructure/repositories/auth_repository.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
@@ -20,6 +21,8 @@ class LandlordAuthRepository implements LandlordAuthRepositoryContract {
 
   final StreamValue<String?> _tokenStreamValue = StreamValue<String?>();
   final StreamValue<String?> _userIdStreamValue = StreamValue<String?>();
+  final LandlordAuthResponseDecoder _responseDecoder =
+      const LandlordAuthResponseDecoder();
   Dio? _dio;
   final Dio Function(String baseUrl)? _dioFactory;
 
@@ -72,11 +75,9 @@ class LandlordAuthRepository implements LandlordAuthRepositoryContract {
     final dio = await _resolveDio();
     try {
       final response = await dio.post('/v1/auth/login', data: payload);
-      final data = _extractDataMap(response.data);
-      final token = data['token']?.toString() ?? '';
-      final user = data['user'];
-      final userId =
-          user is Map<String, dynamic> ? user['id']?.toString() : null;
+      final loginPayload = _responseDecoder.decodeLogin(response.data);
+      final token = loginPayload.token;
+      final userId = loginPayload.userId;
       if (token.isEmpty) {
         throw Exception('Landlord token missing.');
       }
@@ -131,16 +132,10 @@ class LandlordAuthRepository implements LandlordAuthRepositoryContract {
       '/v1/me',
       options: Options(headers: {'Authorization': 'Bearer $token'}),
     );
-    final raw = response.data;
-    if (raw is Map<String, dynamic>) {
-      final data = raw['data'];
-      if (data is Map<String, dynamic>) {
-        final userId = data['user_id']?.toString();
-        if (userId != null && userId.isNotEmpty) {
-          _userIdStreamValue.addValue(userId);
-          await storage.write(key: _userIdStorageKey, value: userId);
-        }
-      }
+    final userId = _responseDecoder.decodeProfileUserId(response.data);
+    if (userId != null && userId.isNotEmpty) {
+      _userIdStreamValue.addValue(userId);
+      await storage.write(key: _userIdStorageKey, value: userId);
     }
   }
 
@@ -238,22 +233,11 @@ class LandlordAuthRepository implements LandlordAuthRepositoryContract {
       return null;
     }
 
-    final normalized =
-        uri.replace(query: null, fragment: null).toString();
+    final normalized = uri.replace(query: null, fragment: null).toString();
     return normalized.endsWith('/')
         ? normalized.substring(0, normalized.length - 1)
         : normalized;
   }
-}
-
-Map<String, dynamic> _extractDataMap(dynamic raw) {
-  if (raw is Map<String, dynamic>) {
-    final data = raw['data'];
-    if (data is Map<String, dynamic>) {
-      return data;
-    }
-  }
-  throw Exception('Unexpected landlord auth response shape.');
 }
 
 String _responseLabel(int? statusCode) {

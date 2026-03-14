@@ -43,6 +43,19 @@ Future<void> pumpUntilFound(
   fail('Timed out waiting for widget: $finder');
 }
 
+Future<void> pumpUntilGone(
+  WidgetTester tester,
+  Finder finder, {
+  Duration step = const Duration(milliseconds: 100),
+  int maxPumps = 120,
+}) async {
+  for (var i = 0; i < maxPumps; i++) {
+    if (finder.evaluate().isEmpty) return;
+    await tester.pump(step);
+  }
+  fail('Timed out waiting for widget to disappear: $finder');
+}
+
 File writeTempPng({
   required String name,
   int width = 1600,
@@ -126,4 +139,19 @@ Future<void> openWebCropFlow({
 void expectCropAspectRatio(WidgetTester tester, double expected) {
   final crop = tester.widget<Crop>(find.byType(Crop));
   expect(crop.aspectRatio, closeTo(expected, 0.0001));
+}
+
+Future<void> confirmCropAndDismiss(WidgetTester tester) async {
+  final closeButton = find.byIcon(Icons.close);
+  if (closeButton.evaluate().isNotEmpty) {
+    await tester.ensureVisible(closeButton.last);
+    await tester.tap(closeButton.last, warnIfMissed: false);
+  } else {
+    final cancelButton = find.text('Cancelar').last;
+    await tester.ensureVisible(cancelButton);
+    await tester.tap(cancelButton, warnIfMissed: false);
+  }
+  await tester.pump();
+  await tester.pump(const Duration(milliseconds: 350));
+  await pumpUntilGone(tester, find.byType(Crop), maxPumps: 600);
 }

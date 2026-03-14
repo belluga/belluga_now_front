@@ -1,4 +1,5 @@
 import 'package:auto_route/auto_route.dart';
+import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_accounts_repository_contract.dart';
 import 'package:belluga_now/domain/tenant_admin/ownership_state.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account.dart';
@@ -147,6 +148,79 @@ void main() {
       TenantAdminOwnershipState.unmanaged,
     );
   });
+
+  testWidgets('reloads list when returning from account detail route',
+      (tester) async {
+    final repository = _FakeAccountsRepository(
+      initialAccounts: const [
+        TenantAdminAccount(
+          id: 'acc-1',
+          name: 'Conta 1',
+          slug: 'conta-1',
+          document: TenantAdminDocument(type: 'cpf', number: '0001'),
+          ownershipState: TenantAdminOwnershipState.tenantOwned,
+        ),
+      ],
+    );
+    final controller = TenantAdminAccountsController(
+      accountsRepository: repository,
+    );
+    GetIt.I.registerSingleton<TenantAdminAccountsController>(controller);
+
+    await tester
+        .pumpWidget(_buildTestApp(const TenantAdminAccountsListScreen()));
+    await tester.pumpAndSettle();
+
+    expect(repository.loadAccountsOwnershipCalls, hasLength(1));
+
+    await tester.tap(
+        find.byKey(const ValueKey<String>('tenant_admin_account_card_acc-1')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey<String>('account_detail_close')),
+        findsOneWidget);
+
+    await tester
+        .tap(find.byKey(const ValueKey<String>('account_detail_close')));
+    await tester.pumpAndSettle();
+
+    expect(repository.loadAccountsOwnershipCalls, hasLength(2));
+  });
+
+  testWidgets('reloads list after successful account create return',
+      (tester) async {
+    final repository = _FakeAccountsRepository(
+      initialAccounts: const [
+        TenantAdminAccount(
+          id: 'acc-1',
+          name: 'Conta 1',
+          slug: 'conta-1',
+          document: TenantAdminDocument(type: 'cpf', number: '0001'),
+          ownershipState: TenantAdminOwnershipState.tenantOwned,
+        ),
+      ],
+    );
+    final controller = TenantAdminAccountsController(
+      accountsRepository: repository,
+    );
+    GetIt.I.registerSingleton<TenantAdminAccountsController>(controller);
+
+    await tester
+        .pumpWidget(_buildTestApp(const TenantAdminAccountsListScreen()));
+    await tester.pumpAndSettle();
+
+    expect(repository.loadAccountsOwnershipCalls, hasLength(1));
+
+    await tester.tap(find.text('Criar conta'));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey<String>('account_create_success')),
+        findsOneWidget);
+
+    await tester
+        .tap(find.byKey(const ValueKey<String>('account_create_success')));
+    await tester.pumpAndSettle();
+
+    expect(repository.loadAccountsOwnershipCalls, hasLength(2));
+  });
 }
 
 Widget _buildTestApp(Widget child) {
@@ -157,6 +231,16 @@ Widget _buildTestApp(Widget child) {
         path: '/',
         builder: (_, __) => child,
       ),
+      NamedRouteDef(
+        name: TenantAdminAccountDetailRoute.name,
+        path: '/accounts/:accountSlug',
+        builder: (_, __) => const _TestAccountDetailRouteScreen(),
+      ),
+      NamedRouteDef(
+        name: TenantAdminAccountCreateRoute.name,
+        path: '/accounts/create',
+        builder: (_, __) => const _TestAccountCreateRouteScreen(),
+      ),
     ],
   )..ignorePopCompleters = true;
 
@@ -164,6 +248,40 @@ Widget _buildTestApp(Widget child) {
     routeInformationParser: router.defaultRouteParser(),
     routerDelegate: router.delegate(),
   );
+}
+
+class _TestAccountDetailRouteScreen extends StatelessWidget {
+  const _TestAccountDetailRouteScreen();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Center(
+        child: FilledButton(
+          key: const ValueKey<String>('account_detail_close'),
+          onPressed: () => context.router.maybePop(),
+          child: const Text('Voltar'),
+        ),
+      ),
+    );
+  }
+}
+
+class _TestAccountCreateRouteScreen extends StatelessWidget {
+  const _TestAccountCreateRouteScreen();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Center(
+        child: FilledButton(
+          key: const ValueKey<String>('account_create_success'),
+          onPressed: () => context.router.maybePop(true),
+          child: const Text('Salvar'),
+        ),
+      ),
+    );
+  }
 }
 
 class _FakeAccountsRepository

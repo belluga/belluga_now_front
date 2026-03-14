@@ -1,4 +1,5 @@
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_settings.dart';
+import 'package:belluga_now/presentation/shared/widgets/belluga_network_image.dart';
 import 'package:belluga_now/presentation/tenant_admin/settings/controllers/tenant_admin_settings_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/settings/tenant_admin_settings_keys.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_form_value_utils.dart';
@@ -328,11 +329,13 @@ class TenantAdminSettingsLocalPreferencesSection extends StatelessWidget {
                   height: 56,
                   color: theme.colorScheme.surfaceContainerHighest,
                   child: hasImage
-                      ? Image.network(
-                          key: ValueKey(item.imageUri),
+                      ? BellugaNetworkImage(
                           item.imageUri!,
+                          key: ValueKey(item.imageUri),
+                          width: 56,
+                          height: 56,
                           fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => Icon(
+                          errorWidget: Icon(
                             Icons.broken_image_outlined,
                             color: theme.colorScheme.onSurfaceVariant,
                           ),

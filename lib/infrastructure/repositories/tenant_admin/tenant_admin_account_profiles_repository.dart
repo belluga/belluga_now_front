@@ -7,12 +7,14 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
+import 'package:belluga_now/infrastructure/dal/dao/tenant_admin/tenant_admin_account_profiles_request_encoder.dart';
+import 'package:belluga_now/infrastructure/dal/dao/tenant_admin/tenant_admin_media_form_data_builder.dart';
+import 'package:belluga_now/infrastructure/dal/dto/tenant_admin/tenant_admin_account_profiles_response_decoder.dart';
 import 'package:belluga_now/infrastructure/dal/dto/mappers/tenant_admin_dto_mapper.dart';
 import 'package:belluga_now/infrastructure/repositories/tenant_admin/tenant_admin_pagination_utils.dart';
 import 'package:belluga_now/infrastructure/repositories/tenant_admin/support/tenant_admin_validation_failure_resolver.dart';
 import 'package:dio/dio.dart';
 import 'package:get_it/get_it.dart';
-import 'package:http_parser/http_parser.dart';
 
 class TenantAdminAccountProfilesRepository
     with TenantAdminProfileTypesPaginationMixin, TenantAdminDtoMapper
@@ -25,6 +27,12 @@ class TenantAdminAccountProfilesRepository
 
   final Dio _dio;
   final TenantAdminTenantScopeContract? _tenantScope;
+  final TenantAdminAccountProfilesResponseDecoder _responseDecoder =
+      const TenantAdminAccountProfilesResponseDecoder();
+  final TenantAdminAccountProfilesRequestEncoder _requestEncoder =
+      const TenantAdminAccountProfilesRequestEncoder();
+  final TenantAdminMediaFormDataBuilder _mediaFormDataBuilder =
+      const TenantAdminMediaFormDataBuilder();
 
   String get _apiBaseUrl =>
       (_tenantScope ?? GetIt.I.get<TenantAdminTenantScopeContract>())
@@ -48,8 +56,8 @@ class TenantAdminAccountProfilesRepository
         queryParameters: accountId == null ? null : {'account_id': accountId},
         options: Options(headers: _buildHeaders()),
       );
-      final data = _extractList(response.data);
-      return data.map(_mapProfile).toList(growable: false);
+      final dtos = _responseDecoder.decodeAccountProfileList(response.data);
+      return dtos.map(mapTenantAdminAccountProfileDto).toList(growable: false);
     } on DioException catch (error) {
       throw _wrapError(error, 'load account profiles');
     }
@@ -64,8 +72,8 @@ class TenantAdminAccountProfilesRepository
         '$_apiBaseUrl/v1/account_profiles/$accountProfileId',
         options: Options(headers: _buildHeaders()),
       );
-      final item = _extractItem(response.data);
-      return _mapProfile(item);
+      final dto = _responseDecoder.decodeAccountProfileItem(response.data);
+      return mapTenantAdminAccountProfileDto(dto);
     } on DioException catch (error) {
       throw _wrapError(error, 'load account profile');
     }
@@ -86,26 +94,19 @@ class TenantAdminAccountProfilesRepository
     TenantAdminMediaUpload? coverUpload,
   }) async {
     try {
-      final payload = <String, dynamic>{
-        'account_id': accountId,
-        'profile_type': profileType,
-        'display_name': displayName,
-        if (location != null)
-          'location': {
-            'lat': location.latitude,
-            'lng': location.longitude,
-          },
-        if (taxonomyTerms.isNotEmpty)
-          'taxonomy_terms': taxonomyTerms
-              .map((term) => {'type': term.type, 'value': term.value})
-              .toList(),
-        if (bio != null) 'bio': bio,
-        if (content != null) 'content': content,
-        if (avatarUrl != null) 'avatar_url': avatarUrl,
-        if (coverUrl != null) 'cover_url': coverUrl,
-      };
-      final uploadPayload = _buildMultipartPayload(
-        payload,
+      final payload = _requestEncoder.encodeCreateAccountProfile(
+        accountId: accountId,
+        profileType: profileType,
+        displayName: displayName,
+        location: location,
+        taxonomyTerms: taxonomyTerms,
+        bio: bio,
+        content: content,
+        avatarUrl: avatarUrl,
+        coverUrl: coverUrl,
+      );
+      final uploadPayload = _mediaFormDataBuilder.buildAvatarCoverPayload(
+        payload: payload,
         avatarUpload: avatarUpload,
         coverUpload: coverUpload,
       );
@@ -114,8 +115,8 @@ class TenantAdminAccountProfilesRepository
         data: uploadPayload ?? payload,
         options: Options(headers: _buildHeaders()),
       );
-      final item = _extractItem(response.data);
-      return _mapProfile(item);
+      final dto = _responseDecoder.decodeAccountProfileItem(response.data);
+      return mapTenantAdminAccountProfileDto(dto);
     } on DioException catch (error) {
       throw _wrapError(error, 'create account profile');
     }
@@ -137,27 +138,19 @@ class TenantAdminAccountProfilesRepository
     TenantAdminMediaUpload? coverUpload,
   }) async {
     try {
-      final payload = <String, dynamic>{};
-      if (profileType != null) payload['profile_type'] = profileType;
-      if (displayName != null) payload['display_name'] = displayName;
-      if (slug != null && slug.trim().isNotEmpty) payload['slug'] = slug.trim();
-      if (location != null) {
-        payload['location'] = {
-          'lat': location.latitude,
-          'lng': location.longitude,
-        };
-      }
-      if (taxonomyTerms != null) {
-        payload['taxonomy_terms'] = taxonomyTerms
-            .map((term) => {'type': term.type, 'value': term.value})
-            .toList();
-      }
-      if (bio != null) payload['bio'] = bio;
-      if (content != null) payload['content'] = content;
-      if (avatarUrl != null) payload['avatar_url'] = avatarUrl;
-      if (coverUrl != null) payload['cover_url'] = coverUrl;
-      final uploadPayload = _buildMultipartPayload(
-        payload,
+      final payload = _requestEncoder.encodeUpdateAccountProfile(
+        profileType: profileType,
+        displayName: displayName,
+        slug: slug,
+        location: location,
+        taxonomyTerms: taxonomyTerms,
+        bio: bio,
+        content: content,
+        avatarUrl: avatarUrl,
+        coverUrl: coverUrl,
+      );
+      final uploadPayload = _mediaFormDataBuilder.buildAvatarCoverPayload(
+        payload: payload,
         avatarUpload: avatarUpload,
         coverUpload: coverUpload,
       );
@@ -176,8 +169,8 @@ class TenantAdminAccountProfilesRepository
                 contentType: 'multipart/form-data',
               ),
             );
-      final item = _extractItem(response.data);
-      return _mapProfile(item);
+      final dto = _responseDecoder.decodeAccountProfileItem(response.data);
+      return mapTenantAdminAccountProfileDto(dto);
     } on DioException catch (error) {
       throw _wrapError(error, 'update account profile');
     }
@@ -204,8 +197,8 @@ class TenantAdminAccountProfilesRepository
         '$_apiBaseUrl/v1/account_profiles/$accountProfileId/restore',
         options: Options(headers: _buildHeaders()),
       );
-      final item = _extractItem(response.data);
-      return _mapProfile(item);
+      final dto = _responseDecoder.decodeAccountProfileItem(response.data);
+      return mapTenantAdminAccountProfileDto(dto);
     } on DioException catch (error) {
       throw _wrapError(error, 'restore account profile');
     }
@@ -258,9 +251,9 @@ class TenantAdminAccountProfilesRepository
         },
         options: Options(headers: _buildHeaders()),
       );
-      final data = _extractList(response.data);
+      final dtos = _responseDecoder.decodeProfileTypeList(response.data);
       return TenantAdminPagedResult<TenantAdminProfileTypeDefinition>(
-        items: data.map(_mapProfileType).toList(growable: false),
+        items: dtos.map(mapTenantAdminProfileTypeDto).toList(growable: false),
         hasMore: tenantAdminResolveHasMore(
           rawResponse: response.data,
           requestedPage: page,
@@ -281,25 +274,16 @@ class TenantAdminAccountProfilesRepository
     try {
       final response = await _dio.post(
         '$_apiBaseUrl/v1/account_profile_types',
-        data: {
-          'type': type,
-          'label': label,
-          'allowed_taxonomies': allowedTaxonomies,
-          'capabilities': {
-            'is_favoritable': capabilities.isFavoritable,
-            'is_poi_enabled': capabilities.isPoiEnabled,
-            'has_bio': capabilities.hasBio,
-            'has_content': capabilities.hasContent,
-            'has_taxonomies': capabilities.hasTaxonomies,
-            'has_avatar': capabilities.hasAvatar,
-            'has_cover': capabilities.hasCover,
-            'has_events': capabilities.hasEvents,
-          },
-        },
+        data: _requestEncoder.encodeCreateProfileType(
+          type: type,
+          label: label,
+          allowedTaxonomies: allowedTaxonomies,
+          capabilities: capabilities,
+        ),
         options: Options(headers: _buildHeaders()),
       );
-      final item = _extractItem(response.data);
-      return _mapProfileType(item);
+      final dto = _responseDecoder.decodeProfileTypeItem(response.data);
+      return mapTenantAdminProfileTypeDto(dto);
     } on DioException catch (error) {
       throw _wrapError(error, 'create profile type');
     }
@@ -315,35 +299,19 @@ class TenantAdminAccountProfilesRepository
   }) async {
     try {
       final encodedType = Uri.encodeComponent(type);
-      final payload = <String, dynamic>{};
-      if (newType != null && newType.trim().isNotEmpty) {
-        payload['type'] = newType.trim();
-      }
-      if (label != null) {
-        payload['label'] = label;
-      }
-      if (allowedTaxonomies != null) {
-        payload['allowed_taxonomies'] = allowedTaxonomies;
-      }
-      if (capabilities != null) {
-        payload['capabilities'] = {
-          'is_favoritable': capabilities.isFavoritable,
-          'is_poi_enabled': capabilities.isPoiEnabled,
-          'has_bio': capabilities.hasBio,
-          'has_content': capabilities.hasContent,
-          'has_taxonomies': capabilities.hasTaxonomies,
-          'has_avatar': capabilities.hasAvatar,
-          'has_cover': capabilities.hasCover,
-          'has_events': capabilities.hasEvents,
-        };
-      }
+      final payload = _requestEncoder.encodeUpdateProfileType(
+        newType: newType,
+        label: label,
+        allowedTaxonomies: allowedTaxonomies,
+        capabilities: capabilities,
+      );
       final response = await _dio.patch(
         '$_apiBaseUrl/v1/account_profile_types/$encodedType',
         data: payload,
         options: Options(headers: _buildHeaders()),
       );
-      final item = _extractItem(response.data);
-      return _mapProfileType(item);
+      final dto = _responseDecoder.decodeProfileTypeItem(response.data);
+      return mapTenantAdminProfileTypeDto(dto);
     } on DioException catch (error) {
       throw _wrapError(error, 'update profile type');
     }
@@ -360,95 +328,6 @@ class TenantAdminAccountProfilesRepository
     } on DioException catch (error) {
       throw _wrapError(error, 'delete profile type');
     }
-  }
-
-  Map<String, dynamic> _extractItem(dynamic raw) {
-    if (raw is Map<String, dynamic>) {
-      final data = raw['data'];
-      if (data is Map<String, dynamic>) return data;
-      return raw;
-    }
-    throw Exception('Unexpected account profile response shape.');
-  }
-
-  List<Map<String, dynamic>> _extractList(dynamic raw) {
-    if (raw is Map<String, dynamic>) {
-      final data = raw['data'];
-      if (data is List) {
-        return data
-            .whereType<Map>()
-            .map((entry) => Map<String, dynamic>.from(entry))
-            .toList();
-      }
-    }
-    throw Exception('Unexpected account profiles list response shape.');
-  }
-
-  TenantAdminAccountProfile _mapProfile(Map<String, dynamic> json) {
-    return mapTenantAdminAccountProfileJson(json);
-  }
-
-  TenantAdminProfileTypeDefinition _mapProfileType(
-    Map<String, dynamic> json,
-  ) {
-    return mapTenantAdminProfileTypeJson(json);
-  }
-
-  FormData? _buildMultipartPayload(
-    Map<String, dynamic> payload, {
-    TenantAdminMediaUpload? avatarUpload,
-    TenantAdminMediaUpload? coverUpload,
-  }) {
-    if (avatarUpload == null && coverUpload == null) {
-      return null;
-    }
-
-    final formData = FormData.fromMap(payload, ListFormat.multiCompatible);
-    if (avatarUpload != null) {
-      formData.files.add(
-        MapEntry(
-          'avatar',
-          MultipartFile.fromBytes(
-            avatarUpload.bytes,
-            filename: avatarUpload.fileName,
-            contentType: _resolveMediaType(avatarUpload),
-          ),
-        ),
-      );
-    }
-    if (coverUpload != null) {
-      formData.files.add(
-        MapEntry(
-          'cover',
-          MultipartFile.fromBytes(
-            coverUpload.bytes,
-            filename: coverUpload.fileName,
-            contentType: _resolveMediaType(coverUpload),
-          ),
-        ),
-      );
-    }
-    return formData;
-  }
-
-  MediaType _resolveMediaType(TenantAdminMediaUpload upload) {
-    final mimeType = upload.mimeType ?? _inferMimeType(upload.fileName);
-    if (mimeType == null) {
-      return MediaType('application', 'octet-stream');
-    }
-    final parts = mimeType.split('/');
-    if (parts.length != 2) {
-      return MediaType('application', 'octet-stream');
-    }
-    return MediaType(parts[0], parts[1]);
-  }
-
-  String? _inferMimeType(String fileName) {
-    final lower = fileName.toLowerCase();
-    if (lower.endsWith('.png')) return 'image/png';
-    if (lower.endsWith('.jpg') || lower.endsWith('.jpeg')) return 'image/jpeg';
-    if (lower.endsWith('.webp')) return 'image/webp';
-    return null;
   }
 
   Exception _wrapError(DioException error, String label) {

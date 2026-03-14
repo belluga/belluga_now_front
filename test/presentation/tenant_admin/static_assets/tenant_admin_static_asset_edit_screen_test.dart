@@ -1,5 +1,6 @@
-import 'package:auto_route/auto_route.dart';
 import 'dart:typed_data';
+
+import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_static_assets_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_taxonomies_repository_contract.dart';
 import 'package:belluga_now/domain/services/tenant_admin_external_image_proxy_contract.dart';
@@ -12,6 +13,8 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_definition.dart';
 import 'package:belluga_now/infrastructure/services/tenant_admin/tenant_admin_location_selection_service.dart';
+import 'package:belluga_now/presentation/shared/widgets/belluga_network_image.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_image_upload_field.dart';
 import 'package:belluga_now/presentation/tenant_admin/static_assets/controllers/tenant_admin_static_assets_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/static_assets/screens/tenant_admin_static_asset_edit_screen.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_image_ingestion_service.dart';
@@ -117,6 +120,42 @@ void main() {
       findsOneWidget,
     );
   });
+
+  testWidgets('renders persisted avatar and cover URLs in media section',
+      (tester) async {
+    const avatarUrl = 'https://tenant-a.test/media/static-assets/avatar.png';
+    const coverUrl = 'https://tenant-a.test/media/static-assets/cover.png';
+    final assetsRepository = _FakeStaticAssetsRepository(
+      asset: _sampleAsset(
+        avatarUrl: avatarUrl,
+        coverUrl: coverUrl,
+      ),
+      profileTypeCapabilities: const TenantAdminStaticProfileTypeCapabilities(
+        isPoiEnabled: false,
+        hasBio: false,
+        hasTaxonomies: true,
+        hasAvatar: true,
+        hasCover: true,
+        hasContent: false,
+      ),
+    );
+    await _pumpScreen(
+      tester,
+      assetsRepository: assetsRepository,
+      taxonomiesRepository: _FakeTaxonomiesRepository(),
+    );
+
+    final avatarImageFinder = find.byWidgetPredicate((widget) {
+      return widget is BellugaNetworkImage && widget.url == avatarUrl;
+    });
+    final coverImageFinder = find.byWidgetPredicate((widget) {
+      return widget is BellugaNetworkImage && widget.url == coverUrl;
+    });
+
+    expect(avatarImageFinder, findsOneWidget);
+    expect(coverImageFinder, findsOneWidget);
+    expect(find.byType(TenantAdminImageUploadField), findsNWidgets(2));
+  });
 }
 
 Future<void> _pumpScreen(
@@ -161,13 +200,18 @@ RootStackRouter _buildTestRouter(Widget child) {
   )..ignorePopCompleters = true;
 }
 
-TenantAdminStaticAsset _sampleAsset() {
-  return const TenantAdminStaticAsset(
+TenantAdminStaticAsset _sampleAsset({
+  String? avatarUrl,
+  String? coverUrl,
+}) {
+  return TenantAdminStaticAsset(
     id: 'asset-1',
     profileType: 'poi',
     displayName: 'Praia da Serra',
     slug: 'praia-da-serra',
     isActive: true,
+    avatarUrl: avatarUrl,
+    coverUrl: coverUrl,
     taxonomyTerms: [],
   );
 }
@@ -191,11 +235,21 @@ class _FakeStaticAssetsRepository
     required this.asset,
     this.failSlugUpdate = false,
     this.failTaxonomyUpdate = false,
+    this.profileTypeCapabilities =
+        const TenantAdminStaticProfileTypeCapabilities(
+      isPoiEnabled: false,
+      hasBio: false,
+      hasTaxonomies: true,
+      hasAvatar: false,
+      hasCover: false,
+      hasContent: false,
+    ),
   });
 
   TenantAdminStaticAsset asset;
   final bool failSlugUpdate;
   final bool failTaxonomyUpdate;
+  final TenantAdminStaticProfileTypeCapabilities profileTypeCapabilities;
 
   String? lastUpdatedSlug;
   List<TenantAdminTaxonomyTerm>? lastUpdatedTaxonomyTerms;
@@ -271,19 +325,12 @@ class _FakeStaticAssetsRepository
   @override
   Future<List<TenantAdminStaticProfileTypeDefinition>>
       fetchStaticProfileTypes() async {
-    return const [
+    return [
       TenantAdminStaticProfileTypeDefinition(
         type: 'poi',
         label: 'POI',
         allowedTaxonomies: ['genre'],
-        capabilities: TenantAdminStaticProfileTypeCapabilities(
-          isPoiEnabled: false,
-          hasBio: false,
-          hasTaxonomies: true,
-          hasAvatar: false,
-          hasCover: false,
-          hasContent: false,
-        ),
+        capabilities: profileTypeCapabilities,
       ),
     ];
   }
