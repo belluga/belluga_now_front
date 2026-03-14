@@ -83,6 +83,7 @@ void main() {
     await _pumpUntilFound(tester, find.byType(Crop));
     final crop = tester.widget<Crop>(find.byType(Crop));
     expect(crop.aspectRatio, 1.0);
+    await _confirmCropAndDismiss(tester);
   });
 
   testWidgets('device image selection opens crop sheet for cover',
@@ -130,6 +131,7 @@ void main() {
     await _pumpUntilFound(tester, find.byType(Crop));
     final crop = tester.widget<Crop>(find.byType(Crop));
     expect(crop.aspectRatio, closeTo(16 / 9, 0.0001));
+    await _confirmCropAndDismiss(tester);
   });
 
   testWidgets('web url selection opens crop sheet for avatar', (tester) async {
@@ -162,6 +164,7 @@ void main() {
     await _pumpUntilFound(tester, find.byType(Crop));
     final crop = tester.widget<Crop>(find.byType(Crop));
     expect(crop.aspectRatio, 1.0);
+    await _confirmCropAndDismiss(tester);
   });
 
   testWidgets('web url selection opens crop sheet for cover', (tester) async {
@@ -194,6 +197,7 @@ void main() {
     await _pumpUntilFound(tester, find.byType(Crop));
     final crop = tester.widget<Crop>(find.byType(Crop));
     expect(crop.aspectRatio, closeTo(16 / 9, 0.0001));
+    await _confirmCropAndDismiss(tester);
   });
 }
 
@@ -231,6 +235,34 @@ Future<void> _pumpUntilFound(
     await tester.pump(step);
   }
   fail('Timed out waiting for widget: $finder');
+}
+
+Future<void> _pumpUntilGone(
+  WidgetTester tester,
+  Finder finder, {
+  Duration step = const Duration(milliseconds: 100),
+  int maxPumps = 120,
+}) async {
+  for (var i = 0; i < maxPumps; i++) {
+    if (finder.evaluate().isEmpty) return;
+    await tester.pump(step);
+  }
+  fail('Timed out waiting for widget to disappear: $finder');
+}
+
+Future<void> _confirmCropAndDismiss(WidgetTester tester) async {
+  final closeButton = find.byIcon(Icons.close);
+  if (closeButton.evaluate().isNotEmpty) {
+    await tester.ensureVisible(closeButton.last);
+    await tester.tap(closeButton.last, warnIfMissed: false);
+  } else {
+    final cancelButton = find.text('Cancelar').last;
+    await tester.ensureVisible(cancelButton);
+    await tester.tap(cancelButton, warnIfMissed: false);
+  }
+  await tester.pump();
+  await tester.pump(const Duration(milliseconds: 350));
+  await _pumpUntilGone(tester, find.byType(Crop), maxPumps: 600);
 }
 
 Future<void> _openWebCropFlow({

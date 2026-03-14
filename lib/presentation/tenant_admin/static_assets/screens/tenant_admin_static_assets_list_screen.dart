@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_static_asset.dart';
@@ -49,6 +51,10 @@ class _TenantAdminStaticAssetsListScreenState
     final shellRouter =
         context.innerRouterOf<StackRouter>(TenantAdminShellRoute.name);
     return shellRouter ?? context.router;
+  }
+
+  void _refreshAssetsList() {
+    unawaited(_controller.loadAssets());
   }
 
   Future<void> _confirmDelete(TenantAdminStaticAsset asset) async {
@@ -193,11 +199,18 @@ class _TenantAdminStaticAssetsListScreenState
           child: InkWell(
             key: ValueKey<String>('tenant_admin_static_asset_card_${asset.id}'),
             onTap: () {
-              _navigationRouter(context).push(
+              _navigationRouter(context)
+                  .push(
                 TenantAdminStaticAssetDetailRoute(
                   assetId: asset.id,
                 ),
-              );
+              )
+                  .then((_) {
+                if (!mounted) {
+                  return;
+                }
+                _refreshAssetsList();
+              });
             },
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -263,11 +276,18 @@ class _TenantAdminStaticAssetsListScreenState
                           PopupMenuButton<String>(
                             onSelected: (value) {
                               if (value == 'edit') {
-                                _navigationRouter(context).push(
+                                _navigationRouter(context)
+                                    .push(
                                   TenantAdminStaticAssetEditRoute(
                                     assetId: asset.id,
                                   ),
-                                );
+                                )
+                                    .then((_) {
+                                  if (!mounted) {
+                                    return;
+                                  }
+                                  _refreshAssetsList();
+                                });
                               }
                               if (value == 'delete') {
                                 _confirmDelete(asset);
@@ -379,9 +399,16 @@ class _TenantAdminStaticAssetsListScreenState
     return Scaffold(
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () {
-          _navigationRouter(context).push(
+          _navigationRouter(context)
+              .push(
             const TenantAdminStaticAssetCreateRoute(),
-          );
+          )
+              .then((_) {
+            if (!mounted) {
+              return;
+            }
+            _refreshAssetsList();
+          });
         },
         icon: const Icon(Icons.add),
         label: const Text('Criar ativo'),

@@ -1,9 +1,9 @@
 import 'package:belluga_now/domain/invites/invite_model.dart';
-import 'package:belluga_now/infrastructure/dal/dto/invites/invite_dto.dart';
+import 'package:belluga_now/infrastructure/dal/dao/push/invite_push_payload_decoder.dart';
 import 'package:belluga_now/infrastructure/dal/dto/mappers/invite_dto_mapper.dart';
 
 abstract class PushInvitePayloadAware {
-  void applyInvitePushPayload(Map<String, dynamic> payload);
+  void applyInvitePushPayload(Object? payload);
 }
 
 mixin PushPayloadUpsertMixin<T> {
@@ -39,10 +39,14 @@ mixin PushPayloadUpsertMixin<T> {
   }
 }
 
-mixin PushInvitePayloadMixin on PushPayloadUpsertMixin<InviteModel>, InviteDtoMapper {
+mixin PushInvitePayloadMixin
+    on PushPayloadUpsertMixin<InviteModel>, InviteDtoMapper {
+  final InvitePushPayloadDecoder _payloadDecoder =
+      const InvitePushPayloadDecoder();
+
   List<InviteModel> mergeInvitePayload({
     required List<InviteModel> current,
-    required Map<String, dynamic> payload,
+    required Object? payload,
   }) {
     final invites = _resolveInvitesFromPayload(payload);
     if (invites.isEmpty) {
@@ -55,30 +59,14 @@ mixin PushInvitePayloadMixin on PushPayloadUpsertMixin<InviteModel>, InviteDtoMa
     );
   }
 
-  List<InviteModel> _resolveInvitesFromPayload(Map<String, dynamic> payload) {
-    final resolvedPayload = _resolvePayloadRoot(payload);
-    final invitesRaw = resolvedPayload['invites'];
-    final inviteRaw = resolvedPayload['invite'];
-    final entries = <Map<String, dynamic>>[];
-    if (invitesRaw is List) {
-      for (final item in invitesRaw) {
-        if (item is Map<String, dynamic>) {
-          entries.add(Map<String, dynamic>.from(item));
-        }
-      }
+  List<InviteModel> _resolveInvitesFromPayload(Object? payload) {
+    final dtos = _payloadDecoder.decodeInviteDtos(payload);
+    if (dtos.isEmpty) {
+      return const <InviteModel>[];
     }
-    if (inviteRaw is Map<String, dynamic>) {
-      entries.add(Map<String, dynamic>.from(inviteRaw));
-    }
-    if (entries.isEmpty) {
-      return const [];
-    }
+
     final invites = <InviteModel>[];
-    for (final entry in entries) {
-      final dto = _tryParseInviteDto(entry);
-      if (dto == null) {
-        continue;
-      }
+    for (final dto in dtos) {
       try {
         invites.add(mapInviteDto(dto));
       } catch (_) {
@@ -86,17 +74,5 @@ mixin PushInvitePayloadMixin on PushPayloadUpsertMixin<InviteModel>, InviteDtoMa
       }
     }
     return invites;
-  }
-
-  Map<String, dynamic> _resolvePayloadRoot(Map<String, dynamic> payload) {
-    final nested = payload['data'];
-    if (nested is Map<String, dynamic>) {
-      return Map<String, dynamic>.from(nested);
-    }
-    return payload;
-  }
-
-  InviteDto? _tryParseInviteDto(Map<String, dynamic> entry) {
-    return tryParseInviteDtoJson(entry);
   }
 }

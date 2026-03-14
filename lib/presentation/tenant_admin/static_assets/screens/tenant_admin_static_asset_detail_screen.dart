@@ -20,9 +20,18 @@ class TenantAdminStaticAssetDetailScreen extends StatelessWidget {
         actions: [
           FilledButton.tonalIcon(
             onPressed: () {
-              context.router.push(
+              context.router
+                  .push(
                 TenantAdminStaticAssetEditRoute(assetId: asset.id),
-              );
+              )
+                  .then((_) {
+                if (!context.mounted) {
+                  return;
+                }
+                context.router.replace(
+                  TenantAdminStaticAssetDetailRoute(assetId: asset.id),
+                );
+              });
             },
             icon: const Icon(Icons.edit_outlined),
             label: const Text('Editar'),

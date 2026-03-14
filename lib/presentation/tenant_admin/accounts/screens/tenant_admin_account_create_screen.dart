@@ -17,6 +17,7 @@ import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admi
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_field_edit_sheet.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_form_layout.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_image_crop_sheet.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_image_upload_field.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_image_source_sheet.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_rich_text_editor.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_xfile_preview.dart';
@@ -645,164 +646,116 @@ class _TenantAdminAccountCreateScreenState
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             if (showAvatar) ...[
-              Row(
-                children: [
-                  if (state.avatarFile != null)
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(36),
-                      child: TenantAdminXFilePreview(
-                        file: state.avatarFile!,
-                        width: 72,
-                        height: 72,
-                        fit: BoxFit.cover,
-                      ),
-                    )
-                  else if (state.avatarWebUrl != null &&
-                      state.avatarWebUrl!.isNotEmpty)
-                    Container(
-                      width: 72,
-                      height: 72,
-                      decoration: BoxDecoration(
-                        color: Theme.of(context)
-                            .colorScheme
-                            .surfaceContainerHighest,
+              TenantAdminImageUploadField(
+                variant: TenantAdminImageUploadVariant.avatar,
+                preview: state.avatarFile != null
+                    ? ClipRRect(
                         borderRadius: BorderRadius.circular(36),
-                      ),
-                      child: const Icon(Icons.link_outlined),
-                    )
-                  else
-                    Container(
-                      width: 72,
-                      height: 72,
-                      decoration: BoxDecoration(
-                        color: Theme.of(context)
-                            .colorScheme
-                            .surfaceContainerHighest,
-                        borderRadius: BorderRadius.circular(36),
-                      ),
-                      child: const Icon(Icons.person_outline),
-                    ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          state.avatarFile?.name ??
-                              state.avatarWebUrl ??
-                              'Nenhuma imagem selecionada',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+                        child: TenantAdminXFilePreview(
+                          file: state.avatarFile!,
+                          width: 72,
+                          height: 72,
+                          fit: BoxFit.cover,
                         ),
-                        if (state.avatarBusy) ...[
-                          const SizedBox(height: 8),
-                          const LinearProgressIndicator(),
-                        ],
-                        const SizedBox(height: 8),
-                        Row(
-                          children: [
-                            FilledButton.tonalIcon(
-                              key: const ValueKey(
-                                'tenant_admin_account_create_avatar_pick',
-                              ),
-                              onPressed: state.avatarBusy
-                                  ? null
-                                  : () => _pickImage(isAvatar: true),
-                              icon: const Icon(
-                                  Icons.add_photo_alternate_outlined),
-                              label: const Text('Adicionar avatar'),
+                      )
+                    : (state.avatarWebUrl != null &&
+                            state.avatarWebUrl!.isNotEmpty)
+                        ? Container(
+                            width: 72,
+                            height: 72,
+                            decoration: BoxDecoration(
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .surfaceContainerHighest,
+                              borderRadius: BorderRadius.circular(36),
                             ),
-                            const SizedBox(width: 8),
-                            if (state.avatarFile != null ||
-                                (state.avatarWebUrl != null &&
-                                    state.avatarWebUrl!.isNotEmpty))
-                              TextButton(
-                                key: const ValueKey(
-                                  'tenant_admin_account_create_avatar_remove',
-                                ),
-                                onPressed: state.avatarBusy
-                                    ? null
-                                    : () => _clearImage(isAvatar: true),
-                                child: const Text('Remover'),
-                              ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
+                            child: const Icon(Icons.link_outlined),
+                          )
+                        : Container(
+                            width: 72,
+                            height: 72,
+                            decoration: BoxDecoration(
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .surfaceContainerHighest,
+                              borderRadius: BorderRadius.circular(36),
+                            ),
+                            child: const Icon(Icons.person_outline),
+                          ),
+                selectedLabel: state.avatarFile?.name ??
+                    state.avatarWebUrl ??
+                    'Nenhuma imagem selecionada',
+                addLabel: 'Adicionar avatar',
+                addButtonKey:
+                    const ValueKey('tenant_admin_account_create_avatar_pick'),
+                removeButtonKey: const ValueKey(
+                  'tenant_admin_account_create_avatar_remove',
+                ),
+                onAdd: () => _pickImage(isAvatar: true),
+                busy: state.avatarBusy,
+                canRemove: state.avatarFile != null ||
+                    (state.avatarWebUrl != null &&
+                        state.avatarWebUrl!.isNotEmpty),
+                onRemove: () => _clearImage(isAvatar: true),
               ),
             ],
             if (showAvatar && showCover) const SizedBox(height: 16),
             if (showCover) ...[
-              if (state.coverFile != null)
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-                  child: TenantAdminXFilePreview(
-                    file: state.coverFile!,
-                    width: double.infinity,
-                    height: 140,
-                    fit: BoxFit.cover,
-                  ),
-                )
-              else if (state.coverWebUrl != null &&
-                  state.coverWebUrl!.isNotEmpty)
-                Container(
-                  width: double.infinity,
-                  height: 140,
-                  decoration: BoxDecoration(
-                    color:
-                        Theme.of(context).colorScheme.surfaceContainerHighest,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Center(
-                    child: Icon(Icons.link_outlined),
-                  ),
-                )
-              else
-                Container(
-                  width: double.infinity,
-                  height: 140,
-                  decoration: BoxDecoration(
-                    color:
-                        Theme.of(context).colorScheme.surfaceContainerHighest,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Center(
-                    child: Icon(Icons.image_outlined),
-                  ),
+              TenantAdminImageUploadField(
+                variant: TenantAdminImageUploadVariant.cover,
+                preview: state.coverFile != null
+                    ? ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: TenantAdminXFilePreview(
+                          file: state.coverFile!,
+                          width: double.infinity,
+                          height: 140,
+                          fit: BoxFit.cover,
+                        ),
+                      )
+                    : (state.coverWebUrl != null &&
+                            state.coverWebUrl!.isNotEmpty)
+                        ? Container(
+                            width: double.infinity,
+                            height: 140,
+                            decoration: BoxDecoration(
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .surfaceContainerHighest,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: const Center(
+                              child: Icon(Icons.link_outlined),
+                            ),
+                          )
+                        : Container(
+                            width: double.infinity,
+                            height: 140,
+                            decoration: BoxDecoration(
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .surfaceContainerHighest,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: const Center(
+                              child: Icon(Icons.image_outlined),
+                            ),
+                          ),
+                selectedLabel: state.coverFile?.name ??
+                    state.coverWebUrl ??
+                    'Nenhuma imagem selecionada',
+                addLabel: 'Adicionar capa',
+                addButtonKey:
+                    const ValueKey('tenant_admin_account_create_cover_pick'),
+                removeButtonKey: const ValueKey(
+                  'tenant_admin_account_create_cover_remove',
                 ),
-              const SizedBox(height: 8),
-              if (state.coverBusy) ...[
-                const LinearProgressIndicator(),
-                const SizedBox(height: 8),
-              ],
-              Row(
-                children: [
-                  FilledButton.tonalIcon(
-                    key: const ValueKey(
-                      'tenant_admin_account_create_cover_pick',
-                    ),
-                    onPressed: state.coverBusy
-                        ? null
-                        : () => _pickImage(isAvatar: false),
-                    icon: const Icon(Icons.add_photo_alternate_outlined),
-                    label: const Text('Adicionar capa'),
-                  ),
-                  const SizedBox(width: 8),
-                  if (state.coverFile != null ||
-                      (state.coverWebUrl != null &&
-                          state.coverWebUrl!.isNotEmpty))
-                    TextButton(
-                      key: const ValueKey(
-                        'tenant_admin_account_create_cover_remove',
-                      ),
-                      onPressed: state.coverBusy
-                          ? null
-                          : () => _clearImage(isAvatar: false),
-                      child: const Text('Remover'),
-                    ),
-                ],
+                onAdd: () => _pickImage(isAvatar: false),
+                busy: state.coverBusy,
+                canRemove: state.coverFile != null ||
+                    (state.coverWebUrl != null &&
+                        state.coverWebUrl!.isNotEmpty),
+                onRemove: () => _clearImage(isAvatar: false),
               ),
             ],
             FormValidationGroupError(

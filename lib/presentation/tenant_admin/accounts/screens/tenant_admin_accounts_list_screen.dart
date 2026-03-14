@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/domain/tenant_admin/ownership_state.dart';
@@ -57,6 +59,14 @@ class _TenantAdminAccountsListScreenState
     final shellRouter =
         context.innerRouterOf<StackRouter>(TenantAdminShellRoute.name);
     return shellRouter ?? context.router;
+  }
+
+  void _refreshAccountsList() {
+    unawaited(
+      _controller.loadAccounts(
+        ownershipState: _controller.selectedOwnershipStreamValue.value,
+      ),
+    );
   }
 
   @override
@@ -156,12 +166,15 @@ class _TenantAdminAccountsListScreenState
             const TenantAdminAccountCreateRoute(),
           )
               .then((created) {
-            if (!mounted || created != true) {
+            if (!mounted) {
               return;
             }
-            messenger.showSnackBar(
-              const SnackBar(content: Text('Conta e perfil salvos.')),
-            );
+            _refreshAccountsList();
+            if (created == true) {
+              messenger.showSnackBar(
+                const SnackBar(content: Text('Conta e perfil salvos.')),
+              );
+            }
           });
         },
         icon: const Icon(Icons.add),
@@ -261,9 +274,16 @@ class _TenantAdminAccountsListScreenState
           child: InkWell(
             key: ValueKey<String>('tenant_admin_account_card_${account.id}'),
             onTap: () {
-              _navigationRouter(context).push(
+              _navigationRouter(context)
+                  .push(
                 TenantAdminAccountDetailRoute(accountSlug: account.slug),
-              );
+              )
+                  .then((_) {
+                if (!mounted) {
+                  return;
+                }
+                _refreshAccountsList();
+              });
             },
             child: Padding(
               padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),

@@ -42,7 +42,11 @@ class AppDataRepository implements AppDataRepositoryContract {
   @override
   Future<void> init() async {
     final localInfo = await _localInfoSource.getInfo();
-    appData = await _fetchRemoteOrFail(localInfo);
+    final remoteData = await _backend.fetch();
+    appData = AppData.fromInitialization(
+      remoteData: remoteData,
+      localInfo: localInfo,
+    );
     final initialThemeMode = _resolveInitialThemeMode();
     themeModeStreamValue.addValue(initialThemeMode);
     maxRadiusMetersStreamValue.addValue(appData.mapRadiusMaxMeters);
@@ -96,11 +100,6 @@ class AppDataRepository implements AppDataRepositoryContract {
       appData.themeDataSettings.brightnessDefault == Brightness.dark
           ? ThemeMode.dark
           : ThemeMode.light;
-
-  Future<AppData> _fetchRemoteOrFail(Map<String, dynamic> localInfo) async {
-    final dto = await _backend.fetch();
-    return AppData.fromInitialization(remoteData: dto, localInfo: localInfo);
-  }
 
   Future<void> _precacheLogos() async {
     final urls = <String>{};

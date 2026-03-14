@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:auto_route/auto_route.dart';
@@ -27,6 +29,12 @@ import 'package:get_it/get_it.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+  late HttpOverrides? previousHttpOverrides;
+
+  setUpAll(() {
+    previousHttpOverrides = HttpOverrides.current;
+    HttpOverrides.global = _TestHttpOverrides();
+  });
 
   setUp(() async {
     await GetIt.I.reset();
@@ -75,6 +83,10 @@ void main() {
     await GetIt.I.reset();
   });
 
+  tearDownAll(() {
+    HttpOverrides.global = previousHttpOverrides;
+  });
+
   testWidgets(
       'prefers route profile id over cached controller profile id on init',
       (tester) async {
@@ -92,6 +104,43 @@ void main() {
 
     expect(profilesRepository.fetchAccountProfileCalls, 1);
     expect(profilesRepository.lastFetchedProfileId, 'route-profile');
+  });
+
+  testWidgets(
+      'renders persisted avatar and cover URLs as network images in edit form',
+      (tester) async {
+    const avatarUrl = 'https://tenant-a.test/media/account-profiles/avatar.png';
+    const coverUrl = 'https://tenant-a.test/media/account-profiles/cover.png';
+    final profilesRepository =
+        GetIt.I.get<TenantAdminAccountProfilesRepositoryContract>()
+            as _FakeAccountProfilesRepository;
+    profilesRepository.profileToReturn = _profile(
+      id: 'route-profile',
+      avatarUrl: avatarUrl,
+      coverUrl: coverUrl,
+    );
+
+    await _pumpScreen(
+      tester,
+      const TenantAdminAccountProfileEditScreen(
+        accountSlug: 'route-account',
+        accountProfileId: 'route-profile',
+      ),
+    );
+
+    final avatarImageFinder = find.byWidgetPredicate((widget) {
+      if (widget is! Image) return false;
+      final provider = widget.image;
+      return provider is NetworkImage && provider.url == avatarUrl;
+    });
+    final coverImageFinder = find.byWidgetPredicate((widget) {
+      if (widget is! Image) return false;
+      final provider = widget.image;
+      return provider is NetworkImage && provider.url == coverUrl;
+    });
+
+    expect(avatarImageFinder, findsOneWidget);
+    expect(coverImageFinder, findsOneWidget);
   });
 }
 
@@ -189,6 +238,7 @@ class _FakeAccountProfilesRepository
     extends TenantAdminAccountProfilesRepositoryContract {
   int fetchAccountProfileCalls = 0;
   String? lastFetchedProfileId;
+  TenantAdminAccountProfile profileToReturn = _profile(id: 'default-profile');
 
   @override
   Future<List<TenantAdminAccountProfile>> fetchAccountProfiles({
@@ -203,12 +253,32 @@ class _FakeAccountProfilesRepository
   ) async {
     fetchAccountProfileCalls += 1;
     lastFetchedProfileId = accountProfileId;
-    return _profile(id: accountProfileId);
+    return _profile(
+      id: accountProfileId,
+      avatarUrl: profileToReturn.avatarUrl,
+      coverUrl: profileToReturn.coverUrl,
+    );
   }
 
   @override
   Future<List<TenantAdminProfileTypeDefinition>> fetchProfileTypes() async {
-    return const [];
+    return const [
+      TenantAdminProfileTypeDefinition(
+        type: 'poi',
+        label: 'POI',
+        allowedTaxonomies: [],
+        capabilities: TenantAdminProfileTypeCapabilities(
+          isFavoritable: false,
+          isPoiEnabled: false,
+          hasBio: false,
+          hasContent: false,
+          hasTaxonomies: false,
+          hasAvatar: true,
+          hasCover: true,
+          hasEvents: false,
+        ),
+      ),
+    ];
   }
 
   @override
@@ -367,12 +437,172 @@ class _FakeExternalImageProxy implements TenantAdminExternalImageProxyContract {
   }
 }
 
-TenantAdminAccountProfile _profile({required String id}) {
+TenantAdminAccountProfile _profile({
+  required String id,
+  String? avatarUrl,
+  String? coverUrl,
+}) {
   return TenantAdminAccountProfile(
     id: id,
     accountId: 'acc-1',
     profileType: 'poi',
     displayName: id,
+    avatarUrl: avatarUrl,
+    coverUrl: coverUrl,
     ownershipState: TenantAdminOwnershipState.tenantOwned,
   );
+}
+
+class _TestHttpOverrides extends HttpOverrides {
+  @override
+  HttpClient createHttpClient(SecurityContext? context) {
+    return _TestHttpClient();
+  }
+}
+
+class _TestHttpClient implements HttpClient {
+  bool _autoUncompress = true;
+
+  static final List<int> _transparentImage = <int>[
+    0x89,
+    0x50,
+    0x4E,
+    0x47,
+    0x0D,
+    0x0A,
+    0x1A,
+    0x0A,
+    0x00,
+    0x00,
+    0x00,
+    0x0D,
+    0x49,
+    0x48,
+    0x44,
+    0x52,
+    0x00,
+    0x00,
+    0x00,
+    0x01,
+    0x00,
+    0x00,
+    0x00,
+    0x01,
+    0x08,
+    0x06,
+    0x00,
+    0x00,
+    0x00,
+    0x1F,
+    0x15,
+    0xC4,
+    0x89,
+    0x00,
+    0x00,
+    0x00,
+    0x0A,
+    0x49,
+    0x44,
+    0x41,
+    0x54,
+    0x78,
+    0x9C,
+    0x63,
+    0x00,
+    0x01,
+    0x00,
+    0x00,
+    0x05,
+    0x00,
+    0x01,
+    0x0D,
+    0x0A,
+    0x2D,
+    0xB4,
+    0x00,
+    0x00,
+    0x00,
+    0x00,
+    0x49,
+    0x45,
+    0x4E,
+    0x44,
+    0xAE,
+    0x42,
+    0x60,
+    0x82,
+  ];
+
+  @override
+  Future<HttpClientRequest> getUrl(Uri url) async {
+    return _TestHttpClientRequest(_transparentImage);
+  }
+
+  @override
+  Future<HttpClientRequest> openUrl(String method, Uri url) async {
+    return _TestHttpClientRequest(_transparentImage);
+  }
+
+  @override
+  bool get autoUncompress => _autoUncompress;
+
+  @override
+  set autoUncompress(bool value) {
+    _autoUncompress = value;
+  }
+
+  @override
+  Object? noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _TestHttpClientRequest implements HttpClientRequest {
+  _TestHttpClientRequest(this._imageBytes);
+
+  final List<int> _imageBytes;
+
+  @override
+  Future<HttpClientResponse> close() async {
+    return _TestHttpClientResponse(_imageBytes);
+  }
+
+  @override
+  Object? noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _TestHttpClientResponse extends Stream<List<int>>
+    implements HttpClientResponse {
+  _TestHttpClientResponse(this._imageBytes);
+
+  final List<int> _imageBytes;
+
+  @override
+  int get statusCode => HttpStatus.ok;
+
+  @override
+  int get contentLength => _imageBytes.length;
+
+  @override
+  HttpClientResponseCompressionState get compressionState =>
+      HttpClientResponseCompressionState.notCompressed;
+
+  @override
+  StreamSubscription<List<int>> listen(
+    void Function(List<int>)? onData, {
+    Function? onError,
+    void Function()? onDone,
+    bool? cancelOnError,
+  }) {
+    final controller = StreamController<List<int>>();
+    controller.add(_imageBytes);
+    controller.close();
+    return controller.stream.listen(
+      onData,
+      onError: onError,
+      onDone: onDone,
+      cancelOnError: cancelOnError,
+    );
+  }
+
+  @override
+  Object? noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

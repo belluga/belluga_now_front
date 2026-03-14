@@ -3,6 +3,8 @@ import 'package:belluga_now/domain/repositories/tenant_admin_organizations_repos
 import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_organization.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_result.dart';
+import 'package:belluga_now/infrastructure/dal/dao/tenant_admin/tenant_admin_organizations_request_encoder.dart';
+import 'package:belluga_now/infrastructure/dal/dto/tenant_admin/tenant_admin_organizations_response_decoder.dart';
 import 'package:belluga_now/infrastructure/dal/dto/mappers/tenant_admin_dto_mapper.dart';
 import 'package:belluga_now/infrastructure/repositories/tenant_admin/tenant_admin_pagination_utils.dart';
 import 'package:belluga_now/infrastructure/repositories/tenant_admin/support/tenant_admin_validation_failure_resolver.dart';
@@ -20,6 +22,10 @@ class TenantAdminOrganizationsRepository
 
   final Dio _dio;
   final TenantAdminTenantScopeContract? _tenantScope;
+  final TenantAdminOrganizationsResponseDecoder _responseDecoder =
+      const TenantAdminOrganizationsResponseDecoder();
+  final TenantAdminOrganizationsRequestEncoder _requestEncoder =
+      const TenantAdminOrganizationsRequestEncoder();
 
   String get _apiBaseUrl =>
       (_tenantScope ?? GetIt.I.get<TenantAdminTenantScopeContract>())
@@ -68,9 +74,9 @@ class TenantAdminOrganizationsRepository
         },
         options: Options(headers: _buildHeaders()),
       );
-      final data = _extractList(response.data);
+      final dtos = _responseDecoder.decodeOrganizationList(response.data);
       return TenantAdminPagedResult<TenantAdminOrganization>(
-        items: data.map(_mapOrganization).toList(growable: false),
+        items: dtos.map(mapTenantAdminOrganizationDto).toList(growable: false),
         hasMore: tenantAdminResolveHasMore(
           rawResponse: response.data,
           requestedPage: page,
@@ -89,8 +95,8 @@ class TenantAdminOrganizationsRepository
         '$_apiBaseUrl/v1/organizations/$organizationId',
         options: Options(headers: _buildHeaders()),
       );
-      final item = _extractItem(response.data);
-      return _mapOrganization(item);
+      final dto = _responseDecoder.decodeOrganizationItem(response.data);
+      return mapTenantAdminOrganizationDto(dto);
     } on DioException catch (error) {
       throw _wrapError(error, 'load organization');
     }
@@ -111,8 +117,8 @@ class TenantAdminOrganizationsRepository
         },
         options: Options(headers: _buildHeaders()),
       );
-      final item = _extractItem(response.data);
-      return _mapOrganization(item);
+      final dto = _responseDecoder.decodeOrganizationItem(response.data);
+      return mapTenantAdminOrganizationDto(dto);
     } on DioException catch (error) {
       throw _wrapError(error, 'create organization');
     }
@@ -126,23 +132,18 @@ class TenantAdminOrganizationsRepository
     String? description,
   }) async {
     try {
-      final payload = <String, dynamic>{};
-      if (name != null && name.trim().isNotEmpty) {
-        payload['name'] = name.trim();
-      }
-      if (slug != null && slug.trim().isNotEmpty) {
-        payload['slug'] = slug.trim();
-      }
-      if (description != null) {
-        payload['description'] = description.trim();
-      }
+      final payload = _requestEncoder.encodeOrganizationUpdate(
+        name: name,
+        slug: slug,
+        description: description,
+      );
       final response = await _dio.patch(
         '$_apiBaseUrl/v1/organizations/$organizationId',
         data: payload,
         options: Options(headers: _buildHeaders()),
       );
-      final item = _extractItem(response.data);
-      return _mapOrganization(item);
+      final dto = _responseDecoder.decodeOrganizationItem(response.data);
+      return mapTenantAdminOrganizationDto(dto);
     } on DioException catch (error) {
       throw _wrapError(error, 'update organization');
     }
@@ -169,8 +170,8 @@ class TenantAdminOrganizationsRepository
         '$_apiBaseUrl/v1/organizations/$organizationId/restore',
         options: Options(headers: _buildHeaders()),
       );
-      final item = _extractItem(response.data);
-      return _mapOrganization(item);
+      final dto = _responseDecoder.decodeOrganizationItem(response.data);
+      return mapTenantAdminOrganizationDto(dto);
     } on DioException catch (error) {
       throw _wrapError(error, 'restore organization');
     }
@@ -186,32 +187,6 @@ class TenantAdminOrganizationsRepository
     } on DioException catch (error) {
       throw _wrapError(error, 'force delete organization');
     }
-  }
-
-  Map<String, dynamic> _extractItem(dynamic raw) {
-    if (raw is Map<String, dynamic>) {
-      final data = raw['data'];
-      if (data is Map<String, dynamic>) return data;
-      return raw;
-    }
-    throw Exception('Unexpected organization response shape.');
-  }
-
-  List<Map<String, dynamic>> _extractList(dynamic raw) {
-    if (raw is Map<String, dynamic>) {
-      final data = raw['data'];
-      if (data is List) {
-        return data
-            .whereType<Map>()
-            .map((entry) => Map<String, dynamic>.from(entry))
-            .toList();
-      }
-    }
-    throw Exception('Unexpected organizations list response shape.');
-  }
-
-  TenantAdminOrganization _mapOrganization(Map<String, dynamic> json) {
-    return mapTenantAdminOrganizationJson(json);
   }
 
   Exception _wrapError(DioException error, String label) {

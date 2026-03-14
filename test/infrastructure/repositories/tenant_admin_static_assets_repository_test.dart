@@ -114,6 +114,93 @@ void main() {
     expect(adapter.requests[1].uri.host, 'tenant-b.test');
   });
 
+  test(
+      'normalizes relative static-asset media urls and preserves absolute urls',
+      () async {
+    final adapter = _CaptureAdapter(
+      staticAssetsByPage: const {
+        1: [
+          {
+            'id': 'asset-1',
+            'profile_type': 'poi',
+            'display_name': 'Asset 1',
+            'slug': 'asset-1',
+            'avatar_url':
+                'http://legacy-host.test/static-assets/asset-1/avatar?v=7',
+            'cover_url': '/static-assets/asset-1/cover?v=7',
+            'is_active': true,
+          },
+          {
+            'id': 'asset-2',
+            'profile_type': 'poi',
+            'display_name': 'Asset 2',
+            'slug': 'asset-2',
+            'avatar_url': 'https://cdn.example.com/avatar.png',
+            'cover_url': 'https://cdn.example.com/cover.png',
+            'is_active': true,
+          },
+        ],
+      },
+    );
+    final dio = Dio()..httpClientAdapter = adapter;
+    final tenantScope = _StubTenantScope('https://tenant-current.test');
+    final repository = TenantAdminStaticAssetsRepository(
+      dio: dio,
+      tenantScope: tenantScope,
+    );
+
+    final page = await repository.fetchStaticAssetsPage(page: 1, pageSize: 20);
+
+    expect(page.items, hasLength(2));
+    expect(
+      page.items.first.avatarUrl,
+      'http://legacy-host.test/static-assets/asset-1/avatar?v=7',
+    );
+    expect(
+      page.items.first.coverUrl,
+      'https://tenant-current.test/static-assets/asset-1/cover?v=7',
+    );
+    expect(page.items[1].avatarUrl, 'https://cdn.example.com/avatar.png');
+    expect(page.items[1].coverUrl, 'https://cdn.example.com/cover.png');
+  });
+
+  test('normalizes static-asset media urls on detail fetch', () async {
+    final adapter = _CaptureAdapter(
+      staticAssetsByPage: const {
+        1: [
+          {
+            'id': 'asset-1',
+            'profile_type': 'poi',
+            'display_name': 'Asset 1',
+            'slug': 'asset-1',
+            'avatar_url':
+                'http://legacy-host.test/static-assets/asset-1/avatar?v=9',
+            'cover_url':
+                'http://legacy-host.test/static-assets/asset-1/cover?v=9',
+            'is_active': true,
+          },
+        ],
+      },
+    );
+    final dio = Dio()..httpClientAdapter = adapter;
+    final tenantScope = _StubTenantScope('https://tenant-current.test');
+    final repository = TenantAdminStaticAssetsRepository(
+      dio: dio,
+      tenantScope: tenantScope,
+    );
+
+    final asset = await repository.fetchStaticAsset('asset-1');
+
+    expect(
+      asset.avatarUrl,
+      'http://legacy-host.test/static-assets/asset-1/avatar?v=9',
+    );
+    expect(
+      asset.coverUrl,
+      'http://legacy-host.test/static-assets/asset-1/cover?v=9',
+    );
+  });
+
   test('createStaticAsset sends multipart avatar/cover uploads', () async {
     final adapter = _CaptureAdapter();
     final dio = Dio()..httpClientAdapter = adapter;
@@ -381,6 +468,22 @@ class _CaptureAdapter implements HttpClientAdapter {
       });
       return ResponseBody.fromString(
         payload,
+        200,
+        headers: {
+          Headers.contentTypeHeader: ['application/json'],
+        },
+      );
+    }
+
+    if (options.method == 'GET' &&
+        options.path.contains('/v1/static_assets/') &&
+        !options.path.endsWith('/v1/static_assets')) {
+      final detailItem = (staticAssetsByPage[1] ?? const []).firstWhere(
+        (item) => (item['id']?.toString() ?? '').trim().isNotEmpty,
+        orElse: () => const <String, dynamic>{},
+      );
+      return ResponseBody.fromString(
+        jsonEncode({'data': detailItem}),
         200,
         headers: {
           Headers.contentTypeHeader: ['application/json'],

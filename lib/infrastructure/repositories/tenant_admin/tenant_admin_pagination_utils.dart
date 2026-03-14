@@ -1,26 +1,18 @@
-int? tenantAdminReadPageValue(dynamic source, String key) {
-  if (source is! Map) {
-    return null;
-  }
-  final value = source[key];
-  if (value is int) return value;
-  if (value is num) return value.toInt();
-  if (value is String) return int.tryParse(value);
-  return null;
+import 'package:belluga_now/infrastructure/dal/dao/tenant_admin/tenant_admin_pagination_decoder.dart';
+
+const TenantAdminPaginationDecoder _tenantAdminPaginationDecoder =
+    TenantAdminPaginationDecoder();
+
+int? tenantAdminReadPageValue(Object? source, String key) {
+  return _tenantAdminPaginationDecoder.readPageValue(source, key);
 }
 
 bool tenantAdminResolveHasMore({
-  required dynamic rawResponse,
+  required Object? rawResponse,
   required int requestedPage,
 }) {
-  if (rawResponse is! Map<String, dynamic>) {
-    return false;
-  }
-  final currentPage = tenantAdminReadPageValue(rawResponse, 'current_page') ??
-      tenantAdminReadPageValue(rawResponse['meta'], 'current_page') ??
-      requestedPage;
-  final lastPage = tenantAdminReadPageValue(rawResponse, 'last_page') ??
-      tenantAdminReadPageValue(rawResponse['meta'], 'last_page') ??
-      currentPage;
-  return currentPage < lastPage;
+  return _tenantAdminPaginationDecoder.resolveHasMore(
+    rawResponse: rawResponse,
+    requestedPage: requestedPage,
+  );
 }
