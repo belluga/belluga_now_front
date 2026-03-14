@@ -21,7 +21,11 @@ class _InviteFlowScreenState extends State<InviteFlowScreen> {
   void initState() {
     super.initState();
     final inviteId = context.routeData.queryParams.get('invite');
-    _controller.init(prioritizeInviteId: inviteId);
+    final shareCode = context.routeData.queryParams.get('code');
+    _controller.init(
+      prioritizeInviteId: inviteId,
+      shareCode: shareCode,
+    );
   }
 
   @override

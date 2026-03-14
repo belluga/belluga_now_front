@@ -164,15 +164,12 @@ void main() {
   });
 
   group('Public route path params', () {
-    test('event and partner routes encode slug path params', () {
-      final eventDetail = EventDetailRoute(slug: 'rock-in-rio');
+    test('immersive event and partner routes encode slug path params', () {
       final immersive = ImmersiveEventDetailRoute(eventSlug: 'show-immersive');
       final partner = PartnerDetailRoute(slug: 'yuri-dias');
 
-      expect(eventDetail.rawPathParams, {'slug': 'rock-in-rio'});
       expect(immersive.rawPathParams, {'slug': 'show-immersive'});
       expect(partner.rawPathParams, {'slug': 'yuri-dias'});
-      _expectResolvedRawParams(eventDetail.rawPathParams);
       _expectResolvedRawParams(immersive.rawPathParams);
       _expectResolvedRawParams(partner.rawPathParams);
     });

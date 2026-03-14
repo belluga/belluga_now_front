@@ -1,7 +1,6 @@
 export 'invite_decision_result.dart';
 
 import 'dart:async';
-import 'dart:collection';
 
 import 'package:belluga_now/domain/invites/invite_decision.dart';
 import 'package:belluga_now/domain/invites/invite_inviter_type.dart';
@@ -22,19 +21,15 @@ class InviteFlowScreenController with Disposable {
     TelemetryRepositoryContract? telemetryRepository,
     CardStackSwiperController? cardStackSwiperController,
   })  : _repository = repository ?? GetIt.I.get<InvitesRepositoryContract>(),
-        _userEventsRepository =
-            userEventsRepository ?? GetIt.I.get<UserEventsRepositoryContract>(),
         _telemetryRepository =
             telemetryRepository ?? GetIt.I.get<TelemetryRepositoryContract>(),
         swiperController =
             cardStackSwiperController ?? CardStackSwiperController();
 
   final InvitesRepositoryContract _repository;
-  final UserEventsRepositoryContract _userEventsRepository;
   final TelemetryRepositoryContract _telemetryRepository;
 
   final CardStackSwiperController swiperController;
-  final _RetryQueue _inviteQueue = _RetryQueue();
 
   InviteModel? get currentInvite => pendingInvitesStreamValue.value.isNotEmpty
       ? pendingInvitesStreamValue.value.first
@@ -62,27 +57,51 @@ class InviteFlowScreenController with Disposable {
   String? _activeInviteId;
   StreamSubscription<List<InviteModel>>? _pendingInvitesSubscription;
 
-  Future<void> init({String? prioritizeInviteId}) async {
+  Future<void> init({
+    String? prioritizeInviteId,
+    String? shareCode,
+  }) async {
     _ensureInviteTrackingSubscription();
+    final acceptedInviteId = await _acceptShareCodeIfProvided(shareCode);
     await fetchPendingInvites();
-    if (prioritizeInviteId != null && prioritizeInviteId.isNotEmpty) {
-      _prioritizeInvite(prioritizeInviteId);
+    final preferredInviteId = acceptedInviteId ?? prioritizeInviteId;
+    if (preferredInviteId != null && preferredInviteId.isNotEmpty) {
+      _prioritizeInvite(preferredInviteId);
+    }
+  }
+
+  Future<String?> _acceptShareCodeIfProvided(String? shareCode) async {
+    final normalizedCode = shareCode?.trim() ?? '';
+    if (normalizedCode.isEmpty) {
+      return null;
+    }
+
+    try {
+      final result = await _repository.acceptShareCode(normalizedCode);
+      if (result.inviteId.trim().isEmpty) {
+        return null;
+      }
+      return result.inviteId;
+    } catch (_) {
+      return null;
     }
   }
 
   Future<void> fetchPendingInvites() async {
-    final _invites = await _repository.fetchInvites();
-    pendingInvitesStreamValue.addValue(_invites);
-    _ensureTopIndexBounds(_invites.length);
+    final invites = await _repository.fetchInvites();
+    pendingInvitesStreamValue.addValue(invites);
+    _ensureTopIndexBounds(invites.length);
   }
 
   void _prioritizeInvite(String inviteId) {
     final invites = List<InviteModel>.from(pendingInvitesStreamValue.value);
-    final index = invites.indexWhere((invite) => invite.id == inviteId);
-    if (index <= 0) {
+    final index =
+        invites.indexWhere((invite) => invite.containsInviteId(inviteId));
+    if (index < 0) {
       return;
     }
-    final invite = invites.removeAt(index);
+
+    final invite = invites.removeAt(index).prioritizeInviter(inviteId);
     invites.insert(0, invite);
     pendingInvitesStreamValue.addValue(invites);
     _ensureTopIndexBounds(invites.length);
@@ -117,8 +136,27 @@ class InviteFlowScreenController with Disposable {
     return result;
   }
 
+  Future<InviteDecisionResult?> applyDecisionForInvite(
+    InviteDecision decision,
+    String inviteId,
+  ) async {
+    final result = await _finalizeDecision(decision, inviteId: inviteId);
+    if (decision != InviteDecision.accepted) {
+      resetConfirmPresence();
+    }
+    return result;
+  }
+
   Future<void> requestDecision(InviteDecision decision) async {
     final result = await applyDecision(decision);
+    decisionResultStreamValue.addValue(result);
+  }
+
+  Future<void> requestDecisionForInvite(
+    InviteDecision decision,
+    String inviteId,
+  ) async {
+    final result = await applyDecisionForInvite(decision, inviteId);
     decisionResultStreamValue.addValue(result);
   }
 
@@ -126,13 +164,16 @@ class InviteFlowScreenController with Disposable {
     decisionResultStreamValue.addValue(null);
   }
 
-  Future<InviteDecisionResult?> _finalizeDecision(
-    InviteDecision decision,
-  ) async {
+  Future<InviteDecisionResult?> _finalizeDecision(InviteDecision decision,
+      {String? inviteId}) async {
     final _pendingInvites = pendingInvitesStreamValue.value;
 
     final current = _pendingInvites.isEmpty ? null : _pendingInvites.first;
     if (current == null) {
+      return null;
+    }
+    final resolvedInviteId = inviteId ?? current.primaryInviteId;
+    if (resolvedInviteId == null || resolvedInviteId.isEmpty) {
       return null;
     }
 
@@ -141,20 +182,15 @@ class InviteFlowScreenController with Disposable {
     decisionsStreamValue.addValue(Map.unmodifiable(_decisions));
 
     if (decision == InviteDecision.accepted) {
-      var queued = false;
-      try {
-        await _userEventsRepository.confirmEventAttendance(current.eventId);
-      } catch (_) {
-        queued = true;
-        await _inviteQueue.enqueue(
-          () => _userEventsRepository.confirmEventAttendance(current.eventId),
-        );
-      }
-      return InviteDecisionResult(invite: current, queued: queued);
+      final result = await _repository.acceptInvite(resolvedInviteId);
+      return InviteDecisionResult(
+        invite: current.prioritizeInviter(resolvedInviteId),
+        queued: false,
+        nextStep: result.nextStep,
+      );
     }
 
-    // Decline: remove immediately
-    removeInvite();
+    await _repository.declineInvite(resolvedInviteId);
     return const InviteDecisionResult(invite: null, queued: false);
   }
 
@@ -270,8 +306,8 @@ class InviteFlowScreenController with Disposable {
     if (inviterPrincipal != null) {
       properties['inviter_kind'] = inviterPrincipal.type.name;
       properties['inviter_id'] = inviterPrincipal.id;
-      if (inviterPrincipal.type == InviteInviterType.partner) {
-        properties['partner_id'] = inviterPrincipal.id;
+      if (inviterPrincipal.type == InviteInviterType.accountProfile) {
+        properties['account_profile_id'] = inviterPrincipal.id;
       }
     }
 
@@ -313,66 +349,4 @@ class InviteFlowScreenController with Disposable {
       }
     }));
   }
-}
-
-class _RetryQueue {
-  _RetryQueue({
-    List<Duration>? retryDelays,
-  }) : _retryDelays = retryDelays ??
-            const [
-              Duration.zero,
-              Duration(seconds: 2),
-              Duration(seconds: 4),
-              Duration(seconds: 4),
-            ];
-
-  final List<Duration> _retryDelays;
-  final Queue<_RetryJob> _jobs = Queue<_RetryJob>();
-  bool _processing = false;
-
-  Future<bool> enqueue(Future<void> Function() task) {
-    final completer = Completer<bool>();
-    _jobs.add(_RetryJob(task: task, completer: completer));
-    _process();
-    return completer.future;
-  }
-
-  Future<void> _process() async {
-    if (_processing) return;
-    _processing = true;
-
-    while (_jobs.isNotEmpty) {
-      final job = _jobs.removeFirst();
-      var success = false;
-
-      for (final delay in _retryDelays) {
-        if (delay > Duration.zero) {
-          await Future<void>.delayed(delay);
-        }
-        try {
-          await job.task();
-          success = true;
-          break;
-        } catch (_) {
-          success = false;
-        }
-      }
-
-      if (!job.completer.isCompleted) {
-        job.completer.complete(success);
-      }
-    }
-
-    _processing = false;
-  }
-}
-
-class _RetryJob {
-  _RetryJob({
-    required this.task,
-    required this.completer,
-  });
-
-  final Future<void> Function() task;
-  final Completer<bool> completer;
 }

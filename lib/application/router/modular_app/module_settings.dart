@@ -180,7 +180,7 @@ class ModuleSettings extends ModuleSettingsContract {
           );
         case 'event_immersive':
           return _applyPathParameters(
-            '/agenda/evento-imersivo/:slug',
+            '/agenda/evento/:slug',
             request.pathParameters,
           );
         case 'map':

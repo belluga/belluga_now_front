@@ -91,6 +91,7 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
 
   Future<void> init({bool startWithHistory = false}) async {
     await _invitesRepository.init();
+    await _userEventsRepository.refreshConfirmedEventIds();
     _setValue(showHistoryStreamValue, startWithHistory);
     _setValue(radiusMetersStreamValue, _resolveDefaultRadiusMeters());
     _listenForStatusChanges();
