@@ -45,13 +45,55 @@ void main() {
 
     expect(router.lastReplacedPath, '/invite?code=31F8RN5QJ9');
   });
+
+  testWidgets('signup flow also returns to deep link with code preserved',
+      (tester) async {
+    final router = _RecordingStackRouter(canPopValue: true);
+    final routeData = _buildRouteData(
+      router,
+      queryParams: {
+        'redirect': Uri.encodeComponent('/invite?code=31F8RN5QJ9'),
+      },
+    );
+
+    await tester.pumpWidget(
+      StackRouterScope(
+        controller: router,
+        stateHash: 0,
+        child: MaterialApp(
+          home: RouteDataScope(
+            routeData: routeData,
+            child: AuthLoginEffects(
+              generalError: null,
+              loginResult: null,
+              signUpResult: true,
+              onClearGeneralError: () {},
+              onClearLoginResult: () {},
+              onClearSignUpResult: () {},
+              child: const Scaffold(body: SizedBox.shrink()),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.pump();
+    await tester.pump();
+
+    expect(router.popCalled, isTrue);
+    expect(router.lastReplacedPath, '/invite?code=31F8RN5QJ9');
+  });
 }
 
-class _RecordingStackRouter extends Mock implements StackRouter {
+class _RecordingStackRouter extends Mock implements RootStackRouter {
   _RecordingStackRouter({required this.canPopValue});
 
   final bool canPopValue;
   String? lastReplacedPath;
+  bool popCalled = false;
+
+  @override
+  RootStackRouter get root => this;
 
   @override
   bool canPop({
@@ -70,6 +112,11 @@ class _RecordingStackRouter extends Mock implements StackRouter {
   }) async {
     lastReplacedPath = path;
     return null;
+  }
+
+  @override
+  void pop<T extends Object?>([T? result]) {
+    popCalled = true;
   }
 }
 

@@ -15,10 +15,14 @@ class InviteFlowCoordinator extends StatefulWidget {
     super.key,
     required this.invites,
     required this.decisionResult,
+    required this.requiresAuthentication,
+    required this.isInitialized,
   });
 
   final List<InviteModel> invites;
   final InviteDecisionResult? decisionResult;
+  final bool requiresAuthentication;
+  final bool isInitialized;
 
   @override
   State<InviteFlowCoordinator> createState() => _InviteFlowCoordinatorState();
@@ -79,7 +83,8 @@ class _InviteFlowCoordinatorState extends State<InviteFlowCoordinator> {
       builder: (context, loadedImages) {
         final invite = invites.first;
         final remaining = invites.length - 1;
-        final isReady = loadedImages.contains(invite.eventImageUrl);
+        final isReady = widget.requiresAuthentication ||
+            loadedImages.contains(invite.eventImageUrl);
 
         if (!isReady) {
           return const Center(child: CircularProgressIndicator());
@@ -92,12 +97,17 @@ class _InviteFlowCoordinatorState extends State<InviteFlowCoordinator> {
           onViewDetails: () => _openEventDetails(invite),
           onClose: _exitInviteFlow,
           remainingCount: remaining,
+          requiresAuthentication: widget.requiresAuthentication,
+          onRequestAuthentication: _openAuthForInviteDecision,
         );
       },
     );
   }
 
   void _handlePendingInvites(List<InviteModel> invites) {
+    if (!widget.isInitialized) {
+      return;
+    }
     if (invites.isNotEmpty) {
       _exitHandled = false;
       return;
@@ -138,6 +148,10 @@ class _InviteFlowCoordinatorState extends State<InviteFlowCoordinator> {
   }
 
   void _openEventDetails(InviteModel invite) {
+    if (widget.requiresAuthentication) {
+      _openAuthForInviteDecision();
+      return;
+    }
     context.router.push(ImmersiveEventDetailRoute(eventSlug: invite.eventId));
   }
 
@@ -145,6 +159,11 @@ class _InviteFlowCoordinatorState extends State<InviteFlowCoordinator> {
     InviteModel invite,
     InviteDecision decision,
   ) async {
+    if (widget.requiresAuthentication) {
+      _openAuthForInviteDecision();
+      return;
+    }
+
     final inviteId = await showInviteCandidatePicker(
       context,
       invite: invite,
@@ -154,6 +173,14 @@ class _InviteFlowCoordinatorState extends State<InviteFlowCoordinator> {
       return;
     }
     await _controller.requestDecisionForInvite(decision, inviteId);
+  }
+
+  void _openAuthForInviteDecision() {
+    final pendingPath = _controller.redirectPath?.trim();
+    final normalizedPath =
+        pendingPath == null || pendingPath.isEmpty ? '/invite' : pendingPath;
+    final encodedRedirect = Uri.encodeQueryComponent(normalizedPath);
+    context.router.pushPath('/auth/login?redirect=$encodedRedirect');
   }
 
   void _exitInviteFlow() {

@@ -32,7 +32,8 @@ class InvitesRepository extends InvitesRepositoryContract
   }) : _backend = backend ?? LaravelInvitesBackend();
 
   final InvitesBackendContract _backend;
-  final InvitesResponseDecoder _responseDecoder = const InvitesResponseDecoder();
+  final InvitesResponseDecoder _responseDecoder =
+      const InvitesResponseDecoder();
 
   @override
   Future<List<InviteModel>> fetchInvites(
@@ -113,6 +114,17 @@ class InvitesRepository extends InvitesRepositoryContract
           _parseStringList(response['closed_duplicate_invite_ids']),
       acceptedAt: _parseDateTime(response['accepted_at']),
     );
+  }
+
+  @override
+  Future<InviteModel?> previewShareCode(String code) async {
+    final response = await _backend.fetchShareCodePreview(code);
+    final inviteRaw = response['invite'];
+    final decoded = _responseDecoder.decodeInviteDtos([inviteRaw]);
+    if (decoded.isEmpty) {
+      return null;
+    }
+    return mapInviteDto(decoded.first);
   }
 
   @override

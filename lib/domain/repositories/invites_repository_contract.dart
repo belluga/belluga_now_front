@@ -39,6 +39,8 @@ abstract class InvitesRepositoryContract {
 
   Future<InviteAcceptResult> acceptShareCode(String code);
 
+  Future<InviteModel?> previewShareCode(String code) async => null;
+
   Future<List<InviteContactMatch>> importContacts(List<ContactModel> contacts);
 
   Future<InviteShareCodeResult> createShareCode({

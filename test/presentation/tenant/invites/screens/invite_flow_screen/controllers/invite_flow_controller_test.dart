@@ -6,6 +6,7 @@ import 'package:belluga_now/domain/invites/invite_model.dart';
 import 'package:belluga_now/domain/invites/invite_next_step.dart';
 import 'package:belluga_now/domain/invites/invite_runtime_settings.dart';
 import 'package:belluga_now/domain/invites/invite_share_code_result.dart';
+import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_events_repository_contract.dart';
@@ -82,11 +83,14 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
   _FakeInvitesRepository({
     required List<InviteModel> initialInvites,
     this.shareAcceptInviteId = '',
+    this.previewInvite,
   }) : _initialInvites = initialInvites;
 
   final List<InviteModel> _initialInvites;
   final String shareAcceptInviteId;
+  final InviteModel? previewInvite;
   final List<String> acceptedShareCodes = <String>[];
+  final List<String> previewedShareCodes = <String>[];
 
   @override
   Future<List<InviteModel>> fetchInvites(
@@ -133,6 +137,12 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
       nextStep: InviteNextStep.openAppToContinue,
       closedDuplicateInviteIds: const [],
     );
+  }
+
+  @override
+  Future<InviteModel?> previewShareCode(String code) async {
+    previewedShareCodes.add(code);
+    return previewInvite;
   }
 
   @override
@@ -189,6 +199,70 @@ class _FakeUserEventsRepository implements UserEventsRepositoryContract {
 
   @override
   bool isEventConfirmed(String eventId) => false;
+}
+
+class _FakeAuthRepository extends AuthRepositoryContract {
+  _FakeAuthRepository({required this.authorized});
+
+  final bool authorized;
+
+  @override
+  Object get backend => Object();
+
+  @override
+  void setUserToken(String? token) {}
+
+  @override
+  String get userToken => authorized ? 'token' : '';
+
+  @override
+  bool get isUserLoggedIn => authorized;
+
+  @override
+  bool get isAuthorized => authorized;
+
+  @override
+  Future<String> getDeviceId() async => 'device-id';
+
+  @override
+  Future<String?> getUserId() async => authorized ? 'user-id' : null;
+
+  @override
+  Future<void> init() async {}
+
+  @override
+  Future<void> autoLogin() async {}
+
+  @override
+  Future<void> loginWithEmailPassword(String email, String password) async {}
+
+  @override
+  Future<void> signUpWithEmailPassword(
+    String name,
+    String email,
+    String password,
+  ) async {}
+
+  @override
+  Future<void> sendTokenRecoveryPassword(
+    String email,
+    String codigoEnviado,
+  ) async {}
+
+  @override
+  Future<void> logout() async {}
+
+  @override
+  Future<void> createNewPassword(
+    String newPassword,
+    String confirmPassword,
+  ) async {}
+
+  @override
+  Future<void> sendPasswordResetEmail(String email) async {}
+
+  @override
+  Future<void> updateUser(Map<String, Object?> data) async {}
 }
 
 InviteModel _buildInvite(String id) {
@@ -255,6 +329,29 @@ void main() {
 
     expect(repository.acceptedShareCodes, ['SHARE-ABC']);
     expect(controller.pendingInvitesStreamValue.value.first.id, '2');
+    await controller.onDispose();
+  });
+
+  test('unauthenticated init resolves share-code preview without acceptance',
+      () async {
+    final repository = _FakeInvitesRepository(
+      initialInvites: [_buildInvite('1')],
+      previewInvite: _buildInvite('preview'),
+    );
+    final controller = InviteFlowScreenController(
+      repository: repository,
+      userEventsRepository: _FakeUserEventsRepository(),
+      telemetryRepository: _FakeTelemetryRepository(),
+      authRepository: _FakeAuthRepository(authorized: false),
+    );
+
+    await controller.init(shareCode: 'SHARE-ABC');
+
+    expect(repository.previewedShareCodes, ['SHARE-ABC']);
+    expect(repository.acceptedShareCodes, isEmpty);
+    expect(controller.displayInvitesStreamValue.value, hasLength(1));
+    expect(controller.displayInvitesStreamValue.value.first.id, 'preview');
+    expect(controller.authRequiredForDecisionStreamValue.value, isTrue);
     await controller.onDispose();
   });
 }

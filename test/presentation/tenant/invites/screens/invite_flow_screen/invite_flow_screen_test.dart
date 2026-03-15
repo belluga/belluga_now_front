@@ -11,6 +11,7 @@ import 'package:belluga_now/domain/invites/invite_model.dart';
 import 'package:belluga_now/domain/invites/invite_next_step.dart';
 import 'package:belluga_now/domain/invites/invite_runtime_settings.dart';
 import 'package:belluga_now/domain/invites/invite_share_code_result.dart';
+import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_events_repository_contract.dart';
@@ -32,6 +33,7 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
       : _initialInvites = initialInvites;
 
   final List<InviteModel> _initialInvites;
+  final List<String> previewedShareCodes = <String>[];
 
   @override
   Future<List<InviteModel>> fetchInvites(
@@ -76,6 +78,15 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
         nextStep: InviteNextStep.openAppToContinue,
         closedDuplicateInviteIds: const [],
       );
+
+  @override
+  Future<InviteModel?> previewShareCode(String code) async {
+    previewedShareCodes.add(code);
+    if (_initialInvites.isEmpty) {
+      return null;
+    }
+    return _initialInvites.first;
+  }
 
   @override
   Future<List<InviteContactMatch>> importContacts(
@@ -171,6 +182,7 @@ class _RecordingStackRouter extends Mock implements StackRouter {
   _RecordingStackRouter({required this.canPopValue});
 
   final bool canPopValue;
+  String? lastPushedPath;
   bool pushCalled = false;
   PageRouteInfo? lastPushed;
   bool replaceAllCalled = false;
@@ -193,6 +205,16 @@ class _RecordingStackRouter extends Mock implements StackRouter {
   }) async {
     pushCalled = true;
     lastPushed = route;
+    return null;
+  }
+
+  @override
+  Future<T?> pushPath<T extends Object?>(
+    String path, {
+    bool includePrefixMatches = false,
+    OnNavigationFailure? onFailure,
+  }) async {
+    lastPushedPath = path;
     return null;
   }
 
@@ -261,6 +283,54 @@ void main() {
     expect(router.lastPushed, isA<InviteShareRoute>());
   });
 
+  testWidgets('Authenticated invite shows decline/accept contract',
+      (tester) async {
+    final invite = _buildInvite('1');
+    final controller = InviteFlowScreenController(
+      repository: _FakeInvitesRepository(initialInvites: [invite]),
+      userEventsRepository: _FakeUserEventsRepository(),
+      telemetryRepository: _FakeTelemetryRepository(),
+      authRepository: _FakeAuthRepository(authorized: true),
+    );
+    GetIt.I.registerSingleton<InviteFlowScreenController>(controller);
+
+    final router = _RecordingStackRouter(canPopValue: true);
+    final routeData = _buildRouteData(
+      router,
+      path: '/invite',
+      queryParams: const {'code': '31F8RN5QJ9'},
+    );
+
+    await tester.pumpWidget(
+      StackRouterScope(
+        controller: router,
+        stateHash: 0,
+        child: MaterialApp(
+          home: RouteDataScope(
+            routeData: routeData,
+            child: const InviteFlowScreen(),
+          ),
+        ),
+      ),
+    );
+
+    await tester.pump();
+    controller.markImageLoaded(invite.eventImageUrl);
+    await tester.pump();
+    for (var i = 0; i < 20; i++) {
+      await tester.pump(const Duration(milliseconds: 150));
+      if (find.text('Recusar').evaluate().isNotEmpty &&
+          find.text('Aceitar').evaluate().isNotEmpty) {
+        break;
+      }
+    }
+
+    expect(find.text('Recusar'), findsOneWidget);
+    expect(find.text('Aceitar'), findsOneWidget);
+    expect(find.byIcon(Icons.swipe), findsOneWidget);
+    expect(find.text('Entre para Aceitar ou Recusar'), findsNothing);
+  });
+
   testWidgets('Empty invites exit to home route', (tester) async {
     final controller = InviteFlowScreenController(
       repository: _FakeInvitesRepository(initialInvites: const []),
@@ -290,6 +360,58 @@ void main() {
     expect(router.replaceAllCalled, isTrue);
     expect(router.lastReplaced?.first, isA<TenantHomeRoute>());
   });
+
+  testWidgets(
+      'Unauthenticated invite shows auth CTA and preserves invite deep link',
+      (tester) async {
+    final invite = _buildInvite('1');
+    final controller = InviteFlowScreenController(
+      repository: _FakeInvitesRepository(initialInvites: [invite]),
+      userEventsRepository: _FakeUserEventsRepository(),
+      telemetryRepository: _FakeTelemetryRepository(),
+      authRepository: _FakeAuthRepository(authorized: false),
+    );
+    GetIt.I.registerSingleton<InviteFlowScreenController>(controller);
+
+    final router = _RecordingStackRouter(canPopValue: true);
+    final routeData = _buildRouteData(
+      router,
+      path: '/invite',
+      queryParams: const {'code': '31F8RN5QJ9'},
+    );
+
+    await tester.pumpWidget(
+      StackRouterScope(
+        controller: router,
+        stateHash: 0,
+        child: MaterialApp(
+          home: RouteDataScope(
+            routeData: routeData,
+            child: const InviteFlowScreen(),
+          ),
+        ),
+      ),
+    );
+
+    await tester.pump();
+    for (var i = 0; i < 20; i++) {
+      await tester.pump(const Duration(milliseconds: 150));
+      if (find.text('Entre para Aceitar ou Recusar').evaluate().isNotEmpty) {
+        break;
+      }
+    }
+
+    expect(find.text('Entre para Aceitar ou Recusar'), findsOneWidget);
+    expect(find.text('Recusar'), findsNothing);
+
+    await tester.tap(find.text('Entre para Aceitar ou Recusar'));
+    await tester.pump();
+
+    expect(
+      router.lastPushedPath,
+      '/auth/login?redirect=%2Finvite%3Fcode%3D31F8RN5QJ9',
+    );
+  });
 }
 
 InviteModel _buildInvite(String id) {
@@ -309,12 +431,17 @@ InviteModel _buildInvite(String id) {
 RouteData _buildRouteData(
   StackRouter router, {
   required Map<String, dynamic> queryParams,
+  String path = '/invite-flow',
 }) {
+  final normalizedSegments = path
+      .split('/')
+      .where((segment) => segment.isNotEmpty)
+      .toList(growable: false);
   final match = RouteMatch(
-    config: AutoRoute(page: InviteFlowRoute.page, path: '/invite-flow'),
-    segments: const ['invite-flow'],
-    stringMatch: '/invite-flow',
-    key: const ValueKey('invite-flow'),
+    config: AutoRoute(page: InviteFlowRoute.page, path: path),
+    segments: normalizedSegments,
+    stringMatch: path,
+    key: ValueKey(path),
     queryParams: Parameters(queryParams),
   );
   return RouteData(
@@ -331,6 +458,70 @@ class _TestHttpOverrides extends HttpOverrides {
   HttpClient createHttpClient(SecurityContext? context) {
     return _TestHttpClient();
   }
+}
+
+class _FakeAuthRepository extends AuthRepositoryContract {
+  _FakeAuthRepository({required this.authorized});
+
+  final bool authorized;
+
+  @override
+  Object get backend => Object();
+
+  @override
+  void setUserToken(String? token) {}
+
+  @override
+  String get userToken => authorized ? 'token' : '';
+
+  @override
+  bool get isUserLoggedIn => authorized;
+
+  @override
+  bool get isAuthorized => authorized;
+
+  @override
+  Future<String> getDeviceId() async => 'device-id';
+
+  @override
+  Future<String?> getUserId() async => authorized ? 'user-id' : null;
+
+  @override
+  Future<void> init() async {}
+
+  @override
+  Future<void> autoLogin() async {}
+
+  @override
+  Future<void> loginWithEmailPassword(String email, String password) async {}
+
+  @override
+  Future<void> signUpWithEmailPassword(
+    String name,
+    String email,
+    String password,
+  ) async {}
+
+  @override
+  Future<void> sendTokenRecoveryPassword(
+    String email,
+    String codigoEnviado,
+  ) async {}
+
+  @override
+  Future<void> logout() async {}
+
+  @override
+  Future<void> createNewPassword(
+    String newPassword,
+    String confirmPassword,
+  ) async {}
+
+  @override
+  Future<void> sendPasswordResetEmail(String email) async {}
+
+  @override
+  Future<void> updateUser(Map<String, Object?> data) async {}
 }
 
 class _TestHttpClient implements HttpClient {

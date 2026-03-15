@@ -34,7 +34,7 @@ void main() {
     );
     expect(
       inviteAliasRoute.guards.map((guard) => guard.runtimeType).toList(),
-      [TenantRouteGuard, AuthRouteGuard],
+      [TenantRouteGuard],
     );
     expect(
       shareRoute.guards.map((guard) => guard.runtimeType).toList(),
