@@ -18,8 +18,12 @@ class AuthRouteGuard extends AutoRouteGuard {
   }
 
   String _buildPendingPath(RouteMatch route) {
-    final rawPath = route.fullPath;
-    final path = rawPath.isEmpty ? '/' : '/$rawPath';
+    final rawPath = route.fullPath.trim();
+    final path = rawPath.isEmpty
+        ? '/'
+        : rawPath.startsWith('/')
+            ? rawPath
+            : '/$rawPath';
     final queryParams = route.queryParams.rawMap;
     final normalizedParams = queryParams.isEmpty
         ? null
