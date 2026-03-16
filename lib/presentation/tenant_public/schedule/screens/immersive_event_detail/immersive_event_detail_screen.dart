@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
+import 'package:belluga_now/application/router/support/route_redirect_path.dart';
 import 'package:belluga_now/domain/invites/invite_model.dart';
 import 'package:belluga_now/domain/invites/invite_next_step.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
@@ -154,7 +155,7 @@ class _ImmersiveEventDetailScreenState
                             buttonIcon: Icons.celebration,
                             buttonColor: colorScheme.primary,
                             onActionPressed: () {
-                              unawaited(_controller.confirmAttendance());
+                              unawaited(_handleConfirmAttendance());
                             },
                           );
 
@@ -180,6 +181,18 @@ class _ImmersiveEventDetailScreenState
         );
       },
     );
+  }
+
+  Future<void> _handleConfirmAttendance() async {
+    final result = await _controller.confirmAttendance();
+    if (!mounted ||
+        result != AttendanceConfirmationResult.requiresAuthentication) {
+      return;
+    }
+    final redirectPath =
+        buildRedirectPathFromRouteMatch(context.routeData.route);
+    final encodedRedirect = Uri.encodeQueryComponent(redirectPath);
+    context.router.replacePath('/auth/login?redirect=$encodedRedirect');
   }
 
   void _openInviteFlow(EventModel event) {

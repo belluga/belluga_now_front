@@ -79,8 +79,10 @@ class InvitesRepository extends InvitesRepositoryContract
           : _stringOrEmpty(response['attendance_policy']),
       nextStep:
           InviteNextStepApiMapper.parse(response['next_step']?.toString()),
-      closedDuplicateInviteIds:
-          _parseStringList(response['closed_duplicate_invite_ids']),
+      supersededInviteIds: _parseStringList(
+        response['superseded_invite_ids'] ??
+            response['closed_duplicate_invite_ids'],
+      ),
       acceptedAt: _parseDateTime(response['accepted_at']),
     );
   }
@@ -110,8 +112,10 @@ class InvitesRepository extends InvitesRepositoryContract
           : _stringOrEmpty(response['attendance_policy']),
       nextStep:
           InviteNextStepApiMapper.parse(response['next_step']?.toString()),
-      closedDuplicateInviteIds:
-          _parseStringList(response['closed_duplicate_invite_ids']),
+      supersededInviteIds: _parseStringList(
+        response['superseded_invite_ids'] ??
+            response['closed_duplicate_invite_ids'],
+      ),
       acceptedAt: _parseDateTime(response['accepted_at']),
     );
   }

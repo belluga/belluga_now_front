@@ -241,7 +241,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               title: const Text('Política de privacidade'),
                               subtitle: const Text('Como tratamos seus dados'),
                               trailing: const Icon(Icons.chevron_right),
-                              onTap: () => _showComingSoon(context),
+                              onTap: () => context.router.pushPath(
+                                '/privacy-policy',
+                              ),
                             ),
                           ],
                         ),

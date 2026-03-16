@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -22,39 +21,8 @@ void main() {
     expect(entitlements, contains('applinks:guarappari.belluga.space'));
   });
 
-  test('assetlinks is versioned with package mapping', () {
-    final raw = File('.well-known/assetlinks.json').readAsStringSync();
-    final decoded = jsonDecode(raw) as List<dynamic>;
-
-    expect(decoded, isNotEmpty);
-    final item = decoded.first as Map<String, dynamic>;
-    final target = item['target'] as Map<String, dynamic>;
-
-    expect(target['namespace'], 'android_app');
-    expect(target['package_name'], 'com.guarappari.app');
-    expect(
-      (target['sha256_cert_fingerprints'] as List<dynamic>).isNotEmpty,
-      isTrue,
-    );
-  });
-
-  test('AASA is versioned with invite paths', () {
-    final raw =
-        File('.well-known/apple-app-site-association').readAsStringSync();
-    final decoded = jsonDecode(raw) as Map<String, dynamic>;
-    final applinks = decoded['applinks'] as Map<String, dynamic>;
-    final details = applinks['details'] as List<dynamic>;
-    final firstDetail = details.first as Map<String, dynamic>;
-    final paths = firstDetail['paths'] as List<dynamic>;
-
-    expect(details, isNotEmpty);
-    expect(paths, contains('/invite'));
-    expect(paths, contains('/convites'));
-  });
-
   test('nginx templates expose canonical .well-known routes', () {
-    final prod =
-        File('../docker/nginx/prod.conf.template').readAsStringSync();
+    final prod = File('../docker/nginx/prod.conf.template').readAsStringSync();
     final local =
         File('../docker/nginx/local.conf.template').readAsStringSync();
 
@@ -64,46 +32,49 @@ void main() {
         template,
         contains('location = /.well-known/apple-app-site-association'),
       );
+      expect(
+        template,
+        contains(r'try_files /index.php?$query_string =404;'),
+      );
     }
   });
 
-  test('laravel public well-known artifacts are versioned', () {
-    final assetlinksRaw = File(
+  test('laravel public .well-known files are absent (endpoint is canonical)',
+      () {
+    final laravelAssetlinks = File(
       '../laravel-app/public/.well-known/assetlinks.json',
-    ).readAsStringSync();
-    final aasaRaw = File(
+    );
+    final laravelAasa = File(
       '../laravel-app/public/.well-known/apple-app-site-association',
-    ).readAsStringSync();
+    );
 
-    final assetlinks = jsonDecode(assetlinksRaw) as List<dynamic>;
-    final assetlinksTarget =
-        (assetlinks.first as Map<String, dynamic>)['target']
-            as Map<String, dynamic>;
-    final aasa = jsonDecode(aasaRaw) as Map<String, dynamic>;
-    final aasaDetails =
-        (aasa['applinks'] as Map<String, dynamic>)['details'] as List<dynamic>;
-
-    expect(assetlinksTarget['package_name'], 'com.guarappari.app');
-    expect(aasaDetails, isNotEmpty);
+    expect(laravelAssetlinks.existsSync(), isFalse);
+    expect(laravelAasa.existsSync(), isFalse);
   });
 
-  test('flutter and laravel well-known artifacts stay in sync', () {
-    final flutterAssetlinks = jsonDecode(
-      File('.well-known/assetlinks.json').readAsStringSync(),
-    );
-    final laravelAssetlinks = jsonDecode(
-      File('../laravel-app/public/.well-known/assetlinks.json')
-          .readAsStringSync(),
-    );
-    final flutterAasa = jsonDecode(
-      File('.well-known/apple-app-site-association').readAsStringSync(),
-    );
-    final laravelAasa = jsonDecode(
-      File('../laravel-app/public/.well-known/apple-app-site-association')
-          .readAsStringSync(),
-    );
+  test('flutter .well-known files are absent (endpoint is canonical)', () {
+    final flutterAssetlinks = File('.well-known/assetlinks.json');
+    final flutterAasa = File('.well-known/apple-app-site-association');
 
-    expect(laravelAssetlinks, flutterAssetlinks);
-    expect(laravelAasa, flutterAasa);
+    expect(flutterAssetlinks.existsSync(), isFalse);
+    expect(flutterAasa.existsSync(), isFalse);
+  });
+
+  test('gitignore rules block accidental static .well-known files', () {
+    final flutterGitignore = File('.gitignore').readAsStringSync();
+    final laravelGitignore =
+        File('../laravel-app/.gitignore').readAsStringSync();
+
+    expect(flutterGitignore, contains('.well-known/assetlinks.json'));
+    expect(
+        flutterGitignore, contains('.well-known/apple-app-site-association'));
+    expect(
+      laravelGitignore,
+      contains('/public/.well-known/assetlinks.json'),
+    );
+    expect(
+      laravelGitignore,
+      contains('/public/.well-known/apple-app-site-association'),
+    );
   });
 }

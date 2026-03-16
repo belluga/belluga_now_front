@@ -250,6 +250,24 @@ class _TenantAdminSettingsScreenState extends State<TenantAdminSettingsScreen> {
                     .withValues(alpha: 0.6),
               ),
               KeyedSubtree(
+                key: TenantAdminSettingsKeys.hubIntegrationAppLinks,
+                child: TenantAdminHubIntegrationRow(
+                  icon: Icons.link_outlined,
+                  title: 'App Links',
+                  subtitle: 'Android App Links + iOS Universal Links',
+                  onTap: () => _openTechnicalIntegrations(
+                    TenantAdminSettingsIntegrationSection.appLinks,
+                  ),
+                ),
+              ),
+              Divider(
+                height: 12,
+                color: Theme.of(context)
+                    .colorScheme
+                    .outlineVariant
+                    .withValues(alpha: 0.6),
+              ),
+              KeyedSubtree(
                 key: TenantAdminSettingsKeys.hubIntegrationTelemetry,
                 child: TenantAdminHubIntegrationRow(
                   icon: Icons.insights_outlined,

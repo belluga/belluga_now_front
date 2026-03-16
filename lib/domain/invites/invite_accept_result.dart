@@ -7,7 +7,7 @@ class InviteAcceptResult {
     required this.creditedAcceptance,
     required this.attendancePolicy,
     required this.nextStep,
-    required this.closedDuplicateInviteIds,
+    required this.supersededInviteIds,
     this.acceptedAt,
   });
 
@@ -16,7 +16,7 @@ class InviteAcceptResult {
   final bool creditedAcceptance;
   final String attendancePolicy;
   final InviteNextStep nextStep;
-  final List<String> closedDuplicateInviteIds;
+  final List<String> supersededInviteIds;
   final DateTime? acceptedAt;
 
   bool get isAccepted => status == 'accepted' || status == 'already_accepted';

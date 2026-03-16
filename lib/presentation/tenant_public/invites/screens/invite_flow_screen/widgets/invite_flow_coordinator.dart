@@ -164,12 +164,27 @@ class _InviteFlowCoordinatorState extends State<InviteFlowCoordinator> {
       return;
     }
 
+    final hasSelectableCandidate = invite.inviters
+        .any((candidate) => candidate.inviteId.trim().isNotEmpty);
+    if (invite.hasMultipleInviters && !hasSelectableCandidate) {
+      await _controller.requestDecision(decision);
+      return;
+    }
+
     final inviteId = await showInviteCandidatePicker(
       context,
       invite: invite,
       actionLabel: decision == InviteDecision.accepted ? 'Aceitar' : 'Recusar',
     );
-    if (inviteId == null || inviteId.isEmpty) {
+    if (inviteId == null) {
+      if (!invite.hasMultipleInviters) {
+        await _controller.requestDecision(decision);
+      }
+      return;
+    }
+
+    if (inviteId.isEmpty) {
+      await _controller.requestDecision(decision);
       return;
     }
     await _controller.requestDecisionForInvite(decision, inviteId);

@@ -80,6 +80,35 @@ class TenantAdminSettingsRepository
   }
 
   @override
+  Future<TenantAdminAppLinksSettings> fetchAppLinksSettings() async {
+    try {
+      final response = await _dio.getUri(
+        _buildTenantSettingsValuesUri(namespace: 'app_links'),
+        options: Options(headers: _buildHeaders()),
+      );
+      return _responseDecoder.decodeAppLinksSettings(response.data);
+    } on DioException catch (error) {
+      throw _wrapError(error, 'load app_links settings');
+    }
+  }
+
+  @override
+  Future<TenantAdminAppLinksSettings> updateAppLinksSettings({
+    required TenantAdminAppLinksSettings settings,
+  }) async {
+    try {
+      final response = await _dio.patchUri(
+        _buildTenantSettingsValuesUri(namespace: 'app_links'),
+        data: _requestEncoder.encodeAppLinksSettingsPatch(settings),
+        options: Options(headers: _buildHeaders()),
+      );
+      return _responseDecoder.decodeAppLinksSettings(response.data);
+    } on DioException catch (error) {
+      throw _wrapError(error, 'update app_links settings');
+    }
+  }
+
+  @override
   Future<String> uploadMapFilterImage({
     required String key,
     required TenantAdminMediaUpload upload,

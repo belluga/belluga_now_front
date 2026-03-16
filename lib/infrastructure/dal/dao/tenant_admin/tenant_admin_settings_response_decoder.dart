@@ -19,6 +19,11 @@ class TenantAdminSettingsResponseDecoder {
     );
   }
 
+  TenantAdminAppLinksSettings decodeAppLinksSettings(Object? rawResponse) {
+    final appLinks = _extractAppLinksPayload(rawResponse);
+    return _mapAppLinksSettings(appLinks);
+  }
+
   String decodeMapFilterImageUpload(
     Object? rawResponse, {
     required String key,
@@ -143,6 +148,56 @@ class TenantAdminSettingsResponseDecoder {
       throw Exception('Unexpected map_ui payload shape.');
     }
     return Map<String, dynamic>.from(payload);
+  }
+
+  Map<String, dynamic> _extractAppLinksPayload(Object? raw) {
+    final payload = _envelopeDecoder.decodeDataMap(
+      raw,
+      label: 'app_links settings',
+      emptyWhenDataIsNotMap: true,
+    );
+    if (payload.containsKey('app_links')) {
+      final appLinksRaw = payload['app_links'];
+      if (appLinksRaw is Map) {
+        return Map<String, dynamic>.from(appLinksRaw);
+      }
+      if (appLinksRaw == null) {
+        return const <String, dynamic>{};
+      }
+      if (appLinksRaw is List && appLinksRaw.isEmpty) {
+        return const <String, dynamic>{};
+      }
+      throw Exception('Unexpected app_links payload shape.');
+    }
+    return Map<String, dynamic>.from(payload);
+  }
+
+  TenantAdminAppLinksSettings _mapAppLinksSettings(
+    Map<String, dynamic> appLinks,
+  ) {
+    final androidRaw = appLinks['android'];
+    final android = androidRaw is Map
+        ? Map<String, dynamic>.from(androidRaw)
+        : const <String, dynamic>{};
+    final iosRaw = appLinks['ios'];
+    final ios = iosRaw is Map
+        ? Map<String, dynamic>.from(iosRaw)
+        : const <String, dynamic>{};
+
+    return TenantAdminAppLinksSettings(
+      rawAppLinks: Map<String, dynamic>.unmodifiable(appLinks),
+      androidPackageName: _normalizeOptionalText(android['package_name']),
+      androidSha256CertFingerprints:
+          _extractStringList(android['sha256_cert_fingerprints'])
+              .map((entry) => entry.toUpperCase())
+              .toSet()
+              .toList(growable: false),
+      iosTeamId: _normalizeOptionalText(ios['team_id']),
+      iosBundleId: _normalizeOptionalText(ios['bundle_id']),
+      iosPaths: _extractStringList(ios['paths']).toSet().toList(
+            growable: false,
+          ),
+    );
   }
 
   TenantAdminMapUiSettings _mapMapUiSettings(
@@ -517,6 +572,14 @@ class TenantAdminSettingsResponseDecoder {
     final compact = match.group(1)!;
     final expanded = compact.split('').map((char) => '$char$char').join();
     return '#${expanded.toUpperCase()}';
+  }
+
+  String? _normalizeOptionalText(Object? raw) {
+    final normalized = raw?.toString().trim();
+    if (normalized == null || normalized.isEmpty) {
+      return null;
+    }
+    return normalized;
   }
 
   int? _parseInt(Object? value) {

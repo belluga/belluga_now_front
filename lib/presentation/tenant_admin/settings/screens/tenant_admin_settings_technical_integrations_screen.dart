@@ -5,6 +5,7 @@ import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/presentation/tenant_admin/settings/controllers/tenant_admin_settings_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/settings/models/tenant_admin_settings_integration_section.dart';
 import 'package:belluga_now/presentation/tenant_admin/settings/tenant_admin_settings_keys.dart';
+import 'package:belluga_now/presentation/tenant_admin/settings/widgets/tenant_admin_settings_app_links_section.dart';
 import 'package:belluga_now/presentation/tenant_admin/settings/widgets/tenant_admin_settings_firebase_section.dart';
 import 'package:belluga_now/presentation/tenant_admin/settings/widgets/tenant_admin_settings_push_section.dart';
 import 'package:belluga_now/presentation/tenant_admin/settings/widgets/tenant_admin_settings_remote_status_panel.dart';
@@ -33,6 +34,7 @@ class _TenantAdminSettingsTechnicalIntegrationsScreenState
       GetIt.I.get<TenantAdminSettingsController>();
 
   final GlobalKey _firebaseSectionKey = GlobalKey();
+  final GlobalKey _appLinksSectionKey = GlobalKey();
   final GlobalKey _pushSectionKey = GlobalKey();
   final GlobalKey _telemetrySectionKey = GlobalKey();
 
@@ -59,6 +61,7 @@ class _TenantAdminSettingsTechnicalIntegrationsScreenState
       return;
     }
     final targetKey = switch (widget.initialSection) {
+      TenantAdminSettingsIntegrationSection.appLinks => _appLinksSectionKey,
       TenantAdminSettingsIntegrationSection.firebase => _firebaseSectionKey,
       TenantAdminSettingsIntegrationSection.push => _pushSectionKey,
       TenantAdminSettingsIntegrationSection.telemetry => _telemetrySectionKey,
@@ -92,6 +95,19 @@ class _TenantAdminSettingsTechnicalIntegrationsScreenState
         TenantAdminSettingsRemoteStatusPanel(
           controller: _controller,
           onReload: _controller.loadTechnicalIntegrationsSettings,
+        ),
+        const SizedBox(height: 12),
+        KeyedSubtree(
+          key: _appLinksSectionKey,
+          child: TenantAdminSettingsSection(
+            key: TenantAdminSettingsKeys.technicalIntegrationsAppLinksSection,
+            title: 'App Links',
+            description: 'Android App Links e iOS Universal Links por tenant.',
+            icon: Icons.link_outlined,
+            child: TenantAdminSettingsAppLinksSection(
+              controller: _controller,
+            ),
+          ),
         ),
         const SizedBox(height: 12),
         KeyedSubtree(

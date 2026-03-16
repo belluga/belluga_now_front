@@ -1,6 +1,7 @@
 import 'package:belluga_now/domain/contacts/contact_model.dart';
 import 'package:belluga_now/domain/invites/invite_accept_result.dart';
 import 'package:belluga_now/domain/invites/invite_contact_match.dart';
+import 'package:belluga_now/domain/invites/invite_decision.dart';
 import 'package:belluga_now/domain/invites/invite_decline_result.dart';
 import 'package:belluga_now/domain/invites/invite_model.dart';
 import 'package:belluga_now/domain/invites/invite_next_step.dart';
@@ -82,15 +83,15 @@ class _FakeTelemetryRepository implements TelemetryRepositoryContract {
 class _FakeInvitesRepository extends InvitesRepositoryContract {
   _FakeInvitesRepository({
     required List<InviteModel> initialInvites,
-    this.shareAcceptInviteId = '',
     this.previewInvite,
   }) : _initialInvites = initialInvites;
 
   final List<InviteModel> _initialInvites;
-  final String shareAcceptInviteId;
   final InviteModel? previewInvite;
   final List<String> acceptedShareCodes = <String>[];
   final List<String> previewedShareCodes = <String>[];
+  final List<String> acceptedInviteIds = <String>[];
+  final List<String> declinedInviteIds = <String>[];
 
   @override
   Future<List<InviteModel>> fetchInvites(
@@ -107,35 +108,38 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
       );
 
   @override
-  Future<InviteAcceptResult> acceptInvite(String inviteId) async =>
-      InviteAcceptResult(
-        inviteId: inviteId,
-        status: 'accepted',
-        creditedAcceptance: true,
-        attendancePolicy: 'free_confirmation_only',
-        nextStep: InviteNextStep.freeConfirmationCreated,
-        closedDuplicateInviteIds: const [],
-      );
+  Future<InviteAcceptResult> acceptInvite(String inviteId) async => (() {
+        acceptedInviteIds.add(inviteId);
+        return InviteAcceptResult(
+          inviteId: inviteId,
+          status: 'accepted',
+          creditedAcceptance: true,
+          attendancePolicy: 'free_confirmation_only',
+          nextStep: InviteNextStep.freeConfirmationCreated,
+          supersededInviteIds: const [],
+        );
+      })();
 
   @override
-  Future<InviteDeclineResult> declineInvite(String inviteId) async =>
-      InviteDeclineResult(
-        inviteId: inviteId,
-        status: 'declined',
-        groupHasOtherPending: false,
-      );
+  Future<InviteDeclineResult> declineInvite(String inviteId) async => (() {
+        declinedInviteIds.add(inviteId);
+        return InviteDeclineResult(
+          inviteId: inviteId,
+          status: 'declined',
+          groupHasOtherPending: false,
+        );
+      })();
 
   @override
   Future<InviteAcceptResult> acceptShareCode(String code) async {
     acceptedShareCodes.add(code);
-    final inviteId = shareAcceptInviteId.isEmpty ? code : shareAcceptInviteId;
     return InviteAcceptResult(
-      inviteId: inviteId,
+      inviteId: code,
       status: 'accepted',
       creditedAcceptance: true,
       attendancePolicy: 'free_confirmation_only',
       nextStep: InviteNextStep.openAppToContinue,
-      closedDuplicateInviteIds: const [],
+      supersededInviteIds: const [],
     );
   }
 
@@ -280,6 +284,20 @@ InviteModel _buildInvite(String id) {
   );
 }
 
+InviteModel _buildInviteWithoutInviter(String id) {
+  return InviteModel.fromPrimitives(
+    id: id,
+    eventId: 'event-$id',
+    eventName: 'Event $id',
+    eventDateTime: DateTime(2025, 1, 1, 18),
+    eventImageUrl: 'https://example.com/$id.jpg',
+    location: 'Guarapari',
+    hostName: 'Host $id',
+    message: 'Invite $id',
+    tags: const ['music'],
+  );
+}
+
 void main() {
   test('invite_opened fires when the top invite changes', () async {
     final telemetry = _FakeTelemetryRepository();
@@ -314,10 +332,11 @@ void main() {
     await controller.onDispose();
   });
 
-  test('init accepts share code and prioritizes accepted invite', () async {
+  test('authenticated init resolves share-code preview without acceptance',
+      () async {
     final repository = _FakeInvitesRepository(
-      initialInvites: [_buildInvite('1'), _buildInvite('2')],
-      shareAcceptInviteId: '2',
+      initialInvites: [_buildInvite('1')],
+      previewInvite: _buildInvite('preview'),
     );
     final controller = InviteFlowScreenController(
       repository: repository,
@@ -327,8 +346,12 @@ void main() {
 
     await controller.init(shareCode: 'SHARE-ABC');
 
-    expect(repository.acceptedShareCodes, ['SHARE-ABC']);
-    expect(controller.pendingInvitesStreamValue.value.first.id, '2');
+    expect(repository.previewedShareCodes, ['SHARE-ABC']);
+    expect(repository.acceptedShareCodes, isEmpty);
+    expect(controller.pendingInvitesStreamValue.value, hasLength(1));
+    expect(controller.pendingInvitesStreamValue.value.first.id, 'preview');
+    expect(controller.displayInvitesStreamValue.value.first.id, 'preview');
+    expect(controller.authRequiredForDecisionStreamValue.value, isFalse);
     await controller.onDispose();
   });
 
@@ -352,6 +375,50 @@ void main() {
     expect(controller.displayInvitesStreamValue.value, hasLength(1));
     expect(controller.displayInvitesStreamValue.value.first.id, 'preview');
     expect(controller.authRequiredForDecisionStreamValue.value, isTrue);
+    await controller.onDispose();
+  });
+
+  test(
+      'accepted decision falls back to acceptShareCode when preview has no invite id',
+      () async {
+    final repository = _FakeInvitesRepository(
+      initialInvites: const [],
+      previewInvite: _buildInviteWithoutInviter('preview'),
+    );
+    final controller = InviteFlowScreenController(
+      repository: repository,
+      userEventsRepository: _FakeUserEventsRepository(),
+      telemetryRepository: _FakeTelemetryRepository(),
+      authRepository: _FakeAuthRepository(authorized: true),
+    );
+
+    await controller.init(shareCode: 'SHARE-ABC');
+    await controller.requestDecision(InviteDecision.accepted);
+
+    expect(repository.previewedShareCodes, ['SHARE-ABC']);
+    expect(repository.acceptedShareCodes, ['SHARE-ABC']);
+    expect(repository.acceptedInviteIds, isEmpty);
+    await controller.onDispose();
+  });
+
+  test('declined decision without invite id dismisses preview locally',
+      () async {
+    final repository = _FakeInvitesRepository(
+      initialInvites: const [],
+      previewInvite: _buildInviteWithoutInviter('preview'),
+    );
+    final controller = InviteFlowScreenController(
+      repository: repository,
+      userEventsRepository: _FakeUserEventsRepository(),
+      telemetryRepository: _FakeTelemetryRepository(),
+      authRepository: _FakeAuthRepository(authorized: true),
+    );
+
+    await controller.init(shareCode: 'SHARE-ABC');
+    await controller.requestDecision(InviteDecision.declined);
+
+    expect(repository.declinedInviteIds, isEmpty);
+    expect(controller.displayInvitesStreamValue.value, isEmpty);
     await controller.onDispose();
   });
 }

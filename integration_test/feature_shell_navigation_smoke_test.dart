@@ -396,7 +396,7 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
         creditedAcceptance: true,
         attendancePolicy: 'free_confirmation_only',
         nextStep: InviteNextStep.freeConfirmationCreated,
-        closedDuplicateInviteIds: const [],
+        supersededInviteIds: const [],
       );
 
   @override
@@ -415,7 +415,7 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
         creditedAcceptance: true,
         attendancePolicy: 'free_confirmation_only',
         nextStep: InviteNextStep.openAppToContinue,
-        closedDuplicateInviteIds: const [],
+        supersededInviteIds: const [],
       );
 
   @override

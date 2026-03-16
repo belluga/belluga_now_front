@@ -90,6 +90,12 @@ class TenantAdminSettingsController implements Disposable {
       StreamValue<TenantAdminMapUiSettings>(
     defaultValue: TenantAdminMapUiSettings.empty(),
   );
+  final StreamValue<bool> appLinksSubmittingStreamValue =
+      StreamValue<bool>(defaultValue: false);
+  final StreamValue<TenantAdminAppLinksSettings> appLinksSettingsStreamValue =
+      StreamValue<TenantAdminAppLinksSettings>(
+    defaultValue: TenantAdminAppLinksSettings.empty(),
+  );
   final StreamValue<TenantAdminMapFilterRuleCatalog>
       mapFilterRuleCatalogStreamValue =
       StreamValue<TenantAdminMapFilterRuleCatalog>(
@@ -176,6 +182,16 @@ class TenantAdminSettingsController implements Disposable {
   final TextEditingController mapDefaultOriginLongitudeController =
       TextEditingController();
   final TextEditingController mapDefaultOriginLabelController =
+      TextEditingController();
+  final TextEditingController appLinksAndroidPackageNameController =
+      TextEditingController();
+  final TextEditingController appLinksAndroidFingerprintsController =
+      TextEditingController();
+  final TextEditingController appLinksIosTeamIdController =
+      TextEditingController();
+  final TextEditingController appLinksIosBundleIdController =
+      TextEditingController();
+  final TextEditingController appLinksIosPathsController =
       TextEditingController();
   static const int _mapFilterKeyMaxLength = 64;
 
@@ -312,6 +328,14 @@ class TenantAdminSettingsController implements Disposable {
         final telemetrySnapshot =
             await _settingsRepository.fetchTelemetrySettings();
         telemetrySnapshotStreamValue.addValue(telemetrySnapshot);
+      } catch (error) {
+        errors.add(error.toString());
+      }
+
+      try {
+        final appLinksSettings =
+            await _settingsRepository.fetchAppLinksSettings();
+        _applyAppLinksSettings(appLinksSettings);
       } catch (error) {
         errors.add(error.toString());
       }
@@ -710,6 +734,26 @@ class TenantAdminSettingsController implements Disposable {
     }
   }
 
+  Future<void> saveAppLinksSettings() async {
+    final parsed = _buildAppLinksSettings();
+    if (parsed == null) {
+      return;
+    }
+
+    appLinksSubmittingStreamValue.addValue(true);
+    try {
+      final updated = await _settingsRepository.updateAppLinksSettings(
+        settings: parsed,
+      );
+      _applyAppLinksSettings(updated);
+      _reportSuccess('App Links atualizados com sucesso.');
+    } catch (error) {
+      remoteErrorStreamValue.addValue(error.toString());
+    } finally {
+      appLinksSubmittingStreamValue.addValue(false);
+    }
+  }
+
   void selectBrandingBrightness(TenantAdminBrandingBrightness brightness) {
     brandingBrightnessStreamValue.addValue(brightness);
   }
@@ -941,6 +985,7 @@ class TenantAdminSettingsController implements Disposable {
     _seedFirebaseAndPushFromSnapshot();
     _clearBrandingDraftForRemoteLoad();
     _resetMapUiDraft();
+    _resetAppLinksDraft();
   }
 
   void _clearBrandingDraftForRemoteLoad() {
@@ -953,6 +998,16 @@ class TenantAdminSettingsController implements Disposable {
     brandingLightIconUrlStreamValue.addValue(null);
     brandingDarkIconUrlStreamValue.addValue(null);
     brandingPwaIconUrlStreamValue.addValue(null);
+  }
+
+  void _resetAppLinksDraft() {
+    appLinksSettingsStreamValue.addValue(TenantAdminAppLinksSettings.empty());
+    appLinksSubmittingStreamValue.addValue(false);
+    appLinksAndroidPackageNameController.clear();
+    appLinksAndroidFingerprintsController.clear();
+    appLinksIosTeamIdController.clear();
+    appLinksIosBundleIdController.clear();
+    appLinksIosPathsController.clear();
   }
 
   TenantAdminFirebaseSettings? _buildFirebaseSettings() {
@@ -988,6 +1043,71 @@ class TenantAdminSettingsController implements Disposable {
       maxTtlDays: ttlDays,
       maxPerMinute: maxPerMinute,
       maxPerHour: maxPerHour,
+    );
+  }
+
+  TenantAdminAppLinksSettings? _buildAppLinksSettings() {
+    final androidPackageName = appLinksAndroidPackageNameController.text.trim();
+    if (androidPackageName.isEmpty) {
+      remoteErrorStreamValue.addValue(
+        'Package name Android é obrigatório.',
+      );
+      return null;
+    }
+    if (!_isValidAndroidPackageName(androidPackageName)) {
+      remoteErrorStreamValue.addValue(
+        'Package name Android inválido.',
+      );
+      return null;
+    }
+
+    final fingerprints = _parseDelimitedList(
+      appLinksAndroidFingerprintsController.text,
+    ).map((entry) => entry.toUpperCase()).toList(growable: false);
+    if (fingerprints.isEmpty) {
+      remoteErrorStreamValue.addValue(
+        'Informe ao menos um fingerprint SHA-256.',
+      );
+      return null;
+    }
+    final invalidFingerprint = fingerprints.firstWhere(
+      (entry) => !_isValidSha256Fingerprint(entry),
+      orElse: () => '',
+    );
+    if (invalidFingerprint.isNotEmpty) {
+      remoteErrorStreamValue.addValue(
+        'Fingerprint SHA-256 inválido: $invalidFingerprint',
+      );
+      return null;
+    }
+
+    final iosTeamId = _normalizeOptionalText(appLinksIosTeamIdController.text);
+    final iosBundleId =
+        _normalizeOptionalText(appLinksIosBundleIdController.text);
+    if ((iosTeamId == null) != (iosBundleId == null)) {
+      remoteErrorStreamValue.addValue(
+        'Preencha team_id e bundle_id do iOS juntos, ou deixe ambos vazios.',
+      );
+      return null;
+    }
+
+    final parsedIosPaths = _parseDelimitedList(appLinksIosPathsController.text);
+    final iosPaths = parsedIosPaths.isEmpty
+        ? appLinksSettingsStreamValue.value.iosPaths
+        : parsedIosPaths;
+    if (iosTeamId != null && iosPaths.isEmpty) {
+      remoteErrorStreamValue.addValue(
+        'Informe ao menos um path iOS para Universal Links.',
+      );
+      return null;
+    }
+
+    return appLinksSettingsStreamValue.value.applyValues(
+      androidPackageName: androidPackageName,
+      androidSha256CertFingerprints: fingerprints,
+      iosTeamId: iosTeamId,
+      iosBundleId: iosBundleId,
+      iosPaths: iosPaths,
     );
   }
 
@@ -1045,6 +1165,17 @@ class TenantAdminSettingsController implements Disposable {
     pushMaxTtlDaysController.text = '${settings.maxTtlDays}';
     pushMaxPerMinuteController.text = '${settings.maxPerMinute}';
     pushMaxPerHourController.text = '${settings.maxPerHour}';
+  }
+
+  void _applyAppLinksSettings(TenantAdminAppLinksSettings settings) {
+    appLinksSettingsStreamValue.addValue(settings);
+    appLinksAndroidPackageNameController.text =
+        settings.androidPackageName ?? '';
+    appLinksAndroidFingerprintsController.text =
+        settings.androidSha256CertFingerprints.join(', ');
+    appLinksIosTeamIdController.text = settings.iosTeamId ?? '';
+    appLinksIosBundleIdController.text = settings.iosBundleId ?? '';
+    appLinksIosPathsController.text = settings.iosPaths.join(', ');
   }
 
   void _applyBrandingSettings(TenantAdminBrandingSettings settings) {
@@ -1311,6 +1442,33 @@ class TenantAdminSettingsController implements Disposable {
         .toList(growable: false);
   }
 
+  List<String> _parseDelimitedList(String raw) {
+    return raw
+        .split(RegExp(r'[\n,;]'))
+        .map((item) => item.trim())
+        .where((item) => item.isNotEmpty)
+        .toSet()
+        .toList(growable: false);
+  }
+
+  String? _normalizeOptionalText(String raw) {
+    final value = raw.trim();
+    if (value.isEmpty) {
+      return null;
+    }
+    return value;
+  }
+
+  bool _isValidAndroidPackageName(String raw) {
+    final pattern = RegExp(r'^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)+$');
+    return pattern.hasMatch(raw);
+  }
+
+  bool _isValidSha256Fingerprint(String raw) {
+    final pattern = RegExp(r'^([A-F0-9]{2}:){31}[A-F0-9]{2}$');
+    return pattern.hasMatch(raw);
+  }
+
   int? _parsePositiveInt(String raw) {
     final parsed = int.tryParse(raw.trim());
     if (parsed == null || parsed <= 0) {
@@ -1409,6 +1567,8 @@ class TenantAdminSettingsController implements Disposable {
     remoteSuccessStreamValue.dispose();
     mapUiSubmittingStreamValue.dispose();
     mapUiSettingsStreamValue.dispose();
+    appLinksSubmittingStreamValue.dispose();
+    appLinksSettingsStreamValue.dispose();
     mapFilterRuleCatalogStreamValue.dispose();
     mapFilterRuleCatalogLoadingStreamValue.dispose();
     firebaseSubmittingStreamValue.dispose();
@@ -1446,6 +1606,11 @@ class TenantAdminSettingsController implements Disposable {
     mapDefaultOriginLatitudeController.dispose();
     mapDefaultOriginLongitudeController.dispose();
     mapDefaultOriginLabelController.dispose();
+    appLinksAndroidPackageNameController.dispose();
+    appLinksAndroidFingerprintsController.dispose();
+    appLinksIosTeamIdController.dispose();
+    appLinksIosBundleIdController.dispose();
+    appLinksIosPathsController.dispose();
     _tenantScopeSubscription?.cancel();
     _brandingSubscription?.cancel();
     _locationSelectionSubscription?.cancel();

@@ -7,6 +7,8 @@ import 'package:belluga_now/domain/contacts/contact_model.dart';
 import 'package:belluga_now/domain/invites/invite_accept_result.dart';
 import 'package:belluga_now/domain/invites/invite_contact_match.dart';
 import 'package:belluga_now/domain/invites/invite_decline_result.dart';
+import 'package:belluga_now/domain/invites/invite_inviter.dart';
+import 'package:belluga_now/domain/invites/invite_inviter_type.dart';
 import 'package:belluga_now/domain/invites/invite_model.dart';
 import 'package:belluga_now/domain/invites/invite_next_step.dart';
 import 'package:belluga_now/domain/invites/invite_runtime_settings.dart';
@@ -34,6 +36,9 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
 
   final List<InviteModel> _initialInvites;
   final List<String> previewedShareCodes = <String>[];
+  final List<String> acceptedShareCodes = <String>[];
+  final List<String> acceptedInviteIds = <String>[];
+  final List<String> declinedInviteIds = <String>[];
 
   @override
   Future<List<InviteModel>> fetchInvites(
@@ -50,34 +55,40 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
       );
 
   @override
-  Future<InviteAcceptResult> acceptInvite(String inviteId) async =>
-      InviteAcceptResult(
-        inviteId: inviteId,
-        status: 'accepted',
-        creditedAcceptance: true,
-        attendancePolicy: 'free_confirmation_only',
-        nextStep: InviteNextStep.freeConfirmationCreated,
-        closedDuplicateInviteIds: const [],
-      );
+  Future<InviteAcceptResult> acceptInvite(String inviteId) async => (() {
+        acceptedInviteIds.add(inviteId);
+        return InviteAcceptResult(
+          inviteId: inviteId,
+          status: 'accepted',
+          creditedAcceptance: true,
+          attendancePolicy: 'free_confirmation_only',
+          nextStep: InviteNextStep.freeConfirmationCreated,
+          supersededInviteIds: const [],
+        );
+      })();
 
   @override
-  Future<InviteDeclineResult> declineInvite(String inviteId) async =>
-      InviteDeclineResult(
-        inviteId: inviteId,
-        status: 'declined',
-        groupHasOtherPending: false,
-      );
+  Future<InviteDeclineResult> declineInvite(String inviteId) async => (() {
+        declinedInviteIds.add(inviteId);
+        return InviteDeclineResult(
+          inviteId: inviteId,
+          status: 'declined',
+          groupHasOtherPending: false,
+        );
+      })();
 
   @override
-  Future<InviteAcceptResult> acceptShareCode(String code) async =>
-      InviteAcceptResult(
-        inviteId: code,
-        status: 'accepted',
-        creditedAcceptance: true,
-        attendancePolicy: 'free_confirmation_only',
-        nextStep: InviteNextStep.openAppToContinue,
-        closedDuplicateInviteIds: const [],
-      );
+  Future<InviteAcceptResult> acceptShareCode(String code) async {
+    acceptedShareCodes.add(code);
+    return InviteAcceptResult(
+      inviteId: code,
+      status: 'accepted',
+      creditedAcceptance: true,
+      attendancePolicy: 'free_confirmation_only',
+      nextStep: InviteNextStep.openAppToContinue,
+      supersededInviteIds: const [],
+    );
+  }
 
   @override
   Future<InviteModel?> previewShareCode(String code) async {
@@ -412,6 +423,263 @@ void main() {
       '/auth/login?redirect=%2Finvite%3Fcode%3D31F8RN5QJ9',
     );
   });
+
+  testWidgets('Authenticated preview invite accept triggers share-code action',
+      (tester) async {
+    final invite = _buildInvite('1');
+    final repository = _FakeInvitesRepository(initialInvites: [invite]);
+    final controller = InviteFlowScreenController(
+      repository: repository,
+      userEventsRepository: _FakeUserEventsRepository(),
+      telemetryRepository: _FakeTelemetryRepository(),
+      authRepository: _FakeAuthRepository(authorized: true),
+    );
+    GetIt.I.registerSingleton<InviteFlowScreenController>(controller);
+
+    final router = _RecordingStackRouter(canPopValue: true);
+    final routeData = _buildRouteData(
+      router,
+      path: '/invite',
+      queryParams: const {'code': '31F8RN5QJ9'},
+    );
+
+    await tester.pumpWidget(
+      StackRouterScope(
+        controller: router,
+        stateHash: 0,
+        child: MaterialApp(
+          home: RouteDataScope(
+            routeData: routeData,
+            child: const InviteFlowScreen(),
+          ),
+        ),
+      ),
+    );
+
+    await tester.pump();
+    controller.markImageLoaded(invite.eventImageUrl);
+    await tester.pump();
+    for (var i = 0; i < 20; i++) {
+      await tester.pump(const Duration(milliseconds: 150));
+      if (find.text('Aceitar').evaluate().isNotEmpty) {
+        break;
+      }
+    }
+
+    await tester.tap(find.text('Aceitar'));
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(repository.acceptedShareCodes, ['31F8RN5QJ9']);
+    expect(repository.acceptedInviteIds, isEmpty);
+  });
+
+  testWidgets(
+      'Authenticated share invite with inviteId accepts through invite contract',
+      (tester) async {
+    final invite = _buildInviteWithPrimaryInviter('accept-1');
+    final repository = _FakeInvitesRepository(initialInvites: [invite]);
+    final controller = InviteFlowScreenController(
+      repository: repository,
+      userEventsRepository: _FakeUserEventsRepository(),
+      telemetryRepository: _FakeTelemetryRepository(),
+      authRepository: _FakeAuthRepository(authorized: true),
+    );
+    GetIt.I.registerSingleton<InviteFlowScreenController>(controller);
+
+    final router = _RecordingStackRouter(canPopValue: true);
+    final routeData = _buildRouteData(
+      router,
+      path: '/invite',
+      queryParams: const {'code': '31F8RN5QJ9'},
+    );
+
+    await tester.pumpWidget(
+      StackRouterScope(
+        controller: router,
+        stateHash: 0,
+        child: MaterialApp(
+          home: RouteDataScope(
+            routeData: routeData,
+            child: const InviteFlowScreen(),
+          ),
+        ),
+      ),
+    );
+
+    await tester.pump();
+    controller.markImageLoaded(invite.eventImageUrl);
+    await tester.pump();
+    for (var i = 0; i < 20; i++) {
+      await tester.pump(const Duration(milliseconds: 150));
+      if (find.text('Aceitar').evaluate().isNotEmpty) {
+        break;
+      }
+    }
+
+    await tester.tap(find.text('Aceitar'));
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(repository.acceptedInviteIds, ['accept-1']);
+    expect(repository.acceptedShareCodes, isEmpty);
+  });
+
+  testWidgets(
+      'Authenticated share invite with inviteId declines through invite contract',
+      (tester) async {
+    final invite = _buildInviteWithPrimaryInviter('decline-1');
+    final repository = _FakeInvitesRepository(initialInvites: [invite]);
+    final controller = InviteFlowScreenController(
+      repository: repository,
+      userEventsRepository: _FakeUserEventsRepository(),
+      telemetryRepository: _FakeTelemetryRepository(),
+      authRepository: _FakeAuthRepository(authorized: true),
+    );
+    GetIt.I.registerSingleton<InviteFlowScreenController>(controller);
+
+    final router = _RecordingStackRouter(canPopValue: true);
+    final routeData = _buildRouteData(
+      router,
+      path: '/invite',
+      queryParams: const {'code': '31F8RN5QJ9'},
+    );
+
+    await tester.pumpWidget(
+      StackRouterScope(
+        controller: router,
+        stateHash: 0,
+        child: MaterialApp(
+          home: RouteDataScope(
+            routeData: routeData,
+            child: const InviteFlowScreen(),
+          ),
+        ),
+      ),
+    );
+
+    await tester.pump();
+    controller.markImageLoaded(invite.eventImageUrl);
+    await tester.pump();
+    for (var i = 0; i < 20; i++) {
+      await tester.pump(const Duration(milliseconds: 150));
+      if (find.text('Recusar').evaluate().isNotEmpty) {
+        break;
+      }
+    }
+
+    await tester.tap(find.text('Recusar'));
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(repository.declinedInviteIds, ['decline-1']);
+    expect(repository.acceptedShareCodes, isEmpty);
+  });
+
+  testWidgets(
+      'Closing invite flow without decision routes home and keeps invite pending',
+      (tester) async {
+    final invite = _buildInviteWithPrimaryInviter('pending-1');
+    final repository = _FakeInvitesRepository(initialInvites: [invite]);
+    final controller = InviteFlowScreenController(
+      repository: repository,
+      userEventsRepository: _FakeUserEventsRepository(),
+      telemetryRepository: _FakeTelemetryRepository(),
+      authRepository: _FakeAuthRepository(authorized: true),
+    );
+    GetIt.I.registerSingleton<InviteFlowScreenController>(controller);
+
+    final router = _RecordingStackRouter(canPopValue: false);
+    final routeData = _buildRouteData(
+      router,
+      path: '/invite',
+      queryParams: const {'code': '31F8RN5QJ9'},
+    );
+
+    await tester.pumpWidget(
+      StackRouterScope(
+        controller: router,
+        stateHash: 0,
+        child: MaterialApp(
+          home: RouteDataScope(
+            routeData: routeData,
+            child: const InviteFlowScreen(),
+          ),
+        ),
+      ),
+    );
+
+    await tester.pump();
+    controller.markImageLoaded(invite.eventImageUrl);
+    await tester.pump();
+    for (var i = 0; i < 20; i++) {
+      await tester.pump(const Duration(milliseconds: 150));
+      if (find.byTooltip('Fechar').evaluate().isNotEmpty) {
+        break;
+      }
+    }
+
+    await tester.tap(find.byTooltip('Fechar'));
+    await tester.pump();
+
+    expect(router.replaceAllCalled, isTrue);
+    expect(router.lastReplaced?.first, isA<TenantHomeRoute>());
+    expect(controller.pendingInvitesStreamValue.value, hasLength(1));
+    expect(controller.pendingInvitesStreamValue.value.first.id, 'pending-1');
+    expect(controller.pendingInvitesStreamValue.value.first.eventId,
+        'event-pending-1');
+  });
+
+  testWidgets(
+      'Authenticated multi-inviter preview with empty picker id still triggers decision',
+      (tester) async {
+    final invite = _buildInviteWithEmptyCandidateIds('multi-1');
+    final repository = _FakeInvitesRepository(initialInvites: [invite]);
+    final controller = InviteFlowScreenController(
+      repository: repository,
+      userEventsRepository: _FakeUserEventsRepository(),
+      telemetryRepository: _FakeTelemetryRepository(),
+      authRepository: _FakeAuthRepository(authorized: true),
+    );
+    GetIt.I.registerSingleton<InviteFlowScreenController>(controller);
+
+    final router = _RecordingStackRouter(canPopValue: true);
+    final routeData = _buildRouteData(
+      router,
+      path: '/invite',
+      queryParams: const {'code': '31F8RN5QJ9'},
+    );
+
+    await tester.pumpWidget(
+      StackRouterScope(
+        controller: router,
+        stateHash: 0,
+        child: MaterialApp(
+          home: RouteDataScope(
+            routeData: routeData,
+            child: const InviteFlowScreen(),
+          ),
+        ),
+      ),
+    );
+
+    await tester.pump();
+    controller.markImageLoaded(invite.eventImageUrl);
+    await tester.pump();
+    for (var i = 0; i < 20; i++) {
+      await tester.pump(const Duration(milliseconds: 150));
+      if (find.text('Aceitar').evaluate().isNotEmpty) {
+        break;
+      }
+    }
+
+    await tester.tap(find.text('Aceitar'));
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(repository.acceptedShareCodes, ['31F8RN5QJ9']);
+    expect(repository.acceptedInviteIds, isEmpty);
+  });
 }
 
 InviteModel _buildInvite(String id) {
@@ -428,6 +696,48 @@ InviteModel _buildInvite(String id) {
   );
 }
 
+InviteModel _buildInviteWithPrimaryInviter(String id) {
+  return InviteModel.fromPrimitives(
+    id: id,
+    eventId: 'event-$id',
+    eventName: 'Event $id',
+    eventDateTime: DateTime(2026, 1, 1, 18),
+    eventImageUrl: 'https://example.com/$id.jpg',
+    location: 'Guarapari',
+    hostName: 'Host $id',
+    message: 'Invite $id',
+    tags: const ['music'],
+    inviterName: 'Convidador principal',
+  );
+}
+
+InviteModel _buildInviteWithEmptyCandidateIds(String id) {
+  return InviteModel.fromPrimitives(
+    id: id,
+    eventId: 'event-$id',
+    eventName: 'Event $id',
+    eventDateTime: DateTime(2026, 1, 1, 18),
+    eventImageUrl: 'https://example.com/$id.jpg',
+    location: 'Guarapari',
+    hostName: 'Host $id',
+    message: 'Invite $id',
+    tags: const ['music'],
+    inviterName: 'Convidador A',
+    inviters: const [
+      InviteInviter(
+        inviteId: '',
+        type: InviteInviterType.user,
+        name: 'Convidador A',
+      ),
+      InviteInviter(
+        inviteId: '',
+        type: InviteInviterType.user,
+        name: 'Convidador B',
+      ),
+    ],
+  );
+}
+
 RouteData _buildRouteData(
   StackRouter router, {
   required Map<String, dynamic> queryParams,
@@ -438,7 +748,10 @@ RouteData _buildRouteData(
       .where((segment) => segment.isNotEmpty)
       .toList(growable: false);
   final match = RouteMatch(
-    config: AutoRoute(page: InviteFlowRoute.page, path: path),
+    config: AutoRoute(
+      page: path == '/invite' ? InviteEntryRoute.page : InviteFlowRoute.page,
+      path: path,
+    ),
     segments: normalizedSegments,
     stringMatch: path,
     key: ValueKey(path),

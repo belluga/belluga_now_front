@@ -70,6 +70,15 @@ class HomeModule extends ModuleContract {
           page: TenantHomeRoute.page,
           guards: [TenantRouteGuard()],
         ),
+        AutoRoute(
+          path: '/privacy-policy',
+          page: TenantPrivacyPolicyRoute.page,
+          guards: [TenantRouteGuard()],
+        ),
+        RedirectRoute(
+          path: '/politica-de-privacidade',
+          redirectTo: '/privacy-policy',
+        ),
         RedirectRoute(
           path: '/home',
           redirectTo: '/',

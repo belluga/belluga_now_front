@@ -129,6 +129,33 @@ void main() {
     expect(adapter.requests.single.uri.path, '/admin/api/v1/settings/values');
   });
 
+  test('fetchAppLinksSettings parses app_links namespace payload', () async {
+    final adapter = _RoutingAdapter();
+    final scope = _MutableTenantScope('https://tenant-a.test');
+    final dio = Dio()..httpClientAdapter = adapter;
+    final repository = TenantAdminSettingsRepository(
+      dio: dio,
+      tenantScope: scope,
+    );
+
+    final settings = await repository.fetchAppLinksSettings();
+
+    expect(settings.androidPackageName, 'com.guarappari.app');
+    expect(
+      settings.androidSha256CertFingerprints,
+      equals(
+        const [
+          '3E:72:4C:54:E9:53:26:7D:E6:E1:9B:F8:DC:53:30:2A:08:01:8E:36:40:AA:23:11:22:33:44:55:66:77:88:99',
+        ],
+      ),
+    );
+    expect(settings.iosTeamId, 'TEAMID1234');
+    expect(settings.iosBundleId, 'com.guarappari.app');
+    expect(settings.iosPaths, equals(const ['/invite*', '/convites*']));
+    expect(adapter.requests.single.uri.path,
+        '/admin/api/v1/settings/values/app_links');
+  });
+
   test('updateMapUiSettings patches map_ui namespace payload', () async {
     final adapter = _RoutingAdapter();
     final scope = _MutableTenantScope('https://tenant-a.test');
@@ -221,6 +248,53 @@ void main() {
       updated.filters.first.query.taxonomy,
       equals(const ['music_genre:rock']),
     );
+  });
+
+  test('updateAppLinksSettings patches app_links namespace payload', () async {
+    final adapter = _RoutingAdapter();
+    final scope = _MutableTenantScope('https://tenant-a.test');
+    final dio = Dio()..httpClientAdapter = adapter;
+    final repository = TenantAdminSettingsRepository(
+      dio: dio,
+      tenantScope: scope,
+    );
+    final appLinks = TenantAdminAppLinksSettings(
+      rawAppLinks: const {
+        'android': {
+          'package_name': 'com.guarappari.app',
+          'sha256_cert_fingerprints': [
+            '3E:72:4C:54:E9:53:26:7D:E6:E1:9B:F8:DC:53:30:2A:08:01:8E:36:40:AA:23:11:22:33:44:55:66:77:88:99',
+          ],
+        },
+        'ios': {
+          'team_id': 'TEAMID1234',
+          'bundle_id': 'com.guarappari.app',
+          'paths': ['/invite*', '/convites*'],
+        },
+      },
+      androidPackageName: 'com.guarappari.app',
+      androidSha256CertFingerprints: const [
+        '3E:72:4C:54:E9:53:26:7D:E6:E1:9B:F8:DC:53:30:2A:08:01:8E:36:40:AA:23:11:22:33:44:55:66:77:88:99',
+      ],
+      iosTeamId: 'TEAMID1234',
+      iosBundleId: 'com.guarappari.app',
+      iosPaths: const ['/invite*', '/convites*'],
+    );
+
+    final updated = await repository.updateAppLinksSettings(settings: appLinks);
+
+    final request = adapter.requests.single;
+    expect(request.uri.path, '/admin/api/v1/settings/values/app_links');
+    final payload = request.data as Map<String, dynamic>;
+    expect(payload['android.package_name'], 'com.guarappari.app');
+    expect(payload['android.sha256_cert_fingerprints'], isA<List<dynamic>>());
+    expect(payload['ios.team_id'], 'TEAMID1234');
+    expect(payload['ios.bundle_id'], 'com.guarappari.app');
+    expect(payload['ios.paths'], equals(const ['/invite*', '/convites*']));
+    expect(updated.androidPackageName, 'com.guarappari.app');
+    expect(updated.iosTeamId, 'TEAMID1234');
+    expect(updated.iosBundleId, 'com.guarappari.app');
+    expect(updated.iosPaths, equals(const ['/invite*', '/convites*']));
   });
 
   test(
@@ -889,6 +963,35 @@ class _RoutingAdapter implements HttpClientAdapter {
       return _jsonResponse({
         'data': {
           'map_ui': _expandDotPayload(request),
+        },
+      });
+    }
+
+    if (path.endsWith('/settings/values/app_links') && method == 'GET') {
+      return _jsonResponse({
+        'data': {
+          'app_links': {
+            'android': {
+              'package_name': 'com.guarappari.app',
+              'sha256_cert_fingerprints': const [
+                '3E:72:4C:54:E9:53:26:7D:E6:E1:9B:F8:DC:53:30:2A:08:01:8E:36:40:AA:23:11:22:33:44:55:66:77:88:99',
+              ],
+            },
+            'ios': {
+              'team_id': 'TEAMID1234',
+              'bundle_id': 'com.guarappari.app',
+              'paths': const ['/invite*', '/convites*'],
+            },
+          },
+        },
+      });
+    }
+
+    if (path.endsWith('/settings/values/app_links') && method == 'PATCH') {
+      final request = Map<String, dynamic>.from(options.data as Map);
+      return _jsonResponse({
+        'data': {
+          'app_links': _expandDotPayload(request),
         },
       });
     }

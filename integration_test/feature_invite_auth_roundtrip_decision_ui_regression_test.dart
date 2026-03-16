@@ -48,102 +48,20 @@ void main() {
     await GetIt.I.reset();
   });
 
-  testWidgets('authenticated share code bootstrap stays in preview flow',
-      (tester) async {
-    final repository = _RecordingInvitesRepository();
-    final controller = InviteFlowScreenController(
-      repository: repository,
-      userEventsRepository: _FakeUserEventsRepository(),
-      telemetryRepository: _FakeTelemetryRepository(),
-    );
-    GetIt.I.registerSingleton<InviteFlowScreenController>(controller);
-
-    final router = _RecordingStackRouter(canPopValue: false);
-    final routeData = _buildRouteData(
-      router,
-      queryParams: const {'code': 'SHARE-CODE-123'},
-    );
-
-    await tester.pumpWidget(
-      StackRouterScope(
-        controller: router,
-        stateHash: 0,
-        child: MaterialApp(
-          home: RouteDataScope(
-            routeData: routeData,
-            child: const InviteFlowScreen(key: ValueKey('invite-anon-stage')),
-          ),
-        ),
-      ),
-    );
-    await tester.pump();
-
-    expect(repository.previewedShareCodes, ['SHARE-CODE-123']);
-    expect(repository.acceptedShareCodes, isEmpty);
-    expect(controller.authRequiredForDecisionStreamValue.value, isFalse);
-    expect(controller.displayInvitesStreamValue.value, hasLength(1));
-    expect(router.replaceAllCalled, isFalse);
-  });
-
   testWidgets(
-      'unauthenticated share code query param triggers preview instead of accept',
+      'invite auth round-trip keeps explicit decision UI and never auto-accepts',
       (tester) async {
     final repository = _RecordingInvitesRepository();
+    final authRepository = _MutableAuthRepository(authorized: false);
     final controller = InviteFlowScreenController(
-      repository: repository,
-      userEventsRepository: _FakeUserEventsRepository(),
-      telemetryRepository: _FakeTelemetryRepository(),
-      authRepository: _FakeAuthRepository(authorized: false),
-    );
-    GetIt.I.registerSingleton<InviteFlowScreenController>(controller);
-
-    final router = _RecordingStackRouter(canPopValue: true);
-    final routeData = _buildRouteData(
-      router,
-      queryParams: const {'code': 'SHARE-CODE-123'},
-    );
-
-    await tester.pumpWidget(
-      StackRouterScope(
-        controller: router,
-        stateHash: 0,
-        child: MaterialApp(
-          home: RouteDataScope(
-            routeData: routeData,
-            child: const InviteFlowScreen(key: ValueKey('invite-auth-stage')),
-          ),
-        ),
-      ),
-    );
-    await tester.pump();
-    for (var i = 0; i < 20; i++) {
-      await tester.pump(const Duration(milliseconds: 150));
-      if (find.text('Entre para Aceitar ou Recusar').evaluate().isNotEmpty) {
-        break;
-      }
-    }
-
-    expect(repository.previewedShareCodes, ['SHARE-CODE-123']);
-    expect(repository.acceptedShareCodes, isEmpty);
-    expect(controller.authRequiredForDecisionStreamValue.value, isTrue);
-    expect(controller.displayInvitesStreamValue.value, hasLength(1));
-    expect(router.replaceAllCalled, isFalse);
-  });
-
-  testWidgets(
-      'invite auth round-trip keeps decision UI and does not fall back to home',
-      (tester) async {
-    final repository = _RecordingInvitesRepository();
-    final authRepository = _FakeAuthRepository(authorized: false);
-    final anonymousController = InviteFlowScreenController(
       repository: repository,
       userEventsRepository: _FakeUserEventsRepository(),
       telemetryRepository: _FakeTelemetryRepository(),
       authRepository: authRepository,
     );
-    GetIt.I.registerSingleton<InviteFlowScreenController>(anonymousController);
+    GetIt.I.registerSingleton<InviteFlowScreenController>(controller);
 
-    final router = _RecordingStackRouter(canPopValue: true);
+    final router = _RecordingStackRouter(canPopValue: false);
     final routeData = _buildRouteData(
       router,
       queryParams: const {'code': 'SHARE-CODE-123'},
@@ -173,32 +91,28 @@ void main() {
     expect(find.text('Entre para Aceitar ou Recusar'), findsOneWidget);
     await tester.tap(find.text('Entre para Aceitar ou Recusar'));
     await tester.pump();
+
     expect(
       router.lastPushedPath,
       '/auth/login?redirect=%2Finvite%3Fcode%3DSHARE-CODE-123',
     );
+    expect(repository.acceptedShareCodes, isEmpty);
     expect(router.replaceAllCalled, isFalse);
 
     authRepository.authorized = true;
-    await anonymousController.init(
+    await controller.init(
       shareCode: 'SHARE-CODE-123',
       redirectPath: '/invite?code=SHARE-CODE-123',
     );
-    for (var i = 0; i < 20; i++) {
-      await tester.pump(const Duration(milliseconds: 150));
-      if (anonymousController.displayInvitesStreamValue.value.isNotEmpty) {
-        break;
-      }
-    }
-    expect(anonymousController.displayInvitesStreamValue.value, hasLength(1));
-    expect(
-      anonymousController.authRequiredForDecisionStreamValue.value,
-      isFalse,
-    );
-    anonymousController.markImageLoaded(
-      anonymousController.displayInvitesStreamValue.value.first.eventImageUrl,
+    await tester.pump();
+
+    expect(controller.authRequiredForDecisionStreamValue.value, isFalse);
+    expect(controller.displayInvitesStreamValue.value, hasLength(1));
+    controller.markImageLoaded(
+      controller.displayInvitesStreamValue.value.first.eventImageUrl,
     );
     await tester.pump(const Duration(milliseconds: 200));
+
     for (var i = 0; i < 20; i++) {
       await tester.pump(const Duration(milliseconds: 150));
       if (find.text('Recusar').evaluate().isNotEmpty &&
@@ -212,92 +126,6 @@ void main() {
     expect(find.text('Entre para Aceitar ou Recusar'), findsNothing);
     expect(repository.acceptedShareCodes, isEmpty);
     expect(router.replaceAllCalled, isFalse);
-  });
-
-  testWidgets('missing share code does not call acceptShareCode',
-      (tester) async {
-    final repository = _RecordingInvitesRepository();
-    final controller = InviteFlowScreenController(
-      repository: repository,
-      userEventsRepository: _FakeUserEventsRepository(),
-      telemetryRepository: _FakeTelemetryRepository(),
-    );
-    GetIt.I.registerSingleton<InviteFlowScreenController>(controller);
-
-    final router = _RecordingStackRouter(canPopValue: false);
-    final routeData = _buildRouteData(router, queryParams: const {});
-
-    await tester.pumpWidget(
-      StackRouterScope(
-        controller: router,
-        stateHash: 0,
-        child: MaterialApp(
-          home: RouteDataScope(
-            routeData: routeData,
-            child: const InviteFlowScreen(),
-          ),
-        ),
-      ),
-    );
-    await tester.pump();
-
-    expect(repository.acceptedShareCodes, isEmpty);
-  });
-
-  testWidgets(
-      'closing authenticated invite flow without decision routes home and keeps pending invite',
-      (tester) async {
-    final repository = _RecordingInvitesRepository();
-    final controller = InviteFlowScreenController(
-      repository: repository,
-      userEventsRepository: _FakeUserEventsRepository(),
-      telemetryRepository: _FakeTelemetryRepository(),
-      authRepository: _FakeAuthRepository(authorized: true),
-    );
-    GetIt.I.registerSingleton<InviteFlowScreenController>(controller);
-
-    final router = _RecordingStackRouter(canPopValue: false);
-    final routeData = _buildRouteData(
-      router,
-      queryParams: const {'code': 'SHARE-CODE-123'},
-    );
-
-    await tester.pumpWidget(
-      StackRouterScope(
-        controller: router,
-        stateHash: 0,
-        child: MaterialApp(
-          home: RouteDataScope(
-            routeData: routeData,
-            child: const InviteFlowScreen(),
-          ),
-        ),
-      ),
-    );
-    await tester.pump();
-
-    expect(controller.displayInvitesStreamValue.value, hasLength(1));
-    controller.markImageLoaded(
-      controller.displayInvitesStreamValue.value.first.eventImageUrl,
-    );
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 200));
-
-    expect(find.byTooltip('Fechar'), findsOneWidget);
-    await tester.tap(find.byTooltip('Fechar'));
-    await tester.pump();
-
-    expect(router.replaceAllCalled, isTrue);
-    expect(router.lastReplaced?.first, isA<TenantHomeRoute>());
-    expect(controller.pendingInvitesStreamValue.value, hasLength(1));
-    expect(
-      controller.pendingInvitesStreamValue.value.first.id,
-      'preview-SHARE-CODE-123',
-    );
-    expect(
-      controller.pendingInvitesStreamValue.value.first.eventId,
-      'event-preview',
-    );
   });
 }
 
@@ -400,8 +228,8 @@ class _RecordingInvitesRepository extends InvitesRepositoryContract {
       const [];
 }
 
-class _FakeAuthRepository extends AuthRepositoryContract {
-  _FakeAuthRepository({required this.authorized});
+class _MutableAuthRepository extends AuthRepositoryContract {
+  _MutableAuthRepository({required this.authorized});
 
   bool authorized;
 
@@ -588,8 +416,6 @@ class _TestHttpOverrides extends HttpOverrides {
 }
 
 class _TestHttpClient implements HttpClient {
-  bool _autoUncompress = true;
-
   static final List<int> _transparentImage = <int>[
     0x89,
     0x50,
@@ -660,6 +486,16 @@ class _TestHttpClient implements HttpClient {
     0x82,
   ];
 
+  bool _autoUncompress = true;
+
+  @override
+  bool get autoUncompress => _autoUncompress;
+
+  @override
+  set autoUncompress(bool value) {
+    _autoUncompress = value;
+  }
+
   @override
   Future<HttpClientRequest> getUrl(Uri url) async {
     return _TestHttpClientRequest(_transparentImage);
@@ -668,14 +504,6 @@ class _TestHttpClient implements HttpClient {
   @override
   Future<HttpClientRequest> openUrl(String method, Uri url) async {
     return _TestHttpClientRequest(_transparentImage);
-  }
-
-  @override
-  bool get autoUncompress => _autoUncompress;
-
-  @override
-  set autoUncompress(bool value) {
-    _autoUncompress = value;
   }
 
   @override
@@ -703,28 +531,23 @@ class _TestHttpClientResponse extends Stream<List<int>>
   final List<int> _imageBytes;
 
   @override
-  int get statusCode => HttpStatus.ok;
+  int get contentLength => _imageBytes.length;
 
   @override
-  int get contentLength => _imageBytes.length;
+  int get statusCode => HttpStatus.ok;
 
   @override
   HttpClientResponseCompressionState get compressionState =>
       HttpClientResponseCompressionState.notCompressed;
 
-  Stream<List<int>> get stream => Stream<List<int>>.value(_imageBytes);
-
   @override
   StreamSubscription<List<int>> listen(
-    void Function(List<int>)? onData, {
+    void Function(List<int> event)? onData, {
     Function? onError,
     void Function()? onDone,
     bool? cancelOnError,
   }) {
-    final controller = StreamController<List<int>>();
-    controller.add(_imageBytes);
-    controller.close();
-    return controller.stream.listen(
+    return Stream<List<int>>.fromIterable(<List<int>>[_imageBytes]).listen(
       onData,
       onError: onError,
       onDone: onDone,

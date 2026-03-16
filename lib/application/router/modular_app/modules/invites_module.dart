@@ -53,7 +53,7 @@ class InvitesModule extends ModuleContract {
         ),
         AutoRoute(
           path: '/invite',
-          page: InviteFlowRoute.page,
+          page: InviteEntryRoute.page,
           guards: [TenantRouteGuard()],
         ),
         AutoRoute(
