@@ -19,6 +19,7 @@ import 'package:belluga_now/presentation/shared/init/screens/init_screen/control
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:stream_value/core/stream_value.dart';
+import 'package:belluga_now/testing/invite_accept_result_builder.dart';
 
 void main() {
   test('tenant without pending invites resolves tenant home stack', () async {
@@ -38,7 +39,8 @@ void main() {
     );
   });
 
-  test('tenant with pending invites stacks invite flow on top of home', () async {
+  test('tenant with pending invites stacks invite flow on top of home',
+      () async {
     final controller = InitScreenController(
       invitesRepository: _FakeInvitesRepository(hasPendingInvites: true),
       appDataRepository: _FakeAppDataRepository(
@@ -58,7 +60,8 @@ void main() {
     );
   });
 
-  test('landlord ignores tenant invite flow and resolves landlord home', () async {
+  test('landlord ignores tenant invite flow and resolves landlord home',
+      () async {
     final controller = InitScreenController(
       invitesRepository: _FakeInvitesRepository(hasPendingInvites: true),
       appDataRepository: _FakeAppDataRepository(
@@ -90,7 +93,8 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
   }
 
   @override
-  Future<List<InviteModel>> fetchInvites({int page = 1, int pageSize = 20}) async {
+  Future<List<InviteModel>> fetchInvites(
+      {int page = 1, int pageSize = 20}) async {
     return hasPendingInvites ? [_buildInvite()] : const [];
   }
 
@@ -106,7 +110,7 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
 
   @override
   Future<InviteAcceptResult> acceptInvite(String inviteId) async {
-    return InviteAcceptResult(
+    return buildInviteAcceptResult(
       inviteId: inviteId,
       status: 'accepted',
       creditedAcceptance: true,
@@ -118,7 +122,7 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
 
   @override
   Future<InviteAcceptResult> acceptShareCode(String code) async {
-    return InviteAcceptResult(
+    return buildInviteAcceptResult(
       inviteId: code,
       status: 'accepted',
       creditedAcceptance: true,

@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:typed_data';
+import 'package:belluga_now/testing/tenant_admin_app_links_settings_builder.dart';
 
 import 'package:belluga_now/domain/repositories/landlord_auth_repository_contract.dart';
 import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.dart';
@@ -140,7 +141,7 @@ void main() {
 
     final settings = await repository.fetchAppLinksSettings();
 
-    expect(settings.androidPackageName, 'com.guarappari.app');
+    expect(settings.androidAppIdentifier, 'com.guarappari.app');
     expect(
       settings.androidSha256CertFingerprints,
       equals(
@@ -152,8 +153,9 @@ void main() {
     expect(settings.iosTeamId, 'TEAMID1234');
     expect(settings.iosBundleId, 'com.guarappari.app');
     expect(settings.iosPaths, equals(const ['/invite*', '/convites*']));
-    expect(adapter.requests.single.uri.path,
-        '/admin/api/v1/settings/values/app_links');
+    expect(adapter.requests, hasLength(2));
+    expect(adapter.requests.first.uri.path, '/admin/api/v1/settings/values');
+    expect(adapter.requests.last.uri.path, '/admin/api/v1/appdomains');
   });
 
   test('updateMapUiSettings patches map_ui namespace payload', () async {
@@ -258,21 +260,19 @@ void main() {
       dio: dio,
       tenantScope: scope,
     );
-    final appLinks = TenantAdminAppLinksSettings(
+    final appLinks = buildTenantAdminAppLinksSettings(
       rawAppLinks: const {
         'android': {
-          'package_name': 'com.guarappari.app',
           'sha256_cert_fingerprints': [
             '3E:72:4C:54:E9:53:26:7D:E6:E1:9B:F8:DC:53:30:2A:08:01:8E:36:40:AA:23:11:22:33:44:55:66:77:88:99',
           ],
         },
         'ios': {
           'team_id': 'TEAMID1234',
-          'bundle_id': 'com.guarappari.app',
           'paths': ['/invite*', '/convites*'],
         },
       },
-      androidPackageName: 'com.guarappari.app',
+      androidAppIdentifier: 'com.guarappari.app',
       androidSha256CertFingerprints: const [
         '3E:72:4C:54:E9:53:26:7D:E6:E1:9B:F8:DC:53:30:2A:08:01:8E:36:40:AA:23:11:22:33:44:55:66:77:88:99',
       ],
@@ -283,18 +283,175 @@ void main() {
 
     final updated = await repository.updateAppLinksSettings(settings: appLinks);
 
-    final request = adapter.requests.single;
+    expect(adapter.requests, hasLength(4));
+    expect(adapter.requests.first.uri.path, '/admin/api/v1/appdomains');
+    expect(adapter.requests[1].uri.path, '/admin/api/v1/appdomains');
+    expect(adapter.requests[1].method.toUpperCase(), 'POST');
+    expect(adapter.requests[2].uri.path, '/admin/api/v1/appdomains');
+    expect(adapter.requests[2].method.toUpperCase(), 'POST');
+    final request = adapter.requests.last;
     expect(request.uri.path, '/admin/api/v1/settings/values/app_links');
     final payload = request.data as Map<String, dynamic>;
-    expect(payload['android.package_name'], 'com.guarappari.app');
     expect(payload['android.sha256_cert_fingerprints'], isA<List<dynamic>>());
     expect(payload['ios.team_id'], 'TEAMID1234');
-    expect(payload['ios.bundle_id'], 'com.guarappari.app');
     expect(payload['ios.paths'], equals(const ['/invite*', '/convites*']));
-    expect(updated.androidPackageName, 'com.guarappari.app');
+    expect(updated.androidAppIdentifier, 'com.guarappari.app');
     expect(updated.iosTeamId, 'TEAMID1234');
     expect(updated.iosBundleId, 'com.guarappari.app');
     expect(updated.iosPaths, equals(const ['/invite*', '/convites*']));
+  });
+
+  test('updateAppLinksSettings upserts typed identifiers before patch',
+      () async {
+    final adapter = _RoutingAdapter(
+      appDomainsPayload: const {
+        'android': 'com.old.app',
+        'ios': null,
+      },
+    );
+    final scope = _MutableTenantScope('https://tenant-a.test');
+    final dio = Dio()..httpClientAdapter = adapter;
+    final repository = TenantAdminSettingsRepository(
+      dio: dio,
+      tenantScope: scope,
+    );
+    final appLinks = buildTenantAdminAppLinksSettings(
+      rawAppLinks: const {
+        'android': {
+          'sha256_cert_fingerprints': [
+            '3E:72:4C:54:E9:53:26:7D:E6:E1:9B:F8:DC:53:30:2A:08:01:8E:36:40:4D:0C:CA:98:3B:46:84:53:E7:A9:A9',
+          ],
+        },
+        'ios': {
+          'team_id': 'ABCDE12345',
+          'paths': ['/invite*', '/convites*'],
+        },
+      },
+      androidAppIdentifier: 'com.guarappari.app',
+      androidSha256CertFingerprints: const [
+        '3E:72:4C:54:E9:53:26:7D:E6:E1:9B:F8:DC:53:30:2A:08:01:8E:36:40:4D:0C:CA:98:3B:46:84:53:E7:A9:A9',
+      ],
+      iosTeamId: 'ABCDE12345',
+      iosBundleId: 'com.guarappari.app',
+      iosPaths: const ['/invite*', '/convites*'],
+    );
+
+    final updated = await repository.updateAppLinksSettings(settings: appLinks);
+
+    expect(adapter.requests, hasLength(4));
+    expect(adapter.requests[0].uri.path, '/admin/api/v1/appdomains');
+    expect(adapter.requests[1].uri.path, '/admin/api/v1/appdomains');
+    expect(adapter.requests[2].uri.path, '/admin/api/v1/appdomains');
+    expect(adapter.requests[3].uri.path,
+        '/admin/api/v1/settings/values/app_links');
+    expect(updated.androidAppIdentifier, 'com.guarappari.app');
+    expect(updated.iosBundleId, 'com.guarappari.app');
+  });
+
+  test(
+      'updateAppLinksSettings upserts Android typed identifier even when GET appdomains matches legacy fallback',
+      () async {
+    final adapter = _RoutingAdapter(
+      appDomainsPayload: const {
+        'android': 'com.guarappari.app',
+        'ios': null,
+      },
+      typedAppDomainPersistedByPlatform: const {
+        'android': false,
+        'ios': false,
+      },
+    );
+    final scope = _MutableTenantScope('https://tenant-a.test');
+    final dio = Dio()..httpClientAdapter = adapter;
+    final repository = TenantAdminSettingsRepository(
+      dio: dio,
+      tenantScope: scope,
+    );
+    final appLinks = buildTenantAdminAppLinksSettings(
+      rawAppLinks: const {
+        'android': {
+          'sha256_cert_fingerprints': [
+            'ED:07:87:5E:89:8A:4B:26:41:5B:C7:A9:19:44:84:D3:0A:A4:AD:52:BA:66:47:56:8F:62:EF:71:F0:FD:1A:54',
+          ],
+        },
+        'ios': {
+          'team_id': null,
+          'paths': ['/invite*', '/convites*'],
+        },
+      },
+      androidAppIdentifier: 'com.guarappari.app',
+      androidSha256CertFingerprints: const [
+        'ED:07:87:5E:89:8A:4B:26:41:5B:C7:A9:19:44:84:D3:0A:A4:AD:52:BA:66:47:56:8F:62:EF:71:F0:FD:1A:54',
+      ],
+      iosTeamId: null,
+      iosBundleId: null,
+      iosPaths: const ['/invite*', '/convites*'],
+    );
+
+    final updated = await repository.updateAppLinksSettings(settings: appLinks);
+
+    expect(adapter.requests, hasLength(3));
+    expect(adapter.requests[0].method.toUpperCase(), 'GET');
+    expect(adapter.requests[0].uri.path, '/admin/api/v1/appdomains');
+    expect(adapter.requests[1].method.toUpperCase(), 'POST');
+    expect(adapter.requests[1].uri.path, '/admin/api/v1/appdomains');
+    expect(adapter.requests[2].method.toUpperCase(), 'PATCH');
+    expect(
+      adapter.requests[2].uri.path,
+      '/admin/api/v1/settings/values/app_links',
+    );
+    expect(updated.androidAppIdentifier, 'com.guarappari.app');
+    expect(
+      updated.androidSha256CertFingerprints,
+      equals(const [
+        'ED:07:87:5E:89:8A:4B:26:41:5B:C7:A9:19:44:84:D3:0A:A4:AD:52:BA:66:47:56:8F:62:EF:71:F0:FD:1A:54',
+      ]),
+    );
+  });
+
+  test('updateAppLinksSettings removes typed identifiers when cleared',
+      () async {
+    final adapter = _RoutingAdapter(
+      appDomainsPayload: const {
+        'android': 'com.guarappari.app',
+        'ios': 'com.guarappari.app',
+      },
+    );
+    final scope = _MutableTenantScope('https://tenant-a.test');
+    final dio = Dio()..httpClientAdapter = adapter;
+    final repository = TenantAdminSettingsRepository(
+      dio: dio,
+      tenantScope: scope,
+    );
+    final appLinks = buildTenantAdminAppLinksSettings(
+      rawAppLinks: const {
+        'android': {
+          'sha256_cert_fingerprints': [],
+        },
+        'ios': {
+          'team_id': null,
+          'paths': ['/invite*'],
+        },
+      },
+      androidAppIdentifier: null,
+      androidSha256CertFingerprints: const [],
+      iosTeamId: null,
+      iosBundleId: null,
+      iosPaths: const ['/invite*'],
+    );
+
+    final updated = await repository.updateAppLinksSettings(settings: appLinks);
+
+    expect(adapter.requests, hasLength(4));
+    expect(adapter.requests[0].uri.path, '/admin/api/v1/appdomains');
+    expect(adapter.requests[1].uri.path, '/admin/api/v1/appdomains');
+    expect(adapter.requests[1].method.toUpperCase(), 'DELETE');
+    expect(adapter.requests[2].uri.path, '/admin/api/v1/appdomains');
+    expect(adapter.requests[2].method.toUpperCase(), 'DELETE');
+    expect(adapter.requests[3].uri.path,
+        '/admin/api/v1/settings/values/app_links');
+    expect(updated.androidAppIdentifier, isNull);
+    expect(updated.iosBundleId, isNull);
   });
 
   test(
@@ -875,12 +1032,33 @@ class _RoutingAdapter implements HttpClientAdapter {
     this.environmentPayloadByHost,
     this.environmentDelayByHost,
     this.settingsValuesPayload,
-  });
+    Map<String, dynamic>? appDomainsPayload,
+    Map<String, bool>? typedAppDomainPersistedByPlatform,
+  }) : _appDomainsPayload = Map<String, dynamic>.from(
+          appDomainsPayload ??
+              const {
+                'android': 'com.guarappari.app',
+                'ios': 'com.guarappari.app',
+              },
+        ),
+        _typedAppDomainPersistedByPlatform = Map<String, bool>.from(
+          typedAppDomainPersistedByPlatform ??
+              {
+                if ((appDomainsPayload?['android'] as String?)?.trim().isNotEmpty ??
+                    true)
+                  'android': true,
+                if ((appDomainsPayload?['ios'] as String?)?.trim().isNotEmpty ??
+                    true)
+                  'ios': true,
+              },
+        );
 
   final Map<String, dynamic>? environmentPayload;
   final Map<String, Map<String, dynamic>>? environmentPayloadByHost;
   final Map<String, Duration>? environmentDelayByHost;
   final Map<String, dynamic>? settingsValuesPayload;
+  final Map<String, dynamic> _appDomainsPayload;
+  final Map<String, bool> _typedAppDomainPersistedByPlatform;
   final List<RequestOptions> requests = [];
 
   @override
@@ -924,6 +1102,17 @@ class _RoutingAdapter implements HttpClientAdapter {
         settingsValuesPayload ??
             {
               'data': {
+                'app_links': {
+                  'android': {
+                    'sha256_cert_fingerprints': const [
+                      '3E:72:4C:54:E9:53:26:7D:E6:E1:9B:F8:DC:53:30:2A:08:01:8E:36:40:AA:23:11:22:33:44:55:66:77:88:99',
+                    ],
+                  },
+                  'ios': {
+                    'team_id': 'TEAMID1234',
+                    'paths': const ['/invite*', '/convites*'],
+                  },
+                },
                 'map_ui': {
                   'radius': {
                     'min_km': 1,
@@ -958,6 +1147,43 @@ class _RoutingAdapter implements HttpClientAdapter {
       );
     }
 
+    if (path.endsWith('/appdomains') && method == 'GET') {
+      return _jsonResponse({
+        'data': {
+          'app_domains': Map<String, dynamic>.from(_appDomainsPayload),
+        },
+      });
+    }
+
+    if (path.endsWith('/appdomains') && method == 'POST') {
+      final request = Map<String, dynamic>.from(options.data as Map);
+      final platform = (request['platform'] as String?)?.trim() ?? '';
+      final identifier = (request['identifier'] as String?)?.trim();
+      if (platform.isNotEmpty && identifier != null && identifier.isNotEmpty) {
+        _appDomainsPayload[platform] = identifier;
+        _typedAppDomainPersistedByPlatform[platform] = true;
+      }
+      return _jsonResponse({
+        'data': {
+          'app_domains': Map<String, dynamic>.from(_appDomainsPayload),
+        },
+      });
+    }
+
+    if (path.endsWith('/appdomains') && method == 'DELETE') {
+      final request = Map<String, dynamic>.from(options.data as Map);
+      final platform = (request['platform'] as String?)?.trim() ?? '';
+      if (platform.isNotEmpty) {
+        _appDomainsPayload[platform] = null;
+        _typedAppDomainPersistedByPlatform[platform] = false;
+      }
+      return _jsonResponse({
+        'data': {
+          'app_domains': Map<String, dynamic>.from(_appDomainsPayload),
+        },
+      });
+    }
+
     if (path.endsWith('/settings/values/map_ui') && method == 'PATCH') {
       final request = Map<String, dynamic>.from(options.data as Map);
       return _jsonResponse({
@@ -967,28 +1193,25 @@ class _RoutingAdapter implements HttpClientAdapter {
       });
     }
 
-    if (path.endsWith('/settings/values/app_links') && method == 'GET') {
-      return _jsonResponse({
-        'data': {
-          'app_links': {
-            'android': {
-              'package_name': 'com.guarappari.app',
-              'sha256_cert_fingerprints': const [
-                '3E:72:4C:54:E9:53:26:7D:E6:E1:9B:F8:DC:53:30:2A:08:01:8E:36:40:AA:23:11:22:33:44:55:66:77:88:99',
-              ],
-            },
-            'ios': {
-              'team_id': 'TEAMID1234',
-              'bundle_id': 'com.guarappari.app',
-              'paths': const ['/invite*', '/convites*'],
-            },
-          },
-        },
-      });
-    }
-
     if (path.endsWith('/settings/values/app_links') && method == 'PATCH') {
       final request = Map<String, dynamic>.from(options.data as Map);
+      final androidFingerprints =
+          request['android.sha256_cert_fingerprints'] as List<dynamic>?;
+      if ((androidFingerprints?.isNotEmpty ?? false) &&
+          _typedAppDomainPersistedByPlatform['android'] != true) {
+        return _jsonResponse(
+          {
+            'message':
+                'Configure Android app identifier before saving fingerprints.',
+            'errors': {
+              'android.sha256_cert_fingerprints': [
+                'Configure Android app identifier before saving fingerprints.',
+              ],
+            },
+          },
+          statusCode: 422,
+        );
+      }
       return _jsonResponse({
         'data': {
           'app_links': _expandDotPayload(request),
@@ -1095,10 +1318,13 @@ class _RoutingAdapter implements HttpClientAdapter {
     return _jsonResponse(const {});
   }
 
-  ResponseBody _jsonResponse(Map<String, dynamic> payload) {
+  ResponseBody _jsonResponse(
+    Map<String, dynamic> payload, {
+    int statusCode = 200,
+  }) {
     return ResponseBody.fromString(
       jsonEncode(payload),
-      200,
+      statusCode,
       headers: {
         Headers.contentTypeHeader: ['application/json'],
       },

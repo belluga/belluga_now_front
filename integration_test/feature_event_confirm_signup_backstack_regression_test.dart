@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:developer' as developer;
+import 'package:belluga_now/testing/invite_accept_result_builder.dart';
 
 import 'package:belluga_now/application/application.dart';
 import 'package:belluga_now/application/application_contract.dart';
@@ -685,7 +686,7 @@ class _FakeUserEventsRepository implements UserEventsRepositoryContract {
 class _FakeInvitesRepository extends InvitesRepositoryContract {
   @override
   Future<InviteAcceptResult> acceptInvite(String inviteId) async {
-    return InviteAcceptResult(
+    return buildInviteAcceptResult(
       inviteId: inviteId,
       status: 'accepted',
       creditedAcceptance: true,
@@ -697,7 +698,7 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
 
   @override
   Future<InviteAcceptResult> acceptShareCode(String code) async {
-    return InviteAcceptResult(
+    return buildInviteAcceptResult(
       inviteId: code,
       status: 'accepted',
       creditedAcceptance: true,

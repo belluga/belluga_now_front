@@ -26,16 +26,16 @@ trap restore_analysis_options EXIT
 
 cp "$analysis_file" "$backup_file"
 
-if rg -n "repository_raw_payload_map_forbidden:" "$analysis_file" >/dev/null; then
+if rg -n "domain_primitive_field_forbidden:" "$analysis_file" >/dev/null; then
   sed -i \
-    "s/repository_raw_payload_map_forbidden:[[:space:]]*false/repository_raw_payload_map_forbidden: true/g" \
+    "s/domain_primitive_field_forbidden:[[:space:]]*false/domain_primitive_field_forbidden: true/g" \
     "$analysis_file"
 else
   cat >> "$analysis_file" <<'PATCH'
 
 custom_lint:
   rules:
-    - repository_raw_payload_map_forbidden: true
+    - domain_primitive_field_forbidden: true
 PATCH
 fi
 
@@ -47,17 +47,20 @@ set -e
 cat "$output_file"
 
 hit=0
+declare -a hit_files=()
 for file in "${changed_files[@]}"; do
   escaped_file="$(printf '%s' "$file" | sed -e 's/[.[\*^$()+?{|]/\\&/g')"
-  if rg -n "${escaped_file}:[0-9]+:[0-9]+ .*repository_raw_payload_map_forbidden" "$output_file" >/dev/null; then
+  if rg -n "${escaped_file}:[0-9]+:[0-9]+ .*domain_primitive_field_forbidden" "$output_file" >/dev/null; then
     hit=1
-    break
+    hit_files+=("$file")
   fi
 done
 
 if [[ $hit -eq 1 ]]; then
   echo
-  echo "[branch-delta] repository_raw_payload_map_forbidden violations detected in changed files."
+  printf '[branch-delta] domain_primitive_field_forbidden files:\n'
+  printf ' - %s\n' "${hit_files[@]}"
+  echo "[branch-delta] domain_primitive_field_forbidden violations detected in changed files."
   exit 1
 fi
 
@@ -68,5 +71,4 @@ if [[ $lint_status -ne 0 ]]; then
 fi
 
 echo
-
-echo "[branch-delta] No repository_raw_payload_map_forbidden findings in changed files."
+echo "[branch-delta] No domain_primitive_field_forbidden findings in changed files."

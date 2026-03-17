@@ -29,6 +29,7 @@ import 'package:stream_value/core/stream_value.dart';
 import 'package:value_object_pattern/domain/value_objects/date_time_value.dart';
 import 'package:value_object_pattern/domain/value_objects/html_content_value.dart';
 import 'package:value_object_pattern/domain/value_objects/mongo_id_value.dart';
+import 'package:belluga_now/testing/invite_accept_result_builder.dart';
 
 void main() {
   test(
@@ -150,7 +151,7 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
   @override
   Future<InviteAcceptResult> acceptInvite(String inviteId) async {
     acceptInviteCalls += 1;
-    return InviteAcceptResult(
+    return buildInviteAcceptResult(
       inviteId: inviteId,
       status: 'accepted',
       creditedAcceptance: true,
@@ -163,7 +164,7 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
   @override
   Future<InviteAcceptResult> acceptShareCode(String code) async {
     acceptShareCodeCalls += 1;
-    return InviteAcceptResult(
+    return buildInviteAcceptResult(
       inviteId: code,
       status: 'accepted',
       creditedAcceptance: true,

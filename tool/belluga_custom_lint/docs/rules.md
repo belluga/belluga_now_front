@@ -314,12 +314,16 @@ custom_lint:
 Violation:
 ```dart
 class EventModel {
+  EventModel(String id) : id = id;
+
   final String id;
 }
 ```
 Fix:
 ```dart
 class EventModel {
+  EventModel({required EventIdValue idValue}) : idValue = idValue;
+
   final EventIdValue idValue;
 }
 ```

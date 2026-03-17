@@ -8,9 +8,24 @@ void main() {
         File('android/app/src/main/AndroidManifest.xml').readAsStringSync();
 
     expect(manifest, contains('android:autoVerify="true"'));
+    expect(
+      manifest,
+      contains('android:name="flutter_deeplinking_enabled"'),
+    );
+    expect(manifest, contains('android:value="true"'));
     expect(manifest, contains('android:host="guarappari.belluga.space"'));
-    expect(manifest, contains('android:pathPrefix="/invite"'));
-    expect(manifest, contains('android:pathPrefix="/convites"'));
+    for (final pathPrefix in const [
+      '/invite',
+      '/convites',
+      '/agenda',
+      '/agenda/evento',
+      '/mapa',
+      '/profile',
+      '/home',
+    ]) {
+      expect(manifest, contains('android:pathPrefix="$pathPrefix"'));
+    }
+    expect(manifest, contains('android:path="/"'));
   });
 
   test('iOS entitlements declare guarappari universal link domain', () {
@@ -34,7 +49,7 @@ void main() {
       );
       expect(
         template,
-        contains(r'try_files /index.php?$query_string =404;'),
+        contains(r'try_files $uri /index.php?$query_string;'),
       );
     }
   });

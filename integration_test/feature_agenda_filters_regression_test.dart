@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'package:belluga_now/testing/invite_accept_result_builder.dart';
 
 import 'package:belluga_now/domain/contacts/contact_model.dart';
 import 'package:belluga_now/domain/invites/invite_accept_result.dart';
@@ -446,7 +447,7 @@ class _TestInvitesRepository extends InvitesRepositoryContract {
     await GetIt.I
         .get<UserEventsRepositoryContract>()
         .confirmEventAttendance(resolvedEventId);
-    return InviteAcceptResult(
+    return buildInviteAcceptResult(
       inviteId: matchedInvite?.id ?? inviteId,
       status: 'accepted',
       creditedAcceptance: true,
@@ -482,7 +483,7 @@ class _TestInvitesRepository extends InvitesRepositoryContract {
 
   @override
   Future<InviteAcceptResult> acceptShareCode(String code) async =>
-      InviteAcceptResult(
+      buildInviteAcceptResult(
         inviteId: code,
         status: 'accepted',
         creditedAcceptance: true,

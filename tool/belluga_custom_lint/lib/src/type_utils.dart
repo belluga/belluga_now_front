@@ -203,7 +203,7 @@ bool containsForbiddenRepositoryRawTransportType(TypeAnnotation? type) {
     }
 
     for (final parameter in type.parameters.parameters) {
-      final parameterType = _formalParameterType(parameter);
+      final parameterType = formalParameterType(parameter);
       if (containsForbiddenRepositoryRawTransportType(parameterType)) {
         return true;
       }
@@ -254,7 +254,7 @@ bool containsRepositoryRawPayloadMapType(TypeAnnotation? type) {
     }
 
     for (final parameter in type.parameters.parameters) {
-      final parameterType = _formalParameterType(parameter);
+      final parameterType = formalParameterType(parameter);
       if (containsRepositoryRawPayloadMapType(parameterType)) {
         return true;
       }
@@ -306,7 +306,7 @@ bool containsRepositoryRawPayloadMapType(TypeAnnotation? type) {
   return args.any(containsRepositoryRawPayloadMapType);
 }
 
-TypeAnnotation? _formalParameterType(FormalParameter parameter) {
+TypeAnnotation? formalParameterType(FormalParameter parameter) {
   final normalized =
       parameter is DefaultFormalParameter ? parameter.parameter : parameter;
 

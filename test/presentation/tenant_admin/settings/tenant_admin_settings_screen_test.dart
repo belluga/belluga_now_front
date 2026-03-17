@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:typed_data';
+import 'package:belluga_now/testing/tenant_admin_app_links_settings_builder.dart';
 
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
@@ -497,7 +498,7 @@ void main() {
 
     expect(settingsRepository.updatedAppLinksSettings, isNotNull);
     expect(
-      settingsRepository.updatedAppLinksSettings!.androidPackageName,
+      settingsRepository.updatedAppLinksSettings!.androidAppIdentifier,
       'com.guarappari.app',
     );
     expect(
@@ -507,6 +508,78 @@ void main() {
           '3E:72:4C:54:E9:53:26:7D:E6:E1:9B:F8:DC:53:30:2A:08:01:8E:36:40:AA:23:11:22:33:44:55:66:77:88:99',
         ],
       ),
+    );
+  });
+
+  testWidgets(
+      'updates iOS paths via canonical checklist before saving app links',
+      (tester) async {
+    final repository = _FakeAppDataRepository(_buildAppData());
+    final settingsRepository = _FakeTenantAdminSettingsRepository();
+    GetIt.I.registerSingleton<AppDataRepositoryContract>(repository);
+    GetIt.I.registerSingleton<TenantAdminSettingsRepositoryContract>(
+      settingsRepository,
+    );
+    GetIt.I.registerSingleton<TenantAdminImageIngestionService>(
+      TenantAdminImageIngestionService(
+        externalImageProxy: _FakeTenantAdminExternalImageProxy(),
+      ),
+    );
+    final controller = TenantAdminSettingsController();
+    GetIt.I.registerSingleton<TenantAdminSettingsController>(controller);
+
+    await _pumpWithAutoRoute(
+      tester,
+      const Scaffold(
+        body: TenantAdminSettingsTechnicalIntegrationsScreen(
+          initialSection: TenantAdminSettingsIntegrationSection.appLinks,
+        ),
+      ),
+    );
+
+    final iosPathsRow = find.byKey(
+      TenantAdminSettingsKeys.technicalIntegrationsAppLinksIosPathsEdit,
+      skipOffstage: false,
+    );
+    final saveButton = find.byKey(
+      TenantAdminSettingsKeys.technicalIntegrationsSaveAppLinks,
+      skipOffstage: false,
+    );
+
+    await tester.scrollUntilVisible(
+      iosPathsRow,
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(
+      find.descendant(
+        of: iosPathsRow,
+        matching: find.byIcon(Icons.edit_outlined),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Selecionar iOS paths'), findsOneWidget);
+    await tester.tap(find.widgetWithText(CheckboxListTile, '/home'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'Aplicar'));
+    await tester.pumpAndSettle();
+
+    await tester.scrollUntilVisible(
+      saveButton,
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(saveButton);
+    await tester.pumpAndSettle();
+
+    expect(settingsRepository.updatedAppLinksSettings, isNotNull);
+    expect(
+      settingsRepository.updatedAppLinksSettings!.iosPaths,
+      equals(const ['/invite*', '/convites*', '/home']),
     );
   });
 
@@ -888,21 +961,20 @@ class _FakeTenantAdminSettingsRepository
     darkIconUrl: 'https://guarappari.test/storage/dark-icon.png',
     pwaIconUrl: 'https://guarappari.test/storage/pwa-icon.png',
   );
-  TenantAdminAppLinksSettings _appLinksSettings = TenantAdminAppLinksSettings(
+  TenantAdminAppLinksSettings _appLinksSettings =
+      buildTenantAdminAppLinksSettings(
     rawAppLinks: const {
       'android': {
-        'package_name': 'com.guarappari.app',
         'sha256_cert_fingerprints': [
           '3E:72:4C:54:E9:53:26:7D:E6:E1:9B:F8:DC:53:30:2A:08:01:8E:36:40:AA:23:11:22:33:44:55:66:77:88:99',
         ],
       },
       'ios': {
         'team_id': 'TEAMID1234',
-        'bundle_id': 'com.guarappari.app',
         'paths': ['/invite*', '/convites*'],
       },
     },
-    androidPackageName: 'com.guarappari.app',
+    androidAppIdentifier: 'com.guarappari.app',
     androidSha256CertFingerprints: const [
       '3E:72:4C:54:E9:53:26:7D:E6:E1:9B:F8:DC:53:30:2A:08:01:8E:36:40:AA:23:11:22:33:44:55:66:77:88:99',
     ],

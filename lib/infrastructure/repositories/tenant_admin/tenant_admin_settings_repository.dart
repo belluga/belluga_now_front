@@ -82,11 +82,18 @@ class TenantAdminSettingsRepository
   @override
   Future<TenantAdminAppLinksSettings> fetchAppLinksSettings() async {
     try {
-      final response = await _dio.getUri(
-        _buildTenantSettingsValuesUri(namespace: 'app_links'),
+      final settingsFuture = _dio.getUri(
+        _buildTenantSettingsValuesUri(),
         options: Options(headers: _buildHeaders()),
       );
-      return _responseDecoder.decodeAppLinksSettings(response.data);
+      final appDomainIdentifiersFuture = _fetchAppDomainIdentifiers();
+
+      final settingsResponse = await settingsFuture;
+      final appDomainIdentifiers = await appDomainIdentifiersFuture;
+      return _responseDecoder.decodeAppLinksSettings(
+        settingsResponse.data,
+        appDomainIdentifiers: appDomainIdentifiers,
+      );
     } on DioException catch (error) {
       throw _wrapError(error, 'load app_links settings');
     }
@@ -97,12 +104,27 @@ class TenantAdminSettingsRepository
     required TenantAdminAppLinksSettings settings,
   }) async {
     try {
+      var appDomainIdentifiers = await _fetchAppDomainIdentifiers();
+      appDomainIdentifiers = await _syncAppDomainIdentifier(
+        platform: 'android',
+        desiredIdentifier: settings.androidAppIdentifier,
+        currentIdentifiers: appDomainIdentifiers,
+      );
+      appDomainIdentifiers = await _syncAppDomainIdentifier(
+        platform: 'ios',
+        desiredIdentifier: settings.iosBundleId,
+        currentIdentifiers: appDomainIdentifiers,
+      );
+
       final response = await _dio.patchUri(
         _buildTenantSettingsValuesUri(namespace: 'app_links'),
         data: _requestEncoder.encodeAppLinksSettingsPatch(settings),
         options: Options(headers: _buildHeaders()),
       );
-      return _responseDecoder.decodeAppLinksSettings(response.data);
+      return _responseDecoder.decodeAppLinksSettings(
+        response.data,
+        appDomainIdentifiers: appDomainIdentifiers,
+      );
     } on DioException catch (error) {
       throw _wrapError(error, 'update app_links settings');
     }
@@ -389,6 +411,11 @@ class TenantAdminSettingsRepository
     return origin.replace(path: path);
   }
 
+  Uri _buildTenantAppDomainsUri() {
+    final origin = _resolveTenantOriginUri();
+    return origin.replace(path: '/admin/api/v1/appdomains');
+  }
+
   Uri _resolveTenantOriginUri({String? apiBaseUrl}) {
     final adminBaseUri = _parseToOriginUri(apiBaseUrl ?? _apiBaseUrl);
     if (adminBaseUri != null) {
@@ -520,5 +547,64 @@ class TenantAdminSettingsRepository
 
   Exception _wrapError(DioException error, String label) {
     return tenantAdminWrapRepositoryError(error, label);
+  }
+
+  Future<TenantAdminAppDomainIdentifiers> _fetchAppDomainIdentifiers() async {
+    final response = await _dio.getUri(
+      _buildTenantAppDomainsUri(),
+      options: Options(headers: _buildHeaders()),
+    );
+    return _responseDecoder.decodeAppDomainIdentifiers(response.data);
+  }
+
+  Future<TenantAdminAppDomainIdentifiers> _syncAppDomainIdentifier({
+    required String platform,
+    required String? desiredIdentifier,
+    required TenantAdminAppDomainIdentifiers currentIdentifiers,
+  }) async {
+    final normalizedDesired = desiredIdentifier?.trim();
+    final current = platform == 'android'
+        ? currentIdentifiers.androidAppIdentifier
+        : currentIdentifiers.iosBundleId;
+
+    if (normalizedDesired == null || normalizedDesired.isEmpty) {
+      if (current == null || current.trim().isEmpty) {
+        return currentIdentifiers;
+      }
+      return _removeAppDomainIdentifier(platform: platform);
+    }
+
+    return _upsertAppDomainIdentifier(
+      platform: platform,
+      identifier: normalizedDesired,
+    );
+  }
+
+  Future<TenantAdminAppDomainIdentifiers> _upsertAppDomainIdentifier({
+    required String platform,
+    required String identifier,
+  }) async {
+    final response = await _dio.postUri(
+      _buildTenantAppDomainsUri(),
+      data: {
+        'platform': platform,
+        'identifier': identifier,
+      },
+      options: Options(headers: _buildHeaders()),
+    );
+    return _responseDecoder.decodeAppDomainIdentifiers(response.data);
+  }
+
+  Future<TenantAdminAppDomainIdentifiers> _removeAppDomainIdentifier({
+    required String platform,
+  }) async {
+    final response = await _dio.deleteUri(
+      _buildTenantAppDomainsUri(),
+      data: {
+        'platform': platform,
+      },
+      options: Options(headers: _buildHeaders()),
+    );
+    return _responseDecoder.decodeAppDomainIdentifiers(response.data);
   }
 }
