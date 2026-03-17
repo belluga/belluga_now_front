@@ -4,6 +4,7 @@ import 'dart:async';
 
 import 'package:belluga_now/domain/invites/invite_decision.dart';
 import 'package:belluga_now/domain/invites/invite_inviter_type.dart';
+import 'package:belluga_now/domain/invites/invite_materialize_result.dart';
 import 'package:belluga_now/domain/invites/invite_model.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
@@ -70,8 +71,8 @@ class InviteFlowScreenController with Disposable {
   final Set<String> _openedInviteIds = <String>{};
   Future<EventTrackerTimedEventHandle?>? _activeInviteTimedEventFuture;
   String? _activeInviteId;
+  String? _activeMaterializedInviteId;
   StreamSubscription<List<InviteModel>>? _pendingInvitesSubscription;
-  String? _activeShareCode;
 
   bool get _isAuthorized => _authRepository?.isAuthorized ?? true;
 
@@ -82,8 +83,8 @@ class InviteFlowScreenController with Disposable {
   }) async {
     initializedStreamValue.addValue(false);
     _setRedirectPath(redirectPath);
+    _activeMaterializedInviteId = null;
     final normalizedShareCode = shareCode?.trim() ?? '';
-    _activeShareCode = normalizedShareCode.isEmpty ? null : normalizedShareCode;
 
     if (!_isAuthorized) {
       authRequiredForDecisionStreamValue.addValue(true);
@@ -99,21 +100,18 @@ class InviteFlowScreenController with Disposable {
       authRequiredForDecisionStreamValue.addValue(false);
       _ensureInviteTrackingSubscription();
       if (normalizedShareCode.isNotEmpty) {
-        final preview =
-            await _fetchAnonymousPreviewInvites(normalizedShareCode);
-        pendingInvitesStreamValue.addValue(preview);
-        _syncDisplayInvitesWithPending();
-        _ensureTopIndexBounds(preview.length);
-        if (preview.isNotEmpty) {
-          final resolvedInviteId =
-              await _resolveInviteIdForTarget(preview.first);
-          if (resolvedInviteId != null && resolvedInviteId.isNotEmpty) {
-            _prioritizeInvite(resolvedInviteId);
-          } else {
-            pendingInvitesStreamValue.addValue(preview);
-            _syncDisplayInvitesWithPending();
-            _ensureTopIndexBounds(preview.length);
-          }
+        final materialized = await _materializeShareCode(normalizedShareCode);
+        final materializedInviteId = materialized?.inviteId.trim() ?? '';
+        if (materialized != null &&
+            materialized.isPending &&
+            materializedInviteId.isNotEmpty) {
+          _activeMaterializedInviteId = materializedInviteId;
+          await fetchPendingInvites();
+          _prioritizeInvite(materializedInviteId);
+        } else {
+          pendingInvitesStreamValue.addValue(const <InviteModel>[]);
+          displayInvitesStreamValue.addValue(const <InviteModel>[]);
+          _ensureTopIndexBounds(0);
         }
       } else {
         await fetchPendingInvites();
@@ -124,6 +122,15 @@ class InviteFlowScreenController with Disposable {
       }
     } finally {
       initializedStreamValue.addValue(true);
+    }
+  }
+
+  Future<InviteMaterializeResult?> _materializeShareCode(
+      String shareCode) async {
+    try {
+      return await _repository.materializeShareCode(shareCode);
+    } catch (_) {
+      return null;
     }
   }
 
@@ -268,23 +275,12 @@ class InviteFlowScreenController with Disposable {
     if (resolvedInviteId == null || resolvedInviteId.isEmpty) {
       resolvedInviteId = await _resolveInviteIdForTarget(current);
     }
-
+    final materializedInviteId = _activeMaterializedInviteId?.trim() ?? '';
     if ((resolvedInviteId == null || resolvedInviteId.isEmpty) &&
-        decision == InviteDecision.accepted &&
-        _activeShareCode != null) {
-      final result = await _repository.acceptShareCode(_activeShareCode!);
-      _syncDisplayInvitesWithPending();
-      return InviteDecisionResult(
-        invite: current,
-        queued: false,
-        nextStep: result.nextStep,
-      );
-    }
-
-    if ((resolvedInviteId == null || resolvedInviteId.isEmpty) &&
-        decision == InviteDecision.declined) {
-      removeInvite();
-      return const InviteDecisionResult(invite: null, queued: false);
+        materializedInviteId.isNotEmpty &&
+        (current.id == materializedInviteId ||
+            current.containsInviteId(materializedInviteId))) {
+      resolvedInviteId = materializedInviteId;
     }
 
     if (resolvedInviteId == null || resolvedInviteId.isEmpty) {

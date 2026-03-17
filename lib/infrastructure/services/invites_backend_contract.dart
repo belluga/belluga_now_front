@@ -16,7 +16,7 @@ abstract class InvitesBackendContract {
 
   Future<Map<String, dynamic>> fetchShareCodePreview(String code);
 
-  Future<Map<String, dynamic>> acceptShareCode(String code);
+  Future<Map<String, dynamic>> materializeShareCode(String code);
 
   Future<Map<String, dynamic>> importContacts(Map<String, dynamic> payload);
 }

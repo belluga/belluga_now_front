@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:belluga_now/testing/invite_accept_result_builder.dart';
+import 'package:belluga_now/testing/invite_materialize_result_builder.dart';
 
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
@@ -8,6 +9,7 @@ import 'package:belluga_now/domain/contacts/contact_model.dart';
 import 'package:belluga_now/domain/invites/invite_accept_result.dart';
 import 'package:belluga_now/domain/invites/invite_contact_match.dart';
 import 'package:belluga_now/domain/invites/invite_decline_result.dart';
+import 'package:belluga_now/domain/invites/invite_materialize_result.dart';
 import 'package:belluga_now/domain/invites/invite_model.dart';
 import 'package:belluga_now/domain/invites/invite_next_step.dart';
 import 'package:belluga_now/domain/invites/invite_runtime_settings.dart';
@@ -97,7 +99,7 @@ void main() {
       router.lastPushedPath,
       '/auth/login?redirect=%2Finvite%3Fcode%3DSHARE-CODE-123',
     );
-    expect(repository.acceptedShareCodes, isEmpty);
+    expect(repository.materializedShareCodes, isEmpty);
     expect(router.replaceAllCalled, isFalse);
 
     authRepository.authorized = true;
@@ -125,19 +127,35 @@ void main() {
     expect(find.text('Recusar'), findsOneWidget);
     expect(find.text('Aceitar'), findsOneWidget);
     expect(find.text('Entre para Aceitar ou Recusar'), findsNothing);
-    expect(repository.acceptedShareCodes, isEmpty);
+    expect(repository.materializedShareCodes, ['SHARE-CODE-123']);
     expect(router.replaceAllCalled, isFalse);
   });
 }
 
 class _RecordingInvitesRepository extends InvitesRepositoryContract {
-  final List<String> acceptedShareCodes = <String>[];
+  _RecordingInvitesRepository() : _invites = <InviteModel>[_materializedInvite];
+
+  final List<String> materializedShareCodes = <String>[];
   final List<String> previewedShareCodes = <String>[];
+  final List<InviteModel> _invites;
+
+  static final InviteModel _materializedInvite = InviteModel.fromPrimitives(
+    id: 'preview-SHARE-CODE-123',
+    eventId: 'event-preview',
+    eventName: 'Preview Event',
+    eventDateTime: DateTime(2026, 3, 15, 18),
+    eventImageUrl: 'https://example.com/preview.jpg',
+    location: 'Guarapari',
+    hostName: 'Host',
+    message: 'Convite para evento',
+    tags: const ['music'],
+    inviterName: 'Um amigo',
+  );
 
   @override
   Future<List<InviteModel>> fetchInvites(
           {int page = 1, int pageSize = 20}) async =>
-      const [];
+      List<InviteModel>.from(_invites);
 
   @override
   Future<InviteRuntimeSettings> fetchSettings() async =>
@@ -168,33 +186,20 @@ class _RecordingInvitesRepository extends InvitesRepositoryContract {
       );
 
   @override
-  Future<InviteAcceptResult> acceptShareCode(String code) async {
-    acceptedShareCodes.add(code);
-    return buildInviteAcceptResult(
-      inviteId: 'accepted-from-code',
-      status: 'accepted',
-      creditedAcceptance: true,
+  Future<InviteMaterializeResult> materializeShareCode(String code) async {
+    materializedShareCodes.add(code);
+    return buildInviteMaterializeResult(
+      inviteId: 'preview-SHARE-CODE-123',
+      status: 'pending',
+      creditedAcceptance: false,
       attendancePolicy: 'free_confirmation_only',
-      nextStep: InviteNextStep.openAppToContinue,
-      supersededInviteIds: const [],
     );
   }
 
   @override
   Future<InviteModel?> previewShareCode(String code) async {
     previewedShareCodes.add(code);
-    return InviteModel.fromPrimitives(
-      id: 'preview-$code',
-      eventId: 'event-preview',
-      eventName: 'Preview Event',
-      eventDateTime: DateTime(2026, 3, 15, 18),
-      eventImageUrl: 'https://example.com/preview.jpg',
-      location: 'Guarapari',
-      hostName: 'Host',
-      message: 'Convite para evento',
-      tags: const ['music'],
-      inviterName: 'Um amigo',
-    );
+    return _materializedInvite;
   }
 
   @override

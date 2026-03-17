@@ -120,7 +120,6 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
     );
   }
 
-  @override
   Future<InviteAcceptResult> acceptShareCode(String code) async {
     return buildInviteAcceptResult(
       inviteId: code,

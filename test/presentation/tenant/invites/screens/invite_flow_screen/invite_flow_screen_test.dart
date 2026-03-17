@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:belluga_now/testing/invite_accept_result_builder.dart';
+import 'package:belluga_now/testing/invite_materialize_result_builder.dart';
 
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
@@ -10,6 +11,7 @@ import 'package:belluga_now/domain/invites/invite_contact_match.dart';
 import 'package:belluga_now/domain/invites/invite_decline_result.dart';
 import 'package:belluga_now/domain/invites/invite_inviter.dart';
 import 'package:belluga_now/domain/invites/invite_inviter_type.dart';
+import 'package:belluga_now/domain/invites/invite_materialize_result.dart';
 import 'package:belluga_now/domain/invites/invite_model.dart';
 import 'package:belluga_now/domain/invites/invite_next_step.dart';
 import 'package:belluga_now/domain/invites/invite_runtime_settings.dart';
@@ -32,19 +34,22 @@ import 'package:mockito/mockito.dart';
 import 'package:stream_value/core/stream_value.dart';
 
 class _FakeInvitesRepository extends InvitesRepositoryContract {
-  _FakeInvitesRepository({required List<InviteModel> initialInvites})
-      : _initialInvites = initialInvites;
+  _FakeInvitesRepository({
+    required List<InviteModel> initialInvites,
+    this.materializedInviteId,
+  }) : _invites = List<InviteModel>.from(initialInvites);
 
-  final List<InviteModel> _initialInvites;
+  final List<InviteModel> _invites;
   final List<String> previewedShareCodes = <String>[];
-  final List<String> acceptedShareCodes = <String>[];
+  final String? materializedInviteId;
+  final List<String> materializedShareCodes = <String>[];
   final List<String> acceptedInviteIds = <String>[];
   final List<String> declinedInviteIds = <String>[];
 
   @override
   Future<List<InviteModel>> fetchInvites(
           {int page = 1, int pageSize = 20}) async =>
-      _initialInvites;
+      List<InviteModel>.from(_invites);
 
   @override
   Future<InviteRuntimeSettings> fetchSettings() async =>
@@ -58,6 +63,8 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
   @override
   Future<InviteAcceptResult> acceptInvite(String inviteId) async => (() {
         acceptedInviteIds.add(inviteId);
+        _removeInvite(inviteId);
+        pendingInvitesStreamValue.addValue(List<InviteModel>.from(_invites));
         return buildInviteAcceptResult(
           inviteId: inviteId,
           status: 'accepted',
@@ -71,6 +78,8 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
   @override
   Future<InviteDeclineResult> declineInvite(String inviteId) async => (() {
         declinedInviteIds.add(inviteId);
+        _removeInvite(inviteId);
+        pendingInvitesStreamValue.addValue(List<InviteModel>.from(_invites));
         return InviteDeclineResult(
           inviteId: inviteId,
           status: 'declined',
@@ -79,25 +88,29 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
       })();
 
   @override
-  Future<InviteAcceptResult> acceptShareCode(String code) async {
-    acceptedShareCodes.add(code);
-    return buildInviteAcceptResult(
-      inviteId: code,
-      status: 'accepted',
-      creditedAcceptance: true,
+  Future<InviteMaterializeResult> materializeShareCode(String code) async {
+    materializedShareCodes.add(code);
+    return buildInviteMaterializeResult(
+      inviteId: materializedInviteId ?? '',
+      status: materializedInviteId == null ? 'expired' : 'pending',
+      creditedAcceptance: false,
       attendancePolicy: 'free_confirmation_only',
-      nextStep: InviteNextStep.openAppToContinue,
-      supersededInviteIds: const [],
     );
   }
 
   @override
   Future<InviteModel?> previewShareCode(String code) async {
     previewedShareCodes.add(code);
-    if (_initialInvites.isEmpty) {
+    if (_invites.isEmpty) {
       return null;
     }
-    return _initialInvites.first;
+    return _invites.first;
+  }
+
+  void _removeInvite(String inviteId) {
+    _invites.removeWhere(
+      (invite) => invite.id == inviteId || invite.containsInviteId(inviteId),
+    );
   }
 
   @override
@@ -310,7 +323,7 @@ void main() {
     final routeData = _buildRouteData(
       router,
       path: '/invite',
-      queryParams: const {'code': '31F8RN5QJ9'},
+      queryParams: const {},
     );
 
     await tester.pumpWidget(
@@ -425,10 +438,13 @@ void main() {
     );
   });
 
-  testWidgets('Authenticated preview invite accept triggers share-code action',
+  testWidgets('Authenticated share invite accept uses canonical invite action',
       (tester) async {
     final invite = _buildInvite('1');
-    final repository = _FakeInvitesRepository(initialInvites: [invite]);
+    final repository = _FakeInvitesRepository(
+      initialInvites: [invite],
+      materializedInviteId: '1',
+    );
     final controller = InviteFlowScreenController(
       repository: repository,
       userEventsRepository: _FakeUserEventsRepository(),
@@ -471,15 +487,18 @@ void main() {
     await tester.pump(const Duration(milliseconds: 300));
     await tester.pump(const Duration(milliseconds: 300));
 
-    expect(repository.acceptedShareCodes, ['31F8RN5QJ9']);
-    expect(repository.acceptedInviteIds, isEmpty);
+    expect(repository.materializedShareCodes, ['31F8RN5QJ9']);
+    expect(repository.acceptedInviteIds, ['1']);
   });
 
   testWidgets(
       'Authenticated share invite with inviteId accepts through invite contract',
       (tester) async {
     final invite = _buildInviteWithPrimaryInviter('accept-1');
-    final repository = _FakeInvitesRepository(initialInvites: [invite]);
+    final repository = _FakeInvitesRepository(
+      initialInvites: [invite],
+      materializedInviteId: 'accept-1',
+    );
     final controller = InviteFlowScreenController(
       repository: repository,
       userEventsRepository: _FakeUserEventsRepository(),
@@ -523,14 +542,17 @@ void main() {
     await tester.pump(const Duration(milliseconds: 300));
 
     expect(repository.acceptedInviteIds, ['accept-1']);
-    expect(repository.acceptedShareCodes, isEmpty);
+    expect(repository.materializedShareCodes, ['31F8RN5QJ9']);
   });
 
   testWidgets(
       'Authenticated share invite with inviteId declines through invite contract',
       (tester) async {
     final invite = _buildInviteWithPrimaryInviter('decline-1');
-    final repository = _FakeInvitesRepository(initialInvites: [invite]);
+    final repository = _FakeInvitesRepository(
+      initialInvites: [invite],
+      materializedInviteId: 'decline-1',
+    );
     final controller = InviteFlowScreenController(
       repository: repository,
       userEventsRepository: _FakeUserEventsRepository(),
@@ -574,14 +596,17 @@ void main() {
     await tester.pump(const Duration(milliseconds: 300));
 
     expect(repository.declinedInviteIds, ['decline-1']);
-    expect(repository.acceptedShareCodes, isEmpty);
+    expect(repository.materializedShareCodes, ['31F8RN5QJ9']);
   });
 
   testWidgets(
       'Closing invite flow without decision routes home and keeps invite pending',
       (tester) async {
     final invite = _buildInviteWithPrimaryInviter('pending-1');
-    final repository = _FakeInvitesRepository(initialInvites: [invite]);
+    final repository = _FakeInvitesRepository(
+      initialInvites: [invite],
+      materializedInviteId: 'pending-1',
+    );
     final controller = InviteFlowScreenController(
       repository: repository,
       userEventsRepository: _FakeUserEventsRepository(),
@@ -632,10 +657,13 @@ void main() {
   });
 
   testWidgets(
-      'Authenticated multi-inviter preview with empty picker id still triggers decision',
+      'Authenticated multi-inviter share invite with empty picker id still uses canonical decision',
       (tester) async {
     final invite = _buildInviteWithEmptyCandidateIds('multi-1');
-    final repository = _FakeInvitesRepository(initialInvites: [invite]);
+    final repository = _FakeInvitesRepository(
+      initialInvites: [invite],
+      materializedInviteId: 'multi-1',
+    );
     final controller = InviteFlowScreenController(
       repository: repository,
       userEventsRepository: _FakeUserEventsRepository(),
@@ -678,8 +706,8 @@ void main() {
     await tester.pump(const Duration(milliseconds: 300));
     await tester.pump(const Duration(milliseconds: 300));
 
-    expect(repository.acceptedShareCodes, ['31F8RN5QJ9']);
-    expect(repository.acceptedInviteIds, isEmpty);
+    expect(repository.materializedShareCodes, ['31F8RN5QJ9']);
+    expect(repository.acceptedInviteIds, ['multi-1']);
   });
 }
 

@@ -4,6 +4,7 @@ import 'package:belluga_now/domain/contacts/contact_model.dart';
 import 'package:belluga_now/domain/invites/invite_accept_result.dart';
 import 'package:belluga_now/domain/invites/invite_contact_match.dart';
 import 'package:belluga_now/domain/invites/invite_decline_result.dart';
+import 'package:belluga_now/domain/invites/invite_materialize_result.dart';
 import 'package:belluga_now/domain/invites/invite_model.dart';
 import 'package:belluga_now/domain/invites/invite_next_step.dart';
 import 'package:belluga_now/domain/invites/invite_runtime_settings.dart';
@@ -13,6 +14,7 @@ import 'package:belluga_now/domain/invites/value_objects/invite_acceptance_statu
 import 'package:belluga_now/domain/invites/value_objects/invite_attendance_policy_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_credited_acceptance_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_id_value.dart';
+import 'package:belluga_now/domain/invites/value_objects/invite_materialization_status_value.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
 import 'package:belluga_now/domain/schedule/friend_resume.dart';
 import 'package:belluga_now/domain/schedule/invite_status.dart';
@@ -112,26 +114,18 @@ class InvitesRepository extends InvitesRepositoryContract
   }
 
   @override
-  Future<InviteAcceptResult> acceptShareCode(String code) async {
-    final response = await _backend.acceptShareCode(code);
-    await fetchInvites();
-    return InviteAcceptResult(
+  Future<InviteMaterializeResult> materializeShareCode(String code) async {
+    final response = await _backend.materializeShareCode(code);
+    return InviteMaterializeResult(
       inviteIdValue: _buildInviteIdValue(_stringOrEmpty(response['invite_id'])),
-      statusValue:
-          _buildAcceptanceStatusValue(_stringOrEmpty(response['status'])),
+      statusValue: _buildMaterializationStatusValue(
+        _stringOrEmpty(response['status']),
+      ),
       creditedAcceptanceValue: _buildCreditedAcceptanceValue(
-        response['attribution_bound'] == true,
+        response['credited_acceptance'] == true,
       ),
       attendancePolicyValue: _buildAttendancePolicyValue(
         _resolveAttendancePolicy(response['attendance_policy']),
-      ),
-      nextStep:
-          InviteNextStepApiMapper.parse(response['next_step']?.toString()),
-      supersededInviteIdValues: _buildInviteIdValues(
-        _parseStringList(
-          response['superseded_invite_ids'] ??
-              response['closed_duplicate_invite_ids'],
-        ),
       ),
       acceptedAtValue: _buildAcceptedAtValue(
         _parseDateTime(response['accepted_at']),
@@ -359,6 +353,13 @@ class InvitesRepository extends InvitesRepositoryContract
 
   InviteAcceptanceStatusValue _buildAcceptanceStatusValue(String value) {
     final statusValue = InviteAcceptanceStatusValue()..parse(value);
+    return statusValue;
+  }
+
+  InviteMaterializationStatusValue _buildMaterializationStatusValue(
+    String value,
+  ) {
+    final statusValue = InviteMaterializationStatusValue()..parse(value);
     return statusValue;
   }
 

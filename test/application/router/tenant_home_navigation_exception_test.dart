@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:belluga_now/testing/invite_accept_result_builder.dart';
+import 'package:belluga_now/testing/invite_materialize_result_builder.dart';
 
 import 'package:belluga_now/application/router/app_router.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
@@ -17,6 +18,7 @@ import 'package:belluga_now/domain/favorite/projections/favorite_resume.dart';
 import 'package:belluga_now/domain/invites/invite_accept_result.dart';
 import 'package:belluga_now/domain/invites/invite_contact_match.dart';
 import 'package:belluga_now/domain/invites/invite_decline_result.dart';
+import 'package:belluga_now/domain/invites/invite_materialize_result.dart';
 import 'package:belluga_now/domain/invites/invite_model.dart';
 import 'package:belluga_now/domain/invites/invite_next_step.dart';
 import 'package:belluga_now/domain/invites/invite_runtime_settings.dart';
@@ -420,6 +422,15 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
   }
 
   @override
+  Future<InviteMaterializeResult> materializeShareCode(String code) async {
+    return buildInviteMaterializeResult(
+      inviteId: hasPendingInvites ? _buildInvite().id : '',
+      status: hasPendingInvites ? 'pending' : 'expired',
+      creditedAcceptance: false,
+      attendancePolicy: 'free_confirmation_only',
+    );
+  }
+
   Future<InviteAcceptResult> acceptShareCode(String code) async {
     return buildInviteAcceptResult(
       inviteId: code,
