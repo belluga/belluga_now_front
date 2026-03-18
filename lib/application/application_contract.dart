@@ -694,6 +694,7 @@ class _ApplicationContractState extends State<ApplicationContract>
           darkTheme: widget.getDarkThemeData(),
           scrollBehavior: CustomScrollBehavior(),
           routerConfig: widget.appRouter.config(
+            includePrefixMatches: false,
             navigatorObservers: () =>
                 kIsWeb ? const [] : [TelemetryRouteObserver()],
           ),

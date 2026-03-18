@@ -1,3 +1,5 @@
+export 'package:belluga_now/domain/tenant_admin/settings/tenant_admin_app_domain_identifiers.dart';
+export 'package:belluga_now/domain/tenant_admin/settings/tenant_admin_app_links_settings.dart';
 export 'package:belluga_now/domain/tenant_admin/settings/tenant_admin_branding_brightness.dart';
 export 'package:belluga_now/domain/tenant_admin/settings/tenant_admin_branding_settings.dart';
 export 'package:belluga_now/domain/tenant_admin/settings/tenant_admin_branding_update_input.dart';

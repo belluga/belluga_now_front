@@ -12,4 +12,13 @@ class DomainPrimitiveFieldCase {
   final List<int> tokens;
 
   final _ValueObjectLike valueObject;
+  final _DomainPrimitiveConstructorCase helper =
+      _DomainPrimitiveConstructorCase('raw');
+}
+
+class _DomainPrimitiveConstructorCase {
+  _DomainPrimitiveConstructorCase(
+    // expect_lint: domain_primitive_field_forbidden
+    String rawId,
+  );
 }

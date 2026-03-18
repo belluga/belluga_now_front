@@ -73,7 +73,11 @@ class _FakeInvitesBackend implements InvitesBackendContract {
       throw UnimplementedError();
 
   @override
-  Future<Map<String, dynamic>> acceptShareCode(String code) async =>
+  Future<Map<String, dynamic>> fetchShareCodePreview(String code) async =>
+      throw UnimplementedError();
+
+  @override
+  Future<Map<String, dynamic>> materializeShareCode(String code) async =>
       throw UnimplementedError();
 
   @override

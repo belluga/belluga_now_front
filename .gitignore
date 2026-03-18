@@ -76,3 +76,7 @@ config/defines/integration.tenant.json
 # Guardrail: backend code must never live inside flutter-app.
 laravel-app-root
 laravel-app/
+
+# Canonical .well-known association payloads are backend-owned.
+.well-known/assetlinks.json
+.well-known/apple-app-site-association

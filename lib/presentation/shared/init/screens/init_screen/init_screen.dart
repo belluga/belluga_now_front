@@ -17,8 +17,7 @@ class InitScreen extends StatefulWidget {
 }
 
 class _InitScreenState extends State<InitScreen> {
-  final InitScreenController _controller =
-      GetIt.I.get<InitScreenController>();
+  final InitScreenController _controller = GetIt.I.get<InitScreenController>();
 
   @override
   void initState() {
@@ -141,15 +140,10 @@ class _InitScreenState extends State<InitScreen> {
   }
 
   void _gotoInitialRoute() {
-    final initialRoute = _controller.initialRoute;
-
-    // Always make Home the base of the stack, and stack InviteFlow on top when needed.
-    final routes = <PageRouteInfo>[
-      const TenantHomeRoute(),
-      if (initialRoute is InviteFlowRoute) const InviteFlowRoute(),
-    ];
+    final routes = _controller.initialRouteStack;
     debugPrint(
-      '[Push] Init stack ready (home + invite=${initialRoute is InviteFlowRoute}).',
+      '[Push] Init stack ready '
+      '(base=${routes.first.routeName}, invite=${routes.any((route) => route is InviteFlowRoute)}).',
     );
     context.router.replaceAll(routes);
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -161,7 +155,8 @@ class _InitScreenState extends State<InitScreen> {
   Color? _tryParseHexColor(String raw) {
     final normalized = raw.trim();
     if (normalized.isEmpty) return null;
-    final hex = normalized.startsWith('#') ? normalized.substring(1) : normalized;
+    final hex =
+        normalized.startsWith('#') ? normalized.substring(1) : normalized;
     if (hex.length != 6) return null;
     final value = int.tryParse('FF$hex', radix: 16);
     if (value == null) return null;

@@ -2,6 +2,7 @@ export 'init_screen_ui_state.dart';
 
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
+import 'package:belluga_now/domain/app_data/environment_type.dart';
 import 'package:belluga_now/domain/controllers/belluga_init_screen_controller_contract.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/push/push_presentation_gate_contract.dart';
@@ -42,7 +43,19 @@ final class InitScreenController extends BellugaInitScreenControllerContract {
   PageRouteInfo? _determinedRoute;
 
   @override
-  PageRouteInfo get initialRoute => _determinedRoute ?? const TenantHomeRoute();
+  PageRouteInfo get initialRoute =>
+      _determinedRoute ?? _homeRouteForEnvironment();
+
+  List<PageRouteInfo> get initialRouteStack {
+    final route = initialRoute;
+    if (route is InviteFlowRoute) {
+      return [
+        _homeRouteForEnvironment(),
+        route,
+      ];
+    }
+    return [route];
+  }
 
   AppData get appData => _appDataRepository.appData;
 
@@ -71,13 +84,27 @@ final class InitScreenController extends BellugaInitScreenControllerContract {
     // loadingStatusStreamValue.addValue("É bom te ver por aqui!");
     // loadingStatusStreamValue.addValue("Ajustando últimos detalhes!");
     await _invitesRepository.init();
+    _determinedRoute = _resolveInitialRoute();
+    // await _initializeBehavior();
+  }
+
+  PageRouteInfo _resolveInitialRoute() {
+    if (appData.typeValue.value == EnvironmentType.landlord) {
+      return const LandlordHomeRoute();
+    }
 
     if (_invitesRepository.hasPendingInvites) {
-      _determinedRoute = const InviteFlowRoute();
-    } else {
-      _determinedRoute = const TenantHomeRoute();
+      return const InviteFlowRoute();
     }
-    // await _initializeBehavior();
+
+    return const TenantHomeRoute();
+  }
+
+  PageRouteInfo _homeRouteForEnvironment() {
+    if (appData.typeValue.value == EnvironmentType.landlord) {
+      return const LandlordHomeRoute();
+    }
+    return const TenantHomeRoute();
   }
 
   void _updateUiState(InitScreenUiState state) {

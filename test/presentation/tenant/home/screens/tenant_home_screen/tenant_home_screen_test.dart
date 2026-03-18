@@ -89,23 +89,31 @@ void main() {
 
     GetIt.I.registerSingleton<TenantHomeController>(mockController);
     GetIt.I.registerSingleton<TenantHomeAgendaController>(mockAgendaController);
-    GetIt.I.registerSingleton<FavoritesSectionController>(mockFavoritesController);
-    GetIt.I.registerSingleton<InvitesBannerBuilderController>(mockInvitesBannerController);
+    GetIt.I
+        .registerSingleton<FavoritesSectionController>(mockFavoritesController);
+    GetIt.I.registerSingleton<InvitesBannerBuilderController>(
+        mockInvitesBannerController);
     GetIt.I.registerSingleton<AppDataRepository>(mockAppDataRepository);
     GetIt.I.registerSingleton<AppData>(mockAppData);
 
     // Stub AppData
     mockito.when(mockAppDataRepository.appData).thenReturn(mockAppData);
-    mockito.when(mockAppData.nameValue).thenReturn(EnvironmentNameValue()..parse('Test App'));
-    mockito.when(mockAppData.mainColor).thenReturn(MainColorValue()..parse('#000000'));
-    mockito.when(mockAppData.mainIconLightUrl).thenReturn(IconUrlValue()..parse('http://example.com/icon.png'));
     mockito
-        .when(mockAppData.mainLogoLightUrl)
-        .thenReturn(MainLogoUrlValue()..parse('http://example.com/logo-light.png'));
+        .when(mockAppData.nameValue)
+        .thenReturn(EnvironmentNameValue()..parse('Test App'));
     mockito
-        .when(mockAppData.mainLogoDarkUrl)
-        .thenReturn(MainLogoUrlValue()..parse('http://example.com/logo-dark.png'));
-    mockito.when(mockAppDataRepository.maxRadiusMetersStreamValue).thenReturn(StreamValue<double>(defaultValue: 5000));
+        .when(mockAppData.mainColor)
+        .thenReturn(MainColorValue()..parse('#000000'));
+    mockito
+        .when(mockAppData.mainIconLightUrl)
+        .thenReturn(IconUrlValue()..parse('http://example.com/icon.png'));
+    mockito.when(mockAppData.mainLogoLightUrl).thenReturn(
+        MainLogoUrlValue()..parse('http://example.com/logo-light.png'));
+    mockito.when(mockAppData.mainLogoDarkUrl).thenReturn(
+        MainLogoUrlValue()..parse('http://example.com/logo-dark.png'));
+    mockito
+        .when(mockAppDataRepository.maxRadiusMetersStreamValue)
+        .thenReturn(StreamValue<double>(defaultValue: 5000));
 
     // Stub Home Controller
     mockito
@@ -113,61 +121,84 @@ void main() {
         .thenReturn(StreamValue<List<FavoriteResume>?>(defaultValue: []));
     mockito.when(mockFavoritesController.init()).thenAnswer((_) async {});
     mockito.when(mockFavoritesController.buildPinnedFavorite()).thenReturn(
-      FavoriteResume(
-        titleValue: TitleValue()..parse('Pinned'),
-        assetPathValue:
-            AssetPathValue()..parse('assets/images/placeholder_avatar.png'),
-        isPrimary: true,
-      ),
-    );
+          FavoriteResume(
+            titleValue: TitleValue()..parse('Pinned'),
+            assetPathValue: AssetPathValue()
+              ..parse('assets/images/placeholder_avatar.png'),
+            isPrimary: true,
+          ),
+        );
     mockito
         .when(mockInvitesBannerController.pendingInvitesStreamValue)
         .thenReturn(StreamValue<List<InviteModel>>(defaultValue: const []));
 
     // Stub Home Controller
     mockito.when(mockController.userAddressStreamValue).thenReturn(
-      StreamValue<String?>(defaultValue: 'Rua Teste, 123'),
-    );
+          StreamValue<String?>(defaultValue: 'Rua Teste, 123'),
+        );
     mockito
         .when(mockController.myEventsFilteredStreamValue)
         .thenReturn(StreamValue<List<VenueEventResume>>(defaultValue: []));
     mockito
         .when(mockController.scrollController)
         .thenReturn(testScrollController);
-    
+
     // Callbacks
-    mockito.when(mockController.distanceLabelForMyEvent(mockito.any)).thenReturn('1km');
+    mockito
+        .when(mockController.distanceLabelForMyEvent(mockito.any))
+        .thenReturn('1km');
 
     // Agenda controller stubs
-    mockito.when(mockAgendaController.isInitialLoadingStreamValue)
+    mockito
+        .when(mockAgendaController.isInitialLoadingStreamValue)
         .thenReturn(StreamValue<bool>(defaultValue: false));
-    mockito.when(mockAgendaController.isPageLoadingStreamValue)
+    mockito
+        .when(mockAgendaController.isPageLoadingStreamValue)
         .thenReturn(StreamValue<bool>(defaultValue: false));
-    mockito.when(mockAgendaController.showHistoryStreamValue)
+    mockito
+        .when(mockAgendaController.showHistoryStreamValue)
         .thenReturn(StreamValue<bool>(defaultValue: false));
-    mockito.when(mockAgendaController.searchActiveStreamValue)
+    mockito
+        .when(mockAgendaController.searchActiveStreamValue)
         .thenReturn(StreamValue<bool>(defaultValue: false));
-    mockito.when(mockAgendaController.inviteFilterStreamValue)
+    mockito
+        .when(mockAgendaController.inviteFilterStreamValue)
         .thenReturn(StreamValue(defaultValue: InviteFilter.none));
-    mockito.when(mockAgendaController.radiusMetersStreamValue)
+    mockito
+        .when(mockAgendaController.radiusMetersStreamValue)
         .thenReturn(StreamValue<double>(defaultValue: 1000));
-    mockito.when(mockAgendaController.maxRadiusMetersStreamValue)
+    mockito
+        .when(mockAgendaController.maxRadiusMetersStreamValue)
         .thenReturn(StreamValue<double>(defaultValue: 5000));
-    mockito.when(mockAgendaController.hasMoreStreamValue)
+    mockito
+        .when(mockAgendaController.hasMoreStreamValue)
         .thenReturn(StreamValue<bool>(defaultValue: false));
-    mockito.when(mockAgendaController.displayedEventsStreamValue)
+    mockito
+        .when(mockAgendaController.displayedEventsStreamValue)
         .thenReturn(StreamValue<List<EventModel>>(defaultValue: []));
-    mockito.when(mockAgendaController.searchController)
+    mockito
+        .when(mockAgendaController.searchController)
         .thenReturn(TextEditingController());
     mockito.when(mockAgendaController.focusNode).thenReturn(FocusNode());
     mockito
-        .when(mockAgendaController.init(startWithHistory: mockito.anyNamed('startWithHistory')))
+        .when(mockAgendaController.init(
+            startWithHistory: mockito.anyNamed('startWithHistory')))
         .thenAnswer((_) async {});
-    mockito.when(mockAgendaController.setInviteFilter(mockito.any)).thenReturn(null);
-    mockito.when(mockAgendaController.setSearchActive(mockito.any)).thenReturn(null);
-    mockito.when(mockAgendaController.isEventConfirmed(mockito.any)).thenReturn(false);
-    mockito.when(mockAgendaController.pendingInviteCount(mockito.any)).thenReturn(0);
-    mockito.when(mockAgendaController.distanceLabelFor(mockito.any)).thenReturn('1km');
+    mockito
+        .when(mockAgendaController.setInviteFilter(mockito.any))
+        .thenReturn(null);
+    mockito
+        .when(mockAgendaController.setSearchActive(mockito.any))
+        .thenReturn(null);
+    mockito
+        .when(mockAgendaController.isEventConfirmed(mockito.any))
+        .thenReturn(false);
+    mockito
+        .when(mockAgendaController.pendingInviteCount(mockito.any))
+        .thenReturn(0);
+    mockito
+        .when(mockAgendaController.distanceLabelFor(mockito.any))
+        .thenReturn('1km');
     mockito.when(mockAgendaController.loadNextPage()).thenAnswer((_) async {});
   });
 
@@ -186,8 +217,7 @@ void main() {
           ThumbUriValue(defaultValue: Uri.parse('http://example.com/img.jpg')),
       startDateTimeValue:
           DateTimeValue(defaultValue: now.add(const Duration(hours: 2))),
-      locationValue:
-          DescriptionValue()..parse('Local do Evento Teste Longo'),
+      locationValue: DescriptionValue()..parse('Local do Evento Teste Longo'),
       artists: const [],
       tags: const [],
     );
@@ -216,7 +246,6 @@ void main() {
 
     // Verify Favorites Section
     expect(find.text('Seus Favoritos'), findsOneWidget);
-
   });
 
   testWidgets('taps My Events card and pushes detail route', (tester) async {
@@ -229,8 +258,7 @@ void main() {
           ThumbUriValue(defaultValue: Uri.parse('http://example.com/img.jpg')),
       startDateTimeValue:
           DateTimeValue(defaultValue: now.add(const Duration(hours: 2))),
-      locationValue:
-          DescriptionValue()..parse('Local do Evento Teste Longo'),
+      locationValue: DescriptionValue()..parse('Local do Evento Teste Longo'),
       artists: const [],
       tags: const [],
     );
@@ -260,6 +288,45 @@ void main() {
 
     mockito.verify(mockRouter.push(mockito.any)).called(1);
   });
+
+  testWidgets('renders pending invites banner when pending invites exist',
+      (tester) async {
+    final pendingInviteStream = StreamValue<List<InviteModel>>(
+      defaultValue: [
+        InviteModel.fromPrimitives(
+          id: 'pending-1',
+          eventId: 'event-pending-1',
+          eventName: 'Evento pendente',
+          eventDateTime: DateTime(2026, 3, 16, 20),
+          eventImageUrl: 'http://example.com/pending.jpg',
+          location: 'Guarapari',
+          hostName: 'Host',
+          message: 'Convite pendente',
+          tags: const ['music'],
+          inviterName: 'Convidador',
+        ),
+      ],
+    );
+    mockito
+        .when(mockInvitesBannerController.pendingInvitesStreamValue)
+        .thenReturn(pendingInviteStream);
+
+    final mockRouter = MockStackRouter();
+    mockito.when(mockRouter.push(mockito.any)).thenAnswer((_) async => null);
+
+    await tester.pumpWidget(
+      StackRouterScope(
+        controller: mockRouter,
+        stateHash: 0,
+        child: const MaterialApp(
+          home: TenantHomeScreen(),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text('Voce tem 1 convites pendentes'), findsOneWidget);
+  });
 }
 
 class _TestHttpOverrides extends HttpOverrides {
@@ -273,15 +340,73 @@ class _TestHttpClient implements HttpClient {
   bool _autoUncompress = true;
 
   static final List<int> _transparentImage = <int>[
-    0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A,
-    0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52,
-    0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
-    0x08, 0x06, 0x00, 0x00, 0x00, 0x1F, 0x15, 0xC4,
-    0x89, 0x00, 0x00, 0x00, 0x0A, 0x49, 0x44, 0x41,
-    0x54, 0x78, 0x9C, 0x63, 0x00, 0x01, 0x00, 0x00,
-    0x05, 0x00, 0x01, 0x0D, 0x0A, 0x2D, 0xB4, 0x00,
-    0x00, 0x00, 0x00, 0x49, 0x45, 0x4E, 0x44, 0xAE,
-    0x42, 0x60, 0x82,
+    0x89,
+    0x50,
+    0x4E,
+    0x47,
+    0x0D,
+    0x0A,
+    0x1A,
+    0x0A,
+    0x00,
+    0x00,
+    0x00,
+    0x0D,
+    0x49,
+    0x48,
+    0x44,
+    0x52,
+    0x00,
+    0x00,
+    0x00,
+    0x01,
+    0x00,
+    0x00,
+    0x00,
+    0x01,
+    0x08,
+    0x06,
+    0x00,
+    0x00,
+    0x00,
+    0x1F,
+    0x15,
+    0xC4,
+    0x89,
+    0x00,
+    0x00,
+    0x00,
+    0x0A,
+    0x49,
+    0x44,
+    0x41,
+    0x54,
+    0x78,
+    0x9C,
+    0x63,
+    0x00,
+    0x01,
+    0x00,
+    0x00,
+    0x05,
+    0x00,
+    0x01,
+    0x0D,
+    0x0A,
+    0x2D,
+    0xB4,
+    0x00,
+    0x00,
+    0x00,
+    0x00,
+    0x49,
+    0x45,
+    0x4E,
+    0x44,
+    0xAE,
+    0x42,
+    0x60,
+    0x82,
   ];
 
   @override
@@ -347,11 +472,11 @@ class _TestHttpClientResponse extends Stream<List<int>>
     controller.add(_imageBytes);
     controller.close();
     return controller.stream.listen(
-          onData,
-          onError: onError,
-          onDone: onDone,
-          cancelOnError: cancelOnError,
-        );
+      onData,
+      onError: onError,
+      onDone: onDone,
+      cancelOnError: cancelOnError,
+    );
   }
 
   @override

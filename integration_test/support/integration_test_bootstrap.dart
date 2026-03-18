@@ -10,7 +10,7 @@ class IntegrationTestBootstrap {
     }
 
     final domain = BellugaConstants.landlordDomain;
-    if (domain == 'belluga.app') {
+    if (domain == 'booraagora.com.br') {
       fail(
         'Integration tests must not run against production landlord domain. '
         'Pass --dart-define-from-file=config/defines/local.override.json '

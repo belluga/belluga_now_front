@@ -14,9 +14,10 @@ class LaravelInvitesBackend implements InvitesBackendContract {
 
   Map<String, String> _headers({bool includeJsonAccept = false}) {
     final token = GetIt.I.get<AuthRepositoryContract>().userToken.trim();
-    final headers = <String, String>{
-      'Authorization': 'Bearer $token',
-    };
+    final headers = <String, String>{};
+    if (token.isNotEmpty) {
+      headers['Authorization'] = 'Bearer $token';
+    }
     if (includeJsonAccept) {
       headers['Accept'] = 'application/json';
     }
@@ -69,8 +70,13 @@ class LaravelInvitesBackend implements InvitesBackendContract {
   }
 
   @override
-  Future<Map<String, dynamic>> acceptShareCode(String code) {
-    return _post('$_apiBaseUrl/v1/invites/share/$code/accept');
+  Future<Map<String, dynamic>> fetchShareCodePreview(String code) {
+    return _get('$_apiBaseUrl/v1/invites/share/$code');
+  }
+
+  @override
+  Future<Map<String, dynamic>> materializeShareCode(String code) {
+    return _post('$_apiBaseUrl/v1/invites/share/$code/materialize');
   }
 
   @override

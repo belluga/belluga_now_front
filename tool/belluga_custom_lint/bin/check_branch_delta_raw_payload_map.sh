@@ -5,7 +5,10 @@ base_ref="${1:-origin/dev}"
 repo_root="$(git rev-parse --show-toplevel)"
 cd "$repo_root"
 
-mapfile -t changed_files < <(git diff --name-only "${base_ref}"...HEAD -- '*.dart')
+mapfile -t changed_files < <(
+  git diff --name-only "${base_ref}"...HEAD -- '*.dart' |
+    rg -v '^tool/belluga_custom_lint/test_fixtures/'
+)
 
 if [[ ${#changed_files[@]} -eq 0 ]]; then
   echo "[branch-delta] No changed Dart files against ${base_ref}."
