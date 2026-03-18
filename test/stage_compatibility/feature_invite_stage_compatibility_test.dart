@@ -7,12 +7,14 @@ import '../../integration_test/support/stage_invite_test_support.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   IntegrationTestBootstrap.ensureNonProductionLandlordDomain();
+  const stageTimeout = Timeout(Duration(minutes: 10));
 
   if (!StageInviteTestSupport.isConfigured) {
-    testWidgets(
+    test(
       'Stage invite compatibility suite requires explicit stage configuration',
-      (tester) async {},
+      () async {},
       skip: true,
+      timeout: stageTimeout,
     );
     return;
   }
@@ -37,9 +39,9 @@ void main() {
     supportClient = StageInviteSupportClient();
   });
 
-  testWidgets(
+  test(
     'Stage accept flow materializes canonical invite and supersedes competing pending invite',
-    (tester) async {
+    () async {
       activeFixture = await supportClient.bootstrap(scenario: 'accept_pending');
       final runtime = await createStageInviteRuntime();
 
@@ -84,11 +86,12 @@ void main() {
         1,
       );
     },
+    timeout: stageTimeout,
   );
 
-  testWidgets(
+  test(
     'Stage decline flow keeps competing invite pending after canonical decline',
-    (tester) async {
+    () async {
       activeFixture =
           await supportClient.bootstrap(scenario: 'decline_pending');
       final runtime = await createStageInviteRuntime();
@@ -120,11 +123,12 @@ void main() {
         1,
       );
     },
+    timeout: stageTimeout,
   );
 
-  testWidgets(
+  test(
     'Stage direct confirmation supersedes materialized invite without credited acceptance',
-    (tester) async {
+    () async {
       activeFixture = await supportClient.bootstrap(
         scenario: 'direct_confirmation_superseded',
       );
@@ -156,11 +160,12 @@ void main() {
       expect(state.attendance!.status, 'active');
       expect(state.attendance!.kind, 'free_confirmation');
     },
+    timeout: stageTimeout,
   );
 
-  testWidgets(
+  test(
     'Stage expired share preview is rejected by the live backend contract',
-    (tester) async {
+    () async {
       activeFixture = await supportClient.bootstrap(scenario: 'expired_share');
       final runtime = await createStageInviteRuntime();
 
@@ -169,5 +174,6 @@ void main() {
         throwsA(isA<Object>()),
       );
     },
+    timeout: stageTimeout,
   );
 }
