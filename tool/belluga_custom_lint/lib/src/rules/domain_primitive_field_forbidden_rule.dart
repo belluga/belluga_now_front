@@ -45,5 +45,17 @@ class DomainPrimitiveFieldForbiddenRule extends DartLintRule {
         reporter.atNode(variable, code);
       }
     });
+
+    context.registry.addConstructorDeclaration((node) {
+      final parameters = node.parameters.parameters;
+      for (final parameter in parameters) {
+        final parameterType = formalParameterType(parameter);
+        if (!containsForbiddenDomainPrimitiveType(parameterType)) {
+          continue;
+        }
+
+        reporter.atNode(parameter, code);
+      }
+    });
   }
 }

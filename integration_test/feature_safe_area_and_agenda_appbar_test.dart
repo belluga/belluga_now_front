@@ -36,6 +36,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:stream_value/core/stream_value.dart';
+import 'package:belluga_now/testing/invite_accept_result_builder.dart';
 
 import 'package:belluga_now/application/router/guards/location_permission_state.dart';
 import 'support/integration_test_bootstrap.dart';
@@ -383,13 +384,13 @@ class FakeInvitesRepository extends InvitesRepositoryContract {
 
   @override
   Future<InviteAcceptResult> acceptInvite(String inviteId) async =>
-      InviteAcceptResult(
+      buildInviteAcceptResult(
         inviteId: inviteId,
         status: 'accepted',
         creditedAcceptance: true,
         attendancePolicy: 'free_confirmation_only',
         nextStep: InviteNextStep.freeConfirmationCreated,
-        closedDuplicateInviteIds: const [],
+        supersededInviteIds: const [],
       );
 
   @override
@@ -399,18 +400,6 @@ class FakeInvitesRepository extends InvitesRepositoryContract {
         status: 'declined',
         groupHasOtherPending: false,
       );
-
-  @override
-  Future<InviteAcceptResult> acceptShareCode(String code) async =>
-      InviteAcceptResult(
-        inviteId: code,
-        status: 'accepted',
-        creditedAcceptance: true,
-        attendancePolicy: 'free_confirmation_only',
-        nextStep: InviteNextStep.openAppToContinue,
-        closedDuplicateInviteIds: const [],
-      );
-
   @override
   Future<List<InviteContactMatch>> importContacts(
     List<ContactModel> contacts,

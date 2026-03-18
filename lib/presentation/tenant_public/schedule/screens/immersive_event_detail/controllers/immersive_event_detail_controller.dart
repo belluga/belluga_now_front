@@ -4,6 +4,7 @@ import 'package:belluga_now/domain/gamification/mission_resume.dart';
 import 'package:belluga_now/domain/invites/invite_accept_result.dart';
 import 'package:belluga_now/domain/invites/invite_decline_result.dart';
 import 'package:belluga_now/domain/invites/invite_model.dart';
+import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_events_repository_contract.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
@@ -17,13 +18,19 @@ class ImmersiveEventDetailController implements Disposable {
   ImmersiveEventDetailController({
     UserEventsRepositoryContract? userEventsRepository,
     InvitesRepositoryContract? invitesRepository,
+    AuthRepositoryContract? authRepository,
   })  : _userEventsRepository =
             userEventsRepository ?? GetIt.I.get<UserEventsRepositoryContract>(),
         _invitesRepository =
-            invitesRepository ?? GetIt.I.get<InvitesRepositoryContract>();
+            invitesRepository ?? GetIt.I.get<InvitesRepositoryContract>(),
+        _authRepository = authRepository ??
+            (GetIt.I.isRegistered<AuthRepositoryContract>()
+                ? GetIt.I.get<AuthRepositoryContract>()
+                : null);
 
   final UserEventsRepositoryContract _userEventsRepository;
   final InvitesRepositoryContract _invitesRepository;
+  final AuthRepositoryContract? _authRepository;
 
   final scrollController = ScrollController();
   StreamSubscription<List<InviteModel>>? _pendingInvitesSubscription;
@@ -50,6 +57,8 @@ class ImmersiveEventDetailController implements Disposable {
 
   final isLoadingStreamValue = StreamValue<bool>(defaultValue: false);
 
+  bool get _isAuthorized => _authRepository?.isAuthorized ?? true;
+
   void _hydrateState(EventModel event) {
     final isConfirmedLocally =
         _userEventsRepository.isEventConfirmed(event.id.value);
@@ -68,8 +77,10 @@ class ImmersiveEventDetailController implements Disposable {
 
   Future<void> _refreshConfirmationState(String eventId) async {
     await _userEventsRepository.refreshConfirmedEventIds();
-    final isConfirmedFromBackend = _userEventsRepository.isEventConfirmed(eventId);
-    final eventConfirmed = eventStreamValue.value?.isConfirmedValue.value ?? false;
+    final isConfirmedFromBackend =
+        _userEventsRepository.isEventConfirmed(eventId);
+    final eventConfirmed =
+        eventStreamValue.value?.isConfirmedValue.value ?? false;
     isConfirmedStreamValue.addValue(isConfirmedFromBackend || eventConfirmed);
   }
 
@@ -81,9 +92,15 @@ class ImmersiveEventDetailController implements Disposable {
   }
 
   /// Confirm attendance at this event
-  Future<void> confirmAttendance() async {
+  Future<AttendanceConfirmationResult> confirmAttendance() async {
+    if (!_isAuthorized) {
+      return AttendanceConfirmationResult.requiresAuthentication;
+    }
+
     final event = eventStreamValue.value;
-    if (event == null) return;
+    if (event == null) {
+      return AttendanceConfirmationResult.skipped;
+    }
 
     isLoadingStreamValue.addValue(true);
 
@@ -100,6 +117,7 @@ class ImmersiveEventDetailController implements Disposable {
         reward: '#DRINK123',
         isCompleted: false,
       ));
+      return AttendanceConfirmationResult.confirmed;
     } finally {
       isLoadingStreamValue.addValue(false);
     }
@@ -140,4 +158,10 @@ class ImmersiveEventDetailController implements Disposable {
     missionStreamValue.dispose();
     scrollController.dispose();
   }
+}
+
+enum AttendanceConfirmationResult {
+  confirmed,
+  requiresAuthentication,
+  skipped,
 }

@@ -9,6 +9,12 @@ class TenantAdminSettingsRequestEncoder {
     return encodeSettingsPatchPayload(settings.rawMapUi);
   }
 
+  Map<String, dynamic> encodeAppLinksSettingsPatch(
+    TenantAdminAppLinksSettings settings,
+  ) {
+    return encodeSettingsPatchPayload(settings.rawAppLinks);
+  }
+
   Map<String, dynamic> encodeSettingsPatchPayload(
     Map<String, dynamic> source,
   ) {

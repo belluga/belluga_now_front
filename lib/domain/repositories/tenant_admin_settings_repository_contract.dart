@@ -13,6 +13,12 @@ abstract class TenantAdminSettingsRepositoryContract {
     required TenantAdminMapUiSettings settings,
   });
 
+  Future<TenantAdminAppLinksSettings> fetchAppLinksSettings();
+
+  Future<TenantAdminAppLinksSettings> updateAppLinksSettings({
+    required TenantAdminAppLinksSettings settings,
+  });
+
   Future<String> uploadMapFilterImage({
     required String key,
     required TenantAdminMediaUpload upload,

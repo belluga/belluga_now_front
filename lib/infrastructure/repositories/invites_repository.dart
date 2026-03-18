@@ -4,10 +4,17 @@ import 'package:belluga_now/domain/contacts/contact_model.dart';
 import 'package:belluga_now/domain/invites/invite_accept_result.dart';
 import 'package:belluga_now/domain/invites/invite_contact_match.dart';
 import 'package:belluga_now/domain/invites/invite_decline_result.dart';
+import 'package:belluga_now/domain/invites/invite_materialize_result.dart';
 import 'package:belluga_now/domain/invites/invite_model.dart';
 import 'package:belluga_now/domain/invites/invite_next_step.dart';
 import 'package:belluga_now/domain/invites/invite_runtime_settings.dart';
 import 'package:belluga_now/domain/invites/invite_share_code_result.dart';
+import 'package:belluga_now/domain/invites/value_objects/invite_accepted_at_value.dart';
+import 'package:belluga_now/domain/invites/value_objects/invite_acceptance_status_value.dart';
+import 'package:belluga_now/domain/invites/value_objects/invite_attendance_policy_value.dart';
+import 'package:belluga_now/domain/invites/value_objects/invite_credited_acceptance_value.dart';
+import 'package:belluga_now/domain/invites/value_objects/invite_id_value.dart';
+import 'package:belluga_now/domain/invites/value_objects/invite_materialization_status_value.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
 import 'package:belluga_now/domain/schedule/friend_resume.dart';
 import 'package:belluga_now/domain/schedule/invite_status.dart';
@@ -32,7 +39,8 @@ class InvitesRepository extends InvitesRepositoryContract
   }) : _backend = backend ?? LaravelInvitesBackend();
 
   final InvitesBackendContract _backend;
-  final InvitesResponseDecoder _responseDecoder = const InvitesResponseDecoder();
+  final InvitesResponseDecoder _responseDecoder =
+      const InvitesResponseDecoder();
 
   @override
   Future<List<InviteModel>> fetchInvites(
@@ -70,17 +78,23 @@ class InvitesRepository extends InvitesRepositoryContract
     final response = await _backend.acceptInvite(inviteId);
     await fetchInvites();
     return InviteAcceptResult(
-      inviteId: _stringOrEmpty(response['invite_id']),
-      status: _stringOrEmpty(response['status']),
-      creditedAcceptance: response['credited_acceptance'] == true,
-      attendancePolicy: _stringOrEmpty(response['attendance_policy']).isEmpty
-          ? 'free_confirmation_only'
-          : _stringOrEmpty(response['attendance_policy']),
+      inviteIdValue: _buildInviteIdValue(_stringOrEmpty(response['invite_id'])),
+      statusValue:
+          _buildAcceptanceStatusValue(_stringOrEmpty(response['status'])),
+      creditedAcceptanceValue: _buildCreditedAcceptanceValue(
+        response['credited_acceptance'] == true,
+      ),
+      attendancePolicyValue: _buildAttendancePolicyValue(
+        _resolveAttendancePolicy(response['attendance_policy']),
+      ),
       nextStep:
           InviteNextStepApiMapper.parse(response['next_step']?.toString()),
-      closedDuplicateInviteIds:
-          _parseStringList(response['closed_duplicate_invite_ids']),
-      acceptedAt: _parseDateTime(response['accepted_at']),
+      supersededInviteIdValues: _buildInviteIdValues(
+        _parseStringList(response['superseded_invite_ids']),
+      ),
+      acceptedAtValue: _buildAcceptedAtValue(
+        _parseDateTime(response['accepted_at']),
+      ),
     );
   }
 
@@ -97,22 +111,34 @@ class InvitesRepository extends InvitesRepositoryContract
   }
 
   @override
-  Future<InviteAcceptResult> acceptShareCode(String code) async {
-    final response = await _backend.acceptShareCode(code);
-    await fetchInvites();
-    return InviteAcceptResult(
-      inviteId: _stringOrEmpty(response['invite_id']),
-      status: _stringOrEmpty(response['status']),
-      creditedAcceptance: response['attribution_bound'] == true,
-      attendancePolicy: _stringOrEmpty(response['attendance_policy']).isEmpty
-          ? 'free_confirmation_only'
-          : _stringOrEmpty(response['attendance_policy']),
-      nextStep:
-          InviteNextStepApiMapper.parse(response['next_step']?.toString()),
-      closedDuplicateInviteIds:
-          _parseStringList(response['closed_duplicate_invite_ids']),
-      acceptedAt: _parseDateTime(response['accepted_at']),
+  Future<InviteMaterializeResult> materializeShareCode(String code) async {
+    final response = await _backend.materializeShareCode(code);
+    return InviteMaterializeResult(
+      inviteIdValue: _buildInviteIdValue(_stringOrEmpty(response['invite_id'])),
+      statusValue: _buildMaterializationStatusValue(
+        _stringOrEmpty(response['status']),
+      ),
+      creditedAcceptanceValue: _buildCreditedAcceptanceValue(
+        response['credited_acceptance'] == true,
+      ),
+      attendancePolicyValue: _buildAttendancePolicyValue(
+        _resolveAttendancePolicy(response['attendance_policy']),
+      ),
+      acceptedAtValue: _buildAcceptedAtValue(
+        _parseDateTime(response['accepted_at']),
+      ),
     );
+  }
+
+  @override
+  Future<InviteModel?> previewShareCode(String code) async {
+    final response = await _backend.fetchShareCodePreview(code);
+    final inviteRaw = response['invite'];
+    final decoded = _responseDecoder.decodeRequiredInviteDto(
+      inviteRaw,
+      context: 'invite share preview',
+    );
+    return mapInviteDto(decoded);
   }
 
   @override
@@ -307,5 +333,51 @@ class InvitesRepository extends InvitesRepositoryContract
       return null;
     }
     return value;
+  }
+
+  String _resolveAttendancePolicy(Object? rawValue) {
+    final value = _stringOrEmpty(rawValue);
+    if (value.isEmpty) {
+      return 'free_confirmation_only';
+    }
+    return value;
+  }
+
+  InviteIdValue _buildInviteIdValue(String value) {
+    final inviteIdValue = InviteIdValue()..parse(value);
+    return inviteIdValue;
+  }
+
+  InviteAcceptanceStatusValue _buildAcceptanceStatusValue(String value) {
+    final statusValue = InviteAcceptanceStatusValue()..parse(value);
+    return statusValue;
+  }
+
+  InviteMaterializationStatusValue _buildMaterializationStatusValue(
+    String value,
+  ) {
+    final statusValue = InviteMaterializationStatusValue()..parse(value);
+    return statusValue;
+  }
+
+  InviteCreditedAcceptanceValue _buildCreditedAcceptanceValue(bool value) {
+    final creditedValue = InviteCreditedAcceptanceValue()
+      ..parse(value.toString());
+    return creditedValue;
+  }
+
+  InviteAttendancePolicyValue _buildAttendancePolicyValue(String value) {
+    final attendancePolicyValue = InviteAttendancePolicyValue()..parse(value);
+    return attendancePolicyValue;
+  }
+
+  InviteAcceptedAtValue _buildAcceptedAtValue(DateTime? value) {
+    final acceptedAtValue = InviteAcceptedAtValue()
+      ..parse(value?.toIso8601String());
+    return acceptedAtValue;
+  }
+
+  List<InviteIdValue> _buildInviteIdValues(List<String> values) {
+    return List<InviteIdValue>.unmodifiable(values.map(_buildInviteIdValue));
   }
 }

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:belluga_now/testing/invite_accept_result_builder.dart';
 
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/app_data/value_object/platform_type_value.dart';
@@ -327,13 +328,13 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
 
   @override
   Future<InviteAcceptResult> acceptInvite(String inviteId) async =>
-      InviteAcceptResult(
+      buildInviteAcceptResult(
         inviteId: inviteId,
         status: 'accepted',
         creditedAcceptance: true,
         attendancePolicy: 'free_confirmation_only',
         nextStep: InviteNextStep.freeConfirmationCreated,
-        closedDuplicateInviteIds: const [],
+        supersededInviteIds: const [],
       );
 
   @override
@@ -343,18 +344,6 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
         status: 'declined',
         groupHasOtherPending: false,
       );
-
-  @override
-  Future<InviteAcceptResult> acceptShareCode(String code) async =>
-      InviteAcceptResult(
-        inviteId: code,
-        status: 'accepted',
-        creditedAcceptance: true,
-        attendancePolicy: 'free_confirmation_only',
-        nextStep: InviteNextStep.openAppToContinue,
-        closedDuplicateInviteIds: const [],
-      );
-
   @override
   Future<List<InviteContactMatch>> importContacts(
           List<ContactModel> contacts) async =>

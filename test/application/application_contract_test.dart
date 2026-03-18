@@ -33,6 +33,7 @@ import 'package:belluga_now/infrastructure/repositories/app_data_repository.dart
 import 'package:belluga_now/infrastructure/services/schedule_backend_contract.dart';
 import 'package:belluga_now/infrastructure/user/dtos/user_dto.dart';
 import 'package:event_tracker_handler/event_tracker_handler.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
@@ -111,6 +112,47 @@ void main() {
       },
     );
   });
+
+  testWidgets(
+      'app router consumes runtime pushRouteInformation for /mapa',
+      (tester) async {
+    GetIt.I.registerSingleton<AppDataRepositoryContract>(
+      _FakeAppDataRepository(appData: _buildAppData()),
+    );
+    GetIt.I.registerSingleton<TelemetryRepositoryContract>(
+      _FakeTelemetryRepository(appInitResults: Queue<bool>.from([true])),
+    );
+    GetIt.I.registerSingleton<AuthRepositoryContract<UserContract>>(
+      _FakeAuthRepository(),
+    );
+
+    final app = _TestApplication();
+    app.appRouter.setChildModules([_DeepLinkTestModule()]);
+    await tester.pumpWidget(app);
+    await tester.pump();
+
+    expect(find.text('home'), findsOneWidget);
+    expect(app.appRouter.currentPath, '/');
+
+    const testRouteInformation = <String, dynamic>{
+      'location': 'https://guarappari.belluga.space/mapa',
+      'state': null,
+    };
+    final message = const JSONMethodCodec().encodeMethodCall(
+      const MethodCall('pushRouteInformation', testRouteInformation),
+    );
+
+    await tester.binding.defaultBinaryMessenger.handlePlatformMessage(
+      'flutter/navigation',
+      message,
+      (_) {},
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+
+    expect(app.appRouter.currentPath, '/mapa');
+    expect(find.text('mapa'), findsOneWidget);
+  });
 }
 
 class _TestApplication extends ApplicationContract {
@@ -132,6 +174,29 @@ class _TestModule extends ModuleContract {
             builder: (_, __) => const SizedBox.shrink(),
           ),
           path: '/',
+        ),
+      ];
+}
+
+class _DeepLinkTestModule extends ModuleContract {
+  @override
+  Future<void> registerDependencies() async {}
+
+  @override
+  List<AutoRoute> get routes => [
+        AutoRoute(
+          page: PageInfo.builder(
+            'HomeRoute',
+            builder: (_, __) => const Text('home'),
+          ),
+          path: '/',
+        ),
+        AutoRoute(
+          page: PageInfo.builder(
+            'MapRoute',
+            builder: (_, __) => const Text('mapa'),
+          ),
+          path: '/mapa',
         ),
       ];
 }

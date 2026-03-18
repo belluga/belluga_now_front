@@ -1,4 +1,10 @@
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_settings.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_android_app_identifier_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_dynamic_map_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_ios_bundle_identifier_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_ios_team_id_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_sha256_fingerprint_list_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_trimmed_string_list_value.dart';
 import 'package:belluga_now/infrastructure/dal/dao/http/raw_json_envelope_decoder.dart';
 
 class TenantAdminSettingsResponseDecoder {
@@ -16,6 +22,38 @@ class TenantAdminSettingsResponseDecoder {
     return _mapMapUiSettings(
       mapUi,
       tenantOrigin: tenantOrigin,
+    );
+  }
+
+  TenantAdminAppLinksSettings decodeAppLinksSettings(
+    Object? rawResponse, {
+    TenantAdminAppDomainIdentifiers? appDomainIdentifiers,
+  }) {
+    final appLinks = _extractAppLinksPayload(rawResponse);
+    return _mapAppLinksSettings(
+      appLinks,
+      appDomainIdentifiers:
+          appDomainIdentifiers ?? TenantAdminAppDomainIdentifiers.empty(),
+    );
+  }
+
+  TenantAdminAppDomainIdentifiers decodeAppDomainIdentifiers(
+    Object? rawResponse,
+  ) {
+    final payload = _envelopeDecoder.decodeDataMap(
+      rawResponse,
+      label: 'app domain identifiers',
+      emptyWhenDataIsNotMap: true,
+    );
+    final appDomainsRaw = payload['app_domains'];
+    if (appDomainsRaw is! Map) {
+      return TenantAdminAppDomainIdentifiers.empty();
+    }
+
+    final appDomains = Map<String, dynamic>.from(appDomainsRaw);
+    return TenantAdminAppDomainIdentifiers(
+      androidAppIdentifier: _normalizeOptionalText(appDomains['android']),
+      iosBundleId: _normalizeOptionalText(appDomains['ios']),
     );
   }
 
@@ -143,6 +181,85 @@ class TenantAdminSettingsResponseDecoder {
       throw Exception('Unexpected map_ui payload shape.');
     }
     return Map<String, dynamic>.from(payload);
+  }
+
+  Map<String, dynamic> _extractAppLinksPayload(Object? raw) {
+    final payload = _envelopeDecoder.decodeDataMap(
+      raw,
+      label: 'app_links settings',
+      emptyWhenDataIsNotMap: true,
+    );
+    if (payload.containsKey('app_links')) {
+      final appLinksRaw = payload['app_links'];
+      if (appLinksRaw is Map) {
+        return Map<String, dynamic>.from(appLinksRaw);
+      }
+      if (appLinksRaw == null) {
+        return const <String, dynamic>{};
+      }
+      if (appLinksRaw is List && appLinksRaw.isEmpty) {
+        return const <String, dynamic>{};
+      }
+      throw Exception('Unexpected app_links payload shape.');
+    }
+    return Map<String, dynamic>.from(payload);
+  }
+
+  TenantAdminAppLinksSettings _mapAppLinksSettings(
+    Map<String, dynamic> appLinks, {
+    required TenantAdminAppDomainIdentifiers appDomainIdentifiers,
+  }) {
+    final androidRaw = appLinks['android'];
+    final android = androidRaw is Map
+        ? Map<String, dynamic>.from(androidRaw)
+        : const <String, dynamic>{};
+    final iosRaw = appLinks['ios'];
+    final ios = iosRaw is Map
+        ? Map<String, dynamic>.from(iosRaw)
+        : const <String, dynamic>{};
+
+    final androidFingerprintValues =
+        _extractStringList(android['sha256_cert_fingerprints'])
+            .map((entry) => entry.toUpperCase())
+            .toSet()
+            .toList(growable: false);
+    final iosPaths = _extractStringList(ios['paths']).toSet().toList(
+          growable: false,
+        );
+
+    TenantAdminAndroidAppIdentifierValue? androidAppIdentifierValue;
+    final androidAppIdentifier = appDomainIdentifiers.androidAppIdentifier;
+    if (androidAppIdentifier != null &&
+        androidAppIdentifier.trim().isNotEmpty) {
+      androidAppIdentifierValue = TenantAdminAndroidAppIdentifierValue()
+        ..parse(androidAppIdentifier);
+    }
+
+    TenantAdminIosBundleIdentifierValue? iosBundleIdValue;
+    final iosBundleId = appDomainIdentifiers.iosBundleId;
+    if (iosBundleId != null && iosBundleId.trim().isNotEmpty) {
+      iosBundleIdValue = TenantAdminIosBundleIdentifierValue()
+        ..parse(iosBundleId);
+    }
+
+    TenantAdminIosTeamIdValue? iosTeamIdValue;
+    final iosTeamId = _normalizeOptionalText(ios['team_id']);
+    if (iosTeamId != null && iosTeamId.trim().isNotEmpty) {
+      iosTeamIdValue = TenantAdminIosTeamIdValue()..parse(iosTeamId);
+    }
+
+    return TenantAdminAppLinksSettings(
+      rawAppLinksValue: TenantAdminDynamicMapValue(
+        Map<String, dynamic>.unmodifiable(appLinks),
+      ),
+      androidAppIdentifierValue: androidAppIdentifierValue,
+      androidSha256CertFingerprintsValue: TenantAdminSha256FingerprintListValue(
+        androidFingerprintValues,
+      ),
+      iosTeamIdValue: iosTeamIdValue,
+      iosBundleIdValue: iosBundleIdValue,
+      iosPathsValue: TenantAdminTrimmedStringListValue(iosPaths),
+    );
   }
 
   TenantAdminMapUiSettings _mapMapUiSettings(
@@ -517,6 +634,14 @@ class TenantAdminSettingsResponseDecoder {
     final compact = match.group(1)!;
     final expanded = compact.split('').map((char) => '$char$char').join();
     return '#${expanded.toUpperCase()}';
+  }
+
+  String? _normalizeOptionalText(Object? raw) {
+    final normalized = raw?.toString().trim();
+    if (normalized == null || normalized.isEmpty) {
+      return null;
+    }
+    return normalized;
   }
 
   int? _parseInt(Object? value) {
