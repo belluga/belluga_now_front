@@ -1,11 +1,10 @@
-import 'package:integration_test/integration_test.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'support/integration_test_bootstrap.dart';
-import 'support/stage_invite_test_support.dart';
+import '../../integration_test/support/integration_test_bootstrap.dart';
+import '../../integration_test/support/stage_invite_test_support.dart';
 
 void main() {
-  IntegrationTestWidgetsFlutterBinding.ensureInitialized();
+  TestWidgetsFlutterBinding.ensureInitialized();
   IntegrationTestBootstrap.ensureNonProductionLandlordDomain();
   StageInviteTestSupport.ensureConfigured();
 
