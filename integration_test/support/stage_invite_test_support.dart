@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
@@ -17,6 +18,7 @@ import 'package:belluga_now/infrastructure/repositories/auth_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/invites_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/user_events_repository.dart';
 import 'package:dio/dio.dart';
+import 'package:dio/io.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
@@ -34,6 +36,10 @@ class StageInviteTestSupport {
   static const String _packageName = String.fromEnvironment(
     'STAGE_INVITE_PACKAGE_NAME',
     defaultValue: 'com.guarappari.app',
+  );
+  static const bool _allowBadCertificates = bool.fromEnvironment(
+    'STAGE_INVITE_ALLOW_BAD_CERTIFICATES',
+    defaultValue: false,
   );
 
   static void ensureConfigured() {
@@ -57,6 +63,7 @@ class StageInviteTestSupport {
   static String get tenantUrl => _tenantUrl.trim();
   static String get secret => _secret.trim();
   static String get packageName => _packageName.trim();
+  static bool get allowBadCertificates => _allowBadCertificates;
 }
 
 class StageInviteFixture {
@@ -135,20 +142,42 @@ class StageInviteSupportClient {
   })  : _tenantUrl = tenantUrl ?? StageInviteTestSupport.tenantUrl,
         _secret = secret ?? StageInviteTestSupport.secret,
         _dio = dio ??
-            Dio(
-              BaseOptions(
-                baseUrl: tenantUrl ?? StageInviteTestSupport.tenantUrl,
-                connectTimeout: const Duration(seconds: 10),
-                receiveTimeout: const Duration(seconds: 30),
-                headers: const {
-                  'Accept': 'application/json',
-                },
-              ),
+            _buildDio(
+              baseUrl: tenantUrl ?? StageInviteTestSupport.tenantUrl,
+              allowBadCertificates: StageInviteTestSupport.allowBadCertificates,
             );
 
   final Dio _dio;
   final String _tenantUrl;
   final String _secret;
+
+  static Dio _buildDio({
+    required String baseUrl,
+    required bool allowBadCertificates,
+  }) {
+    final dio = Dio(
+      BaseOptions(
+        baseUrl: baseUrl,
+        connectTimeout: const Duration(seconds: 10),
+        receiveTimeout: const Duration(seconds: 30),
+        headers: const {
+          'Accept': 'application/json',
+        },
+      ),
+    );
+
+    if (allowBadCertificates) {
+      dio.httpClientAdapter = IOHttpClientAdapter(
+        createHttpClient: () {
+          final client = HttpClient();
+          client.badCertificateCallback = (_, __, ___) => true;
+          return client;
+        },
+      );
+    }
+
+    return dio;
+  }
 
   Future<StageInviteFixture> bootstrap({
     required String scenario,
