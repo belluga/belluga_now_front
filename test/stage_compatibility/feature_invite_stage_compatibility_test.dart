@@ -7,6 +7,16 @@ import '../../integration_test/support/stage_invite_test_support.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   IntegrationTestBootstrap.ensureNonProductionLandlordDomain();
+
+  if (!StageInviteTestSupport.isConfigured) {
+    testWidgets(
+      'Stage invite compatibility suite requires explicit stage configuration',
+      (tester) async {},
+      skip: true,
+    );
+    return;
+  }
+
   StageInviteTestSupport.ensureConfigured();
 
   late StageInviteSupportClient supportClient;
