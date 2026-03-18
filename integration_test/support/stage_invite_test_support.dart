@@ -64,6 +64,31 @@ class StageInviteTestSupport {
   static String get secret => _secret.trim();
   static String get packageName => _packageName.trim();
   static bool get allowBadCertificates => _allowBadCertificates;
+
+  static HttpOverrides? _previousHttpOverrides;
+  static bool _httpOverridesInstalled = false;
+
+  static void installHttpOverridesIfNeeded() {
+    if (!_allowBadCertificates || _httpOverridesInstalled) {
+      return;
+    }
+
+    _previousHttpOverrides = HttpOverrides.current;
+    HttpOverrides.global = _StageInviteBadCertificateHttpOverrides(
+      _previousHttpOverrides,
+    );
+    _httpOverridesInstalled = true;
+  }
+
+  static void restoreHttpOverrides() {
+    if (!_httpOverridesInstalled) {
+      return;
+    }
+
+    HttpOverrides.global = _previousHttpOverrides;
+    _previousHttpOverrides = null;
+    _httpOverridesInstalled = false;
+  }
 }
 
 class StageInviteFixture {
@@ -281,6 +306,20 @@ class StageInviteSupportClient {
     throw TestFailure(
       'Unexpected stage invite test-support payload shape from $_tenantUrl.',
     );
+  }
+}
+
+class _StageInviteBadCertificateHttpOverrides extends HttpOverrides {
+  _StageInviteBadCertificateHttpOverrides(this._delegate);
+
+  final HttpOverrides? _delegate;
+
+  @override
+  HttpClient createHttpClient(SecurityContext? context) {
+    final client =
+        _delegate?.createHttpClient(context) ?? super.createHttpClient(context);
+    client.badCertificateCallback = (_, __, ___) => true;
+    return client;
   }
 }
 

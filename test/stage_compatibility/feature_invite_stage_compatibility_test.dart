@@ -20,6 +20,14 @@ void main() {
 
   StageInviteTestSupport.ensureConfigured();
 
+  setUpAll(() {
+    StageInviteTestSupport.installHttpOverridesIfNeeded();
+  });
+
+  tearDownAll(() {
+    StageInviteTestSupport.restoreHttpOverrides();
+  });
+
   late StageInviteSupportClient supportClient;
   StageInviteFixture? activeFixture;
 
