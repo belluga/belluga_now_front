@@ -3,7 +3,7 @@ import 'package:value_object_pattern/domain/value_objects/generic_string_value.d
 class InviteMessageValue extends GenericStringValue {
   InviteMessageValue({
     super.defaultValue = '',
-    super.isRequired = true,
-    super.minLenght = 5,
+    super.isRequired = false,
+    super.minLenght = 0,
   });
 }

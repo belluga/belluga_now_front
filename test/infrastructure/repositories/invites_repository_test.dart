@@ -110,6 +110,27 @@ void main() {
     expect(result.groupHasOtherPending, isTrue);
     expect(backend.fetchInvitesCalls, 1);
   });
+
+  test('fetchInvites accepts invite feed entries without custom message',
+      () async {
+    final repository = InvitesRepository(
+      backend: _FakeInvitesBackend(
+        fetchInvitesResponse: {
+          'invites': [
+            _buildInvitePayload(
+              id: 'invite-1',
+              message: '',
+            ),
+          ],
+        },
+      ),
+    );
+
+    final invites = await repository.fetchInvites();
+
+    expect(invites, hasLength(1));
+    expect(invites.single.message, isEmpty);
+  });
 }
 
 class _FakeInvitesBackend implements InvitesBackendContract {
@@ -209,6 +230,7 @@ class _FakeInvitesBackend implements InvitesBackendContract {
 Map<String, dynamic> _buildInvitePayload({
   required String id,
   String eventId = 'event-1',
+  String message = 'Bora?',
 }) {
   return {
     'id': id,
@@ -218,7 +240,7 @@ Map<String, dynamic> _buildInvitePayload({
     'event_image_url': 'https://example.com/event.png',
     'location': 'Guarapari',
     'host_name': 'Belluga',
-    'message': 'Bora?',
+    'message': message,
     'tags': ['music'],
     'attendance_policy': 'free_confirmation_only',
     'inviter_candidates': [
