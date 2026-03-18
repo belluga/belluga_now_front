@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import '../../integration_test/support/integration_test_bootstrap.dart';
 import '../../integration_test/support/stage_invite_test_support.dart';
 
+@Tags(<String>['stage-compatibility'])
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   IntegrationTestBootstrap.ensureNonProductionLandlordDomain();
