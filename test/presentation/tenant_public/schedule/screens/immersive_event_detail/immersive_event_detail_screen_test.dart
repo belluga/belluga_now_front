@@ -109,7 +109,6 @@ void main() {
     );
     expect(userEventsRepository.confirmCalls, 0);
     expect(invitesRepository.acceptInviteCalls, 0);
-    expect(invitesRepository.acceptShareCodeCalls, 0);
     expect(
       router.lastReplacedPath,
       '/auth/login?redirect=%2Fagenda%2Fevento%2Fevento-de-teste',
@@ -238,8 +237,6 @@ class _FakeUserEventsRepository implements UserEventsRepositoryContract {
 
 class _FakeInvitesRepository extends InvitesRepositoryContract {
   int acceptInviteCalls = 0;
-  int acceptShareCodeCalls = 0;
-
   @override
   Future<InviteAcceptResult> acceptInvite(String inviteId) async {
     acceptInviteCalls += 1;
@@ -249,18 +246,6 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
       creditedAcceptance: true,
       attendancePolicy: 'free_confirmation_only',
       nextStep: InviteNextStep.freeConfirmationCreated,
-      supersededInviteIds: const [],
-    );
-  }
-
-  Future<InviteAcceptResult> acceptShareCode(String code) async {
-    acceptShareCodeCalls += 1;
-    return buildInviteAcceptResult(
-      inviteId: code,
-      status: 'accepted',
-      creditedAcceptance: true,
-      attendancePolicy: 'free_confirmation_only',
-      nextStep: InviteNextStep.openAppToContinue,
       supersededInviteIds: const [],
     );
   }

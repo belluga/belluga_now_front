@@ -90,10 +90,7 @@ class InvitesRepository extends InvitesRepositoryContract
       nextStep:
           InviteNextStepApiMapper.parse(response['next_step']?.toString()),
       supersededInviteIdValues: _buildInviteIdValues(
-        _parseStringList(
-          response['superseded_invite_ids'] ??
-              response['closed_duplicate_invite_ids'],
-        ),
+        _parseStringList(response['superseded_invite_ids']),
       ),
       acceptedAtValue: _buildAcceptedAtValue(
         _parseDateTime(response['accepted_at']),
@@ -137,11 +134,11 @@ class InvitesRepository extends InvitesRepositoryContract
   Future<InviteModel?> previewShareCode(String code) async {
     final response = await _backend.fetchShareCodePreview(code);
     final inviteRaw = response['invite'];
-    final decoded = _responseDecoder.decodeInviteDtos([inviteRaw]);
-    if (decoded.isEmpty) {
-      return null;
-    }
-    return mapInviteDto(decoded.first);
+    final decoded = _responseDecoder.decodeRequiredInviteDto(
+      inviteRaw,
+      context: 'invite share preview',
+    );
+    return mapInviteDto(decoded);
   }
 
   @override

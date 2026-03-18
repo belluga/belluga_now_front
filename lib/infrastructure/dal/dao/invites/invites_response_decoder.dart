@@ -5,6 +5,30 @@ import 'package:belluga_now/infrastructure/dal/dao/invites/invite_share_code_tar
 class InvitesResponseDecoder {
   const InvitesResponseDecoder();
 
+  InviteDto decodeRequiredInviteDto(
+    Object? rawInvite, {
+    required String context,
+  }) {
+    if (rawInvite is! Map) {
+      throw FormatException(
+        'Malformed invite payload for $context: expected object.',
+      );
+    }
+
+    try {
+      final dto = InviteDto.fromJson(Map<String, dynamic>.from(rawInvite));
+      _assertRequiredInviteFields(dto, context: context);
+      return dto;
+    } catch (error) {
+      if (error is FormatException) {
+        rethrow;
+      }
+      throw FormatException(
+        'Malformed invite payload for $context: $error',
+      );
+    }
+  }
+
   List<InviteDto> decodeInviteDtos(Object? rawInvites) {
     if (rawInvites is! List) {
       return const <InviteDto>[];
@@ -120,5 +144,46 @@ class InvitesResponseDecoder {
       return null;
     }
     return value;
+  }
+
+  void _assertRequiredInviteFields(
+    InviteDto dto, {
+    required String context,
+  }) {
+    if (dto.id.trim().isEmpty) {
+      throw FormatException(
+        'Malformed invite payload for $context: missing id.',
+      );
+    }
+    if (dto.eventId.trim().isEmpty) {
+      throw FormatException(
+        'Malformed invite payload for $context: missing event_id.',
+      );
+    }
+    if (dto.eventName.trim().isEmpty) {
+      throw FormatException(
+        'Malformed invite payload for $context: missing event_name.',
+      );
+    }
+    if (dto.eventDate.trim().isEmpty) {
+      throw FormatException(
+        'Malformed invite payload for $context: missing event_date.',
+      );
+    }
+    if (dto.location.trim().isEmpty) {
+      throw FormatException(
+        'Malformed invite payload for $context: missing location.',
+      );
+    }
+    if (dto.hostName.trim().isEmpty) {
+      throw FormatException(
+        'Malformed invite payload for $context: missing host_name.',
+      );
+    }
+    if (dto.attendancePolicy.trim().isEmpty) {
+      throw FormatException(
+        'Malformed invite payload for $context: missing attendance_policy.',
+      );
+    }
   }
 }

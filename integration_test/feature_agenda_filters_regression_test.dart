@@ -480,17 +480,6 @@ class _TestInvitesRepository extends InvitesRepositoryContract {
         status: 'declined',
         groupHasOtherPending: false,
       );
-
-  Future<InviteAcceptResult> acceptShareCode(String code) async =>
-      buildInviteAcceptResult(
-        inviteId: code,
-        status: 'accepted',
-        creditedAcceptance: true,
-        attendancePolicy: 'free_confirmation_only',
-        nextStep: InviteNextStep.openAppToContinue,
-        supersededInviteIds: const [],
-      );
-
   @override
   Future<List<InviteContactMatch>> importContacts(
     List<ContactModel> contacts,
