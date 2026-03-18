@@ -5,7 +5,6 @@ import '../../integration_test/support/stage_invite_test_support.dart';
 
 @Tags(<String>['stage-compatibility'])
 void main() {
-  TestWidgetsFlutterBinding.ensureInitialized();
   IntegrationTestBootstrap.ensureNonProductionLandlordDomain();
   const stageTimeout = Timeout(Duration(minutes: 10));
 
