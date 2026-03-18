@@ -1,12 +1,22 @@
-import 'package:integration_test/integration_test.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'support/integration_test_bootstrap.dart';
-import 'support/stage_invite_test_support.dart';
+import '../../integration_test/support/integration_test_bootstrap.dart';
+import '../../integration_test/support/stage_invite_test_support.dart';
 
+@Tags(<String>['stage-compatibility'])
 void main() {
-  IntegrationTestWidgetsFlutterBinding.ensureInitialized();
+  TestWidgetsFlutterBinding.ensureInitialized();
   IntegrationTestBootstrap.ensureNonProductionLandlordDomain();
+
+  if (!StageInviteTestSupport.isConfigured) {
+    testWidgets(
+      'Stage invite compatibility suite requires explicit stage configuration',
+      (tester) async {},
+      skip: true,
+    );
+    return;
+  }
+
   StageInviteTestSupport.ensureConfigured();
 
   late StageInviteSupportClient supportClient;

@@ -51,6 +51,9 @@ class StageInviteTestSupport {
     }
   }
 
+  static bool get isConfigured =>
+      _tenantUrl.trim().isNotEmpty && _secret.trim().isNotEmpty;
+
   static String get tenantUrl => _tenantUrl.trim();
   static String get secret => _secret.trim();
   static String get packageName => _packageName.trim();
