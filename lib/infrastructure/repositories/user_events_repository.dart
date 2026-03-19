@@ -12,6 +12,8 @@ class UserEventsRepository implements UserEventsRepositoryContract {
   static final Uri _defaultEventImage = Uri.parse(
     'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?w=800',
   );
+  static const int _myEventsPageSize = 10;
+  static const int _maxMyEventsPages = 30;
 
   UserEventsRepository({
     ScheduleRepositoryContract? scheduleRepository,
@@ -50,21 +52,32 @@ class UserEventsRepository implements UserEventsRepositoryContract {
 
   @override
   Future<List<VenueEventResume>> fetchMyEvents() async {
-    final page = await _scheduleRepository.getEventsPage(
-      page: 1,
-      pageSize: 10,
-      showPastOnly: false,
-      confirmedOnly: true,
-    );
+    final events = <VenueEventResume>[];
+    var currentPage = 1;
+    var hasMore = true;
 
-    return page.events
-        .map(
+    while (hasMore && currentPage <= _maxMyEventsPages) {
+      final page = await _scheduleRepository.getEventsPage(
+        page: currentPage,
+        pageSize: _myEventsPageSize,
+        showPastOnly: false,
+        confirmedOnly: true,
+      );
+
+      events.addAll(
+        page.events.map(
           (event) => VenueEventResume.fromScheduleEvent(
             event,
             _defaultEventImage,
           ),
-        )
-        .toList(growable: false);
+        ),
+      );
+
+      hasMore = page.hasMore;
+      currentPage += 1;
+    }
+
+    return List<VenueEventResume>.unmodifiable(events);
   }
 
   @override

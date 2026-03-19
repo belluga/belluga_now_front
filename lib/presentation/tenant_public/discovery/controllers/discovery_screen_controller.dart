@@ -1,11 +1,9 @@
 import 'dart:async';
 
-import 'package:belluga_now/domain/favorite/favorite.dart';
 import 'package:belluga_now/domain/partners/engagement_data.dart';
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/domain/partners/profile_type_registry.dart';
 import 'package:belluga_now/domain/repositories/account_profiles_repository_contract.dart';
-import 'package:belluga_now/domain/repositories/favorite_repository_contract.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/presentation/tenant_public/discovery/models/curator_content.dart';
 import 'package:flutter/material.dart';
@@ -15,14 +13,11 @@ import 'package:stream_value/core/stream_value.dart';
 class DiscoveryScreenController implements Disposable {
   DiscoveryScreenController({
     AccountProfilesRepositoryContract? accountProfilesRepository,
-    FavoriteRepositoryContract? favoriteRepository,
-  })  : _partnersRepository = accountProfilesRepository ??
-            GetIt.I.get<AccountProfilesRepositoryContract>(),
-        _favoriteRepository =
-            favoriteRepository ?? GetIt.I.get<FavoriteRepositoryContract>();
+  }) : _partnersRepository = accountProfilesRepository ??
+            GetIt.I.get<AccountProfilesRepositoryContract>();
 
   final AccountProfilesRepositoryContract _partnersRepository;
-  final FavoriteRepositoryContract _favoriteRepository;
+  StreamSubscription<Set<String>>? _favoriteIdsSubscription;
 
   // Cached dataset
   List<AccountProfileModel> _allAccountProfiles = const [];
@@ -56,6 +51,12 @@ class DiscoveryScreenController implements Disposable {
     });
 
     await _partnersRepository.init();
+    _favoriteIdsSubscription ??=
+        _partnersRepository.favoriteAccountProfileIdsStreamValue.stream.listen(
+      (ids) {
+        favoriteIdsStreamValue.addValue(Set<String>.from(ids));
+      },
+    );
     await _loadFavoriteIds();
     await _loadPartners();
   }
@@ -111,16 +112,10 @@ class DiscoveryScreenController implements Disposable {
   StreamValue<Set<String>> get favoriteIdsStream => favoriteIdsStreamValue;
 
   Future<void> _loadFavoriteIds() async {
-    try {
-      final favorites = await _favoriteRepository.fetchFavorites();
-      final ids = favorites
-          .map((Favorite favorite) => favorite.id.trim())
-          .where((id) => id.isNotEmpty)
-          .toSet();
-      favoriteIdsStreamValue.addValue(ids);
-    } catch (_) {
-      // Keep previous value.
-    }
+    final ids = Set<String>.from(
+      _partnersRepository.favoriteAccountProfileIdsStreamValue.value,
+    );
+    favoriteIdsStreamValue.addValue(ids);
   }
 
   void _buildSections() {
@@ -265,5 +260,6 @@ class DiscoveryScreenController implements Disposable {
     curatorContentStreamValue.dispose();
     isLoadingStreamValue.dispose();
     searchController.dispose();
+    _favoriteIdsSubscription?.cancel();
   }
 }

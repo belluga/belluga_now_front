@@ -103,10 +103,44 @@ void main() {
 
     controller.onDispose();
   });
+
+  test('my-events home flow paginates until has_more is false', () async {
+    final tenantDefaultOrigin = _buildCoordinate(
+      latitude: -20.671339,
+      longitude: -40.495395,
+    );
+    final appData = _buildAppData(defaultOrigin: tenantDefaultOrigin);
+    final appDataRepository = _FakeAppDataRepository(appData);
+    final userLocationRepository = _FakeUserLocationRepository();
+    final backend = _CapturingScheduleBackend(hasMoreFirstPage: true);
+
+    GetIt.I.registerSingleton<AppData>(appData);
+
+    final scheduleRepository = ScheduleRepository(
+      backend: backend,
+      userLocationRepository: userLocationRepository,
+      appDataRepository: appDataRepository,
+    );
+    final userEventsRepository = UserEventsRepository(
+      scheduleRepository: scheduleRepository,
+      backend: _FakeUserEventsBackend(),
+    );
+
+    final events = await userEventsRepository.fetchMyEvents();
+
+    expect(events.length, 2);
+    expect(backend.requests.map((sample) => sample.page), [1, 2]);
+    expect(backend.requests.every((sample) => sample.confirmedOnly), isTrue);
+  });
 }
 
 class _CapturingScheduleBackend implements ScheduleBackendContract {
+  _CapturingScheduleBackend({
+    this.hasMoreFirstPage = false,
+  });
+
   static const String eventId = '507f1f77bcf86cd799439011';
+  final bool hasMoreFirstPage;
 
   final List<_AgendaRequestSample> requests = <_AgendaRequestSample>[];
 
@@ -143,11 +177,17 @@ class _CapturingScheduleBackend implements ScheduleBackendContract {
       ),
     );
     if (page > 1) {
+      if (hasMoreFirstPage && page == 2) {
+        return EventPageDTO(
+          events: [_buildEventDto(eventId: '507f1f77bcf86cd799439013')],
+          hasMore: false,
+        );
+      }
       return EventPageDTO(events: const [], hasMore: false);
     }
     return EventPageDTO(
       events: [_buildEventDto()],
-      hasMore: false,
+      hasMore: hasMoreFirstPage,
     );
   }
 
@@ -390,9 +430,11 @@ CityCoordinate _buildCoordinate({
   );
 }
 
-EventDTO _buildEventDto() {
+EventDTO _buildEventDto({
+  String eventId = _CapturingScheduleBackend.eventId,
+}) {
   return EventDTO.fromJson({
-    'event_id': _CapturingScheduleBackend.eventId,
+    'event_id': eventId,
     'occurrence_id': '507f1f77bcf86cd799439012',
     'slug': 'evento-teste',
     'title': 'Evento Teste',
