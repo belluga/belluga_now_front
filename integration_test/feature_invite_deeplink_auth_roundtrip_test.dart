@@ -1,3 +1,5 @@
+import 'dart:developer' as developer;
+
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/presentation/shared/auth/screens/auth_login_screen/widgets/auth_login_effects.dart';
@@ -6,8 +8,15 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:mockito/mockito.dart';
 
+import 'support/integration_test_bootstrap.dart';
+
 void main() {
+  developer.postEvent(
+    'integration_test.VmServiceProxyGoldenFileComparator',
+    const {},
+  );
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
+  IntegrationTestBootstrap.ensureNonProductionLandlordDomain();
 
   testWidgets('login flow returns to deep link with code preserved',
       (tester) async {
