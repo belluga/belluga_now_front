@@ -12,6 +12,10 @@ app_id="${ADB_APP_ID:-com.boora.app}"
 test_timeout="${FLUTTER_INTEGRATION_TIMEOUT:-25m}"
 ignore_timeouts="${FLUTTER_INTEGRATION_IGNORE_TIMEOUTS:-false}"
 flutter_device_timeout="${FLUTTER_DEVICE_DISCOVERY_TIMEOUT:-20}"
+adb_cmd_timeout_seconds="${ADB_COMMAND_TIMEOUT_SECONDS:-8}"
+runner_timeout_seconds="${FLUTTER_INTEGRATION_RUN_TIMEOUT_SECONDS:-0}"
+use_dds="${FLUTTER_INTEGRATION_USE_DDS:-false}"
+disable_push="${FLUTTER_INTEGRATION_DISABLE_PUSH:-true}"
 
 if [[ ! -f "$define_file" ]]; then
   echo "ERROR: define file not found: $define_file" >&2
@@ -22,28 +26,41 @@ if [[ "$#" -eq 0 ]]; then
   set -- integration_test
 fi
 
+run_adb() {
+  if ! command -v "$adb_bin" >/dev/null 2>&1; then
+    return 127
+  fi
+
+  if command -v timeout >/dev/null 2>&1; then
+    timeout "${adb_cmd_timeout_seconds}s" "$adb_bin" "$@"
+    return $?
+  fi
+
+  "$adb_bin" "$@"
+}
+
 prepare_device() {
   if ! command -v "$adb_bin" >/dev/null 2>&1; then
     echo "WARN: adb not found in PATH; skipping pre-clean."
     return
   fi
 
-  "$adb_bin" connect "$device" >/dev/null 2>&1 || true
-  "$adb_bin" -s "$device" wait-for-device >/dev/null 2>&1 || true
+  run_adb connect "$device" >/dev/null 2>&1 || true
+  run_adb -s "$device" wait-for-device >/dev/null 2>&1 || true
 
   if [[ -n "$app_id" ]]; then
     # Best-effort cleanup: prevents stale app state/uninstall glitches from
     # aborting long integration suites.
-    "$adb_bin" -s "$device" shell pm clear "$app_id" >/dev/null 2>&1 || true
-    "$adb_bin" -s "$device" uninstall "$app_id" >/dev/null 2>&1 || true
-    "$adb_bin" -s "$device" shell pm uninstall --user 0 "$app_id" >/dev/null 2>&1 || true
+    run_adb -s "$device" shell pm clear "$app_id" >/dev/null 2>&1 || true
+    run_adb -s "$device" uninstall "$app_id" >/dev/null 2>&1 || true
+    run_adb -s "$device" shell pm uninstall --user 0 "$app_id" >/dev/null 2>&1 || true
 
     # Some devices return DELETE_FAILED_INTERNAL_ERROR when uninstalling an
     # app that is absent. Seeding an installed APK (when available) makes the
     # uninstall step deterministic for Flutter tooling.
     local seed_apk="build/app/outputs/flutter-apk/app-${flavor}-debug.apk"
     if [[ -f "$seed_apk" ]]; then
-      "$adb_bin" -s "$device" install -r "$seed_apk" >/dev/null 2>&1 || true
+      run_adb -s "$device" install -r "$seed_apk" >/dev/null 2>&1 || true
     fi
   fi
 }
@@ -61,11 +78,11 @@ ensure_device_visible() {
 
   local attempt=1
   while [[ "$attempt" -le 8 ]]; do
-    "$adb_bin" connect "$device" >/dev/null 2>&1 || true
-    "$adb_bin" -s "$device" shell input keyevent 224 >/dev/null 2>&1 || true
-    "$adb_bin" -s "$device" shell wm dismiss-keyguard >/dev/null 2>&1 || true
-    "$adb_bin" -s "$device" shell input keyevent 82 >/dev/null 2>&1 || true
-    if [[ "$("$adb_bin" -s "$device" get-state 2>/dev/null || true)" == "device" ]]; then
+    run_adb connect "$device" >/dev/null 2>&1 || true
+    run_adb -s "$device" shell input keyevent 224 >/dev/null 2>&1 || true
+    run_adb -s "$device" shell wm dismiss-keyguard >/dev/null 2>&1 || true
+    run_adb -s "$device" shell input keyevent 82 >/dev/null 2>&1 || true
+    if [[ "$(run_adb -s "$device" get-state 2>/dev/null || true)" == "device" ]]; then
       if fvm flutter devices --device-timeout "$flutter_device_timeout" 2>/dev/null | grep -Fq "$device"; then
         return 0
       fi
@@ -73,7 +90,7 @@ ensure_device_visible() {
       # Some WSL + ADB-over-TCP sessions intermittently miss the serial in
       # `flutter devices` immediately after app cleanup. If ADB can execute
       # shell commands, continue and let Flutter test own the final validation.
-      if "$adb_bin" -s "$device" shell true >/dev/null 2>&1; then
+      if run_adb -s "$device" shell true >/dev/null 2>&1; then
         echo "WARN: Flutter device discovery did not list '$device' yet; proceeding with ADB-healthy device."
         return 0
       fi
@@ -95,6 +112,16 @@ cmd=(
   --dart-define-from-file="$define_file"
 )
 
+if [[ "$use_dds" == "true" ]]; then
+  cmd+=(--dds)
+else
+  cmd+=(--no-dds)
+fi
+
+if [[ "$disable_push" == "true" ]]; then
+  cmd+=(--dart-define=DISABLE_PUSH=true)
+fi
+
 if [[ "$ignore_timeouts" == "true" ]]; then
   cmd+=(--ignore-timeouts)
 fi
@@ -106,8 +133,17 @@ echo "  Defines: $define_file"
 echo "  App ID cleanup: $app_id"
 echo "  Test timeout: $test_timeout"
 echo "  Ignore timeouts: $ignore_timeouts"
+echo "  Use DDS: $use_dds"
+echo "  Disable push during tests: $disable_push"
+echo "  ADB command timeout (s): $adb_cmd_timeout_seconds"
+echo "  Runner timeout (s, 0=disabled): $runner_timeout_seconds"
 
 prepare_gradle
 prepare_device
 ensure_device_visible
-"${cmd[@]}"
+
+if [[ "$runner_timeout_seconds" =~ ^[0-9]+$ ]] && [[ "$runner_timeout_seconds" -gt 0 ]]; then
+  timeout "${runner_timeout_seconds}s" "${cmd[@]}"
+else
+  "${cmd[@]}"
+fi
