@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:belluga_now/application/configurations/belluga_constants.dart';
 import 'package:belluga_now/infrastructure/dal/dao/app_data_backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/laravel_backend/app_data_backend/environment_origin_normalizer.dart';
@@ -26,11 +28,10 @@ class AppDataBackend implements AppDataBackendContract {
         );
 
     try {
-      final response = await client.get(
-        url,
-        options: Options(
-          headers: {'X-App-Domain': packageInfo.packageName},
-        ),
+      final response = await _fetchEnvironmentResponse(
+        client: client,
+        url: url,
+        appDomain: packageInfo.packageName.trim(),
       );
       final raw = response.data;
       final Map<String, dynamic> payload;
@@ -38,6 +39,18 @@ class AppDataBackend implements AppDataBackendContract {
         payload = (raw['data'] is Map<String, dynamic>)
             ? raw['data'] as Map<String, dynamic>
             : raw;
+      } else if (raw is String && raw.trim().isNotEmpty) {
+        final decoded = jsonDecode(raw);
+        if (decoded is Map<String, dynamic>) {
+          payload = (decoded['data'] is Map<String, dynamic>)
+              ? decoded['data'] as Map<String, dynamic>
+              : decoded;
+        } else {
+          throw Exception(
+            'Unexpected environment response shape for '
+            '${response.requestOptions.baseUrl}$url',
+          );
+        }
       } else {
         throw Exception(
           'Unexpected environment response shape for '
@@ -67,6 +80,53 @@ class AppDataBackend implements AppDataBackendContract {
     }
   }
 
+  Future<Response<dynamic>> _fetchEnvironmentResponse({
+    required Dio client,
+    required String url,
+    required String appDomain,
+  }) async {
+    final withAppDomain = <String, String>{
+      'Accept': 'application/json',
+      if (appDomain.isNotEmpty) 'X-App-Domain': appDomain,
+    };
+
+    Response<dynamic> firstResponse;
+    try {
+      firstResponse = await client.get(
+        url,
+        options: Options(headers: withAppDomain),
+      );
+    } on DioException catch (error) {
+      if (!withAppDomain.containsKey('X-App-Domain') ||
+          !_isUnknownAppDomain(error)) {
+        rethrow;
+      }
+
+      return client.get(
+        url,
+        options: Options(
+          headers: const <String, String>{
+            'Accept': 'application/json',
+          },
+        ),
+      );
+    }
+
+    if (!withAppDomain.containsKey('X-App-Domain') ||
+        !_looksLikeHtmlResponse(firstResponse.data)) {
+      return firstResponse;
+    }
+
+    return client.get(
+      url,
+      options: Options(
+        headers: const <String, String>{
+          'Accept': 'application/json',
+        },
+      ),
+    );
+  }
+
   String _resolveBootstrapBaseUrl() {
     final explicit = BellugaConstants.bootstrapBaseUrlOverride.trim();
     if (explicit.isNotEmpty) {
@@ -78,6 +138,14 @@ class AppDataBackend implements AppDataBackendContract {
 
     final landlordDomain = BellugaConstants.landlordDomain.trim();
     if (landlordDomain.isEmpty) {
+      final injected = _dio?.options.baseUrl.trim() ?? '';
+      if (injected.isNotEmpty) {
+        return _parseRequiredOrigin(
+          injected,
+          fieldName: 'DIO_BASE_URL',
+        );
+      }
+
       throw StateError(
         'Missing landlord bootstrap configuration. '
         'Provide BOOTSTRAP_BASE_URL or LANDLORD_DOMAIN via --dart-define '
@@ -146,6 +214,42 @@ class AppDataBackend implements AppDataBackendContract {
 
   String _trimTrailingSlash(String value) {
     return value.endsWith('/') ? value.substring(0, value.length - 1) : value;
+  }
+
+  bool _looksLikeHtmlResponse(dynamic raw) {
+    if (raw is! String) {
+      return false;
+    }
+
+    final normalized = raw.trimLeft().toLowerCase();
+    return normalized.startsWith('<!doctype html') ||
+        normalized.startsWith('<html');
+  }
+
+  bool _isUnknownAppDomain(DioException error) {
+    final payload = error.response?.data;
+    if (payload is Map<String, dynamic>) {
+      final message = payload['message']?.toString().toLowerCase() ?? '';
+      if (message.contains('unknown app_domain')) {
+        return true;
+      }
+
+      final errors = payload['errors'];
+      if (errors is Map<String, dynamic>) {
+        final appDomainErrors = errors['app_domain'];
+        if (appDomainErrors is List &&
+            appDomainErrors.any(
+              (entry) =>
+                  entry.toString().toLowerCase().contains('unknown app_domain'),
+            )) {
+          return true;
+        }
+      }
+      return false;
+    }
+
+    final raw = payload?.toString().toLowerCase() ?? '';
+    return raw.contains('unknown app_domain');
   }
 }
 

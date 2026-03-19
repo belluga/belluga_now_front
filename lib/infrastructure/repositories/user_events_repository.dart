@@ -9,12 +9,18 @@ import 'package:stream_value/core/stream_value.dart';
 /// Implementation of UserEventsRepositoryContract
 /// Uses backend-authoritative attendance commitments for confirmation state.
 class UserEventsRepository implements UserEventsRepositoryContract {
+  static final Uri _defaultEventImage = Uri.parse(
+    'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?w=800',
+  );
+  static const int _myEventsPageSize = 10;
+  static const int _maxMyEventsPages = 30;
+
   UserEventsRepository({
     ScheduleRepositoryContract? scheduleRepository,
     UserEventsBackendContract? backend,
-  }) : _scheduleRepository =
+  })  : _scheduleRepository =
             scheduleRepository ?? GetIt.I.get<ScheduleRepositoryContract>(),
-       _backend = backend ?? LaravelUserEventsBackend();
+        _backend = backend ?? LaravelUserEventsBackend();
 
   final ScheduleRepositoryContract _scheduleRepository;
   final UserEventsBackendContract _backend;
@@ -46,10 +52,32 @@ class UserEventsRepository implements UserEventsRepositoryContract {
 
   @override
   Future<List<VenueEventResume>> fetchMyEvents() async {
-    final allEvents = await _scheduleRepository.fetchUpcomingEvents();
-    return allEvents
-        .where((event) => _confirmedEventIds.contains(event.id))
-        .toList();
+    final events = <VenueEventResume>[];
+    var currentPage = 1;
+    var hasMore = true;
+
+    while (hasMore && currentPage <= _maxMyEventsPages) {
+      final page = await _scheduleRepository.getEventsPage(
+        page: currentPage,
+        pageSize: _myEventsPageSize,
+        showPastOnly: false,
+        confirmedOnly: true,
+      );
+
+      events.addAll(
+        page.events.map(
+          (event) => VenueEventResume.fromScheduleEvent(
+            event,
+            _defaultEventImage,
+          ),
+        ),
+      );
+
+      hasMore = page.hasMore;
+      currentPage += 1;
+    }
+
+    return List<VenueEventResume>.unmodifiable(events);
   }
 
   @override

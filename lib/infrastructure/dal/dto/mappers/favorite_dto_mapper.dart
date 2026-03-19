@@ -10,22 +10,32 @@ import 'package:belluga_now/infrastructure/dal/dto/favorite/favorite_preview_dto
 
 mixin FavoriteDtoMapper {
   Favorite mapFavorite(FavoritePreviewDTO dto) {
-    final title = TitleValue()..parse(dto.title);
+    final safeTitle = dto.title.trim().isNotEmpty ? dto.title : dto.id;
+    final title = TitleValue()..parse(safeTitle);
 
     ThumbUriValue? imageUri;
     if (dto.imageUrl != null) {
-      imageUri = ThumbUriValue(
-        defaultValue: Uri.parse(dto.imageUrl!),
-        isRequired: true,
-      )..parse(dto.imageUrl);
+      final parsed = Uri.tryParse(dto.imageUrl!);
+      if (parsed != null) {
+        imageUri = ThumbUriValue(
+          defaultValue: parsed,
+          isRequired: true,
+        )..parse(dto.imageUrl);
+      }
     }
 
     AssetPathValue? assetPath;
-    if (dto.assetPath != null) {
+    if (dto.assetPath != null && dto.assetPath!.trim().isNotEmpty) {
       assetPath = AssetPathValue(
         defaultValue: dto.assetPath!,
         isRequired: true,
       )..parse(dto.assetPath);
+    } else if (imageUri == null) {
+      // Snapshot payload may not include avatar_url; keep UI contract valid with a deterministic fallback.
+      assetPath = AssetPathValue(
+        defaultValue: 'assets/images/placeholder_avatar.png',
+        isRequired: true,
+      )..parse('assets/images/placeholder_avatar.png');
     }
 
     FavoriteBadge? badge;
@@ -50,6 +60,7 @@ mixin FavoriteDtoMapper {
 
     return Favorite(
       id: dto.id,
+      slug: dto.slug,
       titleValue: title,
       imageUriValue: imageUri,
       assetPathValue: assetPath,
