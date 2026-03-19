@@ -7,9 +7,9 @@ import 'package:belluga_now/infrastructure/dal/dao/backend_routing_policy.dart';
 import 'package:belluga_now/infrastructure/dal/dao/favorite_backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/laravel_backend/app_data_backend/app_data_backend.dart';
 import 'package:belluga_now/infrastructure/dal/dao/laravel_backend/auth_backend/auth_backend.dart';
+import 'package:belluga_now/infrastructure/dal/dao/laravel_backend/favorite_backend/laravel_favorite_backend.dart';
 import 'package:belluga_now/infrastructure/dal/dao/laravel_backend/partners_backend/laravel_account_profiles_backend.dart';
 import 'package:belluga_now/infrastructure/dal/dao/laravel_backend/schedule_backend/laravel_schedule_backend.dart';
-import 'package:belluga_now/infrastructure/dal/dao/mock_backend/mock_favorite_backend.dart';
 import 'package:belluga_now/infrastructure/dal/dao/mock_backend/mock_account_profiles_backend.dart';
 import 'package:belluga_now/infrastructure/dal/dao/mock_backend/mock_schedule_backend.dart';
 import 'package:belluga_now/infrastructure/dal/dao/mock_backend/mock_tenant_backend.dart';
@@ -30,8 +30,7 @@ class ProductionBackend extends BackendContract {
     AccountProfilesBackendContract? accountProfilesMock,
     ScheduleBackendContract? scheduleLive,
     ScheduleBackendContract? scheduleMock,
-  })  : _routingPolicy =
-            routingPolicy ?? BellugaConstants.backendRoutingPolicy,
+  })  : _routingPolicy = routingPolicy ?? BellugaConstants.backendRoutingPolicy,
         _appDataLive = appDataLive ?? AppDataBackend(),
         _appDataMock = appDataMock ?? AppDataBackend(),
         _tenantLive = tenantLive ?? MockTenantBackend(),
@@ -81,14 +80,13 @@ class ProductionBackend extends BackendContract {
 
   @override
   AccountProfilesBackendContract get accountProfiles =>
-      _routingPolicy.resolve(BackendDomain.accountProfiles) == BackendSource.mock
+      _routingPolicy.resolve(BackendDomain.accountProfiles) ==
+              BackendSource.mock
           ? _accountProfilesMock
           : _accountProfilesLive;
 
   @override
-  // TODO(Delphi): Replace with a Laravel favorites backend once the adapter exists.
-  // Next: implement `FavoriteBackendContract` backed by favorites endpoints and wire it here.
-  final FavoriteBackendContract favorites = MockFavoriteBackend();
+  final FavoriteBackendContract favorites = LaravelFavoriteBackend();
 
   @override
   // TODO(Delphi): Replace with a Laravel venue events backend once the adapter exists.

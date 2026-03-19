@@ -7,6 +7,7 @@ class Favorite {
   Favorite({
     required this.id,
     required this.titleValue,
+    this.slug,
     this.imageUriValue,
     this.assetPathValue,
     this.badge,
@@ -22,6 +23,7 @@ class Favorite {
         assert(id.trim().isNotEmpty, 'Favorite id cannot be empty');
 
   final String id;
+  final String? slug;
   final TitleValue titleValue;
   final ThumbUriValue? imageUriValue;
   final AssetPathValue? assetPathValue;

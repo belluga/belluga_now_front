@@ -24,9 +24,7 @@ void main() {
     await GetIt.I.reset();
   });
 
-  test(
-      'my-events home flow sends agenda request with tenant default origin when user location is unavailable',
-      () async {
+  test('my-events home flow uses confirmed_only agenda contract', () async {
     final tenantDefaultOrigin = _buildCoordinate(
       latitude: -20.671339,
       longitude: -40.495395,
@@ -58,14 +56,8 @@ void main() {
     await controller.init();
 
     expect(backend.requests, isNotEmpty);
-    expect(
-      backend.requests.first.originLat,
-      closeTo(tenantDefaultOrigin.latitude, 0.000001),
-    );
-    expect(
-      backend.requests.first.originLng,
-      closeTo(tenantDefaultOrigin.longitude, 0.000001),
-    );
+    expect(backend.requests.first.confirmedOnly, isTrue);
+    expect(backend.requests.first.showPastOnly, isFalse);
     expect(
       controller.myEventsFilteredStreamValue.value.map((event) => event.id),
       contains(_CapturingScheduleBackend.eventId),
@@ -74,8 +66,7 @@ void main() {
     controller.onDispose();
   });
 
-  test(
-      'my-events home flow skips agenda request when no user or tenant origin is available',
+  test('my-events home flow no longer depends on origin availability',
       () async {
     final appData = _buildAppData(defaultOrigin: null);
     final appDataRepository = _FakeAppDataRepository(appData);
@@ -103,8 +94,12 @@ void main() {
 
     await controller.init();
 
-    expect(backend.requests, isEmpty);
-    expect(controller.myEventsFilteredStreamValue.value, isEmpty);
+    expect(backend.requests, isNotEmpty);
+    expect(backend.requests.first.confirmedOnly, isTrue);
+    expect(
+      controller.myEventsFilteredStreamValue.value.map((event) => event.id),
+      contains(_CapturingScheduleBackend.eventId),
+    );
 
     controller.onDispose();
   });
@@ -143,8 +138,8 @@ class _CapturingScheduleBackend implements ScheduleBackendContract {
     requests.add(
       _AgendaRequestSample(
         page: page,
-        originLat: originLat,
-        originLng: originLng,
+        confirmedOnly: confirmedOnly,
+        showPastOnly: showPastOnly,
       ),
     );
     if (page > 1) {
@@ -212,13 +207,13 @@ class _FakeUserEventsBackend implements UserEventsBackendContract {
 class _AgendaRequestSample {
   const _AgendaRequestSample({
     required this.page,
-    required this.originLat,
-    required this.originLng,
+    required this.confirmedOnly,
+    required this.showPastOnly,
   });
 
   final int page;
-  final double? originLat;
-  final double? originLng;
+  final bool confirmedOnly;
+  final bool showPastOnly;
 }
 
 class _FakeUserLocationRepository implements UserLocationRepositoryContract {
