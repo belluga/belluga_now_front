@@ -6,20 +6,12 @@ import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/app_data/value_object/environment_name_value.dart';
 import 'package:belluga_now/domain/favorite/favorite.dart';
 import 'package:belluga_now/domain/favorite/projections/favorite_resume.dart';
-import 'package:belluga_now/domain/partners/account_profile_model.dart';
-import 'package:belluga_now/domain/repositories/account_profiles_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/favorite_repository_contract.dart';
-import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
-import 'package:belluga_now/domain/schedule/event_delta_model.dart';
-import 'package:belluga_now/domain/schedule/event_model.dart';
-import 'package:belluga_now/domain/schedule/paged_events_result.dart';
-import 'package:belluga_now/domain/schedule/schedule_summary_model.dart';
 import 'package:belluga_now/domain/tenant/value_objects/icon_url_value.dart';
 import 'package:belluga_now/domain/tenant/value_objects/main_color_value.dart';
 import 'package:belluga_now/domain/value_objects/asset_path_value.dart';
 import 'package:belluga_now/domain/value_objects/title_value.dart';
-import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/favorite_section/controllers/favorites_section_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/favorite_section/favorites_section_builder.dart';
 import 'package:flutter/material.dart';
@@ -40,106 +32,6 @@ class _FakeFavoriteRepository implements FavoriteRepositoryContract {
 
   @override
   Future<List<FavoriteResume>> fetchFavoriteResumes() async => favoriteResumes;
-}
-
-class _FakeAccountProfilesRepository
-    implements AccountProfilesRepositoryContract {
-  @override
-  final StreamValue<List<AccountProfileModel>> allAccountProfilesStreamValue =
-      StreamValue<List<AccountProfileModel>>(defaultValue: const []);
-
-  @override
-  final StreamValue<Set<String>> favoriteAccountProfileIdsStreamValue =
-      StreamValue<Set<String>>(defaultValue: const {});
-
-  @override
-  Future<void> init() async {}
-
-  @override
-  Future<List<AccountProfileModel>> fetchAllAccountProfiles() async =>
-      <AccountProfileModel>[];
-
-  @override
-  Future<List<AccountProfileModel>> searchAccountProfiles({
-    String? query,
-    String? typeFilter,
-  }) async =>
-      <AccountProfileModel>[];
-
-  @override
-  Future<AccountProfileModel?> getAccountProfileBySlug(String slug) async =>
-      null;
-
-  @override
-  Future<void> toggleFavorite(String accountProfileId) async {}
-
-  @override
-  bool isFavorite(String accountProfileId) => false;
-
-  @override
-  List<AccountProfileModel> getFavoriteAccountProfiles() =>
-      <AccountProfileModel>[];
-}
-
-class _FakeScheduleRepository implements ScheduleRepositoryContract {
-  @override
-  Future<List<VenueEventResume>> fetchUpcomingEvents() async =>
-      <VenueEventResume>[];
-
-  @override
-  Future<ScheduleSummaryModel> getScheduleSummary() async =>
-      throw UnimplementedError();
-
-  @override
-  Future<List<EventModel>> getEventsByDate(
-    DateTime date, {
-    double? originLat,
-    double? originLng,
-    double? maxDistanceMeters,
-  }) async =>
-      throw UnimplementedError();
-
-  @override
-  Future<List<EventModel>> getAllEvents() async => throw UnimplementedError();
-
-  @override
-  Future<EventModel?> getEventBySlug(String slug) async =>
-      throw UnimplementedError();
-
-  @override
-  Future<PagedEventsResult> getEventsPage({
-    required int page,
-    required int pageSize,
-    required bool showPastOnly,
-    String searchQuery = '',
-    List<String>? categories,
-    List<String>? tags,
-    List<Map<String, String>>? taxonomy,
-    bool confirmedOnly = false,
-    double? originLat,
-    double? originLng,
-    double? maxDistanceMeters,
-  }) async =>
-      throw UnimplementedError();
-
-  @override
-  Future<List<VenueEventResume>> getEventResumesByDate(DateTime date) async =>
-      throw UnimplementedError();
-
-  @override
-  Stream<EventDeltaModel> watchEventsStream({
-    String searchQuery = '',
-    List<String>? categories,
-    List<String>? tags,
-    List<Map<String, String>>? taxonomy,
-    bool confirmedOnly = false,
-    double? originLat,
-    double? originLng,
-    double? maxDistanceMeters,
-    String? lastEventId,
-    bool showPastOnly = false,
-  }) =>
-      const Stream.empty();
 }
 
 class _FakeAppData extends Fake implements AppData {
@@ -221,7 +113,6 @@ void main() {
   testWidgets('Direct favorite tap triggers route change', (tester) async {
     final favoriteItem = FavoriteResume(
       titleValue: TitleValue()..parse('Pizza Place'),
-      slug: 'pizza-place',
       assetPathValue: AssetPathValue()
         ..parse('assets/images/placeholder_avatar.png'),
     );
@@ -230,8 +121,6 @@ void main() {
       favoriteRepository: _FakeFavoriteRepository(
         favoriteResumes: [favoriteItem],
       ),
-      partnersRepository: _FakeAccountProfilesRepository(),
-      scheduleRepository: _FakeScheduleRepository(),
       appDataRepository: _FakeAppDataRepository(),
     );
 

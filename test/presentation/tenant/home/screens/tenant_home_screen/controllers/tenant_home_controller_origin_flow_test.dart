@@ -24,9 +24,7 @@ void main() {
     await GetIt.I.reset();
   });
 
-  test(
-      'my-events home flow sends agenda request with tenant default origin when user location is unavailable',
-      () async {
+  test('my-events home flow uses confirmed_only agenda contract', () async {
     final tenantDefaultOrigin = _buildCoordinate(
       latitude: -20.671339,
       longitude: -40.495395,
@@ -58,14 +56,8 @@ void main() {
     await controller.init();
 
     expect(backend.requests, isNotEmpty);
-    expect(
-      backend.requests.first.originLat,
-      closeTo(tenantDefaultOrigin.latitude, 0.000001),
-    );
-    expect(
-      backend.requests.first.originLng,
-      closeTo(tenantDefaultOrigin.longitude, 0.000001),
-    );
+    expect(backend.requests.first.confirmedOnly, isTrue);
+    expect(backend.requests.first.showPastOnly, isFalse);
     expect(
       controller.myEventsFilteredStreamValue.value.map((event) => event.id),
       contains(_CapturingScheduleBackend.eventId),
@@ -74,8 +66,7 @@ void main() {
     controller.onDispose();
   });
 
-  test(
-      'my-events home flow skips agenda request when no user or tenant origin is available',
+  test('my-events home flow no longer depends on origin availability',
       () async {
     final appData = _buildAppData(defaultOrigin: null);
     final appDataRepository = _FakeAppDataRepository(appData);
@@ -103,15 +94,53 @@ void main() {
 
     await controller.init();
 
-    expect(backend.requests, isEmpty);
-    expect(controller.myEventsFilteredStreamValue.value, isEmpty);
+    expect(backend.requests, isNotEmpty);
+    expect(backend.requests.first.confirmedOnly, isTrue);
+    expect(
+      controller.myEventsFilteredStreamValue.value.map((event) => event.id),
+      contains(_CapturingScheduleBackend.eventId),
+    );
 
     controller.onDispose();
+  });
+
+  test('my-events home flow paginates until has_more is false', () async {
+    final tenantDefaultOrigin = _buildCoordinate(
+      latitude: -20.671339,
+      longitude: -40.495395,
+    );
+    final appData = _buildAppData(defaultOrigin: tenantDefaultOrigin);
+    final appDataRepository = _FakeAppDataRepository(appData);
+    final userLocationRepository = _FakeUserLocationRepository();
+    final backend = _CapturingScheduleBackend(hasMoreFirstPage: true);
+
+    GetIt.I.registerSingleton<AppData>(appData);
+
+    final scheduleRepository = ScheduleRepository(
+      backend: backend,
+      userLocationRepository: userLocationRepository,
+      appDataRepository: appDataRepository,
+    );
+    final userEventsRepository = UserEventsRepository(
+      scheduleRepository: scheduleRepository,
+      backend: _FakeUserEventsBackend(),
+    );
+
+    final events = await userEventsRepository.fetchMyEvents();
+
+    expect(events.length, 2);
+    expect(backend.requests.map((sample) => sample.page), [1, 2]);
+    expect(backend.requests.every((sample) => sample.confirmedOnly), isTrue);
   });
 }
 
 class _CapturingScheduleBackend implements ScheduleBackendContract {
+  _CapturingScheduleBackend({
+    this.hasMoreFirstPage = false,
+  });
+
   static const String eventId = '507f1f77bcf86cd799439011';
+  final bool hasMoreFirstPage;
 
   final List<_AgendaRequestSample> requests = <_AgendaRequestSample>[];
 
@@ -143,16 +172,22 @@ class _CapturingScheduleBackend implements ScheduleBackendContract {
     requests.add(
       _AgendaRequestSample(
         page: page,
-        originLat: originLat,
-        originLng: originLng,
+        confirmedOnly: confirmedOnly,
+        showPastOnly: showPastOnly,
       ),
     );
     if (page > 1) {
+      if (hasMoreFirstPage && page == 2) {
+        return EventPageDTO(
+          events: [_buildEventDto(eventId: '507f1f77bcf86cd799439013')],
+          hasMore: false,
+        );
+      }
       return EventPageDTO(events: const [], hasMore: false);
     }
     return EventPageDTO(
       events: [_buildEventDto()],
-      hasMore: false,
+      hasMore: hasMoreFirstPage,
     );
   }
 
@@ -212,13 +247,13 @@ class _FakeUserEventsBackend implements UserEventsBackendContract {
 class _AgendaRequestSample {
   const _AgendaRequestSample({
     required this.page,
-    required this.originLat,
-    required this.originLng,
+    required this.confirmedOnly,
+    required this.showPastOnly,
   });
 
   final int page;
-  final double? originLat;
-  final double? originLng;
+  final bool confirmedOnly;
+  final bool showPastOnly;
 }
 
 class _FakeUserLocationRepository implements UserLocationRepositoryContract {
@@ -395,9 +430,11 @@ CityCoordinate _buildCoordinate({
   );
 }
 
-EventDTO _buildEventDto() {
+EventDTO _buildEventDto({
+  String eventId = _CapturingScheduleBackend.eventId,
+}) {
   return EventDTO.fromJson({
-    'event_id': _CapturingScheduleBackend.eventId,
+    'event_id': eventId,
     'occurrence_id': '507f1f77bcf86cd799439012',
     'slug': 'evento-teste',
     'title': 'Evento Teste',
