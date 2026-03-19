@@ -7,9 +7,11 @@ class InviteShareFooter extends StatelessWidget {
   const InviteShareFooter({
     super.key,
     required this.invite,
+    required this.shareUri,
   });
 
   final InviteModel invite;
+  final Uri? shareUri;
 
   @override
   Widget build(BuildContext context) {
@@ -61,19 +63,21 @@ class InviteShareFooter extends StatelessWidget {
           ),
           const SizedBox(width: 12),
           FilledButton.icon(
-            onPressed: () {
-              final text =
-                  'Bora? ${invite.eventName} em ${invite.location} no dia ${invite.eventDateTime.toLocal()}.'
-                  '\nDetalhes: https://belluga.now/invite/${invite.id}';
-              SharePlus.instance.share(
-                ShareParams(
-                  text: text,
-                  subject: 'Convite Belluga Now',
-                ),
-              );
-            },
+            onPressed: shareUri == null
+                ? null
+                : () {
+                    final text =
+                        'Bora? ${invite.eventName} em ${invite.location} no dia ${invite.eventDateTime.toLocal()}.'
+                        '\nDetalhes: $shareUri';
+                    SharePlus.instance.share(
+                      ShareParams(
+                        text: text,
+                        subject: 'Convite Belluga Now',
+                      ),
+                    );
+                  },
             icon: const Icon(Icons.share),
-            label: const Text('Compartilhar'),
+            label: Text(shareUri == null ? 'Gerando...' : 'Compartilhar'),
           ),
         ],
       ),

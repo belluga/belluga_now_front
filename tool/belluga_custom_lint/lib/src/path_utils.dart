@@ -9,6 +9,19 @@ bool isPresentationFilePath(String path) {
   return _containsSegment(path, '/lib/presentation/');
 }
 
+bool isLibFilePath(String path) {
+  final normalized = normalizePath(path);
+  return _containsSegment(normalized, '/lib/') || normalized.startsWith('lib/');
+}
+
+bool isGeneratedFilePath(String path) {
+  final normalized = normalizePath(path);
+  return normalized.endsWith('.g.dart') ||
+      normalized.endsWith('.freezed.dart') ||
+      normalized.endsWith('.gr.dart') ||
+      normalized.endsWith('.mocks.dart');
+}
+
 bool isUiPresentationFilePath(String path) {
   if (!isPresentationFilePath(path)) {
     return false;
@@ -59,6 +72,24 @@ bool isPresentationScreenFilePath(String path) {
 
 bool isDomainFilePath(String path) {
   return _containsSegment(path, '/lib/domain/');
+}
+
+bool isDomainValueObjectFilePath(String path) {
+  final normalized = normalizePath(path);
+  return isDomainFilePath(normalized) &&
+      _containsSegment(normalized, '/value_objects/');
+}
+
+bool isRepositoryFilePath(String path) {
+  return _containsSegment(path, '/lib/infrastructure/repositories/');
+}
+
+bool isServiceFilePath(String path) {
+  return _containsSegment(path, '/lib/infrastructure/services/');
+}
+
+bool isDtoMapperFilePath(String path) {
+  return _containsSegment(path, '/lib/infrastructure/dal/dto/mappers/');
 }
 
 bool isPresentationControllerFilePath(String path) {

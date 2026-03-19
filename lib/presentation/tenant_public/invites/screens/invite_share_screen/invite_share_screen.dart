@@ -1,4 +1,5 @@
 import 'package:belluga_now/domain/invites/invite_model.dart';
+import 'package:belluga_now/domain/invites/invite_share_code_result.dart';
 import 'package:belluga_now/domain/invites/projections/friend_resume_with_status.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
 import 'package:belluga_now/presentation/tenant_public/invites/screens/invite_share_screen/controllers/invite_share_screen_controller.dart';
@@ -30,7 +31,7 @@ class _InviteShareScreenState extends State<InviteShareScreen> {
   @override
   void initState() {
     super.initState();
-    _controller.init(widget.invite.eventId);
+    _controller.init(widget.invite);
   }
 
   @override
@@ -40,9 +41,8 @@ class _InviteShareScreenState extends State<InviteShareScreen> {
         title: InviteShareAppBarTitle(invite: widget.invite),
       ),
       body: SafeArea(
-        child: StreamValueBuilder<List<InviteFriendResumeWithStatus>?>(
+        child: StreamValueBuilder<List<InviteFriendResumeWithStatus>>(
           streamValue: _controller.friendsSuggestionsStreamValue,
-          onNullWidget: const Center(child: CircularProgressIndicator()),
           builder: (context, friendsWithStatus) {
             return StreamValueBuilder<List<SentInviteStatus>>(
               streamValue: _controller.sentInvitesStreamValue,
@@ -58,25 +58,32 @@ class _InviteShareScreenState extends State<InviteShareScreen> {
                           const SizedBox(height: 16),
                           InviteShareSummary(invites: sentInvites),
                           const SizedBox(height: 16),
-                          if (friendsWithStatus != null)
-                            ..._paddedFriends(friendsWithStatus).map(
-                              (item) => InviteShareFriendCard(
-                                friend: item.friend.friend,
-                                status: item.friend.inviteStatus,
-                                onInvite: item.isPlaceholder
-                                    ? null
-                                    : () => _controller.sendInviteToFriend(
-                                          item.friend.friend.id,
-                                        ),
-                                isPlaceholder: item.isPlaceholder,
-                              ),
+                          ..._paddedFriends(friendsWithStatus).map(
+                            (item) => InviteShareFriendCard(
+                              friend: item.friend.friend,
+                              status: item.friend.inviteStatus,
+                              onInvite: item.isPlaceholder
+                                  ? null
+                                  : () => _controller.sendInviteToFriend(
+                                        item.friend.friend,
+                                      ),
+                              isPlaceholder: item.isPlaceholder,
                             ),
+                          ),
                         ],
                       ),
                     ),
                     Padding(
                       padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                      child: InviteShareFooter(invite: widget.invite),
+                      child: StreamValueBuilder<InviteShareCodeResult?>(
+                        streamValue: _controller.shareCodeStreamValue,
+                        builder: (context, shareCode) {
+                          return InviteShareFooter(
+                            invite: widget.invite,
+                            shareUri: _controller.buildShareUri(shareCode),
+                          );
+                        },
+                      ),
                     ),
                   ],
                 );
@@ -88,19 +95,19 @@ class _InviteShareScreenState extends State<InviteShareScreen> {
     );
   }
 
-  List<InviteShareFriendItem> _paddedFriends(
+  List<_InviteShareFriendItem> _paddedFriends(
     List<InviteFriendResumeWithStatus> friends,
   ) {
     if (friends.isEmpty) return [];
-    final items = <InviteShareFriendItem>[
+    final items = <_InviteShareFriendItem>[
       ...friends.map(
-        (f) => InviteShareFriendItem(friend: f, isPlaceholder: false),
+        (f) => _InviteShareFriendItem(friend: f, isPlaceholder: false),
       ),
     ];
     var idx = 0;
     while (items.length < 20) {
       items.add(
-        InviteShareFriendItem(
+        _InviteShareFriendItem(
           friend: friends[idx % friends.length],
           isPlaceholder: true,
         ),
@@ -111,8 +118,8 @@ class _InviteShareScreenState extends State<InviteShareScreen> {
   }
 }
 
-class InviteShareFriendItem {
-  InviteShareFriendItem({required this.friend, required this.isPlaceholder});
+class _InviteShareFriendItem {
+  _InviteShareFriendItem({required this.friend, required this.isPlaceholder});
 
   final InviteFriendResumeWithStatus friend;
   final bool isPlaceholder;

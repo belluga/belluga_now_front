@@ -27,8 +27,9 @@ import 'package:belluga_now/infrastructure/dal/dao/tenant_backend_contract.dart'
 import 'package:belluga_now/infrastructure/dal/dao/venue_event_backend_contract.dart';
 import 'package:belluga_now/infrastructure/services/schedule_backend_contract.dart';
 import 'support/fake_landlord_app_data_backend.dart';
-import 'package:belluga_now/infrastructure/dal/dao/local/app_data_local_info_source/app_data_local_info_source_stub.dart';
+import 'package:belluga_now/infrastructure/dal/dao/local/app_data_local_info_source/app_data_local_info_source.dart';
 import 'package:belluga_now/infrastructure/repositories/app_data_repository.dart';
+import 'package:belluga_now/presentation/shared/widgets/belluga_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
@@ -325,6 +326,208 @@ void main() {
     expect(find.text('Praia do Morro'), findsNothing);
     expect(find.text('Museu Vale'), findsOneWidget);
   });
+
+  testWidgets('Admin static asset edit renders persisted media URLs', (
+    tester,
+  ) async {
+    const avatarUrl = 'https://tenant-a.test/media/static-assets/avatar.png';
+    const coverUrl = 'https://tenant-a.test/media/static-assets/cover.png';
+    if (GetIt.I.isRegistered<ApplicationContract>()) {
+      GetIt.I.unregister<ApplicationContract>();
+    }
+    if (GetIt.I.isRegistered<AppDataRepositoryContract>()) {
+      GetIt.I.unregister<AppDataRepositoryContract>();
+    }
+    if (GetIt.I.isRegistered<AppDataRepository>()) {
+      GetIt.I.unregister<AppDataRepository>();
+    }
+    if (GetIt.I.isRegistered<AdminModeRepositoryContract>()) {
+      GetIt.I.unregister<AdminModeRepositoryContract>();
+    }
+    if (GetIt.I.isRegistered<AuthRepositoryContract<UserContract>>()) {
+      GetIt.I.unregister<AuthRepositoryContract<UserContract>>();
+    }
+    if (GetIt.I.isRegistered<LandlordAuthRepositoryContract>()) {
+      GetIt.I.unregister<LandlordAuthRepositoryContract>();
+    }
+    if (GetIt.I.isRegistered<LandlordTenantsRepositoryContract>()) {
+      GetIt.I.unregister<LandlordTenantsRepositoryContract>();
+    }
+    if (GetIt.I.isRegistered<TenantAdminStaticAssetsRepositoryContract>()) {
+      GetIt.I.unregister<TenantAdminStaticAssetsRepositoryContract>();
+    }
+    if (GetIt.I.isRegistered<TenantAdminTaxonomiesRepositoryContract>()) {
+      GetIt.I.unregister<TenantAdminTaxonomiesRepositoryContract>();
+    }
+
+    GetIt.I.registerSingleton<AppDataRepositoryContract>(
+      AppDataRepository(
+        backend: const FakeLandlordAppDataBackend(),
+        localInfoSource: AppDataLocalInfoSource(),
+      ),
+    );
+    GetIt.I.registerSingleton<AdminModeRepositoryContract>(
+      _FakeAdminModeRepository(AdminMode.landlord),
+    );
+    GetIt.I.registerSingleton<AuthRepositoryContract<UserContract>>(
+      _FakeAuthRepository(),
+    );
+    GetIt.I.registerSingleton<LandlordAuthRepositoryContract>(
+      _FakeLandlordAuthRepository(hasValidSession: true),
+    );
+    GetIt.I.registerSingleton<LandlordTenantsRepositoryContract>(
+      _FakeLandlordTenantsRepository(),
+    );
+    GetIt.I.registerSingleton<TenantAdminStaticAssetsRepositoryContract>(
+      _FakeStaticAssetsRepository(
+        seededAssets: const [
+          TenantAdminStaticAsset(
+            id: 'asset-1',
+            profileType: 'beach',
+            displayName: 'Praia do Morro',
+            slug: 'praia-do-morro',
+            isActive: true,
+            avatarUrl: avatarUrl,
+            coverUrl: coverUrl,
+          ),
+        ],
+      ),
+    );
+    GetIt.I.registerSingleton<TenantAdminTaxonomiesRepositoryContract>(
+      _FakeTaxonomiesRepository(),
+    );
+
+    final app = Application();
+    GetIt.I.registerSingleton<ApplicationContract>(app);
+    await app.init();
+
+    app.appRouter.replaceAll([
+      TenantAdminShellRoute(
+        children: [TenantAdminStaticAssetEditRoute(assetId: 'asset-1')],
+      ),
+    ]);
+
+    await tester.pumpWidget(app);
+    await _pumpFor(tester, const Duration(seconds: 2));
+    await _waitForFinder(tester, _tenantAdminShellRouterFinder());
+    app.appRouter.navigate(
+      TenantAdminShellRoute(
+        children: [TenantAdminStaticAssetEditRoute(assetId: 'asset-1')],
+      ),
+    );
+    await _pumpFor(tester, const Duration(seconds: 2));
+    await _waitForFinder(tester, find.text('Editar ativo'));
+
+    final avatarImageFinder = find.byWidgetPredicate((widget) {
+      return widget is BellugaNetworkImage && widget.url == avatarUrl;
+    });
+    final coverImageFinder = find.byWidgetPredicate((widget) {
+      return widget is BellugaNetworkImage && widget.url == coverUrl;
+    });
+    expect(avatarImageFinder, findsOneWidget);
+    expect(coverImageFinder, findsOneWidget);
+  });
+
+  testWidgets('Admin static assets list cards render persisted media URLs', (
+    tester,
+  ) async {
+    const avatarUrl = 'https://tenant-a.test/media/static-assets/avatar.png';
+    const coverUrl = 'https://tenant-a.test/media/static-assets/cover.png';
+    if (GetIt.I.isRegistered<ApplicationContract>()) {
+      GetIt.I.unregister<ApplicationContract>();
+    }
+    if (GetIt.I.isRegistered<AppDataRepositoryContract>()) {
+      GetIt.I.unregister<AppDataRepositoryContract>();
+    }
+    if (GetIt.I.isRegistered<AppDataRepository>()) {
+      GetIt.I.unregister<AppDataRepository>();
+    }
+    if (GetIt.I.isRegistered<AdminModeRepositoryContract>()) {
+      GetIt.I.unregister<AdminModeRepositoryContract>();
+    }
+    if (GetIt.I.isRegistered<AuthRepositoryContract<UserContract>>()) {
+      GetIt.I.unregister<AuthRepositoryContract<UserContract>>();
+    }
+    if (GetIt.I.isRegistered<LandlordAuthRepositoryContract>()) {
+      GetIt.I.unregister<LandlordAuthRepositoryContract>();
+    }
+    if (GetIt.I.isRegistered<LandlordTenantsRepositoryContract>()) {
+      GetIt.I.unregister<LandlordTenantsRepositoryContract>();
+    }
+    if (GetIt.I.isRegistered<TenantAdminStaticAssetsRepositoryContract>()) {
+      GetIt.I.unregister<TenantAdminStaticAssetsRepositoryContract>();
+    }
+    if (GetIt.I.isRegistered<TenantAdminTaxonomiesRepositoryContract>()) {
+      GetIt.I.unregister<TenantAdminTaxonomiesRepositoryContract>();
+    }
+
+    GetIt.I.registerSingleton<AppDataRepositoryContract>(
+      AppDataRepository(
+        backend: const FakeLandlordAppDataBackend(),
+        localInfoSource: AppDataLocalInfoSource(),
+      ),
+    );
+    GetIt.I.registerSingleton<AdminModeRepositoryContract>(
+      _FakeAdminModeRepository(AdminMode.landlord),
+    );
+    GetIt.I.registerSingleton<AuthRepositoryContract<UserContract>>(
+      _FakeAuthRepository(),
+    );
+    GetIt.I.registerSingleton<LandlordAuthRepositoryContract>(
+      _FakeLandlordAuthRepository(hasValidSession: true),
+    );
+    GetIt.I.registerSingleton<LandlordTenantsRepositoryContract>(
+      _FakeLandlordTenantsRepository(),
+    );
+    GetIt.I.registerSingleton<TenantAdminStaticAssetsRepositoryContract>(
+      _FakeStaticAssetsRepository(
+        seededAssets: const [
+          TenantAdminStaticAsset(
+            id: 'asset-1',
+            profileType: 'beach',
+            displayName: 'Praia do Morro',
+            slug: 'praia-do-morro',
+            isActive: true,
+            avatarUrl: avatarUrl,
+            coverUrl: coverUrl,
+          ),
+        ],
+      ),
+    );
+    GetIt.I.registerSingleton<TenantAdminTaxonomiesRepositoryContract>(
+      _FakeTaxonomiesRepository(),
+    );
+
+    final app = Application();
+    GetIt.I.registerSingleton<ApplicationContract>(app);
+    await app.init();
+
+    app.appRouter.replaceAll([
+      const TenantAdminShellRoute(
+        children: [TenantAdminStaticAssetsListRoute()],
+      ),
+    ]);
+
+    await tester.pumpWidget(app);
+    await _pumpFor(tester, const Duration(seconds: 2));
+    await _waitForFinder(tester, _tenantAdminShellRouterFinder());
+    app.appRouter.navigate(
+      const TenantAdminShellRoute(
+        children: [TenantAdminStaticAssetsListRoute()],
+      ),
+    );
+    await _pumpFor(tester, const Duration(seconds: 2));
+    await _waitForFinder(tester, find.text('Praia do Morro'));
+
+    final coverImageFinder = find.byWidgetPredicate((widget) {
+      return widget is BellugaNetworkImage && widget.url == coverUrl;
+    });
+    final avatarImageFinder = find.byWidgetPredicate((widget) {
+      return widget is BellugaNetworkImage && widget.url == avatarUrl;
+    });
+    expect(coverImageFinder, findsOneWidget);
+    expect(avatarImageFinder, findsOneWidget);
+  });
 }
 
 class _FakeAdminModeRepository implements AdminModeRepositoryContract {
@@ -486,6 +689,11 @@ class _FakeStaticAssetsRepository
     List<TenantAdminStaticAsset> seededAssets = const [],
   }) : _assets = List<TenantAdminStaticAsset>.of(seededAssets);
 
+  static const String generatedAvatarUploadUrl =
+      'https://tenant-a.test/media/static-assets/avatar-uploaded.png';
+  static const String generatedCoverUploadUrl =
+      'https://tenant-a.test/media/static-assets/cover-uploaded.png';
+
   final List<TenantAdminStaticAsset> createdAssets = [];
   final List<TenantAdminStaticAsset> _assets;
 
@@ -544,6 +752,10 @@ class _FakeStaticAssetsRepository
     TenantAdminMediaUpload? avatarUpload,
     TenantAdminMediaUpload? coverUpload,
   }) async {
+    final resolvedAvatarUrl =
+        avatarUpload != null ? generatedAvatarUploadUrl : avatarUrl;
+    final resolvedCoverUrl =
+        coverUpload != null ? generatedCoverUploadUrl : coverUrl;
     final asset = TenantAdminStaticAsset(
       id: 'asset-1',
       profileType: profileType,
@@ -555,8 +767,8 @@ class _FakeStaticAssetsRepository
       tags: tags,
       bio: bio,
       content: content,
-      avatarUrl: avatarUrl,
-      coverUrl: coverUrl,
+      avatarUrl: resolvedAvatarUrl,
+      coverUrl: resolvedCoverUrl,
     );
     createdAssets.add(asset);
     _assets.add(asset);
@@ -579,23 +791,38 @@ class _FakeStaticAssetsRepository
     TenantAdminMediaUpload? avatarUpload,
     TenantAdminMediaUpload? coverUpload,
   }) async {
+    TenantAdminStaticAsset? existing;
+    for (final asset in _assets) {
+      if (asset.id == assetId) {
+        existing = asset;
+        break;
+      }
+    }
+    final resolvedAvatarUrl = avatarUpload != null
+        ? generatedAvatarUploadUrl
+        : avatarUrl ?? existing?.avatarUrl;
+    final resolvedCoverUrl = coverUpload != null
+        ? generatedCoverUploadUrl
+        : coverUrl ?? existing?.coverUrl;
     final updated = TenantAdminStaticAsset(
       id: assetId,
-      profileType: profileType ?? 'beach',
-      displayName: displayName ?? 'Praia',
-      slug: 'praia',
+      profileType: profileType ?? existing?.profileType ?? 'beach',
+      displayName: displayName ?? existing?.displayName ?? 'Praia',
+      slug: slug ?? existing?.slug ?? 'praia',
       isActive: true,
-      location: location,
-      taxonomyTerms: taxonomyTerms ?? const [],
-      tags: tags ?? const [],
-      bio: bio,
-      content: content,
-      avatarUrl: avatarUrl,
-      coverUrl: coverUrl,
+      location: location ?? existing?.location,
+      taxonomyTerms: taxonomyTerms ?? existing?.taxonomyTerms ?? const [],
+      tags: tags ?? existing?.tags ?? const [],
+      bio: bio ?? existing?.bio,
+      content: content ?? existing?.content,
+      avatarUrl: resolvedAvatarUrl,
+      coverUrl: resolvedCoverUrl,
     );
     final index = _assets.indexWhere((asset) => asset.id == assetId);
     if (index >= 0) {
       _assets[index] = updated;
+    } else {
+      _assets.add(updated);
     }
     return updated;
   }

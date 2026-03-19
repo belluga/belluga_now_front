@@ -4,6 +4,7 @@ import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
 import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
 import 'package:belluga_now/domain/partner/partner_resume.dart';
+import 'package:belluga_now/domain/schedule/event_delta_model.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/schedule/event_type_model.dart';
 import 'package:belluga_now/domain/schedule/friend_resume.dart';
@@ -18,7 +19,7 @@ import 'package:belluga_now/domain/value_objects/color_value.dart';
 import 'package:belluga_now/domain/value_objects/description_value.dart';
 import 'package:belluga_now/domain/value_objects/slug_value.dart';
 import 'package:belluga_now/domain/value_objects/title_value.dart';
-import 'package:belluga_now/infrastructure/dal/dto/invites/invite_dto.dart';
+import 'package:belluga_now/infrastructure/dal/dto/schedule/event_delta_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_summary_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_summary_item_dto.dart';
@@ -58,7 +59,7 @@ mixin ScheduleDtoMapper
     final List<InviteModel>? receivedInvites = dto.receivedInvites?.map((e) {
       final inviteMap = Map<String, dynamic>.from(e);
       inviteMap.putIfAbsent('event_id', () => dto.id);
-      return mapInviteDto(InviteDto.fromJson(inviteMap));
+      return mapInviteDto(parseInviteDtoJson(inviteMap));
     }).toList();
 
     final List<SentInviteStatus>? sentInvites =
@@ -111,6 +112,34 @@ mixin ScheduleDtoMapper
       dateTimeStart: DateTime.parse(dto.dateTimeStart),
       color: dto.color,
     );
+  }
+
+  EventDeltaModel mapEventDeltaDto(EventDeltaDTO dto) {
+    return EventDeltaModel(
+      eventId: dto.eventId,
+      type: _parseEventDeltaType(dto.type),
+      updatedAt: dto.updatedAt,
+      lastEventId: dto.lastEventId,
+    );
+  }
+
+  DateTime? parseEventDateOnly(EventDTO dto) {
+    final parsed = DateTime.tryParse(dto.dateTimeStart);
+    if (parsed == null) return null;
+    return DateTime(parsed.year, parsed.month, parsed.day);
+  }
+
+  EventDeltaType _parseEventDeltaType(String type) {
+    switch (type) {
+      case 'event.created':
+        return EventDeltaType.created;
+      case 'event.updated':
+        return EventDeltaType.updated;
+      case 'event.deleted':
+        return EventDeltaType.deleted;
+      default:
+        return EventDeltaType.unknown;
+    }
   }
 
   // Invite status mapping is provided by InviteStatusDtoMapper.

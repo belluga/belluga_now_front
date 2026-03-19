@@ -16,6 +16,22 @@ String normalizeTypeName(String raw) {
   return withoutGenerics.substring(dotIndex + 1);
 }
 
+String? topLevelTypeName(TypeAnnotation? type) {
+  if (type == null) {
+    return null;
+  }
+
+  return normalizeTypeName(type.toSource());
+}
+
+TypeArgumentList? typeArgumentListOf(TypeAnnotation? type) {
+  if (type is NamedType) {
+    return type.typeArguments;
+  }
+
+  return null;
+}
+
 String? firstTypeArgumentName(TypeArgumentList? typeArguments) {
   final args = typeArguments?.arguments;
   if (args == null || args.isEmpty) {
@@ -65,6 +81,104 @@ bool isDtoTypeName(String? typeName) {
   return typeName.endsWith('Dto') || typeName.endsWith('DTO');
 }
 
+bool containsDtoTypeAnnotation(TypeAnnotation? type) {
+  if (type == null || type is GenericFunctionType) {
+    return false;
+  }
+
+  final typeName = topLevelTypeName(type);
+  if (isDtoTypeName(typeName)) {
+    return true;
+  }
+
+  final args = typeArgumentListOf(type)?.arguments;
+  if (args == null || args.isEmpty) {
+    return false;
+  }
+
+  return args.any(containsDtoTypeAnnotation);
+}
+
+bool containsForbiddenDomainPrimitiveType(TypeAnnotation? type) {
+  if (type == null || type is GenericFunctionType) {
+    return false;
+  }
+
+  const primitiveTypeNames = {
+    'String',
+    'int',
+    'double',
+    'bool',
+    'num',
+    'DateTime',
+    'Duration',
+    'Uri',
+    'dynamic',
+  };
+
+  final typeName = topLevelTypeName(type);
+  if (typeName == null || typeName.isEmpty) {
+    return false;
+  }
+
+  if (primitiveTypeNames.contains(typeName)) {
+    return true;
+  }
+
+  final args = typeArgumentListOf(type)?.arguments;
+  if (typeName == 'Map' && (args == null || args.isEmpty)) {
+    return true;
+  }
+
+  if (args == null || args.isEmpty) {
+    return false;
+  }
+
+  if (typeName == 'List' ||
+      typeName == 'Set' ||
+      typeName == 'Iterable' ||
+      typeName == 'Map') {
+    return args.any(containsForbiddenDomainPrimitiveType);
+  }
+
+  return false;
+}
+
+bool hasMeaningfulPayloadType(TypeAnnotation? type) {
+  if (type == null || type is GenericFunctionType) {
+    return false;
+  }
+
+  final typeName = topLevelTypeName(type);
+  if (typeName == null || typeName.isEmpty) {
+    return false;
+  }
+
+  if (typeName == 'void' || typeName == 'Never') {
+    return false;
+  }
+
+  final args = typeArgumentListOf(type)?.arguments;
+  if (typeName == 'Future' ||
+      typeName == 'FutureOr' ||
+      typeName == 'Stream' ||
+      typeName == 'Iterable' ||
+      typeName == 'List' ||
+      typeName == 'Set') {
+    if (args == null || args.isEmpty) {
+      return false;
+    }
+
+    return args.any(hasMeaningfulPayloadType);
+  }
+
+  if (typeName == 'Map') {
+    return false;
+  }
+
+  return true;
+}
+
 bool isUiControllerTypeName(String? typeName) {
   const blockedUiControllers = {
     'TextEditingController',
@@ -76,4 +190,141 @@ bool isUiControllerTypeName(String? typeName) {
   };
 
   return blockedUiControllers.contains(typeName);
+}
+
+bool containsForbiddenRepositoryRawTransportType(TypeAnnotation? type) {
+  if (type == null) {
+    return false;
+  }
+
+  if (type is GenericFunctionType) {
+    if (containsForbiddenRepositoryRawTransportType(type.returnType)) {
+      return true;
+    }
+
+    for (final parameter in type.parameters.parameters) {
+      final parameterType = formalParameterType(parameter);
+      if (containsForbiddenRepositoryRawTransportType(parameterType)) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  final typeName = topLevelTypeName(type);
+  if (typeName == null || typeName.isEmpty) {
+    return false;
+  }
+
+  if (typeName == 'dynamic') {
+    return true;
+  }
+
+  final args = typeArgumentListOf(type)?.arguments;
+  if (typeName == 'Map') {
+    if (args == null || args.isEmpty) {
+      return true;
+    }
+
+    if (args.length >= 2) {
+      final keyTypeName = topLevelTypeName(args.first);
+      if (keyTypeName == 'String' &&
+          containsForbiddenRepositoryRawTransportType(args[1])) {
+        return true;
+      }
+    }
+  }
+
+  if (args == null || args.isEmpty) {
+    return false;
+  }
+
+  return args.any(containsForbiddenRepositoryRawTransportType);
+}
+
+bool containsRepositoryRawPayloadMapType(TypeAnnotation? type) {
+  if (type == null) {
+    return false;
+  }
+
+  if (type is GenericFunctionType) {
+    if (containsRepositoryRawPayloadMapType(type.returnType)) {
+      return true;
+    }
+
+    for (final parameter in type.parameters.parameters) {
+      final parameterType = formalParameterType(parameter);
+      if (containsRepositoryRawPayloadMapType(parameterType)) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  final typeName = topLevelTypeName(type);
+  if (typeName == null || typeName.isEmpty) {
+    return false;
+  }
+
+  if (typeName == 'dynamic') {
+    return true;
+  }
+
+  final args = typeArgumentListOf(type)?.arguments;
+  if (typeName == 'Map') {
+    if (args == null || args.length < 2) {
+      // Bare `Map` in repositories is treated as raw transport workaround.
+      return true;
+    }
+
+    final keyTypeName = topLevelTypeName(args.first);
+    final valueType = args[1];
+    final valueTypeName = topLevelTypeName(valueType);
+    if (keyTypeName == 'String') {
+      if (valueTypeName == 'Object' || valueTypeName == 'dynamic') {
+        return true;
+      }
+
+      if (valueTypeName == 'Map' ||
+          valueTypeName == 'List' ||
+          valueTypeName == 'Iterable') {
+        return true;
+      }
+
+      if (containsRepositoryRawPayloadMapType(valueType)) {
+        return true;
+      }
+    }
+  }
+
+  if (args == null || args.isEmpty) {
+    return false;
+  }
+
+  return args.any(containsRepositoryRawPayloadMapType);
+}
+
+TypeAnnotation? formalParameterType(FormalParameter parameter) {
+  final normalized =
+      parameter is DefaultFormalParameter ? parameter.parameter : parameter;
+
+  if (normalized is SimpleFormalParameter) {
+    return normalized.type;
+  }
+
+  if (normalized is SuperFormalParameter) {
+    return normalized.type;
+  }
+
+  if (normalized is FieldFormalParameter) {
+    return normalized.type;
+  }
+
+  if (normalized is FunctionTypedFormalParameter) {
+    return normalized.returnType;
+  }
+
+  return null;
 }

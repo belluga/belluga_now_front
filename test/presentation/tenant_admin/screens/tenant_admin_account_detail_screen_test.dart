@@ -1,9 +1,11 @@
 import 'package:auto_route/auto_route.dart';
+import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_account_profiles_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_accounts_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_taxonomies_repository_contract.dart';
 import 'package:belluga_now/domain/tenant_admin/ownership_state.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_onboarding_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_document.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
@@ -73,12 +75,57 @@ void main() {
     expect(find.text('Conta atualizada'), findsOneWidget);
     expect(accountsRepository.fetchAccountBySlugCalls, 1);
   });
+
+  testWidgets('reloads account detail after returning from profile edit route',
+      (tester) async {
+    final accountsRepository = _FakeAccountsRepository();
+    _registerController(accountsRepository: accountsRepository);
+
+    await _pumpScreen(
+      tester,
+      const TenantAdminAccountDetailScreen(accountSlug: 'yuri-dias'),
+    );
+
+    expect(accountsRepository.fetchAccountBySlugCalls, 1);
+
+    await tester.tap(find.text('Editar'));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey<String>('profile_edit_close')),
+        findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey<String>('profile_edit_close')));
+    await tester.pumpAndSettle();
+
+    expect(accountsRepository.fetchAccountBySlugCalls, 2);
+  });
+
+  testWidgets(
+      'missing profile renders invariant-broken state and no create CTA',
+      (tester) async {
+    final accountsRepository = _FakeAccountsRepository();
+    _registerController(
+      accountsRepository: accountsRepository,
+      withProfile: false,
+    );
+
+    await _pumpScreen(
+      tester,
+      const TenantAdminAccountDetailScreen(accountSlug: 'yuri-dias'),
+    );
+
+    expect(find.text('Inconsistência de dados'), findsOneWidget);
+    expect(find.textContaining('Conta sem perfil detectada.'), findsOneWidget);
+    expect(find.text('Criar Perfil'), findsNothing);
+  });
 }
 
 TenantAdminAccountDetailController _registerController({
   required _FakeAccountsRepository accountsRepository,
+  bool withProfile = true,
 }) {
-  final profilesRepository = _FakeAccountProfilesRepository();
+  final profilesRepository = _FakeAccountProfilesRepository(
+    withProfile: withProfile,
+  );
   final taxonomiesRepository = _FakeTaxonomiesRepository();
   final TenantAdminLocationSelectionContract locationSelectionService =
       TenantAdminLocationSelectionService();
@@ -109,6 +156,11 @@ Future<void> _pumpScreen(WidgetTester tester, Widget child) async {
         path: '/',
         builder: (_, __) => child,
       ),
+      NamedRouteDef(
+        name: TenantAdminAccountProfileEditRoute.name,
+        path: '/accounts/:accountSlug/profile/:accountProfileId/edit',
+        builder: (_, __) => const _TestProfileEditRouteScreen(),
+      ),
     ],
   )..ignorePopCompleters = true;
 
@@ -119,6 +171,23 @@ Future<void> _pumpScreen(WidgetTester tester, Widget child) async {
     ),
   );
   await tester.pumpAndSettle();
+}
+
+class _TestProfileEditRouteScreen extends StatelessWidget {
+  const _TestProfileEditRouteScreen();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Center(
+        child: FilledButton(
+          key: const ValueKey<String>('profile_edit_close'),
+          onPressed: () => context.router.maybePop(),
+          child: const Text('Voltar'),
+        ),
+      ),
+    );
+  }
 }
 
 class _FakeAccountsRepository
@@ -228,6 +297,37 @@ class _FakeAccountsRepository
   }
 
   @override
+  Future<TenantAdminAccountOnboardingResult> createAccountOnboarding({
+    required String name,
+    required TenantAdminOwnershipState ownershipState,
+    required String profileType,
+    TenantAdminLocation? location,
+    List<TenantAdminTaxonomyTerm> taxonomyTerms = const [],
+    String? bio,
+    String? content,
+    TenantAdminMediaUpload? avatarUpload,
+    TenantAdminMediaUpload? coverUpload,
+  }) async {
+    final account = await createAccount(
+      name: name,
+      ownershipState: ownershipState,
+    );
+    return TenantAdminAccountOnboardingResult(
+      account: account,
+      accountProfile: TenantAdminAccountProfile(
+        id: 'profile-onboarding',
+        accountId: account.id,
+        profileType: profileType,
+        displayName: name,
+        location: location,
+        taxonomyTerms: taxonomyTerms,
+        bio: bio,
+        content: content,
+      ),
+    );
+  }
+
+  @override
   Future<TenantAdminAccount> updateAccount({
     required String accountSlug,
     String? name,
@@ -286,11 +386,15 @@ class _FakeAccountsRepository
 class _FakeAccountProfilesRepository
     with TenantAdminProfileTypesPaginationMixin
     implements TenantAdminAccountProfilesRepositoryContract {
+  _FakeAccountProfilesRepository({required this.withProfile});
+
+  final bool withProfile;
+
   @override
   Future<List<TenantAdminAccountProfile>> fetchAccountProfiles({
     String? accountId,
   }) async {
-    if (accountId == null) {
+    if (accountId == null || !withProfile) {
       return const [];
     }
     return [

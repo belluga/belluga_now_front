@@ -1,11 +1,14 @@
 import 'dart:async';
 import 'dart:typed_data';
 
+import 'package:belluga_form_validation/belluga_form_validation.dart'
+    show FormValidationFailure;
 import 'package:belluga_now/domain/repositories/tenant_admin_account_profiles_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_accounts_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_taxonomies_repository_contract.dart';
 import 'package:belluga_now/domain/tenant_admin/ownership_state.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_onboarding_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_document.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
@@ -19,8 +22,10 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_defin
 import 'package:belluga_now/domain/services/tenant_admin_location_selection_contract.dart';
 import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.dart';
 import 'package:belluga_now/infrastructure/services/tenant_admin/tenant_admin_location_selection_service.dart';
+import 'package:belluga_now/presentation/tenant_admin/accounts/controllers/tenant_admin_account_create_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/accounts/controllers/tenant_admin_accounts_controller.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:stream_value/core/stream_value.dart';
 
 class _FakeAccountsRepository
@@ -33,6 +38,14 @@ class _FakeAccountsRepository
   bool failNextLoadAccounts = false;
   int fetchAccountsCalls = 0;
   int createCalls = 0;
+  int createOnboardingCalls = 0;
+  Object? createAccountError;
+  String? lastOnboardingBio;
+  String? lastOnboardingContent;
+  List<TenantAdminTaxonomyTerm> lastOnboardingTaxonomyTerms =
+      const <TenantAdminTaxonomyTerm>[];
+  TenantAdminMediaUpload? lastOnboardingAvatarUpload;
+  TenantAdminMediaUpload? lastOnboardingCoverUpload;
   final List<TenantAdminOwnershipState?> loadAccountsOwnershipCalls =
       <TenantAdminOwnershipState?>[];
   final List<TenantAdminOwnershipState?> loadNextAccountsOwnershipCalls =
@@ -158,6 +171,10 @@ class _FakeAccountsRepository
     required TenantAdminOwnershipState ownershipState,
     String? organizationId,
   }) async {
+    final error = createAccountError;
+    if (error != null) {
+      throw error;
+    }
     createCalls += 1;
     final created = TenantAdminAccount(
       id: 'acc-$createCalls',
@@ -175,6 +192,60 @@ class _FakeAccountsRepository
           List<TenantAdminAccount>.unmodifiable([...loaded, created]));
     }
     return created;
+  }
+
+  @override
+  Future<TenantAdminAccountOnboardingResult> createAccountOnboarding({
+    required String name,
+    required TenantAdminOwnershipState ownershipState,
+    required String profileType,
+    TenantAdminLocation? location,
+    List<TenantAdminTaxonomyTerm> taxonomyTerms = const [],
+    String? bio,
+    String? content,
+    TenantAdminMediaUpload? avatarUpload,
+    TenantAdminMediaUpload? coverUpload,
+  }) async {
+    final error = createAccountError;
+    if (error != null) {
+      throw error;
+    }
+    createOnboardingCalls += 1;
+    lastOnboardingBio = bio;
+    lastOnboardingContent = content;
+    lastOnboardingTaxonomyTerms =
+        List<TenantAdminTaxonomyTerm>.from(taxonomyTerms);
+    lastOnboardingAvatarUpload = avatarUpload;
+    lastOnboardingCoverUpload = coverUpload;
+
+    final account = TenantAdminAccount(
+      id: 'acc-onboarding-$createOnboardingCalls',
+      name: name,
+      slug: 'acc-onboarding-$createOnboardingCalls',
+      document: const TenantAdminDocument(type: 'cpf', number: '000'),
+      ownershipState: ownershipState,
+    );
+    final profile = TenantAdminAccountProfile(
+      id: 'profile-onboarding-$createOnboardingCalls',
+      accountId: account.id,
+      profileType: profileType,
+      displayName: name,
+      location: location,
+      taxonomyTerms: taxonomyTerms,
+      bio: bio,
+      content: content,
+    );
+    _accounts = [..._accounts, account];
+    final loaded = accountsStreamValue.value;
+    if (loaded != null) {
+      accountsStreamValue.addValue(
+        List<TenantAdminAccount>.unmodifiable([...loaded, account]),
+      );
+    }
+    return TenantAdminAccountOnboardingResult(
+      account: account,
+      accountProfile: profile,
+    );
   }
 
   @override
@@ -213,6 +284,7 @@ class _FakeAccountProfilesRepository
   TenantAdminMediaUpload? lastCreateAvatarUpload;
   TenantAdminMediaUpload? lastCreateCoverUpload;
   List<TenantAdminTaxonomyTerm> lastCreateTaxonomyTerms = const [];
+  Object? createProfileError;
 
   @override
   Future<List<TenantAdminProfileTypeDefinition>> fetchProfileTypes() async =>
@@ -254,6 +326,10 @@ class _FakeAccountProfilesRepository
     TenantAdminMediaUpload? avatarUpload,
     TenantAdminMediaUpload? coverUpload,
   }) async {
+    final error = createProfileError;
+    if (error != null) {
+      throw error;
+    }
     createProfileCalls += 1;
     lastCreateDisplayName = displayName;
     lastCreateBio = bio;
@@ -490,408 +566,514 @@ class _FakeTaxonomiesRepository
   }) async {}
 }
 
+TenantAdminAccountsController _buildListController({
+  required _FakeAccountsRepository accountsRepository,
+  TenantAdminTenantScopeContract? tenantScope,
+}) {
+  return TenantAdminAccountsController(
+    accountsRepository: accountsRepository,
+    tenantScope: tenantScope,
+  );
+}
+
+TenantAdminAccountCreateController _buildCreateController({
+  _FakeAccountsRepository? accountsRepository,
+  _FakeAccountProfilesRepository? profilesRepository,
+  _FakeTaxonomiesRepository? taxonomiesRepository,
+  TenantAdminLocationSelectionContract? locationSelectionService,
+}) {
+  return TenantAdminAccountCreateController(
+    accountsRepository: accountsRepository ?? _FakeAccountsRepository([]),
+    profilesRepository:
+        profilesRepository ?? _FakeAccountProfilesRepository(const []),
+    taxonomiesRepository: taxonomiesRepository ?? _FakeTaxonomiesRepository(),
+    locationSelectionService:
+        locationSelectionService ?? TenantAdminLocationSelectionService(),
+  );
+}
+
 void main() {
-  test('loads profile types and accounts on init', () async {
-    final accountsRepository = _FakeAccountsRepository([
-      TenantAdminAccount(
-        id: 'acc-1',
-        name: 'Conta',
-        slug: 'conta',
-        document: const TenantAdminDocument(type: 'cpf', number: '000'),
-        ownershipState: TenantAdminOwnershipState.tenantOwned,
-      ),
-    ]);
-    final profilesRepository = _FakeAccountProfilesRepository(const [
-      TenantAdminProfileTypeDefinition(
-        type: 'venue',
-        label: 'Venue',
-        allowedTaxonomies: [],
-        capabilities: TenantAdminProfileTypeCapabilities(
-          isFavoritable: true,
-          isPoiEnabled: true,
-          hasBio: false,
-          hasContent: false,
-          hasTaxonomies: false,
-          hasAvatar: false,
-          hasCover: false,
-          hasEvents: false,
+  group('TenantAdminAccountsController', () {
+    test('loads accounts on init', () async {
+      final accountsRepository = _FakeAccountsRepository([
+        TenantAdminAccount(
+          id: 'acc-1',
+          name: 'Conta',
+          slug: 'conta',
+          document: const TenantAdminDocument(type: 'cpf', number: '000'),
+          ownershipState: TenantAdminOwnershipState.tenantOwned,
         ),
-      ),
-    ]);
+      ]);
+      final controller = _buildListController(
+        accountsRepository: accountsRepository,
+      );
 
-    final TenantAdminLocationSelectionContract locationSelectionService =
-        TenantAdminLocationSelectionService();
-    final taxonomiesRepository = _FakeTaxonomiesRepository();
-    final controller = TenantAdminAccountsController(
-      accountsRepository: accountsRepository,
-      profilesRepository: profilesRepository,
-      taxonomiesRepository: taxonomiesRepository,
-      locationSelectionService: locationSelectionService,
-    );
+      await controller.init();
 
-    await controller.init();
+      expect(controller.accountsStreamValue.value?.length, 1);
+      expect(
+        controller.accountsStreamValue.value?.first.slug,
+        'conta',
+      );
+    });
 
-    expect(controller.accountsStreamValue.value?.length, 1);
-    expect(controller.profileTypesStreamValue.value.length, 1);
-  });
-
-  test('switching segment reloads accounts with ownership filter', () async {
-    final accountsRepository = _FakeAccountsRepository([
-      TenantAdminAccount(
-        id: 'acc-tenant',
-        name: 'Conta tenant',
-        slug: 'conta-tenant',
-        document: const TenantAdminDocument(type: 'cpf', number: '000'),
-        ownershipState: TenantAdminOwnershipState.tenantOwned,
-      ),
-      TenantAdminAccount(
-        id: 'acc-unmanaged',
-        name: 'Conta unmanaged',
-        slug: 'conta-unmanaged',
-        document: const TenantAdminDocument(type: 'cpf', number: '111'),
-        ownershipState: TenantAdminOwnershipState.unmanaged,
-      ),
-    ]);
-    final controller = TenantAdminAccountsController(
-      accountsRepository: accountsRepository,
-      profilesRepository: _FakeAccountProfilesRepository(const []),
-      taxonomiesRepository: _FakeTaxonomiesRepository(),
-      locationSelectionService: TenantAdminLocationSelectionService(),
-    );
-
-    await controller.init();
-    expect(accountsRepository.loadAccountsOwnershipCalls.last,
-        TenantAdminOwnershipState.tenantOwned);
-    expect(
-        controller.accountsStreamValue.value?.map((it) => it.slug).toList(), [
-      'conta-tenant',
-    ]);
-
-    controller.updateSelectedOwnership(TenantAdminOwnershipState.unmanaged);
-    await Future<void>.delayed(Duration.zero);
-
-    expect(accountsRepository.loadAccountsOwnershipCalls.last,
-        TenantAdminOwnershipState.unmanaged);
-    expect(
-        controller.accountsStreamValue.value?.map((it) => it.slug).toList(), [
-      'conta-unmanaged',
-    ]);
-  });
-
-  test('createAccountWithProfile updates accounts list', () async {
-    final accountsRepository = _FakeAccountsRepository([]);
-    final profilesRepository = _FakeAccountProfilesRepository(const [
-      TenantAdminProfileTypeDefinition(
-        type: 'venue',
-        label: 'Venue',
-        allowedTaxonomies: [],
-        capabilities: TenantAdminProfileTypeCapabilities(
-          isFavoritable: true,
-          isPoiEnabled: true,
-          hasBio: false,
-          hasContent: false,
-          hasTaxonomies: false,
-          hasAvatar: false,
-          hasCover: false,
-          hasEvents: false,
+    test('switching segment reloads accounts with ownership filter', () async {
+      final accountsRepository = _FakeAccountsRepository([
+        TenantAdminAccount(
+          id: 'acc-tenant',
+          name: 'Conta tenant',
+          slug: 'conta-tenant',
+          document: const TenantAdminDocument(type: 'cpf', number: '000'),
+          ownershipState: TenantAdminOwnershipState.tenantOwned,
         ),
-      ),
-    ]);
-
-    final TenantAdminLocationSelectionContract locationSelectionService =
-        TenantAdminLocationSelectionService();
-    final taxonomiesRepository = _FakeTaxonomiesRepository();
-    final controller = TenantAdminAccountsController(
-      accountsRepository: accountsRepository,
-      profilesRepository: profilesRepository,
-      taxonomiesRepository: taxonomiesRepository,
-      locationSelectionService: locationSelectionService,
-    );
-
-    await controller.createAccountWithProfile(
-      name: 'Nova Conta',
-      ownershipState: TenantAdminOwnershipState.tenantOwned,
-      profileType: 'venue',
-      location: const TenantAdminLocation(latitude: -20.0, longitude: -40.0),
-    );
-
-    expect(accountsRepository.createCalls, 1);
-    expect(profilesRepository.createProfileCalls, 1);
-    expect(profilesRepository.lastCreateDisplayName, 'Nova Conta');
-    expect(controller.accountsStreamValue.value?.length, 1);
-  });
-
-  test('createAccountWithProfile forwards bio and taxonomy terms', () async {
-    final accountsRepository = _FakeAccountsRepository([]);
-    final profilesRepository = _FakeAccountProfilesRepository(const [
-      TenantAdminProfileTypeDefinition(
-        type: 'venue',
-        label: 'Venue',
-        allowedTaxonomies: ['genre'],
-        capabilities: TenantAdminProfileTypeCapabilities(
-          isFavoritable: true,
-          isPoiEnabled: false,
-          hasBio: true,
-          hasContent: false,
-          hasTaxonomies: true,
-          hasAvatar: false,
-          hasCover: false,
-          hasEvents: false,
+        TenantAdminAccount(
+          id: 'acc-unmanaged',
+          name: 'Conta unmanaged',
+          slug: 'conta-unmanaged',
+          document: const TenantAdminDocument(type: 'cpf', number: '111'),
+          ownershipState: TenantAdminOwnershipState.unmanaged,
         ),
-      ),
-    ]);
-    final taxonomiesRepository = _FakeTaxonomiesRepository();
-    final TenantAdminLocationSelectionContract locationSelectionService =
-        TenantAdminLocationSelectionService();
-    final controller = TenantAdminAccountsController(
-      accountsRepository: accountsRepository,
-      profilesRepository: profilesRepository,
-      taxonomiesRepository: taxonomiesRepository,
-      locationSelectionService: locationSelectionService,
-    );
+      ]);
+      final controller = _buildListController(
+        accountsRepository: accountsRepository,
+      );
 
-    await controller.createAccountWithProfile(
-      name: 'Nova Conta',
-      ownershipState: TenantAdminOwnershipState.tenantOwned,
-      profileType: 'venue',
-      bio: '<p>Bio teste</p>',
-      content: null,
-      taxonomyTerms: const [
-        TenantAdminTaxonomyTerm(type: 'genre', value: 'urbana'),
-      ],
-    );
+      await controller.init();
+      expect(
+        accountsRepository.loadAccountsOwnershipCalls.last,
+        TenantAdminOwnershipState.tenantOwned,
+      );
+      expect(
+        controller.accountsStreamValue.value?.map((it) => it.slug).toList(),
+        ['conta-tenant'],
+      );
 
-    expect(profilesRepository.lastCreateBio, '<p>Bio teste</p>');
-    expect(profilesRepository.lastCreateTaxonomyTerms.length, 1);
-    expect(profilesRepository.lastCreateTaxonomyTerms.first.type, 'genre');
-    expect(profilesRepository.lastCreateTaxonomyTerms.first.value, 'urbana');
-  });
+      controller.updateSelectedOwnership(TenantAdminOwnershipState.unmanaged);
+      await Future<void>.delayed(Duration.zero);
 
-  test('createAccountFromForm submits media as upload and never as direct URL',
-      () async {
-    final accountsRepository = _FakeAccountsRepository([]);
-    final profilesRepository = _FakeAccountProfilesRepository(const [
-      TenantAdminProfileTypeDefinition(
-        type: 'venue',
-        label: 'Venue',
-        allowedTaxonomies: [],
-        capabilities: TenantAdminProfileTypeCapabilities(
-          isFavoritable: true,
-          isPoiEnabled: false,
-          hasBio: false,
-          hasContent: false,
-          hasTaxonomies: false,
-          hasAvatar: true,
-          hasCover: true,
-          hasEvents: false,
+      expect(
+        accountsRepository.loadAccountsOwnershipCalls.last,
+        TenantAdminOwnershipState.unmanaged,
+      );
+      expect(
+        controller.accountsStreamValue.value?.map((it) => it.slug).toList(),
+        ['conta-unmanaged'],
+      );
+    });
+
+    test('init reloads when tenant scope changes', () async {
+      final accountsRepository = _FakeAccountsRepository([
+        TenantAdminAccount(
+          id: 'acc-1',
+          name: 'Conta A',
+          slug: 'conta-a',
+          document: const TenantAdminDocument(type: 'cpf', number: '000'),
+          ownershipState: TenantAdminOwnershipState.tenantOwned,
         ),
-      ),
-    ]);
-    final taxonomiesRepository = _FakeTaxonomiesRepository();
-    final TenantAdminLocationSelectionContract locationSelectionService =
-        TenantAdminLocationSelectionService();
-    final controller = TenantAdminAccountsController(
-      accountsRepository: accountsRepository,
-      profilesRepository: profilesRepository,
-      taxonomiesRepository: taxonomiesRepository,
-      locationSelectionService: locationSelectionService,
-    );
+      ]);
+      final tenantScope = _FakeTenantScope('tenant-a.test');
+      final controller = _buildListController(
+        accountsRepository: accountsRepository,
+        tenantScope: tenantScope,
+      );
 
-    controller.nameController.text = 'Conta com imagem';
-    controller.updateCreateSelectedProfileType('venue');
+      await controller.init();
+      expect(controller.accountsStreamValue.value?.first.slug, 'conta-a');
 
-    final avatarUpload = TenantAdminMediaUpload(
-      bytes: Uint8List.fromList(const <int>[1, 2, 3]),
-      fileName: 'avatar.jpg',
-      mimeType: 'image/jpeg',
-    );
-    final coverUpload = TenantAdminMediaUpload(
-      bytes: Uint8List.fromList(const <int>[4, 5, 6]),
-      fileName: 'cover.jpg',
-      mimeType: 'image/jpeg',
-    );
-
-    await controller.createAccountFromForm(
-      location: null,
-      avatarUpload: avatarUpload,
-      coverUpload: coverUpload,
-    );
-
-    expect(profilesRepository.lastCreateAvatarUrl, isNull);
-    expect(profilesRepository.lastCreateCoverUrl, isNull);
-    expect(profilesRepository.lastCreateAvatarUpload, isNotNull);
-    expect(profilesRepository.lastCreateCoverUpload, isNotNull);
-    expect(
-      profilesRepository.lastCreateAvatarUpload!.mimeType,
-      'image/jpeg',
-    );
-    expect(
-      profilesRepository.lastCreateCoverUpload!.mimeType,
-      'image/jpeg',
-    );
-  });
-
-  test('init reloads when tenant scope changes', () async {
-    final accountsRepository = _FakeAccountsRepository([
-      TenantAdminAccount(
-        id: 'acc-1',
-        name: 'Conta A',
-        slug: 'conta-a',
-        document: const TenantAdminDocument(type: 'cpf', number: '000'),
-        ownershipState: TenantAdminOwnershipState.tenantOwned,
-      ),
-    ]);
-    final profilesRepository = _FakeAccountProfilesRepository(const [
-      TenantAdminProfileTypeDefinition(
-        type: 'venue',
-        label: 'Venue',
-        allowedTaxonomies: [],
-        capabilities: TenantAdminProfileTypeCapabilities(
-          isFavoritable: true,
-          isPoiEnabled: true,
-          hasBio: false,
-          hasContent: false,
-          hasTaxonomies: false,
-          hasAvatar: false,
-          hasCover: false,
-          hasEvents: false,
+      accountsRepository._accounts = [
+        TenantAdminAccount(
+          id: 'acc-2',
+          name: 'Conta B',
+          slug: 'conta-b',
+          document: const TenantAdminDocument(type: 'cpf', number: '111'),
+          ownershipState: TenantAdminOwnershipState.tenantOwned,
         ),
-      ),
-    ]);
-    final tenantScope = _FakeTenantScope('tenant-a.test');
-    final TenantAdminLocationSelectionContract locationSelectionService =
-        TenantAdminLocationSelectionService();
-    final taxonomiesRepository = _FakeTaxonomiesRepository();
-    final controller = TenantAdminAccountsController(
-      accountsRepository: accountsRepository,
-      profilesRepository: profilesRepository,
-      taxonomiesRepository: taxonomiesRepository,
-      locationSelectionService: locationSelectionService,
-      tenantScope: tenantScope,
-    );
+      ];
+      tenantScope.selectTenantDomain('tenant-b.test');
 
-    await controller.init();
-    expect(controller.accountsStreamValue.value?.first.slug, 'conta-a');
+      await controller.init();
+      expect(controller.accountsStreamValue.value?.first.slug, 'conta-b');
+    });
 
-    accountsRepository._accounts = [
-      TenantAdminAccount(
-        id: 'acc-2',
-        name: 'Conta B',
-        slug: 'conta-b',
-        document: const TenantAdminDocument(type: 'cpf', number: '111'),
-        ownershipState: TenantAdminOwnershipState.tenantOwned,
-      ),
-    ];
-    tenantScope.selectTenantDomain('tenant-b.test');
+    test('keeps accounts stream null while first page is loading', () async {
+      final accountsRepository = _FakeAccountsRepository([
+        TenantAdminAccount(
+          id: 'acc-1',
+          name: 'Conta',
+          slug: 'conta',
+          document: const TenantAdminDocument(type: 'cpf', number: '000'),
+          ownershipState: TenantAdminOwnershipState.tenantOwned,
+        ),
+      ])
+        ..fetchAccountsGate = Completer<void>();
+      final controller = _buildListController(
+        accountsRepository: accountsRepository,
+      );
 
-    await controller.init();
-    expect(controller.accountsStreamValue.value?.first.slug, 'conta-b');
+      final loadFuture = controller.loadAccounts();
+      await Future<void>.delayed(Duration.zero);
+      expect(controller.accountsStreamValue.value, isNull);
+
+      accountsRepository.fetchAccountsGate?.complete();
+      await loadFuture;
+      expect(controller.accountsStreamValue.value?.length, 1);
+    });
+
+    test('appends pages and stops when hasMore becomes false', () async {
+      final accounts = List<TenantAdminAccount>.generate(
+        45,
+        (index) => TenantAdminAccount(
+          id: 'acc-$index',
+          name: 'Conta $index',
+          slug: 'conta-$index',
+          document: TenantAdminDocument(type: 'cpf', number: '$index'),
+          ownershipState: TenantAdminOwnershipState.tenantOwned,
+        ),
+      );
+      final accountsRepository = _FakeAccountsRepository(accounts);
+      final controller = _buildListController(
+        accountsRepository: accountsRepository,
+      );
+
+      await controller.loadAccounts();
+      expect(controller.accountsStreamValue.value?.length, 20);
+      expect(controller.hasMoreAccountsStreamValue.value, isTrue);
+
+      await controller.loadNextAccountsPage();
+      expect(controller.accountsStreamValue.value?.length, 40);
+      expect(controller.hasMoreAccountsStreamValue.value, isTrue);
+
+      await controller.loadNextAccountsPage();
+      expect(controller.accountsStreamValue.value?.length, 45);
+      expect(controller.hasMoreAccountsStreamValue.value, isFalse);
+
+      await controller.loadNextAccountsPage();
+      expect(controller.accountsStreamValue.value?.length, 45);
+      expect(accountsRepository.fetchAccountsCalls, 3);
+    });
+
+    test('keeps last successful list when reload fails', () async {
+      final accountsRepository = _FakeAccountsRepository([
+        TenantAdminAccount(
+          id: 'acc-1',
+          name: 'Conta',
+          slug: 'conta',
+          document: const TenantAdminDocument(type: 'cpf', number: '000'),
+          ownershipState: TenantAdminOwnershipState.tenantOwned,
+        ),
+      ]);
+      final controller = _buildListController(
+        accountsRepository: accountsRepository,
+      );
+
+      await controller.loadAccounts();
+      expect(controller.accountsStreamValue.value, hasLength(1));
+      expect(controller.errorStreamValue.value, isNull);
+
+      accountsRepository.failNextLoadAccounts = true;
+      await expectLater(controller.loadAccounts(), throwsException);
+      await Future<void>.microtask(() {});
+
+      expect(controller.accountsStreamValue.value, hasLength(1));
+      expect(controller.accountsStreamValue.value!.first.slug, 'conta');
+      expect(controller.errorStreamValue.value, contains('backend error'));
+    });
   });
 
-  test('keeps accounts stream null while first page is loading', () async {
-    final accountsRepository = _FakeAccountsRepository([
-      TenantAdminAccount(
-        id: 'acc-1',
-        name: 'Conta',
-        slug: 'conta',
-        document: const TenantAdminDocument(type: 'cpf', number: '000'),
+  group('TenantAdminAccountCreateController', () {
+    test('createAccountOnboarding creates account and profile', () async {
+      final accountsRepository = _FakeAccountsRepository([]);
+      final profilesRepository = _FakeAccountProfilesRepository(const [
+        TenantAdminProfileTypeDefinition(
+          type: 'venue',
+          label: 'Venue',
+          allowedTaxonomies: [],
+          capabilities: TenantAdminProfileTypeCapabilities(
+            isFavoritable: true,
+            isPoiEnabled: true,
+            hasBio: false,
+            hasContent: false,
+            hasTaxonomies: false,
+            hasAvatar: false,
+            hasCover: false,
+            hasEvents: false,
+          ),
+        ),
+      ]);
+      final controller = _buildCreateController(
+        accountsRepository: accountsRepository,
+        profilesRepository: profilesRepository,
+      );
+
+      final onboarding = await controller.createAccountOnboarding(
+        name: 'Nova Conta',
         ownershipState: TenantAdminOwnershipState.tenantOwned,
-      ),
-    ]);
-    accountsRepository.fetchAccountsGate = Completer<void>();
-    final profilesRepository = _FakeAccountProfilesRepository(const []);
-    final TenantAdminLocationSelectionContract locationSelectionService =
-        TenantAdminLocationSelectionService();
-    final taxonomiesRepository = _FakeTaxonomiesRepository();
-    final controller = TenantAdminAccountsController(
-      accountsRepository: accountsRepository,
-      profilesRepository: profilesRepository,
-      taxonomiesRepository: taxonomiesRepository,
-      locationSelectionService: locationSelectionService,
-    );
+        profileType: 'venue',
+        location: const TenantAdminLocation(latitude: -20.0, longitude: -40.0),
+      );
 
-    final loadFuture = controller.loadAccounts();
-    await Future<void>.delayed(Duration.zero);
-    expect(controller.accountsStreamValue.value, isNull);
+      expect(onboarding.account.name, 'Nova Conta');
+      expect(onboarding.accountProfile.displayName, 'Nova Conta');
+      expect(accountsRepository.createOnboardingCalls, 1);
+      expect(profilesRepository.createProfileCalls, 0);
+    });
 
-    accountsRepository.fetchAccountsGate?.complete();
-    await loadFuture;
-    expect(controller.accountsStreamValue.value?.length, 1);
-  });
+    test('createAccountOnboarding forwards bio and taxonomy terms', () async {
+      final accountsRepository = _FakeAccountsRepository([]);
+      final profilesRepository = _FakeAccountProfilesRepository(const [
+        TenantAdminProfileTypeDefinition(
+          type: 'venue',
+          label: 'Venue',
+          allowedTaxonomies: ['genre'],
+          capabilities: TenantAdminProfileTypeCapabilities(
+            isFavoritable: true,
+            isPoiEnabled: false,
+            hasBio: true,
+            hasContent: false,
+            hasTaxonomies: true,
+            hasAvatar: false,
+            hasCover: false,
+            hasEvents: false,
+          ),
+        ),
+      ]);
+      final controller = _buildCreateController(
+        accountsRepository: accountsRepository,
+        profilesRepository: profilesRepository,
+      );
 
-  test('appends pages and stops when hasMore becomes false', () async {
-    final accounts = List<TenantAdminAccount>.generate(
-      45,
-      (index) => TenantAdminAccount(
-        id: 'acc-$index',
-        name: 'Conta $index',
-        slug: 'conta-$index',
-        document: TenantAdminDocument(type: 'cpf', number: '$index'),
+      await controller.createAccountOnboarding(
+        name: 'Nova Conta',
         ownershipState: TenantAdminOwnershipState.tenantOwned,
-      ),
-    );
-    final accountsRepository = _FakeAccountsRepository(accounts);
-    final profilesRepository = _FakeAccountProfilesRepository(const []);
-    final TenantAdminLocationSelectionContract locationSelectionService =
-        TenantAdminLocationSelectionService();
-    final taxonomiesRepository = _FakeTaxonomiesRepository();
-    final controller = TenantAdminAccountsController(
-      accountsRepository: accountsRepository,
-      profilesRepository: profilesRepository,
-      taxonomiesRepository: taxonomiesRepository,
-      locationSelectionService: locationSelectionService,
-    );
+        profileType: 'venue',
+        bio: '<p>Bio teste</p>',
+        content: null,
+        taxonomyTerms: const [
+          TenantAdminTaxonomyTerm(type: 'genre', value: 'urbana'),
+        ],
+      );
 
-    await controller.loadAccounts();
-    expect(controller.accountsStreamValue.value?.length, 20);
-    expect(controller.hasMoreAccountsStreamValue.value, isTrue);
+      expect(accountsRepository.lastOnboardingBio, '<p>Bio teste</p>');
+      expect(accountsRepository.lastOnboardingTaxonomyTerms.length, 1);
+      expect(
+          accountsRepository.lastOnboardingTaxonomyTerms.first.type, 'genre');
+      expect(
+        accountsRepository.lastOnboardingTaxonomyTerms.first.value,
+        'urbana',
+      );
+    });
 
-    await controller.loadNextAccountsPage();
-    expect(controller.accountsStreamValue.value?.length, 40);
-    expect(controller.hasMoreAccountsStreamValue.value, isTrue);
+    test(
+        'createAccountFromForm submits media as upload and never as direct URL',
+        () async {
+      final accountsRepository = _FakeAccountsRepository([]);
+      final profilesRepository = _FakeAccountProfilesRepository(const [
+        TenantAdminProfileTypeDefinition(
+          type: 'venue',
+          label: 'Venue',
+          allowedTaxonomies: [],
+          capabilities: TenantAdminProfileTypeCapabilities(
+            isFavoritable: true,
+            isPoiEnabled: false,
+            hasBio: false,
+            hasContent: false,
+            hasTaxonomies: false,
+            hasAvatar: true,
+            hasCover: true,
+            hasEvents: false,
+          ),
+        ),
+      ]);
+      final controller = _buildCreateController(
+        accountsRepository: accountsRepository,
+        profilesRepository: profilesRepository,
+      );
 
-    await controller.loadNextAccountsPage();
-    expect(controller.accountsStreamValue.value?.length, 45);
-    expect(controller.hasMoreAccountsStreamValue.value, isFalse);
+      controller.nameController.text = 'Conta com imagem';
+      controller.updateCreateSelectedProfileType('venue');
+      controller.updateCreateAvatarFile(_buildImageXFile('avatar.jpg'));
+      controller.updateCreateCoverFile(_buildImageXFile('cover.jpg'));
 
-    await controller.loadNextAccountsPage();
-    expect(controller.accountsStreamValue.value?.length, 45);
-    expect(accountsRepository.fetchAccountsCalls, 3);
+      await controller.createAccountFromForm(location: null);
+
+      expect(accountsRepository.lastOnboardingAvatarUpload, isNotNull);
+      expect(accountsRepository.lastOnboardingCoverUpload, isNotNull);
+      expect(
+        accountsRepository.lastOnboardingAvatarUpload!.mimeType,
+        'image/jpeg',
+      );
+      expect(
+        accountsRepository.lastOnboardingCoverUpload!.mimeType,
+        'image/jpeg',
+      );
+    });
+
+    test('validateCreateBeforeSubmit writes local validation into shared state',
+        () async {
+      final controller = _buildCreateController();
+
+      final isValid = controller.validateCreateBeforeSubmit(location: null);
+
+      expect(isValid, isFalse);
+      expect(
+        controller.createValidationStreamValue.value
+            .errorForField('profile_type'),
+        'Tipo de perfil e obrigatorio.',
+      );
+      expect(
+        controller.createValidationStreamValue.value.errorForField('name'),
+        'Nome e obrigatorio.',
+      );
+      expect(
+        controller.createValidationStreamValue.value.firstInvalidTargetId,
+        'profile_type',
+      );
+    });
+
+    test(
+        'submitCreateAccountFromForm applies backend validation failures without global error text',
+        () async {
+      final accountsRepository = _FakeAccountsRepository([])
+        ..createAccountError = FormValidationFailure(
+          statusCode: 422,
+          message: 'The given data was invalid.',
+          fieldErrors: <String, List<String>>{
+            'location.lat': <String>['Latitude obrigatoria.'],
+          },
+        );
+      final profilesRepository = _FakeAccountProfilesRepository(const [
+        TenantAdminProfileTypeDefinition(
+          type: 'venue',
+          label: 'Venue',
+          allowedTaxonomies: [],
+          capabilities: TenantAdminProfileTypeCapabilities(
+            isFavoritable: true,
+            isPoiEnabled: false,
+            hasBio: false,
+            hasContent: false,
+            hasTaxonomies: false,
+            hasAvatar: false,
+            hasCover: false,
+            hasEvents: false,
+          ),
+        ),
+      ]);
+      final controller = _buildCreateController(
+        accountsRepository: accountsRepository,
+        profilesRepository: profilesRepository,
+      );
+
+      controller.nameController.text = 'Conta validada';
+      controller.updateCreateSelectedProfileType('venue');
+
+      final created = await controller.submitCreateAccountFromForm(
+        location: null,
+      );
+
+      expect(created, isFalse);
+      expect(
+        controller.createValidationStreamValue.value.errorsForGroup('location'),
+        <String>['Latitude obrigatoria.'],
+      );
+      expect(controller.createErrorMessageStreamValue.value, isNull);
+      expect(controller.createSuccessAccountStreamValue.value, isNull);
+    });
+
+    test(
+        'submitCreateAccountFromForm keeps operational failures separate from validation state',
+        () async {
+      final accountsRepository = _FakeAccountsRepository([])
+        ..createAccountError = Exception('backend exploded');
+      final profilesRepository = _FakeAccountProfilesRepository(const [
+        TenantAdminProfileTypeDefinition(
+          type: 'venue',
+          label: 'Venue',
+          allowedTaxonomies: [],
+          capabilities: TenantAdminProfileTypeCapabilities(
+            isFavoritable: true,
+            isPoiEnabled: false,
+            hasBio: false,
+            hasContent: false,
+            hasTaxonomies: false,
+            hasAvatar: false,
+            hasCover: false,
+            hasEvents: false,
+          ),
+        ),
+      ]);
+      final controller = _buildCreateController(
+        accountsRepository: accountsRepository,
+        profilesRepository: profilesRepository,
+      );
+
+      controller.nameController.text = 'Conta falhou';
+      controller.updateCreateSelectedProfileType('venue');
+
+      final created = await controller.submitCreateAccountFromForm(
+        location: null,
+      );
+
+      expect(created, isFalse);
+      expect(controller.createValidationStreamValue.value.hasErrors, isFalse);
+      expect(
+        controller.createErrorMessageStreamValue.value,
+        contains('backend exploded'),
+      );
+    });
+
+    test(
+        'submitCreateAccountFromForm emits success account and clears validation',
+        () async {
+      final controller = _buildCreateController(
+        accountsRepository: _FakeAccountsRepository([]),
+        profilesRepository: _FakeAccountProfilesRepository(const [
+          TenantAdminProfileTypeDefinition(
+            type: 'venue',
+            label: 'Venue',
+            allowedTaxonomies: [],
+            capabilities: TenantAdminProfileTypeCapabilities(
+              isFavoritable: true,
+              isPoiEnabled: false,
+              hasBio: false,
+              hasContent: false,
+              hasTaxonomies: false,
+              hasAvatar: false,
+              hasCover: false,
+              hasEvents: false,
+            ),
+          ),
+        ]),
+      );
+
+      controller.createValidationController.replaceWithResolved(
+        fieldErrors: const <String, List<String>>{
+          'name': <String>['Nome e obrigatorio.'],
+        },
+      );
+      controller.nameController.text = 'Conta ok';
+      controller.updateCreateSelectedProfileType('venue');
+
+      final created = await controller.submitCreateAccountFromForm(
+        location: null,
+      );
+
+      expect(created, isTrue);
+      expect(controller.createValidationStreamValue.value.hasErrors, isFalse);
+      expect(controller.createErrorMessageStreamValue.value, isNull);
+      expect(
+        controller.createSuccessAccountStreamValue.value?.account.name,
+        'Conta ok',
+      );
+    });
   });
+}
 
-  test('keeps last successful list when reload fails', () async {
-    final accountsRepository = _FakeAccountsRepository([
-      TenantAdminAccount(
-        id: 'acc-1',
-        name: 'Conta',
-        slug: 'conta',
-        document: const TenantAdminDocument(type: 'cpf', number: '000'),
-        ownershipState: TenantAdminOwnershipState.tenantOwned,
-      ),
-    ]);
-    final profilesRepository = _FakeAccountProfilesRepository(const []);
-    final TenantAdminLocationSelectionContract locationSelectionService =
-        TenantAdminLocationSelectionService();
-    final taxonomiesRepository = _FakeTaxonomiesRepository();
-    final controller = TenantAdminAccountsController(
-      accountsRepository: accountsRepository,
-      profilesRepository: profilesRepository,
-      taxonomiesRepository: taxonomiesRepository,
-      locationSelectionService: locationSelectionService,
-    );
-
-    await controller.loadAccounts();
-    expect(controller.accountsStreamValue.value, hasLength(1));
-    expect(controller.errorStreamValue.value, isNull);
-
-    accountsRepository.failNextLoadAccounts = true;
-    await expectLater(controller.loadAccounts(), throwsException);
-    await Future<void>.microtask(() {});
-
-    expect(controller.accountsStreamValue.value, hasLength(1));
-    expect(controller.accountsStreamValue.value!.first.slug, 'conta');
-    expect(controller.errorStreamValue.value, contains('backend error'));
-  });
+XFile _buildImageXFile(String name) {
+  return XFile.fromData(
+    Uint8List.fromList(const <int>[1, 2, 3]),
+    mimeType: 'image/jpeg',
+    name: name,
+  );
 }
 
 class _FakeTenantScope implements TenantAdminTenantScopeContract {

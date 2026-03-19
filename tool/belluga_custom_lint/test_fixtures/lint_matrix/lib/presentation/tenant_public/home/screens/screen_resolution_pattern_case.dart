@@ -1,16 +1,18 @@
-class BuildContext {}
+// ignore_for_file: unused_element
+
+class _BuildContext {}
 
 class StatelessWidget {
   const StatelessWidget();
 }
 
-class HomeController {
-  const HomeController();
+class _HomeController {
+  const _HomeController();
 }
 
-class ScreenResolutionPatternScreen extends StatelessWidget {
+class _ScreenResolutionPatternScreen extends StatelessWidget {
   // expect_lint: screen_controller_resolution_pattern_required
-  const ScreenResolutionPatternScreen({required this.controller});
+  const _ScreenResolutionPatternScreen({required this.controller});
 
-  final HomeController controller;
+  final _HomeController controller;
 }

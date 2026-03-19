@@ -12,9 +12,11 @@ import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admi
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_field_edit_sheet.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_form_layout.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_image_crop_sheet.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_image_upload_field.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_image_source_sheet.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_rich_text_editor.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_xfile_preview.dart';
+import 'package:belluga_now/presentation/shared/widgets/belluga_network_image.dart';
 import 'package:belluga_now/presentation/tenant_admin/static_assets/controllers/tenant_admin_static_assets_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
@@ -677,157 +679,136 @@ class _TenantAdminStaticAssetEditScreenState
                 return StreamValueBuilder<XFile?>(
                   streamValue: _controller.coverFileStreamValue,
                   builder: (context, coverFile) {
-            final avatarUrl = _controller.avatarUrlController.text.trim();
-            final coverUrl = _controller.coverUrlController.text.trim();
-            return Card(
-              margin: EdgeInsets.zero,
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Midia',
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
-                    if (hasAvatar) ...[
-                      const SizedBox(height: 12),
-                      Row(
-                        children: [
-                          if (avatarFile != null)
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(36),
-                              child: TenantAdminXFilePreview(
-                                file: avatarFile,
-                                width: 72,
-                                height: 72,
-                                fit: BoxFit.cover,
-                              ),
-                            )
-                          else
-                            Container(
-                              width: 72,
-                              height: 72,
-                              decoration: BoxDecoration(
-                                color: Theme.of(context)
-                                    .colorScheme
-                                    .surfaceContainerHighest,
-                                borderRadius: BorderRadius.circular(36),
-                              ),
-                              child: Icon(
-                                avatarUrl.isNotEmpty
-                                    ? Icons.link_outlined
-                                    : Icons.person_outline,
-                              ),
+                    final avatarUrl =
+                        _controller.avatarUrlController.text.trim();
+                    final coverUrl = _controller.coverUrlController.text.trim();
+                    return Card(
+                      margin: EdgeInsets.zero,
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Midia',
+                              style: Theme.of(context).textTheme.titleMedium,
                             ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  avatarFile?.name ??
-                                      (avatarUrl.isNotEmpty
-                                          ? avatarUrl
-                                          : 'Nenhuma imagem selecionada'),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                if (avatarBusy) ...[
-                                  const SizedBox(height: 8),
-                                  const LinearProgressIndicator(),
-                                ],
-                                const SizedBox(height: 8),
-                                Row(
-                                  children: [
-                                    FilledButton.tonalIcon(
-                                      onPressed: () =>
-                                          avatarBusy
-                                              ? null
-                                              : _pickImage(isAvatar: true),
-                                      icon: const Icon(
-                                        Icons.add_photo_alternate_outlined,
-                                      ),
-                                      label: const Text('Adicionar avatar'),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    if (avatarFile != null ||
-                                        avatarUrl.isNotEmpty)
-                                      TextButton(
-                                        onPressed: () =>
-                                            avatarBusy
-                                                ? null
-                                                : _clearImage(isAvatar: true),
-                                        child: const Text('Remover'),
-                                      ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                    if (hasAvatar && hasCover) const SizedBox(height: 16),
-                    if (hasCover) ...[
-                      if (coverFile != null)
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(12),
-                          child: TenantAdminXFilePreview(
-                            file: coverFile,
-                            width: double.infinity,
-                            height: 140,
-                            fit: BoxFit.cover,
-                          ),
-                        )
-                      else
-                        Container(
-                          width: double.infinity,
-                          height: 140,
-                          decoration: BoxDecoration(
-                            color: Theme.of(context)
-                                .colorScheme
-                                .surfaceContainerHighest,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Center(
-                            child: Icon(
-                              coverUrl.isNotEmpty
-                                  ? Icons.link_outlined
-                                  : Icons.image_outlined,
-                            ),
-                          ),
+                            if (hasAvatar) ...[
+                              const SizedBox(height: 12),
+                              TenantAdminImageUploadField(
+                                variant: TenantAdminImageUploadVariant.avatar,
+                                preview: avatarFile != null
+                                    ? ClipRRect(
+                                        borderRadius: BorderRadius.circular(36),
+                                        child: TenantAdminXFilePreview(
+                                          file: avatarFile,
+                                          width: 72,
+                                          height: 72,
+                                          fit: BoxFit.cover,
+                                        ),
+                                      )
+                                    : avatarUrl.isNotEmpty
+                                        ? BellugaNetworkImage(
+                                            avatarUrl,
+                                            width: 72,
+                                            height: 72,
+                                            fit: BoxFit.cover,
+                                            clipBorderRadius:
+                                                BorderRadius.circular(36),
+                                            placeholder: Container(
+                                              width: 72,
+                                              height: 72,
+                                              decoration: BoxDecoration(
+                                                color: Theme.of(context)
+                                                    .colorScheme
+                                                    .surfaceContainerHighest,
+                                                borderRadius:
+                                                    BorderRadius.circular(36),
+                                              ),
+                                              child: const Icon(
+                                                Icons.person_outline,
+                                              ),
+                                            ),
+                                          )
+                                        : Container(
+                                            width: 72,
+                                            height: 72,
+                                            decoration: BoxDecoration(
+                                              color: Theme.of(context)
+                                                  .colorScheme
+                                                  .surfaceContainerHighest,
+                                              borderRadius:
+                                                  BorderRadius.circular(36),
+                                            ),
+                                            child: const Icon(
+                                                Icons.person_outline),
+                                          ),
+                                selectedLabel: avatarFile?.name ??
+                                    (avatarUrl.isNotEmpty
+                                        ? avatarUrl
+                                        : 'Nenhuma imagem selecionada'),
+                                addLabel: 'Adicionar avatar',
+                                onAdd: () => _pickImage(isAvatar: true),
+                                busy: avatarBusy,
+                                canRemove:
+                                    avatarFile != null || avatarUrl.isNotEmpty,
+                                onRemove: () => _clearImage(isAvatar: true),
+                              ),
+                            ],
+                            if (hasAvatar && hasCover)
+                              const SizedBox(height: 16),
+                            if (hasCover) ...[
+                              TenantAdminImageUploadField(
+                                variant: TenantAdminImageUploadVariant.cover,
+                                preview: coverFile != null
+                                    ? ClipRRect(
+                                        borderRadius: BorderRadius.circular(12),
+                                        child: TenantAdminXFilePreview(
+                                          file: coverFile,
+                                          width: double.infinity,
+                                          height: 140,
+                                          fit: BoxFit.cover,
+                                        ),
+                                      )
+                                    : coverUrl.isNotEmpty
+                                        ? BellugaNetworkImage(
+                                            coverUrl,
+                                            width: double.infinity,
+                                            height: 140,
+                                            fit: BoxFit.cover,
+                                            clipBorderRadius:
+                                                BorderRadius.circular(12),
+                                          )
+                                        : Container(
+                                            width: double.infinity,
+                                            height: 140,
+                                            decoration: BoxDecoration(
+                                              color: Theme.of(context)
+                                                  .colorScheme
+                                                  .surfaceContainerHighest,
+                                              borderRadius:
+                                                  BorderRadius.circular(12),
+                                            ),
+                                            child: const Center(
+                                              child: Icon(Icons.image_outlined),
+                                            ),
+                                          ),
+                                selectedLabel: coverFile?.name ??
+                                    (coverUrl.isNotEmpty
+                                        ? coverUrl
+                                        : 'Nenhuma imagem selecionada'),
+                                addLabel: 'Adicionar capa',
+                                onAdd: () => _pickImage(isAvatar: false),
+                                busy: coverBusy,
+                                canRemove:
+                                    coverFile != null || coverUrl.isNotEmpty,
+                                onRemove: () => _clearImage(isAvatar: false),
+                              ),
+                            ],
+                          ],
                         ),
-                      const SizedBox(height: 8),
-                      if (coverBusy) ...[
-                        const LinearProgressIndicator(),
-                        const SizedBox(height: 8),
-                      ],
-                      Row(
-                        children: [
-                          FilledButton.tonalIcon(
-                            onPressed: coverBusy
-                                ? null
-                                : () => _pickImage(isAvatar: false),
-                            icon:
-                                const Icon(Icons.add_photo_alternate_outlined),
-                            label: const Text('Adicionar capa'),
-                          ),
-                          const SizedBox(width: 8),
-                          if (coverFile != null || coverUrl.isNotEmpty)
-                            TextButton(
-                              onPressed: coverBusy
-                                  ? null
-                                  : () => _clearImage(isAvatar: false),
-                              child: const Text('Remover'),
-                            ),
-                        ],
                       ),
-                    ],
-                  ],
-                ),
-              ),
-            );
+                    );
                   },
                 );
               },

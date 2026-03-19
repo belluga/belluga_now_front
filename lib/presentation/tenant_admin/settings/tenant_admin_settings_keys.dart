@@ -24,6 +24,8 @@ class TenantAdminSettingsKeys {
 
   static const hubIntegrationFirebase =
       ValueKey('tenant_admin_settings_hub_integration_firebase');
+  static const hubIntegrationAppLinks =
+      ValueKey('tenant_admin_settings_hub_integration_app_links');
   static const hubIntegrationTelemetry =
       ValueKey('tenant_admin_settings_hub_integration_telemetry');
 
@@ -50,6 +52,13 @@ class TenantAdminSettingsKeys {
       ValueKey('tenant_admin_settings_local_preferences_select_on_map');
   static const localPreferencesSaveOriginButton =
       ValueKey('tenant_admin_settings_local_preferences_save_origin');
+  static const localPreferencesMapFiltersCard =
+      ValueKey('tenant_admin_settings_local_preferences_map_filters_card');
+  static const localPreferencesAddMapFilterButton =
+      ValueKey('tenant_admin_settings_local_preferences_add_map_filter_button');
+  static ValueKey<String> localPreferencesMapFilterRow(int index) => ValueKey(
+        'tenant_admin_settings_local_preferences_map_filter_row_$index',
+      );
   static const visualIdentityScopedAppBar =
       ValueKey('tenant_admin_settings_visual_identity_scoped_app_bar');
   static const visualIdentityBackButton =
@@ -58,6 +67,26 @@ class TenantAdminSettingsKeys {
       ValueKey('tenant_admin_settings_technical_integrations_scoped_app_bar');
   static const technicalIntegrationsBackButton =
       ValueKey('tenant_admin_settings_technical_integrations_back_button');
+  static const technicalIntegrationsAppLinksSection = ValueKey(
+      'tenant_admin_settings_technical_integrations_app_links_section');
+  static const technicalIntegrationsAppLinksAndroidPackageEdit = ValueKey(
+    'tenant_admin_settings_technical_integrations_app_links_android_package_edit',
+  );
+  static const technicalIntegrationsAppLinksFingerprintsEdit = ValueKey(
+    'tenant_admin_settings_technical_integrations_app_links_fingerprints_edit',
+  );
+  static const technicalIntegrationsAppLinksIosTeamIdEdit = ValueKey(
+    'tenant_admin_settings_technical_integrations_app_links_ios_team_id_edit',
+  );
+  static const technicalIntegrationsAppLinksIosBundleIdEdit = ValueKey(
+    'tenant_admin_settings_technical_integrations_app_links_ios_bundle_id_edit',
+  );
+  static const technicalIntegrationsAppLinksIosPathsEdit = ValueKey(
+    'tenant_admin_settings_technical_integrations_app_links_ios_paths_edit',
+  );
+  static const technicalIntegrationsSaveAppLinks = ValueKey(
+    'tenant_admin_settings_technical_integrations_save_app_links',
+  );
   static const environmentSnapshotScopedAppBar =
       ValueKey('tenant_admin_settings_environment_snapshot_scoped_app_bar');
   static const environmentSnapshotBackButton =

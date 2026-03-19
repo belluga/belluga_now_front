@@ -2,8 +2,10 @@ import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/domain/invites/invite_decision.dart';
 import 'package:belluga_now/domain/invites/invite_model.dart';
+import 'package:belluga_now/domain/invites/invite_next_step.dart';
 import 'package:belluga_now/presentation/tenant_public/invites/screens/invite_flow_screen/controllers/invite_flow_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/invites/screens/invite_flow_screen/widgets/invite_hero_card.dart';
+import 'package:belluga_now/presentation/tenant_public/invites/widgets/invite_candidate_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
@@ -13,10 +15,14 @@ class InviteFlowCoordinator extends StatefulWidget {
     super.key,
     required this.invites,
     required this.decisionResult,
+    required this.requiresAuthentication,
+    required this.isInitialized,
   });
 
   final List<InviteModel> invites;
   final InviteDecisionResult? decisionResult;
+  final bool requiresAuthentication;
+  final bool isInitialized;
 
   @override
   State<InviteFlowCoordinator> createState() => _InviteFlowCoordinatorState();
@@ -77,7 +83,8 @@ class _InviteFlowCoordinatorState extends State<InviteFlowCoordinator> {
       builder: (context, loadedImages) {
         final invite = invites.first;
         final remaining = invites.length - 1;
-        final isReady = loadedImages.contains(invite.eventImageUrl);
+        final isReady = widget.requiresAuthentication ||
+            loadedImages.contains(invite.eventImageUrl);
 
         if (!isReady) {
           return const Center(child: CircularProgressIndicator());
@@ -85,17 +92,22 @@ class _InviteFlowCoordinatorState extends State<InviteFlowCoordinator> {
 
         return InviteHeroCard(
           invite: invite,
-          onAccept: () => _controller.requestDecision(InviteDecision.accepted),
-          onDecline: () => _controller.requestDecision(InviteDecision.declined),
+          onAccept: () => _handleDecision(invite, InviteDecision.accepted),
+          onDecline: () => _handleDecision(invite, InviteDecision.declined),
           onViewDetails: () => _openEventDetails(invite),
           onClose: _exitInviteFlow,
           remainingCount: remaining,
+          requiresAuthentication: widget.requiresAuthentication,
+          onRequestAuthentication: _openAuthForInviteDecision,
         );
       },
     );
   }
 
   void _handlePendingInvites(List<InviteModel> invites) {
+    if (!widget.isInitialized) {
+      return;
+    }
     if (invites.isNotEmpty) {
       _exitHandled = false;
       return;
@@ -116,12 +128,17 @@ class _InviteFlowCoordinatorState extends State<InviteFlowCoordinator> {
       final router = context.router;
 
       if (result.invite != null) {
+        if (result.nextStep == InviteNextStep.reservationRequired ||
+            result.nextStep == InviteNextStep.commitmentChoiceRequired ||
+            result.nextStep == InviteNextStep.openAppToContinue) {
+          _showUnsupportedNextStepToast(result.invite!, result.nextStep);
+          _controller.clearDecisionResult();
+          return;
+        }
         if (result.queued == true) {
           _showOfflineAcceptToast(result.invite);
         }
-        router.push(InviteShareRoute(invite: result.invite!)).then((_) {
-          _controller.removeInvite();
-        });
+        router.push(InviteShareRoute(invite: result.invite!));
         _controller.clearDecisionResult();
         return;
       }
@@ -131,7 +148,54 @@ class _InviteFlowCoordinatorState extends State<InviteFlowCoordinator> {
   }
 
   void _openEventDetails(InviteModel invite) {
+    if (widget.requiresAuthentication) {
+      _openAuthForInviteDecision();
+      return;
+    }
     context.router.push(ImmersiveEventDetailRoute(eventSlug: invite.eventId));
+  }
+
+  Future<void> _handleDecision(
+    InviteModel invite,
+    InviteDecision decision,
+  ) async {
+    if (widget.requiresAuthentication) {
+      _openAuthForInviteDecision();
+      return;
+    }
+
+    final hasSelectableCandidate = invite.inviters
+        .any((candidate) => candidate.inviteId.trim().isNotEmpty);
+    if (invite.hasMultipleInviters && !hasSelectableCandidate) {
+      await _controller.requestDecision(decision);
+      return;
+    }
+
+    final inviteId = await showInviteCandidatePicker(
+      context,
+      invite: invite,
+      actionLabel: decision == InviteDecision.accepted ? 'Aceitar' : 'Recusar',
+    );
+    if (inviteId == null) {
+      if (!invite.hasMultipleInviters) {
+        await _controller.requestDecision(decision);
+      }
+      return;
+    }
+
+    if (inviteId.isEmpty) {
+      await _controller.requestDecision(decision);
+      return;
+    }
+    await _controller.requestDecisionForInvite(decision, inviteId);
+  }
+
+  void _openAuthForInviteDecision() {
+    final pendingPath = _controller.redirectPath?.trim();
+    final normalizedPath =
+        pendingPath == null || pendingPath.isEmpty ? '/invite' : pendingPath;
+    final encodedRedirect = Uri.encodeQueryComponent(normalizedPath);
+    context.router.pushPath('/auth/login?redirect=$encodedRedirect');
   }
 
   void _exitInviteFlow() {
@@ -154,6 +218,24 @@ class _InviteFlowCoordinatorState extends State<InviteFlowCoordinator> {
               : 'Invite accepted for ${invite.eventName}. Syncing when online.',
         ),
         duration: const Duration(seconds: 3),
+      ),
+    );
+  }
+
+  void _showUnsupportedNextStepToast(
+    InviteModel invite,
+    InviteNextStep nextStep,
+  ) {
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.hideCurrentSnackBar();
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(
+          nextStep == InviteNextStep.openAppToContinue
+              ? 'Convite aceito para ${invite.eventName}. Continue pelo app.'
+              : 'Convite aceito para ${invite.eventName}. A proxima etapa ainda nao esta disponivel nesta versao.',
+        ),
+        duration: const Duration(seconds: 4),
       ),
     );
   }

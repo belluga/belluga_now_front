@@ -1,6 +1,5 @@
 import 'package:belluga_now/domain/map/city_poi_category.dart';
 import 'package:belluga_now/domain/map/city_poi_model.dart';
-import 'package:belluga_now/domain/map/event_poi_model.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/event_poi_detail_card.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/poi_beach_card.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/poi_default_card.dart';
@@ -19,9 +18,9 @@ class PoiDetailCardBuilder {
     required VoidCallback onShare,
     required VoidCallback onRoute,
   }) {
-    if (poi is EventPoiModel) {
+    if (poi.isDynamic) {
       return EventPoiDetailCard(
-        eventPoi: poi,
+        poi: poi,
         colorScheme: colorScheme,
         onPrimaryAction: onPrimaryAction,
         onShare: onShare,

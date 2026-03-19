@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/presentation/shared/widgets/belluga_network_image.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
@@ -95,25 +97,26 @@ class _TenantAdminAccountDetailScreenState
     return profile.profileType;
   }
 
-  void _openCreate() {
-    context.router.push(
-      TenantAdminAccountProfileCreateRoute(
-        accountSlug: _currentAccountSlugForRequests(),
-      ),
-    );
-  }
-
   void _openEdit() {
     final profile = _profilesController.accountProfileStreamValue.value;
     if (profile == null) {
       return;
     }
-    context.router.push(
+    context.router
+        .push(
       TenantAdminAccountProfileEditRoute(
         accountSlug: _currentAccountSlugForRequests(),
         accountProfileId: profile.id,
       ),
-    );
+    )
+        .then((_) {
+      if (!mounted) {
+        return;
+      }
+      unawaited(
+        _profilesController.loadAccountDetail(_currentAccountSlugForRequests()),
+      );
+    });
   }
 
   Future<void> _editAccountName(TenantAdminAccount account) async {
@@ -306,20 +309,14 @@ class _TenantAdminAccountDetailScreenState
                                                       CrossAxisAlignment.start,
                                                   children: [
                                                     Text(
-                                                      'Perfil da conta',
+                                                      'Inconsistência de dados',
                                                       style: Theme.of(context)
                                                           .textTheme
                                                           .titleMedium,
                                                     ),
                                                     const SizedBox(height: 8),
                                                     const Text(
-                                                      'Nenhum perfil associado a esta conta.',
-                                                    ),
-                                                    const SizedBox(height: 12),
-                                                    FilledButton(
-                                                      onPressed: _openCreate,
-                                                      child: const Text(
-                                                          'Criar Perfil'),
+                                                      'Conta sem perfil detectada. Este estado é inválido para tenant-admin e deve ser corrigido por rotina de reparo backend.',
                                                     ),
                                                   ],
                                                 ),

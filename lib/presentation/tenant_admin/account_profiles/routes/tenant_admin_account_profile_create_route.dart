@@ -1,5 +1,5 @@
 import 'package:auto_route/auto_route.dart';
-import 'package:belluga_now/presentation/tenant_admin/account_profiles/screens/tenant_admin_account_profile_create_screen.dart';
+import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:flutter/material.dart';
 
 @RoutePage(name: 'TenantAdminAccountProfileCreateRoute')
@@ -13,8 +13,33 @@ class TenantAdminAccountProfileCreateRoutePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return TenantAdminAccountProfileCreateScreen(
-      accountSlug: accountSlug,
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Fluxo indisponível'),
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Criação standalone de perfil foi descontinuada.',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Use o onboarding de conta para criar conta+perfil em um único fluxo.',
+            ),
+            const SizedBox(height: 16),
+            FilledButton(
+              onPressed: () => context.router.replace(
+                TenantAdminAccountDetailRoute(accountSlug: accountSlug),
+              ),
+              child: const Text('Voltar para conta'),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

@@ -1,14 +1,24 @@
+export 'tenant_admin_branding_asset_slot.dart';
+
 import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/tenant_admin_account_profiles_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_settings_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/tenant_admin_static_assets_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/tenant_admin_taxonomies_repository_contract.dart';
 import 'package:belluga_now/domain/services/tenant_admin_location_selection_contract.dart';
 import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_settings.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_static_profile_type.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_definition.dart';
+import 'package:belluga_now/presentation/tenant_admin/settings/controllers/tenant_admin_branding_asset_slot.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_form_value_utils.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_image_ingestion_service.dart';
 import 'package:flutter/material.dart';
@@ -16,18 +26,13 @@ import 'package:get_it/get_it.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:stream_value/core/stream_value.dart';
 
-enum TenantAdminBrandingAssetSlot {
-  lightLogo,
-  darkLogo,
-  lightIcon,
-  darkIcon,
-  pwaIcon,
-}
-
 class TenantAdminSettingsController implements Disposable {
   TenantAdminSettingsController({
     AppDataRepositoryContract? appDataRepository,
     TenantAdminSettingsRepositoryContract? settingsRepository,
+    TenantAdminAccountProfilesRepositoryContract? accountProfilesRepository,
+    TenantAdminStaticAssetsRepositoryContract? staticAssetsRepository,
+    TenantAdminTaxonomiesRepositoryContract? taxonomiesRepository,
     TenantAdminTenantScopeContract? tenantScope,
     TenantAdminLocationSelectionContract? locationSelectionService,
     TenantAdminImageIngestionService? imageIngestionService,
@@ -35,6 +40,19 @@ class TenantAdminSettingsController implements Disposable {
             appDataRepository ?? GetIt.I.get<AppDataRepositoryContract>(),
         _settingsRepository = settingsRepository ??
             GetIt.I.get<TenantAdminSettingsRepositoryContract>(),
+        _accountProfilesRepository = accountProfilesRepository ??
+            (GetIt.I.isRegistered<
+                    TenantAdminAccountProfilesRepositoryContract>()
+                ? GetIt.I.get<TenantAdminAccountProfilesRepositoryContract>()
+                : null),
+        _staticAssetsRepository = staticAssetsRepository ??
+            (GetIt.I.isRegistered<TenantAdminStaticAssetsRepositoryContract>()
+                ? GetIt.I.get<TenantAdminStaticAssetsRepositoryContract>()
+                : null),
+        _taxonomiesRepository = taxonomiesRepository ??
+            (GetIt.I.isRegistered<TenantAdminTaxonomiesRepositoryContract>()
+                ? GetIt.I.get<TenantAdminTaxonomiesRepositoryContract>()
+                : null),
         _tenantScope = tenantScope ??
             (GetIt.I.isRegistered<TenantAdminTenantScopeContract>()
                 ? GetIt.I.get<TenantAdminTenantScopeContract>()
@@ -48,6 +66,10 @@ class TenantAdminSettingsController implements Disposable {
 
   final AppDataRepositoryContract _appDataRepository;
   final TenantAdminSettingsRepositoryContract _settingsRepository;
+  final TenantAdminAccountProfilesRepositoryContract?
+      _accountProfilesRepository;
+  final TenantAdminStaticAssetsRepositoryContract? _staticAssetsRepository;
+  final TenantAdminTaxonomiesRepositoryContract? _taxonomiesRepository;
   final TenantAdminTenantScopeContract? _tenantScope;
   final TenantAdminLocationSelectionContract _locationSelectionService;
   final TenantAdminImageIngestionService _imageIngestionService;
@@ -66,8 +88,28 @@ class TenantAdminSettingsController implements Disposable {
       StreamValue<bool>(defaultValue: false);
   final StreamValue<TenantAdminMapUiSettings> mapUiSettingsStreamValue =
       StreamValue<TenantAdminMapUiSettings>(
-    defaultValue: const TenantAdminMapUiSettings.empty(),
+    defaultValue: TenantAdminMapUiSettings.empty(),
   );
+  final StreamValue<bool> appLinksSubmittingStreamValue =
+      StreamValue<bool>(defaultValue: false);
+  final StreamValue<TenantAdminAppLinksSettings> appLinksSettingsStreamValue =
+      StreamValue<TenantAdminAppLinksSettings>(
+    defaultValue: TenantAdminAppLinksSettings.empty(),
+  );
+  final StreamValue<List<String>> appLinksIosPathsSelectionStreamValue =
+      StreamValue<List<String>>(
+    defaultValue: List<String>.from(
+      TenantAdminAppLinksSettings.canonicalIosPaths,
+      growable: false,
+    ),
+  );
+  final StreamValue<TenantAdminMapFilterRuleCatalog>
+      mapFilterRuleCatalogStreamValue =
+      StreamValue<TenantAdminMapFilterRuleCatalog>(
+    defaultValue: const TenantAdminMapFilterRuleCatalog.empty(),
+  );
+  final StreamValue<bool> mapFilterRuleCatalogLoadingStreamValue =
+      StreamValue<bool>(defaultValue: false);
 
   final StreamValue<bool> firebaseSubmittingStreamValue =
       StreamValue<bool>(defaultValue: false);
@@ -107,7 +149,7 @@ class TenantAdminSettingsController implements Disposable {
   final StreamValue<TenantAdminTelemetrySettingsSnapshot>
       telemetrySnapshotStreamValue =
       StreamValue<TenantAdminTelemetrySettingsSnapshot>(
-    defaultValue: const TenantAdminTelemetrySettingsSnapshot.empty(),
+    defaultValue: TenantAdminTelemetrySettingsSnapshot.empty(),
   );
   final StreamValue<String> selectedTelemetryTypeStreamValue =
       StreamValue<String>(defaultValue: telemetryTypes.first);
@@ -148,14 +190,22 @@ class TenantAdminSettingsController implements Disposable {
       TextEditingController();
   final TextEditingController mapDefaultOriginLabelController =
       TextEditingController();
+  final TextEditingController appLinksAndroidPackageNameController =
+      TextEditingController();
+  final TextEditingController appLinksAndroidFingerprintsController =
+      TextEditingController();
+  final TextEditingController appLinksIosTeamIdController =
+      TextEditingController();
+  final TextEditingController appLinksIosBundleIdController =
+      TextEditingController();
+  static const int _mapFilterKeyMaxLength = 64;
 
   bool _initialized = false;
   String? _initializedTenantDomain;
   StreamSubscription<String?>? _tenantScopeSubscription;
   StreamSubscription<TenantAdminBrandingSettings?>? _brandingSubscription;
   StreamSubscription<TenantAdminLocation?>? _locationSelectionSubscription;
-  TenantAdminMapUiSettings _mapUiSettings =
-      const TenantAdminMapUiSettings.empty();
+  TenantAdminMapUiSettings _mapUiSettings = TenantAdminMapUiSettings.empty();
   bool _localPreferencesFlowBound = false;
 
   AppData get appData => _appDataRepository.appData;
@@ -165,6 +215,21 @@ class TenantAdminSettingsController implements Disposable {
       _appDataRepository.maxRadiusMetersStreamValue;
   StreamValue<TenantAdminBrandingSettings?> get brandingSettingsStreamValue =>
       _settingsRepository.brandingSettingsStreamValue;
+  List<String> get appLinksCanonicalIosPaths =>
+      TenantAdminAppLinksSettings.canonicalIosPaths;
+
+  void updateAppLinksIosPathsSelection(List<String> selectedPaths) {
+    final sanitized = selectedPaths
+        .map((entry) => entry.trim())
+        .where((entry) => appLinksCanonicalIosPaths.contains(entry))
+        .toSet()
+        .toList(growable: false);
+    appLinksIosPathsSelectionStreamValue.addValue(
+      sanitized.isEmpty
+          ? List<String>.from(appLinksCanonicalIosPaths, growable: false)
+          : sanitized,
+    );
+  }
 
   Future<void> init({
     bool loadBranding = true,
@@ -287,6 +352,14 @@ class TenantAdminSettingsController implements Disposable {
         errors.add(error.toString());
       }
 
+      try {
+        final appLinksSettings =
+            await _settingsRepository.fetchAppLinksSettings();
+        _applyAppLinksSettings(appLinksSettings);
+      } catch (error) {
+        errors.add(error.toString());
+      }
+
       if (errors.isEmpty) {
         remoteErrorStreamValue.addValue(null);
       } else {
@@ -316,10 +389,56 @@ class TenantAdminSettingsController implements Disposable {
     try {
       final settings = await _settingsRepository.fetchMapUiSettings();
       _applyMapUiSettings(settings);
+      await loadMapFilterRuleCatalog();
     } catch (error) {
       remoteErrorStreamValue.addValue(error.toString());
     } finally {
       isRemoteLoadingStreamValue.addValue(false);
+    }
+  }
+
+  Future<void> loadMapFilterRuleCatalog({bool force = false}) async {
+    if (mapFilterRuleCatalogLoadingStreamValue.value) {
+      return;
+    }
+    if (!force && !mapFilterRuleCatalogStreamValue.value.isEmpty) {
+      return;
+    }
+
+    mapFilterRuleCatalogLoadingStreamValue.addValue(true);
+    try {
+      final accountRepo = _accountProfilesRepository;
+      final staticRepo = _staticAssetsRepository;
+      final taxonomyRepo = _taxonomiesRepository;
+      if (accountRepo == null || staticRepo == null || taxonomyRepo == null) {
+        mapFilterRuleCatalogStreamValue
+            .addValue(const TenantAdminMapFilterRuleCatalog.empty());
+        return;
+      }
+
+      final accountTypesFuture = accountRepo.fetchProfileTypes();
+      final staticTypesFuture = staticRepo.fetchStaticProfileTypes();
+      final taxonomiesFuture = taxonomyRepo.fetchTaxonomies();
+
+      final accountTypes = await accountTypesFuture;
+      final staticTypes = await staticTypesFuture;
+      final taxonomies = await taxonomiesFuture;
+
+      final termsByTaxonomySlug =
+          await _loadTermsByTaxonomySlug(taxonomies: taxonomies);
+      final catalog = _buildMapFilterRuleCatalog(
+        accountTypes: accountTypes,
+        staticTypes: staticTypes,
+        taxonomies: taxonomies,
+        termsByTaxonomySlug: termsByTaxonomySlug,
+      );
+      mapFilterRuleCatalogStreamValue.addValue(catalog);
+    } catch (error) {
+      remoteErrorStreamValue.addValue(
+        'Não foi possível carregar catálogo de regras dos filtros: $error',
+      );
+    } finally {
+      mapFilterRuleCatalogLoadingStreamValue.addValue(false);
     }
   }
 
@@ -388,6 +507,203 @@ class TenantAdminSettingsController implements Disposable {
     }
   }
 
+  Future<void> saveMapFilters() async {
+    mapUiSubmittingStreamValue.addValue(true);
+    try {
+      final updated = await _settingsRepository.updateMapUiSettings(
+        settings: _mapUiSettings,
+      );
+      _applyMapUiSettings(updated);
+      await _refreshAppDataSnapshot();
+      _reportSuccess('Filtros do mapa atualizados com sucesso.');
+    } catch (error) {
+      remoteErrorStreamValue.addValue(error.toString());
+    } finally {
+      mapUiSubmittingStreamValue.addValue(false);
+    }
+  }
+
+  void addMapFilterItem() {
+    final current = List<TenantAdminMapFilterCatalogItem>.from(
+      _mapUiSettings.filters,
+    );
+    final nextIndex = current.length + 1;
+    final defaultKey = _buildMapFilterDefaultKey(nextIndex, current);
+    current.add(
+      TenantAdminMapFilterCatalogItem(
+        key: defaultKey,
+        label: 'Filtro ${nextIndex.toString()}',
+      ),
+    );
+    _replaceMapFilters(current);
+  }
+
+  void removeMapFilterItem(int index) {
+    if (index < 0 || index >= _mapUiSettings.filters.length) {
+      return;
+    }
+    final current = List<TenantAdminMapFilterCatalogItem>.from(
+      _mapUiSettings.filters,
+    )..removeAt(index);
+    _replaceMapFilters(current);
+  }
+
+  void moveMapFilterItemUp(int index) {
+    if (index <= 0 || index >= _mapUiSettings.filters.length) {
+      return;
+    }
+    final current = List<TenantAdminMapFilterCatalogItem>.from(
+      _mapUiSettings.filters,
+    );
+    final item = current.removeAt(index);
+    current.insert(index - 1, item);
+    _replaceMapFilters(current);
+  }
+
+  void moveMapFilterItemDown(int index) {
+    if (index < 0 || index >= _mapUiSettings.filters.length - 1) {
+      return;
+    }
+    final current = List<TenantAdminMapFilterCatalogItem>.from(
+      _mapUiSettings.filters,
+    );
+    final item = current.removeAt(index);
+    current.insert(index + 1, item);
+    _replaceMapFilters(current);
+  }
+
+  void updateMapFilterItemKey(int index, String rawKey) {
+    final item = _mapFilterAt(index);
+    if (item == null) {
+      return;
+    }
+    final normalized = _normalizeMapFilterKey(rawKey);
+    if (normalized.isEmpty) {
+      remoteErrorStreamValue.addValue(
+        'A chave do filtro deve conter letras, números, hífen ou underscore.',
+      );
+      return;
+    }
+    final current = List<TenantAdminMapFilterCatalogItem>.from(
+      _mapUiSettings.filters,
+    );
+    current[index] = item.copyWith(key: normalized);
+    _replaceMapFilters(current);
+    remoteErrorStreamValue.addValue(null);
+  }
+
+  void updateMapFilterItemLabel(int index, String rawLabel) {
+    final item = _mapFilterAt(index);
+    if (item == null) {
+      return;
+    }
+    final label = rawLabel.trim();
+    if (label.isEmpty) {
+      remoteErrorStreamValue.addValue('O rótulo do filtro é obrigatório.');
+      return;
+    }
+    final current = List<TenantAdminMapFilterCatalogItem>.from(
+      _mapUiSettings.filters,
+    );
+    current[index] = item.copyWith(label: label);
+    _replaceMapFilters(current);
+    remoteErrorStreamValue.addValue(null);
+  }
+
+  void updateMapFilterItemRule(
+    int index,
+    TenantAdminMapFilterQuery query,
+  ) {
+    final item = _mapFilterAt(index);
+    if (item == null) {
+      return;
+    }
+    final source = query.source;
+    if (source == null) {
+      remoteErrorStreamValue.addValue(
+        'Selecione a origem do filtro (Conta, Asset ou Evento).',
+      );
+      return;
+    }
+    final sanitized = TenantAdminMapFilterQuery(
+      source: source,
+      types: query.types
+          .map((entry) => entry.trim().toLowerCase())
+          .where((entry) => entry.isNotEmpty)
+          .toSet()
+          .toList(growable: false),
+      taxonomy: query.taxonomy
+          .map((entry) => entry.trim().toLowerCase())
+          .where((entry) => entry.isNotEmpty)
+          .toSet()
+          .toList(growable: false),
+    );
+    final current = List<TenantAdminMapFilterCatalogItem>.from(
+      _mapUiSettings.filters,
+    );
+    current[index] = item.copyWith(query: sanitized);
+    _replaceMapFilters(current);
+    remoteErrorStreamValue.addValue(null);
+  }
+
+  void clearMapFilterItemImage(int index) {
+    final item = _mapFilterAt(index);
+    if (item == null) {
+      return;
+    }
+    final current = List<TenantAdminMapFilterCatalogItem>.from(
+      _mapUiSettings.filters,
+    );
+    current[index] = item.copyWith(clearImageUri: true);
+    _replaceMapFilters(current);
+  }
+
+  Future<void> uploadMapFilterItemImage({
+    required int index,
+    required XFile file,
+  }) async {
+    final item = _mapFilterAt(index);
+    if (item == null) {
+      return;
+    }
+    final key = _normalizeMapFilterKey(item.key);
+    if (key.isEmpty) {
+      remoteErrorStreamValue.addValue(
+        'Defina uma chave válida para o filtro antes de enviar a imagem.',
+      );
+      return;
+    }
+
+    final upload = await _imageIngestionService.buildUpload(
+      file,
+      slot: TenantAdminImageSlot.mapFilter,
+    );
+    if (upload == null) {
+      remoteErrorStreamValue.addValue(
+        'Não foi possível preparar a imagem do filtro.',
+      );
+      return;
+    }
+
+    try {
+      final imageUri = await _settingsRepository.uploadMapFilterImage(
+        key: key,
+        upload: upload,
+      );
+      final current = List<TenantAdminMapFilterCatalogItem>.from(
+        _mapUiSettings.filters,
+      );
+      current[index] = item.copyWith(
+        key: key,
+        imageUri: imageUri,
+      );
+      _replaceMapFilters(current);
+      _reportSuccess('Imagem do filtro atualizada.');
+    } catch (error) {
+      remoteErrorStreamValue.addValue(error.toString());
+    }
+  }
+
   Future<void> loadRemoteSettings() async {
     await loadBrandingSettings();
   }
@@ -435,6 +751,26 @@ class TenantAdminSettingsController implements Disposable {
       remoteErrorStreamValue.addValue(error.toString());
     } finally {
       pushSubmittingStreamValue.addValue(false);
+    }
+  }
+
+  Future<void> saveAppLinksSettings() async {
+    final parsed = _buildAppLinksSettings();
+    if (parsed == null) {
+      return;
+    }
+
+    appLinksSubmittingStreamValue.addValue(true);
+    try {
+      final updated = await _settingsRepository.updateAppLinksSettings(
+        settings: parsed,
+      );
+      _applyAppLinksSettings(updated);
+      _reportSuccess('App Links atualizados com sucesso.');
+    } catch (error) {
+      remoteErrorStreamValue.addValue(error.toString());
+    } finally {
+      appLinksSubmittingStreamValue.addValue(false);
     }
   }
 
@@ -659,7 +995,7 @@ class TenantAdminSettingsController implements Disposable {
     _settingsRepository.clearBrandingSettings();
     clearStatusMessages();
     telemetrySnapshotStreamValue
-        .addValue(const TenantAdminTelemetrySettingsSnapshot.empty());
+        .addValue(TenantAdminTelemetrySettingsSnapshot.empty());
     clearTelemetryForm();
     clearBrandingFile(TenantAdminBrandingAssetSlot.lightLogo);
     clearBrandingFile(TenantAdminBrandingAssetSlot.darkLogo);
@@ -669,6 +1005,7 @@ class TenantAdminSettingsController implements Disposable {
     _seedFirebaseAndPushFromSnapshot();
     _clearBrandingDraftForRemoteLoad();
     _resetMapUiDraft();
+    _resetAppLinksDraft();
   }
 
   void _clearBrandingDraftForRemoteLoad() {
@@ -681,6 +1018,21 @@ class TenantAdminSettingsController implements Disposable {
     brandingLightIconUrlStreamValue.addValue(null);
     brandingDarkIconUrlStreamValue.addValue(null);
     brandingPwaIconUrlStreamValue.addValue(null);
+  }
+
+  void _resetAppLinksDraft() {
+    appLinksSettingsStreamValue.addValue(TenantAdminAppLinksSettings.empty());
+    appLinksSubmittingStreamValue.addValue(false);
+    appLinksIosPathsSelectionStreamValue.addValue(
+      List<String>.from(
+        TenantAdminAppLinksSettings.canonicalIosPaths,
+        growable: false,
+      ),
+    );
+    appLinksAndroidPackageNameController.clear();
+    appLinksAndroidFingerprintsController.clear();
+    appLinksIosTeamIdController.clear();
+    appLinksIosBundleIdController.clear();
   }
 
   TenantAdminFirebaseSettings? _buildFirebaseSettings() {
@@ -717,6 +1069,84 @@ class TenantAdminSettingsController implements Disposable {
       maxPerMinute: maxPerMinute,
       maxPerHour: maxPerHour,
     );
+  }
+
+  TenantAdminAppLinksSettings? _buildAppLinksSettings() {
+    final androidPackageName =
+        _normalizeOptionalText(appLinksAndroidPackageNameController.text);
+    if (androidPackageName != null &&
+        !_isValidAndroidPackageName(androidPackageName)) {
+      remoteErrorStreamValue.addValue('Package name Android inválido.');
+      return null;
+    }
+
+    final fingerprints = _parseDelimitedList(
+      appLinksAndroidFingerprintsController.text,
+    ).map((entry) => entry.toUpperCase()).toList(growable: false);
+    if (fingerprints.isEmpty) {
+      remoteErrorStreamValue.addValue(
+        'Informe ao menos um fingerprint SHA-256.',
+      );
+      return null;
+    }
+    if (androidPackageName == null) {
+      remoteErrorStreamValue.addValue(
+        'Configure Android package antes de salvar fingerprints.',
+      );
+      return null;
+    }
+    final invalidFingerprint = fingerprints.firstWhere(
+      (entry) => !_isValidSha256Fingerprint(entry),
+      orElse: () => '',
+    );
+    if (invalidFingerprint.isNotEmpty) {
+      remoteErrorStreamValue.addValue(
+        'Fingerprint SHA-256 inválido: $invalidFingerprint',
+      );
+      return null;
+    }
+
+    final iosTeamId = _normalizeOptionalText(appLinksIosTeamIdController.text);
+    final iosBundleId =
+        _normalizeOptionalText(appLinksIosBundleIdController.text);
+    if ((iosTeamId == null) != (iosBundleId == null)) {
+      remoteErrorStreamValue.addValue(
+        'Preencha team_id e bundle_id do iOS juntos, ou deixe ambos vazios.',
+      );
+      return null;
+    }
+    if (iosTeamId != null && !_isValidIosTeamId(iosTeamId)) {
+      remoteErrorStreamValue.addValue('team_id do iOS inválido.');
+      return null;
+    }
+    if (iosBundleId != null && !_isValidIosBundleId(iosBundleId)) {
+      remoteErrorStreamValue.addValue('bundle_id do iOS inválido.');
+      return null;
+    }
+
+    final iosPaths =
+        List<String>.from(appLinksIosPathsSelectionStreamValue.value);
+    if (iosTeamId != null && iosPaths.isEmpty) {
+      remoteErrorStreamValue.addValue(
+        'Informe ao menos um path iOS para Universal Links.',
+      );
+      return null;
+    }
+
+    try {
+      return appLinksSettingsStreamValue.value.applyValues(
+        androidAppIdentifier: androidPackageName,
+        androidSha256CertFingerprints: fingerprints,
+        iosTeamId: iosTeamId,
+        iosBundleId: iosBundleId,
+        iosPaths: iosPaths,
+      );
+    } catch (_) {
+      remoteErrorStreamValue.addValue(
+        'App Links inválido. Revise package, fingerprints, team_id e bundle_id.',
+      );
+      return null;
+    }
   }
 
   TenantAdminBrandingUpdateInput? _buildBrandingUpdateInput({
@@ -773,6 +1203,19 @@ class TenantAdminSettingsController implements Disposable {
     pushMaxTtlDaysController.text = '${settings.maxTtlDays}';
     pushMaxPerMinuteController.text = '${settings.maxPerMinute}';
     pushMaxPerHourController.text = '${settings.maxPerHour}';
+  }
+
+  void _applyAppLinksSettings(TenantAdminAppLinksSettings settings) {
+    appLinksSettingsStreamValue.addValue(settings);
+    appLinksIosPathsSelectionStreamValue.addValue(
+      List<String>.from(settings.iosPaths, growable: false),
+    );
+    appLinksAndroidPackageNameController.text =
+        settings.androidAppIdentifier ?? '';
+    appLinksAndroidFingerprintsController.text =
+        settings.androidSha256CertFingerprints.join(', ');
+    appLinksIosTeamIdController.text = settings.iosTeamId ?? '';
+    appLinksIosBundleIdController.text = settings.iosBundleId ?? '';
   }
 
   void _applyBrandingSettings(TenantAdminBrandingSettings settings) {
@@ -835,9 +1278,186 @@ class TenantAdminSettingsController implements Disposable {
     mapDefaultOriginLabelController.text = defaultOrigin.label ?? '';
   }
 
+  Future<Map<String, List<TenantAdminTaxonomyTermDefinition>>>
+      _loadTermsByTaxonomySlug({
+    required List<TenantAdminTaxonomyDefinition> taxonomies,
+  }) async {
+    final taxonomyRepo = _taxonomiesRepository;
+    if (taxonomyRepo == null) {
+      return const <String, List<TenantAdminTaxonomyTermDefinition>>{};
+    }
+    final entries = await Future.wait<
+        MapEntry<String, List<TenantAdminTaxonomyTermDefinition>>>(
+      taxonomies.map((taxonomy) async {
+        final terms = await taxonomyRepo.fetchTerms(
+          taxonomyId: taxonomy.id,
+        );
+        return MapEntry<String, List<TenantAdminTaxonomyTermDefinition>>(
+          taxonomy.slug,
+          terms,
+        );
+      }),
+    );
+    return {
+      for (final entry in entries) entry.key: entry.value,
+    };
+  }
+
+  TenantAdminMapFilterRuleCatalog _buildMapFilterRuleCatalog({
+    required List<TenantAdminProfileTypeDefinition> accountTypes,
+    required List<TenantAdminStaticProfileTypeDefinition> staticTypes,
+    required List<TenantAdminTaxonomyDefinition> taxonomies,
+    required Map<String, List<TenantAdminTaxonomyTermDefinition>>
+        termsByTaxonomySlug,
+  }) {
+    final accountTypeOptions = accountTypes
+        .where((item) => item.type.trim().isNotEmpty)
+        .map(
+          (item) => TenantAdminMapFilterTypeOption(
+            slug: item.type.trim().toLowerCase(),
+            label: item.label.trim().isEmpty ? item.type : item.label.trim(),
+          ),
+        )
+        .toList(growable: false)
+      ..sort((left, right) => left.label.compareTo(right.label));
+
+    final staticTypeOptions = staticTypes
+        .where((item) => item.type.trim().isNotEmpty)
+        .map(
+          (item) => TenantAdminMapFilterTypeOption(
+            slug: item.type.trim().toLowerCase(),
+            label: item.label.trim().isEmpty ? item.type : item.label.trim(),
+          ),
+        )
+        .toList(growable: false)
+      ..sort((left, right) => left.label.compareTo(right.label));
+
+    final taxonomyBySource = <TenantAdminMapFilterSource,
+        List<TenantAdminMapFilterTaxonomyTermOption>>{
+      TenantAdminMapFilterSource.accountProfile:
+          <TenantAdminMapFilterTaxonomyTermOption>[],
+      TenantAdminMapFilterSource.staticAsset:
+          <TenantAdminMapFilterTaxonomyTermOption>[],
+      TenantAdminMapFilterSource.event:
+          <TenantAdminMapFilterTaxonomyTermOption>[],
+    };
+
+    for (final taxonomy in taxonomies) {
+      final taxonomySlug = taxonomy.slug.trim().toLowerCase();
+      if (taxonomySlug.isEmpty) {
+        continue;
+      }
+      final taxonomyLabel =
+          taxonomy.name.trim().isEmpty ? taxonomySlug : taxonomy.name.trim();
+      final terms = termsByTaxonomySlug[taxonomy.slug] ?? const [];
+      for (final term in terms) {
+        final termSlug = term.slug.trim().toLowerCase();
+        if (termSlug.isEmpty) {
+          continue;
+        }
+        final option = TenantAdminMapFilterTaxonomyTermOption(
+          token: '$taxonomySlug:$termSlug',
+          label: term.name.trim().isEmpty ? term.slug : term.name.trim(),
+          taxonomySlug: taxonomySlug,
+          taxonomyLabel: taxonomyLabel,
+        );
+        if (taxonomy.appliesToTarget('account_profile')) {
+          taxonomyBySource[TenantAdminMapFilterSource.accountProfile]!
+              .add(option);
+        }
+        if (taxonomy.appliesToTarget('static_asset')) {
+          taxonomyBySource[TenantAdminMapFilterSource.staticAsset]!.add(option);
+        }
+        if (taxonomy.appliesToTarget('event')) {
+          taxonomyBySource[TenantAdminMapFilterSource.event]!.add(option);
+        }
+      }
+    }
+
+    for (final source in taxonomyBySource.keys) {
+      taxonomyBySource[source] =
+          List<TenantAdminMapFilterTaxonomyTermOption>.from(
+        taxonomyBySource[source]!,
+      )..sort((left, right) {
+              final group = left.taxonomyLabel.compareTo(right.taxonomyLabel);
+              if (group != 0) {
+                return group;
+              }
+              return left.label.compareTo(right.label);
+            });
+    }
+
+    return TenantAdminMapFilterRuleCatalog(
+      typesBySource: {
+        TenantAdminMapFilterSource.accountProfile:
+            List<TenantAdminMapFilterTypeOption>.unmodifiable(
+          accountTypeOptions,
+        ),
+        TenantAdminMapFilterSource.staticAsset:
+            List<TenantAdminMapFilterTypeOption>.unmodifiable(
+          staticTypeOptions,
+        ),
+        TenantAdminMapFilterSource.event:
+            const <TenantAdminMapFilterTypeOption>[],
+      },
+      taxonomyTermsBySource: {
+        for (final entry in taxonomyBySource.entries)
+          entry.key: List<TenantAdminMapFilterTaxonomyTermOption>.unmodifiable(
+            entry.value,
+          ),
+      },
+    );
+  }
+
+  TenantAdminMapFilterCatalogItem? _mapFilterAt(int index) {
+    if (index < 0 || index >= _mapUiSettings.filters.length) {
+      return null;
+    }
+    return _mapUiSettings.filters[index];
+  }
+
+  void _replaceMapFilters(List<TenantAdminMapFilterCatalogItem> nextFilters) {
+    final nextSettings = _mapUiSettings.applyFilters(nextFilters);
+    _applyMapUiSettings(nextSettings);
+  }
+
+  String _buildMapFilterDefaultKey(
+    int sequence,
+    List<TenantAdminMapFilterCatalogItem> existing,
+  ) {
+    final existingKeys = existing.map((item) => item.key).toSet();
+    var attempt = sequence;
+    while (attempt < 999) {
+      final candidate = 'filter_$attempt';
+      if (!existingKeys.contains(candidate)) {
+        return candidate;
+      }
+      attempt += 1;
+    }
+    return 'filter_${DateTime.now().millisecondsSinceEpoch}';
+  }
+
+  String _normalizeMapFilterKey(String raw) {
+    var normalized = raw.trim().toLowerCase();
+    if (normalized.isEmpty) {
+      return '';
+    }
+    normalized = normalized.replaceAll(RegExp(r'[^a-z0-9_-]+'), '-');
+    normalized = normalized.replaceAll(RegExp(r'-{2,}'), '-');
+    normalized = normalized.replaceAll(RegExp(r'^[-_]+|[-_]+$'), '');
+    if (normalized.length > _mapFilterKeyMaxLength) {
+      normalized = normalized.substring(0, _mapFilterKeyMaxLength);
+      normalized = normalized.replaceAll(RegExp(r'^[-_]+|[-_]+$'), '');
+    }
+    return normalized;
+  }
+
   void _resetMapUiDraft() {
-    _mapUiSettings = const TenantAdminMapUiSettings.empty();
-    mapUiSettingsStreamValue.addValue(const TenantAdminMapUiSettings.empty());
+    _mapUiSettings = TenantAdminMapUiSettings.empty();
+    mapUiSettingsStreamValue.addValue(TenantAdminMapUiSettings.empty());
+    mapFilterRuleCatalogStreamValue
+        .addValue(const TenantAdminMapFilterRuleCatalog.empty());
+    mapFilterRuleCatalogLoadingStreamValue.addValue(false);
     mapUiSubmittingStreamValue.addValue(false);
     mapDefaultOriginLatitudeController.clear();
     mapDefaultOriginLongitudeController.clear();
@@ -860,6 +1480,43 @@ class TenantAdminSettingsController implements Disposable {
         .map((item) => item.trim())
         .where((item) => item.isNotEmpty)
         .toList(growable: false);
+  }
+
+  List<String> _parseDelimitedList(String raw) {
+    return raw
+        .split(RegExp(r'[\n,;]'))
+        .map((item) => item.trim())
+        .where((item) => item.isNotEmpty)
+        .toSet()
+        .toList(growable: false);
+  }
+
+  String? _normalizeOptionalText(String raw) {
+    final value = raw.trim();
+    if (value.isEmpty) {
+      return null;
+    }
+    return value;
+  }
+
+  bool _isValidAndroidPackageName(String raw) {
+    final pattern = RegExp(r'^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)+$');
+    return pattern.hasMatch(raw);
+  }
+
+  bool _isValidIosBundleId(String raw) {
+    final pattern = RegExp(r'^[a-zA-Z0-9-]+(\.[a-zA-Z0-9-]+)+$');
+    return pattern.hasMatch(raw);
+  }
+
+  bool _isValidIosTeamId(String raw) {
+    final pattern = RegExp(r'^[A-Z0-9]{10}$');
+    return pattern.hasMatch(raw.toUpperCase());
+  }
+
+  bool _isValidSha256Fingerprint(String raw) {
+    final pattern = RegExp(r'^([A-F0-9]{2}:){31}[A-F0-9]{2}$');
+    return pattern.hasMatch(raw);
   }
 
   int? _parsePositiveInt(String raw) {
@@ -960,6 +1617,11 @@ class TenantAdminSettingsController implements Disposable {
     remoteSuccessStreamValue.dispose();
     mapUiSubmittingStreamValue.dispose();
     mapUiSettingsStreamValue.dispose();
+    appLinksSubmittingStreamValue.dispose();
+    appLinksSettingsStreamValue.dispose();
+    appLinksIosPathsSelectionStreamValue.dispose();
+    mapFilterRuleCatalogStreamValue.dispose();
+    mapFilterRuleCatalogLoadingStreamValue.dispose();
     firebaseSubmittingStreamValue.dispose();
     pushSubmittingStreamValue.dispose();
     telemetrySubmittingStreamValue.dispose();
@@ -995,6 +1657,10 @@ class TenantAdminSettingsController implements Disposable {
     mapDefaultOriginLatitudeController.dispose();
     mapDefaultOriginLongitudeController.dispose();
     mapDefaultOriginLabelController.dispose();
+    appLinksAndroidPackageNameController.dispose();
+    appLinksAndroidFingerprintsController.dispose();
+    appLinksIosTeamIdController.dispose();
+    appLinksIosBundleIdController.dispose();
     _tenantScopeSubscription?.cancel();
     _brandingSubscription?.cancel();
     _locationSelectionSubscription?.cancel();

@@ -29,7 +29,8 @@ class DomainValue extends URIRequiredValue {
     if (candidate.isEmpty) {
       throw RequiredValueException();
     }
-    final normalized = candidate.contains('://') ? candidate : 'https://$candidate';
+    final normalized =
+        candidate.contains('://') ? candidate : 'https://$candidate';
     final uri = Uri.tryParse(normalized);
     if (uri == null || !uri.hasScheme || uri.host.isEmpty) {
       throw InvalidValueException();

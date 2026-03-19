@@ -1,10 +1,13 @@
-import 'dart:convert';
-
 import 'package:belluga_now/domain/repositories/landlord_auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_settings_repository_contract.dart';
 import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_settings.dart';
+import 'package:belluga_now/infrastructure/dal/dao/http/json_object_response_decoder.dart';
+import 'package:belluga_now/infrastructure/dal/dao/http/raw_json_envelope_decoder.dart';
+import 'package:belluga_now/infrastructure/dal/dao/tenant_admin/tenant_admin_settings_request_encoder.dart';
+import 'package:belluga_now/infrastructure/dal/dao/tenant_admin/tenant_admin_settings_response_decoder.dart';
+import 'package:belluga_now/infrastructure/repositories/tenant_admin/support/tenant_admin_validation_failure_resolver.dart';
 import 'package:dio/dio.dart';
 import 'package:get_it/get_it.dart';
 import 'package:http_parser/http_parser.dart';
@@ -20,6 +23,14 @@ class TenantAdminSettingsRepository
 
   final Dio _dio;
   final TenantAdminTenantScopeContract? _tenantScope;
+  final JsonObjectResponseDecoder _jsonObjectResponseDecoder =
+      const JsonObjectResponseDecoder();
+  final RawJsonEnvelopeDecoder _envelopeDecoder =
+      const RawJsonEnvelopeDecoder();
+  final TenantAdminSettingsRequestEncoder _requestEncoder =
+      const TenantAdminSettingsRequestEncoder();
+  final TenantAdminSettingsResponseDecoder _responseDecoder =
+      const TenantAdminSettingsResponseDecoder();
   final StreamValue<TenantAdminBrandingSettings?> _brandingSettingsStreamValue =
       StreamValue<TenantAdminBrandingSettings?>(defaultValue: null);
   int _brandingFetchSequence = 0;
@@ -40,8 +51,10 @@ class TenantAdminSettingsRepository
         _buildTenantSettingsValuesUri(),
         options: Options(headers: _buildHeaders()),
       );
-      final mapUi = _extractMapUiPayload(response.data);
-      return _mapMapUiSettings(mapUi);
+      return _responseDecoder.decodeMapUiSettings(
+        response.data,
+        tenantOrigin: _resolveTenantOriginUri(),
+      );
     } on DioException catch (error) {
       throw _wrapError(error, 'load map_ui settings');
     }
@@ -54,13 +67,99 @@ class TenantAdminSettingsRepository
     try {
       final response = await _dio.patchUri(
         _buildTenantSettingsValuesUri(namespace: 'map_ui'),
-        data: _toSettingsPatchPayload(settings.rawMapUi),
+        data: _requestEncoder.encodeMapUiSettingsPatch(settings),
         options: Options(headers: _buildHeaders()),
       );
-      final mapUi = _extractMapUiPayload(response.data);
-      return _mapMapUiSettings(mapUi);
+      return _responseDecoder.decodeMapUiSettings(
+        response.data,
+        tenantOrigin: _resolveTenantOriginUri(),
+      );
     } on DioException catch (error) {
       throw _wrapError(error, 'update map_ui settings');
+    }
+  }
+
+  @override
+  Future<TenantAdminAppLinksSettings> fetchAppLinksSettings() async {
+    try {
+      final settingsFuture = _dio.getUri(
+        _buildTenantSettingsValuesUri(),
+        options: Options(headers: _buildHeaders()),
+      );
+      final appDomainIdentifiersFuture = _fetchAppDomainIdentifiers();
+
+      final settingsResponse = await settingsFuture;
+      final appDomainIdentifiers = await appDomainIdentifiersFuture;
+      return _responseDecoder.decodeAppLinksSettings(
+        settingsResponse.data,
+        appDomainIdentifiers: appDomainIdentifiers,
+      );
+    } on DioException catch (error) {
+      throw _wrapError(error, 'load app_links settings');
+    }
+  }
+
+  @override
+  Future<TenantAdminAppLinksSettings> updateAppLinksSettings({
+    required TenantAdminAppLinksSettings settings,
+  }) async {
+    try {
+      var appDomainIdentifiers = await _fetchAppDomainIdentifiers();
+      appDomainIdentifiers = await _syncAppDomainIdentifier(
+        platform: 'android',
+        desiredIdentifier: settings.androidAppIdentifier,
+        currentIdentifiers: appDomainIdentifiers,
+      );
+      appDomainIdentifiers = await _syncAppDomainIdentifier(
+        platform: 'ios',
+        desiredIdentifier: settings.iosBundleId,
+        currentIdentifiers: appDomainIdentifiers,
+      );
+
+      final response = await _dio.patchUri(
+        _buildTenantSettingsValuesUri(namespace: 'app_links'),
+        data: _requestEncoder.encodeAppLinksSettingsPatch(settings),
+        options: Options(headers: _buildHeaders()),
+      );
+      return _responseDecoder.decodeAppLinksSettings(
+        response.data,
+        appDomainIdentifiers: appDomainIdentifiers,
+      );
+    } on DioException catch (error) {
+      throw _wrapError(error, 'update app_links settings');
+    }
+  }
+
+  @override
+  Future<String> uploadMapFilterImage({
+    required String key,
+    required TenantAdminMediaUpload upload,
+  }) async {
+    try {
+      final payload = FormData.fromMap({
+        'key': key.trim(),
+      });
+      _appendUpload(
+        payload,
+        fieldName: 'image',
+        upload: upload,
+      );
+
+      final response = await _dio.post(
+        '$_apiBaseUrl/v1/media/map-filter-image',
+        data: payload,
+        options: Options(
+          headers: _buildHeaders(),
+          contentType: 'multipart/form-data',
+        ),
+      );
+      return _responseDecoder.decodeMapFilterImageUpload(
+        response.data,
+        key: key,
+        tenantOrigin: _resolveTenantOriginUri(),
+      );
+    } on DioException catch (error) {
+      throw _wrapError(error, 'upload map filter image');
     }
   }
 
@@ -83,8 +182,9 @@ class TenantAdminSettingsRepository
         '$_apiBaseUrl/v1/settings/firebase',
         options: Options(headers: _buildHeaders()),
       );
-      final payload = _extractDataMap(response.data);
-      return _mapFirebaseSettings(payload);
+      return _responseDecoder.decodeFirebaseSettings(
+        response.data,
+      );
     } on DioException catch (error) {
       throw _wrapError(error, 'load firebase settings');
     }
@@ -100,8 +200,9 @@ class TenantAdminSettingsRepository
         data: {'firebase': settings.toJson()},
         options: Options(headers: _buildHeaders()),
       );
-      final payload = _extractDataMap(response.data);
-      final mapped = _mapFirebaseSettings(payload);
+      final mapped = _responseDecoder.decodeFirebaseSettings(
+        response.data,
+      );
       if (mapped == null) {
         throw Exception('Firebase settings response is empty.');
       }
@@ -121,8 +222,7 @@ class TenantAdminSettingsRepository
         data: {'push': settings.toJson()},
         options: Options(headers: _buildHeaders()),
       );
-      final payload = _extractDataMap(response.data);
-      return _mapPushSettings(payload);
+      return _responseDecoder.decodePushSettings(response.data);
     } on DioException catch (error) {
       throw _wrapError(error, 'update push settings');
     }
@@ -135,7 +235,7 @@ class TenantAdminSettingsRepository
         '$_apiBaseUrl/v1/settings/telemetry',
         options: Options(headers: _buildHeaders()),
       );
-      return _mapTelemetrySnapshot(response.data);
+      return _responseDecoder.decodeTelemetrySnapshot(response.data);
     } on DioException catch (error) {
       throw _wrapError(error, 'load telemetry settings');
     }
@@ -151,7 +251,7 @@ class TenantAdminSettingsRepository
         data: integration.toUpsertPayload(),
         options: Options(headers: _buildHeaders()),
       );
-      return _mapTelemetrySnapshot(response.data);
+      return _responseDecoder.decodeTelemetrySnapshot(response.data);
     } on DioException catch (error) {
       throw _wrapError(error, 'save telemetry integration');
     }
@@ -167,7 +267,7 @@ class TenantAdminSettingsRepository
         '$_apiBaseUrl/v1/settings/telemetry/$encodedType',
         options: Options(headers: _buildHeaders()),
       );
-      return _mapTelemetrySnapshot(response.data);
+      return _responseDecoder.decodeTelemetrySnapshot(response.data);
     } on DioException catch (error) {
       throw _wrapError(error, 'delete telemetry integration');
     }
@@ -186,13 +286,14 @@ class TenantAdminSettingsRepository
           headers: _buildBrandingReadHeaders(),
         ),
       );
-      final payload = _extractEnvironmentMap(
-        _decodeJsonObject(
+      final payload = _envelopeDecoder.decodeEnvironmentMap(
+        _jsonObjectResponseDecoder.decode(
           response.data,
           endpoint: response.requestOptions.uri,
         ),
+        label: 'environment',
       );
-      final settings = _mapBrandingFromEnvironment(
+      final settings = _responseDecoder.decodeBrandingFromEnvironment(
         payload,
         tenantOrigin: _resolveTenantOriginUri(
           apiBaseUrl: requestedApiBaseUrl,
@@ -285,279 +386,6 @@ class TenantAdminSettingsRepository
     }
   }
 
-  Map<String, dynamic> _extractDataMap(dynamic raw) {
-    if (raw is Map<String, dynamic>) {
-      final data = raw['data'];
-      if (data is Map<String, dynamic>) {
-        return data;
-      }
-      if (raw.containsKey('data')) {
-        return const {};
-      }
-      return raw;
-    }
-    throw Exception('Unexpected settings response shape.');
-  }
-
-  Map<String, dynamic> _extractMapUiPayload(dynamic raw) {
-    final payload = _extractDataMap(raw);
-    if (payload.containsKey('map_ui')) {
-      final mapUiRaw = payload['map_ui'];
-      if (mapUiRaw is Map) {
-        return Map<String, dynamic>.from(mapUiRaw);
-      }
-      if (mapUiRaw == null) {
-        return const <String, dynamic>{};
-      }
-      if (mapUiRaw is List && mapUiRaw.isEmpty) {
-        return const <String, dynamic>{};
-      }
-      throw Exception('Unexpected map_ui payload shape.');
-    }
-    return Map<String, dynamic>.from(payload);
-  }
-
-  TenantAdminMapUiSettings _mapMapUiSettings(Map<String, dynamic> mapUi) {
-    final defaultOriginRaw = mapUi['default_origin'];
-    TenantAdminMapDefaultOrigin? defaultOrigin;
-    if (defaultOriginRaw is Map) {
-      final originMap = Map<String, dynamic>.from(defaultOriginRaw);
-      final lat = _parseDouble(originMap['lat']);
-      final lng = _parseDouble(originMap['lng']);
-      if (lat != null && lng != null) {
-        final rawLabel = originMap['label']?.toString().trim();
-        defaultOrigin = TenantAdminMapDefaultOrigin(
-          lat: lat,
-          lng: lng,
-          label: rawLabel == null || rawLabel.isEmpty ? null : rawLabel,
-        );
-      }
-    } else {
-      final lat = _parseDouble(mapUi['default_origin.lat']);
-      final lng = _parseDouble(mapUi['default_origin.lng']);
-      if (lat != null && lng != null) {
-        final rawLabel = mapUi['default_origin.label']?.toString().trim();
-        defaultOrigin = TenantAdminMapDefaultOrigin(
-          lat: lat,
-          lng: lng,
-          label: rawLabel == null || rawLabel.isEmpty ? null : rawLabel,
-        );
-      }
-    }
-
-    return TenantAdminMapUiSettings(
-      rawMapUi: Map<String, dynamic>.unmodifiable(
-        Map<String, dynamic>.from(mapUi),
-      ),
-      defaultOrigin: defaultOrigin,
-    );
-  }
-
-  Map<String, dynamic> _extractEnvironmentMap(dynamic raw) {
-    if (raw is! Map<String, dynamic>) {
-      throw Exception('Unexpected environment response shape.');
-    }
-    final data = raw['data'];
-    if (data == null) {
-      return raw;
-    }
-    if (data is Map<String, dynamic>) {
-      return data;
-    }
-    throw Exception('Unexpected environment data shape.');
-  }
-
-  Map<String, dynamic> _decodeJsonObject(
-    dynamic raw, {
-    required Uri endpoint,
-  }) {
-    if (raw is Map<String, dynamic>) {
-      return raw;
-    }
-    if (raw is Map) {
-      return Map<String, dynamic>.from(raw);
-    }
-    if (raw is String) {
-      final trimmed = raw.trim();
-      if (trimmed.isEmpty) {
-        throw Exception(
-          'Environment response body is empty for $endpoint.',
-        );
-      }
-      final decoded = jsonDecode(trimmed);
-      if (decoded is Map<String, dynamic>) {
-        return decoded;
-      }
-      if (decoded is Map) {
-        return Map<String, dynamic>.from(decoded);
-      }
-      throw Exception(
-        'Environment response is not an object for $endpoint.',
-      );
-    }
-    if (raw is List<int>) {
-      final decodedRaw = utf8.decode(raw, allowMalformed: true);
-      return _decodeJsonObject(decodedRaw, endpoint: endpoint);
-    }
-    throw Exception(
-      'Unexpected environment payload type (${raw.runtimeType}) for $endpoint.',
-    );
-  }
-
-  TenantAdminTelemetrySettingsSnapshot _mapTelemetrySnapshot(dynamic raw) {
-    if (raw is! Map<String, dynamic>) {
-      throw Exception('Unexpected telemetry response shape.');
-    }
-
-    final integrations =
-        _extractDataList(raw['data']).map(_mapTelemetry).toList(
-              growable: false,
-            );
-    final availableEvents = _extractStringList(raw['available_events']);
-    return TenantAdminTelemetrySettingsSnapshot(
-      integrations: integrations,
-      availableEvents: availableEvents,
-    );
-  }
-
-  List<Map<String, dynamic>> _extractDataList(dynamic raw) {
-    if (raw is List) {
-      return raw
-          .whereType<Map>()
-          .map((entry) => Map<String, dynamic>.from(entry))
-          .toList(growable: false);
-    }
-    return const [];
-  }
-
-  List<String> _extractStringList(dynamic raw) {
-    if (raw is List) {
-      return raw
-          .map((entry) => entry.toString().trim())
-          .where((value) => value.isNotEmpty)
-          .toList(growable: false);
-    }
-    return const [];
-  }
-
-  TenantAdminFirebaseSettings? _mapFirebaseSettings(Map<String, dynamic> map) {
-    final apiKey = map['apiKey']?.toString().trim();
-    final appId = map['appId']?.toString().trim();
-    final projectId = map['projectId']?.toString().trim();
-    final sender = map['messagingSenderId']?.toString().trim();
-    final storageBucket = map['storageBucket']?.toString().trim();
-    if (apiKey == null ||
-        appId == null ||
-        projectId == null ||
-        sender == null ||
-        storageBucket == null ||
-        apiKey.isEmpty ||
-        appId.isEmpty ||
-        projectId.isEmpty ||
-        sender.isEmpty ||
-        storageBucket.isEmpty) {
-      return null;
-    }
-    return TenantAdminFirebaseSettings(
-      apiKey: apiKey,
-      appId: appId,
-      projectId: projectId,
-      messagingSenderId: sender,
-      storageBucket: storageBucket,
-    );
-  }
-
-  TenantAdminPushSettings _mapPushSettings(Map<String, dynamic> map) {
-    final ttlDays = _parseInt(map['max_ttl_days']) ?? 30;
-    final throttlesRaw = map['throttles'];
-    final throttles = throttlesRaw is Map<String, dynamic>
-        ? throttlesRaw
-        : const <String, dynamic>{};
-    final maxPerMinute = _parseInt(throttles['max_per_minute']) ?? 60;
-    final maxPerHour = _parseInt(throttles['max_per_hour']) ?? 600;
-    return TenantAdminPushSettings(
-      maxTtlDays: ttlDays,
-      maxPerMinute: maxPerMinute,
-      maxPerHour: maxPerHour,
-    );
-  }
-
-  TenantAdminTelemetryIntegration _mapTelemetry(Map<String, dynamic> map) {
-    final type = map['type']?.toString().trim() ?? '';
-    final trackAll = _parseBool(map['track_all']);
-    final events = _extractStringList(map['events']);
-    final token = map['token']?.toString().trim();
-    final url = map['url']?.toString().trim();
-
-    final extra = <String, dynamic>{};
-    for (final entry in map.entries) {
-      if (entry.key == 'type' ||
-          entry.key == 'track_all' ||
-          entry.key == 'events' ||
-          entry.key == 'token' ||
-          entry.key == 'url') {
-        continue;
-      }
-      extra[entry.key] = entry.value;
-    }
-
-    return TenantAdminTelemetryIntegration(
-      type: type,
-      trackAll: trackAll,
-      events: events,
-      token: token == null || token.isEmpty ? null : token,
-      url: url == null || url.isEmpty ? null : url,
-      extra: extra.isEmpty ? null : extra,
-    );
-  }
-
-  TenantAdminBrandingSettings _mapBrandingFromEnvironment(
-    Map<String, dynamic> map, {
-    required Uri tenantOrigin,
-  }) {
-    final environmentType = map['type']?.toString().trim().toLowerCase();
-    if (environmentType != 'tenant') {
-      throw Exception(
-        'Unexpected environment type "$environmentType" for tenant branding read.',
-      );
-    }
-
-    final themeSettingsRaw = map['theme_data_settings'];
-    if (themeSettingsRaw is! Map<String, dynamic>) {
-      throw Exception('Missing theme_data_settings in tenant environment.');
-    }
-    final themeSettings = themeSettingsRaw;
-
-    final tenantName = _requireNonEmptyString(
-      map['name'],
-      fieldName: 'name',
-    );
-    final primarySeedColor = _requireHexColor(
-      themeSettings['primary_seed_color'],
-      fieldName: 'theme_data_settings.primary_seed_color',
-    );
-    final secondarySeedColor = _requireHexColor(
-      themeSettings['secondary_seed_color'],
-      fieldName: 'theme_data_settings.secondary_seed_color',
-    );
-    final brightnessDefault = _parseBrandingBrightness(
-      themeSettings['brightness_default'],
-    );
-
-    return TenantAdminBrandingSettings(
-      tenantName: tenantName,
-      brightnessDefault: brightnessDefault,
-      primarySeedColor: primarySeedColor,
-      secondarySeedColor: secondarySeedColor,
-      lightLogoUrl: _buildTenantAssetUrl(tenantOrigin, 'logo-light.png'),
-      darkLogoUrl: _buildTenantAssetUrl(tenantOrigin, 'logo-dark.png'),
-      lightIconUrl: _buildTenantAssetUrl(tenantOrigin, 'icon-light.png'),
-      darkIconUrl: _buildTenantAssetUrl(tenantOrigin, 'icon-dark.png'),
-      faviconUrl: _buildTenantAssetUrl(tenantOrigin, 'favicon.ico'),
-      pwaIconUrl: _resolvePwaIconUrl(map, tenantOrigin: tenantOrigin),
-    );
-  }
-
   Uri _buildEnvironmentEndpointUri({String? apiBaseUrl}) {
     final origin = _resolveTenantOriginUri(
       apiBaseUrl: apiBaseUrl,
@@ -581,6 +409,11 @@ class TenantAdminSettingsRepository
         ? '/admin/api/v1/settings/values'
         : '/admin/api/v1/settings/values/$encodedNamespace';
     return origin.replace(path: path);
+  }
+
+  Uri _buildTenantAppDomainsUri() {
+    final origin = _resolveTenantOriginUri();
+    return origin.replace(path: '/admin/api/v1/appdomains');
   }
 
   Uri _resolveTenantOriginUri({String? apiBaseUrl}) {
@@ -674,138 +507,10 @@ class TenantAdminSettingsRepository
         .toString();
   }
 
-  String? _resolvePwaIconUrl(
-    Map<String, dynamic> payload, {
-    required Uri tenantOrigin,
-  }) {
-    final logoSettings = payload['logo_settings'];
-    final fromLogoSettings = _extractPwaIconUrlFromNode(
-      logoSettings,
-      tenantOrigin: tenantOrigin,
-    );
-    if (fromLogoSettings != null) {
-      return fromLogoSettings;
-    }
-
-    return _extractPwaIconUrlFromNode(
-      payload['pwa_icon'],
-      tenantOrigin: tenantOrigin,
-    );
-  }
-
-  String? _extractPwaIconUrlFromNode(
-    dynamic node, {
-    required Uri tenantOrigin,
-  }) {
-    if (node is String) {
-      return _resolveAssetUrl(
-        node,
-        tenantOrigin: tenantOrigin,
-      );
-    }
-    if (node is! Map) {
-      return null;
-    }
-
-    final map = Map<String, dynamic>.from(node);
-    final direct = _resolveAssetUrl(
-      map['icon512_uri'],
-      tenantOrigin: tenantOrigin,
-    );
-    if (direct != null) {
-      return direct;
-    }
-
-    final uri = _resolveAssetUrl(
-      map['uri'],
-      tenantOrigin: tenantOrigin,
-    );
-    if (uri != null) {
-      return uri;
-    }
-
-    final pwaIconUri = _resolveAssetUrl(
-      map['pwa_icon_uri'],
-      tenantOrigin: tenantOrigin,
-    );
-    if (pwaIconUri != null) {
-      return pwaIconUri;
-    }
-
-    final nested = map['pwa_icon'];
-    if (nested != null && !identical(nested, node)) {
-      return _extractPwaIconUrlFromNode(
-        nested,
-        tenantOrigin: tenantOrigin,
-      );
-    }
-    return null;
-  }
-
-  String? _resolveAssetUrl(
-    dynamic raw, {
-    required Uri tenantOrigin,
-  }) {
-    final value = raw?.toString().trim();
-    if (value == null || value.isEmpty) {
-      return null;
-    }
-    final parsed = Uri.tryParse(value);
-    if (parsed == null) {
-      return null;
-    }
-    if (parsed.host.trim().isNotEmpty) {
-      return parsed.toString();
-    }
-    return tenantOrigin.resolveUri(parsed).toString();
-  }
-
   Map<String, String> _buildBrandingReadHeaders() {
     return {
       'Accept': 'application/json',
     };
-  }
-
-  String _requireNonEmptyString(
-    dynamic raw, {
-    required String fieldName,
-  }) {
-    final value = raw?.toString().trim();
-    if (value == null || value.isEmpty) {
-      throw Exception('Missing required environment field: $fieldName');
-    }
-    return value;
-  }
-
-  String _requireHexColor(
-    dynamic raw, {
-    required String fieldName,
-  }) {
-    final value = _normalizeHexColor(raw);
-    if (value == null) {
-      throw Exception('Invalid or missing color field: $fieldName');
-    }
-    return value;
-  }
-
-  TenantAdminBrandingBrightness _parseBrandingBrightness(dynamic raw) {
-    final value = raw?.toString().trim().toLowerCase();
-    if (value == 'light') {
-      return TenantAdminBrandingBrightness.light;
-    }
-    if (value == 'dark') {
-      return TenantAdminBrandingBrightness.dark;
-    }
-    throw Exception(
-      'Invalid or missing brightness field: theme_data_settings.brightness_default',
-    );
-  }
-
-  bool _parseBool(dynamic value) {
-    if (value is bool) return value;
-    if (value is num) return value != 0;
-    final raw = value?.toString().trim().toLowerCase();
-    return raw == '1' || raw == 'true' || raw == 'yes';
   }
 
   void _appendUpload(
@@ -840,81 +545,66 @@ class TenantAdminSettingsRepository
     return MediaType(parts[0], parts[1]);
   }
 
-  String? _normalizeHexColor(dynamic raw) {
-    final value = raw?.toString().trim();
-    if (value == null || value.isEmpty) {
-      return null;
-    }
-    final sixDigit = RegExp(r'^#([a-fA-F0-9]{6})$');
-    if (sixDigit.hasMatch(value)) {
-      return value.toUpperCase();
-    }
-    final threeDigit = RegExp(r'^#([a-fA-F0-9]{3})$');
-    final match = threeDigit.firstMatch(value);
-    if (match == null) {
-      return null;
-    }
-    final compact = match.group(1)!;
-    final expanded = compact.split('').map((char) => '$char$char').join();
-    return '#${expanded.toUpperCase()}';
-  }
-
-  int? _parseInt(dynamic value) {
-    if (value is int) return value;
-    if (value is num) return value.toInt();
-    if (value is String) return int.tryParse(value.trim());
-    return null;
-  }
-
-  double? _parseDouble(dynamic value) {
-    if (value is double) return value;
-    if (value is int) return value.toDouble();
-    if (value is num) return value.toDouble();
-    if (value is String) return double.tryParse(value.trim());
-    return null;
-  }
-
-  Map<String, dynamic> _toSettingsPatchPayload(Map<String, dynamic> source) {
-    final flattened = <String, dynamic>{};
-    _flattenSettingsPayload(
-      source,
-      flattened,
-      prefix: null,
-    );
-    return flattened;
-  }
-
-  void _flattenSettingsPayload(
-    Map<String, dynamic> source,
-    Map<String, dynamic> output, {
-    required String? prefix,
-  }) {
-    source.forEach((rawKey, value) {
-      final key = rawKey.trim();
-      if (key.isEmpty) {
-        return;
-      }
-
-      final path = prefix == null ? key : '$prefix.$key';
-      if (value is Map) {
-        _flattenSettingsPayload(
-          Map<String, dynamic>.from(value),
-          output,
-          prefix: path,
-        );
-        return;
-      }
-
-      output[path] = value;
-    });
-  }
-
   Exception _wrapError(DioException error, String label) {
-    final status = error.response?.statusCode;
-    final data = error.response?.data;
-    return Exception(
-      'Failed to $label [status=$status] (${error.requestOptions.uri}): '
-      '${data ?? error.message}',
+    return tenantAdminWrapRepositoryError(error, label);
+  }
+
+  Future<TenantAdminAppDomainIdentifiers> _fetchAppDomainIdentifiers() async {
+    final response = await _dio.getUri(
+      _buildTenantAppDomainsUri(),
+      options: Options(headers: _buildHeaders()),
     );
+    return _responseDecoder.decodeAppDomainIdentifiers(response.data);
+  }
+
+  Future<TenantAdminAppDomainIdentifiers> _syncAppDomainIdentifier({
+    required String platform,
+    required String? desiredIdentifier,
+    required TenantAdminAppDomainIdentifiers currentIdentifiers,
+  }) async {
+    final normalizedDesired = desiredIdentifier?.trim();
+    final current = platform == 'android'
+        ? currentIdentifiers.androidAppIdentifier
+        : currentIdentifiers.iosBundleId;
+
+    if (normalizedDesired == null || normalizedDesired.isEmpty) {
+      if (current == null || current.trim().isEmpty) {
+        return currentIdentifiers;
+      }
+      return _removeAppDomainIdentifier(platform: platform);
+    }
+
+    return _upsertAppDomainIdentifier(
+      platform: platform,
+      identifier: normalizedDesired,
+    );
+  }
+
+  Future<TenantAdminAppDomainIdentifiers> _upsertAppDomainIdentifier({
+    required String platform,
+    required String identifier,
+  }) async {
+    final response = await _dio.postUri(
+      _buildTenantAppDomainsUri(),
+      data: {
+        'platform': platform,
+        'identifier': identifier,
+      },
+      options: Options(headers: _buildHeaders()),
+    );
+    return _responseDecoder.decodeAppDomainIdentifiers(response.data);
+  }
+
+  Future<TenantAdminAppDomainIdentifiers> _removeAppDomainIdentifier({
+    required String platform,
+  }) async {
+    final response = await _dio.deleteUri(
+      _buildTenantAppDomainsUri(),
+      data: {
+        'platform': platform,
+      },
+      options: Options(headers: _buildHeaders()),
+    );
+    return _responseDecoder.decodeAppDomainIdentifiers(response.data);
   }
 }

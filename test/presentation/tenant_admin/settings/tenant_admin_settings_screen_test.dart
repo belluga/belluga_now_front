@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:typed_data';
+import 'package:belluga_now/testing/tenant_admin_app_links_settings_builder.dart';
 
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
@@ -10,9 +11,11 @@ import 'package:belluga_now/domain/services/tenant_admin_external_image_proxy_co
 import 'package:belluga_now/domain/services/tenant_admin_location_selection_contract.dart';
 import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_settings.dart';
 import 'package:belluga_now/infrastructure/services/tenant_admin/tenant_admin_location_selection_service.dart';
 import 'package:belluga_now/presentation/tenant_admin/settings/controllers/tenant_admin_settings_controller.dart';
+import 'package:belluga_now/presentation/tenant_admin/settings/models/tenant_admin_settings_integration_section.dart';
 import 'package:belluga_now/presentation/tenant_admin/settings/screens/tenant_admin_settings_environment_snapshot_screen.dart';
 import 'package:belluga_now/presentation/tenant_admin/settings/screens/tenant_admin_settings_local_preferences_screen.dart';
 import 'package:belluga_now/presentation/tenant_admin/settings/screens/tenant_admin_settings_screen.dart';
@@ -77,7 +80,10 @@ void main() {
       find.byKey(TenantAdminSettingsKeys.hubActionVisualIdentity),
       findsNothing,
     );
-    expect(find.text('Toque para editar preferências'), findsOneWidget);
+    expect(
+      find.text('Toque para editar preferências e filtros do mapa'),
+      findsOneWidget,
+    );
     expect(find.text('Toque para editar identidade visual'), findsOneWidget);
 
     await tester.scrollUntilVisible(
@@ -96,6 +102,10 @@ void main() {
     );
     expect(
       find.byKey(TenantAdminSettingsKeys.hubIntegrationFirebase),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(TenantAdminSettingsKeys.hubIntegrationAppLinks),
       findsOneWidget,
     );
     expect(
@@ -263,6 +273,65 @@ void main() {
     expect(repository.initCallCount, 1);
   });
 
+  testWidgets('adds map filter item and persists catalog on map_ui save',
+      (tester) async {
+    final repository = _FakeAppDataRepository(_buildAppData());
+    final settingsRepository = _FakeTenantAdminSettingsRepository();
+    GetIt.I.registerSingleton<AppDataRepositoryContract>(repository);
+    GetIt.I.registerSingleton<TenantAdminSettingsRepositoryContract>(
+      settingsRepository,
+    );
+    GetIt.I.registerSingleton<TenantAdminImageIngestionService>(
+      TenantAdminImageIngestionService(
+        externalImageProxy: _FakeTenantAdminExternalImageProxy(),
+      ),
+    );
+    final controller = TenantAdminSettingsController();
+    GetIt.I.registerSingleton<TenantAdminSettingsController>(controller);
+
+    await _pumpWithAutoRoute(
+      tester,
+      const Scaffold(body: TenantAdminSettingsLocalPreferencesScreen()),
+    );
+
+    await tester.scrollUntilVisible(
+      find.byKey(TenantAdminSettingsKeys.localPreferencesAddMapFilterButton),
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(TenantAdminSettingsKeys.localPreferencesAddMapFilterButton),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(TenantAdminSettingsKeys.localPreferencesMapFiltersCard),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(TenantAdminSettingsKeys.localPreferencesMapFilterRow(0)),
+      findsOneWidget,
+    );
+
+    await tester.scrollUntilVisible(
+      find.byKey(TenantAdminSettingsKeys.localPreferencesSaveOriginButton),
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(TenantAdminSettingsKeys.localPreferencesSaveOriginButton),
+    );
+    await tester.pumpAndSettle();
+
+    expect(settingsRepository.updatedMapUiSettings, isNotNull);
+    final filters = settingsRepository.updatedMapUiSettings!.filters;
+    expect(filters, hasLength(1));
+    expect(filters.first.key, 'filter_1');
+    expect(filters.first.label, 'Filtro 1');
+  });
+
   testWidgets('saves firebase settings via remote repository', (tester) async {
     final repository = _FakeAppDataRepository(_buildAppData());
     final settingsRepository = _FakeTenantAdminSettingsRepository();
@@ -280,7 +349,11 @@ void main() {
 
     await _pumpWithAutoRoute(
       tester,
-      const Scaffold(body: TenantAdminSettingsTechnicalIntegrationsScreen()),
+      const Scaffold(
+        body: TenantAdminSettingsTechnicalIntegrationsScreen(
+          initialSection: TenantAdminSettingsIntegrationSection.appLinks,
+        ),
+      ),
     );
     expect(
       find.byKey(
@@ -337,6 +410,177 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(settingsRepository.updatedFirebaseProjectId, 'project-updated');
+  });
+
+  testWidgets('saves app links settings via remote repository', (tester) async {
+    final repository = _FakeAppDataRepository(_buildAppData());
+    final settingsRepository = _FakeTenantAdminSettingsRepository();
+    GetIt.I.registerSingleton<AppDataRepositoryContract>(repository);
+    GetIt.I.registerSingleton<TenantAdminSettingsRepositoryContract>(
+      settingsRepository,
+    );
+    GetIt.I.registerSingleton<TenantAdminImageIngestionService>(
+      TenantAdminImageIngestionService(
+        externalImageProxy: _FakeTenantAdminExternalImageProxy(),
+      ),
+    );
+    final controller = TenantAdminSettingsController();
+    GetIt.I.registerSingleton<TenantAdminSettingsController>(controller);
+
+    await _pumpWithAutoRoute(
+      tester,
+      const Scaffold(
+        body: TenantAdminSettingsTechnicalIntegrationsScreen(
+          initialSection: TenantAdminSettingsIntegrationSection.appLinks,
+        ),
+      ),
+    );
+
+    final packageRow = find.byKey(
+      TenantAdminSettingsKeys.technicalIntegrationsAppLinksAndroidPackageEdit,
+      skipOffstage: false,
+    );
+    final fingerprintsRow = find.byKey(
+      TenantAdminSettingsKeys.technicalIntegrationsAppLinksFingerprintsEdit,
+      skipOffstage: false,
+    );
+    final saveButton = find.byKey(
+      TenantAdminSettingsKeys.technicalIntegrationsSaveAppLinks,
+      skipOffstage: false,
+    );
+
+    await tester.scrollUntilVisible(
+      packageRow,
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.descendant(
+          of: packageRow, matching: find.byIcon(Icons.edit_outlined)),
+    );
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Package'),
+      'com.guarappari.app',
+    );
+    await tester.tap(find.text('Aplicar'));
+    await tester.pumpAndSettle();
+
+    await tester.scrollUntilVisible(
+      fingerprintsRow,
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.descendant(
+        of: fingerprintsRow,
+        matching: find.byIcon(Icons.edit_outlined),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Fingerprints'),
+      '3E:72:4C:54:E9:53:26:7D:E6:E1:9B:F8:DC:53:30:2A:08:01:8E:36:40:AA:23:11:22:33:44:55:66:77:88:99',
+    );
+    await tester.tap(find.text('Aplicar'));
+    await tester.pumpAndSettle();
+
+    await tester.scrollUntilVisible(
+      saveButton,
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(saveButton);
+    await tester.pumpAndSettle();
+
+    expect(settingsRepository.updatedAppLinksSettings, isNotNull);
+    expect(
+      settingsRepository.updatedAppLinksSettings!.androidAppIdentifier,
+      'com.guarappari.app',
+    );
+    expect(
+      settingsRepository.updatedAppLinksSettings!.androidSha256CertFingerprints,
+      equals(
+        const [
+          '3E:72:4C:54:E9:53:26:7D:E6:E1:9B:F8:DC:53:30:2A:08:01:8E:36:40:AA:23:11:22:33:44:55:66:77:88:99',
+        ],
+      ),
+    );
+  });
+
+  testWidgets(
+      'updates iOS paths via canonical checklist before saving app links',
+      (tester) async {
+    final repository = _FakeAppDataRepository(_buildAppData());
+    final settingsRepository = _FakeTenantAdminSettingsRepository();
+    GetIt.I.registerSingleton<AppDataRepositoryContract>(repository);
+    GetIt.I.registerSingleton<TenantAdminSettingsRepositoryContract>(
+      settingsRepository,
+    );
+    GetIt.I.registerSingleton<TenantAdminImageIngestionService>(
+      TenantAdminImageIngestionService(
+        externalImageProxy: _FakeTenantAdminExternalImageProxy(),
+      ),
+    );
+    final controller = TenantAdminSettingsController();
+    GetIt.I.registerSingleton<TenantAdminSettingsController>(controller);
+
+    await _pumpWithAutoRoute(
+      tester,
+      const Scaffold(
+        body: TenantAdminSettingsTechnicalIntegrationsScreen(
+          initialSection: TenantAdminSettingsIntegrationSection.appLinks,
+        ),
+      ),
+    );
+
+    final iosPathsRow = find.byKey(
+      TenantAdminSettingsKeys.technicalIntegrationsAppLinksIosPathsEdit,
+      skipOffstage: false,
+    );
+    final saveButton = find.byKey(
+      TenantAdminSettingsKeys.technicalIntegrationsSaveAppLinks,
+      skipOffstage: false,
+    );
+
+    await tester.scrollUntilVisible(
+      iosPathsRow,
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(
+      find.descendant(
+        of: iosPathsRow,
+        matching: find.byIcon(Icons.edit_outlined),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Selecionar iOS paths'), findsOneWidget);
+    await tester.tap(find.widgetWithText(CheckboxListTile, '/home'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'Aplicar'));
+    await tester.pumpAndSettle();
+
+    await tester.scrollUntilVisible(
+      saveButton,
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(saveButton);
+    await tester.pumpAndSettle();
+
+    expect(settingsRepository.updatedAppLinksSettings, isNotNull);
+    expect(
+      settingsRepository.updatedAppLinksSettings!.iosPaths,
+      equals(const ['/invite*', '/convites*', '/home']),
+    );
   });
 
   testWidgets('saves branding settings via remote repository', (tester) async {
@@ -685,9 +929,12 @@ class _FakeTenantAdminSettingsRepository
   String? updatedFirebaseProjectId;
   TenantAdminBrandingUpdateInput? lastBrandingInput;
   TenantAdminMapUiSettings? updatedMapUiSettings;
+  TenantAdminAppLinksSettings? updatedAppLinksSettings;
+  String? uploadedMapFilterKey;
+  TenantAdminMediaUpload? uploadedMapFilterPayload;
   final StreamValue<TenantAdminBrandingSettings?> _brandingSettingsStreamValue =
       StreamValue<TenantAdminBrandingSettings?>(defaultValue: null);
-  TenantAdminMapUiSettings _mapUiSettings = const TenantAdminMapUiSettings(
+  TenantAdminMapUiSettings _mapUiSettings = TenantAdminMapUiSettings(
     rawMapUi: {
       'radius': 15000,
       'default_origin': {
@@ -701,9 +948,9 @@ class _FakeTenantAdminSettingsRepository
       lng: -40.4976,
       label: 'Centro',
     ),
+    filters: [],
   );
-  TenantAdminBrandingSettings _brandingSettings =
-      const TenantAdminBrandingSettings(
+  TenantAdminBrandingSettings _brandingSettings = TenantAdminBrandingSettings(
     tenantName: 'Tenant Test',
     brightnessDefault: TenantAdminBrandingBrightness.light,
     primarySeedColor: '#009688',
@@ -713,6 +960,27 @@ class _FakeTenantAdminSettingsRepository
     lightIconUrl: 'https://guarappari.test/storage/light-icon.png',
     darkIconUrl: 'https://guarappari.test/storage/dark-icon.png',
     pwaIconUrl: 'https://guarappari.test/storage/pwa-icon.png',
+  );
+  TenantAdminAppLinksSettings _appLinksSettings =
+      buildTenantAdminAppLinksSettings(
+    rawAppLinks: const {
+      'android': {
+        'sha256_cert_fingerprints': [
+          '3E:72:4C:54:E9:53:26:7D:E6:E1:9B:F8:DC:53:30:2A:08:01:8E:36:40:AA:23:11:22:33:44:55:66:77:88:99',
+        ],
+      },
+      'ios': {
+        'team_id': 'TEAMID1234',
+        'paths': ['/invite*', '/convites*'],
+      },
+    },
+    androidAppIdentifier: 'com.guarappari.app',
+    androidSha256CertFingerprints: const [
+      '3E:72:4C:54:E9:53:26:7D:E6:E1:9B:F8:DC:53:30:2A:08:01:8E:36:40:AA:23:11:22:33:44:55:66:77:88:99',
+    ],
+    iosTeamId: 'TEAMID1234',
+    iosBundleId: 'com.guarappari.app',
+    iosPaths: const ['/invite*', '/convites*'],
   );
 
   @override
@@ -730,10 +998,15 @@ class _FakeTenantAdminSettingsRepository
   }
 
   @override
+  Future<TenantAdminAppLinksSettings> fetchAppLinksSettings() async {
+    return _appLinksSettings;
+  }
+
+  @override
   Future<TenantAdminTelemetrySettingsSnapshot> deleteTelemetryIntegration({
     required String type,
   }) async {
-    return const TenantAdminTelemetrySettingsSnapshot(
+    return TenantAdminTelemetrySettingsSnapshot(
       integrations: [],
       availableEvents: ['app_opened'],
     );
@@ -741,7 +1014,7 @@ class _FakeTenantAdminSettingsRepository
 
   @override
   Future<TenantAdminFirebaseSettings?> fetchFirebaseSettings() async {
-    return const TenantAdminFirebaseSettings(
+    return TenantAdminFirebaseSettings(
       apiKey: 'apikey',
       appId: 'appid',
       projectId: 'project-test',
@@ -752,7 +1025,7 @@ class _FakeTenantAdminSettingsRepository
 
   @override
   Future<TenantAdminTelemetrySettingsSnapshot> fetchTelemetrySettings() async {
-    return const TenantAdminTelemetrySettingsSnapshot(
+    return TenantAdminTelemetrySettingsSnapshot(
       integrations: [],
       availableEvents: ['app_opened'],
     );
@@ -774,6 +1047,25 @@ class _FakeTenantAdminSettingsRepository
     updatedMapUiSettings = settings;
     _mapUiSettings = settings;
     return settings;
+  }
+
+  @override
+  Future<TenantAdminAppLinksSettings> updateAppLinksSettings({
+    required TenantAdminAppLinksSettings settings,
+  }) async {
+    updatedAppLinksSettings = settings;
+    _appLinksSettings = settings;
+    return settings;
+  }
+
+  @override
+  Future<String> uploadMapFilterImage({
+    required String key,
+    required TenantAdminMediaUpload upload,
+  }) async {
+    uploadedMapFilterKey = key;
+    uploadedMapFilterPayload = upload;
+    return 'https://guarappari.test/api/v1/media/map-filters/$key?v=1';
   }
 
   @override

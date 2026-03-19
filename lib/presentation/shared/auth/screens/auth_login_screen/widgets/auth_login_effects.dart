@@ -30,10 +30,12 @@ class _AuthLoginEffectsState extends State<AuthLoginEffects> {
   String? _lastGeneralError;
   bool? _lastLoginResult;
   bool? _lastSignUpResult;
+  String? _cachedRedirectPath;
 
   @override
   void initState() {
     super.initState();
+    _cacheRedirectPathIfPresent();
     _resetIfCleared();
     _handleGeneralError(widget.generalError);
     _handleLoginResult(widget.loginResult);
@@ -43,10 +45,19 @@ class _AuthLoginEffectsState extends State<AuthLoginEffects> {
   @override
   void didUpdateWidget(covariant AuthLoginEffects oldWidget) {
     super.didUpdateWidget(oldWidget);
+    _cacheRedirectPathIfPresent();
     _resetIfCleared();
     _handleGeneralError(widget.generalError);
     _handleLoginResult(widget.loginResult);
     _handleSignUpResult(widget.signUpResult);
+  }
+
+  void _cacheRedirectPathIfPresent() {
+    final redirectPath = _readRedirectPathFromQuery();
+    if (redirectPath == null || redirectPath.isEmpty) {
+      return;
+    }
+    _cachedRedirectPath = redirectPath;
   }
 
   void _resetIfCleared() {
@@ -104,7 +115,7 @@ class _AuthLoginEffectsState extends State<AuthLoginEffects> {
 
   void _navigateAfterAuth() {
     final router = context.router;
-    final pendingPath = _readRedirectPathFromQuery();
+    final pendingPath = _cachedRedirectPath ?? _readRedirectPathFromQuery();
     if (pendingPath != null && !pendingPath.contains('/auth/login')) {
       router.replacePath(pendingPath);
       return;
@@ -117,7 +128,11 @@ class _AuthLoginEffectsState extends State<AuthLoginEffects> {
   }
 
   String? _readRedirectPathFromQuery() {
-    final value = context.routeData.queryParams.rawMap['redirect'];
+    final routeData = _tryReadRouteData();
+    if (routeData == null) {
+      return null;
+    }
+    final value = routeData.queryParams.rawMap['redirect'];
     if (value == null) {
       return null;
     }
@@ -126,6 +141,14 @@ class _AuthLoginEffectsState extends State<AuthLoginEffects> {
       return null;
     }
     return Uri.decodeComponent(redirect);
+  }
+
+  RouteData? _tryReadRouteData() {
+    try {
+      return context.routeData;
+    } catch (_) {
+      return null;
+    }
   }
 
   SnackBar _buildErrorSnack(String message) {

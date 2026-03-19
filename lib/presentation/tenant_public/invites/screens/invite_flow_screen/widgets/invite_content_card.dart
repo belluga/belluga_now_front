@@ -16,7 +16,9 @@ class InviteContentCard extends StatelessWidget {
     required this.extraInviters,
     required this.onAccept,
     required this.onDecline,
+    required this.onRequestAuthentication,
     required this.onViewDetails,
+    required this.requiresAuthentication,
   });
 
   final String heroImage;
@@ -28,7 +30,9 @@ class InviteContentCard extends StatelessWidget {
   final int extraInviters;
   final VoidCallback onAccept;
   final VoidCallback onDecline;
+  final VoidCallback onRequestAuthentication;
   final VoidCallback onViewDetails;
+  final bool requiresAuthentication;
 
   @override
   Widget build(BuildContext context) {
@@ -106,45 +110,77 @@ class InviteContentCard extends StatelessWidget {
                   maxLines: 1,
                 ),
                 const Spacer(),
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: onDecline,
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 14),
-                          foregroundColor: Colors.white,
-                          side: BorderSide(
-                            color: Colors.white.withValues(alpha: 0.7),
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(24),
-                          ),
+                if (requiresAuthentication)
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton.icon(
+                      onPressed: onRequestAuthentication,
+                      style: FilledButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 14,
                         ),
-                        icon: const Icon(Icons.close),
-                        label: const Text('Recusar'),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: FilledButton.icon(
-                        onPressed: onAccept,
-                        style: FilledButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 14),
-                          backgroundColor: Colors.blue,
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(24),
-                          ),
+                        backgroundColor: Colors.blue,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(24),
                         ),
-                        icon: const Icon(BooraIcons.invite_solid),
-                        label: const Text('Bóora!'),
                       ),
+                      icon: const Icon(Icons.login),
+                      label: const Text('Entre para Aceitar ou Recusar'),
                     ),
-                  ],
-                ),
+                  )
+                else
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: onDecline,
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 14,
+                            ),
+                            foregroundColor: Colors.white,
+                            side: BorderSide(
+                              color: Colors.white.withValues(alpha: 0.7),
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(24),
+                            ),
+                          ),
+                          icon: const Icon(Icons.close),
+                          label: const Text('Recusar'),
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 10),
+                        child: Icon(
+                          Icons.swipe,
+                          color: Colors.white.withValues(alpha: 0.85),
+                          size: 20,
+                        ),
+                      ),
+                      Expanded(
+                        child: FilledButton.icon(
+                          onPressed: onAccept,
+                          style: FilledButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 14,
+                            ),
+                            backgroundColor: Colors.blue,
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(24),
+                            ),
+                          ),
+                          icon: const Icon(BooraIcons.invite_solid),
+                          label: const Text('Aceitar'),
+                        ),
+                      ),
+                    ],
+                  ),
                 const SizedBox(height: 10),
                 SizedBox(
                   width: double.infinity,

@@ -1,3 +1,7 @@
+export 'tenant_admin_static_profile_type_capabilities.dart';
+
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_static_profile_type_capabilities.dart';
+
 class TenantAdminStaticProfileTypeDefinition {
   const TenantAdminStaticProfileTypeDefinition({
     required this.type,
@@ -10,22 +14,4 @@ class TenantAdminStaticProfileTypeDefinition {
   final String label;
   final List<String> allowedTaxonomies;
   final TenantAdminStaticProfileTypeCapabilities capabilities;
-}
-
-class TenantAdminStaticProfileTypeCapabilities {
-  const TenantAdminStaticProfileTypeCapabilities({
-    required this.isPoiEnabled,
-    required this.hasBio,
-    required this.hasTaxonomies,
-    required this.hasAvatar,
-    required this.hasCover,
-    required this.hasContent,
-  });
-
-  final bool isPoiEnabled;
-  final bool hasBio;
-  final bool hasTaxonomies;
-  final bool hasAvatar;
-  final bool hasCover;
-  final bool hasContent;
 }

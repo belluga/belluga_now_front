@@ -7,6 +7,7 @@ import 'package:belluga_now/domain/repositories/tenant_admin_taxonomies_reposito
 import 'package:belluga_now/domain/services/tenant_admin_external_image_proxy_contract.dart';
 import 'package:belluga_now/domain/tenant_admin/ownership_state.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_onboarding_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_document.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
@@ -25,7 +26,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
 import 'package:image_picker_platform_interface/image_picker_platform_interface.dart';
-
 
 import 'support/tenant_admin_image_crop_harness.dart';
 
@@ -66,6 +66,7 @@ void main() {
       );
       final crop = tester.widget<Crop>(find.byType(Crop));
       expect(crop.aspectRatio, closeTo(1.0, 0.0001));
+      await confirmCropAndDismiss(tester);
     });
 
     testWidgets('create: cover opens crop sheet (16:9)', (tester) async {
@@ -96,6 +97,7 @@ void main() {
       );
       final crop = tester.widget<Crop>(find.byType(Crop));
       expect(crop.aspectRatio, closeTo(16 / 9, 0.0001));
+      await confirmCropAndDismiss(tester);
     });
 
     testWidgets('edit: avatar opens crop sheet (1:1)', (tester) async {
@@ -125,6 +127,7 @@ void main() {
       );
       final crop = tester.widget<Crop>(find.byType(Crop));
       expect(crop.aspectRatio, closeTo(1.0, 0.0001));
+      await confirmCropAndDismiss(tester);
     });
 
     testWidgets('edit: cover opens crop sheet (16:9)', (tester) async {
@@ -154,6 +157,7 @@ void main() {
       );
       final crop = tester.widget<Crop>(find.byType(Crop));
       expect(crop.aspectRatio, closeTo(16 / 9, 0.0001));
+      await confirmCropAndDismiss(tester);
     });
   });
 
@@ -180,6 +184,7 @@ void main() {
         expectedCropTitle: 'Recortar avatar',
       );
       expectCropAspectRatio(tester, 1.0);
+      await confirmCropAndDismiss(tester);
     });
 
     testWidgets('create: cover opens crop sheet (16:9)', (tester) async {
@@ -204,6 +209,7 @@ void main() {
         expectedCropTitle: 'Recortar capa',
       );
       expectCropAspectRatio(tester, 16 / 9);
+      await confirmCropAndDismiss(tester);
     });
 
     testWidgets('edit: avatar opens crop sheet (1:1)', (tester) async {
@@ -227,6 +233,7 @@ void main() {
         expectedCropTitle: 'Recortar avatar',
       );
       expectCropAspectRatio(tester, 1.0);
+      await confirmCropAndDismiss(tester);
     });
 
     testWidgets('edit: cover opens crop sheet (16:9)', (tester) async {
@@ -250,6 +257,7 @@ void main() {
         expectedCropTitle: 'Recortar capa',
       );
       expectCropAspectRatio(tester, 16 / 9);
+      await confirmCropAndDismiss(tester);
     });
   });
 }
@@ -324,6 +332,21 @@ class _FakeAccountsRepository extends TenantAdminAccountsRepositoryContract {
     TenantAdminDocument? document,
     required TenantAdminOwnershipState ownershipState,
     String? organizationId,
+  }) async {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<TenantAdminAccountOnboardingResult> createAccountOnboarding({
+    required String name,
+    required TenantAdminOwnershipState ownershipState,
+    required String profileType,
+    TenantAdminLocation? location,
+    List<TenantAdminTaxonomyTerm> taxonomyTerms = const [],
+    String? bio,
+    String? content,
+    TenantAdminMediaUpload? avatarUpload,
+    TenantAdminMediaUpload? coverUpload,
   }) async {
     throw UnimplementedError();
   }

@@ -1,1 +1,1 @@
-enum PoiFilterMode { none, events, restaurants, beaches, lodging }
+enum PoiFilterMode { none, events, restaurants, beaches, lodging, server }

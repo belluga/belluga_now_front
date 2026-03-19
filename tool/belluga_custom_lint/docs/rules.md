@@ -31,6 +31,12 @@
 - `ui_streamvalue_ownership_forbidden` (`P0`): UI cannot own `StreamValue`/`StreamController`.
 - `ui_dto_import_forbidden` (`P0`): presentation cannot import DTO artifacts.
 - `domain_dto_dependency_forbidden` (`P0`): domain cannot depend on DTO artifacts.
+- `domain_json_factory_forbidden` (`P0`): domain cannot declare `fromJson`/`fromMap` factories.
+- `repository_json_parsing_forbidden` (`P0`): repositories cannot parse raw JSON or hydrate DTOs directly.
+- `repository_raw_payload_map_forbidden` (`P0`): repositories cannot own raw payload map typing/parsing/building (`Map<String, Object?>`).
+- `repository_raw_transport_typing_forbidden` (`P0`): repositories cannot declare raw transport typing such as `dynamic` or `Map<String, dynamic>`.
+- `service_json_parsing_forbidden` (`P0`): services cannot parse raw JSON or hydrate DTOs directly.
+- `repository_inline_dto_to_domain_mapper_forbidden` (`P0`): repositories cannot own inline DTO -> domain mapper methods.
 - `module_direct_getit_registration_forbidden` (`P0`): classes extending `ModuleContract` cannot use direct `GetIt.I.register*`.
 - `controller_direct_navigation_forbidden` (`P1`): controllers cannot call Navigator/router navigation methods.
 - `ui_navigator_usage_forbidden` (`P1`): UI cannot call `Navigator.*` directly.
@@ -38,11 +44,15 @@
 - `ui_build_side_effects_forbidden` (`P1`): side effects in `build`/`didChangeDependencies` are forbidden.
 - `ui_future_stream_builder_forbidden` (`P1`): `FutureBuilder`/`StreamBuilder` are forbidden under `StreamValue` architecture.
 - `ui_controller_ownership_forbidden` (`P1`): Screen files cannot own UI controllers/keys; auxiliary widgets can own them only when isolated from feature controller interactions.
+- `domain_primitive_field_forbidden` (`P1`): domain fields cannot use primitive transport-oriented types directly.
 - `screen_controller_resolution_pattern_required` (`P2`): screen classes must not receive controller params; resolve controller in screen file.
+- `multi_public_class_file_warning` (`P2`): files under `lib/` should keep one public class per file.
 - `multi_widget_file_warning` (`P2`): screen files should avoid multiple widget classes.
 - `controller_buildcontext_dependency_forbidden` (`P2`): controllers cannot use `BuildContext` in API/signatures.
 - `global_ui_controller_naming_forbidden` (`P2`): sanctioned global registrations cannot use UI controller naming (`*Controller`, `*ControllerContract`).
 - `tenant_canonical_domain_required` (`P0`): tenant-scoped networking/config code must derive API/admin origins from `AppData.mainDomainValue`, not `href`/`hostname`/`schema`.
+
+Rollout note: `repository_raw_payload_map_forbidden` is currently kept disabled in root `analysis_options.yaml` and enforced via branch-delta checks during the debt burndown program.
 
 ## Violation/Fix Examples
 
@@ -116,6 +126,88 @@ Fix:
 class Event {
   const Event({required this.id});
   final String id;
+}
+```
+
+### `domain_json_factory_forbidden`
+Violation:
+```dart
+class EventConfig {
+  factory EventConfig.fromJson(Map<String, dynamic> json) => EventConfig();
+}
+```
+Fix:
+```dart
+class EventConfig {
+  factory EventConfig.fromPrimitives({required EventNameValue nameValue}) =>
+      EventConfig();
+}
+```
+
+### `repository_json_parsing_forbidden`
+Violation:
+```dart
+final dto = EventDTO.fromJson(json);
+```
+Fix:
+```dart
+final dto = await backend.fetchEventDto();
+return mapEventDto(dto);
+```
+
+### `repository_raw_transport_typing_forbidden`
+Violation:
+```dart
+Map<String, dynamic> _extractItem(dynamic raw) { ... }
+```
+Fix:
+```dart
+Future<EventDto> fetchEventDto() => _dao.fetchEventDto();
+```
+
+### `repository_raw_payload_map_forbidden`
+Violation:
+```dart
+Map<String, Object?> _extractItem(Object? raw) { ... }
+final payload = <String, Object?>{'name': name};
+```
+Fix:
+```dart
+final response = await dao.fetchAccountItemDto();
+return mapAccountDto(response);
+```
+
+Resolution playbook:
+1. Create or extend a DAO/DTO **response decoder** that receives raw HTTP payload and outputs typed DTOs (or typed decoder models).
+2. Move all repository `_extract*` map/envelope/list parsing into that decoder (including `is Map`, `as/cast`, `whereType<Map>`).
+3. For write flows, create a DAO-side **request encoder/builder** that assembles transport maps/multipart payloads.
+4. Make repository methods consume typed decoder outputs and return domain/projections only (no raw map ownership).
+5. During debt-lane rollout, run branch-delta guard (`bash tool/belluga_custom_lint/bin/check_branch_delta_raw_payload_map.sh`) even when the rule is disabled globally in root config.
+
+No-workaround policy (linted as violations in repositories):
+- `Map` without generics as a replacement for `Map<String, Object?>`.
+- `is Map` / `is! Map` used for envelope parsing in repositories.
+- `cast<String, Object?>()` or `whereType<Map>()` used to bypass typed raw-map checks.
+
+### `service_json_parsing_forbidden`
+Violation:
+```dart
+final payload = jsonDecode(raw);
+```
+Fix:
+```dart
+return backend.decodePayload(raw);
+```
+
+### `repository_inline_dto_to_domain_mapper_forbidden`
+Violation:
+```dart
+EventModel mapEvent(EventDTO dto) => EventModel.fromPrimitives(...);
+```
+Fix:
+```dart
+class EventRepository with EventDtoMapper {
+  EventModel read(EventDTO dto) => mapEventDto(dto);
 }
 ```
 
@@ -212,6 +304,30 @@ Fix:
 // keep local only if it does not pass/bridge this controller to feature controller calls.
 ```
 
+### `domain_primitive_field_forbidden`
+Rollout note:
+```yaml
+custom_lint:
+  rules:
+    - domain_primitive_field_forbidden: false
+```
+Violation:
+```dart
+class EventModel {
+  EventModel(String id) : id = id;
+
+  final String id;
+}
+```
+Fix:
+```dart
+class EventModel {
+  EventModel({required EventIdValue idValue}) : idValue = idValue;
+
+  final EventIdValue idValue;
+}
+```
+
 ### `screen_controller_resolution_pattern_required`
 Violation:
 ```dart
@@ -226,6 +342,19 @@ class HomeScreen extends StatelessWidget {
   HomeScreen({super.key});
   final HomeController controller = GetIt.I.get<HomeController>();
 }
+```
+
+### `multi_public_class_file_warning`
+Violation:
+```dart
+class EventCard {}
+class EventBadge {}
+```
+Fix:
+```dart
+class EventCard {}
+
+class _EventBadge {}
 ```
 
 ### `multi_widget_file_warning`

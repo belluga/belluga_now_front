@@ -63,14 +63,11 @@ import 'package:belluga_now/infrastructure/repositories/tenant_admin/tenant_admi
 import 'package:belluga_now/infrastructure/repositories/tenant_admin/tenant_admin_taxonomies_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/user_events_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/user_location_repository.dart';
-import 'package:belluga_now/infrastructure/dal/datasources/mock_poi_database.dart';
 import 'package:belluga_now/infrastructure/dal/dao/local/app_data_local_info_source/app_data_local_info_source.dart';
 import 'package:belluga_now/infrastructure/dal/dao/backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/backend_context.dart';
 import 'package:belluga_now/infrastructure/dal/dao/production_backend/production_backend.dart';
-import 'package:belluga_now/infrastructure/services/http/laravel_map_poi_http_service.dart';
-import 'package:belluga_now/infrastructure/services/http/mock_http_service.dart';
-import 'package:belluga_now/infrastructure/services/networking/mock_web_socket_service.dart';
+import 'package:belluga_now/infrastructure/dal/dao/laravel_backend/map/laravel_map_poi_http_service.dart';
 import 'package:belluga_now/application/application_contract.dart';
 import 'package:belluga_now/infrastructure/services/push/push_answer_handler.dart';
 import 'package:belluga_now/infrastructure/services/push/push_answer_relay.dart';
@@ -183,7 +180,7 @@ class ModuleSettings extends ModuleSettingsContract {
           );
         case 'event_immersive':
           return _applyPathParameters(
-            '/agenda/evento-imersivo/:slug',
+            '/agenda/evento/:slug',
             request.pathParameters,
           );
         case 'map':
@@ -312,23 +309,12 @@ class ModuleSettings extends ModuleSettingsContract {
       () => InvitesRepository(),
     );
     await _registerAppDataRepository();
-    final mockPoiDatabase =
-        _registerIfAbsent<MockPoiDatabase>(() => MockPoiDatabase());
-    _registerIfAbsent<MockHttpService>(
-      () => MockHttpService(database: mockPoiDatabase),
-    );
     _registerIfAbsent<LaravelMapPoiHttpService>(
       () => LaravelMapPoiHttpService(),
     );
-    _registerIfAbsent<MockWebSocketService>(
-      () => MockWebSocketService(),
-    );
     _registerIfAbsent<CityMapRepositoryContract>(
       () => CityMapRepository(
-        database: mockPoiDatabase,
-        httpService: GetIt.I.get<MockHttpService>(),
         laravelHttpService: GetIt.I.get<LaravelMapPoiHttpService>(),
-        webSocketService: GetIt.I.get<MockWebSocketService>(),
       ),
     );
     _registerIfAbsent<PoiRepositoryContract>(() => PoiRepository());

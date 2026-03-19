@@ -48,6 +48,7 @@ class TenantHomeController implements Disposable {
     if (_initialized) return;
     _initialized = true;
 
+    await _userEventsRepository.refreshConfirmedEventIds();
     await loadMyEvents();
 
     await _userLocationRepository?.warmUpIfPermitted();

@@ -147,7 +147,18 @@ class _TenantAdminSettingsScreenState extends State<TenantAdminSettingsScreen> {
                         label: 'Raio do mapa',
                         value: '$currentKm km',
                       ),
-                      _buildHint(context, 'Toque para editar preferências'),
+                      const SizedBox(height: 8),
+                      _buildSummaryRow(
+                        context,
+                        label: 'Filtros do mapa',
+                        value: appData.mapFilterCatalogKeys.isEmpty
+                            ? 'Nenhum'
+                            : '${appData.mapFilterCatalogKeys.length} configurado(s)',
+                      ),
+                      _buildHint(
+                        context,
+                        'Toque para editar preferências e filtros do mapa',
+                      ),
                     ],
                   ),
                 );
@@ -228,6 +239,24 @@ class _TenantAdminSettingsScreenState extends State<TenantAdminSettingsScreen> {
                       : firebaseSettings.projectId,
                   onTap: () => _openTechnicalIntegrations(
                     TenantAdminSettingsIntegrationSection.firebase,
+                  ),
+                ),
+              ),
+              Divider(
+                height: 12,
+                color: Theme.of(context)
+                    .colorScheme
+                    .outlineVariant
+                    .withValues(alpha: 0.6),
+              ),
+              KeyedSubtree(
+                key: TenantAdminSettingsKeys.hubIntegrationAppLinks,
+                child: TenantAdminHubIntegrationRow(
+                  icon: Icons.link_outlined,
+                  title: 'App Links',
+                  subtitle: 'Android App Links + iOS Universal Links',
+                  onTap: () => _openTechnicalIntegrations(
+                    TenantAdminSettingsIntegrationSection.appLinks,
                   ),
                 ),
               ),

@@ -1,16 +1,13 @@
-import 'package:belluga_now/domain/invites/projections/friend_resume.dart';
-import 'package:belluga_now/domain/repositories/friends_repository_contract.dart';
-import 'package:belluga_now/domain/user/friend.dart';
 import 'package:belluga_now/infrastructure/repositories/invites_repository.dart';
+import 'package:belluga_now/infrastructure/services/invites_backend_contract.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:stream_value/core/stream_value.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   test('applyInvitePushPayload upserts invite to the top', () async {
     final repository = InvitesRepository(
-      friendsRepository: _FakeFriendsRepository(),
+      backend: _FakeInvitesBackend(),
     );
     final baseline = await repository.fetchInvites();
     repository.pendingInvitesStreamValue.addValue(baseline);
@@ -42,14 +39,49 @@ void main() {
   });
 }
 
-class _FakeFriendsRepository extends FriendsRepositoryContract {
+class _FakeInvitesBackend implements InvitesBackendContract {
   @override
-  final friendsStreamValue =
-      StreamValue<List<InviteFriendResume>>(defaultValue: const []);
+  Future<Map<String, dynamic>> fetchInvites({
+    required int page,
+    required int pageSize,
+  }) async =>
+      const {'invites': <Map<String, dynamic>>[]};
 
   @override
-  Future<void> fetchAndCacheFriends({bool forceRefresh = false}) async {}
+  Future<Map<String, dynamic>> fetchSettings() async => const {
+        'tenant_id': null,
+        'limits': <String, int>{},
+        'cooldowns': <String, int>{},
+      };
 
   @override
-  Future<List<Friend>> fetchFriends() async => const [];
+  Future<Map<String, dynamic>> acceptInvite(String inviteId) async =>
+      throw UnimplementedError();
+
+  @override
+  Future<Map<String, dynamic>> declineInvite(String inviteId) async =>
+      throw UnimplementedError();
+
+  @override
+  Future<Map<String, dynamic>> sendInvites(
+          Map<String, dynamic> payload) async =>
+      throw UnimplementedError();
+
+  @override
+  Future<Map<String, dynamic>> createShareCode(
+          Map<String, dynamic> payload) async =>
+      throw UnimplementedError();
+
+  @override
+  Future<Map<String, dynamic>> fetchShareCodePreview(String code) async =>
+      throw UnimplementedError();
+
+  @override
+  Future<Map<String, dynamic>> materializeShareCode(String code) async =>
+      throw UnimplementedError();
+
+  @override
+  Future<Map<String, dynamic>> importContacts(
+          Map<String, dynamic> payload) async =>
+      throw UnimplementedError();
 }

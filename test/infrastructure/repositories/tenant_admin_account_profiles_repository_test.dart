@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:belluga_form_validation/belluga_form_validation.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/app_data/value_object/platform_type_value.dart';
 import 'package:belluga_now/domain/repositories/landlord_auth_repository_contract.dart';
@@ -108,6 +109,25 @@ void main() {
     expect(data['display_name'], 'New Name');
   });
 
+  test('fetchAccountProfiles maps list media fields without detail fallback',
+      () async {
+    final adapter = _ProfileListMediaAdapter();
+    final dio = Dio()..httpClientAdapter = adapter;
+    final repository = TenantAdminAccountProfilesRepository(dio: dio);
+
+    final profiles = await repository.fetchAccountProfiles(accountId: 'acc-1');
+
+    expect(profiles, hasLength(1));
+    expect(profiles.first.id, 'profile-1');
+    expect(profiles.first.avatarUrl, 'https://cdn.test/profile-1-avatar.png');
+    expect(profiles.first.coverUrl, 'https://cdn.test/profile-1-cover.png');
+    expect(adapter.requests, hasLength(1));
+    expect(
+      adapter.requests.first.path,
+      contains('/admin/api/v1/account_profiles'),
+    );
+  });
+
   test('fetchProfileTypesPage sends pagination params and parses hasMore',
       () async {
     final adapter = _ProfileTypesRoutingAdapter();
@@ -139,6 +159,55 @@ void main() {
       readError: () => repository.profileTypesErrorStreamValue.value,
       expectedCountsPerStep: const [2, 3],
       loadNextCalls: 1,
+    );
+  });
+
+  test('createAccountProfile preserves structured 422 validation failure',
+      () async {
+    final adapter = _ProfileCreateValidationAdapter();
+    final dio = Dio()..httpClientAdapter = adapter;
+    final repository = TenantAdminAccountProfilesRepository(dio: dio);
+
+    expect(
+      repository.createAccountProfile(
+        accountId: 'account-1',
+        profileType: 'venue',
+        displayName: 'Perfil',
+      ),
+      throwsA(
+        isA<FormValidationFailure>()
+            .having((error) => error.message, 'message',
+                'The given data was invalid.')
+            .having(
+          (error) => error.fieldErrors['location.lat'],
+          'location.lat error',
+          <String>['Latitude obrigatoria.'],
+        ),
+      ),
+    );
+  });
+
+  test('createAccountProfile surfaces structured 403 security failure',
+      () async {
+    final adapter = _ProfileCreateOriginDeniedAdapter();
+    final dio = Dio()..httpClientAdapter = adapter;
+    final repository = TenantAdminAccountProfilesRepository(dio: dio);
+
+    expect(
+      repository.createAccountProfile(
+        accountId: 'account-1',
+        profileType: 'venue',
+        displayName: 'Perfil',
+      ),
+      throwsA(
+        isA<FormApiFailure>()
+            .having((error) => error.statusCode, 'statusCode', 403)
+            .having(
+              (error) => error.errorCode,
+              'errorCode',
+              'origin_access_denied',
+            ),
+      ),
     );
   });
 }
@@ -289,6 +358,99 @@ class _ProfileTypesRoutingAdapter implements HttpClientAdapter {
     return ResponseBody.fromString(
       jsonEncode(payload),
       200,
+      headers: {
+        Headers.contentTypeHeader: ['application/json'],
+      },
+    );
+  }
+}
+
+class _ProfileListMediaAdapter implements HttpClientAdapter {
+  final List<RequestOptions> requests = <RequestOptions>[];
+
+  @override
+  void close({bool force = false}) {}
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<List<int>>? requestStream,
+    Future? cancelFuture,
+  ) async {
+    requests.add(options);
+
+    if (options.path.endsWith('/v1/account_profiles')) {
+      return _jsonResponse({
+        'data': [
+          {
+            'id': 'profile-1',
+            'account_id': 'acc-1',
+            'profile_type': 'artist',
+            'display_name': 'Profile 1',
+            'slug': 'profile-1',
+            'avatar_url': 'https://cdn.test/profile-1-avatar.png',
+            'cover_url': 'https://cdn.test/profile-1-cover.png',
+          },
+        ],
+      });
+    }
+
+    return _jsonResponse({'data': const []});
+  }
+
+  ResponseBody _jsonResponse(Map<String, dynamic> payload) {
+    return ResponseBody.fromString(
+      jsonEncode(payload),
+      200,
+      headers: {
+        Headers.contentTypeHeader: ['application/json'],
+      },
+    );
+  }
+}
+
+class _ProfileCreateValidationAdapter implements HttpClientAdapter {
+  @override
+  void close({bool force = false}) {}
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<List<int>>? requestStream,
+    Future? cancelFuture,
+  ) async {
+    return ResponseBody.fromString(
+      jsonEncode({
+        'message': 'The given data was invalid.',
+        'errors': {
+          'location.lat': ['Latitude obrigatoria.'],
+        },
+      }),
+      422,
+      headers: {
+        Headers.contentTypeHeader: ['application/json'],
+      },
+    );
+  }
+}
+
+class _ProfileCreateOriginDeniedAdapter implements HttpClientAdapter {
+  @override
+  void close({bool force = false}) {}
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<List<int>>? requestStream,
+    Future? cancelFuture,
+  ) async {
+    return ResponseBody.fromString(
+      jsonEncode({
+        'code': 'origin_access_denied',
+        'message': 'Direct origin access is not allowed.',
+        'correlation_id': 'corr-origin-1',
+      }),
+      403,
       headers: {
         Headers.contentTypeHeader: ['application/json'],
       },

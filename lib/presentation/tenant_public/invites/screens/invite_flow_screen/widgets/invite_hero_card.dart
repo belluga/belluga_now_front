@@ -14,17 +14,21 @@ class InviteHeroCard extends StatelessWidget {
     required this.invite,
     required this.onAccept,
     required this.onDecline,
+    required this.onRequestAuthentication,
     required this.onViewDetails,
     required this.onClose,
     required this.remainingCount,
+    required this.requiresAuthentication,
   });
 
   final InviteModel invite;
   final VoidCallback onAccept;
   final VoidCallback onDecline;
+  final VoidCallback onRequestAuthentication;
   final VoidCallback onViewDetails;
   final VoidCallback onClose;
   final int remainingCount;
+  final bool requiresAuthentication;
 
   @override
   Widget build(BuildContext context) {
@@ -89,22 +93,26 @@ class InviteHeroCard extends StatelessWidget {
                       constraints: const BoxConstraints(maxWidth: 420),
                       child: Padding(
                         padding: const EdgeInsets.all(16),
-                          child: SwipeableCard(
-                            onSwipeRight: onAccept,
-                            onSwipeLeft: onDecline,
-                            child: AspectRatio(
-                              aspectRatio: 13 / 18,
-                              child: InviteContentCard(
-                                heroImage: heroImage,
-                                title: invite.eventName,
-                                dateLabel: dateLabel,
-                                location: location,
-                                host: host,
+                        child: SwipeableCard(
+                          onSwipeRight:
+                              requiresAuthentication ? null : onAccept,
+                          onSwipeLeft:
+                              requiresAuthentication ? null : onDecline,
+                          child: AspectRatio(
+                            aspectRatio: 13 / 18,
+                            child: InviteContentCard(
+                              heroImage: heroImage,
+                              title: invite.eventName,
+                              dateLabel: dateLabel,
+                              location: location,
+                              host: host,
                               inviter: inviter,
                               extraInviters: extraInviters,
                               onAccept: onAccept,
                               onDecline: onDecline,
+                              onRequestAuthentication: onRequestAuthentication,
                               onViewDetails: onViewDetails,
+                              requiresAuthentication: requiresAuthentication,
                             ),
                           ),
                         ),

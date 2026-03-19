@@ -9,6 +9,11 @@ import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 abstract class CityMapRepositoryContract {
   Future<List<CityPoiModel>> fetchPoints(PoiQuery query);
 
+  Future<List<CityPoiModel>> fetchStackItems({
+    required PoiQuery query,
+    required String stackKey,
+  });
+
   Future<PoiFilterOptions> fetchFilters();
 
   Future<List<MainFilterOption>> fetchMainFilters();

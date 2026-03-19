@@ -3,28 +3,14 @@ import 'dart:typed_data';
 
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/domain/services/tenant_admin_external_image_proxy_contract.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_image_ingestion_exception.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_image_slot.dart';
 import 'package:image/image.dart' as img;
 import 'package:image_picker/image_picker.dart';
 import 'package:get_it/get_it.dart';
 
-enum TenantAdminImageSlot {
-  avatar,
-  cover,
-  lightLogo,
-  darkLogo,
-  lightIcon,
-  darkIcon,
-  pwaIcon,
-}
-
-class TenantAdminImageIngestionException implements Exception {
-  TenantAdminImageIngestionException(this.message);
-
-  final String message;
-
-  @override
-  String toString() => message;
-}
+export 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_image_ingestion_exception.dart';
+export 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_image_slot.dart';
 
 class TenantAdminImageIngestionService {
   TenantAdminImageIngestionService({
@@ -331,7 +317,8 @@ class TenantAdminImageIngestionService {
         ),
       TenantAdminImageSlot.lightIcon ||
       TenantAdminImageSlot.darkIcon ||
-      TenantAdminImageSlot.pwaIcon =>
+      TenantAdminImageSlot.pwaIcon ||
+      TenantAdminImageSlot.mapFilter =>
         const _TenantAdminImageSlotSpec(
           aspectRatio: 1.0,
           maxWidth: 1024,

@@ -1,9 +1,11 @@
-class Router {
+// ignore_for_file: unused_element
+
+class _Router {
   void push(Object route) {}
 }
 
-class NavigationController {
-  final Router router = Router();
+class _NavigationController {
+  final _Router router = _Router();
 
   void go(Object route) {
     // expect_lint: controller_direct_navigation_forbidden

@@ -1,7 +1,7 @@
 name: belluga_now
 description: "A new Flutter project."
 publish_to: 'none'
-version: 0.0.1
+version: 0.0.1+2
 
 environment:
   sdk: ">=3.4.0 <4.0.0"
@@ -60,6 +60,8 @@ dependencies:
   vsc_quill_delta_to_html: ^1.0.5
   crop_your_image: ^2.0.0
   belluga_admin_ui: ^0.0.1
+  belluga_form_validation:
+    path: packages/belluga_form_validation
   
 dev_dependencies:
   flutter_test:

@@ -1,8 +1,9 @@
+export 'backend_domain.dart';
+export 'backend_source.dart';
+
 import 'package:flutter/foundation.dart';
-
-enum BackendSource { live, mock }
-
-enum BackendDomain { appData, tenant, accountProfiles, schedule }
+import 'package:belluga_now/infrastructure/dal/dao/backend_domain.dart';
+import 'package:belluga_now/infrastructure/dal/dao/backend_source.dart';
 
 class BackendRoutingPolicy {
   const BackendRoutingPolicy({

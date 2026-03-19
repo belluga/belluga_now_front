@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
+import 'package:belluga_now/application/router/guards/auth_route_guard.dart';
+import 'package:belluga_now/application/router/guards/tenant_route_guard.dart';
 import 'package:belluga_now/domain/repositories/contacts_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/friends_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
@@ -47,10 +49,17 @@ class InvitesModule extends ModuleContract {
         AutoRoute(
           path: '/convites',
           page: InviteFlowRoute.page,
+          guards: [TenantRouteGuard(), AuthRouteGuard()],
+        ),
+        AutoRoute(
+          path: '/invite',
+          page: InviteEntryRoute.page,
+          guards: [TenantRouteGuard()],
         ),
         AutoRoute(
           path: '/convites/compartilhar',
           page: InviteShareRoute.page,
+          guards: [TenantRouteGuard(), AuthRouteGuard()],
         ),
       ];
 }

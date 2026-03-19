@@ -11,9 +11,8 @@ class TelemetrySettings {
 
   static TelemetrySettings fromRaw(Object? raw) {
     if (raw is Map) {
-      final map = raw is Map<String, dynamic>
-          ? raw
-          : Map<String, dynamic>.from(raw);
+      final map =
+          raw is Map<String, dynamic> ? raw : Map<String, dynamic>.from(raw);
       return TelemetrySettings.fromRaw(map['trackers']);
     }
 

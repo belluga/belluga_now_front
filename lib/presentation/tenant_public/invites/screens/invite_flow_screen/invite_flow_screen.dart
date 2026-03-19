@@ -1,4 +1,5 @@
 import 'package:auto_route/auto_route.dart';
+import 'package:belluga_now/application/router/support/route_redirect_path.dart';
 import 'package:belluga_now/domain/invites/invite_model.dart';
 import 'package:belluga_now/presentation/tenant_public/invites/screens/invite_flow_screen/controllers/invite_flow_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/invites/screens/invite_flow_screen/widgets/invite_flow_coordinator.dart';
@@ -20,22 +21,41 @@ class _InviteFlowScreenState extends State<InviteFlowScreen> {
   @override
   void initState() {
     super.initState();
+    final redirectPath =
+        buildRedirectPathFromRouteMatch(context.routeData.route);
     final inviteId = context.routeData.queryParams.get('invite');
-    _controller.init(prioritizeInviteId: inviteId);
+    final shareCode = context.routeData.queryParams.get('code');
+    _controller.init(
+      prioritizeInviteId: inviteId,
+      shareCode: shareCode,
+      redirectPath: redirectPath,
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return StreamValueBuilder<List<InviteModel>>(
-      streamValue: _controller.pendingInvitesStreamValue,
+      streamValue: _controller.displayInvitesStreamValue,
       onNullWidget: const Center(child: CircularProgressIndicator()),
       builder: (context, invites) {
-        return StreamValueBuilder<InviteDecisionResult?>(
-          streamValue: _controller.decisionResultStreamValue,
-          builder: (context, decisionResult) {
-            return InviteFlowCoordinator(
-              invites: invites,
-              decisionResult: decisionResult,
+        return StreamValueBuilder<bool>(
+          streamValue: _controller.authRequiredForDecisionStreamValue,
+          builder: (context, requiresAuthentication) {
+            return StreamValueBuilder<bool>(
+              streamValue: _controller.initializedStreamValue,
+              builder: (context, isInitialized) {
+                return StreamValueBuilder<InviteDecisionResult?>(
+                  streamValue: _controller.decisionResultStreamValue,
+                  builder: (context, decisionResult) {
+                    return InviteFlowCoordinator(
+                      invites: invites,
+                      decisionResult: decisionResult,
+                      requiresAuthentication: requiresAuthentication,
+                      isInitialized: isInitialized,
+                    );
+                  },
+                );
+              },
             );
           },
         );

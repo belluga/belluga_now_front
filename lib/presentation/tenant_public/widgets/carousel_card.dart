@@ -1,6 +1,9 @@
+export 'carousel_card_overlay_mode.dart';
+
 import 'dart:ui';
 
 import 'package:belluga_now/application/extensions/compute_on_color.dart';
+import 'package:belluga_now/presentation/tenant_public/widgets/carousel_card_overlay_mode.dart';
 import 'package:flutter/material.dart';
 
 class CarouselCard extends StatelessWidget {
@@ -141,9 +144,4 @@ class CarouselCard extends StatelessWidget {
       },
     );
   }
-}
-
-enum CarouselCardOverlayMode {
-  bottom,
-  fill,
 }

@@ -1,0 +1,4 @@
+enum AdminMode {
+  user,
+  landlord,
+}

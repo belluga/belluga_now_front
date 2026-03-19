@@ -23,13 +23,17 @@ import 'package:get_it_modular_with_auto_route/get_it_modular_with_auto_route.da
 class HomeModule extends ModuleContract {
   @override
   FutureOr<void> registerDependencies() {
-    registerLazySingleton<InvitesRepositoryContract>(
-      () => InvitesRepository()..init(),
-    );
+    if (!GetIt.I.isRegistered<InvitesRepositoryContract>()) {
+      registerLazySingleton<InvitesRepositoryContract>(
+        () => InvitesRepository(),
+      );
+    }
 
-    registerLazySingleton<FriendsRepositoryContract>(
-      () => FriendsRepository(),
-    );
+    if (!GetIt.I.isRegistered<FriendsRepositoryContract>()) {
+      registerLazySingleton<FriendsRepositoryContract>(
+        () => FriendsRepository(),
+      );
+    }
 
     registerLazySingleton<FavoriteRepositoryContract>(
       FavoriteRepository.new,
@@ -41,9 +45,11 @@ class HomeModule extends ModuleContract {
       );
     }
 
-    registerLazySingleton<UserEventsRepositoryContract>(
-      () => UserEventsRepository(),
-    );
+    if (!GetIt.I.isRegistered<UserEventsRepositoryContract>()) {
+      registerLazySingleton<UserEventsRepositoryContract>(
+        () => UserEventsRepository(),
+      );
+    }
 
     registerLazySingleton<TenantHomeAgendaController>(
       () => TenantHomeAgendaController(),
@@ -63,6 +69,15 @@ class HomeModule extends ModuleContract {
           path: '/',
           page: TenantHomeRoute.page,
           guards: [TenantRouteGuard()],
+        ),
+        AutoRoute(
+          path: '/privacy-policy',
+          page: TenantPrivacyPolicyRoute.page,
+          guards: [TenantRouteGuard()],
+        ),
+        RedirectRoute(
+          path: '/politica-de-privacidade',
+          redirectTo: '/privacy-policy',
         ),
         RedirectRoute(
           path: '/home',

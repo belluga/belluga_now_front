@@ -9,6 +9,7 @@ import 'package:belluga_now/domain/services/tenant_admin_location_selection_cont
 import 'package:belluga_now/domain/services/tenant_admin_external_image_proxy_contract.dart';
 import 'package:belluga_now/domain/tenant_admin/ownership_state.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_onboarding_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_document.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
@@ -18,7 +19,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_definition.dart';
 import 'package:belluga_now/infrastructure/services/tenant_admin/tenant_admin_location_selection_service.dart';
-import 'package:belluga_now/presentation/tenant_admin/accounts/controllers/tenant_admin_accounts_controller.dart';
+import 'package:belluga_now/presentation/tenant_admin/accounts/controllers/tenant_admin_account_create_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/accounts/screens/tenant_admin_account_create_screen.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_image_ingestion_service.dart';
 import 'package:crop_your_image/crop_your_image.dart';
@@ -82,6 +83,7 @@ void main() {
     await _pumpUntilFound(tester, find.byType(Crop));
     final crop = tester.widget<Crop>(find.byType(Crop));
     expect(crop.aspectRatio, 1.0);
+    await _confirmCropAndDismiss(tester);
   });
 
   testWidgets('device image selection opens crop sheet for cover',
@@ -129,6 +131,7 @@ void main() {
     await _pumpUntilFound(tester, find.byType(Crop));
     final crop = tester.widget<Crop>(find.byType(Crop));
     expect(crop.aspectRatio, closeTo(16 / 9, 0.0001));
+    await _confirmCropAndDismiss(tester);
   });
 
   testWidgets('web url selection opens crop sheet for avatar', (tester) async {
@@ -161,6 +164,7 @@ void main() {
     await _pumpUntilFound(tester, find.byType(Crop));
     final crop = tester.widget<Crop>(find.byType(Crop));
     expect(crop.aspectRatio, 1.0);
+    await _confirmCropAndDismiss(tester);
   });
 
   testWidgets('web url selection opens crop sheet for cover', (tester) async {
@@ -193,6 +197,7 @@ void main() {
     await _pumpUntilFound(tester, find.byType(Crop));
     final crop = tester.widget<Crop>(find.byType(Crop));
     expect(crop.aspectRatio, closeTo(16 / 9, 0.0001));
+    await _confirmCropAndDismiss(tester);
   });
 }
 
@@ -230,6 +235,34 @@ Future<void> _pumpUntilFound(
     await tester.pump(step);
   }
   fail('Timed out waiting for widget: $finder');
+}
+
+Future<void> _pumpUntilGone(
+  WidgetTester tester,
+  Finder finder, {
+  Duration step = const Duration(milliseconds: 100),
+  int maxPumps = 120,
+}) async {
+  for (var i = 0; i < maxPumps; i++) {
+    if (finder.evaluate().isEmpty) return;
+    await tester.pump(step);
+  }
+  fail('Timed out waiting for widget to disappear: $finder');
+}
+
+Future<void> _confirmCropAndDismiss(WidgetTester tester) async {
+  final closeButton = find.byIcon(Icons.close);
+  if (closeButton.evaluate().isNotEmpty) {
+    await tester.ensureVisible(closeButton.last);
+    await tester.tap(closeButton.last, warnIfMissed: false);
+  } else {
+    final cancelButton = find.text('Cancelar').last;
+    await tester.ensureVisible(cancelButton);
+    await tester.tap(cancelButton, warnIfMissed: false);
+  }
+  await tester.pump();
+  await tester.pump(const Duration(milliseconds: 350));
+  await _pumpUntilGone(tester, find.byType(Crop), maxPumps: 600);
 }
 
 Future<void> _openWebCropFlow({
@@ -282,8 +315,8 @@ void _registerFakes() {
     ..registerSingleton<TenantAdminImageIngestionService>(
       TenantAdminImageIngestionService(),
     )
-    ..registerSingleton<TenantAdminAccountsController>(
-      TenantAdminAccountsController(),
+    ..registerFactory<TenantAdminAccountCreateController>(
+      TenantAdminAccountCreateController.new,
     );
 }
 
@@ -339,6 +372,21 @@ class _FakeAccountsRepository extends TenantAdminAccountsRepositoryContract {
     TenantAdminDocument? document,
     required TenantAdminOwnershipState ownershipState,
     String? organizationId,
+  }) async {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<TenantAdminAccountOnboardingResult> createAccountOnboarding({
+    required String name,
+    required TenantAdminOwnershipState ownershipState,
+    required String profileType,
+    TenantAdminLocation? location,
+    List<TenantAdminTaxonomyTerm> taxonomyTerms = const [],
+    String? bio,
+    String? content,
+    TenantAdminMediaUpload? avatarUpload,
+    TenantAdminMediaUpload? coverUpload,
   }) async {
     throw UnimplementedError();
   }

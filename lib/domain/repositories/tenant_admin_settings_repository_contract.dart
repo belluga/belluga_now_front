@@ -1,4 +1,5 @@
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_settings.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:stream_value/core/stream_value.dart';
 
 abstract class TenantAdminSettingsRepositoryContract {
@@ -10,6 +11,17 @@ abstract class TenantAdminSettingsRepositoryContract {
 
   Future<TenantAdminMapUiSettings> updateMapUiSettings({
     required TenantAdminMapUiSettings settings,
+  });
+
+  Future<TenantAdminAppLinksSettings> fetchAppLinksSettings();
+
+  Future<TenantAdminAppLinksSettings> updateAppLinksSettings({
+    required TenantAdminAppLinksSettings settings,
+  });
+
+  Future<String> uploadMapFilterImage({
+    required String key,
+    required TenantAdminMediaUpload upload,
   });
 
   Future<TenantAdminFirebaseSettings?> fetchFirebaseSettings();
