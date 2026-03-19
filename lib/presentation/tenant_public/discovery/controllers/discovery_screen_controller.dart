@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:belluga_now/domain/partners/engagement_data.dart';
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/domain/partners/profile_type_registry.dart';
@@ -15,6 +17,7 @@ class DiscoveryScreenController implements Disposable {
             GetIt.I.get<AccountProfilesRepositoryContract>();
 
   final AccountProfilesRepositoryContract _partnersRepository;
+  StreamSubscription<Set<String>>? _favoriteIdsSubscription;
 
   // Cached dataset
   List<AccountProfileModel> _allAccountProfiles = const [];
@@ -23,6 +26,8 @@ class DiscoveryScreenController implements Disposable {
   final selectedTypeFilterStreamValue = StreamValue<String?>();
   final availableTypesStreamValue =
       StreamValue<List<String>>(defaultValue: const []);
+  final favoriteIdsStreamValue =
+      StreamValue<Set<String>>(defaultValue: const {});
   final filteredPartnersStreamValue =
       StreamValue<List<AccountProfileModel>>(defaultValue: const []);
   final isLoadingStreamValue = StreamValue<bool>(defaultValue: false);
@@ -31,9 +36,12 @@ class DiscoveryScreenController implements Disposable {
   final TextEditingController searchController = TextEditingController();
 
   // Highlighted sections
-  final liveNowStreamValue = StreamValue<List<AccountProfileModel>>(defaultValue: const []);
-  final nearbyStreamValue = StreamValue<List<AccountProfileModel>>(defaultValue: const []);
-  final curatorStreamValue = StreamValue<List<AccountProfileModel>>(defaultValue: const []);
+  final liveNowStreamValue =
+      StreamValue<List<AccountProfileModel>>(defaultValue: const []);
+  final nearbyStreamValue =
+      StreamValue<List<AccountProfileModel>>(defaultValue: const []);
+  final curatorStreamValue =
+      StreamValue<List<AccountProfileModel>>(defaultValue: const []);
   final curatorContentStreamValue =
       StreamValue<List<CuratorContent>>(defaultValue: const []);
 
@@ -41,7 +49,15 @@ class DiscoveryScreenController implements Disposable {
     searchController.addListener(() {
       setSearchQuery(searchController.text);
     });
+
     await _partnersRepository.init();
+    _favoriteIdsSubscription ??=
+        _partnersRepository.favoriteAccountProfileIdsStreamValue.stream.listen(
+      (ids) {
+        favoriteIdsStreamValue.addValue(Set<String>.from(ids));
+      },
+    );
+    await _loadFavoriteIds();
     await _loadPartners();
   }
 
@@ -78,15 +94,29 @@ class DiscoveryScreenController implements Disposable {
   }
 
   void toggleFavorite(String accountProfileId) {
-    _partnersRepository.toggleFavorite(accountProfileId);
+    final current = Set<String>.from(favoriteIdsStreamValue.value);
+    if (current.contains(accountProfileId)) {
+      current.remove(accountProfileId);
+    } else {
+      current.add(accountProfileId);
+    }
+    favoriteIdsStreamValue.addValue(current);
+
+    unawaited(_partnersRepository.toggleFavorite(accountProfileId));
   }
 
   bool isFavorite(String accountProfileId) {
-    return _partnersRepository.isFavorite(accountProfileId);
+    return favoriteIdsStreamValue.value.contains(accountProfileId);
   }
 
-  StreamValue<Set<String>> get favoriteIdsStream =>
-      _partnersRepository.favoriteAccountProfileIdsStreamValue;
+  StreamValue<Set<String>> get favoriteIdsStream => favoriteIdsStreamValue;
+
+  Future<void> _loadFavoriteIds() async {
+    final ids = Set<String>.from(
+      _partnersRepository.favoriteAccountProfileIdsStreamValue.value,
+    );
+    favoriteIdsStreamValue.addValue(ids);
+  }
 
   void _buildSections() {
     // Tocando agora: artistas com status ativo ou próximo, ordenados por distância quando existir
@@ -132,7 +162,6 @@ class DiscoveryScreenController implements Disposable {
       );
     }).toList();
     curatorContentStreamValue.addValue(curatorContent);
-
   }
 
   void _applyFilters() {
@@ -221,6 +250,7 @@ class DiscoveryScreenController implements Disposable {
     searchQueryStreamValue.dispose();
     selectedTypeFilterStreamValue.dispose();
     availableTypesStreamValue.dispose();
+    favoriteIdsStreamValue.dispose();
     filteredPartnersStreamValue.dispose();
     hasLoadedStreamValue.dispose();
     isSearchingStreamValue.dispose();
@@ -230,5 +260,6 @@ class DiscoveryScreenController implements Disposable {
     curatorContentStreamValue.dispose();
     isLoadingStreamValue.dispose();
     searchController.dispose();
+    _favoriteIdsSubscription?.cancel();
   }
 }

@@ -40,7 +40,7 @@ class FavoriteResume {
   factory FavoriteResume.fromFavorite(Favorite favorite) {
     return FavoriteResume(
       titleValue: favorite.titleValue,
-      slug: Favorite.slugify(favorite.id),
+      slug: favorite.slug,
       imageUriValue: favorite.imageUriValue,
       assetPathValue: favorite.assetPathValue,
       badge: favorite.badge,
