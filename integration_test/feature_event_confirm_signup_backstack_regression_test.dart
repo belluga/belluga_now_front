@@ -60,8 +60,9 @@ import 'support/integration_test_bootstrap.dart';
 
 void main() {
   developer.postEvent(
-    'integration_test.VmServiceProxyGoldenFileComparator',
-    const {},
+    'seed_vm_golden_stream',
+    const <String, Object>{},
+    stream: 'integration_test.VmServiceProxyGoldenFileComparator',
   );
 
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();

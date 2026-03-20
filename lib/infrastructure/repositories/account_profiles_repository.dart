@@ -5,7 +5,6 @@ import 'package:belluga_now/domain/repositories/account_profiles_repository_cont
 import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/account_profiles_backend_contract.dart';
-import 'package:belluga_now/infrastructure/dal/datasources/mock_account_profiles_database.dart';
 import 'package:event_tracker_handler/event_tracker_handler.dart';
 import 'package:flutter/foundation.dart';
 import 'package:get_it/get_it.dart';
@@ -16,12 +15,10 @@ class AccountProfilesRepository extends AccountProfilesRepositoryContract {
     BackendContract? backendContract,
     Set<String>? favoriteAccountProfileIds,
     TelemetryRepositoryContract? telemetryRepository,
-  })  : _backend =
-            backend ?? (backendContract ?? GetIt.I.get<BackendContract>())
-                .accountProfiles,
+  })  : _backend = backend ??
+            (backendContract ?? GetIt.I.get<BackendContract>()).accountProfiles,
         _favoriteAccountProfileIds =
-            Set<String>.from(favoriteAccountProfileIds ??
-                MockAccountProfilesDatabase().favoriteAccountProfileIds),
+            Set<String>.from(favoriteAccountProfileIds ?? const <String>{}),
         _telemetryRepository =
             telemetryRepository ?? GetIt.I.get<TelemetryRepositoryContract>();
 
@@ -35,7 +32,7 @@ class AccountProfilesRepository extends AccountProfilesRepositoryContract {
     final profiles = await fetchAllAccountProfiles();
     allAccountProfilesStreamValue.addValue(profiles);
 
-    // Initialize favorites from mock persistence (app manager included)
+    // Favorites remain local runtime state until backend persistence is exposed.
     favoriteAccountProfileIdsStreamValue.addValue(
       Set<String>.from(_favoriteAccountProfileIds),
     );
@@ -52,8 +49,8 @@ class AccountProfilesRepository extends AccountProfilesRepositoryContract {
     String? query,
     String? typeFilter,
   }) async {
-    final results =
-        await _backend.searchAccountProfiles(query: query, typeFilter: typeFilter);
+    final results = await _backend.searchAccountProfiles(
+        query: query, typeFilter: typeFilter);
     return _filterByRegistry(results);
   }
 
@@ -104,15 +101,15 @@ class AccountProfilesRepository extends AccountProfilesRepositoryContract {
         .toList();
   }
 
-  List<AccountProfileModel> _filterByRegistry(List<AccountProfileModel> profiles) {
+  List<AccountProfileModel> _filterByRegistry(
+      List<AccountProfileModel> profiles) {
     final registry = _resolveRegistry();
     if (registry == null || registry.isEmpty) {
-      debugPrint('Profile type registry missing; hiding account profile lists.');
+      debugPrint(
+          'Profile type registry missing; hiding account profile lists.');
       return const [];
     }
-    return profiles
-        .where(_isAccountProfileTypeEnabled)
-        .toList(growable: false);
+    return profiles.where(_isAccountProfileTypeEnabled).toList(growable: false);
   }
 
   bool _isAccountProfileTypeEnabled(AccountProfileModel profile) {

@@ -146,7 +146,7 @@ class DiscoveryScreenController implements Disposable {
       ..sort((a, b) => (b.acceptedInvites).compareTo(a.acceptedInvites));
     curatorStreamValue.addValue(curators.take(10).toList());
 
-    // Conteúdo de curadores (mock)
+    // Conteúdo de curadores derivado dos account profiles carregados.
     final curatorContent = curators.take(5).map((c) {
       final thumb = c.coverUrl ?? c.avatarUrl ?? '';
       final typeLabel = 'Artigo';
