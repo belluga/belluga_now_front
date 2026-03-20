@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/app_data/value_object/platform_type_value.dart';
 import 'package:belluga_now/domain/contacts/contact_model.dart';
@@ -215,6 +217,131 @@ void main() {
       expect(controller.isInitialLoadingStreamValue.value, isFalse);
       expect(controller.displayedEventsStreamValue.value, isEmpty);
       expect(controller.hasMoreStreamValue.value, isFalse);
+
+      controller.onDispose();
+    });
+
+    test('requests location permission once when warm-up has no coordinate',
+        () async {
+      final appData = _buildAppData(
+        minKm: 1,
+        defaultKm: 5,
+        maxKm: 10,
+      );
+      final appDataRepository = _FakeAppDataRepository(appData);
+      final scheduleRepository = _FakeScheduleRepository();
+      final locationRepository = _FakeUserLocationRepository()
+        ..warmUpResult = false;
+
+      final controller = TenantHomeAgendaController(
+        scheduleRepository: scheduleRepository,
+        userEventsRepository: _FakeUserEventsRepository(),
+        invitesRepository: _FakeInvitesRepository(),
+        userLocationRepository: locationRepository,
+        appDataRepository: appDataRepository,
+      );
+
+      await controller.init();
+
+      expect(locationRepository.resolveUserLocationCallCount, 1);
+      expect(scheduleRepository.getEventsPageCallCount, 1);
+
+      await controller.searchEvents('');
+      expect(locationRepository.resolveUserLocationCallCount, 1);
+
+      controller.onDispose();
+    });
+
+    test(
+        'does not request location permission when user coordinate already exists',
+        () async {
+      final appData = _buildAppData(
+        minKm: 1,
+        defaultKm: 5,
+        maxKm: 10,
+      );
+      final appDataRepository = _FakeAppDataRepository(appData);
+      final scheduleRepository = _FakeScheduleRepository();
+      final locationRepository = _FakeUserLocationRepository()
+        ..userLocationStreamValue.addValue(
+          CityCoordinate(
+            latitudeValue: LatitudeValue()..parse('-20.671339'),
+            longitudeValue: LongitudeValue()..parse('-40.495395'),
+          ),
+        );
+
+      final controller = TenantHomeAgendaController(
+        scheduleRepository: scheduleRepository,
+        userEventsRepository: _FakeUserEventsRepository(),
+        invitesRepository: _FakeInvitesRepository(),
+        userLocationRepository: locationRepository,
+        appDataRepository: appDataRepository,
+      );
+
+      await controller.init();
+
+      expect(locationRepository.resolveUserLocationCallCount, 0);
+      expect(scheduleRepository.getEventsPageCallCount, 1);
+
+      controller.onDispose();
+    });
+
+    test('finishes init when location warm-up stalls', () async {
+      final appData = _buildAppData(
+        minKm: 1,
+        defaultKm: 5,
+        maxKm: 10,
+      );
+      final appDataRepository = _FakeAppDataRepository(appData);
+      final scheduleRepository = _FakeScheduleRepository();
+      final locationRepository = _FakeUserLocationRepository()
+        ..neverCompleteWarmUp = true;
+
+      final controller = TenantHomeAgendaController(
+        scheduleRepository: scheduleRepository,
+        userEventsRepository: _FakeUserEventsRepository(),
+        invitesRepository: _FakeInvitesRepository(),
+        userLocationRepository: locationRepository,
+        appDataRepository: appDataRepository,
+        locationWarmUpTimeout: const Duration(milliseconds: 20),
+        locationPermissionTimeout: const Duration(milliseconds: 20),
+      );
+
+      await controller.init();
+
+      expect(controller.isInitialLoadingStreamValue.value, isFalse);
+      expect(scheduleRepository.getEventsPageCallCount, 1);
+      expect(scheduleRepository.lastOriginLat, closeTo(-20.671339, 0.000001));
+      expect(scheduleRepository.lastOriginLng, closeTo(-40.495395, 0.000001));
+
+      controller.onDispose();
+    });
+
+    test('continues init when confirmed event refresh fails', () async {
+      final appData = _buildAppData(
+        minKm: 1,
+        defaultKm: 5,
+        maxKm: 10,
+      );
+      final appDataRepository = _FakeAppDataRepository(appData);
+      final scheduleRepository = _FakeScheduleRepository();
+      final locationRepository = _FakeUserLocationRepository()
+        ..warmUpResult = false;
+      final userEventsRepository = _FakeUserEventsRepository()
+        ..throwOnRefreshConfirmedIds = true;
+
+      final controller = TenantHomeAgendaController(
+        scheduleRepository: scheduleRepository,
+        userEventsRepository: userEventsRepository,
+        invitesRepository: _FakeInvitesRepository(),
+        userLocationRepository: locationRepository,
+        appDataRepository: appDataRepository,
+      );
+
+      await controller.init();
+
+      expect(controller.isInitialLoadingStreamValue.value, isFalse);
+      expect(scheduleRepository.getEventsPageCallCount, 1);
 
       controller.onDispose();
     });
@@ -802,6 +929,8 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
 }
 
 class _FakeUserEventsRepository implements UserEventsRepositoryContract {
+  bool throwOnRefreshConfirmedIds = false;
+
   @override
   final StreamValue<Set<String>> confirmedEventIdsStream =
       StreamValue<Set<String>>(defaultValue: const {});
@@ -822,12 +951,18 @@ class _FakeUserEventsRepository implements UserEventsRepositoryContract {
   Future<void> unconfirmEventAttendance(String eventId) async {}
 
   @override
-  Future<void> refreshConfirmedEventIds() async {}
+  Future<void> refreshConfirmedEventIds() async {
+    if (throwOnRefreshConfirmedIds) {
+      throw Exception('forced confirmed ids failure');
+    }
+  }
 }
 
 class _FakeUserLocationRepository implements UserLocationRepositoryContract {
   bool warmUpCalled = false;
   bool warmUpResult = false;
+  bool neverCompleteWarmUp = false;
+  int resolveUserLocationCallCount = 0;
 
   @override
   final StreamValue<CityCoordinate?> userLocationStreamValue =
@@ -860,6 +995,9 @@ class _FakeUserLocationRepository implements UserLocationRepositoryContract {
   @override
   Future<bool> warmUpIfPermitted() async {
     warmUpCalled = true;
+    if (neverCompleteWarmUp) {
+      return Completer<bool>().future;
+    }
     return warmUpResult;
   }
 
@@ -870,7 +1008,10 @@ class _FakeUserLocationRepository implements UserLocationRepositoryContract {
       false;
 
   @override
-  Future<String?> resolveUserLocation() async => null;
+  Future<String?> resolveUserLocation() async {
+    resolveUserLocationCallCount += 1;
+    return null;
+  }
 
   @override
   Future<bool> startTracking({

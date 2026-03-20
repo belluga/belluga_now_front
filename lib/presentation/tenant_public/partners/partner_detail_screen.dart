@@ -79,12 +79,7 @@ class _PartnerDetailScreenState extends State<PartnerDetailScreen> {
                             betweenHeroAndTabs: _buildBetweenHero(partner),
                             footer: _buildFooter(partner, isFav, isFavoritable),
                           );
-                          return Stack(
-                            children: [
-                              screen,
-                              _buildMiniPlayer(),
-                            ],
-                          );
+                          return screen;
                         },
                       );
                     },
@@ -98,7 +93,8 @@ class _PartnerDetailScreenState extends State<PartnerDetailScreen> {
     );
   }
 
-  Widget _buildHero(AccountProfileModel partner, bool isFav, bool isFavoritable) {
+  Widget _buildHero(
+      AccountProfileModel partner, bool isFav, bool isFavoritable) {
     final colorScheme = Theme.of(context).colorScheme;
     return Stack(
       fit: StackFit.expand,
@@ -239,7 +235,8 @@ class _PartnerDetailScreenState extends State<PartnerDetailScreen> {
         .toList();
   }
 
-  Widget _buildFooter(AccountProfileModel partner, bool isFav, bool isFavoritable) {
+  Widget _buildFooter(
+      AccountProfileModel partner, bool isFav, bool isFavoritable) {
     if (!isFavoritable) return const SizedBox.shrink();
     return _actionFooter(isFav ? 'Favoritado' : 'Seguir');
   }
@@ -797,28 +794,9 @@ class _PartnerDetailScreenState extends State<PartnerDetailScreen> {
       child: Card(
         child: ListTile(
           leading: const Icon(Icons.play_circle_fill),
-          title: Text(track?.title ?? 'Faixa não disponível'),
+          title: Text(track?.title ?? 'Player indisponível no MVP'),
           subtitle: Text(track?.url ?? ''),
-          trailing: IconButton(
-            icon: StreamValueBuilder<bool>(
-              streamValue: _controller.isPlayingStreamValue,
-              builder: (context, playing) {
-                final current = _controller.currentTrackStreamValue.value;
-                final isCurrent =
-                    current != null && track != null && current.url == track.url;
-                final icon =
-                    isCurrent && playing ? Icons.pause : Icons.play_arrow;
-                return Icon(icon);
-              },
-            ),
-            onPressed: () {
-              if (track != null) {
-                _controller.playTrack(track);
-              } else {
-                _controller.togglePlayback();
-              }
-            },
-          ),
+          trailing: const Icon(Icons.block),
         ),
       ),
     );
@@ -1013,38 +991,5 @@ class _PartnerDetailScreenState extends State<PartnerDetailScreen> {
       case ProfileModuleId.sponsorBanner:
         return _sponsorBanner(data is String ? data : null);
     }
-  }
-
-  Widget _buildMiniPlayer() {
-    return Align(
-      alignment: Alignment.bottomCenter,
-      child: StreamValueBuilder<PartnerMediaView?>(
-        streamValue: _controller.currentTrackStreamValue,
-        builder: (context, track) {
-          if (track == null) return const SizedBox.shrink();
-          return SafeArea(
-            child: Card(
-              margin: const EdgeInsets.all(12),
-              child: ListTile(
-                leading: const Icon(Icons.music_note),
-                title: Text(track.title ?? 'Faixa'),
-                trailing: StreamValueBuilder<bool>(
-                  streamValue: _controller.isPlayingStreamValue,
-                  builder: (context, playing) {
-                    return IconButton(
-                      icon: Icon(
-                          playing ? Icons.pause_circle : Icons.play_circle),
-                      onPressed: () {
-                        _controller.togglePlayback();
-                      },
-                    );
-                  },
-                ),
-              ),
-            ),
-          );
-        },
-      ),
-    );
   }
 }
