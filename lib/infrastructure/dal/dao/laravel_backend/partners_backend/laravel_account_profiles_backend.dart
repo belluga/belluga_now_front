@@ -1,5 +1,6 @@
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
+import 'package:belluga_now/domain/partners/paged_account_profiles_result.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/account_profiles_backend_contract.dart';
 import 'package:dio/dio.dart';
@@ -7,6 +8,9 @@ import 'package:get_it/get_it.dart';
 
 class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
   LaravelAccountProfilesBackend({Dio? dio}) : _dio = dio ?? Dio();
+
+  static const int _defaultPageSize = 30;
+  static const int _maxPages = 10;
 
   final Dio _dio;
 
@@ -24,9 +28,38 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
 
   @override
   Future<List<AccountProfileModel>> fetchAccountProfiles() async {
+    final page = await fetchAccountProfilesPage(
+      page: 1,
+      pageSize: _defaultPageSize,
+    );
+
+    return page.profiles;
+  }
+
+  @override
+  Future<PagedAccountProfilesResult> fetchAccountProfilesPage({
+    required int page,
+    required int pageSize,
+    String? query,
+    String? typeFilter,
+  }) async {
     try {
+      final queryParameters = <String, dynamic>{
+        'page': page,
+        'per_page': pageSize,
+      };
+      final trimmedQuery = query?.trim();
+      if (trimmedQuery != null && trimmedQuery.isNotEmpty) {
+        queryParameters['search'] = trimmedQuery;
+      }
+      final trimmedType = typeFilter?.trim();
+      if (trimmedType != null && trimmedType.isNotEmpty) {
+        queryParameters['profile_type'] = trimmedType;
+      }
+
       final response = await _dio.get(
         '$_apiBaseUrl/v1/account_profiles',
+        queryParameters: queryParameters,
         options: Options(headers: _buildHeaders(includeJsonAccept: true)),
       );
       final raw = response.data;
@@ -37,7 +70,17 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
       if (data is! List) {
         throw Exception('Account profiles payload missing data list.');
       }
-      return _parseProfiles(data);
+
+      final currentPage = _parsePageValue(raw['current_page']) ?? page;
+      final lastPage = _parsePageValue(raw['last_page']);
+      final hasMore = lastPage != null
+          ? currentPage < lastPage
+          : raw['next_page_url'] != null;
+
+      return PagedAccountProfilesResult(
+        profiles: _parseProfiles(data),
+        hasMore: hasMore,
+      );
     } on DioException catch (error) {
       final statusCode = error.response?.statusCode;
       final data = error.response?.data;
@@ -55,22 +98,23 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
     String? query,
     String? typeFilter,
   }) async {
-    final partners = await fetchAccountProfiles();
-    final trimmed = query?.trim().toLowerCase();
-    var filtered = partners;
-    if (typeFilter != null) {
-      filtered =
-          filtered.where((partner) => partner.profileType == typeFilter).toList();
+    final profiles = <AccountProfileModel>[];
+    var page = 1;
+    var hasMore = true;
+
+    while (hasMore && page <= _maxPages) {
+      final result = await fetchAccountProfilesPage(
+        page: page,
+        pageSize: _defaultPageSize,
+        query: query,
+        typeFilter: typeFilter,
+      );
+      profiles.addAll(result.profiles);
+      hasMore = result.hasMore;
+      page += 1;
     }
-    if (trimmed != null && trimmed.isNotEmpty) {
-      filtered = filtered.where((partner) {
-        final nameMatch = partner.name.toLowerCase().contains(trimmed);
-        final tagMatch = partner.tags
-            .any((tag) => tag.toLowerCase().contains(trimmed));
-        return nameMatch || tagMatch;
-      }).toList();
-    }
-    return filtered;
+
+    return profiles;
   }
 
   @override
@@ -128,4 +172,9 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
     return tags;
   }
 
+  int? _parsePageValue(dynamic raw) {
+    if (raw is int) return raw;
+    if (raw is String) return int.tryParse(raw);
+    return null;
+  }
 }

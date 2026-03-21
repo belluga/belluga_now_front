@@ -1,9 +1,11 @@
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/landlord_auth_repository_contract.dart';
 import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
 import 'package:belluga_now/domain/user/user_contract.dart';
 import 'package:belluga_now/infrastructure/repositories/tenant_admin/tenant_admin_events_repository.dart';
@@ -172,6 +174,57 @@ void main() {
     expect(request.method, 'POST');
     expect(request.path, endsWith('/api/v1/accounts/my-account/events'));
     expect(request.headers['Authorization'], 'Bearer account-token');
+  });
+
+  test('createEvent uses multipart payload when cover upload is provided',
+      () async {
+    final adapter = _EventsRoutingAdapter();
+    final dio = Dio()..httpClientAdapter = adapter;
+    final scope = _MutableTenantScope('https://tenant-a.test/admin/api');
+    final repository = TenantAdminEventsRepository(
+      dio: dio,
+      tenantScope: scope,
+    );
+
+    await repository.createEvent(
+      draft: _buildDraft(
+        coverUpload: TenantAdminMediaUpload(
+          bytes: Uint8List.fromList(const [1, 2, 3, 4]),
+          fileName: 'event-cover.png',
+          mimeType: 'image/png',
+        ),
+      ),
+    );
+
+    final request = adapter.requests.last;
+    expect(request.method, 'POST');
+    expect(request.path, endsWith('/admin/api/v1/events'));
+    expect(request.data, isA<FormData>());
+    final formData = request.data as FormData;
+    expect(formData.files.map((entry) => entry.key), contains('cover'));
+  });
+
+  test('updateEvent sends remove_cover as multipart patch override', () async {
+    final adapter = _EventsRoutingAdapter();
+    final dio = Dio()..httpClientAdapter = adapter;
+    final scope = _MutableTenantScope('https://tenant-a.test/admin/api');
+    final repository = TenantAdminEventsRepository(
+      dio: dio,
+      tenantScope: scope,
+    );
+
+    await repository.updateEvent(
+      eventId: 'evt-1',
+      draft: _buildDraft(removeCover: true),
+    );
+
+    final request = adapter.requests.last;
+    expect(request.method, 'POST');
+    expect(request.path, endsWith('/admin/api/v1/events/evt-1'));
+    expect(request.data, isA<FormData>());
+    final formData = request.data as FormData;
+    expect(formData.fields, contains(const MapEntry('remove_cover', '1')));
+    expect(formData.fields, contains(const MapEntry('_method', 'PATCH')));
   });
 
   test('fetchEventsPage maps 404 into empty page result', () async {
@@ -496,6 +549,8 @@ TenantAdminEventDraft _buildDraft({
   List<TenantAdminTaxonomyTerm> taxonomyTerms = const [],
   TenantAdminEventLocation? location,
   TenantAdminEventPlaceRef? placeRef,
+  TenantAdminMediaUpload? coverUpload,
+  bool removeCover = false,
 }) {
   return TenantAdminEventDraft(
     title: 'My event',
@@ -514,6 +569,8 @@ TenantAdminEventDraft _buildDraft({
     ),
     location: location,
     placeRef: placeRef,
+    coverUpload: coverUpload,
+    removeCover: removeCover,
     taxonomyTerms: taxonomyTerms,
   );
 }

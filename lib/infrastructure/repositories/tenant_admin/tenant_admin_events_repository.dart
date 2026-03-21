@@ -4,6 +4,7 @@ import 'package:belluga_now/domain/repositories/tenant_admin_events_repository_c
 import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_result.dart';
+import 'package:belluga_now/infrastructure/dal/dao/tenant_admin/tenant_admin_media_form_data_builder.dart';
 import 'package:belluga_now/infrastructure/dal/dao/tenant_admin/tenant_admin_events_request_encoder.dart';
 import 'package:belluga_now/infrastructure/dal/dao/tenant_admin/tenant_admin_events_response_decoder.dart';
 import 'package:belluga_now/infrastructure/repositories/tenant_admin/tenant_admin_pagination_utils.dart';
@@ -25,6 +26,8 @@ class TenantAdminEventsRepository
       const TenantAdminEventsRequestEncoder();
   final TenantAdminEventsResponseDecoder _responseDecoder =
       const TenantAdminEventsResponseDecoder();
+  final TenantAdminMediaFormDataBuilder _mediaFormDataBuilder =
+      const TenantAdminMediaFormDataBuilder();
 
   String get _apiBaseUrl =>
       (_tenantScope ?? GetIt.I.get<TenantAdminTenantScopeContract>())
@@ -171,10 +174,26 @@ class TenantAdminEventsRepository
     required TenantAdminEventDraft draft,
   }) async {
     try {
+      final payload = _requestEncoder.encodeDraft(draft);
+      final uploadPayload = _mediaFormDataBuilder.buildAvatarCoverPayload(
+        payload: payload,
+        coverUpload: draft.coverUpload,
+      );
+      final hasMultipart = uploadPayload != null || draft.removeCover;
+      final requestPayload = hasMultipart
+          ? _prepareEventMultipartPayload(
+              payload: payload,
+              uploadPayload: uploadPayload,
+              removeCover: draft.removeCover,
+            )
+          : payload;
       final response = await _dio.post(
         '$_apiBaseUrl/v1/events',
-        data: _requestEncoder.encodeDraft(draft),
-        options: Options(headers: _buildLandlordHeaders()),
+        data: requestPayload,
+        options: Options(
+          headers: _buildLandlordHeaders(),
+          contentType: hasMultipart ? 'multipart/form-data' : null,
+        ),
       );
       return _responseDecoder.decodeEventItem(response.data);
     } on DioException catch (error) {
@@ -188,10 +207,26 @@ class TenantAdminEventsRepository
     required TenantAdminEventDraft draft,
   }) async {
     try {
+      final payload = _requestEncoder.encodeDraft(draft);
+      final uploadPayload = _mediaFormDataBuilder.buildAvatarCoverPayload(
+        payload: payload,
+        coverUpload: draft.coverUpload,
+      );
+      final hasMultipart = uploadPayload != null || draft.removeCover;
+      final requestPayload = hasMultipart
+          ? _prepareEventMultipartPayload(
+              payload: payload,
+              uploadPayload: uploadPayload,
+              removeCover: draft.removeCover,
+            )
+          : payload;
       final response = await _dio.post(
         '$_tenantApiBaseUrl/v1/accounts/$accountSlug/events',
-        data: _requestEncoder.encodeDraft(draft),
-        options: Options(headers: _buildAccountHeaders()),
+        data: requestPayload,
+        options: Options(
+          headers: _buildAccountHeaders(),
+          contentType: hasMultipart ? 'multipart/form-data' : null,
+        ),
       );
       return _responseDecoder.decodeEventItem(response.data);
     } on DioException catch (error) {
@@ -205,11 +240,31 @@ class TenantAdminEventsRepository
     required TenantAdminEventDraft draft,
   }) async {
     try {
-      final response = await _dio.patch(
-        '$_apiBaseUrl/v1/events/$eventId',
-        data: _requestEncoder.encodeDraft(draft),
-        options: Options(headers: _buildLandlordHeaders()),
+      final payload = _requestEncoder.encodeDraft(draft);
+      final uploadPayload = _mediaFormDataBuilder.buildAvatarCoverPayload(
+        payload: payload,
+        coverUpload: draft.coverUpload,
       );
+      final hasMultipart = uploadPayload != null || draft.removeCover;
+      final response = hasMultipart
+          ? await _dio.post(
+              '$_apiBaseUrl/v1/events/$eventId',
+              data: _prepareEventMultipartPayload(
+                payload: payload,
+                uploadPayload: uploadPayload,
+                removeCover: draft.removeCover,
+                includePatchMethodOverride: true,
+              ),
+              options: Options(
+                headers: _buildLandlordHeaders(),
+                contentType: 'multipart/form-data',
+              ),
+            )
+          : await _dio.patch(
+              '$_apiBaseUrl/v1/events/$eventId',
+              data: payload,
+              options: Options(headers: _buildLandlordHeaders()),
+            );
       return _responseDecoder.decodeEventItem(response.data);
     } on DioException catch (error) {
       throw _wrapError(error, 'update event');
@@ -356,5 +411,21 @@ class TenantAdminEventsRepository
 
   bool _isNotFound(DioException error) {
     return error.response?.statusCode == 404;
+  }
+
+  FormData _prepareEventMultipartPayload({
+    required Map<String, dynamic> payload,
+    required FormData? uploadPayload,
+    required bool removeCover,
+    bool includePatchMethodOverride = false,
+  }) {
+    final formData = uploadPayload ?? FormData.fromMap(payload);
+    if (removeCover) {
+      formData.fields.add(const MapEntry('remove_cover', '1'));
+    }
+    if (includePatchMethodOverride) {
+      formData.fields.add(const MapEntry('_method', 'PATCH'));
+    }
+    return formData;
   }
 }

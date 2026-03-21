@@ -1,5 +1,6 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
+import 'package:belluga_now/application/router/support/route_redirect_path.dart';
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/presentation/tenant_public/discovery/controllers/discovery_screen_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/discovery/widgets/discovery_partner_card.dart';
@@ -88,11 +89,13 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                         return StreamValueBuilder<Set<String>>(
                           streamValue: _controller.favoriteIdsStream,
                           builder: (context, favorites) {
-                            return StreamValueBuilder<List<AccountProfileModel>>(
+                            return StreamValueBuilder<
+                                List<AccountProfileModel>>(
                               streamValue:
                                   _controller.filteredPartnersStreamValue,
                               builder: (context, partners) {
                                 return CustomScrollView(
+                                  controller: _controller.scrollController,
                                   slivers: [
                                     if (showSections) ...[
                                       SliverToBoxAdapter(
@@ -130,8 +133,8 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                                                         .isPartnerFavoritable(
                                                       partner,
                                                     )) {
-                                                      _controller.toggleFavorite(
-                                                        partner.id,
+                                                      _handleFavoriteTap(
+                                                        partner,
                                                       );
                                                     }
                                                   },
@@ -184,8 +187,8 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                                                         .isPartnerFavoritable(
                                                       partner,
                                                     )) {
-                                                      _controller.toggleFavorite(
-                                                        partner.id,
+                                                      _handleFavoriteTap(
+                                                        partner,
                                                       );
                                                     }
                                                   },
@@ -227,11 +230,11 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                                             return StreamValueBuilder<String?>(
                                               streamValue: _controller
                                                   .selectedTypeFilterStreamValue,
-                                              builder:
-                                                  (context, selectedType) {
+                                              builder: (context, selectedType) {
                                                 return DiscoveryFilterChips(
                                                   selectedType: selectedType,
-                                                  availableTypes: availableTypes,
+                                                  availableTypes:
+                                                      availableTypes,
                                                   onSelectType:
                                                       _controller.setTypeFilter,
                                                   labelForType: _controller
@@ -259,7 +262,8 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                                               );
                                             }
                                             return Padding(
-                                              padding: const EdgeInsets.all(24.0),
+                                              padding:
+                                                  const EdgeInsets.all(24.0),
                                               child: Center(
                                                 child: Text(emptyLabel),
                                               ),
@@ -276,17 +280,16 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                                           favorites: favorites,
                                           isFavoritable:
                                               _controller.isPartnerFavoritable,
-                                          onFavoriteTap:
-                                              (partnerId) {
+                                          onFavoriteTap: (partnerId) {
                                             if (partners.isEmpty) return;
                                             final partner = partners.firstWhere(
                                               (item) => item.id == partnerId,
                                               orElse: () => partners.first,
                                             );
                                             if (_controller
-                                                .isPartnerFavoritable(partner)) {
-                                              _controller
-                                                  .toggleFavorite(partnerId);
+                                                .isPartnerFavoritable(
+                                                    partner)) {
+                                              _handleFavoriteTap(partner);
                                             }
                                           },
                                           onPartnerTap: (partner) =>
@@ -295,10 +298,36 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                                                 slug: partner.slug),
                                           ),
                                           typeLabelForPartner: (partner) =>
-                                              _controller.labelForAccountProfileType(
-                                                  partner.type),
+                                              _controller
+                                                  .labelForAccountProfileType(
+                                                      partner.type),
                                         ),
                                       ),
+                                    StreamValueBuilder<bool>(
+                                      streamValue:
+                                          _controller.isPageLoadingStreamValue,
+                                      builder: (context, isPageLoading) {
+                                        if (!isPageLoading) {
+                                          return const SliverToBoxAdapter(
+                                            child: SizedBox.shrink(),
+                                          );
+                                        }
+                                        return const SliverToBoxAdapter(
+                                          child: Padding(
+                                            padding: EdgeInsets.fromLTRB(
+                                              0,
+                                              0,
+                                              0,
+                                              24,
+                                            ),
+                                            child: Center(
+                                              child:
+                                                  CircularProgressIndicator(),
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                    ),
                                   ],
                                 );
                               },
@@ -319,5 +348,16 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
 
   void _navigateToMap(BuildContext context) {
     context.router.push(const CityMapRoute());
+  }
+
+  void _handleFavoriteTap(AccountProfileModel partner) {
+    final outcome = _controller.toggleFavorite(partner.id);
+    if (outcome != FavoriteToggleOutcome.requiresAuthentication) {
+      return;
+    }
+    final redirectPath =
+        buildRedirectPathFromRouteMatch(context.routeData.route);
+    final encodedRedirect = Uri.encodeQueryComponent(redirectPath);
+    context.router.replacePath('/auth/login?redirect=$encodedRedirect');
   }
 }

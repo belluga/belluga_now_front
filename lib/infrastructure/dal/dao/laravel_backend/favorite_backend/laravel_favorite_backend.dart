@@ -76,6 +76,71 @@ class LaravelFavoriteBackend implements FavoriteBackendContract {
     return favorites;
   }
 
+  @override
+  Future<void> favoriteAccountProfile(String accountProfileId) async {
+    await _mutateAccountProfileFavorite(
+      accountProfileId: accountProfileId,
+      isFavorite: true,
+    );
+  }
+
+  @override
+  Future<void> unfavoriteAccountProfile(String accountProfileId) async {
+    await _mutateAccountProfileFavorite(
+      accountProfileId: accountProfileId,
+      isFavorite: false,
+    );
+  }
+
+  Future<void> _mutateAccountProfileFavorite({
+    required String accountProfileId,
+    required bool isFavorite,
+  }) async {
+    final token = GetIt.I.get<AuthRepositoryContract>().userToken.trim();
+    if (token.isEmpty) {
+      throw Exception('Cannot mutate favorites without authentication token.');
+    }
+
+    final normalizedTargetId = accountProfileId.trim();
+    if (normalizedTargetId.isEmpty) {
+      throw Exception('Cannot mutate favorites with an empty target id.');
+    }
+
+    final payload = <String, dynamic>{
+      'target_id': normalizedTargetId,
+      'registry_key': 'account_profile',
+      'target_type': 'account_profile',
+    };
+
+    try {
+      final requestUri = '$_apiBaseUrl/v1/favorites';
+      final options = Options(headers: _headers(includeJsonAccept: true));
+      if (isFavorite) {
+        await _dio.post(
+          requestUri,
+          data: payload,
+          options: options,
+        );
+        return;
+      }
+      await _dio.delete(
+        requestUri,
+        data: payload,
+        options: options,
+      );
+    } on DioException catch (error) {
+      final statusCode = error.response?.statusCode;
+      final data = error.response?.data;
+      final operation = isFavorite ? 'favorite' : 'unfavorite';
+      throw Exception(
+        'Failed to $operation account profile '
+        '[status=$statusCode] '
+        '(${error.requestOptions.uri}): '
+        '${data ?? error.message}',
+      );
+    }
+  }
+
   Future<Map<String, dynamic>> _get(
     String url, {
     Map<String, dynamic>? queryParameters,

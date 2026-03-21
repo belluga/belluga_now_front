@@ -10,6 +10,7 @@ import 'package:belluga_now/domain/app_data/value_object/platform_type_value.dar
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
+import 'package:belluga_now/domain/partners/paged_account_profiles_result.dart';
 import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
 import 'package:belluga_now/domain/tenant/tenant.dart';
 import 'package:belluga_now/domain/user/user_contract.dart';
@@ -50,8 +51,8 @@ void main() {
     await GetIt.I.reset();
   });
 
-  testWidgets(
-      'app init retries until telemetry logging succeeds', (tester) async {
+  testWidgets('app init retries until telemetry logging succeeds',
+      (tester) async {
     GetIt.I.registerSingleton<AppDataRepositoryContract>(
       _FakeAppDataRepository(appData: _buildAppData()),
     );
@@ -113,8 +114,7 @@ void main() {
     );
   });
 
-  testWidgets(
-      'app router consumes runtime pushRouteInformation for /mapa',
+  testWidgets('app router consumes runtime pushRouteInformation for /mapa',
       (tester) async {
     GetIt.I.registerSingleton<AppDataRepositoryContract>(
       _FakeAppDataRepository(appData: _buildAppData()),
@@ -207,8 +207,7 @@ class _FakeTelemetryRepository implements TelemetryRepositoryContract {
 
   final Queue<bool> _appInitResults;
   int appInitCalls = 0;
-  final List<Map<String, Object?>> lifecycleEvents =
-      <Map<String, Object?>>[];
+  final List<Map<String, Object?>> lifecycleEvents = <Map<String, Object?>>[];
 
   @override
   Future<bool> logEvent(
@@ -368,7 +367,8 @@ class _NoopBackend extends BackendContract {
   TenantBackendContract get tenant => _NoopTenantBackend();
 
   @override
-  AccountProfilesBackendContract get accountProfiles => _NoopAccountProfilesBackend();
+  AccountProfilesBackendContract get accountProfiles =>
+      _NoopAccountProfilesBackend();
 
   @override
   FavoriteBackendContract get favorites => _NoopFavoriteBackend();
@@ -382,7 +382,17 @@ class _NoopBackend extends BackendContract {
 
 class _NoopAccountProfilesBackend implements AccountProfilesBackendContract {
   @override
-  Future<List<AccountProfileModel>> fetchAccountProfiles() => throw UnimplementedError();
+  Future<List<AccountProfileModel>> fetchAccountProfiles() =>
+      throw UnimplementedError();
+
+  @override
+  Future<PagedAccountProfilesResult> fetchAccountProfilesPage({
+    required int page,
+    required int pageSize,
+    String? query,
+    String? typeFilter,
+  }) =>
+      throw UnimplementedError();
 
   @override
   Future<List<AccountProfileModel>> searchAccountProfiles({
@@ -440,6 +450,14 @@ class _NoopTenantBackend extends TenantBackendContract {
 class _NoopFavoriteBackend extends FavoriteBackendContract {
   @override
   Future<List<FavoritePreviewDTO>> fetchFavorites() =>
+      throw UnimplementedError();
+
+  @override
+  Future<void> favoriteAccountProfile(String accountProfileId) =>
+      throw UnimplementedError();
+
+  @override
+  Future<void> unfavoriteAccountProfile(String accountProfileId) =>
       throw UnimplementedError();
 }
 

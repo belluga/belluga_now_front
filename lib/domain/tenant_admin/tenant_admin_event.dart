@@ -1,4 +1,5 @@
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
 
 part 'tenant_admin_event/tenant_admin_event_draft.dart';
@@ -22,6 +23,7 @@ class TenantAdminEvent {
     required this.publication,
     this.location,
     this.placeRef,
+    this.thumbUrl,
     this.artistIds = const <String>[],
     this.eventParties = const <TenantAdminEventParty>[],
     this.taxonomyTerms = const <TenantAdminTaxonomyTerm>[],
@@ -37,6 +39,7 @@ class TenantAdminEvent {
   final TenantAdminEventType type;
   final TenantAdminEventLocation? location;
   final TenantAdminEventPlaceRef? placeRef;
+  final String? thumbUrl;
   final List<TenantAdminEventOccurrence> occurrences;
   final TenantAdminEventPublication publication;
   final List<String> artistIds;

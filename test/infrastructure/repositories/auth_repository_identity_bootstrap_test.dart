@@ -10,6 +10,7 @@ import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/app_data/app_type.dart';
 import 'package:belluga_now/domain/app_data/value_object/platform_type_value.dart';
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
+import 'package:belluga_now/domain/partners/paged_account_profiles_result.dart';
 import 'package:belluga_now/domain/tenant/tenant.dart';
 import 'package:belluga_now/infrastructure/dal/dto/app_data_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/favorite/favorite_preview_dto.dart';
@@ -207,6 +208,15 @@ class _NoopAccountProfilesBackend implements AccountProfilesBackendContract {
       throw UnimplementedError();
 
   @override
+  Future<PagedAccountProfilesResult> fetchAccountProfilesPage({
+    required int page,
+    required int pageSize,
+    String? query,
+    String? typeFilter,
+  }) =>
+      throw UnimplementedError();
+
+  @override
   Future<List<AccountProfileModel>> searchAccountProfiles({
     String? query,
     String? typeFilter,
@@ -365,6 +375,14 @@ class _UnsupportedTenantBackend extends TenantBackendContract {
 class _UnsupportedFavoriteBackend extends FavoriteBackendContract {
   @override
   Future<List<FavoritePreviewDTO>> fetchFavorites() =>
+      throw UnimplementedError();
+
+  @override
+  Future<void> favoriteAccountProfile(String accountProfileId) =>
+      throw UnimplementedError();
+
+  @override
+  Future<void> unfavoriteAccountProfile(String accountProfileId) =>
       throw UnimplementedError();
 }
 

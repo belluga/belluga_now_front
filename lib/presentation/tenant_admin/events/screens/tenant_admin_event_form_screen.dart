@@ -5,11 +5,19 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_event.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_definition.dart';
+import 'package:belluga_now/presentation/shared/widgets/belluga_network_image.dart';
 import 'package:belluga_now/presentation/tenant_admin/events/controllers/tenant_admin_events_controller.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_image_ingestion_service.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_error_banner.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_field_edit_sheet.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_form_layout.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_image_crop_sheet.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_image_source_sheet.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_image_upload_field.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_xfile_preview.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 
 class TenantAdminEventFormScreen extends StatefulWidget {
@@ -31,6 +39,7 @@ class _TenantAdminEventFormScreenState
     extends State<TenantAdminEventFormScreen> {
   final TenantAdminEventsController _controller =
       GetIt.I.get<TenantAdminEventsController>();
+  bool _submitInFlight = false;
 
   bool get _isEditing => widget.existingEvent != null;
 
@@ -61,14 +70,17 @@ class _TenantAdminEventFormScreenState
                   builder: (context, venues) {
                     _controller.hydrateDefaultEventVenue(venues);
                     return StreamValueBuilder<bool>(
-                      streamValue: _controller.partyCandidatesLoadingStreamValue,
+                      streamValue:
+                          _controller.partyCandidatesLoadingStreamValue,
                       builder: (context, partyCandidatesLoading) {
                         return StreamValueBuilder<String?>(
-                          streamValue: _controller.partyCandidatesErrorStreamValue,
+                          streamValue:
+                              _controller.partyCandidatesErrorStreamValue,
                           builder: (context, partyCandidatesError) {
                             return StreamValueBuilder<
                                 List<TenantAdminAccountProfile>>(
-                              streamValue: _controller.artistCandidatesStreamValue,
+                              streamValue:
+                                  _controller.artistCandidatesStreamValue,
                               builder: (context, artists) {
                                 return StreamValueBuilder<
                                     List<TenantAdminEventType>>(
@@ -91,109 +103,182 @@ class _TenantAdminEventFormScreenState
                                           streamValue: _controller
                                               .taxonomyTermsBySlugStreamValue,
                                           builder: (context, termsBySlug) {
-                                        return TenantAdminFormScaffold(
-                                          title: _isEditing
-                                              ? 'Editar evento'
-                                              : 'Criar evento',
-                                          showHandle: false,
-                                          child: Form(
-                                            key: _controller.eventFormKey,
-                                            child: SingleChildScrollView(
-                                              child: Column(
-                                                crossAxisAlignment:
-                                                    CrossAxisAlignment.start,
-                                                children: [
-                                                  if (submitError != null &&
-                                                      submitError.isNotEmpty)
-                                                    TenantAdminErrorBanner(
-                                                      rawError: submitError,
-                                                      fallbackMessage:
-                                                          'Falha ao salvar evento.',
-                                                      onRetry: _controller
-                                                          .clearSubmitMessages,
-                                                    ),
-                                                  if (partyCandidatesLoading)
-                                                    const Padding(
-                                                      padding: EdgeInsets.only(
-                                                        top: 8,
-                                                        bottom: 8,
-                                                      ),
-                                                      child:
-                                                          LinearProgressIndicator(),
-                                                    ),
-                                                  if (partyCandidatesError !=
-                                                          null &&
-                                                      partyCandidatesError
-                                                          .isNotEmpty)
-                                                    Padding(
-                                                      padding:
-                                                          const EdgeInsets.only(
-                                                        bottom: 8,
-                                                      ),
-                                                      child:
-                                                          TenantAdminErrorBanner(
-                                                        rawError:
-                                                            partyCandidatesError,
-                                                        fallbackMessage:
-                                                            'Falha ao carregar hosts físicos/artistas.',
-                                                        onRetry: () => _controller
-                                                            .loadFormDependencies(
-                                                          accountSlug: widget
-                                                              .accountSlugForOwnCreate,
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  _buildBasicSection(),
-                                                  const SizedBox(height: 16),
-                                                  _buildTypeSection(
-                                                    eventTypes,
-                                                    formState: formState,
-                                                  ),
-                                                  const SizedBox(height: 16),
-                                                  _buildScheduleSection(
-                                                    formState: formState,
-                                                  ),
-                                                  const SizedBox(height: 16),
-                                                  _buildPublicationSection(
-                                                    formState: formState,
-                                                  ),
-                                                  const SizedBox(height: 16),
-                                                  _buildLocationSection(
-                                                    venues,
-                                                    formState: formState,
-                                                  ),
-                                                  const SizedBox(height: 16),
-                                                  _buildArtistsSection(
-                                                    artists,
-                                                    formState: formState,
-                                                  ),
-                                                  const SizedBox(height: 16),
-                                                  _buildTaxonomySection(
-                                                    taxonomies: taxonomies,
-                                                    termsBySlug: termsBySlug,
-                                                    formState: formState,
-                                                  ),
-                                                  const SizedBox(height: 24),
-                                                  TenantAdminPrimaryFormAction(
-                                                    label: _isEditing
-                                                        ? 'Salvar alterações'
-                                                        : 'Criar evento',
-                                                    onPressed: isSubmitting
-                                                        ? null
-                                                        : () => _handleSubmit(
-                                                              venues: venues,
-                                                              eventTypes:
-                                                                  eventTypes,
-                                                              formState:
-                                                                  formState,
+                                            return StreamValueBuilder<XFile?>(
+                                              streamValue: _controller
+                                                  .eventCoverFileStreamValue,
+                                              builder:
+                                                  (context, selectedCover) {
+                                                return StreamValueBuilder<bool>(
+                                                  streamValue: _controller
+                                                      .eventCoverBusyStreamValue,
+                                                  builder:
+                                                      (context, isCoverBusy) {
+                                                    return StreamValueBuilder<
+                                                        bool>(
+                                                      streamValue: _controller
+                                                          .eventCoverRemoveStreamValue,
+                                                      builder: (
+                                                        context,
+                                                        isCoverMarkedForRemoval,
+                                                      ) {
+                                                        return TenantAdminFormScaffold(
+                                                          title: _isEditing
+                                                              ? 'Editar evento'
+                                                              : 'Criar evento',
+                                                          showHandle: false,
+                                                          child: Form(
+                                                            key: _controller
+                                                                .eventFormKey,
+                                                            child:
+                                                                SingleChildScrollView(
+                                                              child: Column(
+                                                                crossAxisAlignment:
+                                                                    CrossAxisAlignment
+                                                                        .start,
+                                                                children: [
+                                                                  if (submitError !=
+                                                                          null &&
+                                                                      submitError
+                                                                          .isNotEmpty)
+                                                                    TenantAdminErrorBanner(
+                                                                      rawError:
+                                                                          submitError,
+                                                                      fallbackMessage:
+                                                                          'Falha ao salvar evento.',
+                                                                      onRetry:
+                                                                          _controller
+                                                                              .clearSubmitMessages,
+                                                                    ),
+                                                                  if (partyCandidatesLoading)
+                                                                    const Padding(
+                                                                      padding:
+                                                                          EdgeInsets
+                                                                              .only(
+                                                                        top: 8,
+                                                                        bottom:
+                                                                            8,
+                                                                      ),
+                                                                      child:
+                                                                          LinearProgressIndicator(),
+                                                                    ),
+                                                                  if (partyCandidatesError !=
+                                                                          null &&
+                                                                      partyCandidatesError
+                                                                          .isNotEmpty)
+                                                                    Padding(
+                                                                      padding:
+                                                                          const EdgeInsets
+                                                                              .only(
+                                                                        bottom:
+                                                                            8,
+                                                                      ),
+                                                                      child:
+                                                                          TenantAdminErrorBanner(
+                                                                        rawError:
+                                                                            partyCandidatesError,
+                                                                        fallbackMessage:
+                                                                            'Falha ao carregar hosts físicos/artistas.',
+                                                                        onRetry:
+                                                                            () =>
+                                                                                _controller.loadFormDependencies(
+                                                                          accountSlug:
+                                                                              widget.accountSlugForOwnCreate,
+                                                                        ),
+                                                                      ),
+                                                                    ),
+                                                                  _buildBasicSection(),
+                                                                  const SizedBox(
+                                                                    height: 16,
+                                                                  ),
+                                                                  _buildCoverSection(
+                                                                    selectedCover:
+                                                                        selectedCover,
+                                                                    isCoverBusy:
+                                                                        isCoverBusy,
+                                                                    isCoverMarkedForRemoval:
+                                                                        isCoverMarkedForRemoval,
+                                                                    isSubmitting:
+                                                                        isSubmitting,
+                                                                  ),
+                                                                  const SizedBox(
+                                                                    height: 16,
+                                                                  ),
+                                                                  _buildTypeSection(
+                                                                    eventTypes,
+                                                                    formState:
+                                                                        formState,
+                                                                  ),
+                                                                  const SizedBox(
+                                                                    height: 16,
+                                                                  ),
+                                                                  _buildScheduleSection(
+                                                                    formState:
+                                                                        formState,
+                                                                  ),
+                                                                  const SizedBox(
+                                                                    height: 16,
+                                                                  ),
+                                                                  _buildPublicationSection(
+                                                                    formState:
+                                                                        formState,
+                                                                  ),
+                                                                  const SizedBox(
+                                                                    height: 16,
+                                                                  ),
+                                                                  _buildLocationSection(
+                                                                    venues,
+                                                                    formState:
+                                                                        formState,
+                                                                  ),
+                                                                  const SizedBox(
+                                                                    height: 16,
+                                                                  ),
+                                                                  _buildArtistsSection(
+                                                                    artists,
+                                                                    formState:
+                                                                        formState,
+                                                                  ),
+                                                                  const SizedBox(
+                                                                    height: 16,
+                                                                  ),
+                                                                  _buildTaxonomySection(
+                                                                    taxonomies:
+                                                                        taxonomies,
+                                                                    termsBySlug:
+                                                                        termsBySlug,
+                                                                    formState:
+                                                                        formState,
+                                                                  ),
+                                                                  const SizedBox(
+                                                                    height: 24,
+                                                                  ),
+                                                                  TenantAdminPrimaryFormAction(
+                                                                    label: _isEditing
+                                                                        ? 'Salvar alterações'
+                                                                        : 'Criar evento',
+                                                                    onPressed: isSubmitting
+                                                                        ? null
+                                                                        : () => _handleSubmit(
+                                                                              venues: venues,
+                                                                              eventTypes: eventTypes,
+                                                                              formState: formState,
+                                                                              selectedCover: selectedCover,
+                                                                              isCoverMarkedForRemoval: isCoverMarkedForRemoval,
+                                                                            ),
+                                                                    isLoading:
+                                                                        isSubmitting,
+                                                                  ),
+                                                                ],
+                                                              ),
                                                             ),
-                                                    isLoading: isSubmitting,
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                          ),
-                                        );
+                                                          ),
+                                                        );
+                                                      },
+                                                    );
+                                                  },
+                                                );
+                                              },
+                                            );
                                           },
                                         );
                                       },
@@ -245,6 +330,109 @@ class _TenantAdminEventFormScreenState
             maxLines: 6,
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildCoverSection({
+    required XFile? selectedCover,
+    required bool isCoverBusy,
+    required bool isCoverMarkedForRemoval,
+    required bool isSubmitting,
+  }) {
+    final existingCoverUrl = widget.existingEvent?.thumbUrl?.trim();
+    final hasExistingCover =
+        existingCoverUrl != null && existingCoverUrl.isNotEmpty;
+    final canRemove = selectedCover != null ||
+        (hasExistingCover && !isCoverMarkedForRemoval) ||
+        isCoverMarkedForRemoval;
+
+    final selectedLabel = selectedCover?.name ??
+        (isCoverMarkedForRemoval
+            ? 'Capa será removida ao salvar.'
+            : hasExistingCover
+                ? existingCoverUrl
+                : 'Nenhuma imagem selecionada');
+
+    return TenantAdminFormSectionCard(
+      title: 'Capa do evento',
+      description:
+          'Opcional. Se não houver capa, a experiência pública pode usar fallback do artista.',
+      child: TenantAdminImageUploadField(
+        variant: TenantAdminImageUploadVariant.cover,
+        preview: _buildCoverPreview(
+          selectedCover: selectedCover,
+          existingCoverUrl: existingCoverUrl,
+          isCoverMarkedForRemoval: isCoverMarkedForRemoval,
+        ),
+        selectedLabel: selectedLabel,
+        addLabel: 'Adicionar capa',
+        removeLabel: isCoverMarkedForRemoval ? 'Desfazer remoção' : 'Remover',
+        onAdd: (isSubmitting || isCoverBusy) ? null : _pickCoverImage,
+        busy: isCoverBusy,
+        canRemove: canRemove,
+        onRemove: (isSubmitting || isCoverBusy)
+            ? null
+            : () => _clearCoverSelection(
+                  hasExistingCover: hasExistingCover,
+                  hasSelectedCover: selectedCover != null,
+                  isCoverMarkedForRemoval: isCoverMarkedForRemoval,
+                ),
+      ),
+    );
+  }
+
+  Widget _buildCoverPreview({
+    required XFile? selectedCover,
+    required String? existingCoverUrl,
+    required bool isCoverMarkedForRemoval,
+  }) {
+    if (selectedCover != null) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: TenantAdminXFilePreview(
+          file: selectedCover,
+          width: double.infinity,
+          height: 140,
+          fit: BoxFit.cover,
+        ),
+      );
+    }
+
+    if (isCoverMarkedForRemoval) {
+      return Container(
+        width: double.infinity,
+        height: 140,
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surfaceContainerHighest,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: const Center(
+          child: Icon(Icons.delete_outline),
+        ),
+      );
+    }
+
+    final normalizedCoverUrl = existingCoverUrl?.trim();
+    if (normalizedCoverUrl != null && normalizedCoverUrl.isNotEmpty) {
+      return BellugaNetworkImage(
+        normalizedCoverUrl,
+        width: double.infinity,
+        height: 140,
+        fit: BoxFit.cover,
+        clipBorderRadius: BorderRadius.circular(12),
+      );
+    }
+
+    return Container(
+      width: double.infinity,
+      height: 140,
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: const Center(
+        child: Icon(Icons.image_outlined),
       ),
     );
   }
@@ -335,7 +523,8 @@ class _TenantAdminEventFormScreenState
             controller: _controller.eventEndController,
             label: 'Fim (opcional)',
             onTap: _pickEndDateTime,
-            onClear: formState.endAt == null ? null : _controller.clearEventEndAt,
+            onClear:
+                formState.endAt == null ? null : _controller.clearEventEndAt,
             validator: (_) {
               final startAt = formState.startAt ??
                   _parseDateTimeFromField(
@@ -444,7 +633,8 @@ class _TenantAdminEventFormScreenState
             const SizedBox(height: 12),
             DropdownButtonFormField<String>(
               initialValue: formState.selectedVenueId,
-              decoration: const InputDecoration(labelText: 'Host físico (perfil)'),
+              decoration:
+                  const InputDecoration(labelText: 'Host físico (perfil)'),
               items: venues
                   .map(
                     (venue) => DropdownMenuItem<String>(
@@ -453,9 +643,8 @@ class _TenantAdminEventFormScreenState
                     ),
                   )
                   .toList(growable: false),
-              onChanged: venues.isEmpty
-                  ? null
-                  : _controller.updateEventVenueSelection,
+              onChanged:
+                  venues.isEmpty ? null : _controller.updateEventVenueSelection,
               validator: (value) {
                 if (formState.locationMode == 'physical' ||
                     formState.locationMode == 'hybrid') {
@@ -617,8 +806,8 @@ class _TenantAdminEventFormScreenState
         children: taxonomies.map((taxonomy) {
           final terms = termsBySlug[taxonomy.slug] ??
               const <TenantAdminTaxonomyTermDefinition>[];
-          final selected =
-              formState.selectedTaxonomyTerms[taxonomy.slug] ?? const <String>{};
+          final selected = formState.selectedTaxonomyTerms[taxonomy.slug] ??
+              const <String>{};
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -635,8 +824,8 @@ class _TenantAdminEventFormScreenState
                       (term) => FilterChip(
                         label: Text(term.name),
                         selected: selected.contains(term.slug),
-                        onSelected: (isSelected) => _controller
-                            .toggleEventTaxonomyTerm(
+                        onSelected: (isSelected) =>
+                            _controller.toggleEventTaxonomyTerm(
                           taxonomySlug: taxonomy.slug,
                           termSlug: term.slug,
                           isSelected: isSelected,
@@ -699,11 +888,9 @@ class _TenantAdminEventFormScreenState
   }
 
   Future<void> _openArtistPickerSheet(
-    List<TenantAdminAccountProfile> artists,
-    {
+    List<TenantAdminAccountProfile> artists, {
     required TenantAdminEventFormState formState,
-  }
-  ) async {
+  }) async {
     final selectedArtist =
         await showModalBottomSheet<TenantAdminAccountProfile>(
       context: context,
@@ -778,9 +965,8 @@ class _TenantAdminEventFormScreenState
                                     ),
                                     onTap: isAlreadySelected
                                         ? null
-                                        : () => context.router
-                                            .maybePop<TenantAdminAccountProfile>(
-                                                artist),
+                                        : () => context.router.maybePop<
+                                            TenantAdminAccountProfile>(artist),
                                   ),
                                 );
                               },
@@ -800,6 +986,144 @@ class _TenantAdminEventFormScreenState
     }
 
     _controller.addEventArtist(selectedArtist.id);
+  }
+
+  Future<String?> _promptWebImageUrl({required String title}) async {
+    final result = await showTenantAdminFieldEditSheet(
+      context: context,
+      title: title,
+      label: 'URL da imagem',
+      initialValue: '',
+      helperText: 'Use URL completa (http/https).',
+      keyboardType: TextInputType.url,
+      textCapitalization: TextCapitalization.none,
+      autocorrect: false,
+      enableSuggestions: false,
+      validator: (value) {
+        final trimmed = value?.trim() ?? '';
+        if (trimmed.isEmpty) {
+          return 'URL obrigatória.';
+        }
+        final uri = Uri.tryParse(trimmed);
+        final hasScheme = uri != null &&
+            (uri.scheme == 'http' || uri.scheme == 'https') &&
+            uri.host.isNotEmpty;
+        if (!hasScheme) {
+          return 'URL inválida.';
+        }
+        return null;
+      },
+    );
+    return result?.value.trim();
+  }
+
+  Future<void> _pickCoverImage() async {
+    final source = await showTenantAdminImageSourceSheet(
+      context: context,
+      title: 'Adicionar capa',
+    );
+    if (source == null) {
+      return;
+    }
+    if (source == TenantAdminImageSourceOption.device) {
+      await _pickCoverFromDevice();
+      return;
+    }
+    await _pickCoverFromWeb();
+  }
+
+  Future<void> _pickCoverFromDevice() async {
+    if (_controller.eventCoverBusyStreamValue.value == true) {
+      return;
+    }
+    try {
+      _controller.setEventCoverBusy(true);
+      final picked = await _controller.pickImageFromDevice(
+        slot: TenantAdminImageSlot.cover,
+      );
+      if (picked == null || !mounted) {
+        return;
+      }
+      final cropped = await showTenantAdminImageCropSheet(
+        context: context,
+        sourceFile: picked,
+        slot: TenantAdminImageSlot.cover,
+        readBytesForCrop: _controller.readImageBytesForCrop,
+        prepareCroppedFile: (croppedData, cropSlot) =>
+            _controller.prepareCroppedImage(
+          croppedData,
+          slot: cropSlot,
+        ),
+      );
+      if (cropped == null) {
+        return;
+      }
+      _controller.updateEventCoverFile(cropped);
+      _controller.restoreEventCover();
+    } on TenantAdminImageIngestionException catch (error) {
+      _controller.submitErrorMessageStreamValue.addValue(error.message);
+    } finally {
+      _controller.setEventCoverBusy(false);
+    }
+  }
+
+  Future<void> _pickCoverFromWeb() async {
+    if (_controller.eventCoverBusyStreamValue.value == true) {
+      return;
+    }
+
+    final url = await _promptWebImageUrl(title: 'URL da capa');
+    if (url == null || !mounted) {
+      return;
+    }
+
+    try {
+      _controller.setEventCoverBusy(true);
+      final sourceFile = await _controller.fetchImageFromUrlForCrop(
+        imageUrl: url,
+      );
+      if (!mounted) {
+        return;
+      }
+      final cropped = await showTenantAdminImageCropSheet(
+        context: context,
+        sourceFile: sourceFile,
+        slot: TenantAdminImageSlot.cover,
+        readBytesForCrop: _controller.readImageBytesForCrop,
+        prepareCroppedFile: (croppedData, cropSlot) =>
+            _controller.prepareCroppedImage(
+          croppedData,
+          slot: cropSlot,
+        ),
+      );
+      if (cropped == null) {
+        return;
+      }
+      _controller.updateEventCoverFile(cropped);
+      _controller.restoreEventCover();
+    } on TenantAdminImageIngestionException catch (error) {
+      _controller.submitErrorMessageStreamValue.addValue(error.message);
+    } finally {
+      _controller.setEventCoverBusy(false);
+    }
+  }
+
+  void _clearCoverSelection({
+    required bool hasExistingCover,
+    required bool hasSelectedCover,
+    required bool isCoverMarkedForRemoval,
+  }) {
+    if (isCoverMarkedForRemoval) {
+      _controller.restoreEventCover();
+      return;
+    }
+    if (hasSelectedCover) {
+      _controller.updateEventCoverFile(null);
+      return;
+    }
+    if (hasExistingCover) {
+      _controller.removeEventCover();
+    }
   }
 
   Future<void> _pickStartDateTime() async {
@@ -896,14 +1220,20 @@ class _TenantAdminEventFormScreenState
     required List<TenantAdminAccountProfile> venues,
     required List<TenantAdminEventType> eventTypes,
     required TenantAdminEventFormState formState,
+    required XFile? selectedCover,
+    required bool isCoverMarkedForRemoval,
   }) async {
+    if (_submitInFlight) {
+      return;
+    }
     final form = _controller.eventFormKey.currentState;
     if (form == null || !form.validate()) {
       return;
     }
 
     final startAt = formState.startAt ??
-        _parseDateTimeFromField(_controller.eventStartController.text)?.toLocal();
+        _parseDateTimeFromField(_controller.eventStartController.text)
+            ?.toLocal();
 
     if (startAt == null) {
       return;
@@ -965,76 +1295,90 @@ class _TenantAdminEventFormScreenState
       selectedVenue,
       formState: formState,
     );
-    final placeRef = (formState.locationMode == 'physical' ||
-                formState.locationMode == 'hybrid') &&
-            selectedVenue != null
-            ? TenantAdminEventPlaceRef(
-                type: 'account_profile',
-                id: selectedVenue.id,
-                metadata: {
-                  'display_name': selectedVenue.displayName,
-                },
-              )
-            : null;
+    _submitInFlight = true;
+    var submitSucceeded = false;
+    try {
+      final coverUpload = await _controller.buildImageUpload(
+        selectedCover,
+        slot: TenantAdminImageSlot.cover,
+      );
+      final removeCover =
+          _isEditing && selectedCover == null && isCoverMarkedForRemoval;
+      final placeRef = (formState.locationMode == 'physical' ||
+                  formState.locationMode == 'hybrid') &&
+              selectedVenue != null
+          ? TenantAdminEventPlaceRef(
+              type: 'account_profile',
+              id: selectedVenue.id,
+              metadata: {
+                'display_name': selectedVenue.displayName,
+              },
+            )
+          : null;
 
-    final draft = TenantAdminEventDraft(
-      title: _controller.eventTitleController.text.trim(),
-      content: _controller.eventContentController.text.trim(),
-      type: TenantAdminEventType(
-        id: selectedTypeId,
-        name: selectedType.name,
-        slug: selectedType.slug,
-        description: selectedType.description,
-        icon: selectedType.icon,
-        color: selectedType.color,
-      ),
-      occurrences: <TenantAdminEventOccurrence>[
-        TenantAdminEventOccurrence(
-          dateTimeStart: startAt.toUtc(),
-          dateTimeEnd: endAt?.toUtc(),
+      final draft = TenantAdminEventDraft(
+        title: _controller.eventTitleController.text.trim(),
+        content: _controller.eventContentController.text.trim(),
+        type: TenantAdminEventType(
+          id: selectedTypeId,
+          name: selectedType.name,
+          slug: selectedType.slug,
+          description: selectedType.description,
+          icon: selectedType.icon,
+          color: selectedType.color,
         ),
-      ],
-      publication: TenantAdminEventPublication(
-        status: formState.publicationStatus,
-        publishAt: formState.publicationStatus == 'publish_scheduled'
-            ? publishAt?.toUtc()
-            : null,
-      ),
-      location: location,
-      placeRef: placeRef,
-      artistIds: formState.selectedArtistIds.toList(growable: false),
-      taxonomyTerms: taxonomyTerms,
-    );
+        occurrences: <TenantAdminEventOccurrence>[
+          TenantAdminEventOccurrence(
+            dateTimeStart: startAt.toUtc(),
+            dateTimeEnd: endAt?.toUtc(),
+          ),
+        ],
+        publication: TenantAdminEventPublication(
+          status: formState.publicationStatus,
+          publishAt: formState.publicationStatus == 'publish_scheduled'
+              ? publishAt?.toUtc()
+              : null,
+        ),
+        location: location,
+        placeRef: placeRef,
+        coverUpload: coverUpload,
+        removeCover: removeCover,
+        artistIds: formState.selectedArtistIds.toList(growable: false),
+        taxonomyTerms: taxonomyTerms,
+      );
 
-    final Future<TenantAdminEvent?> resultFuture = _isEditing
-        ? _controller.submitUpdate(
-            eventId: widget.existingEvent!.eventId,
-            draft: draft,
-          )
-        : _controller.submitCreate(
-            draft,
-            accountSlug: widget.accountSlugForOwnCreate,
-          );
+      final result = await (_isEditing
+          ? _controller.submitUpdate(
+              eventId: widget.existingEvent!.eventId,
+              draft: draft,
+            )
+          : _controller.submitCreate(
+              draft,
+              accountSlug: widget.accountSlugForOwnCreate,
+            ));
 
-    resultFuture.then((result) {
       if (result == null || !mounted) {
         return;
       }
-      context.router.maybePop<TenantAdminEvent>(result);
-    });
+      submitSucceeded = true;
+      await context.router.maybePop<TenantAdminEvent>(result);
+    } finally {
+      if (!submitSucceeded) {
+        _submitInFlight = false;
+      }
+    }
   }
 
   TenantAdminEventLocation _buildLocationFromSelection(
-    TenantAdminAccountProfile? selectedVenue,
-    {
+    TenantAdminAccountProfile? selectedVenue, {
     required TenantAdminEventFormState formState,
-  }
-  ) {
+  }) {
     final onlineUrl = _controller.eventOnlineUrlController.text.trim();
-    final onlinePlatform = _controller.eventOnlinePlatformController.text.trim();
+    final onlinePlatform =
+        _controller.eventOnlinePlatformController.text.trim();
 
-    final online =
-        (formState.locationMode == 'online' || formState.locationMode == 'hybrid')
+    final online = (formState.locationMode == 'online' ||
+            formState.locationMode == 'hybrid')
         ? TenantAdminEventOnlineLocation(
             url: onlineUrl,
             platform: onlinePlatform.isEmpty ? null : onlinePlatform,

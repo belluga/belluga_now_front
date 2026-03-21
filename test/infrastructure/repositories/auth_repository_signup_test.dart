@@ -1,6 +1,7 @@
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
+import 'package:belluga_now/domain/partners/paged_account_profiles_result.dart';
 import 'package:belluga_now/domain/user/user_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/app_data_backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/auth_backend_contract.dart';
@@ -180,7 +181,8 @@ class _FakeBackend extends BackendContract {
   TenantBackendContract get tenant => _UnsupportedTenantBackend();
 
   @override
-  AccountProfilesBackendContract get accountProfiles => _UnsupportedAccountProfilesBackend();
+  AccountProfilesBackendContract get accountProfiles =>
+      _UnsupportedAccountProfilesBackend();
 
   @override
   FavoriteBackendContract get favorites => _UnsupportedFavoriteBackend();
@@ -265,13 +267,24 @@ class _UnsupportedAppDataBackend extends AppDataBackendContract {
   Future<AppDataDTO> fetch() => throw UnimplementedError();
 }
 
-class _UnsupportedAccountProfilesBackend extends AccountProfilesBackendContract {
+class _UnsupportedAccountProfilesBackend
+    extends AccountProfilesBackendContract {
   @override
   Future<AccountProfileModel?> fetchAccountProfileBySlug(String slug) =>
       throw UnimplementedError();
 
   @override
-  Future<List<AccountProfileModel>> fetchAccountProfiles() => throw UnimplementedError();
+  Future<List<AccountProfileModel>> fetchAccountProfiles() =>
+      throw UnimplementedError();
+
+  @override
+  Future<PagedAccountProfilesResult> fetchAccountProfilesPage({
+    required int page,
+    required int pageSize,
+    String? query,
+    String? typeFilter,
+  }) =>
+      throw UnimplementedError();
 
   @override
   Future<List<AccountProfileModel>> searchAccountProfiles({
@@ -284,6 +297,14 @@ class _UnsupportedAccountProfilesBackend extends AccountProfilesBackendContract 
 class _UnsupportedFavoriteBackend extends FavoriteBackendContract {
   @override
   Future<List<FavoritePreviewDTO>> fetchFavorites() =>
+      throw UnimplementedError();
+
+  @override
+  Future<void> favoriteAccountProfile(String accountProfileId) =>
+      throw UnimplementedError();
+
+  @override
+  Future<void> unfavoriteAccountProfile(String accountProfileId) =>
       throw UnimplementedError();
 }
 
