@@ -4,6 +4,7 @@ import 'package:belluga_now/domain/gamification/mission_resume.dart';
 import 'package:belluga_now/domain/invites/invite_accept_result.dart';
 import 'package:belluga_now/domain/invites/invite_decline_result.dart';
 import 'package:belluga_now/domain/invites/invite_model.dart';
+import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_events_repository_contract.dart';
@@ -19,6 +20,7 @@ class ImmersiveEventDetailController implements Disposable {
     UserEventsRepositoryContract? userEventsRepository,
     InvitesRepositoryContract? invitesRepository,
     AuthRepositoryContract? authRepository,
+    AppDataRepositoryContract? appDataRepository,
   })  : _userEventsRepository =
             userEventsRepository ?? GetIt.I.get<UserEventsRepositoryContract>(),
         _invitesRepository =
@@ -26,11 +28,18 @@ class ImmersiveEventDetailController implements Disposable {
         _authRepository = authRepository ??
             (GetIt.I.isRegistered<AuthRepositoryContract>()
                 ? GetIt.I.get<AuthRepositoryContract>()
+                : null),
+        _appDataRepository = appDataRepository ??
+            (GetIt.I.isRegistered<AppDataRepositoryContract>()
+                ? GetIt.I.get<AppDataRepositoryContract>()
                 : null);
 
   final UserEventsRepositoryContract _userEventsRepository;
   final InvitesRepositoryContract _invitesRepository;
   final AuthRepositoryContract? _authRepository;
+  final AppDataRepositoryContract? _appDataRepository;
+  static final Uri _localEventPlaceholderUri =
+      Uri.parse('asset://event-placeholder');
 
   final scrollController = ScrollController();
   StreamSubscription<List<InviteModel>>? _pendingInvitesSubscription;
@@ -56,6 +65,14 @@ class ImmersiveEventDetailController implements Disposable {
           _invitesRepository.sentInvitesByEventStreamValue;
 
   final isLoadingStreamValue = StreamValue<bool>(defaultValue: false);
+
+  Uri get defaultEventImageUri {
+    final configured = _appDataRepository?.appData.mainLogoDarkUrl.value;
+    if (configured != null && configured.toString().trim().isNotEmpty) {
+      return configured;
+    }
+    return _localEventPlaceholderUri;
+  }
 
   bool get _isAuthorized => _authRepository?.isAuthorized ?? true;
 

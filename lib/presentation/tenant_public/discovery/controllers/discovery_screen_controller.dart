@@ -287,24 +287,11 @@ class DiscoveryScreenController implements Disposable {
   }
 
   void _applyFilters() {
-    final query = searchQueryStreamValue.value.trim().toLowerCase();
-    final type = selectedTypeFilterStreamValue.value;
-
-    var results = _allAccountProfiles;
-
-    if (type != null) {
-      results = results.where((p) => p.type == type).toList();
-    }
-
-    if (query.isNotEmpty) {
-      results = results.where((p) {
-        final nameMatch = p.name.toLowerCase().contains(query);
-        final tagMatch = p.tags.any((tag) => tag.toLowerCase().contains(query));
-        return nameMatch || tagMatch;
-      }).toList();
-    }
-
-    filteredPartnersStreamValue.addValue(results);
+    // Discovery query/type filtering is backend-driven for paginated datasets.
+    // Applying local text/type filters here can silently drop valid backend
+    // matches (for example slug or taxonomy-only matches).
+    filteredPartnersStreamValue
+        .addValue(List<AccountProfileModel>.from(_allAccountProfiles));
   }
 
   void _updateAvailableTypes() {
@@ -313,11 +300,9 @@ class DiscoveryScreenController implements Disposable {
       availableTypesStreamValue.addValue(const []);
       return;
     }
-    final presentTypes = _allAccountProfiles.map((p) => p.type).toSet();
     final allowed = registry
         .enabledAccountProfileTypes()
-        .where((type) =>
-            presentTypes.contains(type) && registry.isFavoritableFor(type))
+        .where((type) => registry.isFavoritableFor(type))
         .toList(growable: false);
     availableTypesStreamValue.addValue(allowed);
   }

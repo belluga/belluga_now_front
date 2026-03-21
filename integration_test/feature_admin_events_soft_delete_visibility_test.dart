@@ -12,7 +12,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_event.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_definition.dart';
-import 'package:belluga_now/infrastructure/dal/dao/local/app_data_local_info_source/app_data_local_info_source.dart';
+import 'package:belluga_now/infrastructure/platform/app_data_local_info_source/app_data_local_info_source.dart';
 import 'package:belluga_now/infrastructure/repositories/app_data_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';

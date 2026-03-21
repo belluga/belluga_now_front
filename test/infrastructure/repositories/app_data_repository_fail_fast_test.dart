@@ -1,7 +1,7 @@
 import 'package:belluga_now/domain/app_data/app_type.dart';
 import 'package:belluga_now/domain/app_data/value_object/platform_type_value.dart';
 import 'package:belluga_now/infrastructure/dal/dao/app_data_backend_contract.dart';
-import 'package:belluga_now/infrastructure/dal/dao/local/app_data_local_info_source/app_data_local_info_source.dart';
+import 'package:belluga_now/infrastructure/platform/app_data_local_info_source/app_data_local_info_source.dart';
 import 'package:belluga_now/infrastructure/dal/dto/app_data_dto.dart';
 import 'package:belluga_now/infrastructure/repositories/app_data_repository.dart';
 import 'package:flutter_test/flutter_test.dart';

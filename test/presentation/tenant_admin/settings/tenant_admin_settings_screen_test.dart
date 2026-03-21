@@ -834,6 +834,33 @@ void main() {
     controller.onDispose();
   });
 
+  test(
+      'controller falls back to canonical tenant pwa icon endpoint when repository pwa url is missing',
+      () async {
+    final repository = _FakeAppDataRepository(
+      _buildAppData(mainDomain: 'https://belluga.app'),
+    );
+    final settingsRepository =
+        _FakeTenantAdminSettingsRepository(initialPwaIconUrl: null);
+    final tenantScope = _FakeTenantScope('guarappari.test');
+    final controller = TenantAdminSettingsController(
+      appDataRepository: repository,
+      settingsRepository: settingsRepository,
+      tenantScope: tenantScope,
+    );
+
+    await controller.init();
+
+    expect(
+      controller.brandingPwaIconUrlStreamValue.value,
+      allOf(
+        contains('https://guarappari.test/icon/icon-512x512.png'),
+        contains('v='),
+      ),
+    );
+    controller.onDispose();
+  });
+
   test('controller rehydrates branding colors from repository after save',
       () async {
     final repository = _FakeAppDataRepository(_buildAppData());
@@ -1001,7 +1028,18 @@ class _FakeTenantAdminSettingsRepository
     implements TenantAdminSettingsRepositoryContract {
   _FakeTenantAdminSettingsRepository({
     this.throwOnBrandingFetch = false,
-  });
+    String? initialPwaIconUrl = 'https://guarappari.test/storage/pwa-icon.png',
+  }) : _brandingSettings = TenantAdminBrandingSettings(
+          tenantName: 'Tenant Test',
+          brightnessDefault: TenantAdminBrandingBrightness.light,
+          primarySeedColor: '#009688',
+          secondarySeedColor: '#673AB7',
+          lightLogoUrl: 'https://guarappari.test/storage/light-logo.png',
+          darkLogoUrl: 'https://guarappari.test/storage/dark-logo.png',
+          lightIconUrl: 'https://guarappari.test/storage/light-icon.png',
+          darkIconUrl: 'https://guarappari.test/storage/dark-icon.png',
+          pwaIconUrl: initialPwaIconUrl,
+        );
 
   final bool throwOnBrandingFetch;
   String? updatedFirebaseProjectId;
@@ -1028,17 +1066,7 @@ class _FakeTenantAdminSettingsRepository
     ),
     filters: [],
   );
-  TenantAdminBrandingSettings _brandingSettings = TenantAdminBrandingSettings(
-    tenantName: 'Tenant Test',
-    brightnessDefault: TenantAdminBrandingBrightness.light,
-    primarySeedColor: '#009688',
-    secondarySeedColor: '#673AB7',
-    lightLogoUrl: 'https://guarappari.test/storage/light-logo.png',
-    darkLogoUrl: 'https://guarappari.test/storage/dark-logo.png',
-    lightIconUrl: 'https://guarappari.test/storage/light-icon.png',
-    darkIconUrl: 'https://guarappari.test/storage/dark-icon.png',
-    pwaIconUrl: 'https://guarappari.test/storage/pwa-icon.png',
-  );
+  TenantAdminBrandingSettings _brandingSettings;
   TenantAdminAppLinksSettings _appLinksSettings =
       buildTenantAdminAppLinksSettings(
     rawAppLinks: const {

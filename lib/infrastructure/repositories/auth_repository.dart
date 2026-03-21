@@ -59,7 +59,19 @@ final class AuthRepository extends AuthRepositoryContract<UserBelluga>
 
   @override
   bool get isAuthorized {
-    return userStreamValue.value != null;
+    final user = userStreamValue.value;
+    if (user == null) {
+      return false;
+    }
+
+    final identityState =
+        user.customData?['identity_state']?.toString().trim().toLowerCase();
+
+    if (identityState == 'anonymous') {
+      return false;
+    }
+
+    return true;
   }
 
   @override

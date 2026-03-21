@@ -671,6 +671,11 @@ void main() {
           fileName: 'light_logo.png',
           mimeType: 'image/png',
         ),
+        pwaIconUpload: TenantAdminMediaUpload(
+          bytes: Uint8List.fromList(const [4, 5, 6]),
+          fileName: 'pwa_icon.png',
+          mimeType: 'image/png',
+        ),
       ),
     );
 
@@ -681,12 +686,20 @@ void main() {
     expect(updated.secondarySeedColor, '#445566');
     expect(updated.lightLogoUrl, contains('tenant-a.test/logo-light.png'));
     expect(
+      updated.pwaIconUrl,
+      contains('tenant-a.test/icon/icon-512x512.png'),
+    );
+    expect(
       repository.brandingSettingsStreamValue.value?.tenantName,
       'Guarappari',
     );
     expect(
       repository.brandingSettingsStreamValue.value?.primarySeedColor,
       '#112233',
+    );
+    expect(
+      repository.brandingSettingsStreamValue.value?.pwaIconUrl,
+      contains('tenant-a.test/icon/icon-512x512.png'),
     );
   });
 
@@ -1034,7 +1047,7 @@ class _RoutingAdapter implements HttpClientAdapter {
     this.settingsValuesPayload,
     Map<String, dynamic>? appDomainsPayload,
     Map<String, bool>? typedAppDomainPersistedByPlatform,
-  }) : _appDomainsPayload = Map<String, dynamic>.from(
+  })  : _appDomainsPayload = Map<String, dynamic>.from(
           appDomainsPayload ??
               const {
                 'android': 'com.guarappari.app',
@@ -1044,7 +1057,9 @@ class _RoutingAdapter implements HttpClientAdapter {
         _typedAppDomainPersistedByPlatform = Map<String, bool>.from(
           typedAppDomainPersistedByPlatform ??
               {
-                if ((appDomainsPayload?['android'] as String?)?.trim().isNotEmpty ??
+                if ((appDomainsPayload?['android'] as String?)
+                        ?.trim()
+                        .isNotEmpty ??
                     true)
                   'android': true,
                 if ((appDomainsPayload?['ios'] as String?)?.trim().isNotEmpty ??

@@ -100,6 +100,66 @@ void main() {
     expect(controller.hasMoreStreamValue.value, isFalse);
     controller.onDispose();
   });
+
+  test(
+      'discovery search keeps backend matches even when local name/tags do not match',
+      () async {
+    final repository = _FakeAccountProfilesRepository(
+      pages: {
+        1: PagedAccountProfilesResult(
+          profiles: [
+            AccountProfileModel.fromPrimitives(
+              id: _mongoId('f'),
+              name: 'Resultado remoto',
+              slug: 'slug-exato-remoto',
+              type: 'artist',
+              tags: const <String>[],
+            ),
+          ],
+          hasMore: false,
+        ),
+      },
+    );
+    final controller = DiscoveryScreenController(
+      accountProfilesRepository: repository,
+      authRepository: _FakeAuthRepository(isAuthorizedValue: true),
+    );
+
+    await controller.init();
+    controller.setSearchQuery('slug-exato-remoto');
+    await Future<void>.delayed(const Duration(milliseconds: 450));
+
+    expect(controller.filteredPartnersStreamValue.value, hasLength(1));
+    expect(controller.filteredPartnersStreamValue.value.first.slug,
+        'slug-exato-remoto');
+    expect(repository.pageRequests.last.query, 'slug-exato-remoto');
+    controller.onDispose();
+  });
+
+  test('toggle favorite persists mutation for identified users', () async {
+    final artist = _profile(id: _mongoId('g'), type: 'artist', name: 'Artist');
+    final repository = _FakeAccountProfilesRepository(
+      pages: {
+        1: PagedAccountProfilesResult(
+          profiles: [artist],
+          hasMore: false,
+        ),
+      },
+    );
+    final controller = DiscoveryScreenController(
+      accountProfilesRepository: repository,
+      authRepository: _FakeAuthRepository(isAuthorizedValue: true),
+    );
+
+    await controller.init();
+    final outcome = controller.toggleFavorite(artist.id);
+
+    expect(outcome, FavoriteToggleOutcome.toggled);
+    await Future<void>.delayed(Duration.zero);
+    expect(repository.toggleCalls, [artist.id]);
+    expect(controller.favoriteIdsStreamValue.value.contains(artist.id), isTrue);
+    controller.onDispose();
+  });
 }
 
 class _FakeAccountProfilesRepository extends AccountProfilesRepositoryContract {
@@ -109,6 +169,7 @@ class _FakeAccountProfilesRepository extends AccountProfilesRepositoryContract {
 
   final Map<int, PagedAccountProfilesResult> pages;
   final List<String> toggleCalls = <String>[];
+  final List<_PageRequest> pageRequests = <_PageRequest>[];
   final Map<String, AccountProfileModel> _bySlug =
       <String, AccountProfileModel>{};
 
@@ -137,6 +198,14 @@ class _FakeAccountProfilesRepository extends AccountProfilesRepositoryContract {
     String? query,
     String? typeFilter,
   }) async {
+    pageRequests.add(
+      _PageRequest(
+        page: page,
+        pageSize: pageSize,
+        query: query?.trim(),
+        typeFilter: typeFilter?.trim(),
+      ),
+    );
     var result = pages[page] ??
         const PagedAccountProfilesResult(
           profiles: <AccountProfileModel>[],
@@ -291,6 +360,20 @@ class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
 
   @override
   Future<void> updateUser(Map<String, Object?> data) async {}
+}
+
+class _PageRequest {
+  const _PageRequest({
+    required this.page,
+    required this.pageSize,
+    required this.query,
+    required this.typeFilter,
+  });
+
+  final int page;
+  final int pageSize;
+  final String? query;
+  final String? typeFilter;
 }
 
 AppData _buildAppData() {
