@@ -135,20 +135,10 @@ class _TenantAdminEventTypeFormScreenState
                         TextFormField(
                           controller: _controller.eventTypeDescriptionController,
                           decoration: const InputDecoration(
-                            labelText: 'Descrição',
+                            labelText: 'Descrição (opcional)',
                           ),
                           minLines: 2,
                           maxLines: 4,
-                          validator: (value) {
-                            final trimmed = value?.trim() ?? '';
-                            if (trimmed.isEmpty) {
-                              return 'Descrição é obrigatória.';
-                            }
-                            if (trimmed.length < 10) {
-                              return 'Descrição deve ter pelo menos 10 caracteres.';
-                            }
-                            return null;
-                          },
                         ),
                       ],
                     ),

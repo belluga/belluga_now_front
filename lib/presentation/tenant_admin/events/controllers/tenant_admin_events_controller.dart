@@ -474,12 +474,17 @@ class TenantAdminEventsController implements Disposable {
   Future<TenantAdminEventType> saveEventType({
     required String name,
     required String slug,
-    required String description,
+    String? description,
     TenantAdminEventType? existingType,
   }) async {
     final normalizedName = name.trim();
     final normalizedSlug = slug.trim();
-    final normalizedDescription = description.trim();
+    final normalizedDescription = description?.trim();
+    final descriptionForCreate =
+        (normalizedDescription == null || normalizedDescription.isEmpty)
+            ? null
+            : normalizedDescription;
+    final descriptionForUpdate = normalizedDescription;
 
     final eventTypeId = existingType?.id?.trim();
     final isEdit = eventTypeId != null && eventTypeId.isNotEmpty;
@@ -489,12 +494,12 @@ class TenantAdminEventsController implements Disposable {
             eventTypeId: eventTypeId,
             name: normalizedName,
             slug: normalizedSlug,
-            description: normalizedDescription,
+            description: descriptionForUpdate,
           )
         : await _eventsRepository.createEventType(
             name: normalizedName,
             slug: normalizedSlug,
-            description: normalizedDescription,
+            description: descriptionForCreate,
           );
 
     await _loadEventTypeCatalog();

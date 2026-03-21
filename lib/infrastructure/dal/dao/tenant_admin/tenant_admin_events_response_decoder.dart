@@ -50,7 +50,10 @@ class TenantAdminEventsResponseDecoder {
       rawResponse,
       label: 'event party candidates',
     );
-    final venuesRaw = _asList(envelope['venues']);
+    final physicalHostsRaw = _asList(envelope['physical_hosts']);
+    final venuesRaw = physicalHostsRaw.isNotEmpty
+        ? physicalHostsRaw
+        : _asList(envelope['venues']);
     final artistsRaw = _asList(envelope['artists']);
 
     final venues = venuesRaw
