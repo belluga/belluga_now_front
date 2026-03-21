@@ -148,7 +148,7 @@ class _StubAccountProfilesBackend implements AccountProfilesBackendContract {
         hasMore: false,
       );
     }
-    final end = (start + pageSize).clamp(0, accountProfiles.length) as int;
+    final end = (start + pageSize).clamp(0, accountProfiles.length);
     return PagedAccountProfilesResult(
       profiles: accountProfiles.sublist(start, end),
       hasMore: end < accountProfiles.length,

@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:belluga_now/domain/schedule/event_model.dart';
+import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/application/router/support/route_redirect_path.dart';
@@ -164,7 +165,10 @@ class _ImmersiveEventDetailScreenState
                         colorScheme: colorScheme,
                       ),
                       child: ImmersiveDetailScreen(
-                        heroContent: ImmersiveHero(event: event),
+                        heroContent: ImmersiveHero(
+                          event: event,
+                          fallbackImageUri: _controller.defaultEventImageUri,
+                        ),
                         title: event.title.value,
                         betweenHeroAndTabs: topBanner,
                         tabs: tabs,
@@ -261,14 +265,10 @@ class _ImmersiveEventDetailScreenState
   InviteModel _buildInviteFromEvent(EventModel event) {
     final eventName = event.title.value;
     final eventDate = event.dateTimeStart.value ?? DateTime.now();
-    // Prefer event thumb; then first artist avatar; then hardcoded fallback.
-    final inviteCoverUri = event.thumb?.thumbUri.value ??
-        event.artists
-            .map((a) => a.avatarUri)
-            .firstWhere((uri) => uri != null, orElse: () => null);
-    const fallbackImage =
-        'https://images.unsplash.com/photo-1489515217757-5fd1be406fef?w=1200';
-    final imageUrl = inviteCoverUri?.toString() ?? fallbackImage;
+    final imageUrl = VenueEventResume.resolvePreferredImageUri(
+      event,
+      settingsDefaultImageUri: _controller.defaultEventImageUri,
+    ).toString();
     final locationLabel = event.location.value;
     final hostName = event.artists.isNotEmpty
         ? event.artists.first.displayName

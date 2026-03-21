@@ -63,7 +63,7 @@ import 'package:belluga_now/infrastructure/repositories/tenant_admin/tenant_admi
 import 'package:belluga_now/infrastructure/repositories/tenant_admin/tenant_admin_taxonomies_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/user_events_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/user_location_repository.dart';
-import 'package:belluga_now/infrastructure/dal/dao/local/app_data_local_info_source/app_data_local_info_source.dart';
+import 'package:belluga_now/infrastructure/platform/app_data_local_info_source/app_data_local_info_source.dart';
 import 'package:belluga_now/infrastructure/dal/dao/backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/backend_context.dart';
 import 'package:belluga_now/infrastructure/dal/dao/production_backend/production_backend.dart';

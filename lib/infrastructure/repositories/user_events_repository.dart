@@ -1,3 +1,4 @@
+import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_events_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
 import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
@@ -9,21 +10,43 @@ import 'package:stream_value/core/stream_value.dart';
 /// Implementation of UserEventsRepositoryContract
 /// Uses backend-authoritative attendance commitments for confirmation state.
 class UserEventsRepository implements UserEventsRepositoryContract {
-  static final Uri _defaultEventImage = Uri.parse(
-    'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?w=800',
-  );
+  static final Uri _localEventPlaceholderUri =
+      Uri.parse('asset://event-placeholder');
   static const int _myEventsPageSize = 10;
   static const int _maxMyEventsPages = 30;
 
   UserEventsRepository({
     ScheduleRepositoryContract? scheduleRepository,
     UserEventsBackendContract? backend,
+    AppDataRepositoryContract? appDataRepository,
   })  : _scheduleRepository =
             scheduleRepository ?? GetIt.I.get<ScheduleRepositoryContract>(),
-        _backend = backend ?? LaravelUserEventsBackend();
+        _backend = backend ?? LaravelUserEventsBackend(),
+        _appDataRepository = appDataRepository;
 
   final ScheduleRepositoryContract _scheduleRepository;
   final UserEventsBackendContract _backend;
+  AppDataRepositoryContract? _appDataRepository;
+
+  AppDataRepositoryContract? get _resolvedAppDataRepository {
+    if (_appDataRepository != null) {
+      return _appDataRepository;
+    }
+    if (!GetIt.I.isRegistered<AppDataRepositoryContract>()) {
+      return null;
+    }
+    _appDataRepository = GetIt.I.get<AppDataRepositoryContract>();
+    return _appDataRepository;
+  }
+
+  Uri _resolveDefaultEventImage() {
+    final configured =
+        _resolvedAppDataRepository?.appData.mainLogoDarkUrl.value;
+    if (configured != null && configured.toString().trim().isNotEmpty) {
+      return configured;
+    }
+    return _localEventPlaceholderUri;
+  }
 
   /// Stream of confirmed event IDs
   @override
@@ -55,6 +78,7 @@ class UserEventsRepository implements UserEventsRepositoryContract {
     final events = <VenueEventResume>[];
     var currentPage = 1;
     var hasMore = true;
+    final fallbackImage = _resolveDefaultEventImage();
 
     while (hasMore && currentPage <= _maxMyEventsPages) {
       final page = await _scheduleRepository.getEventsPage(
@@ -68,7 +92,7 @@ class UserEventsRepository implements UserEventsRepositoryContract {
         page.events.map(
           (event) => VenueEventResume.fromScheduleEvent(
             event,
-            _defaultEventImage,
+            fallbackImage,
           ),
         ),
       );

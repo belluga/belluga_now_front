@@ -337,9 +337,7 @@ UserDto _userDtoFromTokenValidation(Map<String, dynamic> user) {
       pictureUrl: null,
       birthday: null,
     ),
-    customData: user['custom_data'] is Map<String, dynamic>
-        ? user['custom_data'] as Map<String, dynamic>
-        : null,
+    customData: _extractCustomData(user),
   );
 }
 
@@ -356,8 +354,28 @@ UserDto _userDtoFromUserResource(Map<String, dynamic> user) {
       pictureUrl: null,
       birthday: null,
     ),
-    customData: null,
+    customData: _extractCustomData(user),
   );
+}
+
+Map<String, dynamic>? _extractCustomData(Map<String, dynamic> user) {
+  final customData = <String, dynamic>{};
+
+  final rawCustomData = user['custom_data'];
+  if (rawCustomData is Map) {
+    customData.addAll(Map<String, dynamic>.from(rawCustomData));
+  }
+
+  final identityState = user['identity_state']?.toString().trim();
+  if (identityState != null && identityState.isNotEmpty) {
+    customData['identity_state'] = identityState;
+  }
+
+  if (customData.isEmpty) {
+    return null;
+  }
+
+  return customData;
 }
 
 String? _extractEmail(dynamic emails) {

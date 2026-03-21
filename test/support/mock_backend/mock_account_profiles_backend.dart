@@ -1,7 +1,7 @@
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/domain/partners/paged_account_profiles_result.dart';
 import 'package:belluga_now/infrastructure/dal/dao/account_profiles_backend_contract.dart';
-import 'package:belluga_now/infrastructure/dal/datasources/mock_account_profiles_database.dart';
+import 'mock_account_profiles_database.dart';
 
 class MockAccountProfilesBackend implements AccountProfilesBackendContract {
   MockAccountProfilesBackend({MockAccountProfilesDatabase? database})
@@ -33,7 +33,7 @@ class MockAccountProfilesBackend implements AccountProfilesBackendContract {
       );
     }
 
-    final endIndex = (startIndex + pageSize).clamp(0, filtered.length) as int;
+    final endIndex = (startIndex + pageSize).clamp(0, filtered.length);
     final pageItems = filtered.sublist(startIndex, endIndex);
     return PagedAccountProfilesResult(
       profiles: pageItems,
