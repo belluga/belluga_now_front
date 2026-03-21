@@ -46,6 +46,8 @@ class EventSearchScreenController
 
   static const int _pageSize = 10;
   static const double _fallbackRadiusMeters = 50000.0;
+  static final Uri _localEventPlaceholderUri =
+      Uri.parse('asset://event-placeholder');
 
   @override
   late TextEditingController searchController;
@@ -82,6 +84,14 @@ class EventSearchScreenController
   bool _isAutoPaging = false;
   double? _effectiveOriginLat;
   double? _effectiveOriginLng;
+
+  Uri get defaultEventImageUri {
+    final configured = _appDataRepository.appData.mainLogoDarkUrl.value;
+    if (configured != null && configured.toString().trim().isNotEmpty) {
+      return configured;
+    }
+    return _localEventPlaceholderUri;
+  }
 
   void _setValue<T>(StreamValue<T> stream, T value) {
     if (_isDisposed) return;

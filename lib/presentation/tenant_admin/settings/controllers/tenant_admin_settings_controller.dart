@@ -1250,8 +1250,12 @@ class TenantAdminSettingsController implements Disposable {
         cacheBuster,
       ),
     );
-    brandingPwaIconUrlStreamValue
-        .addValue(_withCacheBust(settings.pwaIconUrl, cacheBuster));
+    brandingPwaIconUrlStreamValue.addValue(
+      _withCacheBust(
+        _tenantScopedAssetUrl('icon/icon-512x512.png') ?? settings.pwaIconUrl,
+        cacheBuster,
+      ),
+    );
 
     clearBrandingFile(TenantAdminBrandingAssetSlot.lightLogo);
     clearBrandingFile(TenantAdminBrandingAssetSlot.darkLogo);

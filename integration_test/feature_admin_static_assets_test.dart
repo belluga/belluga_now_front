@@ -27,7 +27,7 @@ import 'package:belluga_now/infrastructure/dal/dao/tenant_backend_contract.dart'
 import 'package:belluga_now/infrastructure/dal/dao/venue_event_backend_contract.dart';
 import 'package:belluga_now/infrastructure/services/schedule_backend_contract.dart';
 import 'support/fake_landlord_app_data_backend.dart';
-import 'package:belluga_now/infrastructure/dal/dao/local/app_data_local_info_source/app_data_local_info_source.dart';
+import 'package:belluga_now/infrastructure/platform/app_data_local_info_source/app_data_local_info_source.dart';
 import 'package:belluga_now/infrastructure/repositories/app_data_repository.dart';
 import 'package:belluga_now/presentation/shared/widgets/belluga_network_image.dart';
 import 'package:flutter/material.dart';

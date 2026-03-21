@@ -734,6 +734,7 @@ class _TenantAdminShellScreenState extends State<TenantAdminShellScreen> {
                               canChangeTenant,
                             );
                             return Scaffold(
+                              resizeToAvoidBottomInset: false,
                               body: SafeArea(
                                 child: Align(
                                   alignment: Alignment.topCenter,
@@ -814,6 +815,7 @@ class _TenantAdminShellScreenState extends State<TenantAdminShellScreen> {
                           }
 
                           return Scaffold(
+                            resizeToAvoidBottomInset: false,
                             body: SafeArea(
                               child: Padding(
                                 padding:

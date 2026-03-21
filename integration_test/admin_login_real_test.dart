@@ -9,7 +9,7 @@ import 'package:belluga_now/presentation/landlord_area/auth/controllers/auth_log
 import 'package:belluga_now/presentation/landlord_area/auth/controllers/landlord_home_login_controller.dart';
 import 'package:belluga_now/presentation/landlord_area/auth/controllers/tenant_admin_landlord_login_controller.dart';
 import 'support/fake_landlord_app_data_backend.dart';
-import 'package:belluga_now/infrastructure/dal/dao/local/app_data_local_info_source/app_data_local_info_source.dart';
+import 'package:belluga_now/infrastructure/platform/app_data_local_info_source/app_data_local_info_source.dart';
 import 'package:belluga_now/infrastructure/repositories/app_data_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';

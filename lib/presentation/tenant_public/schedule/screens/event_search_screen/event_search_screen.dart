@@ -28,10 +28,6 @@ class _EventSearchScreenState extends State<EventSearchScreen> {
   final EventSearchScreenController _controller =
       GetIt.I.get<EventSearchScreenController>();
 
-  static final Uri _defaultEventImage = Uri.parse(
-    'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?w=800',
-  );
-
   @override
   void initState() {
     super.initState();
@@ -129,7 +125,7 @@ class _EventSearchScreenState extends State<EventSearchScreen> {
                       final resumes = events
                           .map((e) => VenueEventResume.fromScheduleEvent(
                                 e,
-                                _defaultEventImage,
+                                _controller.defaultEventImageUri,
                               ))
                           .toList();
 

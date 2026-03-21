@@ -26,9 +26,8 @@ class ScheduleRepository extends ScheduleRepositoryContract
         PartnerDtoMapper,
         InviteStatusDtoMapper,
         ScheduleDtoMapper {
-  static final Uri _defaultEventImage = Uri.parse(
-    'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?w=800',
-  );
+  static final Uri _localEventPlaceholderUri =
+      Uri.parse('asset://event-placeholder');
   static const int _maxPagedFetches = 8;
   static const int _defaultPageSize = 25;
 
@@ -66,6 +65,15 @@ class ScheduleRepository extends ScheduleRepositoryContract
     }
     _appDataRepository = GetIt.I.get<AppDataRepositoryContract>();
     return _appDataRepository;
+  }
+
+  Uri _resolveDefaultEventImage() {
+    final configured =
+        _resolvedAppDataRepository?.appData.mainLogoDarkUrl.value;
+    if (configured != null && configured.toString().trim().isNotEmpty) {
+      return configured;
+    }
+    return _localEventPlaceholderUri;
   }
 
   @override
@@ -191,11 +199,12 @@ class ScheduleRepository extends ScheduleRepositoryContract
   @override
   Future<List<VenueEventResume>> getEventResumesByDate(DateTime date) async {
     final events = await getEventsByDate(date);
+    final fallbackImage = _resolveDefaultEventImage();
     return events
         .map(
           (event) => VenueEventResume.fromScheduleEvent(
             event,
-            _defaultEventImage,
+            fallbackImage,
           ),
         )
         .toList(growable: false);
@@ -231,12 +240,13 @@ class ScheduleRepository extends ScheduleRepositoryContract
 
     final listToMap = upcomingOrNow.isNotEmpty ? upcomingOrNow : events;
     final sorted = _sortByStartTime(listToMap);
+    final fallbackImage = _resolveDefaultEventImage();
 
     return sorted
         .map(
           (event) => VenueEventResume.fromScheduleEvent(
             event,
-            _defaultEventImage,
+            fallbackImage,
           ),
         )
         .toList(growable: false);
