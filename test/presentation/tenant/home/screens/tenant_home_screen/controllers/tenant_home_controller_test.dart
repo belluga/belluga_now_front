@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/controllers/tenant_home_controller.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/domain/repositories/user_events_repository_contract.dart';
@@ -46,9 +48,12 @@ void main() {
       id: '1',
       slug: 'slug-1',
       titleValue: TitleValue()..parse('Upcoming Event Title Long Enough'),
-      imageUriValue: ThumbUriValue(defaultValue: Uri.parse('http://example.com/img.jpg')),
-      startDateTimeValue: DateTimeValue(defaultValue: now.add(const Duration(hours: 1))),
-      locationValue: DescriptionValue()..parse('Valid Location Name Long Enough'),
+      imageUriValue:
+          ThumbUriValue(defaultValue: Uri.parse('http://example.com/img.jpg')),
+      startDateTimeValue:
+          DateTimeValue(defaultValue: now.add(const Duration(hours: 1))),
+      locationValue: DescriptionValue()
+        ..parse('Valid Location Name Long Enough'),
       artists: [],
       tags: [],
     );
@@ -56,24 +61,54 @@ void main() {
       id: '2',
       slug: 'slug-2',
       titleValue: TitleValue()..parse('Past Event Title Long Enough'),
-      imageUriValue: ThumbUriValue(defaultValue: Uri.parse('http://example.com/img.jpg')),
-      startDateTimeValue: DateTimeValue(defaultValue: now.subtract(const Duration(days: 1))),
-      locationValue: DescriptionValue()..parse('Valid Location Name Long Enough'),
+      imageUriValue:
+          ThumbUriValue(defaultValue: Uri.parse('http://example.com/img.jpg')),
+      startDateTimeValue:
+          DateTimeValue(defaultValue: now.subtract(const Duration(days: 1))),
+      locationValue: DescriptionValue()
+        ..parse('Valid Location Name Long Enough'),
       artists: [],
       tags: [],
     );
 
     userEventsRepository.setEvents([upcomingEvent, pastEvent]);
     await controller.init();
-    
+
     expect(
       controller.myEventsFilteredStreamValue.value.map((e) => e.id),
       contains('1'),
     );
-     expect(
+    expect(
       controller.myEventsFilteredStreamValue.value.map((e) => e.id),
       isNot(contains('2')),
     );
+  });
+
+  test('init does not hang when location warm-up stalls', () async {
+    controller.onDispose();
+    userLocationRepository.neverCompleteWarmUp = true;
+    controller = TenantHomeController(
+      userEventsRepository: userEventsRepository,
+      userLocationRepository: userLocationRepository,
+      locationWarmUpTimeout: const Duration(milliseconds: 20),
+    );
+
+    await controller.init();
+
+    expect(userEventsRepository.fetchMyEventsCallCount, 1);
+  });
+
+  test('init continues when confirmed ids refresh fails', () async {
+    controller.onDispose();
+    userEventsRepository.throwOnRefreshConfirmedIds = true;
+    controller = TenantHomeController(
+      userEventsRepository: userEventsRepository,
+      userLocationRepository: userLocationRepository,
+    );
+
+    await controller.init();
+
+    expect(userEventsRepository.fetchMyEventsCallCount, 1);
   });
 }
 
@@ -114,7 +149,8 @@ AppData _buildAppData() {
     'port': null,
     'device': 'test-device',
   };
-  return AppData.fromInitialization(remoteData: remoteData, localInfo: localInfo);
+  return AppData.fromInitialization(
+      remoteData: remoteData, localInfo: localInfo);
 }
 
 class _FakeUserEventsRepository implements UserEventsRepositoryContract {
@@ -126,6 +162,7 @@ class _FakeUserEventsRepository implements UserEventsRepositoryContract {
       StreamValue<Set<String>>(defaultValue: {});
   List<VenueEventResume> _events;
   int fetchMyEventsCallCount = 0;
+  bool throwOnRefreshConfirmedIds = false;
 
   void setEvents(List<VenueEventResume> events) {
     _events = events;
@@ -147,7 +184,11 @@ class _FakeUserEventsRepository implements UserEventsRepositoryContract {
   Future<void> unconfirmEventAttendance(String eventId) async {}
 
   @override
-  Future<void> refreshConfirmedEventIds() async {}
+  Future<void> refreshConfirmedEventIds() async {
+    if (throwOnRefreshConfirmedIds) {
+      throw Exception('forced confirmed ids failure');
+    }
+  }
 
   @override
   bool isEventConfirmed(String eventId) =>
@@ -155,6 +196,8 @@ class _FakeUserEventsRepository implements UserEventsRepositoryContract {
 }
 
 class _FakeUserLocationRepository implements UserLocationRepositoryContract {
+  bool neverCompleteWarmUp = false;
+
   @override
   final StreamValue<CityCoordinate?> userLocationStreamValue =
       StreamValue<CityCoordinate?>(defaultValue: null);
@@ -184,17 +227,25 @@ class _FakeUserLocationRepository implements UserLocationRepositoryContract {
   }
 
   @override
-  Future<bool> warmUpIfPermitted() async => false;
+  Future<bool> warmUpIfPermitted() async {
+    if (neverCompleteWarmUp) {
+      return Completer<bool>().future;
+    }
+    return false;
+  }
 
   @override
-  Future<bool> refreshIfPermitted({Duration minInterval = const Duration(seconds: 30)}) async =>
+  Future<bool> refreshIfPermitted(
+          {Duration minInterval = const Duration(seconds: 30)}) async =>
       false;
 
   @override
   Future<String?> resolveUserLocation() async => null;
 
   @override
-  Future<bool> startTracking({LocationTrackingMode mode = LocationTrackingMode.mapForeground}) async =>
+  Future<bool> startTracking(
+          {LocationTrackingMode mode =
+              LocationTrackingMode.mapForeground}) async =>
       false;
 
   @override

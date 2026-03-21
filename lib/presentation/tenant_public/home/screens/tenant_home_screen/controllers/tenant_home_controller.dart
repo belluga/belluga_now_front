@@ -15,17 +15,20 @@ class TenantHomeController implements Disposable {
   TenantHomeController({
     UserEventsRepositoryContract? userEventsRepository,
     UserLocationRepositoryContract? userLocationRepository,
+    Duration locationWarmUpTimeout = const Duration(seconds: 4),
   })  : _userEventsRepository =
             userEventsRepository ?? GetIt.I.get<UserEventsRepositoryContract>(),
         _userLocationRepository = userLocationRepository ??
             (GetIt.I.isRegistered<UserLocationRepositoryContract>()
                 ? GetIt.I.get<UserLocationRepositoryContract>()
-                : null);
+                : null),
+        _locationWarmUpTimeout = locationWarmUpTimeout;
 
   static const Duration _assumedEventDuration = Duration(hours: 3);
 
   final UserEventsRepositoryContract _userEventsRepository;
   final UserLocationRepositoryContract? _userLocationRepository;
+  final Duration _locationWarmUpTimeout;
   final AppData _appData = GetIt.I.get<AppData>();
   final ScrollController _scrollController = ScrollController();
 
@@ -48,10 +51,21 @@ class TenantHomeController implements Disposable {
     if (_initialized) return;
     _initialized = true;
 
-    await _userEventsRepository.refreshConfirmedEventIds();
+    try {
+      await _userEventsRepository.refreshConfirmedEventIds();
+    } catch (error) {
+      debugPrint('TenantHomeController.init confirmed ids failed: $error');
+    }
     await loadMyEvents();
 
-    await _userLocationRepository?.warmUpIfPermitted();
+    try {
+      await _userLocationRepository?.warmUpIfPermitted().timeout(
+            _locationWarmUpTimeout,
+            onTimeout: () => false,
+          );
+    } on Object {
+      // Best-effort warm up.
+    }
     _listenUserLocation();
     _listenConfirmedEvents();
   }
@@ -158,7 +172,8 @@ class TenantHomeController implements Disposable {
       if (previous != null && previous.trim().isNotEmpty) {
         return;
       }
-      await _userLocationRepository?.setLastKnownAddress('Localizacao detectada');
+      await _userLocationRepository
+          ?.setLastKnownAddress('Localizacao detectada');
       if (_isDisposed) return;
       userAddressStreamValue.addValue('Localizacao detectada');
     }
@@ -186,7 +201,8 @@ class TenantHomeController implements Disposable {
 
   String? distanceLabelForMyEvent(VenueEventResume event) {
     if (_isDisposed) return null;
-    final userCoordinate = _userLocationRepository?.userLocationStreamValue.value;
+    final userCoordinate =
+        _userLocationRepository?.userLocationStreamValue.value;
     final eventCoordinate = event.coordinate;
     if (userCoordinate == null || eventCoordinate == null) {
       return null;

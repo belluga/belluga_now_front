@@ -50,17 +50,10 @@ class TenantAdminEventsResponseDecoder {
       rawResponse,
       label: 'event party candidates',
     );
-    final venuesRaw = _asList(envelope['venues']);
-    final artistsRaw = _asList(envelope['artists']);
-
-    final venues = venuesRaw
-        .whereType<Map>()
-        .map((row) => _mapAccountProfile(Map<String, dynamic>.from(row)))
-        .toList(growable: false);
-    final artists = artistsRaw
-        .whereType<Map>()
-        .map((row) => _mapAccountProfile(Map<String, dynamic>.from(row)))
-        .toList(growable: false);
+    final physicalHosts = _decodeAccountProfiles(envelope['physical_hosts']);
+    final legacyVenues = _decodeAccountProfiles(envelope['venues']);
+    final artists = _decodeAccountProfiles(envelope['artists']);
+    final venues = physicalHosts.isNotEmpty ? physicalHosts : legacyVenues;
 
     return TenantAdminEventPartyCandidates(
       venues: venues,
@@ -282,6 +275,13 @@ class TenantAdminEventsResponseDecoder {
           : null,
       taxonomyTerms: taxonomyTerms,
     );
+  }
+
+  List<TenantAdminAccountProfile> _decodeAccountProfiles(Object? raw) {
+    return _asList(raw)
+        .whereType<Map>()
+        .map((row) => _mapAccountProfile(Map<String, dynamic>.from(row)))
+        .toList(growable: false);
   }
 
   Map<String, dynamic> _asMap(Object? value) {

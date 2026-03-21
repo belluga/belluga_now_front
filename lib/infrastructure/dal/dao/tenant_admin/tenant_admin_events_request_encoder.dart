@@ -7,6 +7,7 @@ class TenantAdminEventsRequestEncoder {
     String? name,
     String? slug,
     String? description,
+    bool includeDescription = false,
   }) {
     final payload = <String, dynamic>{};
     if (name != null) {
@@ -15,7 +16,7 @@ class TenantAdminEventsRequestEncoder {
     if (slug != null) {
       payload['slug'] = slug;
     }
-    if (description != null) {
+    if (includeDescription || description != null) {
       payload['description'] = description;
     }
     return payload;

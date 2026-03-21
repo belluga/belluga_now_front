@@ -52,8 +52,9 @@ import 'support/integration_test_bootstrap.dart';
 
 void main() {
   developer.postEvent(
-    'integration_test.VmServiceProxyGoldenFileComparator',
-    const {},
+    'seed_vm_golden_stream',
+    const <String, Object>{},
+    stream: 'integration_test.VmServiceProxyGoldenFileComparator',
   );
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
   IntegrationTestBootstrap.ensureNonProductionLandlordDomain();
@@ -396,10 +397,22 @@ void main() {
         expect(find.text(eventFilterLabel), findsOneWidget);
         expect(find.text(assetFilterKey), findsNothing);
 
-        final assetFabFinder = find.ancestor(
-          of: find.text(assetFilterLabel),
-          matching: find.byType(FloatingActionButton),
-        );
+        Finder findAssetFab() {
+          return find.byWidgetPredicate(
+            (widget) {
+              if (widget is! FloatingActionButton) {
+                return false;
+              }
+              final heroTag = widget.heroTag;
+              return heroTag is String &&
+                  heroTag.endsWith('category-filter-$assetFilterKey');
+            },
+            description:
+                'FloatingActionButton for category-filter-$assetFilterKey',
+          );
+        }
+
+        final assetFabFinder = findAssetFab();
         expect(assetFabFinder, findsOneWidget);
 
         final initialAssetFab =
@@ -414,7 +427,7 @@ void main() {
         final fabImageWidget = tester.widget<Image>(assetImageFinder.first);
         expect((fabImageWidget.image as NetworkImage).url, secondImageUri);
 
-        await tester.tap(find.text(assetFilterLabel));
+        await tester.tap(assetFabFinder.first);
         await tester.pump();
         await waitForFilterApplication(
           tester,
@@ -423,8 +436,10 @@ void main() {
           assetDisplayName: assetDisplayName,
         );
 
+        final selectedAssetFabFinder = findAssetFab();
+        expect(selectedAssetFabFinder, findsOneWidget);
         final selectedAssetFab =
-            tester.widget<FloatingActionButton>(assetFabFinder.first);
+            tester.widget<FloatingActionButton>(selectedAssetFabFinder.first);
         expect(
           selectedAssetFab.backgroundColor,
           isNot(equals(initialBackground)),

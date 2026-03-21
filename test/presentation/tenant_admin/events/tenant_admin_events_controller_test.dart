@@ -102,6 +102,31 @@ void main() {
     expect(controller.eventsStreamValue.value, isEmpty);
     expect(controller.eventsErrorStreamValue.value, isNull);
   });
+
+  test('saveEventType sends null description when edit description is cleared',
+      () async {
+    final eventsRepository = _EventTypeUpdateTrackingRepository();
+    final controller = TenantAdminEventsController(
+      eventsRepository: eventsRepository,
+      taxonomiesRepository: _NoopTaxonomiesRepository(),
+      landlordAuthRepository:
+          _FakeLandlordAuthRepositoryWithToken('landlord-token'),
+    );
+
+    await controller.saveEventType(
+      name: 'Show',
+      slug: 'show',
+      description: '   ',
+      existingType: const TenantAdminEventType(
+        id: '507f1f77bcf86cd799439011',
+        name: 'Show',
+        slug: 'show',
+        description: 'Legacy description',
+      ),
+    );
+
+    expect(eventsRepository.lastUpdateDescription, isNull);
+  });
 }
 
 TenantAdminEventDraft _buildDraft() {
@@ -521,5 +546,25 @@ class _AccountScopedEventsRepository
     required TenantAdminEventDraft draft,
   }) async {
     throw UnimplementedError();
+  }
+}
+
+class _EventTypeUpdateTrackingRepository extends _AccountScopedEventsRepository {
+  String? lastUpdateDescription;
+
+  @override
+  Future<TenantAdminEventType> updateEventType({
+    required String eventTypeId,
+    String? name,
+    String? slug,
+    String? description,
+  }) async {
+    lastUpdateDescription = description;
+    return TenantAdminEventType(
+      id: eventTypeId,
+      name: name ?? 'Show',
+      slug: slug ?? 'show',
+      description: description,
+    );
   }
 }
