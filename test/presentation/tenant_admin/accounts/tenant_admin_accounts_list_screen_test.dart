@@ -149,6 +149,55 @@ void main() {
     );
   });
 
+  testWidgets('search field triggers backend-first reload with query',
+      (tester) async {
+    final repository = _FakeAccountsRepository(
+      initialAccounts: const [
+        TenantAdminAccount(
+          id: 'acc-1',
+          name: 'Conta Alpha',
+          slug: 'conta-alpha',
+          document: TenantAdminDocument(type: 'cpf', number: '1001'),
+          ownershipState: TenantAdminOwnershipState.tenantOwned,
+        ),
+        TenantAdminAccount(
+          id: 'acc-2',
+          name: 'Conta Beta',
+          slug: 'conta-beta',
+          document: TenantAdminDocument(type: 'cpf', number: '1002'),
+          ownershipState: TenantAdminOwnershipState.tenantOwned,
+        ),
+      ],
+    );
+    final controller = TenantAdminAccountsController(
+      accountsRepository: repository,
+    );
+    GetIt.I.registerSingleton<TenantAdminAccountsController>(controller);
+
+    await tester
+        .pumpWidget(_buildTestApp(const TenantAdminAccountsListScreen()));
+    await tester.pumpAndSettle();
+
+    await tester.tap(
+      find.byKey(
+        const ValueKey<String>('tenant_admin_accounts_search_toggle'),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(
+        const ValueKey<String>('tenant_admin_accounts_search_field'),
+      ),
+      'Beta',
+    );
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.pumpAndSettle();
+
+    expect(repository.loadAccountsSearchCalls.last, 'Beta');
+    expect(find.text('Conta Beta'), findsOneWidget);
+    expect(find.text('Conta Alpha'), findsNothing);
+  });
+
   testWidgets('reloads list when returning from account detail route',
       (tester) async {
     final repository = _FakeAccountsRepository(
@@ -306,14 +355,20 @@ class _FakeAccountsRepository
       accountsByOwnership;
   final List<TenantAdminOwnershipState?> loadAccountsOwnershipCalls =
       <TenantAdminOwnershipState?>[];
+  final List<String?> loadAccountsSearchCalls = <String?>[];
 
   @override
   Future<void> loadAccounts({
     int pageSize = 20,
     TenantAdminOwnershipState? ownershipState,
+    String? searchQuery,
   }) async {
     loadAccountsOwnershipCalls.add(ownershipState);
-    final selectedAccounts = _selectedAccounts(ownershipState);
+    loadAccountsSearchCalls.add(searchQuery);
+    final selectedAccounts = _selectedAccounts(
+      ownershipState,
+      searchQuery: searchQuery,
+    );
     if (selectedAccounts != null) {
       accountsStreamValue
           .addValue(List<TenantAdminAccount>.from(selectedAccounts));
@@ -335,6 +390,7 @@ class _FakeAccountsRepository
   Future<void> loadNextAccountsPage({
     int pageSize = 20,
     TenantAdminOwnershipState? ownershipState,
+    String? searchQuery,
   }) async {}
 
   @override
@@ -353,8 +409,12 @@ class _FakeAccountsRepository
     required int page,
     required int pageSize,
     TenantAdminOwnershipState? ownershipState,
+    String? searchQuery,
   }) async {
-    final selectedAccounts = _selectedAccounts(ownershipState);
+    final selectedAccounts = _selectedAccounts(
+      ownershipState,
+      searchQuery: searchQuery,
+    );
     final accounts = List<TenantAdminAccount>.from(
       selectedAccounts ?? initialAccounts ?? const [],
     );
@@ -410,6 +470,7 @@ class _FakeAccountsRepository
     String? name,
     String? slug,
     TenantAdminDocument? document,
+    TenantAdminOwnershipState? ownershipState,
   }) {
     throw UnimplementedError();
   }
@@ -430,12 +491,26 @@ class _FakeAccountsRepository
   }
 
   List<TenantAdminAccount>? _selectedAccounts(
-    TenantAdminOwnershipState? ownershipState,
-  ) {
-    if (accountsByOwnership.isEmpty) {
-      return null;
+    TenantAdminOwnershipState? ownershipState, {
+    String? searchQuery,
+  }) {
+    final normalizedSearch = searchQuery?.trim().toLowerCase() ?? '';
+    final source = accountsByOwnership.isEmpty
+        ? (initialAccounts == null
+            ? null
+            : List<TenantAdminAccount>.from(initialAccounts!))
+        : List<TenantAdminAccount>.from(
+            accountsByOwnership[
+                    ownershipState ?? TenantAdminOwnershipState.tenantOwned] ??
+                const <TenantAdminAccount>[],
+          );
+    if (source == null || normalizedSearch.isEmpty) {
+      return source;
     }
-    final selected = ownershipState ?? TenantAdminOwnershipState.tenantOwned;
-    return accountsByOwnership[selected] ?? const <TenantAdminAccount>[];
+    return source.where((account) {
+      return account.name.toLowerCase().contains(normalizedSearch) ||
+          account.slug.toLowerCase().contains(normalizedSearch) ||
+          account.document.number.toLowerCase().contains(normalizedSearch);
+    }).toList(growable: false);
   }
 }

@@ -83,6 +83,29 @@ void main() {
     expect(controller.submitErrorMessageStreamValue.value, isNull);
   });
 
+  test('submitCreate ignores concurrent submission while loading', () async {
+    final eventsRepository = _AccountScopedEventsRepository();
+    final controller = TenantAdminEventsController(
+      eventsRepository: eventsRepository,
+      taxonomiesRepository: _NoopTaxonomiesRepository(),
+    );
+
+    final first = controller.submitCreate(
+      _buildDraft(),
+      accountSlug: 'my-account',
+    );
+    final second = controller.submitCreate(
+      _buildDraft(),
+      accountSlug: 'my-account',
+    );
+
+    final secondResult = await second;
+    await first;
+
+    expect(secondResult, isNull);
+    expect(eventsRepository.createOwnCalls, 1);
+  });
+
   test('tenant scope change without landlord token skips admin events load',
       () async {
     final eventsRepository = _TrackingEventsRepository();
@@ -549,7 +572,8 @@ class _AccountScopedEventsRepository
   }
 }
 
-class _EventTypeUpdateTrackingRepository extends _AccountScopedEventsRepository {
+class _EventTypeUpdateTrackingRepository
+    extends _AccountScopedEventsRepository {
   String? lastUpdateDescription;
 
   @override

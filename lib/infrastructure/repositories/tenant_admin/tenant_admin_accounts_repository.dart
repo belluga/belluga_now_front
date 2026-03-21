@@ -66,6 +66,7 @@ class TenantAdminAccountsRepository
   Future<void> loadAccounts({
     int pageSize = _defaultPageSize,
     TenantAdminOwnershipState? ownershipState,
+    String? searchQuery,
   }) async {
     await _waitForAccountsFetch();
     _resetAccountsPagination();
@@ -74,6 +75,7 @@ class TenantAdminAccountsRepository
       page: 1,
       pageSize: pageSize,
       ownershipState: ownershipState,
+      searchQuery: searchQuery,
     );
   }
 
@@ -81,6 +83,7 @@ class TenantAdminAccountsRepository
   Future<void> loadNextAccountsPage({
     int pageSize = _defaultPageSize,
     TenantAdminOwnershipState? ownershipState,
+    String? searchQuery,
   }) async {
     if (_isFetchingAccountsPage || !_hasMoreAccounts) {
       return;
@@ -89,6 +92,7 @@ class TenantAdminAccountsRepository
       page: _currentAccountsPage + 1,
       pageSize: pageSize,
       ownershipState: ownershipState,
+      searchQuery: searchQuery,
     );
   }
 
@@ -132,11 +136,13 @@ class TenantAdminAccountsRepository
     required int page,
     required int pageSize,
     TenantAdminOwnershipState? ownershipState,
+    String? searchQuery,
   }) async {
     return _fetchFilteredAccountsPage(
       page: page,
       pageSize: pageSize,
       ownershipState: ownershipState,
+      searchQuery: searchQuery,
     );
   }
 
@@ -144,15 +150,18 @@ class TenantAdminAccountsRepository
     required int page,
     required int pageSize,
     TenantAdminOwnershipState? ownershipState,
+    String? searchQuery,
   }) async {
+    final normalizedSearch = searchQuery?.trim() ?? '';
     try {
       final response = await _dio.get(
         '$_apiBaseUrl/v1/accounts',
         queryParameters: {
           'page': page,
-          'page_size': pageSize,
+          'per_page': pageSize,
           if (ownershipState != null)
             'ownership_state': ownershipState.apiValue,
+          if (normalizedSearch.isNotEmpty) 'search': normalizedSearch,
         },
         options: Options(headers: _buildHeaders()),
       );
@@ -279,12 +288,14 @@ class TenantAdminAccountsRepository
     String? name,
     String? slug,
     TenantAdminDocument? document,
+    TenantAdminOwnershipState? ownershipState,
   }) async {
     try {
       final payload = _requestEncoder.encodeUpdateAccount(
         name: name,
         slug: slug,
         document: document,
+        ownershipState: ownershipState,
       );
       final response = await _dio.patch(
         '$_apiBaseUrl/v1/accounts/$accountSlug',
@@ -352,6 +363,7 @@ class TenantAdminAccountsRepository
     required int page,
     required int pageSize,
     TenantAdminOwnershipState? ownershipState,
+    String? searchQuery,
   }) async {
     if (_isFetchingAccountsPage) return;
     if (page > 1 && !_hasMoreAccounts) return;
@@ -365,6 +377,7 @@ class TenantAdminAccountsRepository
         page: page,
         pageSize: pageSize,
         ownershipState: ownershipState,
+        searchQuery: searchQuery,
       );
       final currentAccounts = accountsStreamValue.value;
       final nextAccounts = page == 1

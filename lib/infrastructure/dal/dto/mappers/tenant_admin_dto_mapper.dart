@@ -90,7 +90,8 @@ mixin TenantAdminDtoMapper {
   TenantAdminProfileTypeDefinition mapTenantAdminProfileTypeJson(
     Map<String, dynamic> json,
   ) {
-    return mapTenantAdminProfileTypeDto(TenantAdminProfileTypeDTO.fromJson(json));
+    return mapTenantAdminProfileTypeDto(
+        TenantAdminProfileTypeDTO.fromJson(json));
   }
 
   TenantAdminProfileTypeDefinition mapTenantAdminProfileTypeDto(
@@ -116,7 +117,8 @@ mixin TenantAdminDtoMapper {
   TenantAdminOrganization mapTenantAdminOrganizationJson(
     Map<String, dynamic> json,
   ) {
-    return mapTenantAdminOrganizationDto(TenantAdminOrganizationDTO.fromJson(json));
+    return mapTenantAdminOrganizationDto(
+        TenantAdminOrganizationDTO.fromJson(json));
   }
 
   TenantAdminOrganization mapTenantAdminOrganizationDto(
@@ -171,7 +173,8 @@ mixin TenantAdminDtoMapper {
   TenantAdminStaticAsset mapTenantAdminStaticAssetJson(
     Map<String, dynamic> json,
   ) {
-    return mapTenantAdminStaticAssetDto(TenantAdminStaticAssetDTO.fromJson(json));
+    return mapTenantAdminStaticAssetDto(
+        TenantAdminStaticAssetDTO.fromJson(json));
   }
 
   TenantAdminStaticAsset mapTenantAdminStaticAssetDto(
@@ -200,8 +203,6 @@ mixin TenantAdminDtoMapper {
       coverUrl: dto.coverUrl,
       bio: dto.bio,
       content: dto.content,
-      tags: dto.tags,
-      categories: dto.categories,
       taxonomyTerms: taxonomy,
       location: location,
       isActive: dto.isActive,

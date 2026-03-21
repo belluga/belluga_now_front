@@ -79,6 +79,47 @@ void main() {
     expect(draft.occurrences.first.dateTimeStart.isUtc, isTrue);
   });
 
+  testWidgets('guards against duplicate create submit taps', (tester) async {
+    final eventsRepository = _FakeEventsRepository();
+    final taxonomiesRepository = _FakeTaxonomiesRepository();
+    final controller = TenantAdminEventsController(
+      eventsRepository: eventsRepository,
+      taxonomiesRepository: taxonomiesRepository,
+    );
+
+    eventsRepository.eventTypes = const [
+      TenantAdminEventType(
+        id: '507f1f77bcf86cd799439021',
+        name: 'Feira',
+        slug: 'feira',
+      ),
+    ];
+
+    GetIt.I.registerSingleton<TenantAdminEventsController>(controller);
+
+    await _pumpWithAutoRoute(
+      tester,
+      const Scaffold(
+        body: TenantAdminEventFormScreen(),
+      ),
+    );
+
+    await _fillRequiredFields(tester);
+    await tester.scrollUntilVisible(
+      find.widgetWithText(FilledButton, 'Criar evento'),
+      250,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+
+    final action = find.widgetWithText(FilledButton, 'Criar evento');
+    await tester.tap(action);
+    await tester.tap(action);
+    await tester.pumpAndSettle();
+
+    expect(eventsRepository.createEventCalls, 1);
+  });
+
   testWidgets('uses own-account endpoint when account slug is provided',
       (tester) async {
     final eventsRepository = _FakeEventsRepository();
@@ -164,6 +205,49 @@ void main() {
     expect(draft.location?.latitude, isNull);
     expect(draft.location?.longitude, isNull);
     expect(draft.location?.online?.url, 'https://example.com/live');
+    expect(draft.placeRef, isNull);
+  });
+
+  testWidgets('submits without description text (content optional)',
+      (tester) async {
+    final eventsRepository = _FakeEventsRepository();
+    final taxonomiesRepository = _FakeTaxonomiesRepository();
+    final controller = TenantAdminEventsController(
+      eventsRepository: eventsRepository,
+      taxonomiesRepository: taxonomiesRepository,
+    );
+
+    eventsRepository.eventTypes = const [
+      TenantAdminEventType(
+        id: '507f1f77bcf86cd799439016',
+        name: 'Show',
+        slug: 'show',
+      ),
+    ];
+
+    GetIt.I.registerSingleton<TenantAdminEventsController>(controller);
+
+    await _pumpWithAutoRoute(
+      tester,
+      const Scaffold(
+        body: TenantAdminEventFormScreen(),
+      ),
+    );
+
+    await _fillRequiredFields(tester, includeDescription: false);
+    await tester.scrollUntilVisible(
+      find.widgetWithText(FilledButton, 'Criar evento'),
+      250,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'Criar evento'));
+    await tester.pumpAndSettle();
+
+    final draft = eventsRepository.lastCreateDraft;
+    expect(draft, isNotNull);
+    expect(draft!.content, isEmpty);
+    expect(draft.location?.mode, 'online');
     expect(draft.placeRef, isNull);
   });
 
@@ -293,13 +377,18 @@ Future<void> _pumpWithAutoRoute(
   await tester.pumpAndSettle();
 }
 
-Future<void> _fillRequiredFields(WidgetTester tester) async {
+Future<void> _fillRequiredFields(
+  WidgetTester tester, {
+  bool includeDescription = true,
+}) async {
   await tester.enterText(
       find.widgetWithText(TextFormField, 'Título'), 'Evento');
-  await tester.enterText(
-    find.widgetWithText(TextFormField, 'Descrição (opcional)'),
-    'Descrição do evento',
-  );
+  if (includeDescription) {
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Descrição (opcional)'),
+      'Descrição do evento',
+    );
+  }
   final startField = tester
       .widget<TextFormField>(find.widgetWithText(TextFormField, 'Início'));
   startField.controller!.text = '2026-03-05 20:00';
@@ -331,11 +420,14 @@ class _FakeEventsRepository
   TenantAdminEventDraft? lastCreateDraft;
   TenantAdminEventDraft? lastCreateOwnDraft;
   String? lastCreateOwnAccountSlug;
+  int createEventCalls = 0;
+  int createOwnEventCalls = 0;
 
   @override
   Future<TenantAdminEvent> createEvent({
     required TenantAdminEventDraft draft,
   }) async {
+    createEventCalls += 1;
     lastCreateDraft = draft;
     return _eventFromDraft(draft);
   }
@@ -345,6 +437,7 @@ class _FakeEventsRepository
     required String accountSlug,
     required TenantAdminEventDraft draft,
   }) async {
+    createOwnEventCalls += 1;
     lastCreateOwnAccountSlug = accountSlug;
     lastCreateOwnDraft = draft;
     return _eventFromDraft(draft);

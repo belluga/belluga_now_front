@@ -4,20 +4,32 @@ import 'package:belluga_now/domain/partners/profile_type_registry.dart';
 import 'package:belluga_now/domain/partners/projections/partner_profile_config.dart';
 import 'package:belluga_now/domain/partners/services/partner_profile_config_builder.dart';
 import 'package:belluga_now/domain/repositories/account_profiles_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value.dart';
+
+enum PartnerFavoriteToggleOutcome {
+  toggled,
+  requiresAuthentication,
+}
 
 class PartnerDetailController implements Disposable {
   PartnerDetailController({
     AccountProfilesRepositoryContract? partnersRepository,
     PartnerProfileConfigBuilder? profileConfigBuilder,
+    AuthRepositoryContract? authRepository,
   })  : _partnersRepository = partnersRepository ??
             GetIt.I.get<AccountProfilesRepositoryContract>(),
         _profileConfigBuilder =
-            profileConfigBuilder ?? GetIt.I.get<PartnerProfileConfigBuilder>();
+            profileConfigBuilder ?? GetIt.I.get<PartnerProfileConfigBuilder>(),
+        _authRepository = authRepository ??
+            (GetIt.I.isRegistered<AuthRepositoryContract>()
+                ? GetIt.I.get<AuthRepositoryContract>()
+                : null);
 
   final AccountProfilesRepositoryContract _partnersRepository;
   final PartnerProfileConfigBuilder _profileConfigBuilder;
+  final AuthRepositoryContract? _authRepository;
 
   final partnerStreamValue = StreamValue<AccountProfileModel?>();
   final isLoadingStreamValue = StreamValue<bool>(defaultValue: false);
@@ -48,8 +60,12 @@ class PartnerDetailController implements Disposable {
     }
   }
 
-  void toggleFavorite(String partnerId) {
+  PartnerFavoriteToggleOutcome toggleFavorite(String partnerId) {
+    if (!_isAuthorized) {
+      return PartnerFavoriteToggleOutcome.requiresAuthentication;
+    }
     _partnersRepository.toggleFavorite(partnerId);
+    return PartnerFavoriteToggleOutcome.toggled;
   }
 
   bool isFavorite(String partnerId) {
@@ -68,6 +84,8 @@ class PartnerDetailController implements Disposable {
     }
     return GetIt.I.get<AppData>().profileTypeRegistry;
   }
+
+  bool get _isAuthorized => _authRepository?.isAuthorized ?? true;
 
   Map<ProfileModuleId, Object?> _buildModuleData(AccountProfileModel partner) {
     final modules = <ProfileModuleId, Object?>{};

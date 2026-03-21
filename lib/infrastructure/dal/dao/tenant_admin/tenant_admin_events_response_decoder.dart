@@ -51,12 +51,10 @@ class TenantAdminEventsResponseDecoder {
       label: 'event party candidates',
     );
     final physicalHosts = _decodeAccountProfiles(envelope['physical_hosts']);
-    final legacyVenues = _decodeAccountProfiles(envelope['venues']);
     final artists = _decodeAccountProfiles(envelope['artists']);
-    final venues = physicalHosts.isNotEmpty ? physicalHosts : legacyVenues;
 
     return TenantAdminEventPartyCandidates(
-      venues: venues,
+      venues: physicalHosts,
       artists: artists,
     );
   }
@@ -81,6 +79,11 @@ class TenantAdminEventsResponseDecoder {
     final publicationRow = _asMap(row['publication']);
     final locationRow = _asMap(row['location']);
     final placeRefRow = _asMap(row['place_ref']);
+    final thumbRow = _asMap(row['thumb']);
+    final thumbData = _asMap(thumbRow['data']);
+    final thumbUrl = _asString(thumbData['url']) ??
+        _asString(thumbRow['url']) ??
+        _asString(thumbRow['uri']);
 
     final occurrencesRaw = _asList(row['occurrences']);
     final occurrences = occurrencesRaw
@@ -191,6 +194,7 @@ class TenantAdminEventsResponseDecoder {
         ),
         location: location,
         placeRef: placeRef,
+        thumbUrl: thumbUrl,
         occurrences: <TenantAdminEventOccurrence>[fallbackOccurrence],
         publication: TenantAdminEventPublication(
           status: _asString(publicationRow['status']) ?? 'draft',
@@ -220,6 +224,7 @@ class TenantAdminEventsResponseDecoder {
       ),
       location: location,
       placeRef: placeRef,
+      thumbUrl: thumbUrl,
       occurrences: occurrences,
       publication: TenantAdminEventPublication(
         status: _asString(publicationRow['status']) ?? 'draft',
