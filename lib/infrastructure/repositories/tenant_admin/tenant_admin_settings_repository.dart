@@ -480,7 +480,11 @@ class TenantAdminSettingsRepository
               ? current?.faviconUrl
               : _buildTenantAssetUrl(origin, 'favicon.ico')
           : current?.faviconUrl,
-      pwaIconUrl: current?.pwaIconUrl,
+      pwaIconUrl: input.pwaIconUpload != null
+          ? origin == null
+              ? current?.pwaIconUrl
+              : _buildTenantAssetUrl(origin, 'icon/icon-512x512.png')
+          : current?.pwaIconUrl,
     );
   }
 
