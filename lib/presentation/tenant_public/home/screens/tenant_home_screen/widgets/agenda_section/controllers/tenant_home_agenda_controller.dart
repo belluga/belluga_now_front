@@ -22,6 +22,8 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
     InvitesRepositoryContract? invitesRepository,
     UserLocationRepositoryContract? userLocationRepository,
     AppDataRepositoryContract? appDataRepository,
+    Duration locationWarmUpTimeout = const Duration(seconds: 4),
+    Duration locationPermissionTimeout = const Duration(seconds: 8),
   })  : _scheduleRepository =
             scheduleRepository ?? GetIt.I.get<ScheduleRepositoryContract>(),
         _userEventsRepository =
@@ -33,13 +35,17 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
                 ? GetIt.I.get<UserLocationRepositoryContract>()
                 : null),
         _appDataRepository =
-            appDataRepository ?? GetIt.I.get<AppDataRepositoryContract>();
+            appDataRepository ?? GetIt.I.get<AppDataRepositoryContract>(),
+        _locationWarmUpTimeout = locationWarmUpTimeout,
+        _locationPermissionTimeout = locationPermissionTimeout;
 
   final ScheduleRepositoryContract _scheduleRepository;
   final UserEventsRepositoryContract _userEventsRepository;
   final InvitesRepositoryContract _invitesRepository;
   final UserLocationRepositoryContract? _userLocationRepository;
   final AppDataRepositoryContract _appDataRepository;
+  final Duration _locationWarmUpTimeout;
+  final Duration _locationPermissionTimeout;
 
   static const int _pageSize = 10;
   static const double _fallbackRadiusMeters = 50000.0;
@@ -83,6 +89,7 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
   bool _isDisposed = false;
   double? _effectiveOriginLat;
   double? _effectiveOriginLng;
+  bool _locationPermissionRequested = false;
 
   void _setValue<T>(StreamValue<T> stream, T value) {
     if (_isDisposed) return;
@@ -90,8 +97,17 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
   }
 
   Future<void> init({bool startWithHistory = false}) async {
-    await _invitesRepository.init();
-    await _userEventsRepository.refreshConfirmedEventIds();
+    try {
+      await _invitesRepository.init();
+    } catch (error) {
+      debugPrint('TenantHomeAgendaController.init invites failed: $error');
+    }
+    try {
+      await _userEventsRepository.refreshConfirmedEventIds();
+    } catch (error) {
+      debugPrint(
+          'TenantHomeAgendaController.init confirmed ids failed: $error');
+    }
     _setValue(showHistoryStreamValue, startWithHistory);
     _setValue(radiusMetersStreamValue, _resolveDefaultRadiusMeters());
     _listenForStatusChanges();
@@ -386,9 +402,30 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
 
     if (warmUpIfPossible) {
       try {
-        await repository.warmUpIfPermitted();
+        await repository.warmUpIfPermitted().timeout(
+              _locationWarmUpTimeout,
+              onTimeout: () => false,
+            );
       } on Object {
         // Best-effort warm up.
+      }
+    }
+
+    final warmUpCoordinate = repository.userLocationStreamValue.value ??
+        repository.lastKnownLocationStreamValue.value;
+    if (warmUpCoordinate != null) {
+      return warmUpCoordinate;
+    }
+
+    if (warmUpIfPossible && !_locationPermissionRequested) {
+      _locationPermissionRequested = true;
+      try {
+        await repository.resolveUserLocation().timeout(
+              _locationPermissionTimeout,
+              onTimeout: () => null,
+            );
+      } on Object {
+        // Best-effort permission prompt.
       }
     }
 

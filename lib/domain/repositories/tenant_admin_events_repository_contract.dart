@@ -132,7 +132,7 @@ abstract class TenantAdminEventsRepositoryContract {
   Future<TenantAdminEventType> createEventType({
     required String name,
     required String slug,
-    required String description,
+    String? description,
   }) {
     throw UnimplementedError();
   }
@@ -304,7 +304,7 @@ mixin TenantAdminEventsPaginationMixin
   Future<TenantAdminEventType> createEventType({
     required String name,
     required String slug,
-    required String description,
+    String? description,
   }) {
     throw UnimplementedError();
   }

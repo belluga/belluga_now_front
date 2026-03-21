@@ -21,7 +21,7 @@ class TenantScopeGuard {
     AppData appData, {
     required String testName,
   }) {
-    final actualType = appData.typeValue.value?.name.toLowerCase() ?? '';
+    final actualType = appData.typeValue.value.name.toLowerCase();
     final expectedType = _expectedEnvironmentType.trim().toLowerCase();
     expect(
       actualType,
@@ -30,7 +30,7 @@ class TenantScopeGuard {
           'but received "$actualType".',
     );
 
-    final tenantId = appData.tenantIdValue.value?.toString().trim() ?? '';
+    final tenantId = appData.tenantIdValue.value.toString().trim();
     expect(
       tenantId,
       isNotEmpty,

@@ -1,57 +1,45 @@
-import 'package:belluga_now/application/configurations/belluga_constants.dart';
 import 'package:belluga_now/infrastructure/dal/dao/app_data_backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/auth_backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/backend_context.dart';
-import 'package:belluga_now/infrastructure/dal/dao/backend_routing_policy.dart';
 import 'package:belluga_now/infrastructure/dal/dao/favorite_backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/laravel_backend/app_data_backend/app_data_backend.dart';
 import 'package:belluga_now/infrastructure/dal/dao/laravel_backend/auth_backend/auth_backend.dart';
 import 'package:belluga_now/infrastructure/dal/dao/laravel_backend/favorite_backend/laravel_favorite_backend.dart';
 import 'package:belluga_now/infrastructure/dal/dao/laravel_backend/partners_backend/laravel_account_profiles_backend.dart';
 import 'package:belluga_now/infrastructure/dal/dao/laravel_backend/schedule_backend/laravel_schedule_backend.dart';
-import 'package:belluga_now/infrastructure/dal/dao/mock_backend/mock_account_profiles_backend.dart';
-import 'package:belluga_now/infrastructure/dal/dao/mock_backend/mock_schedule_backend.dart';
-import 'package:belluga_now/infrastructure/dal/dao/mock_backend/mock_tenant_backend.dart';
-import 'package:belluga_now/infrastructure/dal/dao/mock_backend/mock_venue_event_backend.dart';
 import 'package:belluga_now/infrastructure/dal/dao/account_profiles_backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/tenant_backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/venue_event_backend_contract.dart';
+import 'package:belluga_now/infrastructure/dal/dao/production_backend/live_only_unsupported_backends.dart';
 import 'package:belluga_now/infrastructure/services/schedule_backend_contract.dart';
 
 class ProductionBackend extends BackendContract {
   ProductionBackend({
-    BackendRoutingPolicy? routingPolicy,
-    AppDataBackendContract? appDataLive,
-    AppDataBackendContract? appDataMock,
-    TenantBackendContract? tenantLive,
-    TenantBackendContract? tenantMock,
-    AccountProfilesBackendContract? accountProfilesLive,
-    AccountProfilesBackendContract? accountProfilesMock,
-    ScheduleBackendContract? scheduleLive,
-    ScheduleBackendContract? scheduleMock,
-  })  : _routingPolicy = routingPolicy ?? BellugaConstants.backendRoutingPolicy,
-        _appDataLive = appDataLive ?? AppDataBackend(),
-        _appDataMock = appDataMock ?? AppDataBackend(),
-        _tenantLive = tenantLive ?? MockTenantBackend(),
-        _tenantMock = tenantMock ?? MockTenantBackend(),
-        _accountProfilesLive =
-            accountProfilesLive ?? LaravelAccountProfilesBackend(),
-        _accountProfilesMock =
-            accountProfilesMock ?? MockAccountProfilesBackend(),
-        _scheduleLive = scheduleLive ?? LaravelScheduleBackend(),
-        _scheduleMock = scheduleMock ?? MockScheduleBackend();
+    AppDataBackendContract? appData,
+    AuthBackendContract? auth,
+    TenantBackendContract? tenant,
+    AccountProfilesBackendContract? accountProfiles,
+    FavoriteBackendContract? favorites,
+    VenueEventBackendContract? venueEvents,
+    ScheduleBackendContract? schedule,
+  })  : _appData = appData ?? AppDataBackend(),
+        _auth = auth ?? LaravelAuthBackend(),
+        _tenant = tenant ?? const LiveOnlyUnsupportedTenantBackend(),
+        _accountProfiles = accountProfiles ?? LaravelAccountProfilesBackend(),
+        _favorites = favorites ?? LaravelFavoriteBackend(),
+        _venueEvents =
+            venueEvents ?? const LiveOnlyUnsupportedVenueEventBackend(),
+        _schedule = schedule ?? LaravelScheduleBackend();
 
-  final BackendRoutingPolicy _routingPolicy;
   BackendContext? _context;
-  final AppDataBackendContract _appDataLive;
-  final AppDataBackendContract _appDataMock;
-  final TenantBackendContract _tenantLive;
-  final TenantBackendContract _tenantMock;
-  final AccountProfilesBackendContract _accountProfilesLive;
-  final AccountProfilesBackendContract _accountProfilesMock;
-  final ScheduleBackendContract _scheduleLive;
-  final ScheduleBackendContract _scheduleMock;
+  final AppDataBackendContract _appData;
+  final AuthBackendContract _auth;
+  final TenantBackendContract _tenant;
+  final AccountProfilesBackendContract _accountProfiles;
+  final FavoriteBackendContract _favorites;
+  final VenueEventBackendContract _venueEvents;
+  final ScheduleBackendContract _schedule;
 
   @override
   BackendContext? get context => _context;
@@ -62,40 +50,23 @@ class ProductionBackend extends BackendContract {
   }
 
   @override
-  AppDataBackendContract get appData =>
-      _routingPolicy.resolve(BackendDomain.appData) == BackendSource.mock
-          ? _appDataMock
-          : _appDataLive;
+  AppDataBackendContract get appData => _appData;
 
   @override
-  final AuthBackendContract auth = LaravelAuthBackend();
+  AuthBackendContract get auth => _auth;
 
   @override
-  // TODO(Delphi): Replace with a Laravel tenant backend once the adapter exists.
-  // Next: implement `TenantBackendContract` backed by `/api/v1/tenant` and wire it here.
-  TenantBackendContract get tenant =>
-      _routingPolicy.resolve(BackendDomain.tenant) == BackendSource.mock
-          ? _tenantMock
-          : _tenantLive;
+  TenantBackendContract get tenant => _tenant;
 
   @override
-  AccountProfilesBackendContract get accountProfiles =>
-      _routingPolicy.resolve(BackendDomain.accountProfiles) ==
-              BackendSource.mock
-          ? _accountProfilesMock
-          : _accountProfilesLive;
+  AccountProfilesBackendContract get accountProfiles => _accountProfiles;
 
   @override
-  final FavoriteBackendContract favorites = LaravelFavoriteBackend();
+  FavoriteBackendContract get favorites => _favorites;
 
   @override
-  // TODO(Delphi): Replace with a Laravel venue events backend once the adapter exists.
-  // Next: implement `VenueEventBackendContract` backed by `/api/v1/venue-events` and wire it here.
-  final VenueEventBackendContract venueEvents = MockVenueEventBackend();
+  VenueEventBackendContract get venueEvents => _venueEvents;
 
   @override
-  ScheduleBackendContract get schedule =>
-      _routingPolicy.resolve(BackendDomain.schedule) == BackendSource.mock
-          ? _scheduleMock
-          : _scheduleLive;
+  ScheduleBackendContract get schedule => _schedule;
 }

@@ -216,7 +216,7 @@ void main() {
     expect(disabledTile.enabled, isFalse);
   });
 
-  testWidgets('shows explicit empty states when no venue/artist candidates',
+  testWidgets('shows explicit empty states when no host/artist candidates',
       (tester) async {
     final eventsRepository = _EmptyCandidatesEventsRepository();
     final taxonomiesRepository = _FakeTaxonomiesRepository();
@@ -244,13 +244,16 @@ void main() {
     );
 
     await tester.scrollUntilVisible(
-      find.text('Nenhuma venue elegível encontrada.'),
+      find.text('Nenhum perfil elegível para host físico.'),
       280,
       scrollable: find.byType(Scrollable).first,
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Nenhuma venue elegível encontrada.'), findsOneWidget);
+    expect(
+      find.text('Nenhum perfil elegível para host físico.'),
+      findsOneWidget,
+    );
 
     await tester.scrollUntilVisible(
       find.text('Nenhum artista elegível encontrado.'),
@@ -294,7 +297,7 @@ Future<void> _fillRequiredFields(WidgetTester tester) async {
   await tester.enterText(
       find.widgetWithText(TextFormField, 'Título'), 'Evento');
   await tester.enterText(
-    find.widgetWithText(TextFormField, 'Descrição'),
+    find.widgetWithText(TextFormField, 'Descrição (opcional)'),
     'Descrição do evento',
   );
   final startField = tester

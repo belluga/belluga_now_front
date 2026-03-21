@@ -37,8 +37,9 @@ class IntegrationTestBootstrap {
     // compatibility. Seed it once per test process so all integration files
     // share the same startup behavior.
     developer.postEvent(
-      'integration_test.VmServiceProxyGoldenFileComparator',
+      'seed_vm_golden_stream',
       const <String, Object>{},
+      stream: 'integration_test.VmServiceProxyGoldenFileComparator',
     );
     _vmGoldenComparatorStreamSeeded = true;
   }

@@ -1,1 +1,1 @@
-enum BackendSource { live, mock }
+enum BackendSource { live }

@@ -246,15 +246,17 @@ class TenantAdminEventsRepository
   Future<TenantAdminEventType> createEventType({
     required String name,
     required String slug,
-    required String description,
+    String? description,
   }) async {
     try {
+      final normalizedDescription = description?.trim();
       final response = await _dio.post(
         '$_apiBaseUrl/v1/event_types',
         data: {
           'name': name,
           'slug': slug,
-          'description': description,
+          if (normalizedDescription != null && normalizedDescription.isNotEmpty)
+            'description': normalizedDescription,
         },
         options: Options(headers: _buildLandlordHeaders()),
       );
@@ -272,10 +274,12 @@ class TenantAdminEventsRepository
     String? description,
   }) async {
     try {
+      final normalizedDescription = description?.trim();
       final payload = _requestEncoder.encodeEventTypePatch(
         name: name,
         slug: slug,
-        description: description,
+        description: normalizedDescription,
+        includeDescription: true,
       );
 
       final response = await _dio.patch(
