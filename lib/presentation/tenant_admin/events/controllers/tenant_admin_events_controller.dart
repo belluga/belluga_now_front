@@ -484,7 +484,10 @@ class TenantAdminEventsController implements Disposable {
         (normalizedDescription == null || normalizedDescription.isEmpty)
             ? null
             : normalizedDescription;
-    final descriptionForUpdate = normalizedDescription;
+    final descriptionForUpdate =
+        (normalizedDescription == null || normalizedDescription.isEmpty)
+            ? null
+            : normalizedDescription;
 
     final eventTypeId = existingType?.id?.trim();
     final isEdit = eventTypeId != null && eventTypeId.isNotEmpty;

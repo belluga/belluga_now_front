@@ -274,10 +274,12 @@ class TenantAdminEventsRepository
     String? description,
   }) async {
     try {
+      final normalizedDescription = description?.trim();
       final payload = _requestEncoder.encodeEventTypePatch(
         name: name,
         slug: slug,
-        description: description,
+        description: normalizedDescription,
+        includeDescription: true,
       );
 
       final response = await _dio.patch(
