@@ -670,6 +670,71 @@ void main() {
     );
   });
 
+  testWidgets(
+      'disables apply in branding color picker when typed hex is invalid',
+      (tester) async {
+    final repository = _FakeAppDataRepository(_buildAppData());
+    final settingsRepository = _FakeTenantAdminSettingsRepository();
+    GetIt.I.registerSingleton<AppDataRepositoryContract>(repository);
+    GetIt.I.registerSingleton<TenantAdminSettingsRepositoryContract>(
+      settingsRepository,
+    );
+    GetIt.I.registerSingleton<TenantAdminImageIngestionService>(
+      TenantAdminImageIngestionService(
+        externalImageProxy: _FakeTenantAdminExternalImageProxy(),
+      ),
+    );
+    final controller = TenantAdminSettingsController();
+    GetIt.I.registerSingleton<TenantAdminSettingsController>(controller);
+
+    await _pumpWithAutoRoute(
+      tester,
+      const Scaffold(body: TenantAdminSettingsVisualIdentityScreen()),
+    );
+
+    await tester.tap(
+      find.byKey(TenantAdminSettingsKeys.brandingPrimaryPickerButton),
+    );
+    await tester.pumpAndSettle();
+
+    final pickerDialog = find.byType(AlertDialog);
+    final hexInputField = find.descendant(
+      of: pickerDialog,
+      matching: find.byType(TextFormField),
+    );
+    final applyButtonFinder = find.widgetWithText(FilledButton, 'Aplicar cor');
+
+    expect(hexInputField, findsOneWidget);
+    expect(applyButtonFinder, findsOneWidget);
+
+    await tester.enterText(hexInputField, '#12345');
+    await tester.pumpAndSettle();
+
+    expect(find.text('Formato inválido. Use #RRGGBB.'), findsOneWidget);
+    expect(
+      tester.widget<FilledButton>(applyButtonFinder).onPressed,
+      isNull,
+    );
+
+    await tester.tap(find.widgetWithText(TextButton, 'Cancelar'));
+    await tester.pumpAndSettle();
+
+    final saveBrandingButton = find.byKey(
+      const ValueKey('tenant_admin_settings_save_branding'),
+    );
+    await tester.scrollUntilVisible(
+      saveBrandingButton,
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(saveBrandingButton);
+    await tester.pumpAndSettle();
+
+    expect(settingsRepository.lastBrandingInput, isNotNull);
+    expect(settingsRepository.lastBrandingInput!.primarySeedColor, '#009688');
+  });
+
   test('controller saves branding light logo upload using project asset bytes',
       () async {
     final repository = _FakeAppDataRepository(_buildAppData());

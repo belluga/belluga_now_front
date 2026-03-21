@@ -87,6 +87,9 @@ class TenantAdminColorPickerField extends StatelessWidget {
       builder: (dialogContext) {
         return StatefulBuilder(
           builder: (context, setState) {
+            final canApplySelectedColor =
+                _parseHexColor(hexController.text.toUpperCase()) != null;
+
             return AlertDialog(
               title: Text(labelText),
               content: SingleChildScrollView(
@@ -187,9 +190,13 @@ class TenantAdminColorPickerField extends StatelessWidget {
                 Semantics(
                   identifier: _dialogApplySemanticsIdentifier(),
                   button: true,
-                  onTap: () => dialogContext.router.pop(selected),
+                  onTap: canApplySelectedColor
+                      ? () => dialogContext.router.pop(selected)
+                      : null,
                   child: FilledButton(
-                    onPressed: () => dialogContext.router.pop(selected),
+                    onPressed: canApplySelectedColor
+                        ? () => dialogContext.router.pop(selected)
+                        : null,
                     child: const Text('Aplicar cor'),
                   ),
                 ),
