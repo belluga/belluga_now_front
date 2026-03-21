@@ -37,14 +37,21 @@ class _FakeAccountsRepository
 
   @override
   final StreamValue<String?> accountsErrorStreamValue = StreamValue<String?>();
+  TenantAdminOwnershipState? lastUpdatedOwnershipState;
 
   @override
-  Future<void> loadAccounts(
-      {int pageSize = 20, TenantAdminOwnershipState? ownershipState}) async {}
+  Future<void> loadAccounts({
+    int pageSize = 20,
+    TenantAdminOwnershipState? ownershipState,
+    String? searchQuery,
+  }) async {}
 
   @override
-  Future<void> loadNextAccountsPage(
-      {int pageSize = 20, TenantAdminOwnershipState? ownershipState}) async {}
+  Future<void> loadNextAccountsPage({
+    int pageSize = 20,
+    TenantAdminOwnershipState? ownershipState,
+    String? searchQuery,
+  }) async {}
 
   @override
   void resetAccountsState() {}
@@ -85,6 +92,7 @@ class _FakeAccountsRepository
     required int page,
     required int pageSize,
     TenantAdminOwnershipState? ownershipState,
+    String? searchQuery,
   }) async {
     return const TenantAdminPagedAccountsResult(
       accounts: <TenantAdminAccount>[],
@@ -148,14 +156,16 @@ class _FakeAccountsRepository
     String? name,
     String? slug,
     TenantAdminDocument? document,
+    TenantAdminOwnershipState? ownershipState,
   }) async {
+    lastUpdatedOwnershipState = ownershipState;
     final account = TenantAdminAccount(
       id: 'acc-1',
       name: name ?? 'Conta',
       slug: slug ?? accountSlug,
       document:
           document ?? const TenantAdminDocument(type: 'cpf', number: '000'),
-      ownershipState: TenantAdminOwnershipState.tenantOwned,
+      ownershipState: ownershipState ?? TenantAdminOwnershipState.tenantOwned,
     );
     _upsertAccount(account);
     return account;
@@ -741,11 +751,20 @@ void main() {
       accountSlug: 'yuri-dias',
       name: 'Conta atualizada',
       slug: 'yuri-atualizado',
+      ownershipState: TenantAdminOwnershipState.unmanaged,
     );
 
     expect(updated, isNotNull);
     expect(controller.accountStreamValue.value, isNotNull);
     expect(controller.accountStreamValue.value!.name, 'Conta atualizada');
     expect(controller.accountStreamValue.value!.slug, 'yuri-atualizado');
+    expect(
+      controller.accountStreamValue.value!.ownershipState,
+      TenantAdminOwnershipState.unmanaged,
+    );
+    expect(
+      accountsRepository.lastUpdatedOwnershipState,
+      TenantAdminOwnershipState.unmanaged,
+    );
   });
 }

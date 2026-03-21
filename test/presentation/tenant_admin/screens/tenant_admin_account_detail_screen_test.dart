@@ -99,6 +99,56 @@ void main() {
     expect(accountsRepository.fetchAccountBySlugCalls, 2);
   });
 
+  testWidgets('hides delete action for tenant-owned accounts', (tester) async {
+    final tenantOwnedRepository = _FakeAccountsRepository(
+      initialOwnershipState: TenantAdminOwnershipState.tenantOwned,
+    );
+    _registerController(accountsRepository: tenantOwnedRepository);
+
+    await _pumpScreen(
+      tester,
+      const TenantAdminAccountDetailScreen(accountSlug: 'yuri-dias'),
+    );
+
+    expect(find.text('Excluir conta'), findsNothing);
+  });
+
+  testWidgets('shows delete action for unmanaged accounts', (tester) async {
+    final unmanagedRepository = _FakeAccountsRepository(
+      initialOwnershipState: TenantAdminOwnershipState.unmanaged,
+    );
+    _registerController(accountsRepository: unmanagedRepository);
+
+    await _pumpScreen(
+      tester,
+      const TenantAdminAccountDetailScreen(accountSlug: 'yuri-dias'),
+    );
+
+    expect(find.text('Excluir conta'), findsOneWidget);
+  });
+
+  testWidgets('deletes unmanaged account after confirmation', (tester) async {
+    final accountsRepository = _FakeAccountsRepository(
+      initialOwnershipState: TenantAdminOwnershipState.unmanaged,
+    );
+    _registerController(accountsRepository: accountsRepository);
+
+    await _pumpScreen(
+      tester,
+      const TenantAdminAccountDetailScreen(accountSlug: 'yuri-dias'),
+    );
+
+    await tester.tap(find.text('Excluir conta'));
+    await tester.pumpAndSettle();
+    expect(find.text('Excluir conta'), findsNWidgets(2));
+
+    await tester.tap(find.text('Excluir').last);
+    await tester.pumpAndSettle();
+
+    expect(accountsRepository.deleteAccountCalls, 1);
+    expect(accountsRepository.lastDeletedSlug, 'yuri-dias');
+  });
+
   testWidgets(
       'missing profile renders invariant-broken state and no create CTA',
       (tester) async {
@@ -193,23 +243,28 @@ class _TestProfileEditRouteScreen extends StatelessWidget {
 class _FakeAccountsRepository
     with TenantAdminAccountsRepositoryPaginationMixin
     implements TenantAdminAccountsRepositoryContract {
-  _FakeAccountsRepository() {
+  _FakeAccountsRepository({
+    this.initialOwnershipState = TenantAdminOwnershipState.tenantOwned,
+  }) {
     _seedAccount(
-      const TenantAdminAccount(
+      TenantAdminAccount(
         id: 'acc-1',
         name: 'Conta base',
         slug: 'yuri-dias',
         document: TenantAdminDocument(type: 'cpf', number: '000'),
-        ownershipState: TenantAdminOwnershipState.tenantOwned,
+        ownershipState: initialOwnershipState,
       ),
     );
   }
 
+  final TenantAdminOwnershipState initialOwnershipState;
   final Map<String, TenantAdminAccount> _accountsById =
       <String, TenantAdminAccount>{};
 
   int fetchAccountBySlugCalls = 0;
   String? lastFetchedSlug;
+  int deleteAccountCalls = 0;
+  String? lastDeletedSlug;
 
   @override
   final StreamValue<List<TenantAdminAccount>?> accountsStreamValue =
@@ -230,12 +285,14 @@ class _FakeAccountsRepository
   Future<void> loadAccounts({
     int pageSize = 20,
     TenantAdminOwnershipState? ownershipState,
+    String? searchQuery,
   }) async {}
 
   @override
   Future<void> loadNextAccountsPage({
     int pageSize = 20,
     TenantAdminOwnershipState? ownershipState,
+    String? searchQuery,
   }) async {}
 
   @override
@@ -269,6 +326,7 @@ class _FakeAccountsRepository
     required int page,
     required int pageSize,
     TenantAdminOwnershipState? ownershipState,
+    String? searchQuery,
   }) async {
     return TenantAdminPagedAccountsResult(
       accounts: List<TenantAdminAccount>.unmodifiable(_accountsById.values),
@@ -333,6 +391,7 @@ class _FakeAccountsRepository
     String? name,
     String? slug,
     TenantAdminDocument? document,
+    TenantAdminOwnershipState? ownershipState,
   }) async {
     final current = await fetchAccountBySlug(accountSlug);
     final updated = TenantAdminAccount(
@@ -340,7 +399,7 @@ class _FakeAccountsRepository
       name: name ?? current.name,
       slug: slug ?? current.slug,
       document: document ?? current.document,
-      ownershipState: current.ownershipState,
+      ownershipState: ownershipState ?? current.ownershipState,
       organizationId: current.organizationId,
     );
     _seedAccount(updated);
@@ -365,7 +424,26 @@ class _FakeAccountsRepository
   }
 
   @override
-  Future<void> deleteAccount(String accountSlug) async {}
+  Future<void> deleteAccount(String accountSlug) async {
+    deleteAccountCalls += 1;
+    lastDeletedSlug = accountSlug;
+    final accountToRemove = _accountsById.values.firstWhere(
+      (entry) => entry.slug == accountSlug,
+      orElse: () => const TenantAdminAccount(
+        id: '',
+        name: '',
+        slug: '',
+        document: TenantAdminDocument(type: 'cpf', number: ''),
+        ownershipState: TenantAdminOwnershipState.tenantOwned,
+      ),
+    );
+    if (accountToRemove.id.isNotEmpty) {
+      _accountsById.remove(accountToRemove.id);
+      accountsStreamValue.addValue(
+        List<TenantAdminAccount>.unmodifiable(_accountsById.values),
+      );
+    }
+  }
 
   @override
   Future<TenantAdminAccount> restoreAccount(String accountSlug) async {

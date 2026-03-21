@@ -86,7 +86,7 @@ class _TenantAdminAccountsListScreenState
               builder: (context, showSearchField) {
                 return StreamValueBuilder<String>(
                   streamValue: _controller.searchQueryStreamValue,
-                  builder: (context, query) {
+                  builder: (context, _) {
                     return StreamValueBuilder<bool>(
                       streamValue: _controller.hasMoreAccountsStreamValue,
                       builder: (context, hasMore) {
@@ -112,7 +112,6 @@ class _TenantAdminAccountsListScreenState
                                 final filteredAccounts = _filterAccounts(
                                   loadedAccounts: loadedAccounts,
                                   selectedOwnership: selectedOwnership,
-                                  query: query.trim(),
                                 );
 
                                 return _buildScaffold(
@@ -389,28 +388,13 @@ class _TenantAdminAccountsListScreenState
   List<TenantAdminAccount> _filterAccounts({
     required List<TenantAdminAccount> loadedAccounts,
     required TenantAdminOwnershipState selectedOwnership,
-    required String query,
   }) {
-    final byOwnership = loadedAccounts
+    return loadedAccounts
         .where(
           (account) => tenantAdminAccountMatchesOwnershipSegment(
             selectedOwnership: selectedOwnership,
             accountOwnership: account.ownershipState,
           ),
-        )
-        .toList(growable: false);
-
-    if (query.isEmpty) {
-      return byOwnership;
-    }
-
-    final needle = query.toLowerCase();
-    return byOwnership
-        .where(
-          (account) =>
-              account.name.toLowerCase().contains(needle) ||
-              account.slug.toLowerCase().contains(needle) ||
-              account.document.number.toLowerCase().contains(needle),
         )
         .toList(growable: false);
   }

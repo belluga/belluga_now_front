@@ -141,6 +141,7 @@ class _FakeTenantAdminAccountsRepository
     required int page,
     required int pageSize,
     TenantAdminOwnershipState? ownershipState,
+    String? searchQuery,
   }) async {
     return const TenantAdminPagedAccountsResult(
       accounts: <TenantAdminAccount>[],
@@ -214,6 +215,7 @@ class _FakeTenantAdminAccountsRepository
     String? name,
     String? slug,
     TenantAdminDocument? document,
+    TenantAdminOwnershipState? ownershipState,
   }) async {
     return TenantAdminAccount(
       id: 'account-1',

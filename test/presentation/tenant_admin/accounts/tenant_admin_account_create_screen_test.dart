@@ -57,11 +57,15 @@ class _FakeAccountsRepository
 
   @override
   Future<void> loadAccounts(
-      {int pageSize = 20, TenantAdminOwnershipState? ownershipState}) async {}
+      {int pageSize = 20,
+      TenantAdminOwnershipState? ownershipState,
+      String? searchQuery}) async {}
 
   @override
   Future<void> loadNextAccountsPage(
-      {int pageSize = 20, TenantAdminOwnershipState? ownershipState}) async {}
+      {int pageSize = 20,
+      TenantAdminOwnershipState? ownershipState,
+      String? searchQuery}) async {}
 
   @override
   void resetAccountsState() {}
@@ -151,6 +155,7 @@ class _FakeAccountsRepository
     required int page,
     required int pageSize,
     TenantAdminOwnershipState? ownershipState,
+    String? searchQuery,
   }) async {
     return const TenantAdminPagedAccountsResult(
       accounts: <TenantAdminAccount>[],
@@ -178,6 +183,7 @@ class _FakeAccountsRepository
     String? name,
     String? slug,
     TenantAdminDocument? document,
+    TenantAdminOwnershipState? ownershipState,
   }) async {
     return TenantAdminAccount(
       id: 'acc-1',

@@ -1,5 +1,9 @@
+import 'dart:async';
+
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
+import 'package:belluga_now/domain/tenant_admin/ownership_state.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_account.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
@@ -46,11 +50,20 @@ class _TenantAdminAccountProfileEditScreenState
   String? _lastAvatarPreloadUrl;
   String? _lastCoverPreloadUrl;
   bool _routeParamNormalized = false;
+  TenantAdminOwnershipState? _selectedOwnershipState;
+  String? _syncedOwnershipAccountId;
+
+  static const List<TenantAdminOwnershipState> _editableOwnershipStates =
+      <TenantAdminOwnershipState>[
+    TenantAdminOwnershipState.tenantOwned,
+    TenantAdminOwnershipState.unmanaged,
+  ];
 
   @override
   void initState() {
     super.initState();
     _controller.bindEditFlow();
+    unawaited(_controller.loadAccountForEdit(_currentAccountSlugForRequests()));
     _controller.loadTaxonomies().whenComplete(() =>
         _controller.loadEditProfile(_currentAccountProfileIdForRequests()));
   }
@@ -155,6 +168,18 @@ class _TenantAdminAccountProfileEditScreenState
     _maybePreloadRemoteImages(state);
   }
 
+  void _syncOwnershipSelection(TenantAdminOwnershipState? accountOwnership) {
+    final accountId = _controller.accountStreamValue.value?.id;
+    if (accountId == null || accountId.isEmpty) {
+      return;
+    }
+    if (_syncedOwnershipAccountId == accountId) {
+      return;
+    }
+    _syncedOwnershipAccountId = accountId;
+    _selectedOwnershipState = accountOwnership;
+  }
+
   bool _isResolvedSlug(String? value) {
     return _isResolvedPathParam(value);
   }
@@ -179,6 +204,18 @@ class _TenantAdminAccountProfileEditScreenState
     }
 
     return routeId;
+  }
+
+  String _currentAccountSlugForRequests() {
+    final routeSlug = widget.accountSlug;
+    if (_isResolvedSlug(routeSlug)) {
+      return routeSlug.trim();
+    }
+    final cachedSlug = _controller.accountStreamValue.value?.slug;
+    if (_isResolvedSlug(cachedSlug)) {
+      return cachedSlug!.trim();
+    }
+    return routeSlug;
   }
 
   bool _requiresPathNormalization() {
@@ -718,7 +755,22 @@ class _TenantAdminAccountProfileEditScreenState
                                             const LinearProgressIndicator(),
                                           if (isLoading)
                                             const SizedBox(height: 12),
-                                          _buildProfileSection(context, state),
+                                          StreamValueBuilder<
+                                              TenantAdminAccount?>(
+                                            streamValue:
+                                                _controller.accountStreamValue,
+                                            builder: (context, account) {
+                                              _syncOwnershipSelection(
+                                                account?.ownershipState,
+                                              );
+                                              return _buildProfileSection(
+                                                context,
+                                                state,
+                                                accountOwnership:
+                                                    account?.ownershipState,
+                                              );
+                                            },
+                                          ),
                                           if (hasMedia) ...[
                                             const SizedBox(height: 16),
                                             _buildMediaSection(context, state),
@@ -754,6 +806,31 @@ class _TenantAdminAccountProfileEditScreenState
                                                         'Selecione o tipo de perfil.',
                                                       );
                                                       return;
+                                                    }
+                                                    final account = _controller
+                                                        .accountStreamValue
+                                                        .value;
+                                                    if (account != null &&
+                                                        _selectedOwnershipState !=
+                                                            null &&
+                                                        _selectedOwnershipState !=
+                                                            account
+                                                                .ownershipState) {
+                                                      final updatedAccount =
+                                                          await _controller
+                                                              .updateAccount(
+                                                        accountSlug:
+                                                            _currentAccountSlugForRequests(),
+                                                        ownershipState:
+                                                            _selectedOwnershipState,
+                                                      );
+                                                      if (updatedAccount ==
+                                                          null) {
+                                                        return;
+                                                      }
+                                                      _selectedOwnershipState =
+                                                          updatedAccount
+                                                              .ownershipState;
                                                     }
                                                     final avatarUpload =
                                                         _hasAvatar(selectedType)
@@ -865,8 +942,9 @@ class _TenantAdminAccountProfileEditScreenState
 
   Widget _buildProfileSection(
     BuildContext context,
-    TenantAdminAccountProfileEditDraft state,
-  ) {
+    TenantAdminAccountProfileEditDraft state, {
+    required TenantAdminOwnershipState? accountOwnership,
+  }) {
     return TenantAdminFormSectionCard(
       title: 'Dados do perfil',
       child: Column(
@@ -922,6 +1000,36 @@ class _TenantAdminAccountProfileEditScreenState
                   return null;
                 },
               );
+            },
+          ),
+          const SizedBox(height: 8),
+          DropdownButtonFormField<TenantAdminOwnershipState>(
+            key: ValueKey(_selectedOwnershipState ?? accountOwnership),
+            initialValue: _selectedOwnershipState ?? accountOwnership,
+            decoration: const InputDecoration(
+              labelText: 'Gestao da conta',
+            ),
+            items: _editableOwnershipStates
+                .map(
+                  (state) => DropdownMenuItem<TenantAdminOwnershipState>(
+                    value: state,
+                    child: Text(state.label),
+                  ),
+                )
+                .toList(growable: false),
+            onChanged: (value) {
+              if (value == null) {
+                return;
+              }
+              setState(() {
+                _selectedOwnershipState = value;
+              });
+            },
+            validator: (value) {
+              if (value == null) {
+                return 'Gestao da conta e obrigatoria.';
+              }
+              return null;
             },
           ),
           const SizedBox(height: 8),
