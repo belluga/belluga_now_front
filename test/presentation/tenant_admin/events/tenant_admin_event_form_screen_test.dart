@@ -167,6 +167,49 @@ void main() {
     expect(draft.placeRef, isNull);
   });
 
+  testWidgets('submits without description text (content optional)',
+      (tester) async {
+    final eventsRepository = _FakeEventsRepository();
+    final taxonomiesRepository = _FakeTaxonomiesRepository();
+    final controller = TenantAdminEventsController(
+      eventsRepository: eventsRepository,
+      taxonomiesRepository: taxonomiesRepository,
+    );
+
+    eventsRepository.eventTypes = const [
+      TenantAdminEventType(
+        id: '507f1f77bcf86cd799439016',
+        name: 'Show',
+        slug: 'show',
+      ),
+    ];
+
+    GetIt.I.registerSingleton<TenantAdminEventsController>(controller);
+
+    await _pumpWithAutoRoute(
+      tester,
+      const Scaffold(
+        body: TenantAdminEventFormScreen(),
+      ),
+    );
+
+    await _fillRequiredFields(tester, includeDescription: false);
+    await tester.scrollUntilVisible(
+      find.widgetWithText(FilledButton, 'Criar evento'),
+      250,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'Criar evento'));
+    await tester.pumpAndSettle();
+
+    final draft = eventsRepository.lastCreateDraft;
+    expect(draft, isNotNull);
+    expect(draft!.content, isEmpty);
+    expect(draft.location?.mode, 'online');
+    expect(draft.placeRef, isNull);
+  });
+
   testWidgets(
       'artist picker disables already selected artists on subsequent open',
       (tester) async {
@@ -293,13 +336,18 @@ Future<void> _pumpWithAutoRoute(
   await tester.pumpAndSettle();
 }
 
-Future<void> _fillRequiredFields(WidgetTester tester) async {
+Future<void> _fillRequiredFields(
+  WidgetTester tester, {
+  bool includeDescription = true,
+}) async {
   await tester.enterText(
       find.widgetWithText(TextFormField, 'Título'), 'Evento');
-  await tester.enterText(
-    find.widgetWithText(TextFormField, 'Descrição (opcional)'),
-    'Descrição do evento',
-  );
+  if (includeDescription) {
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Descrição (opcional)'),
+      'Descrição do evento',
+    );
+  }
   final startField = tester
       .widget<TextFormField>(find.widgetWithText(TextFormField, 'Início'));
   startField.controller!.text = '2026-03-05 20:00';

@@ -51,12 +51,10 @@ class TenantAdminEventsResponseDecoder {
       label: 'event party candidates',
     );
     final physicalHosts = _decodeAccountProfiles(envelope['physical_hosts']);
-    final legacyVenues = _decodeAccountProfiles(envelope['venues']);
     final artists = _decodeAccountProfiles(envelope['artists']);
-    final venues = physicalHosts.isNotEmpty ? physicalHosts : legacyVenues;
 
     return TenantAdminEventPartyCandidates(
-      venues: venues,
+      venues: physicalHosts,
       artists: artists,
     );
   }

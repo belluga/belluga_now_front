@@ -1,6 +1,7 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
+import 'package:flutter/services.dart';
 
 class TenantAdminColorPickerField extends StatelessWidget {
   const TenantAdminColorPickerField({
@@ -23,15 +24,6 @@ class TenantAdminColorPickerField extends StatelessWidget {
   final Color? fallbackColor;
 
   static final RegExp _hexColorPattern = RegExp(r'^#(?:[0-9a-fA-F]{6})$');
-  static const List<Color> _presetColors = [
-    Color(0xFFE53935),
-    Color(0xFFFB8C00),
-    Color(0xFF43A047),
-    Color(0xFF1E88E5),
-    Color(0xFF8E24AA),
-    Color(0xFF546E7A),
-  ];
-
   String? _dialogPickerSemanticsIdentifier() {
     final id = semanticsIdentifier;
     if (id == null || id.isEmpty) {
@@ -64,15 +56,6 @@ class TenantAdminColorPickerField extends StatelessWidget {
     return '${id}_dialog_cancel_button';
   }
 
-  String? _dialogPresetSemanticsIdentifier(Color color) {
-    final id = semanticsIdentifier;
-    if (id == null || id.isEmpty) {
-      return null;
-    }
-    final suffix = _toHex(color).replaceFirst('#', '').toLowerCase();
-    return '${id}_dialog_preset_$suffix';
-  }
-
   Color? _parseHexColor(String raw) {
     final trimmed = raw.trim();
     if (!_hexColorPattern.hasMatch(trimmed)) {
@@ -96,98 +79,133 @@ class TenantAdminColorPickerField extends StatelessWidget {
         fallbackColor ??
         theme.colorScheme.primary;
     var selected = baseColor;
+    var hexInputErrorText = '';
+    final hexController = TextEditingController(text: _toHex(baseColor));
 
     final picked = await showDialog<Color>(
       context: context,
       builder: (dialogContext) {
-        return AlertDialog(
-          title: Text(labelText),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Semantics(
-                  identifier: _dialogPickerSemanticsIdentifier(),
-                  child: ColorPicker(
-                    pickerColor: selected,
-                    onColorChanged: (color) {
-                      selected = Color(
-                        0xFF000000 | (color.toARGB32() & 0x00FFFFFF),
-                      );
-                    },
-                    enableAlpha: false,
-                    displayThumbColor: true,
-                    hexInputBar: false,
-                    pickerAreaBorderRadius: const BorderRadius.all(
-                      Radius.circular(12),
-                    ),
-                    portraitOnly: true,
-                    labelTypes: const [],
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Semantics(
-                  identifier: _dialogHexSemanticsIdentifier(),
-                  child: Text(
-                    _toHex(selected),
-                    style: Theme.of(dialogContext)
-                        .textTheme
-                        .labelLarge
-                        ?.copyWith(fontWeight: FontWeight.w700),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: _presetColors.map((color) {
-                    return Semantics(
-                      identifier: _dialogPresetSemanticsIdentifier(color),
-                      button: true,
-                      onTap: () {
-                        selected = color;
-                      },
-                      child: FilterChip(
-                        label: Text(_toHex(color)),
-                        selected: false,
-                        avatar: CircleAvatar(
-                          radius: 6,
-                          backgroundColor: color,
+        return StatefulBuilder(
+          builder: (context, setState) {
+            final canApplySelectedColor =
+                _parseHexColor(hexController.text.toUpperCase()) != null;
+
+            return AlertDialog(
+              title: Text(labelText),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Semantics(
+                      identifier: _dialogPickerSemanticsIdentifier(),
+                      child: ColorPicker(
+                        pickerColor: selected,
+                        onColorChanged: (color) {
+                          final normalized = Color(
+                            0xFF000000 | (color.toARGB32() & 0x00FFFFFF),
+                          );
+                          selected = normalized;
+                          hexInputErrorText = '';
+                          hexController.value = TextEditingValue(
+                            text: _toHex(normalized),
+                            selection: TextSelection.collapsed(
+                              offset: _toHex(normalized).length,
+                            ),
+                          );
+                          setState(() {});
+                        },
+                        enableAlpha: false,
+                        displayThumbColor: true,
+                        hexInputBar: false,
+                        pickerAreaBorderRadius: const BorderRadius.all(
+                          Radius.circular(12),
                         ),
-                        onSelected: (_) {
-                          selected = color;
+                        portraitOnly: true,
+                        labelTypes: const [],
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Semantics(
+                      identifier: _dialogHexSemanticsIdentifier(),
+                      textField: true,
+                      child: TextFormField(
+                        controller: hexController,
+                        keyboardType: TextInputType.visiblePassword,
+                        textCapitalization: TextCapitalization.characters,
+                        autocorrect: false,
+                        enableSuggestions: false,
+                        inputFormatters: [
+                          FilteringTextInputFormatter.allow(
+                            RegExp(r'[#0-9a-fA-F]'),
+                          ),
+                          LengthLimitingTextInputFormatter(7),
+                        ],
+                        decoration: InputDecoration(
+                          labelText: 'Hex (#RRGGBB)',
+                          helperText:
+                              'Digite uma cor para sincronizar o picker',
+                          errorText: hexInputErrorText.isEmpty
+                              ? null
+                              : hexInputErrorText,
+                        ),
+                        onChanged: (value) {
+                          final uppercase = value.toUpperCase();
+                          if (value != uppercase) {
+                            hexController.value = TextEditingValue(
+                              text: uppercase,
+                              selection: TextSelection.collapsed(
+                                offset: uppercase.length,
+                              ),
+                            );
+                          }
+
+                          final parsed = _parseHexColor(uppercase);
+                          if (parsed == null) {
+                            hexInputErrorText = uppercase.isEmpty
+                                ? ''
+                                : 'Formato inválido. Use #RRGGBB.';
+                            setState(() {});
+                            return;
+                          }
+
+                          selected = parsed;
+                          hexInputErrorText = '';
+                          setState(() {});
                         },
                       ),
-                    );
-                  }).toList(growable: false),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                Semantics(
+                  identifier: _dialogCancelSemanticsIdentifier(),
+                  button: true,
+                  onTap: () => dialogContext.router.pop(),
+                  child: TextButton(
+                    onPressed: () => dialogContext.router.pop(),
+                    child: const Text('Cancelar'),
+                  ),
+                ),
+                Semantics(
+                  identifier: _dialogApplySemanticsIdentifier(),
+                  button: true,
+                  onTap: canApplySelectedColor
+                      ? () => dialogContext.router.pop(selected)
+                      : null,
+                  child: FilledButton(
+                    onPressed: canApplySelectedColor
+                        ? () => dialogContext.router.pop(selected)
+                        : null,
+                    child: const Text('Aplicar cor'),
+                  ),
                 ),
               ],
-            ),
-          ),
-          actions: [
-            Semantics(
-              identifier: _dialogCancelSemanticsIdentifier(),
-              button: true,
-              onTap: () => dialogContext.router.pop(),
-              child: TextButton(
-                onPressed: () => dialogContext.router.pop(),
-                child: const Text('Cancelar'),
-              ),
-            ),
-            Semantics(
-              identifier: _dialogApplySemanticsIdentifier(),
-              button: true,
-              onTap: () => dialogContext.router.pop(selected),
-              child: FilledButton(
-                onPressed: () => dialogContext.router.pop(selected),
-                child: const Text('Aplicar cor'),
-              ),
-            ),
-          ],
+            );
+          },
         );
       },
     );
-
     if (picked == null) {
       return;
     }
