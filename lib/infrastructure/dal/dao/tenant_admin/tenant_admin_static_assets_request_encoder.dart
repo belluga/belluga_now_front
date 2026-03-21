@@ -11,7 +11,6 @@ class TenantAdminStaticAssetsRequestEncoder {
     String? slug,
     TenantAdminLocation? location,
     List<TenantAdminTaxonomyTerm>? taxonomyTerms,
-    List<String>? tags,
     String? bio,
     String? content,
     String? avatarUrl,
@@ -32,7 +31,6 @@ class TenantAdminStaticAssetsRequestEncoder {
           .map((term) => {'type': term.type, 'value': term.value})
           .toList();
     }
-    if (tags != null) payload['tags'] = tags;
     if (bio != null) payload['bio'] = bio;
     if (content != null) payload['content'] = content;
     if (avatarUrl != null) payload['avatar_url'] = avatarUrl;

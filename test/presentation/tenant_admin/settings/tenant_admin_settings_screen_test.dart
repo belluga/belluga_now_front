@@ -627,6 +627,19 @@ void main() {
       find.byKey(TenantAdminSettingsKeys.brandingPrimaryPickerButton),
     );
     await tester.pumpAndSettle();
+
+    final pickerDialog = find.byType(AlertDialog);
+    final hexInputField = find.descendant(
+      of: pickerDialog,
+      matching: find.byType(TextFormField),
+    );
+
+    expect(find.text('#E53935'), findsNothing);
+    expect(hexInputField, findsOneWidget);
+
+    await tester.enterText(hexInputField, '#A36CE3');
+    await tester.pumpAndSettle();
+
     expect(find.text('Aplicar cor'), findsOneWidget);
     await tester.tap(find.text('Aplicar cor'));
     await tester.pumpAndSettle();
@@ -649,7 +662,7 @@ void main() {
     expect(settingsRepository.lastBrandingInput!.tenantName, 'Tenant Test');
     expect(
       settingsRepository.lastBrandingInput!.primarySeedColor,
-      '#009688',
+      '#A36CE3',
     );
     expect(
       settingsRepository.lastBrandingInput!.secondarySeedColor,

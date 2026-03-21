@@ -7,8 +7,6 @@ class TenantAdminStaticAssetDTO {
     required this.displayName,
     required this.slug,
     required this.isActive,
-    required this.tags,
-    required this.categories,
     required this.taxonomyTerms,
     this.avatarUrl,
     this.coverUrl,
@@ -27,15 +25,11 @@ class TenantAdminStaticAssetDTO {
   final String? coverUrl;
   final String? bio;
   final String? content;
-  final List<String> tags;
-  final List<String> categories;
   final List<TenantAdminTaxonomyTermDTO> taxonomyTerms;
   final double? locationLat;
   final double? locationLng;
 
   factory TenantAdminStaticAssetDTO.fromJson(Map<String, dynamic> json) {
-    final tags = _parseStringList(json['tags']);
-    final categories = _parseStringList(json['categories']);
     final taxonomyTerms = <TenantAdminTaxonomyTermDTO>[];
     final rawTerms = json['taxonomy_terms'];
     if (rawTerms is List) {
@@ -61,23 +55,11 @@ class TenantAdminStaticAssetDTO {
       coverUrl: json['cover_url']?.toString(),
       bio: json['bio']?.toString(),
       content: json['content']?.toString(),
-      tags: tags,
-      categories: categories,
       taxonomyTerms: taxonomyTerms,
       locationLat: lat,
       locationLng: lng,
       isActive: _parseBool(json['is_active']),
     );
-  }
-
-  static List<String> _parseStringList(dynamic raw) {
-    if (raw is List) {
-      return raw
-          .where((value) => value != null)
-          .map((value) => value.toString())
-          .toList(growable: false);
-    }
-    return const [];
   }
 
   static double? _parseDouble(dynamic value) {
