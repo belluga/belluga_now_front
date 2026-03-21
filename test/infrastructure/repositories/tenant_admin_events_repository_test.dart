@@ -270,6 +270,7 @@ void main() {
     final candidates = await repository.fetchPartyCandidates(search: 'main');
 
     expect(candidates.venues, hasLength(1));
+    expect(candidates.venues.first.id, 'venue-1');
     expect(candidates.venues.first.profileType, 'venue');
     expect(candidates.artists, isEmpty);
 
@@ -301,6 +302,7 @@ void main() {
     );
 
     expect(candidates.venues, hasLength(1));
+    expect(candidates.venues.first.id, 'venue-1');
     expect(candidates.venues.first.profileType, 'venue');
     expect(candidates.artists, isEmpty);
 
@@ -373,6 +375,36 @@ void main() {
             request.path.endsWith('/admin/api/v1/events/party_candidates'))
         .toList(growable: false);
     expect(candidateRequests, hasLength(1));
+  });
+
+  test('updateEventType sends null description when value is cleared', () async {
+    final adapter = _EventTypeMutationsAdapter();
+    final dio = Dio()..httpClientAdapter = adapter;
+    final scope = _MutableTenantScope('https://tenant-a.test/admin/api');
+    final repository = TenantAdminEventsRepository(
+      dio: dio,
+      tenantScope: scope,
+    );
+
+    await repository.updateEventType(
+      eventTypeId: '507f1f77bcf86cd799439011',
+      name: 'Show',
+      slug: 'show',
+      description: null,
+    );
+
+    final request = adapter.requests.singleWhere(
+      (candidate) =>
+          candidate.method == 'PATCH' &&
+          candidate.path.endsWith('/admin/api/v1/event_types/507f1f77bcf86cd799439011'),
+    );
+
+    expect(request.data, isA<Map<String, dynamic>>());
+    final payload = request.data as Map<String, dynamic>;
+    expect(payload['name'], 'Show');
+    expect(payload['slug'], 'show');
+    expect(payload.containsKey('description'), isTrue);
+    expect(payload['description'], isNull);
   });
 }
 
@@ -711,6 +743,13 @@ class _PartyCandidatesAdapter implements HttpClientAdapter {
           'display_name': 'Main Venue',
           'slug': 'main-venue',
         },
+        {
+          'id': 'venue-legacy',
+          'account_id': 'account-legacy',
+          'profile_type': 'venue',
+          'display_name': 'Main Legacy Venue',
+          'slug': 'main-legacy-venue',
+        },
       ];
       final artistRows = <Map<String, dynamic>>[
         {
@@ -724,6 +763,14 @@ class _PartyCandidatesAdapter implements HttpClientAdapter {
       return ResponseBody.fromString(
         jsonEncode({
           'data': {
+            'physical_hosts': venueRows
+                .where((row) =>
+                    search.isEmpty ||
+                    (row['display_name'] as String)
+                        .toLowerCase()
+                        .contains(search))
+                .where((row) => row['id'] == 'venue-1')
+                .toList(growable: false),
             'venues': venueRows
                 .where((row) =>
                     search.isEmpty ||
@@ -751,6 +798,48 @@ class _PartyCandidatesAdapter implements HttpClientAdapter {
         options.method == 'GET') {
       return ResponseBody.fromString(
         jsonEncode({'data': const [], 'current_page': 1, 'last_page': 1}),
+        200,
+        headers: {
+          Headers.contentTypeHeader: ['application/json'],
+        },
+      );
+    }
+
+    return ResponseBody.fromString(
+      jsonEncode({'data': const {}}),
+      200,
+      headers: {
+        Headers.contentTypeHeader: ['application/json'],
+      },
+    );
+  }
+}
+
+class _EventTypeMutationsAdapter implements HttpClientAdapter {
+  final List<RequestOptions> requests = <RequestOptions>[];
+
+  @override
+  void close({bool force = false}) {}
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<List<int>>? requestStream,
+    Future<void>? cancelFuture,
+  ) async {
+    requests.add(options);
+
+    if (options.path.contains('/admin/api/v1/event_types/') &&
+        options.method == 'PATCH') {
+      return ResponseBody.fromString(
+        jsonEncode({
+          'data': {
+            'id': '507f1f77bcf86cd799439011',
+            'name': 'Show',
+            'slug': 'show',
+            'description': null,
+          },
+        }),
         200,
         headers: {
           Headers.contentTypeHeader: ['application/json'],

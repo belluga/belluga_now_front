@@ -135,7 +135,7 @@ class _TenantAdminEventFormScreenState
                                                         rawError:
                                                             partyCandidatesError,
                                                         fallbackMessage:
-                                                            'Falha ao carregar venues/artistas.',
+                                                            'Falha ao carregar hosts físicos/artistas.',
                                                         onRetry: () => _controller
                                                             .loadFormDependencies(
                                                           accountSlug: widget
@@ -239,17 +239,10 @@ class _TenantAdminEventFormScreenState
           TextFormField(
             controller: _controller.eventContentController,
             decoration: const InputDecoration(
-              labelText: 'Descrição',
+              labelText: 'Descrição (opcional)',
             ),
             minLines: 3,
             maxLines: 6,
-            validator: (value) {
-              final trimmed = value?.trim() ?? '';
-              if (trimmed.isEmpty) {
-                return 'Descrição é obrigatória.';
-              }
-              return null;
-            },
           ),
         ],
       ),
@@ -428,7 +421,7 @@ class _TenantAdminEventFormScreenState
     return TenantAdminFormSectionCard(
       title: 'Localização',
       description:
-          'Para physical/hybrid, a localização do evento pode ser derivada da venue selecionada.',
+          'Para physical/hybrid, a localização do evento pode ser derivada do perfil anfitrião selecionado.',
       child: Column(
         children: [
           DropdownButtonFormField<String>(
@@ -451,7 +444,7 @@ class _TenantAdminEventFormScreenState
             const SizedBox(height: 12),
             DropdownButtonFormField<String>(
               initialValue: formState.selectedVenueId,
-              decoration: const InputDecoration(labelText: 'Venue'),
+              decoration: const InputDecoration(labelText: 'Host físico (perfil)'),
               items: venues
                   .map(
                     (venue) => DropdownMenuItem<String>(
@@ -467,7 +460,7 @@ class _TenantAdminEventFormScreenState
                 if (formState.locationMode == 'physical' ||
                     formState.locationMode == 'hybrid') {
                   if (value == null || value.trim().isEmpty) {
-                    return 'Venue é obrigatória para ${formState.locationMode}.';
+                    return 'Host físico é obrigatório para ${formState.locationMode}.';
                   }
                 }
                 return null;
@@ -476,7 +469,7 @@ class _TenantAdminEventFormScreenState
             if (venues.isEmpty) ...[
               const SizedBox(height: 8),
               Text(
-                'Nenhuma venue elegível encontrada.',
+                'Nenhum perfil elegível para host físico.',
                 style: Theme.of(context).textTheme.bodySmall,
               ),
             ],
@@ -976,7 +969,7 @@ class _TenantAdminEventFormScreenState
                 formState.locationMode == 'hybrid') &&
             selectedVenue != null
             ? TenantAdminEventPlaceRef(
-                type: 'venue',
+                type: 'account_profile',
                 id: selectedVenue.id,
                 metadata: {
                   'display_name': selectedVenue.displayName,
