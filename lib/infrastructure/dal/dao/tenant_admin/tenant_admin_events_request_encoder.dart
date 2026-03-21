@@ -65,6 +65,16 @@ class TenantAdminEventsRequestEncoder {
       payload['artist_ids'] = draft.artistIds;
     }
 
+    final normalizedCoverUrl = draft.coverUrl?.trim();
+    if (normalizedCoverUrl != null && normalizedCoverUrl.isNotEmpty) {
+      payload['thumb'] = <String, dynamic>{
+        'type': 'image',
+        'data': <String, dynamic>{
+          'url': normalizedCoverUrl,
+        },
+      };
+    }
+
     final location = draft.location;
     if (location != null) {
       final locationPayload = <String, dynamic>{

@@ -72,18 +72,78 @@ void main() {
     expect(favorites, isEmpty);
     expect(adapter.requests, isEmpty);
   });
+
+  test('favoriteAccountProfile posts canonical payload', () async {
+    final adapter = _FavoritesApiAdapter();
+    final dio = Dio()..httpClientAdapter = adapter;
+
+    GetIt.I.registerSingleton<AuthRepositoryContract<UserContract>>(
+      _FakeAuthRepository(userTokenValue: 'test-token'),
+    );
+    GetIt.I.registerSingleton<AppData>(_buildAppData());
+
+    final backend = LaravelFavoriteBackend(dio: dio);
+    await backend.favoriteAccountProfile('profile-123');
+
+    expect(adapter.requests, hasLength(1));
+    final request = adapter.requests.first;
+    expect(request.method, 'POST');
+    expect(request.uri.path, '/api/v1/favorites');
+    expect(
+      request.headers['Authorization'],
+      'Bearer test-token',
+    );
+    expect(
+      request.data,
+      {
+        'target_id': 'profile-123',
+        'registry_key': 'account_profile',
+        'target_type': 'account_profile',
+      },
+    );
+  });
+
+  test('unfavoriteAccountProfile deletes canonical payload', () async {
+    final adapter = _FavoritesApiAdapter();
+    final dio = Dio()..httpClientAdapter = adapter;
+
+    GetIt.I.registerSingleton<AuthRepositoryContract<UserContract>>(
+      _FakeAuthRepository(userTokenValue: 'test-token'),
+    );
+    GetIt.I.registerSingleton<AppData>(_buildAppData());
+
+    final backend = LaravelFavoriteBackend(dio: dio);
+    await backend.unfavoriteAccountProfile('profile-123');
+
+    expect(adapter.requests, hasLength(1));
+    final request = adapter.requests.first;
+    expect(request.method, 'DELETE');
+    expect(request.uri.path, '/api/v1/favorites');
+    expect(
+      request.data,
+      {
+        'target_id': 'profile-123',
+        'registry_key': 'account_profile',
+        'target_type': 'account_profile',
+      },
+    );
+  });
 }
 
 class _RecordedRequest {
   const _RecordedRequest({
+    required this.method,
     required this.uri,
     required this.queryParameters,
     required this.headers,
+    required this.data,
   });
 
+  final String method;
   final Uri uri;
   final Map<String, dynamic> queryParameters;
   final Map<String, dynamic> headers;
+  final Object? data;
 }
 
 class _FavoritesApiAdapter implements HttpClientAdapter {
@@ -100,11 +160,25 @@ class _FavoritesApiAdapter implements HttpClientAdapter {
   ) async {
     requests.add(
       _RecordedRequest(
+        method: options.method,
         uri: options.uri,
         queryParameters: Map<String, dynamic>.from(options.queryParameters),
         headers: Map<String, dynamic>.from(options.headers),
+        data: options.data,
       ),
     );
+
+    if (options.method == 'POST' || options.method == 'DELETE') {
+      return ResponseBody.fromString(
+        jsonEncode({
+          'data': {'is_favorite': options.method == 'POST'},
+        }),
+        200,
+        headers: {
+          Headers.contentTypeHeader: [Headers.jsonContentType],
+        },
+      );
+    }
 
     final page = options.queryParameters['page'];
     final pageNumber = page is int ? page : int.tryParse(page.toString()) ?? 1;

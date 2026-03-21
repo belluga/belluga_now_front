@@ -1,3 +1,5 @@
+import 'package:auto_route/auto_route.dart';
+import 'package:belluga_now/application/router/support/route_redirect_path.dart';
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/presentation/tenant_public/partners/controllers/partner_detail_controller.dart';
 import 'package:belluga_now/presentation/shared/widgets/belluga_network_image.dart';
@@ -131,7 +133,7 @@ class _PartnerDetailScreenState extends State<PartnerDetailScreen> {
                       isFav ? Icons.favorite : Icons.favorite_border,
                       color: isFav ? Colors.red : Colors.white,
                     ),
-                    onPressed: () => _controller.toggleFavorite(partner.id),
+                    onPressed: () => _handleFavoriteTap(partner.id),
                   ),
                 )
               : const SizedBox.shrink(),
@@ -239,6 +241,17 @@ class _PartnerDetailScreenState extends State<PartnerDetailScreen> {
       AccountProfileModel partner, bool isFav, bool isFavoritable) {
     if (!isFavoritable) return const SizedBox.shrink();
     return _actionFooter(isFav ? 'Favoritado' : 'Seguir');
+  }
+
+  void _handleFavoriteTap(String partnerId) {
+    final result = _controller.toggleFavorite(partnerId);
+    if (result != PartnerFavoriteToggleOutcome.requiresAuthentication) {
+      return;
+    }
+    final redirectPath =
+        buildRedirectPathFromRouteMatch(context.routeData.route);
+    final encodedRedirect = Uri.encodeQueryComponent(redirectPath);
+    context.router.replacePath('/auth/login?redirect=$encodedRedirect');
   }
 
   IconData _iconForType(String type) {

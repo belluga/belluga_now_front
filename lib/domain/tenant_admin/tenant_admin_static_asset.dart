@@ -12,8 +12,6 @@ class TenantAdminStaticAsset {
     this.coverUrl,
     this.bio,
     this.content,
-    this.tags = const [],
-    this.categories = const [],
     this.taxonomyTerms = const [],
     this.location,
   });
@@ -27,8 +25,6 @@ class TenantAdminStaticAsset {
   final String? coverUrl;
   final String? bio;
   final String? content;
-  final List<String> tags;
-  final List<String> categories;
   final List<TenantAdminTaxonomyTerm> taxonomyTerms;
   final TenantAdminLocation? location;
 }

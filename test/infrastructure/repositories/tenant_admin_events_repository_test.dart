@@ -1,9 +1,11 @@
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/landlord_auth_repository_contract.dart';
 import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
 import 'package:belluga_now/domain/user/user_contract.dart';
 import 'package:belluga_now/infrastructure/repositories/tenant_admin/tenant_admin_events_repository.dart';
@@ -117,6 +119,42 @@ void main() {
     expect(location['online'], {'url': 'https://example.com/live'});
   });
 
+  test('createEvent keeps account_profile place_ref contract for physical mode',
+      () async {
+    final adapter = _EventsRoutingAdapter();
+    final dio = Dio()..httpClientAdapter = adapter;
+    final scope = _MutableTenantScope('https://tenant-a.test/admin/api');
+    final repository = TenantAdminEventsRepository(
+      dio: dio,
+      tenantScope: scope,
+    );
+
+    await repository.createEvent(
+      draft: _buildDraft(
+        location: const TenantAdminEventLocation(
+          mode: 'physical',
+          latitude: -20.611121,
+          longitude: -40.498617,
+        ),
+        placeRef: const TenantAdminEventPlaceRef(
+          type: 'account_profile',
+          id: 'profile-1',
+          metadata: {'display_name': 'Main Host'},
+        ),
+      ),
+    );
+
+    expect(adapter.requests, isNotEmpty);
+    final request = adapter.requests.last;
+    expect(request.method, 'POST');
+    expect(request.path, endsWith('/admin/api/v1/events'));
+    final payload = request.data as Map<String, dynamic>;
+    expect(payload['place_ref'], isA<Map<String, dynamic>>());
+    final placeRef = payload['place_ref'] as Map<String, dynamic>;
+    expect(placeRef['type'], 'account_profile');
+    expect(placeRef['id'], 'profile-1');
+  });
+
   test('createOwnEvent uses account-scoped endpoint', () async {
     final adapter = _EventsRoutingAdapter();
     final dio = Dio()..httpClientAdapter = adapter;
@@ -138,6 +176,57 @@ void main() {
     expect(request.headers['Authorization'], 'Bearer account-token');
   });
 
+  test('createEvent uses multipart payload when cover upload is provided',
+      () async {
+    final adapter = _EventsRoutingAdapter();
+    final dio = Dio()..httpClientAdapter = adapter;
+    final scope = _MutableTenantScope('https://tenant-a.test/admin/api');
+    final repository = TenantAdminEventsRepository(
+      dio: dio,
+      tenantScope: scope,
+    );
+
+    await repository.createEvent(
+      draft: _buildDraft(
+        coverUpload: TenantAdminMediaUpload(
+          bytes: Uint8List.fromList(const [1, 2, 3, 4]),
+          fileName: 'event-cover.png',
+          mimeType: 'image/png',
+        ),
+      ),
+    );
+
+    final request = adapter.requests.last;
+    expect(request.method, 'POST');
+    expect(request.path, endsWith('/admin/api/v1/events'));
+    expect(request.data, isA<FormData>());
+    final formData = request.data as FormData;
+    expect(formData.files.map((entry) => entry.key), contains('cover'));
+  });
+
+  test('updateEvent sends remove_cover as multipart patch override', () async {
+    final adapter = _EventsRoutingAdapter();
+    final dio = Dio()..httpClientAdapter = adapter;
+    final scope = _MutableTenantScope('https://tenant-a.test/admin/api');
+    final repository = TenantAdminEventsRepository(
+      dio: dio,
+      tenantScope: scope,
+    );
+
+    await repository.updateEvent(
+      eventId: 'evt-1',
+      draft: _buildDraft(removeCover: true),
+    );
+
+    final request = adapter.requests.last;
+    expect(request.method, 'POST');
+    expect(request.path, endsWith('/admin/api/v1/events/evt-1'));
+    expect(request.data, isA<FormData>());
+    final formData = request.data as FormData;
+    expect(formData.fields, contains(const MapEntry('remove_cover', '1')));
+    expect(formData.fields, contains(const MapEntry('_method', 'PATCH')));
+  });
+
   test('fetchEventsPage maps 404 into empty page result', () async {
     final adapter = _NotFoundEventsAdapter();
     final dio = Dio()..httpClientAdapter = adapter;
@@ -156,7 +245,8 @@ void main() {
     expect(result.hasMore, isFalse);
   });
 
-  test('fetchEventsPage serializes archived filter as integer boolean', () async {
+  test('fetchEventsPage serializes archived filter as integer boolean',
+      () async {
     final adapter = _EventsRoutingAdapter();
     final dio = Dio()..httpClientAdapter = adapter;
     final scope = _MutableTenantScope('https://tenant-a.test/admin/api');
@@ -318,6 +408,23 @@ void main() {
         'Bearer account-token');
   });
 
+  test(
+      'fetchPartyCandidates ignores legacy venues when physical_hosts is empty',
+      () async {
+    final adapter = _LegacyVenueOnlyPartyCandidatesAdapter();
+    final dio = Dio()..httpClientAdapter = adapter;
+    final scope = _MutableTenantScope('https://tenant-a.test/admin/api');
+    final repository = TenantAdminEventsRepository(
+      dio: dio,
+      tenantScope: scope,
+    );
+
+    final candidates = await repository.fetchPartyCandidates(search: 'legacy');
+
+    expect(candidates.venues, isEmpty);
+    expect(candidates.artists, isEmpty);
+  });
+
   test('fetchPartyCandidates throws when candidates endpoint is unauthorized',
       () async {
     final adapter = _UnauthorizedAdminPartyCandidatesAdapter();
@@ -377,7 +484,8 @@ void main() {
     expect(candidateRequests, hasLength(1));
   });
 
-  test('updateEventType sends null description when value is cleared', () async {
+  test('updateEventType sends null description when value is cleared',
+      () async {
     final adapter = _EventTypeMutationsAdapter();
     final dio = Dio()..httpClientAdapter = adapter;
     final scope = _MutableTenantScope('https://tenant-a.test/admin/api');
@@ -396,7 +504,8 @@ void main() {
     final request = adapter.requests.singleWhere(
       (candidate) =>
           candidate.method == 'PATCH' &&
-          candidate.path.endsWith('/admin/api/v1/event_types/507f1f77bcf86cd799439011'),
+          candidate.path
+              .endsWith('/admin/api/v1/event_types/507f1f77bcf86cd799439011'),
     );
 
     expect(request.data, isA<Map<String, dynamic>>());
@@ -406,11 +515,42 @@ void main() {
     expect(payload.containsKey('description'), isTrue);
     expect(payload['description'], isNull);
   });
+
+  test('createEventType omits description when value is blank', () async {
+    final adapter = _EventTypeMutationsAdapter();
+    final dio = Dio()..httpClientAdapter = adapter;
+    final scope = _MutableTenantScope('https://tenant-a.test/admin/api');
+    final repository = TenantAdminEventsRepository(
+      dio: dio,
+      tenantScope: scope,
+    );
+
+    await repository.createEventType(
+      name: 'Show',
+      slug: 'show',
+      description: '   ',
+    );
+
+    final request = adapter.requests.singleWhere(
+      (candidate) =>
+          candidate.method == 'POST' &&
+          candidate.path.endsWith('/admin/api/v1/event_types'),
+    );
+
+    expect(request.data, isA<Map<String, dynamic>>());
+    final payload = request.data as Map<String, dynamic>;
+    expect(payload['name'], 'Show');
+    expect(payload['slug'], 'show');
+    expect(payload.containsKey('description'), isFalse);
+  });
 }
 
 TenantAdminEventDraft _buildDraft({
   List<TenantAdminTaxonomyTerm> taxonomyTerms = const [],
   TenantAdminEventLocation? location,
+  TenantAdminEventPlaceRef? placeRef,
+  TenantAdminMediaUpload? coverUpload,
+  bool removeCover = false,
 }) {
   return TenantAdminEventDraft(
     title: 'My event',
@@ -428,6 +568,9 @@ TenantAdminEventDraft _buildDraft({
       status: 'draft',
     ),
     location: location,
+    placeRef: placeRef,
+    coverUpload: coverUpload,
+    removeCover: removeCover,
     taxonomyTerms: taxonomyTerms,
   );
 }
@@ -743,13 +886,6 @@ class _PartyCandidatesAdapter implements HttpClientAdapter {
           'display_name': 'Main Venue',
           'slug': 'main-venue',
         },
-        {
-          'id': 'venue-legacy',
-          'account_id': 'account-legacy',
-          'profile_type': 'venue',
-          'display_name': 'Main Legacy Venue',
-          'slug': 'main-legacy-venue',
-        },
       ];
       final artistRows = <Map<String, dynamic>>[
         {
@@ -764,14 +900,6 @@ class _PartyCandidatesAdapter implements HttpClientAdapter {
         jsonEncode({
           'data': {
             'physical_hosts': venueRows
-                .where((row) =>
-                    search.isEmpty ||
-                    (row['display_name'] as String)
-                        .toLowerCase()
-                        .contains(search))
-                .where((row) => row['id'] == 'venue-1')
-                .toList(growable: false),
-            'venues': venueRows
                 .where((row) =>
                     search.isEmpty ||
                     (row['display_name'] as String)
@@ -829,6 +957,24 @@ class _EventTypeMutationsAdapter implements HttpClientAdapter {
   ) async {
     requests.add(options);
 
+    if (options.path.endsWith('/admin/api/v1/event_types') &&
+        options.method == 'POST') {
+      return ResponseBody.fromString(
+        jsonEncode({
+          'data': {
+            'id': '507f1f77bcf86cd799439099',
+            'name': 'Show',
+            'slug': 'show',
+            'description': null,
+          },
+        }),
+        201,
+        headers: {
+          Headers.contentTypeHeader: ['application/json'],
+        },
+      );
+    }
+
     if (options.path.contains('/admin/api/v1/event_types/') &&
         options.method == 'PATCH') {
       return ResponseBody.fromString(
@@ -849,6 +995,55 @@ class _EventTypeMutationsAdapter implements HttpClientAdapter {
 
     return ResponseBody.fromString(
       jsonEncode({'data': const {}}),
+      200,
+      headers: {
+        Headers.contentTypeHeader: ['application/json'],
+      },
+    );
+  }
+}
+
+class _LegacyVenueOnlyPartyCandidatesAdapter implements HttpClientAdapter {
+  final List<RequestOptions> requests = <RequestOptions>[];
+
+  @override
+  void close({bool force = false}) {}
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<List<int>>? requestStream,
+    Future<void>? cancelFuture,
+  ) async {
+    requests.add(options);
+
+    if (options.path.endsWith('/admin/api/v1/events/party_candidates') &&
+        options.method == 'GET') {
+      return ResponseBody.fromString(
+        jsonEncode({
+          'data': {
+            'physical_hosts': const [],
+            'venues': const [
+              {
+                'id': 'venue-legacy',
+                'account_id': 'account-legacy',
+                'profile_type': 'venue',
+                'display_name': 'Legacy Venue',
+                'slug': 'legacy-venue',
+              }
+            ],
+            'artists': const [],
+          },
+        }),
+        200,
+        headers: {
+          Headers.contentTypeHeader: ['application/json'],
+        },
+      );
+    }
+
+    return ResponseBody.fromString(
+      jsonEncode({'data': const []}),
       200,
       headers: {
         Headers.contentTypeHeader: ['application/json'],

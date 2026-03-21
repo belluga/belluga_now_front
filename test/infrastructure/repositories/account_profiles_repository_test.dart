@@ -1,8 +1,11 @@
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/app_data/value_object/platform_type_value.dart';
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
+import 'package:belluga_now/domain/partners/paged_account_profiles_result.dart';
 import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/account_profiles_backend_contract.dart';
+import 'package:belluga_now/infrastructure/dal/dao/favorite_backend_contract.dart';
+import 'package:belluga_now/infrastructure/dal/dto/favorite/favorite_preview_dto.dart';
 import 'package:belluga_now/infrastructure/repositories/account_profiles_repository.dart';
 import 'package:event_tracker_handler/event_tracker_handler.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -21,7 +24,8 @@ void main() {
     await GetIt.I.reset();
   });
 
-  test('fetchAllAccountProfiles returns items when registry enables type', () async {
+  test('fetchAllAccountProfiles returns items when registry enables type',
+      () async {
     final validId = _generateMongoId();
     final backend = _StubAccountProfilesBackend(
       accountProfiles: [
@@ -43,6 +47,82 @@ void main() {
     expect(profiles, hasLength(1));
     expect(profiles.first.type, 'artist');
   });
+
+  test('init loads favorite ids from backend favorites source', () async {
+    final validId = _generateMongoId();
+    final backend = _StubAccountProfilesBackend(
+      accountProfiles: [
+        AccountProfileModel.fromPrimitives(
+          id: validId,
+          name: 'Artist One',
+          slug: 'artist-one',
+          type: 'artist',
+        ),
+      ],
+    );
+    final favoritesBackend = _StubFavoriteBackend(
+      favorites: [
+        const FavoritePreviewDTO(
+          id: 'profile-fav-1',
+          title: 'Fav 1',
+          targetId: 'profile-fav-1',
+          registryKey: 'account_profile',
+          targetType: 'account_profile',
+        ),
+      ],
+    );
+
+    final repository = AccountProfilesRepository(
+      backend: backend,
+      favoriteBackend: favoritesBackend,
+      favoriteAccountProfileIds: const {},
+    );
+
+    await repository.init();
+
+    expect(
+      repository.favoriteAccountProfileIdsStreamValue.value,
+      contains('profile-fav-1'),
+    );
+  });
+
+  test('toggleFavorite persists favorite and unfavorite through backend',
+      () async {
+    final validId = _generateMongoId();
+    final backend = _StubAccountProfilesBackend(
+      accountProfiles: [
+        AccountProfileModel.fromPrimitives(
+          id: validId,
+          name: 'Artist One',
+          slug: 'artist-one',
+          type: 'artist',
+        ),
+      ],
+    );
+    final favoritesBackend = _StubFavoriteBackend(
+      favorites: const [],
+    );
+
+    final repository = AccountProfilesRepository(
+      backend: backend,
+      favoriteBackend: favoritesBackend,
+      favoriteAccountProfileIds: const {},
+    );
+
+    await repository.toggleFavorite(validId);
+    expect(favoritesBackend.favoritedIds, contains(validId));
+    expect(
+      repository.favoriteAccountProfileIdsStreamValue.value,
+      contains(validId),
+    );
+
+    await repository.toggleFavorite(validId);
+    expect(favoritesBackend.unfavoritedIds, contains(validId));
+    expect(
+      repository.favoriteAccountProfileIdsStreamValue.value,
+      isNot(contains(validId)),
+    );
+  });
 }
 
 class _StubAccountProfilesBackend implements AccountProfilesBackendContract {
@@ -53,6 +133,27 @@ class _StubAccountProfilesBackend implements AccountProfilesBackendContract {
   @override
   Future<List<AccountProfileModel>> fetchAccountProfiles() async =>
       accountProfiles;
+
+  @override
+  Future<PagedAccountProfilesResult> fetchAccountProfilesPage({
+    required int page,
+    required int pageSize,
+    String? query,
+    String? typeFilter,
+  }) async {
+    final start = (page - 1) * pageSize;
+    if (start < 0 || start >= accountProfiles.length) {
+      return const PagedAccountProfilesResult(
+        profiles: <AccountProfileModel>[],
+        hasMore: false,
+      );
+    }
+    final end = (start + pageSize).clamp(0, accountProfiles.length) as int;
+    return PagedAccountProfilesResult(
+      profiles: accountProfiles.sublist(start, end),
+      hasMore: end < accountProfiles.length,
+    );
+  }
 
   @override
   Future<AccountProfileModel?> fetchAccountProfileBySlug(String slug) async =>
@@ -100,6 +201,29 @@ class _NoopTelemetry implements TelemetryRepositoryContract {
   Future<bool> mergeIdentity({required String previousUserId}) async => true;
 }
 
+class _StubFavoriteBackend extends FavoriteBackendContract {
+  _StubFavoriteBackend({
+    required this.favorites,
+  });
+
+  final List<FavoritePreviewDTO> favorites;
+  final List<String> favoritedIds = <String>[];
+  final List<String> unfavoritedIds = <String>[];
+
+  @override
+  Future<List<FavoritePreviewDTO>> fetchFavorites() async => favorites;
+
+  @override
+  Future<void> favoriteAccountProfile(String accountProfileId) async {
+    favoritedIds.add(accountProfileId);
+  }
+
+  @override
+  Future<void> unfavoriteAccountProfile(String accountProfileId) async {
+    unfavoritedIds.add(accountProfileId);
+  }
+}
+
 AppData _buildAppData() {
   final remoteData = {
     'name': 'Tenant Test',
@@ -137,12 +261,14 @@ AppData _buildAppData() {
     'port': null,
     'device': 'test-device',
   };
-  return AppData.fromInitialization(remoteData: remoteData, localInfo: localInfo);
+  return AppData.fromInitialization(
+      remoteData: remoteData, localInfo: localInfo);
 }
 
 String _generateMongoId() {
   // 24-char hex string to satisfy MongoIDValue validation in AccountProfileModel.
-  return DateTime.now().microsecondsSinceEpoch
+  return DateTime.now()
+      .microsecondsSinceEpoch
       .toRadixString(16)
       .padLeft(24, '0')
       .substring(0, 24);

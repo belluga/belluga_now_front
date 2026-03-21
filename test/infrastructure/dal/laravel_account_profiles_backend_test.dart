@@ -25,7 +25,8 @@ void main() {
     await GetIt.I.reset();
   });
 
-  test('fetchAccountProfiles hits account_profiles and parses profiles', () async {
+  test('fetchAccountProfiles hits account_profiles and parses profiles',
+      () async {
     final validId = _generateMongoId();
     final adapter = _RecordingAdapter(
       response: {
@@ -47,10 +48,9 @@ void main() {
 
     final profiles = await backend.fetchAccountProfiles();
 
-    expect(
-      adapter.lastRequest?.uri.toString(),
-      'https://tenant.test/api/v1/account_profiles',
-    );
+    expect(adapter.lastRequest?.uri.path, '/api/v1/account_profiles');
+    expect(adapter.lastRequest?.queryParameters['page'], 1);
+    expect(adapter.lastRequest?.queryParameters['per_page'], 30);
     expect(adapter.lastRequest?.headers['Authorization'], 'Bearer test-token');
     expect(profiles, hasLength(1));
     expect(profiles.first.name, 'Artist One');
@@ -106,7 +106,8 @@ class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
   Future<void> logout() async {}
 
   @override
-  Future<void> createNewPassword(String newPassword, String confirmPassword) async {}
+  Future<void> createNewPassword(
+      String newPassword, String confirmPassword) async {}
 
   @override
   Future<void> sendPasswordResetEmail(String email) async {}
@@ -179,12 +180,14 @@ AppData _buildAppData() {
     'port': null,
     'device': 'test-device',
   };
-  return AppData.fromInitialization(remoteData: remoteData, localInfo: localInfo);
+  return AppData.fromInitialization(
+      remoteData: remoteData, localInfo: localInfo);
 }
 
 String _generateMongoId() {
   // 24-char hex string to satisfy MongoIDValue validation in AccountProfileModel.
-  return DateTime.now().microsecondsSinceEpoch
+  return DateTime.now()
+      .microsecondsSinceEpoch
       .toRadixString(16)
       .padLeft(24, '0')
       .substring(0, 24);

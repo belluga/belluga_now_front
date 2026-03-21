@@ -7,6 +7,7 @@ import 'dart:typed_data';
 import 'package:belluga_now/domain/repositories/tenant_admin_account_profiles_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_accounts_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_taxonomies_repository_contract.dart';
+import 'package:belluga_now/domain/tenant_admin/ownership_state.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
@@ -77,6 +78,10 @@ class TenantAdminAccountProfilesController implements Disposable {
   final StreamValue<String?> accountDetailErrorStreamValue =
       StreamValue<String?>();
   final StreamValue<bool> accountUpdatingStreamValue =
+      StreamValue<bool>(defaultValue: false);
+  final StreamValue<bool> accountDeletingStreamValue =
+      StreamValue<bool>(defaultValue: false);
+  final StreamValue<bool> accountDeletedStreamValue =
       StreamValue<bool>(defaultValue: false);
   final StreamValue<TenantAdminAccountProfileEditDraft> editStateStreamValue =
       StreamValue<TenantAdminAccountProfileEditDraft>(
@@ -299,6 +304,21 @@ class TenantAdminAccountProfilesController implements Disposable {
     }
   }
 
+  Future<void> loadAccountForEdit(String accountSlug) async {
+    try {
+      final account = await resolveAccountBySlug(accountSlug);
+      if (_isDisposed) return;
+      _bindAccountWatch(
+        accountId: account.id,
+        accountSlug: account.slug,
+      );
+      accountDetailErrorStreamValue.addValue(null);
+    } catch (error) {
+      if (_isDisposed) return;
+      accountDetailErrorStreamValue.addValue(error.toString());
+    }
+  }
+
   void clearCreateAccountId() {
     createAccountIdStreamValue.addValue(null);
   }
@@ -331,6 +351,7 @@ class TenantAdminAccountProfilesController implements Disposable {
     required String accountSlug,
     String? name,
     String? slug,
+    TenantAdminOwnershipState? ownershipState,
   }) async {
     accountUpdatingStreamValue.addValue(true);
     try {
@@ -338,6 +359,7 @@ class TenantAdminAccountProfilesController implements Disposable {
         accountSlug: accountSlug,
         name: name,
         slug: slug,
+        ownershipState: ownershipState,
       );
       if (_isDisposed) {
         return null;
@@ -357,6 +379,36 @@ class TenantAdminAccountProfilesController implements Disposable {
     } finally {
       if (!_isDisposed) {
         accountUpdatingStreamValue.addValue(false);
+      }
+    }
+  }
+
+  Future<bool> deleteAccount({
+    required String accountSlug,
+  }) async {
+    accountDeletingStreamValue.addValue(true);
+    try {
+      await _accountsRepository.deleteAccount(accountSlug);
+      if (_isDisposed) {
+        return false;
+      }
+      _clearAccountWatch();
+      _watchedAccountId = null;
+      _watchedAccountSlug = null;
+      _accountDetailStreamValue.addValue(null);
+      accountProfileStreamValue.addValue(null);
+      accountDetailErrorStreamValue.addValue(null);
+      accountDeletedStreamValue.addValue(true);
+      return true;
+    } catch (error) {
+      if (_isDisposed) {
+        return false;
+      }
+      accountDetailErrorStreamValue.addValue(error.toString());
+      return false;
+    } finally {
+      if (!_isDisposed) {
+        accountDeletingStreamValue.addValue(false);
       }
     }
   }
@@ -849,6 +901,12 @@ class TenantAdminAccountProfilesController implements Disposable {
     accountProfileStreamValue.addValue(null);
     accountDetailErrorStreamValue.addValue(null);
     accountDetailLoadingStreamValue.addValue(false);
+    accountDeletingStreamValue.addValue(false);
+    accountDeletedStreamValue.addValue(false);
+  }
+
+  void clearAccountDeletedFlag() {
+    accountDeletedStreamValue.addValue(false);
   }
 
   void _bindAccountWatch({

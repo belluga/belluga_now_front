@@ -142,6 +142,20 @@ void main() {
     expect(avatarImageFinder, findsOneWidget);
     expect(coverImageFinder, findsOneWidget);
   });
+
+  testWidgets('renders ownership management selector in edit form',
+      (tester) async {
+    await _pumpScreen(
+      tester,
+      const TenantAdminAccountProfileEditScreen(
+        accountSlug: 'route-account',
+        accountProfileId: 'route-profile',
+      ),
+    );
+
+    expect(find.text('Gestao da conta'), findsOneWidget);
+    expect(find.text('Do tenant'), findsOneWidget);
+  });
 }
 
 Future<void> _pumpScreen(WidgetTester tester, Widget child) async {
@@ -214,6 +228,7 @@ class _FakeAccountsRepository extends TenantAdminAccountsRepositoryContract {
     String? name,
     String? slug,
     TenantAdminDocument? document,
+    TenantAdminOwnershipState? ownershipState,
   }) {
     throw UnimplementedError();
   }
