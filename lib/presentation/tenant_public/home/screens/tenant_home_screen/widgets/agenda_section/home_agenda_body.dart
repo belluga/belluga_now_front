@@ -22,9 +22,6 @@ class HomeAgendaBody extends StatefulWidget {
 }
 
 class _HomeAgendaBodyState extends State<HomeAgendaBody> {
-  static final Uri _defaultEventImage = Uri.parse(
-    'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?w=800',
-  );
   bool _agendaLoadScheduled = false;
 
   @override
@@ -46,7 +43,7 @@ class _HomeAgendaBodyState extends State<HomeAgendaBody> {
                 .map(
                   (event) => VenueEventResume.fromScheduleEvent(
                     event,
-                    _defaultEventImage,
+                    controller.defaultEventImageUri,
                   ),
                 )
                 .toList();

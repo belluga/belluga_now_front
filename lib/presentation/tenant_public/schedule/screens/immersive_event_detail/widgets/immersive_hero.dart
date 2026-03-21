@@ -7,15 +7,16 @@ import 'package:intl/intl.dart';
 class ImmersiveHero extends StatelessWidget {
   const ImmersiveHero({
     required this.event,
+    required this.fallbackImageUri,
     super.key,
   });
 
   final EventModel event;
+  final Uri fallbackImageUri;
 
   @override
   Widget build(BuildContext context) {
-    final resume = VenueEventResume.fromScheduleEvent(
-        event, Uri()); // Fallback URI handled in projection if needed
+    final resume = VenueEventResume.fromScheduleEvent(event, fallbackImageUri);
 
     return Stack(
       fit: StackFit.expand,

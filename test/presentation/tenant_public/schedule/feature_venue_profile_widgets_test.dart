@@ -1,6 +1,6 @@
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/domain/partners/services/partner_profile_config_builder.dart';
-import 'package:belluga_now/infrastructure/dal/dao/mock_backend/mock_schedule_backend.dart';
+import '../../../support/mock_backend/mock_schedule_backend.dart';
 import 'package:belluga_now/infrastructure/dal/dto/mappers/artist_dto_mapper.dart';
 import 'package:belluga_now/infrastructure/dal/dto/mappers/invite_dto_mapper.dart';
 import 'package:belluga_now/infrastructure/dal/dto/mappers/invite_status_dto_mapper.dart';

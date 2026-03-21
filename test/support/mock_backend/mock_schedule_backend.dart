@@ -7,7 +7,7 @@ import 'package:belluga_now/infrastructure/dal/dto/schedule/event_summary_dto.da
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_summary_item_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_type_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/thumb_dto.dart';
-import 'package:belluga_now/infrastructure/dal/dao/mock_backend/mock_artist_seed.dart';
+import 'mock_artist_seed.dart';
 import 'package:belluga_now/infrastructure/services/schedule_backend_contract.dart';
 import 'package:belluga_now/application/configurations/belluga_constants.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';

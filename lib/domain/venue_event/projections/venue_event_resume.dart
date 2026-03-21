@@ -31,6 +31,8 @@ class VenueEventResume {
   final List<String> tags;
   final CityCoordinate? coordinate;
   final MissionResume? mission;
+  static final Uri _localPlaceholderUri =
+      Uri.parse('asset://event-placeholder');
 
   String get title => titleValue.value;
   Uri get imageUri => imageUriValue.value;
@@ -55,6 +57,35 @@ class VenueEventResume {
     return cleaned.replaceAll(RegExp(r'^-+|-+$'), '');
   }
 
+  static Uri resolvePreferredImageUri(
+    EventModel event, {
+    Uri? settingsDefaultImageUri,
+  }) {
+    final eventCover = event.thumb?.thumbUri.value;
+    if (eventCover != null) {
+      return eventCover;
+    }
+
+    for (final artist in event.artists) {
+      final artistCover = artist.avatarUri;
+      if (artistCover != null) {
+        return artistCover;
+      }
+    }
+
+    final hostCover = event.venue?.heroImageUri ?? event.venue?.logoImageUri;
+    if (hostCover != null) {
+      return hostCover;
+    }
+
+    if (settingsDefaultImageUri != null &&
+        settingsDefaultImageUri.toString().trim().isNotEmpty) {
+      return settingsDefaultImageUri;
+    }
+
+    return _localPlaceholderUri;
+  }
+
   factory VenueEventResume.fromScheduleEvent(
     EventModel event,
     Uri fallbackImage,
@@ -64,19 +95,13 @@ class VenueEventResume {
         ? slugSource
         : VenueEventResume.slugify(event.title.value);
 
-    // Prefer event thumb; fallback to first artist avatar; otherwise provided fallback.
-    final artistFallback = event.artists
-        .map((a) => a.avatarUri)
-        .firstWhere((uri) => uri != null, orElse: () => null);
-
-    final thumb = event.thumb?.thumbUri ??
-        (artistFallback != null
-            ? (ThumbUriValue(defaultValue: artistFallback, isRequired: true)
-              ..parse(artistFallback.toString()))
-            : (ThumbUriValue(
-                defaultValue: fallbackImage,
-                isRequired: true,
-              )..parse(fallbackImage.toString())));
+    final preferredImageUri = resolvePreferredImageUri(
+      event,
+      settingsDefaultImageUri: fallbackImage,
+    );
+    final thumb =
+        ThumbUriValue(defaultValue: preferredImageUri, isRequired: true)
+          ..parse(preferredImageUri.toString());
 
     final startDateTime = event.dateTimeStart.value;
     if (startDateTime == null) {

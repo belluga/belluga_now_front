@@ -1,6 +1,6 @@
 import 'package:belluga_now/domain/partners/engagement_data.dart';
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
-import 'package:belluga_now/infrastructure/dal/dao/mock_backend/mock_schedule_backend.dart';
+import 'mock_schedule_backend.dart';
 
 class MockAccountProfilesDatabase {
   MockAccountProfilesDatabase();
@@ -325,15 +325,15 @@ class MockAccountProfilesDatabase {
       final slug = 'mock-partner-$i';
       final name = switch (type) {
         'venue' =>
-            '${venueNames[i % venueNames.length]} ${i ~/ venueNames.length + 1}',
+          '${venueNames[i % venueNames.length]} ${i ~/ venueNames.length + 1}',
         'experience_provider' =>
-            '${experienceNames[i % experienceNames.length]} ${i ~/ experienceNames.length + 1}',
+          '${experienceNames[i % experienceNames.length]} ${i ~/ experienceNames.length + 1}',
         'artist' =>
-            '${artistNames[i % artistNames.length]} ${i ~/ artistNames.length + 1}',
+          '${artistNames[i % artistNames.length]} ${i ~/ artistNames.length + 1}',
         'influencer' =>
-            '${influencerNames[i % influencerNames.length]} ${i ~/ influencerNames.length + 1}',
+          '${influencerNames[i % influencerNames.length]} ${i ~/ influencerNames.length + 1}',
         'curator' =>
-            '${curatorNames[i % curatorNames.length]} ${i ~/ curatorNames.length + 1}',
+          '${curatorNames[i % curatorNames.length]} ${i ~/ curatorNames.length + 1}',
         _ => 'Perfil $i',
       };
       final tags = switch (type) {
@@ -414,7 +414,8 @@ class MockAccountProfilesDatabase {
             avatarUrl: artist.avatarUrl,
             coverUrl: seed.thumbUrl,
             tags: const ['show', 'artista'],
-            engagementData: const ArtistEngagementData(status: 'COMEÇA EM BREVE'),
+            engagementData:
+                const ArtistEngagementData(status: 'COMEÇA EM BREVE'),
             acceptedInvites: 15,
             distanceMeters: 1900,
           ),

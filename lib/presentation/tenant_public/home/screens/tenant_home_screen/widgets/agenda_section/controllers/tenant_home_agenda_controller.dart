@@ -49,6 +49,8 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
 
   static const int _pageSize = 10;
   static const double _fallbackRadiusMeters = 50000.0;
+  static final Uri _localEventPlaceholderUri =
+      Uri.parse('asset://event-placeholder');
 
   @override
   final searchController = TextEditingController();
@@ -90,6 +92,14 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
   double? _effectiveOriginLat;
   double? _effectiveOriginLng;
   bool _locationPermissionRequested = false;
+
+  Uri get defaultEventImageUri {
+    final configured = _appDataRepository.appData.mainLogoDarkUrl.value;
+    if (configured != null && configured.toString().trim().isNotEmpty) {
+      return configured;
+    }
+    return _localEventPlaceholderUri;
+  }
 
   void _setValue<T>(StreamValue<T> stream, T value) {
     if (_isDisposed) return;
