@@ -1361,12 +1361,16 @@ class _TenantAdminEventFormScreenState
         return;
       }
       submitSucceeded = true;
-      await context.router.maybePop<TenantAdminEvent>(result);
+      _completeSubmit(result);
     } finally {
       if (!submitSucceeded) {
         _submitInFlight = false;
       }
     }
+  }
+
+  void _completeSubmit(TenantAdminEvent result) {
+    context.router.maybePop<TenantAdminEvent>(result);
   }
 
   TenantAdminEventLocation _buildLocationFromSelection(
