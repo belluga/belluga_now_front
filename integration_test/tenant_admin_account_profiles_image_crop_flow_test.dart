@@ -357,6 +357,7 @@ class _FakeAccountsRepository extends TenantAdminAccountsRepositoryContract {
     String? name,
     String? slug,
     TenantAdminDocument? document,
+    TenantAdminOwnershipState? ownershipState,
   }) async {
     throw UnimplementedError();
   }

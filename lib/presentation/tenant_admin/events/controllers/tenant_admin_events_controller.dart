@@ -2,6 +2,7 @@ export 'tenant_admin_event_form_state.dart';
 export 'tenant_admin_event_type_form_state.dart';
 
 import 'dart:async';
+import 'dart:typed_data';
 
 import 'package:belluga_now/domain/repositories/landlord_auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_events_repository_contract.dart';
@@ -9,13 +10,16 @@ import 'package:belluga_now/domain/repositories/tenant_admin_taxonomies_reposito
 import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_definition.dart';
 import 'package:belluga_now/presentation/tenant_admin/events/controllers/tenant_admin_event_form_state.dart';
 import 'package:belluga_now/presentation/tenant_admin/events/controllers/tenant_admin_event_type_form_state.dart';
+import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_image_ingestion_service.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart' show Disposable, GetIt;
+import 'package:image_picker/image_picker.dart';
 import 'package:stream_value/core/stream_value.dart';
 
 class TenantAdminEventsController implements Disposable {
@@ -24,6 +28,7 @@ class TenantAdminEventsController implements Disposable {
     TenantAdminTaxonomiesRepositoryContract? taxonomiesRepository,
     TenantAdminTenantScopeContract? tenantScope,
     LandlordAuthRepositoryContract? landlordAuthRepository,
+    TenantAdminImageIngestionService? imageIngestionService,
   })  : _eventsRepository = eventsRepository ??
             GetIt.I.get<TenantAdminEventsRepositoryContract>(),
         _taxonomiesRepository = taxonomiesRepository ??
@@ -35,7 +40,11 @@ class TenantAdminEventsController implements Disposable {
         _landlordAuthRepository = landlordAuthRepository ??
             (GetIt.I.isRegistered<LandlordAuthRepositoryContract>()
                 ? GetIt.I.get<LandlordAuthRepositoryContract>()
-                : null) {
+                : null),
+        _imageIngestionService = imageIngestionService ??
+            (GetIt.I.isRegistered<TenantAdminImageIngestionService>()
+                ? GetIt.I.get<TenantAdminImageIngestionService>()
+                : TenantAdminImageIngestionService()) {
     _bindTenantScope();
   }
 
@@ -43,6 +52,7 @@ class TenantAdminEventsController implements Disposable {
   final TenantAdminTaxonomiesRepositoryContract _taxonomiesRepository;
   final TenantAdminTenantScopeContract? _tenantScope;
   final LandlordAuthRepositoryContract? _landlordAuthRepository;
+  final TenantAdminImageIngestionService _imageIngestionService;
 
   static const int _eventsPageSize = 20;
 
@@ -113,6 +123,12 @@ class TenantAdminEventsController implements Disposable {
       TextEditingController();
   final TextEditingController eventOnlinePlatformController =
       TextEditingController();
+  final StreamValue<XFile?> eventCoverFileStreamValue =
+      StreamValue<XFile?>(defaultValue: null);
+  final StreamValue<bool> eventCoverBusyStreamValue =
+      StreamValue<bool>(defaultValue: false);
+  final StreamValue<bool> eventCoverRemoveStreamValue =
+      StreamValue<bool>(defaultValue: false);
 
   final StreamValue<TenantAdminEventFormState> eventFormStateStreamValue =
       StreamValue<TenantAdminEventFormState>(
@@ -132,6 +148,7 @@ class TenantAdminEventsController implements Disposable {
   );
 
   bool _isDisposed = false;
+  bool _submitInFlight = false;
   StreamSubscription<String?>? _tenantScopeSubscription;
   String? _lastTenantDomain;
   VoidCallback? _eventTypeNameSyncListener;
@@ -239,8 +256,65 @@ class TenantAdminEventsController implements Disposable {
     eventOnlineUrlController.text = existingEvent?.location?.online?.url ?? '';
     eventOnlinePlatformController.text =
         existingEvent?.location?.online?.platform ?? '';
+    eventCoverFileStreamValue.addValue(null);
+    eventCoverBusyStreamValue.addValue(false);
+    eventCoverRemoveStreamValue.addValue(false);
     _replaceEventFormState(nextState);
     _syncEventDateTimeControllers(nextState);
+  }
+
+  Future<XFile?> pickImageFromDevice({
+    required TenantAdminImageSlot slot,
+  }) {
+    return _imageIngestionService.pickFromDevice(slot: slot);
+  }
+
+  Future<XFile> fetchImageFromUrlForCrop({
+    required String imageUrl,
+  }) {
+    return _imageIngestionService.fetchFromUrlForCrop(imageUrl: imageUrl);
+  }
+
+  Future<Uint8List> readImageBytesForCrop(XFile sourceFile) {
+    return _imageIngestionService.readBytesForCrop(sourceFile);
+  }
+
+  Future<XFile> prepareCroppedImage(
+    Uint8List croppedData, {
+    required TenantAdminImageSlot slot,
+  }) {
+    return _imageIngestionService.prepareBytesAsXFile(
+      croppedData,
+      slot: slot,
+      applyAspectCrop: false,
+    );
+  }
+
+  Future<TenantAdminMediaUpload?> buildImageUpload(
+    XFile? file, {
+    required TenantAdminImageSlot slot,
+  }) {
+    return _imageIngestionService.buildUpload(file, slot: slot);
+  }
+
+  void updateEventCoverFile(XFile? file) {
+    eventCoverFileStreamValue.addValue(file);
+    if (file != null) {
+      eventCoverRemoveStreamValue.addValue(false);
+    }
+  }
+
+  void setEventCoverBusy(bool isBusy) {
+    eventCoverBusyStreamValue.addValue(isBusy);
+  }
+
+  void removeEventCover() {
+    eventCoverFileStreamValue.addValue(null);
+    eventCoverRemoveStreamValue.addValue(true);
+  }
+
+  void restoreEventCover() {
+    eventCoverRemoveStreamValue.addValue(false);
   }
 
   void updateEventTypeSelection(String? slug) {
@@ -649,6 +723,10 @@ class TenantAdminEventsController implements Disposable {
     TenantAdminEventDraft draft, {
     String? accountSlug,
   }) async {
+    if (_submitInFlight || submitLoadingStreamValue.value == true) {
+      return null;
+    }
+    _submitInFlight = true;
     submitLoadingStreamValue.addValue(true);
     submitErrorMessageStreamValue.addValue(null);
     submitSuccessMessageStreamValue.addValue(null);
@@ -677,6 +755,7 @@ class TenantAdminEventsController implements Disposable {
       submitErrorMessageStreamValue.addValue(error.toString());
       return null;
     } finally {
+      _submitInFlight = false;
       if (!_isDisposed) {
         submitLoadingStreamValue.addValue(false);
       }
@@ -687,6 +766,10 @@ class TenantAdminEventsController implements Disposable {
     required String eventId,
     required TenantAdminEventDraft draft,
   }) async {
+    if (_submitInFlight || submitLoadingStreamValue.value == true) {
+      return null;
+    }
+    _submitInFlight = true;
     submitLoadingStreamValue.addValue(true);
     submitErrorMessageStreamValue.addValue(null);
     submitSuccessMessageStreamValue.addValue(null);
@@ -710,6 +793,7 @@ class TenantAdminEventsController implements Disposable {
       submitErrorMessageStreamValue.addValue(error.toString());
       return null;
     } finally {
+      _submitInFlight = false;
       if (!_isDisposed) {
         submitLoadingStreamValue.addValue(false);
       }
@@ -738,6 +822,7 @@ class TenantAdminEventsController implements Disposable {
   }
 
   void _resetTenantScopedState() {
+    _submitInFlight = false;
     _eventsRepository.resetEventsState();
     statusFilterStreamValue.addValue(null);
     archivedFilterStreamValue.addValue(false);
@@ -753,6 +838,9 @@ class TenantAdminEventsController implements Disposable {
     artistCandidatesStreamValue.addValue(const []);
     partyCandidatesLoadingStreamValue.addValue(false);
     partyCandidatesErrorStreamValue.addValue(null);
+    eventCoverFileStreamValue.addValue(null);
+    eventCoverBusyStreamValue.addValue(false);
+    eventCoverRemoveStreamValue.addValue(false);
     clearSubmitMessages();
   }
 
@@ -881,6 +969,9 @@ class TenantAdminEventsController implements Disposable {
     eventPublishAtController.dispose();
     eventOnlineUrlController.dispose();
     eventOnlinePlatformController.dispose();
+    eventCoverFileStreamValue.dispose();
+    eventCoverBusyStreamValue.dispose();
+    eventCoverRemoveStreamValue.dispose();
     eventTypeFormStateStreamValue.dispose();
     eventTypeNameController.dispose();
     eventTypeSlugController.dispose();

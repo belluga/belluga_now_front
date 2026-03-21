@@ -79,6 +79,47 @@ void main() {
     expect(draft.occurrences.first.dateTimeStart.isUtc, isTrue);
   });
 
+  testWidgets('guards against duplicate create submit taps', (tester) async {
+    final eventsRepository = _FakeEventsRepository();
+    final taxonomiesRepository = _FakeTaxonomiesRepository();
+    final controller = TenantAdminEventsController(
+      eventsRepository: eventsRepository,
+      taxonomiesRepository: taxonomiesRepository,
+    );
+
+    eventsRepository.eventTypes = const [
+      TenantAdminEventType(
+        id: '507f1f77bcf86cd799439021',
+        name: 'Feira',
+        slug: 'feira',
+      ),
+    ];
+
+    GetIt.I.registerSingleton<TenantAdminEventsController>(controller);
+
+    await _pumpWithAutoRoute(
+      tester,
+      const Scaffold(
+        body: TenantAdminEventFormScreen(),
+      ),
+    );
+
+    await _fillRequiredFields(tester);
+    await tester.scrollUntilVisible(
+      find.widgetWithText(FilledButton, 'Criar evento'),
+      250,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+
+    final action = find.widgetWithText(FilledButton, 'Criar evento');
+    await tester.tap(action);
+    await tester.tap(action);
+    await tester.pumpAndSettle();
+
+    expect(eventsRepository.createEventCalls, 1);
+  });
+
   testWidgets('uses own-account endpoint when account slug is provided',
       (tester) async {
     final eventsRepository = _FakeEventsRepository();
@@ -379,11 +420,14 @@ class _FakeEventsRepository
   TenantAdminEventDraft? lastCreateDraft;
   TenantAdminEventDraft? lastCreateOwnDraft;
   String? lastCreateOwnAccountSlug;
+  int createEventCalls = 0;
+  int createOwnEventCalls = 0;
 
   @override
   Future<TenantAdminEvent> createEvent({
     required TenantAdminEventDraft draft,
   }) async {
+    createEventCalls += 1;
     lastCreateDraft = draft;
     return _eventFromDraft(draft);
   }
@@ -393,6 +437,7 @@ class _FakeEventsRepository
     required String accountSlug,
     required TenantAdminEventDraft draft,
   }) async {
+    createOwnEventCalls += 1;
     lastCreateOwnAccountSlug = accountSlug;
     lastCreateOwnDraft = draft;
     return _eventFromDraft(draft);

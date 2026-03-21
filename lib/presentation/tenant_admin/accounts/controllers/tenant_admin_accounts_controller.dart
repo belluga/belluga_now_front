@@ -23,6 +23,7 @@ class TenantAdminAccountsController implements Disposable {
   final TenantAdminTenantScopeContract? _tenantScope;
 
   static const int _accountsPageSize = 20;
+  static const Duration _searchDebounceDuration = Duration(milliseconds: 350);
 
   StreamValue<List<TenantAdminAccount>?> get accountsStreamValue =>
       _accountsRepository.accountsStreamValue;
@@ -48,6 +49,7 @@ class TenantAdminAccountsController implements Disposable {
   bool _accountsListScrollBound = false;
   String? _initializedTenantDomain;
   StreamSubscription<String?>? _tenantScopeSubscription;
+  Timer? _searchDebounceTimer;
 
   Future<void> init() async {
     _bindTenantScope();
@@ -93,6 +95,7 @@ class TenantAdminAccountsController implements Disposable {
 
   Future<void> loadAccounts({
     TenantAdminOwnershipState? ownershipState,
+    String? searchQuery,
   }) async {
     if (_isDisposed) {
       return;
@@ -100,11 +103,15 @@ class TenantAdminAccountsController implements Disposable {
     await _accountsRepository.loadAccounts(
       pageSize: _accountsPageSize,
       ownershipState: ownershipState ?? selectedOwnershipStreamValue.value,
+      searchQuery: _normalizeSearchQuery(
+        searchQuery ?? searchQueryStreamValue.value,
+      ),
     );
   }
 
   Future<void> loadNextAccountsPage({
     TenantAdminOwnershipState? ownershipState,
+    String? searchQuery,
   }) async {
     if (_isDisposed) {
       return;
@@ -112,6 +119,9 @@ class TenantAdminAccountsController implements Disposable {
     await _accountsRepository.loadNextAccountsPage(
       pageSize: _accountsPageSize,
       ownershipState: ownershipState ?? selectedOwnershipStreamValue.value,
+      searchQuery: _normalizeSearchQuery(
+        searchQuery ?? searchQueryStreamValue.value,
+      ),
     );
   }
 
@@ -146,12 +156,23 @@ class TenantAdminAccountsController implements Disposable {
     if (selectedOwnershipStreamValue.value == ownershipState) {
       return;
     }
+    _searchDebounceTimer?.cancel();
     selectedOwnershipStreamValue.addValue(ownershipState);
     unawaited(loadAccounts(ownershipState: ownershipState));
   }
 
   void updateSearchQuery(String query) {
+    if (searchQueryStreamValue.value == query) {
+      return;
+    }
     searchQueryStreamValue.addValue(query);
+    _searchDebounceTimer?.cancel();
+    _searchDebounceTimer = Timer(_searchDebounceDuration, () {
+      if (_isDisposed) {
+        return;
+      }
+      unawaited(loadAccounts());
+    });
   }
 
   void toggleSearchFieldVisibility() {
@@ -163,8 +184,18 @@ class TenantAdminAccountsController implements Disposable {
   }
 
   void _resetTenantScopedState() {
+    _searchDebounceTimer?.cancel();
     _accountsRepository.resetAccountsState();
+    searchQueryStreamValue.addValue('');
     showSearchFieldStreamValue.addValue(false);
+  }
+
+  String? _normalizeSearchQuery(String? value) {
+    final trimmed = value?.trim() ?? '';
+    if (trimmed.isEmpty) {
+      return null;
+    }
+    return trimmed;
   }
 
   String? _normalizeTenantDomain(String? raw) {
@@ -184,6 +215,7 @@ class TenantAdminAccountsController implements Disposable {
     _isDisposed = true;
     unbindAccountsListScrollPagination();
     _tenantScopeSubscription?.cancel();
+    _searchDebounceTimer?.cancel();
     selectedOwnershipStreamValue.dispose();
     searchQueryStreamValue.dispose();
     showSearchFieldStreamValue.dispose();

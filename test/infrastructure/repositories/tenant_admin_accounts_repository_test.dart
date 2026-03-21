@@ -40,7 +40,7 @@ void main() {
     expect(page.hasMore, isTrue);
     expect(adapter.requests, hasLength(1));
     expect(adapter.requests.single.queryParameters['page'], 1);
-    expect(adapter.requests.single.queryParameters['page_size'], 2);
+    expect(adapter.requests.single.queryParameters['per_page'], 2);
   });
 
   test('fetchAccountsPage sends ownership_state filter when provided',
@@ -66,6 +66,25 @@ void main() {
     );
     expect(page.accounts, hasLength(1));
     expect(page.accounts.single.slug, 'acc-u1');
+  });
+
+  test('fetchAccountsPage sends search query when provided', () async {
+    final adapter = _AccountsRoutingAdapter();
+    final dio = Dio()..httpClientAdapter = adapter;
+    final scope = _MutableTenantScope('https://tenant-a.test/admin/api');
+    final repository = TenantAdminAccountsRepository(
+      dio: dio,
+      tenantScope: scope,
+    );
+
+    await repository.fetchAccountsPage(
+      page: 1,
+      pageSize: 2,
+      searchQuery: '  conta test  ',
+    );
+
+    expect(adapter.requests, hasLength(1));
+    expect(adapter.requests.single.queryParameters['search'], 'conta test');
   });
 
   test('fetchAccounts aggregates all pages', () async {

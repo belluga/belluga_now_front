@@ -1,3 +1,4 @@
+import 'package:belluga_now/domain/tenant_admin/ownership_state.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
@@ -32,12 +33,29 @@ class TenantAdminAccountDetailController implements Disposable {
     required String accountSlug,
     String? name,
     String? slug,
+    TenantAdminOwnershipState? ownershipState,
   }) {
     return _delegate.updateAccount(
       accountSlug: accountSlug,
       name: name,
       slug: slug,
+      ownershipState: ownershipState,
     );
+  }
+
+  Future<bool> deleteAccount({
+    required String accountSlug,
+  }) {
+    return _delegate.deleteAccount(accountSlug: accountSlug);
+  }
+
+  StreamValue<bool> get accountDeletingStreamValue =>
+      _delegate.accountDeletingStreamValue;
+  StreamValue<bool> get accountDeletedStreamValue =>
+      _delegate.accountDeletedStreamValue;
+
+  void clearAccountDeletedFlag() {
+    _delegate.clearAccountDeletedFlag();
   }
 
   void resetAccountDetail() {

@@ -9,6 +9,9 @@ class TenantAdminEventDraft {
     required this.publication,
     this.location,
     this.placeRef,
+    this.coverUrl,
+    this.coverUpload,
+    this.removeCover = false,
     this.artistIds = const <String>[],
     this.taxonomyTerms = const <TenantAdminTaxonomyTerm>[],
   });
@@ -20,6 +23,9 @@ class TenantAdminEventDraft {
   final TenantAdminEventPublication publication;
   final TenantAdminEventLocation? location;
   final TenantAdminEventPlaceRef? placeRef;
+  final String? coverUrl;
+  final TenantAdminMediaUpload? coverUpload;
+  final bool removeCover;
   final List<String> artistIds;
   final List<TenantAdminTaxonomyTerm> taxonomyTerms;
 }

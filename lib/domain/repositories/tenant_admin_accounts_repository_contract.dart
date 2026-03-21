@@ -38,6 +38,7 @@ abstract class TenantAdminAccountsRepositoryContract {
   Future<void> loadAccounts({
     int pageSize = 20,
     TenantAdminOwnershipState? ownershipState,
+    String? searchQuery,
   }) async {
     await _waitForAccountsFetch();
     _resetAccountsPagination();
@@ -46,12 +47,14 @@ abstract class TenantAdminAccountsRepositoryContract {
       page: 1,
       pageSize: pageSize,
       ownershipState: ownershipState,
+      searchQuery: searchQuery,
     );
   }
 
   Future<void> loadNextAccountsPage({
     int pageSize = 20,
     TenantAdminOwnershipState? ownershipState,
+    String? searchQuery,
   }) async {
     if (_paginationState.isFetchingAccountsPage ||
         !_paginationState.hasMoreAccounts) {
@@ -61,6 +64,7 @@ abstract class TenantAdminAccountsRepositoryContract {
       page: _paginationState.currentAccountsPage + 1,
       pageSize: pageSize,
       ownershipState: ownershipState,
+      searchQuery: searchQuery,
     );
   }
 
@@ -75,12 +79,23 @@ abstract class TenantAdminAccountsRepositoryContract {
     required int page,
     required int pageSize,
     TenantAdminOwnershipState? ownershipState,
+    String? searchQuery,
   }) async {
     final accounts = await fetchAccounts();
-    final filteredAccounts = ownershipState == null
+    final filteredByOwnership = ownershipState == null
         ? accounts
         : accounts.where((account) {
             return account.ownershipState == ownershipState;
+          }).toList(growable: false);
+    final normalizedSearch = searchQuery?.trim().toLowerCase() ?? '';
+    final filteredAccounts = normalizedSearch.isEmpty
+        ? filteredByOwnership
+        : filteredByOwnership.where((account) {
+            return account.name.toLowerCase().contains(normalizedSearch) ||
+                account.slug.toLowerCase().contains(normalizedSearch) ||
+                account.document.number
+                    .toLowerCase()
+                    .contains(normalizedSearch);
           }).toList(growable: false);
     if (page <= 0 || pageSize <= 0) {
       return const TenantAdminPagedAccountsResult(
@@ -180,6 +195,7 @@ abstract class TenantAdminAccountsRepositoryContract {
     String? name,
     String? slug,
     TenantAdminDocument? document,
+    TenantAdminOwnershipState? ownershipState,
   });
   Future<void> deleteAccount(String accountSlug);
   Future<TenantAdminAccount> restoreAccount(String accountSlug);
@@ -195,6 +211,7 @@ abstract class TenantAdminAccountsRepositoryContract {
     required int page,
     required int pageSize,
     TenantAdminOwnershipState? ownershipState,
+    String? searchQuery,
   }) async {
     if (_paginationState.isFetchingAccountsPage) return;
     if (page > 1 && !_paginationState.hasMoreAccounts) return;
@@ -208,6 +225,7 @@ abstract class TenantAdminAccountsRepositoryContract {
         page: page,
         pageSize: pageSize,
         ownershipState: ownershipState,
+        searchQuery: searchQuery,
       );
       if (page == 1) {
         _paginationState.loadedAccounts
@@ -274,6 +292,7 @@ mixin TenantAdminAccountsRepositoryPaginationMixin
   Future<void> loadAccounts({
     int pageSize = 20,
     TenantAdminOwnershipState? ownershipState,
+    String? searchQuery,
   }) async {
     await _waitForAccountsFetchMixin();
     _resetAccountsPaginationMixin();
@@ -282,6 +301,7 @@ mixin TenantAdminAccountsRepositoryPaginationMixin
       page: 1,
       pageSize: pageSize,
       ownershipState: ownershipState,
+      searchQuery: searchQuery,
     );
   }
 
@@ -289,6 +309,7 @@ mixin TenantAdminAccountsRepositoryPaginationMixin
   Future<void> loadNextAccountsPage({
     int pageSize = 20,
     TenantAdminOwnershipState? ownershipState,
+    String? searchQuery,
   }) async {
     if (_mixinPaginationState.isFetchingAccountsPage ||
         !_mixinPaginationState.hasMoreAccounts) {
@@ -298,6 +319,7 @@ mixin TenantAdminAccountsRepositoryPaginationMixin
       page: _mixinPaginationState.currentAccountsPage + 1,
       pageSize: pageSize,
       ownershipState: ownershipState,
+      searchQuery: searchQuery,
     );
   }
 
@@ -375,6 +397,7 @@ mixin TenantAdminAccountsRepositoryPaginationMixin
     required int page,
     required int pageSize,
     TenantAdminOwnershipState? ownershipState,
+    String? searchQuery,
   }) async {
     if (_mixinPaginationState.isFetchingAccountsPage) return;
     if (page > 1 && !_mixinPaginationState.hasMoreAccounts) return;
@@ -388,6 +411,7 @@ mixin TenantAdminAccountsRepositoryPaginationMixin
         page: page,
         pageSize: pageSize,
         ownershipState: ownershipState,
+        searchQuery: searchQuery,
       );
       if (page == 1) {
         _mixinPaginationState.loadedAccounts

@@ -50,6 +50,8 @@ class _FakeAccountsRepository
       <TenantAdminOwnershipState?>[];
   final List<TenantAdminOwnershipState?> loadNextAccountsOwnershipCalls =
       <TenantAdminOwnershipState?>[];
+  final List<String?> loadAccountsSearchCalls = <String?>[];
+  final List<String?> loadNextAccountsSearchCalls = <String?>[];
 
   @override
   final StreamValue<List<TenantAdminAccount>?> accountsStreamValue =
@@ -70,8 +72,10 @@ class _FakeAccountsRepository
   Future<void> loadAccounts({
     int pageSize = 20,
     TenantAdminOwnershipState? ownershipState,
+    String? searchQuery,
   }) async {
     loadAccountsOwnershipCalls.add(ownershipState);
+    loadAccountsSearchCalls.add(searchQuery);
     if (failNextLoadAccounts) {
       failNextLoadAccounts = false;
       accountsErrorStreamValue.addValue('backend error');
@@ -81,6 +85,7 @@ class _FakeAccountsRepository
       page: 1,
       pageSize: pageSize,
       ownershipState: ownershipState,
+      searchQuery: searchQuery,
     );
     accountsStreamValue.addValue(result.accounts);
     hasMoreAccountsStreamValue.addValue(result.hasMore);
@@ -91,8 +96,10 @@ class _FakeAccountsRepository
   Future<void> loadNextAccountsPage({
     int pageSize = 20,
     TenantAdminOwnershipState? ownershipState,
+    String? searchQuery,
   }) async {
     loadNextAccountsOwnershipCalls.add(ownershipState);
+    loadNextAccountsSearchCalls.add(searchQuery);
     if (!hasMoreAccountsStreamValue.value) {
       return;
     }
@@ -102,6 +109,7 @@ class _FakeAccountsRepository
       page: page,
       pageSize: pageSize,
       ownershipState: ownershipState,
+      searchQuery: searchQuery,
     );
     accountsStreamValue.addValue(
       List<TenantAdminAccount>.unmodifiable([...loaded, ...result.accounts]),
@@ -133,12 +141,23 @@ class _FakeAccountsRepository
     required int page,
     required int pageSize,
     TenantAdminOwnershipState? ownershipState,
+    String? searchQuery,
   }) async {
     final all = await fetchAccounts();
-    final filtered = ownershipState == null
+    final filteredByOwnership = ownershipState == null
         ? all
         : all.where((account) {
             return account.ownershipState == ownershipState;
+          }).toList(growable: false);
+    final normalizedSearch = searchQuery?.trim().toLowerCase() ?? '';
+    final filtered = normalizedSearch.isEmpty
+        ? filteredByOwnership
+        : filteredByOwnership.where((account) {
+            return account.name.toLowerCase().contains(normalizedSearch) ||
+                account.slug.toLowerCase().contains(normalizedSearch) ||
+                account.document.number
+                    .toLowerCase()
+                    .contains(normalizedSearch);
           }).toList(growable: false);
     final startIndex = (page - 1) * pageSize;
     if (startIndex >= filtered.length || page <= 0 || pageSize <= 0) {
@@ -254,6 +273,7 @@ class _FakeAccountsRepository
     String? name,
     String? slug,
     TenantAdminDocument? document,
+    TenantAdminOwnershipState? ownershipState,
   }) async {
     return fetchAccountBySlug(accountSlug);
   }
@@ -658,6 +678,40 @@ void main() {
       expect(
         controller.accountsStreamValue.value?.map((it) => it.slug).toList(),
         ['conta-unmanaged'],
+      );
+    });
+
+    test('search query triggers backend-first reload after debounce', () async {
+      final accountsRepository = _FakeAccountsRepository([
+        TenantAdminAccount(
+          id: 'acc-tenant',
+          name: 'Conta tenant',
+          slug: 'conta-tenant',
+          document: const TenantAdminDocument(type: 'cpf', number: '000'),
+          ownershipState: TenantAdminOwnershipState.tenantOwned,
+        ),
+        TenantAdminAccount(
+          id: 'acc-target',
+          name: 'Conta alvo',
+          slug: 'conta-alvo',
+          document: const TenantAdminDocument(type: 'cpf', number: '9911'),
+          ownershipState: TenantAdminOwnershipState.tenantOwned,
+        ),
+      ]);
+      final controller = _buildListController(
+        accountsRepository: accountsRepository,
+      );
+
+      await controller.init();
+      expect(accountsRepository.loadAccountsSearchCalls.last, isNull);
+
+      controller.updateSearchQuery('  alvo  ');
+      await Future<void>.delayed(const Duration(milliseconds: 400));
+
+      expect(accountsRepository.loadAccountsSearchCalls.last, 'alvo');
+      expect(
+        controller.accountsStreamValue.value?.map((it) => it.slug).toList(),
+        ['conta-alvo'],
       );
     });
 
