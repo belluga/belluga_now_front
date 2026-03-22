@@ -60,6 +60,63 @@ void main() {
     expect(sseClient.lastEventId, 'cursor-1');
     expect(sseClient.lastHeaders?['Authorization'], 'Bearer test-token');
   });
+
+  test('watchEventsStream forwards search and omits geo params when searching',
+      () {
+    final sseClient = _RecordingSseClient();
+    final backend = LaravelScheduleBackend(
+      dio: Dio()..httpClientAdapter = _NoopAdapter(),
+      sseClient: sseClient,
+    );
+
+    backend.watchEventsStream(
+      searchQuery: 'Sola',
+      originLat: -20.0,
+      originLng: -40.0,
+      maxDistanceMeters: 5000,
+    );
+
+    final uri = sseClient.lastUri;
+    expect(uri, isNotNull);
+    expect(uri!.queryParameters['search'], 'Sola');
+    expect(uri.queryParameters.containsKey('origin_lat'), isFalse);
+    expect(uri.queryParameters.containsKey('origin_lng'), isFalse);
+    expect(uri.queryParameters.containsKey('max_distance_meters'), isFalse);
+  });
+
+  test('fetchEventsPage forwards search and omits geo params when searching',
+      () async {
+    final adapter = _NoopAdapter(
+      responseData: const {
+        'data': {
+          'items': [],
+          'has_more': false,
+        },
+      },
+    );
+    final backend = LaravelScheduleBackend(
+      dio: Dio()..httpClientAdapter = adapter,
+      sseClient: _RecordingSseClient(),
+    );
+
+    await backend.fetchEventsPage(
+      page: 1,
+      pageSize: 10,
+      showPastOnly: false,
+      searchQuery: 'Sola',
+      originLat: -20.0,
+      originLng: -40.0,
+      maxDistanceMeters: 5000,
+    );
+
+    final options = adapter.lastOptions;
+    expect(options, isNotNull);
+    final params = options!.queryParameters;
+    expect(params['search'], 'Sola');
+    expect(params.containsKey('origin_lat'), isFalse);
+    expect(params.containsKey('origin_lng'), isFalse);
+    expect(params.containsKey('max_distance_meters'), isFalse);
+  });
 }
 
 class _RecordingSseClient implements SseClient {
@@ -81,6 +138,13 @@ class _RecordingSseClient implements SseClient {
 }
 
 class _NoopAdapter implements HttpClientAdapter {
+  _NoopAdapter({
+    this.responseData = const <String, Object?>{},
+  });
+
+  final Map<String, Object?> responseData;
+  RequestOptions? lastOptions;
+
   @override
   void close({bool force = false}) {}
 
@@ -90,8 +154,9 @@ class _NoopAdapter implements HttpClientAdapter {
     Stream<List<int>>? requestStream,
     Future<void>? cancelFuture,
   ) async {
+    lastOptions = options;
     return ResponseBody.fromString(
-      jsonEncode(<String, Object?>{}),
+      jsonEncode(responseData),
       200,
       headers: {
         Headers.contentTypeHeader: [Headers.jsonContentType],

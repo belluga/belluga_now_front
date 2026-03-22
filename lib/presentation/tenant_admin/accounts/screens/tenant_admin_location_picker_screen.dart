@@ -7,7 +7,6 @@ import 'package:get_it/get_it.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 
-@RoutePage()
 class TenantAdminLocationPickerScreen extends StatefulWidget {
   const TenantAdminLocationPickerScreen({
     super.key,
@@ -86,7 +85,8 @@ class _TenantAdminLocationPickerScreenState
                 ),
                 children: [
                   TileLayer(
-                    urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                    urlTemplate:
+                        'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                     userAgentPackageName: 'com.belluganow.app',
                   ),
                   MarkerLayer(

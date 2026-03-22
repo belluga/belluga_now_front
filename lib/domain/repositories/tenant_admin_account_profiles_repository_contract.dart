@@ -193,6 +193,31 @@ abstract class TenantAdminAccountProfilesRepositoryContract {
   }
 }
 
+extension TenantAdminAccountProfilesRepositoryLookup on
+    TenantAdminAccountProfilesRepositoryContract {
+  Future<TenantAdminProfileTypeDefinition> fetchProfileType(
+    String profileType,
+  ) async {
+    final normalizedType = profileType.trim();
+    if (normalizedType.isEmpty) {
+      throw ArgumentError.value(
+        profileType,
+        'profileType',
+        'Profile type must not be empty',
+      );
+    }
+
+    final profileTypes = await fetchProfileTypes();
+    for (final definition in profileTypes) {
+      if (definition.type == normalizedType) {
+        return definition;
+      }
+    }
+
+    throw StateError('Profile type not found for type: $normalizedType');
+  }
+}
+
 mixin TenantAdminProfileTypesPaginationMixin
     implements TenantAdminAccountProfilesRepositoryContract {
   static final Expando<_TenantAdminProfileTypesPaginationState>

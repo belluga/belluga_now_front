@@ -188,7 +188,6 @@ void main() {
           children: [
             TenantAdminTaxonomyEditRoute(
               taxonomyId: created.id,
-              taxonomy: created,
             ),
           ],
         ),

@@ -310,6 +310,62 @@ abstract class TenantAdminTaxonomiesRepositoryContract {
   }
 }
 
+extension TenantAdminTaxonomiesRepositoryLookup
+    on TenantAdminTaxonomiesRepositoryContract {
+  Future<TenantAdminTaxonomyDefinition> fetchTaxonomy(String taxonomyId) async {
+    final normalizedId = taxonomyId.trim();
+    if (normalizedId.isEmpty) {
+      throw ArgumentError.value(
+        taxonomyId,
+        'taxonomyId',
+        'Taxonomy id must not be empty',
+      );
+    }
+
+    final taxonomies = await fetchTaxonomies();
+    for (final taxonomy in taxonomies) {
+      if (taxonomy.id == normalizedId) {
+        return taxonomy;
+      }
+    }
+
+    throw StateError('Taxonomy not found for id: $normalizedId');
+  }
+
+  Future<TenantAdminTaxonomyTermDefinition> fetchTerm({
+    required String taxonomyId,
+    required String termId,
+  }) async {
+    final normalizedTaxonomyId = taxonomyId.trim();
+    final normalizedTermId = termId.trim();
+    if (normalizedTaxonomyId.isEmpty) {
+      throw ArgumentError.value(
+        taxonomyId,
+        'taxonomyId',
+        'Taxonomy id must not be empty',
+      );
+    }
+    if (normalizedTermId.isEmpty) {
+      throw ArgumentError.value(
+        termId,
+        'termId',
+        'Term id must not be empty',
+      );
+    }
+
+    final terms = await fetchTerms(taxonomyId: normalizedTaxonomyId);
+    for (final term in terms) {
+      if (term.id == normalizedTermId) {
+        return term;
+      }
+    }
+
+    throw StateError(
+      'Taxonomy term not found for taxonomyId=$normalizedTaxonomyId and termId=$normalizedTermId',
+    );
+  }
+}
+
 mixin TenantAdminTaxonomiesPaginationMixin
     implements TenantAdminTaxonomiesRepositoryContract {
   static final Expando<_TenantAdminTaxonomiesPaginationState>

@@ -2,6 +2,7 @@ import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/guards/location_permission_state.dart';
 import 'package:belluga_now/presentation/shared/location_permission/controllers/location_permission_controller.dart';
 import 'package:belluga_now/presentation/shared/widgets/button_loading.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
@@ -40,7 +41,8 @@ class _LocationNotLiveScreenState extends State<LocationNotLiveScreen> {
     final primaryLabel = switch (widget.blockerState) {
       LocationPermissionState.serviceDisabled => 'Ativar serviços',
       LocationPermissionState.denied => 'Permitir localização',
-      LocationPermissionState.deniedForever => 'Abrir configurações',
+      LocationPermissionState.deniedForever =>
+        kIsWeb ? 'Tentar novamente' : 'Abrir configurações',
     };
 
     return StreamValueBuilder<bool?>(
@@ -69,7 +71,8 @@ class _LocationNotLiveScreenState extends State<LocationNotLiveScreen> {
                     Text(
                       'Última localização conhecida: $ageLabel (pode estar desatualizada).',
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: Theme.of(context).colorScheme.onSurfaceVariant,
+                            color:
+                                Theme.of(context).colorScheme.onSurfaceVariant,
                           ),
                     ),
                   ],
@@ -77,7 +80,8 @@ class _LocationNotLiveScreenState extends State<LocationNotLiveScreen> {
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                      color:
+                          Theme.of(context).colorScheme.surfaceContainerHighest,
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Row(
@@ -96,6 +100,35 @@ class _LocationNotLiveScreenState extends State<LocationNotLiveScreen> {
                       ],
                     ),
                   ),
+                  if (widget.blockerState ==
+                      LocationPermissionState.deniedForever) ...[
+                    const SizedBox(height: 16),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context)
+                            .colorScheme
+                            .surfaceContainerHighest,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Como liberar:',
+                            style: Theme.of(context).textTheme.titleMedium,
+                          ),
+                          const SizedBox(height: 8),
+                          ..._deniedForeverSteps().map(
+                            (step) => Padding(
+                              padding: const EdgeInsets.only(bottom: 6),
+                              child: Text(step),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                   const Spacer(),
                   StreamValueBuilder(
                     streamValue: _controller.loading,
@@ -129,6 +162,15 @@ class _LocationNotLiveScreenState extends State<LocationNotLiveScreen> {
     if (result != true) {
       if (result != null) {
         _controller.clearResult();
+        if (kIsWeb && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'Se a localização foi bloqueada no navegador, libere em Permissões do site e tente novamente.',
+              ),
+            ),
+          );
+        }
       }
       return;
     }
@@ -144,5 +186,22 @@ class _LocationNotLiveScreenState extends State<LocationNotLiveScreen> {
     if (diff.inMinutes < 60) return 'há ${diff.inMinutes} min';
     if (diff.inHours < 48) return 'há ${diff.inHours} h';
     return 'há ${diff.inDays} d';
+  }
+
+  List<String> _deniedForeverSteps() {
+    if (kIsWeb) {
+      return const [
+        '1. Clique no cadeado ao lado do endereço do site.',
+        '2. Abra as permissões/configurações do site.',
+        '3. Em Localização, selecione Permitir.',
+        '4. Recarregue a página e toque em Tentar novamente.',
+      ];
+    }
+    return const [
+      '1. Toque em Abrir configurações.',
+      '2. Entre em Permissões > Localização.',
+      '3. Escolha Permitir durante o uso do app.',
+      '4. Volte para o app e tente novamente.',
+    ];
   }
 }

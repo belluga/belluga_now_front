@@ -101,7 +101,8 @@ class TenantAdminOrganizationsController implements Disposable {
       return;
     }
     _organizationsListScrollBound = true;
-    organizationsListScrollController.addListener(_handleOrganizationsListScroll);
+    organizationsListScrollController
+        .addListener(_handleOrganizationsListScroll);
   }
 
   void unbindOrganizationsListScrollPagination() {
@@ -153,6 +154,12 @@ class TenantAdminOrganizationsController implements Disposable {
         organizationDetailLoadingStreamValue.addValue(false);
       }
     }
+  }
+
+  void loadResolvedOrganizationDetail(TenantAdminOrganization organization) {
+    organizationDetailErrorStreamValue.addValue(null);
+    organizationDetailLoadingStreamValue.addValue(false);
+    organizationDetailStreamValue.addValue(organization);
   }
 
   Future<TenantAdminOrganization?> updateOrganization({
