@@ -14,9 +14,12 @@ import 'rules/repository_inline_dto_to_domain_mapper_forbidden_rule.dart';
 import 'rules/repository_json_parsing_forbidden_rule.dart';
 import 'rules/repository_raw_payload_map_forbidden_rule.dart';
 import 'rules/repository_raw_transport_typing_forbidden_rule.dart';
+import 'rules/route_page_must_live_in_routes_folder_rule.dart';
+import 'rules/route_path_param_requires_resolver_route_rule.dart';
 import 'rules/screen_controller_resolution_pattern_required_rule.dart';
 import 'rules/service_json_parsing_forbidden_rule.dart';
 import 'rules/tenant_canonical_domain_required_rule.dart';
+import 'rules/ui_route_param_hydration_forbidden_rule.dart';
 import 'rules/ui_build_side_effects_forbidden_rule.dart';
 import 'rules/ui_cross_feature_controller_resolution_forbidden_rule.dart';
 import 'rules/ui_direct_repository_service_resolution_forbidden_rule.dart';
@@ -54,7 +57,10 @@ class BellugaCustomLintPlugin extends PluginBase {
         GlobalUiControllerNamingForbiddenRule(),
         ControllerBuildContextDependencyForbiddenRule(),
         ControllerDirectNavigationForbiddenRule(),
+        RoutePageMustLiveInRoutesFolderRule(),
+        RoutePathParamRequiresResolverRouteRule(),
         ScreenControllerResolutionPatternRequiredRule(),
+        UiRouteParamHydrationForbiddenRule(),
         MultiPublicClassFileWarningRule(),
         MultiWidgetFileWarningRule(),
         TenantCanonicalDomainRequiredRule(),

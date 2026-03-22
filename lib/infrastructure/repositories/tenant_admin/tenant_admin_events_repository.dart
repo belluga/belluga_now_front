@@ -124,15 +124,14 @@ class TenantAdminEventsRepository
     bool archived = false,
   }) async {
     try {
-      final ignoredSearch = search?.trim();
-      if (ignoredSearch != null && ignoredSearch.isNotEmpty) {
-        // MVP contract: events listing does not accept text search.
-      }
+      final normalizedSearch = search?.trim();
       final response = await _dio.get(
         '$_apiBaseUrl/v1/events',
         queryParameters: {
           'page': page,
           'page_size': pageSize,
+          if (normalizedSearch != null && normalizedSearch.isNotEmpty)
+            'search': normalizedSearch,
           if (status != null && status.trim().isNotEmpty) 'status': status,
           if (archived) 'archived': 1,
         },

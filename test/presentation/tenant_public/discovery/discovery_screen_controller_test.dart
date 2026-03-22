@@ -136,6 +136,50 @@ void main() {
     controller.onDispose();
   });
 
+  test(
+      'discovery stops loading and keeps favoritable chips when first page fails',
+      () async {
+    final repository = _FailingAccountProfilesRepository();
+    final controller = DiscoveryScreenController(
+      accountProfilesRepository: repository,
+      authRepository: _FakeAuthRepository(isAuthorizedValue: true),
+    );
+
+    await controller.init();
+
+    expect(controller.isLoadingStreamValue.value, isFalse);
+    expect(controller.hasLoadedStreamValue.value, isTrue);
+    expect(controller.availableTypesStreamValue.value, ['artist']);
+    expect(controller.filteredPartnersStreamValue.value, isEmpty);
+    controller.onDispose();
+  });
+
+  test('discovery still loads first page when repository init fails', () async {
+    final repository = _InitFailingAccountProfilesRepository(
+      firstPage: PagedAccountProfilesResult(
+        profiles: [
+          _profile(id: _mongoId('h'), type: 'artist', name: 'Recovered'),
+        ],
+        hasMore: false,
+      ),
+    );
+    final controller = DiscoveryScreenController(
+      accountProfilesRepository: repository,
+      authRepository: _FakeAuthRepository(isAuthorizedValue: true),
+    );
+
+    await controller.init();
+
+    expect(controller.isLoadingStreamValue.value, isFalse);
+    expect(controller.hasLoadedStreamValue.value, isTrue);
+    expect(controller.availableTypesStreamValue.value, ['artist']);
+    expect(controller.filteredPartnersStreamValue.value, hasLength(1));
+    expect(
+        controller.filteredPartnersStreamValue.value.first.name, 'Recovered');
+    expect(repository.fetchPageCalls, 1);
+    controller.onDispose();
+  });
+
   test('toggle favorite persists mutation for identified users', () async {
     final artist = _profile(id: _mongoId('g'), type: 'artist', name: 'Artist');
     final repository = _FakeAccountProfilesRepository(
@@ -293,6 +337,119 @@ class _FakeAccountProfilesRepository extends AccountProfilesRepositoryContract {
     return allAccountProfilesStreamValue.value
         .where((profile) => ids.contains(profile.id))
         .toList(growable: false);
+  }
+}
+
+class _FailingAccountProfilesRepository
+    extends AccountProfilesRepositoryContract {
+  @override
+  Future<void> init() async {
+    allAccountProfilesStreamValue.addValue(const <AccountProfileModel>[]);
+    favoriteAccountProfileIdsStreamValue.addValue(const <String>{});
+  }
+
+  @override
+  Future<List<AccountProfileModel>> fetchAllAccountProfiles() async {
+    return const <AccountProfileModel>[];
+  }
+
+  @override
+  Future<PagedAccountProfilesResult> fetchAccountProfilesPage({
+    required int page,
+    required int pageSize,
+    String? query,
+    String? typeFilter,
+  }) async {
+    throw Exception('forced discovery page failure');
+  }
+
+  @override
+  Future<List<AccountProfileModel>> searchAccountProfiles({
+    String? query,
+    String? typeFilter,
+  }) async {
+    return const <AccountProfileModel>[];
+  }
+
+  @override
+  Future<AccountProfileModel?> getAccountProfileBySlug(String slug) async {
+    return null;
+  }
+
+  @override
+  Future<void> toggleFavorite(String accountProfileId) async {}
+
+  @override
+  bool isFavorite(String accountProfileId) {
+    return false;
+  }
+
+  @override
+  List<AccountProfileModel> getFavoriteAccountProfiles() {
+    return const <AccountProfileModel>[];
+  }
+}
+
+class _InitFailingAccountProfilesRepository
+    extends AccountProfilesRepositoryContract {
+  _InitFailingAccountProfilesRepository({
+    required this.firstPage,
+  });
+
+  final PagedAccountProfilesResult firstPage;
+  int fetchPageCalls = 0;
+
+  @override
+  Future<void> init() async {
+    throw Exception('forced repository init failure');
+  }
+
+  @override
+  Future<List<AccountProfileModel>> fetchAllAccountProfiles() async {
+    return firstPage.profiles;
+  }
+
+  @override
+  Future<PagedAccountProfilesResult> fetchAccountProfilesPage({
+    required int page,
+    required int pageSize,
+    String? query,
+    String? typeFilter,
+  }) async {
+    fetchPageCalls += 1;
+    if (page != 1) {
+      return const PagedAccountProfilesResult(
+        profiles: <AccountProfileModel>[],
+        hasMore: false,
+      );
+    }
+    return firstPage;
+  }
+
+  @override
+  Future<List<AccountProfileModel>> searchAccountProfiles({
+    String? query,
+    String? typeFilter,
+  }) async {
+    return firstPage.profiles;
+  }
+
+  @override
+  Future<AccountProfileModel?> getAccountProfileBySlug(String slug) async {
+    return null;
+  }
+
+  @override
+  Future<void> toggleFavorite(String accountProfileId) async {}
+
+  @override
+  bool isFavorite(String accountProfileId) {
+    return false;
+  }
+
+  @override
+  List<AccountProfileModel> getFavoriteAccountProfiles() {
+    return const <AccountProfileModel>[];
   }
 }
 

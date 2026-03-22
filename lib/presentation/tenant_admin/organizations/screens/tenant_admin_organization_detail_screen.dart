@@ -11,10 +11,10 @@ import 'package:stream_value/core/stream_value_builder.dart';
 class TenantAdminOrganizationDetailScreen extends StatefulWidget {
   const TenantAdminOrganizationDetailScreen({
     super.key,
-    required this.organizationId,
+    required this.organization,
   });
 
-  final String organizationId;
+  final TenantAdminOrganization organization;
 
   @override
   State<TenantAdminOrganizationDetailScreen> createState() =>
@@ -29,7 +29,7 @@ class _TenantAdminOrganizationDetailScreenState
   @override
   void initState() {
     super.initState();
-    _controller.loadOrganizationDetail(widget.organizationId);
+    _controller.loadResolvedOrganizationDetail(widget.organization);
   }
 
   Future<void> _editName(TenantAdminOrganization organization) async {
@@ -160,43 +160,53 @@ class _TenantAdminOrganizationDetailScreenState
                                 rawError: error,
                                 fallbackMessage:
                                     'Nao foi possivel carregar a organizacao.',
-                                onRetry: () => _controller
-                                    .loadOrganizationDetail(widget.organizationId),
+                                onRetry: () =>
+                                    _controller.loadOrganizationDetail(
+                                        widget.organization.id),
                               )
                             : organization == null
-                                ? const Center(child: Text('Organizacao nao encontrada.'))
+                                ? const Center(
+                                    child: Text('Organizacao nao encontrada.'))
                                 : Card(
                                     margin: EdgeInsets.zero,
                                     child: Padding(
                                       padding: const EdgeInsets.all(16),
                                       child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
                                         children: [
                                           Text(
                                             'Detalhes',
-                                            style:
-                                                Theme.of(context).textTheme.titleMedium,
+                                            style: Theme.of(context)
+                                                .textTheme
+                                                .titleMedium,
                                           ),
                                           const SizedBox(height: 12),
                                           _editableRow(
                                             label: 'Nome',
                                             value: organization.name,
-                                            onEdit: () => _editName(organization),
+                                            onEdit: () =>
+                                                _editName(organization),
                                           ),
                                           const SizedBox(height: 8),
                                           _editableRow(
                                             label: 'Slug',
                                             value: organization.slug ?? '-',
-                                            onEdit: () => _editSlug(organization),
+                                            onEdit: () =>
+                                                _editSlug(organization),
                                           ),
                                           const SizedBox(height: 8),
                                           _editableRow(
                                             label: 'Descricao',
-                                            value: organization.description?.trim().isNotEmpty ==
+                                            value: organization.description
+                                                        ?.trim()
+                                                        .isNotEmpty ==
                                                     true
-                                                ? organization.description!.trim()
+                                                ? organization.description!
+                                                    .trim()
                                                 : '-',
-                                            onEdit: () => _editDescription(organization),
+                                            onEdit: () =>
+                                                _editDescription(organization),
                                           ),
                                         ],
                                       ),

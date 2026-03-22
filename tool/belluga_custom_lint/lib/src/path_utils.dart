@@ -70,6 +70,15 @@ bool isPresentationScreenFilePath(String path) {
       normalized.endsWith('_screen.dart');
 }
 
+bool isPresentationRouteFilePath(String path) {
+  if (!isPresentationFilePath(path)) {
+    return false;
+  }
+
+  final normalized = normalizePath(path);
+  return _containsSegment(normalized, '/routes/');
+}
+
 bool isDomainFilePath(String path) {
   return _containsSegment(path, '/lib/domain/');
 }

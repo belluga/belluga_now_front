@@ -41,7 +41,10 @@
 - `controller_direct_navigation_forbidden` (`P1`): controllers cannot call Navigator/router navigation methods.
 - `ui_navigator_usage_forbidden` (`P1`): UI cannot call `Navigator.*` directly.
 - `ui_navigation_after_await_forbidden` (`P1`): UI navigation after async gaps is forbidden.
+- `route_page_must_live_in_routes_folder` (`P1`): `@RoutePage` declarations must live in `lib/presentation/**/routes/**`.
 - `ui_build_side_effects_forbidden` (`P1`): side effects in `build`/`didChangeDependencies` are forbidden.
+- `ui_route_param_hydration_forbidden` (`P1`): screens cannot hydrate feature data from `widget.<route_param>` inside lifecycle methods (`initState`/`didUpdateWidget`).
+- `route_path_param_requires_resolver_route` (`P1`): route pages using `@PathParam` must extend `ResolverRoute<,>` for model hydration through a route resolver.
 - `ui_future_stream_builder_forbidden` (`P1`): `FutureBuilder`/`StreamBuilder` are forbidden under `StreamValue` architecture.
 - `ui_controller_ownership_forbidden` (`P1`): Screen files cannot own UI controllers/keys; auxiliary widgets can own them only when isolated from feature controller interactions.
 - `domain_primitive_field_forbidden` (`P1`): domain fields cannot use primitive transport-oriented types directly.
@@ -261,6 +264,41 @@ await controller.save();
 // controller emits navigation intent, UI reacts synchronously
 ```
 
+### `route_page_must_live_in_routes_folder`
+Violation:
+```dart
+// lib/presentation/tenant_admin/accounts/screens/location_picker_screen.dart
+@RoutePage()
+class TenantAdminLocationPickerScreen extends StatefulWidget { ... }
+```
+Fix:
+```dart
+// lib/presentation/tenant_admin/accounts/routes/tenant_admin_location_picker_route.dart
+@RoutePage(name: 'TenantAdminLocationPickerRoute')
+class TenantAdminLocationPickerRoutePage extends StatelessWidget { ... }
+```
+
+### `route_path_param_requires_resolver_route`
+Violation:
+```dart
+@RoutePage()
+class AccountDetailRoute extends StatelessWidget {
+  const AccountDetailRoute({@PathParam('slug') required this.slug});
+  final String slug;
+}
+```
+Fix:
+```dart
+@RoutePage()
+class AccountDetailRoute extends ResolverRoute<AccountModel, AccountsModule> {
+  const AccountDetailRoute({@PathParam('slug') required this.slug});
+  final String slug;
+
+  @override
+  RouteResolverParams get resolverParams => {'slug': slug};
+}
+```
+
 ### `ui_build_side_effects_forbidden`
 Violation:
 ```dart
@@ -276,6 +314,26 @@ Fix:
 void initState() {
   super.initState();
   controller.load();
+}
+```
+
+### `ui_route_param_hydration_forbidden`
+Violation:
+```dart
+@override
+void initState() {
+  super.initState();
+  _controller.loadAccountProfile(widget.slug);
+}
+```
+Fix:
+```dart
+// RouteModelResolver hydrates route model/id before screen build.
+// Screen remains passive and consumes resolved data.
+@override
+void initState() {
+  super.initState();
+  _controller.loadAccountProfile(resolvedAccountProfileId);
 }
 ```
 

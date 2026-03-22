@@ -1,7 +1,7 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/support/route_redirect_path.dart';
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
-import 'package:belluga_now/presentation/tenant_public/partners/controllers/partner_detail_controller.dart';
+import 'package:belluga_now/presentation/tenant_public/partners/controllers/account_profile_detail_controller.dart';
 import 'package:belluga_now/presentation/shared/widgets/belluga_network_image.dart';
 import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/immersive_detail_screen.dart';
 import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/models/immersive_tab_item.dart';
@@ -14,26 +14,28 @@ import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value_builder.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-class PartnerDetailScreen extends StatefulWidget {
-  const PartnerDetailScreen({
+class AccountProfileDetailScreen extends StatefulWidget {
+  const AccountProfileDetailScreen({
     super.key,
-    required this.slug,
+    required this.accountProfile,
   });
 
-  final String slug;
+  final AccountProfileModel accountProfile;
 
   @override
-  State<PartnerDetailScreen> createState() => _PartnerDetailScreenState();
+  State<AccountProfileDetailScreen> createState() =>
+      _AccountProfileDetailScreenState();
 }
 
-class _PartnerDetailScreenState extends State<PartnerDetailScreen> {
-  final PartnerDetailController _controller =
-      GetIt.I.get<PartnerDetailController>();
+class _AccountProfileDetailScreenState
+    extends State<AccountProfileDetailScreen> {
+  final AccountProfileDetailController _controller =
+      GetIt.I.get<AccountProfileDetailController>();
 
   @override
   void initState() {
     super.initState();
-    _controller.loadPartner(widget.slug);
+    _controller.loadResolvedAccountProfile(widget.accountProfile);
   }
 
   @override
@@ -51,10 +53,10 @@ class _PartnerDetailScreenState extends State<PartnerDetailScreen> {
             return const Center(child: CircularProgressIndicator());
           }
           return StreamValueBuilder<AccountProfileModel?>(
-            streamValue: _controller.partnerStreamValue,
-            builder: (context, partner) {
-              if (partner == null) {
-                return const Center(child: Text('Parceiro não encontrado'));
+            streamValue: _controller.accountProfileStreamValue,
+            builder: (context, accountProfile) {
+              if (accountProfile == null) {
+                return const Center(child: Text('Perfil não encontrado'));
               }
               return StreamValueBuilder<PartnerProfileConfig?>(
                 streamValue: _controller.profileConfigStreamValue,
@@ -68,18 +70,19 @@ class _PartnerDetailScreenState extends State<PartnerDetailScreen> {
                       return StreamValueBuilder<Set<String>>(
                         streamValue: _controller.favoriteIdsStream,
                         builder: (context, favorites) {
-                          final isFav = favorites.contains(partner.id);
+                          final isFav = favorites.contains(accountProfile.id);
                           final isFavoritable =
-                              _controller.isFavoritable(partner);
+                              _controller.isFavoritable(accountProfile);
                           final configTabs =
                               _buildTabsFromConfig(config, moduleData);
                           final screen = ImmersiveDetailScreen(
-                            heroContent:
-                                _buildHero(partner, isFav, isFavoritable),
-                            title: partner.name,
+                            heroContent: _buildHero(
+                                accountProfile, isFav, isFavoritable),
+                            title: accountProfile.name,
                             tabs: configTabs,
-                            betweenHeroAndTabs: _buildBetweenHero(partner),
-                            footer: _buildFooter(partner, isFav, isFavoritable),
+                            betweenHeroAndTabs:
+                                _buildBetweenHero(accountProfile),
+                            footer: _buildFooter(isFav, isFavoritable),
                           );
                           return screen;
                         },
@@ -96,19 +99,19 @@ class _PartnerDetailScreenState extends State<PartnerDetailScreen> {
   }
 
   Widget _buildHero(
-      AccountProfileModel partner, bool isFav, bool isFavoritable) {
+      AccountProfileModel accountProfile, bool isFav, bool isFavoritable) {
     final colorScheme = Theme.of(context).colorScheme;
     return Stack(
       fit: StackFit.expand,
       children: [
-        partner.coverUrl != null
+        accountProfile.coverUrl != null
             ? BellugaNetworkImage(
-                partner.coverUrl!,
+                accountProfile.coverUrl!,
                 fit: BoxFit.cover,
                 errorWidget: Container(
                   color: colorScheme.surfaceContainerHighest,
                   child: Icon(
-                    _iconForType(partner.type),
+                    _iconForType(accountProfile.type),
                     size: 64,
                     color: colorScheme.onSurfaceVariant,
                   ),
@@ -117,7 +120,7 @@ class _PartnerDetailScreenState extends State<PartnerDetailScreen> {
             : Container(
                 color: colorScheme.surfaceContainerHighest,
                 child: Icon(
-                  _iconForType(partner.type),
+                  _iconForType(accountProfile.type),
                   size: 64,
                   color: colorScheme.onSurfaceVariant,
                 ),
@@ -133,7 +136,7 @@ class _PartnerDetailScreenState extends State<PartnerDetailScreen> {
                       isFav ? Icons.favorite : Icons.favorite_border,
                       color: isFav ? Colors.red : Colors.white,
                     ),
-                    onPressed: () => _handleFavoriteTap(partner.id),
+                    onPressed: () => _handleFavoriteTap(accountProfile.id),
                   ),
                 )
               : const SizedBox.shrink(),
@@ -145,7 +148,7 @@ class _PartnerDetailScreenState extends State<PartnerDetailScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                partner.name,
+                accountProfile.name,
                 style: const TextStyle(
                   color: Colors.white,
                   fontSize: 24,
@@ -157,14 +160,14 @@ class _PartnerDetailScreenState extends State<PartnerDetailScreen> {
                 spacing: 8,
                 children: [
                   Chip(
-                    label: Text(_labelForType(partner.type)),
+                    label: Text(_labelForType(accountProfile.type)),
                     backgroundColor: Colors.white.withValues(alpha: 0.2),
                     labelStyle: const TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
-                  if (partner.isVerified)
+                  if (accountProfile.isVerified)
                     const Chip(
                       label: Text('Verificado'),
                       avatar:
@@ -184,8 +187,10 @@ class _PartnerDetailScreenState extends State<PartnerDetailScreen> {
     );
   }
 
-  Widget? _buildBetweenHero(AccountProfileModel partner) {
-    if (partner.tags.isEmpty && partner.engagementData == null) return null;
+  Widget? _buildBetweenHero(AccountProfileModel accountProfile) {
+    if (accountProfile.tags.isEmpty && accountProfile.engagementData == null) {
+      return null;
+    }
     final colorScheme = Theme.of(context).colorScheme;
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
@@ -193,11 +198,11 @@ class _PartnerDetailScreenState extends State<PartnerDetailScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (partner.tags.isNotEmpty) ...[
+          if (accountProfile.tags.isNotEmpty) ...[
             Wrap(
               spacing: 8,
               runSpacing: 8,
-              children: partner.tags
+              children: accountProfile.tags
                   .map((t) => Chip(
                         label: Text(t),
                         backgroundColor: colorScheme.secondaryContainer,
@@ -208,12 +213,16 @@ class _PartnerDetailScreenState extends State<PartnerDetailScreen> {
           ],
           Row(
             children: [
-              _metricPill(BooraIcons.invite_solid,
-                  partner.acceptedInvites.toString(), 'Convites aceitos'),
-              if (partner.engagementData != null) ...[
+              _metricPill(
+                  BooraIcons.invite_solid,
+                  accountProfile.acceptedInvites.toString(),
+                  'Convites aceitos'),
+              if (accountProfile.engagementData != null) ...[
                 const SizedBox(width: 8),
-                _metricPill(Icons.trending_up,
-                    _engagementLabel(partner.engagementData!), 'Engajamento'),
+                _metricPill(
+                    Icons.trending_up,
+                    _engagementLabel(accountProfile.engagementData!),
+                    'Engajamento'),
               ],
             ],
           ),
@@ -237,15 +246,14 @@ class _PartnerDetailScreenState extends State<PartnerDetailScreen> {
         .toList();
   }
 
-  Widget _buildFooter(
-      AccountProfileModel partner, bool isFav, bool isFavoritable) {
+  Widget _buildFooter(bool isFav, bool isFavoritable) {
     if (!isFavoritable) return const SizedBox.shrink();
     return _actionFooter(isFav ? 'Favoritado' : 'Seguir');
   }
 
-  void _handleFavoriteTap(String partnerId) {
-    final result = _controller.toggleFavorite(partnerId);
-    if (result != PartnerFavoriteToggleOutcome.requiresAuthentication) {
+  void _handleFavoriteTap(String accountProfileId) {
+    final result = _controller.toggleFavorite(accountProfileId);
+    if (result != AccountProfileFavoriteToggleOutcome.requiresAuthentication) {
       return;
     }
     final redirectPath =
@@ -989,7 +997,7 @@ class _PartnerDetailScreenState extends State<PartnerDetailScreen> {
           module.title ?? 'Sobre',
           data is String
               ? data
-              : 'Conteúdo institucional e história do parceiro.',
+              : 'Conteúdo institucional e história do perfil.',
         );
       case ProfileModuleId.locationInfo:
         return _locationInfo(data as PartnerLocationView?);

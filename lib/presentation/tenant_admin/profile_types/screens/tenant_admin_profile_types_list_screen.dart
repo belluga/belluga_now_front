@@ -198,7 +198,6 @@ class _TenantAdminProfileTypesListScreenState
                   .push(
                     TenantAdminProfileTypeDetailRoute(
                       profileType: type.type,
-                      definition: type,
                     ),
                   )
                   .then((_) => _controller.loadTypes());
@@ -210,7 +209,6 @@ class _TenantAdminProfileTypesListScreenState
                       .push(
                         TenantAdminProfileTypeEditRoute(
                           profileType: type.type,
-                          definition: type,
                         ),
                       )
                       .then((_) => _controller.loadTypes());

@@ -320,6 +320,31 @@ abstract class TenantAdminStaticAssetsRepositoryContract {
   }
 }
 
+extension TenantAdminStaticAssetsRepositoryLookup
+    on TenantAdminStaticAssetsRepositoryContract {
+  Future<TenantAdminStaticProfileTypeDefinition> fetchStaticProfileType(
+    String profileType,
+  ) async {
+    final normalizedType = profileType.trim();
+    if (normalizedType.isEmpty) {
+      throw ArgumentError.value(
+        profileType,
+        'profileType',
+        'Static profile type must not be empty',
+      );
+    }
+
+    final profileTypes = await fetchStaticProfileTypes();
+    for (final definition in profileTypes) {
+      if (definition.type == normalizedType) {
+        return definition;
+      }
+    }
+
+    throw StateError('Static profile type not found for type: $normalizedType');
+  }
+}
+
 mixin TenantAdminStaticAssetsPaginationMixin
     implements TenantAdminStaticAssetsRepositoryContract {
   static final Expando<_TenantAdminStaticAssetsPaginationState>

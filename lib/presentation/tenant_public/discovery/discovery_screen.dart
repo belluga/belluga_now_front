@@ -124,13 +124,13 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                                                     DiscoveryPartnerCard(
                                                   partner: partner,
                                                   isFavoritable: _controller
-                                                      .isPartnerFavoritable(
+                                                      .isFavoritable(
                                                           partner),
                                                   isFavorite: favorites
                                                       .contains(partner.id),
                                                   onFavoriteTap: () {
                                                     if (_controller
-                                                        .isPartnerFavoritable(
+                                                        .isFavoritable(
                                                       partner,
                                                     )) {
                                                       _handleFavoriteTap(
@@ -178,13 +178,13 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                                                     DiscoveryPartnerCard(
                                                   partner: partner,
                                                   isFavoritable: _controller
-                                                      .isPartnerFavoritable(
+                                                      .isFavoritable(
                                                           partner),
                                                   isFavorite: favorites
                                                       .contains(partner.id),
                                                   onFavoriteTap: () {
                                                     if (_controller
-                                                        .isPartnerFavoritable(
+                                                        .isFavoritable(
                                                       partner,
                                                     )) {
                                                       _handleFavoriteTap(
@@ -279,7 +279,7 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                                           partners: partners,
                                           favorites: favorites,
                                           isFavoritable:
-                                              _controller.isPartnerFavoritable,
+                                              _controller.isFavoritable,
                                           onFavoriteTap: (partnerId) {
                                             if (partners.isEmpty) return;
                                             final partner = partners.firstWhere(
@@ -287,7 +287,7 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                                               orElse: () => partners.first,
                                             );
                                             if (_controller
-                                                .isPartnerFavoritable(
+                                                .isFavoritable(
                                                     partner)) {
                                               _handleFavoriteTap(partner);
                                             }
