@@ -130,6 +130,67 @@ void main() {
       controller.onDispose();
     });
 
+    test('retries first page once after transient fetch failure', () async {
+      final appData = _buildAppData(
+        minKm: 1,
+        defaultKm: 5,
+        maxKm: 10,
+      );
+      final appDataRepository = _FakeAppDataRepository(appData);
+      final scheduleRepository = _FailingOnceScheduleRepository();
+      final controller = TenantHomeAgendaController(
+        scheduleRepository: scheduleRepository,
+        userEventsRepository: _FakeUserEventsRepository(),
+        invitesRepository: _FakeInvitesRepository(),
+        userLocationRepository: _FakeUserLocationRepository(),
+        appDataRepository: appDataRepository,
+      );
+
+      await controller.init();
+
+      expect(scheduleRepository.getEventsPageCallCount, 2);
+      expect(controller.isInitialLoadingStreamValue.value, isFalse);
+      expect(controller.displayedEventsStreamValue.value, isEmpty);
+
+      controller.onDispose();
+    });
+
+    test('retries first page once and publishes recovered events', () async {
+      final appData = _buildAppData(
+        minKm: 1,
+        defaultKm: 5,
+        maxKm: 10,
+      );
+      final appDataRepository = _FakeAppDataRepository(appData);
+      final locationRepository = _FakeUserLocationRepository()
+        ..userLocationStreamValue.addValue(
+          CityCoordinate(
+            latitudeValue: LatitudeValue()..parse('-20.671339'),
+            longitudeValue: LongitudeValue()..parse('-40.495395'),
+          ),
+        );
+      final backend = _FailingOnceThenDataBackend();
+      final controller = TenantHomeAgendaController(
+        scheduleRepository: ScheduleRepository(backend: backend),
+        userEventsRepository: _FakeUserEventsRepository(),
+        invitesRepository: _FakeInvitesRepository(),
+        userLocationRepository: locationRepository,
+        appDataRepository: appDataRepository,
+      );
+
+      await controller.init();
+
+      expect(backend.fetchEventsPageCallCount, 2);
+      expect(controller.isInitialLoadingStreamValue.value, isFalse);
+      expect(controller.displayedEventsStreamValue.value, hasLength(1));
+      expect(
+        controller.displayedEventsStreamValue.value.first.title.value,
+        'Evento Recuperado',
+      );
+
+      controller.onDispose();
+    });
+
     test('uses tenant default origin when user location is unavailable',
         () async {
       final appData = _buildAppData(
@@ -190,7 +251,8 @@ void main() {
       controller.onDispose();
     });
 
-    test('does not fetch when neither user location nor tenant default exists',
+    test(
+        'fetches without geo when neither user location nor tenant default exists',
         () async {
       final appData = _buildAppData(
         minKm: 1,
@@ -213,7 +275,9 @@ void main() {
 
       await controller.init();
 
-      expect(scheduleRepository.getEventsPageCallCount, 0);
+      expect(scheduleRepository.getEventsPageCallCount, 1);
+      expect(scheduleRepository.lastOriginLat, isNull);
+      expect(scheduleRepository.lastOriginLng, isNull);
       expect(controller.isInitialLoadingStreamValue.value, isFalse);
       expect(controller.displayedEventsStreamValue.value, isEmpty);
       expect(controller.hasMoreStreamValue.value, isFalse);
@@ -662,6 +726,36 @@ class _FailingScheduleRepository extends _FakeScheduleRepository {
   }
 }
 
+class _FailingOnceScheduleRepository extends _FakeScheduleRepository {
+  bool _failed = false;
+
+  @override
+  Future<PagedEventsResult> getEventsPage({
+    required int page,
+    required int pageSize,
+    required bool showPastOnly,
+    String searchQuery = '',
+    List<String>? categories,
+    List<String>? tags,
+    List<Map<String, String>>? taxonomy,
+    bool confirmedOnly = false,
+    double? originLat,
+    double? originLng,
+    double? maxDistanceMeters,
+  }) async {
+    getEventsPageCallCount += 1;
+    lastOriginLat = originLat;
+    lastOriginLng = originLng;
+
+    if (!_failed) {
+      _failed = true;
+      throw Exception('forced transient first-page failure');
+    }
+
+    return const PagedEventsResult(events: [], hasMore: false);
+  }
+}
+
 class _PayloadScheduleBackend implements ScheduleBackendContract {
   @override
   Future<EventSummaryDTO> fetchSummary() async =>
@@ -857,6 +951,91 @@ class _AutoPageRegressionBackend implements ScheduleBackendContract {
         },
       },
       'date_time_start': '2026-03-04T20:00:00+00:00',
+      'artists': const [],
+      'tags': const ['music'],
+    });
+  }
+}
+
+class _FailingOnceThenDataBackend implements ScheduleBackendContract {
+  int fetchEventsPageCallCount = 0;
+
+  @override
+  Future<EventSummaryDTO> fetchSummary() async =>
+      EventSummaryDTO(items: const []);
+
+  @override
+  Future<List<EventDTO>> fetchEvents() async => [_eventDto()];
+
+  @override
+  Future<EventDTO?> fetchEventDetail({required String eventIdOrSlug}) async =>
+      _eventDto();
+
+  @override
+  Future<EventPageDTO> fetchEventsPage({
+    required int page,
+    required int pageSize,
+    required bool showPastOnly,
+    String? searchQuery,
+    List<String>? categories,
+    List<String>? tags,
+    List<Map<String, String>>? taxonomy,
+    bool confirmedOnly = false,
+    double? originLat,
+    double? originLng,
+    double? maxDistanceMeters,
+  }) async {
+    fetchEventsPageCallCount += 1;
+
+    if (fetchEventsPageCallCount == 1) {
+      throw Exception('forced transient first-page failure');
+    }
+
+    if (page > 1) {
+      return EventPageDTO(events: const [], hasMore: false);
+    }
+
+    return EventPageDTO(events: [_eventDto()], hasMore: false);
+  }
+
+  @override
+  Stream<EventDeltaDTO> watchEventsStream({
+    String? searchQuery,
+    List<String>? categories,
+    List<String>? tags,
+    List<Map<String, String>>? taxonomy,
+    bool confirmedOnly = false,
+    double? originLat,
+    double? originLng,
+    double? maxDistanceMeters,
+    String? lastEventId,
+    bool showPastOnly = false,
+  }) =>
+      const Stream<EventDeltaDTO>.empty();
+
+  EventDTO _eventDto() {
+    return EventDTO.fromJson({
+      'event_id': '507f1f77bcf86cd799439211',
+      'occurrence_id': '507f1f77bcf86cd799439212',
+      'slug': 'evento-recuperado',
+      'title': 'Evento Recuperado',
+      'content': 'Conteudo do evento recuperado',
+      'type': {
+        'id': 'type-1',
+        'name': 'Show',
+        'slug': 'show',
+        'description': 'Show type description',
+        'color': '#112233',
+      },
+      'location': {
+        'mode': 'physical',
+        'display_name': 'Praia do Morro',
+        'geo': {
+          'type': 'Point',
+          'coordinates': [-40.495395, -20.671339],
+        },
+      },
+      'date_time_start': '2026-03-05T20:00:00+00:00',
       'artists': const [],
       'tags': const ['music'],
     });

@@ -49,7 +49,6 @@ class _TenantAdminTaxonomiesListScreenState
     context.router.push(
       TenantAdminTaxonomyEditRoute(
         taxonomyId: taxonomy.id,
-        taxonomy: taxonomy,
       ),
     );
   }
@@ -255,7 +254,6 @@ class _TenantAdminTaxonomiesListScreenState
               context.router.push(
                 TenantAdminTaxonomyTermsRoute(
                   taxonomyId: taxonomy.id,
-                  taxonomyName: taxonomy.name,
                 ),
               );
             },
@@ -265,7 +263,6 @@ class _TenantAdminTaxonomiesListScreenState
                   context.router.push(
                     TenantAdminTaxonomyTermsRoute(
                       taxonomyId: taxonomy.id,
-                      taxonomyName: taxonomy.name,
                     ),
                   );
                   return;

@@ -20,14 +20,14 @@ class DiscoveryScreenController implements Disposable {
   DiscoveryScreenController({
     AccountProfilesRepositoryContract? accountProfilesRepository,
     AuthRepositoryContract? authRepository,
-  })  : _partnersRepository = accountProfilesRepository ??
+  })  : _accountProfilesRepository = accountProfilesRepository ??
             GetIt.I.get<AccountProfilesRepositoryContract>(),
         _authRepository = authRepository ??
             (GetIt.I.isRegistered<AuthRepositoryContract>()
                 ? GetIt.I.get<AuthRepositoryContract>()
                 : null);
 
-  final AccountProfilesRepositoryContract _partnersRepository;
+  final AccountProfilesRepositoryContract _accountProfilesRepository;
   final AuthRepositoryContract? _authRepository;
 
   static const int _defaultPageSize = 20;
@@ -76,9 +76,16 @@ class DiscoveryScreenController implements Disposable {
     });
     _attachScrollListener();
 
-    await _partnersRepository.init();
+    try {
+      await _accountProfilesRepository.init();
+    } catch (error) {
+      debugPrint(
+          'DiscoveryScreenController.init repository init failed: $error');
+    }
     _favoriteIdsSubscription ??=
-        _partnersRepository.favoriteAccountProfileIdsStreamValue.stream.listen(
+        _accountProfilesRepository
+            .favoriteAccountProfileIdsStreamValue.stream
+            .listen(
       (ids) {
         favoriteIdsStreamValue.addValue(Set<String>.from(ids));
       },
@@ -118,11 +125,13 @@ class DiscoveryScreenController implements Disposable {
     nearbyStreamValue.addValue(const []);
     curatorStreamValue.addValue(const []);
     curatorContentStreamValue.addValue(const []);
-    availableTypesStreamValue.addValue(const []);
+    _updateAvailableTypes();
     try {
       await _fetchNextPage(isInitial: true, requestToken: requestToken);
-      hasLoadedStreamValue.addValue(true);
+    } catch (error) {
+      debugPrint('DiscoveryScreenController._reloadPartners failed: $error');
     } finally {
+      hasLoadedStreamValue.addValue(true);
       if (requestToken == _reloadRequestToken) {
         isLoadingStreamValue.addValue(false);
       }
@@ -152,7 +161,8 @@ class DiscoveryScreenController implements Disposable {
       final nextPage = _currentPage + 1;
       final query = searchQueryStreamValue.value.trim();
       final selectedType = selectedTypeFilterStreamValue.value;
-      final pageResult = await _partnersRepository.fetchAccountProfilesPage(
+      final pageResult =
+          await _accountProfilesRepository.fetchAccountProfilesPage(
         page: nextPage,
         pageSize: _defaultPageSize,
         query: query.isEmpty ? null : query,
@@ -223,7 +233,7 @@ class DiscoveryScreenController implements Disposable {
     }
     favoriteIdsStreamValue.addValue(current);
 
-    unawaited(_partnersRepository.toggleFavorite(accountProfileId));
+    unawaited(_accountProfilesRepository.toggleFavorite(accountProfileId));
     return FavoriteToggleOutcome.toggled;
   }
 
@@ -235,7 +245,7 @@ class DiscoveryScreenController implements Disposable {
 
   Future<void> _loadFavoriteIds() async {
     final ids = Set<String>.from(
-      _partnersRepository.favoriteAccountProfileIdsStreamValue.value,
+      _accountProfilesRepository.favoriteAccountProfileIdsStreamValue.value,
     );
     favoriteIdsStreamValue.addValue(ids);
   }
@@ -307,10 +317,10 @@ class DiscoveryScreenController implements Disposable {
     availableTypesStreamValue.addValue(allowed);
   }
 
-  bool isPartnerFavoritable(AccountProfileModel partner) {
+  bool isFavoritable(AccountProfileModel accountProfile) {
     final registry = _resolveRegistry();
     if (registry == null || registry.isEmpty) return false;
-    return registry.isFavoritableFor(partner.type);
+    return registry.isFavoritableFor(accountProfile.type);
   }
 
   String labelForAccountProfileType(String type) {

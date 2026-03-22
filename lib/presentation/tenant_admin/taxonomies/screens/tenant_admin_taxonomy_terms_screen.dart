@@ -1,5 +1,6 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_definition.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_confirmation_dialog.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_empty_state.dart';
@@ -12,12 +13,10 @@ import 'package:stream_value/core/stream_value_builder.dart';
 class TenantAdminTaxonomyTermsScreen extends StatefulWidget {
   const TenantAdminTaxonomyTermsScreen({
     super.key,
-    required this.taxonomyId,
-    required this.taxonomyName,
+    required this.taxonomy,
   });
 
-  final String taxonomyId;
-  final String taxonomyName;
+  final TenantAdminTaxonomyDefinition taxonomy;
 
   @override
   State<TenantAdminTaxonomyTermsScreen> createState() =>
@@ -33,7 +32,7 @@ class _TenantAdminTaxonomyTermsScreenState
   void initState() {
     super.initState();
     _controller.bindTermsListScrollPagination();
-    _controller.loadTerms(widget.taxonomyId);
+    _controller.loadTerms(widget.taxonomy.id);
   }
 
   @override
@@ -48,18 +47,15 @@ class _TenantAdminTaxonomyTermsScreenState
     if (term == null) {
       context.router.push(
         TenantAdminTaxonomyTermCreateRoute(
-          taxonomyId: widget.taxonomyId,
-          taxonomyName: widget.taxonomyName,
+          taxonomyId: widget.taxonomy.id,
         ),
       );
       return;
     }
     context.router.push(
       TenantAdminTaxonomyTermEditRoute(
-        taxonomyId: widget.taxonomyId,
-        taxonomyName: widget.taxonomyName,
+        taxonomyId: widget.taxonomy.id,
         termId: term.id,
-        term: term,
       ),
     );
   }
@@ -74,7 +70,7 @@ class _TenantAdminTaxonomyTermsScreenState
     );
     if (!confirmed) return;
     await _controller.submitDeleteTerm(
-      taxonomyId: widget.taxonomyId,
+      taxonomyId: widget.taxonomy.id,
       termId: term.id,
     );
   }
@@ -147,7 +143,7 @@ class _TenantAdminTaxonomyTermsScreenState
   }) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Termos: ${widget.taxonomyName}'),
+        title: Text('Termos: ${widget.taxonomy.name}'),
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _openTermForm(),
@@ -171,7 +167,7 @@ class _TenantAdminTaxonomyTermsScreenState
                   rawError: error,
                   fallbackMessage:
                       'Não foi possível carregar os termos da taxonomia.',
-                  onRetry: () => _controller.loadTerms(widget.taxonomyId),
+                  onRetry: () => _controller.loadTerms(widget.taxonomy.id),
                 ),
               ),
             const SizedBox(height: 8),
@@ -212,10 +208,8 @@ class _TenantAdminTaxonomyTermsScreenState
             onTap: () {
               context.router.push(
                 TenantAdminTaxonomyTermDetailRoute(
-                  taxonomyId: widget.taxonomyId,
-                  taxonomyName: widget.taxonomyName,
+                  taxonomyId: widget.taxonomy.id,
                   termId: term.id,
-                  term: term,
                 ),
               );
             },

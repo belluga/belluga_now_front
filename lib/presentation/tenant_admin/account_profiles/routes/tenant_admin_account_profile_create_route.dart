@@ -1,9 +1,13 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
+import 'package:belluga_now/application/router/modular_app/modules/tenant_admin_module.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_account.dart';
 import 'package:flutter/material.dart';
+import 'package:get_it_modular_with_auto_route/get_it_modular_with_auto_route.dart';
 
 @RoutePage(name: 'TenantAdminAccountProfileCreateRoute')
-class TenantAdminAccountProfileCreateRoutePage extends StatelessWidget {
+class TenantAdminAccountProfileCreateRoutePage
+    extends ResolverRoute<TenantAdminAccount, TenantAdminModule> {
   const TenantAdminAccountProfileCreateRoutePage({
     super.key,
     @PathParam('accountSlug') required this.accountSlug,
@@ -12,7 +16,10 @@ class TenantAdminAccountProfileCreateRoutePage extends StatelessWidget {
   final String accountSlug;
 
   @override
-  Widget build(BuildContext context) {
+  RouteResolverParams get resolverParams => {'accountSlug': accountSlug};
+
+  @override
+  Widget buildScreen(BuildContext context, TenantAdminAccount model) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Fluxo indisponível'),
@@ -33,7 +40,7 @@ class TenantAdminAccountProfileCreateRoutePage extends StatelessWidget {
             const SizedBox(height: 16),
             FilledButton(
               onPressed: () => context.router.replace(
-                TenantAdminAccountDetailRoute(accountSlug: accountSlug),
+                TenantAdminAccountDetailRoute(accountSlug: model.slug),
               ),
               child: const Text('Voltar para conta'),
             ),

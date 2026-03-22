@@ -1,23 +1,27 @@
 import 'package:auto_route/auto_route.dart';
+import 'package:belluga_now/application/router/modular_app/modules/tenant_admin_module.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
 import 'package:belluga_now/presentation/tenant_admin/taxonomies/screens/tenant_admin_taxonomy_terms_screen.dart';
 import 'package:flutter/material.dart';
+import 'package:get_it_modular_with_auto_route/get_it_modular_with_auto_route.dart';
 
 @RoutePage(name: 'TenantAdminTaxonomyTermsRoute')
-class TenantAdminTaxonomyTermsRoutePage extends StatelessWidget {
+class TenantAdminTaxonomyTermsRoutePage
+    extends ResolverRoute<TenantAdminTaxonomyDefinition, TenantAdminModule> {
   const TenantAdminTaxonomyTermsRoutePage({
     super.key,
     @PathParam('taxonomyId') required this.taxonomyId,
-    required this.taxonomyName,
   });
 
   final String taxonomyId;
-  final String taxonomyName;
 
   @override
-  Widget build(BuildContext context) {
-    return TenantAdminTaxonomyTermsScreen(
-      taxonomyId: taxonomyId,
-      taxonomyName: taxonomyName,
-    );
-  }
+  RouteResolverParams get resolverParams => {'taxonomyId': taxonomyId};
+
+  @override
+  Widget buildScreen(
+    BuildContext context,
+    TenantAdminTaxonomyDefinition model,
+  ) =>
+      TenantAdminTaxonomyTermsScreen(taxonomy: model);
 }

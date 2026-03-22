@@ -8,17 +8,17 @@ import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value.dart';
 
-enum PartnerFavoriteToggleOutcome {
+enum AccountProfileFavoriteToggleOutcome {
   toggled,
   requiresAuthentication,
 }
 
-class PartnerDetailController implements Disposable {
-  PartnerDetailController({
-    AccountProfilesRepositoryContract? partnersRepository,
+class AccountProfileDetailController implements Disposable {
+  AccountProfileDetailController({
+    AccountProfilesRepositoryContract? accountProfilesRepository,
     PartnerProfileConfigBuilder? profileConfigBuilder,
     AuthRepositoryContract? authRepository,
-  })  : _partnersRepository = partnersRepository ??
+  })  : _accountProfilesRepository = accountProfilesRepository ??
             GetIt.I.get<AccountProfilesRepositoryContract>(),
         _profileConfigBuilder =
             profileConfigBuilder ?? GetIt.I.get<PartnerProfileConfigBuilder>(),
@@ -27,55 +27,65 @@ class PartnerDetailController implements Disposable {
                 ? GetIt.I.get<AuthRepositoryContract>()
                 : null);
 
-  final AccountProfilesRepositoryContract _partnersRepository;
+  final AccountProfilesRepositoryContract _accountProfilesRepository;
   final PartnerProfileConfigBuilder _profileConfigBuilder;
   final AuthRepositoryContract? _authRepository;
 
-  final partnerStreamValue = StreamValue<AccountProfileModel?>();
+  final accountProfileStreamValue = StreamValue<AccountProfileModel?>();
   final isLoadingStreamValue = StreamValue<bool>(defaultValue: false);
   StreamValue<Set<String>> get favoriteIdsStream =>
-      _partnersRepository.favoriteAccountProfileIdsStreamValue;
+      _accountProfilesRepository.favoriteAccountProfileIdsStreamValue;
   final profileConfigStreamValue =
       StreamValue<PartnerProfileConfig?>(defaultValue: null);
   final moduleDataStreamValue =
       StreamValue<Map<ProfileModuleId, Object?>>(defaultValue: const {});
 
-  Future<void> loadPartner(String slug) async {
+  Future<void> loadAccountProfile(String slug) async {
     isLoadingStreamValue.addValue(true);
     try {
-      final partner = await _partnersRepository.getAccountProfileBySlug(slug);
-      partnerStreamValue.addValue(partner);
-      if (partner != null) {
-        final capabilities = _resolveRegistry()?.capabilitiesFor(partner.type);
-        profileConfigStreamValue.addValue(
-          _profileConfigBuilder.build(
-            partner,
-            capabilities: capabilities,
-          ),
-        );
-        moduleDataStreamValue.addValue(_buildModuleData(partner));
+      final accountProfile =
+          await _accountProfilesRepository.getAccountProfileBySlug(slug);
+      if (accountProfile == null) {
+        accountProfileStreamValue.addValue(null);
+        profileConfigStreamValue.addValue(null);
+        moduleDataStreamValue.addValue(const {});
+        return;
       }
+      loadResolvedAccountProfile(accountProfile);
     } finally {
       isLoadingStreamValue.addValue(false);
     }
   }
 
-  PartnerFavoriteToggleOutcome toggleFavorite(String partnerId) {
+  void loadResolvedAccountProfile(AccountProfileModel accountProfile) {
+    accountProfileStreamValue.addValue(accountProfile);
+    final capabilities =
+        _resolveRegistry()?.capabilitiesFor(accountProfile.type);
+    profileConfigStreamValue.addValue(
+      _profileConfigBuilder.build(
+        accountProfile,
+        capabilities: capabilities,
+      ),
+    );
+    moduleDataStreamValue.addValue(_buildModuleData(accountProfile));
+  }
+
+  AccountProfileFavoriteToggleOutcome toggleFavorite(String accountProfileId) {
     if (!_isAuthorized) {
-      return PartnerFavoriteToggleOutcome.requiresAuthentication;
+      return AccountProfileFavoriteToggleOutcome.requiresAuthentication;
     }
-    _partnersRepository.toggleFavorite(partnerId);
-    return PartnerFavoriteToggleOutcome.toggled;
+    _accountProfilesRepository.toggleFavorite(accountProfileId);
+    return AccountProfileFavoriteToggleOutcome.toggled;
   }
 
-  bool isFavorite(String partnerId) {
-    return _partnersRepository.isFavorite(partnerId);
+  bool isFavorite(String accountProfileId) {
+    return _accountProfilesRepository.isFavorite(accountProfileId);
   }
 
-  bool isFavoritable(AccountProfileModel partner) {
+  bool isFavoritable(AccountProfileModel accountProfile) {
     final registry = _resolveRegistry();
     if (registry == null || registry.isEmpty) return false;
-    return registry.isFavoritableFor(partner.type);
+    return registry.isFavoritableFor(accountProfile.type);
   }
 
   ProfileTypeRegistry? _resolveRegistry() {
@@ -87,9 +97,11 @@ class PartnerDetailController implements Disposable {
 
   bool get _isAuthorized => _authRepository?.isAuthorized ?? true;
 
-  Map<ProfileModuleId, Object?> _buildModuleData(AccountProfileModel partner) {
+  Map<ProfileModuleId, Object?> _buildModuleData(
+    AccountProfileModel accountProfile,
+  ) {
     final modules = <ProfileModuleId, Object?>{};
-    final bio = partner.bio?.trim();
+    final bio = accountProfile.bio?.trim();
     if (bio != null && bio.isNotEmpty) {
       modules[ProfileModuleId.richText] = bio;
     }
@@ -98,7 +110,7 @@ class PartnerDetailController implements Disposable {
 
   @override
   void onDispose() {
-    partnerStreamValue.dispose();
+    accountProfileStreamValue.dispose();
     isLoadingStreamValue.dispose();
     profileConfigStreamValue.dispose();
     moduleDataStreamValue.dispose();
