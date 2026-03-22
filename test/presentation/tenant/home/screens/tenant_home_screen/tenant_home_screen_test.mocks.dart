@@ -143,9 +143,19 @@ class _FakeFocusNode_4 extends _i1.SmartFake implements _i3.FocusNode {
       super.toString();
 }
 
-class _FakeFavoriteResume_5 extends _i1.SmartFake
+class _FakeUri_5 extends _i1.SmartFake implements Uri {
+  _FakeUri_5(
+    Object parent,
+    Invocation parentInvocation,
+  ) : super(
+          parent,
+          parentInvocation,
+        );
+}
+
+class _FakeFavoriteResume_6 extends _i1.SmartFake
     implements _i5.FavoriteResume {
-  _FakeFavoriteResume_5(
+  _FakeFavoriteResume_6(
     Object parent,
     Invocation parentInvocation,
   ) : super(
@@ -154,8 +164,8 @@ class _FakeFavoriteResume_5 extends _i1.SmartFake
         );
 }
 
-class _FakeKey_6 extends _i1.SmartFake implements _i3.Key {
-  _FakeKey_6(
+class _FakeKey_7 extends _i1.SmartFake implements _i3.Key {
+  _FakeKey_7(
     Object parent,
     Invocation parentInvocation,
   ) : super(
@@ -164,9 +174,9 @@ class _FakeKey_6 extends _i1.SmartFake implements _i3.Key {
         );
 }
 
-class _FakePendingRoutesHandler_7 extends _i1.SmartFake
+class _FakePendingRoutesHandler_8 extends _i1.SmartFake
     implements _i6.PendingRoutesHandler {
-  _FakePendingRoutesHandler_7(
+  _FakePendingRoutesHandler_8(
     Object parent,
     Invocation parentInvocation,
   ) : super(
@@ -175,9 +185,9 @@ class _FakePendingRoutesHandler_7 extends _i1.SmartFake
         );
 }
 
-class _FakePagelessRoutesObserver_8 extends _i1.SmartFake
+class _FakePagelessRoutesObserver_9 extends _i1.SmartFake
     implements _i6.PagelessRoutesObserver {
-  _FakePagelessRoutesObserver_8(
+  _FakePagelessRoutesObserver_9(
     Object parent,
     Invocation parentInvocation,
   ) : super(
@@ -186,9 +196,9 @@ class _FakePagelessRoutesObserver_8 extends _i1.SmartFake
         );
 }
 
-class _FakeActiveGuardObserver_9 extends _i1.SmartFake
+class _FakeActiveGuardObserver_10 extends _i1.SmartFake
     implements _i6.ActiveGuardObserver {
-  _FakeActiveGuardObserver_9(
+  _FakeActiveGuardObserver_10(
     Object parent,
     Invocation parentInvocation,
   ) : super(
@@ -197,9 +207,9 @@ class _FakeActiveGuardObserver_9 extends _i1.SmartFake
         );
 }
 
-class _FakeGlobalKey_10<T extends _i3.State<_i3.StatefulWidget>>
+class _FakeGlobalKey_11<T extends _i3.State<_i3.StatefulWidget>>
     extends _i1.SmartFake implements _i3.GlobalKey<T> {
-  _FakeGlobalKey_10(
+  _FakeGlobalKey_11(
     Object parent,
     Invocation parentInvocation,
   ) : super(
@@ -208,9 +218,9 @@ class _FakeGlobalKey_10<T extends _i3.State<_i3.StatefulWidget>>
         );
 }
 
-class _FakeRouteCollection_11 extends _i1.SmartFake
+class _FakeRouteCollection_12 extends _i1.SmartFake
     implements _i6.RouteCollection {
-  _FakeRouteCollection_11(
+  _FakeRouteCollection_12(
     Object parent,
     Invocation parentInvocation,
   ) : super(
@@ -219,8 +229,8 @@ class _FakeRouteCollection_11 extends _i1.SmartFake
         );
 }
 
-class _FakeRouteMatcher_12 extends _i1.SmartFake implements _i7.RouteMatcher {
-  _FakeRouteMatcher_12(
+class _FakeRouteMatcher_13 extends _i1.SmartFake implements _i7.RouteMatcher {
+  _FakeRouteMatcher_13(
     Object parent,
     Invocation parentInvocation,
   ) : super(
@@ -229,8 +239,8 @@ class _FakeRouteMatcher_12 extends _i1.SmartFake implements _i7.RouteMatcher {
         );
 }
 
-class _FakeRouteData_13<R> extends _i1.SmartFake implements _i6.RouteData<R> {
-  _FakeRouteData_13(
+class _FakeRouteData_14<R> extends _i1.SmartFake implements _i6.RouteData<R> {
+  _FakeRouteData_14(
     Object parent,
     Invocation parentInvocation,
   ) : super(
@@ -239,9 +249,9 @@ class _FakeRouteData_13<R> extends _i1.SmartFake implements _i6.RouteData<R> {
         );
 }
 
-class _FakeGlobalObjectKey_14<T extends _i3.State<_i3.StatefulWidget>>
+class _FakeGlobalObjectKey_15<T extends _i3.State<_i3.StatefulWidget>>
     extends _i1.SmartFake implements _i3.GlobalObjectKey<T> {
-  _FakeGlobalObjectKey_14(
+  _FakeGlobalObjectKey_15(
     Object parent,
     Invocation parentInvocation,
   ) : super(
@@ -250,9 +260,9 @@ class _FakeGlobalObjectKey_14<T extends _i3.State<_i3.StatefulWidget>>
         );
 }
 
-class _FakeNavigationHistory_15 extends _i1.SmartFake
+class _FakeNavigationHistory_16 extends _i1.SmartFake
     implements _i8.NavigationHistory {
-  _FakeNavigationHistory_15(
+  _FakeNavigationHistory_16(
     Object parent,
     Invocation parentInvocation,
   ) : super(
@@ -261,8 +271,8 @@ class _FakeNavigationHistory_15 extends _i1.SmartFake
         );
 }
 
-class _FakeUrlState_16 extends _i1.SmartFake implements _i6.UrlState {
-  _FakeUrlState_16(
+class _FakeUrlState_17 extends _i1.SmartFake implements _i6.UrlState {
+  _FakeUrlState_17(
     Object parent,
     Invocation parentInvocation,
   ) : super(
@@ -271,9 +281,9 @@ class _FakeUrlState_16 extends _i1.SmartFake implements _i6.UrlState {
         );
 }
 
-class _FakeRootStackRouter_17 extends _i1.SmartFake
+class _FakeRootStackRouter_18 extends _i1.SmartFake
     implements _i6.RootStackRouter {
-  _FakeRootStackRouter_17(
+  _FakeRootStackRouter_18(
     Object parent,
     Invocation parentInvocation,
   ) : super(
@@ -282,8 +292,8 @@ class _FakeRootStackRouter_17 extends _i1.SmartFake
         );
 }
 
-class _FakeRouteMatch_18<T> extends _i1.SmartFake implements _i6.RouteMatch<T> {
-  _FakeRouteMatch_18(
+class _FakeRouteMatch_19<T> extends _i1.SmartFake implements _i6.RouteMatch<T> {
+  _FakeRouteMatch_19(
     Object parent,
     Invocation parentInvocation,
   ) : super(
@@ -292,9 +302,9 @@ class _FakeRouteMatch_18<T> extends _i1.SmartFake implements _i6.RouteMatch<T> {
         );
 }
 
-class _FakeRoutingController_19 extends _i1.SmartFake
+class _FakeRoutingController_20 extends _i1.SmartFake
     implements _i6.RoutingController {
-  _FakeRoutingController_19(
+  _FakeRoutingController_20(
     Object parent,
     Invocation parentInvocation,
   ) : super(
@@ -303,9 +313,9 @@ class _FakeRoutingController_19 extends _i1.SmartFake
         );
 }
 
-class _FakePlatformTypeValue_20 extends _i1.SmartFake
+class _FakePlatformTypeValue_21 extends _i1.SmartFake
     implements _i9.PlatformTypeValue {
-  _FakePlatformTypeValue_20(
+  _FakePlatformTypeValue_21(
     Object parent,
     Invocation parentInvocation,
   ) : super(
@@ -314,9 +324,9 @@ class _FakePlatformTypeValue_20 extends _i1.SmartFake
         );
 }
 
-class _FakeAppDataPortValue_21 extends _i1.SmartFake
+class _FakeAppDataPortValue_22 extends _i1.SmartFake
     implements _i10.AppDataPortValue {
-  _FakeAppDataPortValue_21(
+  _FakeAppDataPortValue_22(
     Object parent,
     Invocation parentInvocation,
   ) : super(
@@ -325,9 +335,9 @@ class _FakeAppDataPortValue_21 extends _i1.SmartFake
         );
 }
 
-class _FakeAppDataHostnameValue_22 extends _i1.SmartFake
+class _FakeAppDataHostnameValue_23 extends _i1.SmartFake
     implements _i11.AppDataHostnameValue {
-  _FakeAppDataHostnameValue_22(
+  _FakeAppDataHostnameValue_23(
     Object parent,
     Invocation parentInvocation,
   ) : super(
@@ -336,9 +346,9 @@ class _FakeAppDataHostnameValue_22 extends _i1.SmartFake
         );
 }
 
-class _FakeAppDataHrefValue_23 extends _i1.SmartFake
+class _FakeAppDataHrefValue_24 extends _i1.SmartFake
     implements _i12.AppDataHrefValue {
-  _FakeAppDataHrefValue_23(
+  _FakeAppDataHrefValue_24(
     Object parent,
     Invocation parentInvocation,
   ) : super(
@@ -347,9 +357,9 @@ class _FakeAppDataHrefValue_23 extends _i1.SmartFake
         );
 }
 
-class _FakeAppDataRequiredTextValue_24 extends _i1.SmartFake
+class _FakeAppDataRequiredTextValue_25 extends _i1.SmartFake
     implements _i13.AppDataRequiredTextValue {
-  _FakeAppDataRequiredTextValue_24(
+  _FakeAppDataRequiredTextValue_25(
     Object parent,
     Invocation parentInvocation,
   ) : super(
@@ -358,9 +368,9 @@ class _FakeAppDataRequiredTextValue_24 extends _i1.SmartFake
         );
 }
 
-class _FakeEnvironmentNameValue_25 extends _i1.SmartFake
+class _FakeEnvironmentNameValue_26 extends _i1.SmartFake
     implements _i14.EnvironmentNameValue {
-  _FakeEnvironmentNameValue_25(
+  _FakeEnvironmentNameValue_26(
     Object parent,
     Invocation parentInvocation,
   ) : super(
@@ -369,9 +379,9 @@ class _FakeEnvironmentNameValue_25 extends _i1.SmartFake
         );
 }
 
-class _FakeEnvironmentTypeValue_26 extends _i1.SmartFake
+class _FakeEnvironmentTypeValue_27 extends _i1.SmartFake
     implements _i15.EnvironmentTypeValue {
-  _FakeEnvironmentTypeValue_26(
+  _FakeEnvironmentTypeValue_27(
     Object parent,
     Invocation parentInvocation,
   ) : super(
@@ -380,9 +390,9 @@ class _FakeEnvironmentTypeValue_26 extends _i1.SmartFake
         );
 }
 
-class _FakeThemeDataSettings_27 extends _i1.SmartFake
+class _FakeThemeDataSettings_28 extends _i1.SmartFake
     implements _i16.ThemeDataSettings {
-  _FakeThemeDataSettings_27(
+  _FakeThemeDataSettings_28(
     Object parent,
     Invocation parentInvocation,
   ) : super(
@@ -391,9 +401,9 @@ class _FakeThemeDataSettings_27 extends _i1.SmartFake
         );
 }
 
-class _FakeTenantIdValue_28 extends _i1.SmartFake
+class _FakeTenantIdValue_29 extends _i1.SmartFake
     implements _i17.TenantIdValue {
-  _FakeTenantIdValue_28(
+  _FakeTenantIdValue_29(
     Object parent,
     Invocation parentInvocation,
   ) : super(
@@ -402,9 +412,9 @@ class _FakeTenantIdValue_28 extends _i1.SmartFake
         );
 }
 
-class _FakeProfileTypeRegistry_29 extends _i1.SmartFake
+class _FakeProfileTypeRegistry_30 extends _i1.SmartFake
     implements _i18.ProfileTypeRegistry {
-  _FakeProfileTypeRegistry_29(
+  _FakeProfileTypeRegistry_30(
     Object parent,
     Invocation parentInvocation,
   ) : super(
@@ -413,8 +423,8 @@ class _FakeProfileTypeRegistry_29 extends _i1.SmartFake
         );
 }
 
-class _FakeDomainValue_30 extends _i1.SmartFake implements _i19.DomainValue {
-  _FakeDomainValue_30(
+class _FakeDomainValue_31 extends _i1.SmartFake implements _i19.DomainValue {
+  _FakeDomainValue_31(
     Object parent,
     Invocation parentInvocation,
   ) : super(
@@ -423,9 +433,9 @@ class _FakeDomainValue_30 extends _i1.SmartFake implements _i19.DomainValue {
         );
 }
 
-class _FakeTelemetrySettings_31 extends _i1.SmartFake
+class _FakeTelemetrySettings_32 extends _i1.SmartFake
     implements _i20.TelemetrySettings {
-  _FakeTelemetrySettings_31(
+  _FakeTelemetrySettings_32(
     Object parent,
     Invocation parentInvocation,
   ) : super(
@@ -434,9 +444,9 @@ class _FakeTelemetrySettings_31 extends _i1.SmartFake
         );
 }
 
-class _FakeTelemetryContextSettings_32 extends _i1.SmartFake
+class _FakeTelemetryContextSettings_33 extends _i1.SmartFake
     implements _i21.TelemetryContextSettings {
-  _FakeTelemetryContextSettings_32(
+  _FakeTelemetryContextSettings_33(
     Object parent,
     Invocation parentInvocation,
   ) : super(
@@ -445,9 +455,9 @@ class _FakeTelemetryContextSettings_32 extends _i1.SmartFake
         );
 }
 
-class _FakeDistanceInMetersValue_33 extends _i1.SmartFake
+class _FakeDistanceInMetersValue_34 extends _i1.SmartFake
     implements _i22.DistanceInMetersValue {
-  _FakeDistanceInMetersValue_33(
+  _FakeDistanceInMetersValue_34(
     Object parent,
     Invocation parentInvocation,
   ) : super(
@@ -456,9 +466,9 @@ class _FakeDistanceInMetersValue_33 extends _i1.SmartFake
         );
 }
 
-class _FakeAppDataMapFilterCatalogKeysValue_34 extends _i1.SmartFake
+class _FakeAppDataMapFilterCatalogKeysValue_35 extends _i1.SmartFake
     implements _i23.AppDataMapFilterCatalogKeysValue {
-  _FakeAppDataMapFilterCatalogKeysValue_34(
+  _FakeAppDataMapFilterCatalogKeysValue_35(
     Object parent,
     Invocation parentInvocation,
   ) : super(
@@ -467,8 +477,8 @@ class _FakeAppDataMapFilterCatalogKeysValue_34 extends _i1.SmartFake
         );
 }
 
-class _FakeIconUrlValue_35 extends _i1.SmartFake implements _i24.IconUrlValue {
-  _FakeIconUrlValue_35(
+class _FakeIconUrlValue_36 extends _i1.SmartFake implements _i24.IconUrlValue {
+  _FakeIconUrlValue_36(
     Object parent,
     Invocation parentInvocation,
   ) : super(
@@ -477,9 +487,9 @@ class _FakeIconUrlValue_35 extends _i1.SmartFake implements _i24.IconUrlValue {
         );
 }
 
-class _FakeMainColorValue_36 extends _i1.SmartFake
+class _FakeMainColorValue_37 extends _i1.SmartFake
     implements _i25.MainColorValue {
-  _FakeMainColorValue_36(
+  _FakeMainColorValue_37(
     Object parent,
     Invocation parentInvocation,
   ) : super(
@@ -488,9 +498,9 @@ class _FakeMainColorValue_36 extends _i1.SmartFake
         );
 }
 
-class _FakeMainLogoUrlValue_37 extends _i1.SmartFake
+class _FakeMainLogoUrlValue_38 extends _i1.SmartFake
     implements _i26.MainLogoUrlValue {
-  _FakeMainLogoUrlValue_37(
+  _FakeMainLogoUrlValue_38(
     Object parent,
     Invocation parentInvocation,
   ) : super(
@@ -770,6 +780,19 @@ class MockTenantHomeAgendaController extends _i1.Mock
       ) as double);
 
   @override
+  Uri get defaultEventImageUri => (super.noSuchMethod(
+        Invocation.getter(#defaultEventImageUri),
+        returnValue: _FakeUri_5(
+          this,
+          Invocation.getter(#defaultEventImageUri),
+        ),
+        returnValueForMissingStub: _FakeUri_5(
+          this,
+          Invocation.getter(#defaultEventImageUri),
+        ),
+      ) as Uri);
+
+  @override
   _i29.Future<void> init({bool? startWithHistory = false}) =>
       (super.noSuchMethod(
         Invocation.method(
@@ -954,14 +977,14 @@ class MockFavoritesSectionController extends _i1.Mock
           #buildPinnedFavorite,
           [],
         ),
-        returnValue: _FakeFavoriteResume_5(
+        returnValue: _FakeFavoriteResume_6(
           this,
           Invocation.method(
             #buildPinnedFavorite,
             [],
           ),
         ),
-        returnValueForMissingStub: _FakeFavoriteResume_5(
+        returnValueForMissingStub: _FakeFavoriteResume_6(
           this,
           Invocation.method(
             #buildPinnedFavorite,
@@ -1061,11 +1084,11 @@ class MockStackRouter extends _i1.Mock implements _i6.StackRouter {
   @override
   _i3.Key get key => (super.noSuchMethod(
         Invocation.getter(#key),
-        returnValue: _FakeKey_6(
+        returnValue: _FakeKey_7(
           this,
           Invocation.getter(#key),
         ),
-        returnValueForMissingStub: _FakeKey_6(
+        returnValueForMissingStub: _FakeKey_7(
           this,
           Invocation.getter(#key),
         ),
@@ -1074,11 +1097,11 @@ class MockStackRouter extends _i1.Mock implements _i6.StackRouter {
   @override
   _i3.Key get matchId => (super.noSuchMethod(
         Invocation.getter(#matchId),
-        returnValue: _FakeKey_6(
+        returnValue: _FakeKey_7(
           this,
           Invocation.getter(#matchId),
         ),
-        returnValueForMissingStub: _FakeKey_6(
+        returnValueForMissingStub: _FakeKey_7(
           this,
           Invocation.getter(#matchId),
         ),
@@ -1087,11 +1110,11 @@ class MockStackRouter extends _i1.Mock implements _i6.StackRouter {
   @override
   _i6.PendingRoutesHandler get pendingRoutesHandler => (super.noSuchMethod(
         Invocation.getter(#pendingRoutesHandler),
-        returnValue: _FakePendingRoutesHandler_7(
+        returnValue: _FakePendingRoutesHandler_8(
           this,
           Invocation.getter(#pendingRoutesHandler),
         ),
-        returnValueForMissingStub: _FakePendingRoutesHandler_7(
+        returnValueForMissingStub: _FakePendingRoutesHandler_8(
           this,
           Invocation.getter(#pendingRoutesHandler),
         ),
@@ -1107,11 +1130,11 @@ class MockStackRouter extends _i1.Mock implements _i6.StackRouter {
   @override
   _i6.PagelessRoutesObserver get pagelessRoutesObserver => (super.noSuchMethod(
         Invocation.getter(#pagelessRoutesObserver),
-        returnValue: _FakePagelessRoutesObserver_8(
+        returnValue: _FakePagelessRoutesObserver_9(
           this,
           Invocation.getter(#pagelessRoutesObserver),
         ),
-        returnValueForMissingStub: _FakePagelessRoutesObserver_8(
+        returnValueForMissingStub: _FakePagelessRoutesObserver_9(
           this,
           Invocation.getter(#pagelessRoutesObserver),
         ),
@@ -1120,11 +1143,11 @@ class MockStackRouter extends _i1.Mock implements _i6.StackRouter {
   @override
   _i6.ActiveGuardObserver get activeGuardObserver => (super.noSuchMethod(
         Invocation.getter(#activeGuardObserver),
-        returnValue: _FakeActiveGuardObserver_9(
+        returnValue: _FakeActiveGuardObserver_10(
           this,
           Invocation.getter(#activeGuardObserver),
         ),
-        returnValueForMissingStub: _FakeActiveGuardObserver_9(
+        returnValueForMissingStub: _FakeActiveGuardObserver_10(
           this,
           Invocation.getter(#activeGuardObserver),
         ),
@@ -1133,11 +1156,11 @@ class MockStackRouter extends _i1.Mock implements _i6.StackRouter {
   @override
   _i3.GlobalKey<_i3.NavigatorState> get navigatorKey => (super.noSuchMethod(
         Invocation.getter(#navigatorKey),
-        returnValue: _FakeGlobalKey_10<_i3.NavigatorState>(
+        returnValue: _FakeGlobalKey_11<_i3.NavigatorState>(
           this,
           Invocation.getter(#navigatorKey),
         ),
-        returnValueForMissingStub: _FakeGlobalKey_10<_i3.NavigatorState>(
+        returnValueForMissingStub: _FakeGlobalKey_11<_i3.NavigatorState>(
           this,
           Invocation.getter(#navigatorKey),
         ),
@@ -1146,11 +1169,11 @@ class MockStackRouter extends _i1.Mock implements _i6.StackRouter {
   @override
   _i6.RouteCollection get routeCollection => (super.noSuchMethod(
         Invocation.getter(#routeCollection),
-        returnValue: _FakeRouteCollection_11(
+        returnValue: _FakeRouteCollection_12(
           this,
           Invocation.getter(#routeCollection),
         ),
-        returnValueForMissingStub: _FakeRouteCollection_11(
+        returnValueForMissingStub: _FakeRouteCollection_12(
           this,
           Invocation.getter(#routeCollection),
         ),
@@ -1159,11 +1182,11 @@ class MockStackRouter extends _i1.Mock implements _i6.StackRouter {
   @override
   _i7.RouteMatcher get matcher => (super.noSuchMethod(
         Invocation.getter(#matcher),
-        returnValue: _FakeRouteMatcher_12(
+        returnValue: _FakeRouteMatcher_13(
           this,
           Invocation.getter(#matcher),
         ),
-        returnValueForMissingStub: _FakeRouteMatcher_12(
+        returnValueForMissingStub: _FakeRouteMatcher_13(
           this,
           Invocation.getter(#matcher),
         ),
@@ -1172,11 +1195,11 @@ class MockStackRouter extends _i1.Mock implements _i6.StackRouter {
   @override
   _i6.RouteData<dynamic> get current => (super.noSuchMethod(
         Invocation.getter(#current),
-        returnValue: _FakeRouteData_13<dynamic>(
+        returnValue: _FakeRouteData_14<dynamic>(
           this,
           Invocation.getter(#current),
         ),
-        returnValueForMissingStub: _FakeRouteData_13<dynamic>(
+        returnValueForMissingStub: _FakeRouteData_14<dynamic>(
           this,
           Invocation.getter(#current),
         ),
@@ -1185,11 +1208,11 @@ class MockStackRouter extends _i1.Mock implements _i6.StackRouter {
   @override
   _i6.RouteData<dynamic> get topRoute => (super.noSuchMethod(
         Invocation.getter(#topRoute),
-        returnValue: _FakeRouteData_13<dynamic>(
+        returnValue: _FakeRouteData_14<dynamic>(
           this,
           Invocation.getter(#topRoute),
         ),
-        returnValueForMissingStub: _FakeRouteData_13<dynamic>(
+        returnValueForMissingStub: _FakeRouteData_14<dynamic>(
           this,
           Invocation.getter(#topRoute),
         ),
@@ -1220,12 +1243,12 @@ class MockStackRouter extends _i1.Mock implements _i6.StackRouter {
   _i3.GlobalObjectKey<_i3.State<_i3.StatefulWidget>> get globalRouterKey =>
       (super.noSuchMethod(
         Invocation.getter(#globalRouterKey),
-        returnValue: _FakeGlobalObjectKey_14<_i3.State<_i3.StatefulWidget>>(
+        returnValue: _FakeGlobalObjectKey_15<_i3.State<_i3.StatefulWidget>>(
           this,
           Invocation.getter(#globalRouterKey),
         ),
         returnValueForMissingStub:
-            _FakeGlobalObjectKey_14<_i3.State<_i3.StatefulWidget>>(
+            _FakeGlobalObjectKey_15<_i3.State<_i3.StatefulWidget>>(
           this,
           Invocation.getter(#globalRouterKey),
         ),
@@ -1241,11 +1264,11 @@ class MockStackRouter extends _i1.Mock implements _i6.StackRouter {
   @override
   _i8.NavigationHistory get navigationHistory => (super.noSuchMethod(
         Invocation.getter(#navigationHistory),
-        returnValue: _FakeNavigationHistory_15(
+        returnValue: _FakeNavigationHistory_16(
           this,
           Invocation.getter(#navigationHistory),
         ),
-        returnValueForMissingStub: _FakeNavigationHistory_15(
+        returnValueForMissingStub: _FakeNavigationHistory_16(
           this,
           Invocation.getter(#navigationHistory),
         ),
@@ -1254,11 +1277,11 @@ class MockStackRouter extends _i1.Mock implements _i6.StackRouter {
   @override
   _i6.UrlState get urlState => (super.noSuchMethod(
         Invocation.getter(#urlState),
-        returnValue: _FakeUrlState_16(
+        returnValue: _FakeUrlState_17(
           this,
           Invocation.getter(#urlState),
         ),
-        returnValueForMissingStub: _FakeUrlState_16(
+        returnValueForMissingStub: _FakeUrlState_17(
           this,
           Invocation.getter(#urlState),
         ),
@@ -1321,11 +1344,11 @@ class MockStackRouter extends _i1.Mock implements _i6.StackRouter {
   @override
   _i6.RootStackRouter get root => (super.noSuchMethod(
         Invocation.getter(#root),
-        returnValue: _FakeRootStackRouter_17(
+        returnValue: _FakeRootStackRouter_18(
           this,
           Invocation.getter(#root),
         ),
-        returnValueForMissingStub: _FakeRootStackRouter_17(
+        returnValueForMissingStub: _FakeRootStackRouter_18(
           this,
           Invocation.getter(#root),
         ),
@@ -1341,11 +1364,11 @@ class MockStackRouter extends _i1.Mock implements _i6.StackRouter {
   @override
   _i6.RouteMatch<dynamic> get topMatch => (super.noSuchMethod(
         Invocation.getter(#topMatch),
-        returnValue: _FakeRouteMatch_18<dynamic>(
+        returnValue: _FakeRouteMatch_19<dynamic>(
           this,
           Invocation.getter(#topMatch),
         ),
-        returnValueForMissingStub: _FakeRouteMatch_18<dynamic>(
+        returnValueForMissingStub: _FakeRouteMatch_19<dynamic>(
           this,
           Invocation.getter(#topMatch),
         ),
@@ -1354,11 +1377,11 @@ class MockStackRouter extends _i1.Mock implements _i6.StackRouter {
   @override
   _i6.RouteData<dynamic> get routeData => (super.noSuchMethod(
         Invocation.getter(#routeData),
-        returnValue: _FakeRouteData_13<dynamic>(
+        returnValue: _FakeRouteData_14<dynamic>(
           this,
           Invocation.getter(#routeData),
         ),
-        returnValueForMissingStub: _FakeRouteData_13<dynamic>(
+        returnValueForMissingStub: _FakeRouteData_14<dynamic>(
           this,
           Invocation.getter(#routeData),
         ),
@@ -1968,7 +1991,7 @@ class MockStackRouter extends _i1.Mock implements _i6.StackRouter {
           [],
           {#ignorePagelessRoutes: ignorePagelessRoutes},
         ),
-        returnValue: _FakeRoutingController_19(
+        returnValue: _FakeRoutingController_20(
           this,
           Invocation.method(
             #topMostRouter,
@@ -1976,7 +1999,7 @@ class MockStackRouter extends _i1.Mock implements _i6.StackRouter {
             {#ignorePagelessRoutes: ignorePagelessRoutes},
           ),
         ),
-        returnValueForMissingStub: _FakeRoutingController_19(
+        returnValueForMissingStub: _FakeRoutingController_20(
           this,
           Invocation.method(
             #topMostRouter,
@@ -2210,11 +2233,11 @@ class MockAppData extends _i1.Mock implements _i4.AppData {
   @override
   _i9.PlatformTypeValue get platformType => (super.noSuchMethod(
         Invocation.getter(#platformType),
-        returnValue: _FakePlatformTypeValue_20(
+        returnValue: _FakePlatformTypeValue_21(
           this,
           Invocation.getter(#platformType),
         ),
-        returnValueForMissingStub: _FakePlatformTypeValue_20(
+        returnValueForMissingStub: _FakePlatformTypeValue_21(
           this,
           Invocation.getter(#platformType),
         ),
@@ -2223,11 +2246,11 @@ class MockAppData extends _i1.Mock implements _i4.AppData {
   @override
   _i10.AppDataPortValue get portValue => (super.noSuchMethod(
         Invocation.getter(#portValue),
-        returnValue: _FakeAppDataPortValue_21(
+        returnValue: _FakeAppDataPortValue_22(
           this,
           Invocation.getter(#portValue),
         ),
-        returnValueForMissingStub: _FakeAppDataPortValue_21(
+        returnValueForMissingStub: _FakeAppDataPortValue_22(
           this,
           Invocation.getter(#portValue),
         ),
@@ -2236,11 +2259,11 @@ class MockAppData extends _i1.Mock implements _i4.AppData {
   @override
   _i11.AppDataHostnameValue get hostnameValue => (super.noSuchMethod(
         Invocation.getter(#hostnameValue),
-        returnValue: _FakeAppDataHostnameValue_22(
+        returnValue: _FakeAppDataHostnameValue_23(
           this,
           Invocation.getter(#hostnameValue),
         ),
-        returnValueForMissingStub: _FakeAppDataHostnameValue_22(
+        returnValueForMissingStub: _FakeAppDataHostnameValue_23(
           this,
           Invocation.getter(#hostnameValue),
         ),
@@ -2249,11 +2272,11 @@ class MockAppData extends _i1.Mock implements _i4.AppData {
   @override
   _i12.AppDataHrefValue get hrefValue => (super.noSuchMethod(
         Invocation.getter(#hrefValue),
-        returnValue: _FakeAppDataHrefValue_23(
+        returnValue: _FakeAppDataHrefValue_24(
           this,
           Invocation.getter(#hrefValue),
         ),
-        returnValueForMissingStub: _FakeAppDataHrefValue_23(
+        returnValueForMissingStub: _FakeAppDataHrefValue_24(
           this,
           Invocation.getter(#hrefValue),
         ),
@@ -2262,11 +2285,11 @@ class MockAppData extends _i1.Mock implements _i4.AppData {
   @override
   _i13.AppDataRequiredTextValue get deviceValue => (super.noSuchMethod(
         Invocation.getter(#deviceValue),
-        returnValue: _FakeAppDataRequiredTextValue_24(
+        returnValue: _FakeAppDataRequiredTextValue_25(
           this,
           Invocation.getter(#deviceValue),
         ),
-        returnValueForMissingStub: _FakeAppDataRequiredTextValue_24(
+        returnValueForMissingStub: _FakeAppDataRequiredTextValue_25(
           this,
           Invocation.getter(#deviceValue),
         ),
@@ -2275,11 +2298,11 @@ class MockAppData extends _i1.Mock implements _i4.AppData {
   @override
   _i14.EnvironmentNameValue get nameValue => (super.noSuchMethod(
         Invocation.getter(#nameValue),
-        returnValue: _FakeEnvironmentNameValue_25(
+        returnValue: _FakeEnvironmentNameValue_26(
           this,
           Invocation.getter(#nameValue),
         ),
-        returnValueForMissingStub: _FakeEnvironmentNameValue_25(
+        returnValueForMissingStub: _FakeEnvironmentNameValue_26(
           this,
           Invocation.getter(#nameValue),
         ),
@@ -2288,11 +2311,11 @@ class MockAppData extends _i1.Mock implements _i4.AppData {
   @override
   _i15.EnvironmentTypeValue get typeValue => (super.noSuchMethod(
         Invocation.getter(#typeValue),
-        returnValue: _FakeEnvironmentTypeValue_26(
+        returnValue: _FakeEnvironmentTypeValue_27(
           this,
           Invocation.getter(#typeValue),
         ),
-        returnValueForMissingStub: _FakeEnvironmentTypeValue_26(
+        returnValueForMissingStub: _FakeEnvironmentTypeValue_27(
           this,
           Invocation.getter(#typeValue),
         ),
@@ -2301,11 +2324,11 @@ class MockAppData extends _i1.Mock implements _i4.AppData {
   @override
   _i16.ThemeDataSettings get themeDataSettings => (super.noSuchMethod(
         Invocation.getter(#themeDataSettings),
-        returnValue: _FakeThemeDataSettings_27(
+        returnValue: _FakeThemeDataSettings_28(
           this,
           Invocation.getter(#themeDataSettings),
         ),
-        returnValueForMissingStub: _FakeThemeDataSettings_27(
+        returnValueForMissingStub: _FakeThemeDataSettings_28(
           this,
           Invocation.getter(#themeDataSettings),
         ),
@@ -2314,11 +2337,11 @@ class MockAppData extends _i1.Mock implements _i4.AppData {
   @override
   _i17.TenantIdValue get tenantIdValue => (super.noSuchMethod(
         Invocation.getter(#tenantIdValue),
-        returnValue: _FakeTenantIdValue_28(
+        returnValue: _FakeTenantIdValue_29(
           this,
           Invocation.getter(#tenantIdValue),
         ),
-        returnValueForMissingStub: _FakeTenantIdValue_28(
+        returnValueForMissingStub: _FakeTenantIdValue_29(
           this,
           Invocation.getter(#tenantIdValue),
         ),
@@ -2327,11 +2350,11 @@ class MockAppData extends _i1.Mock implements _i4.AppData {
   @override
   _i18.ProfileTypeRegistry get profileTypeRegistry => (super.noSuchMethod(
         Invocation.getter(#profileTypeRegistry),
-        returnValue: _FakeProfileTypeRegistry_29(
+        returnValue: _FakeProfileTypeRegistry_30(
           this,
           Invocation.getter(#profileTypeRegistry),
         ),
-        returnValueForMissingStub: _FakeProfileTypeRegistry_29(
+        returnValueForMissingStub: _FakeProfileTypeRegistry_30(
           this,
           Invocation.getter(#profileTypeRegistry),
         ),
@@ -2340,11 +2363,11 @@ class MockAppData extends _i1.Mock implements _i4.AppData {
   @override
   _i19.DomainValue get mainDomainValue => (super.noSuchMethod(
         Invocation.getter(#mainDomainValue),
-        returnValue: _FakeDomainValue_30(
+        returnValue: _FakeDomainValue_31(
           this,
           Invocation.getter(#mainDomainValue),
         ),
-        returnValueForMissingStub: _FakeDomainValue_30(
+        returnValueForMissingStub: _FakeDomainValue_31(
           this,
           Invocation.getter(#mainDomainValue),
         ),
@@ -2360,11 +2383,11 @@ class MockAppData extends _i1.Mock implements _i4.AppData {
   @override
   _i20.TelemetrySettings get telemetrySettings => (super.noSuchMethod(
         Invocation.getter(#telemetrySettings),
-        returnValue: _FakeTelemetrySettings_31(
+        returnValue: _FakeTelemetrySettings_32(
           this,
           Invocation.getter(#telemetrySettings),
         ),
-        returnValueForMissingStub: _FakeTelemetrySettings_31(
+        returnValueForMissingStub: _FakeTelemetrySettings_32(
           this,
           Invocation.getter(#telemetrySettings),
         ),
@@ -2374,11 +2397,11 @@ class MockAppData extends _i1.Mock implements _i4.AppData {
   _i21.TelemetryContextSettings get telemetryContextSettings =>
       (super.noSuchMethod(
         Invocation.getter(#telemetryContextSettings),
-        returnValue: _FakeTelemetryContextSettings_32(
+        returnValue: _FakeTelemetryContextSettings_33(
           this,
           Invocation.getter(#telemetryContextSettings),
         ),
-        returnValueForMissingStub: _FakeTelemetryContextSettings_32(
+        returnValueForMissingStub: _FakeTelemetryContextSettings_33(
           this,
           Invocation.getter(#telemetryContextSettings),
         ),
@@ -2387,11 +2410,11 @@ class MockAppData extends _i1.Mock implements _i4.AppData {
   @override
   _i22.DistanceInMetersValue get mapRadiusMinMetersValue => (super.noSuchMethod(
         Invocation.getter(#mapRadiusMinMetersValue),
-        returnValue: _FakeDistanceInMetersValue_33(
+        returnValue: _FakeDistanceInMetersValue_34(
           this,
           Invocation.getter(#mapRadiusMinMetersValue),
         ),
-        returnValueForMissingStub: _FakeDistanceInMetersValue_33(
+        returnValueForMissingStub: _FakeDistanceInMetersValue_34(
           this,
           Invocation.getter(#mapRadiusMinMetersValue),
         ),
@@ -2401,11 +2424,11 @@ class MockAppData extends _i1.Mock implements _i4.AppData {
   _i22.DistanceInMetersValue get mapRadiusDefaultMetersValue =>
       (super.noSuchMethod(
         Invocation.getter(#mapRadiusDefaultMetersValue),
-        returnValue: _FakeDistanceInMetersValue_33(
+        returnValue: _FakeDistanceInMetersValue_34(
           this,
           Invocation.getter(#mapRadiusDefaultMetersValue),
         ),
-        returnValueForMissingStub: _FakeDistanceInMetersValue_33(
+        returnValueForMissingStub: _FakeDistanceInMetersValue_34(
           this,
           Invocation.getter(#mapRadiusDefaultMetersValue),
         ),
@@ -2414,11 +2437,11 @@ class MockAppData extends _i1.Mock implements _i4.AppData {
   @override
   _i22.DistanceInMetersValue get mapRadiusMaxMetersValue => (super.noSuchMethod(
         Invocation.getter(#mapRadiusMaxMetersValue),
-        returnValue: _FakeDistanceInMetersValue_33(
+        returnValue: _FakeDistanceInMetersValue_34(
           this,
           Invocation.getter(#mapRadiusMaxMetersValue),
         ),
-        returnValueForMissingStub: _FakeDistanceInMetersValue_33(
+        returnValueForMissingStub: _FakeDistanceInMetersValue_34(
           this,
           Invocation.getter(#mapRadiusMaxMetersValue),
         ),
@@ -2428,11 +2451,11 @@ class MockAppData extends _i1.Mock implements _i4.AppData {
   _i23.AppDataMapFilterCatalogKeysValue get mapFilterCatalogKeysValue =>
       (super.noSuchMethod(
         Invocation.getter(#mapFilterCatalogKeysValue),
-        returnValue: _FakeAppDataMapFilterCatalogKeysValue_34(
+        returnValue: _FakeAppDataMapFilterCatalogKeysValue_35(
           this,
           Invocation.getter(#mapFilterCatalogKeysValue),
         ),
-        returnValueForMissingStub: _FakeAppDataMapFilterCatalogKeysValue_34(
+        returnValueForMissingStub: _FakeAppDataMapFilterCatalogKeysValue_35(
           this,
           Invocation.getter(#mapFilterCatalogKeysValue),
         ),
@@ -2441,11 +2464,11 @@ class MockAppData extends _i1.Mock implements _i4.AppData {
   @override
   _i24.IconUrlValue get mainIconLightUrl => (super.noSuchMethod(
         Invocation.getter(#mainIconLightUrl),
-        returnValue: _FakeIconUrlValue_35(
+        returnValue: _FakeIconUrlValue_36(
           this,
           Invocation.getter(#mainIconLightUrl),
         ),
-        returnValueForMissingStub: _FakeIconUrlValue_35(
+        returnValueForMissingStub: _FakeIconUrlValue_36(
           this,
           Invocation.getter(#mainIconLightUrl),
         ),
@@ -2454,11 +2477,11 @@ class MockAppData extends _i1.Mock implements _i4.AppData {
   @override
   _i24.IconUrlValue get mainIconDarkUrl => (super.noSuchMethod(
         Invocation.getter(#mainIconDarkUrl),
-        returnValue: _FakeIconUrlValue_35(
+        returnValue: _FakeIconUrlValue_36(
           this,
           Invocation.getter(#mainIconDarkUrl),
         ),
-        returnValueForMissingStub: _FakeIconUrlValue_35(
+        returnValueForMissingStub: _FakeIconUrlValue_36(
           this,
           Invocation.getter(#mainIconDarkUrl),
         ),
@@ -2467,11 +2490,11 @@ class MockAppData extends _i1.Mock implements _i4.AppData {
   @override
   _i25.MainColorValue get mainColor => (super.noSuchMethod(
         Invocation.getter(#mainColor),
-        returnValue: _FakeMainColorValue_36(
+        returnValue: _FakeMainColorValue_37(
           this,
           Invocation.getter(#mainColor),
         ),
-        returnValueForMissingStub: _FakeMainColorValue_36(
+        returnValueForMissingStub: _FakeMainColorValue_37(
           this,
           Invocation.getter(#mainColor),
         ),
@@ -2480,11 +2503,11 @@ class MockAppData extends _i1.Mock implements _i4.AppData {
   @override
   _i26.MainLogoUrlValue get mainLogoLightUrl => (super.noSuchMethod(
         Invocation.getter(#mainLogoLightUrl),
-        returnValue: _FakeMainLogoUrlValue_37(
+        returnValue: _FakeMainLogoUrlValue_38(
           this,
           Invocation.getter(#mainLogoLightUrl),
         ),
-        returnValueForMissingStub: _FakeMainLogoUrlValue_37(
+        returnValueForMissingStub: _FakeMainLogoUrlValue_38(
           this,
           Invocation.getter(#mainLogoLightUrl),
         ),
@@ -2493,11 +2516,11 @@ class MockAppData extends _i1.Mock implements _i4.AppData {
   @override
   _i26.MainLogoUrlValue get mainLogoDarkUrl => (super.noSuchMethod(
         Invocation.getter(#mainLogoDarkUrl),
-        returnValue: _FakeMainLogoUrlValue_37(
+        returnValue: _FakeMainLogoUrlValue_38(
           this,
           Invocation.getter(#mainLogoDarkUrl),
         ),
-        returnValueForMissingStub: _FakeMainLogoUrlValue_37(
+        returnValueForMissingStub: _FakeMainLogoUrlValue_38(
           this,
           Invocation.getter(#mainLogoDarkUrl),
         ),
@@ -2580,11 +2603,11 @@ class MockAppData extends _i1.Mock implements _i4.AppData {
   @override
   _i24.IconUrlValue get iconUrl => (super.noSuchMethod(
         Invocation.getter(#iconUrl),
-        returnValue: _FakeIconUrlValue_35(
+        returnValue: _FakeIconUrlValue_36(
           this,
           Invocation.getter(#iconUrl),
         ),
-        returnValueForMissingStub: _FakeIconUrlValue_35(
+        returnValueForMissingStub: _FakeIconUrlValue_36(
           this,
           Invocation.getter(#iconUrl),
         ),
@@ -2593,11 +2616,11 @@ class MockAppData extends _i1.Mock implements _i4.AppData {
   @override
   _i26.MainLogoUrlValue get mainLogoUrl => (super.noSuchMethod(
         Invocation.getter(#mainLogoUrl),
-        returnValue: _FakeMainLogoUrlValue_37(
+        returnValue: _FakeMainLogoUrlValue_38(
           this,
           Invocation.getter(#mainLogoUrl),
         ),
-        returnValueForMissingStub: _FakeMainLogoUrlValue_37(
+        returnValueForMissingStub: _FakeMainLogoUrlValue_38(
           this,
           Invocation.getter(#mainLogoUrl),
         ),

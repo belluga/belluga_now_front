@@ -119,9 +119,11 @@ class LaravelScheduleBackend implements ScheduleBackendContract {
       'confirmed_only': confirmedOnly ? 1 : 0,
     };
 
-    final ignoredSearchQuery = searchQuery?.trim();
-    if (ignoredSearchQuery != null && ignoredSearchQuery.isNotEmpty) {
-      // MVP contract: agenda/events listing does not accept text search.
+    final normalizedSearchQuery = searchQuery?.trim();
+    final hasSearchQuery =
+        normalizedSearchQuery != null && normalizedSearchQuery.isNotEmpty;
+    if (hasSearchQuery) {
+      params['search'] = normalizedSearchQuery;
     }
     if (categories != null && categories.isNotEmpty) {
       params['categories'] = categories;
@@ -132,7 +134,7 @@ class LaravelScheduleBackend implements ScheduleBackendContract {
     if (taxonomy != null && taxonomy.isNotEmpty) {
       params['taxonomy'] = taxonomy;
     }
-    if (originLat != null && originLng != null) {
+    if (!hasSearchQuery && originLat != null && originLng != null) {
       params['origin_lat'] = originLat;
       params['origin_lng'] = originLng;
       if (maxDistanceMeters != null) {
@@ -190,9 +192,11 @@ class LaravelScheduleBackend implements ScheduleBackendContract {
 
     addParam('past_only', showPastOnly ? '1' : '0');
     addParam('confirmed_only', confirmedOnly ? '1' : '0');
-    final ignoredSearchQuery = searchQuery?.trim();
-    if (ignoredSearchQuery != null && ignoredSearchQuery.isNotEmpty) {
-      // MVP contract: agenda/events stream does not accept text search.
+    final normalizedSearchQuery = searchQuery?.trim();
+    final hasSearchQuery =
+        normalizedSearchQuery != null && normalizedSearchQuery.isNotEmpty;
+    if (hasSearchQuery) {
+      addParam('search', normalizedSearchQuery);
     }
     if (categories != null && categories.isNotEmpty) {
       for (final category in categories) {
@@ -216,7 +220,7 @@ class LaravelScheduleBackend implements ScheduleBackendContract {
         addParam('taxonomy[$index][value]', value);
       }
     }
-    if (originLat != null && originLng != null) {
+    if (!hasSearchQuery && originLat != null && originLng != null) {
       addParam('origin_lat', originLat.toString());
       addParam('origin_lng', originLng.toString());
       if (maxDistanceMeters != null) {

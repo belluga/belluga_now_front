@@ -149,7 +149,6 @@ class _TenantAdminProfileTypeDetailScreenState
                             context.router.push(
                               TenantAdminProfileTypeEditRoute(
                                 profileType: definition.type,
-                                definition: definition,
                               ),
                             );
                           },

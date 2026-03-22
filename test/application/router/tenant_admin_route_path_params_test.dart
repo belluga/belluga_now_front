@@ -1,8 +1,4 @@
 import 'package:belluga_now/application/router/app_router.gr.dart';
-import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
-import 'package:belluga_now/domain/tenant_admin/tenant_admin_static_profile_type.dart';
-import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
-import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_definition.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -47,50 +43,17 @@ void main() {
     });
 
     test('profile type routes encode profileType path param', () {
-      const profileDefinition = TenantAdminProfileTypeDefinition(
-        type: 'artist',
-        label: 'Artist',
-        allowedTaxonomies: [],
-        capabilities: TenantAdminProfileTypeCapabilities(
-          isFavoritable: false,
-          isPoiEnabled: false,
-          hasBio: true,
-          hasContent: true,
-          hasTaxonomies: true,
-          hasAvatar: true,
-          hasCover: true,
-          hasEvents: true,
-        ),
-      );
-      const staticDefinition = TenantAdminStaticProfileTypeDefinition(
-        type: 'poi',
-        label: 'POI',
-        allowedTaxonomies: [],
-        capabilities: TenantAdminStaticProfileTypeCapabilities(
-          isPoiEnabled: true,
-          hasBio: true,
-          hasTaxonomies: true,
-          hasAvatar: true,
-          hasCover: true,
-          hasContent: true,
-        ),
-      );
-
       final profileRoute = TenantAdminProfileTypeDetailRoute(
         profileType: 'artist',
-        definition: profileDefinition,
       );
       final profileEditRoute = TenantAdminProfileTypeEditRoute(
         profileType: 'artist',
-        definition: profileDefinition,
       );
       final staticDetailRoute = TenantAdminStaticProfileTypeDetailRoute(
         profileType: 'poi',
-        definition: staticDefinition,
       );
       final staticRoute = TenantAdminStaticProfileTypeEditRoute(
         profileType: 'poi',
-        definition: staticDefinition,
       );
 
       expect(profileRoute.rawPathParams, {'profileType': 'artist'});
@@ -104,57 +67,38 @@ void main() {
     });
 
     test('taxonomy routes encode taxonomyId and termId path params', () {
-      const taxonomy = TenantAdminTaxonomyDefinition(
-        id: 'taxonomy-1',
-        slug: 'music-style',
-        name: 'Music Style',
-        appliesTo: ['account_profiles'],
-        icon: null,
-        color: null,
-      );
-      const term = TenantAdminTaxonomyTermDefinition(
-        id: 'term-77',
-        taxonomyId: 'taxonomy-1',
-        slug: 'rock',
-        name: 'Rock',
-      );
+      const taxonomyId = 'taxonomy-1';
+      const termId = 'term-77';
 
       final taxonomyEdit = TenantAdminTaxonomyEditRoute(
-        taxonomyId: taxonomy.id,
-        taxonomy: taxonomy,
+        taxonomyId: taxonomyId,
       );
       final taxonomyTerms = TenantAdminTaxonomyTermsRoute(
-        taxonomyId: taxonomy.id,
-        taxonomyName: taxonomy.name,
+        taxonomyId: taxonomyId,
       );
       final termDetail = TenantAdminTaxonomyTermDetailRoute(
-        taxonomyId: taxonomy.id,
-        taxonomyName: taxonomy.name,
-        termId: term.id,
-        term: term,
+        taxonomyId: taxonomyId,
+        termId: termId,
       );
       final termEdit = TenantAdminTaxonomyTermEditRoute(
-        taxonomyId: taxonomy.id,
-        taxonomyName: taxonomy.name,
-        termId: term.id,
-        term: term,
+        taxonomyId: taxonomyId,
+        termId: termId,
       );
       final termCreate = TenantAdminTaxonomyTermCreateRoute(
-        taxonomyId: taxonomy.id,
-        taxonomyName: taxonomy.name,
+        taxonomyId: taxonomyId,
       );
 
-      expect(taxonomyEdit.rawPathParams, {'taxonomyId': taxonomy.id});
-      expect(taxonomyTerms.rawPathParams, {'taxonomyId': taxonomy.id});
+      expect(taxonomyEdit.rawPathParams, {'taxonomyId': taxonomyId});
+      expect(taxonomyTerms.rawPathParams, {'taxonomyId': taxonomyId});
       expect(termDetail.rawPathParams, {
-        'taxonomyId': taxonomy.id,
-        'termId': term.id,
+        'taxonomyId': taxonomyId,
+        'termId': termId,
       });
       expect(termEdit.rawPathParams, {
-        'taxonomyId': taxonomy.id,
-        'termId': term.id,
+        'taxonomyId': taxonomyId,
+        'termId': termId,
       });
-      expect(termCreate.rawPathParams, {'taxonomyId': taxonomy.id});
+      expect(termCreate.rawPathParams, {'taxonomyId': taxonomyId});
       _expectResolvedRawParams(taxonomyEdit.rawPathParams);
       _expectResolvedRawParams(taxonomyTerms.rawPathParams);
       _expectResolvedRawParams(termDetail.rawPathParams);

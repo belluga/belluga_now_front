@@ -49,6 +49,7 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
 
   static const int _pageSize = 10;
   static const double _fallbackRadiusMeters = 50000.0;
+  static const Duration _firstPageRetryDelay = Duration(milliseconds: 350);
   static final Uri _localEventPlaceholderUri =
       Uri.parse('asset://event-placeholder');
 
@@ -137,20 +138,38 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
     _setValue(isInitialLoadingStreamValue, true);
     try {
       await _resolveEffectiveOrigin(warmUpIfPossible: true);
-      if (!_hasEffectiveOrigin) {
-        _hasMore = false;
-        _setValue(hasMoreStreamValue, false);
-        _setValue(displayedEventsStreamValue, const <EventModel>[]);
-        return;
-      }
-
       _hasMore = true;
       _setValue(hasMoreStreamValue, true);
       await _fetchPage(page: 1);
     } catch (error) {
       debugPrint('TenantHomeAgendaController._refresh failed: $error');
+      final recovered = await _retryFirstPageAfterFailure();
+      if (!recovered) {
+        debugPrint(
+          'TenantHomeAgendaController._refresh retry failed after first-page error.',
+        );
+      }
     } finally {
       _setValue(isInitialLoadingStreamValue, false);
+    }
+  }
+
+  Future<bool> _retryFirstPageAfterFailure() async {
+    if (_isDisposed) {
+      return false;
+    }
+
+    await Future<void>.delayed(_firstPageRetryDelay);
+    if (_isDisposed) {
+      return false;
+    }
+
+    try {
+      await _resolveEffectiveOrigin(warmUpIfPossible: false);
+      await _fetchPage(page: 1);
+      return true;
+    } catch (_) {
+      return false;
     }
   }
 
@@ -161,12 +180,12 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
   }
 
   Future<void> loadNextPage() async {
-    if (!_hasEffectiveOrigin || !_hasMore || _isFetching) return;
+    if (!_hasMore || _isFetching) return;
     await _fetchPage(page: _currentPage + 1);
   }
 
   Future<void> _fetchPage({required int page}) async {
-    if (_isFetching || !_hasEffectiveOrigin) return;
+    if (_isFetching) return;
     _isFetching = true;
     if (page > 1) {
       _setValue(isPageLoadingStreamValue, true);
@@ -361,9 +380,6 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
       unawaited(_refresh());
     });
   }
-
-  bool get _hasEffectiveOrigin =>
-      _effectiveOriginLat != null && _effectiveOriginLng != null;
 
   Future<void> _handleLocationUpdate() async {
     final changed = await _resolveEffectiveOrigin(warmUpIfPossible: false);

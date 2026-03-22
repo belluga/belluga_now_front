@@ -3,8 +3,22 @@ import 'dart:async';
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/application/router/guards/landlord_route_guard.dart';
+import 'package:belluga_now/application/router/resolvers/tenant_admin_account_by_slug_route_resolver.dart';
+import 'package:belluga_now/application/router/resolvers/tenant_admin_account_profile_edit_route_resolver.dart';
+import 'package:belluga_now/application/router/resolvers/tenant_admin_organization_detail_route_resolver.dart';
+import 'package:belluga_now/application/router/resolvers/tenant_admin_profile_type_detail_route_resolver.dart';
 import 'package:belluga_now/application/router/resolvers/tenant_admin_static_asset_detail_route_resolver.dart';
+import 'package:belluga_now/application/router/resolvers/tenant_admin_static_profile_type_detail_route_resolver.dart';
+import 'package:belluga_now/application/router/resolvers/tenant_admin_taxonomy_detail_route_resolver.dart';
+import 'package:belluga_now/application/router/resolvers/tenant_admin_taxonomy_term_route_model.dart';
+import 'package:belluga_now/application/router/resolvers/tenant_admin_taxonomy_term_route_resolver.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_account.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_organization.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_static_asset.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_static_profile_type.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
 import 'package:belluga_now/domain/services/tenant_admin_external_image_proxy_contract.dart';
 import 'package:belluga_now/domain/services/tenant_admin_location_selection_contract.dart';
 import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.dart';
@@ -39,8 +53,29 @@ class TenantAdminModule extends ModuleContract {
   }
 
   void _registerResolvers() {
+    registerRouteResolver<TenantAdminAccount>(
+      TenantAdminAccountBySlugRouteResolver.new,
+    );
+    registerRouteResolver<TenantAdminAccountProfile>(
+      TenantAdminAccountProfileEditRouteResolver.new,
+    );
     registerRouteResolver<TenantAdminStaticAsset>(
       TenantAdminStaticAssetDetailRouteResolver.new,
+    );
+    registerRouteResolver<TenantAdminOrganization>(
+      TenantAdminOrganizationDetailRouteResolver.new,
+    );
+    registerRouteResolver<TenantAdminProfileTypeDefinition>(
+      TenantAdminProfileTypeDetailRouteResolver.new,
+    );
+    registerRouteResolver<TenantAdminStaticProfileTypeDefinition>(
+      TenantAdminStaticProfileTypeDetailRouteResolver.new,
+    );
+    registerRouteResolver<TenantAdminTaxonomyDefinition>(
+      TenantAdminTaxonomyDetailRouteResolver.new,
+    );
+    registerRouteResolver<TenantAdminTaxonomyTermRouteModel>(
+      TenantAdminTaxonomyTermRouteResolver.new,
     );
   }
 
