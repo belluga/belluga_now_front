@@ -6,6 +6,7 @@ import 'rules/domain_dto_dependency_forbidden_rule.dart';
 import 'rules/domain_json_factory_forbidden_rule.dart';
 import 'rules/domain_primitive_field_forbidden_rule.dart';
 import 'rules/global_ui_controller_naming_forbidden_rule.dart';
+import 'rules/integration_anonymous_auth_identified_login_forbidden_rule.dart';
 import 'rules/module_direct_getit_registration_forbidden_rule.dart';
 import 'rules/module_scoped_controller_dispose_forbidden_rule.dart';
 import 'rules/multi_public_class_file_warning_rule.dart';
@@ -64,5 +65,6 @@ class BellugaCustomLintPlugin extends PluginBase {
         MultiPublicClassFileWarningRule(),
         MultiWidgetFileWarningRule(),
         TenantCanonicalDomainRequiredRule(),
+        IntegrationAnonymousAuthIdentifiedLoginForbiddenRule(),
       ];
 }

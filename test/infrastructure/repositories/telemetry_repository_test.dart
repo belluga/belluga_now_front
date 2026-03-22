@@ -7,7 +7,9 @@ import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
 import 'package:belluga_now/domain/tenant/tenant.dart';
+import 'package:belluga_now/domain/user/user_belluga.dart';
 import 'package:belluga_now/domain/user/user_contract.dart';
+import 'package:belluga_now/domain/user/user_profile.dart';
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/domain/partners/paged_account_profiles_result.dart';
 import 'package:belluga_now/infrastructure/dal/dao/app_data_backend_contract.dart';
@@ -38,7 +40,9 @@ import 'package:event_tracker_handler/domain/event_data/event_tracker_user_data.
 import 'package:event_tracker_handler/domain/enum/event_tracker_delivery_status.dart';
 import 'package:event_tracker_handler/domain/enum/event_tracker_events.dart';
 import 'package:event_tracker_handler/domain/enum/event_tracker_type.dart';
+import 'package:event_tracker_handler/domain/timed_events/event_tracker_timed_event_handle.dart';
 import 'package:event_tracker_handler/domain/trackers/event_tracker_contract.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value.dart';
@@ -56,7 +60,16 @@ class _LoggedEvent {
 }
 
 class _FakeEventTrackerHandler implements EventTrackerHandlerContract {
+  _FakeEventTrackerHandler({
+    this.logEventStatus = EventTrackerDeliveryStatus.delivered,
+  });
+
   final List<_LoggedEvent> events = <_LoggedEvent>[];
+  final List<(EventTrackerEvents, String?)> timedEvents =
+      <(EventTrackerEvents, String?)>[];
+  final List<(String, EventTrackerUserData)> mergedIdentities =
+      <(String, EventTrackerUserData)>[];
+  EventTrackerDeliveryStatus logEventStatus;
 
   @override
   final List<EventTrackerContract> trackers = <EventTrackerContract>[];
@@ -65,7 +78,9 @@ class _FakeEventTrackerHandler implements EventTrackerHandlerContract {
   Future<void> init() async {}
 
   @override
-  Future<void> timeEvent(EventTrackerEvents type, {String? eventName}) async {}
+  Future<void> timeEvent(EventTrackerEvents type, {String? eventName}) async {
+    timedEvents.add((type, eventName));
+  }
 
   @override
   Future<List<EventTrackerDeliveryOutcome>> logEvent({
@@ -83,7 +98,7 @@ class _FakeEventTrackerHandler implements EventTrackerHandlerContract {
     return [
       EventTrackerDeliveryOutcome(
         trackerType: EventTrackerType.webhook,
-        status: EventTrackerDeliveryStatus.delivered,
+        status: logEventStatus,
       ),
     ];
   }
@@ -92,7 +107,9 @@ class _FakeEventTrackerHandler implements EventTrackerHandlerContract {
   Future<void> mergeIdentity({
     required String previousUserId,
     required EventTrackerUserData userData,
-  }) async {}
+  }) async {
+    mergedIdentities.add((previousUserId, userData));
+  }
 }
 
 class _FakeUserLocationRepository implements UserLocationRepositoryContract {
@@ -155,8 +172,24 @@ class _FakeUserLocationRepository implements UserLocationRepositoryContract {
 }
 
 class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
-  _FakeAuthRepository() {
-    userStreamValue.addValue(null);
+  _FakeAuthRepository({
+    String deviceId = 'device-1',
+    String? storedUserId = 'user-1',
+    UserContract? user,
+  })  : _deviceId = deviceId,
+        _storedUserId = storedUserId {
+    userStreamValue.addValue(user);
+  }
+
+  final String _deviceId;
+  String? _storedUserId;
+
+  void setAuthenticatedUser(UserContract? user) {
+    userStreamValue.addValue(user);
+  }
+
+  void setStoredUserId(String? userId) {
+    _storedUserId = userId;
   }
 
   @override
@@ -169,10 +202,10 @@ class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
   void setUserToken(String? token) {}
 
   @override
-  Future<String> getDeviceId() async => 'device-1';
+  Future<String> getDeviceId() async => _deviceId;
 
   @override
-  Future<String?> getUserId() async => 'user-1';
+  Future<String?> getUserId() async => _storedUserId;
 
   @override
   bool get isUserLoggedIn => false;
@@ -448,9 +481,61 @@ AppData _buildAppData({int locationFreshnessMinutes = 5}) {
   );
 }
 
+AppData _buildTelemetryDisabledAppData() {
+  final platformType = PlatformTypeValue()..parse(AppType.mobile.name);
+  return AppData.fromInitialization(
+    remoteData: {
+      'name': 'Guarappari',
+      'type': 'tenant',
+      'main_domain': 'https://guarappari.com.br',
+      'domains': ['https://guarappari.com.br'],
+      'app_domains': [],
+      'theme_data_settings': {
+        'primary_seed_color': '#4FA0E3',
+        'secondary_seed_color': '#E80D5D',
+        'brightness_default': 'light',
+      },
+      'main_color': '#4FA0E3',
+      'tenant_id': 'tenant-1',
+      'telemetry': {
+        'trackers': const [],
+      },
+    },
+    localInfo: {
+      'platformType': platformType,
+      'hostname': 'guarappari.com.br',
+      'href': 'https://guarappari.com.br',
+      'port': null,
+      'device': 'test-device',
+    },
+  );
+}
+
+UserBelluga _buildAuthenticatedUser({
+  String id = '507f1f77bcf86cd799439011',
+  String name = 'User Name',
+  String email = 'user@example.com',
+}) {
+  return UserBelluga.fromPrimitives(
+    id: id,
+    profile: UserProfile.fromPrimitives(
+      name: name,
+      email: email,
+    ),
+  );
+}
+
+Future<void> _drainMicrotasks() async {
+  await Future<void>.delayed(Duration.zero);
+  await Future<void>.delayed(Duration.zero);
+}
+
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   setUp(() async {
     await GetIt.I.reset();
+    FlutterSecureStorage.setMockInitialValues(<String, String>{});
     GetIt.I.registerSingleton<AuthRepositoryContract>(_FakeAuthRepository());
   });
 
@@ -525,5 +610,168 @@ void main() {
     expect(ok, isTrue);
     final customData = handler.events.single.data?.customData;
     expect(customData?['location_context'], isNull);
+  });
+
+  test('logEvent returns false when telemetry is disabled', () async {
+    final handler = _FakeEventTrackerHandler();
+    final repository = TelemetryRepository(
+      appDataRepository: _FakeAppDataRepository(
+        appData: _buildTelemetryDisabledAppData(),
+      ),
+      queue: TelemetryQueue(retryDelays: const [Duration.zero]),
+      handler: handler,
+    );
+
+    final ok = await repository.logEvent(
+      EventTrackerEvents.viewContent,
+      eventName: 'screen_view',
+    );
+
+    expect(ok, isFalse);
+    expect(handler.events, isEmpty);
+  });
+
+  test('startTimedEvent and finishTimedEvent emit telemetry payload', () async {
+    final handler = _FakeEventTrackerHandler();
+    final repository = TelemetryRepository(
+      appDataRepository: _FakeAppDataRepository(appData: _buildAppData()),
+      queue: TelemetryQueue(retryDelays: const [Duration.zero]),
+      handler: handler,
+    );
+
+    final auth = GetIt.I.get<AuthRepositoryContract>() as _FakeAuthRepository;
+    auth.setAuthenticatedUser(_buildAuthenticatedUser());
+
+    final handle = await repository.startTimedEvent(
+      EventTrackerEvents.poiOpened,
+      eventName: 'poi_opened',
+      properties: const {
+        'poi_id': 'poi-123',
+      },
+    );
+
+    expect(handle, isNotNull);
+    expect(handler.timedEvents, hasLength(1));
+    expect(handler.timedEvents.first.$1, EventTrackerEvents.poiOpened);
+    expect(handler.timedEvents.first.$2, 'poi_opened');
+
+    final finishOk = await repository.finishTimedEvent(handle!);
+    expect(finishOk, isTrue);
+    await _drainMicrotasks();
+
+    expect(handler.events, hasLength(1));
+    final emitted = handler.events.single;
+    expect(emitted.type, EventTrackerEvents.poiOpened);
+    expect(emitted.data?.eventName, 'poi_opened');
+    expect(emitted.data?.customData?['poi_id'], 'poi-123');
+    expect(emitted.data?.customData?['tenant_id'], 'tenant-1');
+    expect(emitted.data?.customData?['user_id'], '507f1f77bcf86cd799439011');
+  });
+
+  test('flushTimedEvents emits all active timed events', () async {
+    final handler = _FakeEventTrackerHandler();
+    final repository = TelemetryRepository(
+      appDataRepository: _FakeAppDataRepository(appData: _buildAppData()),
+      queue: TelemetryQueue(retryDelays: const [Duration.zero]),
+      handler: handler,
+    );
+
+    final auth = GetIt.I.get<AuthRepositoryContract>() as _FakeAuthRepository;
+    auth.setAuthenticatedUser(_buildAuthenticatedUser());
+
+    await repository.startTimedEvent(
+      EventTrackerEvents.viewContent,
+      eventName: 'first',
+    );
+    await repository.startTimedEvent(
+      EventTrackerEvents.viewContent,
+      eventName: 'second',
+    );
+
+    final flushed = await repository.flushTimedEvents();
+    expect(flushed, isTrue);
+    await _drainMicrotasks();
+
+    expect(handler.events, hasLength(2));
+    final names = handler.events.map((event) => event.data?.eventName).toSet();
+    expect(names, containsAll(<String>{'first', 'second'}));
+  });
+
+  test('buildLifecycleObserver returns cached instance when enabled', () async {
+    final repository = TelemetryRepository(
+      appDataRepository: _FakeAppDataRepository(appData: _buildAppData()),
+      queue: TelemetryQueue(retryDelays: const [Duration.zero]),
+      handler: _FakeEventTrackerHandler(),
+    );
+
+    final first = repository.buildLifecycleObserver();
+    final second = repository.buildLifecycleObserver();
+
+    expect(first, isNotNull);
+    expect(second, same(first));
+  });
+
+  test('timed APIs return disabled defaults when telemetry is disabled',
+      () async {
+    final repository = TelemetryRepository(
+      appDataRepository: _FakeAppDataRepository(
+        appData: _buildTelemetryDisabledAppData(),
+      ),
+      queue: TelemetryQueue(retryDelays: const [Duration.zero]),
+      handler: _FakeEventTrackerHandler(),
+    );
+
+    final handle = await repository.startTimedEvent(
+      EventTrackerEvents.viewContent,
+      eventName: 'disabled',
+    );
+    final finish = await repository.finishTimedEvent(
+      const EventTrackerTimedEventHandle('handle'),
+    );
+    final flush = await repository.flushTimedEvents();
+    final observer = repository.buildLifecycleObserver();
+
+    expect(handle, isNull);
+    expect(finish, isFalse);
+    expect(flush, isFalse);
+    expect(observer, isNull);
+  });
+
+  test('mergeIdentity returns false for invalid prerequisites', () async {
+    final repository = TelemetryRepository(
+      appDataRepository: _FakeAppDataRepository(appData: _buildAppData()),
+      queue: TelemetryQueue(retryDelays: const [Duration.zero]),
+      handler: _FakeEventTrackerHandler(),
+    );
+
+    final emptyPrevious = await repository.mergeIdentity(previousUserId: '');
+    expect(emptyPrevious, isFalse);
+
+    final noUser = await repository.mergeIdentity(previousUserId: 'anon-1');
+    expect(noUser, isFalse);
+  });
+
+  test('mergeIdentity sends once and deduplicates by source user id', () async {
+    final handler = _FakeEventTrackerHandler();
+    final repository = TelemetryRepository(
+      appDataRepository: _FakeAppDataRepository(appData: _buildAppData()),
+      queue: TelemetryQueue(retryDelays: const [Duration.zero]),
+      handler: handler,
+    );
+
+    final auth = GetIt.I.get<AuthRepositoryContract>() as _FakeAuthRepository;
+    auth.setAuthenticatedUser(_buildAuthenticatedUser());
+
+    final first = await repository.mergeIdentity(previousUserId: 'anon-123');
+    final second = await repository.mergeIdentity(previousUserId: 'anon-123');
+
+    expect(first, isTrue);
+    expect(second, isTrue);
+    expect(handler.mergedIdentities, hasLength(1));
+    expect(handler.mergedIdentities.single.$1, 'anon-123');
+    expect(
+      handler.mergedIdentities.single.$2.uuid,
+      '507f1f77bcf86cd799439011',
+    );
   });
 }

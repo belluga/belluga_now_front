@@ -30,7 +30,6 @@ class AccountProfilesRepository extends AccountProfilesRepositoryContract {
         _telemetryRepository =
             telemetryRepository ?? GetIt.I.get<TelemetryRepositoryContract>();
 
-  static const String _appManagerId = 'app-manager';
   static const int _defaultPageSize = 30;
   static const int _maxPagedFetches = 10;
   final AccountProfilesBackendContract _backend;
@@ -127,9 +126,6 @@ class AccountProfilesRepository extends AccountProfilesRepositoryContract {
 
   @override
   Future<void> toggleFavorite(String accountProfileId) async {
-    if (accountProfileId == _appManagerId) {
-      return;
-    }
     final normalizedProfileId = accountProfileId.trim();
     if (normalizedProfileId.isEmpty) {
       return;

@@ -1,8 +1,8 @@
 import 'package:belluga_now/domain/map/city_poi_category.dart';
 import 'package:belluga_now/domain/map/queries/poi_query.dart';
-import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/backend_context.dart';
 import 'package:belluga_now/infrastructure/dal/dao/backend_contract.dart';
+import 'package:belluga_now/infrastructure/dal/dao/laravel_backend/shared/tenant_public_auth_headers.dart';
 import 'package:belluga_now/infrastructure/dal/dto/map/city_poi_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/map/map_filters_dto.dart';
 import 'package:dio/dio.dart';
@@ -51,7 +51,7 @@ class LaravelMapPoiHttpService {
       '/v1/map/pois',
       queryParameters: params,
       options: Options(
-        headers: _buildHeaders(),
+        headers: await _buildHeaders(),
         listFormat: ListFormat.multiCompatible,
       ),
     );
@@ -83,7 +83,7 @@ class LaravelMapPoiHttpService {
       '/v1/map/filters',
       queryParameters: _buildQueryParams(query),
       options: Options(
-        headers: _buildHeaders(),
+        headers: await _buildHeaders(),
         listFormat: ListFormat.multiCompatible,
       ),
     );
@@ -194,16 +194,10 @@ class LaravelMapPoiHttpService {
     }
   }
 
-  Map<String, String> _buildHeaders() {
-    final headers = <String, String>{
-      'Accept': 'application/json',
-    };
-    if (GetIt.I.isRegistered<AuthRepositoryContract>()) {
-      final token = GetIt.I.get<AuthRepositoryContract>().userToken.trim();
-      if (token.isNotEmpty) {
-        headers['Authorization'] = 'Bearer $token';
-      }
-    }
-    return headers;
+  Future<Map<String, String>> _buildHeaders() {
+    return TenantPublicAuthHeaders.build(
+      includeJsonAccept: true,
+      bootstrapIfEmpty: true,
+    );
   }
 }

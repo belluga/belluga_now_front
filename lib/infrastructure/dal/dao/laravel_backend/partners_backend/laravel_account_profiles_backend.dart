@@ -1,8 +1,8 @@
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/domain/partners/paged_account_profiles_result.dart';
-import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/account_profiles_backend_contract.dart';
+import 'package:belluga_now/infrastructure/dal/dao/laravel_backend/shared/tenant_public_auth_headers.dart';
 import 'package:dio/dio.dart';
 import 'package:get_it/get_it.dart';
 
@@ -17,13 +17,11 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
   String get _apiBaseUrl =>
       '${GetIt.I.get<AppData>().mainDomainValue.value.origin}/api';
 
-  Map<String, String> _buildHeaders({bool includeJsonAccept = false}) {
-    final token = GetIt.I.get<AuthRepositoryContract>().userToken;
-    final headers = <String, String>{'Authorization': 'Bearer $token'};
-    if (includeJsonAccept) {
-      headers['Accept'] = 'application/json';
-    }
-    return headers;
+  Future<Map<String, String>> _buildHeaders({bool includeJsonAccept = false}) {
+    return TenantPublicAuthHeaders.build(
+      includeJsonAccept: includeJsonAccept,
+      bootstrapIfEmpty: true,
+    );
   }
 
   @override
@@ -57,10 +55,11 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
         queryParameters['profile_type'] = trimmedType;
       }
 
+      final headers = await _buildHeaders(includeJsonAccept: true);
       final response = await _dio.get(
         '$_apiBaseUrl/v1/account_profiles',
         queryParameters: queryParameters,
-        options: Options(headers: _buildHeaders(includeJsonAccept: true)),
+        options: Options(headers: headers),
       );
       final raw = response.data;
       if (raw is! Map<String, dynamic>) {

@@ -1,6 +1,6 @@
 import 'package:belluga_now/domain/app_data/app_data.dart';
-import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/favorite_backend_contract.dart';
+import 'package:belluga_now/infrastructure/dal/dao/laravel_backend/shared/tenant_public_auth_headers.dart';
 import 'package:belluga_now/infrastructure/dal/dto/favorite/favorite_preview_dto.dart';
 import 'package:dio/dio.dart';
 import 'package:get_it/get_it.dart';
@@ -16,8 +16,10 @@ class LaravelFavoriteBackend implements FavoriteBackendContract {
   String get _apiBaseUrl =>
       '${GetIt.I.get<AppData>().mainDomainValue.value.origin}/api';
 
-  Map<String, String> _headers({bool includeJsonAccept = false}) {
-    final token = GetIt.I.get<AuthRepositoryContract>().userToken.trim();
+  Map<String, String> _headers({
+    required String token,
+    bool includeJsonAccept = false,
+  }) {
     final headers = <String, String>{};
 
     if (token.isNotEmpty) {
@@ -33,7 +35,9 @@ class LaravelFavoriteBackend implements FavoriteBackendContract {
 
   @override
   Future<List<FavoritePreviewDTO>> fetchFavorites() async {
-    final token = GetIt.I.get<AuthRepositoryContract>().userToken.trim();
+    final token = await TenantPublicAuthHeaders.resolveToken(
+      bootstrapIfEmpty: true,
+    );
     if (token.isEmpty) {
       return const <FavoritePreviewDTO>[];
     }
@@ -45,6 +49,7 @@ class LaravelFavoriteBackend implements FavoriteBackendContract {
     while (hasMore && page <= _maxPages) {
       final payload = await _get(
         '$_apiBaseUrl/v1/favorites',
+        token: token,
         queryParameters: {
           'page': page,
           'page_size': _defaultPageSize,
@@ -96,7 +101,9 @@ class LaravelFavoriteBackend implements FavoriteBackendContract {
     required String accountProfileId,
     required bool isFavorite,
   }) async {
-    final token = GetIt.I.get<AuthRepositoryContract>().userToken.trim();
+    final token = await TenantPublicAuthHeaders.resolveToken(
+      bootstrapIfEmpty: true,
+    );
     if (token.isEmpty) {
       throw Exception('Cannot mutate favorites without authentication token.');
     }
@@ -114,7 +121,12 @@ class LaravelFavoriteBackend implements FavoriteBackendContract {
 
     try {
       final requestUri = '$_apiBaseUrl/v1/favorites';
-      final options = Options(headers: _headers(includeJsonAccept: true));
+      final options = Options(
+        headers: _headers(
+          token: token,
+          includeJsonAccept: true,
+        ),
+      );
       if (isFavorite) {
         await _dio.post(
           requestUri,
@@ -143,13 +155,19 @@ class LaravelFavoriteBackend implements FavoriteBackendContract {
 
   Future<Map<String, dynamic>> _get(
     String url, {
+    required String token,
     Map<String, dynamic>? queryParameters,
   }) async {
     try {
       final response = await _dio.get(
         url,
         queryParameters: queryParameters,
-        options: Options(headers: _headers(includeJsonAccept: true)),
+        options: Options(
+          headers: _headers(
+            token: token,
+            includeJsonAccept: true,
+          ),
+        ),
       );
 
       final raw = response.data;
