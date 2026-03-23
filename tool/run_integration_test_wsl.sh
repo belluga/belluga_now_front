@@ -18,6 +18,7 @@ use_dds="${FLUTTER_INTEGRATION_USE_DDS:-false}"
 disable_push="${FLUTTER_INTEGRATION_DISABLE_PUSH:-true}"
 reporter="${FLUTTER_INTEGRATION_REPORTER:-expanded}"
 skip_app_reset="${FLUTTER_INTEGRATION_SKIP_APP_RESET:-false}"
+purge_flutter_build_cache_enabled="${FLUTTER_INTEGRATION_PURGE_FLUTTER_BUILD_CACHE:-true}"
 
 if [[ ! -f "$define_file" ]]; then
   echo "ERROR: define file not found: $define_file" >&2
@@ -72,6 +73,25 @@ prepare_device() {
 prepare_gradle() {
   if [[ -x "./android/gradlew" ]]; then
     (cd android && ./gradlew --stop >/dev/null 2>&1) || true
+  fi
+}
+
+purge_flutter_build_cache_dirs() {
+  if [[ "$purge_flutter_build_cache_enabled" != "true" ]]; then
+    return
+  fi
+
+  local flutter_build_cache_dir=".dart_tool/flutter_build"
+  local flutter_build_output_dir="build"
+
+  if [[ -d "$flutter_build_cache_dir" ]]; then
+    echo "INFO: purging Flutter build cache directory: $flutter_build_cache_dir"
+    rm -rf "$flutter_build_cache_dir"
+  fi
+
+  if [[ -d "$flutter_build_output_dir" ]]; then
+    echo "INFO: purging Flutter build output directory: $flutter_build_output_dir"
+    rm -rf "$flutter_build_output_dir"
   fi
 }
 
@@ -199,10 +219,12 @@ echo "  Use DDS: $use_dds"
 echo "  Disable push during tests: $disable_push"
 echo "  Reporter: $reporter"
 echo "  Skip app reset: $skip_app_reset"
+echo "  Purge Flutter build cache: $purge_flutter_build_cache_enabled"
 echo "  ADB command timeout (s): $adb_cmd_timeout_seconds"
 echo "  Runner timeout (s, 0=disabled): $runner_timeout_seconds"
 
 prepare_gradle
+purge_flutter_build_cache_dirs
 prepare_device
 ensure_device_visible
 sanitize_apk_outputs

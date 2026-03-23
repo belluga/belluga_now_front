@@ -117,6 +117,35 @@ void main() {
     expect(params.containsKey('origin_lng'), isFalse);
     expect(params.containsKey('max_distance_meters'), isFalse);
   });
+
+  test('fetchEventsPage bootstraps auth when token is empty', () async {
+    final authRepository = GetIt.I.get<AuthRepositoryContract<UserContract>>()
+        as _FakeAuthRepository;
+    authRepository.setUserToken('');
+
+    final adapter = _NoopAdapter(
+      responseData: const {
+        'data': {
+          'items': [],
+          'has_more': false,
+        },
+      },
+    );
+    final backend = LaravelScheduleBackend(
+      dio: Dio()..httpClientAdapter = adapter,
+      sseClient: _RecordingSseClient(),
+    );
+
+    await backend.fetchEventsPage(
+      page: 1,
+      pageSize: 10,
+      showPastOnly: false,
+    );
+
+    expect(authRepository.initCallCount, 1);
+    final headers = adapter.lastOptions?.headers ?? const <String, dynamic>{};
+    expect(headers['Authorization'], 'Bearer refreshed-token');
+  });
 }
 
 class _RecordingSseClient implements SseClient {
@@ -166,14 +195,19 @@ class _NoopAdapter implements HttpClientAdapter {
 }
 
 class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
+  String _token = 'test-token';
+  int initCallCount = 0;
+
   @override
   BackendContract get backend => throw UnimplementedError();
 
   @override
-  String get userToken => 'test-token';
+  String get userToken => _token;
 
   @override
-  void setUserToken(String? token) {}
+  void setUserToken(String? token) {
+    _token = token ?? '';
+  }
 
   @override
   Future<String> getDeviceId() async => 'device-1';
@@ -188,7 +222,12 @@ class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
   bool get isAuthorized => true;
 
   @override
-  Future<void> init() async {}
+  Future<void> init() async {
+    initCallCount += 1;
+    if (_token.trim().isEmpty) {
+      _token = 'refreshed-token';
+    }
+  }
 
   @override
   Future<void> autoLogin() async {}

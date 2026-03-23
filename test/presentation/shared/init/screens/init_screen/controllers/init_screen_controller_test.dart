@@ -14,7 +14,9 @@ import 'package:belluga_now/domain/invites/invite_share_code_result.dart';
 import 'package:belluga_now/domain/schedule/friend_resume.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
+import 'package:belluga_now/domain/user/user_belluga.dart';
 import 'package:belluga_now/presentation/shared/init/screens/init_screen/controllers/init_screen_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -77,6 +79,23 @@ void main() {
       [LandlordHomeRoute.name],
     );
   });
+
+  test('initialize bootstraps auth before loading invites', () async {
+    final authRepository = _FakeAuthRepository();
+    final invitesRepository = _FakeInvitesRepository(hasPendingInvites: false);
+    final controller = InitScreenController(
+      authRepository: authRepository,
+      invitesRepository: invitesRepository,
+      appDataRepository: _FakeAppDataRepository(
+        _buildAppData(environmentType: EnvironmentType.tenant),
+      ),
+    );
+
+    await controller.initialize();
+
+    expect(authRepository.initCallCount, 1);
+    expect(invitesRepository.initCallCount, 1);
+  });
 }
 
 class _FakeInvitesRepository extends InvitesRepositoryContract {
@@ -84,9 +103,11 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
 
   @override
   final bool hasPendingInvites;
+  int initCallCount = 0;
 
   @override
   Future<void> init() async {
+    initCallCount += 1;
     pendingInvitesStreamValue.addValue(
       hasPendingInvites ? [_buildInvite()] : const [],
     );
@@ -161,6 +182,70 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
     String? occurrenceId,
     String? message,
   }) async {}
+}
+
+class _FakeAuthRepository extends AuthRepositoryContract<UserBelluga> {
+  int initCallCount = 0;
+
+  @override
+  Object get backend => throw UnimplementedError();
+
+  @override
+  String get userToken => '';
+
+  @override
+  void setUserToken(String? token) {}
+
+  @override
+  Future<String> getDeviceId() async => 'device-1';
+
+  @override
+  Future<String?> getUserId() async => 'user-1';
+
+  @override
+  bool get isUserLoggedIn => false;
+
+  @override
+  bool get isAuthorized => false;
+
+  @override
+  Future<void> init() async {
+    initCallCount += 1;
+  }
+
+  @override
+  Future<void> autoLogin() async {}
+
+  @override
+  Future<void> loginWithEmailPassword(String email, String password) async {}
+
+  @override
+  Future<void> signUpWithEmailPassword(
+    String name,
+    String email,
+    String password,
+  ) async {}
+
+  @override
+  Future<void> sendTokenRecoveryPassword(
+    String email,
+    String codigoEnviado,
+  ) async {}
+
+  @override
+  Future<void> logout() async {}
+
+  @override
+  Future<void> createNewPassword(
+    String newPassword,
+    String confirmPassword,
+  ) async {}
+
+  @override
+  Future<void> sendPasswordResetEmail(String email) async {}
+
+  @override
+  Future<void> updateUser(Map<String, Object?> data) async {}
 }
 
 class _FakeAppDataRepository implements AppDataRepositoryContract {

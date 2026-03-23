@@ -646,7 +646,7 @@ void main() {
   });
 
   test(
-      'updateBranding succeeds when refresh fails after POST and returns optimistic settings',
+      'updateBranding fails when refresh fails after POST (no optimistic fallback)',
       () async {
     final adapter = _RoutingAdapter(
       environmentPayload: const {
@@ -660,47 +660,30 @@ void main() {
       tenantScope: scope,
     );
 
-    final updated = await repository.updateBranding(
-      input: TenantAdminBrandingUpdateInput(
-        tenantName: 'Guarappari',
-        brightnessDefault: TenantAdminBrandingBrightness.dark,
-        primarySeedColor: '#112233',
-        secondarySeedColor: '#445566',
-        lightLogoUpload: TenantAdminMediaUpload(
-          bytes: Uint8List.fromList(const [1, 2, 3]),
-          fileName: 'light_logo.png',
-          mimeType: 'image/png',
-        ),
-        pwaIconUpload: TenantAdminMediaUpload(
-          bytes: Uint8List.fromList(const [4, 5, 6]),
-          fileName: 'pwa_icon.png',
-          mimeType: 'image/png',
+    await expectLater(
+      repository.updateBranding(
+        input: TenantAdminBrandingUpdateInput(
+          tenantName: 'Guarappari',
+          brightnessDefault: TenantAdminBrandingBrightness.dark,
+          primarySeedColor: '#112233',
+          secondarySeedColor: '#445566',
+          lightLogoUpload: TenantAdminMediaUpload(
+            bytes: Uint8List.fromList(const [1, 2, 3]),
+            fileName: 'light_logo.png',
+            mimeType: 'image/png',
+          ),
+          pwaIconUpload: TenantAdminMediaUpload(
+            bytes: Uint8List.fromList(const [4, 5, 6]),
+            fileName: 'pwa_icon.png',
+            mimeType: 'image/png',
+          ),
         ),
       ),
+      throwsA(isA<Exception>()),
     );
 
     expect(adapter.requests, hasLength(2));
-    expect(updated.tenantName, 'Guarappari');
-    expect(updated.brightnessDefault, TenantAdminBrandingBrightness.dark);
-    expect(updated.primarySeedColor, '#112233');
-    expect(updated.secondarySeedColor, '#445566');
-    expect(updated.lightLogoUrl, contains('tenant-a.test/logo-light.png'));
-    expect(
-      updated.pwaIconUrl,
-      contains('tenant-a.test/icon/icon-512x512.png'),
-    );
-    expect(
-      repository.brandingSettingsStreamValue.value?.tenantName,
-      'Guarappari',
-    );
-    expect(
-      repository.brandingSettingsStreamValue.value?.primarySeedColor,
-      '#112233',
-    );
-    expect(
-      repository.brandingSettingsStreamValue.value?.pwaIconUrl,
-      contains('tenant-a.test/icon/icon-512x512.png'),
-    );
+    expect(repository.brandingSettingsStreamValue.value, isNull);
   });
 
   test('uses selected tenant scope dynamically between requests', () async {

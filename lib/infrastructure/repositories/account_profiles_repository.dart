@@ -7,7 +7,6 @@ import 'package:belluga_now/domain/repositories/telemetry_repository_contract.da
 import 'package:belluga_now/infrastructure/dal/dao/backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/account_profiles_backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/favorite_backend_contract.dart';
-import 'package:belluga_now/infrastructure/dal/dto/favorite/favorite_preview_dto.dart';
 import 'package:event_tracker_handler/event_tracker_handler.dart';
 import 'package:flutter/foundation.dart';
 import 'package:get_it/get_it.dart';
@@ -30,7 +29,6 @@ class AccountProfilesRepository extends AccountProfilesRepositoryContract {
         _telemetryRepository =
             telemetryRepository ?? GetIt.I.get<TelemetryRepositoryContract>();
 
-  static const String _appManagerId = 'app-manager';
   static const int _defaultPageSize = 30;
   static const int _maxPagedFetches = 10;
   final AccountProfilesBackendContract _backend;
@@ -127,9 +125,6 @@ class AccountProfilesRepository extends AccountProfilesRepositoryContract {
 
   @override
   Future<void> toggleFavorite(String accountProfileId) async {
-    if (accountProfileId == _appManagerId) {
-      return;
-    }
     final normalizedProfileId = accountProfileId.trim();
     if (normalizedProfileId.isEmpty) {
       return;
@@ -224,9 +219,11 @@ class AccountProfilesRepository extends AccountProfilesRepositoryContract {
           })
           .where((id) => id.isNotEmpty)
           .toSet();
-    } catch (error) {
-      debugPrint('Failed to load favorites from backend: $error');
-      return const <String>{};
+    } catch (error, stackTrace) {
+      Error.throwWithStackTrace(
+        StateError('Failed to load favorites from backend: $error'),
+        stackTrace,
+      );
     }
   }
 
@@ -239,19 +236,8 @@ class AccountProfilesRepository extends AccountProfilesRepositoryContract {
     if (GetIt.I.isRegistered<BackendContract>()) {
       return GetIt.I.get<BackendContract>().favorites;
     }
-    return _NoopFavoriteBackend();
+    throw StateError(
+      'FavoriteBackendContract is not available for AccountProfilesRepository.',
+    );
   }
-}
-
-final class _NoopFavoriteBackend implements FavoriteBackendContract {
-  @override
-  Future<List<FavoritePreviewDTO>> fetchFavorites() async {
-    return const <FavoritePreviewDTO>[];
-  }
-
-  @override
-  Future<void> favoriteAccountProfile(String accountProfileId) async {}
-
-  @override
-  Future<void> unfavoriteAccountProfile(String accountProfileId) async {}
 }
