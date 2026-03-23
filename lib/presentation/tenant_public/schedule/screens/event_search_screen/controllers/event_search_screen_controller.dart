@@ -492,8 +492,36 @@ class EventSearchScreenController
       }
     }
 
-    return repository.userLocationStreamValue.value ??
+    return _resolveFreshLocationCoordinate(repository);
+  }
+
+  CityCoordinate? _resolveFreshLocationCoordinate(
+    UserLocationRepositoryContract repository,
+  ) {
+    final coordinate = repository.userLocationStreamValue.value ??
         repository.lastKnownLocationStreamValue.value;
+    if (coordinate == null) {
+      return null;
+    }
+
+    final capturedAt = repository.lastKnownCapturedAtStreamValue.value;
+    if (capturedAt == null) {
+      return coordinate;
+    }
+
+    Duration freshnessWindow;
+    try {
+      freshnessWindow =
+          _appDataRepository.appData.telemetryContextSettings.locationFreshness;
+    } on Object {
+      freshnessWindow = const Duration(minutes: 5);
+    }
+
+    if (DateTime.now().difference(capturedAt) > freshnessWindow) {
+      return null;
+    }
+
+    return coordinate;
   }
 
   CityCoordinate? _resolveTenantDefaultOriginCoordinate() {

@@ -12,6 +12,8 @@ import 'package:belluga_now/domain/invites/invite_next_step.dart';
 import 'package:belluga_now/domain/invites/invite_runtime_settings.dart';
 import 'package:belluga_now/domain/invites/invite_share_code_result.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
+import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
+import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
@@ -110,6 +112,39 @@ void main() {
       expect(scheduleRepository.watchEventsStreamCallCount, 0);
       expect(controller.isInitialLoadingStreamValue.value, isFalse);
       expect(controller.hasMoreStreamValue.value, isFalse);
+
+      controller.onDispose();
+      scheduleRepository.dispose();
+    },
+  );
+
+  testWidgets(
+    'uses tenant default origin when cached user location is stale',
+    (tester) async {
+      final scheduleRepository = _FakeScheduleRepository();
+      final locationRepository = _FakeUserLocationRepository()
+        ..userLocationStreamValue.addValue(
+          CityCoordinate(
+            latitudeValue: LatitudeValue()..parse('-23.550520'),
+            longitudeValue: LongitudeValue()..parse('-46.633308'),
+          ),
+        )
+        ..lastKnownCapturedAtStreamValue.addValue(
+          DateTime.now().subtract(const Duration(hours: 2)),
+        );
+      final controller = EventSearchScreenController(
+        scheduleRepository: scheduleRepository,
+        userEventsRepository: _FakeUserEventsRepository(),
+        invitesRepository: _FakeInvitesRepository(),
+        userLocationRepository: locationRepository,
+        appDataRepository: _FakeAppDataRepository(_buildAppData()),
+      );
+
+      await controller.init();
+
+      expect(scheduleRepository.getEventsPageCallCount, 1);
+      expect(scheduleRepository.lastOriginLat, closeTo(-20.671339, 0.000001));
+      expect(scheduleRepository.lastOriginLng, closeTo(-40.495395, 0.000001));
 
       controller.onDispose();
       scheduleRepository.dispose();

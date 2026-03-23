@@ -221,6 +221,44 @@ void main() {
       controller.onDispose();
     });
 
+    test('uses tenant default origin when cached user location is stale',
+        () async {
+      final appData = _buildAppData(
+        minKm: 1,
+        defaultKm: 5,
+        maxKm: 10,
+      );
+      final appDataRepository = _FakeAppDataRepository(appData);
+      final scheduleRepository = _FakeScheduleRepository();
+      final locationRepository = _FakeUserLocationRepository()
+        ..warmUpResult = false
+        ..userLocationStreamValue.addValue(
+          CityCoordinate(
+            latitudeValue: LatitudeValue()..parse('-23.550520'),
+            longitudeValue: LongitudeValue()..parse('-46.633308'),
+          ),
+        )
+        ..lastKnownCapturedAtStreamValue.addValue(
+          DateTime.now().subtract(const Duration(hours: 2)),
+        );
+
+      final controller = TenantHomeAgendaController(
+        scheduleRepository: scheduleRepository,
+        userEventsRepository: _FakeUserEventsRepository(),
+        invitesRepository: _FakeInvitesRepository(),
+        userLocationRepository: locationRepository,
+        appDataRepository: appDataRepository,
+      );
+
+      await controller.init();
+
+      expect(scheduleRepository.getEventsPageCallCount, 1);
+      expect(scheduleRepository.lastOriginLat, closeTo(-20.671339, 0.000001));
+      expect(scheduleRepository.lastOriginLng, closeTo(-40.495395, 0.000001));
+
+      controller.onDispose();
+    });
+
     test('uses tenant default origin when map_ui default origin is flattened',
         () async {
       final appData = _buildAppData(
