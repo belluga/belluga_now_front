@@ -51,21 +51,17 @@ class PushOptionSourceResolver {
       return const [];
     }
 
-    try {
-      final response = await _dio.get(
-        uri.toString(),
-        queryParameters: _resolveQuery(normalizedParams),
-        options: Options(headers: _buildHeaders()),
-      );
-      final items = _extractOptions(response.data, normalizedParams);
-      _cache[cacheKey] = _CachedOptions(
-        items: items,
-        expiresAt: _buildExpiry(source.cacheTtlSec),
-      );
-      return items;
-    } catch (_) {
-      return const [];
-    }
+    final response = await _dio.get(
+      uri.toString(),
+      queryParameters: _resolveQuery(normalizedParams),
+      options: Options(headers: _buildHeaders()),
+    );
+    final items = _extractOptions(response.data, normalizedParams);
+    _cache[cacheKey] = _CachedOptions(
+      items: items,
+      expiresAt: _buildExpiry(source.cacheTtlSec),
+    );
+    return items;
   }
 
   Map<String, dynamic> _normalizeParams(OptionSource source) {

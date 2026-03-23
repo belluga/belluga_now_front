@@ -369,18 +369,7 @@ class TenantAdminSettingsRepository
           'Failed to update branding settings [status=${response.statusCode}]',
         );
       }
-      try {
-        return await fetchBrandingSettings();
-      } catch (_) {
-        final optimistic = _buildOptimisticBrandingSettings(
-          input: input,
-          apiBaseUrl: requestedApiBaseUrl,
-        );
-        if (_isBrandingScopeCurrent(requestedApiBaseUrl)) {
-          _brandingSettingsStreamValue.addValue(optimistic);
-        }
-        return optimistic;
-      }
+      return fetchBrandingSettings();
     } on DioException catch (error) {
       throw _wrapError(error, 'update branding settings');
     }
@@ -437,55 +426,7 @@ class TenantAdminSettingsRepository
   }
 
   bool _isBrandingScopeCurrent(String requestedApiBaseUrl) {
-    try {
-      return requestedApiBaseUrl == _apiBaseUrl;
-    } catch (_) {
-      return false;
-    }
-  }
-
-  TenantAdminBrandingSettings _buildOptimisticBrandingSettings({
-    required TenantAdminBrandingUpdateInput input,
-    required String apiBaseUrl,
-  }) {
-    final current = _brandingSettingsStreamValue.value;
-    final origin = _parseToOriginUri(apiBaseUrl);
-    return TenantAdminBrandingSettings(
-      tenantName: input.tenantName.trim(),
-      brightnessDefault: input.brightnessDefault,
-      primarySeedColor: input.primarySeedColor.trim().toUpperCase(),
-      secondarySeedColor: input.secondarySeedColor.trim().toUpperCase(),
-      lightLogoUrl: input.lightLogoUpload != null
-          ? origin == null
-              ? current?.lightLogoUrl
-              : _buildTenantAssetUrl(origin, 'logo-light.png')
-          : current?.lightLogoUrl,
-      darkLogoUrl: input.darkLogoUpload != null
-          ? origin == null
-              ? current?.darkLogoUrl
-              : _buildTenantAssetUrl(origin, 'logo-dark.png')
-          : current?.darkLogoUrl,
-      lightIconUrl: input.lightIconUpload != null
-          ? origin == null
-              ? current?.lightIconUrl
-              : _buildTenantAssetUrl(origin, 'icon-light.png')
-          : current?.lightIconUrl,
-      darkIconUrl: input.darkIconUpload != null
-          ? origin == null
-              ? current?.darkIconUrl
-              : _buildTenantAssetUrl(origin, 'icon-dark.png')
-          : current?.darkIconUrl,
-      faviconUrl: input.faviconUpload != null
-          ? origin == null
-              ? current?.faviconUrl
-              : _buildTenantAssetUrl(origin, 'favicon.ico')
-          : current?.faviconUrl,
-      pwaIconUrl: input.pwaIconUpload != null
-          ? origin == null
-              ? current?.pwaIconUrl
-              : _buildTenantAssetUrl(origin, 'icon/icon-512x512.png')
-          : current?.pwaIconUrl,
-    );
+    return requestedApiBaseUrl == _apiBaseUrl;
   }
 
   Uri? _parseToOriginUri(String? raw) {
@@ -503,12 +444,6 @@ class TenantAdminSettingsRepository
       host: parsed.host.trim(),
       port: parsed.hasPort ? parsed.port : null,
     );
-  }
-
-  String _buildTenantAssetUrl(Uri origin, String assetName) {
-    return origin
-        .replace(path: '/$assetName', queryParameters: null)
-        .toString();
   }
 
   Map<String, String> _buildBrandingReadHeaders() {

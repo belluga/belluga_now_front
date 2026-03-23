@@ -39,6 +39,7 @@ void main() {
     );
     final repository = AccountProfilesRepository(
       backend: backend,
+      favoriteBackend: _StubFavoriteBackend(favorites: const []),
       favoriteAccountProfileIds: const {},
     );
 

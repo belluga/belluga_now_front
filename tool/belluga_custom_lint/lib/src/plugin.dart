@@ -13,6 +13,7 @@ import 'rules/multi_public_class_file_warning_rule.dart';
 import 'rules/multi_widget_file_warning_rule.dart';
 import 'rules/repository_inline_dto_to_domain_mapper_forbidden_rule.dart';
 import 'rules/repository_json_parsing_forbidden_rule.dart';
+import 'rules/repository_service_catch_return_fallback_forbidden_rule.dart';
 import 'rules/repository_raw_payload_map_forbidden_rule.dart';
 import 'rules/repository_raw_transport_typing_forbidden_rule.dart';
 import 'rules/route_page_must_live_in_routes_folder_rule.dart';
@@ -50,6 +51,7 @@ class BellugaCustomLintPlugin extends PluginBase {
         UiBuildSideEffectsForbiddenRule(),
         UiControllerOwnershipForbiddenRule(),
         RepositoryJsonParsingForbiddenRule(),
+        RepositoryServiceCatchReturnFallbackForbiddenRule(),
         RepositoryRawPayloadMapForbiddenRule(),
         RepositoryRawTransportTypingForbiddenRule(),
         ServiceJsonParsingForbiddenRule(),

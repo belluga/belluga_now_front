@@ -15,10 +15,11 @@ import 'package:integration_test/integration_test.dart';
 import 'support/integration_test_bootstrap.dart';
 import 'support/tenant_scope_guard.dart';
 
+const kAnonymousAuthOnlyContract = true;
+
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
   IntegrationTestBootstrap.ensureNonProductionLandlordDomain();
-  const kAnonymousAuthOnlyContract = true;
 
   const userTokenKey = 'user_token';
   const userIdKey = 'user_id';

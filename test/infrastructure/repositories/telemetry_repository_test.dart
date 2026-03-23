@@ -60,16 +60,15 @@ class _LoggedEvent {
 }
 
 class _FakeEventTrackerHandler implements EventTrackerHandlerContract {
-  _FakeEventTrackerHandler({
-    this.logEventStatus = EventTrackerDeliveryStatus.delivered,
-  });
+  _FakeEventTrackerHandler();
 
   final List<_LoggedEvent> events = <_LoggedEvent>[];
   final List<(EventTrackerEvents, String?)> timedEvents =
       <(EventTrackerEvents, String?)>[];
   final List<(String, EventTrackerUserData)> mergedIdentities =
       <(String, EventTrackerUserData)>[];
-  EventTrackerDeliveryStatus logEventStatus;
+  EventTrackerDeliveryStatus logEventStatus =
+      EventTrackerDeliveryStatus.delivered;
 
   @override
   final List<EventTrackerContract> trackers = <EventTrackerContract>[];
