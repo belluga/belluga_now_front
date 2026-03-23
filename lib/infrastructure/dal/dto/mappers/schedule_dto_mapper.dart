@@ -81,7 +81,7 @@ mixin ScheduleDtoMapper
           ..parse(dto.type.color ?? '#000000'),
       ),
       title: TitleValue()..parse(dto.title),
-      content: HTMLContentValue()..parse(dto.content),
+      content: HTMLContentValue(minLenght: 0)..parse(dto.content),
       location: DescriptionValue(minLenght: 1)..parse(dto.location),
       thumb: thumb,
       dateTimeStart: DateTimeValue()..parse(dto.dateTimeStart),

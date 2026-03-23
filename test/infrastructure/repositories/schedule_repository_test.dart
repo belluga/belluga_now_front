@@ -221,6 +221,37 @@ void main() {
     expect(result.events, hasLength(1));
     expect(result.events.first.type.description.value, isEmpty);
   });
+
+  test('getEventsPage maps events when event content is null', () async {
+    final backend = _CapturingScheduleBackend(
+      pagedResponses: [
+        EventPageDTO(
+          events: [
+            _buildEventDto(
+              eventId: '507f1f77bcf86cd799439041',
+              occurrenceId: '507f1f77bcf86cd799439042',
+              eventContent: null,
+            ),
+          ],
+          hasMore: false,
+        ),
+      ],
+    );
+    final repository = ScheduleRepository(
+      backend: backend,
+      userLocationRepository: _FakeUserLocationRepository(),
+      appDataRepository: _FakeAppDataRepository(_buildAppData()),
+    );
+
+    final result = await repository.getEventsPage(
+      page: 1,
+      pageSize: 25,
+      showPastOnly: false,
+    );
+
+    expect(result.events, hasLength(1));
+    expect(result.events.first.content.valueText, isEmpty);
+  });
 }
 
 class _CapturingScheduleBackend implements ScheduleBackendContract {
@@ -496,13 +527,14 @@ EventDTO _buildEventDto({
   String occurrenceId = '507f1f77bcf86cd799439012',
   String startsAtIso = '2099-01-01T20:00:00+00:00',
   String? typeDescription = 'Show type description',
+  String? eventContent = 'Conteudo do evento completo',
 }) {
   return EventDTO.fromJson({
     'event_id': eventId,
     'occurrence_id': occurrenceId,
     'slug': 'evento-teste',
     'title': 'Evento Teste',
-    'content': 'Conteudo do evento completo',
+    'content': eventContent,
     'type': {
       'id': 'type-1',
       'name': 'Show',
