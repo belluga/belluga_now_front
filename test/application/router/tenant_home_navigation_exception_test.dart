@@ -331,6 +331,9 @@ void _registerTenantBootstrapDependencies({
   when(mockAgendaController.isInitialLoadingStreamValue).thenReturn(
     StreamValue<bool>(defaultValue: false),
   );
+  when(mockAgendaController.initialLoadingLabelStreamValue).thenReturn(
+    StreamValue<String>(defaultValue: ''),
+  );
   when(mockAgendaController.isPageLoadingStreamValue).thenReturn(
     StreamValue<bool>(defaultValue: false),
   );

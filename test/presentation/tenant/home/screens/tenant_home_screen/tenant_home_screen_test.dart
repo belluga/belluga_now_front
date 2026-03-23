@@ -153,6 +153,9 @@ void main() {
         .when(mockAgendaController.isInitialLoadingStreamValue)
         .thenReturn(StreamValue<bool>(defaultValue: false));
     mockito
+        .when(mockAgendaController.initialLoadingLabelStreamValue)
+        .thenReturn(StreamValue<String>(defaultValue: ''));
+    mockito
         .when(mockAgendaController.isPageLoadingStreamValue)
         .thenReturn(StreamValue<bool>(defaultValue: false));
     mockito
@@ -175,7 +178,7 @@ void main() {
         .thenReturn(StreamValue<bool>(defaultValue: false));
     mockito
         .when(mockAgendaController.displayedEventsStreamValue)
-        .thenReturn(StreamValue<List<EventModel>>(defaultValue: []));
+        .thenReturn(StreamValue<List<EventModel>>(defaultValue: const []));
     mockito
         .when(mockAgendaController.searchController)
         .thenReturn(TextEditingController());

@@ -121,6 +121,13 @@ bool isAllowedGlobalRegistrationFilePath(String path) {
           '/lib/infrastructure/repositories/app_data_repository.dart');
 }
 
+bool isModuleSettingsFilePath(String path) {
+  final normalized = normalizePath(path);
+  return normalized.endsWith(
+    '/lib/application/router/modular_app/module_settings.dart',
+  );
+}
+
 bool isTenantCanonicalDomainEnforcementFilePath(String path) {
   final normalized = normalizePath(path);
 

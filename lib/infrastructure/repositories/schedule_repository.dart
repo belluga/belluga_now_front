@@ -17,6 +17,7 @@ import 'package:belluga_now/infrastructure/dal/dto/mappers/schedule_dto_mapper.d
 import 'package:belluga_now/infrastructure/dal/dto/mappers/thumb_dto_mapper.dart';
 import 'package:belluga_now/infrastructure/services/schedule_backend_contract.dart';
 import 'package:get_it/get_it.dart';
+import 'package:stream_value/core/stream_value.dart';
 
 class ScheduleRepository extends ScheduleRepositoryContract
     with
@@ -44,6 +45,46 @@ class ScheduleRepository extends ScheduleRepositoryContract
   final ScheduleBackendContract _backend;
   UserLocationRepositoryContract? _userLocationRepository;
   AppDataRepositoryContract? _appDataRepository;
+  @override
+  final StreamValue<List<EventModel>?> homeAgendaEventsStreamValue =
+      StreamValue<List<EventModel>?>();
+  @override
+  final StreamValue<HomeAgendaCacheSnapshot?> homeAgendaCacheStreamValue =
+      StreamValue<HomeAgendaCacheSnapshot?>();
+
+  @override
+  HomeAgendaCacheSnapshot? readHomeAgendaCache({
+    required bool showPastOnly,
+    required String searchQuery,
+    required bool confirmedOnly,
+  }) {
+    final snapshot = homeAgendaCacheStreamValue.value;
+    if (snapshot == null) {
+      return null;
+    }
+    if (snapshot.showPastOnly != showPastOnly) {
+      return null;
+    }
+    if (snapshot.searchQuery != searchQuery) {
+      return null;
+    }
+    if (snapshot.confirmedOnly != confirmedOnly) {
+      return null;
+    }
+    return snapshot;
+  }
+
+  @override
+  void writeHomeAgendaCache(HomeAgendaCacheSnapshot snapshot) {
+    homeAgendaCacheStreamValue.addValue(snapshot);
+    homeAgendaEventsStreamValue.addValue(snapshot.events);
+  }
+
+  @override
+  void clearHomeAgendaCache() {
+    homeAgendaCacheStreamValue.addValue(null);
+    homeAgendaEventsStreamValue.addValue(null);
+  }
 
   UserLocationRepositoryContract? get _resolvedUserLocationRepository {
     if (_userLocationRepository != null) {

@@ -62,7 +62,8 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
   @override
   final focusNode = FocusNode();
 
-  final displayedEventsStreamValue = StreamValue<List<EventModel>?>();
+  StreamValue<List<EventModel>?> get displayedEventsStreamValue =>
+      _scheduleRepository.homeAgendaEventsStreamValue;
   final isInitialLoadingStreamValue = StreamValue<bool>(defaultValue: true);
   final initialLoadingLabelStreamValue =
       StreamValue<String>(defaultValue: _loadingLocationLabel);
@@ -90,11 +91,11 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
   StreamSubscription? _pendingInvitesSubscription;
   StreamSubscription? _userLocationSubscription;
   StreamSubscription? _radiusSubscription;
-  final List<EventModel> _fetchedEvents = [];
   int _currentPage = 1;
   bool _isFetching = false;
   bool _hasMore = true;
   bool _isDisposed = false;
+  Future<void>? _initInFlight;
   double? _effectiveOriginLat;
   double? _effectiveOriginLng;
   bool _locationPermissionRequested = false;
@@ -113,6 +114,33 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
   }
 
   Future<void> init({bool startWithHistory = false}) async {
+    final inFlight = _initInFlight;
+    if (inFlight != null) {
+      return inFlight;
+    }
+
+    final initFuture =
+        _initInternal(startWithHistory: startWithHistory).whenComplete(() {
+      _initInFlight = null;
+    });
+    _initInFlight = initFuture;
+    return initFuture;
+  }
+
+  Future<void> _initInternal({required bool startWithHistory}) async {
+    _setValue(showHistoryStreamValue, startWithHistory);
+    _setValue(radiusMetersStreamValue, _resolveDefaultRadiusMeters());
+    _listenForStatusChanges();
+    _listenForLocationChanges();
+    _listenForRadiusChanges();
+
+    final restored = _restoreFromRepositoryCache();
+    if (restored) {
+      _setValue(isInitialLoadingStreamValue, false);
+      _setValue(initialLoadingLabelStreamValue, '');
+      return;
+    }
+
     try {
       await _invitesRepository.init();
     } catch (error) {
@@ -124,11 +152,6 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
       debugPrint(
           'TenantHomeAgendaController.init confirmed ids failed: $error');
     }
-    _setValue(showHistoryStreamValue, startWithHistory);
-    _setValue(radiusMetersStreamValue, _resolveDefaultRadiusMeters());
-    _listenForStatusChanges();
-    _listenForLocationChanges();
-    _listenForRadiusChanges();
     await _resolveEffectiveOrigin(warmUpIfPossible: true);
     await _refresh();
   }
@@ -142,8 +165,7 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
     _hasMore = true;
     _setValue(hasMoreStreamValue, true);
     if (shouldShowInitialLoading) {
-      _fetchedEvents.clear();
-      _setValue(displayedEventsStreamValue, null);
+      _scheduleRepository.clearHomeAgendaCache();
       _setValue(isInitialLoadingStreamValue, true);
       _setValue(initialLoadingLabelStreamValue, _loadingLocationLabel);
     }
@@ -232,17 +254,17 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
         maxDistanceMeters: radiusMetersStreamValue.value,
       );
 
-      if (page == 1) {
-        _fetchedEvents
-          ..clear()
-          ..addAll(result.events);
-      } else {
-        _fetchedEvents.addAll(result.events);
-      }
+      final canonicalEvents = page == 1
+          ? List<EventModel>.from(result.events)
+          : [
+              ..._currentCanonicalEvents(),
+              ...result.events,
+            ];
 
       _hasMore = result.hasMore && result.events.length >= _pageSize;
       _setValue(hasMoreStreamValue, _hasMore);
       _currentPage = page;
+      _writeRepositoryCacheSnapshot(canonicalEvents);
       _applyFiltersAndPublish();
     } finally {
       _isFetching = false;
@@ -339,8 +361,61 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
   }
 
   void _applyFiltersAndPublish() {
-    final inviteFiltered = _applyInviteFilter(_fetchedEvents);
+    final inviteFiltered = _applyInviteFilter(_currentCanonicalEvents());
     _setValue(displayedEventsStreamValue, inviteFiltered);
+  }
+
+  List<EventModel> _currentCanonicalEvents() {
+    final cache = _scheduleRepository.readHomeAgendaCache(
+      showPastOnly: showHistoryStreamValue.value,
+      searchQuery: searchController.text.trim(),
+      confirmedOnly: inviteFilterStreamValue.value == InviteFilter.confirmedOnly,
+    );
+    if (cache == null) {
+      return const <EventModel>[];
+    }
+    return cache.events;
+  }
+
+  bool _restoreFromRepositoryCache() {
+    final showPastOnly = showHistoryStreamValue.value;
+    final searchQuery = searchController.text.trim();
+    final confirmedOnly =
+        inviteFilterStreamValue.value == InviteFilter.confirmedOnly;
+    final cache = _scheduleRepository.readHomeAgendaCache(
+      showPastOnly: showPastOnly,
+      searchQuery: searchQuery,
+      confirmedOnly: confirmedOnly,
+    );
+    if (cache == null) {
+      return false;
+    }
+
+    _hasMore = cache.hasMore;
+    _currentPage = cache.page;
+    _effectiveOriginLat = cache.originLat;
+    _effectiveOriginLng = cache.originLng;
+    _setValue(hasMoreStreamValue, _hasMore);
+    _applyFiltersAndPublish();
+    return true;
+  }
+
+  void _writeRepositoryCacheSnapshot(List<EventModel> events) {
+    _scheduleRepository.writeHomeAgendaCache(
+      HomeAgendaCacheSnapshot(
+        events: List<EventModel>.unmodifiable(events),
+        hasMore: _hasMore,
+        page: _currentPage,
+        showPastOnly: showHistoryStreamValue.value,
+        searchQuery: searchController.text.trim(),
+        confirmedOnly:
+            inviteFilterStreamValue.value == InviteFilter.confirmedOnly,
+        capturedAt: DateTime.now(),
+        originLat: _effectiveOriginLat,
+        originLng: _effectiveOriginLng,
+        maxDistanceMeters: radiusMetersStreamValue.value,
+      ),
+    );
   }
 
   bool isEventConfirmed(String eventId) =>
@@ -602,7 +677,6 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
     _pendingInvitesSubscription?.cancel();
     _userLocationSubscription?.cancel();
     _radiusSubscription?.cancel();
-    displayedEventsStreamValue.dispose();
     isInitialLoadingStreamValue.dispose();
     initialLoadingLabelStreamValue.dispose();
     isPageLoadingStreamValue.dispose();

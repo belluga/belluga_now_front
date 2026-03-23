@@ -191,6 +191,107 @@ void main() {
       controller.onDispose();
     });
 
+    test('reuses cached agenda stream on subsequent init calls', () async {
+      final appData = _buildAppData(
+        minKm: 1,
+        defaultKm: 5,
+        maxKm: 10,
+      );
+      final appDataRepository = _FakeAppDataRepository(appData);
+      final scheduleRepository = _FakeScheduleRepository();
+      final controller = TenantHomeAgendaController(
+        scheduleRepository: scheduleRepository,
+        userEventsRepository: _FakeUserEventsRepository(),
+        invitesRepository: _FakeInvitesRepository(),
+        userLocationRepository: _FakeUserLocationRepository(),
+        appDataRepository: appDataRepository,
+      );
+
+      await controller.init();
+      expect(scheduleRepository.getEventsPageCallCount, 1);
+      expect(controller.displayedEventsStreamValue.value, isNotNull);
+
+      await controller.init();
+      expect(
+        scheduleRepository.getEventsPageCallCount,
+        1,
+        reason: 'Second init must reuse cached StreamValue state.',
+      );
+
+      controller.onDispose();
+    });
+
+    test(
+      'reuses repository StreamValue cache across controller instances',
+      () async {
+        final appData = _buildAppData(
+          minKm: 1,
+          defaultKm: 5,
+          maxKm: 10,
+        );
+        final appDataRepository = _FakeAppDataRepository(appData);
+        final sharedScheduleRepository = _FakeScheduleRepository();
+
+        final firstController = TenantHomeAgendaController(
+          scheduleRepository: sharedScheduleRepository,
+          userEventsRepository: _FakeUserEventsRepository(),
+          invitesRepository: _FakeInvitesRepository(),
+          userLocationRepository: _FakeUserLocationRepository(),
+          appDataRepository: appDataRepository,
+        );
+        await firstController.init();
+        expect(sharedScheduleRepository.getEventsPageCallCount, 1);
+        firstController.onDispose();
+
+        final secondController = TenantHomeAgendaController(
+          scheduleRepository: sharedScheduleRepository,
+          userEventsRepository: _FakeUserEventsRepository(),
+          invitesRepository: _FakeInvitesRepository(),
+          userLocationRepository: _FakeUserLocationRepository(),
+          appDataRepository: appDataRepository,
+        );
+        await secondController.init();
+        expect(
+          sharedScheduleRepository.getEventsPageCallCount,
+          1,
+          reason:
+              'Second controller must hydrate from repository StreamValue cache.',
+        );
+        secondController.onDispose();
+      },
+    );
+
+    test('retries init when previous load ended without cached results',
+        () async {
+      final appData = _buildAppData(
+        minKm: 1,
+        defaultKm: 5,
+        maxKm: 10,
+      );
+      final appDataRepository = _FakeAppDataRepository(appData);
+      final scheduleRepository = _AlwaysFailingScheduleRepository();
+      final controller = TenantHomeAgendaController(
+        scheduleRepository: scheduleRepository,
+        userEventsRepository: _FakeUserEventsRepository(),
+        invitesRepository: _FakeInvitesRepository(),
+        userLocationRepository: _FakeUserLocationRepository(),
+        appDataRepository: appDataRepository,
+      );
+
+      await controller.init();
+      expect(controller.displayedEventsStreamValue.value, isNull);
+      expect(scheduleRepository.getEventsPageCallCount, 2);
+
+      await controller.init();
+      expect(
+        scheduleRepository.getEventsPageCallCount,
+        4,
+        reason: 'When cache is null, init must retry fetching.',
+      );
+
+      controller.onDispose();
+    });
+
     test('uses tenant default origin when user location is unavailable',
         () async {
       final appData = _buildAppData(
@@ -794,9 +895,42 @@ class _FakeAppDataRepository implements AppDataRepositoryContract {
 }
 
 class _FakeScheduleRepository implements ScheduleRepositoryContract {
+  @override
+  final StreamValue<List<EventModel>?> homeAgendaEventsStreamValue =
+      StreamValue<List<EventModel>?>();
+  @override
+  final StreamValue<HomeAgendaCacheSnapshot?> homeAgendaCacheStreamValue =
+      StreamValue<HomeAgendaCacheSnapshot?>();
+
   int getEventsPageCallCount = 0;
   double? lastOriginLat;
   double? lastOriginLng;
+
+  @override
+  HomeAgendaCacheSnapshot? readHomeAgendaCache({
+    required bool showPastOnly,
+    required String searchQuery,
+    required bool confirmedOnly,
+  }) {
+    final snapshot = homeAgendaCacheStreamValue.value;
+    if (snapshot == null) return null;
+    if (snapshot.showPastOnly != showPastOnly) return null;
+    if (snapshot.searchQuery != searchQuery) return null;
+    if (snapshot.confirmedOnly != confirmedOnly) return null;
+    return snapshot;
+  }
+
+  @override
+  void writeHomeAgendaCache(HomeAgendaCacheSnapshot snapshot) {
+    homeAgendaCacheStreamValue.addValue(snapshot);
+    homeAgendaEventsStreamValue.addValue(snapshot.events);
+  }
+
+  @override
+  void clearHomeAgendaCache() {
+    homeAgendaCacheStreamValue.addValue(null);
+    homeAgendaEventsStreamValue.addValue(null);
+  }
 
   @override
   Future<List<EventModel>> getAllEvents() async => const [];
@@ -908,6 +1042,26 @@ class _FailingOnceScheduleRepository extends _FakeScheduleRepository {
     }
 
     return const PagedEventsResult(events: [], hasMore: false);
+  }
+}
+
+class _AlwaysFailingScheduleRepository extends _FakeScheduleRepository {
+  @override
+  Future<PagedEventsResult> getEventsPage({
+    required int page,
+    required int pageSize,
+    required bool showPastOnly,
+    String searchQuery = '',
+    List<String>? categories,
+    List<String>? tags,
+    List<Map<String, String>>? taxonomy,
+    bool confirmedOnly = false,
+    double? originLat,
+    double? originLng,
+    double? maxDistanceMeters,
+  }) async {
+    getEventsPageCallCount += 1;
+    throw Exception('forced persistent first-page failure');
   }
 }
 

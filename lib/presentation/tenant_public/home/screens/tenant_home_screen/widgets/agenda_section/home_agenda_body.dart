@@ -38,34 +38,13 @@ class _HomeAgendaBodyState extends State<HomeAgendaBody> {
                 controller.showHistoryStreamValue.value;
         return StreamValueBuilder<List<EventModel>?>(
           streamValue: controller.displayedEventsStreamValue,
+          onNullWidget: _buildFirstFetchLoading(
+            theme: theme,
+            colorScheme: colorScheme,
+            controller: controller,
+          ),
           builder: (context, events) {
-            if (events == null) {
-              return Center(
-                child: StreamValueBuilder<String>(
-                  streamValue: controller.initialLoadingLabelStreamValue,
-                  builder: (context, loadingLabel) {
-                    return Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const CircularProgressIndicator(),
-                        const SizedBox(height: 16),
-                        Text(
-                          loadingLabel.isEmpty
-                              ? 'Buscando eventos perto de você...'
-                              : loadingLabel,
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: colorScheme.onSurfaceVariant,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ],
-                    );
-                  },
-                ),
-              );
-            }
-
-            final resumes = events
+            final resumes = events!
                 .map(
                   (event) => VenueEventResume.fromScheduleEvent(
                     event,
@@ -222,5 +201,35 @@ class _HomeAgendaBodyState extends State<HomeAgendaBody> {
       });
     }
     return false;
+  }
+
+  Widget _buildFirstFetchLoading({
+    required ThemeData theme,
+    required ColorScheme colorScheme,
+    required TenantHomeAgendaController controller,
+  }) {
+    return Center(
+      child: StreamValueBuilder<String>(
+        streamValue: controller.initialLoadingLabelStreamValue,
+        builder: (context, loadingLabel) {
+          return Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const CircularProgressIndicator(),
+              const SizedBox(height: 16),
+              Text(
+                loadingLabel.isEmpty
+                    ? 'Buscando eventos perto de você...'
+                    : loadingLabel,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          );
+        },
+      ),
+    );
   }
 }

@@ -252,6 +252,13 @@ class _FakeAppDataRepository implements AppDataRepositoryContract {
 class _FakeScheduleRepository implements ScheduleRepositoryContract {
   _FakeScheduleRepository();
 
+  @override
+  final StreamValue<List<EventModel>?> homeAgendaEventsStreamValue =
+      StreamValue<List<EventModel>?>();
+  @override
+  final StreamValue<HomeAgendaCacheSnapshot?> homeAgendaCacheStreamValue =
+      StreamValue<HomeAgendaCacheSnapshot?>();
+
   int getEventsPageCallCount = 0;
   int watchEventsStreamCallCount = 0;
   int? lastRequestedPage;
@@ -271,6 +278,32 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
       controller.close();
     }
     _streamControllers.clear();
+  }
+
+  @override
+  HomeAgendaCacheSnapshot? readHomeAgendaCache({
+    required bool showPastOnly,
+    required String searchQuery,
+    required bool confirmedOnly,
+  }) {
+    final snapshot = homeAgendaCacheStreamValue.value;
+    if (snapshot == null) return null;
+    if (snapshot.showPastOnly != showPastOnly) return null;
+    if (snapshot.searchQuery != searchQuery) return null;
+    if (snapshot.confirmedOnly != confirmedOnly) return null;
+    return snapshot;
+  }
+
+  @override
+  void writeHomeAgendaCache(HomeAgendaCacheSnapshot snapshot) {
+    homeAgendaCacheStreamValue.addValue(snapshot);
+    homeAgendaEventsStreamValue.addValue(snapshot.events);
+  }
+
+  @override
+  void clearHomeAgendaCache() {
+    homeAgendaCacheStreamValue.addValue(null);
+    homeAgendaEventsStreamValue.addValue(null);
   }
 
   @override

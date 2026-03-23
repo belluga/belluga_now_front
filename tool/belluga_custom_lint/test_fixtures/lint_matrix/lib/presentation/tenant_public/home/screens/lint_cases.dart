@@ -16,6 +16,15 @@ class StreamValue<T> {
   StreamValue({T? defaultValue});
 }
 
+// expect_lint: multi_public_class_file_warning
+class StreamValueBuilder<T> {
+  StreamValueBuilder({
+    required Object streamValue,
+    required T Function(Object context, T value) builder,
+    Object? onNullWidget,
+  });
+}
+
 class _DummyRepositoryContract {}
 
 class _AppData {}
@@ -50,6 +59,20 @@ class _UiBuilderCase {
 
   // expect_lint: ui_future_stream_builder_forbidden
   final StreamBuilder<int> streamBuilder = StreamBuilder<int>();
+
+  StreamValueBuilder<String?> streamValueBuilderWithNullCheck() {
+    return StreamValueBuilder<String?>(
+      streamValue: Object(),
+      onNullWidget: Object(),
+      builder: (context, value) {
+        // expect_lint: ui_streamvalue_builder_null_check_forbidden
+        if (value == null) {
+          return '';
+        }
+        return value;
+      },
+    );
+  }
 }
 
 class _UiGetItCase {
