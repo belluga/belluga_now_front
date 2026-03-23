@@ -3,7 +3,6 @@ import 'package:belluga_now/domain/app_data/value_object/platform_type_value.dar
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
 import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
-import 'package:belluga_now/domain/value_objects/description_value.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_delta_dto.dart';
@@ -15,7 +14,6 @@ import 'package:belluga_now/infrastructure/services/schedule_backend_contract.da
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:stream_value/core/stream_value.dart';
-import 'package:value_object_pattern/domain/value_objects/html_content_value.dart';
 
 void main() {
   test('fetchUpcomingEvents uses user location as agenda origin', () async {
@@ -255,50 +253,39 @@ void main() {
     expect(result.events.first.content.valueText, isEmpty);
   });
 
-  test('old parser rejects null type descriptions while new parser accepts',
-      () {
-    // Production-like type descriptions observed in agenda payloads:
-    // mixed null and non-null values.
-    const typeDescriptions = <String?>[
-      null,
-      'Voz e Violao',
-      null,
-      null,
-    ];
-
-    expect(typeDescriptions.where((entry) => entry == null), isNotEmpty);
-
-    for (final nullable in typeDescriptions) {
-      final normalized = nullable ?? '';
-      if (nullable == null) {
-        expect(
-          () => (DescriptionValue()..parse(normalized)).value,
-          throwsA(isA<Exception>()),
-        );
-      } else {
-        expect(
-          () => (DescriptionValue()..parse(normalized)).value,
-          returnsNormally,
-        );
-      }
-
-      expect(
-        () => (DescriptionValue(minLenght: 0)..parse(normalized)).value,
-        returnsNormally,
-      );
-    }
-  });
-
-  test('event content null parses on both old and new html parsers', () {
-    const nullableContent = null;
-    expect(
-      () => (HTMLContentValue()..parse(nullableContent)).valueText,
-      returnsNormally,
+  test(
+      'getEventsPage maps events when type description and content are null',
+      () async {
+    final backend = _CapturingScheduleBackend(
+      pagedResponses: [
+        EventPageDTO(
+          events: [
+            _buildEventDto(
+              eventId: '507f1f77bcf86cd799439051',
+              occurrenceId: '507f1f77bcf86cd799439052',
+              typeDescription: null,
+              eventContent: null,
+            ),
+          ],
+          hasMore: false,
+        ),
+      ],
     );
-    expect(
-      () => (HTMLContentValue(minLenght: 0)..parse(nullableContent)).valueText,
-      returnsNormally,
+    final repository = ScheduleRepository(
+      backend: backend,
+      userLocationRepository: _FakeUserLocationRepository(),
+      appDataRepository: _FakeAppDataRepository(_buildAppData()),
     );
+
+    final result = await repository.getEventsPage(
+      page: 1,
+      pageSize: 25,
+      showPastOnly: false,
+    );
+
+    expect(result.events, hasLength(1));
+    expect(result.events.first.type.description.value, isEmpty);
+    expect(result.events.first.content.valueText, isEmpty);
   });
 }
 
