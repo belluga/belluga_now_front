@@ -7,7 +7,7 @@ import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:stream_value/core/stream_value.dart';
 
 abstract class PoiRepositoryContract {
-  StreamValue<List<CityPoiModel>> get filteredPoisStreamValue;
+  StreamValue<List<CityPoiModel>?> get filteredPoisStreamValue;
   StreamValue<CityPoiModel?> get selectedPoiStreamValue;
   StreamValue<PoiFilterMode> get filterModeStreamValue;
   StreamValue<PoiFilterOptions?> get filterOptionsStreamValue;

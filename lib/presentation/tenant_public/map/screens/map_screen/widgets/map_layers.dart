@@ -26,9 +26,10 @@ class MapLayers extends StatelessWidget {
       _controller.defaultCenter.longitude,
     );
 
-    return StreamValueBuilder<List<CityPoiModel>>(
+    return StreamValueBuilder<List<CityPoiModel>?>(
       streamValue: _controller.filteredPoisStreamValue,
-      builder: (_, pois) {
+      builder: (_, poisOrNull) {
+        final pois = poisOrNull ?? const <CityPoiModel>[];
         return StreamValueBuilder<CityPoiModel?>(
           streamValue: _controller.selectedPoiStreamValue,
           builder: (_, selectedPoi) {

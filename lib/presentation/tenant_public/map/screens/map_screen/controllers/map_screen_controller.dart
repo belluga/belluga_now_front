@@ -58,7 +58,7 @@ class MapScreenController implements Disposable {
   StreamValue<CityCoordinate?> get userLocationStreamValue =>
       _userLocationRepository.userLocationStreamValue;
 
-  StreamValue<List<CityPoiModel>> get filteredPoisStreamValue =>
+  StreamValue<List<CityPoiModel>?> get filteredPoisStreamValue =>
       _poiRepository.filteredPoisStreamValue;
 
   StreamValue<CityPoiModel?> get selectedPoiStreamValue =>
@@ -90,7 +90,7 @@ class MapScreenController implements Disposable {
   String? _activeSource;
   Set<String> _activeTypes = <String>{};
   StreamSubscription<MapEvent>? _mapEventSubscription;
-  StreamSubscription<List<CityPoiModel>>? _filteredPoisSubscription;
+  StreamSubscription<List<CityPoiModel>?>? _filteredPoisSubscription;
   int _poiRequestSequence = 0;
   bool _filterInteractionLocked = false;
 
@@ -117,7 +117,8 @@ class MapScreenController implements Disposable {
     _clampPoiDeckIndex(filteredPoisStreamValue.value);
   }
 
-  void _clampPoiDeckIndex(List<CityPoiModel> pois) {
+  void _clampPoiDeckIndex(List<CityPoiModel>? poisOrNull) {
+    final pois = poisOrNull ?? const <CityPoiModel>[];
     if (pois.isEmpty) {
       if (poiDeckIndexStreamValue.value != 0) {
         poiDeckIndexStreamValue.addValue(0);

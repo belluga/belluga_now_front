@@ -446,7 +446,7 @@ void main() {
         );
         expect(mapController.filterModeStreamValue.value, PoiFilterMode.server);
         expect(
-          mapController.filteredPoisStreamValue.value
+          (mapController.filteredPoisStreamValue.value ?? const <CityPoiModel>[])
               .map((poi) => poi.name)
               .toList(growable: false),
           equals(<String>[assetDisplayName]),
@@ -668,7 +668,9 @@ Future<void> waitForCatalogAndPois({
           (category) => category.label == eventFilterLabel,
         ) ??
         false;
-    final hasAssetPoi = mapController.filteredPoisStreamValue.value.any(
+    final hasAssetPoi =
+        (mapController.filteredPoisStreamValue.value ?? const <CityPoiModel>[])
+            .any(
       (poi) => poi.name == assetDisplayName,
     );
 
@@ -703,7 +705,8 @@ Future<void> waitForFilterApplication(
       continue;
     }
     final isApplied = mapController.isCategoryFilterActive(assetFilter);
-    final pois = mapController.filteredPoisStreamValue.value;
+    final pois =
+        mapController.filteredPoisStreamValue.value ?? const <CityPoiModel>[];
     if (!mapController.filterInteractionLockedStreamValue.value &&
         isApplied &&
         pois.length == 1 &&

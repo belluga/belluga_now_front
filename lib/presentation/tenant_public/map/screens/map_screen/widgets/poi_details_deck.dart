@@ -98,9 +98,10 @@ class _PoiDetailDeckState extends State<PoiDetailDeck>
           _applyFilterMode(mode);
         }
         if (mode != PoiFilterMode.none) {
-          return StreamValueBuilder<List<CityPoiModel>>(
+          return StreamValueBuilder<List<CityPoiModel>?>(
             streamValue: _controller.filteredPoisStreamValue,
-            builder: (_, filtered) {
+            builder: (_, filteredOrNull) {
+              final filtered = filteredOrNull ?? const <CityPoiModel>[];
               if (filtered.isEmpty) {
                 return const SizedBox.shrink();
               }

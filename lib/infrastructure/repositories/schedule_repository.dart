@@ -86,6 +86,16 @@ class ScheduleRepository extends ScheduleRepositoryContract
     homeAgendaEventsStreamValue.addValue(null);
   }
 
+  Future<void> initializeHomeAgendaStreams() async {
+    homeAgendaCacheStreamValue.addValue(homeAgendaCacheStreamValue.value);
+    homeAgendaEventsStreamValue.addValue(homeAgendaEventsStreamValue.value);
+  }
+
+  Future<void> refreshHomeAgendaStreams() async {
+    homeAgendaCacheStreamValue.addValue(homeAgendaCacheStreamValue.value);
+    homeAgendaEventsStreamValue.addValue(homeAgendaEventsStreamValue.value);
+  }
+
   UserLocationRepositoryContract? get _resolvedUserLocationRepository {
     if (_userLocationRepository != null) {
       return _userLocationRepository;

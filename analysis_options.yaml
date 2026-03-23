@@ -11,9 +11,9 @@ analyzer:
 
 custom_lint:
   rules:
-    - domain_primitive_field_forbidden: false
-    - repository_raw_payload_map_forbidden: false
-    - repository_raw_transport_typing_forbidden: false
+    - domain_primitive_field_forbidden
+    - repository_raw_payload_map_forbidden
+    - repository_raw_transport_typing_forbidden
 
 linter:
   rules:

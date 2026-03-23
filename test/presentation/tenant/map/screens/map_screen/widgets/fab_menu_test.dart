@@ -17,8 +17,8 @@ import 'package:stream_value/core/stream_value.dart';
 
 class _FakePoiRepository implements PoiRepositoryContract {
   @override
-  final StreamValue<List<CityPoiModel>> filteredPoisStreamValue =
-      StreamValue<List<CityPoiModel>>(defaultValue: const []);
+  final StreamValue<List<CityPoiModel>?> filteredPoisStreamValue =
+      StreamValue<List<CityPoiModel>?>(defaultValue: null);
 
   @override
   final StreamValue<PoiFilterMode> filterModeStreamValue =

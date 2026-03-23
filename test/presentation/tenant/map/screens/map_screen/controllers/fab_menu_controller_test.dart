@@ -34,8 +34,8 @@ void main() {
 
 class _FakePoiRepository implements PoiRepositoryContract {
   @override
-  final StreamValue<List<CityPoiModel>> filteredPoisStreamValue =
-      StreamValue<List<CityPoiModel>>(defaultValue: const <CityPoiModel>[]);
+  final StreamValue<List<CityPoiModel>?> filteredPoisStreamValue =
+      StreamValue<List<CityPoiModel>?>(defaultValue: null);
 
   @override
   final StreamValue<CityPoiModel?> selectedPoiStreamValue =

@@ -19,10 +19,10 @@ class PoiRepository implements PoiRepositoryContract {
   final CityMapRepositoryContract _dataSource;
 
   final allPoisStreamValue =
-      StreamValue<List<CityPoiModel>>(defaultValue: const <CityPoiModel>[]);
+      StreamValue<List<CityPoiModel>?>(defaultValue: null);
   @override
   final filteredPoisStreamValue =
-      StreamValue<List<CityPoiModel>>(defaultValue: const <CityPoiModel>[]);
+      StreamValue<List<CityPoiModel>?>(defaultValue: null);
   @override
   final selectedPoiStreamValue = StreamValue<CityPoiModel?>();
   @override
@@ -43,6 +43,20 @@ class PoiRepository implements PoiRepositoryContract {
     final snapshot = List<CityPoiModel>.unmodifiable(cityPois);
     _setAllPois(snapshot);
     return snapshot;
+  }
+
+  Future<void> initializePoiStreams() async {
+    if (filterOptionsStreamValue.value == null) {
+      await fetchFilters();
+    }
+    if ((mainFilterOptionsStreamValue.value ?? const <MainFilterOption>[])
+        .isEmpty) {
+      await fetchMainFilters();
+    }
+  }
+
+  Future<void> refreshPois(PoiQuery query) async {
+    await fetchPoints(query);
   }
 
   @override
@@ -120,7 +134,7 @@ class PoiRepository implements PoiRepositoryContract {
   }
 
   void _recomputeFilteredPois([List<CityPoiModel>? source]) {
-    final all = source ?? allPoisStreamValue.value;
+    final all = source ?? allPoisStreamValue.value ?? const <CityPoiModel>[];
     final filtered = all;
 
     final snapshot = List<CityPoiModel>.unmodifiable(filtered);
