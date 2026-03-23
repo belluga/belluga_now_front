@@ -858,7 +858,7 @@ class _PayloadScheduleBackend implements ScheduleBackendContract {
         'id': 'type-1',
         'name': 'Show',
         'slug': 'show',
-        'description': 'Show type description',
+        'description': null,
         'color': '#112233',
       },
       'location': {

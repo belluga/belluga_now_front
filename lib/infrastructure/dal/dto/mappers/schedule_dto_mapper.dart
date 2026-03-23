@@ -35,22 +35,22 @@ import 'partner_dto_mapper.dart';
 import 'thumb_dto_mapper.dart';
 
 mixin ScheduleDtoMapper
-    on InviteDtoMapper,
+    on
+        InviteDtoMapper,
         ThumbDtoMapper,
         ArtistDtoMapper,
         PartnerDtoMapper,
         InviteStatusDtoMapper {
   EventModel mapEventDto(EventDTO dto) {
-    final ThumbModel? thumb = dto.thumb != null ? mapThumbDto(dto.thumb!) : null;
-    final CityCoordinate? coordinate =
-        (dto.latitude != null && dto.longitude != null)
-            ? CityCoordinate(
-                latitudeValue: LatitudeValue()
-                  ..parse(dto.latitude!.toString()),
-                longitudeValue: LongitudeValue()
-                  ..parse(dto.longitude!.toString()),
-              )
-            : null;
+    final ThumbModel? thumb =
+        dto.thumb != null ? mapThumbDto(dto.thumb!) : null;
+    final CityCoordinate? coordinate = (dto.latitude != null &&
+            dto.longitude != null)
+        ? CityCoordinate(
+            latitudeValue: LatitudeValue()..parse(dto.latitude!.toString()),
+            longitudeValue: LongitudeValue()..parse(dto.longitude!.toString()),
+          )
+        : null;
     final List<ArtistResume> artists =
         dto.artists.map(mapEventArtistDto).toList();
     final PartnerResume? venue =
@@ -74,7 +74,8 @@ mixin ScheduleDtoMapper
         id: EventTypeIdValue()..parse(dto.type.id),
         name: TitleValue(minLenght: 1)..parse(dto.type.name),
         slug: SlugValue()..parse(dto.type.slug),
-        description: DescriptionValue()..parse(dto.type.description),
+        description: DescriptionValue(minLenght: 0)
+          ..parse(dto.type.description),
         icon: SlugValue()..parse(dto.type.icon ?? 'default-icon'),
         color: ColorValue(defaultValue: const Color(0xFF000000))
           ..parse(dto.type.color ?? '#000000'),

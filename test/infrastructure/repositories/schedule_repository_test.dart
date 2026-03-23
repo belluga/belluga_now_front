@@ -189,6 +189,38 @@ void main() {
 
     expect(backend.fetchEventsCalls, 0);
   });
+
+  test('getEventsPage maps events when event type description is null',
+      () async {
+    final backend = _CapturingScheduleBackend(
+      pagedResponses: [
+        EventPageDTO(
+          events: [
+            _buildEventDto(
+              eventId: '507f1f77bcf86cd799439031',
+              occurrenceId: '507f1f77bcf86cd799439032',
+              typeDescription: null,
+            ),
+          ],
+          hasMore: false,
+        ),
+      ],
+    );
+    final repository = ScheduleRepository(
+      backend: backend,
+      userLocationRepository: _FakeUserLocationRepository(),
+      appDataRepository: _FakeAppDataRepository(_buildAppData()),
+    );
+
+    final result = await repository.getEventsPage(
+      page: 1,
+      pageSize: 25,
+      showPastOnly: false,
+    );
+
+    expect(result.events, hasLength(1));
+    expect(result.events.first.type.description.value, isEmpty);
+  });
 }
 
 class _CapturingScheduleBackend implements ScheduleBackendContract {
@@ -463,6 +495,7 @@ EventDTO _buildEventDto({
   String eventId = '507f1f77bcf86cd799439011',
   String occurrenceId = '507f1f77bcf86cd799439012',
   String startsAtIso = '2099-01-01T20:00:00+00:00',
+  String? typeDescription = 'Show type description',
 }) {
   return EventDTO.fromJson({
     'event_id': eventId,
@@ -474,7 +507,7 @@ EventDTO _buildEventDto({
       'id': 'type-1',
       'name': 'Show',
       'slug': 'show',
-      'description': 'Show type description',
+      'description': typeDescription,
       'color': '#112233',
     },
     'location': {
