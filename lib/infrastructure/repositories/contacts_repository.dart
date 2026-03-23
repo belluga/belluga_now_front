@@ -14,8 +14,11 @@ class ContactsRepository implements ContactsRepositoryContract {
     try {
       final status = await Permission.contacts.request();
       return status.isGranted;
-    } catch (_) {
-      return false;
+    } catch (error, stackTrace) {
+      Error.throwWithStackTrace(
+        StateError('Failed to request contacts permission: $error'),
+        stackTrace,
+      );
     }
   }
 
@@ -44,8 +47,11 @@ class ContactsRepository implements ContactsRepositoryContract {
                 avatar: c.photo,
               ))
           .toList();
-    } catch (_) {
-      return const [];
+    } catch (error, stackTrace) {
+      Error.throwWithStackTrace(
+        StateError('Failed to load contacts: $error'),
+        stackTrace,
+      );
     }
   }
 }

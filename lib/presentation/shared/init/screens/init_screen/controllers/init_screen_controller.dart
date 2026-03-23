@@ -7,6 +7,7 @@ import 'package:belluga_now/domain/controllers/belluga_init_screen_controller_co
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/push/push_presentation_gate_contract.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/presentation/shared/init/screens/init_screen/controllers/init_screen_ui_state.dart';
 import 'package:stream_value/core/stream_value.dart';
 
@@ -17,11 +18,16 @@ final class InitScreenController extends BellugaInitScreenControllerContract {
   InitScreenController({
     InvitesRepositoryContract? invitesRepository,
     AppDataRepositoryContract? appDataRepository,
+    AuthRepositoryContract? authRepository,
     PushPresentationGateContract? pushPresentationGate,
   })  : _invitesRepository =
             invitesRepository ?? GetIt.I.get<InvitesRepositoryContract>(),
         _appDataRepository =
             appDataRepository ?? GetIt.I.get<AppDataRepositoryContract>(),
+        _authRepository = authRepository ??
+            (GetIt.I.isRegistered<AuthRepositoryContract>()
+                ? GetIt.I.get<AuthRepositoryContract>()
+                : null),
         _pushPresentationGate = pushPresentationGate ??
             (GetIt.I.isRegistered<PushPresentationGateContract>()
                 ? GetIt.I.get<PushPresentationGateContract>()
@@ -29,6 +35,7 @@ final class InitScreenController extends BellugaInitScreenControllerContract {
 
   final InvitesRepositoryContract _invitesRepository;
   final AppDataRepositoryContract _appDataRepository;
+  final AuthRepositoryContract? _authRepository;
   final PushPresentationGateContract? _pushPresentationGate;
 
   @override
@@ -81,6 +88,10 @@ final class InitScreenController extends BellugaInitScreenControllerContract {
 
   @override
   Future<void> initialize() async {
+    final authRepository = _authRepository;
+    if (authRepository != null) {
+      await authRepository.init();
+    }
     // loadingStatusStreamValue.addValue("É bom te ver por aqui!");
     // loadingStatusStreamValue.addValue("Ajustando últimos detalhes!");
     await _invitesRepository.init();

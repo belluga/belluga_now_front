@@ -95,17 +95,46 @@ void main() {
       contains('types%5B%5D=showcase'),
     );
   });
+
+  test('getPois bootstraps auth token when initially missing', () async {
+    final authRepository =
+        GetIt.I.get<AuthRepositoryContract>() as _FakeAuthRepository;
+    authRepository.setUserToken('');
+    authRepository.tokenAfterInit = 'refreshed-token';
+
+    final adapter = _RecordingAdapter();
+    final dio = Dio()..httpClientAdapter = adapter;
+    final service = LaravelMapPoiHttpService(
+      context: BackendContext(
+        baseUrl: 'https://tenant.test/api',
+        adminUrl: 'https://tenant.test/admin/api',
+      ),
+      dio: dio,
+    );
+
+    await service.getPois(PoiQuery());
+
+    final request = adapter.requests.single;
+    expect(authRepository.initCallCount, 1);
+    expect(request.headers['Authorization'], 'Bearer refreshed-token');
+  });
 }
 
 class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
+  String _token = 'test-token';
+  String? tokenAfterInit;
+  int initCallCount = 0;
+
   @override
   Object get backend => Object();
 
   @override
-  String get userToken => 'test-token';
+  String get userToken => _token;
 
   @override
-  void setUserToken(String? token) {}
+  void setUserToken(String? token) {
+    _token = token ?? '';
+  }
 
   @override
   Future<String> getDeviceId() async => 'device-1';
@@ -120,7 +149,14 @@ class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
   bool get isAuthorized => true;
 
   @override
-  Future<void> init() async {}
+  Future<void> init() async {
+    initCallCount += 1;
+    if (_token.trim().isEmpty &&
+        tokenAfterInit != null &&
+        tokenAfterInit!.trim().isNotEmpty) {
+      _token = tokenAfterInit!;
+    }
+  }
 
   @override
   Future<void> autoLogin() async {}

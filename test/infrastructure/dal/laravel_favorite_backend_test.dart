@@ -56,21 +56,29 @@ void main() {
     );
   });
 
-  test('fetchFavorites returns empty and skips HTTP when token is missing',
-      () async {
+  test('fetchFavorites bootstraps token when initially missing', () async {
     final adapter = _FavoritesApiAdapter();
     final dio = Dio()..httpClientAdapter = adapter;
 
+    final authRepository = _FakeAuthRepository(
+      userTokenValue: '',
+      tokenAfterInit: 'refreshed-token',
+    );
     GetIt.I.registerSingleton<AuthRepositoryContract<UserContract>>(
-      _FakeAuthRepository(userTokenValue: ''),
+      authRepository,
     );
     GetIt.I.registerSingleton<AppData>(_buildAppData());
 
     final backend = LaravelFavoriteBackend(dio: dio);
     final favorites = await backend.fetchFavorites();
 
-    expect(favorites, isEmpty);
-    expect(adapter.requests, isEmpty);
+    expect(authRepository.initCallCount, 1);
+    expect(favorites, isNotEmpty);
+    expect(adapter.requests, isNotEmpty);
+    expect(
+      adapter.requests.first.headers['Authorization'],
+      'Bearer refreshed-token',
+    );
   });
 
   test('favoriteAccountProfile posts canonical payload', () async {
@@ -257,9 +265,12 @@ class _FavoritesApiAdapter implements HttpClientAdapter {
 class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
   _FakeAuthRepository({
     required this.userTokenValue,
+    this.tokenAfterInit,
   });
 
-  final String userTokenValue;
+  String userTokenValue;
+  final String? tokenAfterInit;
+  int initCallCount = 0;
 
   @override
   BackendContract get backend => throw UnimplementedError();
@@ -268,7 +279,9 @@ class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
   String get userToken => userTokenValue;
 
   @override
-  void setUserToken(String? token) {}
+  void setUserToken(String? token) {
+    userTokenValue = token ?? '';
+  }
 
   @override
   Future<String> getDeviceId() async => 'device-1';
@@ -283,7 +296,14 @@ class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
   bool get isAuthorized => true;
 
   @override
-  Future<void> init() async {}
+  Future<void> init() async {
+    initCallCount += 1;
+    if (userTokenValue.trim().isEmpty &&
+        tokenAfterInit != null &&
+        tokenAfterInit!.trim().isNotEmpty) {
+      userTokenValue = tokenAfterInit!;
+    }
+  }
 
   @override
   Future<void> autoLogin() async {}

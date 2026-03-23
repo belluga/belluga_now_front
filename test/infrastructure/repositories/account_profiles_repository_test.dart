@@ -39,6 +39,7 @@ void main() {
     );
     final repository = AccountProfilesRepository(
       backend: backend,
+      favoriteBackend: _StubFavoriteBackend(favorites: const []),
       favoriteAccountProfileIds: const {},
     );
 
@@ -102,11 +103,13 @@ void main() {
     final favoritesBackend = _StubFavoriteBackend(
       favorites: const [],
     );
+    final telemetry = _SpyTelemetry();
 
     final repository = AccountProfilesRepository(
       backend: backend,
       favoriteBackend: favoritesBackend,
       favoriteAccountProfileIds: const {},
+      telemetryRepository: telemetry,
     );
 
     await repository.toggleFavorite(validId);
@@ -122,6 +125,35 @@ void main() {
       repository.favoriteAccountProfileIdsStreamValue.value,
       isNot(contains(validId)),
     );
+
+    expect(telemetry.calls, hasLength(2));
+    expect(
+      telemetry.calls.first.event,
+      EventTrackerEvents.favoriteArtistToggled,
+    );
+    expect(
+      telemetry.calls.first.eventName,
+      'favorite_artist_toggled',
+    );
+    expect(
+      telemetry.calls.first.properties?['account_profile_id'],
+      validId,
+    );
+    expect(telemetry.calls.first.properties?['is_favorite'], isTrue);
+
+    expect(
+      telemetry.calls.last.event,
+      EventTrackerEvents.favoriteArtistToggled,
+    );
+    expect(
+      telemetry.calls.last.eventName,
+      'favorite_artist_toggled',
+    );
+    expect(
+      telemetry.calls.last.properties?['account_profile_id'],
+      validId,
+    );
+    expect(telemetry.calls.last.properties?['is_favorite'], isFalse);
   });
 }
 
@@ -182,6 +214,62 @@ class _NoopTelemetry implements TelemetryRepositoryContract {
     Map<String, dynamic>? properties,
   }) async =>
       true;
+
+  @override
+  Future<EventTrackerTimedEventHandle?> startTimedEvent(
+    EventTrackerEvents event, {
+    String? eventName,
+    Map<String, dynamic>? properties,
+  }) async =>
+      null;
+
+  @override
+  void setScreenContext(Map<String, dynamic>? screenContext) {}
+
+  @override
+  EventTrackerLifecycleObserver? buildLifecycleObserver() => null;
+
+  @override
+  Future<bool> mergeIdentity({required String previousUserId}) async => true;
+}
+
+class _TelemetryCall {
+  _TelemetryCall({
+    required this.event,
+    required this.eventName,
+    required this.properties,
+  });
+
+  final EventTrackerEvents event;
+  final String? eventName;
+  final Map<String, dynamic>? properties;
+}
+
+class _SpyTelemetry implements TelemetryRepositoryContract {
+  final List<_TelemetryCall> calls = <_TelemetryCall>[];
+
+  @override
+  Future<bool> logEvent(
+    EventTrackerEvents event, {
+    String? eventName,
+    Map<String, dynamic>? properties,
+  }) async {
+    calls.add(
+      _TelemetryCall(
+        event: event,
+        eventName: eventName,
+        properties: properties,
+      ),
+    );
+    return true;
+  }
+
+  @override
+  Future<bool> finishTimedEvent(EventTrackerTimedEventHandle handle) async =>
+      true;
+
+  @override
+  Future<bool> flushTimedEvents() async => true;
 
   @override
   Future<EventTrackerTimedEventHandle?> startTimedEvent(

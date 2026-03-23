@@ -394,11 +394,7 @@ class ScheduleRepository extends ScheduleRepositoryContract
     if (appDataRepository == null) {
       return null;
     }
-    try {
-      return appDataRepository.appData.tenantDefaultOrigin;
-    } on Object {
-      return null;
-    }
+    return appDataRepository.appData.tenantDefaultOrigin;
   }
 
   bool _isSameDate(DateTime a, DateTime b) {

@@ -227,7 +227,7 @@ void main() {
     expect(formData.fields, contains(const MapEntry('_method', 'PATCH')));
   });
 
-  test('fetchEventsPage maps 404 into empty page result', () async {
+  test('fetchEventsPage propagates 404 as repository error', () async {
     final adapter = _NotFoundEventsAdapter();
     final dio = Dio()..httpClientAdapter = adapter;
     final scope = _MutableTenantScope('https://tenant-a.test/admin/api');
@@ -236,13 +236,19 @@ void main() {
       tenantScope: scope,
     );
 
-    final result = await repository.fetchEventsPage(
-      page: 1,
-      pageSize: 20,
+    await expectLater(
+      repository.fetchEventsPage(
+        page: 1,
+        pageSize: 20,
+      ),
+      throwsA(
+        isA<FormatException>().having(
+          (error) => error.message,
+          'message',
+          contains('status=404'),
+        ),
+      ),
     );
-
-    expect(result.items, isEmpty);
-    expect(result.hasMore, isFalse);
   });
 
   test('fetchEventsPage serializes archived filter as integer boolean',

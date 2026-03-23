@@ -273,11 +273,7 @@ class TelemetryRepository implements TelemetryRepositoryContract {
 
     final locationRepository =
         GetIt.I.get<UserLocationRepositoryContract>();
-    try {
-      await locationRepository.ensureLoaded();
-    } catch (_) {
-      return null;
-    }
+    await locationRepository.ensureLoaded();
 
     final coordinate = locationRepository.lastKnownLocationStreamValue.value;
     final capturedAt =

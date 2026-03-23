@@ -4,8 +4,8 @@ import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/app_data/value_object/platform_type_value.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/user/user_contract.dart';
-import 'package:belluga_now/infrastructure/dal/dao/laravel_backend/partners_backend/laravel_account_profiles_backend.dart';
 import 'package:belluga_now/infrastructure/dal/dao/backend_contract.dart';
+import 'package:belluga_now/infrastructure/dal/dao/laravel_backend/invites_backend/laravel_invites_backend.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
@@ -25,72 +25,37 @@ void main() {
     await GetIt.I.reset();
   });
 
-  test('fetchAccountProfiles hits account_profiles and parses profiles',
-      () async {
-    final validId = _generateMongoId();
-    final adapter = _RecordingAdapter(
-      response: {
-        'data': [
-          {
-            'id': validId,
-            'display_name': 'Artist One',
-            'slug': 'artist-one',
-            'profile_type': 'artist',
-            'taxonomy_terms': [
-              {'type': 'genre', 'value': 'indie'},
-            ],
-          },
-        ],
-      },
-    );
-    final dio = Dio()..httpClientAdapter = adapter;
-    final backend = LaravelAccountProfilesBackend(dio: dio);
-
-    final profiles = await backend.fetchAccountProfiles();
-
-    expect(adapter.lastRequest?.uri.path, '/api/v1/account_profiles');
-    expect(adapter.lastRequest?.queryParameters['page'], 1);
-    expect(adapter.lastRequest?.queryParameters['per_page'], 30);
-    expect(adapter.lastRequest?.headers['Authorization'], 'Bearer test-token');
-    expect(profiles, hasLength(1));
-    expect(profiles.first.name, 'Artist One');
-    expect(profiles.first.slug, 'artist-one');
-  });
-
-  test('fetchAccountProfiles bootstraps auth token when empty', () async {
+  test('fetchInvites bootstraps auth token when initially missing', () async {
     final authRepository = GetIt.I.get<AuthRepositoryContract<UserContract>>()
         as _FakeAuthRepository;
     authRepository.setUserToken('');
+    authRepository.tokenAfterInit = 'refreshed-token';
 
-    final validId = _generateMongoId();
     final adapter = _RecordingAdapter(
-      response: {
-        'data': [
-          {
-            'id': validId,
-            'display_name': 'Artist One',
-            'slug': 'artist-one',
-            'profile_type': 'artist',
-            'taxonomy_terms': const [],
-          },
-        ],
+      response: const {
+        'data': {
+          'invites': [],
+          'has_more': false,
+        },
       },
     );
     final dio = Dio()..httpClientAdapter = adapter;
-    final backend = LaravelAccountProfilesBackend(dio: dio);
+    final backend = LaravelInvitesBackend(dio: dio);
 
-    await backend.fetchAccountProfiles();
+    await backend.fetchInvites(page: 1, pageSize: 20);
 
     expect(authRepository.initCallCount, 1);
     expect(
       adapter.lastRequest?.headers['Authorization'],
       'Bearer refreshed-token',
     );
+    expect(adapter.lastRequest?.uri.path, '/api/v1/invites');
   });
 }
 
 class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
   String _token = 'test-token';
+  String? tokenAfterInit;
   int initCallCount = 0;
 
   @override
@@ -119,8 +84,10 @@ class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
   @override
   Future<void> init() async {
     initCallCount += 1;
-    if (_token.trim().isEmpty) {
-      _token = 'refreshed-token';
+    if (_token.trim().isEmpty &&
+        tokenAfterInit != null &&
+        tokenAfterInit!.trim().isNotEmpty) {
+      _token = tokenAfterInit!;
     }
   }
 
@@ -148,7 +115,9 @@ class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
 
   @override
   Future<void> createNewPassword(
-      String newPassword, String confirmPassword) async {}
+    String newPassword,
+    String confirmPassword,
+  ) async {}
 
   @override
   Future<void> sendPasswordResetEmail(String email) async {}
@@ -189,7 +158,7 @@ AppData _buildAppData() {
     'name': 'Tenant Test',
     'type': 'tenant',
     'main_domain': 'https://tenant.test',
-    'profile_types': [
+    'profile_types': const [
       {
         'type': 'artist',
         'label': 'Artist',
@@ -200,9 +169,9 @@ AppData _buildAppData() {
         },
       },
     ],
-    'domains': ['https://tenant.test'],
+    'domains': const ['https://tenant.test'],
     'app_domains': const [],
-    'theme_data_settings': {
+    'theme_data_settings': const {
       'brightness_default': 'light',
       'primary_seed_color': '#FFFFFF',
       'secondary_seed_color': '#000000',
@@ -222,14 +191,7 @@ AppData _buildAppData() {
     'device': 'test-device',
   };
   return AppData.fromInitialization(
-      remoteData: remoteData, localInfo: localInfo);
-}
-
-String _generateMongoId() {
-  // 24-char hex string to satisfy MongoIDValue validation in AccountProfileModel.
-  return DateTime.now()
-      .microsecondsSinceEpoch
-      .toRadixString(16)
-      .padLeft(24, '0')
-      .substring(0, 24);
+    remoteData: remoteData,
+    localInfo: localInfo,
+  );
 }
