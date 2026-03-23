@@ -1,8 +1,12 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/app_data/value_object/platform_type_value.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
 import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
+import 'package:belluga_now/domain/value_objects/description_value.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_delta_dto.dart';
@@ -14,6 +18,7 @@ import 'package:belluga_now/infrastructure/services/schedule_backend_contract.da
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:stream_value/core/stream_value.dart';
+import 'package:value_object_pattern/domain/value_objects/html_content_value.dart';
 
 void main() {
   test('fetchUpcomingEvents uses user location as agenda origin', () async {
@@ -251,6 +256,60 @@ void main() {
 
     expect(result.events, hasLength(1));
     expect(result.events.first.content.valueText, isEmpty);
+  });
+
+  test(
+      'artifact null type descriptions fail old parser and pass new parser',
+      () {
+    final artifacts = <String>[
+      'foundation_documentation/artifacts/tenant_boora.events.json',
+      'foundation_documentation/artifacts/tenant_boora.event_occurrences.json',
+    ];
+
+    final nullDescriptions = <String?>[];
+    for (final path in artifacts) {
+      final file = File(path);
+      expect(file.existsSync(), isTrue, reason: 'missing artifact: $path');
+      final decoded = jsonDecode(file.readAsStringSync());
+      expect(decoded, isA<List<dynamic>>(), reason: 'invalid artifact: $path');
+
+      for (final item in decoded as List<dynamic>) {
+        if (item is! Map) continue;
+        final map = Map<String, dynamic>.from(item);
+        final type = map['type'];
+        if (type is! Map) continue;
+        final typeMap = Map<String, dynamic>.from(type);
+        if (typeMap['description'] == null) {
+          nullDescriptions.add(typeMap['description'] as String?);
+        }
+      }
+    }
+
+    expect(nullDescriptions, isNotEmpty);
+
+    for (final nullable in nullDescriptions) {
+      final normalized = nullable ?? '';
+      expect(
+        () => (DescriptionValue()..parse(normalized)).value,
+        throwsA(isA<Exception>()),
+      );
+      expect(
+        () => (DescriptionValue(minLenght: 0)..parse(normalized)).value,
+        returnsNormally,
+      );
+    }
+  });
+
+  test('event content null parses on both old and new html parsers', () {
+    const nullableContent = null;
+    expect(
+      () => (HTMLContentValue()..parse(nullableContent)).valueText,
+      returnsNormally,
+    );
+    expect(
+      () => (HTMLContentValue(minLenght: 0)..parse(nullableContent)).valueText,
+      returnsNormally,
+    );
   });
 }
 
