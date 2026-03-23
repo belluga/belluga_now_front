@@ -1,7 +1,7 @@
 import 'dart:convert';
 
 import 'package:belluga_now/domain/app_data/app_data.dart';
-import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
+import 'package:belluga_now/infrastructure/dal/dao/laravel_backend/shared/tenant_public_auth_headers.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_delta_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_page_dto.dart';
@@ -24,13 +24,19 @@ class LaravelScheduleBackend implements ScheduleBackendContract {
   static const int _defaultPageSize = 25;
   String get _apiBaseUrl =>
       '${GetIt.I.get<AppData>().mainDomainValue.value.origin}/api';
-  Map<String, String> _buildHeaders({bool includeJsonAccept = false}) {
-    final token = GetIt.I.get<AuthRepositoryContract>().userToken;
-    final headers = <String, String>{'Authorization': 'Bearer $token'};
-    if (includeJsonAccept) {
-      headers['Accept'] = 'application/json';
-    }
-    return headers;
+  Future<Map<String, String>> _buildHeaders({
+    bool includeJsonAccept = false,
+  }) async {
+    return TenantPublicAuthHeaders.build(
+      includeJsonAccept: includeJsonAccept,
+      bootstrapIfEmpty: true,
+    );
+  }
+
+  Map<String, String> _buildStreamHeaders({bool includeJsonAccept = false}) {
+    return TenantPublicAuthHeaders.buildSync(
+      includeJsonAccept: includeJsonAccept,
+    );
   }
 
   @override
@@ -70,9 +76,10 @@ class LaravelScheduleBackend implements ScheduleBackendContract {
   @override
   Future<EventDTO?> fetchEventDetail({required String eventIdOrSlug}) async {
     try {
+      final headers = await _buildHeaders(includeJsonAccept: true);
       final response = await _dio.get(
         '$_apiBaseUrl/v1/events/$eventIdOrSlug',
-        options: Options(headers: _buildHeaders(includeJsonAccept: true)),
+        options: Options(headers: headers),
       );
       final raw = response.data;
       final Map<String, dynamic> json;
@@ -143,10 +150,11 @@ class LaravelScheduleBackend implements ScheduleBackendContract {
     }
 
     try {
+      final headers = await _buildHeaders(includeJsonAccept: true);
       final response = await _dio.get(
         '$_apiBaseUrl/v1/agenda',
         queryParameters: params,
-        options: Options(headers: _buildHeaders(includeJsonAccept: true)),
+        options: Options(headers: headers),
       );
       final raw = response.data;
       final Map<String, dynamic> json;
@@ -237,7 +245,7 @@ class LaravelScheduleBackend implements ScheduleBackendContract {
         .connect(
           uri,
           lastEventId: lastEventId,
-          headers: _buildHeaders(),
+          headers: _buildStreamHeaders(),
         )
         .map((message) => _parseDelta(message.data, message.id));
   }

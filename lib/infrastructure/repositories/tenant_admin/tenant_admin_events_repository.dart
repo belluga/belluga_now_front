@@ -145,12 +145,6 @@ class TenantAdminEventsRepository
         ),
       );
     } on DioException catch (error) {
-      if (_isNotFound(error)) {
-        return const TenantAdminPagedResult<TenantAdminEvent>(
-          items: <TenantAdminEvent>[],
-          hasMore: false,
-        );
-      }
       throw _wrapError(error, 'load events page');
     }
   }
@@ -406,10 +400,6 @@ class TenantAdminEventsRepository
     return FormatException(
       'Failed to $context [status=$status] ($uri): $message',
     );
-  }
-
-  bool _isNotFound(DioException error) {
-    return error.response?.statusCode == 404;
   }
 
   FormData _prepareEventMultipartPayload({

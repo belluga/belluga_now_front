@@ -36,6 +36,7 @@
 - `repository_raw_payload_map_forbidden` (`P0`): repositories cannot own raw payload map typing/parsing/building (`Map<String, Object?>`).
 - `repository_raw_transport_typing_forbidden` (`P0`): repositories cannot declare raw transport typing such as `dynamic` or `Map<String, dynamic>`.
 - `service_json_parsing_forbidden` (`P0`): services cannot parse raw JSON or hydrate DTOs directly.
+- `repository_service_catch_return_fallback_forbidden` (`P0`): repositories/services cannot return fallback values inside `catch/on` handlers.
 - `repository_inline_dto_to_domain_mapper_forbidden` (`P0`): repositories cannot own inline DTO -> domain mapper methods.
 - `module_direct_getit_registration_forbidden` (`P0`): classes extending `ModuleContract` cannot use direct `GetIt.I.register*`.
 - `controller_direct_navigation_forbidden` (`P1`): controllers cannot call Navigator/router navigation methods.
@@ -200,6 +201,27 @@ final payload = jsonDecode(raw);
 Fix:
 ```dart
 return backend.decodePayload(raw);
+```
+
+### `repository_service_catch_return_fallback_forbidden`
+Violation:
+```dart
+try {
+  return await backend.fetch();
+} catch (_) {
+  return const <Model>[]; // fallback hidden in repository/service
+}
+```
+Fix:
+```dart
+try {
+  return await backend.fetch();
+} catch (error, stackTrace) {
+  Error.throwWithStackTrace(
+    StateError('Repository fetch failed: $error'),
+    stackTrace,
+  );
+}
 ```
 
 ### `repository_inline_dto_to_domain_mapper_forbidden`

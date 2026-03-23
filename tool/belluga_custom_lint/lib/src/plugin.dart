@@ -6,12 +6,14 @@ import 'rules/domain_dto_dependency_forbidden_rule.dart';
 import 'rules/domain_json_factory_forbidden_rule.dart';
 import 'rules/domain_primitive_field_forbidden_rule.dart';
 import 'rules/global_ui_controller_naming_forbidden_rule.dart';
+import 'rules/integration_anonymous_auth_identified_login_forbidden_rule.dart';
 import 'rules/module_direct_getit_registration_forbidden_rule.dart';
 import 'rules/module_scoped_controller_dispose_forbidden_rule.dart';
 import 'rules/multi_public_class_file_warning_rule.dart';
 import 'rules/multi_widget_file_warning_rule.dart';
 import 'rules/repository_inline_dto_to_domain_mapper_forbidden_rule.dart';
 import 'rules/repository_json_parsing_forbidden_rule.dart';
+import 'rules/repository_service_catch_return_fallback_forbidden_rule.dart';
 import 'rules/repository_raw_payload_map_forbidden_rule.dart';
 import 'rules/repository_raw_transport_typing_forbidden_rule.dart';
 import 'rules/route_page_must_live_in_routes_folder_rule.dart';
@@ -49,6 +51,7 @@ class BellugaCustomLintPlugin extends PluginBase {
         UiBuildSideEffectsForbiddenRule(),
         UiControllerOwnershipForbiddenRule(),
         RepositoryJsonParsingForbiddenRule(),
+        RepositoryServiceCatchReturnFallbackForbiddenRule(),
         RepositoryRawPayloadMapForbiddenRule(),
         RepositoryRawTransportTypingForbiddenRule(),
         ServiceJsonParsingForbiddenRule(),
@@ -64,5 +67,6 @@ class BellugaCustomLintPlugin extends PluginBase {
         MultiPublicClassFileWarningRule(),
         MultiWidgetFileWarningRule(),
         TenantCanonicalDomainRequiredRule(),
+        IntegrationAnonymousAuthIdentifiedLoginForbiddenRule(),
       ];
 }

@@ -1,5 +1,5 @@
 import 'package:belluga_now/domain/app_data/app_data.dart';
-import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
+import 'package:belluga_now/infrastructure/dal/dao/laravel_backend/shared/tenant_public_auth_headers.dart';
 import 'package:belluga_now/infrastructure/services/invites_backend_contract.dart';
 import 'package:dio/dio.dart';
 import 'package:get_it/get_it.dart';
@@ -12,16 +12,11 @@ class LaravelInvitesBackend implements InvitesBackendContract {
   String get _apiBaseUrl =>
       '${GetIt.I.get<AppData>().mainDomainValue.value.origin}/api';
 
-  Map<String, String> _headers({bool includeJsonAccept = false}) {
-    final token = GetIt.I.get<AuthRepositoryContract>().userToken.trim();
-    final headers = <String, String>{};
-    if (token.isNotEmpty) {
-      headers['Authorization'] = 'Bearer $token';
-    }
-    if (includeJsonAccept) {
-      headers['Accept'] = 'application/json';
-    }
-    return headers;
+  Future<Map<String, String>> _headers({bool includeJsonAccept = false}) {
+    return TenantPublicAuthHeaders.build(
+      includeJsonAccept: includeJsonAccept,
+      bootstrapIfEmpty: true,
+    );
   }
 
   @override
@@ -92,10 +87,11 @@ class LaravelInvitesBackend implements InvitesBackendContract {
     Map<String, dynamic>? queryParameters,
   }) async {
     try {
+      final headers = await _headers(includeJsonAccept: true);
       final response = await _dio.get(
         url,
         queryParameters: queryParameters,
-        options: Options(headers: _headers(includeJsonAccept: true)),
+        options: Options(headers: headers),
       );
       return _normalizeResponse(response.data);
     } on DioException catch (error) {
@@ -108,10 +104,11 @@ class LaravelInvitesBackend implements InvitesBackendContract {
     Map<String, dynamic>? data,
   }) async {
     try {
+      final headers = await _headers(includeJsonAccept: true);
       final response = await _dio.post(
         url,
         data: data,
-        options: Options(headers: _headers(includeJsonAccept: true)),
+        options: Options(headers: headers),
       );
       return _normalizeResponse(response.data);
     } on DioException catch (error) {

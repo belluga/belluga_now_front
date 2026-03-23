@@ -345,9 +345,8 @@ final class AuthRepository extends AuthRepositoryContract<UserBelluga>
 
   bool _isLandlordScope() {
     final appData = _tryGetAppData();
-    if (appData != null &&
-        appData.typeValue.value == EnvironmentType.landlord) {
-      return true;
+    if (appData != null) {
+      return appData.typeValue.value == EnvironmentType.landlord;
     }
 
     final landlordHost = _resolveHost(BellugaConstants.landlordDomain);
