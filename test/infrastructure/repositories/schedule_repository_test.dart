@@ -1,6 +1,3 @@
-import 'dart:convert';
-import 'dart:io';
-
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/app_data/value_object/platform_type_value.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
@@ -258,41 +255,33 @@ void main() {
     expect(result.events.first.content.valueText, isEmpty);
   });
 
-  test(
-      'artifact null type descriptions fail old parser and pass new parser',
+  test('old parser rejects null type descriptions while new parser accepts',
       () {
-    final artifacts = <String>[
-      'foundation_documentation/artifacts/tenant_boora.events.json',
-      'foundation_documentation/artifacts/tenant_boora.event_occurrences.json',
+    // Production-like type descriptions observed in agenda payloads:
+    // mixed null and non-null values.
+    const typeDescriptions = <String?>[
+      null,
+      'Voz e Violao',
+      null,
+      null,
     ];
 
-    final nullDescriptions = <String?>[];
-    for (final path in artifacts) {
-      final file = File(path);
-      expect(file.existsSync(), isTrue, reason: 'missing artifact: $path');
-      final decoded = jsonDecode(file.readAsStringSync());
-      expect(decoded, isA<List<dynamic>>(), reason: 'invalid artifact: $path');
+    expect(typeDescriptions.where((entry) => entry == null), isNotEmpty);
 
-      for (final item in decoded as List<dynamic>) {
-        if (item is! Map) continue;
-        final map = Map<String, dynamic>.from(item);
-        final type = map['type'];
-        if (type is! Map) continue;
-        final typeMap = Map<String, dynamic>.from(type);
-        if (typeMap['description'] == null) {
-          nullDescriptions.add(typeMap['description'] as String?);
-        }
-      }
-    }
-
-    expect(nullDescriptions, isNotEmpty);
-
-    for (final nullable in nullDescriptions) {
+    for (final nullable in typeDescriptions) {
       final normalized = nullable ?? '';
-      expect(
-        () => (DescriptionValue()..parse(normalized)).value,
-        throwsA(isA<Exception>()),
-      );
+      if (nullable == null) {
+        expect(
+          () => (DescriptionValue()..parse(normalized)).value,
+          throwsA(isA<Exception>()),
+        );
+      } else {
+        expect(
+          () => (DescriptionValue()..parse(normalized)).value,
+          returnsNormally,
+        );
+      }
+
       expect(
         () => (DescriptionValue(minLenght: 0)..parse(normalized)).value,
         returnsNormally,
