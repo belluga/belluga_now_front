@@ -253,8 +253,7 @@ void main() {
     expect(result.events.first.content.valueText, isEmpty);
   });
 
-  test(
-      'getEventsPage maps events when type description and content are null',
+  test('getEventsPage maps events when type description and content are null',
       () async {
     final backend = _CapturingScheduleBackend(
       pagedResponses: [
@@ -407,6 +406,13 @@ class _FakeUserLocationRepository implements UserLocationRepositoryContract {
   @override
   final StreamValue<String?> lastKnownAddressStreamValue =
       StreamValue<String?>(defaultValue: null);
+
+  @override
+  @override
+  final StreamValue<LocationResolutionPhase>
+      locationResolutionPhaseStreamValue = StreamValue<LocationResolutionPhase>(
+    defaultValue: LocationResolutionPhase.unknown,
+  );
 
   @override
   Future<void> ensureLoaded() async {}

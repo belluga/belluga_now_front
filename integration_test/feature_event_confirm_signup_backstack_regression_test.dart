@@ -870,6 +870,13 @@ class _FakeUserLocationRepository implements UserLocationRepositoryContract {
       StreamValue<String?>();
 
   @override
+  @override
+  final StreamValue<LocationResolutionPhase>
+      locationResolutionPhaseStreamValue = StreamValue<LocationResolutionPhase>(
+    defaultValue: LocationResolutionPhase.unknown,
+  );
+
+  @override
   Future<void> ensureLoaded() async {}
 
   @override

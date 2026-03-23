@@ -125,7 +125,7 @@ void main() {
       await controller.init();
 
       expect(controller.isInitialLoadingStreamValue.value, isFalse);
-      expect(controller.displayedEventsStreamValue.value, isEmpty);
+      expect(controller.displayedEventsStreamValue.value, isNull);
 
       controller.onDispose();
     });
@@ -184,7 +184,7 @@ void main() {
       expect(controller.isInitialLoadingStreamValue.value, isFalse);
       expect(controller.displayedEventsStreamValue.value, hasLength(1));
       expect(
-        controller.displayedEventsStreamValue.value.first.title.value,
+        controller.displayedEventsStreamValue.value!.first.title.value,
         'Evento Recuperado',
       );
 
@@ -388,6 +388,88 @@ void main() {
       controller.onDispose();
     });
 
+    test('ignores location updates below 1km for auto refresh', () async {
+      final appData = _buildAppData(
+        minKm: 1,
+        defaultKm: 5,
+        maxKm: 10,
+      );
+      final appDataRepository = _FakeAppDataRepository(appData);
+      final scheduleRepository = _FakeScheduleRepository();
+      final locationRepository = _FakeUserLocationRepository()
+        ..userLocationStreamValue.addValue(
+          CityCoordinate(
+            latitudeValue: LatitudeValue()..parse('-20.671339'),
+            longitudeValue: LongitudeValue()..parse('-40.495395'),
+          ),
+        );
+
+      final controller = TenantHomeAgendaController(
+        scheduleRepository: scheduleRepository,
+        userEventsRepository: _FakeUserEventsRepository(),
+        invitesRepository: _FakeInvitesRepository(),
+        userLocationRepository: locationRepository,
+        appDataRepository: appDataRepository,
+      );
+
+      await controller.init();
+      expect(scheduleRepository.getEventsPageCallCount, 1);
+
+      locationRepository.userLocationStreamValue.addValue(
+        CityCoordinate(
+          latitudeValue: LatitudeValue()..parse('-20.668339'),
+          longitudeValue: LongitudeValue()..parse('-40.495395'),
+        ),
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 120));
+
+      expect(scheduleRepository.getEventsPageCallCount, 1);
+
+      controller.onDispose();
+    });
+
+    test('auto refreshes agenda when location jump is at least 1km', () async {
+      final appData = _buildAppData(
+        minKm: 1,
+        defaultKm: 5,
+        maxKm: 10,
+      );
+      final appDataRepository = _FakeAppDataRepository(appData);
+      final scheduleRepository = _FakeScheduleRepository();
+      final locationRepository = _FakeUserLocationRepository()
+        ..userLocationStreamValue.addValue(
+          CityCoordinate(
+            latitudeValue: LatitudeValue()..parse('-20.671339'),
+            longitudeValue: LongitudeValue()..parse('-40.495395'),
+          ),
+        );
+
+      final controller = TenantHomeAgendaController(
+        scheduleRepository: scheduleRepository,
+        userEventsRepository: _FakeUserEventsRepository(),
+        invitesRepository: _FakeInvitesRepository(),
+        userLocationRepository: locationRepository,
+        appDataRepository: appDataRepository,
+      );
+
+      await controller.init();
+      expect(scheduleRepository.getEventsPageCallCount, 1);
+
+      locationRepository.userLocationStreamValue.addValue(
+        CityCoordinate(
+          latitudeValue: LatitudeValue()..parse('-20.656339'),
+          longitudeValue: LongitudeValue()..parse('-40.495395'),
+        ),
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 120));
+
+      expect(scheduleRepository.getEventsPageCallCount, 2);
+      expect(scheduleRepository.lastOriginLat, closeTo(-20.656339, 0.000001));
+      expect(scheduleRepository.lastOriginLng, closeTo(-40.495395, 0.000001));
+
+      controller.onDispose();
+    });
+
     test('finishes init when location warm-up stalls', () async {
       final appData = _buildAppData(
         minKm: 1,
@@ -478,7 +560,7 @@ void main() {
       await controller.init();
 
       expect(controller.displayedEventsStreamValue.value, hasLength(1));
-      final event = controller.displayedEventsStreamValue.value.first;
+      final event = controller.displayedEventsStreamValue.value!.first;
       expect(event.type.id.value, 'type-1');
       expect(event.coordinate, isNotNull);
       expect(event.coordinate!.latitude, closeTo(-20.671339, 0.000001));
@@ -561,6 +643,41 @@ void main() {
       await tester.pump(const Duration(milliseconds: 100));
 
       expect(backend.requestedPages, [1]);
+
+      controller.onDispose();
+    });
+
+    testWidgets('home agenda body shows phased initial loading labels',
+        (tester) async {
+      final appData = _buildAppData(
+        minKm: 1,
+        defaultKm: 5,
+        maxKm: 10,
+      );
+      final controller = TenantHomeAgendaController(
+        scheduleRepository: _FakeScheduleRepository(),
+        userEventsRepository: _FakeUserEventsRepository(),
+        invitesRepository: _FakeInvitesRepository(),
+        userLocationRepository: _FakeUserLocationRepository(),
+        appDataRepository: _FakeAppDataRepository(appData),
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: HomeAgendaBody(controller: controller),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      expect(find.text('Encontrando sua localização...'), findsOneWidget);
+
+      controller.initialLoadingLabelStreamValue
+          .addValue('Buscando eventos perto de você...');
+      await tester.pump();
+
+      expect(find.text('Buscando eventos perto de você...'), findsOneWidget);
 
       controller.onDispose();
     });
@@ -1200,6 +1317,13 @@ class _FakeUserLocationRepository implements UserLocationRepositoryContract {
   @override
   final StreamValue<String?> lastKnownAddressStreamValue =
       StreamValue<String?>(defaultValue: null);
+
+  @override
+  @override
+  final StreamValue<LocationResolutionPhase>
+      locationResolutionPhaseStreamValue = StreamValue<LocationResolutionPhase>(
+    defaultValue: LocationResolutionPhase.unknown,
+  );
 
   @override
   Future<void> ensureLoaded() async {}

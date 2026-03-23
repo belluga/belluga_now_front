@@ -102,7 +102,7 @@ void main() {
     await _pumpFor(tester);
     debugPrint('Home agenda test: pump done');
     _expectOnlyInviteFiltered(
-      controller.displayedEventsStreamValue.value,
+      controller.displayedEventsStreamValue.value!,
       harness.pendingInviteEventId,
       const {},
     );
@@ -118,7 +118,7 @@ void main() {
     controller.setInviteFilter(InviteFilter.confirmedOnly);
     await _pumpFor(tester);
     _expectOnlyInviteFiltered(
-      controller.displayedEventsStreamValue.value,
+      controller.displayedEventsStreamValue.value!,
       '',
       {harness.pendingInviteEventId},
     );
@@ -530,6 +530,12 @@ class _TestUserLocationRepository implements UserLocationRepositoryContract {
 
   @override
   StreamValue<String?> get lastKnownAddressStreamValue => _nullStringStream;
+
+  @override
+  @override
+  final StreamValue<LocationResolutionPhase>
+      locationResolutionPhaseStreamValue = StreamValue<LocationResolutionPhase>(
+          defaultValue: LocationResolutionPhase.unknown);
 
   @override
   StreamValue<DateTime?> get lastKnownCapturedAtStreamValue => _nullDateStream;
@@ -959,12 +965,12 @@ Future<void> _pumpFor(
 
 Future<void> _waitForDisplayedEvents(
   WidgetTester tester,
-  StreamValue<List<EventModel>> eventsStreamValue, {
+  StreamValue<List<EventModel>?> eventsStreamValue, {
   Duration timeout = const Duration(seconds: 5),
 }) async {
   final deadline = DateTime.now().add(timeout);
   while (DateTime.now().isBefore(deadline)) {
-    if (eventsStreamValue.value.isNotEmpty) {
+    if ((eventsStreamValue.value ?? const <EventModel>[]).isNotEmpty) {
       return;
     }
     await _pumpFor(tester);

@@ -447,6 +447,12 @@ class FakeUserLocationRepository implements UserLocationRepositoryContract {
       StreamValue<String?>(defaultValue: null);
 
   @override
+  @override
+  final StreamValue<LocationResolutionPhase>
+      locationResolutionPhaseStreamValue = StreamValue<LocationResolutionPhase>(
+          defaultValue: LocationResolutionPhase.unknown);
+
+  @override
   StreamValue<String?> get lastKnownAddressStreamValue =>
       _lastKnownAddressStreamValue;
 

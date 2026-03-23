@@ -49,7 +49,11 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
 
   static const int _pageSize = 10;
   static const double _fallbackRadiusMeters = 50000.0;
+  static const double _locationRefreshMinJumpMeters = 1000.0;
   static const Duration _firstPageRetryDelay = Duration(milliseconds: 350);
+  static const String _loadingLocationLabel = 'Encontrando sua localização...';
+  static const String _loadingNearbyEventsLabel =
+      'Buscando eventos perto de você...';
   static final Uri _localEventPlaceholderUri =
       Uri.parse('asset://event-placeholder');
 
@@ -58,9 +62,10 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
   @override
   final focusNode = FocusNode();
 
-  final displayedEventsStreamValue =
-      StreamValue<List<EventModel>>(defaultValue: const []);
+  final displayedEventsStreamValue = StreamValue<List<EventModel>?>();
   final isInitialLoadingStreamValue = StreamValue<bool>(defaultValue: true);
+  final initialLoadingLabelStreamValue =
+      StreamValue<String>(defaultValue: _loadingLocationLabel);
   final isPageLoadingStreamValue = StreamValue<bool>(defaultValue: false);
   final hasMoreStreamValue = StreamValue<bool>(defaultValue: true);
   @override
@@ -128,29 +133,48 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
     await _refresh();
   }
 
-  Future<void> _refresh() async {
+  Future<void> _refresh({
+    bool preserveCurrentResults = false,
+  }) async {
+    final shouldShowInitialLoading = !preserveCurrentResults;
     await _waitForOngoingFetch();
     _currentPage = 1;
     _hasMore = true;
     _setValue(hasMoreStreamValue, true);
-    _fetchedEvents.clear();
-    _setValue(displayedEventsStreamValue, const <EventModel>[]);
-    _setValue(isInitialLoadingStreamValue, true);
+    if (shouldShowInitialLoading) {
+      _fetchedEvents.clear();
+      _setValue(displayedEventsStreamValue, null);
+      _setValue(isInitialLoadingStreamValue, true);
+      _setValue(initialLoadingLabelStreamValue, _loadingLocationLabel);
+    }
     try {
-      await _resolveEffectiveOrigin(warmUpIfPossible: true);
+      await _resolveEffectiveOrigin(
+        warmUpIfPossible: shouldShowInitialLoading,
+      );
+      if (shouldShowInitialLoading) {
+        _setValue(initialLoadingLabelStreamValue, _loadingNearbyEventsLabel);
+      }
       _hasMore = true;
       _setValue(hasMoreStreamValue, true);
-      await _fetchPage(page: 1);
+      await _fetchPage(
+        page: 1,
+        showPageLoadingForFirstPage: preserveCurrentResults,
+      );
     } catch (error) {
       debugPrint('TenantHomeAgendaController._refresh failed: $error');
-      final recovered = await _retryFirstPageAfterFailure();
-      if (!recovered) {
-        debugPrint(
-          'TenantHomeAgendaController._refresh retry failed after first-page error.',
-        );
+      if (shouldShowInitialLoading) {
+        final recovered = await _retryFirstPageAfterFailure();
+        if (!recovered) {
+          debugPrint(
+            'TenantHomeAgendaController._refresh retry failed after first-page error.',
+          );
+        }
       }
     } finally {
-      _setValue(isInitialLoadingStreamValue, false);
+      if (shouldShowInitialLoading) {
+        _setValue(isInitialLoadingStreamValue, false);
+        _setValue(initialLoadingLabelStreamValue, '');
+      }
     }
   }
 
@@ -166,6 +190,7 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
 
     try {
       await _resolveEffectiveOrigin(warmUpIfPossible: false);
+      _setValue(initialLoadingLabelStreamValue, _loadingNearbyEventsLabel);
       await _fetchPage(page: 1);
       return true;
     } catch (_) {
@@ -184,10 +209,13 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
     await _fetchPage(page: _currentPage + 1);
   }
 
-  Future<void> _fetchPage({required int page}) async {
+  Future<void> _fetchPage({
+    required int page,
+    bool showPageLoadingForFirstPage = false,
+  }) async {
     if (_isFetching) return;
     _isFetching = true;
-    if (page > 1) {
+    if (page > 1 || (page == 1 && showPageLoadingForFirstPage)) {
       _setValue(isPageLoadingStreamValue, true);
     }
 
@@ -382,11 +410,43 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
   }
 
   Future<void> _handleLocationUpdate() async {
+    final previousOriginLat = _effectiveOriginLat;
+    final previousOriginLng = _effectiveOriginLng;
     final changed = await _resolveEffectiveOrigin(warmUpIfPossible: false);
     if (!changed) {
       return;
     }
-    await _refresh();
+    if (!_shouldRefreshForLocationJump(
+      previousOriginLat: previousOriginLat,
+      previousOriginLng: previousOriginLng,
+      nextOriginLat: _effectiveOriginLat,
+      nextOriginLng: _effectiveOriginLng,
+    )) {
+      return;
+    }
+    await _refresh(preserveCurrentResults: true);
+  }
+
+  bool _shouldRefreshForLocationJump({
+    required double? previousOriginLat,
+    required double? previousOriginLng,
+    required double? nextOriginLat,
+    required double? nextOriginLng,
+  }) {
+    if (previousOriginLat == null ||
+        previousOriginLng == null ||
+        nextOriginLat == null ||
+        nextOriginLng == null) {
+      return true;
+    }
+
+    final jumpMeters = haversineDistanceMeters(
+      lat1: previousOriginLat,
+      lon1: previousOriginLng,
+      lat2: nextOriginLat,
+      lon2: nextOriginLng,
+    );
+    return jumpMeters >= _locationRefreshMinJumpMeters;
   }
 
   Future<bool> _resolveEffectiveOrigin({
@@ -424,6 +484,11 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
     final repository = _userLocationRepository;
     if (repository == null) {
       return null;
+    }
+
+    final preWarmUpCoordinate = _resolveFreshLocationCoordinate(repository);
+    if (preWarmUpCoordinate != null) {
+      return preWarmUpCoordinate;
     }
 
     if (warmUpIfPossible) {
@@ -539,6 +604,7 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
     _radiusSubscription?.cancel();
     displayedEventsStreamValue.dispose();
     isInitialLoadingStreamValue.dispose();
+    initialLoadingLabelStreamValue.dispose();
     isPageLoadingStreamValue.dispose();
     hasMoreStreamValue.dispose();
     showHistoryStreamValue.dispose();

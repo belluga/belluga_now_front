@@ -1,6 +1,8 @@
 export 'location_tracking_mode.dart';
+export 'location_resolution_phase.dart';
 
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
+import 'package:belluga_now/domain/repositories/location_resolution_phase.dart';
 import 'package:belluga_now/domain/repositories/location_tracking_mode.dart';
 import 'package:stream_value/core/stream_value.dart';
 
@@ -10,6 +12,7 @@ abstract class UserLocationRepositoryContract {
   StreamValue<DateTime?> get lastKnownCapturedAtStreamValue;
   StreamValue<double?> get lastKnownAccuracyStreamValue;
   StreamValue<String?> get lastKnownAddressStreamValue;
+  StreamValue<LocationResolutionPhase> get locationResolutionPhaseStreamValue;
 
   Future<void> ensureLoaded();
   Future<void> setLastKnownAddress(String? address);

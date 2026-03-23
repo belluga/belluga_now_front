@@ -36,9 +36,35 @@ class _HomeAgendaBodyState extends State<HomeAgendaBody> {
         final hasActiveFilters =
             controller.inviteFilterStreamValue.value != InviteFilter.none ||
                 controller.showHistoryStreamValue.value;
-        return StreamValueBuilder<List<EventModel>>(
+        return StreamValueBuilder<List<EventModel>?>(
           streamValue: controller.displayedEventsStreamValue,
           builder: (context, events) {
+            if (events == null) {
+              return Center(
+                child: StreamValueBuilder<String>(
+                  streamValue: controller.initialLoadingLabelStreamValue,
+                  builder: (context, loadingLabel) {
+                    return Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const CircularProgressIndicator(),
+                        const SizedBox(height: 16),
+                        Text(
+                          loadingLabel.isEmpty
+                              ? 'Buscando eventos perto de você...'
+                              : loadingLabel,
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: colorScheme.onSurfaceVariant,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                    );
+                  },
+                ),
+              );
+            }
+
             final resumes = events
                 .map(
                   (event) => VenueEventResume.fromScheduleEvent(
@@ -51,12 +77,51 @@ class _HomeAgendaBodyState extends State<HomeAgendaBody> {
               streamValue: controller.isPageLoadingStreamValue,
               builder: (context, isPageLoading) {
                 if (isInitialLoading && resumes.isEmpty) {
-                  return const Center(
-                    child: CircularProgressIndicator(),
+                  return Center(
+                    child: StreamValueBuilder<String>(
+                      streamValue: controller.initialLoadingLabelStreamValue,
+                      builder: (context, loadingLabel) {
+                        return Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const CircularProgressIndicator(),
+                            const SizedBox(height: 16),
+                            Text(
+                              loadingLabel.isEmpty
+                                  ? 'Carregando agenda...'
+                                  : loadingLabel,
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                color: colorScheme.onSurfaceVariant,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ],
+                        );
+                      },
+                    ),
                   );
                 }
 
                 if (resumes.isEmpty) {
+                  if (isPageLoading) {
+                    return Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const CircularProgressIndicator(),
+                          const SizedBox(height: 16),
+                          Text(
+                            'Buscando eventos perto de você...',
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              color: colorScheme.onSurfaceVariant,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+
                   final emptyLabel = hasActiveFilters
                       ? 'Nenhum resultado encontrado'
                       : 'Nenhum evento disponível no momento';
