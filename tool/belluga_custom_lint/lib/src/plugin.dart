@@ -3,6 +3,7 @@ import 'package:custom_lint_builder/custom_lint_builder.dart';
 import 'rules/controller_buildcontext_dependency_forbidden_rule.dart';
 import 'rules/controller_direct_navigation_forbidden_rule.dart';
 import 'rules/controller_repository_async_model_fetch_forbidden_rule.dart';
+import 'rules/controller_repository_pagination_arguments_forbidden_rule.dart';
 import 'rules/controller_streamvalue_model_ownership_forbidden_rule.dart';
 import 'rules/domain_dto_dependency_forbidden_rule.dart';
 import 'rules/domain_json_factory_forbidden_rule.dart';
@@ -73,6 +74,7 @@ class BellugaCustomLintPlugin extends PluginBase {
         ControllerBuildContextDependencyForbiddenRule(),
         ControllerDirectNavigationForbiddenRule(),
         ControllerRepositoryAsyncModelFetchForbiddenRule(),
+        ControllerRepositoryPaginationArgumentsForbiddenRule(),
         ControllerStreamValueModelOwnershipForbiddenRule(),
         RoutePageMustLiveInRoutesFolderRule(),
         RoutePathParamRequiresResolverRouteRule(),

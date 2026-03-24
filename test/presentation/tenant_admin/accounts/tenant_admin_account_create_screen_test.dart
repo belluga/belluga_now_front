@@ -450,9 +450,25 @@ class _FakeTaxonomiesRepository
     required int page,
     required int pageSize,
   }) async {
-    return const TenantAdminPagedResult<TenantAdminTaxonomyDefinition>(
-      items: <TenantAdminTaxonomyDefinition>[],
-      hasMore: false,
+    if (page <= 0 || pageSize <= 0) {
+      return const TenantAdminPagedResult<TenantAdminTaxonomyDefinition>(
+        items: <TenantAdminTaxonomyDefinition>[],
+        hasMore: false,
+      );
+    }
+    final start = (page - 1) * pageSize;
+    if (start >= _taxonomies.length) {
+      return const TenantAdminPagedResult<TenantAdminTaxonomyDefinition>(
+        items: <TenantAdminTaxonomyDefinition>[],
+        hasMore: false,
+      );
+    }
+    final end = start + pageSize < _taxonomies.length
+        ? start + pageSize
+        : _taxonomies.length;
+    return TenantAdminPagedResult<TenantAdminTaxonomyDefinition>(
+      items: _taxonomies.sublist(start, end),
+      hasMore: end < _taxonomies.length,
     );
   }
 
@@ -471,9 +487,25 @@ class _FakeTaxonomiesRepository
     required int page,
     required int pageSize,
   }) async {
-    return const TenantAdminPagedResult<TenantAdminTaxonomyTermDefinition>(
-      items: <TenantAdminTaxonomyTermDefinition>[],
-      hasMore: false,
+    final terms = _termsByTaxonomyId[taxonomyId] ?? const [];
+    if (page <= 0 || pageSize <= 0) {
+      return const TenantAdminPagedResult<TenantAdminTaxonomyTermDefinition>(
+        items: <TenantAdminTaxonomyTermDefinition>[],
+        hasMore: false,
+      );
+    }
+    final start = (page - 1) * pageSize;
+    if (start >= terms.length) {
+      return const TenantAdminPagedResult<TenantAdminTaxonomyTermDefinition>(
+        items: <TenantAdminTaxonomyTermDefinition>[],
+        hasMore: false,
+      );
+    }
+    final end =
+        start + pageSize < terms.length ? start + pageSize : terms.length;
+    return TenantAdminPagedResult<TenantAdminTaxonomyTermDefinition>(
+      items: terms.sublist(start, end),
+      hasMore: end < terms.length,
     );
   }
 

@@ -258,10 +258,29 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
   @override
   final StreamValue<HomeAgendaCacheSnapshot?> homeAgendaCacheStreamValue =
       StreamValue<HomeAgendaCacheSnapshot?>();
+  @override
+  final StreamValue<List<EventModel>> eventSearchDisplayedEventsStreamValue =
+      StreamValue<List<EventModel>>(defaultValue: const <EventModel>[]);
+  @override
+  final StreamValue<List<EventModel>> eventsByDateStreamValue =
+      StreamValue<List<EventModel>>(defaultValue: const <EventModel>[]);
+  @override
+  final StreamValue<PagedEventsResult?> pagedEventsStreamValue =
+      StreamValue<PagedEventsResult?>(defaultValue: null);
+  @override
+  final StreamValue<bool> hasMorePagedEventsStreamValue =
+      StreamValue<bool>(defaultValue: true);
+  @override
+  final StreamValue<bool> isPagedEventsPageLoadingStreamValue =
+      StreamValue<bool>(defaultValue: false);
+  @override
+  final StreamValue<String?> pagedEventsErrorStreamValue =
+      StreamValue<String?>(defaultValue: null);
 
   int getEventsPageCallCount = 0;
   int watchEventsStreamCallCount = 0;
   int? lastRequestedPage;
+  int _currentPagedEventsPage = 0;
   double? lastOriginLat;
   double? lastOriginLng;
   bool failOnPageFetch = false;
@@ -307,6 +326,9 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
   }
 
   @override
+  int get currentPagedEventsPage => _currentPagedEventsPage;
+
+  @override
   Future<List<EventModel>> getAllEvents() async => const [];
 
   @override
@@ -320,6 +342,22 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
     double? maxDistanceMeters,
   }) async =>
       const [];
+
+  @override
+  Future<void> refreshEventsByDate(
+    DateTime date, {
+    double? originLat,
+    double? originLng,
+    double? maxDistanceMeters,
+  }) async {
+    final events = await getEventsByDate(
+      date,
+      originLat: originLat,
+      originLng: originLng,
+      maxDistanceMeters: maxDistanceMeters,
+    );
+    eventsByDateStreamValue.addValue(events);
+  }
 
   @override
   Future<PagedEventsResult> getEventsPage({
@@ -343,6 +381,106 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
       throw Exception('forced first-page failure');
     }
     return const PagedEventsResult(events: [], hasMore: false);
+  }
+
+  @override
+  Future<void> refreshEventsPage({
+    required int page,
+    required int pageSize,
+    required bool showPastOnly,
+    String searchQuery = '',
+    List<String>? categories,
+    List<String>? tags,
+    List<Map<String, String>>? taxonomy,
+    bool confirmedOnly = false,
+    double? originLat,
+    double? originLng,
+    double? maxDistanceMeters,
+  }) async {
+    final pageResult = await getEventsPage(
+      page: page,
+      pageSize: pageSize,
+      showPastOnly: showPastOnly,
+      searchQuery: searchQuery,
+      categories: categories,
+      tags: tags,
+      taxonomy: taxonomy,
+      confirmedOnly: confirmedOnly,
+      originLat: originLat,
+      originLng: originLng,
+      maxDistanceMeters: maxDistanceMeters,
+    );
+    _currentPagedEventsPage = page;
+    hasMorePagedEventsStreamValue.addValue(pageResult.hasMore);
+    pagedEventsStreamValue.addValue(pageResult);
+  }
+
+  @override
+  Future<void> loadEventsPage({
+    int pageSize = 25,
+    required bool showPastOnly,
+    String searchQuery = '',
+    List<String>? categories,
+    List<String>? tags,
+    List<Map<String, String>>? taxonomy,
+    bool confirmedOnly = false,
+    double? originLat,
+    double? originLng,
+    double? maxDistanceMeters,
+  }) async {
+    await refreshEventsPage(
+      page: 1,
+      pageSize: pageSize,
+      showPastOnly: showPastOnly,
+      searchQuery: searchQuery,
+      categories: categories,
+      tags: tags,
+      taxonomy: taxonomy,
+      confirmedOnly: confirmedOnly,
+      originLat: originLat,
+      originLng: originLng,
+      maxDistanceMeters: maxDistanceMeters,
+    );
+  }
+
+  @override
+  Future<void> loadNextEventsPage({
+    int pageSize = 25,
+    required bool showPastOnly,
+    String searchQuery = '',
+    List<String>? categories,
+    List<String>? tags,
+    List<Map<String, String>>? taxonomy,
+    bool confirmedOnly = false,
+    double? originLat,
+    double? originLng,
+    double? maxDistanceMeters,
+  }) async {
+    if (!hasMorePagedEventsStreamValue.value) {
+      return;
+    }
+    await refreshEventsPage(
+      page: _currentPagedEventsPage + 1,
+      pageSize: pageSize,
+      showPastOnly: showPastOnly,
+      searchQuery: searchQuery,
+      categories: categories,
+      tags: tags,
+      taxonomy: taxonomy,
+      confirmedOnly: confirmedOnly,
+      originLat: originLat,
+      originLng: originLng,
+      maxDistanceMeters: maxDistanceMeters,
+    );
+  }
+
+  @override
+  void resetPagedEventsState() {
+    _currentPagedEventsPage = 0;
+    pagedEventsStreamValue.addValue(null);
+    hasMorePagedEventsStreamValue.addValue(true);
+    isPagedEventsPageLoadingStreamValue.addValue(false);
+    pagedEventsErrorStreamValue.addValue(null);
   }
 
   @override
@@ -376,6 +514,36 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
     final controller = StreamController<EventDeltaModel>.broadcast();
     _streamControllers.add(controller);
     return controller.stream;
+  }
+
+  @override
+  Stream<void> watchEventsSignal({
+    required void Function(EventDeltaModel delta) onDelta,
+    String searchQuery = '',
+    List<String>? categories,
+    List<String>? tags,
+    List<Map<String, String>>? taxonomy,
+    bool confirmedOnly = false,
+    double? originLat,
+    double? originLng,
+    double? maxDistanceMeters,
+    String? lastEventId,
+    bool showPastOnly = false,
+  }) {
+    return watchEventsStream(
+      searchQuery: searchQuery,
+      categories: categories,
+      tags: tags,
+      taxonomy: taxonomy,
+      confirmedOnly: confirmedOnly,
+      originLat: originLat,
+      originLng: originLng,
+      maxDistanceMeters: maxDistanceMeters,
+      lastEventId: lastEventId,
+      showPastOnly: showPastOnly,
+    ).map((delta) {
+      onDelta(delta);
+    });
   }
 }
 

@@ -15,6 +15,7 @@ import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
 import 'package:belluga_now/presentation/tenant_public/invites/screens/invite_share_screen/controllers/invite_share_screen_controller.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:belluga_now/testing/invite_accept_result_builder.dart';
+import 'package:stream_value/core/stream_value.dart';
 
 class _FakeContactsRepository implements ContactsRepositoryContract {
   _FakeContactsRepository({
@@ -26,6 +27,9 @@ class _FakeContactsRepository implements ContactsRepositoryContract {
   bool throwOnRequestPermission;
   bool throwOnGetContacts = false;
   List<ContactModel> contacts;
+  @override
+  final contactsStreamValue =
+      StreamValue<List<ContactModel>?>(defaultValue: null);
 
   @override
   Future<bool> requestPermission() async {
@@ -41,6 +45,17 @@ class _FakeContactsRepository implements ContactsRepositoryContract {
       throw Exception('get contacts failed');
     }
     return contacts;
+  }
+
+  @override
+  Future<void> initializeContacts() async {
+    await refreshContacts();
+  }
+
+  @override
+  Future<void> refreshContacts() async {
+    final loadedContacts = await getContacts();
+    contactsStreamValue.addValue(loadedContacts);
   }
 }
 

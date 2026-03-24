@@ -267,7 +267,7 @@ class MapScreenController implements Disposable {
     _setLoadingState();
 
     try {
-      await _poiRepository.fetchPoints(resolvedQuery);
+      await _poiRepository.refreshPoints(resolvedQuery);
       if (!_isLatestPoiRequest(requestSequence)) {
         return;
       }
@@ -329,10 +329,12 @@ class MapScreenController implements Disposable {
     }
 
     try {
-      final stackItems = await _poiRepository.fetchStackItems(
+      await _poiRepository.loadStackItems(
         stackKey: poi.stackKey,
         query: _currentQuery,
       );
+      final stackItems =
+          _poiRepository.stackItemsStreamValue.value ?? const <CityPoiModel>[];
       if (stackItems.isEmpty) {
         selectPoi(poi);
         return;

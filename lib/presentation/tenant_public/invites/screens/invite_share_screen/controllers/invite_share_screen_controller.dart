@@ -34,15 +34,13 @@ class InviteShareScreenController with Disposable {
       StreamValue<List<InviteFriendResumeWithStatus>>(defaultValue: const []);
   final selectedFriendsSuggestionsStreamValue =
       StreamValue<List<InviteFriendResume>>(defaultValue: const []);
-  final contactsStreamValue =
-      StreamValue<List<ContactModel>>(defaultValue: const []);
-  final selectedContactsStreamValue =
-      StreamValue<List<ContactModel>>(defaultValue: const []);
   final contactsPermissionGranted = StreamValue<bool>(defaultValue: false);
   final sentInvitesStreamValue =
       StreamValue<List<SentInviteStatus>>(defaultValue: const []);
   final shareCodeStreamValue =
       StreamValue<InviteShareCodeResult?>(defaultValue: null);
+
+  List<ContactModel> _availableContacts = const [];
 
   Future<void> init(InviteModel invite) async {
     _currentInvite = invite;
@@ -59,33 +57,25 @@ class InviteShareScreenController with Disposable {
       contactsPermissionGranted.addValue(granted);
 
       if (!granted) {
-        contactsStreamValue.addValue(const []);
+        _availableContacts = const [];
         return;
       }
 
-      final contacts = await _contactsRepository.getContacts();
+      await _contactsRepository.refreshContacts();
       if (_isDisposed) return;
+      final contacts = _contactsRepository.contactsStreamValue.value ??
+          const <ContactModel>[];
 
       final validContacts = contacts
           .where((contact) =>
               contact.phones.isNotEmpty || contact.emails.isNotEmpty)
           .toList(growable: false);
-      contactsStreamValue.addValue(validContacts);
+      _availableContacts = validContacts;
     } catch (_) {
       if (_isDisposed) return;
       contactsPermissionGranted.addValue(false);
-      contactsStreamValue.addValue(const []);
+      _availableContacts = const [];
     }
-  }
-
-  void toggleContact(ContactModel contact) {
-    final selected = List<ContactModel>.from(selectedContactsStreamValue.value);
-    if (selected.contains(contact)) {
-      selected.remove(contact);
-    } else {
-      selected.add(contact);
-    }
-    selectedContactsStreamValue.addValue(selected);
   }
 
   void toggleFriend(InviteFriendResume friend) {
@@ -138,12 +128,11 @@ class InviteShareScreenController with Disposable {
     final invite = _currentInvite;
     if (invite == null) return;
 
-    if (forceReloadContacts || contactsStreamValue.value.isEmpty) {
+    if (forceReloadContacts || _availableContacts.isEmpty) {
       await loadContacts();
     }
 
-    final contacts = contactsStreamValue.value;
-    final matches = await _invitesRepository.importContacts(contacts);
+    final matches = await _invitesRepository.importContacts(_availableContacts);
     if (_isDisposed) return;
 
     final recipients = matches
@@ -262,8 +251,6 @@ class InviteShareScreenController with Disposable {
     _isDisposed = true;
     friendsSuggestionsStreamValue.dispose();
     selectedFriendsSuggestionsStreamValue.dispose();
-    contactsStreamValue.dispose();
-    selectedContactsStreamValue.dispose();
     contactsPermissionGranted.dispose();
     sentInvitesStreamValue.dispose();
     shareCodeStreamValue.dispose();

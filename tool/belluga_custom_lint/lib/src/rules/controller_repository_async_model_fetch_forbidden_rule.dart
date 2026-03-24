@@ -14,7 +14,7 @@ class ControllerRepositoryAsyncModelFetchForbiddenRule extends DartLintRule {
             errorSeverity: ErrorSeverity.WARNING,
             name: 'controller_repository_async_model_fetch_forbidden',
             problemMessage:
-                'Controller must not call repository async methods that return *Model payload directly.',
+                'Controller must not call repository async methods that return payload directly.',
             correctionMessage:
                 'Treatments: controller should trigger repository initialize/refresh (Future<void>) and consume repository-owned StreamValue delegation.',
           ),
@@ -47,7 +47,21 @@ class ControllerRepositoryAsyncModelFetchForbiddenRule extends DartLintRule {
         return;
       }
 
-      if (!_containsModelPayload(returnType)) {
+      if (!_hasAsyncPayload(returnType)) {
+        return;
+      }
+
+      final methodName = node.methodName.name;
+      final queryMethodSuffix = _queryMethodSuffix(methodName);
+      if (queryMethodSuffix == null) {
+        return;
+      }
+
+      if (targetType is! InterfaceType) {
+        return;
+      }
+
+      if (!_hasRepositoryIntentCounterpart(targetType, queryMethodSuffix)) {
         return;
       }
 
@@ -83,20 +97,106 @@ class ControllerRepositoryAsyncModelFetchForbiddenRule extends DartLintRule {
         typeName == 'Stream';
   }
 
-  bool _containsModelPayload(DartType? type) {
+  bool _hasAsyncPayload(DartType? type) {
     if (type is! InterfaceType) {
       return false;
     }
 
-    final typeName = normalizeTypeName(type.getDisplayString());
-    if (typeName.endsWith('Model')) {
+    final typeArguments = type.typeArguments;
+    if (typeArguments.isEmpty) {
+      // Raw Future/Stream implies implicit dynamic payload.
       return true;
     }
 
-    if (type.typeArguments.isEmpty) {
+    return typeArguments.any(_containsMeaningfulPayload);
+  }
+
+  bool _containsMeaningfulPayload(DartType? type) {
+    if (type == null) {
       return false;
     }
 
-    return type.typeArguments.any(_containsModelPayload);
+    if (type is TypeParameterType) {
+      return true;
+    }
+
+    if (type is! InterfaceType) {
+      final typeName = normalizeTypeName(type.getDisplayString());
+      return !_isVoidLike(typeName);
+    }
+
+    final typeName = normalizeTypeName(type.getDisplayString());
+    if (_isVoidLike(typeName)) {
+      return false;
+    }
+
+    if (typeName == 'Future' ||
+        typeName == 'FutureOr' ||
+        typeName == 'Stream') {
+      if (type.typeArguments.isEmpty) {
+        return true;
+      }
+
+      return type.typeArguments.any(_containsMeaningfulPayload);
+    }
+
+    return true;
+  }
+
+  bool _isVoidLike(String normalizedTypeName) {
+    return normalizedTypeName == 'void' ||
+        normalizedTypeName == 'Never' ||
+        normalizedTypeName == 'Null';
+  }
+
+  String? _queryMethodSuffix(String methodName) {
+    const queryPrefixes = <String>[
+      'fetch',
+      'get',
+      'list',
+      'search',
+      'find',
+      'query',
+    ];
+
+    for (final prefix in queryPrefixes) {
+      if (!methodName.startsWith(prefix)) {
+        continue;
+      }
+      final suffix = methodName.substring(prefix.length);
+      if (suffix.isEmpty) {
+        return null;
+      }
+      return suffix;
+    }
+
+    return null;
+  }
+
+  bool _hasRepositoryIntentCounterpart(
+    InterfaceType repositoryType,
+    String querySuffix,
+  ) {
+    final candidateMethodNames = <String>{
+      'refresh$querySuffix',
+      'load$querySuffix',
+      'initialize$querySuffix',
+    };
+
+    final allTypes = <InterfaceType>{
+      repositoryType,
+      ...repositoryType.allSupertypes
+    };
+    for (final type in allTypes) {
+      final methodNames =
+          type.element.methods.map((method) => method.name).toSet();
+      for (final candidate in candidateMethodNames) {
+        if (methodNames.contains(candidate)) {
+          return true;
+        }
+      }
+    }
+
+    return false;
   }
 }

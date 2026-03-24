@@ -56,6 +56,7 @@ import 'package:value_object_pattern/domain/value_objects/date_time_value.dart';
 import 'package:value_object_pattern/domain/value_objects/html_content_value.dart';
 import 'package:value_object_pattern/domain/value_objects/mongo_id_value.dart';
 
+import 'support/fake_schedule_repository.dart';
 import 'support/integration_test_bootstrap.dart';
 
 void main() {
@@ -497,16 +498,10 @@ class _FakeAppDataRepository implements AppDataRepositoryContract {
   }
 }
 
-class _FakeScheduleRepository implements ScheduleRepositoryContract {
+class _FakeScheduleRepository extends IntegrationTestScheduleRepositoryFake {
   _FakeScheduleRepository({required EventModel event}) : _event = event;
 
   final EventModel _event;
-  @override
-  final StreamValue<List<EventModel>?> homeAgendaEventsStreamValue =
-      StreamValue<List<EventModel>?>();
-  @override
-  final StreamValue<HomeAgendaCacheSnapshot?> homeAgendaCacheStreamValue =
-      StreamValue<HomeAgendaCacheSnapshot?>();
 
   @override
   HomeAgendaCacheSnapshot? readHomeAgendaCache({

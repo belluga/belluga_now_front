@@ -47,6 +47,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:stream_value/core/stream_value.dart';
+import 'support/fake_schedule_repository.dart';
 import 'support/integration_test_bootstrap.dart';
 
 void main() {
@@ -311,16 +312,10 @@ class _AgendaFiltersHarness {
   }
 }
 
-class _TestScheduleRepository implements ScheduleRepositoryContract {
+class _TestScheduleRepository extends IntegrationTestScheduleRepositoryFake {
   _TestScheduleRepository(this._events);
 
   final List<EventModel> _events;
-  @override
-  final StreamValue<List<EventModel>?> homeAgendaEventsStreamValue =
-      StreamValue<List<EventModel>?>();
-  @override
-  final StreamValue<HomeAgendaCacheSnapshot?> homeAgendaCacheStreamValue =
-      StreamValue<HomeAgendaCacheSnapshot?>();
 
   @override
   HomeAgendaCacheSnapshot? readHomeAgendaCache({

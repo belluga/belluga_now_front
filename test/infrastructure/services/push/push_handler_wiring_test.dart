@@ -287,10 +287,24 @@ class _FakeUserLocationRepository implements UserLocationRepositoryContract {
 
 class _FakeContactsRepository implements ContactsRepositoryContract {
   @override
+  final contactsStreamValue =
+      StreamValue<List<ContactModel>?>(defaultValue: null);
+
+  @override
   Future<bool> requestPermission() async => false;
 
   @override
   Future<List<ContactModel>> getContacts() async => const [];
+
+  @override
+  Future<void> initializeContacts() async {
+    await refreshContacts();
+  }
+
+  @override
+  Future<void> refreshContacts() async {
+    contactsStreamValue.addValue(await getContacts());
+  }
 }
 
 class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {

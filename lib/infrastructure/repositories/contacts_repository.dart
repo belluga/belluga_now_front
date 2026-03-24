@@ -3,8 +3,13 @@ import 'package:belluga_now/domain/repositories/contacts_repository_contract.dar
 import 'package:flutter/foundation.dart';
 import 'package:flutter_contacts/flutter_contacts.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:stream_value/core/stream_value.dart';
 
 class ContactsRepository implements ContactsRepositoryContract {
+  @override
+  final contactsStreamValue =
+      StreamValue<List<ContactModel>?>(defaultValue: null);
+
   @override
   Future<bool> requestPermission() async {
     if (kIsWeb) {
@@ -46,12 +51,23 @@ class ContactsRepository implements ContactsRepositoryContract {
                 emails: c.emails.map((e) => e.address).toList(),
                 avatar: c.photo,
               ))
-          .toList();
+          .toList(growable: false);
     } catch (error, stackTrace) {
       Error.throwWithStackTrace(
         StateError('Failed to load contacts: $error'),
         stackTrace,
       );
     }
+  }
+
+  @override
+  Future<void> initializeContacts() async {
+    await refreshContacts();
+  }
+
+  @override
+  Future<void> refreshContacts() async {
+    final contacts = await getContacts();
+    contactsStreamValue.addValue(contacts);
   }
 }

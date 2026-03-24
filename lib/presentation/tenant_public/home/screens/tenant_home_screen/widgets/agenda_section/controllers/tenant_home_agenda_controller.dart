@@ -47,7 +47,6 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
   final Duration _locationWarmUpTimeout;
   final Duration _locationPermissionTimeout;
 
-  static const int _pageSize = 10;
   static const double _fallbackRadiusMeters = 50000.0;
   static const double _locationRefreshMinJumpMeters = 1000.0;
   static const Duration _firstPageRetryDelay = Duration(milliseconds: 350);
@@ -242,28 +241,57 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
     }
 
     try {
-      final result = await _scheduleRepository.getEventsPage(
-        page: page,
-        pageSize: _pageSize,
-        showPastOnly: showHistoryStreamValue.value,
-        searchQuery: searchController.text,
-        confirmedOnly:
-            inviteFilterStreamValue.value == InviteFilter.confirmedOnly,
-        originLat: _effectiveOriginLat,
-        originLng: _effectiveOriginLng,
-        maxDistanceMeters: radiusMetersStreamValue.value,
-      );
+      if (page <= 1) {
+        await _scheduleRepository.loadEventsPage(
+          showPastOnly: showHistoryStreamValue.value,
+          searchQuery: searchController.text,
+          confirmedOnly:
+              inviteFilterStreamValue.value == InviteFilter.confirmedOnly,
+          originLat: _effectiveOriginLat,
+          originLng: _effectiveOriginLng,
+          maxDistanceMeters: radiusMetersStreamValue.value,
+        );
+      } else {
+        await _scheduleRepository.loadNextEventsPage(
+          showPastOnly: showHistoryStreamValue.value,
+          searchQuery: searchController.text,
+          confirmedOnly:
+              inviteFilterStreamValue.value == InviteFilter.confirmedOnly,
+          originLat: _effectiveOriginLat,
+          originLng: _effectiveOriginLng,
+          maxDistanceMeters: radiusMetersStreamValue.value,
+        );
+      }
 
-      final canonicalEvents = page == 1
+      final result = _scheduleRepository.pagedEventsStreamValue.value;
+      if (result == null) {
+        final firstPageError =
+            _scheduleRepository.pagedEventsErrorStreamValue.value;
+        if (page == 1 && firstPageError != null && firstPageError.isNotEmpty) {
+          throw Exception(firstPageError);
+        }
+        return;
+      }
+      final loadedPage = _scheduleRepository.currentPagedEventsPage;
+      if (loadedPage <= 0) {
+        final firstPageError =
+            _scheduleRepository.pagedEventsErrorStreamValue.value;
+        if (page == 1 && firstPageError != null && firstPageError.isNotEmpty) {
+          throw Exception(firstPageError);
+        }
+        return;
+      }
+
+      final canonicalEvents = loadedPage == 1
           ? List<EventModel>.from(result.events)
           : [
               ..._currentCanonicalEvents(),
               ...result.events,
             ];
 
-      _hasMore = result.hasMore && result.events.length >= _pageSize;
+      _hasMore = result.hasMore;
       _setValue(hasMoreStreamValue, _hasMore);
-      _currentPage = page;
+      _currentPage = loadedPage;
       _writeRepositoryCacheSnapshot(canonicalEvents);
       _applyFiltersAndPublish();
     } finally {
@@ -369,7 +397,8 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
     final cache = _scheduleRepository.readHomeAgendaCache(
       showPastOnly: showHistoryStreamValue.value,
       searchQuery: searchController.text.trim(),
-      confirmedOnly: inviteFilterStreamValue.value == InviteFilter.confirmedOnly,
+      confirmedOnly:
+          inviteFilterStreamValue.value == InviteFilter.confirmedOnly,
     );
     if (cache == null) {
       return const <EventModel>[];

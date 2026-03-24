@@ -136,13 +136,13 @@ class _TenantAdminEventFormScreenState
                                                                     CrossAxisAlignment
                                                                         .start,
                                                                 children: [
-                                                                  if (submitError !=
-                                                                          null &&
-                                                                      submitError
-                                                                          .isNotEmpty)
+                                                                  if (submitError
+                                                                          ?.isNotEmpty ??
+                                                                      false)
                                                                     TenantAdminErrorBanner(
                                                                       rawError:
-                                                                          submitError,
+                                                                          submitError ??
+                                                                              '',
                                                                       fallbackMessage:
                                                                           'Falha ao salvar evento.',
                                                                       onRetry:
@@ -161,10 +161,9 @@ class _TenantAdminEventFormScreenState
                                                                       child:
                                                                           LinearProgressIndicator(),
                                                                     ),
-                                                                  if (partyCandidatesError !=
-                                                                          null &&
-                                                                      partyCandidatesError
-                                                                          .isNotEmpty)
+                                                                  if (partyCandidatesError
+                                                                          ?.isNotEmpty ??
+                                                                      false)
                                                                     Padding(
                                                                       padding:
                                                                           const EdgeInsets
@@ -175,7 +174,8 @@ class _TenantAdminEventFormScreenState
                                                                       child:
                                                                           TenantAdminErrorBanner(
                                                                         rawError:
-                                                                            partyCandidatesError,
+                                                                            partyCandidatesError ??
+                                                                                '',
                                                                         fallbackMessage:
                                                                             'Falha ao carregar hosts físicos/artistas.',
                                                                         onRetry:

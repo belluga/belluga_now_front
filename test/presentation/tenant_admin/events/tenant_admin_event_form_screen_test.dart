@@ -631,13 +631,27 @@ class _FakeTaxonomiesRepository
   Future<void> loadNextTermsPage({int pageSize = 20}) async {}
 
   @override
-  Future<void> loadTaxonomies({int pageSize = 20}) async {}
+  Future<void> loadTaxonomies({int pageSize = 20}) async {
+    final result = await fetchTaxonomiesPage(page: 1, pageSize: pageSize);
+    taxonomiesStreamValue.addValue(result.items);
+    hasMoreTaxonomiesStreamValue.addValue(result.hasMore);
+    taxonomiesErrorStreamValue.addValue(null);
+  }
 
   @override
   Future<void> loadTerms({
     required String taxonomyId,
     int pageSize = 20,
-  }) async {}
+  }) async {
+    final result = await fetchTermsPage(
+      taxonomyId: taxonomyId,
+      page: 1,
+      pageSize: pageSize,
+    );
+    termsStreamValue.addValue(result.items);
+    hasMoreTermsStreamValue.addValue(result.hasMore);
+    termsErrorStreamValue.addValue(null);
+  }
 
   @override
   void resetTaxonomiesState() {}

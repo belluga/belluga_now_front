@@ -21,9 +21,9 @@ class _StatusBannerState extends State<StatusBanner> {
     final baseStyle = Theme.of(context).textTheme.bodySmall;
     return StreamValueBuilder<String?>(
       streamValue: _controller.statusMessageStreamValue,
-      onNullWidget: SizedBox.shrink(),
+      onNullWidget: const SizedBox.shrink(),
       builder: (_, message) {
-        if (message == null) {
+        if (message == null || message.isEmpty) {
           return const SizedBox.shrink();
         }
         return Container(

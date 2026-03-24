@@ -155,16 +155,16 @@ class _TenantAdminOrganizationDetailScreenState
                     padding: const EdgeInsets.all(16),
                     child: isLoading
                         ? const Center(child: CircularProgressIndicator())
-                        : error != null
+                        : (error?.isNotEmpty ?? false)
                             ? TenantAdminErrorBanner(
-                                rawError: error,
+                                rawError: error ?? '',
                                 fallbackMessage:
                                     'Nao foi possivel carregar a organizacao.',
                                 onRetry: () =>
                                     _controller.loadOrganizationDetail(
                                         widget.organization.id),
                               )
-                            : organization == null
+                            : organization is! TenantAdminOrganization
                                 ? const Center(
                                     child: Text('Organizacao nao encontrada.'))
                                 : Card(

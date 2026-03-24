@@ -445,14 +445,14 @@ class _TenantAdminAccountCreateScreenState
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           if (isLoading) const LinearProgressIndicator(),
-                          if (error != null)
+                          if (error?.isNotEmpty ?? false)
                             Padding(
                               padding: const EdgeInsets.only(top: 8),
                               child: TenantAdminErrorBanner(
                                 key: const ValueKey(
                                   'tenant_admin_account_create_profile_types_error',
                                 ),
-                                rawError: error,
+                                rawError: error ?? '',
                                 fallbackMessage:
                                     'Falha ao carregar tipos de perfil para este tenant.',
                                 onRetry: _controller.loadProfileTypes,
@@ -547,7 +547,9 @@ class _TenantAdminAccountCreateScreenState
                               label: const Text('Criar tipo de perfil'),
                             ),
                           ),
-                          if (!isLoading && error == null && !hasTypes)
+                          if (!isLoading &&
+                              !(error?.isNotEmpty ?? false) &&
+                              !hasTypes)
                             const Padding(
                               padding: EdgeInsets.only(top: 8),
                               child: Text(
@@ -875,11 +877,11 @@ class _TenantAdminAccountCreateScreenState
                         ),
                         const SizedBox(height: 8),
                         if (isLoading) const LinearProgressIndicator(),
-                        if (error != null && error.isNotEmpty)
+                        if (error?.isNotEmpty ?? false)
                           Padding(
                             padding: const EdgeInsets.only(top: 8),
                             child: TenantAdminErrorBanner(
-                              rawError: error,
+                              rawError: error ?? '',
                               fallbackMessage:
                                   'Nao foi possivel carregar taxonomias.',
                               onRetry: _controller.loadTaxonomies,

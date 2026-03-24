@@ -56,6 +56,15 @@ abstract class TenantAdminTaxonomiesRepositoryContract {
     );
   }
 
+  Future<void> loadAllTaxonomies({int pageSize = 50}) async {
+    await loadTaxonomies(pageSize: pageSize);
+    var safetyCounter = 0;
+    while (hasMoreTaxonomiesStreamValue.value && safetyCounter < 200) {
+      safetyCounter += 1;
+      await loadNextTaxonomiesPage(pageSize: pageSize);
+    }
+  }
+
   void resetTaxonomiesState() {
     _resetTaxonomiesPagination();
     taxonomiesStreamValue.addValue(null);
@@ -169,6 +178,18 @@ abstract class TenantAdminTaxonomiesRepositoryContract {
       page: _paginationState.currentTermsPage + 1,
       pageSize: pageSize,
     );
+  }
+
+  Future<void> loadAllTerms({
+    required String taxonomyId,
+    int pageSize = 50,
+  }) async {
+    await loadTerms(taxonomyId: taxonomyId, pageSize: pageSize);
+    var safetyCounter = 0;
+    while (hasMoreTermsStreamValue.value && safetyCounter < 200) {
+      safetyCounter += 1;
+      await loadNextTermsPage(pageSize: pageSize);
+    }
   }
 
   void resetTermsState() {
@@ -430,6 +451,16 @@ mixin TenantAdminTaxonomiesPaginationMixin
   }
 
   @override
+  Future<void> loadAllTaxonomies({int pageSize = 50}) async {
+    await loadTaxonomies(pageSize: pageSize);
+    var safetyCounter = 0;
+    while (hasMoreTaxonomiesStreamValue.value && safetyCounter < 200) {
+      safetyCounter += 1;
+      await loadNextTaxonomiesPage(pageSize: pageSize);
+    }
+  }
+
+  @override
   void resetTaxonomiesState() {
     _resetTaxonomiesPagination();
     taxonomiesStreamValue.addValue(null);
@@ -466,6 +497,19 @@ mixin TenantAdminTaxonomiesPaginationMixin
       page: _paginationState.currentTermsPage + 1,
       pageSize: pageSize,
     );
+  }
+
+  @override
+  Future<void> loadAllTerms({
+    required String taxonomyId,
+    int pageSize = 50,
+  }) async {
+    await loadTerms(taxonomyId: taxonomyId, pageSize: pageSize);
+    var safetyCounter = 0;
+    while (hasMoreTermsStreamValue.value && safetyCounter < 200) {
+      safetyCounter += 1;
+      await loadNextTermsPage(pageSize: pageSize);
+    }
   }
 
   @override

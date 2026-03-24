@@ -345,6 +345,36 @@ class ScheduleRepository extends ScheduleRepositoryContract
         .map(mapEventDeltaDto);
   }
 
+  @override
+  Stream<void> watchEventsSignal({
+    required void Function(EventDeltaModel delta) onDelta,
+    String searchQuery = '',
+    List<String>? categories,
+    List<String>? tags,
+    List<Map<String, String>>? taxonomy,
+    bool confirmedOnly = false,
+    double? originLat,
+    double? originLng,
+    double? maxDistanceMeters,
+    String? lastEventId,
+    bool showPastOnly = false,
+  }) {
+    return watchEventsStream(
+      searchQuery: searchQuery,
+      categories: categories,
+      tags: tags,
+      taxonomy: taxonomy,
+      confirmedOnly: confirmedOnly,
+      originLat: originLat,
+      originLng: originLng,
+      maxDistanceMeters: maxDistanceMeters,
+      lastEventId: lastEventId,
+      showPastOnly: showPastOnly,
+    ).map((delta) {
+      onDelta(delta);
+    });
+  }
+
   Future<List<EventModel>> _fetchEventsForDate(
     DateTime date, {
     required bool showPastOnly,

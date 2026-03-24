@@ -61,13 +61,11 @@ class _ImmersiveEventDetailScreenState
   Widget build(BuildContext context) {
     return StreamValueBuilder<EventModel?>(
       streamValue: _controller.eventStreamValue,
+      onNullWidget: const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      ),
       builder: (context, event) {
-        if (event == null) {
-          return const Scaffold(
-            body: Center(child: CircularProgressIndicator()),
-          );
-        }
-
+        final resolvedEvent = event!;
         return StreamValueBuilder<bool>(
           streamValue: _controller.isConfirmedStreamValue,
           builder: (context, isConfirmed) {
@@ -80,7 +78,7 @@ class _ImmersiveEventDetailScreenState
                   streamValue: _controller.sentInvitesByEventStreamValue,
                   builder: (context, sentInvitesByEvent) {
                     final sentForEvent =
-                        sentInvitesByEvent[event.id.value] ?? const [];
+                        sentInvitesByEvent[resolvedEvent.id.value] ?? const [];
 
                     final Widget? topBanner = receivedInvites.isNotEmpty
                         ? Padding(
@@ -96,12 +94,12 @@ class _ImmersiveEventDetailScreenState
                     final tabs = <ImmersiveTabItem>[
                       ImmersiveTabItem(
                         title: 'O Rolê',
-                        content: EventInfoSection(event: event),
+                        content: EventInfoSection(event: resolvedEvent),
                         footer: null,
                       ),
                       ImmersiveTabItem(
                         title: 'Line-up',
-                        content: LineupSection(event: event),
+                        content: LineupSection(event: resolvedEvent),
                         footer: isConfirmed
                             ? DynamicFooter(
                                 buttonText: 'Seguir todos os artistas',
@@ -115,7 +113,7 @@ class _ImmersiveEventDetailScreenState
                       ),
                       ImmersiveTabItem(
                         title: 'O Local',
-                        content: LocationSection(event: event),
+                        content: LocationSection(event: resolvedEvent),
                         footer: isConfirmed
                             ? DynamicFooter(
                                 buttonText: 'Traçar Rota agora',
@@ -150,7 +148,10 @@ class _ImmersiveEventDetailScreenState
 
                     final footer = isConfirmed
                         ? _buildInviteFooter(
-                            context, () => _openInviteFlow(event), sentForEvent)
+                            context,
+                            () => _openInviteFlow(resolvedEvent),
+                            sentForEvent,
+                          )
                         : DynamicFooter(
                             buttonText: 'Bóora! Confirmar Presença!',
                             buttonIcon: Icons.celebration,
@@ -166,10 +167,10 @@ class _ImmersiveEventDetailScreenState
                       ),
                       child: ImmersiveDetailScreen(
                         heroContent: ImmersiveHero(
-                          event: event,
+                          event: resolvedEvent,
                           fallbackImageUri: _controller.defaultEventImageUri,
                         ),
-                        title: event.title.value,
+                        title: resolvedEvent.title.value,
                         betweenHeroAndTabs: topBanner,
                         tabs: tabs,
                         // Don't auto-navigate, let user scroll naturally

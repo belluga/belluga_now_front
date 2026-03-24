@@ -44,7 +44,8 @@
 - `repository_inline_dto_to_domain_mapper_forbidden` (`P0`): repositories cannot own inline DTO -> domain mapper methods.
 - `module_direct_getit_registration_forbidden` (`P0`): classes extending `ModuleContract` cannot use direct `GetIt.I.register*`.
 - `controller_direct_navigation_forbidden` (`P1`): controllers cannot call Navigator/router navigation methods.
-- `controller_repository_async_model_fetch_forbidden` (`P1`): controllers cannot invoke repository async methods returning `*Model` payloads directly.
+- `controller_repository_async_model_fetch_forbidden` (`P1`): controllers cannot invoke repository async methods returning payloads directly (must trigger `Future<void>` intents).
+- `controller_repository_pagination_arguments_forbidden` (`P1`): controllers cannot pass pagination-control arguments (`page/cursor/pageSize/perPage/limit/...`) into repository calls.
 - `controller_streamvalue_model_ownership_forbidden` (`P1`): controllers cannot own `StreamValue` with `*Model` payload; canonical model streams must be delegated from repositories.
 - `ui_navigator_usage_forbidden` (`P1`): UI cannot call `Navigator.*` directly.
 - `ui_navigation_after_await_forbidden` (`P1`): UI navigation after async gaps is forbidden.
@@ -331,6 +332,18 @@ Fix:
 ```dart
 await _scheduleRepository.refreshAgendaEvents();
 // UI consumes controller-delegated repository StreamValue
+```
+
+### `controller_repository_pagination_arguments_forbidden`
+Violation:
+```dart
+await _scheduleRepository.getEventsPage(page: _currentPage, pageSize: 20);
+await _scheduleRepository.refreshEventsWindow(pageSize: 20);
+```
+Fix:
+```dart
+await _scheduleRepository.fetchNextEventsPage();
+// Repository owns pagination cursor/page lifecycle.
 ```
 
 ### `controller_streamvalue_model_ownership_forbidden`

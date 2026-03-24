@@ -146,6 +146,15 @@ abstract class TenantAdminStaticAssetsRepositoryContract {
     );
   }
 
+  Future<void> loadAllStaticProfileTypes({int pageSize = 50}) async {
+    await loadStaticProfileTypes(pageSize: pageSize);
+    var safetyCounter = 0;
+    while (hasMoreStaticProfileTypesStreamValue.value && safetyCounter < 200) {
+      safetyCounter += 1;
+      await loadNextStaticProfileTypesPage(pageSize: pageSize);
+    }
+  }
+
   void resetStaticProfileTypesState() {
     _resetStaticProfileTypesPagination();
     staticProfileTypesStreamValue.addValue(null);
@@ -434,6 +443,16 @@ mixin TenantAdminStaticAssetsPaginationMixin
       page: _paginationState.currentStaticProfileTypesPage + 1,
       pageSize: pageSize,
     );
+  }
+
+  @override
+  Future<void> loadAllStaticProfileTypes({int pageSize = 50}) async {
+    await loadStaticProfileTypes(pageSize: pageSize);
+    var safetyCounter = 0;
+    while (hasMoreStaticProfileTypesStreamValue.value && safetyCounter < 200) {
+      safetyCounter += 1;
+      await loadNextStaticProfileTypesPage(pageSize: pageSize);
+    }
   }
 
   @override

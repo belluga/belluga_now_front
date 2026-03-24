@@ -84,6 +84,15 @@ abstract class TenantAdminAccountProfilesRepositoryContract {
     );
   }
 
+  Future<void> loadAllProfileTypes({int pageSize = 50}) async {
+    await loadProfileTypes(pageSize: pageSize);
+    var safetyCounter = 0;
+    while (hasMoreProfileTypesStreamValue.value && safetyCounter < 200) {
+      safetyCounter += 1;
+      await loadNextProfileTypesPage(pageSize: pageSize);
+    }
+  }
+
   void resetProfileTypesState() {
     _resetProfileTypesPagination();
     profileTypesStreamValue.addValue(null);
@@ -193,8 +202,8 @@ abstract class TenantAdminAccountProfilesRepositoryContract {
   }
 }
 
-extension TenantAdminAccountProfilesRepositoryLookup on
-    TenantAdminAccountProfilesRepositoryContract {
+extension TenantAdminAccountProfilesRepositoryLookup
+    on TenantAdminAccountProfilesRepositoryContract {
   Future<TenantAdminProfileTypeDefinition> fetchProfileType(
     String profileType,
   ) async {
@@ -263,6 +272,16 @@ mixin TenantAdminProfileTypesPaginationMixin
       page: _mixinProfileTypesState.currentProfileTypesPage + 1,
       pageSize: pageSize,
     );
+  }
+
+  @override
+  Future<void> loadAllProfileTypes({int pageSize = 50}) async {
+    await loadProfileTypes(pageSize: pageSize);
+    var safetyCounter = 0;
+    while (hasMoreProfileTypesStreamValue.value && safetyCounter < 200) {
+      safetyCounter += 1;
+      await loadNextProfileTypesPage(pageSize: pageSize);
+    }
   }
 
   @override

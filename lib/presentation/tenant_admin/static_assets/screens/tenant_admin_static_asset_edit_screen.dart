@@ -608,8 +608,10 @@ class _TenantAdminStaticAssetEditScreenState
                       ),
                     ),
                     IconButton(
-                      onPressed:
-                          asset == null ? null : () => _editSlug(asset.slug),
+                      onPressed: switch (asset) {
+                        final value? => () => _editSlug(value.slug),
+                        null => null,
+                      },
                       tooltip: 'Editar slug',
                       icon: const Icon(Icons.edit_outlined),
                     ),
@@ -682,6 +684,14 @@ class _TenantAdminStaticAssetEditScreenState
                     final avatarUrl =
                         _controller.avatarUrlController.text.trim();
                     final coverUrl = _controller.coverUrlController.text.trim();
+                    final hasLocalAvatar = switch (avatarFile) {
+                      final _? => true,
+                      null => false,
+                    };
+                    final hasLocalCover = switch (coverFile) {
+                      final _? => true,
+                      null => false,
+                    };
                     return Card(
                       margin: EdgeInsets.zero,
                       child: Padding(
@@ -697,40 +707,25 @@ class _TenantAdminStaticAssetEditScreenState
                               const SizedBox(height: 12),
                               TenantAdminImageUploadField(
                                 variant: TenantAdminImageUploadVariant.avatar,
-                                preview: avatarFile != null
-                                    ? ClipRRect(
-                                        borderRadius: BorderRadius.circular(36),
-                                        child: TenantAdminXFilePreview(
-                                          file: avatarFile,
+                                preview: switch (avatarFile) {
+                                  final file? => ClipRRect(
+                                      borderRadius: BorderRadius.circular(36),
+                                      child: TenantAdminXFilePreview(
+                                        file: file,
+                                        width: 72,
+                                        height: 72,
+                                        fit: BoxFit.cover,
+                                      ),
+                                    ),
+                                  null => avatarUrl.isNotEmpty
+                                      ? BellugaNetworkImage(
+                                          avatarUrl,
                                           width: 72,
                                           height: 72,
                                           fit: BoxFit.cover,
-                                        ),
-                                      )
-                                    : avatarUrl.isNotEmpty
-                                        ? BellugaNetworkImage(
-                                            avatarUrl,
-                                            width: 72,
-                                            height: 72,
-                                            fit: BoxFit.cover,
-                                            clipBorderRadius:
-                                                BorderRadius.circular(36),
-                                            placeholder: Container(
-                                              width: 72,
-                                              height: 72,
-                                              decoration: BoxDecoration(
-                                                color: Theme.of(context)
-                                                    .colorScheme
-                                                    .surfaceContainerHighest,
-                                                borderRadius:
-                                                    BorderRadius.circular(36),
-                                              ),
-                                              child: const Icon(
-                                                Icons.person_outline,
-                                              ),
-                                            ),
-                                          )
-                                        : Container(
+                                          clipBorderRadius:
+                                              BorderRadius.circular(36),
+                                          placeholder: Container(
                                             width: 72,
                                             height: 72,
                                             decoration: BoxDecoration(
@@ -743,6 +738,21 @@ class _TenantAdminStaticAssetEditScreenState
                                             child: const Icon(
                                                 Icons.person_outline),
                                           ),
+                                        )
+                                      : Container(
+                                          width: 72,
+                                          height: 72,
+                                          decoration: BoxDecoration(
+                                            color: Theme.of(context)
+                                                .colorScheme
+                                                .surfaceContainerHighest,
+                                            borderRadius:
+                                                BorderRadius.circular(36),
+                                          ),
+                                          child:
+                                              const Icon(Icons.person_outline),
+                                        ),
+                                },
                                 selectedLabel: avatarFile?.name ??
                                     (avatarUrl.isNotEmpty
                                         ? avatarUrl
@@ -751,7 +761,7 @@ class _TenantAdminStaticAssetEditScreenState
                                 onAdd: () => _pickImage(isAvatar: true),
                                 busy: avatarBusy,
                                 canRemove:
-                                    avatarFile != null || avatarUrl.isNotEmpty,
+                                    hasLocalAvatar || avatarUrl.isNotEmpty,
                                 onRemove: () => _clearImage(isAvatar: true),
                               ),
                             ],
@@ -760,39 +770,40 @@ class _TenantAdminStaticAssetEditScreenState
                             if (hasCover) ...[
                               TenantAdminImageUploadField(
                                 variant: TenantAdminImageUploadVariant.cover,
-                                preview: coverFile != null
-                                    ? ClipRRect(
-                                        borderRadius: BorderRadius.circular(12),
-                                        child: TenantAdminXFilePreview(
-                                          file: coverFile,
+                                preview: switch (coverFile) {
+                                  final file? => ClipRRect(
+                                      borderRadius: BorderRadius.circular(12),
+                                      child: TenantAdminXFilePreview(
+                                        file: file,
+                                        width: double.infinity,
+                                        height: 140,
+                                        fit: BoxFit.cover,
+                                      ),
+                                    ),
+                                  null => coverUrl.isNotEmpty
+                                      ? BellugaNetworkImage(
+                                          coverUrl,
                                           width: double.infinity,
                                           height: 140,
                                           fit: BoxFit.cover,
-                                        ),
-                                      )
-                                    : coverUrl.isNotEmpty
-                                        ? BellugaNetworkImage(
-                                            coverUrl,
-                                            width: double.infinity,
-                                            height: 140,
-                                            fit: BoxFit.cover,
-                                            clipBorderRadius:
+                                          clipBorderRadius:
+                                              BorderRadius.circular(12),
+                                        )
+                                      : Container(
+                                          width: double.infinity,
+                                          height: 140,
+                                          decoration: BoxDecoration(
+                                            color: Theme.of(context)
+                                                .colorScheme
+                                                .surfaceContainerHighest,
+                                            borderRadius:
                                                 BorderRadius.circular(12),
-                                          )
-                                        : Container(
-                                            width: double.infinity,
-                                            height: 140,
-                                            decoration: BoxDecoration(
-                                              color: Theme.of(context)
-                                                  .colorScheme
-                                                  .surfaceContainerHighest,
-                                              borderRadius:
-                                                  BorderRadius.circular(12),
-                                            ),
-                                            child: const Center(
-                                              child: Icon(Icons.image_outlined),
-                                            ),
                                           ),
+                                          child: const Center(
+                                            child: Icon(Icons.image_outlined),
+                                          ),
+                                        ),
+                                },
                                 selectedLabel: coverFile?.name ??
                                     (coverUrl.isNotEmpty
                                         ? coverUrl
@@ -800,8 +811,7 @@ class _TenantAdminStaticAssetEditScreenState
                                 addLabel: 'Adicionar capa',
                                 onAdd: () => _pickImage(isAvatar: false),
                                 busy: coverBusy,
-                                canRemove:
-                                    coverFile != null || coverUrl.isNotEmpty,
+                                canRemove: hasLocalCover || coverUrl.isNotEmpty,
                                 onRemove: () => _clearImage(isAvatar: false),
                               ),
                             ],
@@ -872,11 +882,11 @@ class _TenantAdminStaticAssetEditScreenState
                                   },
                                 ),
                                 if (isLoading) const LinearProgressIndicator(),
-                                if (taxonomyError != null)
+                                if (taxonomyError?.isNotEmpty ?? false)
                                   Padding(
                                     padding: const EdgeInsets.only(bottom: 12),
                                     child: Text(
-                                      taxonomyError,
+                                      taxonomyError ?? '',
                                       style: TextStyle(
                                         color:
                                             Theme.of(context).colorScheme.error,
@@ -1011,7 +1021,10 @@ class _TenantAdminStaticAssetEditScreenState
         return SizedBox(
           width: double.infinity,
           child: OutlinedButton.icon(
-            onPressed: asset == null ? null : () => _confirmDelete(asset),
+            onPressed: switch (asset) {
+              final value? => () => _confirmDelete(value),
+              null => null,
+            },
             icon: const Icon(Icons.delete_outline),
             label: const Text('Remover ativo'),
           ),

@@ -659,7 +659,8 @@ class _TenantAdminShellScreenState extends State<TenantAdminShellScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (_controller.isTenantEnvironment && !_controller.hasLocalLandlordSession) {
+    if (_controller.isTenantEnvironment &&
+        !_controller.hasLocalLandlordSession) {
       return _buildTenantAdminAuthGate();
     }
 
@@ -672,8 +673,9 @@ class _TenantAdminShellScreenState extends State<TenantAdminShellScreen> {
             return StreamValueBuilder<String?>(
               streamValue: _controller.selectedTenantDomainStreamValue,
               builder: (context, selectedTenantDomain) {
-                if (selectedTenantDomain == null ||
-                    selectedTenantDomain.trim().isEmpty) {
+                final hasSelectedTenantDomain =
+                    selectedTenantDomain?.trim().isNotEmpty ?? false;
+                if (!hasSelectedTenantDomain) {
                   if (isTenantSelectionResolving) {
                     return const TenantSelectionLoadingGate();
                   }
@@ -693,7 +695,7 @@ class _TenantAdminShellScreenState extends State<TenantAdminShellScreen> {
                     !_scopedSectionAppBarRoutes.contains(currentName);
                 final selectedTenantLabel = _controller.resolveTenantLabel(
                   tenants: availableTenants,
-                  tenantDomain: selectedTenantDomain,
+                  tenantDomain: selectedTenantDomain!,
                 );
                 final canChangeTenant = availableTenants.length > 1;
                 final shellRouterKey =

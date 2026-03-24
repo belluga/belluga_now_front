@@ -39,6 +39,7 @@ import 'package:stream_value/core/stream_value.dart';
 import 'package:belluga_now/testing/invite_accept_result_builder.dart';
 
 import 'package:belluga_now/application/router/guards/location_permission_state.dart';
+import 'support/fake_schedule_repository.dart';
 import 'support/integration_test_bootstrap.dart';
 
 void main() {
@@ -237,14 +238,7 @@ class FakeEventSearchScreenController extends EventSearchScreenController {
   }
 }
 
-class FakeScheduleRepository implements ScheduleRepositoryContract {
-  @override
-  final StreamValue<List<EventModel>?> homeAgendaEventsStreamValue =
-      StreamValue<List<EventModel>?>();
-  @override
-  final StreamValue<HomeAgendaCacheSnapshot?> homeAgendaCacheStreamValue =
-      StreamValue<HomeAgendaCacheSnapshot?>();
-
+class FakeScheduleRepository extends IntegrationTestScheduleRepositoryFake {
   @override
   HomeAgendaCacheSnapshot? readHomeAgendaCache({
     required bool showPastOnly,

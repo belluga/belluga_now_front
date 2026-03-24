@@ -226,7 +226,9 @@ class TenantAdminAccountProfilesController implements Disposable {
   Future<void> loadProfileTypes() async {
     isLoadingStreamValue.addValue(true);
     try {
-      final types = await _profilesRepository.fetchProfileTypes();
+      await _profilesRepository.loadAllProfileTypes();
+      final types = _profilesRepository.profileTypesStreamValue.value ??
+          const <TenantAdminProfileTypeDefinition>[];
       if (_isDisposed) return;
       profileTypesStreamValue.addValue(types);
       errorStreamValue.addValue(null);
@@ -243,7 +245,9 @@ class TenantAdminAccountProfilesController implements Disposable {
   Future<void> loadTaxonomies() async {
     isLoadingStreamValue.addValue(true);
     try {
-      final taxonomies = await _taxonomiesRepository.fetchTaxonomies();
+      await _taxonomiesRepository.loadAllTaxonomies();
+      final taxonomies = _taxonomiesRepository.taxonomiesStreamValue.value ??
+          const <TenantAdminTaxonomyDefinition>[];
       if (_isDisposed) return;
       taxonomiesStreamValue.addValue(taxonomies);
       errorStreamValue.addValue(null);
@@ -278,8 +282,9 @@ class TenantAdminAccountProfilesController implements Disposable {
       );
       if (taxonomy.id.isEmpty) continue;
       try {
-        final terms =
-            await _taxonomiesRepository.fetchTerms(taxonomyId: taxonomy.id);
+        await _taxonomiesRepository.loadAllTerms(taxonomyId: taxonomy.id);
+        final terms = _taxonomiesRepository.termsStreamValue.value ??
+            const <TenantAdminTaxonomyTermDefinition>[];
         map[slug] = terms;
       } on Object {
         map[slug] = const [];

@@ -31,7 +31,8 @@ class AccountProfileDetailController implements Disposable {
   final PartnerProfileConfigBuilder _profileConfigBuilder;
   final AuthRepositoryContract? _authRepository;
 
-  final accountProfileStreamValue = StreamValue<AccountProfileModel?>();
+  StreamValue<AccountProfileModel?> get accountProfileStreamValue =>
+      _accountProfilesRepository.selectedAccountProfileStreamValue;
   final isLoadingStreamValue = StreamValue<bool>(defaultValue: false);
   StreamValue<Set<String>> get favoriteIdsStream =>
       _accountProfilesRepository.favoriteAccountProfileIdsStreamValue;
@@ -43,10 +44,10 @@ class AccountProfileDetailController implements Disposable {
   Future<void> loadAccountProfile(String slug) async {
     isLoadingStreamValue.addValue(true);
     try {
+      await _accountProfilesRepository.loadAccountProfileBySlug(slug);
       final accountProfile =
-          await _accountProfilesRepository.getAccountProfileBySlug(slug);
+          _accountProfilesRepository.selectedAccountProfileStreamValue.value;
       if (accountProfile == null) {
-        accountProfileStreamValue.addValue(null);
         profileConfigStreamValue.addValue(null);
         moduleDataStreamValue.addValue(const {});
         return;
@@ -110,7 +111,6 @@ class AccountProfileDetailController implements Disposable {
 
   @override
   void onDispose() {
-    accountProfileStreamValue.dispose();
     isLoadingStreamValue.dispose();
     profileConfigStreamValue.dispose();
     moduleDataStreamValue.dispose();

@@ -3,6 +3,7 @@ import 'dart:developer' as developer;
 import 'dart:typed_data';
 
 import 'package:belluga_now/domain/app_data/app_data.dart';
+import 'package:belluga_now/domain/map/city_poi_model.dart';
 import 'package:belluga_now/domain/app_data/value_object/platform_type_value.dart';
 import 'package:belluga_now/domain/map/filters/poi_filter_mode.dart';
 import 'package:belluga_now/domain/map/queries/poi_query.dart';

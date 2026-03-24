@@ -28,8 +28,6 @@ class TenantAdminStaticProfileTypesController implements Disposable {
   final TenantAdminStaticAssetsRepositoryContract _repository;
   final TenantAdminTaxonomiesRepositoryContract _taxonomiesRepository;
   final TenantAdminTenantScopeContract? _tenantScope;
-  static const int _typesPageSize = 20;
-
   StreamValue<List<TenantAdminStaticProfileTypeDefinition>?>
       get typesStreamValue => _repository.staticProfileTypesStreamValue;
   StreamValue<bool> get hasMoreTypesStreamValue =>
@@ -173,14 +171,14 @@ class TenantAdminStaticProfileTypesController implements Disposable {
   }
 
   Future<void> loadTypes() async {
-    await _repository.loadStaticProfileTypes(pageSize: _typesPageSize);
+    await _repository.loadStaticProfileTypes();
   }
 
   Future<void> loadNextTypesPage() async {
     if (_isDisposed) {
       return;
     }
-    await _repository.loadNextStaticProfileTypesPage(pageSize: _typesPageSize);
+    await _repository.loadNextStaticProfileTypesPage();
   }
 
   void bindTypesListScrollPagination() {
@@ -212,7 +210,9 @@ class TenantAdminStaticProfileTypesController implements Disposable {
 
   Future<void> loadTaxonomies() async {
     try {
-      final taxonomies = await _taxonomiesRepository.fetchTaxonomies();
+      await _taxonomiesRepository.loadAllTaxonomies();
+      final taxonomies = _taxonomiesRepository.taxonomiesStreamValue.value ??
+          const <TenantAdminTaxonomyDefinition>[];
       final filtered = taxonomies
           .where((taxonomy) => taxonomy.appliesToTarget('static_asset'))
           .toList(growable: false);

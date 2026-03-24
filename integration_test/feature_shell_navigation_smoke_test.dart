@@ -36,6 +36,7 @@ import 'package:get_it/get_it.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:stream_value/core/stream_value.dart';
 
+import 'support/fake_schedule_repository.dart';
 import 'support/integration_test_bootstrap.dart';
 
 void main() {
@@ -290,14 +291,7 @@ void _unregisterIfRegistered<T extends Object>() {
   }
 }
 
-class _FakeScheduleRepository implements ScheduleRepositoryContract {
-  @override
-  final StreamValue<List<EventModel>?> homeAgendaEventsStreamValue =
-      StreamValue<List<EventModel>?>();
-  @override
-  final StreamValue<HomeAgendaCacheSnapshot?> homeAgendaCacheStreamValue =
-      StreamValue<HomeAgendaCacheSnapshot?>();
-
+class _FakeScheduleRepository extends IntegrationTestScheduleRepositoryFake {
   @override
   HomeAgendaCacheSnapshot? readHomeAgendaCache({
     required bool showPastOnly,

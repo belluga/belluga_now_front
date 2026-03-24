@@ -54,8 +54,6 @@ class TenantAdminEventsController implements Disposable {
   final LandlordAuthRepositoryContract? _landlordAuthRepository;
   final TenantAdminImageIngestionService _imageIngestionService;
 
-  static const int _eventsPageSize = 20;
-
   StreamValue<List<TenantAdminEvent>?> get eventsStreamValue =>
       _eventsRepository.eventsStreamValue;
   StreamValue<bool> get hasMoreEventsStreamValue =>
@@ -188,7 +186,6 @@ class TenantAdminEventsController implements Disposable {
       return;
     }
     await _eventsRepository.loadEvents(
-      pageSize: _eventsPageSize,
       status: statusFilterStreamValue.value,
       archived: archivedFilterStreamValue.value,
     );
@@ -202,7 +199,6 @@ class TenantAdminEventsController implements Disposable {
       return;
     }
     await _eventsRepository.loadNextEventsPage(
-      pageSize: _eventsPageSize,
       status: statusFilterStreamValue.value,
       archived: archivedFilterStreamValue.value,
     );
@@ -653,7 +649,9 @@ class TenantAdminEventsController implements Disposable {
   Future<void> _loadTaxonomies() async {
     taxonomyLoadingStreamValue.addValue(true);
     try {
-      final taxonomies = await _taxonomiesRepository.fetchTaxonomies();
+      await _taxonomiesRepository.loadAllTaxonomies();
+      final taxonomies = _taxonomiesRepository.taxonomiesStreamValue.value ??
+          const <TenantAdminTaxonomyDefinition>[];
       final filtered = taxonomies
           .where((taxonomy) => taxonomy.appliesToTarget('event'))
           .toList(growable: false);
@@ -662,17 +660,19 @@ class TenantAdminEventsController implements Disposable {
       }
       taxonomiesStreamValue.addValue(filtered);
 
-      final entries = await Future.wait(
-        filtered.map((taxonomy) async {
-          final terms = await _taxonomiesRepository.fetchTerms(
-            taxonomyId: taxonomy.id,
-          );
-          return MapEntry<String, List<TenantAdminTaxonomyTermDefinition>>(
+      final entries =
+          <MapEntry<String, List<TenantAdminTaxonomyTermDefinition>>>[];
+      for (final taxonomy in filtered) {
+        await _taxonomiesRepository.loadAllTerms(taxonomyId: taxonomy.id);
+        final terms = _taxonomiesRepository.termsStreamValue.value ??
+            const <TenantAdminTaxonomyTermDefinition>[];
+        entries.add(
+          MapEntry<String, List<TenantAdminTaxonomyTermDefinition>>(
             taxonomy.slug,
             terms,
-          );
-        }),
-      );
+          ),
+        );
+      }
 
       if (_isDisposed) {
         return;

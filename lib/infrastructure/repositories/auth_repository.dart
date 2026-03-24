@@ -200,7 +200,7 @@ final class AuthRepository extends AuthRepositoryContract<UserBelluga>
   }
 
   @override
-  Future<void> updateUser(Map<String, Object?> data) {
+  Future<void> updateUser(Object data) {
     throw UnimplementedError();
   }
 

@@ -24,6 +24,9 @@ class PoiRepository implements PoiRepositoryContract {
   final filteredPoisStreamValue =
       StreamValue<List<CityPoiModel>?>(defaultValue: null);
   @override
+  final stackItemsStreamValue =
+      StreamValue<List<CityPoiModel>?>(defaultValue: null);
+  @override
   final selectedPoiStreamValue = StreamValue<CityPoiModel?>();
   @override
   final filterModeStreamValue =
@@ -49,13 +52,13 @@ class PoiRepository implements PoiRepositoryContract {
     if (filterOptionsStreamValue.value == null) {
       await fetchFilters();
     }
-    if ((mainFilterOptionsStreamValue.value ?? const <MainFilterOption>[])
-        .isEmpty) {
+    if (mainFilterOptionsStreamValue.value.isEmpty) {
       await fetchMainFilters();
     }
   }
 
-  Future<void> refreshPois(PoiQuery query) async {
+  @override
+  Future<void> refreshPoints(PoiQuery query) async {
     await fetchPoints(query);
   }
 
@@ -68,6 +71,18 @@ class PoiRepository implements PoiRepositoryContract {
       query: query,
       stackKey: stackKey,
     );
+  }
+
+  @override
+  Future<void> loadStackItems({
+    required String stackKey,
+    required PoiQuery query,
+  }) async {
+    final stackItems = await fetchStackItems(
+      stackKey: stackKey,
+      query: query,
+    );
+    stackItemsStreamValue.addValue(stackItems);
   }
 
   @override

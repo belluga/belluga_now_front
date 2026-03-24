@@ -403,12 +403,13 @@ class TenantAdminEventsRepository
   }
 
   FormData _prepareEventMultipartPayload({
-    required Map<String, dynamic> payload,
+    required Object payload,
     required FormData? uploadPayload,
     required bool removeCover,
     bool includePatchMethodOverride = false,
   }) {
-    final formData = uploadPayload ?? FormData.fromMap(payload);
+    final formData = uploadPayload ??
+        _mediaFormDataBuilder.buildMultipartPayload(payload: payload);
     if (removeCover) {
       formData.fields.add(const MapEntry('remove_cover', '1'));
     }

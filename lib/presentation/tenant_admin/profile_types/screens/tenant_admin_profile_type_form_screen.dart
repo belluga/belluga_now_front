@@ -295,11 +295,11 @@ class _TenantAdminProfileTypeFormScreenState
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         if (isLoading) const LinearProgressIndicator(),
-                        if (error != null && error.isNotEmpty)
+                        if (error?.isNotEmpty ?? false)
                           Padding(
                             padding: const EdgeInsets.only(top: 8),
                             child: TenantAdminErrorBanner(
-                              rawError: error,
+                              rawError: error ?? '',
                               fallbackMessage:
                                   'Nao foi possivel carregar taxonomias.',
                               onRetry: _controller.loadAvailableTaxonomies,
