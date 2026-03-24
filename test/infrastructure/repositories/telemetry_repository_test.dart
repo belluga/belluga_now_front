@@ -1,4 +1,5 @@
 import 'package:belluga_now/domain/app_data/app_data.dart';
+import 'package:belluga_now/testing/app_data_test_factory.dart';
 import 'package:belluga_now/domain/app_data/app_type.dart';
 import 'package:belluga_now/domain/app_data/value_object/platform_type_value.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
@@ -9,7 +10,6 @@ import 'package:belluga_now/domain/repositories/user_location_repository_contrac
 import 'package:belluga_now/domain/tenant/tenant.dart';
 import 'package:belluga_now/domain/user/user_belluga.dart';
 import 'package:belluga_now/domain/user/user_contract.dart';
-import 'package:belluga_now/domain/user/user_profile.dart';
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/domain/partners/paged_account_profiles_result.dart';
 import 'package:belluga_now/infrastructure/dal/dao/app_data_backend_contract.dart';
@@ -18,6 +18,7 @@ import 'package:belluga_now/infrastructure/dal/dao/backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/backend_context.dart';
 import 'package:belluga_now/infrastructure/dal/dao/favorite_backend_contract.dart';
 import 'package:belluga_now/infrastructure/platform/app_data_local_info_source/app_data_local_info_source.dart';
+import 'package:belluga_now/infrastructure/platform/app_data_local_info_source/app_data_local_info_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dao/account_profiles_backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/tenant_backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/venue_event_backend_contract.dart';
@@ -32,6 +33,7 @@ import 'package:belluga_now/infrastructure/repositories/app_data_repository.dart
 import 'package:belluga_now/infrastructure/repositories/telemetry_repository.dart';
 import 'package:belluga_now/infrastructure/services/schedule_backend_contract.dart';
 import 'package:belluga_now/infrastructure/user/dtos/user_dto.dart';
+import 'package:belluga_now/infrastructure/user/dtos/user_profile_dto.dart';
 import 'package:belluga_now/infrastructure/services/telemetry/telemetry_queue.dart';
 import 'package:event_tracker_handler/domain/core/event_tracker_handler_contract.dart';
 import 'package:event_tracker_handler/domain/event_data/event_tracker_data.dart';
@@ -430,7 +432,13 @@ class _FakeAppDataBackend implements AppDataBackendContract {
 
 class _FakeAppDataLocalInfoSource extends AppDataLocalInfoSource {
   @override
-  Future<Map<String, dynamic>> getInfo() async => {};
+  Future<AppDataLocalInfoDTO> getInfo() async => AppDataLocalInfoDTO(
+        platformTypeValue: PlatformTypeValue(defaultValue: AppType.mobile),
+        port: null,
+        hostname: '',
+        href: '',
+        device: '',
+      );
 }
 
 class _FakeAppDataRepository extends AppDataRepository {
@@ -451,7 +459,7 @@ CityCoordinate _buildCoordinate(double lat, double lng) {
 
 AppData _buildAppData({int locationFreshnessMinutes = 5}) {
   final platformType = PlatformTypeValue()..parse(AppType.mobile.name);
-  return AppData.fromInitialization(
+  return buildAppDataFromInitialization(
     remoteData: {
       'name': 'Guarappari',
       'type': 'tenant',
@@ -489,7 +497,7 @@ AppData _buildAppData({int locationFreshnessMinutes = 5}) {
 
 AppData _buildTelemetryDisabledAppData() {
   final platformType = PlatformTypeValue()..parse(AppType.mobile.name);
-  return AppData.fromInitialization(
+  return buildAppDataFromInitialization(
     remoteData: {
       'name': 'Guarappari',
       'type': 'tenant',
@@ -522,13 +530,13 @@ UserBelluga _buildAuthenticatedUser({
   String name = 'User Name',
   String email = 'user@example.com',
 }) {
-  return UserBelluga.fromPrimitives(
+  return UserDto(
     id: id,
-    profile: UserProfile.fromPrimitives(
+    profile: UserProfileDto(
       name: name,
       email: email,
     ),
-  );
+  ).toDomain();
 }
 
 Future<void> _drainMicrotasks() async {

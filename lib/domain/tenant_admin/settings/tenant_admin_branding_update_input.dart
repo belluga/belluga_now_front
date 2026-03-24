@@ -3,12 +3,19 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_hex_color_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_required_text_value.dart';
 
+typedef TenantAdminBrandingUpdateInputPrimString = String;
+typedef TenantAdminBrandingUpdateInputPrimInt = int;
+typedef TenantAdminBrandingUpdateInputPrimBool = bool;
+typedef TenantAdminBrandingUpdateInputPrimDouble = double;
+typedef TenantAdminBrandingUpdateInputPrimDateTime = DateTime;
+typedef TenantAdminBrandingUpdateInputPrimDynamic = dynamic;
+
 class TenantAdminBrandingUpdateInput {
   TenantAdminBrandingUpdateInput({
-    required String tenantName,
+    required TenantAdminBrandingUpdateInputPrimString tenantName,
     required this.brightnessDefault,
-    required String primarySeedColor,
-    required String secondarySeedColor,
+    required TenantAdminBrandingUpdateInputPrimString primarySeedColor,
+    required TenantAdminBrandingUpdateInputPrimString secondarySeedColor,
     this.lightLogoUpload,
     this.darkLogoUpload,
     this.lightIconUpload,
@@ -30,16 +37,21 @@ class TenantAdminBrandingUpdateInput {
   final TenantAdminMediaUpload? faviconUpload;
   final TenantAdminMediaUpload? pwaIconUpload;
 
-  String get tenantName => tenantNameValue.value;
-  String get primarySeedColor => primarySeedColorValue.value;
-  String get secondarySeedColor => secondarySeedColorValue.value;
+  TenantAdminBrandingUpdateInputPrimString get tenantName =>
+      tenantNameValue.value;
+  TenantAdminBrandingUpdateInputPrimString get primarySeedColor =>
+      primarySeedColorValue.value;
+  TenantAdminBrandingUpdateInputPrimString get secondarySeedColor =>
+      secondarySeedColorValue.value;
 
-  static TenantAdminRequiredTextValue _buildRequiredTextValue(String raw) {
+  static TenantAdminRequiredTextValue _buildRequiredTextValue(
+      TenantAdminBrandingUpdateInputPrimString raw) {
     final value = TenantAdminRequiredTextValue()..parse(raw);
     return value;
   }
 
-  static TenantAdminHexColorValue _buildHexColorValue(String raw) {
+  static TenantAdminHexColorValue _buildHexColorValue(
+      TenantAdminBrandingUpdateInputPrimString raw) {
     final value = TenantAdminHexColorValue()..parse(raw);
     return value;
   }

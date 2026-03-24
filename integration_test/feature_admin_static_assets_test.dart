@@ -145,7 +145,7 @@ void main() {
     await app.init();
 
     app.appRouter.replaceAll([
-      const TenantAdminShellRoute(
+      TenantAdminShellRoute(
         children: [TenantAdminStaticAssetCreateRoute()],
       ),
     ]);
@@ -154,7 +154,7 @@ void main() {
     await _pumpFor(tester, const Duration(seconds: 2));
     await _waitForFinder(tester, _tenantAdminShellRouterFinder());
     app.appRouter.navigate(
-      const TenantAdminShellRoute(
+      TenantAdminShellRoute(
         children: [TenantAdminStaticAssetCreateRoute()],
       ),
     );
@@ -249,7 +249,7 @@ void main() {
       _FakeLandlordTenantsRepository(),
     );
     final staticAssetsRepository = _FakeStaticAssetsRepository(
-      seededAssets: const [
+      seededAssets: [
         TenantAdminStaticAsset(
           id: 'asset-1',
           profileType: 'beach',
@@ -278,7 +278,7 @@ void main() {
     await app.init();
 
     app.appRouter.replaceAll([
-      const TenantAdminShellRoute(
+      TenantAdminShellRoute(
         children: [TenantAdminStaticAssetsListRoute()],
       ),
     ]);
@@ -287,7 +287,7 @@ void main() {
     await _pumpFor(tester, const Duration(seconds: 2));
     await _waitForFinder(tester, _tenantAdminShellRouterFinder());
     app.appRouter.navigate(
-      const TenantAdminShellRoute(
+      TenantAdminShellRoute(
         children: [TenantAdminStaticAssetsListRoute()],
       ),
     );
@@ -380,7 +380,7 @@ void main() {
     );
     GetIt.I.registerSingleton<TenantAdminStaticAssetsRepositoryContract>(
       _FakeStaticAssetsRepository(
-        seededAssets: const [
+        seededAssets: [
           TenantAdminStaticAsset(
             id: 'asset-1',
             profileType: 'beach',
@@ -481,7 +481,7 @@ void main() {
     );
     GetIt.I.registerSingleton<TenantAdminStaticAssetsRepositoryContract>(
       _FakeStaticAssetsRepository(
-        seededAssets: const [
+        seededAssets: [
           TenantAdminStaticAsset(
             id: 'asset-1',
             profileType: 'beach',
@@ -503,7 +503,7 @@ void main() {
     await app.init();
 
     app.appRouter.replaceAll([
-      const TenantAdminShellRoute(
+      TenantAdminShellRoute(
         children: [TenantAdminStaticAssetsListRoute()],
       ),
     ]);
@@ -512,7 +512,7 @@ void main() {
     await _pumpFor(tester, const Duration(seconds: 2));
     await _waitForFinder(tester, _tenantAdminShellRouterFinder());
     app.appRouter.navigate(
-      const TenantAdminShellRoute(
+      TenantAdminShellRoute(
         children: [TenantAdminStaticAssetsListRoute()],
       ),
     );
@@ -638,7 +638,7 @@ class _FakeLandlordTenantsRepository
     implements LandlordTenantsRepositoryContract {
   @override
   Future<List<LandlordTenantOption>> fetchTenants() async {
-    return const [
+    return [
       LandlordTenantOption(
         id: 'tenant-guarappari',
         name: 'Guarappari',
@@ -694,7 +694,7 @@ class _FakeStaticAssetsRepository
   static const String generatedCoverUploadUrl =
       'https://tenant-a.test/media/static-assets/cover-uploaded.png';
 
-  final List<TenantAdminStaticAsset> createdAssets = [];
+  final List<TenantAdminStaticAsset> createdAssets = const [];
   final List<TenantAdminStaticAsset> _assets;
 
   @override
@@ -709,7 +709,7 @@ class _FakeStaticAssetsRepository
     final assets = await fetchStaticAssets();
     final start = (page - 1) * pageSize;
     if (page <= 0 || pageSize <= 0 || start >= assets.length) {
-      return const TenantAdminPagedResult<TenantAdminStaticAsset>(
+      return TenantAdminPagedResult<TenantAdminStaticAsset>(
         items: <TenantAdminStaticAsset>[],
         hasMore: false,
       );
@@ -808,7 +808,7 @@ class _FakeStaticAssetsRepository
       slug: slug ?? existing?.slug ?? 'praia',
       isActive: true,
       location: location ?? existing?.location,
-      taxonomyTerms: taxonomyTerms ?? existing?.taxonomyTerms ?? const [],
+      taxonomyTerms: taxonomyTerms ?? existing?.taxonomyTerms ?? [],
       bio: bio ?? existing?.bio,
       content: content ?? existing?.content,
       avatarUrl: resolvedAvatarUrl,
@@ -843,7 +843,7 @@ class _FakeStaticAssetsRepository
   @override
   Future<List<TenantAdminStaticProfileTypeDefinition>>
       fetchStaticProfileTypes() async {
-    return const [
+    return [
       TenantAdminStaticProfileTypeDefinition(
         type: 'beach',
         label: 'Praia',
@@ -869,8 +869,7 @@ class _FakeStaticAssetsRepository
     final profileTypes = await fetchStaticProfileTypes();
     final start = (page - 1) * pageSize;
     if (page <= 0 || pageSize <= 0 || start >= profileTypes.length) {
-      return const TenantAdminPagedResult<
-          TenantAdminStaticProfileTypeDefinition>(
+      return TenantAdminPagedResult<TenantAdminStaticProfileTypeDefinition>(
         items: <TenantAdminStaticProfileTypeDefinition>[],
         hasMore: false,
       );
@@ -910,9 +909,9 @@ class _FakeStaticAssetsRepository
     return TenantAdminStaticProfileTypeDefinition(
       type: type,
       label: label ?? 'Praia',
-      allowedTaxonomies: allowedTaxonomies ?? const [],
+      allowedTaxonomies: allowedTaxonomies ?? [],
       capabilities: capabilities ??
-          const TenantAdminStaticProfileTypeCapabilities(
+          TenantAdminStaticProfileTypeCapabilities(
             isPoiEnabled: true,
             hasBio: true,
             hasTaxonomies: true,
@@ -932,7 +931,7 @@ class _FakeTaxonomiesRepository
     implements TenantAdminTaxonomiesRepositoryContract {
   @override
   Future<List<TenantAdminTaxonomyDefinition>> fetchTaxonomies() async {
-    return const [
+    return [
       TenantAdminTaxonomyDefinition(
         id: 'taxonomy-1',
         slug: 'beach_style',
@@ -953,7 +952,7 @@ class _FakeTaxonomiesRepository
     final taxonomies = await fetchTaxonomies();
     final start = (page - 1) * pageSize;
     if (page <= 0 || pageSize <= 0 || start >= taxonomies.length) {
-      return const TenantAdminPagedResult<TenantAdminTaxonomyDefinition>(
+      return TenantAdminPagedResult<TenantAdminTaxonomyDefinition>(
         items: <TenantAdminTaxonomyDefinition>[],
         hasMore: false,
       );
@@ -998,7 +997,7 @@ class _FakeTaxonomiesRepository
       id: taxonomyId,
       slug: slug ?? 'beach_style',
       name: name ?? 'Estilo da praia',
-      appliesTo: appliesTo ?? const ['static_asset'],
+      appliesTo: appliesTo ?? ['static_asset'],
       icon: icon,
       color: color,
     );
@@ -1011,7 +1010,7 @@ class _FakeTaxonomiesRepository
   Future<List<TenantAdminTaxonomyTermDefinition>> fetchTerms({
     required String taxonomyId,
   }) async {
-    return const [
+    return [
       TenantAdminTaxonomyTermDefinition(
         id: 'term-1',
         taxonomyId: 'taxonomy-1',
@@ -1031,7 +1030,7 @@ class _FakeTaxonomiesRepository
     final terms = await fetchTerms(taxonomyId: taxonomyId);
     final start = (page - 1) * pageSize;
     if (page <= 0 || pageSize <= 0 || start >= terms.length) {
-      return const TenantAdminPagedResult<TenantAdminTaxonomyTermDefinition>(
+      return TenantAdminPagedResult<TenantAdminTaxonomyTermDefinition>(
         items: <TenantAdminTaxonomyTermDefinition>[],
         hasMore: false,
       );

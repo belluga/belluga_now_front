@@ -1,11 +1,19 @@
 import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
 import 'package:stream_value/core/stream_value.dart';
 
+typedef UserEventsRepositoryContractPrimString = String;
+typedef UserEventsRepositoryContractPrimInt = int;
+typedef UserEventsRepositoryContractPrimBool = bool;
+typedef UserEventsRepositoryContractPrimDouble = double;
+typedef UserEventsRepositoryContractPrimDateTime = DateTime;
+typedef UserEventsRepositoryContractPrimDynamic = dynamic;
+
 /// Repository contract for user-specific event relationships
 /// Handles confirmed events, featured events, and user event actions
 abstract class UserEventsRepositoryContract {
   /// Stream of confirmed event IDs to notify listeners of changes
-  StreamValue<Set<String>> get confirmedEventIdsStream;
+  StreamValue<Set<UserEventsRepositoryContractPrimString>>
+      get confirmedEventIdsStream;
 
   /// Refresh confirmed event IDs from backend authoritative source.
   Future<void> refreshConfirmedEventIds();
@@ -17,11 +25,14 @@ abstract class UserEventsRepositoryContract {
   Future<List<VenueEventResume>> fetchFeaturedEvents();
 
   /// Mark an event as confirmed for the user
-  Future<void> confirmEventAttendance(String eventId);
+  Future<void> confirmEventAttendance(
+      UserEventsRepositoryContractPrimString eventId);
 
   /// Remove confirmation for an event
-  Future<void> unconfirmEventAttendance(String eventId);
+  Future<void> unconfirmEventAttendance(
+      UserEventsRepositoryContractPrimString eventId);
 
   /// Check if user has confirmed attendance for an event
-  bool isEventConfirmed(String eventId);
+  UserEventsRepositoryContractPrimBool isEventConfirmed(
+      UserEventsRepositoryContractPrimString eventId);
 }

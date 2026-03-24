@@ -1,31 +1,41 @@
 part of '../tenant_admin_event.dart';
 
 class TenantAdminEventDraft {
-  const TenantAdminEventDraft({
-    required this.title,
-    required this.content,
+  TenantAdminEventDraft({
+    required Object title,
+    required Object content,
     required this.type,
     required this.occurrences,
     required this.publication,
     this.location,
     this.placeRef,
-    this.coverUrl,
+    Object? coverUrl,
     this.coverUpload,
-    this.removeCover = false,
-    this.artistIds = const <String>[],
+    Object? removeCover,
+    Object? artistIds,
     this.taxonomyTerms = const <TenantAdminTaxonomyTerm>[],
-  });
+  })  : titleValue = tenantAdminRequiredText(title),
+        contentValue = tenantAdminOptionalText(content),
+        coverUrlValue = tenantAdminOptionalUrl(coverUrl),
+        removeCoverValue = tenantAdminFlag(removeCover),
+        artistIdValues = tenantAdminTrimmedStringList(artistIds);
 
-  final String title;
-  final String content;
+  final TenantAdminRequiredTextValue titleValue;
+  final TenantAdminOptionalTextValue contentValue;
   final TenantAdminEventType type;
   final List<TenantAdminEventOccurrence> occurrences;
   final TenantAdminEventPublication publication;
   final TenantAdminEventLocation? location;
   final TenantAdminEventPlaceRef? placeRef;
-  final String? coverUrl;
+  final TenantAdminOptionalUrlValue coverUrlValue;
   final TenantAdminMediaUpload? coverUpload;
-  final bool removeCover;
-  final List<String> artistIds;
+  final TenantAdminFlagValue removeCoverValue;
+  final TenantAdminTrimmedStringListValue artistIdValues;
   final List<TenantAdminTaxonomyTerm> taxonomyTerms;
+
+  String get title => titleValue.value;
+  String get content => contentValue.value;
+  String? get coverUrl => coverUrlValue.nullableValue;
+  bool get removeCover => removeCoverValue.value;
+  List<String> get artistIds => artistIdValues.value;
 }

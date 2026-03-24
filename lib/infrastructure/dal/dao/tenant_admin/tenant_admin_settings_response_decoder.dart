@@ -110,7 +110,7 @@ class TenantAdminSettingsResponseDecoder {
     final availableEvents = _extractStringList(rawMap['available_events']);
     return TenantAdminTelemetrySettingsSnapshot(
       integrations: integrations,
-      availableEvents: availableEvents,
+      availableEventValues: TenantAdminTrimmedStringListValue(availableEvents),
     );
   }
 
@@ -328,7 +328,9 @@ class TenantAdminSettingsResponseDecoder {
     }
 
     return TenantAdminMapUiSettings(
-      rawMapUi: Map<String, dynamic>.unmodifiable(mapUi),
+      rawMapUiValue: TenantAdminDynamicMapValue(
+        Map<String, dynamic>.unmodifiable(mapUi),
+      ),
       defaultOrigin: defaultOrigin,
       filters: List<TenantAdminMapFilterCatalogItem>.unmodifiable(filters),
     );

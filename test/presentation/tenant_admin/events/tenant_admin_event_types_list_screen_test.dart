@@ -36,7 +36,7 @@ void main() {
         NamedRouteDef(
           name: 'event-types-test',
           path: '/',
-          builder: (_, __) => const TenantAdminEventTypesListScreen(),
+          builder: (_, __) => TenantAdminEventTypesListScreen(),
         ),
       ],
     )..ignorePopCompleters = true;
@@ -51,7 +51,7 @@ void main() {
 
     expect(find.text('Nenhum tipo cadastrado'), findsOneWidget);
 
-    controller.eventTypeCatalogStreamValue.addValue(const [
+    controller.eventTypeCatalogStreamValue.addValue([
       TenantAdminEventType(
         id: '507f1f77bcf86cd799439021',
         name: 'Festival',
@@ -97,7 +97,7 @@ class _NoopEventsRepository
     String? status,
     bool archived = false,
   }) async {
-    return const <TenantAdminEvent>[];
+    return <TenantAdminEvent>[];
   }
 
   @override
@@ -108,7 +108,7 @@ class _NoopEventsRepository
     String? status,
     bool archived = false,
   }) async {
-    return const TenantAdminPagedResult<TenantAdminEvent>(
+    return TenantAdminPagedResult<TenantAdminEvent>(
       items: <TenantAdminEvent>[],
       hasMore: false,
     );
@@ -119,7 +119,7 @@ class _NoopEventsRepository
     String? search,
     String? accountSlug,
   }) async {
-    return const TenantAdminEventPartyCandidates(
+    return TenantAdminEventPartyCandidates(
       venues: <TenantAdminAccountProfile>[],
       artists: <TenantAdminAccountProfile>[],
     );
@@ -168,7 +168,7 @@ class _NoopTaxonomiesRepository
 
   @override
   Future<List<TenantAdminTaxonomyDefinition>> fetchTaxonomies() async {
-    return const <TenantAdminTaxonomyDefinition>[];
+    return <TenantAdminTaxonomyDefinition>[];
   }
 
   @override
@@ -177,7 +177,7 @@ class _NoopTaxonomiesRepository
     required int page,
     required int pageSize,
   }) async {
-    return const TenantAdminPagedResult<TenantAdminTaxonomyDefinition>(
+    return TenantAdminPagedResult<TenantAdminTaxonomyDefinition>(
       items: <TenantAdminTaxonomyDefinition>[],
       hasMore: false,
     );
@@ -187,7 +187,7 @@ class _NoopTaxonomiesRepository
   Future<List<TenantAdminTaxonomyTermDefinition>> fetchTerms({
     required String taxonomyId,
   }) async {
-    return const <TenantAdminTaxonomyTermDefinition>[];
+    return <TenantAdminTaxonomyTermDefinition>[];
   }
 
   @override
@@ -197,7 +197,7 @@ class _NoopTaxonomiesRepository
     required int page,
     required int pageSize,
   }) async {
-    return const TenantAdminPagedResult<TenantAdminTaxonomyTermDefinition>(
+    return TenantAdminPagedResult<TenantAdminTaxonomyTermDefinition>(
       items: <TenantAdminTaxonomyTermDefinition>[],
       hasMore: false,
     );

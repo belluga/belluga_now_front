@@ -5,14 +5,13 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_organization.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_result.dart';
 import 'package:belluga_now/infrastructure/dal/dao/tenant_admin/tenant_admin_organizations_request_encoder.dart';
 import 'package:belluga_now/infrastructure/dal/dto/tenant_admin/tenant_admin_organizations_response_decoder.dart';
-import 'package:belluga_now/infrastructure/dal/dto/mappers/tenant_admin_dto_mapper.dart';
 import 'package:belluga_now/infrastructure/repositories/tenant_admin/tenant_admin_pagination_utils.dart';
 import 'package:belluga_now/infrastructure/repositories/tenant_admin/support/tenant_admin_validation_failure_resolver.dart';
 import 'package:dio/dio.dart';
 import 'package:get_it/get_it.dart';
 
 class TenantAdminOrganizationsRepository
-    with TenantAdminOrganizationsPaginationMixin, TenantAdminDtoMapper
+    with TenantAdminOrganizationsPaginationMixin
     implements TenantAdminOrganizationsRepositoryContract {
   TenantAdminOrganizationsRepository({
     Dio? dio,
@@ -76,7 +75,7 @@ class TenantAdminOrganizationsRepository
       );
       final dtos = _responseDecoder.decodeOrganizationList(response.data);
       return TenantAdminPagedResult<TenantAdminOrganization>(
-        items: dtos.map(mapTenantAdminOrganizationDto).toList(growable: false),
+        items: dtos.map((dto) => dto.toDomain()).toList(growable: false),
         hasMore: tenantAdminResolveHasMore(
           rawResponse: response.data,
           requestedPage: page,
@@ -96,7 +95,7 @@ class TenantAdminOrganizationsRepository
         options: Options(headers: _buildHeaders()),
       );
       final dto = _responseDecoder.decodeOrganizationItem(response.data);
-      return mapTenantAdminOrganizationDto(dto);
+      return dto.toDomain();
     } on DioException catch (error) {
       throw _wrapError(error, 'load organization');
     }
@@ -118,7 +117,7 @@ class TenantAdminOrganizationsRepository
         options: Options(headers: _buildHeaders()),
       );
       final dto = _responseDecoder.decodeOrganizationItem(response.data);
-      return mapTenantAdminOrganizationDto(dto);
+      return dto.toDomain();
     } on DioException catch (error) {
       throw _wrapError(error, 'create organization');
     }
@@ -143,7 +142,7 @@ class TenantAdminOrganizationsRepository
         options: Options(headers: _buildHeaders()),
       );
       final dto = _responseDecoder.decodeOrganizationItem(response.data);
-      return mapTenantAdminOrganizationDto(dto);
+      return dto.toDomain();
     } on DioException catch (error) {
       throw _wrapError(error, 'update organization');
     }
@@ -171,7 +170,7 @@ class TenantAdminOrganizationsRepository
         options: Options(headers: _buildHeaders()),
       );
       final dto = _responseDecoder.decodeOrganizationItem(response.data);
-      return mapTenantAdminOrganizationDto(dto);
+      return dto.toDomain();
     } on DioException catch (error) {
       throw _wrapError(error, 'restore organization');
     }

@@ -1,6 +1,10 @@
 import 'dart:async';
 
 import 'package:belluga_now/domain/gamification/mission_resume.dart';
+import 'package:belluga_now/domain/gamification/value_objects/mission_completion_value.dart';
+import 'package:belluga_now/domain/gamification/value_objects/mission_progress_value.dart';
+import 'package:belluga_now/domain/gamification/value_objects/mission_reward_value.dart';
+import 'package:belluga_now/domain/gamification/value_objects/mission_total_required_value.dart';
 import 'package:belluga_now/domain/invites/invite_accept_result.dart';
 import 'package:belluga_now/domain/invites/invite_decline_result.dart';
 import 'package:belluga_now/domain/invites/invite_model.dart';
@@ -11,6 +15,8 @@ import 'package:belluga_now/domain/repositories/user_events_repository_contract.
 import 'package:belluga_now/domain/schedule/event_model.dart';
 
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
+import 'package:belluga_now/domain/value_objects/description_value.dart';
+import 'package:belluga_now/domain/value_objects/title_value.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value.dart';
@@ -128,12 +134,15 @@ class ImmersiveEventDetailController implements Disposable {
 
       // Activate mission upon confirmation.
       missionStreamValue.addValue(MissionResume(
-        title: 'Missão VIP Ativa!',
-        description: 'Traga 3 amigos para ganhar 1 Drink 🍹',
-        progress: 0,
-        totalRequired: 3,
-        reward: '#DRINK123',
-        isCompleted: false,
+        titleValue: TitleValue(defaultValue: 'Missao VIP Ativa!')
+          ..parse('Missao VIP Ativa!'),
+        descriptionValue:
+            DescriptionValue(defaultValue: 'Traga 3 amigos para ganhar 1 drink.')
+              ..parse('Traga 3 amigos para ganhar 1 drink.'),
+        progressValue: const MissionProgressValue(0),
+        totalRequiredValue: const MissionTotalRequiredValue(3),
+        rewardValue: const MissionRewardValue('#DRINK123'),
+        isCompletedValue: const MissionCompletionValue(false),
       ));
       return AttendanceConfirmationResult.confirmed;
     } finally {

@@ -1,6 +1,35 @@
+import 'package:belluga_now/domain/invites/invite_partner_type.dart';
+import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
+import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
+import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
+import 'package:belluga_now/domain/partner/partner_resume.dart';
+import 'package:belluga_now/domain/partner/value_objects/invite_partner_hero_image_value.dart';
+import 'package:belluga_now/domain/partner/value_objects/invite_partner_logo_image_value.dart';
+import 'package:belluga_now/domain/partner/value_objects/invite_partner_name_value.dart';
+import 'package:belluga_now/domain/partner/value_objects/invite_partner_tagline_value.dart';
+import 'package:belluga_now/domain/schedule/event_model.dart';
+import 'package:belluga_now/domain/schedule/event_type_model.dart';
+import 'package:belluga_now/domain/schedule/friend_resume.dart';
+import 'package:belluga_now/domain/schedule/invite_status.dart';
+import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
+import 'package:belluga_now/domain/schedule/value_objects/event_is_confirmed_value.dart';
+import 'package:belluga_now/domain/schedule/value_objects/event_total_confirmed_value.dart';
+import 'package:belluga_now/domain/schedule/value_objects/event_type_id_value.dart';
+import 'package:belluga_now/domain/user/value_objects/user_avatar_value.dart';
+import 'package:belluga_now/domain/user/value_objects/user_display_name_value.dart';
+import 'package:belluga_now/domain/user/value_objects/user_id_value.dart';
+import 'package:belluga_now/domain/value_objects/color_value.dart';
+import 'package:belluga_now/domain/value_objects/description_value.dart';
+import 'package:belluga_now/domain/value_objects/slug_value.dart';
+import 'package:belluga_now/domain/value_objects/title_value.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_artist_dto.dart';
+import 'package:belluga_now/infrastructure/dal/dto/invites/invite_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_type_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/thumb_dto.dart';
+import 'package:flutter/material.dart';
+import 'package:value_object_pattern/domain/value_objects/date_time_value.dart';
+import 'package:value_object_pattern/domain/value_objects/html_content_value.dart';
+import 'package:value_object_pattern/domain/value_objects/mongo_id_value.dart';
 
 class EventDTO {
   const EventDTO({
@@ -115,6 +144,75 @@ class EventDTO {
               .toList() ??
           const [],
     );
+  }
+
+  EventModel toDomain() {
+    final thumbDomain = thumb?.toDomain();
+    final coordinate = (latitude != null && longitude != null)
+        ? CityCoordinate(
+            latitudeValue: LatitudeValue()..parse(latitude!.toString()),
+            longitudeValue: LongitudeValue()..parse(longitude!.toString()),
+          )
+        : null;
+    final artistsDomain = artists
+        .map((artist) => artist.toDomain())
+        .toList(growable: false);
+    final venueDomain = venue != null ? _mapPartnerResume(venue!) : null;
+
+    final receivedInvitesDomain = receivedInvites
+        ?.map((entry) {
+          final inviteMap = Map<String, dynamic>.from(entry);
+          inviteMap.putIfAbsent('event_id', () => id);
+          return InviteDto.fromJson(inviteMap).toDomain();
+        })
+        .toList(growable: false);
+
+    final sentInvitesDomain = sentInvites
+        ?.map(_mapSentInviteStatus)
+        .toList(growable: false);
+    final friendsGoingDomain = friendsGoing
+        ?.map(_mapEventFriendResume)
+        .toList(growable: false);
+
+    return EventModel(
+      id: MongoIDValue()..parse(id),
+      slugValue: SlugValue()..parse(slug),
+      type: EventTypeModel(
+        id: EventTypeIdValue()..parse(type.id),
+        name: TitleValue(minLenght: 1)..parse(type.name),
+        slug: SlugValue()..parse(type.slug),
+        description: DescriptionValue(minLenght: 0)..parse(type.description),
+        icon: SlugValue()..parse(type.icon ?? 'default-icon'),
+        color: ColorValue(defaultValue: const Color(0xFF000000))
+          ..parse(type.color ?? '#000000'),
+      ),
+      title: TitleValue()..parse(title),
+      content: HTMLContentValue(minLenght: 0)..parse(content),
+      location: DescriptionValue(minLenght: 1)..parse(location),
+      thumb: thumbDomain,
+      dateTimeStart: DateTimeValue()..parse(dateTimeStart),
+      dateTimeEnd:
+          dateTimeEnd != null ? (DateTimeValue()..parse(dateTimeEnd!)) : null,
+      venue: venueDomain,
+      artists: artistsDomain,
+      coordinate: coordinate,
+      tags: tags,
+      isConfirmedValue:
+          EventIsConfirmedValue()..parse(isConfirmed.toString()),
+      totalConfirmedValue:
+          EventTotalConfirmedValue()..parse(totalConfirmed.toString()),
+      receivedInvites: receivedInvitesDomain,
+      sentInvites: sentInvitesDomain,
+      friendsGoing: friendsGoingDomain,
+    );
+  }
+
+  DateTime? dateOnly() {
+    final parsed = DateTime.tryParse(dateTimeStart);
+    if (parsed == null) {
+      return null;
+    }
+    return DateTime(parsed.year, parsed.month, parsed.day);
   }
 
   static Map<String, dynamic> _asMap(dynamic value) {
@@ -248,6 +346,86 @@ class EventDTO {
     }
 
     return (latitude: latitude, longitude: longitude);
+  }
+
+  EventFriendResume _mapEventFriendResume(Map<String, dynamic> dto) {
+    final displayName =
+        (dto['display_name'] as String?) ?? (dto['name'] as String?) ?? '';
+    final avatarUrlValue = UserAvatarValue();
+    final normalizedAvatarUrl = (dto['avatar_url'] as String?)?.trim();
+    if (normalizedAvatarUrl != null && normalizedAvatarUrl.isNotEmpty) {
+      avatarUrlValue.parse(normalizedAvatarUrl);
+    }
+
+    return EventFriendResume(
+      idValue: UserIdValue()..parse(dto['id'] as String? ?? ''),
+      displayNameValue: UserDisplayNameValue()..parse(displayName),
+      avatarUrlValue: avatarUrlValue,
+    );
+  }
+
+  SentInviteStatus _mapSentInviteStatus(Map<String, dynamic> dto) {
+    final friendMap = dto['friend'] as Map<String, dynamic>? ?? {};
+    final sentAtValue = DateTimeValue()..parse(dto['sent_at'] as String);
+    final respondedAtRaw = dto['responded_at'] as String?;
+    final respondedAtValue =
+        respondedAtRaw == null ? null : (DateTimeValue()..parse(respondedAtRaw));
+    return SentInviteStatus(
+      friend: _mapEventFriendResume(friendMap),
+      status: _parseInviteStatus(dto['status'] as String?),
+      sentAtValue: sentAtValue,
+      respondedAtValue: respondedAtValue,
+    );
+  }
+
+  InviteStatus _parseInviteStatus(String? rawStatus) {
+    switch (rawStatus?.toLowerCase()) {
+      case 'accepted':
+        return InviteStatus.accepted;
+      case 'declined':
+        return InviteStatus.declined;
+      case 'viewed':
+        return InviteStatus.viewed;
+      default:
+        return InviteStatus.pending;
+    }
+  }
+
+  PartnerResume _mapPartnerResume(Map<String, dynamic> dto) {
+    SlugValue? slugValue;
+    final slugRaw = dto['slug']?.toString();
+    if (slugRaw != null && slugRaw.isNotEmpty) {
+      slugValue = SlugValue()..parse(slugRaw);
+    }
+
+    InvitePartnerTaglineValue? taglineValue;
+    final taglineRaw = dto['tagline']?.toString();
+    if (taglineRaw != null && taglineRaw.isNotEmpty) {
+      taglineValue = InvitePartnerTaglineValue()..parse(taglineRaw);
+    }
+
+    InvitePartnerLogoImageValue? logoImageValue;
+    final logoUrl = dto['logo_url']?.toString();
+    if (logoUrl != null && logoUrl.isNotEmpty) {
+      logoImageValue = InvitePartnerLogoImageValue()..parse(logoUrl);
+    }
+
+    InvitePartnerHeroImageValue? heroImageValue;
+    final heroUrl = dto['hero_image_url']?.toString();
+    if (heroUrl != null && heroUrl.isNotEmpty) {
+      heroImageValue = InvitePartnerHeroImageValue()..parse(heroUrl);
+    }
+
+    return PartnerResume(
+      idValue: MongoIDValue()..parse(dto['id']?.toString() ?? ''),
+      nameValue: InvitePartnerNameValue()
+        ..parse(dto['display_name']?.toString() ?? ''),
+      slugValue: slugValue,
+      type: InviteAccountProfileType.mercadoProducer,
+      taglineValue: taglineValue,
+      logoImageValue: logoImageValue,
+      heroImageValue: heroImageValue,
+    );
   }
 
   Map<String, dynamic> toJson() {

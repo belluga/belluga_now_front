@@ -1,3 +1,7 @@
+import 'package:belluga_now/domain/tenant_admin/ownership_state.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_account.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_document.dart';
+
 class TenantAdminAccountDTO {
   const TenantAdminAccountDTO({
     required this.id,
@@ -36,6 +40,26 @@ class TenantAdminAccountDTO {
       organizationId: json['organization_id']?.toString(),
       ownershipState: json['ownership_state']?.toString(),
       avatarUrl: json['avatar_url']?.toString(),
+    );
+  }
+
+  TenantAdminAccount toDomain() {
+    final ownershipStateRaw = ownershipState?.trim();
+    final resolvedOwnershipState =
+        (ownershipStateRaw == null || ownershipStateRaw.isEmpty)
+            ? TenantAdminOwnershipState.unmanaged
+            : TenantAdminOwnershipState.fromApiValue(ownershipStateRaw);
+    return TenantAdminAccount(
+      id: id,
+      name: name,
+      slug: slug,
+      document: TenantAdminDocument(
+        type: documentType,
+        number: documentNumber,
+      ),
+      organizationId: organizationId,
+      ownershipState: resolvedOwnershipState,
+      avatarUrl: avatarUrl,
     );
   }
 }

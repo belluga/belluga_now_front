@@ -2,6 +2,13 @@ export 'event_delta_type.dart';
 
 import 'package:belluga_now/domain/schedule/event_delta_type.dart';
 
+typedef EventDeltaModelPrimString = String;
+typedef EventDeltaModelPrimInt = int;
+typedef EventDeltaModelPrimBool = bool;
+typedef EventDeltaModelPrimDouble = double;
+typedef EventDeltaModelPrimDateTime = DateTime;
+typedef EventDeltaModelPrimDynamic = dynamic;
+
 class EventDeltaModel {
   EventDeltaModel({
     required this.eventId,
@@ -10,8 +17,8 @@ class EventDeltaModel {
     this.lastEventId,
   });
 
-  final String eventId;
+  final EventDeltaModelPrimString eventId;
   final EventDeltaType type;
-  final DateTime? updatedAt;
-  final String? lastEventId;
+  final EventDeltaModelPrimDateTime? updatedAt;
+  final EventDeltaModelPrimString? lastEventId;
 }

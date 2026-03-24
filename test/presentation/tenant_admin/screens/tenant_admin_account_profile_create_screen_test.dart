@@ -80,7 +80,7 @@ void main() {
 
     await _pumpScreen(
       tester,
-      const TenantAdminAccountProfileCreateScreen(accountSlug: 'route-account'),
+      TenantAdminAccountProfileCreateScreen(accountSlug: 'route-account'),
     );
 
     expect(accountsRepository.fetchAccountBySlugCalls, 1);
@@ -114,7 +114,7 @@ class _FakeAccountsRepository extends TenantAdminAccountsRepositoryContract {
 
   @override
   Future<List<TenantAdminAccount>> fetchAccounts() async {
-    return const [];
+    return [];
   }
 
   @override
@@ -186,7 +186,7 @@ class _FakeAccountProfilesRepository
   Future<List<TenantAdminAccountProfile>> fetchAccountProfiles({
     String? accountId,
   }) async {
-    return const [];
+    return [];
   }
 
   @override
@@ -198,7 +198,7 @@ class _FakeAccountProfilesRepository
 
   @override
   Future<List<TenantAdminProfileTypeDefinition>> fetchProfileTypes() async {
-    return const [];
+    return [];
   }
 
   @override
@@ -284,7 +284,7 @@ class _FakeTaxonomiesRepository
     extends TenantAdminTaxonomiesRepositoryContract {
   @override
   Future<List<TenantAdminTaxonomyDefinition>> fetchTaxonomies() async {
-    return const [];
+    return [];
   }
 
   @override
@@ -319,7 +319,7 @@ class _FakeTaxonomiesRepository
   Future<List<TenantAdminTaxonomyTermDefinition>> fetchTerms({
     required String taxonomyId,
   }) async {
-    return const [];
+    return [];
   }
 
   @override
@@ -362,7 +362,7 @@ TenantAdminAccount _account({required String slug}) {
     id: 'acc-$slug',
     name: slug,
     slug: slug,
-    document: const TenantAdminDocument(type: 'cpf', number: '000'),
+    document: TenantAdminDocument(type: 'cpf', number: '000'),
     ownershipState: TenantAdminOwnershipState.tenantOwned,
   );
 }

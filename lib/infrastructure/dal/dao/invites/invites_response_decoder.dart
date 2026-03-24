@@ -1,4 +1,9 @@
 import 'package:belluga_now/domain/invites/invite_contact_match.dart';
+import 'package:belluga_now/domain/invites/value_objects/invite_contact_hash_value.dart';
+import 'package:belluga_now/domain/invites/value_objects/invite_contact_type_value.dart';
+import 'package:belluga_now/domain/invites/value_objects/invite_inviter_avatar_value.dart';
+import 'package:belluga_now/domain/invites/value_objects/invite_inviter_name_value.dart';
+import 'package:belluga_now/domain/user/value_objects/user_id_value.dart';
 import 'package:belluga_now/infrastructure/dal/dto/invites/invite_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dao/invites/invite_share_code_target_ref.dart';
 
@@ -127,12 +132,30 @@ class InvitesResponseDecoder {
       return null;
     }
 
+    final avatarValue = InviteInviterAvatarValue();
+    final normalizedAvatarUrl = _stringOrNull(map['avatar_url']);
+    if (normalizedAvatarUrl != null && normalizedAvatarUrl.isNotEmpty) {
+      avatarValue.parse(normalizedAvatarUrl);
+    }
+
+    final contactHashValue = InviteContactHashValue();
+    final contactHashRaw = _stringOrEmpty(map['contact_hash']);
+    if (contactHashRaw.isNotEmpty) {
+      contactHashValue.parse(contactHashRaw);
+    }
+
+    final contactTypeValue = InviteContactTypeValue();
+    final contactTypeRaw = _stringOrEmpty(map['type']);
+    if (contactTypeRaw.isNotEmpty) {
+      contactTypeValue.parse(contactTypeRaw);
+    }
+
     return InviteContactMatch(
-      contactHash: _stringOrEmpty(map['contact_hash']),
-      type: _stringOrEmpty(map['type']),
-      userId: userId,
-      displayName: displayName,
-      avatarUrl: _stringOrNull(map['avatar_url']),
+      contactHashValue: contactHashValue,
+      typeValue: contactTypeValue,
+      userIdValue: UserIdValue()..parse(userId),
+      displayNameValue: InviteInviterNameValue()..parse(displayName),
+      avatarValue: avatarValue,
     );
   }
 

@@ -12,6 +12,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_event.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_definition.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_value_parsers.dart';
 import 'package:belluga_now/infrastructure/platform/app_data_local_info_source/app_data_local_info_source.dart';
 import 'package:belluga_now/infrastructure/repositories/app_data_repository.dart';
 import 'package:flutter/material.dart';
@@ -83,7 +84,7 @@ void main() {
       });
 
       app.appRouter.replaceAll(
-        const [
+        [
           TenantAdminShellRoute(
             children: [TenantAdminEventsRoute()],
           ),
@@ -201,7 +202,7 @@ class _FakeLandlordTenantsRepository
     implements LandlordTenantsRepositoryContract {
   @override
   Future<List<LandlordTenantOption>> fetchTenants() async {
-    return const [
+    return [
       LandlordTenantOption(
         id: 'tenant-guarappari',
         name: 'Guarappari',
@@ -221,16 +222,19 @@ class _FakeTenantAdminEventsRepository
             slug: 'delete-visibility-event',
             title: 'Delete Visibility Event',
             content: 'Event used to validate soft delete visibility.',
-            type: const TenantAdminEventType(
+            type: TenantAdminEventType(
               name: 'Show',
               slug: 'show',
             ),
             occurrences: [
               TenantAdminEventOccurrence(
-                dateTimeStart: DateTime(2026, 3, 5, 20),
+                dateTimeStartValue:
+                    tenantAdminDateTime(DateTime(2026, 3, 5, 20)),
               ),
             ],
-            publication: const TenantAdminEventPublication(status: 'published'),
+            publication: TenantAdminEventPublication(
+              statusValue: tenantAdminRequiredText('published'),
+            ),
             deletedAt: null,
           ),
         ];
@@ -311,14 +315,14 @@ class _FakeTenantAdminEventsRepository
       archived: archived,
     );
     if (page <= 0 || pageSize <= 0) {
-      return const TenantAdminPagedResult<TenantAdminEvent>(
+      return TenantAdminPagedResult<TenantAdminEvent>(
         items: <TenantAdminEvent>[],
         hasMore: false,
       );
     }
     final start = (page - 1) * pageSize;
     if (start >= filtered.length) {
-      return const TenantAdminPagedResult<TenantAdminEvent>(
+      return TenantAdminPagedResult<TenantAdminEvent>(
         items: <TenantAdminEvent>[],
         hasMore: false,
       );
@@ -362,7 +366,7 @@ class _FakeTenantAdminEventsRepository
     String? search,
     String? accountSlug,
   }) async {
-    return const TenantAdminEventPartyCandidates(
+    return TenantAdminEventPartyCandidates(
       venues: <TenantAdminAccountProfile>[],
       artists: <TenantAdminAccountProfile>[],
     );
@@ -403,7 +407,7 @@ class _NoopTaxonomiesRepository
 
   @override
   Future<List<TenantAdminTaxonomyDefinition>> fetchTaxonomies() async {
-    return const <TenantAdminTaxonomyDefinition>[];
+    return <TenantAdminTaxonomyDefinition>[];
   }
 
   @override
@@ -412,7 +416,7 @@ class _NoopTaxonomiesRepository
     required int page,
     required int pageSize,
   }) async {
-    return const TenantAdminPagedResult<TenantAdminTaxonomyDefinition>(
+    return TenantAdminPagedResult<TenantAdminTaxonomyDefinition>(
       items: <TenantAdminTaxonomyDefinition>[],
       hasMore: false,
     );
@@ -422,7 +426,7 @@ class _NoopTaxonomiesRepository
   Future<List<TenantAdminTaxonomyTermDefinition>> fetchTerms({
     required String taxonomyId,
   }) async {
-    return const <TenantAdminTaxonomyTermDefinition>[];
+    return <TenantAdminTaxonomyTermDefinition>[];
   }
 
   @override
@@ -432,7 +436,7 @@ class _NoopTaxonomiesRepository
     required int page,
     required int pageSize,
   }) async {
-    return const TenantAdminPagedResult<TenantAdminTaxonomyTermDefinition>(
+    return TenantAdminPagedResult<TenantAdminTaxonomyTermDefinition>(
       items: <TenantAdminTaxonomyTermDefinition>[],
       hasMore: false,
     );

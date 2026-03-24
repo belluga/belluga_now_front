@@ -35,7 +35,7 @@ void main() {
 
     final controller = TenantAdminStaticAssetsController(
       repository: _FakeStaticAssetsRepository(
-        assets: const [
+        assets: [
           TenantAdminStaticAsset(
             id: 'asset-1',
             profileType: 'poi',
@@ -52,8 +52,7 @@ void main() {
     );
     GetIt.I.registerSingleton<TenantAdminStaticAssetsController>(controller);
 
-    await tester
-        .pumpWidget(_buildTestApp(const TenantAdminStaticAssetsListScreen()));
+    await tester.pumpWidget(_buildTestApp(TenantAdminStaticAssetsListScreen()));
     await tester.pumpAndSettle();
 
     expect(
@@ -81,7 +80,7 @@ void main() {
   testWidgets('reloads assets list when returning from detail route',
       (tester) async {
     final repository = _FakeStaticAssetsRepository(
-      assets: const [
+      assets: [
         TenantAdminStaticAsset(
           id: 'asset-1',
           profileType: 'poi',
@@ -98,8 +97,7 @@ void main() {
     );
     GetIt.I.registerSingleton<TenantAdminStaticAssetsController>(controller);
 
-    await tester
-        .pumpWidget(_buildTestApp(const TenantAdminStaticAssetsListScreen()));
+    await tester.pumpWidget(_buildTestApp(TenantAdminStaticAssetsListScreen()));
     await tester.pumpAndSettle();
 
     expect(repository.loadStaticAssetsCalls, 1);
@@ -122,7 +120,7 @@ void main() {
   testWidgets('reloads assets list when returning from create route',
       (tester) async {
     final repository = _FakeStaticAssetsRepository(
-      assets: const [
+      assets: [
         TenantAdminStaticAsset(
           id: 'asset-1',
           profileType: 'poi',
@@ -139,8 +137,7 @@ void main() {
     );
     GetIt.I.registerSingleton<TenantAdminStaticAssetsController>(controller);
 
-    await tester
-        .pumpWidget(_buildTestApp(const TenantAdminStaticAssetsListScreen()));
+    await tester.pumpWidget(_buildTestApp(TenantAdminStaticAssetsListScreen()));
     await tester.pumpAndSettle();
 
     expect(repository.loadStaticAssetsCalls, 1);
@@ -283,7 +280,7 @@ class _FakeStaticAssetsRepository
   }) async {
     final start = (page - 1) * pageSize;
     if (page <= 0 || pageSize <= 0 || start >= assets.length) {
-      return const TenantAdminPagedResult<TenantAdminStaticAsset>(
+      return TenantAdminPagedResult<TenantAdminStaticAsset>(
         items: <TenantAdminStaticAsset>[],
         hasMore: false,
       );
@@ -304,7 +301,7 @@ class _FakeStaticAssetsRepository
   @override
   Future<List<TenantAdminStaticProfileTypeDefinition>>
       fetchStaticProfileTypes() async {
-    return const [];
+    return [];
   }
 
   @override
@@ -313,7 +310,7 @@ class _FakeStaticAssetsRepository
     required int page,
     required int pageSize,
   }) async {
-    return const TenantAdminPagedResult<TenantAdminStaticProfileTypeDefinition>(
+    return TenantAdminPagedResult<TenantAdminStaticProfileTypeDefinition>(
       items: <TenantAdminStaticProfileTypeDefinition>[],
       hasMore: false,
     );
@@ -397,7 +394,7 @@ class _FakeTaxonomiesRepository
 
   @override
   Future<List<TenantAdminTaxonomyDefinition>> fetchTaxonomies() async {
-    return const [];
+    return [];
   }
 
   @override
@@ -406,7 +403,7 @@ class _FakeTaxonomiesRepository
     required int page,
     required int pageSize,
   }) async {
-    return const TenantAdminPagedResult<TenantAdminTaxonomyDefinition>(
+    return TenantAdminPagedResult<TenantAdminTaxonomyDefinition>(
       items: <TenantAdminTaxonomyDefinition>[],
       hasMore: false,
     );
@@ -416,7 +413,7 @@ class _FakeTaxonomiesRepository
   Future<List<TenantAdminTaxonomyTermDefinition>> fetchTerms({
     required String taxonomyId,
   }) async {
-    return const [];
+    return [];
   }
 
   @override
@@ -426,7 +423,7 @@ class _FakeTaxonomiesRepository
     required int page,
     required int pageSize,
   }) async {
-    return const TenantAdminPagedResult<TenantAdminTaxonomyTermDefinition>(
+    return TenantAdminPagedResult<TenantAdminTaxonomyTermDefinition>(
       items: <TenantAdminTaxonomyTermDefinition>[],
       hasMore: false,
     );

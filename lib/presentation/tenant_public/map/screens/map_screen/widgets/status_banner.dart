@@ -23,7 +23,8 @@ class _StatusBannerState extends State<StatusBanner> {
       streamValue: _controller.statusMessageStreamValue,
       onNullWidget: const SizedBox.shrink(),
       builder: (_, message) {
-        if (message == null || message.isEmpty) {
+        final messageText = message ?? '';
+        if (messageText.isEmpty) {
           return const SizedBox.shrink();
         }
         return Container(
@@ -33,7 +34,7 @@ class _StatusBannerState extends State<StatusBanner> {
             borderRadius: BorderRadius.circular(16),
           ),
           child: Text(
-            message,
+            messageText,
             style: baseStyle?.copyWith(
                   color: Colors.white,
                   fontWeight: FontWeight.w600,

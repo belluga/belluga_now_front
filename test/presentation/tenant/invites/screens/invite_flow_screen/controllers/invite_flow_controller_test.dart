@@ -1,4 +1,5 @@
 import 'package:belluga_now/domain/contacts/contact_model.dart';
+import 'package:belluga_now/testing/domain_factories.dart';
 import 'package:belluga_now/domain/invites/invite_accept_result.dart';
 import 'package:belluga_now/domain/invites/invite_contact_match.dart';
 import 'package:belluga_now/domain/invites/invite_decision.dart';
@@ -21,6 +22,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:stream_value/core/stream_value.dart';
 import 'package:belluga_now/testing/invite_accept_result_builder.dart';
 import 'package:belluga_now/testing/invite_materialize_result_builder.dart';
+import 'package:belluga_now/testing/invite_model_factory.dart';
 
 class _TrackedEvent {
   _TrackedEvent({
@@ -105,7 +107,7 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
 
   @override
   Future<InviteRuntimeSettings> fetchSettings() async =>
-      const InviteRuntimeSettings(
+      buildInviteRuntimeSettings(
         tenantId: null,
         limits: {},
         cooldowns: {},
@@ -132,7 +134,7 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
         declinedInviteIds.add(inviteId);
         _removeInvite(inviteId);
         pendingInvitesStreamValue.addValue(List<InviteModel>.from(_invites));
-        return InviteDeclineResult(
+        return buildInviteDeclineResult(
           inviteId: inviteId,
           status: 'declined',
           groupHasOtherPending: false,
@@ -173,7 +175,7 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
     String? occurrenceId,
     String? accountProfileId,
   }) async =>
-      InviteShareCodeResult(
+      buildInviteShareCodeResult(
         code: 'CODE123',
         eventId: eventId,
         occurrenceId: occurrenceId,
@@ -283,7 +285,7 @@ class _FakeAuthRepository extends AuthRepositoryContract {
 }
 
 InviteModel _buildInvite(String id) {
-  return InviteModel.fromPrimitives(
+  return buildInviteModelFromPrimitives(
     id: id,
     eventId: 'event-$id',
     eventName: 'Event $id',

@@ -8,19 +8,27 @@ import 'package:belluga_now/domain/map/value_objects/poi_filter_taxonomy_token_v
 import 'package:belluga_now/domain/map/value_objects/poi_filter_type_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_tag_value.dart';
 
+typedef PoiQueryRawString = String;
+typedef PoiQueryRawMeters = double;
+typedef PoiQueryRawToken = String;
+typedef PoiQueryRawTokenSet = Set<PoiQueryRawToken>;
+typedef PoiQueryRawTokenIterable = Iterable<PoiQueryRawToken>;
+typedef PoiQueryDynamicValue = dynamic;
+typedef PoiQueryDynamicIterable = Iterable<PoiQueryDynamicValue>;
+
 class PoiQuery {
   PoiQuery({
     this.northEast,
     this.southWest,
     this.origin,
-    double? maxDistanceMeters,
+    PoiQueryRawMeters? maxDistanceMeters,
     this.categories,
-    Set<String>? categoryKeys,
-    String? source,
-    Set<String>? types,
-    Set<String>? tags,
-    Set<String>? taxonomy,
-    String? searchTerm,
+    PoiQueryRawTokenSet? categoryKeys,
+    PoiQueryRawString? source,
+    PoiQueryRawTokenSet? types,
+    PoiQueryRawTokenSet? tags,
+    PoiQueryRawTokenSet? taxonomy,
+    PoiQueryRawString? searchTerm,
   })  : maxDistanceMetersValue = _buildDistanceValue(maxDistanceMeters),
         categoryKeyValues = _buildCategoryKeyValues(categoryKeys),
         sourceValue = _buildSourceValue(source),
@@ -59,7 +67,7 @@ class PoiQuery {
     return set.contains(category);
   }
 
-  bool matchesTags(Iterable<String> poiTags) {
+  bool matchesTags(PoiQueryRawTokenIterable poiTags) {
     final set = tags;
     if (set == null || set.isEmpty) {
       return true;
@@ -98,14 +106,14 @@ class PoiQuery {
     CityCoordinate? northEast,
     CityCoordinate? southWest,
     CityCoordinate? origin,
-    double? maxDistanceMeters,
+    PoiQueryRawMeters? maxDistanceMeters,
     Iterable<CityPoiCategory>? categories,
-    Iterable<String>? categoryKeys,
-    String? source,
-    Iterable<String>? types,
-    Iterable<String>? tags,
-    Iterable<String>? taxonomy,
-    String? searchTerm,
+    PoiQueryRawTokenIterable? categoryKeys,
+    PoiQueryRawString? source,
+    PoiQueryRawTokenIterable? types,
+    PoiQueryRawTokenIterable? tags,
+    PoiQueryRawTokenIterable? taxonomy,
+    PoiQueryRawString? searchTerm,
   }) {
     Set<CityPoiCategory>? resolvedCategories;
     if (categories == null) {
@@ -187,7 +195,7 @@ class PoiQuery {
     );
   }
 
-  static DistanceInMetersValue? _buildDistanceValue(double? raw) {
+  static DistanceInMetersValue? _buildDistanceValue(PoiQueryRawMeters? raw) {
     if (raw == null) {
       return null;
     }
@@ -196,7 +204,7 @@ class PoiQuery {
   }
 
   static Set<PoiFilterKeyValue>? _buildCategoryKeyValues(
-    Iterable<String>? rawValues,
+    PoiQueryRawTokenIterable? rawValues,
   ) {
     return _buildStringValueSet(
       rawValues,
@@ -204,7 +212,7 @@ class PoiQuery {
     );
   }
 
-  static PoiFilterSourceValue? _buildSourceValue(String? raw) {
+  static PoiFilterSourceValue? _buildSourceValue(PoiQueryRawString? raw) {
     final normalized = raw?.trim().toLowerCase();
     if (normalized == null || normalized.isEmpty) {
       return null;
@@ -213,14 +221,17 @@ class PoiQuery {
     return value;
   }
 
-  static Set<PoiFilterTypeValue>? _buildTypeValues(Iterable<String>? rawValues) {
+  static Set<PoiFilterTypeValue>? _buildTypeValues(
+    PoiQueryRawTokenIterable? rawValues,
+  ) {
     return _buildStringValueSet(
       rawValues,
       () => PoiFilterTypeValue(),
     );
   }
 
-  static Set<PoiTagValue>? _buildTagValues(Iterable<String>? rawValues) {
+  static Set<PoiTagValue>? _buildTagValues(
+      PoiQueryRawTokenIterable? rawValues) {
     return _buildStringValueSet(
       rawValues,
       () => PoiTagValue(),
@@ -228,7 +239,7 @@ class PoiQuery {
   }
 
   static Set<PoiFilterTaxonomyTokenValue>? _buildTaxonomyValues(
-    Iterable<String>? rawValues,
+    PoiQueryRawTokenIterable? rawValues,
   ) {
     return _buildStringValueSet(
       rawValues,
@@ -236,7 +247,8 @@ class PoiQuery {
     );
   }
 
-  static PoiFilterSearchTermValue? _buildSearchTermValue(String? raw) {
+  static PoiFilterSearchTermValue? _buildSearchTermValue(
+      PoiQueryRawString? raw) {
     final normalized = raw?.trim();
     if (normalized == null || normalized.isEmpty) {
       return null;
@@ -246,7 +258,7 @@ class PoiQuery {
   }
 
   static Set<T>? _buildStringValueSet<T>(
-    Iterable<String>? rawValues,
+    PoiQueryRawTokenIterable? rawValues,
     T Function() createValue,
   ) {
     if (rawValues == null) {
@@ -276,7 +288,7 @@ class PoiQuery {
     return Set<T>.unmodifiable(values);
   }
 
-  static Set<String>? _readStringSet(Iterable<dynamic>? values) {
+  static Set<String>? _readStringSet(PoiQueryDynamicIterable? values) {
     if (values == null) {
       return null;
     }
@@ -289,7 +301,7 @@ class PoiQuery {
     );
   }
 
-  static String? _readNullableValue(dynamic valueObject) {
+  static String? _readNullableValue(PoiQueryDynamicValue valueObject) {
     final raw = valueObject?.value as String?;
     if (raw == null || raw.trim().isEmpty) {
       return null;

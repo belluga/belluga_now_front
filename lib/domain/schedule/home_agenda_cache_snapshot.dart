@@ -1,5 +1,12 @@
 import 'package:belluga_now/domain/schedule/event_model.dart';
 
+typedef HomeAgendaCacheSnapshotPrimString = String;
+typedef HomeAgendaCacheSnapshotPrimInt = int;
+typedef HomeAgendaCacheSnapshotPrimBool = bool;
+typedef HomeAgendaCacheSnapshotPrimDouble = double;
+typedef HomeAgendaCacheSnapshotPrimDateTime = DateTime;
+typedef HomeAgendaCacheSnapshotPrimDynamic = dynamic;
+
 class HomeAgendaCacheSnapshot {
   const HomeAgendaCacheSnapshot({
     required this.events,
@@ -15,13 +22,13 @@ class HomeAgendaCacheSnapshot {
   });
 
   final List<EventModel> events;
-  final bool hasMore;
-  final int page;
-  final bool showPastOnly;
-  final String searchQuery;
-  final bool confirmedOnly;
-  final DateTime capturedAt;
-  final double? originLat;
-  final double? originLng;
-  final double? maxDistanceMeters;
+  final HomeAgendaCacheSnapshotPrimBool hasMore;
+  final HomeAgendaCacheSnapshotPrimInt page;
+  final HomeAgendaCacheSnapshotPrimBool showPastOnly;
+  final HomeAgendaCacheSnapshotPrimString searchQuery;
+  final HomeAgendaCacheSnapshotPrimBool confirmedOnly;
+  final HomeAgendaCacheSnapshotPrimDateTime capturedAt;
+  final HomeAgendaCacheSnapshotPrimDouble? originLat;
+  final HomeAgendaCacheSnapshotPrimDouble? originLng;
+  final HomeAgendaCacheSnapshotPrimDouble? maxDistanceMeters;
 }

@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/contacts/contact_model.dart';
+import 'package:belluga_now/domain/invites/invite_contact_match.dart';
 import 'package:belluga_now/domain/invites/invite_model.dart';
 import 'package:belluga_now/domain/invites/invite_share_code_result.dart';
 import 'package:belluga_now/domain/invites/projections/friend_resume.dart';
@@ -10,6 +11,13 @@ import 'package:belluga_now/domain/repositories/contacts_repository_contract.dar
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
 import 'package:belluga_now/domain/schedule/friend_resume.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
+import 'package:belluga_now/domain/user/value_objects/friend_avatar_value.dart';
+import 'package:belluga_now/domain/user/value_objects/friend_id_value.dart';
+import 'package:belluga_now/domain/user/value_objects/friend_match_label_value.dart';
+import 'package:belluga_now/domain/user/value_objects/user_avatar_value.dart';
+import 'package:belluga_now/domain/user/value_objects/user_display_name_value.dart';
+import 'package:belluga_now/domain/user/value_objects/user_id_value.dart';
+import 'package:belluga_now/domain/value_objects/title_value.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value.dart';
 
@@ -137,12 +145,7 @@ class InviteShareScreenController with Disposable {
 
     final recipients = matches
         .map(
-          (match) => InviteFriendResume.fromPrimitives(
-            id: match.userId,
-            name: match.displayName,
-            avatarUrl: match.avatarUrl,
-            matchLabel: 'Contato no Belluga',
-          ),
+          (match) => _toInviteFriendResume(match),
         )
         .toList(growable: false)
       ..sort((left, right) => left.name.compareTo(right.name));
@@ -237,10 +240,31 @@ class InviteShareScreenController with Disposable {
   }
 
   EventFriendResume _toEventFriendResume(InviteFriendResume friend) {
-    return EventFriendResume.fromPrimitives(
-      id: friend.id,
-      displayName: friend.name,
-      avatarUrl: friend.avatarValue.value?.toString(),
+    final avatarUrlValue = UserAvatarValue();
+    final avatarUrl = friend.avatarValue.value?.toString().trim();
+    if (avatarUrl != null && avatarUrl.isNotEmpty) {
+      avatarUrlValue.parse(avatarUrl);
+    }
+
+    return EventFriendResume(
+      idValue: UserIdValue()..parse(friend.id),
+      displayNameValue: UserDisplayNameValue()..parse(friend.name),
+      avatarUrlValue: avatarUrlValue,
+    );
+  }
+
+  InviteFriendResume _toInviteFriendResume(InviteContactMatch match) {
+    final avatarValue = FriendAvatarValue();
+    final avatarUrl = match.avatarUrl?.trim();
+    if (avatarUrl != null && avatarUrl.isNotEmpty) {
+      avatarValue.parse(avatarUrl);
+    }
+
+    return InviteFriendResume(
+      idValue: FriendIdValue()..parse(match.userId),
+      nameValue: TitleValue()..parse(match.displayName),
+      avatarValue: avatarValue,
+      matchLabelValue: FriendMatchLabelValue()..parse('Contato no Belluga'),
     );
   }
 

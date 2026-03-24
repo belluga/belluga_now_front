@@ -205,15 +205,14 @@ class AgendaAppBar extends StatelessWidget {
     final maxKm = (maxRadiusMeters / 1000) < minRadiusKm
         ? minRadiusKm
         : (maxRadiusMeters / 1000);
+    var draftRadiusKm = (_selectedMeters / 1000).clamp(minRadiusKm, maxKm);
     await showModalBottomSheet<void>(
       context: context,
       showDragHandle: true,
       builder: (context) {
         return SafeArea(
-          child: StreamValueBuilder<double>(
-            streamValue: controller.radiusMetersStreamValue,
-            builder: (context, radiusMeters) {
-              final currentKm = (radiusMeters / 1000).clamp(minRadiusKm, maxKm);
+          child: StatefulBuilder(
+            builder: (context, setModalState) {
               return Padding(
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
                 child: Column(
@@ -226,18 +225,23 @@ class AgendaAppBar extends StatelessWidget {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      '${currentKm.toStringAsFixed(0)} km',
+                      '${draftRadiusKm.toStringAsFixed(0)} km',
                       style: theme.textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.w800,
                       ),
                     ),
                     const SizedBox(height: 8),
                     Slider(
-                      value: currentKm,
+                      value: draftRadiusKm,
                       min: minRadiusKm,
                       max: maxKm,
                       divisions: (maxKm - minRadiusKm).round().clamp(1, 200),
                       onChanged: (value) {
+                        setModalState(() {
+                          draftRadiusKm = value;
+                        });
+                      },
+                      onChangeEnd: (value) {
                         controller.setRadiusMeters(value * 1000);
                       },
                     ),

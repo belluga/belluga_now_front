@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:belluga_now/testing/domain_factories.dart';
 import 'dart:developer' as developer;
 import 'package:belluga_now/testing/invite_accept_result_builder.dart';
 
@@ -480,7 +481,7 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
 
   @override
   Future<InviteRuntimeSettings> fetchSettings() async =>
-      const InviteRuntimeSettings(
+      buildInviteRuntimeSettings(
         tenantId: null,
         limits: {},
         cooldowns: {},
@@ -500,7 +501,7 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
 
   @override
   Future<InviteDeclineResult> declineInvite(String inviteId) async =>
-      InviteDeclineResult(
+      buildInviteDeclineResult(
         inviteId: inviteId,
         status: 'declined',
         groupHasOtherPending: false,
@@ -517,7 +518,7 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
     String? occurrenceId,
     String? accountProfileId,
   }) async =>
-      InviteShareCodeResult(
+      buildInviteShareCodeResult(
         code: 'test-share-code',
         eventId: eventId,
         occurrenceId: occurrenceId,

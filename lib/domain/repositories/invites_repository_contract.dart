@@ -11,6 +11,13 @@ import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
 import 'package:belluga_now/domain/schedule/friend_resume.dart';
 import 'package:stream_value/core/stream_value.dart';
 
+typedef InvitesRepositoryContractPrimString = String;
+typedef InvitesRepositoryContractPrimInt = int;
+typedef InvitesRepositoryContractPrimBool = bool;
+typedef InvitesRepositoryContractPrimDouble = double;
+typedef InvitesRepositoryContractPrimDateTime = DateTime;
+typedef InvitesRepositoryContractPrimDynamic = dynamic;
+
 abstract class InvitesRepositoryContract {
   final pendingInvitesStreamValue =
       StreamValue<List<InviteModel>>(defaultValue: const <InviteModel>[]);
@@ -23,15 +30,17 @@ abstract class InvitesRepositoryContract {
   final shareCodePreviewInviteStreamValue =
       StreamValue<InviteModel?>(defaultValue: null);
 
-  final sentInvitesByEventStreamValue =
-      StreamValue<Map<String, List<SentInviteStatus>>>(
-    defaultValue: const <String, List<SentInviteStatus>>{},
+  final sentInvitesByEventStreamValue = StreamValue<
+      Map<InvitesRepositoryContractPrimString, List<SentInviteStatus>>>(
+    defaultValue: const <InvitesRepositoryContractPrimString,
+        List<SentInviteStatus>>{},
   );
 
   final settingsStreamValue =
       StreamValue<InviteRuntimeSettings?>(defaultValue: null);
 
-  bool get hasPendingInvites => pendingInvitesStreamValue.value.isNotEmpty;
+  InvitesRepositoryContractPrimBool get hasPendingInvites =>
+      pendingInvitesStreamValue.value.isNotEmpty;
 
   Future<void> init() async {
     await fetchSettings();
@@ -39,11 +48,13 @@ abstract class InvitesRepositoryContract {
     pendingInvitesStreamValue.addValue(invites);
   }
 
-  Future<List<InviteModel>> fetchInvites({int page, int pageSize});
+  Future<List<InviteModel>> fetchInvites(
+      {InvitesRepositoryContractPrimInt page,
+      InvitesRepositoryContractPrimInt pageSize});
 
   Future<void> refreshPendingInvites({
-    int page = 1,
-    int pageSize = 20,
+    InvitesRepositoryContractPrimInt page = 1,
+    InvitesRepositoryContractPrimInt pageSize = 20,
   }) async {
     final invites = await fetchInvites(
       page: page,
@@ -56,16 +67,22 @@ abstract class InvitesRepositoryContract {
 
   Future<InviteRuntimeSettings> fetchSettings();
 
-  Future<InviteAcceptResult> acceptInvite(String inviteId);
+  Future<InviteAcceptResult> acceptInvite(
+      InvitesRepositoryContractPrimString inviteId);
 
-  Future<InviteDeclineResult> declineInvite(String inviteId);
+  Future<InviteDeclineResult> declineInvite(
+      InvitesRepositoryContractPrimString inviteId);
 
-  Future<InviteMaterializeResult> materializeShareCode(String code) async =>
+  Future<InviteMaterializeResult> materializeShareCode(
+          InvitesRepositoryContractPrimString code) async =>
       throw UnimplementedError();
 
-  Future<InviteModel?> previewShareCode(String code) async => null;
+  Future<InviteModel?> previewShareCode(
+          InvitesRepositoryContractPrimString code) async =>
+      null;
 
-  Future<void> loadShareCodePreview(String code) async {
+  Future<void> loadShareCodePreview(
+      InvitesRepositoryContractPrimString code) async {
     final preview = await previewShareCode(code);
     shareCodePreviewInviteStreamValue.addValue(preview);
   }
@@ -73,17 +90,18 @@ abstract class InvitesRepositoryContract {
   Future<List<InviteContactMatch>> importContacts(List<ContactModel> contacts);
 
   Future<InviteShareCodeResult> createShareCode({
-    required String eventId,
-    String? occurrenceId,
-    String? accountProfileId,
+    required InvitesRepositoryContractPrimString eventId,
+    InvitesRepositoryContractPrimString? occurrenceId,
+    InvitesRepositoryContractPrimString? accountProfileId,
   });
 
   Future<void> sendInvites(
-    String eventId,
+    InvitesRepositoryContractPrimString eventId,
     List<EventFriendResume> recipients, {
-    String? occurrenceId,
-    String? message,
+    InvitesRepositoryContractPrimString? occurrenceId,
+    InvitesRepositoryContractPrimString? message,
   });
 
-  Future<List<SentInviteStatus>> getSentInvitesForEvent(String eventId);
+  Future<List<SentInviteStatus>> getSentInvitesForEvent(
+      InvitesRepositoryContractPrimString eventId);
 }

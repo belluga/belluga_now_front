@@ -1,27 +1,42 @@
 import 'package:event_tracker_handler/event_tracker_handler.dart';
 
+typedef TelemetryRepositoryContractPrimString = String;
+typedef TelemetryRepositoryContractPrimInt = int;
+typedef TelemetryRepositoryContractPrimBool = bool;
+typedef TelemetryRepositoryContractPrimDouble = double;
+typedef TelemetryRepositoryContractPrimDateTime = DateTime;
+typedef TelemetryRepositoryContractPrimDynamic = dynamic;
+
 abstract class TelemetryRepositoryContract {
-  Future<bool> logEvent(
+  Future<TelemetryRepositoryContractPrimBool> logEvent(
     EventTrackerEvents event, {
-    String? eventName,
-    Map<String, dynamic>? properties,
+    TelemetryRepositoryContractPrimString? eventName,
+    Map<TelemetryRepositoryContractPrimString,
+            TelemetryRepositoryContractPrimDynamic>?
+        properties,
   });
 
   Future<EventTrackerTimedEventHandle?> startTimedEvent(
     EventTrackerEvents event, {
-    String? eventName,
-    Map<String, dynamic>? properties,
+    TelemetryRepositoryContractPrimString? eventName,
+    Map<TelemetryRepositoryContractPrimString,
+            TelemetryRepositoryContractPrimDynamic>?
+        properties,
   });
 
-  Future<bool> finishTimedEvent(EventTrackerTimedEventHandle handle);
+  Future<TelemetryRepositoryContractPrimBool> finishTimedEvent(
+      EventTrackerTimedEventHandle handle);
 
-  Future<bool> flushTimedEvents();
+  Future<TelemetryRepositoryContractPrimBool> flushTimedEvents();
 
-  void setScreenContext(Map<String, dynamic>? screenContext);
+  void setScreenContext(
+      Map<TelemetryRepositoryContractPrimString,
+              TelemetryRepositoryContractPrimDynamic>?
+          screenContext);
 
   EventTrackerLifecycleObserver? buildLifecycleObserver();
 
-  Future<bool> mergeIdentity({
-    required String previousUserId,
+  Future<TelemetryRepositoryContractPrimBool> mergeIdentity({
+    required TelemetryRepositoryContractPrimString previousUserId,
   });
 }

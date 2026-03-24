@@ -1,4 +1,6 @@
 import 'package:belluga_now/infrastructure/dal/dto/tenant_admin/tenant_admin_taxonomy_term_dto.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_static_asset.dart';
 
 class TenantAdminStaticAssetDTO {
   const TenantAdminStaticAssetDTO({
@@ -76,5 +78,30 @@ class TenantAdminStaticAssetDTO {
       return normalized == 'true' || normalized == '1' || normalized == 'yes';
     }
     return false;
+  }
+
+  TenantAdminStaticAsset toDomain() {
+    final location = (locationLat != null && locationLng != null)
+        ? TenantAdminLocation(
+            latitude: locationLat!,
+            longitude: locationLng!,
+          )
+        : null;
+    final taxonomy = taxonomyTerms
+        .map((term) => term.toDomain())
+        .toList(growable: false);
+    return TenantAdminStaticAsset(
+      id: id,
+      profileType: profileType,
+      displayName: displayName,
+      slug: slug,
+      avatarUrl: avatarUrl,
+      coverUrl: coverUrl,
+      bio: bio,
+      content: content,
+      taxonomyTerms: taxonomy,
+      location: location,
+      isActive: isActive,
+    );
   }
 }

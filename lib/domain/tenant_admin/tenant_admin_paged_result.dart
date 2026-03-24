@@ -1,9 +1,14 @@
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_flag_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_value_parsers.dart';
+
 class TenantAdminPagedResult<T> {
-  const TenantAdminPagedResult({
+  TenantAdminPagedResult({
     required this.items,
-    required this.hasMore,
-  });
+    required Object hasMore,
+  }) : hasMoreValue = tenantAdminFlag(hasMore);
 
   final List<T> items;
-  final bool hasMore;
+  final TenantAdminFlagValue hasMoreValue;
+
+  bool get hasMore => hasMoreValue.value;
 }

@@ -8,6 +8,13 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_static_profile_type
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
 import 'package:stream_value/core/stream_value.dart';
 
+typedef TenantAdminStaticAssetsRepoString = String;
+typedef TenantAdminStaticAssetsRepoInt = int;
+typedef TenantAdminStaticAssetsRepoBool = bool;
+typedef TenantAdminStaticAssetsRepoDouble = double;
+typedef TenantAdminStaticAssetsRepoDateTime = DateTime;
+typedef TenantAdminStaticAssetsRepoDynamic = dynamic;
+
 abstract class TenantAdminStaticAssetsRepositoryContract {
   static final Expando<_TenantAdminStaticAssetsPaginationState>
       _paginationStateByRepository =
@@ -20,23 +27,28 @@ abstract class TenantAdminStaticAssetsRepositoryContract {
   StreamValue<List<TenantAdminStaticAsset>?> get staticAssetsStreamValue =>
       _paginationState.staticAssetsStreamValue;
 
-  StreamValue<bool> get hasMoreStaticAssetsStreamValue =>
-      _paginationState.hasMoreStaticAssetsStreamValue;
+  StreamValue<TenantAdminStaticAssetsRepoBool>
+      get hasMoreStaticAssetsStreamValue =>
+          _paginationState.hasMoreStaticAssetsStreamValue;
 
-  StreamValue<bool> get isStaticAssetsPageLoadingStreamValue =>
-      _paginationState.isStaticAssetsPageLoadingStreamValue;
+  StreamValue<TenantAdminStaticAssetsRepoBool>
+      get isStaticAssetsPageLoadingStreamValue =>
+          _paginationState.isStaticAssetsPageLoadingStreamValue;
 
-  StreamValue<String?> get staticAssetsErrorStreamValue =>
-      _paginationState.staticAssetsErrorStreamValue;
+  StreamValue<TenantAdminStaticAssetsRepoString?>
+      get staticAssetsErrorStreamValue =>
+          _paginationState.staticAssetsErrorStreamValue;
 
-  Future<void> loadStaticAssets({int pageSize = 20}) async {
+  Future<void> loadStaticAssets(
+      {TenantAdminStaticAssetsRepoInt pageSize = 20}) async {
     await _waitForStaticAssetsFetch();
     _resetStaticAssetsPagination();
     staticAssetsStreamValue.addValue(null);
     await _fetchStaticAssetsPage(page: 1, pageSize: pageSize);
   }
 
-  Future<void> loadNextStaticAssetsPage({int pageSize = 20}) async {
+  Future<void> loadNextStaticAssetsPage(
+      {TenantAdminStaticAssetsRepoInt pageSize = 20}) async {
     if (_paginationState.isFetchingStaticAssetsPage ||
         !_paginationState.hasMoreStaticAssets) {
       return;
@@ -55,19 +67,19 @@ abstract class TenantAdminStaticAssetsRepositoryContract {
 
   Future<List<TenantAdminStaticAsset>> fetchStaticAssets();
   Future<TenantAdminPagedResult<TenantAdminStaticAsset>> fetchStaticAssetsPage({
-    required int page,
-    required int pageSize,
+    required TenantAdminStaticAssetsRepoInt page,
+    required TenantAdminStaticAssetsRepoInt pageSize,
   }) async {
     final assets = await fetchStaticAssets();
     if (page <= 0 || pageSize <= 0) {
-      return const TenantAdminPagedResult<TenantAdminStaticAsset>(
+      return TenantAdminPagedResult<TenantAdminStaticAsset>(
         items: <TenantAdminStaticAsset>[],
         hasMore: false,
       );
     }
     final startIndex = (page - 1) * pageSize;
     if (startIndex >= assets.length) {
-      return const TenantAdminPagedResult<TenantAdminStaticAsset>(
+      return TenantAdminPagedResult<TenantAdminStaticAsset>(
         items: <TenantAdminStaticAsset>[],
         hasMore: false,
       );
@@ -79,63 +91,71 @@ abstract class TenantAdminStaticAssetsRepositoryContract {
     );
   }
 
-  Future<TenantAdminStaticAsset> fetchStaticAsset(String assetId);
+  Future<TenantAdminStaticAsset> fetchStaticAsset(
+      TenantAdminStaticAssetsRepoString assetId);
 
   Future<TenantAdminStaticAsset> createStaticAsset({
-    required String profileType,
-    required String displayName,
+    required TenantAdminStaticAssetsRepoString profileType,
+    required TenantAdminStaticAssetsRepoString displayName,
     TenantAdminLocation? location,
     List<TenantAdminTaxonomyTerm> taxonomyTerms = const [],
-    String? bio,
-    String? content,
-    String? avatarUrl,
-    String? coverUrl,
+    TenantAdminStaticAssetsRepoString? bio,
+    TenantAdminStaticAssetsRepoString? content,
+    TenantAdminStaticAssetsRepoString? avatarUrl,
+    TenantAdminStaticAssetsRepoString? coverUrl,
     TenantAdminMediaUpload? avatarUpload,
     TenantAdminMediaUpload? coverUpload,
   });
 
   Future<TenantAdminStaticAsset> updateStaticAsset({
-    required String assetId,
-    String? profileType,
-    String? displayName,
-    String? slug,
+    required TenantAdminStaticAssetsRepoString assetId,
+    TenantAdminStaticAssetsRepoString? profileType,
+    TenantAdminStaticAssetsRepoString? displayName,
+    TenantAdminStaticAssetsRepoString? slug,
     TenantAdminLocation? location,
     List<TenantAdminTaxonomyTerm>? taxonomyTerms,
-    String? bio,
-    String? content,
-    String? avatarUrl,
-    String? coverUrl,
+    TenantAdminStaticAssetsRepoString? bio,
+    TenantAdminStaticAssetsRepoString? content,
+    TenantAdminStaticAssetsRepoString? avatarUrl,
+    TenantAdminStaticAssetsRepoString? coverUrl,
     TenantAdminMediaUpload? avatarUpload,
     TenantAdminMediaUpload? coverUpload,
   });
 
-  Future<void> deleteStaticAsset(String assetId);
+  Future<void> deleteStaticAsset(TenantAdminStaticAssetsRepoString assetId);
 
-  Future<TenantAdminStaticAsset> restoreStaticAsset(String assetId);
+  Future<TenantAdminStaticAsset> restoreStaticAsset(
+      TenantAdminStaticAssetsRepoString assetId);
 
-  Future<void> forceDeleteStaticAsset(String assetId);
+  Future<void> forceDeleteStaticAsset(
+      TenantAdminStaticAssetsRepoString assetId);
 
   StreamValue<List<TenantAdminStaticProfileTypeDefinition>?>
       get staticProfileTypesStreamValue =>
           _paginationState.staticProfileTypesStreamValue;
 
-  StreamValue<bool> get hasMoreStaticProfileTypesStreamValue =>
-      _paginationState.hasMoreStaticProfileTypesStreamValue;
+  StreamValue<TenantAdminStaticAssetsRepoBool>
+      get hasMoreStaticProfileTypesStreamValue =>
+          _paginationState.hasMoreStaticProfileTypesStreamValue;
 
-  StreamValue<bool> get isStaticProfileTypesPageLoadingStreamValue =>
-      _paginationState.isStaticProfileTypesPageLoadingStreamValue;
+  StreamValue<TenantAdminStaticAssetsRepoBool>
+      get isStaticProfileTypesPageLoadingStreamValue =>
+          _paginationState.isStaticProfileTypesPageLoadingStreamValue;
 
-  StreamValue<String?> get staticProfileTypesErrorStreamValue =>
-      _paginationState.staticProfileTypesErrorStreamValue;
+  StreamValue<TenantAdminStaticAssetsRepoString?>
+      get staticProfileTypesErrorStreamValue =>
+          _paginationState.staticProfileTypesErrorStreamValue;
 
-  Future<void> loadStaticProfileTypes({int pageSize = 20}) async {
+  Future<void> loadStaticProfileTypes(
+      {TenantAdminStaticAssetsRepoInt pageSize = 20}) async {
     await _waitForStaticProfileTypesFetch();
     _resetStaticProfileTypesPagination();
     staticProfileTypesStreamValue.addValue(null);
     await _fetchStaticProfileTypesPage(page: 1, pageSize: pageSize);
   }
 
-  Future<void> loadNextStaticProfileTypesPage({int pageSize = 20}) async {
+  Future<void> loadNextStaticProfileTypesPage(
+      {TenantAdminStaticAssetsRepoInt pageSize = 20}) async {
     if (_paginationState.isFetchingStaticProfileTypesPage ||
         !_paginationState.hasMoreStaticProfileTypes) {
       return;
@@ -146,7 +166,8 @@ abstract class TenantAdminStaticAssetsRepositoryContract {
     );
   }
 
-  Future<void> loadAllStaticProfileTypes({int pageSize = 50}) async {
+  Future<void> loadAllStaticProfileTypes(
+      {TenantAdminStaticAssetsRepoInt pageSize = 50}) async {
     await loadStaticProfileTypes(pageSize: pageSize);
     var safetyCounter = 0;
     while (hasMoreStaticProfileTypesStreamValue.value && safetyCounter < 200) {
@@ -165,21 +186,19 @@ abstract class TenantAdminStaticAssetsRepositoryContract {
       fetchStaticProfileTypes();
   Future<TenantAdminPagedResult<TenantAdminStaticProfileTypeDefinition>>
       fetchStaticProfileTypesPage({
-    required int page,
-    required int pageSize,
+    required TenantAdminStaticAssetsRepoInt page,
+    required TenantAdminStaticAssetsRepoInt pageSize,
   }) async {
     final profileTypes = await fetchStaticProfileTypes();
     if (page <= 0 || pageSize <= 0) {
-      return const TenantAdminPagedResult<
-          TenantAdminStaticProfileTypeDefinition>(
+      return TenantAdminPagedResult<TenantAdminStaticProfileTypeDefinition>(
         items: <TenantAdminStaticProfileTypeDefinition>[],
         hasMore: false,
       );
     }
     final startIndex = (page - 1) * pageSize;
     if (startIndex >= profileTypes.length) {
-      return const TenantAdminPagedResult<
-          TenantAdminStaticProfileTypeDefinition>(
+      return TenantAdminPagedResult<TenantAdminStaticProfileTypeDefinition>(
         items: <TenantAdminStaticProfileTypeDefinition>[],
         hasMore: false,
       );
@@ -192,21 +211,21 @@ abstract class TenantAdminStaticAssetsRepositoryContract {
   }
 
   Future<TenantAdminStaticProfileTypeDefinition> createStaticProfileType({
-    required String type,
-    required String label,
-    List<String> allowedTaxonomies = const [],
+    required TenantAdminStaticAssetsRepoString type,
+    required TenantAdminStaticAssetsRepoString label,
+    List<TenantAdminStaticAssetsRepoString> allowedTaxonomies = const [],
     required TenantAdminStaticProfileTypeCapabilities capabilities,
   });
 
   Future<TenantAdminStaticProfileTypeDefinition> updateStaticProfileType({
-    required String type,
-    String? newType,
-    String? label,
-    List<String>? allowedTaxonomies,
+    required TenantAdminStaticAssetsRepoString type,
+    TenantAdminStaticAssetsRepoString? newType,
+    TenantAdminStaticAssetsRepoString? label,
+    List<TenantAdminStaticAssetsRepoString>? allowedTaxonomies,
     TenantAdminStaticProfileTypeCapabilities? capabilities,
   });
 
-  Future<void> deleteStaticProfileType(String type);
+  Future<void> deleteStaticProfileType(TenantAdminStaticAssetsRepoString type);
 
   Future<void> _waitForStaticAssetsFetch() async {
     while (_paginationState.isFetchingStaticAssetsPage) {
@@ -215,8 +234,8 @@ abstract class TenantAdminStaticAssetsRepositoryContract {
   }
 
   Future<void> _fetchStaticAssetsPage({
-    required int page,
-    required int pageSize,
+    required TenantAdminStaticAssetsRepoInt page,
+    required TenantAdminStaticAssetsRepoInt pageSize,
   }) async {
     if (_paginationState.isFetchingStaticAssetsPage) return;
     if (page > 1 && !_paginationState.hasMoreStaticAssets) return;
@@ -274,8 +293,8 @@ abstract class TenantAdminStaticAssetsRepositoryContract {
   }
 
   Future<void> _fetchStaticProfileTypesPage({
-    required int page,
-    required int pageSize,
+    required TenantAdminStaticAssetsRepoInt page,
+    required TenantAdminStaticAssetsRepoInt pageSize,
   }) async {
     if (_paginationState.isFetchingStaticProfileTypesPage) return;
     if (page > 1 && !_paginationState.hasMoreStaticProfileTypes) return;
@@ -332,7 +351,7 @@ abstract class TenantAdminStaticAssetsRepositoryContract {
 extension TenantAdminStaticAssetsRepositoryLookup
     on TenantAdminStaticAssetsRepositoryContract {
   Future<TenantAdminStaticProfileTypeDefinition> fetchStaticProfileType(
-    String profileType,
+    TenantAdminStaticAssetsRepoString profileType,
   ) async {
     final normalizedType = profileType.trim();
     if (normalizedType.isEmpty) {
@@ -370,19 +389,23 @@ mixin TenantAdminStaticAssetsPaginationMixin
       _paginationState.staticAssetsStreamValue;
 
   @override
-  StreamValue<bool> get hasMoreStaticAssetsStreamValue =>
-      _paginationState.hasMoreStaticAssetsStreamValue;
+  StreamValue<TenantAdminStaticAssetsRepoBool>
+      get hasMoreStaticAssetsStreamValue =>
+          _paginationState.hasMoreStaticAssetsStreamValue;
 
   @override
-  StreamValue<bool> get isStaticAssetsPageLoadingStreamValue =>
-      _paginationState.isStaticAssetsPageLoadingStreamValue;
+  StreamValue<TenantAdminStaticAssetsRepoBool>
+      get isStaticAssetsPageLoadingStreamValue =>
+          _paginationState.isStaticAssetsPageLoadingStreamValue;
 
   @override
-  StreamValue<String?> get staticAssetsErrorStreamValue =>
-      _paginationState.staticAssetsErrorStreamValue;
+  StreamValue<TenantAdminStaticAssetsRepoString?>
+      get staticAssetsErrorStreamValue =>
+          _paginationState.staticAssetsErrorStreamValue;
 
   @override
-  Future<void> loadStaticAssets({int pageSize = 20}) async {
+  Future<void> loadStaticAssets(
+      {TenantAdminStaticAssetsRepoInt pageSize = 20}) async {
     await _waitForStaticAssetsFetch();
     _resetStaticAssetsPagination();
     staticAssetsStreamValue.addValue(null);
@@ -390,7 +413,8 @@ mixin TenantAdminStaticAssetsPaginationMixin
   }
 
   @override
-  Future<void> loadNextStaticAssetsPage({int pageSize = 20}) async {
+  Future<void> loadNextStaticAssetsPage(
+      {TenantAdminStaticAssetsRepoInt pageSize = 20}) async {
     if (_paginationState.isFetchingStaticAssetsPage ||
         !_paginationState.hasMoreStaticAssets) {
       return;
@@ -414,19 +438,23 @@ mixin TenantAdminStaticAssetsPaginationMixin
           _paginationState.staticProfileTypesStreamValue;
 
   @override
-  StreamValue<bool> get hasMoreStaticProfileTypesStreamValue =>
-      _paginationState.hasMoreStaticProfileTypesStreamValue;
+  StreamValue<TenantAdminStaticAssetsRepoBool>
+      get hasMoreStaticProfileTypesStreamValue =>
+          _paginationState.hasMoreStaticProfileTypesStreamValue;
 
   @override
-  StreamValue<bool> get isStaticProfileTypesPageLoadingStreamValue =>
-      _paginationState.isStaticProfileTypesPageLoadingStreamValue;
+  StreamValue<TenantAdminStaticAssetsRepoBool>
+      get isStaticProfileTypesPageLoadingStreamValue =>
+          _paginationState.isStaticProfileTypesPageLoadingStreamValue;
 
   @override
-  StreamValue<String?> get staticProfileTypesErrorStreamValue =>
-      _paginationState.staticProfileTypesErrorStreamValue;
+  StreamValue<TenantAdminStaticAssetsRepoString?>
+      get staticProfileTypesErrorStreamValue =>
+          _paginationState.staticProfileTypesErrorStreamValue;
 
   @override
-  Future<void> loadStaticProfileTypes({int pageSize = 20}) async {
+  Future<void> loadStaticProfileTypes(
+      {TenantAdminStaticAssetsRepoInt pageSize = 20}) async {
     await _waitForStaticProfileTypesFetch();
     _resetStaticProfileTypesPagination();
     staticProfileTypesStreamValue.addValue(null);
@@ -434,7 +462,8 @@ mixin TenantAdminStaticAssetsPaginationMixin
   }
 
   @override
-  Future<void> loadNextStaticProfileTypesPage({int pageSize = 20}) async {
+  Future<void> loadNextStaticProfileTypesPage(
+      {TenantAdminStaticAssetsRepoInt pageSize = 20}) async {
     if (_paginationState.isFetchingStaticProfileTypesPage ||
         !_paginationState.hasMoreStaticProfileTypes) {
       return;
@@ -446,7 +475,8 @@ mixin TenantAdminStaticAssetsPaginationMixin
   }
 
   @override
-  Future<void> loadAllStaticProfileTypes({int pageSize = 50}) async {
+  Future<void> loadAllStaticProfileTypes(
+      {TenantAdminStaticAssetsRepoInt pageSize = 50}) async {
     await loadStaticProfileTypes(pageSize: pageSize);
     var safetyCounter = 0;
     while (hasMoreStaticProfileTypesStreamValue.value && safetyCounter < 200) {
@@ -471,8 +501,8 @@ mixin TenantAdminStaticAssetsPaginationMixin
 
   @override
   Future<void> _fetchStaticAssetsPage({
-    required int page,
-    required int pageSize,
+    required TenantAdminStaticAssetsRepoInt page,
+    required TenantAdminStaticAssetsRepoInt pageSize,
   }) async {
     if (_paginationState.isFetchingStaticAssetsPage) return;
     if (page > 1 && !_paginationState.hasMoreStaticAssets) return;
@@ -533,8 +563,8 @@ mixin TenantAdminStaticAssetsPaginationMixin
 
   @override
   Future<void> _fetchStaticProfileTypesPage({
-    required int page,
-    required int pageSize,
+    required TenantAdminStaticAssetsRepoInt page,
+    required TenantAdminStaticAssetsRepoInt pageSize,
   }) async {
     if (_paginationState.isFetchingStaticProfileTypesPage) return;
     if (page > 1 && !_paginationState.hasMoreStaticProfileTypes) return;
@@ -596,25 +626,31 @@ class _TenantAdminStaticAssetsPaginationState {
       <TenantAdminStaticProfileTypeDefinition>[];
   final StreamValue<List<TenantAdminStaticAsset>?> staticAssetsStreamValue =
       StreamValue<List<TenantAdminStaticAsset>?>();
-  final StreamValue<bool> hasMoreStaticAssetsStreamValue =
-      StreamValue<bool>(defaultValue: true);
-  final StreamValue<bool> isStaticAssetsPageLoadingStreamValue =
-      StreamValue<bool>(defaultValue: false);
-  final StreamValue<String?> staticAssetsErrorStreamValue =
-      StreamValue<String?>();
+  final StreamValue<TenantAdminStaticAssetsRepoBool>
+      hasMoreStaticAssetsStreamValue =
+      StreamValue<TenantAdminStaticAssetsRepoBool>(defaultValue: true);
+  final StreamValue<TenantAdminStaticAssetsRepoBool>
+      isStaticAssetsPageLoadingStreamValue =
+      StreamValue<TenantAdminStaticAssetsRepoBool>(defaultValue: false);
+  final StreamValue<TenantAdminStaticAssetsRepoString?>
+      staticAssetsErrorStreamValue =
+      StreamValue<TenantAdminStaticAssetsRepoString?>();
   final StreamValue<List<TenantAdminStaticProfileTypeDefinition>?>
       staticProfileTypesStreamValue =
       StreamValue<List<TenantAdminStaticProfileTypeDefinition>?>();
-  final StreamValue<bool> hasMoreStaticProfileTypesStreamValue =
-      StreamValue<bool>(defaultValue: true);
-  final StreamValue<bool> isStaticProfileTypesPageLoadingStreamValue =
-      StreamValue<bool>(defaultValue: false);
-  final StreamValue<String?> staticProfileTypesErrorStreamValue =
-      StreamValue<String?>();
-  bool isFetchingStaticAssetsPage = false;
-  bool hasMoreStaticAssets = true;
-  int currentStaticAssetsPage = 0;
-  bool isFetchingStaticProfileTypesPage = false;
-  bool hasMoreStaticProfileTypes = true;
-  int currentStaticProfileTypesPage = 0;
+  final StreamValue<TenantAdminStaticAssetsRepoBool>
+      hasMoreStaticProfileTypesStreamValue =
+      StreamValue<TenantAdminStaticAssetsRepoBool>(defaultValue: true);
+  final StreamValue<TenantAdminStaticAssetsRepoBool>
+      isStaticProfileTypesPageLoadingStreamValue =
+      StreamValue<TenantAdminStaticAssetsRepoBool>(defaultValue: false);
+  final StreamValue<TenantAdminStaticAssetsRepoString?>
+      staticProfileTypesErrorStreamValue =
+      StreamValue<TenantAdminStaticAssetsRepoString?>();
+  TenantAdminStaticAssetsRepoBool isFetchingStaticAssetsPage = false;
+  TenantAdminStaticAssetsRepoBool hasMoreStaticAssets = true;
+  TenantAdminStaticAssetsRepoInt currentStaticAssetsPage = 0;
+  TenantAdminStaticAssetsRepoBool isFetchingStaticProfileTypesPage = false;
+  TenantAdminStaticAssetsRepoBool hasMoreStaticProfileTypes = true;
+  TenantAdminStaticAssetsRepoInt currentStaticProfileTypesPage = 0;
 }

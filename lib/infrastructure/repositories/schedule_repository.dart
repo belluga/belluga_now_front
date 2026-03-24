@@ -6,27 +6,15 @@ import 'package:belluga_now/domain/schedule/event_delta_model.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/schedule/paged_events_result.dart';
 import 'package:belluga_now/domain/schedule/schedule_summary_model.dart';
+import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
 import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
 import 'package:belluga_now/infrastructure/dal/dao/backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_page_dto.dart';
-import 'package:belluga_now/infrastructure/dal/dto/mappers/artist_dto_mapper.dart';
-import 'package:belluga_now/infrastructure/dal/dto/mappers/invite_dto_mapper.dart';
-import 'package:belluga_now/infrastructure/dal/dto/mappers/invite_status_dto_mapper.dart';
-import 'package:belluga_now/infrastructure/dal/dto/mappers/partner_dto_mapper.dart';
-import 'package:belluga_now/infrastructure/dal/dto/mappers/schedule_dto_mapper.dart';
-import 'package:belluga_now/infrastructure/dal/dto/mappers/thumb_dto_mapper.dart';
 import 'package:belluga_now/infrastructure/services/schedule_backend_contract.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value.dart';
 
-class ScheduleRepository extends ScheduleRepositoryContract
-    with
-        InviteDtoMapper,
-        ThumbDtoMapper,
-        ArtistDtoMapper,
-        PartnerDtoMapper,
-        InviteStatusDtoMapper,
-        ScheduleDtoMapper {
+class ScheduleRepository extends ScheduleRepositoryContract {
   static final Uri _localEventPlaceholderUri =
       Uri.parse('asset://event-placeholder');
   static const int _maxPagedFetches = 8;
@@ -118,19 +106,23 @@ class ScheduleRepository extends ScheduleRepositoryContract
     return _appDataRepository;
   }
 
-  Uri _resolveDefaultEventImage() {
+  ThumbUriValue _resolveDefaultEventImage() {
     final configured =
         _resolvedAppDataRepository?.appData.mainLogoDarkUrl.value;
-    if (configured != null && configured.toString().trim().isNotEmpty) {
-      return configured;
-    }
-    return _localEventPlaceholderUri;
+    final resolvedUri =
+        (configured != null && configured.toString().trim().isNotEmpty)
+            ? configured
+            : _localEventPlaceholderUri;
+    final thumbUriValue =
+        ThumbUriValue(defaultValue: resolvedUri, isRequired: true)
+          ..parse(resolvedUri.toString());
+    return thumbUriValue;
   }
 
   @override
   Future<List<EventModel>> getAllEvents() async {
     final events = await _backend.fetchEvents();
-    return events.map(mapEventDto).toList();
+    return events.map((dto) => dto.toDomain()).toList(growable: false);
   }
 
   @override
@@ -177,7 +169,7 @@ class ScheduleRepository extends ScheduleRepositoryContract
   Future<EventModel?> getEventBySlug(String slug) async {
     final dto = await _backend.fetchEventDetail(eventIdOrSlug: slug);
     if (dto != null) {
-      return mapEventDto(dto);
+      return dto.toDomain();
     }
     final normalizedSlug = _normalizeSlug(slug);
     final events = await getAllEvents();
@@ -208,7 +200,7 @@ class ScheduleRepository extends ScheduleRepositoryContract
   @override
   Future<ScheduleSummaryModel> getScheduleSummary() async {
     final summary = await _backend.fetchSummary();
-    return mapScheduleSummaryDto(summary);
+    return summary.toDomain();
   }
 
   @override
@@ -239,7 +231,8 @@ class ScheduleRepository extends ScheduleRepositoryContract
       maxDistanceMeters: maxDistanceMeters,
     );
 
-    final events = pageDto.events.map(mapEventDto).toList(growable: false);
+    final events =
+        pageDto.events.map((event) => event.toDomain()).toList(growable: false);
 
     return PagedEventsResult(
       events: events,
@@ -342,7 +335,7 @@ class ScheduleRepository extends ScheduleRepositoryContract
           lastEventId: lastEventId,
           showPastOnly: showPastOnly,
         )
-        .map(mapEventDeltaDto);
+        .map((deltaDto) => deltaDto.toDomain());
   }
 
   @override
@@ -396,7 +389,7 @@ class ScheduleRepository extends ScheduleRepositoryContract
       );
 
       for (final event in pageDto.events) {
-        final parsed = mapEventDto(event);
+        final parsed = event.toDomain();
         final start = parsed.dateTimeStart.value;
         if (start == null) continue;
         if (_isSameDate(start, date)) {
@@ -406,7 +399,7 @@ class ScheduleRepository extends ScheduleRepositoryContract
 
       hasMore = pageDto.hasMore;
       if (pageDto.events.isEmpty) break;
-      final lastDate = parseEventDateOnly(pageDto.events.last);
+      final lastDate = pageDto.events.last.dateOnly();
       if (lastDate != null) {
         if (!showPastOnly && lastDate.isAfter(date)) {
           break;
@@ -437,7 +430,7 @@ class ScheduleRepository extends ScheduleRepositoryContract
         originLat: originLat,
         originLng: originLng,
       );
-      events.addAll(pageDto.events.map(mapEventDto));
+      events.addAll(pageDto.events.map((dto) => dto.toDomain()));
       hasMore = pageDto.hasMore;
       if (pageDto.events.isEmpty) {
         break;

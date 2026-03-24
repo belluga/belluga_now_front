@@ -130,7 +130,7 @@ void main() {
         avatarUrl: avatarUrl,
         coverUrl: coverUrl,
       ),
-      profileTypeCapabilities: const TenantAdminStaticProfileTypeCapabilities(
+      profileTypeCapabilities: TenantAdminStaticProfileTypeCapabilities(
         isPoiEnabled: false,
         hasBio: false,
         hasTaxonomies: true,
@@ -176,7 +176,7 @@ Future<void> _pumpScreen(
     TenantAdminImageIngestionService(),
   );
   final router = _buildTestRouter(
-    const TenantAdminStaticAssetEditScreen(assetId: 'asset-1'),
+    TenantAdminStaticAssetEditScreen(assetId: 'asset-1'),
   );
 
   await tester.pumpWidget(
@@ -235,16 +235,16 @@ class _FakeStaticAssetsRepository
     required this.asset,
     this.failSlugUpdate = false,
     this.failTaxonomyUpdate = false,
-    this.profileTypeCapabilities =
-        const TenantAdminStaticProfileTypeCapabilities(
-      isPoiEnabled: false,
-      hasBio: false,
-      hasTaxonomies: true,
-      hasAvatar: false,
-      hasCover: false,
-      hasContent: false,
-    ),
-  });
+    TenantAdminStaticProfileTypeCapabilities? profileTypeCapabilities,
+  }) : profileTypeCapabilities = profileTypeCapabilities ??
+            TenantAdminStaticProfileTypeCapabilities(
+              isPoiEnabled: false,
+              hasBio: false,
+              hasTaxonomies: true,
+              hasAvatar: false,
+              hasCover: false,
+              hasContent: false,
+            );
 
   TenantAdminStaticAsset asset;
   final bool failSlugUpdate;
@@ -308,7 +308,7 @@ class _FakeStaticAssetsRepository
     final assets = await fetchStaticAssets();
     final start = (page - 1) * pageSize;
     if (page <= 0 || pageSize <= 0 || start >= assets.length) {
-      return const TenantAdminPagedResult<TenantAdminStaticAsset>(
+      return TenantAdminPagedResult<TenantAdminStaticAsset>(
         items: <TenantAdminStaticAsset>[],
         hasMore: false,
       );
@@ -343,8 +343,7 @@ class _FakeStaticAssetsRepository
     final profileTypes = await fetchStaticProfileTypes();
     final start = (page - 1) * pageSize;
     if (page <= 0 || pageSize <= 0 || start >= profileTypes.length) {
-      return const TenantAdminPagedResult<
-          TenantAdminStaticProfileTypeDefinition>(
+      return TenantAdminPagedResult<TenantAdminStaticProfileTypeDefinition>(
         items: <TenantAdminStaticProfileTypeDefinition>[],
         hasMore: false,
       );
@@ -463,7 +462,7 @@ class _FakeTaxonomiesRepository
 
   @override
   Future<List<TenantAdminTaxonomyDefinition>> fetchTaxonomies() async {
-    return const [
+    return [
       TenantAdminTaxonomyDefinition(
         id: 'tax-1',
         slug: 'genre',
@@ -484,7 +483,7 @@ class _FakeTaxonomiesRepository
     final taxonomies = await fetchTaxonomies();
     final start = (page - 1) * pageSize;
     if (page <= 0 || pageSize <= 0 || start >= taxonomies.length) {
-      return const TenantAdminPagedResult<TenantAdminTaxonomyDefinition>(
+      return TenantAdminPagedResult<TenantAdminTaxonomyDefinition>(
         items: <TenantAdminTaxonomyDefinition>[],
         hasMore: false,
       );
@@ -503,9 +502,9 @@ class _FakeTaxonomiesRepository
     required String taxonomyId,
   }) async {
     if (taxonomyId != 'tax-1') {
-      return const [];
+      return [];
     }
-    return const [
+    return [
       TenantAdminTaxonomyTermDefinition(
         id: 'term-1',
         taxonomyId: 'tax-1',
@@ -525,7 +524,7 @@ class _FakeTaxonomiesRepository
     final terms = await fetchTerms(taxonomyId: taxonomyId);
     final start = (page - 1) * pageSize;
     if (page <= 0 || pageSize <= 0 || start >= terms.length) {
-      return const TenantAdminPagedResult<TenantAdminTaxonomyTermDefinition>(
+      return TenantAdminPagedResult<TenantAdminTaxonomyTermDefinition>(
         items: <TenantAdminTaxonomyTermDefinition>[],
         hasMore: false,
       );

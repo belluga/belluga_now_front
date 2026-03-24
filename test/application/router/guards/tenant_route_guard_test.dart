@@ -1,6 +1,7 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/guards/tenant_route_guard.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
+import 'package:belluga_now/testing/app_data_test_factory.dart';
 import 'package:belluga_now/domain/app_data/app_type.dart';
 import 'package:belluga_now/domain/app_data/value_object/platform_type_value.dart';
 import 'package:belluga_now/domain/repositories/admin_mode_repository_contract.dart';
@@ -172,7 +173,7 @@ AppData _buildAppData({
   required String envType,
 }) {
   final platformType = PlatformTypeValue()..parse(AppType.mobile.name);
-  return AppData.fromInitialization(
+  return buildAppDataFromInitialization(
     remoteData: {
       'name': 'Test',
       'type': envType,

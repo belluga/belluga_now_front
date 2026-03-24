@@ -17,12 +17,12 @@ void main() {
           id: 'tax-$index',
           slug: 'slug-$index',
           name: 'Tax $index',
-          appliesTo: const ['account_profile'],
+          appliesTo: ['account_profile'],
           icon: null,
           color: null,
         ),
       ),
-      termsByTaxonomy: const {},
+      termsByTaxonomy: {},
     );
     final controller = TenantAdminTaxonomiesController(repository: repository);
 
@@ -41,7 +41,7 @@ void main() {
   test('taxonomy terms controller appends pages and respects hasMore',
       () async {
     final repository = _FakeTaxonomiesRepository(
-      taxonomies: const [],
+      taxonomies: [],
       termsByTaxonomy: {
         'tax-a': List<TenantAdminTaxonomyTermDefinition>.generate(
           22,
@@ -73,7 +73,7 @@ void main() {
   test('taxonomies controller reloads taxonomy list on tenant switch',
       () async {
     final repository = _FakeTaxonomiesRepository(
-      taxonomies: const [
+      taxonomies: [
         TenantAdminTaxonomyDefinition(
           id: 'tax-a',
           slug: 'slug-a',
@@ -83,7 +83,7 @@ void main() {
           color: null,
         ),
       ],
-      termsByTaxonomy: const {
+      termsByTaxonomy: {
         'tax-a': [
           TenantAdminTaxonomyTermDefinition(
             id: 'term-a',
@@ -103,7 +103,7 @@ void main() {
     await controller.loadTaxonomies();
     expect(controller.taxonomiesStreamValue.value?.first.slug, 'slug-a');
 
-    repository.taxonomies = const [
+    repository.taxonomies = [
       TenantAdminTaxonomyDefinition(
         id: 'tax-b',
         slug: 'slug-b',
@@ -122,8 +122,8 @@ void main() {
 
   test('taxonomy terms controller reloads terms on tenant switch', () async {
     final repository = _FakeTaxonomiesRepository(
-      taxonomies: const [],
-      termsByTaxonomy: const {
+      taxonomies: [],
+      termsByTaxonomy: {
         'tax-a': [
           TenantAdminTaxonomyTermDefinition(
             id: 'term-a',
@@ -143,7 +143,7 @@ void main() {
     await controller.loadTerms('tax-a');
     expect(controller.termsStreamValue.value?.first.slug, 'term-a');
 
-    repository.termsByTaxonomy = const {
+    repository.termsByTaxonomy = {
       'tax-a': [
         TenantAdminTaxonomyTermDefinition(
           id: 'term-b',
@@ -218,7 +218,7 @@ class _FakeTaxonomiesRepository
     final entries = await fetchTaxonomies();
     final start = (page - 1) * pageSize;
     if (page <= 0 || pageSize <= 0 || start >= entries.length) {
-      return const TenantAdminPagedResult<TenantAdminTaxonomyDefinition>(
+      return TenantAdminPagedResult<TenantAdminTaxonomyDefinition>(
         items: <TenantAdminTaxonomyDefinition>[],
         hasMore: false,
       );
@@ -235,7 +235,7 @@ class _FakeTaxonomiesRepository
   Future<List<TenantAdminTaxonomyTermDefinition>> fetchTerms({
     required String taxonomyId,
   }) async =>
-      termsByTaxonomy[taxonomyId] ?? const [];
+      termsByTaxonomy[taxonomyId] ?? [];
 
   @override
   Future<TenantAdminPagedResult<TenantAdminTaxonomyTermDefinition>>
@@ -247,7 +247,7 @@ class _FakeTaxonomiesRepository
     final terms = await fetchTerms(taxonomyId: taxonomyId);
     final start = (page - 1) * pageSize;
     if (page <= 0 || pageSize <= 0 || start >= terms.length) {
-      return const TenantAdminPagedResult<TenantAdminTaxonomyTermDefinition>(
+      return TenantAdminPagedResult<TenantAdminTaxonomyTermDefinition>(
         items: <TenantAdminTaxonomyTermDefinition>[],
         hasMore: false,
       );

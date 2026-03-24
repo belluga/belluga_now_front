@@ -2,7 +2,36 @@ String normalizePath(String path) => path.replaceAll('\\\\', '/');
 
 bool _containsSegment(String path, String segment) {
   final normalized = normalizePath(path);
-  return normalized.contains(segment);
+  if (segment.isEmpty) {
+    return false;
+  }
+
+  final withLeadingSlash = segment.startsWith('/') ? segment : '/$segment';
+  final withoutLeadingSlash = withLeadingSlash.substring(1);
+  final withoutLibPrefix = withoutLeadingSlash.startsWith('lib/')
+      ? withoutLeadingSlash.substring(4)
+      : withoutLeadingSlash;
+
+  if (normalized.contains(withLeadingSlash) ||
+      normalized.contains(withoutLeadingSlash) ||
+      normalized.startsWith(withoutLeadingSlash)) {
+    return true;
+  }
+
+  if (normalized.startsWith('package:')) {
+    final firstSlash = normalized.indexOf('/');
+    if (firstSlash != -1 && firstSlash + 1 < normalized.length) {
+      final packageRelative = normalized.substring(firstSlash + 1);
+      if (packageRelative.contains(withoutLeadingSlash) ||
+          packageRelative.startsWith(withoutLeadingSlash) ||
+          packageRelative.contains(withoutLibPrefix) ||
+          packageRelative.startsWith(withoutLibPrefix)) {
+        return true;
+      }
+    }
+  }
+
+  return false;
 }
 
 bool isPresentationFilePath(String path) {
@@ -86,7 +115,8 @@ bool isDomainFilePath(String path) {
 bool isDomainValueObjectFilePath(String path) {
   final normalized = normalizePath(path);
   return isDomainFilePath(normalized) &&
-      _containsSegment(normalized, '/value_objects/');
+      (_containsSegment(normalized, '/value_objects/') ||
+          _containsSegment(normalized, '/value_object/'));
 }
 
 bool isRepositoryFilePath(String path) {

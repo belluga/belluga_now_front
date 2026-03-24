@@ -1,10 +1,12 @@
 import 'dart:async';
+import 'package:belluga_now/testing/domain_factories.dart';
 import 'dart:io';
 import 'package:belluga_now/testing/invite_accept_result_builder.dart';
 
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
+import 'package:belluga_now/testing/app_data_test_factory.dart';
 import 'package:belluga_now/domain/app_data/app_type.dart';
 import 'package:belluga_now/domain/app_data/environment_type.dart';
 import 'package:belluga_now/domain/app_data/value_object/platform_type_value.dart';
@@ -28,6 +30,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
 import 'package:mockito/mockito.dart';
 import 'package:stream_value/core/stream_value.dart';
+import 'package:belluga_now/testing/invite_model_factory.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -147,7 +150,7 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
 
   @override
   Future<InviteRuntimeSettings> fetchSettings() async {
-    return const InviteRuntimeSettings(
+    return buildInviteRuntimeSettings(
       tenantId: null,
       limits: {},
       cooldowns: {},
@@ -169,7 +172,7 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
 
   @override
   Future<InviteDeclineResult> declineInvite(String inviteId) async {
-    return InviteDeclineResult(
+    return buildInviteDeclineResult(
       inviteId: inviteId,
       status: 'declined',
       groupHasOtherPending: false,
@@ -182,7 +185,7 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
     String? occurrenceId,
     String? accountProfileId,
   }) async {
-    return InviteShareCodeResult(
+    return buildInviteShareCodeResult(
       code: 'CODE123',
       eventId: eventId,
       occurrenceId: occurrenceId,
@@ -297,7 +300,7 @@ String _formatAsyncExceptions(List<Object> exceptions) {
 }
 
 InviteModel _buildInvite() {
-  return InviteModel.fromPrimitives(
+  return buildInviteModelFromPrimitives(
     id: 'invite-1',
     eventId: 'event-1',
     eventName: 'Evento',
@@ -318,7 +321,7 @@ AppData _buildAppData({
   final hostname = environmentType == EnvironmentType.landlord
       ? 'landlord.belluga.space'
       : 'guarappari.belluga.space';
-  return AppData.fromInitialization(
+  return buildAppDataFromInitialization(
     remoteData: {
       'name': 'Test',
       'type': environmentType.name,

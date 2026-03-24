@@ -271,7 +271,7 @@ class TenantAdminAccountProfilesController implements Disposable {
     for (final slug in taxonomySlugs) {
       final taxonomy = registry.firstWhere(
         (entry) => entry.slug == slug,
-        orElse: () => const TenantAdminTaxonomyDefinition(
+        orElse: () => TenantAdminTaxonomyDefinition(
           id: '',
           slug: '',
           name: '',

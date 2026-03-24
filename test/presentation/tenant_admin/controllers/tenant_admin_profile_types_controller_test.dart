@@ -34,7 +34,7 @@ class _FakeAccountProfilesRepository
     final types = await fetchProfileTypes();
     final start = (page - 1) * pageSize;
     if (page <= 0 || pageSize <= 0 || start >= types.length) {
-      return const TenantAdminPagedResult<TenantAdminProfileTypeDefinition>(
+      return TenantAdminPagedResult<TenantAdminProfileTypeDefinition>(
         items: <TenantAdminProfileTypeDefinition>[],
         hasMore: false,
       );
@@ -75,9 +75,9 @@ class _FakeAccountProfilesRepository
     final updated = TenantAdminProfileTypeDefinition(
       type: newType ?? type,
       label: label ?? 'Updated',
-      allowedTaxonomies: allowedTaxonomies ?? const [],
+      allowedTaxonomies: allowedTaxonomies ?? [],
       capabilities: capabilities ??
-          const TenantAdminProfileTypeCapabilities(
+          TenantAdminProfileTypeCapabilities(
             isFavoritable: true,
             isPoiEnabled: false,
             hasBio: false,
@@ -107,13 +107,13 @@ class _FakeAccountProfilesRepository
   Future<List<TenantAdminAccountProfile>> fetchAccountProfiles({
     String? accountId,
   }) async =>
-      const [];
+      [];
 
   @override
   Future<TenantAdminAccountProfile> fetchAccountProfile(
     String accountProfileId,
   ) async {
-    return const TenantAdminAccountProfile(
+    return TenantAdminAccountProfile(
       id: 'profile-1',
       accountId: 'acc-1',
       profileType: 'venue',
@@ -135,7 +135,7 @@ class _FakeAccountProfilesRepository
     TenantAdminMediaUpload? avatarUpload,
     TenantAdminMediaUpload? coverUpload,
   }) async {
-    return const TenantAdminAccountProfile(
+    return TenantAdminAccountProfile(
       id: 'profile-1',
       accountId: 'acc-1',
       profileType: 'venue',
@@ -158,7 +158,7 @@ class _FakeAccountProfilesRepository
     TenantAdminMediaUpload? avatarUpload,
     TenantAdminMediaUpload? coverUpload,
   }) async {
-    return const TenantAdminAccountProfile(
+    return TenantAdminAccountProfile(
       id: 'profile-1',
       accountId: 'acc-1',
       profileType: 'venue',
@@ -173,7 +173,7 @@ class _FakeAccountProfilesRepository
   Future<TenantAdminAccountProfile> restoreAccountProfile(
     String accountProfileId,
   ) async {
-    return const TenantAdminAccountProfile(
+    return TenantAdminAccountProfile(
       id: 'profile-1',
       accountId: 'acc-1',
       profileType: 'venue',
@@ -220,7 +220,7 @@ class _FakeTaxonomiesRepository
   }) async {
     final start = (page - 1) * pageSize;
     if (page <= 0 || pageSize <= 0 || start >= taxonomies.length) {
-      return const TenantAdminPagedResult<TenantAdminTaxonomyDefinition>(
+      return TenantAdminPagedResult<TenantAdminTaxonomyDefinition>(
         items: <TenantAdminTaxonomyDefinition>[],
         hasMore: false,
       );
@@ -298,8 +298,8 @@ void main() {
       (index) => TenantAdminProfileTypeDefinition(
         type: 'type-$index',
         label: 'Type $index',
-        allowedTaxonomies: const [],
-        capabilities: const TenantAdminProfileTypeCapabilities(
+        allowedTaxonomies: [],
+        capabilities: TenantAdminProfileTypeCapabilities(
           isFavoritable: false,
           isPoiEnabled: false,
           hasBio: false,
@@ -328,15 +328,15 @@ void main() {
   });
 
   test('createType reloads registry list', () async {
-    final repository = _FakeAccountProfilesRepository(const []);
+    final repository = _FakeAccountProfilesRepository([]);
     final controller =
         TenantAdminProfileTypesController(repository: repository);
 
     await controller.createType(
       type: 'venue',
       label: 'Venue',
-      allowedTaxonomies: const [],
-      capabilities: const TenantAdminProfileTypeCapabilities(
+      allowedTaxonomies: [],
+      capabilities: TenantAdminProfileTypeCapabilities(
         isFavoritable: true,
         isPoiEnabled: true,
         hasBio: false,
@@ -352,7 +352,7 @@ void main() {
   });
 
   test('deleteType removes entry', () async {
-    final repository = _FakeAccountProfilesRepository(const [
+    final repository = _FakeAccountProfilesRepository([
       TenantAdminProfileTypeDefinition(
         type: 'venue',
         label: 'Venue',
@@ -382,7 +382,7 @@ void main() {
   });
 
   test('reloads registry when tenant scope changes', () async {
-    final repository = _FakeAccountProfilesRepository(const [
+    final repository = _FakeAccountProfilesRepository([
       TenantAdminProfileTypeDefinition(
         type: 'artist',
         label: 'Artist',
@@ -408,7 +408,7 @@ void main() {
     await controller.loadTypes();
     expect(controller.typesStreamValue.value?.first.type, 'artist');
 
-    repository._types = const [
+    repository._types = [
       TenantAdminProfileTypeDefinition(
         type: 'venue',
         label: 'Venue',
@@ -434,9 +434,9 @@ void main() {
 
   test('loads available taxonomies filtered by account_profile target',
       () async {
-    final repository = _FakeAccountProfilesRepository(const []);
+    final repository = _FakeAccountProfilesRepository([]);
     final taxonomiesRepository = _FakeTaxonomiesRepository([
-      const TenantAdminTaxonomyDefinition(
+      TenantAdminTaxonomyDefinition(
         id: '1',
         slug: 'music_genre',
         name: 'Music Genre',
@@ -444,7 +444,7 @@ void main() {
         icon: null,
         color: null,
       ),
-      const TenantAdminTaxonomyDefinition(
+      TenantAdminTaxonomyDefinition(
         id: '2',
         slug: 'event_type',
         name: 'Event Type',
@@ -468,9 +468,9 @@ void main() {
   });
 
   test('ignores non-listed taxonomy slug when toggling selection', () async {
-    final repository = _FakeAccountProfilesRepository(const []);
+    final repository = _FakeAccountProfilesRepository([]);
     final taxonomiesRepository = _FakeTaxonomiesRepository([
-      const TenantAdminTaxonomyDefinition(
+      TenantAdminTaxonomyDefinition(
         id: '1',
         slug: 'music_genre',
         name: 'Music Genre',
@@ -493,7 +493,7 @@ void main() {
 
   test('submitUpdateType keeps detail stream aligned with saved values',
       () async {
-    final repository = _FakeAccountProfilesRepository(const [
+    final repository = _FakeAccountProfilesRepository([
       TenantAdminProfileTypeDefinition(
         type: 'artist',
         label: 'Artist',
@@ -513,7 +513,7 @@ void main() {
     final controller =
         TenantAdminProfileTypesController(repository: repository);
 
-    controller.initDetailType(const TenantAdminProfileTypeDefinition(
+    controller.initDetailType(TenantAdminProfileTypeDefinition(
       type: 'artist',
       label: 'Artist',
       allowedTaxonomies: [],

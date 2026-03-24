@@ -33,6 +33,7 @@
 - `domain_dto_dependency_forbidden` (`P0`): domain cannot depend on DTO artifacts.
 - `domain_json_factory_forbidden` (`P0`): domain cannot declare `fromJson`/`fromMap` factories.
 - `repository_json_parsing_forbidden` (`P0`): repositories cannot parse raw JSON or hydrate DTOs directly.
+- `dto_mapper_pass_through_forbidden` (`P0`): methods in DTO mapper files are forbidden when they receive DTO/primitives and return domain payloads; DTO->Domain conversion must live only in `DTO.toDomain()`.
 - `repository_model_stream_lifecycle_methods_required` (`P1`): repositories owning `StreamValue` with `*Model` payload must expose initialize/populate + refresh lifecycle methods returning `void`/`Future<void>`.
 - `repository_model_streamvalue_nullable_required` (`P1`): repositories must keep model-carrying `StreamValue` payloads top-level nullable (`StreamValue<T?>`).
 - `repository_registration_scope_enforced` (`P1`): repositories can be registered only in `module_settings.dart`.
@@ -295,6 +296,23 @@ class EventRepository with EventDtoMapper {
 }
 ```
 
+### `dto_mapper_pass_through_forbidden`
+Violation:
+```dart
+mixin EventDtoMapper {
+  EventModel mapEventDto(EventDTO dto) => dto.toDomain();
+
+  EventModel mapFromPrimitive(String id) => EventModel(id: id);
+}
+```
+Fix:
+```dart
+final event = dto.toDomain();
+
+// Or build the DTO and convert inside DTO.
+final event = EventDTO(id: id).toDomain();
+```
+
 ### `module_direct_getit_registration_forbidden`
 Violation:
 ```dart
@@ -485,6 +503,12 @@ custom_lint:
   rules:
     - domain_primitive_field_forbidden: false
 ```
+Execution note (2026-03-24):
+```bash
+# Canonical invocation for this repo/workspace:
+fvm dart run custom_lint
+```
+`--no-watch` is forbidden in this lane. In the current toolchain the `custom_lint` CLI does not expose a negatable `watch` flag, which caused false-clean/silent runs when that argument was used.
 Violation:
 ```dart
 class EventModel {

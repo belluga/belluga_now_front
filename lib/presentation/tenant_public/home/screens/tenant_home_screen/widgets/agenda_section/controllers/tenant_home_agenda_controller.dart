@@ -24,6 +24,7 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
     AppDataRepositoryContract? appDataRepository,
     Duration locationWarmUpTimeout = const Duration(seconds: 4),
     Duration locationPermissionTimeout = const Duration(seconds: 8),
+    Duration radiusRefreshDebounce = const Duration(milliseconds: 250),
   })  : _scheduleRepository =
             scheduleRepository ?? GetIt.I.get<ScheduleRepositoryContract>(),
         _userEventsRepository =
@@ -37,7 +38,8 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
         _appDataRepository =
             appDataRepository ?? GetIt.I.get<AppDataRepositoryContract>(),
         _locationWarmUpTimeout = locationWarmUpTimeout,
-        _locationPermissionTimeout = locationPermissionTimeout;
+        _locationPermissionTimeout = locationPermissionTimeout,
+        _radiusRefreshDebounce = radiusRefreshDebounce;
 
   final ScheduleRepositoryContract _scheduleRepository;
   final UserEventsRepositoryContract _userEventsRepository;
@@ -46,6 +48,7 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
   final AppDataRepositoryContract _appDataRepository;
   final Duration _locationWarmUpTimeout;
   final Duration _locationPermissionTimeout;
+  final Duration _radiusRefreshDebounce;
 
   static const double _fallbackRadiusMeters = 50000.0;
   static const double _locationRefreshMinJumpMeters = 1000.0;
@@ -90,10 +93,14 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
   StreamSubscription? _pendingInvitesSubscription;
   StreamSubscription? _userLocationSubscription;
   StreamSubscription? _radiusSubscription;
+  Timer? _radiusRefreshDebounceTimer;
   int _currentPage = 1;
   bool _isFetching = false;
+  bool _isRefreshing = false;
   bool _hasMore = true;
   bool _isDisposed = false;
+  bool _hasQueuedRefresh = false;
+  bool _queuedRefreshPreserveCurrentResults = true;
   Future<void>? _initInFlight;
   double? _effectiveOriginLat;
   double? _effectiveOriginLng;
@@ -158,8 +165,14 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
   Future<void> _refresh({
     bool preserveCurrentResults = false,
   }) async {
+    if (_isRefreshing) {
+      _queueRefreshRequest(
+        preserveCurrentResults: preserveCurrentResults,
+      );
+      return;
+    }
+    _isRefreshing = true;
     final shouldShowInitialLoading = !preserveCurrentResults;
-    await _waitForOngoingFetch();
     _currentPage = 1;
     _hasMore = true;
     _setValue(hasMoreStreamValue, true);
@@ -196,6 +209,8 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
         _setValue(isInitialLoadingStreamValue, false);
         _setValue(initialLoadingLabelStreamValue, '');
       }
+      _isRefreshing = false;
+      _consumeQueuedRefreshRequestIfNeeded();
     }
   }
 
@@ -219,15 +234,31 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
     }
   }
 
-  Future<void> _waitForOngoingFetch() async {
-    while (_isFetching) {
-      await Future<void>.delayed(const Duration(milliseconds: 50));
-    }
+  Future<void> loadNextPage() async {
+    if (!_hasMore || _isFetching || _isRefreshing) return;
+    await _fetchPage(page: _currentPage + 1);
   }
 
-  Future<void> loadNextPage() async {
-    if (!_hasMore || _isFetching) return;
-    await _fetchPage(page: _currentPage + 1);
+  void _queueRefreshRequest({
+    required bool preserveCurrentResults,
+  }) {
+    _hasQueuedRefresh = true;
+    _queuedRefreshPreserveCurrentResults =
+        _queuedRefreshPreserveCurrentResults && preserveCurrentResults;
+  }
+
+  void _consumeQueuedRefreshRequestIfNeeded() {
+    if (_isDisposed || !_hasQueuedRefresh) {
+      return;
+    }
+    final preserveCurrentResults = _queuedRefreshPreserveCurrentResults;
+    _hasQueuedRefresh = false;
+    _queuedRefreshPreserveCurrentResults = true;
+    unawaited(
+      _refresh(
+        preserveCurrentResults: preserveCurrentResults,
+      ),
+    );
   }
 
   Future<void> _fetchPage({
@@ -346,7 +377,7 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
   void setRadiusMeters(double meters) {
     if (meters <= 0) return;
     _setValue(radiusMetersStreamValue, _clampRadiusMeters(meters));
-    unawaited(_refresh());
+    _scheduleRadiusRefresh();
   }
 
   void setInitialSearchQuery(String? query) {
@@ -509,7 +540,17 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
       final current = radiusMetersStreamValue.value;
       final clamped = _clampRadiusMeters(current);
       _setValue(radiusMetersStreamValue, clamped);
-      unawaited(_refresh());
+      _scheduleRadiusRefresh();
+    });
+  }
+
+  void _scheduleRadiusRefresh() {
+    _radiusRefreshDebounceTimer?.cancel();
+    _radiusRefreshDebounceTimer = Timer(_radiusRefreshDebounce, () {
+      if (_isDisposed) {
+        return;
+      }
+      unawaited(_refresh(preserveCurrentResults: true));
     });
   }
 
@@ -706,6 +747,7 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
     _pendingInvitesSubscription?.cancel();
     _userLocationSubscription?.cancel();
     _radiusSubscription?.cancel();
+    _radiusRefreshDebounceTimer?.cancel();
     isInitialLoadingStreamValue.dispose();
     initialLoadingLabelStreamValue.dispose();
     isPageLoadingStreamValue.dispose();

@@ -5,10 +5,10 @@ import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_dynam
 
 class TenantAdminMapUiSettings {
   TenantAdminMapUiSettings({
-    required Map<String, dynamic> rawMapUi,
+    required this.rawMapUiValue,
     required this.defaultOrigin,
     required this.filters,
-  }) : rawMapUiValue = TenantAdminDynamicMapValue(rawMapUi);
+  });
 
   TenantAdminMapUiSettings.empty()
       : rawMapUiValue = TenantAdminDynamicMapValue(),
@@ -35,7 +35,8 @@ class TenantAdminMapUiSettings {
       nextRaw['default_origin'] = origin.toJson();
     }
     return TenantAdminMapUiSettings(
-      rawMapUi: Map<String, dynamic>.unmodifiable(nextRaw),
+      rawMapUiValue: TenantAdminDynamicMapValue(
+          Map<String, dynamic>.unmodifiable(nextRaw)),
       defaultOrigin: origin,
       filters: List<TenantAdminMapFilterCatalogItem>.unmodifiable(filters),
     );
@@ -63,7 +64,8 @@ class TenantAdminMapUiSettings {
     final nextRaw = Map<String, dynamic>.from(rawMapUi);
     nextRaw['filters'] = sanitized.map((item) => item.toJson()).toList();
     return TenantAdminMapUiSettings(
-      rawMapUi: Map<String, dynamic>.unmodifiable(nextRaw),
+      rawMapUiValue: TenantAdminDynamicMapValue(
+          Map<String, dynamic>.unmodifiable(nextRaw)),
       defaultOrigin: defaultOrigin,
       filters: List<TenantAdminMapFilterCatalogItem>.unmodifiable(sanitized),
     );

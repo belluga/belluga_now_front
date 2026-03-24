@@ -49,7 +49,7 @@ class TenantAdminStaticProfileTypesController implements Disposable {
   final StreamValue<bool> detailSavingStreamValue =
       StreamValue<bool>(defaultValue: false);
 
-  static const TenantAdminStaticProfileTypeCapabilities _emptyCapabilities =
+  static final TenantAdminStaticProfileTypeCapabilities _emptyCapabilities =
       TenantAdminStaticProfileTypeCapabilities(
     isPoiEnabled: false,
     hasBio: false,

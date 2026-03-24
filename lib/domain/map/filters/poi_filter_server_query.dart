@@ -4,13 +4,22 @@ import 'package:belluga_now/domain/map/value_objects/poi_filter_taxonomy_token_v
 import 'package:belluga_now/domain/map/value_objects/poi_filter_type_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_tag_value.dart';
 
+typedef PoiFilterServerQueryRawString = String;
+typedef PoiFilterServerQueryToken = String;
+typedef PoiFilterServerQueryTokenSet = Set<PoiFilterServerQueryToken>;
+typedef PoiFilterServerQueryTokenIterable = Iterable<PoiFilterServerQueryToken>;
+typedef PoiFilterServerQueryDynamicValue = dynamic;
+typedef PoiFilterServerQueryDynamicIterable
+    = Iterable<PoiFilterServerQueryDynamicValue>;
+
 class PoiFilterServerQuery {
   PoiFilterServerQuery({
-    String? source,
-    Set<String> types = const <String>{},
-    Set<String> categoryKeys = const <String>{},
-    Set<String> taxonomy = const <String>{},
-    Set<String> tags = const <String>{},
+    PoiFilterServerQueryRawString? source,
+    PoiFilterServerQueryTokenSet types = const <PoiFilterServerQueryToken>{},
+    PoiFilterServerQueryTokenSet categoryKeys =
+        const <PoiFilterServerQueryToken>{},
+    PoiFilterServerQueryTokenSet taxonomy = const <PoiFilterServerQueryToken>{},
+    PoiFilterServerQueryTokenSet tags = const <PoiFilterServerQueryToken>{},
   })  : sourceValue = _buildSourceValue(source),
         typeValues = _buildTypeValues(types),
         categoryKeyValues = _buildCategoryKeyValues(categoryKeys),
@@ -40,7 +49,9 @@ class PoiFilterServerQuery {
       taxonomyTokenValues.isEmpty &&
       tagValues.isEmpty;
 
-  static PoiFilterSourceValue? _buildSourceValue(String? raw) {
+  static PoiFilterSourceValue? _buildSourceValue(
+    PoiFilterServerQueryRawString? raw,
+  ) {
     final normalized = raw?.trim().toLowerCase();
     if (normalized == null || normalized.isEmpty) {
       return null;
@@ -48,7 +59,9 @@ class PoiFilterServerQuery {
     return PoiFilterSourceValue()..parse(normalized);
   }
 
-  static Set<PoiFilterTypeValue> _buildTypeValues(Iterable<String> rawValues) {
+  static Set<PoiFilterTypeValue> _buildTypeValues(
+    PoiFilterServerQueryTokenIterable rawValues,
+  ) {
     return _buildStringValueSet(
       rawValues,
       () => PoiFilterTypeValue(),
@@ -56,7 +69,7 @@ class PoiFilterServerQuery {
   }
 
   static Set<PoiFilterKeyValue> _buildCategoryKeyValues(
-    Iterable<String> rawValues,
+    PoiFilterServerQueryTokenIterable rawValues,
   ) {
     return _buildStringValueSet(
       rawValues,
@@ -65,7 +78,7 @@ class PoiFilterServerQuery {
   }
 
   static Set<PoiFilterTaxonomyTokenValue> _buildTaxonomyTokenValues(
-    Iterable<String> rawValues,
+    PoiFilterServerQueryTokenIterable rawValues,
   ) {
     return _buildStringValueSet(
       rawValues,
@@ -73,7 +86,9 @@ class PoiFilterServerQuery {
     );
   }
 
-  static Set<PoiTagValue> _buildTagValues(Iterable<String> rawValues) {
+  static Set<PoiTagValue> _buildTagValues(
+    PoiFilterServerQueryTokenIterable rawValues,
+  ) {
     return _buildStringValueSet(
       rawValues,
       () => PoiTagValue(),
@@ -81,7 +96,7 @@ class PoiFilterServerQuery {
   }
 
   static Set<T> _buildStringValueSet<T>(
-    Iterable<String> rawValues,
+    PoiFilterServerQueryTokenIterable rawValues,
     T Function() createValue,
   ) {
     final values = <T>{};
@@ -108,7 +123,8 @@ class PoiFilterServerQuery {
     return Set<T>.unmodifiable(values);
   }
 
-  static Set<String> _readStringSet(Iterable<dynamic> values) {
+  static Set<String> _readStringSet(
+      PoiFilterServerQueryDynamicIterable values) {
     return Set<String>.unmodifiable(
       values
           .map((value) => value.value as String?)
@@ -118,7 +134,8 @@ class PoiFilterServerQuery {
     );
   }
 
-  static String? _readNullableValue(dynamic valueObject) {
+  static String? _readNullableValue(
+      PoiFilterServerQueryDynamicValue valueObject) {
     final raw = valueObject?.value as String?;
     if (raw == null || raw.trim().isEmpty) {
       return null;

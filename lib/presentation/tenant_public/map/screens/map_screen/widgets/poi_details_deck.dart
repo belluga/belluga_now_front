@@ -8,6 +8,10 @@ import 'package:belluga_now/domain/map/filters/poi_filter_mode.dart';
 import 'package:belluga_now/domain/map/ride_share_option.dart';
 import 'package:belluga_now/domain/map/ride_share_provider.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
+import 'package:belluga_now/domain/map/value_objects/directions_destination_name_value.dart';
+import 'package:belluga_now/domain/map/value_objects/directions_fallback_url_value.dart';
+import 'package:belluga_now/domain/map/value_objects/ride_share_label_value.dart';
+import 'package:belluga_now/domain/map/value_objects/ride_share_uri_value.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/controllers/map_screen_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/filtered_deck.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/poi_detail_card_builder.dart';
@@ -283,10 +287,10 @@ class _PoiDetailDeckState extends State<PoiDetailDeck>
       return DirectionsInfo(
         coordinate: coordinate,
         destination: destination,
-        destinationName: destinationName,
+        destinationNameValue: _buildDestinationNameValue(destinationName),
         availableMaps: availableMaps,
         rideShareOptions: rideShareOptions,
-        fallbackUrl: fallbackUrl,
+        fallbackUrlValue: _buildFallbackUrlValue(fallbackUrl),
       );
     } catch (_) {
       final fallbackUrl =
@@ -294,10 +298,10 @@ class _PoiDetailDeckState extends State<PoiDetailDeck>
       return DirectionsInfo(
         coordinate: coordinate,
         destination: destination,
-        destinationName: destinationName,
+        destinationNameValue: _buildDestinationNameValue(destinationName),
         availableMaps: const [],
         rideShareOptions: const [],
-        fallbackUrl: fallbackUrl,
+        fallbackUrlValue: _buildFallbackUrlValue(fallbackUrl),
       );
     }
   }
@@ -337,8 +341,8 @@ class _PoiDetailDeckState extends State<PoiDetailDeck>
       options.add(
         RideShareOption(
           provider: RideShareProvider.uber,
-          label: 'Uber',
-          uris: uberUris,
+          labelValue: _buildRideShareLabelValue('Uber'),
+          uriValues: _buildRideShareUriValues(uberUris),
         ),
       );
     }
@@ -360,8 +364,8 @@ class _PoiDetailDeckState extends State<PoiDetailDeck>
       options.add(
         RideShareOption(
           provider: RideShareProvider.ninetyNine,
-          label: '99',
-          uris: ninetyNineUris,
+          labelValue: _buildRideShareLabelValue('99'),
+          uriValues: _buildRideShareUriValues(ninetyNineUris),
         ),
       );
     }
@@ -514,6 +518,24 @@ class _PoiDetailDeckState extends State<PoiDetailDeck>
     } catch (_) {
       return false;
     }
+  }
+
+  DirectionsDestinationNameValue _buildDestinationNameValue(String raw) {
+    return DirectionsDestinationNameValue()..parse(raw);
+  }
+
+  DirectionsFallbackUrlValue _buildFallbackUrlValue(Uri uri) {
+    return DirectionsFallbackUrlValue()..parse(uri.toString());
+  }
+
+  RideShareLabelValue _buildRideShareLabelValue(String raw) {
+    return RideShareLabelValue()..parse(raw);
+  }
+
+  List<RideShareUriValue> _buildRideShareUriValues(List<Uri> uris) {
+    return uris
+        .map((uri) => RideShareUriValue()..parse(uri.toString()))
+        .toList(growable: false);
   }
 
   IconData _rideShareIcon(RideShareProvider provider) {

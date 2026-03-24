@@ -9,7 +9,7 @@ import 'package:stream_value/core/stream_value.dart';
 void main() {
   test('reloads organizations when tenant scope changes', () async {
     final repository = _FakeOrganizationsRepository([
-      const TenantAdminOrganization(id: 'org-1', name: 'Tenant A'),
+      TenantAdminOrganization(id: 'org-1', name: 'Tenant A'),
     ]);
     final tenantScope = _FakeTenantScope('tenant-a.test');
     final controller = TenantAdminOrganizationsController(
@@ -21,7 +21,7 @@ void main() {
     expect(controller.organizationsStreamValue.value?.first.name, 'Tenant A');
 
     repository.organizations = [
-      const TenantAdminOrganization(id: 'org-2', name: 'Tenant B'),
+      TenantAdminOrganization(id: 'org-2', name: 'Tenant B'),
     ];
     tenantScope.selectTenantDomain('tenant-b.test');
     await Future<void>.delayed(Duration.zero);
@@ -64,7 +64,7 @@ class _FakeOrganizationsRepository
     final all = await fetchOrganizations();
     final start = (page - 1) * pageSize;
     if (page <= 0 || pageSize <= 0 || start >= all.length) {
-      return const TenantAdminPagedResult<TenantAdminOrganization>(
+      return TenantAdminPagedResult<TenantAdminOrganization>(
         items: <TenantAdminOrganization>[],
         hasMore: false,
       );

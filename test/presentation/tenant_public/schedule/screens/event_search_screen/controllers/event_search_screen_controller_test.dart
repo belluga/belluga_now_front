@@ -1,7 +1,9 @@
 import 'dart:async';
+import 'package:belluga_now/testing/domain_factories.dart';
 import 'package:belluga_now/testing/invite_accept_result_builder.dart';
 
 import 'package:belluga_now/domain/app_data/app_data.dart';
+import 'package:belluga_now/testing/app_data_test_factory.dart';
 import 'package:belluga_now/domain/app_data/value_object/platform_type_value.dart';
 import 'package:belluga_now/domain/contacts/contact_model.dart';
 import 'package:belluga_now/domain/invites/invite_accept_result.dart';
@@ -208,7 +210,7 @@ AppData _buildAppData({bool includeDefaultOrigin = true}) {
     'device': 'test-device',
   };
 
-  return AppData.fromInitialization(
+  return buildAppDataFromInitialization(
       remoteData: remoteData, localInfo: localInfo);
 }
 
@@ -555,7 +557,7 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
 
   @override
   Future<InviteRuntimeSettings> fetchSettings() async =>
-      const InviteRuntimeSettings(
+      buildInviteRuntimeSettings(
         tenantId: null,
         limits: {},
         cooldowns: {},
@@ -575,7 +577,7 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
 
   @override
   Future<InviteDeclineResult> declineInvite(String inviteId) async =>
-      InviteDeclineResult(
+      buildInviteDeclineResult(
         inviteId: inviteId,
         status: 'declined',
         groupHasOtherPending: false,
@@ -591,7 +593,7 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
     String? occurrenceId,
     String? accountProfileId,
   }) async =>
-      InviteShareCodeResult(
+      buildInviteShareCodeResult(
         code: 'CODE123',
         eventId: eventId,
         occurrenceId: occurrenceId,

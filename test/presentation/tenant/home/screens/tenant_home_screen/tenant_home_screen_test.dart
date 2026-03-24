@@ -15,15 +15,13 @@ import 'package:belluga_now/infrastructure/repositories/app_data_repository.dart
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/event_search_screen/models/invite_filter.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
+import 'package:belluga_now/testing/domain_factories.dart';
 import 'package:belluga_now/domain/app_data/value_object/environment_name_value.dart';
 import 'package:belluga_now/domain/tenant/value_objects/main_color_value.dart';
 import 'package:belluga_now/domain/tenant/value_objects/icon_url_value.dart';
 import 'package:belluga_now/domain/value_objects/asset_path_value.dart';
 import 'package:belluga_now/domain/value_objects/title_value.dart';
-import 'package:belluga_now/domain/value_objects/description_value.dart';
 import 'package:belluga_now/domain/tenant/value_objects/main_logo_url_value.dart';
-import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
-import 'package:value_object_pattern/domain/value_objects/date_time_value.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
@@ -32,6 +30,7 @@ import 'package:mockito/mockito.dart' as mockito;
 import 'package:stream_value/core/stream_value.dart';
 
 import 'tenant_home_screen_test.mocks.dart';
+import 'package:belluga_now/testing/invite_model_factory.dart';
 
 @GenerateNiceMocks([
   MockSpec<TenantHomeController>(),
@@ -212,17 +211,13 @@ void main() {
 
   testWidgets('TenantHomeScreen renders correctly', (tester) async {
     final now = DateTime.now();
-    final event = VenueEventResume(
+    final event = buildVenueEventResume(
       id: 'event-1',
       slug: 'event-1',
-      titleValue: TitleValue()..parse('Evento do Teste Longo'),
-      imageUriValue:
-          ThumbUriValue(defaultValue: Uri.parse('http://example.com/img.jpg')),
-      startDateTimeValue:
-          DateTimeValue(defaultValue: now.add(const Duration(hours: 2))),
-      locationValue: DescriptionValue()..parse('Local do Evento Teste Longo'),
-      artists: const [],
-      tags: const [],
+      title: 'Evento do Teste Longo',
+      imageUri: Uri.parse('http://example.com/img.jpg'),
+      startDateTime: now.add(const Duration(hours: 2)),
+      location: 'Local do Evento Teste Longo',
     );
     mockito.when(mockController.myEventsFilteredStreamValue).thenReturn(
           StreamValue<List<VenueEventResume>>(defaultValue: [event]),
@@ -253,17 +248,13 @@ void main() {
 
   testWidgets('taps My Events card and pushes detail route', (tester) async {
     final now = DateTime.now();
-    final event = VenueEventResume(
+    final event = buildVenueEventResume(
       id: 'event-1',
       slug: 'event-1',
-      titleValue: TitleValue()..parse('Evento do Teste Longo'),
-      imageUriValue:
-          ThumbUriValue(defaultValue: Uri.parse('http://example.com/img.jpg')),
-      startDateTimeValue:
-          DateTimeValue(defaultValue: now.add(const Duration(hours: 2))),
-      locationValue: DescriptionValue()..parse('Local do Evento Teste Longo'),
-      artists: const [],
-      tags: const [],
+      title: 'Evento do Teste Longo',
+      imageUri: Uri.parse('http://example.com/img.jpg'),
+      startDateTime: now.add(const Duration(hours: 2)),
+      location: 'Local do Evento Teste Longo',
     );
     mockito.when(mockController.myEventsFilteredStreamValue).thenReturn(
           StreamValue<List<VenueEventResume>>(defaultValue: [event]),
@@ -296,7 +287,7 @@ void main() {
       (tester) async {
     final pendingInviteStream = StreamValue<List<InviteModel>>(
       defaultValue: [
-        InviteModel.fromPrimitives(
+        buildInviteModelFromPrimitives(
           id: 'pending-1',
           eventId: 'event-pending-1',
           eventName: 'Evento pendente',

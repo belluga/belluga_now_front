@@ -6,14 +6,19 @@ import 'package:belluga_now/domain/map/value_objects/poi_filter_key_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_filter_label_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_tag_value.dart';
 
+typedef PoiFilterCategoryRawString = String;
+typedef PoiFilterCategoryRawTag = String;
+typedef PoiFilterCategoryRawTagSet = Set<PoiFilterCategoryRawTag>;
+typedef PoiFilterCategoryRawCount = int;
+
 class PoiFilterCategory {
   PoiFilterCategory({
     this.category,
-    required Set<String> tags,
-    String? key,
-    String? label,
-    String? imageUri,
-    int count = 0,
+    required PoiFilterCategoryRawTagSet tags,
+    PoiFilterCategoryRawString? key,
+    PoiFilterCategoryRawString? label,
+    PoiFilterCategoryRawString? imageUri,
+    PoiFilterCategoryRawCount count = 0,
     this.serverQuery,
   })  : keyValue = _buildKeyValue(_resolveKey(key, category)),
         labelValue = _buildLabelValue(_resolveLabel(label, key, category)),
@@ -41,7 +46,10 @@ class PoiFilterCategory {
             .where((tag) => tag.isNotEmpty),
       );
 
-  static String _resolveKey(String? rawKey, CityPoiCategory? category) {
+  static String _resolveKey(
+    PoiFilterCategoryRawString? rawKey,
+    CityPoiCategory? category,
+  ) {
     final normalized = (rawKey ?? '').trim().toLowerCase();
     if (normalized.isNotEmpty) {
       return normalized;
@@ -53,8 +61,8 @@ class PoiFilterCategory {
   }
 
   static String _resolveLabel(
-    String? rawLabel,
-    String? rawKey,
+    PoiFilterCategoryRawString? rawLabel,
+    PoiFilterCategoryRawString? rawKey,
     CityPoiCategory? category,
   ) {
     final trimmed = (rawLabel ?? '').trim();
@@ -82,17 +90,19 @@ class PoiFilterCategory {
     return key;
   }
 
-  static PoiFilterKeyValue _buildKeyValue(String raw) {
+  static PoiFilterKeyValue _buildKeyValue(PoiFilterCategoryRawString raw) {
     final value = PoiFilterKeyValue()..parse(raw.trim().toLowerCase());
     return value;
   }
 
-  static PoiFilterLabelValue _buildLabelValue(String raw) {
+  static PoiFilterLabelValue _buildLabelValue(PoiFilterCategoryRawString raw) {
     final value = PoiFilterLabelValue()..parse(raw.trim());
     return value;
   }
 
-  static PoiFilterImageUriValue? _buildImageUriValue(String? raw) {
+  static PoiFilterImageUriValue? _buildImageUriValue(
+    PoiFilterCategoryRawString? raw,
+  ) {
     final normalized = raw?.trim();
     if (normalized == null || normalized.isEmpty) {
       return null;
@@ -101,12 +111,12 @@ class PoiFilterCategory {
     return value;
   }
 
-  static PoiFilterCountValue _buildCountValue(int raw) {
+  static PoiFilterCountValue _buildCountValue(PoiFilterCategoryRawCount raw) {
     final value = PoiFilterCountValue()..parse(raw.toString());
     return value;
   }
 
-  static Set<PoiTagValue> _buildTagValues(Set<String> rawTags) {
+  static Set<PoiTagValue> _buildTagValues(PoiFilterCategoryRawTagSet rawTags) {
     final values = <PoiTagValue>{};
     for (final raw in rawTags) {
       final normalized = raw.trim().toLowerCase();

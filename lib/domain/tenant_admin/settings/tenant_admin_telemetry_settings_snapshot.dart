@@ -4,9 +4,8 @@ import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_trimm
 class TenantAdminTelemetrySettingsSnapshot {
   TenantAdminTelemetrySettingsSnapshot({
     required this.integrations,
-    required List<String> availableEvents,
-  }) : availableEventValues =
-            TenantAdminTrimmedStringListValue(availableEvents);
+    required this.availableEventValues,
+  });
 
   TenantAdminTelemetrySettingsSnapshot.empty()
       : integrations = const [],

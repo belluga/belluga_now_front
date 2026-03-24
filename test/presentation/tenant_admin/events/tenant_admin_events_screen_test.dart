@@ -7,6 +7,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_event.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_definition.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_value_parsers.dart';
 import 'package:belluga_now/presentation/tenant_admin/events/controllers/tenant_admin_events_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/events/screens/tenant_admin_events_screen.dart';
 import 'package:flutter/material.dart';
@@ -150,7 +151,7 @@ class _EventsRepositoryWithSeedData
     bool archived = false,
   }) async {
     if (page > 1) {
-      return const TenantAdminPagedResult<TenantAdminEvent>(
+      return TenantAdminPagedResult<TenantAdminEvent>(
         items: <TenantAdminEvent>[],
         hasMore: false,
       );
@@ -167,7 +168,7 @@ class _EventsRepositoryWithSeedData
     String? search,
     String? accountSlug,
   }) async {
-    return const TenantAdminEventPartyCandidates(
+    return TenantAdminEventPartyCandidates(
       venues: <TenantAdminAccountProfile>[],
       artists: <TenantAdminAccountProfile>[],
     );
@@ -189,10 +190,12 @@ class _EventsRepositoryWithSeedData
     type: TenantAdminEventType(name: 'Show', slug: 'show'),
     occurrences: <TenantAdminEventOccurrence>[
       TenantAdminEventOccurrence(
-        dateTimeStart: DateTime.utc(2026, 3, 5, 20),
+        dateTimeStartValue: tenantAdminDateTime(DateTime.utc(2026, 3, 5, 20)),
       ),
     ],
-    publication: TenantAdminEventPublication(status: 'draft'),
+    publication: TenantAdminEventPublication(
+      statusValue: tenantAdminRequiredText('draft'),
+    ),
   );
 }
 
@@ -230,7 +233,7 @@ class _NoopTaxonomiesRepository
 
   @override
   Future<List<TenantAdminTaxonomyDefinition>> fetchTaxonomies() async {
-    return const <TenantAdminTaxonomyDefinition>[];
+    return <TenantAdminTaxonomyDefinition>[];
   }
 
   @override
@@ -239,7 +242,7 @@ class _NoopTaxonomiesRepository
     required int page,
     required int pageSize,
   }) async {
-    return const TenantAdminPagedResult<TenantAdminTaxonomyDefinition>(
+    return TenantAdminPagedResult<TenantAdminTaxonomyDefinition>(
       items: <TenantAdminTaxonomyDefinition>[],
       hasMore: false,
     );
@@ -249,7 +252,7 @@ class _NoopTaxonomiesRepository
   Future<List<TenantAdminTaxonomyTermDefinition>> fetchTerms({
     required String taxonomyId,
   }) async {
-    return const <TenantAdminTaxonomyTermDefinition>[];
+    return <TenantAdminTaxonomyTermDefinition>[];
   }
 
   @override
@@ -259,7 +262,7 @@ class _NoopTaxonomiesRepository
     required int page,
     required int pageSize,
   }) async {
-    return const TenantAdminPagedResult<TenantAdminTaxonomyTermDefinition>(
+    return TenantAdminPagedResult<TenantAdminTaxonomyTermDefinition>(
       items: <TenantAdminTaxonomyTermDefinition>[],
       hasMore: false,
     );

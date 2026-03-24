@@ -1,24 +1,8 @@
-import 'package:belluga_now/infrastructure/dal/dto/mappers/artist_dto_mapper.dart';
-import 'package:belluga_now/infrastructure/dal/dto/mappers/invite_dto_mapper.dart';
-import 'package:belluga_now/infrastructure/dal/dto/mappers/invite_status_dto_mapper.dart';
-import 'package:belluga_now/infrastructure/dal/dto/mappers/partner_dto_mapper.dart';
-import 'package:belluga_now/infrastructure/dal/dto/mappers/schedule_dto_mapper.dart';
-import 'package:belluga_now/infrastructure/dal/dto/mappers/thumb_dto_mapper.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_dto.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-class _TestScheduleDtoMapper
-    with
-        InviteDtoMapper,
-        ThumbDtoMapper,
-        ArtistDtoMapper,
-        PartnerDtoMapper,
-        InviteStatusDtoMapper,
-        ScheduleDtoMapper {}
-
 void main() {
   test('maps event when event type id is not a Mongo ObjectId', () {
-    final mapper = _TestScheduleDtoMapper();
     final dto = EventDTO.fromJson({
       'event_id': '507f1f77bcf86cd799439011',
       'slug': 'evento-1',
@@ -43,7 +27,7 @@ void main() {
       'artists': const [],
     });
 
-    final event = mapper.mapEventDto(dto);
+    final event = dto.toDomain();
 
     expect(event.type.id.value, 'type-1');
     expect(event.coordinate, isNotNull);

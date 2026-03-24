@@ -16,13 +16,14 @@ import 'package:stream_value/core/stream_value.dart';
 void main() {
   test('favorites section keeps backend ordering from /favorites payload',
       () async {
+    final favoriteRepository = _FakeFavoriteRepository(
+      favoriteResumes: [
+        _favoriteResume(title: 'Primeiro', slug: 'primeiro'),
+        _favoriteResume(title: 'Segundo', slug: 'segundo'),
+      ],
+    );
     final controller = FavoritesSectionController(
-      favoriteRepository: _FakeFavoriteRepository(
-        favoriteResumes: [
-          _favoriteResume(title: 'Primeiro', slug: 'primeiro'),
-          _favoriteResume(title: 'Segundo', slug: 'segundo'),
-        ],
-      ),
+      favoriteRepository: favoriteRepository,
       appDataRepository: _FakeAppDataRepository(),
     );
 
@@ -31,6 +32,48 @@ void main() {
     final items = controller.favoritesStreamValue.value;
     expect(items, isNotNull);
     expect(items!.map((item) => item.title).toList(), ['Primeiro', 'Segundo']);
+    expect(favoriteRepository.fetchFavoriteResumesCallCount, 1);
+
+    controller.onDispose();
+  });
+
+  test('favorites section keeps cache and refreshes ordering on re-entry',
+      () async {
+    final favoriteRepository = _FakeFavoriteRepository(
+      favoriteResumes: [
+        _favoriteResume(title: 'Primeiro', slug: 'primeiro'),
+      ],
+    );
+
+    final controller = FavoritesSectionController(
+      favoriteRepository: favoriteRepository,
+      appDataRepository: _FakeAppDataRepository(),
+    );
+
+    await controller.init();
+    expect(
+      controller.favoritesStreamValue.value?.map((item) => item.title).toList(),
+      ['Primeiro'],
+    );
+
+    favoriteRepository.favoriteResumes = [
+      _favoriteResume(title: 'Segundo', slug: 'segundo'),
+      _favoriteResume(title: 'Primeiro', slug: 'primeiro'),
+    ];
+
+    final refreshFuture = controller.init();
+    expect(
+      controller.favoritesStreamValue.value?.map((item) => item.title).toList(),
+      ['Primeiro'],
+    );
+    await refreshFuture;
+
+    expect(favoriteRepository.fetchFavoriteResumesCallCount, 2);
+    expect(controller.favoritesStreamValue.value, isNotNull);
+    expect(
+      controller.favoritesStreamValue.value?.map((item) => item.title).toList(),
+      ['Segundo', 'Primeiro'],
+    );
 
     controller.onDispose();
   });
@@ -79,18 +122,22 @@ FavoriteResume _favoriteResume({
   );
 }
 
-class _FakeFavoriteRepository implements FavoriteRepositoryContract {
+class _FakeFavoriteRepository extends FavoriteRepositoryContract {
   _FakeFavoriteRepository({
     this.favoriteResumes = const <FavoriteResume>[],
   });
 
-  final List<FavoriteResume> favoriteResumes;
+  List<FavoriteResume> favoriteResumes;
+  int fetchFavoriteResumesCallCount = 0;
 
   @override
   Future<List<Favorite>> fetchFavorites() async => <Favorite>[];
 
   @override
-  Future<List<FavoriteResume>> fetchFavoriteResumes() async => favoriteResumes;
+  Future<List<FavoriteResume>> fetchFavoriteResumes() async {
+    fetchFavoriteResumesCallCount += 1;
+    return favoriteResumes;
+  }
 }
 
 class _FakeAppData extends Fake implements AppData {

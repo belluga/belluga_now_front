@@ -1,6 +1,7 @@
 import 'package:belluga_now/domain/partners/engagement_data.dart';
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'mock_schedule_backend.dart';
+import 'package:belluga_now/testing/account_profile_model_factory.dart';
 
 class MockAccountProfilesDatabase {
   MockAccountProfilesDatabase();
@@ -61,7 +62,7 @@ class MockAccountProfilesDatabase {
       }
 
       profiles.add(
-        AccountProfileModel.fromPrimitives(
+        buildAccountProfileModelFromPrimitives(
           id: artistId,
           name: artist.name,
           slug: artist.id,
@@ -86,7 +87,7 @@ class MockAccountProfilesDatabase {
     // 1. Partners (B2B)
 
     // Restaurante "Beach Club" (Full Config)
-    profiles.add(AccountProfileModel.fromPrimitives(
+    profiles.add(buildAccountProfileModelFromPrimitives(
       id: MockScheduleBackend.generateMongoId('beach-club'),
       name: 'Beach Club Guarapari',
       slug: 'beach-club',
@@ -106,7 +107,7 @@ class MockAccountProfilesDatabase {
     ));
 
     // Bistrô Pequeno (Minimal Config)
-    profiles.add(AccountProfileModel.fromPrimitives(
+    profiles.add(buildAccountProfileModelFromPrimitives(
       id: MockScheduleBackend.generateMongoId('bistro-pequeno'),
       name: 'Le Petit Bistrô',
       slug: 'le-petit-bistro',
@@ -125,7 +126,7 @@ class MockAccountProfilesDatabase {
     ));
 
     // Músico (DJ Residente)
-    profiles.add(AccountProfileModel.fromPrimitives(
+    profiles.add(buildAccountProfileModelFromPrimitives(
       id: MockScheduleBackend.generateMongoId('dj-residente'),
       name: 'DJ Alex Beat',
       slug: 'dj-alex-beat',
@@ -142,7 +143,7 @@ class MockAccountProfilesDatabase {
       distanceMeters: 1800,
     ));
 
-    profiles.add(AccountProfileModel.fromPrimitives(
+    profiles.add(buildAccountProfileModelFromPrimitives(
       id: MockScheduleBackend.generateMongoId('band-alt'),
       name: 'Banda Mar Aberto',
       slug: 'banda-mar-aberto',
@@ -159,7 +160,7 @@ class MockAccountProfilesDatabase {
       distanceMeters: 3100,
     ));
 
-    profiles.add(AccountProfileModel.fromPrimitives(
+    profiles.add(buildAccountProfileModelFromPrimitives(
       id: MockScheduleBackend.generateMongoId('dj-night'),
       name: 'DJ Nightwave',
       slug: 'dj-nightwave',
@@ -177,7 +178,7 @@ class MockAccountProfilesDatabase {
     ));
 
     // Guia (Experience Provider)
-    profiles.add(AccountProfileModel.fromPrimitives(
+    profiles.add(buildAccountProfileModelFromPrimitives(
       id: MockScheduleBackend.generateMongoId('guia-local'),
       name: 'Guarapari Adventures',
       slug: 'guarapari-adventures',
@@ -197,7 +198,7 @@ class MockAccountProfilesDatabase {
     // 2. Users (B2C+)
 
     // Influencer (Nível 2)
-    profiles.add(AccountProfileModel.fromPrimitives(
+    profiles.add(buildAccountProfileModelFromPrimitives(
       id: MockScheduleBackend.generateMongoId('influencer-top'),
       name: 'Bella Lifestyle',
       slug: 'bella-lifestyle',
@@ -216,7 +217,7 @@ class MockAccountProfilesDatabase {
     ));
 
     // Curator (Nível 3)
-    profiles.add(AccountProfileModel.fromPrimitives(
+    profiles.add(buildAccountProfileModelFromPrimitives(
       id: MockScheduleBackend.generateMongoId('curadoria-local'),
       name: 'Agenda Cultural ES',
       slug: 'agenda-cultural-es',
@@ -256,7 +257,7 @@ class MockAccountProfilesDatabase {
           MockScheduleBackend.generateMongoId(venue['id'] as String);
 
       profiles.add(
-        AccountProfileModel.fromPrimitives(
+        buildAccountProfileModelFromPrimitives(
           id: venueId,
           name: venue['name'] as String,
           slug: venue['id'] as String,
@@ -346,7 +347,7 @@ class MockAccountProfilesDatabase {
       };
 
       profiles.add(
-        AccountProfileModel.fromPrimitives(
+        buildAccountProfileModelFromPrimitives(
           id: MockScheduleBackend.generateMongoId(slug),
           name: name,
           slug: slug,
@@ -391,7 +392,7 @@ class MockAccountProfilesDatabase {
         final venueName = seed.location.trim().length < 5
             ? '${seed.location.trim()} Guarapari'
             : seed.location.trim();
-        venueMap[venueSlug] = AccountProfileModel.fromPrimitives(
+        venueMap[venueSlug] = buildAccountProfileModelFromPrimitives(
           id: MockScheduleBackend.generateMongoId(venueSlug),
           name: venueName,
           slug: venueSlug,
@@ -406,7 +407,7 @@ class MockAccountProfilesDatabase {
       for (final artist in seed.artists) {
         final artistSlug = _slugify(artist.name);
         profiles.add(
-          AccountProfileModel.fromPrimitives(
+          buildAccountProfileModelFromPrimitives(
             id: MockScheduleBackend.generateMongoId(artist.id),
             name: artist.name,
             slug: artistSlug,

@@ -44,7 +44,7 @@ void main() {
 
     await _pumpScreen(
       tester,
-      const TenantAdminAccountDetailScreen(accountSlug: 'yuri-dias'),
+      TenantAdminAccountDetailScreen(accountSlug: 'yuri-dias'),
     );
 
     expect(accountsRepository.fetchAccountBySlugCalls, 1);
@@ -61,7 +61,7 @@ void main() {
 
     await _pumpScreen(
       tester,
-      const TenantAdminAccountDetailScreen(accountSlug: 'yuri-dias'),
+      TenantAdminAccountDetailScreen(accountSlug: 'yuri-dias'),
     );
 
     expect(find.text('Conta base'), findsOneWidget);
@@ -83,7 +83,7 @@ void main() {
 
     await _pumpScreen(
       tester,
-      const TenantAdminAccountDetailScreen(accountSlug: 'yuri-dias'),
+      TenantAdminAccountDetailScreen(accountSlug: 'yuri-dias'),
     );
 
     expect(accountsRepository.fetchAccountBySlugCalls, 1);
@@ -107,7 +107,7 @@ void main() {
 
     await _pumpScreen(
       tester,
-      const TenantAdminAccountDetailScreen(accountSlug: 'yuri-dias'),
+      TenantAdminAccountDetailScreen(accountSlug: 'yuri-dias'),
     );
 
     expect(find.text('Excluir conta'), findsNothing);
@@ -121,7 +121,7 @@ void main() {
 
     await _pumpScreen(
       tester,
-      const TenantAdminAccountDetailScreen(accountSlug: 'yuri-dias'),
+      TenantAdminAccountDetailScreen(accountSlug: 'yuri-dias'),
     );
 
     expect(find.text('Excluir conta'), findsOneWidget);
@@ -135,7 +135,7 @@ void main() {
 
     await _pumpScreen(
       tester,
-      const TenantAdminAccountDetailScreen(accountSlug: 'yuri-dias'),
+      TenantAdminAccountDetailScreen(accountSlug: 'yuri-dias'),
     );
 
     await tester.tap(find.text('Excluir conta'));
@@ -160,7 +160,7 @@ void main() {
 
     await _pumpScreen(
       tester,
-      const TenantAdminAccountDetailScreen(accountSlug: 'yuri-dias'),
+      TenantAdminAccountDetailScreen(accountSlug: 'yuri-dias'),
     );
 
     expect(find.text('Inconsistência de dados'), findsOneWidget);
@@ -268,7 +268,7 @@ class _FakeAccountsRepository
 
   @override
   final StreamValue<List<TenantAdminAccount>?> accountsStreamValue =
-      StreamValue<List<TenantAdminAccount>?>(defaultValue: const []);
+      StreamValue<List<TenantAdminAccount>?>(defaultValue: []);
 
   @override
   final StreamValue<bool> hasMoreAccountsStreamValue =
@@ -308,7 +308,7 @@ class _FakeAccountsRepository
         id: 'acc-1',
         name: 'Conta base',
         slug: accountSlug,
-        document: const TenantAdminDocument(type: 'cpf', number: '000'),
+        document: TenantAdminDocument(type: 'cpf', number: '000'),
         ownershipState: TenantAdminOwnershipState.tenantOwned,
       ),
     );
@@ -345,8 +345,7 @@ class _FakeAccountsRepository
       id: 'acc-created',
       name: name,
       slug: 'acc-created',
-      document:
-          document ?? const TenantAdminDocument(type: 'cpf', number: '001'),
+      document: document ?? TenantAdminDocument(type: 'cpf', number: '001'),
       ownershipState: ownershipState,
       organizationId: organizationId,
     );
@@ -429,7 +428,7 @@ class _FakeAccountsRepository
     lastDeletedSlug = accountSlug;
     final accountToRemove = _accountsById.values.firstWhere(
       (entry) => entry.slug == accountSlug,
-      orElse: () => const TenantAdminAccount(
+      orElse: () => TenantAdminAccount(
         id: '',
         name: '',
         slug: '',
@@ -473,7 +472,7 @@ class _FakeAccountProfilesRepository
     String? accountId,
   }) async {
     if (accountId == null || !withProfile) {
-      return const [];
+      return [];
     }
     return [
       TenantAdminAccountProfile(
@@ -487,7 +486,7 @@ class _FakeAccountProfilesRepository
 
   @override
   Future<List<TenantAdminProfileTypeDefinition>> fetchProfileTypes() async {
-    return const [
+    return [
       TenantAdminProfileTypeDefinition(
         type: 'artist',
         label: 'Artist',
@@ -523,7 +522,7 @@ class _FakeAccountProfilesRepository
   Future<TenantAdminAccountProfile> fetchAccountProfile(
     String accountProfileId,
   ) async {
-    return const TenantAdminAccountProfile(
+    return TenantAdminAccountProfile(
       id: 'profile-1',
       accountId: 'acc-1',
       profileType: 'artist',
@@ -581,7 +580,7 @@ class _FakeAccountProfilesRepository
       displayName: displayName ?? 'Perfil',
       slug: slug ?? 'perfil',
       location: location,
-      taxonomyTerms: taxonomyTerms ?? const [],
+      taxonomyTerms: taxonomyTerms ?? [],
       bio: bio,
       content: content,
       avatarUrl: avatarUrl,
@@ -628,9 +627,9 @@ class _FakeAccountProfilesRepository
     return TenantAdminProfileTypeDefinition(
       type: newType ?? type,
       label: label ?? 'Updated',
-      allowedTaxonomies: allowedTaxonomies ?? const [],
+      allowedTaxonomies: allowedTaxonomies ?? [],
       capabilities: capabilities ??
-          const TenantAdminProfileTypeCapabilities(
+          TenantAdminProfileTypeCapabilities(
             isFavoritable: true,
             isPoiEnabled: false,
             hasBio: true,
@@ -652,7 +651,7 @@ class _FakeTaxonomiesRepository
     implements TenantAdminTaxonomiesRepositoryContract {
   @override
   Future<List<TenantAdminTaxonomyDefinition>> fetchTaxonomies() async {
-    return const [];
+    return [];
   }
 
   @override
@@ -661,7 +660,7 @@ class _FakeTaxonomiesRepository
     required int page,
     required int pageSize,
   }) async {
-    return const TenantAdminPagedResult<TenantAdminTaxonomyDefinition>(
+    return TenantAdminPagedResult<TenantAdminTaxonomyDefinition>(
       items: <TenantAdminTaxonomyDefinition>[],
       hasMore: false,
     );
@@ -698,7 +697,7 @@ class _FakeTaxonomiesRepository
       id: taxonomyId,
       slug: slug ?? 'taxonomy',
       name: name ?? 'Taxonomy',
-      appliesTo: appliesTo ?? const [],
+      appliesTo: appliesTo ?? [],
       icon: icon,
       color: color,
     );
@@ -711,7 +710,7 @@ class _FakeTaxonomiesRepository
   Future<List<TenantAdminTaxonomyTermDefinition>> fetchTerms({
     required String taxonomyId,
   }) async {
-    return const [];
+    return [];
   }
 
   @override
@@ -721,7 +720,7 @@ class _FakeTaxonomiesRepository
     required int page,
     required int pageSize,
   }) async {
-    return const TenantAdminPagedResult<TenantAdminTaxonomyTermDefinition>(
+    return TenantAdminPagedResult<TenantAdminTaxonomyTermDefinition>(
       items: <TenantAdminTaxonomyTermDefinition>[],
       hasMore: false,
     );

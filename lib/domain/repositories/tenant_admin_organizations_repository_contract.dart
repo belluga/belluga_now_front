@@ -4,6 +4,13 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_organization.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_result.dart';
 import 'package:stream_value/core/stream_value.dart';
 
+typedef TenantAdminOrganizationsRepositoryContractPrimString = String;
+typedef TenantAdminOrganizationsRepositoryContractPrimInt = int;
+typedef TenantAdminOrganizationsRepositoryContractPrimBool = bool;
+typedef TenantAdminOrganizationsRepositoryContractPrimDouble = double;
+typedef TenantAdminOrganizationsRepositoryContractPrimDateTime = DateTime;
+typedef TenantAdminOrganizationsRepositoryContractPrimDynamic = dynamic;
+
 abstract class TenantAdminOrganizationsRepositoryContract {
   static final Expando<_TenantAdminOrganizationsPaginationState>
       _paginationStateByRepository =
@@ -16,23 +23,28 @@ abstract class TenantAdminOrganizationsRepositoryContract {
   StreamValue<List<TenantAdminOrganization>?> get organizationsStreamValue =>
       _paginationState.organizationsStreamValue;
 
-  StreamValue<bool> get hasMoreOrganizationsStreamValue =>
-      _paginationState.hasMoreOrganizationsStreamValue;
+  StreamValue<TenantAdminOrganizationsRepositoryContractPrimBool>
+      get hasMoreOrganizationsStreamValue =>
+          _paginationState.hasMoreOrganizationsStreamValue;
 
-  StreamValue<bool> get isOrganizationsPageLoadingStreamValue =>
-      _paginationState.isOrganizationsPageLoadingStreamValue;
+  StreamValue<TenantAdminOrganizationsRepositoryContractPrimBool>
+      get isOrganizationsPageLoadingStreamValue =>
+          _paginationState.isOrganizationsPageLoadingStreamValue;
 
-  StreamValue<String?> get organizationsErrorStreamValue =>
-      _paginationState.organizationsErrorStreamValue;
+  StreamValue<TenantAdminOrganizationsRepositoryContractPrimString?>
+      get organizationsErrorStreamValue =>
+          _paginationState.organizationsErrorStreamValue;
 
-  Future<void> loadOrganizations({int pageSize = 20}) async {
+  Future<void> loadOrganizations(
+      {TenantAdminOrganizationsRepositoryContractPrimInt pageSize = 20}) async {
     await _waitForOrganizationsFetch();
     _resetOrganizationsPagination();
     organizationsStreamValue.addValue(null);
     await _fetchOrganizationsPage(page: 1, pageSize: pageSize);
   }
 
-  Future<void> loadNextOrganizationsPage({int pageSize = 20}) async {
+  Future<void> loadNextOrganizationsPage(
+      {TenantAdminOrganizationsRepositoryContractPrimInt pageSize = 20}) async {
     if (_paginationState.isFetchingOrganizationsPage ||
         !_paginationState.hasMoreOrganizations) {
       return;
@@ -52,19 +64,19 @@ abstract class TenantAdminOrganizationsRepositoryContract {
   Future<List<TenantAdminOrganization>> fetchOrganizations();
   Future<TenantAdminPagedResult<TenantAdminOrganization>>
       fetchOrganizationsPage({
-    required int page,
-    required int pageSize,
+    required TenantAdminOrganizationsRepositoryContractPrimInt page,
+    required TenantAdminOrganizationsRepositoryContractPrimInt pageSize,
   }) async {
     final organizations = await fetchOrganizations();
     if (page <= 0 || pageSize <= 0) {
-      return const TenantAdminPagedResult<TenantAdminOrganization>(
+      return TenantAdminPagedResult<TenantAdminOrganization>(
         items: <TenantAdminOrganization>[],
         hasMore: false,
       );
     }
     final startIndex = (page - 1) * pageSize;
     if (startIndex >= organizations.length) {
-      return const TenantAdminPagedResult<TenantAdminOrganization>(
+      return TenantAdminPagedResult<TenantAdminOrganization>(
         items: <TenantAdminOrganization>[],
         hasMore: false,
       );
@@ -76,20 +88,25 @@ abstract class TenantAdminOrganizationsRepositoryContract {
     );
   }
 
-  Future<TenantAdminOrganization> fetchOrganization(String organizationId);
+  Future<TenantAdminOrganization> fetchOrganization(
+      TenantAdminOrganizationsRepositoryContractPrimString organizationId);
   Future<TenantAdminOrganization> createOrganization({
-    required String name,
-    String? description,
+    required TenantAdminOrganizationsRepositoryContractPrimString name,
+    TenantAdminOrganizationsRepositoryContractPrimString? description,
   });
   Future<TenantAdminOrganization> updateOrganization({
-    required String organizationId,
-    String? name,
-    String? slug,
-    String? description,
+    required TenantAdminOrganizationsRepositoryContractPrimString
+        organizationId,
+    TenantAdminOrganizationsRepositoryContractPrimString? name,
+    TenantAdminOrganizationsRepositoryContractPrimString? slug,
+    TenantAdminOrganizationsRepositoryContractPrimString? description,
   });
-  Future<void> deleteOrganization(String organizationId);
-  Future<TenantAdminOrganization> restoreOrganization(String organizationId);
-  Future<void> forceDeleteOrganization(String organizationId);
+  Future<void> deleteOrganization(
+      TenantAdminOrganizationsRepositoryContractPrimString organizationId);
+  Future<TenantAdminOrganization> restoreOrganization(
+      TenantAdminOrganizationsRepositoryContractPrimString organizationId);
+  Future<void> forceDeleteOrganization(
+      TenantAdminOrganizationsRepositoryContractPrimString organizationId);
 
   Future<void> _waitForOrganizationsFetch() async {
     while (_paginationState.isFetchingOrganizationsPage) {
@@ -98,8 +115,8 @@ abstract class TenantAdminOrganizationsRepositoryContract {
   }
 
   Future<void> _fetchOrganizationsPage({
-    required int page,
-    required int pageSize,
+    required TenantAdminOrganizationsRepositoryContractPrimInt page,
+    required TenantAdminOrganizationsRepositoryContractPrimInt pageSize,
   }) async {
     if (_paginationState.isFetchingOrganizationsPage) return;
     if (page > 1 && !_paginationState.hasMoreOrganizations) return;
@@ -166,19 +183,23 @@ mixin TenantAdminOrganizationsPaginationMixin
       _mixinPaginationState.organizationsStreamValue;
 
   @override
-  StreamValue<bool> get hasMoreOrganizationsStreamValue =>
-      _mixinPaginationState.hasMoreOrganizationsStreamValue;
+  StreamValue<TenantAdminOrganizationsRepositoryContractPrimBool>
+      get hasMoreOrganizationsStreamValue =>
+          _mixinPaginationState.hasMoreOrganizationsStreamValue;
 
   @override
-  StreamValue<bool> get isOrganizationsPageLoadingStreamValue =>
-      _mixinPaginationState.isOrganizationsPageLoadingStreamValue;
+  StreamValue<TenantAdminOrganizationsRepositoryContractPrimBool>
+      get isOrganizationsPageLoadingStreamValue =>
+          _mixinPaginationState.isOrganizationsPageLoadingStreamValue;
 
   @override
-  StreamValue<String?> get organizationsErrorStreamValue =>
-      _mixinPaginationState.organizationsErrorStreamValue;
+  StreamValue<TenantAdminOrganizationsRepositoryContractPrimString?>
+      get organizationsErrorStreamValue =>
+          _mixinPaginationState.organizationsErrorStreamValue;
 
   @override
-  Future<void> loadOrganizations({int pageSize = 20}) async {
+  Future<void> loadOrganizations(
+      {TenantAdminOrganizationsRepositoryContractPrimInt pageSize = 20}) async {
     await _waitForOrganizationsFetchMixin();
     _resetOrganizationsPaginationMixin();
     organizationsStreamValue.addValue(null);
@@ -186,7 +207,8 @@ mixin TenantAdminOrganizationsPaginationMixin
   }
 
   @override
-  Future<void> loadNextOrganizationsPage({int pageSize = 20}) async {
+  Future<void> loadNextOrganizationsPage(
+      {TenantAdminOrganizationsRepositoryContractPrimInt pageSize = 20}) async {
     if (_mixinPaginationState.isFetchingOrganizationsPage ||
         !_mixinPaginationState.hasMoreOrganizations) {
       return;
@@ -211,8 +233,8 @@ mixin TenantAdminOrganizationsPaginationMixin
   }
 
   Future<void> _fetchOrganizationsPageMixin({
-    required int page,
-    required int pageSize,
+    required TenantAdminOrganizationsRepositoryContractPrimInt page,
+    required TenantAdminOrganizationsRepositoryContractPrimInt pageSize,
   }) async {
     if (_mixinPaginationState.isFetchingOrganizationsPage) return;
     if (page > 1 && !_mixinPaginationState.hasMoreOrganizations) return;
@@ -269,13 +291,21 @@ class _TenantAdminOrganizationsPaginationState {
       <TenantAdminOrganization>[];
   final StreamValue<List<TenantAdminOrganization>?> organizationsStreamValue =
       StreamValue<List<TenantAdminOrganization>?>();
-  final StreamValue<bool> hasMoreOrganizationsStreamValue =
-      StreamValue<bool>(defaultValue: true);
-  final StreamValue<bool> isOrganizationsPageLoadingStreamValue =
-      StreamValue<bool>(defaultValue: false);
-  final StreamValue<String?> organizationsErrorStreamValue =
-      StreamValue<String?>();
-  bool isFetchingOrganizationsPage = false;
-  bool hasMoreOrganizations = true;
-  int currentOrganizationsPage = 0;
+  final StreamValue<TenantAdminOrganizationsRepositoryContractPrimBool>
+      hasMoreOrganizationsStreamValue =
+      StreamValue<TenantAdminOrganizationsRepositoryContractPrimBool>(
+          defaultValue: true);
+  final StreamValue<TenantAdminOrganizationsRepositoryContractPrimBool>
+      isOrganizationsPageLoadingStreamValue =
+      StreamValue<TenantAdminOrganizationsRepositoryContractPrimBool>(
+          defaultValue: false);
+  final StreamValue<TenantAdminOrganizationsRepositoryContractPrimString?>
+      organizationsErrorStreamValue =
+      StreamValue<TenantAdminOrganizationsRepositoryContractPrimString?>();
+  TenantAdminOrganizationsRepositoryContractPrimBool
+      isFetchingOrganizationsPage = false;
+  TenantAdminOrganizationsRepositoryContractPrimBool hasMoreOrganizations =
+      true;
+  TenantAdminOrganizationsRepositoryContractPrimInt currentOrganizationsPage =
+      0;
 }

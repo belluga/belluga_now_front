@@ -8,8 +8,15 @@ import 'package:stream_value/core/stream_value.dart';
 
 export 'package:belluga_now/domain/schedule/home_agenda_cache_snapshot.dart';
 
+typedef ScheduleRepoString = String;
+typedef ScheduleRepoInt = int;
+typedef ScheduleRepoBool = bool;
+typedef ScheduleRepoDouble = double;
+typedef ScheduleRepoDateTime = DateTime;
+typedef ScheduleRepoDynamic = dynamic;
+
 abstract class ScheduleRepositoryContract {
-  static const int _defaultPagedEventsPageSize = 25;
+  static const ScheduleRepoInt _defaultPagedEventsPageSize = 25;
   static final Expando<_SchedulePagedEventsState>
       _pagedEventsStateByRepository = Expando<_SchedulePagedEventsState>();
 
@@ -25,21 +32,21 @@ abstract class ScheduleRepositoryContract {
   final pagedEventsStreamValue =
       StreamValue<PagedEventsResult?>(defaultValue: null);
 
-  StreamValue<bool> get hasMorePagedEventsStreamValue =>
+  StreamValue<ScheduleRepoBool> get hasMorePagedEventsStreamValue =>
       _pagedEventsState.hasMoreStreamValue;
 
-  StreamValue<bool> get isPagedEventsPageLoadingStreamValue =>
+  StreamValue<ScheduleRepoBool> get isPagedEventsPageLoadingStreamValue =>
       _pagedEventsState.isPageLoadingStreamValue;
 
-  StreamValue<String?> get pagedEventsErrorStreamValue =>
+  StreamValue<ScheduleRepoString?> get pagedEventsErrorStreamValue =>
       _pagedEventsState.errorStreamValue;
 
-  int get currentPagedEventsPage => _pagedEventsState.currentPage;
+  ScheduleRepoInt get currentPagedEventsPage => _pagedEventsState.currentPage;
 
   HomeAgendaCacheSnapshot? readHomeAgendaCache({
-    required bool showPastOnly,
-    required String searchQuery,
-    required bool confirmedOnly,
+    required ScheduleRepoBool showPastOnly,
+    required ScheduleRepoString searchQuery,
+    required ScheduleRepoBool confirmedOnly,
   });
 
   void writeHomeAgendaCache(HomeAgendaCacheSnapshot snapshot);
@@ -47,16 +54,16 @@ abstract class ScheduleRepositoryContract {
 
   Future<ScheduleSummaryModel> getScheduleSummary();
   Future<List<EventModel>> getEventsByDate(
-    DateTime date, {
-    double? originLat,
-    double? originLng,
-    double? maxDistanceMeters,
+    ScheduleRepoDateTime date, {
+    ScheduleRepoDouble? originLat,
+    ScheduleRepoDouble? originLng,
+    ScheduleRepoDouble? maxDistanceMeters,
   });
   Future<void> refreshEventsByDate(
-    DateTime date, {
-    double? originLat,
-    double? originLng,
-    double? maxDistanceMeters,
+    ScheduleRepoDateTime date, {
+    ScheduleRepoDouble? originLat,
+    ScheduleRepoDouble? originLng,
+    ScheduleRepoDouble? maxDistanceMeters,
   }) async {
     final events = await getEventsByDate(
       date,
@@ -68,34 +75,36 @@ abstract class ScheduleRepositoryContract {
   }
 
   Future<List<EventModel>> getAllEvents();
-  Future<EventModel?> getEventBySlug(String slug);
+  Future<EventModel?> getEventBySlug(ScheduleRepoString slug);
   Future<PagedEventsResult> getEventsPage({
-    required int page,
-    required int pageSize,
-    required bool showPastOnly,
-    String searchQuery = '',
-    List<String>? categories,
-    List<String>? tags,
-    List<Map<String, String>>? taxonomy,
-    bool confirmedOnly = false,
-    double? originLat,
-    double? originLng,
-    double? maxDistanceMeters,
+    required ScheduleRepoInt page,
+    required ScheduleRepoInt pageSize,
+    required ScheduleRepoBool showPastOnly,
+    ScheduleRepoString searchQuery = '',
+    List<ScheduleRepoString>? categories,
+    List<ScheduleRepoString>? tags,
+    List<Map<ScheduleRepoString, ScheduleRepoString>>? taxonomy,
+    ScheduleRepoBool confirmedOnly = false,
+    ScheduleRepoDouble? originLat,
+    ScheduleRepoDouble? originLng,
+    ScheduleRepoDouble? maxDistanceMeters,
   });
 
   Future<void> loadEventsPage({
-    int pageSize = _defaultPagedEventsPageSize,
-    required bool showPastOnly,
-    String searchQuery = '',
-    List<String>? categories,
-    List<String>? tags,
-    List<Map<String, String>>? taxonomy,
-    bool confirmedOnly = false,
-    double? originLat,
-    double? originLng,
-    double? maxDistanceMeters,
+    ScheduleRepoInt pageSize = _defaultPagedEventsPageSize,
+    required ScheduleRepoBool showPastOnly,
+    ScheduleRepoString searchQuery = '',
+    List<ScheduleRepoString>? categories,
+    List<ScheduleRepoString>? tags,
+    List<Map<ScheduleRepoString, ScheduleRepoString>>? taxonomy,
+    ScheduleRepoBool confirmedOnly = false,
+    ScheduleRepoDouble? originLat,
+    ScheduleRepoDouble? originLng,
+    ScheduleRepoDouble? maxDistanceMeters,
   }) async {
-    await _waitForPagedEventsFetch();
+    if (_pagedEventsState.isFetching) {
+      return;
+    }
     _resetPagedEventsState();
     pagedEventsStreamValue.addValue(null);
     await _fetchPagedEvents(
@@ -114,16 +123,16 @@ abstract class ScheduleRepositoryContract {
   }
 
   Future<void> loadNextEventsPage({
-    int pageSize = _defaultPagedEventsPageSize,
-    required bool showPastOnly,
-    String searchQuery = '',
-    List<String>? categories,
-    List<String>? tags,
-    List<Map<String, String>>? taxonomy,
-    bool confirmedOnly = false,
-    double? originLat,
-    double? originLng,
-    double? maxDistanceMeters,
+    ScheduleRepoInt pageSize = _defaultPagedEventsPageSize,
+    required ScheduleRepoBool showPastOnly,
+    ScheduleRepoString searchQuery = '',
+    List<ScheduleRepoString>? categories,
+    List<ScheduleRepoString>? tags,
+    List<Map<ScheduleRepoString, ScheduleRepoString>>? taxonomy,
+    ScheduleRepoBool confirmedOnly = false,
+    ScheduleRepoDouble? originLat,
+    ScheduleRepoDouble? originLng,
+    ScheduleRepoDouble? maxDistanceMeters,
   }) async {
     if (_pagedEventsState.isFetching || !_pagedEventsState.hasMore) {
       return;
@@ -150,17 +159,17 @@ abstract class ScheduleRepositoryContract {
   }
 
   Future<void> refreshEventsPage({
-    required int page,
-    required int pageSize,
-    required bool showPastOnly,
-    String searchQuery = '',
-    List<String>? categories,
-    List<String>? tags,
-    List<Map<String, String>>? taxonomy,
-    bool confirmedOnly = false,
-    double? originLat,
-    double? originLng,
-    double? maxDistanceMeters,
+    required ScheduleRepoInt page,
+    required ScheduleRepoInt pageSize,
+    required ScheduleRepoBool showPastOnly,
+    ScheduleRepoString searchQuery = '',
+    List<ScheduleRepoString>? categories,
+    List<ScheduleRepoString>? tags,
+    List<Map<ScheduleRepoString, ScheduleRepoString>>? taxonomy,
+    ScheduleRepoBool confirmedOnly = false,
+    ScheduleRepoDouble? originLat,
+    ScheduleRepoDouble? originLng,
+    ScheduleRepoDouble? maxDistanceMeters,
   }) async {
     final pageResult = await getEventsPage(
       page: page,
@@ -178,24 +187,18 @@ abstract class ScheduleRepositoryContract {
     pagedEventsStreamValue.addValue(pageResult);
   }
 
-  Future<void> _waitForPagedEventsFetch() async {
-    while (_pagedEventsState.isFetching) {
-      await Future<void>.delayed(const Duration(milliseconds: 50));
-    }
-  }
-
   Future<void> _fetchPagedEvents({
-    required int page,
-    required int pageSize,
-    required bool showPastOnly,
-    String searchQuery = '',
-    List<String>? categories,
-    List<String>? tags,
-    List<Map<String, String>>? taxonomy,
-    bool confirmedOnly = false,
-    double? originLat,
-    double? originLng,
-    double? maxDistanceMeters,
+    required ScheduleRepoInt page,
+    required ScheduleRepoInt pageSize,
+    required ScheduleRepoBool showPastOnly,
+    ScheduleRepoString searchQuery = '',
+    List<ScheduleRepoString>? categories,
+    List<ScheduleRepoString>? tags,
+    List<Map<ScheduleRepoString, ScheduleRepoString>>? taxonomy,
+    ScheduleRepoBool confirmedOnly = false,
+    ScheduleRepoDouble? originLat,
+    ScheduleRepoDouble? originLng,
+    ScheduleRepoDouble? maxDistanceMeters,
   }) async {
     if (_pagedEventsState.isFetching) return;
     if (page > 1 && !_pagedEventsState.hasMore) return;
@@ -246,45 +249,47 @@ abstract class ScheduleRepositoryContract {
 
   /// Returns the events for [date] already projected for presentation flows
   /// that require [VenueEventResume] rather than the raw [EventModel].
-  Future<List<VenueEventResume>> getEventResumesByDate(DateTime date);
+  Future<List<VenueEventResume>> getEventResumesByDate(
+      ScheduleRepoDateTime date);
 
   Future<List<VenueEventResume>> fetchUpcomingEvents();
 
   Stream<EventDeltaModel> watchEventsStream({
-    String searchQuery = '',
-    List<String>? categories,
-    List<String>? tags,
-    List<Map<String, String>>? taxonomy,
-    bool confirmedOnly = false,
-    double? originLat,
-    double? originLng,
-    double? maxDistanceMeters,
-    String? lastEventId,
-    bool showPastOnly = false,
+    ScheduleRepoString searchQuery = '',
+    List<ScheduleRepoString>? categories,
+    List<ScheduleRepoString>? tags,
+    List<Map<ScheduleRepoString, ScheduleRepoString>>? taxonomy,
+    ScheduleRepoBool confirmedOnly = false,
+    ScheduleRepoDouble? originLat,
+    ScheduleRepoDouble? originLng,
+    ScheduleRepoDouble? maxDistanceMeters,
+    ScheduleRepoString? lastEventId,
+    ScheduleRepoBool showPastOnly = false,
   });
 
   Stream<void> watchEventsSignal({
     required void Function(EventDeltaModel delta) onDelta,
-    String searchQuery = '',
-    List<String>? categories,
-    List<String>? tags,
-    List<Map<String, String>>? taxonomy,
-    bool confirmedOnly = false,
-    double? originLat,
-    double? originLng,
-    double? maxDistanceMeters,
-    String? lastEventId,
-    bool showPastOnly = false,
+    ScheduleRepoString searchQuery = '',
+    List<ScheduleRepoString>? categories,
+    List<ScheduleRepoString>? tags,
+    List<Map<ScheduleRepoString, ScheduleRepoString>>? taxonomy,
+    ScheduleRepoBool confirmedOnly = false,
+    ScheduleRepoDouble? originLat,
+    ScheduleRepoDouble? originLng,
+    ScheduleRepoDouble? maxDistanceMeters,
+    ScheduleRepoString? lastEventId,
+    ScheduleRepoBool showPastOnly = false,
   });
 }
 
 class _SchedulePagedEventsState {
-  final StreamValue<bool> hasMoreStreamValue =
-      StreamValue<bool>(defaultValue: true);
-  final StreamValue<bool> isPageLoadingStreamValue =
-      StreamValue<bool>(defaultValue: false);
-  final StreamValue<String?> errorStreamValue = StreamValue<String?>();
-  int currentPage = 0;
-  bool hasMore = true;
-  bool isFetching = false;
+  final StreamValue<ScheduleRepoBool> hasMoreStreamValue =
+      StreamValue<ScheduleRepoBool>(defaultValue: true);
+  final StreamValue<ScheduleRepoBool> isPageLoadingStreamValue =
+      StreamValue<ScheduleRepoBool>(defaultValue: false);
+  final StreamValue<ScheduleRepoString?> errorStreamValue =
+      StreamValue<ScheduleRepoString?>();
+  ScheduleRepoInt currentPage = 0;
+  ScheduleRepoBool hasMore = true;
+  ScheduleRepoBool isFetching = false;
 }

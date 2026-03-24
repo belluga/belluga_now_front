@@ -1,4 +1,5 @@
 import 'package:belluga_now/domain/app_data/app_data.dart';
+import 'package:belluga_now/testing/app_data_test_factory.dart';
 import 'package:belluga_now/domain/app_data/value_object/platform_type_value.dart';
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/domain/partners/paged_account_profiles_result.dart';
@@ -10,6 +11,7 @@ import 'package:belluga_now/infrastructure/repositories/account_profiles_reposit
 import 'package:event_tracker_handler/event_tracker_handler.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
+import 'package:belluga_now/testing/account_profile_model_factory.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -29,7 +31,7 @@ void main() {
     final validId = _generateMongoId();
     final backend = _StubAccountProfilesBackend(
       accountProfiles: [
-        AccountProfileModel.fromPrimitives(
+        buildAccountProfileModelFromPrimitives(
           id: validId,
           name: 'Artist One',
           slug: 'artist-one',
@@ -53,7 +55,7 @@ void main() {
     final validId = _generateMongoId();
     final backend = _StubAccountProfilesBackend(
       accountProfiles: [
-        AccountProfileModel.fromPrimitives(
+        buildAccountProfileModelFromPrimitives(
           id: validId,
           name: 'Artist One',
           slug: 'artist-one',
@@ -92,7 +94,7 @@ void main() {
     final validId = _generateMongoId();
     final backend = _StubAccountProfilesBackend(
       accountProfiles: [
-        AccountProfileModel.fromPrimitives(
+        buildAccountProfileModelFromPrimitives(
           id: validId,
           name: 'Artist One',
           slug: 'artist-one',
@@ -349,7 +351,7 @@ AppData _buildAppData() {
     'port': null,
     'device': 'test-device',
   };
-  return AppData.fromInitialization(
+  return buildAppDataFromInitialization(
       remoteData: remoteData, localInfo: localInfo);
 }
 

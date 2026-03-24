@@ -1,3 +1,5 @@
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
+
 class TenantAdminTaxonomyDTO {
   const TenantAdminTaxonomyDTO({
     required this.id,
@@ -31,6 +33,17 @@ class TenantAdminTaxonomyDTO {
       appliesTo: applies,
       icon: json['icon']?.toString(),
       color: json['color']?.toString(),
+    );
+  }
+
+  TenantAdminTaxonomyDefinition toDomain() {
+    return TenantAdminTaxonomyDefinition(
+      id: id,
+      slug: slug,
+      name: name,
+      appliesTo: appliesTo,
+      icon: icon,
+      color: color,
     );
   }
 }

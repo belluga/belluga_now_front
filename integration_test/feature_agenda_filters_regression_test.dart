@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:belluga_now/testing/domain_factories.dart';
 import 'dart:io';
 import 'package:belluga_now/testing/invite_accept_result_builder.dart';
 
@@ -10,6 +11,8 @@ import 'package:belluga_now/domain/invites/invite_model.dart';
 import 'package:belluga_now/domain/invites/invite_next_step.dart';
 import 'package:belluga_now/domain/invites/invite_runtime_settings.dart';
 import 'package:belluga_now/domain/invites/invite_share_code_result.dart';
+import 'package:belluga_now/domain/app_data/app_type.dart';
+import 'package:belluga_now/domain/app_data/value_object/platform_type_value.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
 import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
@@ -26,13 +29,8 @@ import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
 import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
 import 'package:belluga_now/infrastructure/dal/dao/app_data_backend_contract.dart';
 import 'package:belluga_now/infrastructure/platform/app_data_local_info_source/app_data_local_info_source.dart';
+import 'package:belluga_now/infrastructure/platform/app_data_local_info_source/app_data_local_info_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/app_data_dto.dart';
-import 'package:belluga_now/infrastructure/dal/dto/mappers/artist_dto_mapper.dart';
-import 'package:belluga_now/infrastructure/dal/dto/mappers/invite_dto_mapper.dart';
-import 'package:belluga_now/infrastructure/dal/dto/mappers/invite_status_dto_mapper.dart';
-import 'package:belluga_now/infrastructure/dal/dto/mappers/partner_dto_mapper.dart';
-import 'package:belluga_now/infrastructure/dal/dto/mappers/schedule_dto_mapper.dart';
-import 'package:belluga_now/infrastructure/dal/dto/mappers/thumb_dto_mapper.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_artist_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_type_dto.dart';
@@ -49,6 +47,7 @@ import 'package:integration_test/integration_test.dart';
 import 'package:stream_value/core/stream_value.dart';
 import 'support/fake_schedule_repository.dart';
 import 'support/integration_test_bootstrap.dart';
+import 'package:belluga_now/testing/invite_model_factory.dart';
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
@@ -493,7 +492,7 @@ class _TestInvitesRepository extends InvitesRepositoryContract {
 
   @override
   Future<InviteRuntimeSettings> fetchSettings() async =>
-      const InviteRuntimeSettings(
+      buildInviteRuntimeSettings(
         tenantId: null,
         limits: {},
         cooldowns: {},
@@ -502,7 +501,7 @@ class _TestInvitesRepository extends InvitesRepositoryContract {
 
   @override
   Future<InviteDeclineResult> declineInvite(String inviteId) async =>
-      InviteDeclineResult(
+      buildInviteDeclineResult(
         inviteId: inviteId,
         status: 'declined',
         groupHasOtherPending: false,
@@ -519,7 +518,7 @@ class _TestInvitesRepository extends InvitesRepositoryContract {
     String? occurrenceId,
     String? accountProfileId,
   }) async =>
-      InviteShareCodeResult(
+      buildInviteShareCodeResult(
         code: 'test-share-code',
         eventId: eventId,
         occurrenceId: occurrenceId,
@@ -618,7 +617,13 @@ class _TestAppDataBackend implements AppDataBackendContract {
 
 class _TestAppDataLocalInfoSource extends AppDataLocalInfoSource {
   @override
-  Future<Map<String, dynamic>> getInfo() async => const {};
+  Future<AppDataLocalInfoDTO> getInfo() async => AppDataLocalInfoDTO(
+        platformTypeValue: PlatformTypeValue(defaultValue: AppType.mobile),
+        port: null,
+        hostname: '',
+        href: '',
+        device: '',
+      );
 }
 
 List<EventModel> _buildEvents() {
@@ -657,7 +662,7 @@ List<EventModel> _buildEvents() {
 
 List<InviteModel> _buildInvites() {
   return [
-    InviteModel.fromPrimitives(
+    buildInviteModelFromPrimitives(
       id: _mongoIdForSeed('invite-1'),
       eventId: _AgendaFiltersHarness._pendingInviteEventId,
       eventName: 'Show Beta',
@@ -670,8 +675,6 @@ List<InviteModel> _buildInvites() {
     ),
   ];
 }
-
-final _scheduleDtoMapper = _TestScheduleDtoMapper();
 
 EventModel _buildEvent({
   required String id,
@@ -715,7 +718,7 @@ EventModel _buildEvent({
       ),
     ],
   );
-  return _scheduleDtoMapper.mapEventDto(dto);
+  return dto.toDomain();
 }
 
 String _mongoIdForSeed(String seed) {
@@ -875,15 +878,6 @@ class _TestHttpClient implements HttpClient {
   @override
   Object? noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
-
-class _TestScheduleDtoMapper
-    with
-        InviteDtoMapper,
-        ThumbDtoMapper,
-        ArtistDtoMapper,
-        PartnerDtoMapper,
-        InviteStatusDtoMapper,
-        ScheduleDtoMapper {}
 
 class _TestHttpClientRequest implements HttpClientRequest {
   _TestHttpClientRequest(this._imageBytes);

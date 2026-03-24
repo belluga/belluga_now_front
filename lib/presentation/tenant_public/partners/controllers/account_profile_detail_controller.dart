@@ -3,6 +3,7 @@ import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/domain/partners/profile_type_registry.dart';
 import 'package:belluga_now/domain/partners/projections/partner_profile_config.dart';
 import 'package:belluga_now/domain/partners/services/partner_profile_config_builder.dart';
+import 'package:belluga_now/domain/partners/value_objects/profile_type_key_value.dart';
 import 'package:belluga_now/domain/repositories/account_profiles_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:get_it/get_it.dart';
@@ -61,7 +62,7 @@ class AccountProfileDetailController implements Disposable {
   void loadResolvedAccountProfile(AccountProfileModel accountProfile) {
     accountProfileStreamValue.addValue(accountProfile);
     final capabilities =
-        _resolveRegistry()?.capabilitiesFor(accountProfile.type);
+        _resolveRegistry()?.capabilitiesFor(ProfileTypeKeyValue(accountProfile.type));
     profileConfigStreamValue.addValue(
       _profileConfigBuilder.build(
         accountProfile,
@@ -86,7 +87,7 @@ class AccountProfileDetailController implements Disposable {
   bool isFavoritable(AccountProfileModel accountProfile) {
     final registry = _resolveRegistry();
     if (registry == null || registry.isEmpty) return false;
-    return registry.isFavoritableFor(accountProfile.type);
+    return registry.isFavoritableFor(ProfileTypeKeyValue(accountProfile.type));
   }
 
   ProfileTypeRegistry? _resolveRegistry() {

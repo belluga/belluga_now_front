@@ -3,12 +3,17 @@ import 'package:belluga_now/domain/map/value_objects/poi_filter_label_value.dart
 import 'package:belluga_now/domain/map/value_objects/poi_filter_taxonomy_term_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_filter_taxonomy_type_value.dart';
 
+typedef PoiFilterTaxonomyTermRawType = String;
+typedef PoiFilterTaxonomyTermRawValue = String;
+typedef PoiFilterTaxonomyTermRawLabel = String;
+typedef PoiFilterTaxonomyTermRawCount = int;
+
 class PoiFilterTaxonomyTerm {
   PoiFilterTaxonomyTerm({
-    required String type,
-    required String value,
-    required String label,
-    required int count,
+    required PoiFilterTaxonomyTermRawType type,
+    required PoiFilterTaxonomyTermRawValue value,
+    required PoiFilterTaxonomyTermRawLabel label,
+    required PoiFilterTaxonomyTermRawCount count,
   })  : typeValue = _buildTypeValue(type),
         valueValue = _buildValueValue(value),
         labelValue = _buildLabelValue(label),
@@ -27,23 +32,28 @@ class PoiFilterTaxonomyTerm {
   String get token =>
       '${type.trim().toLowerCase()}:${value.trim().toLowerCase()}';
 
-  static PoiFilterTaxonomyTypeValue _buildTypeValue(String raw) {
+  static PoiFilterTaxonomyTypeValue _buildTypeValue(
+    PoiFilterTaxonomyTermRawType raw,
+  ) {
     final value = PoiFilterTaxonomyTypeValue()..parse(raw.trim().toLowerCase());
     return value;
   }
 
-  static PoiFilterTaxonomyTermValue _buildValueValue(String raw) {
-    final value = PoiFilterTaxonomyTermValue()
-      ..parse(raw.trim().toLowerCase());
+  static PoiFilterTaxonomyTermValue _buildValueValue(
+    PoiFilterTaxonomyTermRawValue raw,
+  ) {
+    final value = PoiFilterTaxonomyTermValue()..parse(raw.trim().toLowerCase());
     return value;
   }
 
-  static PoiFilterLabelValue _buildLabelValue(String raw) {
+  static PoiFilterLabelValue _buildLabelValue(
+      PoiFilterTaxonomyTermRawLabel raw) {
     final value = PoiFilterLabelValue()..parse(raw.trim());
     return value;
   }
 
-  static PoiFilterCountValue _buildCountValue(int raw) {
+  static PoiFilterCountValue _buildCountValue(
+      PoiFilterTaxonomyTermRawCount raw) {
     final value = PoiFilterCountValue()..parse(raw.toString());
     return value;
   }

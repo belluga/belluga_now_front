@@ -1,7 +1,9 @@
 part of 'engagement_data.dart';
 
+typedef VenuePresenceCount = int;
+
 class VenueEngagementData extends EngagementData {
-  final int presenceCount;
+  final VenuePresenceCount presenceCount;
 
   const VenueEngagementData({
     required this.presenceCount,

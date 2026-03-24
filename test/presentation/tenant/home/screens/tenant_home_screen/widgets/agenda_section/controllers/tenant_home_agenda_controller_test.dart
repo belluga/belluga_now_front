@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'package:belluga_now/testing/domain_factories.dart';
 
 import 'package:belluga_now/domain/app_data/app_data.dart';
+import 'package:belluga_now/testing/app_data_test_factory.dart';
 import 'package:belluga_now/domain/app_data/value_object/platform_type_value.dart';
 import 'package:belluga_now/domain/contacts/contact_model.dart';
 import 'package:belluga_now/domain/invites/invite_accept_result.dart';
@@ -91,6 +93,46 @@ void main() {
 
       await appDataRepository.setMaxRadiusMeters(5000);
       expect(controller.radiusMetersStreamValue.value, 5000);
+
+      controller.onDispose();
+    });
+
+    test('coalesces rapid radius updates into a single refresh', () async {
+      final appData = _buildAppData(
+        minKm: 2,
+        defaultKm: 7,
+        maxKm: 15,
+      );
+      final appDataRepository = _FakeAppDataRepository(appData);
+      final scheduleRepository = _FakeScheduleRepository();
+      final controller = TenantHomeAgendaController(
+        scheduleRepository: scheduleRepository,
+        userEventsRepository: _FakeUserEventsRepository(),
+        invitesRepository: _FakeInvitesRepository(),
+        userLocationRepository: _FakeUserLocationRepository(),
+        appDataRepository: appDataRepository,
+        radiusRefreshDebounce: const Duration(milliseconds: 40),
+      );
+
+      await controller.init();
+      expect(scheduleRepository.getEventsPageCallCount, 1);
+
+      controller.setRadiusMeters(4000);
+      controller.setRadiusMeters(5000);
+      controller.setRadiusMeters(6000);
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      expect(
+        scheduleRepository.getEventsPageCallCount,
+        1,
+        reason: 'Should not refresh before debounce window closes.',
+      );
+
+      await Future<void>.delayed(const Duration(milliseconds: 80));
+      expect(
+        scheduleRepository.getEventsPageCallCount,
+        2,
+        reason: 'Rapid radius updates must coalesce into one fetch.',
+      );
 
       controller.onDispose();
     });
@@ -853,7 +895,7 @@ AppData _buildAppData({
     'device': 'test-device',
   };
 
-  return AppData.fromInitialization(
+  return buildAppDataFromInitialization(
       remoteData: remoteData, localInfo: localInfo);
 }
 
@@ -1532,7 +1574,7 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
 
   @override
   Future<InviteRuntimeSettings> fetchSettings() async =>
-      const InviteRuntimeSettings(
+      buildInviteRuntimeSettings(
         tenantId: null,
         limits: {},
         cooldowns: {},
@@ -1552,7 +1594,7 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
 
   @override
   Future<InviteDeclineResult> declineInvite(String inviteId) async =>
-      InviteDeclineResult(
+      buildInviteDeclineResult(
         inviteId: inviteId,
         status: 'declined',
         groupHasOtherPending: false,
@@ -1568,7 +1610,7 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
     String? occurrenceId,
     String? accountProfileId,
   }) async =>
-      InviteShareCodeResult(
+      buildInviteShareCodeResult(
         code: 'CODE123',
         eventId: eventId,
         occurrenceId: occurrenceId,

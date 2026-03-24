@@ -1,4 +1,5 @@
 import 'package:belluga_now/domain/contacts/contact_model.dart';
+import 'package:belluga_now/testing/domain_factories.dart';
 import 'package:belluga_now/domain/invites/invite_accept_result.dart';
 import 'package:belluga_now/domain/invites/invite_contact_match.dart';
 import 'package:belluga_now/domain/invites/invite_decline_result.dart';
@@ -6,6 +7,8 @@ import 'package:belluga_now/domain/invites/invite_model.dart';
 import 'package:belluga_now/domain/invites/invite_next_step.dart';
 import 'package:belluga_now/domain/invites/invite_runtime_settings.dart';
 import 'package:belluga_now/domain/invites/invite_share_code_result.dart';
+import 'package:belluga_now/domain/app_data/app_type.dart';
+import 'package:belluga_now/domain/app_data/value_object/platform_type_value.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
@@ -20,6 +23,7 @@ import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
 import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
 import 'package:belluga_now/infrastructure/dal/dao/app_data_backend_contract.dart';
 import 'package:belluga_now/infrastructure/platform/app_data_local_info_source/app_data_local_info_source.dart';
+import 'package:belluga_now/infrastructure/platform/app_data_local_info_source/app_data_local_info_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/app_data_dto.dart';
 import 'package:belluga_now/infrastructure/repositories/app_data_repository.dart';
 import 'package:belluga_now/presentation/shared/location_permission/controllers/location_permission_controller.dart';
@@ -402,7 +406,7 @@ class FakeInvitesRepository extends InvitesRepositoryContract {
 
   @override
   Future<InviteRuntimeSettings> fetchSettings() async =>
-      const InviteRuntimeSettings(
+      buildInviteRuntimeSettings(
         tenantId: null,
         limits: {},
         cooldowns: {},
@@ -422,7 +426,7 @@ class FakeInvitesRepository extends InvitesRepositoryContract {
 
   @override
   Future<InviteDeclineResult> declineInvite(String inviteId) async =>
-      InviteDeclineResult(
+      buildInviteDeclineResult(
         inviteId: inviteId,
         status: 'declined',
         groupHasOtherPending: false,
@@ -439,7 +443,7 @@ class FakeInvitesRepository extends InvitesRepositoryContract {
     String? occurrenceId,
     String? accountProfileId,
   }) async =>
-      InviteShareCodeResult(
+      buildInviteShareCodeResult(
         code: 'test-share-code',
         eventId: eventId,
         occurrenceId: occurrenceId,
@@ -540,5 +544,11 @@ class FakeAppDataBackend implements AppDataBackendContract {
 
 class FakeAppDataLocalInfoSource extends AppDataLocalInfoSource {
   @override
-  Future<Map<String, dynamic>> getInfo() async => const {};
+  Future<AppDataLocalInfoDTO> getInfo() async => AppDataLocalInfoDTO(
+        platformTypeValue: PlatformTypeValue(defaultValue: AppType.mobile),
+        port: null,
+        hostname: '',
+        href: '',
+        device: '',
+      );
 }

@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:belluga_now/domain/app_data/app_data.dart';
+import 'package:belluga_now/testing/app_data_test_factory.dart';
 import 'package:belluga_now/domain/app_data/value_object/platform_type_value.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
@@ -286,6 +289,37 @@ void main() {
     expect(result.events.first.type.description.value, isEmpty);
     expect(result.events.first.content.valueText, isEmpty);
   });
+
+  test('loadEventsPage ignores second first-page request while one is in-flight',
+      () async {
+    final backend = _BlockingFirstPageScheduleBackend();
+    final repository = ScheduleRepository(
+      backend: backend,
+      userLocationRepository: _FakeUserLocationRepository(),
+      appDataRepository: _FakeAppDataRepository(_buildAppData()),
+    );
+
+    final firstLoadFuture = repository.loadEventsPage(
+      showPastOnly: false,
+    );
+
+    await backend.waitUntilFirstRequestStarts();
+
+    await repository.loadEventsPage(
+      showPastOnly: false,
+    );
+
+    expect(
+      backend.fetchEventsPageCalls,
+      1,
+      reason: 'A second first-page request must be ignored while in-flight.',
+    );
+
+    backend.releaseFirstRequest();
+    await firstLoadFuture;
+
+    expect(repository.currentPagedEventsPage, 1);
+  });
 }
 
 class _CapturingScheduleBackend implements ScheduleBackendContract {
@@ -346,6 +380,72 @@ class _CapturingScheduleBackend implements ScheduleBackendContract {
       events: [_buildEventDto()],
       hasMore: false,
     );
+  }
+
+  @override
+  Stream<EventDeltaDTO> watchEventsStream({
+    String? searchQuery,
+    List<String>? categories,
+    List<String>? tags,
+    List<Map<String, String>>? taxonomy,
+    bool confirmedOnly = false,
+    double? originLat,
+    double? originLng,
+    double? maxDistanceMeters,
+    String? lastEventId,
+    bool showPastOnly = false,
+  }) {
+    return const Stream<EventDeltaDTO>.empty();
+  }
+}
+
+class _BlockingFirstPageScheduleBackend implements ScheduleBackendContract {
+  final Completer<void> _firstRequestStarted = Completer<void>();
+  final Completer<void> _releaseFirstRequest = Completer<void>();
+  int fetchEventsPageCalls = 0;
+
+  Future<void> waitUntilFirstRequestStarts() => _firstRequestStarted.future;
+
+  void releaseFirstRequest() {
+    if (!_releaseFirstRequest.isCompleted) {
+      _releaseFirstRequest.complete();
+    }
+  }
+
+  @override
+  Future<EventSummaryDTO> fetchSummary() async =>
+      EventSummaryDTO(items: const []);
+
+  @override
+  Future<List<EventDTO>> fetchEvents() async => const [];
+
+  @override
+  Future<EventDTO?> fetchEventDetail({required String eventIdOrSlug}) async =>
+      null;
+
+  @override
+  Future<EventPageDTO> fetchEventsPage({
+    required int page,
+    required int pageSize,
+    required bool showPastOnly,
+    String? searchQuery,
+    List<String>? categories,
+    List<String>? tags,
+    List<Map<String, String>>? taxonomy,
+    bool confirmedOnly = false,
+    double? originLat,
+    double? originLng,
+    double? maxDistanceMeters,
+  }) async {
+    fetchEventsPageCalls += 1;
+    if (fetchEventsPageCalls == 1) {
+      if (!_firstRequestStarted.isCompleted) {
+        _firstRequestStarted.complete();
+      }
+      await _releaseFirstRequest.future;
+    }
+
+    return EventPageDTO(events: const [], hasMore: false);
   }
 
   @override
@@ -545,7 +645,7 @@ AppData _buildAppData({
     'device': 'test-device',
   };
 
-  return AppData.fromInitialization(
+  return buildAppDataFromInitialization(
     remoteData: remoteData,
     localInfo: localInfo,
   );

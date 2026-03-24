@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:belluga_now/domain/partners/engagement_data.dart';
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/domain/partners/profile_type_registry.dart';
+import 'package:belluga_now/domain/partners/value_objects/profile_type_key_value.dart';
 import 'package:belluga_now/domain/repositories/account_profiles_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
@@ -326,7 +327,9 @@ class DiscoveryScreenController implements Disposable {
     }
     final allowed = registry
         .enabledAccountProfileTypes()
-        .where((type) => registry.isFavoritableFor(type))
+        .where(
+          (type) => registry.isFavoritableFor(ProfileTypeKeyValue(type)),
+        )
         .toList(growable: false);
     availableTypesStreamValue.addValue(allowed);
   }
@@ -334,7 +337,9 @@ class DiscoveryScreenController implements Disposable {
   bool isFavoritable(AccountProfileModel accountProfile) {
     final registry = _resolveRegistry();
     if (registry == null || registry.isEmpty) return false;
-    return registry.isFavoritableFor(accountProfile.type);
+    return registry.isFavoritableFor(
+      ProfileTypeKeyValue(accountProfile.type),
+    );
   }
 
   String labelForAccountProfileType(String type) {
@@ -342,7 +347,7 @@ class DiscoveryScreenController implements Disposable {
     if (registry == null || registry.isEmpty) {
       return _fallbackLabelForType(type);
     }
-    return registry.labelForType(type);
+    return registry.labelForType(ProfileTypeKeyValue(type));
   }
 
   ProfileTypeRegistry? _resolveRegistry() {

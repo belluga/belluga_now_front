@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:belluga_form_validation/belluga_form_validation.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
+import 'package:belluga_now/testing/app_data_test_factory.dart';
 import 'package:belluga_now/domain/app_data/value_object/platform_type_value.dart';
 import 'package:belluga_now/domain/repositories/landlord_auth_repository_contract.dart';
 import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.dart';
@@ -495,6 +496,6 @@ AppData _buildAppData() {
     'port': null,
     'device': 'test-device',
   };
-  return AppData.fromInitialization(
+  return buildAppDataFromInitialization(
       remoteData: remoteData, localInfo: localInfo);
 }

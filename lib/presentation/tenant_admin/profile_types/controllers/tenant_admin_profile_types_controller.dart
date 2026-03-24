@@ -47,7 +47,7 @@ class TenantAdminProfileTypesController implements Disposable {
       StreamValue<bool>(defaultValue: false);
   final StreamValue<String?> taxonomiesErrorStreamValue =
       StreamValue<String?>();
-  static const TenantAdminProfileTypeCapabilities _emptyCapabilities =
+  static final TenantAdminProfileTypeCapabilities _emptyCapabilities =
       TenantAdminProfileTypeCapabilities(
     isFavoritable: false,
     isPoiEnabled: false,

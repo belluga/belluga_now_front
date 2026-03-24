@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:belluga_now/testing/domain_factories.dart';
 import 'dart:developer' as developer;
 import 'package:belluga_now/testing/invite_accept_result_builder.dart';
 
@@ -6,6 +7,7 @@ import 'package:belluga_now/application/application.dart';
 import 'package:belluga_now/application/application_contract.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
+import 'package:belluga_now/testing/app_data_test_factory.dart';
 import 'package:belluga_now/domain/app_data/value_object/platform_type_value.dart';
 import 'package:belluga_now/domain/contacts/contact_model.dart';
 import 'package:belluga_now/domain/invites/invite_accept_result.dart';
@@ -36,13 +38,23 @@ import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_is_confirmed_value.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_total_confirmed_value.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_type_id_value.dart';
+import 'package:belluga_now/domain/thumb/enums/thumb_types.dart';
 import 'package:belluga_now/domain/thumb/thumb_model.dart';
 import 'package:belluga_now/domain/tenant/tenant.dart';
+import 'package:belluga_now/domain/tenant/value_objects/app_domain_value.dart';
+import 'package:belluga_now/domain/tenant/value_objects/domain_value.dart';
+import 'package:belluga_now/domain/tenant/value_objects/icon_url_value.dart';
+import 'package:belluga_now/domain/tenant/value_objects/main_color_value.dart';
+import 'package:belluga_now/domain/tenant/value_objects/main_logo_url_value.dart';
+import 'package:belluga_now/domain/tenant/value_objects/subdomain_value.dart';
+import 'package:belluga_now/domain/tenant/value_objects/tenant_name_value.dart';
 import 'package:belluga_now/domain/user/user_contract.dart';
 import 'package:belluga_now/domain/user/user_profile_contract.dart';
 import 'package:belluga_now/domain/value_objects/color_value.dart';
 import 'package:belluga_now/domain/value_objects/description_value.dart';
 import 'package:belluga_now/domain/value_objects/slug_value.dart';
+import 'package:belluga_now/domain/value_objects/thumb_type_value.dart';
+import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
 import 'package:belluga_now/domain/value_objects/title_value.dart';
 import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
 import 'package:belluga_now/presentation/shared/auth/screens/auth_login_screen/auth_login_screen.dart';
@@ -433,7 +445,7 @@ AppData _buildAppData({
     'device': 'integration-test-device',
   };
 
-  return AppData.fromInitialization(
+  return buildAppDataFromInitialization(
     remoteData: remoteData,
     localInfo: localInfo,
   );
@@ -620,14 +632,18 @@ class _FakeTenantRepository extends TenantRepositoryContract {
 
   @override
   Future<Tenant> fetchTenant() async {
-    return Tenant.fromPrimitives(
-      name: 'Tenant Test',
-      subdomain: 'guarappari',
-      mainLogoUrl: 'https://example.com/logo.png',
-      iconUrl: 'https://example.com/icon.png',
-      mainColor: '#009688',
-      domains: <String>[appData.mainDomainValue.value.toString()],
-      appDomains: const <String>['com.guarappari.app'],
+    return Tenant(
+      name: TenantNameValue()..parse('Tenant Test'),
+      subdomain: SubdomainValue()..parse('guarappari'),
+      mainLogoUrl: MainLogoUrlValue()..parse('https://example.com/logo.png'),
+      iconUrl: IconUrlValue()..parse('https://example.com/icon.png'),
+      mainColor: MainColorValue()..parse('#009688'),
+      domains: <DomainValue>[
+        DomainValue()..parse(appData.mainDomainValue.value.toString()),
+      ],
+      appDomains: <AppDomainValue>[
+        AppDomainValue()..parse('com.guarappari.app'),
+      ],
     );
   }
 }
@@ -730,12 +746,12 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
     String? occurrenceId,
     String? accountProfileId,
   }) async {
-    return InviteShareCodeResult(code: 'CODE123', eventId: eventId);
+    return buildInviteShareCodeResult(code: 'CODE123', eventId: eventId);
   }
 
   @override
   Future<InviteDeclineResult> declineInvite(String inviteId) async {
-    return InviteDeclineResult(
+    return buildInviteDeclineResult(
       inviteId: inviteId,
       status: 'declined',
       groupHasOtherPending: false,
@@ -752,7 +768,7 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
 
   @override
   Future<InviteRuntimeSettings> fetchSettings() async {
-    return const InviteRuntimeSettings(
+    return buildInviteRuntimeSettings(
       tenantId: null,
       limits: {},
       cooldowns: {},
@@ -949,7 +965,13 @@ EventModel _buildEvent({required String slug}) {
     content: HTMLContentValue()..parse('Descricao longa do evento para teste.'),
     location: DescriptionValue()..parse('Local de teste'),
     venue: null,
-    thumb: ThumbModel.fromPrimitives(url: 'https://example.com/event.png'),
+    thumb: ThumbModel(
+      thumbUri: ThumbUriValue(
+        defaultValue: Uri.parse('https://example.com/event.png'),
+      )..parse('https://example.com/event.png'),
+      thumbType: ThumbTypeValue(defaultValue: ThumbTypes.image)
+        ..parse(ThumbTypes.image.name),
+    ),
     dateTimeStart: DateTimeValue(isRequired: true)
       ..parse(DateTime(2026, 3, 15, 20).toIso8601String()),
     dateTimeEnd: null,

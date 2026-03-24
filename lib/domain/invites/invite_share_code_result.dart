@@ -1,11 +1,19 @@
+import 'package:belluga_now/domain/invites/value_objects/invite_event_id_value.dart';
+import 'package:belluga_now/domain/invites/value_objects/invite_occurrence_id_value.dart';
+import 'package:belluga_now/domain/invites/value_objects/invite_share_code_value.dart';
+
 class InviteShareCodeResult {
   const InviteShareCodeResult({
-    required this.code,
-    required this.eventId,
-    this.occurrenceId,
+    required this.codeValue,
+    required this.eventIdValue,
+    this.occurrenceIdValue,
   });
 
-  final String code;
-  final String eventId;
-  final String? occurrenceId;
+  final InviteShareCodeValue codeValue;
+  final InviteEventIdValue eventIdValue;
+  final InviteOccurrenceIdValue? occurrenceIdValue;
+
+  String get code => codeValue.value;
+  String get eventId => eventIdValue.value;
+  String? get occurrenceId => occurrenceIdValue?.value;
 }

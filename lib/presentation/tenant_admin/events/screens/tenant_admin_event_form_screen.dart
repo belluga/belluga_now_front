@@ -5,6 +5,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_event.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_definition.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_value_parsers.dart';
 import 'package:belluga_now/presentation/shared/widgets/belluga_network_image.dart';
 import 'package:belluga_now/presentation/tenant_admin/events/controllers/tenant_admin_events_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_image_ingestion_service.dart';
@@ -1308,11 +1309,11 @@ class _TenantAdminEventFormScreenState
                   formState.locationMode == 'hybrid') &&
               selectedVenue != null
           ? TenantAdminEventPlaceRef(
-              type: 'account_profile',
-              id: selectedVenue.id,
-              metadata: {
+              typeValue: tenantAdminRequiredText('account_profile'),
+              idValue: tenantAdminRequiredText(selectedVenue.id),
+              metadataValue: tenantAdminDynamicMap({
                 'display_name': selectedVenue.displayName,
-              },
+              }),
             )
           : null;
 
@@ -1329,15 +1330,17 @@ class _TenantAdminEventFormScreenState
         ),
         occurrences: <TenantAdminEventOccurrence>[
           TenantAdminEventOccurrence(
-            dateTimeStart: startAt.toUtc(),
-            dateTimeEnd: endAt?.toUtc(),
+            dateTimeStartValue: tenantAdminDateTime(startAt.toUtc()),
+            dateTimeEndValue: tenantAdminOptionalDateTime(endAt?.toUtc()),
           ),
         ],
         publication: TenantAdminEventPublication(
-          status: formState.publicationStatus,
-          publishAt: formState.publicationStatus == 'publish_scheduled'
-              ? publishAt?.toUtc()
-              : null,
+          statusValue: tenantAdminRequiredText(formState.publicationStatus),
+          publishAtValue: tenantAdminOptionalDateTime(
+            formState.publicationStatus == 'publish_scheduled'
+                ? publishAt?.toUtc()
+                : null,
+          ),
         ),
         location: location,
         placeRef: placeRef,
