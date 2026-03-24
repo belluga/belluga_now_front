@@ -33,6 +33,11 @@
 - `domain_dto_dependency_forbidden` (`P0`): domain cannot depend on DTO artifacts.
 - `domain_json_factory_forbidden` (`P0`): domain cannot declare `fromJson`/`fromMap` factories.
 - `repository_json_parsing_forbidden` (`P0`): repositories cannot parse raw JSON or hydrate DTOs directly.
+- `dto_mapper_pass_through_forbidden` (`P0`): methods in DTO mapper files are forbidden when they receive DTO/primitives and return domain payloads; DTO->Domain conversion must live only in `DTO.toDomain()`.
+- `repository_model_stream_lifecycle_methods_required` (`P1`): repositories owning `StreamValue` with `*Model` payload must expose initialize/populate + refresh lifecycle methods returning `void`/`Future<void>`.
+- `repository_model_streamvalue_nullable_required` (`P1`): repositories must keep model-carrying `StreamValue` payloads top-level nullable (`StreamValue<T?>`).
+- `repository_registration_scope_enforced` (`P1`): repositories can be registered only in `module_settings.dart`.
+- `repository_registration_lifecycle_enforced` (`P1`): repositories cannot be registered with factory lifecycle; use singleton lifecycle.
 - `repository_raw_payload_map_forbidden` (`P0`): repositories cannot own raw payload map typing/parsing/building (`Map<String, Object?>`).
 - `repository_raw_transport_typing_forbidden` (`P0`): repositories cannot declare raw transport typing such as `dynamic` or `Map<String, dynamic>`.
 - `service_json_parsing_forbidden` (`P0`): services cannot parse raw JSON or hydrate DTOs directly.
@@ -40,6 +45,9 @@
 - `repository_inline_dto_to_domain_mapper_forbidden` (`P0`): repositories cannot own inline DTO -> domain mapper methods.
 - `module_direct_getit_registration_forbidden` (`P0`): classes extending `ModuleContract` cannot use direct `GetIt.I.register*`.
 - `controller_direct_navigation_forbidden` (`P1`): controllers cannot call Navigator/router navigation methods.
+- `controller_repository_async_model_fetch_forbidden` (`P1`): controllers cannot invoke repository async methods returning payloads directly (must trigger `Future<void>` intents).
+- `controller_repository_pagination_arguments_forbidden` (`P1`): controllers cannot pass pagination-control arguments (`page/cursor/pageSize/perPage/limit/...`) into repository calls.
+- `controller_streamvalue_model_ownership_forbidden` (`P1`): controllers cannot own `StreamValue` with `*Model` payload; canonical model streams must be delegated from repositories.
 - `ui_navigator_usage_forbidden` (`P1`): UI cannot call `Navigator.*` directly.
 - `ui_navigation_after_await_forbidden` (`P1`): UI navigation after async gaps is forbidden.
 - `route_page_must_live_in_routes_folder` (`P1`): `@RoutePage` declarations must live in `lib/presentation/**/routes/**`.
@@ -47,6 +55,7 @@
 - `ui_route_param_hydration_forbidden` (`P1`): screens cannot hydrate feature data from `widget.<route_param>` inside lifecycle methods (`initState`/`didUpdateWidget`).
 - `route_path_param_requires_resolver_route` (`P1`): route pages using `@PathParam` must extend `ResolverRoute<,>` for model hydration through a route resolver.
 - `ui_future_stream_builder_forbidden` (`P1`): `FutureBuilder`/`StreamBuilder` are forbidden under `StreamValue` architecture.
+- `ui_streamvalue_builder_null_check_forbidden` (`P1`): UI must not null-check the builder value inside `StreamValueBuilder`; use `onNullWidget`.
 - `ui_controller_ownership_forbidden` (`P1`): Screen files cannot own UI controllers/keys; auxiliary widgets can own them only when isolated from feature controller interactions.
 - `domain_primitive_field_forbidden` (`P1`): domain fields cannot use primitive transport-oriented types directly.
 - `screen_controller_resolution_pattern_required` (`P2`): screen classes must not receive controller params; resolve controller in screen file.
@@ -159,6 +168,57 @@ final dto = await backend.fetchEventDto();
 return mapEventDto(dto);
 ```
 
+### `repository_model_stream_lifecycle_methods_required`
+Violation:
+```dart
+class ScheduleRepository {
+  final eventsStreamValue = StreamValue<List<EventModel>?>(defaultValue: null);
+}
+```
+Fix:
+```dart
+class ScheduleRepository {
+  final eventsStreamValue = StreamValue<List<EventModel>?>(defaultValue: null);
+
+  Future<void> initializeEvents() async { ... }
+  Future<void> refreshEvents() async { ... }
+}
+```
+
+### `repository_model_streamvalue_nullable_required`
+Violation:
+```dart
+final eventsStreamValue = StreamValue<List<EventModel>>(defaultValue: const []);
+```
+Fix:
+```dart
+final eventsStreamValue = StreamValue<List<EventModel>?>(defaultValue: null);
+```
+
+### `repository_registration_scope_enforced`
+Violation:
+```dart
+// file: lib/application/router/modular_app/modules/home_module.dart
+registerLazySingleton<ScheduleRepositoryContract>(() => ScheduleRepository());
+```
+Fix:
+```dart
+// move repository registration to:
+// lib/application/router/modular_app/module_settings.dart
+```
+
+### `repository_registration_lifecycle_enforced`
+Violation:
+```dart
+GetIt.I.registerFactory<ScheduleRepositoryContract>(() => ScheduleRepository());
+```
+Fix:
+```dart
+GetIt.I.registerLazySingleton<ScheduleRepositoryContract>(
+  () => ScheduleRepository(),
+);
+```
+
 ### `repository_raw_transport_typing_forbidden`
 Violation:
 ```dart
@@ -236,6 +296,23 @@ class EventRepository with EventDtoMapper {
 }
 ```
 
+### `dto_mapper_pass_through_forbidden`
+Violation:
+```dart
+mixin EventDtoMapper {
+  EventModel mapEventDto(EventDTO dto) => dto.toDomain();
+
+  EventModel mapFromPrimitive(String id) => EventModel(id: id);
+}
+```
+Fix:
+```dart
+final event = dto.toDomain();
+
+// Or build the DTO and convert inside DTO.
+final event = EventDTO(id: id).toDomain();
+```
+
 ### `module_direct_getit_registration_forbidden`
 Violation:
 ```dart
@@ -262,6 +339,41 @@ router.push(const HomeRoute());
 Fix:
 ```dart
 navigationIntentStreamValue.add(HomeNavigationIntent.openHome());
+```
+
+### `controller_repository_async_model_fetch_forbidden`
+Violation:
+```dart
+final events = await _scheduleRepository.fetchAgendaEvents();
+```
+Fix:
+```dart
+await _scheduleRepository.refreshAgendaEvents();
+// UI consumes controller-delegated repository StreamValue
+```
+
+### `controller_repository_pagination_arguments_forbidden`
+Violation:
+```dart
+await _scheduleRepository.getEventsPage(page: _currentPage, pageSize: 20);
+await _scheduleRepository.refreshEventsWindow(pageSize: 20);
+```
+Fix:
+```dart
+await _scheduleRepository.fetchNextEventsPage();
+// Repository owns pagination cursor/page lifecycle.
+```
+
+### `controller_streamvalue_model_ownership_forbidden`
+Violation:
+```dart
+final displayedEventsStreamValue =
+    StreamValue<List<EventModel>?>(defaultValue: null);
+```
+Fix:
+```dart
+StreamValue<List<EventModel>?> get displayedEventsStreamValue =>
+    _scheduleRepository.homeAgendaEventsStreamValue;
 ```
 
 ### `ui_navigator_usage_forbidden`
@@ -391,6 +503,12 @@ custom_lint:
   rules:
     - domain_primitive_field_forbidden: false
 ```
+Execution note (2026-03-24):
+```bash
+# Canonical invocation for this repo/workspace:
+fvm dart run custom_lint
+```
+`--no-watch` is forbidden in this lane. In the current toolchain the `custom_lint` CLI does not expose a negatable `watch` flag, which caused false-clean/silent runs when that argument was used.
 Violation:
 ```dart
 class EventModel {

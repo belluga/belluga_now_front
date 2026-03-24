@@ -1,10 +1,12 @@
 import 'dart:math' as math;
 
+typedef GeoDistanceCoordinateScalar = double;
+
 double haversineDistanceMeters({
-  required double lat1,
-  required double lon1,
-  required double lat2,
-  required double lon2,
+  required GeoDistanceCoordinateScalar lat1,
+  required GeoDistanceCoordinateScalar lon1,
+  required GeoDistanceCoordinateScalar lat2,
+  required GeoDistanceCoordinateScalar lon2,
 }) {
   const earthRadiusMeters = 6371000.0;
   final lat1Rad = _degToRad(lat1);
@@ -21,5 +23,4 @@ double haversineDistanceMeters({
   return earthRadiusMeters * c;
 }
 
-double _degToRad(double deg) => deg * (math.pi / 180.0);
-
+double _degToRad(GeoDistanceCoordinateScalar deg) => deg * (math.pi / 180.0);

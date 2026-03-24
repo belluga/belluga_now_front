@@ -12,26 +12,33 @@ import 'package:belluga_now/domain/invites/invite_share_code_result.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_accepted_at_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_acceptance_status_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_attendance_policy_value.dart';
+import 'package:belluga_now/domain/invites/value_objects/invite_cooldowns_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_credited_acceptance_value.dart';
+import 'package:belluga_now/domain/invites/value_objects/invite_decline_status_value.dart';
+import 'package:belluga_now/domain/invites/value_objects/invite_declined_at_value.dart';
+import 'package:belluga_now/domain/invites/value_objects/invite_event_id_value.dart';
+import 'package:belluga_now/domain/invites/value_objects/invite_has_other_pending_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_id_value.dart';
 import 'package:belluga_now/domain/invites/value_objects/invite_materialization_status_value.dart';
+import 'package:belluga_now/domain/invites/value_objects/invite_message_value.dart';
+import 'package:belluga_now/domain/invites/value_objects/invite_occurrence_id_value.dart';
+import 'package:belluga_now/domain/invites/value_objects/invite_rate_limits_value.dart';
+import 'package:belluga_now/domain/invites/value_objects/invite_share_code_value.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
 import 'package:belluga_now/domain/schedule/friend_resume.dart';
 import 'package:belluga_now/domain/schedule/invite_status.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
+import 'package:belluga_now/domain/tenant/value_objects/tenant_id_value.dart';
 import 'package:belluga_now/infrastructure/dal/dao/invites/invites_response_decoder.dart';
 import 'package:belluga_now/infrastructure/dal/dao/laravel_backend/invites_backend/laravel_invites_backend.dart';
-import 'package:belluga_now/infrastructure/dal/dto/mappers/invite_dto_mapper.dart';
 import 'package:belluga_now/infrastructure/repositories/push/push_payload_upsert_mixin.dart';
 import 'package:belluga_now/infrastructure/services/invites_backend_contract.dart';
 import 'package:crypto/crypto.dart';
 import 'package:belluga_now/domain/repositories/friends_repository_contract.dart';
+import 'package:value_object_pattern/domain/value_objects/date_time_value.dart';
 
 class InvitesRepository extends InvitesRepositoryContract
-    with
-        InviteDtoMapper,
-        PushPayloadUpsertMixin<InviteModel>,
-        PushInvitePayloadMixin
+    with PushPayloadUpsertMixin<InviteModel>, PushInvitePayloadMixin
     implements PushInvitePayloadAware {
   InvitesRepository({
     InvitesBackendContract? backend,
@@ -50,7 +57,7 @@ class InvitesRepository extends InvitesRepositoryContract
     final invitesRaw = response['invites'];
     final invites = _responseDecoder
         .decodeInviteDtos(invitesRaw)
-        .map(mapInviteDto)
+        .map((dto) => dto.toDomain())
         .toList(growable: false);
 
     if (page == 1) {
@@ -64,10 +71,11 @@ class InvitesRepository extends InvitesRepositoryContract
   Future<InviteRuntimeSettings> fetchSettings() async {
     final response = await _backend.fetchSettings();
     final settings = InviteRuntimeSettings(
-      tenantId: _stringOrNull(response['tenant_id']),
-      limits: _parseIntMap(response['limits']),
-      cooldowns: _parseIntMap(response['cooldowns']),
-      overQuotaMessage: _stringOrNull(response['over_quota_message']),
+      tenantIdValue: _buildTenantIdValueOrNull(_stringOrNull(response['tenant_id'])),
+      limitValues: InviteRateLimitsValue(_parseIntMap(response['limits'])),
+      cooldownValues: InviteCooldownsValue(_parseIntMap(response['cooldowns'])),
+      overQuotaMessageValue:
+          _buildInviteMessageValueOrNull(_stringOrNull(response['over_quota_message'])),
     );
     settingsStreamValue.addValue(settings);
     return settings;
@@ -103,10 +111,11 @@ class InvitesRepository extends InvitesRepositoryContract
     final response = await _backend.declineInvite(inviteId);
     await fetchInvites();
     return InviteDeclineResult(
-      inviteId: _stringOrEmpty(response['invite_id']),
-      status: _stringOrEmpty(response['status']),
-      groupHasOtherPending: response['group_has_other_pending'] == true,
-      declinedAt: _parseDateTime(response['declined_at']),
+      inviteIdValue: _buildInviteIdValue(_stringOrEmpty(response['invite_id'])),
+      statusValue: InviteDeclineStatusValue(_stringOrEmpty(response['status'])),
+      groupHasOtherPendingValue:
+          InviteHasOtherPendingValue(response['group_has_other_pending'] == true),
+      declinedAtValue: InviteDeclinedAtValue(_parseDateTime(response['declined_at'])),
     );
   }
 
@@ -138,7 +147,7 @@ class InvitesRepository extends InvitesRepositoryContract
       inviteRaw,
       context: 'invite share preview',
     );
-    return mapInviteDto(decoded);
+    return decoded.toDomain();
   }
 
   @override
@@ -179,9 +188,10 @@ class InvitesRepository extends InvitesRepositoryContract
     );
 
     return InviteShareCodeResult(
-      code: _stringOrEmpty(response['code']),
-      eventId: targetRef.eventId,
-      occurrenceId: targetRef.occurrenceId,
+      codeValue: InviteShareCodeValue(_stringOrEmpty(response['code'])),
+      eventIdValue: _buildInviteEventIdValue(targetRef.eventId),
+      occurrenceIdValue:
+          _buildInviteOccurrenceIdValueOrNull(targetRef.occurrenceId),
     );
   }
 
@@ -233,8 +243,10 @@ class InvitesRepository extends InvitesRepositoryContract
       existingByRecipient[recipient.id] = SentInviteStatus(
         friend: recipient,
         status: InviteStatus.pending,
-        sentAt: existingByRecipient[recipient.id]?.sentAt ?? now,
-        respondedAt: existingByRecipient[recipient.id]?.respondedAt,
+        sentAtValue:
+            existingByRecipient[recipient.id]?.sentAtValue ??
+            (DateTimeValue()..parse(now.toIso8601String())),
+        respondedAtValue: existingByRecipient[recipient.id]?.respondedAtValue,
       );
     }
 
@@ -379,5 +391,34 @@ class InvitesRepository extends InvitesRepositoryContract
 
   List<InviteIdValue> _buildInviteIdValues(List<String> values) {
     return List<InviteIdValue>.unmodifiable(values.map(_buildInviteIdValue));
+  }
+
+  TenantIdValue? _buildTenantIdValueOrNull(String? value) {
+    if (value == null || value.isEmpty) {
+      return null;
+    }
+    final tenantIdValue = TenantIdValue()..parse(value);
+    return tenantIdValue;
+  }
+
+  InviteMessageValue? _buildInviteMessageValueOrNull(String? value) {
+    if (value == null || value.isEmpty) {
+      return null;
+    }
+    final messageValue = InviteMessageValue()..parse(value);
+    return messageValue;
+  }
+
+  InviteEventIdValue _buildInviteEventIdValue(String value) {
+    final eventIdValue = InviteEventIdValue()..parse(value);
+    return eventIdValue;
+  }
+
+  InviteOccurrenceIdValue? _buildInviteOccurrenceIdValueOrNull(String? value) {
+    if (value == null || value.trim().isEmpty) {
+      return null;
+    }
+    final occurrenceIdValue = InviteOccurrenceIdValue()..parse(value);
+    return occurrenceIdValue;
   }
 }

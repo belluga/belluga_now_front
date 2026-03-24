@@ -16,6 +16,13 @@ import 'package:belluga_now/domain/value_objects/slug_value.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_is_confirmed_value.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_total_confirmed_value.dart';
 
+typedef EventModelPrimString = String;
+typedef EventModelPrimInt = int;
+typedef EventModelPrimBool = bool;
+typedef EventModelPrimDouble = double;
+typedef EventModelPrimDateTime = DateTime;
+typedef EventModelPrimDynamic = dynamic;
+
 class EventModel {
   final MongoIDValue id;
   final SlugValue slugValue; // Added slugValue
@@ -29,11 +36,11 @@ class EventModel {
   final DateTimeValue? dateTimeEnd;
   final List<ArtistResume> artists; // Keep for backward compatibility
   final CityCoordinate? coordinate;
-  final List<String> tags;
+  final List<EventModelPrimString> tags;
 
   // Confirmation state
   final EventIsConfirmedValue isConfirmedValue;
-  final DateTime? confirmedAt;
+  final EventModelPrimDateTime? confirmedAt;
 
   // Received invites (who invited me)
   final List<InviteModel>? receivedInvites;
@@ -45,15 +52,12 @@ class EventModel {
   final List<EventFriendResume>? friendsGoing;
   final EventTotalConfirmedValue totalConfirmedValue;
 
-  bool get isConfirmed => isConfirmedValue.value;
-  int get totalConfirmed => totalConfirmedValue.value;
-  String get slug => slugValue.value; // Added getter
-  List<String> get taxonomyTags {
-    final cleaned = tags
-        .map((t) => t.trim())
-        .where((t) => t.isNotEmpty)
-        .toSet()
-        .toList();
+  EventModelPrimBool get isConfirmed => isConfirmedValue.value;
+  EventModelPrimInt get totalConfirmed => totalConfirmedValue.value;
+  EventModelPrimString get slug => slugValue.value; // Added getter
+  List<EventModelPrimString> get taxonomyTags {
+    final cleaned =
+        tags.map((t) => t.trim()).where((t) => t.isNotEmpty).toSet().toList();
     if (cleaned.isNotEmpty) return cleaned;
 
     final artistGenres = artists
@@ -86,5 +90,4 @@ class EventModel {
     this.friendsGoing,
     required this.totalConfirmedValue,
   });
-
 }

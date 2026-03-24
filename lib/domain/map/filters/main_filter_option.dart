@@ -5,6 +5,13 @@ import 'package:belluga_now/domain/map/city_poi_category.dart';
 import 'package:belluga_now/domain/map/filters/main_filter_behavior.dart';
 import 'package:belluga_now/domain/map/filters/main_filter_type.dart';
 
+typedef MainFilterOptionId = String;
+typedef MainFilterOptionLabel = String;
+typedef MainFilterOptionIconName = String;
+typedef MainFilterOptionTag = String;
+typedef MainFilterOptionTagSet = Set<MainFilterOptionTag>;
+typedef MainFilterOptionMetadata = Map<String, dynamic>;
+
 class MainFilterOption {
   const MainFilterOption({
     required this.id,
@@ -14,17 +21,17 @@ class MainFilterOption {
     required this.behavior,
     this.categories,
     this.tags,
-    this.metadata = const <String, dynamic>{},
+    this.metadata = const <MainFilterOptionTag, dynamic>{},
   });
 
   /// Unique identifier for analytics/toggling.
-  final String id;
+  final MainFilterOptionId id;
 
   /// Display label shown alongside the FAB.
-  final String label;
+  final MainFilterOptionLabel label;
 
   /// Material icon name that represents this filter.
-  final String iconName;
+  final MainFilterOptionIconName iconName;
 
   final MainFilterType type;
 
@@ -34,10 +41,10 @@ class MainFilterOption {
   final Set<CityPoiCategory>? categories;
 
   /// Tags that should be enforced when the filter is executed.
-  final Set<String>? tags;
+  final MainFilterOptionTagSet? tags;
 
   /// Additional metadata to support specialised panels (e.g., slug, region list key).
-  final Map<String, dynamic> metadata;
+  final MainFilterOptionMetadata metadata;
 
   bool get opensPanel => behavior == MainFilterBehavior.opensPanel;
 

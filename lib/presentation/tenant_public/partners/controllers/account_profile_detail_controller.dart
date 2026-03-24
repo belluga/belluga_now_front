@@ -3,6 +3,7 @@ import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/domain/partners/profile_type_registry.dart';
 import 'package:belluga_now/domain/partners/projections/partner_profile_config.dart';
 import 'package:belluga_now/domain/partners/services/partner_profile_config_builder.dart';
+import 'package:belluga_now/domain/partners/value_objects/profile_type_key_value.dart';
 import 'package:belluga_now/domain/repositories/account_profiles_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:get_it/get_it.dart';
@@ -31,7 +32,8 @@ class AccountProfileDetailController implements Disposable {
   final PartnerProfileConfigBuilder _profileConfigBuilder;
   final AuthRepositoryContract? _authRepository;
 
-  final accountProfileStreamValue = StreamValue<AccountProfileModel?>();
+  StreamValue<AccountProfileModel?> get accountProfileStreamValue =>
+      _accountProfilesRepository.selectedAccountProfileStreamValue;
   final isLoadingStreamValue = StreamValue<bool>(defaultValue: false);
   StreamValue<Set<String>> get favoriteIdsStream =>
       _accountProfilesRepository.favoriteAccountProfileIdsStreamValue;
@@ -43,10 +45,10 @@ class AccountProfileDetailController implements Disposable {
   Future<void> loadAccountProfile(String slug) async {
     isLoadingStreamValue.addValue(true);
     try {
+      await _accountProfilesRepository.loadAccountProfileBySlug(slug);
       final accountProfile =
-          await _accountProfilesRepository.getAccountProfileBySlug(slug);
+          _accountProfilesRepository.selectedAccountProfileStreamValue.value;
       if (accountProfile == null) {
-        accountProfileStreamValue.addValue(null);
         profileConfigStreamValue.addValue(null);
         moduleDataStreamValue.addValue(const {});
         return;
@@ -60,7 +62,7 @@ class AccountProfileDetailController implements Disposable {
   void loadResolvedAccountProfile(AccountProfileModel accountProfile) {
     accountProfileStreamValue.addValue(accountProfile);
     final capabilities =
-        _resolveRegistry()?.capabilitiesFor(accountProfile.type);
+        _resolveRegistry()?.capabilitiesFor(ProfileTypeKeyValue(accountProfile.type));
     profileConfigStreamValue.addValue(
       _profileConfigBuilder.build(
         accountProfile,
@@ -85,7 +87,7 @@ class AccountProfileDetailController implements Disposable {
   bool isFavoritable(AccountProfileModel accountProfile) {
     final registry = _resolveRegistry();
     if (registry == null || registry.isEmpty) return false;
-    return registry.isFavoritableFor(accountProfile.type);
+    return registry.isFavoritableFor(ProfileTypeKeyValue(accountProfile.type));
   }
 
   ProfileTypeRegistry? _resolveRegistry() {
@@ -110,7 +112,6 @@ class AccountProfileDetailController implements Disposable {
 
   @override
   void onDispose() {
-    accountProfileStreamValue.dispose();
     isLoadingStreamValue.dispose();
     profileConfigStreamValue.dispose();
     moduleDataStreamValue.dispose();

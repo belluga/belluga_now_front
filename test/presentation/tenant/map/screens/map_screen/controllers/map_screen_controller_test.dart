@@ -147,6 +147,13 @@ class _FakeUserLocationRepository implements UserLocationRepositoryContract {
       StreamValue<String?>();
 
   @override
+  @override
+  final StreamValue<LocationResolutionPhase>
+      locationResolutionPhaseStreamValue = StreamValue<LocationResolutionPhase>(
+    defaultValue: LocationResolutionPhase.unknown,
+  );
+
+  @override
   Future<void> ensureLoaded() async {}
 
   @override
@@ -436,7 +443,10 @@ void main() {
         _buildPoi(id: 'poi-a'),
       ];
       await controller.loadPois(PoiQuery());
-      expect(controller.filteredPoisStreamValue.value, hasLength(1));
+      expect(
+        controller.filteredPoisStreamValue.value ?? const <CityPoiModel>[],
+        hasLength(1),
+      );
 
       controller.selectPoi(_buildPoi(id: 'poi-a'));
       expect(controller.selectedPoiStreamValue.value, isNotNull);
@@ -447,7 +457,10 @@ void main() {
         loadingMessage: 'Aplicando filtros...',
       );
 
-      expect(controller.filteredPoisStreamValue.value, isEmpty);
+      expect(
+        controller.filteredPoisStreamValue.value ?? const <CityPoiModel>[],
+        isEmpty,
+      );
       expect(controller.selectedPoiStreamValue.value, isNull);
     });
 
@@ -557,7 +570,8 @@ void main() {
       await _flushMicrotasks();
 
       expect(
-        controller.filteredPoisStreamValue.value.map((poi) => poi.id),
+        (controller.filteredPoisStreamValue.value ?? const <CityPoiModel>[])
+            .map((poi) => poi.id),
         equals(<String>['poi-second']),
       );
     });

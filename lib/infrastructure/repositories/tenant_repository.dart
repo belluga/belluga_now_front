@@ -1,6 +1,13 @@
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/repositories/tenant_repository_contract.dart';
 import 'package:belluga_now/domain/tenant/tenant.dart';
+import 'package:belluga_now/domain/tenant/value_objects/app_domain_value.dart';
+import 'package:belluga_now/domain/tenant/value_objects/domain_value.dart';
+import 'package:belluga_now/domain/tenant/value_objects/icon_url_value.dart';
+import 'package:belluga_now/domain/tenant/value_objects/main_color_value.dart';
+import 'package:belluga_now/domain/tenant/value_objects/main_logo_url_value.dart';
+import 'package:belluga_now/domain/tenant/value_objects/subdomain_value.dart';
+import 'package:belluga_now/domain/tenant/value_objects/tenant_name_value.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:get_it/get_it.dart';
 
@@ -36,14 +43,20 @@ class TenantRepository extends TenantRepositoryContract {
             ? appData.tenantIdValue.value
             : mainDomainHost);
 
-    return Tenant.fromPrimitives(
-      name: tenantName,
-      subdomain: _resolveSubdomain(mainDomainHost),
-      mainLogoUrl: appData.mainLogoUrl.value.toString(),
-      iconUrl: appData.iconUrl.value.toString(),
-      mainColor: appData.mainColor.value,
-      domains: domains,
-      appDomains: appDomains,
+    return Tenant(
+      name: TenantNameValue()..parse(tenantName),
+      subdomain: SubdomainValue()..parse(_resolveSubdomain(mainDomainHost)),
+      mainLogoUrl: MainLogoUrlValue()..parse(appData.mainLogoUrl.value.toString()),
+      iconUrl: IconUrlValue()..parse(appData.iconMUrl.value.toString()),
+      mainColor: MainColorValue()..parse(appData.mainColor.value),
+      domains:
+          domains
+              .map((domain) => DomainValue()..parse(domain))
+              .toList(growable: false),
+      appDomains:
+          appDomains
+              ?.map((domain) => AppDomainValue()..parse(domain))
+              .toList(growable: false),
     );
   }
 

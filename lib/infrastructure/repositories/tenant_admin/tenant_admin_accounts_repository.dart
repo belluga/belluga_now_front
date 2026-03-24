@@ -13,14 +13,13 @@ import 'package:belluga_now/infrastructure/dal/dao/tenant_admin/tenant_admin_acc
 import 'package:belluga_now/infrastructure/dal/dao/tenant_admin/tenant_admin_media_form_data_builder.dart';
 import 'package:belluga_now/infrastructure/dal/dao/tenant_admin/tenant_admin_pagination_decoder.dart';
 import 'package:belluga_now/infrastructure/dal/dto/tenant_admin/tenant_admin_accounts_response_decoder.dart';
-import 'package:belluga_now/infrastructure/dal/dto/mappers/tenant_admin_dto_mapper.dart';
 import 'package:belluga_now/infrastructure/repositories/tenant_admin/support/tenant_admin_validation_failure_resolver.dart';
 import 'package:dio/dio.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value.dart';
 
 class TenantAdminAccountsRepository
-    with TenantAdminAccountsRepositoryPaginationMixin, TenantAdminDtoMapper
+    with TenantAdminAccountsRepositoryPaginationMixin
     implements TenantAdminAccountsRepositoryContract {
   TenantAdminAccountsRepository({
     Dio? dio,
@@ -178,7 +177,7 @@ class TenantAdminAccountsRepository
           currentPage;
       final hasMore = currentPage < lastPage;
       return TenantAdminPagedAccountsResult(
-        accounts: dtos.map(mapTenantAdminAccountDto).toList(growable: false),
+        accounts: dtos.map((dto) => dto.toDomain()).toList(growable: false),
         hasMore: hasMore,
       );
     } on DioException catch (error) {
@@ -198,7 +197,7 @@ class TenantAdminAccountsRepository
         options: Options(headers: _buildHeaders()),
       );
       final dto = _responseDecoder.decodeAccountItem(response.data);
-      final account = mapTenantAdminAccountDto(dto);
+      final account = dto.toDomain();
       _upsertLoadedAccount(account);
       return account;
     } on DioException catch (error) {
@@ -226,7 +225,7 @@ class TenantAdminAccountsRepository
         options: Options(headers: _buildHeaders()),
       );
       final dto = _responseDecoder.decodeCreateAccountItem(response.data);
-      final created = mapTenantAdminAccountDto(dto);
+      final created = dto.toDomain();
       _appendLoadedAccount(created);
       return created;
     } on DioException catch (error) {
@@ -269,9 +268,8 @@ class TenantAdminAccountsRepository
         options: Options(headers: _buildHeaders()),
       );
       final onboardingData = _responseDecoder.decodeOnboarding(response.data);
-      final account = mapTenantAdminAccountDto(onboardingData.account);
-      final accountProfile =
-          mapTenantAdminAccountProfileDto(onboardingData.accountProfile);
+      final account = onboardingData.account.toDomain();
+      final accountProfile = onboardingData.accountProfile.toDomain();
       _appendLoadedAccount(account);
       return TenantAdminAccountOnboardingResult(
         account: account,
@@ -303,7 +301,7 @@ class TenantAdminAccountsRepository
         options: Options(headers: _buildHeaders()),
       );
       final dto = _responseDecoder.decodeAccountItem(response.data);
-      final updated = mapTenantAdminAccountDto(dto);
+      final updated = dto.toDomain();
       _upsertLoadedAccount(updated);
       return updated;
     } on DioException catch (error) {
@@ -332,7 +330,7 @@ class TenantAdminAccountsRepository
         options: Options(headers: _buildHeaders()),
       );
       final dto = _responseDecoder.decodeAccountItem(response.data);
-      final restored = mapTenantAdminAccountDto(dto);
+      final restored = dto.toDomain();
       _upsertLoadedAccount(restored);
       return restored;
     } on DioException catch (error) {

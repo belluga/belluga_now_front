@@ -7,8 +7,19 @@ import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/application/router/support/route_redirect_path.dart';
 import 'package:belluga_now/domain/invites/invite_model.dart';
 import 'package:belluga_now/domain/invites/invite_next_step.dart';
+import 'package:belluga_now/domain/invites/value_objects/invite_attendance_policy_value.dart';
+import 'package:belluga_now/domain/invites/value_objects/invite_event_date_value.dart';
+import 'package:belluga_now/domain/invites/value_objects/invite_event_id_value.dart';
+import 'package:belluga_now/domain/invites/value_objects/invite_host_name_value.dart';
+import 'package:belluga_now/domain/invites/value_objects/invite_id_value.dart';
+import 'package:belluga_now/domain/invites/value_objects/invite_location_value.dart';
+import 'package:belluga_now/domain/invites/value_objects/invite_message_value.dart';
+import 'package:belluga_now/domain/invites/value_objects/invite_occurrence_id_value.dart';
+import 'package:belluga_now/domain/invites/value_objects/invite_tag_value.dart';
 import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
 import 'package:belluga_now/domain/schedule/invite_status.dart';
+import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
+import 'package:belluga_now/domain/value_objects/title_value.dart';
 import 'package:belluga_now/presentation/tenant_public/invites/widgets/invite_candidate_picker.dart';
 import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/models/immersive_tab_item.dart';
 import 'package:belluga_now/presentation/shared/widgets/immersive_detail_screen/immersive_detail_screen.dart';
@@ -61,13 +72,11 @@ class _ImmersiveEventDetailScreenState
   Widget build(BuildContext context) {
     return StreamValueBuilder<EventModel?>(
       streamValue: _controller.eventStreamValue,
+      onNullWidget: const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      ),
       builder: (context, event) {
-        if (event == null) {
-          return const Scaffold(
-            body: Center(child: CircularProgressIndicator()),
-          );
-        }
-
+        final resolvedEvent = event!;
         return StreamValueBuilder<bool>(
           streamValue: _controller.isConfirmedStreamValue,
           builder: (context, isConfirmed) {
@@ -80,7 +89,7 @@ class _ImmersiveEventDetailScreenState
                   streamValue: _controller.sentInvitesByEventStreamValue,
                   builder: (context, sentInvitesByEvent) {
                     final sentForEvent =
-                        sentInvitesByEvent[event.id.value] ?? const [];
+                        sentInvitesByEvent[resolvedEvent.id.value] ?? const [];
 
                     final Widget? topBanner = receivedInvites.isNotEmpty
                         ? Padding(
@@ -96,12 +105,12 @@ class _ImmersiveEventDetailScreenState
                     final tabs = <ImmersiveTabItem>[
                       ImmersiveTabItem(
                         title: 'O Rolê',
-                        content: EventInfoSection(event: event),
+                        content: EventInfoSection(event: resolvedEvent),
                         footer: null,
                       ),
                       ImmersiveTabItem(
                         title: 'Line-up',
-                        content: LineupSection(event: event),
+                        content: LineupSection(event: resolvedEvent),
                         footer: isConfirmed
                             ? DynamicFooter(
                                 buttonText: 'Seguir todos os artistas',
@@ -115,7 +124,7 @@ class _ImmersiveEventDetailScreenState
                       ),
                       ImmersiveTabItem(
                         title: 'O Local',
-                        content: LocationSection(event: event),
+                        content: LocationSection(event: resolvedEvent),
                         footer: isConfirmed
                             ? DynamicFooter(
                                 buttonText: 'Traçar Rota agora',
@@ -150,7 +159,10 @@ class _ImmersiveEventDetailScreenState
 
                     final footer = isConfirmed
                         ? _buildInviteFooter(
-                            context, () => _openInviteFlow(event), sentForEvent)
+                            context,
+                            () => _openInviteFlow(resolvedEvent),
+                            sentForEvent,
+                          )
                         : DynamicFooter(
                             buttonText: 'Bóora! Confirmar Presença!',
                             buttonIcon: Icons.celebration,
@@ -166,10 +178,10 @@ class _ImmersiveEventDetailScreenState
                       ),
                       child: ImmersiveDetailScreen(
                         heroContent: ImmersiveHero(
-                          event: event,
+                          event: resolvedEvent,
                           fallbackImageUri: _controller.defaultEventImageUri,
                         ),
-                        title: event.title.value,
+                        title: resolvedEvent.title.value,
                         betweenHeroAndTabs: topBanner,
                         tabs: tabs,
                         // Don't auto-navigate, let user scroll naturally
@@ -265,9 +277,13 @@ class _ImmersiveEventDetailScreenState
   InviteModel _buildInviteFromEvent(EventModel event) {
     final eventName = event.title.value;
     final eventDate = event.dateTimeStart.value ?? DateTime.now();
+    final fallbackImageValue = ThumbUriValue(
+      defaultValue: _controller.defaultEventImageUri,
+      isRequired: true,
+    )..parse(_controller.defaultEventImageUri.toString());
     final imageUrl = VenueEventResume.resolvePreferredImageUri(
       event,
-      settingsDefaultImageUri: _controller.defaultEventImageUri,
+      settingsDefaultImageValue: fallbackImageValue,
     ).toString();
     final locationLabel = event.location.value;
     final hostName = event.artists.isNotEmpty
@@ -277,16 +293,29 @@ class _ImmersiveEventDetailScreenState
     final tags = event.taxonomyTags;
     final eventId = event.id.value;
     final inviteId = eventId.isNotEmpty ? eventId : eventName;
-    return InviteModel.fromPrimitives(
-      id: inviteId,
-      eventId: eventId,
-      eventName: eventName,
-      eventDateTime: eventDate,
-      eventImageUrl: imageUrl,
-      location: locationLabel,
-      hostName: hostName,
-      message: description.isEmpty ? 'Partiu $eventName?' : description,
-      tags: tags.isEmpty ? const ['belluga'] : tags,
+    final parsedTags = (tags.isEmpty ? const ['belluga'] : tags)
+        .map((tag) => InviteTagValue()..parse(tag))
+        .toList(growable: false);
+
+    return InviteModel(
+      idValue: InviteIdValue()..parse(inviteId),
+      eventIdValue: InviteEventIdValue()..parse(eventId),
+      eventNameValue: TitleValue()..parse(eventName),
+      eventDateValue: InviteEventDateValue(isRequired: true)
+        ..parse(eventDate.toIso8601String()),
+      eventImageValue: ThumbUriValue(
+        defaultValue: Uri.parse(imageUrl),
+        isRequired: true,
+      )..parse(imageUrl),
+      locationValue: InviteLocationValue()..parse(locationLabel),
+      hostNameValue: InviteHostNameValue()..parse(hostName),
+      messageValue:
+          InviteMessageValue()..parse(description.isEmpty ? 'Partiu $eventName?' : description),
+      tagValues: parsedTags,
+      occurrenceIdValue: InviteOccurrenceIdValue(),
+      attendancePolicyValue: InviteAttendancePolicyValue(
+        defaultValue: 'free_confirmation_only',
+      )..parse('free_confirmation_only'),
     );
   }
 

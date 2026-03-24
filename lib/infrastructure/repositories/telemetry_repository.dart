@@ -31,7 +31,7 @@ class TelemetryRepository implements TelemetryRepositoryContract {
   EventTrackerHandlerContract? _handler;
   EventTrackerTimedEventManager? _timedEventManager;
   EventTrackerLifecycleObserver? _lifecycleObserver;
-  Map<String, dynamic>? _screenContext;
+  Object? _screenContext;
 
   void _debugWebTelemetry(String message, [Object? details]) {
     if (kIsWeb) {
@@ -64,14 +64,15 @@ class TelemetryRepository implements TelemetryRepositoryContract {
   Future<bool> logEvent(
     EventTrackerEvents event, {
     String? eventName,
-    Map<String, dynamic>? properties,
+    Object? properties,
   }) async {
     final handler = _trackerHandler;
     if (handler == null) {
       return false;
     }
 
-    final idempotencyKey = properties?['idempotency_key'] as String?;
+    final idempotencyKey =
+        _readPropertyValueAsString(properties, 'idempotency_key');
     if (idempotencyKey != null && _idempotencyKeys.contains(idempotencyKey)) {
       return true;
     }
@@ -93,13 +94,13 @@ class TelemetryRepository implements TelemetryRepositoryContract {
       customData: {
         if (tenantId.isNotEmpty) 'tenant_id': tenantId,
         if (userId != null) 'user_id': userId,
-        if (mergedProperties.isNotEmpty) ...mergedProperties,
+        if (mergedProperties case final Map map when map.isNotEmpty) ...map,
       },
     );
 
     return _queue.enqueue(() async {
-      final outcomes =
-          await handler.logEvent(type: event, userData: userData, data: payload);
+      final outcomes = await handler.logEvent(
+          type: event, userData: userData, data: payload);
       final hasFailures = outcomes.any((outcome) => outcome.isFailure);
       if (hasFailures) {
         throw Exception('Telemetry delivery failed');
@@ -114,7 +115,7 @@ class TelemetryRepository implements TelemetryRepositoryContract {
   Future<EventTrackerTimedEventHandle?> startTimedEvent(
     EventTrackerEvents event, {
     String? eventName,
-    Map<String, dynamic>? properties,
+    Object? properties,
   }) async {
     final manager = _timedEventManagerOrNull;
     if (manager == null) {
@@ -127,22 +128,26 @@ class TelemetryRepository implements TelemetryRepositoryContract {
     final tenantId = _appDataRepository.appData.tenantIdValue.value;
     final userId = user?.uuidValue.value ?? storedUserId;
     final mergedProperties = await _mergeContextProperties(properties);
+    final mergedScreenContext = switch (mergedProperties) {
+      final Map map => map['screen_context'],
+      _ => null,
+    };
     _debugWebTelemetry(
       'timed start',
       {
         'event': event.name,
         'name': eventName ?? event.name,
-        'screen_context': mergedProperties['screen_context'],
-        'insert_id': properties?['idempotency_key'],
+        'screen_context': mergedScreenContext,
+        'insert_id': _readPropertyValueAsString(properties, 'idempotency_key'),
       },
     );
     final payload = EventTrackerData(
       eventName: eventName,
-      insertId: properties?['idempotency_key'] as String?,
+      insertId: _readPropertyValueAsString(properties, 'idempotency_key'),
       customData: {
         if (tenantId.isNotEmpty) 'tenant_id': tenantId,
         if (userId != null) 'user_id': userId,
-        if (mergedProperties.isNotEmpty) ...mergedProperties,
+        if (mergedProperties case final Map map when map.isNotEmpty) ...map,
       },
     );
 
@@ -197,7 +202,7 @@ class TelemetryRepository implements TelemetryRepositoryContract {
   }
 
   @override
-  void setScreenContext(Map<String, dynamic>? screenContext) {
+  void setScreenContext(Object? screenContext) {
     _screenContext = screenContext;
   }
 
@@ -243,41 +248,37 @@ class TelemetryRepository implements TelemetryRepositoryContract {
     );
   }
 
-  Future<Map<String, dynamic>> _mergeContextProperties(
-    Map<String, dynamic>? properties,
-  ) async {
-    final merged = <String, dynamic>{};
+  Future<Object?> _mergeContextProperties(Object? properties) async {
+    final merged = {};
     if (_screenContext != null &&
-        !(properties?.containsKey('screen_context') ?? false)) {
+        !_containsPropertyKey(properties, 'screen_context')) {
       merged['screen_context'] = _screenContext;
     }
 
-    if (!(properties?.containsKey('location_context') ?? false)) {
+    if (!_containsPropertyKey(properties, 'location_context')) {
       final locationContext = await _buildLocationContext();
       if (locationContext != null) {
         merged['location_context'] = locationContext;
       }
     }
 
-    if (properties != null) {
-      merged.addAll(properties);
+    if (properties case final Map map) {
+      merged.addAll(map);
     }
 
     return merged;
   }
 
-  Future<Map<String, dynamic>?> _buildLocationContext() async {
+  Future<Object?> _buildLocationContext() async {
     if (!GetIt.I.isRegistered<UserLocationRepositoryContract>()) {
       return null;
     }
 
-    final locationRepository =
-        GetIt.I.get<UserLocationRepositoryContract>();
+    final locationRepository = GetIt.I.get<UserLocationRepositoryContract>();
     await locationRepository.ensureLoaded();
 
     final coordinate = locationRepository.lastKnownLocationStreamValue.value;
-    final capturedAt =
-        locationRepository.lastKnownCapturedAtStreamValue.value;
+    final capturedAt = locationRepository.lastKnownCapturedAtStreamValue.value;
     if (coordinate == null || capturedAt == null) {
       return null;
     }
@@ -288,14 +289,31 @@ class TelemetryRepository implements TelemetryRepositoryContract {
       return null;
     }
 
-    final accuracy =
-        locationRepository.lastKnownAccuracyStreamValue.value;
+    final accuracy = locationRepository.lastKnownAccuracyStreamValue.value;
 
     return {
       'lat': coordinate.latitude,
       'lng': coordinate.longitude,
       if (accuracy != null) 'accuracy_m': accuracy,
       'timestamp': capturedAt.toIso8601String(),
+    };
+  }
+
+  bool _containsPropertyKey(Object? properties, String key) {
+    return switch (properties) {
+      final Map map => map.containsKey(key),
+      _ => false,
+    };
+  }
+
+  String? _readPropertyValueAsString(Object? properties, String key) {
+    final value = switch (properties) {
+      final Map map => map[key],
+      _ => null,
+    };
+    return switch (value) {
+      final String text => text,
+      _ => null,
     };
   }
 

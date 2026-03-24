@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'package:belluga_now/testing/domain_factories.dart';
 
 import 'package:belluga_now/domain/app_data/app_data.dart';
+import 'package:belluga_now/testing/app_data_test_factory.dart';
 import 'package:belluga_now/domain/app_data/value_object/platform_type_value.dart';
 import 'package:belluga_now/domain/contacts/contact_model.dart';
 import 'package:belluga_now/domain/invites/invite_accept_result.dart';
@@ -95,6 +97,46 @@ void main() {
       controller.onDispose();
     });
 
+    test('coalesces rapid radius updates into a single refresh', () async {
+      final appData = _buildAppData(
+        minKm: 2,
+        defaultKm: 7,
+        maxKm: 15,
+      );
+      final appDataRepository = _FakeAppDataRepository(appData);
+      final scheduleRepository = _FakeScheduleRepository();
+      final controller = TenantHomeAgendaController(
+        scheduleRepository: scheduleRepository,
+        userEventsRepository: _FakeUserEventsRepository(),
+        invitesRepository: _FakeInvitesRepository(),
+        userLocationRepository: _FakeUserLocationRepository(),
+        appDataRepository: appDataRepository,
+        radiusRefreshDebounce: const Duration(milliseconds: 40),
+      );
+
+      await controller.init();
+      expect(scheduleRepository.getEventsPageCallCount, 1);
+
+      controller.setRadiusMeters(4000);
+      controller.setRadiusMeters(5000);
+      controller.setRadiusMeters(6000);
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      expect(
+        scheduleRepository.getEventsPageCallCount,
+        1,
+        reason: 'Should not refresh before debounce window closes.',
+      );
+
+      await Future<void>.delayed(const Duration(milliseconds: 80));
+      expect(
+        scheduleRepository.getEventsPageCallCount,
+        2,
+        reason: 'Rapid radius updates must coalesce into one fetch.',
+      );
+
+      controller.onDispose();
+    });
+
     test('normalizes invalid tenant radius settings when parsing app data', () {
       final appData = _buildAppData(
         minKm: 10,
@@ -125,7 +167,7 @@ void main() {
       await controller.init();
 
       expect(controller.isInitialLoadingStreamValue.value, isFalse);
-      expect(controller.displayedEventsStreamValue.value, isEmpty);
+      expect(controller.displayedEventsStreamValue.value, isNull);
 
       controller.onDispose();
     });
@@ -184,8 +226,109 @@ void main() {
       expect(controller.isInitialLoadingStreamValue.value, isFalse);
       expect(controller.displayedEventsStreamValue.value, hasLength(1));
       expect(
-        controller.displayedEventsStreamValue.value.first.title.value,
+        controller.displayedEventsStreamValue.value!.first.title.value,
         'Evento Recuperado',
+      );
+
+      controller.onDispose();
+    });
+
+    test('reuses cached agenda stream on subsequent init calls', () async {
+      final appData = _buildAppData(
+        minKm: 1,
+        defaultKm: 5,
+        maxKm: 10,
+      );
+      final appDataRepository = _FakeAppDataRepository(appData);
+      final scheduleRepository = _FakeScheduleRepository();
+      final controller = TenantHomeAgendaController(
+        scheduleRepository: scheduleRepository,
+        userEventsRepository: _FakeUserEventsRepository(),
+        invitesRepository: _FakeInvitesRepository(),
+        userLocationRepository: _FakeUserLocationRepository(),
+        appDataRepository: appDataRepository,
+      );
+
+      await controller.init();
+      expect(scheduleRepository.getEventsPageCallCount, 1);
+      expect(controller.displayedEventsStreamValue.value, isNotNull);
+
+      await controller.init();
+      expect(
+        scheduleRepository.getEventsPageCallCount,
+        1,
+        reason: 'Second init must reuse cached StreamValue state.',
+      );
+
+      controller.onDispose();
+    });
+
+    test(
+      'reuses repository StreamValue cache across controller instances',
+      () async {
+        final appData = _buildAppData(
+          minKm: 1,
+          defaultKm: 5,
+          maxKm: 10,
+        );
+        final appDataRepository = _FakeAppDataRepository(appData);
+        final sharedScheduleRepository = _FakeScheduleRepository();
+
+        final firstController = TenantHomeAgendaController(
+          scheduleRepository: sharedScheduleRepository,
+          userEventsRepository: _FakeUserEventsRepository(),
+          invitesRepository: _FakeInvitesRepository(),
+          userLocationRepository: _FakeUserLocationRepository(),
+          appDataRepository: appDataRepository,
+        );
+        await firstController.init();
+        expect(sharedScheduleRepository.getEventsPageCallCount, 1);
+        firstController.onDispose();
+
+        final secondController = TenantHomeAgendaController(
+          scheduleRepository: sharedScheduleRepository,
+          userEventsRepository: _FakeUserEventsRepository(),
+          invitesRepository: _FakeInvitesRepository(),
+          userLocationRepository: _FakeUserLocationRepository(),
+          appDataRepository: appDataRepository,
+        );
+        await secondController.init();
+        expect(
+          sharedScheduleRepository.getEventsPageCallCount,
+          1,
+          reason:
+              'Second controller must hydrate from repository StreamValue cache.',
+        );
+        secondController.onDispose();
+      },
+    );
+
+    test('retries init when previous load ended without cached results',
+        () async {
+      final appData = _buildAppData(
+        minKm: 1,
+        defaultKm: 5,
+        maxKm: 10,
+      );
+      final appDataRepository = _FakeAppDataRepository(appData);
+      final scheduleRepository = _AlwaysFailingScheduleRepository();
+      final controller = TenantHomeAgendaController(
+        scheduleRepository: scheduleRepository,
+        userEventsRepository: _FakeUserEventsRepository(),
+        invitesRepository: _FakeInvitesRepository(),
+        userLocationRepository: _FakeUserLocationRepository(),
+        appDataRepository: appDataRepository,
+      );
+
+      await controller.init();
+      expect(controller.displayedEventsStreamValue.value, isNull);
+      expect(scheduleRepository.getEventsPageCallCount, 2);
+
+      await controller.init();
+      expect(
+        scheduleRepository.getEventsPageCallCount,
+        4,
+        reason: 'When cache is null, init must retry fetching.',
       );
 
       controller.onDispose();
@@ -214,6 +357,44 @@ void main() {
       await controller.init();
 
       expect(locationRepository.warmUpCalled, isTrue);
+      expect(scheduleRepository.getEventsPageCallCount, 1);
+      expect(scheduleRepository.lastOriginLat, closeTo(-20.671339, 0.000001));
+      expect(scheduleRepository.lastOriginLng, closeTo(-40.495395, 0.000001));
+
+      controller.onDispose();
+    });
+
+    test('uses tenant default origin when cached user location is stale',
+        () async {
+      final appData = _buildAppData(
+        minKm: 1,
+        defaultKm: 5,
+        maxKm: 10,
+      );
+      final appDataRepository = _FakeAppDataRepository(appData);
+      final scheduleRepository = _FakeScheduleRepository();
+      final locationRepository = _FakeUserLocationRepository()
+        ..warmUpResult = false
+        ..userLocationStreamValue.addValue(
+          CityCoordinate(
+            latitudeValue: LatitudeValue()..parse('-23.550520'),
+            longitudeValue: LongitudeValue()..parse('-46.633308'),
+          ),
+        )
+        ..lastKnownCapturedAtStreamValue.addValue(
+          DateTime.now().subtract(const Duration(hours: 2)),
+        );
+
+      final controller = TenantHomeAgendaController(
+        scheduleRepository: scheduleRepository,
+        userEventsRepository: _FakeUserEventsRepository(),
+        invitesRepository: _FakeInvitesRepository(),
+        userLocationRepository: locationRepository,
+        appDataRepository: appDataRepository,
+      );
+
+      await controller.init();
+
       expect(scheduleRepository.getEventsPageCallCount, 1);
       expect(scheduleRepository.lastOriginLat, closeTo(-20.671339, 0.000001));
       expect(scheduleRepository.lastOriginLng, closeTo(-40.495395, 0.000001));
@@ -350,6 +531,88 @@ void main() {
       controller.onDispose();
     });
 
+    test('ignores location updates below 1km for auto refresh', () async {
+      final appData = _buildAppData(
+        minKm: 1,
+        defaultKm: 5,
+        maxKm: 10,
+      );
+      final appDataRepository = _FakeAppDataRepository(appData);
+      final scheduleRepository = _FakeScheduleRepository();
+      final locationRepository = _FakeUserLocationRepository()
+        ..userLocationStreamValue.addValue(
+          CityCoordinate(
+            latitudeValue: LatitudeValue()..parse('-20.671339'),
+            longitudeValue: LongitudeValue()..parse('-40.495395'),
+          ),
+        );
+
+      final controller = TenantHomeAgendaController(
+        scheduleRepository: scheduleRepository,
+        userEventsRepository: _FakeUserEventsRepository(),
+        invitesRepository: _FakeInvitesRepository(),
+        userLocationRepository: locationRepository,
+        appDataRepository: appDataRepository,
+      );
+
+      await controller.init();
+      expect(scheduleRepository.getEventsPageCallCount, 1);
+
+      locationRepository.userLocationStreamValue.addValue(
+        CityCoordinate(
+          latitudeValue: LatitudeValue()..parse('-20.668339'),
+          longitudeValue: LongitudeValue()..parse('-40.495395'),
+        ),
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 120));
+
+      expect(scheduleRepository.getEventsPageCallCount, 1);
+
+      controller.onDispose();
+    });
+
+    test('auto refreshes agenda when location jump is at least 1km', () async {
+      final appData = _buildAppData(
+        minKm: 1,
+        defaultKm: 5,
+        maxKm: 10,
+      );
+      final appDataRepository = _FakeAppDataRepository(appData);
+      final scheduleRepository = _FakeScheduleRepository();
+      final locationRepository = _FakeUserLocationRepository()
+        ..userLocationStreamValue.addValue(
+          CityCoordinate(
+            latitudeValue: LatitudeValue()..parse('-20.671339'),
+            longitudeValue: LongitudeValue()..parse('-40.495395'),
+          ),
+        );
+
+      final controller = TenantHomeAgendaController(
+        scheduleRepository: scheduleRepository,
+        userEventsRepository: _FakeUserEventsRepository(),
+        invitesRepository: _FakeInvitesRepository(),
+        userLocationRepository: locationRepository,
+        appDataRepository: appDataRepository,
+      );
+
+      await controller.init();
+      expect(scheduleRepository.getEventsPageCallCount, 1);
+
+      locationRepository.userLocationStreamValue.addValue(
+        CityCoordinate(
+          latitudeValue: LatitudeValue()..parse('-20.656339'),
+          longitudeValue: LongitudeValue()..parse('-40.495395'),
+        ),
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 120));
+
+      expect(scheduleRepository.getEventsPageCallCount, 2);
+      expect(scheduleRepository.lastOriginLat, closeTo(-20.656339, 0.000001));
+      expect(scheduleRepository.lastOriginLng, closeTo(-40.495395, 0.000001));
+
+      controller.onDispose();
+    });
+
     test('finishes init when location warm-up stalls', () async {
       final appData = _buildAppData(
         minKm: 1,
@@ -440,7 +703,7 @@ void main() {
       await controller.init();
 
       expect(controller.displayedEventsStreamValue.value, hasLength(1));
-      final event = controller.displayedEventsStreamValue.value.first;
+      final event = controller.displayedEventsStreamValue.value!.first;
       expect(event.type.id.value, 'type-1');
       expect(event.coordinate, isNotNull);
       expect(event.coordinate!.latitude, closeTo(-20.671339, 0.000001));
@@ -526,6 +789,41 @@ void main() {
 
       controller.onDispose();
     });
+
+    testWidgets('home agenda body shows phased initial loading labels',
+        (tester) async {
+      final appData = _buildAppData(
+        minKm: 1,
+        defaultKm: 5,
+        maxKm: 10,
+      );
+      final controller = TenantHomeAgendaController(
+        scheduleRepository: _FakeScheduleRepository(),
+        userEventsRepository: _FakeUserEventsRepository(),
+        invitesRepository: _FakeInvitesRepository(),
+        userLocationRepository: _FakeUserLocationRepository(),
+        appDataRepository: _FakeAppDataRepository(appData),
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: HomeAgendaBody(controller: controller),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      expect(find.text('Encontrando sua localização...'), findsOneWidget);
+
+      controller.initialLoadingLabelStreamValue
+          .addValue('Buscando eventos perto de você...');
+      await tester.pump();
+
+      expect(find.text('Buscando eventos perto de você...'), findsOneWidget);
+
+      controller.onDispose();
+    });
   });
 }
 
@@ -597,7 +895,7 @@ AppData _buildAppData({
     'device': 'test-device',
   };
 
-  return AppData.fromInitialization(
+  return buildAppDataFromInitialization(
       remoteData: remoteData, localInfo: localInfo);
 }
 
@@ -639,9 +937,64 @@ class _FakeAppDataRepository implements AppDataRepositoryContract {
 }
 
 class _FakeScheduleRepository implements ScheduleRepositoryContract {
+  @override
+  final StreamValue<List<EventModel>?> homeAgendaEventsStreamValue =
+      StreamValue<List<EventModel>?>();
+  @override
+  final StreamValue<HomeAgendaCacheSnapshot?> homeAgendaCacheStreamValue =
+      StreamValue<HomeAgendaCacheSnapshot?>();
+  @override
+  final StreamValue<List<EventModel>> eventSearchDisplayedEventsStreamValue =
+      StreamValue<List<EventModel>>(defaultValue: const <EventModel>[]);
+  @override
+  final StreamValue<List<EventModel>> eventsByDateStreamValue =
+      StreamValue<List<EventModel>>(defaultValue: const <EventModel>[]);
+  @override
+  final StreamValue<PagedEventsResult?> pagedEventsStreamValue =
+      StreamValue<PagedEventsResult?>(defaultValue: null);
+  @override
+  final StreamValue<bool> hasMorePagedEventsStreamValue =
+      StreamValue<bool>(defaultValue: true);
+  @override
+  final StreamValue<bool> isPagedEventsPageLoadingStreamValue =
+      StreamValue<bool>(defaultValue: false);
+  @override
+  final StreamValue<String?> pagedEventsErrorStreamValue =
+      StreamValue<String?>(defaultValue: null);
+
   int getEventsPageCallCount = 0;
+  int _currentPagedEventsPage = 0;
   double? lastOriginLat;
   double? lastOriginLng;
+
+  @override
+  int get currentPagedEventsPage => _currentPagedEventsPage;
+
+  @override
+  HomeAgendaCacheSnapshot? readHomeAgendaCache({
+    required bool showPastOnly,
+    required String searchQuery,
+    required bool confirmedOnly,
+  }) {
+    final snapshot = homeAgendaCacheStreamValue.value;
+    if (snapshot == null) return null;
+    if (snapshot.showPastOnly != showPastOnly) return null;
+    if (snapshot.searchQuery != searchQuery) return null;
+    if (snapshot.confirmedOnly != confirmedOnly) return null;
+    return snapshot;
+  }
+
+  @override
+  void writeHomeAgendaCache(HomeAgendaCacheSnapshot snapshot) {
+    homeAgendaCacheStreamValue.addValue(snapshot);
+    homeAgendaEventsStreamValue.addValue(snapshot.events);
+  }
+
+  @override
+  void clearHomeAgendaCache() {
+    homeAgendaCacheStreamValue.addValue(null);
+    homeAgendaEventsStreamValue.addValue(null);
+  }
 
   @override
   Future<List<EventModel>> getAllEvents() async => const [];
@@ -657,6 +1010,22 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
     double? maxDistanceMeters,
   }) async =>
       const [];
+
+  @override
+  Future<void> refreshEventsByDate(
+    DateTime date, {
+    double? originLat,
+    double? originLng,
+    double? maxDistanceMeters,
+  }) async {
+    final events = await getEventsByDate(
+      date,
+      originLat: originLat,
+      originLng: originLng,
+      maxDistanceMeters: maxDistanceMeters,
+    );
+    eventsByDateStreamValue.addValue(events);
+  }
 
   @override
   Future<PagedEventsResult> getEventsPage({
@@ -676,6 +1045,111 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
     lastOriginLat = originLat;
     lastOriginLng = originLng;
     return const PagedEventsResult(events: [], hasMore: false);
+  }
+
+  @override
+  Future<void> refreshEventsPage({
+    required int page,
+    required int pageSize,
+    required bool showPastOnly,
+    String searchQuery = '',
+    List<String>? categories,
+    List<String>? tags,
+    List<Map<String, String>>? taxonomy,
+    bool confirmedOnly = false,
+    double? originLat,
+    double? originLng,
+    double? maxDistanceMeters,
+  }) async {
+    final pageResult = await getEventsPage(
+      page: page,
+      pageSize: pageSize,
+      showPastOnly: showPastOnly,
+      searchQuery: searchQuery,
+      categories: categories,
+      tags: tags,
+      taxonomy: taxonomy,
+      confirmedOnly: confirmedOnly,
+      originLat: originLat,
+      originLng: originLng,
+      maxDistanceMeters: maxDistanceMeters,
+    );
+    pagedEventsStreamValue.addValue(pageResult);
+  }
+
+  @override
+  Future<void> loadEventsPage({
+    int pageSize = 25,
+    required bool showPastOnly,
+    String searchQuery = '',
+    List<String>? categories,
+    List<String>? tags,
+    List<Map<String, String>>? taxonomy,
+    bool confirmedOnly = false,
+    double? originLat,
+    double? originLng,
+    double? maxDistanceMeters,
+  }) async {
+    _currentPagedEventsPage = 1;
+    await refreshEventsPage(
+      page: 1,
+      pageSize: pageSize,
+      showPastOnly: showPastOnly,
+      searchQuery: searchQuery,
+      categories: categories,
+      tags: tags,
+      taxonomy: taxonomy,
+      confirmedOnly: confirmedOnly,
+      originLat: originLat,
+      originLng: originLng,
+      maxDistanceMeters: maxDistanceMeters,
+    );
+    final result = pagedEventsStreamValue.value;
+    hasMorePagedEventsStreamValue.addValue(result?.hasMore ?? false);
+  }
+
+  @override
+  Future<void> loadNextEventsPage({
+    int pageSize = 25,
+    required bool showPastOnly,
+    String searchQuery = '',
+    List<String>? categories,
+    List<String>? tags,
+    List<Map<String, String>>? taxonomy,
+    bool confirmedOnly = false,
+    double? originLat,
+    double? originLng,
+    double? maxDistanceMeters,
+  }) async {
+    if (!hasMorePagedEventsStreamValue.value) {
+      return;
+    }
+    final nextPage = _currentPagedEventsPage + 1;
+    _currentPagedEventsPage = nextPage;
+    await refreshEventsPage(
+      page: nextPage,
+      pageSize: pageSize,
+      showPastOnly: showPastOnly,
+      searchQuery: searchQuery,
+      categories: categories,
+      tags: tags,
+      taxonomy: taxonomy,
+      confirmedOnly: confirmedOnly,
+      originLat: originLat,
+      originLng: originLng,
+      maxDistanceMeters: maxDistanceMeters,
+    );
+    final result = pagedEventsStreamValue.value;
+    hasMorePagedEventsStreamValue.addValue(result?.hasMore ?? false);
+  }
+
+  @override
+  void resetPagedEventsState() {
+    _currentPagedEventsPage = 0;
+    pagedEventsStreamValue.addValue(null);
+    hasMorePagedEventsStreamValue.addValue(true);
+    isPagedEventsPageLoadingStreamValue.addValue(false);
+    pagedEventsErrorStreamValue.addValue(null);
   }
 
   @override
@@ -704,6 +1178,36 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
     bool showPastOnly = false,
   }) {
     return const Stream<EventDeltaModel>.empty();
+  }
+
+  @override
+  Stream<void> watchEventsSignal({
+    required void Function(EventDeltaModel delta) onDelta,
+    String searchQuery = '',
+    List<String>? categories,
+    List<String>? tags,
+    List<Map<String, String>>? taxonomy,
+    bool confirmedOnly = false,
+    double? originLat,
+    double? originLng,
+    double? maxDistanceMeters,
+    String? lastEventId,
+    bool showPastOnly = false,
+  }) {
+    return watchEventsStream(
+      searchQuery: searchQuery,
+      categories: categories,
+      tags: tags,
+      taxonomy: taxonomy,
+      confirmedOnly: confirmedOnly,
+      originLat: originLat,
+      originLng: originLng,
+      maxDistanceMeters: maxDistanceMeters,
+      lastEventId: lastEventId,
+      showPastOnly: showPastOnly,
+    ).map((delta) {
+      onDelta(delta);
+    });
   }
 }
 
@@ -753,6 +1257,26 @@ class _FailingOnceScheduleRepository extends _FakeScheduleRepository {
     }
 
     return const PagedEventsResult(events: [], hasMore: false);
+  }
+}
+
+class _AlwaysFailingScheduleRepository extends _FakeScheduleRepository {
+  @override
+  Future<PagedEventsResult> getEventsPage({
+    required int page,
+    required int pageSize,
+    required bool showPastOnly,
+    String searchQuery = '',
+    List<String>? categories,
+    List<String>? tags,
+    List<Map<String, String>>? taxonomy,
+    bool confirmedOnly = false,
+    double? originLat,
+    double? originLng,
+    double? maxDistanceMeters,
+  }) async {
+    getEventsPageCallCount += 1;
+    throw Exception('forced persistent first-page failure');
   }
 }
 
@@ -820,7 +1344,7 @@ class _PayloadScheduleBackend implements ScheduleBackendContract {
         'id': 'type-1',
         'name': 'Show',
         'slug': 'show',
-        'description': 'Show type description',
+        'description': null,
         'color': '#112233',
       },
       'location': {
@@ -1050,7 +1574,7 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
 
   @override
   Future<InviteRuntimeSettings> fetchSettings() async =>
-      const InviteRuntimeSettings(
+      buildInviteRuntimeSettings(
         tenantId: null,
         limits: {},
         cooldowns: {},
@@ -1070,7 +1594,7 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
 
   @override
   Future<InviteDeclineResult> declineInvite(String inviteId) async =>
-      InviteDeclineResult(
+      buildInviteDeclineResult(
         inviteId: inviteId,
         status: 'declined',
         groupHasOtherPending: false,
@@ -1086,7 +1610,7 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
     String? occurrenceId,
     String? accountProfileId,
   }) async =>
-      InviteShareCodeResult(
+      buildInviteShareCodeResult(
         code: 'CODE123',
         eventId: eventId,
         occurrenceId: occurrenceId,
@@ -1162,6 +1686,13 @@ class _FakeUserLocationRepository implements UserLocationRepositoryContract {
   @override
   final StreamValue<String?> lastKnownAddressStreamValue =
       StreamValue<String?>(defaultValue: null);
+
+  @override
+  @override
+  final StreamValue<LocationResolutionPhase>
+      locationResolutionPhaseStreamValue = StreamValue<LocationResolutionPhase>(
+    defaultValue: LocationResolutionPhase.unknown,
+  );
 
   @override
   Future<void> ensureLoaded() async {}

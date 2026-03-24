@@ -1,15 +1,24 @@
 part of '../tenant_admin_event.dart';
 
 class TenantAdminEventOccurrence {
-  const TenantAdminEventOccurrence({
-    required this.dateTimeStart,
-    this.dateTimeEnd,
-    this.occurrenceId,
-    this.occurrenceSlug,
-  });
+  TenantAdminEventOccurrence({
+    required this.dateTimeStartValue,
+    TenantAdminOptionalDateTimeValue? dateTimeEndValue,
+    TenantAdminOptionalTextValue? occurrenceIdValue,
+    TenantAdminOptionalTextValue? occurrenceSlugValue,
+  })  : dateTimeEndValue =
+            dateTimeEndValue ?? const TenantAdminOptionalDateTimeValue(null),
+        occurrenceIdValue = occurrenceIdValue ?? TenantAdminOptionalTextValue(),
+        occurrenceSlugValue =
+            occurrenceSlugValue ?? TenantAdminOptionalTextValue();
 
-  final DateTime dateTimeStart;
-  final DateTime? dateTimeEnd;
-  final String? occurrenceId;
-  final String? occurrenceSlug;
+  final TenantAdminDateTimeValue dateTimeStartValue;
+  final TenantAdminOptionalDateTimeValue dateTimeEndValue;
+  final TenantAdminOptionalTextValue occurrenceIdValue;
+  final TenantAdminOptionalTextValue occurrenceSlugValue;
+
+  DateTime get dateTimeStart => dateTimeStartValue.value;
+  DateTime? get dateTimeEnd => dateTimeEndValue.value;
+  String? get occurrenceId => occurrenceIdValue.nullableValue;
+  String? get occurrenceSlug => occurrenceSlugValue.nullableValue;
 }

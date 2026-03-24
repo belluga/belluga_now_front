@@ -6,8 +6,10 @@ enum InviteNextStep {
   openAppToContinue,
 }
 
+typedef InviteNextStepRaw = String;
+
 extension InviteNextStepApiMapper on InviteNextStep {
-  static InviteNextStep parse(String? raw) {
+  static InviteNextStep parse(InviteNextStepRaw? raw) {
     switch (raw?.trim().toLowerCase()) {
       case 'free_confirmation_created':
         return InviteNextStep.freeConfirmationCreated;

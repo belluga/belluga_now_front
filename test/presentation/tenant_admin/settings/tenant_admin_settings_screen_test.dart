@@ -4,6 +4,7 @@ import 'package:belluga_now/testing/tenant_admin_app_links_settings_builder.dart
 
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
+import 'package:belluga_now/testing/app_data_test_factory.dart';
 import 'package:belluga_now/domain/app_data/value_object/platform_type_value.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_settings_repository_contract.dart';
@@ -13,6 +14,8 @@ import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.d
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_settings.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_dynamic_map_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_trimmed_string_list_value.dart';
 import 'package:belluga_now/infrastructure/services/tenant_admin/tenant_admin_location_selection_service.dart';
 import 'package:belluga_now/presentation/tenant_admin/settings/controllers/tenant_admin_settings_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/settings/models/tenant_admin_settings_integration_section.dart';
@@ -504,7 +507,7 @@ void main() {
     expect(
       settingsRepository.updatedAppLinksSettings!.androidSha256CertFingerprints,
       equals(
-        const [
+        [
           '3E:72:4C:54:E9:53:26:7D:E6:E1:9B:F8:DC:53:30:2A:08:01:8E:36:40:AA:23:11:22:33:44:55:66:77:88:99',
         ],
       ),
@@ -579,7 +582,7 @@ void main() {
     expect(settingsRepository.updatedAppLinksSettings, isNotNull);
     expect(
       settingsRepository.updatedAppLinksSettings!.iosPaths,
-      equals(const ['/invite*', '/convites*', '/home']),
+      equals(['/invite*', '/convites*', '/home']),
     );
   });
 
@@ -939,7 +942,7 @@ void main() {
 
     controller.bindLocalPreferencesFlow();
     locationSelection.setInitialLocation(
-      const TenantAdminLocation(
+      TenantAdminLocation(
         latitude: -20.612345,
         longitude: -40.487654,
       ),
@@ -1051,14 +1054,14 @@ class _FakeTenantAdminSettingsRepository
   final StreamValue<TenantAdminBrandingSettings?> _brandingSettingsStreamValue =
       StreamValue<TenantAdminBrandingSettings?>(defaultValue: null);
   TenantAdminMapUiSettings _mapUiSettings = TenantAdminMapUiSettings(
-    rawMapUi: {
+    rawMapUiValue: TenantAdminDynamicMapValue({
       'radius': 15000,
       'default_origin': {
         'lat': -20.6736,
         'lng': -40.4976,
         'label': 'Centro',
       },
-    },
+    }),
     defaultOrigin: TenantAdminMapDefaultOrigin(
       lat: -20.6736,
       lng: -40.4976,
@@ -1069,7 +1072,7 @@ class _FakeTenantAdminSettingsRepository
   TenantAdminBrandingSettings _brandingSettings;
   TenantAdminAppLinksSettings _appLinksSettings =
       buildTenantAdminAppLinksSettings(
-    rawAppLinks: const {
+    rawAppLinks: {
       'android': {
         'sha256_cert_fingerprints': [
           '3E:72:4C:54:E9:53:26:7D:E6:E1:9B:F8:DC:53:30:2A:08:01:8E:36:40:AA:23:11:22:33:44:55:66:77:88:99',
@@ -1081,12 +1084,12 @@ class _FakeTenantAdminSettingsRepository
       },
     },
     androidAppIdentifier: 'com.guarappari.app',
-    androidSha256CertFingerprints: const [
+    androidSha256CertFingerprints: [
       '3E:72:4C:54:E9:53:26:7D:E6:E1:9B:F8:DC:53:30:2A:08:01:8E:36:40:AA:23:11:22:33:44:55:66:77:88:99',
     ],
     iosTeamId: 'TEAMID1234',
     iosBundleId: 'com.guarappari.app',
-    iosPaths: const ['/invite*', '/convites*'],
+    iosPaths: ['/invite*', '/convites*'],
   );
 
   @override
@@ -1114,7 +1117,7 @@ class _FakeTenantAdminSettingsRepository
   }) async {
     return TenantAdminTelemetrySettingsSnapshot(
       integrations: [],
-      availableEvents: ['app_opened'],
+      availableEventValues: TenantAdminTrimmedStringListValue(['app_opened']),
     );
   }
 
@@ -1133,7 +1136,7 @@ class _FakeTenantAdminSettingsRepository
   Future<TenantAdminTelemetrySettingsSnapshot> fetchTelemetrySettings() async {
     return TenantAdminTelemetrySettingsSnapshot(
       integrations: [],
-      availableEvents: ['app_opened'],
+      availableEventValues: TenantAdminTrimmedStringListValue(['app_opened']),
     );
   }
 
@@ -1180,7 +1183,7 @@ class _FakeTenantAdminSettingsRepository
   }) async {
     return TenantAdminTelemetrySettingsSnapshot(
       integrations: [integration],
-      availableEvents: const ['app_opened'],
+      availableEventValues: TenantAdminTrimmedStringListValue(['app_opened']),
     );
   }
 
@@ -1306,7 +1309,7 @@ AppData _buildAppData({
     'device': 'test-device',
   };
 
-  return AppData.fromInitialization(
+  return buildAppDataFromInitialization(
     remoteData: fullRemoteData,
     localInfo: localInfo,
   );

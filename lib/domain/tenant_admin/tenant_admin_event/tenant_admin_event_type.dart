@@ -1,19 +1,31 @@
 part of '../tenant_admin_event.dart';
 
 class TenantAdminEventType {
-  const TenantAdminEventType({
-    required this.name,
-    required this.slug,
-    this.id,
-    this.description,
-    this.icon,
-    this.color,
-  });
+  TenantAdminEventType({
+    required Object name,
+    required Object slug,
+    Object? id,
+    Object? description,
+    Object? icon,
+    Object? color,
+  })  : nameValue = tenantAdminRequiredText(name),
+        slugValue = tenantAdminRequiredText(slug),
+        idValue = tenantAdminOptionalText(id),
+        descriptionValue = tenantAdminOptionalText(description),
+        iconValue = tenantAdminOptionalText(icon),
+        colorValue = tenantAdminOptionalText(color);
 
-  final String name;
-  final String slug;
-  final String? id;
-  final String? description;
-  final String? icon;
-  final String? color;
+  final TenantAdminRequiredTextValue nameValue;
+  final TenantAdminRequiredTextValue slugValue;
+  final TenantAdminOptionalTextValue idValue;
+  final TenantAdminOptionalTextValue descriptionValue;
+  final TenantAdminOptionalTextValue iconValue;
+  final TenantAdminOptionalTextValue colorValue;
+
+  String get name => nameValue.value;
+  String get slug => slugValue.value;
+  String? get id => idValue.nullableValue;
+  String? get description => descriptionValue.nullableValue;
+  String? get icon => iconValue.nullableValue;
+  String? get color => colorValue.nullableValue;
 }

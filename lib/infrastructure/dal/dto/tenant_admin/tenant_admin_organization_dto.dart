@@ -1,3 +1,5 @@
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_organization.dart';
+
 class TenantAdminOrganizationDTO {
   const TenantAdminOrganizationDTO({
     required this.id,
@@ -17,6 +19,15 @@ class TenantAdminOrganizationDTO {
       name: json['name']?.toString() ?? '',
       slug: json['slug']?.toString(),
       description: json['description']?.toString(),
+    );
+  }
+
+  TenantAdminOrganization toDomain() {
+    return TenantAdminOrganization(
+      id: id,
+      name: name,
+      slug: slug,
+      description: description,
     );
   }
 }

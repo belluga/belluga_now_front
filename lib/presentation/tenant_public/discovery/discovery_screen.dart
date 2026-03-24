@@ -80,9 +80,10 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                     return StreamValueBuilder<String>(
                       streamValue: _controller.searchQueryStreamValue,
                       builder: (context, query) {
-                        final showSections = !isSearching &&
-                            selectedType == null &&
-                            query.isEmpty;
+                        final hasSelectedType =
+                            selectedType?.isNotEmpty ?? false;
+                        final showSections =
+                            !isSearching && !hasSelectedType && query.isEmpty;
                         final emptyLabel = showSections
                             ? 'Nenhum perfil disponível no momento.'
                             : 'Nenhum resultado para os filtros.';
@@ -124,8 +125,7 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                                                     DiscoveryPartnerCard(
                                                   partner: partner,
                                                   isFavoritable: _controller
-                                                      .isFavoritable(
-                                                          partner),
+                                                      .isFavoritable(partner),
                                                   isFavorite: favorites
                                                       .contains(partner.id),
                                                   onFavoriteTap: () {
@@ -178,8 +178,7 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                                                     DiscoveryPartnerCard(
                                                   partner: partner,
                                                   isFavoritable: _controller
-                                                      .isFavoritable(
-                                                          partner),
+                                                      .isFavoritable(partner),
                                                   isFavorite: favorites
                                                       .contains(partner.id),
                                                   onFavoriteTap: () {
@@ -287,8 +286,7 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                                               orElse: () => partners.first,
                                             );
                                             if (_controller
-                                                .isFavoritable(
-                                                    partner)) {
+                                                .isFavoritable(partner)) {
                                               _handleFavoriteTap(partner);
                                             }
                                           },

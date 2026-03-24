@@ -277,7 +277,7 @@ class _TenantAdminAccountDetailScreenState
                           appBar: AppBar(
                             title: Text('Conta: $accountSlugForUi'),
                             actions: [
-                              if (profile != null)
+                              if (profile case final _?)
                                 FilledButton.tonalIcon(
                                   onPressed: (isLoading || isDeleting)
                                       ? null
@@ -293,9 +293,9 @@ class _TenantAdminAccountDetailScreenState
                                 ? const Center(
                                     child: CircularProgressIndicator(),
                                   )
-                                : errorMessage != null
+                                : (errorMessage?.isNotEmpty ?? false)
                                     ? TenantAdminErrorBanner(
-                                        rawError: errorMessage,
+                                        rawError: errorMessage ?? '',
                                         fallbackMessage:
                                             'Não foi possível carregar os dados da conta.',
                                         onRetry: () => _profilesController
@@ -332,24 +332,28 @@ class _TenantAdminAccountDetailScreenState
                                                         label: 'Slug',
                                                         value: account?.slug ??
                                                             '-',
-                                                        onEdit: account == null
-                                                            ? null
-                                                            : () =>
-                                                                _editAccountSlug(
-                                                                  account,
-                                                                ),
+                                                        onEdit: switch (
+                                                            account) {
+                                                          final value? => () =>
+                                                              _editAccountSlug(
+                                                                value,
+                                                              ),
+                                                          null => null,
+                                                        },
                                                       ),
                                                       const SizedBox(height: 8),
                                                       _buildEditableRow(
                                                         label: 'Nome',
                                                         value: account?.name ??
                                                             '-',
-                                                        onEdit: account == null
-                                                            ? null
-                                                            : () =>
-                                                                _editAccountName(
-                                                                  account,
-                                                                ),
+                                                        onEdit: switch (
+                                                            account) {
+                                                          final value? => () =>
+                                                              _editAccountName(
+                                                                value,
+                                                              ),
+                                                          null => null,
+                                                        },
                                                       ),
                                                       const SizedBox(height: 8),
                                                       _buildRow(
@@ -376,8 +380,8 @@ class _TenantAdminAccountDetailScreenState
                                                           child:
                                                               TextButton.icon(
                                                             onPressed: isDeleting ||
-                                                                    account ==
-                                                                        null
+                                                                    account
+                                                                        is! TenantAdminAccount
                                                                 ? null
                                                                 : () =>
                                                                     _confirmDeleteAccount(
@@ -398,7 +402,8 @@ class _TenantAdminAccountDetailScreenState
                                                 ),
                                               ),
                                               const SizedBox(height: 16),
-                                              if (profile == null) ...[
+                                              if (profile
+                                                  is! TenantAdminAccountProfile) ...[
                                                 Card(
                                                   margin: EdgeInsets.zero,
                                                   child: Padding(

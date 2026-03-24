@@ -22,8 +22,8 @@ void main() {
         (index) => TenantAdminStaticProfileTypeDefinition(
           type: 'type-$index',
           label: 'Type $index',
-          allowedTaxonomies: const [],
-          capabilities: const TenantAdminStaticProfileTypeCapabilities(
+          allowedTaxonomies: [],
+          capabilities: TenantAdminStaticProfileTypeCapabilities(
             isPoiEnabled: false,
             hasBio: false,
             hasTaxonomies: false,
@@ -36,7 +36,7 @@ void main() {
     );
     final controller = TenantAdminStaticProfileTypesController(
       repository: assetsRepository,
-      taxonomiesRepository: _FakeTaxonomiesRepository(taxonomies: const []),
+      taxonomiesRepository: _FakeTaxonomiesRepository(taxonomies: []),
     );
 
     await controller.loadTypes();
@@ -54,7 +54,7 @@ void main() {
   test('reloads static profile types and taxonomies when tenant changes',
       () async {
     final assetsRepository = _FakeStaticAssetsRepository(
-      types: const [
+      types: [
         TenantAdminStaticProfileTypeDefinition(
           type: 'type-a',
           label: 'Type A',
@@ -71,7 +71,7 @@ void main() {
       ],
     );
     final taxonomiesRepository = _FakeTaxonomiesRepository(
-      taxonomies: const [
+      taxonomies: [
         TenantAdminTaxonomyDefinition(
           id: 'tax-a',
           slug: 'slug-a',
@@ -94,7 +94,7 @@ void main() {
     expect(controller.typesStreamValue.value?.first.type, 'type-a');
     expect(controller.taxonomiesStreamValue.value.first.slug, 'slug-a');
 
-    assetsRepository.types = const [
+    assetsRepository.types = [
       TenantAdminStaticProfileTypeDefinition(
         type: 'type-b',
         label: 'Type B',
@@ -109,7 +109,7 @@ void main() {
         ),
       ),
     ];
-    taxonomiesRepository.taxonomies = const [
+    taxonomiesRepository.taxonomies = [
       TenantAdminTaxonomyDefinition(
         id: 'tax-b',
         slug: 'slug-b',
@@ -130,7 +130,7 @@ void main() {
   test('submitUpdateType keeps detail stream aligned with saved values',
       () async {
     final assetsRepository = _FakeStaticAssetsRepository(
-      types: const [
+      types: [
         TenantAdminStaticProfileTypeDefinition(
           type: 'place',
           label: 'Place',
@@ -148,11 +148,11 @@ void main() {
     );
     final controller = TenantAdminStaticProfileTypesController(
       repository: assetsRepository,
-      taxonomiesRepository: _FakeTaxonomiesRepository(taxonomies: const []),
+      taxonomiesRepository: _FakeTaxonomiesRepository(taxonomies: []),
     );
 
     controller.initDetailType(
-      const TenantAdminStaticProfileTypeDefinition(
+      TenantAdminStaticProfileTypeDefinition(
         type: 'place',
         label: 'Place',
         allowedTaxonomies: [],
@@ -233,7 +233,7 @@ class _FakeStaticAssetsRepository
   }
 
   @override
-  Future<List<TenantAdminStaticAsset>> fetchStaticAssets() async => const [];
+  Future<List<TenantAdminStaticAsset>> fetchStaticAssets() async => [];
 
   @override
   Future<TenantAdminPagedResult<TenantAdminStaticAsset>> fetchStaticAssetsPage({
@@ -243,7 +243,7 @@ class _FakeStaticAssetsRepository
     final assets = await fetchStaticAssets();
     final start = (page - 1) * pageSize;
     if (page <= 0 || pageSize <= 0 || start >= assets.length) {
-      return const TenantAdminPagedResult<TenantAdminStaticAsset>(
+      return TenantAdminPagedResult<TenantAdminStaticAsset>(
         items: <TenantAdminStaticAsset>[],
         hasMore: false,
       );
@@ -274,8 +274,7 @@ class _FakeStaticAssetsRepository
     final profileTypes = await fetchStaticProfileTypes();
     final start = (page - 1) * pageSize;
     if (page <= 0 || pageSize <= 0 || start >= profileTypes.length) {
-      return const TenantAdminPagedResult<
-          TenantAdminStaticProfileTypeDefinition>(
+      return TenantAdminPagedResult<TenantAdminStaticProfileTypeDefinition>(
         items: <TenantAdminStaticProfileTypeDefinition>[],
         hasMore: false,
       );
@@ -330,8 +329,8 @@ class _FakeStaticAssetsRepository
       orElse: () => TenantAdminStaticProfileTypeDefinition(
         type: type,
         label: type,
-        allowedTaxonomies: const [],
-        capabilities: const TenantAdminStaticProfileTypeCapabilities(
+        allowedTaxonomies: [],
+        capabilities: TenantAdminStaticProfileTypeCapabilities(
           isPoiEnabled: false,
           hasBio: false,
           hasTaxonomies: false,
@@ -412,7 +411,7 @@ class _FakeTaxonomiesRepository
     final entries = await fetchTaxonomies();
     final start = (page - 1) * pageSize;
     if (page <= 0 || pageSize <= 0 || start >= entries.length) {
-      return const TenantAdminPagedResult<TenantAdminTaxonomyDefinition>(
+      return TenantAdminPagedResult<TenantAdminTaxonomyDefinition>(
         items: <TenantAdminTaxonomyDefinition>[],
         hasMore: false,
       );
@@ -429,7 +428,7 @@ class _FakeTaxonomiesRepository
   Future<List<TenantAdminTaxonomyTermDefinition>> fetchTerms({
     required String taxonomyId,
   }) async =>
-      const [];
+      [];
 
   @override
   Future<TenantAdminPagedResult<TenantAdminTaxonomyTermDefinition>>
@@ -441,7 +440,7 @@ class _FakeTaxonomiesRepository
     final terms = await fetchTerms(taxonomyId: taxonomyId);
     final start = (page - 1) * pageSize;
     if (page <= 0 || pageSize <= 0 || start >= terms.length) {
-      return const TenantAdminPagedResult<TenantAdminTaxonomyTermDefinition>(
+      return TenantAdminPagedResult<TenantAdminTaxonomyTermDefinition>(
         items: <TenantAdminTaxonomyTermDefinition>[],
         hasMore: false,
       );

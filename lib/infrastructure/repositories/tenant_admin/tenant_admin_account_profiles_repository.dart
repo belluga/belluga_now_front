@@ -10,14 +10,13 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart'
 import 'package:belluga_now/infrastructure/dal/dao/tenant_admin/tenant_admin_account_profiles_request_encoder.dart';
 import 'package:belluga_now/infrastructure/dal/dao/tenant_admin/tenant_admin_media_form_data_builder.dart';
 import 'package:belluga_now/infrastructure/dal/dto/tenant_admin/tenant_admin_account_profiles_response_decoder.dart';
-import 'package:belluga_now/infrastructure/dal/dto/mappers/tenant_admin_dto_mapper.dart';
 import 'package:belluga_now/infrastructure/repositories/tenant_admin/tenant_admin_pagination_utils.dart';
 import 'package:belluga_now/infrastructure/repositories/tenant_admin/support/tenant_admin_validation_failure_resolver.dart';
 import 'package:dio/dio.dart';
 import 'package:get_it/get_it.dart';
 
 class TenantAdminAccountProfilesRepository
-    with TenantAdminProfileTypesPaginationMixin, TenantAdminDtoMapper
+    with TenantAdminProfileTypesPaginationMixin
     implements TenantAdminAccountProfilesRepositoryContract {
   TenantAdminAccountProfilesRepository({
     Dio? dio,
@@ -57,7 +56,7 @@ class TenantAdminAccountProfilesRepository
         options: Options(headers: _buildHeaders()),
       );
       final dtos = _responseDecoder.decodeAccountProfileList(response.data);
-      return dtos.map(mapTenantAdminAccountProfileDto).toList(growable: false);
+      return dtos.map((dto) => dto.toDomain()).toList(growable: false);
     } on DioException catch (error) {
       throw _wrapError(error, 'load account profiles');
     }
@@ -73,7 +72,7 @@ class TenantAdminAccountProfilesRepository
         options: Options(headers: _buildHeaders()),
       );
       final dto = _responseDecoder.decodeAccountProfileItem(response.data);
-      return mapTenantAdminAccountProfileDto(dto);
+      return dto.toDomain();
     } on DioException catch (error) {
       throw _wrapError(error, 'load account profile');
     }
@@ -116,7 +115,7 @@ class TenantAdminAccountProfilesRepository
         options: Options(headers: _buildHeaders()),
       );
       final dto = _responseDecoder.decodeAccountProfileItem(response.data);
-      return mapTenantAdminAccountProfileDto(dto);
+      return dto.toDomain();
     } on DioException catch (error) {
       throw _wrapError(error, 'create account profile');
     }
@@ -170,7 +169,7 @@ class TenantAdminAccountProfilesRepository
               ),
             );
       final dto = _responseDecoder.decodeAccountProfileItem(response.data);
-      return mapTenantAdminAccountProfileDto(dto);
+      return dto.toDomain();
     } on DioException catch (error) {
       throw _wrapError(error, 'update account profile');
     }
@@ -198,7 +197,7 @@ class TenantAdminAccountProfilesRepository
         options: Options(headers: _buildHeaders()),
       );
       final dto = _responseDecoder.decodeAccountProfileItem(response.data);
-      return mapTenantAdminAccountProfileDto(dto);
+      return dto.toDomain();
     } on DioException catch (error) {
       throw _wrapError(error, 'restore account profile');
     }
@@ -253,7 +252,7 @@ class TenantAdminAccountProfilesRepository
       );
       final dtos = _responseDecoder.decodeProfileTypeList(response.data);
       return TenantAdminPagedResult<TenantAdminProfileTypeDefinition>(
-        items: dtos.map(mapTenantAdminProfileTypeDto).toList(growable: false),
+        items: dtos.map((dto) => dto.toDomain()).toList(growable: false),
         hasMore: tenantAdminResolveHasMore(
           rawResponse: response.data,
           requestedPage: page,
@@ -283,7 +282,7 @@ class TenantAdminAccountProfilesRepository
         options: Options(headers: _buildHeaders()),
       );
       final dto = _responseDecoder.decodeProfileTypeItem(response.data);
-      return mapTenantAdminProfileTypeDto(dto);
+      return dto.toDomain();
     } on DioException catch (error) {
       throw _wrapError(error, 'create profile type');
     }
@@ -311,7 +310,7 @@ class TenantAdminAccountProfilesRepository
         options: Options(headers: _buildHeaders()),
       );
       final dto = _responseDecoder.decodeProfileTypeItem(response.data);
-      return mapTenantAdminProfileTypeDto(dto);
+      return dto.toDomain();
     } on DioException catch (error) {
       throw _wrapError(error, 'update profile type');
     }

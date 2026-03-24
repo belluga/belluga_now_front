@@ -1,3 +1,5 @@
+import 'package:belluga_now/domain/schedule/event_delta_model.dart';
+
 class EventDeltaDTO {
   EventDeltaDTO({
     required this.eventId,
@@ -23,5 +25,27 @@ class EventDeltaDTO {
           updatedAtRaw != null ? DateTime.tryParse(updatedAtRaw) : null,
       lastEventId: lastEventId,
     );
+  }
+
+  EventDeltaModel toDomain() {
+    return EventDeltaModel(
+      eventId: eventId,
+      type: _parseEventDeltaType(type),
+      updatedAt: updatedAt,
+      lastEventId: lastEventId,
+    );
+  }
+
+  EventDeltaType _parseEventDeltaType(String rawType) {
+    switch (rawType) {
+      case 'event.created':
+        return EventDeltaType.created;
+      case 'event.updated':
+        return EventDeltaType.updated;
+      case 'event.deleted':
+        return EventDeltaType.deleted;
+      default:
+        return EventDeltaType.unknown;
+    }
   }
 }

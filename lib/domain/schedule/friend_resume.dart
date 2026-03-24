@@ -18,24 +18,6 @@ class EventFriendResume {
   String get displayName => displayNameValue.value;
   String? get avatarUrl => avatarUrlValue.value?.toString();
 
-  factory EventFriendResume.fromPrimitives({
-    required String id,
-    required String displayName,
-    String? avatarUrl,
-  }) {
-    final avatarUrlValue = UserAvatarValue();
-    final normalizedAvatarUrl = avatarUrl?.trim();
-    if (normalizedAvatarUrl != null && normalizedAvatarUrl.isNotEmpty) {
-      avatarUrlValue.parse(normalizedAvatarUrl);
-    }
-
-    return EventFriendResume(
-      idValue: UserIdValue()..parse(id),
-      displayNameValue: UserDisplayNameValue()..parse(displayName),
-      avatarUrlValue: avatarUrlValue,
-    );
-  }
-
   Map<String, dynamic> toJson() {
     return {
       'id': id,

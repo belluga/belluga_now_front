@@ -11,14 +11,13 @@ import 'package:belluga_now/infrastructure/dal/dao/tenant_admin/tenant_admin_med
 import 'package:belluga_now/infrastructure/dal/dao/tenant_admin/tenant_admin_static_assets_request_encoder.dart';
 import 'package:belluga_now/infrastructure/dal/dto/tenant_admin/tenant_admin_static_asset_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/tenant_admin/tenant_admin_static_assets_response_decoder.dart';
-import 'package:belluga_now/infrastructure/dal/dto/mappers/tenant_admin_dto_mapper.dart';
 import 'package:belluga_now/infrastructure/repositories/tenant_admin/tenant_admin_pagination_utils.dart';
 import 'package:belluga_now/infrastructure/repositories/tenant_admin/support/tenant_admin_validation_failure_resolver.dart';
 import 'package:dio/dio.dart';
 import 'package:get_it/get_it.dart';
 
 class TenantAdminStaticAssetsRepository
-    with TenantAdminStaticAssetsPaginationMixin, TenantAdminDtoMapper
+    with TenantAdminStaticAssetsPaginationMixin
     implements TenantAdminStaticAssetsRepositoryContract {
   TenantAdminStaticAssetsRepository({
     Dio? dio,
@@ -85,9 +84,7 @@ class TenantAdminStaticAssetsRepository
       return TenantAdminPagedResult<TenantAdminStaticAsset>(
         items: dtos
             .map(
-              (dto) => mapTenantAdminStaticAssetDto(
-                _normalizeStaticAssetMediaUrls(dto),
-              ),
+              (dto) => _normalizeStaticAssetMediaUrls(dto).toDomain(),
             )
             .toList(growable: false),
         hasMore: tenantAdminResolveHasMore(
@@ -108,9 +105,7 @@ class TenantAdminStaticAssetsRepository
         options: Options(headers: _buildHeaders()),
       );
       final dto = _responseDecoder.decodeStaticAssetItem(response.data);
-      return mapTenantAdminStaticAssetDto(
-        _normalizeStaticAssetMediaUrls(dto),
-      );
+      return _normalizeStaticAssetMediaUrls(dto).toDomain();
     } on DioException catch (error) {
       throw _wrapError(error, 'load static asset');
     }
@@ -151,9 +146,7 @@ class TenantAdminStaticAssetsRepository
         options: Options(headers: _buildHeaders()),
       );
       final dto = _responseDecoder.decodeStaticAssetItem(response.data);
-      return mapTenantAdminStaticAssetDto(
-        _normalizeStaticAssetMediaUrls(dto),
-      );
+      return _normalizeStaticAssetMediaUrls(dto).toDomain();
     } on DioException catch (error) {
       throw _wrapError(error, 'create static asset');
     }
@@ -207,9 +200,7 @@ class TenantAdminStaticAssetsRepository
               ),
             );
       final dto = _responseDecoder.decodeStaticAssetItem(response.data);
-      return mapTenantAdminStaticAssetDto(
-        _normalizeStaticAssetMediaUrls(dto),
-      );
+      return _normalizeStaticAssetMediaUrls(dto).toDomain();
     } on DioException catch (error) {
       throw _wrapError(error, 'update static asset');
     }
@@ -235,9 +226,7 @@ class TenantAdminStaticAssetsRepository
         options: Options(headers: _buildHeaders()),
       );
       final dto = _responseDecoder.decodeStaticAssetItem(response.data);
-      return mapTenantAdminStaticAssetDto(
-        _normalizeStaticAssetMediaUrls(dto),
-      );
+      return _normalizeStaticAssetMediaUrls(dto).toDomain();
     } on DioException catch (error) {
       throw _wrapError(error, 'restore static asset');
     }
@@ -294,7 +283,7 @@ class TenantAdminStaticAssetsRepository
       final dtos = _responseDecoder.decodeStaticProfileTypeList(response.data);
       return TenantAdminPagedResult<TenantAdminStaticProfileTypeDefinition>(
         items: dtos
-            .map(mapTenantAdminStaticProfileTypeDto)
+            .map((dto) => dto.toDomain())
             .toList(growable: false),
         hasMore: tenantAdminResolveHasMore(
           rawResponse: response.data,
@@ -326,7 +315,7 @@ class TenantAdminStaticAssetsRepository
         options: Options(headers: _buildHeaders()),
       );
       final dto = _responseDecoder.decodeStaticProfileTypeItem(response.data);
-      return mapTenantAdminStaticProfileTypeDto(dto);
+      return dto.toDomain();
     } on DioException catch (error) {
       throw _wrapError(error, 'create static profile type');
     }
@@ -354,7 +343,7 @@ class TenantAdminStaticAssetsRepository
         options: Options(headers: _buildHeaders()),
       );
       final dto = _responseDecoder.decodeStaticProfileTypeItem(response.data);
-      return mapTenantAdminStaticProfileTypeDto(dto);
+      return dto.toDomain();
     } on DioException catch (error) {
       throw _wrapError(error, 'update static profile type');
     }

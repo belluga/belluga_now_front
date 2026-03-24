@@ -1,3 +1,5 @@
+import 'package:belluga_now/domain/user/user_belluga.dart';
+import 'package:value_object_pattern/domain/value_objects/mongo_id_value.dart';
 import 'package:belluga_now/infrastructure/user/dtos/user_profile_dto.dart';
 
 class UserDto {
@@ -25,5 +27,15 @@ class UserDto {
       'profile': profile.toJson(),
       'custom_data': customData,
     };
+  }
+
+  UserBelluga toDomain() {
+    return UserBelluga(
+      uuidValue: MongoIDValue(defaultValue: id)..parse(id),
+      profile: profile.toDomain(),
+      customData: customData?.map(
+        (key, value) => MapEntry(key, value),
+      ),
+    );
   }
 }

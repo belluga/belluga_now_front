@@ -108,7 +108,7 @@ void main() {
     await app.init();
 
     app.appRouter.replaceAll([
-      const TenantAdminShellRoute(
+      TenantAdminShellRoute(
         children: [TenantAdminAccountCreateRoute()],
       ),
     ]);
@@ -213,8 +213,7 @@ class _FakeAccountsRepository
       id: 'acc-1',
       name: name,
       slug: 'acc-1',
-      document:
-          document ?? const TenantAdminDocument(type: 'cpf', number: '000'),
+      document: document ?? TenantAdminDocument(type: 'cpf', number: '000'),
       ownershipState: ownershipState,
       organizationId: organizationId,
     );
@@ -260,13 +259,13 @@ class _FakeAccountsRepository
       id: 'acc-1',
       name: 'Conta',
       slug: accountSlug,
-      document: const TenantAdminDocument(type: 'cpf', number: '000'),
+      document: TenantAdminDocument(type: 'cpf', number: '000'),
       ownershipState: TenantAdminOwnershipState.tenantOwned,
     );
   }
 
   @override
-  Future<List<TenantAdminAccount>> fetchAccounts() async => const [];
+  Future<List<TenantAdminAccount>> fetchAccounts() async => [];
 
   @override
   Future<TenantAdminPagedAccountsResult> fetchAccountsPage({
@@ -275,7 +274,7 @@ class _FakeAccountsRepository
     TenantAdminOwnershipState? ownershipState,
     String? searchQuery,
   }) async {
-    return const TenantAdminPagedAccountsResult(
+    return TenantAdminPagedAccountsResult(
       accounts: <TenantAdminAccount>[],
       hasMore: false,
     );
@@ -290,7 +289,7 @@ class _FakeAccountsRepository
       id: 'acc-1',
       name: 'Conta',
       slug: accountSlug,
-      document: const TenantAdminDocument(type: 'cpf', number: '000'),
+      document: TenantAdminDocument(type: 'cpf', number: '000'),
       ownershipState: TenantAdminOwnershipState.tenantOwned,
     );
   }
@@ -307,8 +306,7 @@ class _FakeAccountsRepository
       id: 'acc-1',
       name: name ?? 'Conta',
       slug: accountSlug,
-      document:
-          document ?? const TenantAdminDocument(type: 'cpf', number: '000'),
+      document: document ?? TenantAdminDocument(type: 'cpf', number: '000'),
       ownershipState: TenantAdminOwnershipState.tenantOwned,
     );
   }
@@ -319,7 +317,7 @@ class _FakeAccountProfilesRepository
     implements TenantAdminAccountProfilesRepositoryContract {
   @override
   Future<List<TenantAdminProfileTypeDefinition>> fetchProfileTypes() async {
-    return const [
+    return [
       TenantAdminProfileTypeDefinition(
         type: 'venue',
         label: 'Venue',
@@ -347,7 +345,7 @@ class _FakeAccountProfilesRepository
     final types = await fetchProfileTypes();
     final start = (page - 1) * pageSize;
     if (page <= 0 || pageSize <= 0 || start >= types.length) {
-      return const TenantAdminPagedResult<TenantAdminProfileTypeDefinition>(
+      return TenantAdminPagedResult<TenantAdminProfileTypeDefinition>(
         items: <TenantAdminProfileTypeDefinition>[],
         hasMore: false,
       );
@@ -388,13 +386,13 @@ class _FakeAccountProfilesRepository
   Future<List<TenantAdminAccountProfile>> fetchAccountProfiles({
     String? accountId,
   }) async =>
-      const [];
+      [];
 
   @override
   Future<TenantAdminAccountProfile> fetchAccountProfile(
     String accountProfileId,
   ) async {
-    return const TenantAdminAccountProfile(
+    return TenantAdminAccountProfile(
       id: 'profile-1',
       accountId: 'acc-1',
       profileType: 'venue',
@@ -417,7 +415,7 @@ class _FakeAccountProfilesRepository
     TenantAdminMediaUpload? avatarUpload,
     TenantAdminMediaUpload? coverUpload,
   }) async {
-    return const TenantAdminAccountProfile(
+    return TenantAdminAccountProfile(
       id: 'profile-1',
       accountId: 'acc-1',
       profileType: 'venue',
@@ -432,7 +430,7 @@ class _FakeAccountProfilesRepository
   Future<TenantAdminAccountProfile> restoreAccountProfile(
     String accountProfileId,
   ) async {
-    return const TenantAdminAccountProfile(
+    return TenantAdminAccountProfile(
       id: 'profile-1',
       accountId: 'acc-1',
       profileType: 'venue',
@@ -469,9 +467,9 @@ class _FakeAccountProfilesRepository
     return TenantAdminProfileTypeDefinition(
       type: type,
       label: label ?? 'Venue',
-      allowedTaxonomies: allowedTaxonomies ?? const [],
+      allowedTaxonomies: allowedTaxonomies ?? [],
       capabilities: capabilities ??
-          const TenantAdminProfileTypeCapabilities(
+          TenantAdminProfileTypeCapabilities(
             isFavoritable: true,
             isPoiEnabled: true,
             hasBio: false,
@@ -533,8 +531,7 @@ class _FakeTaxonomiesRepository
   }) async {}
 
   @override
-  Future<List<TenantAdminTaxonomyDefinition>> fetchTaxonomies() async =>
-      const [];
+  Future<List<TenantAdminTaxonomyDefinition>> fetchTaxonomies() async => [];
 
   @override
   Future<TenantAdminPagedResult<TenantAdminTaxonomyDefinition>>
@@ -542,7 +539,7 @@ class _FakeTaxonomiesRepository
     required int page,
     required int pageSize,
   }) async {
-    return const TenantAdminPagedResult<TenantAdminTaxonomyDefinition>(
+    return TenantAdminPagedResult<TenantAdminTaxonomyDefinition>(
       items: <TenantAdminTaxonomyDefinition>[],
       hasMore: false,
     );
@@ -552,7 +549,7 @@ class _FakeTaxonomiesRepository
   Future<List<TenantAdminTaxonomyTermDefinition>> fetchTerms({
     required String taxonomyId,
   }) async =>
-      const [];
+      [];
 
   @override
   Future<TenantAdminPagedResult<TenantAdminTaxonomyTermDefinition>>
@@ -561,7 +558,7 @@ class _FakeTaxonomiesRepository
     required int page,
     required int pageSize,
   }) async {
-    return const TenantAdminPagedResult<TenantAdminTaxonomyTermDefinition>(
+    return TenantAdminPagedResult<TenantAdminTaxonomyTermDefinition>(
       items: <TenantAdminTaxonomyTermDefinition>[],
       hasMore: false,
     );
@@ -580,7 +577,7 @@ class _FakeTaxonomiesRepository
       id: taxonomyId,
       slug: slug ?? 'taxonomy',
       name: name ?? 'Taxonomy',
-      appliesTo: appliesTo ?? const [],
+      appliesTo: appliesTo ?? [],
       icon: icon,
       color: color,
     );

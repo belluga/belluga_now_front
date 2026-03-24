@@ -1,6 +1,5 @@
 import 'package:belluga_now/domain/invites/invite_model.dart';
 import 'package:belluga_now/infrastructure/dal/dao/push/invite_push_payload_decoder.dart';
-import 'package:belluga_now/infrastructure/dal/dto/mappers/invite_dto_mapper.dart';
 
 abstract class PushInvitePayloadAware {
   void applyInvitePushPayload(Object? payload);
@@ -39,8 +38,7 @@ mixin PushPayloadUpsertMixin<T> {
   }
 }
 
-mixin PushInvitePayloadMixin
-    on PushPayloadUpsertMixin<InviteModel>, InviteDtoMapper {
+mixin PushInvitePayloadMixin on PushPayloadUpsertMixin<InviteModel> {
   final InvitePushPayloadDecoder _payloadDecoder =
       const InvitePushPayloadDecoder();
 
@@ -68,7 +66,7 @@ mixin PushInvitePayloadMixin
     final invites = <InviteModel>[];
     for (final dto in dtos) {
       try {
-        invites.add(mapInviteDto(dto));
+        invites.add(dto.toDomain());
       } catch (_) {
         // Skip invalid payload entries.
       }

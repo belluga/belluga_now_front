@@ -654,18 +654,18 @@ class MockTenantHomeAgendaController extends _i1.Mock
       ) as _i3.FocusNode);
 
   @override
-  _i2.StreamValue<List<_i31.EventModel>> get displayedEventsStreamValue =>
+  _i2.StreamValue<List<_i31.EventModel>?> get displayedEventsStreamValue =>
       (super.noSuchMethod(
         Invocation.getter(#displayedEventsStreamValue),
-        returnValue: _FakeStreamValue_0<List<_i31.EventModel>>(
+        returnValue: _FakeStreamValue_0<List<_i31.EventModel>?>(
           this,
           Invocation.getter(#displayedEventsStreamValue),
         ),
-        returnValueForMissingStub: _FakeStreamValue_0<List<_i31.EventModel>>(
+        returnValueForMissingStub: _FakeStreamValue_0<List<_i31.EventModel>?>(
           this,
           Invocation.getter(#displayedEventsStreamValue),
         ),
-      ) as _i2.StreamValue<List<_i31.EventModel>>);
+      ) as _i2.StreamValue<List<_i31.EventModel>?>);
 
   @override
   _i2.StreamValue<bool> get isInitialLoadingStreamValue => (super.noSuchMethod(
@@ -679,6 +679,20 @@ class MockTenantHomeAgendaController extends _i1.Mock
           Invocation.getter(#isInitialLoadingStreamValue),
         ),
       ) as _i2.StreamValue<bool>);
+
+  @override
+  _i2.StreamValue<String> get initialLoadingLabelStreamValue =>
+      (super.noSuchMethod(
+        Invocation.getter(#initialLoadingLabelStreamValue),
+        returnValue: _FakeStreamValue_0<String>(
+          this,
+          Invocation.getter(#initialLoadingLabelStreamValue),
+        ),
+        returnValueForMissingStub: _FakeStreamValue_0<String>(
+          this,
+          Invocation.getter(#initialLoadingLabelStreamValue),
+        ),
+      ) as _i2.StreamValue<String>);
 
   @override
   _i2.StreamValue<bool> get isPageLoadingStreamValue => (super.noSuchMethod(

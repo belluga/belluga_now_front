@@ -1,10 +1,16 @@
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/domain/partners/paged_account_profiles_result.dart';
+import 'package:belluga_now/domain/partners/value_objects/account_profile_fields.dart';
+import 'package:belluga_now/domain/value_objects/description_value.dart';
+import 'package:belluga_now/domain/value_objects/slug_value.dart';
+import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
+import 'package:belluga_now/domain/value_objects/title_value.dart';
 import 'package:belluga_now/infrastructure/dal/dao/account_profiles_backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/laravel_backend/shared/tenant_public_auth_headers.dart';
 import 'package:dio/dio.dart';
 import 'package:get_it/get_it.dart';
+import 'package:value_object_pattern/domain/value_objects/mongo_id_value.dart';
 
 class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
   LaravelAccountProfilesBackend({Dio? dio}) : _dio = dio ?? Dio();
@@ -141,16 +147,33 @@ class LaravelAccountProfilesBackend implements AccountProfilesBackendContract {
       final trimmedType = typeRaw.trim();
       if (trimmedType.isEmpty) continue;
       final tags = _extractTags(json['taxonomy_terms']);
+      ThumbUriValue? avatarValue;
+      final avatarUrl = json['avatar_url']?.toString();
+      if (avatarUrl != null && avatarUrl.isNotEmpty) {
+        avatarValue = ThumbUriValue(defaultValue: Uri.parse(avatarUrl))
+          ..parse(avatarUrl);
+      }
+      ThumbUriValue? coverValue;
+      final coverUrl = json['cover_url']?.toString();
+      if (coverUrl != null && coverUrl.isNotEmpty) {
+        coverValue = ThumbUriValue(defaultValue: Uri.parse(coverUrl))
+          ..parse(coverUrl);
+      }
+      DescriptionValue? bioValue;
+      final bio = json['bio']?.toString();
+      if (bio != null && bio.isNotEmpty) {
+        bioValue = DescriptionValue()..parse(bio);
+      }
       profiles.add(
-        AccountProfileModel.fromPrimitives(
-          id: id,
-          name: name,
-          slug: slug,
-          type: trimmedType,
-          avatarUrl: json['avatar_url']?.toString(),
-          coverUrl: json['cover_url']?.toString(),
-          bio: json['bio']?.toString(),
-          tags: tags,
+        AccountProfileModel(
+          idValue: MongoIDValue()..parse(id),
+          nameValue: TitleValue()..parse(name),
+          slugValue: SlugValue()..parse(slug),
+          profileTypeValue: AccountProfileTypeValue(trimmedType),
+          avatarValue: avatarValue,
+          coverValue: coverValue,
+          bioValue: bioValue,
+          tagsValue: AccountProfileTagsValue(tags),
         ),
       );
     }

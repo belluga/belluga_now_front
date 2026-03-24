@@ -48,8 +48,6 @@ class TenantAdminStaticAssetsController implements Disposable {
   final TenantAdminLocationSelectionContract _locationSelection;
   final TenantAdminTenantScopeContract? _tenantScope;
   final TenantAdminImageIngestionService _imageIngestionService;
-  static const int _assetsPageSize = 20;
-
   StreamValue<List<TenantAdminStaticAsset>?> get assetsStreamValue =>
       _repository.staticAssetsStreamValue;
   StreamValue<bool> get hasMoreAssetsStreamValue =>
@@ -155,7 +153,7 @@ class TenantAdminStaticAssetsController implements Disposable {
   }
 
   Future<void> loadAssets() async {
-    await _repository.loadStaticAssets(pageSize: _assetsPageSize);
+    await _repository.loadStaticAssets();
     errorStreamValue.addValue(_repository.staticAssetsErrorStreamValue.value);
   }
 
@@ -163,7 +161,7 @@ class TenantAdminStaticAssetsController implements Disposable {
     if (_isDisposed) {
       return;
     }
-    await _repository.loadNextStaticAssetsPage(pageSize: _assetsPageSize);
+    await _repository.loadNextStaticAssetsPage();
     errorStreamValue.addValue(_repository.staticAssetsErrorStreamValue.value);
   }
 
@@ -196,7 +194,9 @@ class TenantAdminStaticAssetsController implements Disposable {
 
   Future<void> loadProfileTypes() async {
     try {
-      final types = await _repository.fetchStaticProfileTypes();
+      await _repository.loadAllStaticProfileTypes();
+      final types = _repository.staticProfileTypesStreamValue.value ??
+          const <TenantAdminStaticProfileTypeDefinition>[];
       if (_isDisposed) return;
       profileTypesStreamValue.addValue(types);
       errorStreamValue.addValue(null);
@@ -209,20 +209,25 @@ class TenantAdminStaticAssetsController implements Disposable {
   Future<void> loadTaxonomies() async {
     taxonomyLoadingStreamValue.addValue(true);
     try {
-      final taxonomies = await _taxonomiesRepository.fetchTaxonomies();
+      await _taxonomiesRepository.loadAllTaxonomies();
+      final taxonomies = _taxonomiesRepository.taxonomiesStreamValue.value ??
+          const <TenantAdminTaxonomyDefinition>[];
       final filtered = taxonomies
           .where((taxonomy) => taxonomy.appliesToTarget('static_asset'))
           .toList(growable: false);
       if (_isDisposed) return;
       taxonomiesStreamValue.addValue(filtered);
-      final entries = await Future.wait(
-        filtered.map(
-          (taxonomy) async => MapEntry(
-            taxonomy.slug,
-            await _taxonomiesRepository.fetchTerms(taxonomyId: taxonomy.id),
-          ),
-        ),
-      );
+      final entries =
+          <MapEntry<String, List<TenantAdminTaxonomyTermDefinition>>>[];
+      for (final taxonomy in filtered) {
+        await _taxonomiesRepository.loadAllTerms(taxonomyId: taxonomy.id);
+        final terms = _taxonomiesRepository.termsStreamValue.value ??
+            const <TenantAdminTaxonomyTermDefinition>[];
+        entries.add(MapEntry<String, List<TenantAdminTaxonomyTermDefinition>>(
+          taxonomy.slug,
+          terms,
+        ));
+      }
       if (_isDisposed) return;
       taxonomyTermsStreamValue.addValue({
         for (final entry in entries) entry.key: entry.value,

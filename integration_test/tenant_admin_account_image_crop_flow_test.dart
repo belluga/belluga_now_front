@@ -359,7 +359,7 @@ class _FakeExternalImageProxy implements TenantAdminExternalImageProxyContract {
 
 class _FakeAccountsRepository extends TenantAdminAccountsRepositoryContract {
   @override
-  Future<List<TenantAdminAccount>> fetchAccounts() async => const [];
+  Future<List<TenantAdminAccount>> fetchAccounts() async => [];
 
   @override
   Future<TenantAdminAccount> fetchAccountBySlug(String accountSlug) async {
@@ -424,7 +424,7 @@ class _FakeAccountProfilesRepository
   Future<List<TenantAdminAccountProfile>> fetchAccountProfiles({
     String? accountId,
   }) async =>
-      const [];
+      [];
 
   @override
   Future<TenantAdminAccountProfile> fetchAccountProfile(
@@ -487,7 +487,7 @@ class _FakeAccountProfilesRepository
 
   @override
   Future<List<TenantAdminProfileTypeDefinition>> fetchProfileTypes() async {
-    return const [
+    return [
       TenantAdminProfileTypeDefinition(
         type: 'venue',
         label: 'Venue',
@@ -536,8 +536,7 @@ class _FakeAccountProfilesRepository
 class _FakeTaxonomiesRepository
     extends TenantAdminTaxonomiesRepositoryContract {
   @override
-  Future<List<TenantAdminTaxonomyDefinition>> fetchTaxonomies() async =>
-      const [];
+  Future<List<TenantAdminTaxonomyDefinition>> fetchTaxonomies() async => [];
 
   @override
   Future<TenantAdminTaxonomyDefinition> createTaxonomy({
@@ -571,7 +570,7 @@ class _FakeTaxonomiesRepository
   Future<List<TenantAdminTaxonomyTermDefinition>> fetchTerms({
     required String taxonomyId,
   }) async =>
-      const [];
+      [];
 
   @override
   Future<TenantAdminTaxonomyTermDefinition> createTerm({

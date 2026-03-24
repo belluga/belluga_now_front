@@ -7,6 +7,7 @@ import 'package:belluga_now/infrastructure/dal/dao/account_profiles_backend_cont
 import 'package:belluga_now/infrastructure/dal/dao/tenant_backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/venue_event_backend_contract.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
+import 'package:belluga_now/testing/app_data_test_factory.dart';
 import 'package:belluga_now/domain/app_data/app_type.dart';
 import 'package:belluga_now/domain/app_data/value_object/platform_type_value.dart';
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
@@ -442,7 +443,7 @@ class _UnsupportedScheduleBackend extends ScheduleBackendContract {
 AppData _buildLandlordAppData() {
   final platform = PlatformTypeValue(defaultValue: AppType.mobile)
     ..parse(AppType.mobile.name);
-  return AppData.fromInitialization(
+  return buildAppDataFromInitialization(
     remoteData: {
       'name': 'Landlord',
       'type': 'landlord',

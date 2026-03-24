@@ -1,5 +1,8 @@
 part of '../partner_profile_config.dart';
 
+typedef ProfileModuleTitle = String;
+typedef ProfileModuleDataKey = String;
+
 class ProfileModuleConfig {
   ProfileModuleConfig({
     required this.id,
@@ -8,6 +11,6 @@ class ProfileModuleConfig {
   });
 
   final ProfileModuleId id;
-  final String? title;
-  final String? dataKey;
+  final ProfileModuleTitle? title;
+  final ProfileModuleDataKey? dataKey;
 }

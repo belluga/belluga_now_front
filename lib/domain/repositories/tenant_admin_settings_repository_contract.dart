@@ -2,6 +2,13 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_settings.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:stream_value/core/stream_value.dart';
 
+typedef TenantAdminSettingsRepositoryContractPrimString = String;
+typedef TenantAdminSettingsRepositoryContractPrimInt = int;
+typedef TenantAdminSettingsRepositoryContractPrimBool = bool;
+typedef TenantAdminSettingsRepositoryContractPrimDouble = double;
+typedef TenantAdminSettingsRepositoryContractPrimDateTime = DateTime;
+typedef TenantAdminSettingsRepositoryContractPrimDynamic = dynamic;
+
 abstract class TenantAdminSettingsRepositoryContract {
   StreamValue<TenantAdminBrandingSettings?> get brandingSettingsStreamValue;
 
@@ -19,8 +26,8 @@ abstract class TenantAdminSettingsRepositoryContract {
     required TenantAdminAppLinksSettings settings,
   });
 
-  Future<String> uploadMapFilterImage({
-    required String key,
+  Future<TenantAdminSettingsRepositoryContractPrimString> uploadMapFilterImage({
+    required TenantAdminSettingsRepositoryContractPrimString key,
     required TenantAdminMediaUpload upload,
   });
 
@@ -41,7 +48,7 @@ abstract class TenantAdminSettingsRepositoryContract {
   });
 
   Future<TenantAdminTelemetrySettingsSnapshot> deleteTelemetryIntegration({
-    required String type,
+    required TenantAdminSettingsRepositoryContractPrimString type,
   });
 
   Future<TenantAdminBrandingSettings> fetchBrandingSettings();

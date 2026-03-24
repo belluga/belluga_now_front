@@ -1,5 +1,10 @@
 part of '../partner_profile_module_data.dart';
 
+typedef PartnerLocationAddress = String;
+typedef PartnerLocationStatus = String;
+typedef PartnerLocationLatitude = String;
+typedef PartnerLocationLongitude = String;
+
 class PartnerLocationView {
   const PartnerLocationView({
     required this.address,
@@ -8,8 +13,8 @@ class PartnerLocationView {
     this.lng,
   });
 
-  final String address;
-  final String status;
-  final String? lat;
-  final String? lng;
+  final PartnerLocationAddress address;
+  final PartnerLocationStatus status;
+  final PartnerLocationLatitude? lat;
+  final PartnerLocationLongitude? lng;
 }

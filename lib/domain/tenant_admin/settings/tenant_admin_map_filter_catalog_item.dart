@@ -3,11 +3,18 @@ import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_lower
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_url_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_required_text_value.dart';
 
+typedef TenantAdminMapFilterCatalogItemPrimString = String;
+typedef TenantAdminMapFilterCatalogItemPrimInt = int;
+typedef TenantAdminMapFilterCatalogItemPrimBool = bool;
+typedef TenantAdminMapFilterCatalogItemPrimDouble = double;
+typedef TenantAdminMapFilterCatalogItemPrimDateTime = DateTime;
+typedef TenantAdminMapFilterCatalogItemPrimDynamic = dynamic;
+
 class TenantAdminMapFilterCatalogItem {
   TenantAdminMapFilterCatalogItem({
-    required String key,
-    required String label,
-    String? imageUri,
+    required TenantAdminMapFilterCatalogItemPrimString key,
+    required TenantAdminMapFilterCatalogItemPrimString label,
+    TenantAdminMapFilterCatalogItemPrimString? imageUri,
     TenantAdminMapFilterQuery? query,
   })  : keyValue = _buildKeyValue(key),
         labelValue = _buildLabelValue(label),
@@ -19,15 +26,16 @@ class TenantAdminMapFilterCatalogItem {
   final TenantAdminOptionalUrlValue? imageUriValue;
   final TenantAdminMapFilterQuery query;
 
-  String get key => keyValue.value;
-  String get label => labelValue.value;
-  String? get imageUri => imageUriValue?.nullableValue;
+  TenantAdminMapFilterCatalogItemPrimString get key => keyValue.value;
+  TenantAdminMapFilterCatalogItemPrimString get label => labelValue.value;
+  TenantAdminMapFilterCatalogItemPrimString? get imageUri =>
+      imageUriValue?.nullableValue;
 
   TenantAdminMapFilterCatalogItem copyWith({
-    String? key,
-    String? label,
-    String? imageUri,
-    bool clearImageUri = false,
+    TenantAdminMapFilterCatalogItemPrimString? key,
+    TenantAdminMapFilterCatalogItemPrimString? label,
+    TenantAdminMapFilterCatalogItemPrimString? imageUri,
+    TenantAdminMapFilterCatalogItemPrimBool clearImageUri = false,
     TenantAdminMapFilterQuery? query,
   }) {
     return TenantAdminMapFilterCatalogItem(
@@ -38,7 +46,8 @@ class TenantAdminMapFilterCatalogItem {
     );
   }
 
-  Map<String, dynamic> toJson() {
+  Map<TenantAdminMapFilterCatalogItemPrimString,
+      TenantAdminMapFilterCatalogItemPrimDynamic> toJson() {
     return {
       'key': key,
       'label': label,
@@ -47,17 +56,20 @@ class TenantAdminMapFilterCatalogItem {
     };
   }
 
-  static TenantAdminLowercaseTokenValue _buildKeyValue(String raw) {
+  static TenantAdminLowercaseTokenValue _buildKeyValue(
+      TenantAdminMapFilterCatalogItemPrimString raw) {
     final value = TenantAdminLowercaseTokenValue()..parse(raw);
     return value;
   }
 
-  static TenantAdminRequiredTextValue _buildLabelValue(String raw) {
+  static TenantAdminRequiredTextValue _buildLabelValue(
+      TenantAdminMapFilterCatalogItemPrimString raw) {
     final value = TenantAdminRequiredTextValue()..parse(raw);
     return value;
   }
 
-  static TenantAdminOptionalUrlValue? _buildImageUriValue(String? raw) {
+  static TenantAdminOptionalUrlValue? _buildImageUriValue(
+      TenantAdminMapFilterCatalogItemPrimString? raw) {
     final normalized = raw?.trim();
     if (normalized == null || normalized.isEmpty) {
       return null;

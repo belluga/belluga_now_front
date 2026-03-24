@@ -7,9 +7,17 @@ part 'auth_error_user_already_exists.dart';
 part 'auth_error_validation.dart';
 part 'auth_error_validation_error.dart';
 
+typedef AuthErrorCode = int;
+typedef AuthErrorMessageText = String;
+typedef AuthErrorFieldKey = String;
+typedef AuthErrorFieldText = String;
+typedef AuthErrorFieldMessages
+    = Map<AuthErrorFieldKey, List<AuthErrorFieldText>>;
+typedef AuthErrorPayload = Map<String, dynamic>;
+
 sealed class BellugaAuthError {
-  final String message;
-  final Map<String, List<String>> errors;
+  final AuthErrorMessageText message;
+  final AuthErrorFieldMessages errors;
 
   BellugaAuthError({
     this.message = 'Erro desconhecido',
@@ -17,16 +25,16 @@ sealed class BellugaAuthError {
   });
 
   factory BellugaAuthError.fromCode({
-    int? errorCode,
-    String? message,
-    Map<String, dynamic>? errors,
+    AuthErrorCode? errorCode,
+    AuthErrorMessageText? message,
+    AuthErrorPayload? errors,
   }) {
     final BellugaAuthError error = switch (errorCode) {
       403 => AuthErrorInvalidCredentials(),
       409 => AuthErrorUserAlreadyExists(),
       401 => AuthErrorInvalidToken(),
       422 => AuthErrorValidationError.fromErrors(
-          errors: errors ?? const <String, dynamic>{},
+          errors: errors ?? const <AuthErrorFieldKey, dynamic>{},
         ),
       _ => AuthErrorGeneric(),
     };

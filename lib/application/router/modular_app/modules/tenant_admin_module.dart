@@ -22,8 +22,6 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition
 import 'package:belluga_now/domain/services/tenant_admin_external_image_proxy_contract.dart';
 import 'package:belluga_now/domain/services/tenant_admin_location_selection_contract.dart';
 import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.dart';
-import 'package:belluga_now/domain/repositories/tenant_admin_selected_tenant_repository_contract.dart';
-import 'package:belluga_now/infrastructure/repositories/tenant_admin/tenant_admin_selected_tenant_repository.dart';
 import 'package:belluga_now/infrastructure/services/tenant_admin/tenant_admin_external_image_proxy_service.dart';
 import 'package:belluga_now/presentation/landlord_area/auth/controllers/tenant_admin_landlord_login_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/account_profiles/controllers/tenant_admin_account_profiles_controller.dart';
@@ -42,6 +40,7 @@ import 'package:belluga_now/presentation/tenant_admin/static_assets/controllers/
 import 'package:belluga_now/presentation/tenant_admin/static_profile_types/controllers/tenant_admin_static_profile_types_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/taxonomies/controllers/tenant_admin_taxonomies_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_image_ingestion_service.dart';
+import 'package:belluga_now/domain/repositories/tenant_admin_selected_tenant_repository_contract.dart';
 import 'package:get_it/get_it.dart';
 import 'package:get_it_modular_with_auto_route/get_it_modular_with_auto_route.dart';
 
@@ -105,9 +104,6 @@ class TenantAdminModule extends ModuleContract {
     );
     registerLazySingleton<TenantAdminLocationSelectionContract>(
       () => TenantAdminLocationSelectionService(),
-    );
-    registerLazySingleton<TenantAdminSelectedTenantRepositoryContract>(
-      () => TenantAdminSelectedTenantRepository(),
     );
     registerLazySingleton<TenantAdminTenantScopeContract>(
       () => GetIt.I.get<TenantAdminSelectedTenantRepositoryContract>()

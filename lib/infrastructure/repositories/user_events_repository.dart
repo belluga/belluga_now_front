@@ -1,6 +1,7 @@
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_events_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
+import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
 import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
 import 'package:belluga_now/infrastructure/dal/dao/laravel_backend/user_events_backend/laravel_user_events_backend.dart';
 import 'package:belluga_now/infrastructure/services/user_events_backend_contract.dart';
@@ -39,13 +40,17 @@ class UserEventsRepository implements UserEventsRepositoryContract {
     return _appDataRepository;
   }
 
-  Uri _resolveDefaultEventImage() {
+  ThumbUriValue _resolveDefaultEventImage() {
     final configured =
         _resolvedAppDataRepository?.appData.mainLogoDarkUrl.value;
-    if (configured != null && configured.toString().trim().isNotEmpty) {
-      return configured;
-    }
-    return _localEventPlaceholderUri;
+    final resolvedUri =
+        (configured != null && configured.toString().trim().isNotEmpty)
+            ? configured
+            : _localEventPlaceholderUri;
+    final thumbUriValue =
+        ThumbUriValue(defaultValue: resolvedUri, isRequired: true)
+          ..parse(resolvedUri.toString());
+    return thumbUriValue;
   }
 
   /// Stream of confirmed event IDs

@@ -1,29 +1,18 @@
 import 'package:belluga_now/domain/partners/profile_type_capabilities.dart';
+import 'package:belluga_now/domain/partners/value_objects/profile_type_key_value.dart';
+import 'package:belluga_now/domain/partners/value_objects/profile_type_label_value.dart';
 
 class ProfileTypeDefinition {
   ProfileTypeDefinition({
-    required this.type,
-    required this.label,
+    required this.typeValue,
+    required this.labelValue,
     required this.capabilities,
-    Map<String, dynamic>? raw,
-  }) : raw = Map<String, dynamic>.unmodifiable(raw ?? const <String, dynamic>{});
+  });
 
-  final String type;
-  final String label;
+  final ProfileTypeKeyValue typeValue;
+  final ProfileTypeLabelValue labelValue;
   final ProfileTypeCapabilities capabilities;
-  final Map<String, dynamic> raw;
 
-  factory ProfileTypeDefinition.fromPrimitives({
-    required String type,
-    String? label,
-    required ProfileTypeCapabilities capabilities,
-    Map<String, dynamic>? raw,
-  }) {
-    return ProfileTypeDefinition(
-      type: type,
-      label: label ?? type,
-      capabilities: capabilities,
-      raw: raw,
-    );
-  }
+  String get type => typeValue.value;
+  String get label => labelValue.value;
 }

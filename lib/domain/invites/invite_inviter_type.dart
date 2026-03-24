@@ -3,6 +3,8 @@ enum InviteInviterType {
   accountProfile,
 }
 
+typedef InviteInviterTypeRaw = String;
+
 extension InviteInviterTypeApiMapper on InviteInviterType {
   String get apiValue {
     switch (this) {
@@ -13,7 +15,7 @@ extension InviteInviterTypeApiMapper on InviteInviterType {
     }
   }
 
-  static InviteInviterType? tryParse(String? raw) {
+  static InviteInviterType? tryParse(InviteInviterTypeRaw? raw) {
     switch (raw?.trim().toLowerCase()) {
       case 'user':
         return InviteInviterType.user;

@@ -213,9 +213,9 @@ class _TenantAdminSettingsScreenState extends State<TenantAdminSettingsScreen> {
                     ),
                     _buildHint(
                       context,
-                      brandingSettings == null
-                          ? 'Identidade visual indisponível. Toque para carregar.'
-                          : 'Toque para editar identidade visual',
+                      (switch (brandingSettings) { null => false, _ => true })
+                          ? 'Toque para editar identidade visual'
+                          : 'Identidade visual indisponível. Toque para carregar.',
                     ),
                   ],
                 ),

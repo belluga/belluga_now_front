@@ -23,9 +23,6 @@ class TenantAdminTaxonomiesController implements Disposable {
 
   final TenantAdminTaxonomiesRepositoryContract _repository;
   final TenantAdminTenantScopeContract? _tenantScope;
-  static const int _taxonomiesPageSize = 20;
-  static const int _termsPageSize = 20;
-
   StreamValue<List<TenantAdminTaxonomyDefinition>?> get taxonomiesStreamValue =>
       _repository.taxonomiesStreamValue;
   StreamValue<bool> get hasMoreTaxonomiesStreamValue =>
@@ -101,7 +98,7 @@ class TenantAdminTaxonomiesController implements Disposable {
   }
 
   Future<void> loadTaxonomies() async {
-    await _repository.loadTaxonomies(pageSize: _taxonomiesPageSize);
+    await _repository.loadTaxonomies();
     errorStreamValue.addValue(_repository.taxonomiesErrorStreamValue.value);
   }
 
@@ -109,7 +106,7 @@ class TenantAdminTaxonomiesController implements Disposable {
     if (_isDisposed) {
       return;
     }
-    await _repository.loadNextTaxonomiesPage(pageSize: _taxonomiesPageSize);
+    await _repository.loadNextTaxonomiesPage();
     errorStreamValue.addValue(_repository.taxonomiesErrorStreamValue.value);
   }
 
@@ -117,7 +114,6 @@ class TenantAdminTaxonomiesController implements Disposable {
     _activeTaxonomyId = taxonomyId;
     await _repository.loadTerms(
       taxonomyId: taxonomyId,
-      pageSize: _termsPageSize,
     );
     errorStreamValue.addValue(_repository.termsErrorStreamValue.value);
   }
@@ -127,7 +123,7 @@ class TenantAdminTaxonomiesController implements Disposable {
     if (_isDisposed || taxonomyId == null || taxonomyId.isEmpty) {
       return;
     }
-    await _repository.loadNextTermsPage(pageSize: _termsPageSize);
+    await _repository.loadNextTermsPage();
     errorStreamValue.addValue(_repository.termsErrorStreamValue.value);
   }
 

@@ -1,16 +1,14 @@
 import 'dart:async';
 
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/controllers/tenant_home_controller.dart';
+import 'package:belluga_now/testing/domain_factories.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/domain/repositories/user_events_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
 import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
+import 'package:belluga_now/testing/app_data_test_factory.dart';
 import 'package:belluga_now/domain/app_data/value_object/platform_type_value.dart';
-import 'package:belluga_now/domain/value_objects/title_value.dart';
-import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
-import 'package:belluga_now/domain/value_objects/description_value.dart';
-import 'package:value_object_pattern/domain/value_objects/date_time_value.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
 import 'package:stream_value/core/stream_value.dart';
@@ -44,31 +42,23 @@ void main() {
 
   test('filters my events to confirmed and upcoming', () async {
     final now = DateTime.now();
-    final upcomingEvent = VenueEventResume(
-      id: '1',
+    const upcomingId = '507f1f77bcf86cd799439011';
+    const pastId = '507f1f77bcf86cd799439012';
+    final upcomingEvent = buildVenueEventResume(
+      id: upcomingId,
       slug: 'slug-1',
-      titleValue: TitleValue()..parse('Upcoming Event Title Long Enough'),
-      imageUriValue:
-          ThumbUriValue(defaultValue: Uri.parse('http://example.com/img.jpg')),
-      startDateTimeValue:
-          DateTimeValue(defaultValue: now.add(const Duration(hours: 1))),
-      locationValue: DescriptionValue()
-        ..parse('Valid Location Name Long Enough'),
-      artists: [],
-      tags: [],
+      title: 'Upcoming Event Title Long Enough',
+      imageUri: Uri.parse('http://example.com/img.jpg'),
+      startDateTime: now.add(const Duration(hours: 1)),
+      location: 'Valid Location Name Long Enough',
     );
-    final pastEvent = VenueEventResume(
-      id: '2',
+    final pastEvent = buildVenueEventResume(
+      id: pastId,
       slug: 'slug-2',
-      titleValue: TitleValue()..parse('Past Event Title Long Enough'),
-      imageUriValue:
-          ThumbUriValue(defaultValue: Uri.parse('http://example.com/img.jpg')),
-      startDateTimeValue:
-          DateTimeValue(defaultValue: now.subtract(const Duration(days: 1))),
-      locationValue: DescriptionValue()
-        ..parse('Valid Location Name Long Enough'),
-      artists: [],
-      tags: [],
+      title: 'Past Event Title Long Enough',
+      imageUri: Uri.parse('http://example.com/img.jpg'),
+      startDateTime: now.subtract(const Duration(days: 1)),
+      location: 'Valid Location Name Long Enough',
     );
 
     userEventsRepository.setEvents([upcomingEvent, pastEvent]);
@@ -76,11 +66,11 @@ void main() {
 
     expect(
       controller.myEventsFilteredStreamValue.value.map((e) => e.id),
-      contains('1'),
+      contains(upcomingId),
     );
     expect(
       controller.myEventsFilteredStreamValue.value.map((e) => e.id),
-      isNot(contains('2')),
+      isNot(contains(pastId)),
     );
   });
 
@@ -149,7 +139,7 @@ AppData _buildAppData() {
     'port': null,
     'device': 'test-device',
   };
-  return AppData.fromInitialization(
+  return buildAppDataFromInitialization(
       remoteData: remoteData, localInfo: localInfo);
 }
 
@@ -217,6 +207,13 @@ class _FakeUserLocationRepository implements UserLocationRepositoryContract {
   @override
   final StreamValue<String?> lastKnownAddressStreamValue =
       StreamValue<String?>(defaultValue: null);
+
+  @override
+  @override
+  final StreamValue<LocationResolutionPhase>
+      locationResolutionPhaseStreamValue = StreamValue<LocationResolutionPhase>(
+    defaultValue: LocationResolutionPhase.unknown,
+  );
 
   @override
   Future<void> ensureLoaded() async {}

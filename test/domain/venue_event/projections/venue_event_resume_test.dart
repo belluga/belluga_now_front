@@ -1,4 +1,9 @@
 import 'package:belluga_now/domain/artist/artist_resume.dart';
+import 'package:belluga_now/domain/artist/value_objects/artist_avatar_value.dart';
+import 'package:belluga_now/domain/artist/value_objects/artist_genre_value.dart';
+import 'package:belluga_now/domain/artist/value_objects/artist_id_value.dart';
+import 'package:belluga_now/domain/artist/value_objects/artist_is_highlight_value.dart';
+import 'package:belluga_now/domain/artist/value_objects/artist_name_value.dart';
 import 'package:belluga_now/domain/invites/invite_partner_type.dart';
 import 'package:belluga_now/domain/partner/partner_resume.dart';
 import 'package:belluga_now/domain/partner/value_objects/invite_partner_hero_image_value.dart';
@@ -9,10 +14,13 @@ import 'package:belluga_now/domain/schedule/event_type_model.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_is_confirmed_value.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_total_confirmed_value.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_type_id_value.dart';
+import 'package:belluga_now/domain/thumb/enums/thumb_types.dart';
 import 'package:belluga_now/domain/thumb/thumb_model.dart';
 import 'package:belluga_now/domain/value_objects/color_value.dart';
 import 'package:belluga_now/domain/value_objects/description_value.dart';
 import 'package:belluga_now/domain/value_objects/slug_value.dart';
+import 'package:belluga_now/domain/value_objects/thumb_type_value.dart';
+import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
 import 'package:belluga_now/domain/value_objects/title_value.dart';
 import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
 import 'package:flutter/material.dart';
@@ -25,10 +33,15 @@ void main() {
   group('VenueEventResume.resolvePreferredImageUri', () {
     test('prefers event cover before artist/host/settings', () {
       final event = _buildEvent(
-        thumb:
-            ThumbModel.fromPrimitives(url: 'https://cdn.test/event-cover.png'),
+        thumb: ThumbModel(
+          thumbUri: ThumbUriValue(
+            defaultValue: Uri.parse('https://cdn.test/event-cover.png'),
+          )..parse('https://cdn.test/event-cover.png'),
+          thumbType: ThumbTypeValue(defaultValue: ThumbTypes.image)
+            ..parse(ThumbTypes.image.name),
+        ),
         artists: [
-          ArtistResume.fromPrimitives(
+          _buildArtist(
             id: 'artist-1',
             name: 'Artist One',
             avatarUrl: 'https://cdn.test/artist-cover.png',
@@ -39,7 +52,9 @@ void main() {
 
       final resolved = VenueEventResume.resolvePreferredImageUri(
         event,
-        settingsDefaultImageUri: Uri.parse('https://cdn.test/settings.png'),
+        settingsDefaultImageValue: ThumbUriValue(
+          defaultValue: Uri.parse('https://cdn.test/settings.png'),
+        )..parse('https://cdn.test/settings.png'),
       );
 
       expect(resolved.toString(), 'https://cdn.test/event-cover.png');
@@ -48,7 +63,7 @@ void main() {
     test('applies fallback chain artist -> host -> settings -> local', () {
       final artistEvent = _buildEvent(
         artists: [
-          ArtistResume.fromPrimitives(
+          _buildArtist(
             id: 'artist-1',
             name: 'Artist One',
             avatarUrl: 'https://cdn.test/artist-cover.png',
@@ -65,7 +80,9 @@ void main() {
       final hostResolved = VenueEventResume.resolvePreferredImageUri(hostEvent);
       final settingsResolved = VenueEventResume.resolvePreferredImageUri(
         settingsEvent,
-        settingsDefaultImageUri: Uri.parse('https://cdn.test/settings.png'),
+        settingsDefaultImageValue: ThumbUriValue(
+          defaultValue: Uri.parse('https://cdn.test/settings.png'),
+        )..parse('https://cdn.test/settings.png'),
       );
       final localResolved =
           VenueEventResume.resolvePreferredImageUri(settingsEvent);
@@ -107,6 +124,25 @@ EventModel _buildEvent({
     tags: const [],
     isConfirmedValue: EventIsConfirmedValue()..parse('false'),
     totalConfirmedValue: EventTotalConfirmedValue()..parse('0'),
+  );
+}
+
+ArtistResume _buildArtist({
+  required String id,
+  required String name,
+  String? avatarUrl,
+}) {
+  final avatarValue = ArtistAvatarValue();
+  final normalizedAvatarUrl = avatarUrl?.trim();
+  if (normalizedAvatarUrl != null && normalizedAvatarUrl.isNotEmpty) {
+    avatarValue.parse(normalizedAvatarUrl);
+  }
+  return ArtistResume(
+    idValue: ArtistIdValue()..parse(id),
+    nameValue: ArtistNameValue()..parse(name),
+    avatarValue: avatarValue,
+    isHighlightValue: ArtistIsHighlightValue()..parse('false'),
+    genreValues: const <ArtistGenreValue>[],
   );
 }
 
