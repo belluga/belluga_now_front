@@ -54,34 +54,33 @@ class _AccountProfileDetailScreenState
           }
           return StreamValueBuilder<AccountProfileModel?>(
             streamValue: _controller.accountProfileStreamValue,
+            onNullWidget: const Center(child: Text('Perfil não encontrado')),
             builder: (context, accountProfile) {
-              if (accountProfile == null) {
-                return const Center(child: Text('Perfil não encontrado'));
-              }
               return StreamValueBuilder<PartnerProfileConfig?>(
                 streamValue: _controller.profileConfigStreamValue,
+                onNullWidget: const Center(child: CircularProgressIndicator()),
                 builder: (context, config) {
-                  if (config == null) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
+                  final resolvedAccountProfile = accountProfile!;
+                  final resolvedConfig = config!;
                   return StreamValueBuilder<Map<ProfileModuleId, Object?>>(
                     streamValue: _controller.moduleDataStreamValue,
                     builder: (context, moduleData) {
                       return StreamValueBuilder<Set<String>>(
                         streamValue: _controller.favoriteIdsStream,
                         builder: (context, favorites) {
-                          final isFav = favorites.contains(accountProfile.id);
+                          final isFav =
+                              favorites.contains(resolvedAccountProfile.id);
                           final isFavoritable =
-                              _controller.isFavoritable(accountProfile);
+                              _controller.isFavoritable(resolvedAccountProfile);
                           final configTabs =
-                              _buildTabsFromConfig(config, moduleData);
+                              _buildTabsFromConfig(resolvedConfig, moduleData);
                           final screen = ImmersiveDetailScreen(
                             heroContent: _buildHero(
-                                accountProfile, isFav, isFavoritable),
-                            title: accountProfile.name,
+                                resolvedAccountProfile, isFav, isFavoritable),
+                            title: resolvedAccountProfile.name,
                             tabs: configTabs,
                             betweenHeroAndTabs:
-                                _buildBetweenHero(accountProfile),
+                                _buildBetweenHero(resolvedAccountProfile),
                             footer: _buildFooter(isFav, isFavoritable),
                           );
                           return screen;

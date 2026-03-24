@@ -73,6 +73,15 @@ bool isDataSourceTypeName(String? typeName) {
       normalized.contains('dto');
 }
 
+bool isRepositoryTypeName(String? typeName) {
+  if (typeName == null || typeName.isEmpty) {
+    return false;
+  }
+
+  return typeName.endsWith('Repository') ||
+      typeName.endsWith('RepositoryContract');
+}
+
 bool isDtoTypeName(String? typeName) {
   if (typeName == null || typeName.isEmpty) {
     return false;

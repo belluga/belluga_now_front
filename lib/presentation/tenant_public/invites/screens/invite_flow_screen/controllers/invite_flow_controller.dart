@@ -41,8 +41,8 @@ class InviteFlowScreenController with Disposable {
 
   final decisionsStreamValue =
       StreamValue<Map<String, InviteDecision>>(defaultValue: const {});
-  final displayInvitesStreamValue =
-      StreamValue<List<InviteModel>>(defaultValue: const <InviteModel>[]);
+  StreamValue<List<InviteModel>> get displayInvitesStreamValue =>
+      _repository.inviteFlowDisplayInvitesStreamValue;
   final authRequiredForDecisionStreamValue =
       StreamValue<bool>(defaultValue: false);
   final initializedStreamValue = StreamValue<bool>(defaultValue: false);
@@ -82,6 +82,7 @@ class InviteFlowScreenController with Disposable {
     String? redirectPath,
   }) async {
     initializedStreamValue.addValue(false);
+    displayInvitesStreamValue.addValue(const <InviteModel>[]);
     _setRedirectPath(redirectPath);
     _activeMaterializedInviteId = null;
     final normalizedShareCode = shareCode?.trim() ?? '';
@@ -147,23 +148,27 @@ class InviteFlowScreenController with Disposable {
       String shareCode) async {
     final normalizedCode = shareCode.trim();
     if (normalizedCode.isEmpty) {
+      _repository.shareCodePreviewInviteStreamValue.addValue(null);
       return const <InviteModel>[];
     }
 
     try {
-      final preview = await _repository.previewShareCode(normalizedCode);
+      await _repository.loadShareCodePreview(normalizedCode);
+      final preview = _repository.shareCodePreviewInviteStreamValue.value;
       if (preview == null) {
         return const <InviteModel>[];
       }
       return <InviteModel>[preview];
     } catch (_) {
+      _repository.shareCodePreviewInviteStreamValue.addValue(null);
       return const <InviteModel>[];
     }
   }
 
   Future<void> fetchPendingInvites() async {
     try {
-      final invites = await _repository.fetchInvites();
+      await _repository.refreshPendingInvites();
+      final invites = List<InviteModel>.from(pendingInvitesStreamValue.value);
       pendingInvitesStreamValue.addValue(invites);
       _ensureTopIndexBounds(invites.length);
       _syncDisplayInvitesWithPending();
@@ -485,7 +490,6 @@ class InviteFlowScreenController with Disposable {
     _pendingInvitesSubscription = null;
     _finishActiveInviteTimedEvent();
     decisionsStreamValue.dispose();
-    displayInvitesStreamValue.dispose();
     authRequiredForDecisionStreamValue.dispose();
     initializedStreamValue.dispose();
     redirectPathStreamValue.dispose();

@@ -34,12 +34,15 @@ void main() {
 
 class _FakePoiRepository implements PoiRepositoryContract {
   @override
-  final StreamValue<List<CityPoiModel>> filteredPoisStreamValue =
-      StreamValue<List<CityPoiModel>>(defaultValue: const <CityPoiModel>[]);
+  final StreamValue<List<CityPoiModel>?> filteredPoisStreamValue =
+      StreamValue<List<CityPoiModel>?>(defaultValue: null);
 
   @override
   final StreamValue<CityPoiModel?> selectedPoiStreamValue =
       StreamValue<CityPoiModel?>();
+  @override
+  final StreamValue<List<CityPoiModel>?> stackItemsStreamValue =
+      StreamValue<List<CityPoiModel>?>(defaultValue: null);
 
   @override
   final StreamValue<PoiFilterMode> filterModeStreamValue =
@@ -92,11 +95,29 @@ class _FakePoiRepository implements PoiRepositoryContract {
       const <CityPoiModel>[];
 
   @override
+  Future<void> refreshPoints(PoiQuery query) async {
+    final points = await fetchPoints(query);
+    filteredPoisStreamValue.addValue(points);
+  }
+
+  @override
   Future<List<CityPoiModel>> fetchStackItems({
     required String stackKey,
     required PoiQuery query,
   }) async =>
       const <CityPoiModel>[];
+
+  @override
+  Future<void> loadStackItems({
+    required String stackKey,
+    required PoiQuery query,
+  }) async {
+    final stackItems = await fetchStackItems(
+      stackKey: stackKey,
+      query: query,
+    );
+    stackItemsStreamValue.addValue(stackItems);
+  }
 
   @override
   void selectPoi(CityPoiModel? poi) {

@@ -43,10 +43,7 @@ class AppDataRepository implements AppDataRepositoryContract {
   Future<void> init() async {
     final localInfo = await _localInfoSource.getInfo();
     final remoteData = await _backend.fetch();
-    appData = AppData.fromInitialization(
-      remoteData: remoteData,
-      localInfo: localInfo,
-    );
+    appData = remoteData.toDomain(localInfo: localInfo);
     final initialThemeMode = _resolveInitialThemeMode();
     themeModeStreamValue.addValue(initialThemeMode);
     maxRadiusMetersStreamValue.addValue(appData.mapRadiusMaxMeters);
@@ -105,7 +102,7 @@ class AppDataRepository implements AppDataRepositoryContract {
     final urls = <String>{};
 
     for (final uri in [
-      appData.iconUrl.value,
+      appData.iconMUrl.value,
       appData.mainIconLightUrl.value,
       appData.mainIconDarkUrl.value,
       appData.mainLogoUrl.value,

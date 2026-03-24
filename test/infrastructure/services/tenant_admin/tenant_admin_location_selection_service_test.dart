@@ -7,7 +7,7 @@ void main() {
     final service = TenantAdminLocationSelectionService();
 
     service.setInitialLocation(
-      const TenantAdminLocation(latitude: -20.0, longitude: -40.0),
+      TenantAdminLocation(latitude: -20.0, longitude: -40.0),
     );
     expect(service.currentLocation, isNotNull);
 

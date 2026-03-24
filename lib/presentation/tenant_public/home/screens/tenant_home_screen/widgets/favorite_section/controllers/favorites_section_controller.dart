@@ -22,45 +22,18 @@ class FavoritesSectionController implements Disposable {
   final FavoriteRepositoryContract _favoriteRepository;
   final AppDataRepositoryContract _appDataRepository;
 
-  final StreamValue<List<FavoriteResume>?> favoritesStreamValue =
-      StreamValue<List<FavoriteResume>?>();
+  StreamValue<List<FavoriteResume>?> get favoritesStreamValue =>
+      _favoriteRepository.favoriteResumesStreamValue;
   final StreamValue<FavoriteNavigationTarget?> navigationTargetStreamValue =
       StreamValue<FavoriteNavigationTarget?>(defaultValue: null);
 
   Future<void> init() async {
-    await _loadFavorites();
-  }
-
-  Future<void> _loadFavorites() async {
-    final previousValue = favoritesStreamValue.value;
-    try {
-      final favorites = await _favoriteRepository.fetchFavoriteResumes();
-
-      final appData = _appDataRepository.appData;
-      final mainIconUri = appData.mainIconLightUrl.value;
-      final primaryColor = _parseHexColor(appData.mainColor.value);
-
-      final updated = favorites.map((fav) {
-        if (fav.isPrimary) {
-          return FavoriteResume(
-            titleValue: fav.titleValue,
-            slug: fav.slug,
-            imageUriValue: fav.imageUriValue,
-            assetPathValue: fav.assetPathValue,
-            badge: fav.badge,
-            isPrimary: fav.isPrimary,
-            iconImageUrl: mainIconUri?.toString(),
-            primaryColor: primaryColor,
-          );
-        }
-
-        return fav;
-      }).toList(growable: false);
-
-      favoritesStreamValue.addValue(updated);
-    } catch (_) {
-      favoritesStreamValue.addValue(previousValue);
+    if (favoritesStreamValue.value == null) {
+      await _favoriteRepository.initializeFavoriteResumes();
+      return;
     }
+
+    await _favoriteRepository.refreshFavoriteResumes();
   }
 
   FavoriteResume buildPinnedFavorite() {

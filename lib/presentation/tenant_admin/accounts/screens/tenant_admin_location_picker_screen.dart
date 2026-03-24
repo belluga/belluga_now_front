@@ -91,20 +91,24 @@ class _TenantAdminLocationPickerScreenState
                   ),
                   MarkerLayer(
                     markers: [
-                      if (location != null)
-                        Marker(
-                          point: LatLng(
-                            location.latitude,
-                            location.longitude,
-                          ),
-                          width: 48,
-                          height: 48,
-                          child: const Icon(
-                            Icons.location_on,
-                            color: Colors.redAccent,
-                            size: 48,
-                          ),
-                        ),
+                      ...switch (location) {
+                        final selectedLocation? => [
+                            Marker(
+                              point: LatLng(
+                                selectedLocation.latitude,
+                                selectedLocation.longitude,
+                              ),
+                              width: 48,
+                              height: 48,
+                              child: const Icon(
+                                Icons.location_on,
+                                color: Colors.redAccent,
+                                size: 48,
+                              ),
+                            ),
+                          ],
+                        null => const <Marker>[],
+                      },
                     ],
                   ),
                 ],
@@ -121,20 +125,23 @@ class _TenantAdminLocationPickerScreenState
                         children: [
                           Expanded(
                             child: Text(
-                              location == null
-                                  ? 'Toque no mapa para selecionar.'
-                                  : 'Lat ${location.latitude.toStringAsFixed(6)} · Lng ${location.longitude.toStringAsFixed(6)}',
+                              switch (location) {
+                                final selectedLocation? =>
+                                  'Lat ${selectedLocation.latitude.toStringAsFixed(6)} · Lng ${selectedLocation.longitude.toStringAsFixed(6)}',
+                                null => 'Toque no mapa para selecionar.',
+                              },
                               style: Theme.of(context).textTheme.bodyMedium,
                             ),
                           ),
                           const SizedBox(width: 12),
                           FilledButton(
-                            onPressed: location == null
-                                ? null
-                                : () {
-                                    _controller.confirmSelection();
-                                    context.router.maybePop();
-                                  },
+                            onPressed: switch (location) {
+                              final _? => () {
+                                  _controller.confirmSelection();
+                                  context.router.maybePop();
+                                },
+                              null => null,
+                            },
                             child: const Text('Confirmar'),
                           ),
                         ],

@@ -1,4 +1,5 @@
 import 'package:belluga_now/domain/app_data/app_data.dart';
+import 'package:belluga_now/testing/app_data_test_factory.dart';
 import 'package:belluga_now/domain/app_data/value_object/platform_type_value.dart';
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/domain/partners/paged_account_profiles_result.dart';
@@ -9,6 +10,7 @@ import 'package:belluga_now/infrastructure/dal/dao/backend_contract.dart';
 import 'package:belluga_now/presentation/tenant_public/discovery/controllers/discovery_screen_controller.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
+import 'package:belluga_now/testing/account_profile_model_factory.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -108,7 +110,7 @@ void main() {
       pages: {
         1: PagedAccountProfilesResult(
           profiles: [
-            AccountProfileModel.fromPrimitives(
+            buildAccountProfileModelFromPrimitives(
               id: _mongoId('f'),
               name: 'Resultado remoto',
               slug: 'slug-exato-remoto',
@@ -579,7 +581,7 @@ AppData _buildAppData() {
     'port': null,
     'device': 'test-device',
   };
-  return AppData.fromInitialization(
+  return buildAppDataFromInitialization(
       remoteData: remoteData, localInfo: localInfo);
 }
 
@@ -588,7 +590,7 @@ AccountProfileModel _profile({
   required String type,
   required String name,
 }) {
-  return AccountProfileModel.fromPrimitives(
+  return buildAccountProfileModelFromPrimitives(
     id: id,
     name: name,
     slug: '$name-$type'.toLowerCase().replaceAll(' ', '-'),

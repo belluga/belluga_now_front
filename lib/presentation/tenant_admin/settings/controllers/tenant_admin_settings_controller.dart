@@ -416,13 +416,18 @@ class TenantAdminSettingsController implements Disposable {
         return;
       }
 
-      final accountTypesFuture = accountRepo.fetchProfileTypes();
-      final staticTypesFuture = staticRepo.fetchStaticProfileTypes();
-      final taxonomiesFuture = taxonomyRepo.fetchTaxonomies();
+      await Future.wait<void>([
+        accountRepo.loadAllProfileTypes(),
+        staticRepo.loadAllStaticProfileTypes(),
+        taxonomyRepo.loadAllTaxonomies(),
+      ]);
 
-      final accountTypes = await accountTypesFuture;
-      final staticTypes = await staticTypesFuture;
-      final taxonomies = await taxonomiesFuture;
+      final accountTypes = accountRepo.profileTypesStreamValue.value ??
+          const <TenantAdminProfileTypeDefinition>[];
+      final staticTypes = staticRepo.staticProfileTypesStreamValue.value ??
+          const <TenantAdminStaticProfileTypeDefinition>[];
+      final taxonomies = taxonomyRepo.taxonomiesStreamValue.value ??
+          const <TenantAdminTaxonomyDefinition>[];
 
       final termsByTaxonomySlug =
           await _loadTermsByTaxonomySlug(taxonomies: taxonomies);
@@ -1290,18 +1295,19 @@ class TenantAdminSettingsController implements Disposable {
     if (taxonomyRepo == null) {
       return const <String, List<TenantAdminTaxonomyTermDefinition>>{};
     }
-    final entries = await Future.wait<
-        MapEntry<String, List<TenantAdminTaxonomyTermDefinition>>>(
-      taxonomies.map((taxonomy) async {
-        final terms = await taxonomyRepo.fetchTerms(
-          taxonomyId: taxonomy.id,
-        );
-        return MapEntry<String, List<TenantAdminTaxonomyTermDefinition>>(
+    final entries =
+        <MapEntry<String, List<TenantAdminTaxonomyTermDefinition>>>[];
+    for (final taxonomy in taxonomies) {
+      await taxonomyRepo.loadAllTerms(taxonomyId: taxonomy.id);
+      final terms = taxonomyRepo.termsStreamValue.value ??
+          const <TenantAdminTaxonomyTermDefinition>[];
+      entries.add(
+        MapEntry<String, List<TenantAdminTaxonomyTermDefinition>>(
           taxonomy.slug,
           terms,
-        );
-      }),
-    );
+        ),
+      );
+    }
     return {
       for (final entry in entries) entry.key: entry.value,
     };

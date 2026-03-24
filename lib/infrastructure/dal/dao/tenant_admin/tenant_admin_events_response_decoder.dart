@@ -2,6 +2,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dar
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_value_parsers.dart';
 import 'package:belluga_now/infrastructure/dal/dao/http/raw_json_envelope_decoder.dart';
 
 class TenantAdminEventsResponseDecoder {
@@ -95,10 +96,16 @@ class TenantAdminEventsResponseDecoder {
             return null;
           }
           return TenantAdminEventOccurrence(
-            occurrenceId: _asString(item['occurrence_id']),
-            occurrenceSlug: _asString(item['occurrence_slug']),
-            dateTimeStart: start,
-            dateTimeEnd: _parseDate(item['date_time_end']),
+            occurrenceIdValue: tenantAdminOptionalText(
+              _asString(item['occurrence_id']),
+            ),
+            occurrenceSlugValue: tenantAdminOptionalText(
+              _asString(item['occurrence_slug']),
+            ),
+            dateTimeStartValue: tenantAdminDateTime(start),
+            dateTimeEndValue: tenantAdminOptionalDateTime(
+              _parseDate(item['date_time_end']),
+            ),
           );
         })
         .whereType<TenantAdminEventOccurrence>()
@@ -133,10 +140,14 @@ class TenantAdminEventsResponseDecoder {
           final permissions = _asMap(party['permissions']);
           final canEdit = permissions['can_edit'] == true;
           return TenantAdminEventParty(
-            partyType: _asString(party['party_type']) ?? '',
-            partyRefId: _asString(party['party_ref_id']) ?? '',
-            canEdit: canEdit,
-            metadata: _asMap(party['metadata']),
+            partyTypeValue: tenantAdminRequiredText(
+              _asString(party['party_type']) ?? '',
+            ),
+            partyRefIdValue: tenantAdminRequiredText(
+              _asString(party['party_ref_id']) ?? '',
+            ),
+            canEditValue: tenantAdminFlag(canEdit),
+            metadataValue: tenantAdminDynamicMap(_asMap(party['metadata'])),
           );
         })
         .where((party) =>
@@ -168,16 +179,23 @@ class TenantAdminEventsResponseDecoder {
     final placeRef = placeRefRow.isEmpty
         ? null
         : TenantAdminEventPlaceRef(
-            type: _asString(placeRefRow['type']) ?? '',
-            id: _asString(placeRefRow['id']) ?? '',
-            metadata: _asMap(placeRefRow['metadata']),
+            typeValue: tenantAdminRequiredText(
+              _asString(placeRefRow['type']) ?? '',
+            ),
+            idValue: tenantAdminRequiredText(
+              _asString(placeRefRow['id']) ?? '',
+            ),
+            metadataValue:
+                tenantAdminDynamicMap(_asMap(placeRefRow['metadata'])),
           );
 
     final dateTimeStart = _parseDate(row['date_time_start']);
     if (occurrences.isEmpty && dateTimeStart != null) {
       final fallbackOccurrence = TenantAdminEventOccurrence(
-        dateTimeStart: dateTimeStart,
-        dateTimeEnd: _parseDate(row['date_time_end']),
+        dateTimeStartValue: tenantAdminDateTime(dateTimeStart),
+        dateTimeEndValue: tenantAdminOptionalDateTime(
+          _parseDate(row['date_time_end']),
+        ),
       );
       return TenantAdminEvent(
         eventId: _asString(row['event_id']) ?? _asString(row['id']) ?? '',
@@ -197,8 +215,11 @@ class TenantAdminEventsResponseDecoder {
         thumbUrl: thumbUrl,
         occurrences: <TenantAdminEventOccurrence>[fallbackOccurrence],
         publication: TenantAdminEventPublication(
-          status: _asString(publicationRow['status']) ?? 'draft',
-          publishAt: _parseDate(publicationRow['publish_at']),
+          statusValue: tenantAdminRequiredText(
+              _asString(publicationRow['status']) ?? 'draft'),
+          publishAtValue: tenantAdminOptionalDateTime(
+            _parseDate(publicationRow['publish_at']),
+          ),
         ),
         artistIds: artistIds,
         eventParties: eventParties,
@@ -227,8 +248,11 @@ class TenantAdminEventsResponseDecoder {
       thumbUrl: thumbUrl,
       occurrences: occurrences,
       publication: TenantAdminEventPublication(
-        status: _asString(publicationRow['status']) ?? 'draft',
-        publishAt: _parseDate(publicationRow['publish_at']),
+        statusValue: tenantAdminRequiredText(
+            _asString(publicationRow['status']) ?? 'draft'),
+        publishAtValue: tenantAdminOptionalDateTime(
+          _parseDate(publicationRow['publish_at']),
+        ),
       ),
       artistIds: artistIds,
       eventParties: eventParties,

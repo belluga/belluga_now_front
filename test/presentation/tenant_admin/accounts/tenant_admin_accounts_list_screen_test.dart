@@ -33,8 +33,7 @@ void main() {
     );
     GetIt.I.registerSingleton<TenantAdminAccountsController>(controller);
 
-    await tester
-        .pumpWidget(_buildTestApp(const TenantAdminAccountsListScreen()));
+    await tester.pumpWidget(_buildTestApp(TenantAdminAccountsListScreen()));
     await tester.pump(const Duration(milliseconds: 100));
 
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
@@ -44,12 +43,11 @@ void main() {
   testWidgets('shows empty state only when list is loaded and empty',
       (tester) async {
     final controller = TenantAdminAccountsController(
-      accountsRepository: _FakeAccountsRepository(initialAccounts: const []),
+      accountsRepository: _FakeAccountsRepository(initialAccounts: []),
     );
     GetIt.I.registerSingleton<TenantAdminAccountsController>(controller);
 
-    await tester
-        .pumpWidget(_buildTestApp(const TenantAdminAccountsListScreen()));
+    await tester.pumpWidget(_buildTestApp(TenantAdminAccountsListScreen()));
     await tester.pumpAndSettle();
 
     expect(find.text('Nenhuma conta encontrada'), findsOneWidget);
@@ -59,7 +57,7 @@ void main() {
   testWidgets('renders loaded account card', (tester) async {
     final controller = TenantAdminAccountsController(
       accountsRepository: _FakeAccountsRepository(
-        initialAccounts: const [
+        initialAccounts: [
           TenantAdminAccount(
             id: 'acc-1',
             name: 'Conta 1',
@@ -72,8 +70,7 @@ void main() {
     );
     GetIt.I.registerSingleton<TenantAdminAccountsController>(controller);
 
-    await tester
-        .pumpWidget(_buildTestApp(const TenantAdminAccountsListScreen()));
+    await tester.pumpWidget(_buildTestApp(TenantAdminAccountsListScreen()));
     await tester.pumpAndSettle();
 
     expect(find.text('Conta 1'), findsOneWidget);
@@ -83,7 +80,7 @@ void main() {
       (tester) async {
     final controller = TenantAdminAccountsController(
       accountsRepository: _FakeAccountsRepository(
-        initialAccounts: const [
+        initialAccounts: [
           TenantAdminAccount(
             id: 'acc-legacy',
             name: 'Conta Legacy',
@@ -96,8 +93,7 @@ void main() {
     );
     GetIt.I.registerSingleton<TenantAdminAccountsController>(controller);
 
-    await tester
-        .pumpWidget(_buildTestApp(const TenantAdminAccountsListScreen()));
+    await tester.pumpWidget(_buildTestApp(TenantAdminAccountsListScreen()));
     await tester.pumpAndSettle();
 
     expect(find.text('conta-legacy'), findsNothing);
@@ -112,8 +108,8 @@ void main() {
       (tester) async {
     final repository = _FakeAccountsRepository.byOwnership(
       accountsByOwnership: {
-        TenantAdminOwnershipState.tenantOwned: const [],
-        TenantAdminOwnershipState.unmanaged: const [
+        TenantAdminOwnershipState.tenantOwned: [],
+        TenantAdminOwnershipState.unmanaged: [
           TenantAdminAccount(
             id: 'acc-unmanaged',
             name: 'Conta unmanaged',
@@ -129,8 +125,7 @@ void main() {
     );
     GetIt.I.registerSingleton<TenantAdminAccountsController>(controller);
 
-    await tester
-        .pumpWidget(_buildTestApp(const TenantAdminAccountsListScreen()));
+    await tester.pumpWidget(_buildTestApp(TenantAdminAccountsListScreen()));
     await tester.pumpAndSettle();
 
     expect(find.text('Conta unmanaged'), findsNothing);
@@ -152,7 +147,7 @@ void main() {
   testWidgets('search field triggers backend-first reload with query',
       (tester) async {
     final repository = _FakeAccountsRepository(
-      initialAccounts: const [
+      initialAccounts: [
         TenantAdminAccount(
           id: 'acc-1',
           name: 'Conta Alpha',
@@ -174,8 +169,7 @@ void main() {
     );
     GetIt.I.registerSingleton<TenantAdminAccountsController>(controller);
 
-    await tester
-        .pumpWidget(_buildTestApp(const TenantAdminAccountsListScreen()));
+    await tester.pumpWidget(_buildTestApp(TenantAdminAccountsListScreen()));
     await tester.pumpAndSettle();
 
     await tester.tap(
@@ -201,7 +195,7 @@ void main() {
   testWidgets('reloads list when returning from account detail route',
       (tester) async {
     final repository = _FakeAccountsRepository(
-      initialAccounts: const [
+      initialAccounts: [
         TenantAdminAccount(
           id: 'acc-1',
           name: 'Conta 1',
@@ -216,8 +210,7 @@ void main() {
     );
     GetIt.I.registerSingleton<TenantAdminAccountsController>(controller);
 
-    await tester
-        .pumpWidget(_buildTestApp(const TenantAdminAccountsListScreen()));
+    await tester.pumpWidget(_buildTestApp(TenantAdminAccountsListScreen()));
     await tester.pumpAndSettle();
 
     expect(repository.loadAccountsOwnershipCalls, hasLength(1));
@@ -238,7 +231,7 @@ void main() {
   testWidgets('reloads list after successful account create return',
       (tester) async {
     final repository = _FakeAccountsRepository(
-      initialAccounts: const [
+      initialAccounts: [
         TenantAdminAccount(
           id: 'acc-1',
           name: 'Conta 1',
@@ -253,8 +246,7 @@ void main() {
     );
     GetIt.I.registerSingleton<TenantAdminAccountsController>(controller);
 
-    await tester
-        .pumpWidget(_buildTestApp(const TenantAdminAccountsListScreen()));
+    await tester.pumpWidget(_buildTestApp(TenantAdminAccountsListScreen()));
     await tester.pumpAndSettle();
 
     expect(repository.loadAccountsOwnershipCalls, hasLength(1));
@@ -402,7 +394,7 @@ class _FakeAccountsRepository
 
   @override
   Future<List<TenantAdminAccount>> fetchAccounts() async =>
-      List<TenantAdminAccount>.from(initialAccounts ?? const []);
+      List<TenantAdminAccount>.from(initialAccounts ?? []);
 
   @override
   Future<TenantAdminPagedAccountsResult> fetchAccountsPage({
@@ -416,11 +408,11 @@ class _FakeAccountsRepository
       searchQuery: searchQuery,
     );
     final accounts = List<TenantAdminAccount>.from(
-      selectedAccounts ?? initialAccounts ?? const [],
+      selectedAccounts ?? initialAccounts ?? [],
     );
     final start = (page - 1) * pageSize;
     if (start >= accounts.length || page <= 0 || pageSize <= 0) {
-      return const TenantAdminPagedAccountsResult(
+      return TenantAdminPagedAccountsResult(
         accounts: <TenantAdminAccount>[],
         hasMore: false,
       );
@@ -502,7 +494,7 @@ class _FakeAccountsRepository
         : List<TenantAdminAccount>.from(
             accountsByOwnership[
                     ownershipState ?? TenantAdminOwnershipState.tenantOwned] ??
-                const <TenantAdminAccount>[],
+                <TenantAdminAccount>[],
           );
     if (source == null || normalizedSearch.isEmpty) {
       return source;

@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:belluga_now/domain/app_data/app_data.dart';
+import 'package:belluga_now/testing/app_data_test_factory.dart';
 import 'package:belluga_now/domain/app_data/value_object/platform_type_value.dart';
 import 'package:belluga_now/domain/repositories/landlord_auth_repository_contract.dart';
 import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.dart';
@@ -41,7 +42,7 @@ void main() {
     await repository.updateStaticProfileType(
       type: 'poi/type',
       label: 'POI Type',
-      capabilities: const TenantAdminStaticProfileTypeCapabilities(
+      capabilities: TenantAdminStaticProfileTypeCapabilities(
         isPoiEnabled: true,
         hasBio: true,
         hasTaxonomies: true,
@@ -118,7 +119,7 @@ void main() {
       'normalizes relative static-asset media urls and preserves absolute urls',
       () async {
     final adapter = _CaptureAdapter(
-      staticAssetsByPage: const {
+      staticAssetsByPage: {
         1: [
           {
             'id': 'asset-1',
@@ -166,7 +167,7 @@ void main() {
 
   test('normalizes static-asset media urls on detail fetch', () async {
     final adapter = _CaptureAdapter(
-      staticAssetsByPage: const {
+      staticAssetsByPage: {
         1: [
           {
             'id': 'asset-1',
@@ -264,7 +265,7 @@ void main() {
   test('load/reset/next follow paged stream contract for static assets',
       () async {
     final adapter = _CaptureAdapter(
-      staticAssetsByPage: const {
+      staticAssetsByPage: {
         1: [
           {
             'id': 'asset-1',
@@ -304,7 +305,7 @@ void main() {
       readItems: () => repository.staticAssetsStreamValue.value,
       readHasMore: () => repository.hasMoreStaticAssetsStreamValue.value,
       readError: () => repository.staticAssetsErrorStreamValue.value,
-      expectedCountsPerStep: const [2, 3],
+      expectedCountsPerStep: [2, 3],
       loadNextCalls: 1,
     );
   });
@@ -312,7 +313,7 @@ void main() {
   test('load/reset/next follow paged stream contract for static profile types',
       () async {
     final adapter = _CaptureAdapter(
-      staticProfileTypesByPage: const {
+      staticProfileTypesByPage: {
         1: [
           {
             'id': 'type-1',
@@ -374,7 +375,7 @@ void main() {
       readItems: () => repository.staticProfileTypesStreamValue.value,
       readHasMore: () => repository.hasMoreStaticProfileTypesStreamValue.value,
       readError: () => repository.staticProfileTypesErrorStreamValue.value,
-      expectedCountsPerStep: const [2, 3],
+      expectedCountsPerStep: [2, 3],
       loadNextCalls: 1,
     );
   });
@@ -450,7 +451,8 @@ class _CaptureAdapter implements HttpClientAdapter {
   ) async {
     lastRequest = options;
     requests.add(options);
-    if (options.method == 'PATCH') {
+    if (options.method == 'PATCH' &&
+        options.path.contains('/v1/static_profile_types')) {
       final payload = jsonEncode({
         'data': {
           'type': 'poi/type',
@@ -475,12 +477,38 @@ class _CaptureAdapter implements HttpClientAdapter {
       );
     }
 
+    if ((options.method == 'POST' || options.method == 'PATCH') &&
+        options.path.contains('/v1/static_assets')) {
+      final pathSegments = options.path.split('/');
+      final maybeAssetId = pathSegments.isNotEmpty ? pathSegments.last : '';
+      final assetId = maybeAssetId.isNotEmpty &&
+              maybeAssetId != 'static_assets' &&
+              maybeAssetId != 'v1'
+          ? maybeAssetId
+          : 'asset-created';
+      return ResponseBody.fromString(
+        jsonEncode({
+          'data': {
+            'id': assetId,
+            'profile_type': 'poi',
+            'display_name': 'Asset Name',
+            'slug': 'asset-name',
+            'is_active': true,
+          },
+        }),
+        200,
+        headers: {
+          Headers.contentTypeHeader: ['application/json'],
+        },
+      );
+    }
+
     if (options.method == 'GET' &&
         options.path.contains('/v1/static_assets/') &&
         !options.path.endsWith('/v1/static_assets')) {
-      final detailItem = (staticAssetsByPage[1] ?? const []).firstWhere(
+      final detailItem = (staticAssetsByPage[1] ?? []).firstWhere(
         (item) => (item['id']?.toString() ?? '').trim().isNotEmpty,
-        orElse: () => const <String, dynamic>{},
+        orElse: () => <String, dynamic>{},
       );
       return ResponseBody.fromString(
         jsonEncode({'data': detailItem}),
@@ -494,7 +522,7 @@ class _CaptureAdapter implements HttpClientAdapter {
     if (options.method == 'GET' && options.path.contains('/v1/static_assets')) {
       final page = options.queryParameters['page'];
       final parsedPage = page is int ? page : int.tryParse('$page') ?? 1;
-      final data = staticAssetsByPage[parsedPage] ?? const [];
+      final data = staticAssetsByPage[parsedPage] ?? [];
       return ResponseBody.fromString(
         jsonEncode({
           'data': data,
@@ -512,7 +540,7 @@ class _CaptureAdapter implements HttpClientAdapter {
         options.path.contains('/v1/static_profile_types')) {
       final page = options.queryParameters['page'];
       final parsedPage = page is int ? page : int.tryParse('$page') ?? 1;
-      final data = staticProfileTypesByPage[parsedPage] ?? const [];
+      final data = staticProfileTypesByPage[parsedPage] ?? [];
       return ResponseBody.fromString(
         jsonEncode({
           'data': data,
@@ -542,7 +570,7 @@ AppData _buildAppData() {
     'type': 'tenant',
     'main_domain': 'https://tenant.test',
     'domains': ['https://tenant.test'],
-    'app_domains': const [],
+    'app_domains': [],
     'theme_data_settings': {
       'brightness_default': 'light',
       'primary_seed_color': '#FFFFFF',
@@ -550,8 +578,8 @@ AppData _buildAppData() {
     },
     'main_color': '#FFFFFF',
     'tenant_id': 'tenant-1',
-    'telemetry': const {'trackers': []},
-    'telemetry_context': const {'location_freshness_minutes': 5},
+    'telemetry': {'trackers': []},
+    'telemetry_context': {'location_freshness_minutes': 5},
     'firebase': null,
     'push': null,
   };
@@ -562,7 +590,7 @@ AppData _buildAppData() {
     'port': null,
     'device': 'test-device',
   };
-  return AppData.fromInitialization(
+  return buildAppDataFromInitialization(
     remoteData: remoteData,
     localInfo: localInfo,
   );

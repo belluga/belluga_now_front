@@ -3,40 +3,52 @@ import 'package:belluga_now/domain/gamification/mission_resume.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/value_objects/description_value.dart';
+import 'package:belluga_now/domain/value_objects/slug_value.dart';
 import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
 import 'package:belluga_now/domain/value_objects/title_value.dart';
+import 'package:belluga_now/domain/venue_event/value_objects/venue_event_tag_value.dart';
 import 'package:value_object_pattern/domain/value_objects/date_time_value.dart';
+import 'package:value_object_pattern/domain/value_objects/mongo_id_value.dart';
+
+typedef VenueEventResumePrimString = String;
+typedef VenueEventResumePrimInt = int;
+typedef VenueEventResumePrimBool = bool;
+typedef VenueEventResumePrimDouble = double;
+typedef VenueEventResumePrimDateTime = DateTime;
+typedef VenueEventResumePrimDynamic = dynamic;
 
 class VenueEventResume {
   VenueEventResume({
-    required this.id,
-    required this.slug,
+    required this.idValue,
+    required this.slugValue,
     required this.titleValue,
     required this.imageUriValue,
     required this.startDateTimeValue,
     required this.locationValue,
     required this.artists,
-    required this.tags,
+    required this.tagValues,
     this.coordinate,
     this.mission,
   });
 
-  final String id;
-  final String slug;
+  final MongoIDValue idValue;
+  final SlugValue slugValue;
   final TitleValue titleValue;
   final ThumbUriValue imageUriValue;
   final DateTimeValue startDateTimeValue;
   final DescriptionValue locationValue;
   final List<ArtistResume> artists;
-  final List<String> tags;
+  final List<VenueEventTagValue> tagValues;
   final CityCoordinate? coordinate;
   final MissionResume? mission;
   static final Uri _localPlaceholderUri =
       Uri.parse('asset://event-placeholder');
 
-  String get title => titleValue.value;
+  VenueEventResumePrimString get id => idValue.value;
+  VenueEventResumePrimString get slug => slugValue.value;
+  VenueEventResumePrimString get title => titleValue.value;
   Uri get imageUri => imageUriValue.value;
-  DateTime get startDateTime {
+  VenueEventResumePrimDateTime get startDateTime {
     final date = startDateTimeValue.value;
     if (date == null) {
       throw StateError('startDateTime should not be null');
@@ -44,14 +56,16 @@ class VenueEventResume {
     return date;
   }
 
-  String get location => locationValue.value;
+  VenueEventResumePrimString get location => locationValue.value;
   CityCoordinate? get coordinateValue => coordinate;
-  bool get hasArtists => artists.isNotEmpty;
+  VenueEventResumePrimBool get hasArtists => artists.isNotEmpty;
   ArtistResume? get primaryArtist => hasArtists ? artists.first : null;
-  String get artistNamesLabel =>
+  List<VenueEventResumePrimString> get tags =>
+      tagValues.map((tagValue) => tagValue.value).toList(growable: false);
+  VenueEventResumePrimString get artistNamesLabel =>
       artists.map((artist) => artist.displayName).join(', ');
 
-  static String slugify(String value) {
+  static VenueEventResumePrimString slugify(VenueEventResumePrimString value) {
     final slug = value.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), '-');
     final cleaned = slug.replaceAll(RegExp(r'-{2,}'), '-');
     return cleaned.replaceAll(RegExp(r'^-+|-+$'), '');
@@ -59,7 +73,7 @@ class VenueEventResume {
 
   static Uri resolvePreferredImageUri(
     EventModel event, {
-    Uri? settingsDefaultImageUri,
+    ThumbUriValue? settingsDefaultImageValue,
   }) {
     final eventCover = event.thumb?.thumbUri.value;
     if (eventCover != null) {
@@ -78,9 +92,9 @@ class VenueEventResume {
       return hostCover;
     }
 
-    if (settingsDefaultImageUri != null &&
-        settingsDefaultImageUri.toString().trim().isNotEmpty) {
-      return settingsDefaultImageUri;
+    if (settingsDefaultImageValue != null &&
+        settingsDefaultImageValue.value.toString().trim().isNotEmpty) {
+      return settingsDefaultImageValue.value;
     }
 
     return _localPlaceholderUri;
@@ -88,16 +102,20 @@ class VenueEventResume {
 
   factory VenueEventResume.fromScheduleEvent(
     EventModel event,
-    Uri fallbackImage,
+    Object fallbackImage,
   ) {
+    final fallbackImageValue = _coerceFallbackImageValue(fallbackImage);
     final slugSource = event.slug;
-    final slug = slugSource.isNotEmpty
-        ? slugSource
-        : VenueEventResume.slugify(event.title.value);
+    final slug = SlugValue()
+      ..parse(
+        slugSource.isNotEmpty
+            ? slugSource
+            : VenueEventResume.slugify(event.title.value),
+      );
 
     final preferredImageUri = resolvePreferredImageUri(
       event,
-      settingsDefaultImageUri: fallbackImage,
+      settingsDefaultImageValue: fallbackImageValue,
     );
     final thumb =
         ThumbUriValue(defaultValue: preferredImageUri, isRequired: true)
@@ -112,16 +130,34 @@ class VenueEventResume {
       ..parse(startDateTime.toIso8601String());
 
     return VenueEventResume(
-      id: event.id.value,
-      slug: slug,
+      idValue: event.id,
+      slugValue: slug,
       titleValue: event.title,
       imageUriValue: thumb,
       startDateTimeValue: startValue,
       locationValue: event.location,
       artists: event.artists,
-      tags: event.taxonomyTags,
+      tagValues: event.taxonomyTags
+          .map((tag) => VenueEventTagValue(tag))
+          .toList(growable: false),
       coordinate: event.coordinate,
       mission: null, // TODO: Map from EventModel when available
+    );
+  }
+
+  static ThumbUriValue _coerceFallbackImageValue(Object raw) {
+    if (raw is ThumbUriValue) {
+      return raw;
+    }
+    if (raw is Uri) {
+      final thumb = ThumbUriValue(defaultValue: raw, isRequired: true)
+        ..parse(raw.toString());
+      return thumb;
+    }
+    throw ArgumentError.value(
+      raw,
+      'fallbackImage',
+      'Expected Uri or ThumbUriValue',
     );
   }
 }

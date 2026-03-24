@@ -122,7 +122,9 @@ class TenantAdminAccountCreateController implements Disposable {
   Future<void> loadProfileTypes() async {
     isProfileTypesLoadingStreamValue.addValue(true);
     try {
-      final types = await _profilesRepository.fetchProfileTypes();
+      await _profilesRepository.loadAllProfileTypes();
+      final types = _profilesRepository.profileTypesStreamValue.value ??
+          const <TenantAdminProfileTypeDefinition>[];
       if (_isDisposed) return;
       profileTypesStreamValue.addValue(types);
       errorStreamValue.addValue(null);
@@ -139,7 +141,9 @@ class TenantAdminAccountCreateController implements Disposable {
   Future<void> loadTaxonomies() async {
     taxonomiesLoadingStreamValue.addValue(true);
     try {
-      final taxonomies = await _taxonomiesRepository.fetchTaxonomies();
+      await _taxonomiesRepository.loadAllTaxonomies();
+      final taxonomies = _taxonomiesRepository.taxonomiesStreamValue.value ??
+          const <TenantAdminTaxonomyDefinition>[];
       if (_isDisposed) return;
       final filtered = taxonomies
           .where((taxonomy) => taxonomy.appliesToTarget('account_profile'))
@@ -603,9 +607,9 @@ extension on TenantAdminAccountCreateController {
       }
       final taxonomyId = taxonomy.first.id;
       try {
-        final terms = await _taxonomiesRepository.fetchTerms(
-          taxonomyId: taxonomyId,
-        );
+        await _taxonomiesRepository.loadAllTerms(taxonomyId: taxonomyId);
+        final terms = _taxonomiesRepository.termsStreamValue.value ??
+            const <TenantAdminTaxonomyTermDefinition>[];
         if (_isDisposed) return;
         map[slug] = terms;
       } catch (error) {

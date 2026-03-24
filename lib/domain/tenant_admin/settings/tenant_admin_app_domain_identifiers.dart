@@ -1,10 +1,17 @@
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_android_app_identifier_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_ios_bundle_identifier_value.dart';
 
+typedef TenantAdminAppDomainIdentifiersPrimString = String;
+typedef TenantAdminAppDomainIdentifiersPrimInt = int;
+typedef TenantAdminAppDomainIdentifiersPrimBool = bool;
+typedef TenantAdminAppDomainIdentifiersPrimDouble = double;
+typedef TenantAdminAppDomainIdentifiersPrimDateTime = DateTime;
+typedef TenantAdminAppDomainIdentifiersPrimDynamic = dynamic;
+
 class TenantAdminAppDomainIdentifiers {
   TenantAdminAppDomainIdentifiers({
-    required String? androidAppIdentifier,
-    required String? iosBundleId,
+    required TenantAdminAppDomainIdentifiersPrimString? androidAppIdentifier,
+    required TenantAdminAppDomainIdentifiersPrimString? iosBundleId,
   })  : androidAppIdentifierValue =
             _buildAndroidAppIdentifierValue(androidAppIdentifier),
         iosBundleIdValue = _buildIosBundleIdValue(iosBundleId);
@@ -16,11 +23,13 @@ class TenantAdminAppDomainIdentifiers {
   final TenantAdminAndroidAppIdentifierValue? androidAppIdentifierValue;
   final TenantAdminIosBundleIdentifierValue? iosBundleIdValue;
 
-  String? get androidAppIdentifier => androidAppIdentifierValue?.value;
-  String? get iosBundleId => iosBundleIdValue?.value;
+  TenantAdminAppDomainIdentifiersPrimString? get androidAppIdentifier =>
+      androidAppIdentifierValue?.value;
+  TenantAdminAppDomainIdentifiersPrimString? get iosBundleId =>
+      iosBundleIdValue?.value;
 
   static TenantAdminAndroidAppIdentifierValue? _buildAndroidAppIdentifierValue(
-    String? raw,
+    TenantAdminAppDomainIdentifiersPrimString? raw,
   ) {
     final normalized = raw?.trim();
     if (normalized == null || normalized.isEmpty) {
@@ -32,7 +41,7 @@ class TenantAdminAppDomainIdentifiers {
   }
 
   static TenantAdminIosBundleIdentifierValue? _buildIosBundleIdValue(
-    String? raw,
+    TenantAdminAppDomainIdentifiersPrimString? raw,
   ) {
     final normalized = raw?.trim();
     if (normalized == null || normalized.isEmpty) {

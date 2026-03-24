@@ -32,7 +32,7 @@ void main() {
       taxonomiesRepository: taxonomiesRepository,
     );
 
-    eventsRepository.eventTypes = const [
+    eventsRepository.eventTypes = [
       TenantAdminEventType(
         id: '507f1f77bcf86cd799439011',
         name: 'Feira',
@@ -87,7 +87,7 @@ void main() {
       taxonomiesRepository: taxonomiesRepository,
     );
 
-    eventsRepository.eventTypes = const [
+    eventsRepository.eventTypes = [
       TenantAdminEventType(
         id: '507f1f77bcf86cd799439021',
         name: 'Feira',
@@ -129,7 +129,7 @@ void main() {
       taxonomiesRepository: taxonomiesRepository,
     );
 
-    eventsRepository.eventTypes = const [
+    eventsRepository.eventTypes = [
       TenantAdminEventType(
         id: '507f1f77bcf86cd799439012',
         name: 'Workshop',
@@ -171,7 +171,7 @@ void main() {
       taxonomiesRepository: taxonomiesRepository,
     );
 
-    eventsRepository.eventTypes = const [
+    eventsRepository.eventTypes = [
       TenantAdminEventType(
         id: '507f1f77bcf86cd799439015',
         name: 'Live',
@@ -217,7 +217,7 @@ void main() {
       taxonomiesRepository: taxonomiesRepository,
     );
 
-    eventsRepository.eventTypes = const [
+    eventsRepository.eventTypes = [
       TenantAdminEventType(
         id: '507f1f77bcf86cd799439016',
         name: 'Show',
@@ -261,7 +261,7 @@ void main() {
       taxonomiesRepository: taxonomiesRepository,
     );
 
-    eventsRepository.eventTypes = const [
+    eventsRepository.eventTypes = [
       TenantAdminEventType(
         id: '507f1f77bcf86cd799439013',
         name: 'Show',
@@ -309,7 +309,7 @@ void main() {
       taxonomiesRepository: taxonomiesRepository,
     );
 
-    eventsRepository.eventTypes = const [
+    eventsRepository.eventTypes = [
       TenantAdminEventType(
         id: '507f1f77bcf86cd799439014',
         name: 'Show',
@@ -416,7 +416,7 @@ Future<void> _fillRequiredFields(
 class _FakeEventsRepository
     with TenantAdminEventsPaginationMixin
     implements TenantAdminEventsRepositoryContract {
-  List<TenantAdminEventType> eventTypes = const <TenantAdminEventType>[];
+  List<TenantAdminEventType> eventTypes = <TenantAdminEventType>[];
   TenantAdminEventDraft? lastCreateDraft;
   TenantAdminEventDraft? lastCreateOwnDraft;
   String? lastCreateOwnAccountSlug;
@@ -457,7 +457,7 @@ class _FakeEventsRepository
     String? status,
     bool archived = false,
   }) async {
-    return const <TenantAdminEvent>[];
+    return <TenantAdminEvent>[];
   }
 
   @override
@@ -468,7 +468,7 @@ class _FakeEventsRepository
     String? status,
     bool archived = false,
   }) async {
-    return const TenantAdminPagedResult<TenantAdminEvent>(
+    return TenantAdminPagedResult<TenantAdminEvent>(
       items: <TenantAdminEvent>[],
       hasMore: false,
     );
@@ -484,7 +484,7 @@ class _FakeEventsRepository
     String? search,
     String? accountSlug,
   }) async {
-    return const TenantAdminEventPartyCandidates(
+    return TenantAdminEventPartyCandidates(
       venues: [
         TenantAdminAccountProfile(
           id: 'venue-1',
@@ -571,7 +571,7 @@ class _FakeTaxonomiesRepository
 
   @override
   Future<List<TenantAdminTaxonomyDefinition>> fetchTaxonomies() async {
-    return const [
+    return [
       TenantAdminTaxonomyDefinition(
         id: 'tax-1',
         slug: 'music_genre',
@@ -600,7 +600,7 @@ class _FakeTaxonomiesRepository
   Future<List<TenantAdminTaxonomyTermDefinition>> fetchTerms({
     required String taxonomyId,
   }) async {
-    return const [
+    return [
       TenantAdminTaxonomyTermDefinition(
         id: 'term-1',
         taxonomyId: 'tax-1',
@@ -631,13 +631,27 @@ class _FakeTaxonomiesRepository
   Future<void> loadNextTermsPage({int pageSize = 20}) async {}
 
   @override
-  Future<void> loadTaxonomies({int pageSize = 20}) async {}
+  Future<void> loadTaxonomies({int pageSize = 20}) async {
+    final result = await fetchTaxonomiesPage(page: 1, pageSize: pageSize);
+    taxonomiesStreamValue.addValue(result.items);
+    hasMoreTaxonomiesStreamValue.addValue(result.hasMore);
+    taxonomiesErrorStreamValue.addValue(null);
+  }
 
   @override
   Future<void> loadTerms({
     required String taxonomyId,
     int pageSize = 20,
-  }) async {}
+  }) async {
+    final result = await fetchTermsPage(
+      taxonomyId: taxonomyId,
+      page: 1,
+      pageSize: pageSize,
+    );
+    termsStreamValue.addValue(result.items);
+    hasMoreTermsStreamValue.addValue(result.hasMore);
+    termsErrorStreamValue.addValue(null);
+  }
 
   @override
   void resetTaxonomiesState() {}
@@ -674,7 +688,7 @@ class _EmptyCandidatesEventsRepository extends _FakeEventsRepository {
     String? search,
     String? accountSlug,
   }) async {
-    return const TenantAdminEventPartyCandidates(
+    return TenantAdminEventPartyCandidates(
       venues: <TenantAdminAccountProfile>[],
       artists: <TenantAdminAccountProfile>[],
     );

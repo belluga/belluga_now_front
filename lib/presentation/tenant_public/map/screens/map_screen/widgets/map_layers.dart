@@ -26,9 +26,10 @@ class MapLayers extends StatelessWidget {
       _controller.defaultCenter.longitude,
     );
 
-    return StreamValueBuilder<List<CityPoiModel>>(
+    return StreamValueBuilder<List<CityPoiModel>?>(
       streamValue: _controller.filteredPoisStreamValue,
-      builder: (_, pois) {
+      builder: (_, poisOrNull) {
+        final pois = poisOrNull ?? const <CityPoiModel>[];
         return StreamValueBuilder<CityPoiModel?>(
           streamValue: _controller.selectedPoiStreamValue,
           builder: (_, selectedPoi) {
@@ -54,12 +55,13 @@ class MapLayers extends StatelessWidget {
                       maxSize: 52,
                     );
 
-                    final userPoint = userCoordinate == null
-                        ? null
-                        : LatLng(
-                            userCoordinate.latitude,
-                            userCoordinate.longitude,
-                          );
+                    final userPoint = switch (userCoordinate) {
+                      final coordinate? => LatLng(
+                          coordinate.latitude,
+                          coordinate.longitude,
+                        ),
+                      null => null,
+                    };
                     final poiMarkers = pois.map(
                       (poi) => _markerBuilder.build(
                         poi: poi,
@@ -86,9 +88,9 @@ class MapLayers extends StatelessWidget {
                         minZoom: _minZoom,
                         maxZoom: _maxZoom,
                         onMapEvent: (event) {
-                          final nextZoom = event.camera.zoom
-                              .clamp(MapScreenController.minZoom,
-                                  MapScreenController.maxZoom);
+                          final nextZoom = event.camera.zoom.clamp(
+                              MapScreenController.minZoom,
+                              MapScreenController.maxZoom);
                           _controller.zoomStreamValue.addValue(nextZoom);
                         },
                         interactionOptions: InteractionOptions(

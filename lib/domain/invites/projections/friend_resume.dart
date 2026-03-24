@@ -39,24 +39,4 @@ class InviteFriendResume {
       matchLabelValue: friend.matchLabelValue,
     );
   }
-
-  factory InviteFriendResume.fromPrimitives({
-    required String id,
-    required String name,
-    String? avatarUrl,
-    String matchLabel = '',
-  }) {
-    final avatarValue = FriendAvatarValue();
-    final normalizedAvatarUrl = avatarUrl?.trim();
-    if (normalizedAvatarUrl != null && normalizedAvatarUrl.isNotEmpty) {
-      avatarValue.parse(normalizedAvatarUrl);
-    }
-
-    return InviteFriendResume(
-      idValue: FriendIdValue()..parse(id),
-      nameValue: TitleValue()..parse(name),
-      avatarValue: avatarValue,
-      matchLabelValue: FriendMatchLabelValue()..parse(matchLabel),
-    );
-  }
 }

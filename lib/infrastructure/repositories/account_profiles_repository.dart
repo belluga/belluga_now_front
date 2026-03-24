@@ -2,6 +2,7 @@ import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/domain/partners/paged_account_profiles_result.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
 import 'package:belluga_now/domain/partners/profile_type_registry.dart';
+import 'package:belluga_now/domain/partners/value_objects/profile_type_key_value.dart';
 import 'package:belluga_now/domain/repositories/account_profiles_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/backend_contract.dart';
@@ -196,7 +197,9 @@ class AccountProfilesRepository extends AccountProfilesRepositoryContract {
 
   bool _isAccountProfileTypeEnabled(AccountProfileModel profile) {
     final registry = _resolveRegistry();
-    return registry?.isEnabledFor(profile.profileType) ?? false;
+    return registry
+            ?.isEnabledFor(ProfileTypeKeyValue(profile.profileType)) ??
+        false;
   }
 
   ProfileTypeRegistry? _resolveRegistry() {

@@ -30,8 +30,6 @@ class TenantAdminProfileTypesController implements Disposable {
   final TenantAdminAccountProfilesRepositoryContract _repository;
   final TenantAdminTaxonomiesRepositoryContract? _taxonomiesRepository;
   final TenantAdminTenantScopeContract? _tenantScope;
-  static const int _typesPageSize = 20;
-
   StreamValue<List<TenantAdminProfileTypeDefinition>?> get typesStreamValue =>
       _repository.profileTypesStreamValue;
   StreamValue<bool> get hasMoreTypesStreamValue =>
@@ -49,7 +47,7 @@ class TenantAdminProfileTypesController implements Disposable {
       StreamValue<bool>(defaultValue: false);
   final StreamValue<String?> taxonomiesErrorStreamValue =
       StreamValue<String?>();
-  static const TenantAdminProfileTypeCapabilities _emptyCapabilities =
+  static final TenantAdminProfileTypeCapabilities _emptyCapabilities =
       TenantAdminProfileTypeCapabilities(
     isFavoritable: false,
     isPoiEnabled: false,
@@ -176,7 +174,7 @@ class TenantAdminProfileTypesController implements Disposable {
   }
 
   Future<void> loadTypes() async {
-    await _repository.loadProfileTypes(pageSize: _typesPageSize);
+    await _repository.loadProfileTypes();
   }
 
   Future<void> loadAvailableTaxonomies() async {
@@ -189,7 +187,9 @@ class TenantAdminProfileTypesController implements Disposable {
     }
     isTaxonomiesLoadingStreamValue.addValue(true);
     try {
-      final loaded = await repository.fetchTaxonomies();
+      await repository.loadAllTaxonomies();
+      final loaded = repository.taxonomiesStreamValue.value ??
+          const <TenantAdminTaxonomyDefinition>[];
       if (_isDisposed) return;
       final filtered = loaded
           .where((taxonomy) => taxonomy.appliesToTarget('account_profile'))
@@ -243,7 +243,7 @@ class TenantAdminProfileTypesController implements Disposable {
     if (_isDisposed) {
       return;
     }
-    await _repository.loadNextProfileTypesPage(pageSize: _typesPageSize);
+    await _repository.loadNextProfileTypesPage();
   }
 
   void bindTypesListScrollPagination() {

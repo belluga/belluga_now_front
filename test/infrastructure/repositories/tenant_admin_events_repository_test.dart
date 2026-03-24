@@ -7,6 +7,7 @@ import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.d
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_event.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_value_parsers.dart';
 import 'package:belluga_now/domain/user/user_contract.dart';
 import 'package:belluga_now/infrastructure/repositories/tenant_admin/tenant_admin_events_repository.dart';
 import 'package:dio/dio.dart';
@@ -57,7 +58,7 @@ void main() {
 
     final created = await repository.createEvent(
       draft: _buildDraft(
-        taxonomyTerms: const [
+        taxonomyTerms: [
           TenantAdminTaxonomyTerm(type: 'music_genre', value: 'rock'),
           TenantAdminTaxonomyTerm(type: 'audience', value: 'families'),
         ],
@@ -97,7 +98,7 @@ void main() {
 
     await repository.createEvent(
       draft: _buildDraft(
-        location: const TenantAdminEventLocation(
+        location: TenantAdminEventLocation(
           mode: 'online',
           latitude: -20.611121,
           longitude: -40.498617,
@@ -131,15 +132,15 @@ void main() {
 
     await repository.createEvent(
       draft: _buildDraft(
-        location: const TenantAdminEventLocation(
+        location: TenantAdminEventLocation(
           mode: 'physical',
           latitude: -20.611121,
           longitude: -40.498617,
         ),
-        placeRef: const TenantAdminEventPlaceRef(
-          type: 'account_profile',
-          id: 'profile-1',
-          metadata: {'display_name': 'Main Host'},
+        placeRef: TenantAdminEventPlaceRef(
+          typeValue: tenantAdminRequiredText('account_profile'),
+          idValue: tenantAdminRequiredText('profile-1'),
+          metadataValue: tenantAdminDynamicMap({'display_name': 'Main Host'}),
         ),
       ),
     );
@@ -189,7 +190,7 @@ void main() {
     await repository.createEvent(
       draft: _buildDraft(
         coverUpload: TenantAdminMediaUpload(
-          bytes: Uint8List.fromList(const [1, 2, 3, 4]),
+          bytes: Uint8List.fromList([1, 2, 3, 4]),
           fileName: 'event-cover.png',
           mimeType: 'image/png',
         ),
@@ -561,17 +562,17 @@ TenantAdminEventDraft _buildDraft({
   return TenantAdminEventDraft(
     title: 'My event',
     content: 'Content',
-    type: const TenantAdminEventType(
+    type: TenantAdminEventType(
       name: 'Show',
       slug: 'show',
     ),
     occurrences: [
       TenantAdminEventOccurrence(
-        dateTimeStart: DateTime(2026, 3, 5, 20),
+        dateTimeStartValue: tenantAdminDateTime(DateTime(2026, 3, 5, 20)),
       ),
     ],
-    publication: const TenantAdminEventPublication(
-      status: 'draft',
+    publication: TenantAdminEventPublication(
+      statusValue: tenantAdminRequiredText('draft'),
     ),
     location: location,
     placeRef: placeRef,
@@ -714,7 +715,8 @@ class _EventsRoutingAdapter implements HttpClientAdapter {
     Future<void>? cancelFuture,
   ) async {
     requests.add(options);
-    if (options.path.endsWith('/v1/events') &&
+    if ((options.path.endsWith('/v1/events') ||
+            options.path.contains('/v1/events/')) &&
         (options.method == 'POST' || options.method == 'PATCH')) {
       final payload = options.data is Map<String, dynamic>
           ? options.data as Map<String, dynamic>
@@ -737,13 +739,13 @@ class _EventsRoutingAdapter implements HttpClientAdapter {
 
     if (options.path.endsWith('/v1/events') && options.method == 'GET') {
       return _jsonResponse({
-        'data': const [],
+        'data': [],
         'current_page': 1,
         'last_page': 1,
       });
     }
 
-    return _jsonResponse({'data': const {}});
+    return _jsonResponse({'data': {}});
   }
 
   Map<String, dynamic> _eventFromPayload(Map<String, dynamic> payload) {
@@ -759,9 +761,9 @@ class _EventsRoutingAdapter implements HttpClientAdapter {
           },
       'date_time_start': '2026-03-05T20:00:00Z',
       'publication': payload['publication'] ?? {'status': 'draft'},
-      'taxonomy_terms': payload['taxonomy_terms'] ?? const [],
+      'taxonomy_terms': payload['taxonomy_terms'] ?? [],
       'occurrences': payload['occurrences'] ??
-          const [
+          [
             {'date_time_start': '2026-03-05T20:00:00Z'}
           ],
     };
@@ -800,7 +802,7 @@ class _NotFoundEventsAdapter implements HttpClientAdapter {
     }
 
     return ResponseBody.fromString(
-      jsonEncode({'data': const []}),
+      jsonEncode({'data': []}),
       200,
       headers: {
         Headers.contentTypeHeader: ['application/json'],
@@ -827,7 +829,7 @@ class _EventTypesAdapter implements HttpClientAdapter {
         options.method == 'GET') {
       return ResponseBody.fromString(
         jsonEncode({
-          'data': const [
+          'data': [
             {
               'id': '507f1f77bcf86cd799439011',
               'name': 'Show',
@@ -850,7 +852,7 @@ class _EventTypesAdapter implements HttpClientAdapter {
     }
 
     return ResponseBody.fromString(
-      jsonEncode({'data': const {}}),
+      jsonEncode({'data': {}}),
       200,
       headers: {
         Headers.contentTypeHeader: ['application/json'],
@@ -931,7 +933,7 @@ class _PartyCandidatesAdapter implements HttpClientAdapter {
     if (options.path.endsWith('/admin/api/v1/events') &&
         options.method == 'GET') {
       return ResponseBody.fromString(
-        jsonEncode({'data': const [], 'current_page': 1, 'last_page': 1}),
+        jsonEncode({'data': [], 'current_page': 1, 'last_page': 1}),
         200,
         headers: {
           Headers.contentTypeHeader: ['application/json'],
@@ -940,7 +942,7 @@ class _PartyCandidatesAdapter implements HttpClientAdapter {
     }
 
     return ResponseBody.fromString(
-      jsonEncode({'data': const {}}),
+      jsonEncode({'data': {}}),
       200,
       headers: {
         Headers.contentTypeHeader: ['application/json'],
@@ -1000,7 +1002,7 @@ class _EventTypeMutationsAdapter implements HttpClientAdapter {
     }
 
     return ResponseBody.fromString(
-      jsonEncode({'data': const {}}),
+      jsonEncode({'data': {}}),
       200,
       headers: {
         Headers.contentTypeHeader: ['application/json'],
@@ -1028,8 +1030,8 @@ class _LegacyVenueOnlyPartyCandidatesAdapter implements HttpClientAdapter {
       return ResponseBody.fromString(
         jsonEncode({
           'data': {
-            'physical_hosts': const [],
-            'venues': const [
+            'physical_hosts': [],
+            'venues': [
               {
                 'id': 'venue-legacy',
                 'account_id': 'account-legacy',
@@ -1038,7 +1040,7 @@ class _LegacyVenueOnlyPartyCandidatesAdapter implements HttpClientAdapter {
                 'slug': 'legacy-venue',
               }
             ],
-            'artists': const [],
+            'artists': [],
           },
         }),
         200,
@@ -1049,7 +1051,7 @@ class _LegacyVenueOnlyPartyCandidatesAdapter implements HttpClientAdapter {
     }
 
     return ResponseBody.fromString(
-      jsonEncode({'data': const []}),
+      jsonEncode({'data': []}),
       200,
       headers: {
         Headers.contentTypeHeader: ['application/json'],
@@ -1084,7 +1086,7 @@ class _UnauthorizedAdminPartyCandidatesAdapter implements HttpClientAdapter {
     }
 
     return ResponseBody.fromString(
-      jsonEncode({'data': const []}),
+      jsonEncode({'data': []}),
       200,
       headers: {
         Headers.contentTypeHeader: ['application/json'],
@@ -1119,7 +1121,7 @@ class _NotFoundAdminPartyCandidatesAdapter implements HttpClientAdapter {
     }
 
     return ResponseBody.fromString(
-      jsonEncode({'data': const []}),
+      jsonEncode({'data': []}),
       200,
       headers: {
         Headers.contentTypeHeader: ['application/json'],

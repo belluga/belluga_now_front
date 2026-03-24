@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:belluga_now/testing/domain_factories.dart';
 import 'dart:developer' as developer;
 import 'package:belluga_now/testing/invite_accept_result_builder.dart';
 
@@ -38,6 +39,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:get_it/get_it.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:stream_value/core/stream_value.dart';
+import 'support/fake_schedule_repository.dart';
 import 'support/integration_test_bootstrap.dart';
 
 void main() {
@@ -360,7 +362,33 @@ void _unregisterIfRegistered<T extends Object>() {
   }
 }
 
-class _FakeScheduleRepository implements ScheduleRepositoryContract {
+class _FakeScheduleRepository extends IntegrationTestScheduleRepositoryFake {
+  @override
+  HomeAgendaCacheSnapshot? readHomeAgendaCache({
+    required bool showPastOnly,
+    required String searchQuery,
+    required bool confirmedOnly,
+  }) {
+    final snapshot = homeAgendaCacheStreamValue.value;
+    if (snapshot == null) return null;
+    if (snapshot.showPastOnly != showPastOnly) return null;
+    if (snapshot.searchQuery != searchQuery) return null;
+    if (snapshot.confirmedOnly != confirmedOnly) return null;
+    return snapshot;
+  }
+
+  @override
+  void writeHomeAgendaCache(HomeAgendaCacheSnapshot snapshot) {
+    homeAgendaCacheStreamValue.addValue(snapshot);
+    homeAgendaEventsStreamValue.addValue(snapshot.events);
+  }
+
+  @override
+  void clearHomeAgendaCache() {
+    homeAgendaCacheStreamValue.addValue(null);
+    homeAgendaEventsStreamValue.addValue(null);
+  }
+
   @override
   Future<List<EventModel>> getAllEvents() async => const [];
 
@@ -453,7 +481,7 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
 
   @override
   Future<InviteRuntimeSettings> fetchSettings() async =>
-      const InviteRuntimeSettings(
+      buildInviteRuntimeSettings(
         tenantId: null,
         limits: {},
         cooldowns: {},
@@ -473,7 +501,7 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
 
   @override
   Future<InviteDeclineResult> declineInvite(String inviteId) async =>
-      InviteDeclineResult(
+      buildInviteDeclineResult(
         inviteId: inviteId,
         status: 'declined',
         groupHasOtherPending: false,
@@ -490,7 +518,7 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
     String? occurrenceId,
     String? accountProfileId,
   }) async =>
-      InviteShareCodeResult(
+      buildInviteShareCodeResult(
         code: 'test-share-code',
         eventId: eventId,
         occurrenceId: occurrenceId,
@@ -526,6 +554,12 @@ class _FakeUserLocationRepository implements UserLocationRepositoryContract {
 
   @override
   final lastKnownAddressStreamValue = StreamValue<String?>();
+
+  @override
+  @override
+  final StreamValue<LocationResolutionPhase>
+      locationResolutionPhaseStreamValue = StreamValue<LocationResolutionPhase>(
+          defaultValue: LocationResolutionPhase.unknown);
 
   @override
   Future<void> ensureLoaded() async {}

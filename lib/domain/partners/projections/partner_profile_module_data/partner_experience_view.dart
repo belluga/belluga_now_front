@@ -1,5 +1,9 @@
 part of '../partner_profile_module_data.dart';
 
+typedef PartnerExperienceTitle = String;
+typedef PartnerExperienceDuration = String;
+typedef PartnerExperiencePrice = String;
+
 class PartnerExperienceView {
   const PartnerExperienceView({
     required this.title,
@@ -7,7 +11,7 @@ class PartnerExperienceView {
     required this.price,
   });
 
-  final String title;
-  final String duration;
-  final String price;
+  final PartnerExperienceTitle title;
+  final PartnerExperienceDuration duration;
+  final PartnerExperiencePrice price;
 }

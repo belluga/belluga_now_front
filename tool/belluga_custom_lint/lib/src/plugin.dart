@@ -2,9 +2,13 @@ import 'package:custom_lint_builder/custom_lint_builder.dart';
 
 import 'rules/controller_buildcontext_dependency_forbidden_rule.dart';
 import 'rules/controller_direct_navigation_forbidden_rule.dart';
+import 'rules/controller_repository_async_model_fetch_forbidden_rule.dart';
+import 'rules/controller_repository_pagination_arguments_forbidden_rule.dart';
+import 'rules/controller_streamvalue_model_ownership_forbidden_rule.dart';
 import 'rules/domain_dto_dependency_forbidden_rule.dart';
 import 'rules/domain_json_factory_forbidden_rule.dart';
 import 'rules/domain_primitive_field_forbidden_rule.dart';
+import 'rules/dto_mapper_pass_through_forbidden_rule.dart';
 import 'rules/global_ui_controller_naming_forbidden_rule.dart';
 import 'rules/integration_anonymous_auth_identified_login_forbidden_rule.dart';
 import 'rules/module_direct_getit_registration_forbidden_rule.dart';
@@ -13,6 +17,10 @@ import 'rules/multi_public_class_file_warning_rule.dart';
 import 'rules/multi_widget_file_warning_rule.dart';
 import 'rules/repository_inline_dto_to_domain_mapper_forbidden_rule.dart';
 import 'rules/repository_json_parsing_forbidden_rule.dart';
+import 'rules/repository_model_stream_lifecycle_methods_required_rule.dart';
+import 'rules/repository_model_streamvalue_nullable_required_rule.dart';
+import 'rules/repository_registration_lifecycle_enforced_rule.dart';
+import 'rules/repository_registration_scope_enforced_rule.dart';
 import 'rules/repository_service_catch_return_fallback_forbidden_rule.dart';
 import 'rules/repository_raw_payload_map_forbidden_rule.dart';
 import 'rules/repository_raw_transport_typing_forbidden_rule.dart';
@@ -32,41 +40,53 @@ import 'rules/ui_navigation_after_await_forbidden_rule.dart';
 import 'rules/ui_navigator_usage_forbidden_rule.dart';
 import 'rules/ui_controller_ownership_forbidden_rule.dart';
 import 'rules/ui_streamvalue_ownership_forbidden_rule.dart';
+import 'rules/ui_streamvalue_builder_null_check_forbidden_rule.dart';
 
 class BellugaCustomLintPlugin extends PluginBase {
   @override
-  List<LintRule> getLintRules(CustomLintConfigs configs) => [
-        UiGetItNonControllerForbiddenRule(),
-        UiDirectRepositoryServiceResolutionForbiddenRule(),
-        UiCrossFeatureControllerResolutionForbiddenRule(),
-        ModuleScopedControllerDisposeForbiddenRule(),
-        UiStreamValueOwnershipForbiddenRule(),
-        UiDtoImportForbiddenRule(),
-        DomainDtoDependencyForbiddenRule(),
-        DomainJsonFactoryForbiddenRule(),
-        DomainPrimitiveFieldForbiddenRule(),
-        UiFutureStreamBuilderForbiddenRule(),
-        UiNavigatorUsageForbiddenRule(),
-        UiNavigationAfterAwaitForbiddenRule(),
-        UiBuildSideEffectsForbiddenRule(),
-        UiControllerOwnershipForbiddenRule(),
-        RepositoryJsonParsingForbiddenRule(),
-        RepositoryServiceCatchReturnFallbackForbiddenRule(),
-        RepositoryRawPayloadMapForbiddenRule(),
-        RepositoryRawTransportTypingForbiddenRule(),
-        ServiceJsonParsingForbiddenRule(),
-        RepositoryInlineDtoToDomainMapperForbiddenRule(),
-        ModuleDirectGetItRegistrationForbiddenRule(),
-        GlobalUiControllerNamingForbiddenRule(),
-        ControllerBuildContextDependencyForbiddenRule(),
-        ControllerDirectNavigationForbiddenRule(),
-        RoutePageMustLiveInRoutesFolderRule(),
-        RoutePathParamRequiresResolverRouteRule(),
-        ScreenControllerResolutionPatternRequiredRule(),
-        UiRouteParamHydrationForbiddenRule(),
-        MultiPublicClassFileWarningRule(),
-        MultiWidgetFileWarningRule(),
-        TenantCanonicalDomainRequiredRule(),
-        IntegrationAnonymousAuthIdentifiedLoginForbiddenRule(),
-      ];
+  List<LintRule> getLintRules(CustomLintConfigs configs) {
+    return [
+      UiGetItNonControllerForbiddenRule(),
+      UiDirectRepositoryServiceResolutionForbiddenRule(),
+      UiCrossFeatureControllerResolutionForbiddenRule(),
+      ModuleScopedControllerDisposeForbiddenRule(),
+      UiStreamValueOwnershipForbiddenRule(),
+      UiDtoImportForbiddenRule(),
+      DomainDtoDependencyForbiddenRule(),
+      DomainJsonFactoryForbiddenRule(),
+      DomainPrimitiveFieldForbiddenRule(),
+      DtoMapperPassThroughForbiddenRule(),
+      UiFutureStreamBuilderForbiddenRule(),
+      UiNavigatorUsageForbiddenRule(),
+      UiNavigationAfterAwaitForbiddenRule(),
+      UiBuildSideEffectsForbiddenRule(),
+      UiControllerOwnershipForbiddenRule(),
+      UiStreamValueBuilderNullCheckForbiddenRule(),
+      RepositoryJsonParsingForbiddenRule(),
+      RepositoryModelStreamLifecycleMethodsRequiredRule(),
+      RepositoryModelStreamValueNullableRequiredRule(),
+      RepositoryRegistrationScopeEnforcedRule(),
+      RepositoryRegistrationLifecycleEnforcedRule(),
+      RepositoryServiceCatchReturnFallbackForbiddenRule(),
+      RepositoryRawPayloadMapForbiddenRule(),
+      RepositoryRawTransportTypingForbiddenRule(),
+      ServiceJsonParsingForbiddenRule(),
+      RepositoryInlineDtoToDomainMapperForbiddenRule(),
+      ModuleDirectGetItRegistrationForbiddenRule(),
+      GlobalUiControllerNamingForbiddenRule(),
+      ControllerBuildContextDependencyForbiddenRule(),
+      ControllerDirectNavigationForbiddenRule(),
+      ControllerRepositoryAsyncModelFetchForbiddenRule(),
+      ControllerRepositoryPaginationArgumentsForbiddenRule(),
+      ControllerStreamValueModelOwnershipForbiddenRule(),
+      RoutePageMustLiveInRoutesFolderRule(),
+      RoutePathParamRequiresResolverRouteRule(),
+      ScreenControllerResolutionPatternRequiredRule(),
+      UiRouteParamHydrationForbiddenRule(),
+      MultiPublicClassFileWarningRule(),
+      MultiWidgetFileWarningRule(),
+      TenantCanonicalDomainRequiredRule(),
+      IntegrationAnonymousAuthIdentifiedLoginForbiddenRule(),
+    ];
+  }
 }

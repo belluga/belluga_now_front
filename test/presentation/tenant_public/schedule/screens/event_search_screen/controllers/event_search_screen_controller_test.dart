@@ -1,7 +1,9 @@
 import 'dart:async';
+import 'package:belluga_now/testing/domain_factories.dart';
 import 'package:belluga_now/testing/invite_accept_result_builder.dart';
 
 import 'package:belluga_now/domain/app_data/app_data.dart';
+import 'package:belluga_now/testing/app_data_test_factory.dart';
 import 'package:belluga_now/domain/app_data/value_object/platform_type_value.dart';
 import 'package:belluga_now/domain/contacts/contact_model.dart';
 import 'package:belluga_now/domain/invites/invite_accept_result.dart';
@@ -12,6 +14,8 @@ import 'package:belluga_now/domain/invites/invite_next_step.dart';
 import 'package:belluga_now/domain/invites/invite_runtime_settings.dart';
 import 'package:belluga_now/domain/invites/invite_share_code_result.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
+import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
+import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
 import 'package:belluga_now/domain/repositories/app_data_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/schedule_repository_contract.dart';
@@ -115,6 +119,39 @@ void main() {
       scheduleRepository.dispose();
     },
   );
+
+  testWidgets(
+    'uses tenant default origin when cached user location is stale',
+    (tester) async {
+      final scheduleRepository = _FakeScheduleRepository();
+      final locationRepository = _FakeUserLocationRepository()
+        ..userLocationStreamValue.addValue(
+          CityCoordinate(
+            latitudeValue: LatitudeValue()..parse('-23.550520'),
+            longitudeValue: LongitudeValue()..parse('-46.633308'),
+          ),
+        )
+        ..lastKnownCapturedAtStreamValue.addValue(
+          DateTime.now().subtract(const Duration(hours: 2)),
+        );
+      final controller = EventSearchScreenController(
+        scheduleRepository: scheduleRepository,
+        userEventsRepository: _FakeUserEventsRepository(),
+        invitesRepository: _FakeInvitesRepository(),
+        userLocationRepository: locationRepository,
+        appDataRepository: _FakeAppDataRepository(_buildAppData()),
+      );
+
+      await controller.init();
+
+      expect(scheduleRepository.getEventsPageCallCount, 1);
+      expect(scheduleRepository.lastOriginLat, closeTo(-20.671339, 0.000001));
+      expect(scheduleRepository.lastOriginLng, closeTo(-40.495395, 0.000001));
+
+      controller.onDispose();
+      scheduleRepository.dispose();
+    },
+  );
 }
 
 AppData _buildAppData({bool includeDefaultOrigin = true}) {
@@ -173,7 +210,7 @@ AppData _buildAppData({bool includeDefaultOrigin = true}) {
     'device': 'test-device',
   };
 
-  return AppData.fromInitialization(
+  return buildAppDataFromInitialization(
       remoteData: remoteData, localInfo: localInfo);
 }
 
@@ -217,9 +254,35 @@ class _FakeAppDataRepository implements AppDataRepositoryContract {
 class _FakeScheduleRepository implements ScheduleRepositoryContract {
   _FakeScheduleRepository();
 
+  @override
+  final StreamValue<List<EventModel>?> homeAgendaEventsStreamValue =
+      StreamValue<List<EventModel>?>();
+  @override
+  final StreamValue<HomeAgendaCacheSnapshot?> homeAgendaCacheStreamValue =
+      StreamValue<HomeAgendaCacheSnapshot?>();
+  @override
+  final StreamValue<List<EventModel>> eventSearchDisplayedEventsStreamValue =
+      StreamValue<List<EventModel>>(defaultValue: const <EventModel>[]);
+  @override
+  final StreamValue<List<EventModel>> eventsByDateStreamValue =
+      StreamValue<List<EventModel>>(defaultValue: const <EventModel>[]);
+  @override
+  final StreamValue<PagedEventsResult?> pagedEventsStreamValue =
+      StreamValue<PagedEventsResult?>(defaultValue: null);
+  @override
+  final StreamValue<bool> hasMorePagedEventsStreamValue =
+      StreamValue<bool>(defaultValue: true);
+  @override
+  final StreamValue<bool> isPagedEventsPageLoadingStreamValue =
+      StreamValue<bool>(defaultValue: false);
+  @override
+  final StreamValue<String?> pagedEventsErrorStreamValue =
+      StreamValue<String?>(defaultValue: null);
+
   int getEventsPageCallCount = 0;
   int watchEventsStreamCallCount = 0;
   int? lastRequestedPage;
+  int _currentPagedEventsPage = 0;
   double? lastOriginLat;
   double? lastOriginLng;
   bool failOnPageFetch = false;
@@ -239,6 +302,35 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
   }
 
   @override
+  HomeAgendaCacheSnapshot? readHomeAgendaCache({
+    required bool showPastOnly,
+    required String searchQuery,
+    required bool confirmedOnly,
+  }) {
+    final snapshot = homeAgendaCacheStreamValue.value;
+    if (snapshot == null) return null;
+    if (snapshot.showPastOnly != showPastOnly) return null;
+    if (snapshot.searchQuery != searchQuery) return null;
+    if (snapshot.confirmedOnly != confirmedOnly) return null;
+    return snapshot;
+  }
+
+  @override
+  void writeHomeAgendaCache(HomeAgendaCacheSnapshot snapshot) {
+    homeAgendaCacheStreamValue.addValue(snapshot);
+    homeAgendaEventsStreamValue.addValue(snapshot.events);
+  }
+
+  @override
+  void clearHomeAgendaCache() {
+    homeAgendaCacheStreamValue.addValue(null);
+    homeAgendaEventsStreamValue.addValue(null);
+  }
+
+  @override
+  int get currentPagedEventsPage => _currentPagedEventsPage;
+
+  @override
   Future<List<EventModel>> getAllEvents() async => const [];
 
   @override
@@ -252,6 +344,22 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
     double? maxDistanceMeters,
   }) async =>
       const [];
+
+  @override
+  Future<void> refreshEventsByDate(
+    DateTime date, {
+    double? originLat,
+    double? originLng,
+    double? maxDistanceMeters,
+  }) async {
+    final events = await getEventsByDate(
+      date,
+      originLat: originLat,
+      originLng: originLng,
+      maxDistanceMeters: maxDistanceMeters,
+    );
+    eventsByDateStreamValue.addValue(events);
+  }
 
   @override
   Future<PagedEventsResult> getEventsPage({
@@ -275,6 +383,106 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
       throw Exception('forced first-page failure');
     }
     return const PagedEventsResult(events: [], hasMore: false);
+  }
+
+  @override
+  Future<void> refreshEventsPage({
+    required int page,
+    required int pageSize,
+    required bool showPastOnly,
+    String searchQuery = '',
+    List<String>? categories,
+    List<String>? tags,
+    List<Map<String, String>>? taxonomy,
+    bool confirmedOnly = false,
+    double? originLat,
+    double? originLng,
+    double? maxDistanceMeters,
+  }) async {
+    final pageResult = await getEventsPage(
+      page: page,
+      pageSize: pageSize,
+      showPastOnly: showPastOnly,
+      searchQuery: searchQuery,
+      categories: categories,
+      tags: tags,
+      taxonomy: taxonomy,
+      confirmedOnly: confirmedOnly,
+      originLat: originLat,
+      originLng: originLng,
+      maxDistanceMeters: maxDistanceMeters,
+    );
+    _currentPagedEventsPage = page;
+    hasMorePagedEventsStreamValue.addValue(pageResult.hasMore);
+    pagedEventsStreamValue.addValue(pageResult);
+  }
+
+  @override
+  Future<void> loadEventsPage({
+    int pageSize = 25,
+    required bool showPastOnly,
+    String searchQuery = '',
+    List<String>? categories,
+    List<String>? tags,
+    List<Map<String, String>>? taxonomy,
+    bool confirmedOnly = false,
+    double? originLat,
+    double? originLng,
+    double? maxDistanceMeters,
+  }) async {
+    await refreshEventsPage(
+      page: 1,
+      pageSize: pageSize,
+      showPastOnly: showPastOnly,
+      searchQuery: searchQuery,
+      categories: categories,
+      tags: tags,
+      taxonomy: taxonomy,
+      confirmedOnly: confirmedOnly,
+      originLat: originLat,
+      originLng: originLng,
+      maxDistanceMeters: maxDistanceMeters,
+    );
+  }
+
+  @override
+  Future<void> loadNextEventsPage({
+    int pageSize = 25,
+    required bool showPastOnly,
+    String searchQuery = '',
+    List<String>? categories,
+    List<String>? tags,
+    List<Map<String, String>>? taxonomy,
+    bool confirmedOnly = false,
+    double? originLat,
+    double? originLng,
+    double? maxDistanceMeters,
+  }) async {
+    if (!hasMorePagedEventsStreamValue.value) {
+      return;
+    }
+    await refreshEventsPage(
+      page: _currentPagedEventsPage + 1,
+      pageSize: pageSize,
+      showPastOnly: showPastOnly,
+      searchQuery: searchQuery,
+      categories: categories,
+      tags: tags,
+      taxonomy: taxonomy,
+      confirmedOnly: confirmedOnly,
+      originLat: originLat,
+      originLng: originLng,
+      maxDistanceMeters: maxDistanceMeters,
+    );
+  }
+
+  @override
+  void resetPagedEventsState() {
+    _currentPagedEventsPage = 0;
+    pagedEventsStreamValue.addValue(null);
+    hasMorePagedEventsStreamValue.addValue(true);
+    isPagedEventsPageLoadingStreamValue.addValue(false);
+    pagedEventsErrorStreamValue.addValue(null);
   }
 
   @override
@@ -309,6 +517,36 @@ class _FakeScheduleRepository implements ScheduleRepositoryContract {
     _streamControllers.add(controller);
     return controller.stream;
   }
+
+  @override
+  Stream<void> watchEventsSignal({
+    required void Function(EventDeltaModel delta) onDelta,
+    String searchQuery = '',
+    List<String>? categories,
+    List<String>? tags,
+    List<Map<String, String>>? taxonomy,
+    bool confirmedOnly = false,
+    double? originLat,
+    double? originLng,
+    double? maxDistanceMeters,
+    String? lastEventId,
+    bool showPastOnly = false,
+  }) {
+    return watchEventsStream(
+      searchQuery: searchQuery,
+      categories: categories,
+      tags: tags,
+      taxonomy: taxonomy,
+      confirmedOnly: confirmedOnly,
+      originLat: originLat,
+      originLng: originLng,
+      maxDistanceMeters: maxDistanceMeters,
+      lastEventId: lastEventId,
+      showPastOnly: showPastOnly,
+    ).map((delta) {
+      onDelta(delta);
+    });
+  }
 }
 
 class _FakeInvitesRepository extends InvitesRepositoryContract {
@@ -319,7 +557,7 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
 
   @override
   Future<InviteRuntimeSettings> fetchSettings() async =>
-      const InviteRuntimeSettings(
+      buildInviteRuntimeSettings(
         tenantId: null,
         limits: {},
         cooldowns: {},
@@ -339,7 +577,7 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
 
   @override
   Future<InviteDeclineResult> declineInvite(String inviteId) async =>
-      InviteDeclineResult(
+      buildInviteDeclineResult(
         inviteId: inviteId,
         status: 'declined',
         groupHasOtherPending: false,
@@ -355,7 +593,7 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
     String? occurrenceId,
     String? accountProfileId,
   }) async =>
-      InviteShareCodeResult(
+      buildInviteShareCodeResult(
         code: 'CODE123',
         eventId: eventId,
         occurrenceId: occurrenceId,
@@ -420,6 +658,13 @@ class _FakeUserLocationRepository implements UserLocationRepositoryContract {
   @override
   final StreamValue<String?> lastKnownAddressStreamValue =
       StreamValue<String?>(defaultValue: null);
+
+  @override
+  @override
+  final StreamValue<LocationResolutionPhase>
+      locationResolutionPhaseStreamValue = StreamValue<LocationResolutionPhase>(
+    defaultValue: LocationResolutionPhase.unknown,
+  );
 
   @override
   Future<void> ensureLoaded() async {}

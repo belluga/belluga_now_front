@@ -22,7 +22,6 @@ class TenantAdminAccountsController implements Disposable {
   final TenantAdminAccountsRepositoryContract _accountsRepository;
   final TenantAdminTenantScopeContract? _tenantScope;
 
-  static const int _accountsPageSize = 20;
   static const Duration _searchDebounceDuration = Duration(milliseconds: 350);
 
   StreamValue<List<TenantAdminAccount>?> get accountsStreamValue =>
@@ -101,7 +100,6 @@ class TenantAdminAccountsController implements Disposable {
       return;
     }
     await _accountsRepository.loadAccounts(
-      pageSize: _accountsPageSize,
       ownershipState: ownershipState ?? selectedOwnershipStreamValue.value,
       searchQuery: _normalizeSearchQuery(
         searchQuery ?? searchQueryStreamValue.value,
@@ -117,7 +115,6 @@ class TenantAdminAccountsController implements Disposable {
       return;
     }
     await _accountsRepository.loadNextAccountsPage(
-      pageSize: _accountsPageSize,
       ownershipState: ownershipState ?? selectedOwnershipStreamValue.value,
       searchQuery: _normalizeSearchQuery(
         searchQuery ?? searchQueryStreamValue.value,

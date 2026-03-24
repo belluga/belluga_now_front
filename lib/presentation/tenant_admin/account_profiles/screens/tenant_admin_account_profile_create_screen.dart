@@ -579,11 +579,11 @@ class _TenantAdminAccountProfileCreateScreenState
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           if (isLoading) const LinearProgressIndicator(),
-                          if (error != null)
+                          if (error?.isNotEmpty ?? false)
                             Padding(
                               padding: const EdgeInsets.only(top: 8),
                               child: TenantAdminErrorBanner(
-                                rawError: error,
+                                rawError: error ?? '',
                                 fallbackMessage:
                                     'Não foi possível carregar os tipos de perfil.',
                                 onRetry: _controller.loadProfileTypes,
@@ -641,7 +641,9 @@ class _TenantAdminAccountProfileCreateScreenState
                               label: const Text('Criar tipo de perfil'),
                             ),
                           ),
-                          if (!isLoading && error == null && !hasTypes)
+                          if (!isLoading &&
+                              !(error?.isNotEmpty ?? false) &&
+                              !hasTypes)
                             const Padding(
                               padding: EdgeInsets.only(top: 8),
                               child: Text(

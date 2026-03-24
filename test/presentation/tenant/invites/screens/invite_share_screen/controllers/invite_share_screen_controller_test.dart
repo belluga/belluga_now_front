@@ -1,4 +1,6 @@
 import 'package:belluga_now/domain/app_data/app_data.dart';
+import 'package:belluga_now/testing/domain_factories.dart';
+import 'package:belluga_now/testing/app_data_test_factory.dart';
 import 'package:belluga_now/domain/app_data/value_object/platform_type_value.dart';
 import 'package:belluga_now/domain/contacts/contact_model.dart';
 import 'package:belluga_now/domain/invites/invite_accept_result.dart';
@@ -8,6 +10,10 @@ import 'package:belluga_now/domain/invites/invite_model.dart';
 import 'package:belluga_now/domain/invites/invite_next_step.dart';
 import 'package:belluga_now/domain/invites/invite_runtime_settings.dart';
 import 'package:belluga_now/domain/invites/invite_share_code_result.dart';
+import 'package:belluga_now/domain/invites/value_objects/invite_contact_hash_value.dart';
+import 'package:belluga_now/domain/invites/value_objects/invite_contact_type_value.dart';
+import 'package:belluga_now/domain/invites/value_objects/invite_inviter_name_value.dart';
+import 'package:belluga_now/domain/user/value_objects/user_id_value.dart';
 import 'package:belluga_now/domain/repositories/contacts_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
 import 'package:belluga_now/domain/schedule/friend_resume.dart';
@@ -15,6 +21,8 @@ import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
 import 'package:belluga_now/presentation/tenant_public/invites/screens/invite_share_screen/controllers/invite_share_screen_controller.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:belluga_now/testing/invite_accept_result_builder.dart';
+import 'package:stream_value/core/stream_value.dart';
+import 'package:belluga_now/testing/invite_model_factory.dart';
 
 class _FakeContactsRepository implements ContactsRepositoryContract {
   _FakeContactsRepository({
@@ -26,6 +34,9 @@ class _FakeContactsRepository implements ContactsRepositoryContract {
   bool throwOnRequestPermission;
   bool throwOnGetContacts = false;
   List<ContactModel> contacts;
+  @override
+  final contactsStreamValue =
+      StreamValue<List<ContactModel>?>(defaultValue: null);
 
   @override
   Future<bool> requestPermission() async {
@@ -42,6 +53,17 @@ class _FakeContactsRepository implements ContactsRepositoryContract {
     }
     return contacts;
   }
+
+  @override
+  Future<void> initializeContacts() async {
+    await refreshContacts();
+  }
+
+  @override
+  Future<void> refreshContacts() async {
+    final loadedContacts = await getContacts();
+    contactsStreamValue.addValue(loadedContacts);
+  }
 }
 
 class _FakeInvitesRepository extends InvitesRepositoryContract {
@@ -54,7 +76,7 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
 
   @override
   Future<InviteRuntimeSettings> fetchSettings() async =>
-      const InviteRuntimeSettings(
+      buildInviteRuntimeSettings(
         tenantId: null,
         limits: {},
         cooldowns: {},
@@ -74,7 +96,7 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
 
   @override
   Future<InviteDeclineResult> declineInvite(String inviteId) async =>
-      InviteDeclineResult(
+      buildInviteDeclineResult(
         inviteId: inviteId,
         status: 'declined',
         groupHasOtherPending: false,
@@ -90,13 +112,12 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
       return const <InviteContactMatch>[];
     }
 
-    return const <InviteContactMatch>[
+    return <InviteContactMatch>[
       InviteContactMatch(
-        contactHash: 'hash-1',
-        type: 'phone',
-        userId: 'user-1',
-        displayName: 'Matched Contact',
-        avatarUrl: null,
+        contactHashValue: InviteContactHashValue()..parse('hash-1'),
+        typeValue: InviteContactTypeValue()..parse('phone'),
+        userIdValue: UserIdValue()..parse('user-1'),
+        displayNameValue: InviteInviterNameValue()..parse('Matched Contact'),
       ),
     ];
   }
@@ -107,7 +128,7 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
     String? occurrenceId,
     String? accountProfileId,
   }) async =>
-      InviteShareCodeResult(
+      buildInviteShareCodeResult(
         code: 'SHARE-CODE',
         eventId: eventId,
         occurrenceId: occurrenceId,
@@ -129,7 +150,7 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
 }
 
 InviteModel _buildInvite() {
-  return InviteModel.fromPrimitives(
+  return buildInviteModelFromPrimitives(
     id: 'invite-1',
     eventId: 'event-1',
     eventName: 'Evento Teste',
@@ -180,7 +201,7 @@ AppData _buildAppData() {
     'port': null,
     'device': 'test-device',
   };
-  return AppData.fromInitialization(
+  return buildAppDataFromInitialization(
     remoteData: remoteData,
     localInfo: localInfo,
   );
@@ -214,8 +235,8 @@ void main() {
     'init falls back to empty friend suggestions when import contacts fails',
     () async {
       final contactsRepository = _FakeContactsRepository(
-        contacts: const <ContactModel>[
-          ContactModel(
+        contacts: <ContactModel>[
+          buildContactModel(
             id: 'contact-1',
             displayName: 'Contato 1',
             phones: <String>['+55 27 99999-9999'],

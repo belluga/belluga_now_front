@@ -1,4 +1,5 @@
 import 'package:belluga_now/domain/contacts/contact_model.dart';
+import 'package:belluga_now/testing/domain_factories.dart';
 import 'package:belluga_now/domain/invites/invite_accept_result.dart';
 import 'package:belluga_now/domain/invites/invite_contact_match.dart';
 import 'package:belluga_now/domain/invites/invite_decline_result.dart';
@@ -16,10 +17,13 @@ import 'package:belluga_now/domain/schedule/sent_invite_status.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_is_confirmed_value.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_total_confirmed_value.dart';
 import 'package:belluga_now/domain/schedule/value_objects/event_type_id_value.dart';
+import 'package:belluga_now/domain/thumb/enums/thumb_types.dart';
 import 'package:belluga_now/domain/thumb/thumb_model.dart';
 import 'package:belluga_now/domain/value_objects/color_value.dart';
 import 'package:belluga_now/domain/value_objects/description_value.dart';
 import 'package:belluga_now/domain/value_objects/slug_value.dart';
+import 'package:belluga_now/domain/value_objects/thumb_type_value.dart';
+import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
 import 'package:belluga_now/domain/value_objects/title_value.dart';
 import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/immersive_event_detail/controllers/immersive_event_detail_controller.dart';
@@ -30,6 +34,7 @@ import 'package:value_object_pattern/domain/value_objects/date_time_value.dart';
 import 'package:value_object_pattern/domain/value_objects/html_content_value.dart';
 import 'package:value_object_pattern/domain/value_objects/mongo_id_value.dart';
 import 'package:belluga_now/testing/invite_accept_result_builder.dart';
+import 'package:belluga_now/testing/invite_model_factory.dart';
 
 void main() {
   test(
@@ -163,12 +168,12 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
     String? occurrenceId,
     String? accountProfileId,
   }) async {
-    return InviteShareCodeResult(code: 'CODE123', eventId: eventId);
+    return buildInviteShareCodeResult(code: 'CODE123', eventId: eventId);
   }
 
   @override
   Future<InviteDeclineResult> declineInvite(String inviteId) async {
-    return InviteDeclineResult(
+    return buildInviteDeclineResult(
       inviteId: inviteId,
       status: 'declined',
       groupHasOtherPending: false,
@@ -183,7 +188,7 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
 
   @override
   Future<InviteRuntimeSettings> fetchSettings() async {
-    return const InviteRuntimeSettings(
+    return buildInviteRuntimeSettings(
       tenantId: null,
       limits: {},
       cooldowns: {},
@@ -292,7 +297,13 @@ EventModel _buildEvent() {
     content: HTMLContentValue()..parse('Descricao longa do evento para teste.'),
     location: DescriptionValue()..parse('Local muito legal para teste.'),
     venue: null,
-    thumb: ThumbModel.fromPrimitives(url: 'https://example.com/event.png'),
+    thumb: ThumbModel(
+      thumbUri: ThumbUriValue(
+        defaultValue: Uri.parse('https://example.com/event.png'),
+      )..parse('https://example.com/event.png'),
+      thumbType: ThumbTypeValue(defaultValue: ThumbTypes.image)
+        ..parse(ThumbTypes.image.name),
+    ),
     dateTimeStart: DateTimeValue(isRequired: true)
       ..parse(DateTime(2026, 3, 15, 20).toIso8601String()),
     dateTimeEnd: null,
@@ -312,7 +323,7 @@ InviteModel _buildInviteForEvent({
   required String id,
   required String eventId,
 }) {
-  return InviteModel.fromPrimitives(
+  return buildInviteModelFromPrimitives(
     id: id,
     eventId: eventId,
     eventName: 'Evento $id',

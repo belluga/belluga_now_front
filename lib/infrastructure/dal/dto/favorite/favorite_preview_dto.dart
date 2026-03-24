@@ -1,4 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:belluga_now/domain/favorite/favorite.dart';
+import 'package:belluga_now/domain/favorite/favorite_badge.dart';
+import 'package:belluga_now/domain/favorite/value_objects/favorite_badge_font_family_value.dart';
+import 'package:belluga_now/domain/favorite/value_objects/favorite_badge_font_package_value.dart';
+import 'package:belluga_now/domain/favorite/value_objects/favorite_badge_icon_value.dart';
+import 'package:belluga_now/domain/value_objects/asset_path_value.dart';
+import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
+import 'package:belluga_now/domain/value_objects/title_value.dart';
 
 class FavoritePreviewDTO {
   const FavoritePreviewDTO({
@@ -103,4 +111,63 @@ class FavoritePreviewDTO {
   final String? badgeFontFamily;
   final String? badgeFontPackage;
   final bool isPrimary;
+
+  Favorite toDomain() {
+    final safeTitle = title.trim().isNotEmpty ? title : id;
+    final titleValue = TitleValue()..parse(safeTitle);
+
+    ThumbUriValue? imageUriValue;
+    if (imageUrl != null) {
+      final parsed = Uri.tryParse(imageUrl!);
+      if (parsed != null) {
+        imageUriValue = ThumbUriValue(
+          defaultValue: parsed,
+          isRequired: true,
+        )..parse(imageUrl);
+      }
+    }
+
+    AssetPathValue? assetPathValue;
+    if (assetPath != null && assetPath!.trim().isNotEmpty) {
+      assetPathValue = AssetPathValue(
+        defaultValue: assetPath!,
+        isRequired: true,
+      )..parse(assetPath);
+    } else if (imageUriValue == null) {
+      assetPathValue = AssetPathValue(
+        defaultValue: 'assets/images/placeholder_avatar.png',
+        isRequired: true,
+      )..parse('assets/images/placeholder_avatar.png');
+    }
+
+    FavoriteBadge? badge;
+    if (badgeIconCodePoint != null) {
+      final iconValue = FavoriteBadgeIconValue()
+        ..parse(badgeIconCodePoint!.toString());
+      FavoriteBadgeFontFamilyValue? fontFamilyValue;
+      if (badgeFontFamily != null && badgeFontFamily!.isNotEmpty) {
+        fontFamilyValue = FavoriteBadgeFontFamilyValue()..parse(badgeFontFamily);
+      }
+      FavoriteBadgeFontPackageValue? fontPackageValue;
+      if (badgeFontPackage != null && badgeFontPackage!.isNotEmpty) {
+        fontPackageValue = FavoriteBadgeFontPackageValue()
+          ..parse(badgeFontPackage);
+      }
+      badge = FavoriteBadge(
+        iconValue: iconValue,
+        fontFamilyValue: fontFamilyValue,
+        fontPackageValue: fontPackageValue,
+      );
+    }
+
+    return Favorite(
+      id: id,
+      slug: slug,
+      titleValue: titleValue,
+      imageUriValue: imageUriValue,
+      assetPathValue: assetPathValue,
+      badge: badge,
+      isPrimary: isPrimary,
+    );
+  }
 }

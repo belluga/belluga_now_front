@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:belluga_now/testing/domain_factories.dart';
 import 'dart:io';
 import 'package:belluga_now/testing/invite_accept_result_builder.dart';
 import 'package:belluga_now/testing/invite_materialize_result_builder.dart';
@@ -33,6 +34,7 @@ import 'package:mockito/mockito.dart';
 import 'package:stream_value/core/stream_value.dart';
 
 import 'support/integration_test_bootstrap.dart';
+import 'package:belluga_now/testing/invite_model_factory.dart';
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
@@ -139,7 +141,7 @@ class _RecordingInvitesRepository extends InvitesRepositoryContract {
   final List<String> previewedShareCodes = <String>[];
   final List<InviteModel> _invites;
 
-  static final InviteModel _materializedInvite = InviteModel.fromPrimitives(
+  static final InviteModel _materializedInvite = buildInviteModelFromPrimitives(
     id: 'preview-SHARE-CODE-123',
     eventId: 'event-preview',
     eventName: 'Preview Event',
@@ -159,7 +161,7 @@ class _RecordingInvitesRepository extends InvitesRepositoryContract {
 
   @override
   Future<InviteRuntimeSettings> fetchSettings() async =>
-      const InviteRuntimeSettings(
+      buildInviteRuntimeSettings(
         tenantId: null,
         limits: {},
         cooldowns: {},
@@ -179,7 +181,7 @@ class _RecordingInvitesRepository extends InvitesRepositoryContract {
 
   @override
   Future<InviteDeclineResult> declineInvite(String inviteId) async =>
-      InviteDeclineResult(
+      buildInviteDeclineResult(
         inviteId: inviteId,
         status: 'declined',
         groupHasOtherPending: false,
@@ -213,7 +215,7 @@ class _RecordingInvitesRepository extends InvitesRepositoryContract {
     String? occurrenceId,
     String? accountProfileId,
   }) async =>
-      InviteShareCodeResult(
+      buildInviteShareCodeResult(
         code: 'SHARE123',
         eventId: eventId,
         occurrenceId: occurrenceId,

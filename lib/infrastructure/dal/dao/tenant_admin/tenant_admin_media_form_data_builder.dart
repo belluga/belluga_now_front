@@ -5,6 +5,30 @@ import 'package:http_parser/http_parser.dart';
 class TenantAdminMediaFormDataBuilder {
   const TenantAdminMediaFormDataBuilder();
 
+  FormData buildMultipartPayload({
+    required Object payload,
+  }) {
+    if (payload case final Map<String, dynamic> mapPayload) {
+      return FormData.fromMap(mapPayload, ListFormat.multiCompatible);
+    }
+    if (payload case final Map mapPayload) {
+      final normalizedPayload = <String, dynamic>{};
+      for (final entry in mapPayload.entries) {
+        final key = entry.key;
+        if (key is! String) {
+          throw const FormatException(
+            'Failed to build multipart payload: payload keys must be strings.',
+          );
+        }
+        normalizedPayload[key] = entry.value;
+      }
+      return FormData.fromMap(normalizedPayload, ListFormat.multiCompatible);
+    }
+    throw const FormatException(
+      'Failed to build multipart payload: expected map-compatible payload.',
+    );
+  }
+
   FormData? buildAvatarCoverPayload({
     required Map<String, dynamic> payload,
     TenantAdminMediaUpload? avatarUpload,

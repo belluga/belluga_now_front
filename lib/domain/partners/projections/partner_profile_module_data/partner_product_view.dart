@@ -1,5 +1,9 @@
 part of '../partner_profile_module_data.dart';
 
+typedef PartnerProductTitle = String;
+typedef PartnerProductPrice = String;
+typedef PartnerProductImageUrl = String;
+
 class PartnerProductView {
   const PartnerProductView({
     required this.title,
@@ -7,7 +11,7 @@ class PartnerProductView {
     required this.imageUrl,
   });
 
-  final String title;
-  final String price;
-  final String imageUrl;
+  final PartnerProductTitle title;
+  final PartnerProductPrice price;
+  final PartnerProductImageUrl imageUrl;
 }

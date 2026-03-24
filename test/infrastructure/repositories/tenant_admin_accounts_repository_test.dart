@@ -174,7 +174,7 @@ void main() {
       readItems: () => repository.accountsStreamValue.value,
       readHasMore: () => repository.hasMoreAccountsStreamValue.value,
       readError: () => repository.accountsErrorStreamValue.value,
-      expectedCountsPerStep: const [2, 3],
+      expectedCountsPerStep: [2, 3],
       loadNextCalls: 1,
     );
   });
@@ -338,8 +338,8 @@ void main() {
       name: 'Conta onboarding',
       ownershipState: TenantAdminOwnershipState.unmanaged,
       profileType: 'venue',
-      location: const TenantAdminLocation(latitude: -20.31, longitude: -40.29),
-      taxonomyTerms: const [
+      location: TenantAdminLocation(latitude: -20.31, longitude: -40.29),
+      taxonomyTerms: [
         TenantAdminTaxonomyTerm(type: 'genre', value: 'urbana'),
       ],
       bio: '<p>Bio</p>',
@@ -508,7 +508,7 @@ class _AccountsRoutingAdapter implements HttpClientAdapter {
     }
 
     return _jsonResponse({
-      'data': const [],
+      'data': [],
       'current_page': page,
       'last_page': page,
     });

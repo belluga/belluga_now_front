@@ -20,7 +20,7 @@ import 'package:get_it/get_it.dart';
 import 'package:mockito/mockito.dart';
 import 'package:stream_value/core/stream_value.dart';
 
-class _FakeFavoriteRepository implements FavoriteRepositoryContract {
+class _FakeFavoriteRepository extends FavoriteRepositoryContract {
   _FakeFavoriteRepository({
     this.favoriteResumes = const <FavoriteResume>[],
   });

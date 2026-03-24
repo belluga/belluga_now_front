@@ -3,6 +3,11 @@ import 'package:belluga_now/domain/value_objects/asset_path_value.dart';
 import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
 import 'package:belluga_now/domain/value_objects/title_value.dart';
 
+typedef FavoriteId = String;
+typedef FavoriteSlug = String;
+typedef FavoriteSlugSource = String;
+typedef FavoritePrimaryFlag = bool;
+
 class Favorite {
   Favorite({
     required this.id,
@@ -22,19 +27,19 @@ class Favorite {
         ),
         assert(id.trim().isNotEmpty, 'Favorite id cannot be empty');
 
-  final String id;
-  final String? slug;
+  final FavoriteId id;
+  final FavoriteSlug? slug;
   final TitleValue titleValue;
   final ThumbUriValue? imageUriValue;
   final AssetPathValue? assetPathValue;
   final FavoriteBadge? badge;
-  final bool isPrimary;
+  final FavoritePrimaryFlag isPrimary;
 
   String get title => titleValue.value;
   Uri? get imageUri => imageUriValue?.value;
   String? get assetPath => assetPathValue?.value;
 
-  static String slugify(String value) {
+  static String slugify(FavoriteSlugSource value) {
     final slug = value.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), '-');
     final cleaned = slug.replaceAll(RegExp(r'-{2,}'), '-');
     return cleaned.replaceAll(RegExp(r'^-+|-+$'), '');

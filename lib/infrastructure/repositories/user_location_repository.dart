@@ -49,6 +49,12 @@ class UserLocationRepository implements UserLocationRepositoryContract {
   final lastKnownAddressStreamValue = StreamValue<String?>();
 
   @override
+  final StreamValue<LocationResolutionPhase>
+      locationResolutionPhaseStreamValue = StreamValue<LocationResolutionPhase>(
+    defaultValue: LocationResolutionPhase.unknown,
+  );
+
+  @override
   Future<void> ensureLoaded() => _loadFuture;
 
   @override
@@ -62,6 +68,8 @@ class UserLocationRepository implements UserLocationRepositoryContract {
     Duration minInterval = const Duration(seconds: 30),
   }) async {
     await ensureLoaded();
+    locationResolutionPhaseStreamValue
+        .addValue(LocationResolutionPhase.resolving);
 
     final hasAnyCoordinate = userLocationStreamValue.value != null ||
         lastKnownLocationStreamValue.value != null;
@@ -74,12 +82,26 @@ class UserLocationRepository implements UserLocationRepositoryContract {
     }
 
     final serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!serviceEnabled) return hasAnyCoordinate;
+    if (!serviceEnabled) {
+      locationResolutionPhaseStreamValue.addValue(
+        hasAnyCoordinate
+            ? LocationResolutionPhase.resolved
+            : LocationResolutionPhase.unavailable,
+      );
+      return hasAnyCoordinate;
+    }
 
     final permission = await Geolocator.checkPermission();
     final granted = permission == LocationPermission.always ||
         permission == LocationPermission.whileInUse;
-    if (!granted) return hasAnyCoordinate;
+    if (!granted) {
+      locationResolutionPhaseStreamValue.addValue(
+        hasAnyCoordinate
+            ? LocationResolutionPhase.resolved
+            : LocationResolutionPhase.permissionDenied,
+      );
+      return hasAnyCoordinate;
+    }
 
     final position = await Geolocator.getCurrentPosition(
       locationSettings: const LocationSettings(
@@ -91,6 +113,8 @@ class UserLocationRepository implements UserLocationRepositoryContract {
       position,
       shouldPersist: true,
     );
+    locationResolutionPhaseStreamValue
+        .addValue(LocationResolutionPhase.resolved);
     return userLocationStreamValue.value != null ||
         lastKnownLocationStreamValue.value != null;
   }
@@ -110,10 +134,14 @@ class UserLocationRepository implements UserLocationRepositoryContract {
   @override
   Future<String?> resolveUserLocation() async {
     await ensureLoaded();
+    locationResolutionPhaseStreamValue
+        .addValue(LocationResolutionPhase.resolving);
 
     final _currentLocation = userLocationStreamValue.value;
 
     if (_currentLocation != null && _hasLiveFix) {
+      locationResolutionPhaseStreamValue
+          .addValue(LocationResolutionPhase.resolved);
       return null;
     }
 
@@ -122,8 +150,10 @@ class UserLocationRepository implements UserLocationRepositoryContract {
 
   Future<String?> _getCurrentUserLocation() async {
     final serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    
+
     if (!serviceEnabled) {
+      locationResolutionPhaseStreamValue
+          .addValue(LocationResolutionPhase.unavailable);
       return Future.value(
           'Ative os servicos de localizacao para ver sua posicao. Exibindo pontos padrao da cidade.');
     }
@@ -135,6 +165,8 @@ class UserLocationRepository implements UserLocationRepositoryContract {
 
     if (permission == LocationPermission.deniedForever ||
         permission == LocationPermission.denied) {
+      locationResolutionPhaseStreamValue
+          .addValue(LocationResolutionPhase.permissionDenied);
       return Future.value(
           'Permita o acesso a localizacao para localizar pontos proximos. Exibindo pontos padrao da cidade.');
     }
@@ -149,6 +181,8 @@ class UserLocationRepository implements UserLocationRepositoryContract {
       position,
       shouldPersist: true,
     );
+    locationResolutionPhaseStreamValue
+        .addValue(LocationResolutionPhase.resolved);
 
     return null;
   }
@@ -160,11 +194,19 @@ class UserLocationRepository implements UserLocationRepositoryContract {
     await ensureLoaded();
 
     if (_trackingSubscription != null) {
+      locationResolutionPhaseStreamValue
+          .addValue(LocationResolutionPhase.resolved);
       return true;
     }
 
     final serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
+      locationResolutionPhaseStreamValue.addValue(
+        userLocationStreamValue.value != null ||
+                lastKnownLocationStreamValue.value != null
+            ? LocationResolutionPhase.resolved
+            : LocationResolutionPhase.unavailable,
+      );
       return userLocationStreamValue.value != null ||
           lastKnownLocationStreamValue.value != null;
     }
@@ -173,6 +215,12 @@ class UserLocationRepository implements UserLocationRepositoryContract {
     final granted = permission == LocationPermission.always ||
         permission == LocationPermission.whileInUse;
     if (!granted) {
+      locationResolutionPhaseStreamValue.addValue(
+        userLocationStreamValue.value != null ||
+                lastKnownLocationStreamValue.value != null
+            ? LocationResolutionPhase.resolved
+            : LocationResolutionPhase.permissionDenied,
+      );
       return userLocationStreamValue.value != null ||
           lastKnownLocationStreamValue.value != null;
     }
@@ -194,7 +242,8 @@ class UserLocationRepository implements UserLocationRepositoryContract {
       (pos) async {
         final now = DateTime.now();
         if (_lastTrackingUpdateAt != null &&
-            now.difference(_lastTrackingUpdateAt!) < _trackingMinUpdateInterval) {
+            now.difference(_lastTrackingUpdateAt!) <
+                _trackingMinUpdateInterval) {
           return;
         }
         _lastTrackingUpdateAt = now;
@@ -204,6 +253,8 @@ class UserLocationRepository implements UserLocationRepositoryContract {
           pos,
           shouldPersist: shouldPersist,
         );
+        locationResolutionPhaseStreamValue
+            .addValue(LocationResolutionPhase.resolved);
       },
       onError: (_) {
         // Non-fatal: keep last known snapshot.
@@ -300,6 +351,8 @@ class UserLocationRepository implements UserLocationRepositoryContract {
 
       // Provide a best-effort default for consumers that use only `userLocationStreamValue`.
       userLocationStreamValue.addValue(coordinate);
+      locationResolutionPhaseStreamValue
+          .addValue(LocationResolutionPhase.resolved);
       _hasLiveFix = false;
       _lastPersistedAt = capturedAt;
       _lastPersistedCoordinate = coordinate;

@@ -1,6 +1,13 @@
 import 'package:belluga_now/domain/user/user_contract.dart';
 import 'package:stream_value/core/stream_value.dart';
 
+typedef AuthRepositoryContractPrimString = String;
+typedef AuthRepositoryContractPrimInt = int;
+typedef AuthRepositoryContractPrimBool = bool;
+typedef AuthRepositoryContractPrimDouble = double;
+typedef AuthRepositoryContractPrimDateTime = DateTime;
+typedef AuthRepositoryContractPrimDynamic = dynamic;
+
 abstract class AuthRepositoryContract<T extends UserContract> {
   Object get backend;
 
@@ -8,37 +15,40 @@ abstract class AuthRepositoryContract<T extends UserContract> {
 
   T get user => userStreamValue.value!;
 
-  String get userToken;
+  AuthRepositoryContractPrimString get userToken;
 
-  void setUserToken(String? token);
+  void setUserToken(AuthRepositoryContractPrimString? token);
 
-  Future<String> getDeviceId();
+  Future<AuthRepositoryContractPrimString> getDeviceId();
 
-  Future<String?> getUserId();
+  Future<AuthRepositoryContractPrimString?> getUserId();
 
-  bool get isUserLoggedIn;
+  AuthRepositoryContractPrimBool get isUserLoggedIn;
 
-  bool get isAuthorized;
+  AuthRepositoryContractPrimBool get isAuthorized;
 
   Future<void> init();
 
   Future<void> autoLogin();
 
-  Future<void> loginWithEmailPassword(String email, String password);
+  Future<void> loginWithEmailPassword(AuthRepositoryContractPrimString email,
+      AuthRepositoryContractPrimString password);
 
   Future<void> signUpWithEmailPassword(
-    String name,
-    String email,
-    String password,
+    AuthRepositoryContractPrimString name,
+    AuthRepositoryContractPrimString email,
+    AuthRepositoryContractPrimString password,
   );
 
-  Future<void> sendTokenRecoveryPassword(String email, String codigoEnviado);
+  Future<void> sendTokenRecoveryPassword(AuthRepositoryContractPrimString email,
+      AuthRepositoryContractPrimString codigoEnviado);
 
   Future<void> logout();
 
-  Future<void> createNewPassword(String newPassword, String confirmPassword);
+  Future<void> createNewPassword(AuthRepositoryContractPrimString newPassword,
+      AuthRepositoryContractPrimString confirmPassword);
 
-  Future<void> sendPasswordResetEmail(String email);
+  Future<void> sendPasswordResetEmail(AuthRepositoryContractPrimString email);
 
-  Future<void> updateUser(Map<String, Object?> data);
+  Future<void> updateUser(Map<AuthRepositoryContractPrimString, Object?> data);
 }

@@ -5,6 +5,7 @@ import 'dart:collection';
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/application_contract.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
+import 'package:belluga_now/testing/app_data_test_factory.dart';
 import 'package:belluga_now/domain/app_data/app_type.dart';
 import 'package:belluga_now/domain/app_data/value_object/platform_type_value.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
@@ -21,6 +22,7 @@ import 'package:belluga_now/infrastructure/dal/dao/backend_context.dart';
 import 'package:belluga_now/infrastructure/dal/dao/account_profiles_backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/favorite_backend_contract.dart';
 import 'package:belluga_now/infrastructure/platform/app_data_local_info_source/app_data_local_info_source.dart';
+import 'package:belluga_now/infrastructure/platform/app_data_local_info_source/app_data_local_info_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dao/tenant_backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/venue_event_backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dto/app_data_dto.dart';
@@ -343,7 +345,13 @@ class _NoopAppDataBackend extends AppDataBackendContract {
 
 class _NoopLocalInfoSource extends AppDataLocalInfoSource {
   @override
-  Future<Map<String, dynamic>> getInfo() async => {};
+  Future<AppDataLocalInfoDTO> getInfo() async => AppDataLocalInfoDTO(
+        platformTypeValue: PlatformTypeValue(defaultValue: AppType.mobile),
+        port: null,
+        hostname: '',
+        href: '',
+        device: '',
+      );
 }
 
 class _NoopBackend extends BackendContract {
@@ -516,7 +524,7 @@ class _NoopScheduleBackend extends ScheduleBackendContract {
 
 AppData _buildAppData() {
   final platformType = PlatformTypeValue()..parse(AppType.mobile.name);
-  return AppData.fromInitialization(
+  return buildAppDataFromInitialization(
     remoteData: {
       'name': 'Guarappari',
       'type': 'tenant',

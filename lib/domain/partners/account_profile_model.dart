@@ -1,4 +1,5 @@
 import 'package:belluga_now/domain/partners/engagement_data.dart';
+import 'package:belluga_now/domain/partners/value_objects/account_profile_fields.dart';
 import 'package:belluga_now/domain/value_objects/description_value.dart';
 import 'package:belluga_now/domain/value_objects/slug_value.dart';
 import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
@@ -9,122 +10,86 @@ class AccountProfileModel {
   final MongoIDValue idValue;
   final TitleValue nameValue;
   final SlugValue slugValue;
-  final String profileType;
+  final AccountProfileTypeValue profileTypeValue;
   final ThumbUriValue? avatarValue;
   final ThumbUriValue? coverValue;
   final DescriptionValue? bioValue;
-  final List<String> tags;
-  final List<String> upcomingEventIds;
-  final bool isVerified;
+  final AccountProfileTagsValue tagsValue;
+  final AccountProfileUpcomingEventIdsValue upcomingEventIdsValue;
+  final AccountProfileIsVerifiedValue isVerifiedValue;
   final EngagementData? engagementData;
-  final int acceptedInvites; // Universal metric for all partners
-  final double? distanceMeters;
+  final AccountProfileAcceptedInvitesValue acceptedInvitesValue;
+  final AccountProfileDistanceMetersValue distanceMetersValue;
 
   AccountProfileModel({
     required this.idValue,
     required this.nameValue,
     required this.slugValue,
-    required this.profileType,
+    required this.profileTypeValue,
     this.avatarValue,
     this.coverValue,
     this.bioValue,
-    List<String>? tags,
-    List<String>? upcomingEventIds,
-    this.isVerified = false,
+    AccountProfileTagsValue? tagsValue,
+    AccountProfileUpcomingEventIdsValue? upcomingEventIdsValue,
+    AccountProfileIsVerifiedValue? isVerifiedValue,
     this.engagementData,
-    this.acceptedInvites = 0,
-    this.distanceMeters,
-  })  : tags = List.unmodifiable(tags ?? const []),
-        upcomingEventIds = List.unmodifiable(upcomingEventIds ?? const []);
+    AccountProfileAcceptedInvitesValue? acceptedInvitesValue,
+    AccountProfileDistanceMetersValue? distanceMetersValue,
+  })  : tagsValue = tagsValue ?? AccountProfileTagsValue(),
+        upcomingEventIdsValue =
+            upcomingEventIdsValue ?? AccountProfileUpcomingEventIdsValue(),
+        isVerifiedValue = isVerifiedValue ?? AccountProfileIsVerifiedValue(),
+        acceptedInvitesValue =
+            acceptedInvitesValue ?? AccountProfileAcceptedInvitesValue(),
+        distanceMetersValue =
+            distanceMetersValue ?? AccountProfileDistanceMetersValue();
 
   String get id => idValue.value;
   String get name => nameValue.value;
   String get slug => slugValue.value;
-  String get type => profileType;
+  String get type => profileTypeValue.value;
+  String get profileType => type;
   Uri? get avatarUri => avatarValue?.value;
   String? get avatarUrl => avatarUri?.toString();
   Uri? get coverUri => coverValue?.value;
   String? get coverUrl => coverUri?.toString();
   String? get bio => bioValue?.value;
-
-  factory AccountProfileModel.fromPrimitives({
-    required String id,
-    required String name,
-    required String slug,
-    required String type,
-    String? avatarUrl,
-    String? coverUrl,
-    String? bio,
-    List<String>? tags,
-    List<String>? upcomingEventIds,
-    bool isVerified = false,
-    EngagementData? engagementData,
-    int acceptedInvites = 0,
-    double? distanceMeters,
-  }) {
-    ThumbUriValue? avatarValue;
-    if (avatarUrl != null && avatarUrl.isNotEmpty) {
-      avatarValue = ThumbUriValue(defaultValue: Uri.parse(avatarUrl))
-        ..parse(avatarUrl);
-    }
-
-    ThumbUriValue? coverValue;
-    if (coverUrl != null && coverUrl.isNotEmpty) {
-      coverValue = ThumbUriValue(defaultValue: Uri.parse(coverUrl))
-        ..parse(coverUrl);
-    }
-
-    DescriptionValue? bioValue;
-    if (bio != null && bio.isNotEmpty) {
-      bioValue = DescriptionValue()..parse(bio);
-    }
-
-    return AccountProfileModel(
-      idValue: MongoIDValue()..parse(id),
-      nameValue: TitleValue()..parse(name),
-      slugValue: SlugValue()..parse(slug),
-      profileType: type,
-      avatarValue: avatarValue,
-      coverValue: coverValue,
-      bioValue: bioValue,
-      tags: tags,
-      upcomingEventIds: upcomingEventIds,
-      isVerified: isVerified,
-      engagementData: engagementData,
-      acceptedInvites: acceptedInvites,
-      distanceMeters: distanceMeters,
-    );
-  }
+  List<String> get tags => tagsValue.value;
+  List<String> get upcomingEventIds => upcomingEventIdsValue.value;
+  bool get isVerified => isVerifiedValue.value;
+  int get acceptedInvites => acceptedInvitesValue.value;
+  double? get distanceMeters => distanceMetersValue.value;
 
   AccountProfileModel copyWith({
     MongoIDValue? idValue,
     TitleValue? nameValue,
     SlugValue? slugValue,
-    String? profileType,
+    AccountProfileTypeValue? profileTypeValue,
     ThumbUriValue? avatarValue,
     ThumbUriValue? coverValue,
     DescriptionValue? bioValue,
-    List<String>? tags,
-    List<String>? upcomingEventIds,
-    bool? isVerified,
+    AccountProfileTagsValue? tagsValue,
+    AccountProfileUpcomingEventIdsValue? upcomingEventIdsValue,
+    AccountProfileIsVerifiedValue? isVerifiedValue,
     EngagementData? engagementData,
-    int? acceptedInvites,
-    double? distanceMeters,
+    AccountProfileAcceptedInvitesValue? acceptedInvitesValue,
+    AccountProfileDistanceMetersValue? distanceMetersValue,
   }) {
     return AccountProfileModel(
       idValue: idValue ?? this.idValue,
       nameValue: nameValue ?? this.nameValue,
       slugValue: slugValue ?? this.slugValue,
-      profileType: profileType ?? this.profileType,
+      profileTypeValue: profileTypeValue ?? this.profileTypeValue,
       avatarValue: avatarValue ?? this.avatarValue,
       coverValue: coverValue ?? this.coverValue,
       bioValue: bioValue ?? this.bioValue,
-      tags: tags ?? this.tags,
-      upcomingEventIds: upcomingEventIds ?? this.upcomingEventIds,
-      isVerified: isVerified ?? this.isVerified,
+      tagsValue: tagsValue ?? this.tagsValue,
+      upcomingEventIdsValue:
+          upcomingEventIdsValue ?? this.upcomingEventIdsValue,
+      isVerifiedValue: isVerifiedValue ?? this.isVerifiedValue,
       engagementData: engagementData ?? this.engagementData,
-      acceptedInvites: acceptedInvites ?? this.acceptedInvites,
-      distanceMeters: distanceMeters ?? this.distanceMeters,
+      acceptedInvitesValue: acceptedInvitesValue ?? this.acceptedInvitesValue,
+      distanceMetersValue: distanceMetersValue ?? this.distanceMetersValue,
     );
   }
 }

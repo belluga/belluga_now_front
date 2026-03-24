@@ -25,7 +25,7 @@ class _FakeAccountsRepository
     implements TenantAdminAccountsRepositoryContract {
   @override
   final StreamValue<List<TenantAdminAccount>?> accountsStreamValue =
-      StreamValue<List<TenantAdminAccount>?>(defaultValue: const []);
+      StreamValue<List<TenantAdminAccount>?>(defaultValue: []);
 
   @override
   final StreamValue<bool> hasMoreAccountsStreamValue =
@@ -58,7 +58,7 @@ class _FakeAccountsRepository
 
   void _upsertAccount(TenantAdminAccount account) {
     final current = List<TenantAdminAccount>.from(
-      accountsStreamValue.value ?? const <TenantAdminAccount>[],
+      accountsStreamValue.value ?? <TenantAdminAccount>[],
     );
     final index = current.indexWhere((entry) => entry.id == account.id);
     if (index >= 0) {
@@ -77,7 +77,7 @@ class _FakeAccountsRepository
       id: 'acc-1',
       name: 'Conta',
       slug: accountSlug,
-      document: const TenantAdminDocument(type: 'cpf', number: '000'),
+      document: TenantAdminDocument(type: 'cpf', number: '000'),
       ownershipState: TenantAdminOwnershipState.tenantOwned,
     );
     _upsertAccount(account);
@@ -85,7 +85,7 @@ class _FakeAccountsRepository
   }
 
   @override
-  Future<List<TenantAdminAccount>> fetchAccounts() async => const [];
+  Future<List<TenantAdminAccount>> fetchAccounts() async => [];
 
   @override
   Future<TenantAdminPagedAccountsResult> fetchAccountsPage({
@@ -94,7 +94,7 @@ class _FakeAccountsRepository
     TenantAdminOwnershipState? ownershipState,
     String? searchQuery,
   }) async {
-    return const TenantAdminPagedAccountsResult(
+    return TenantAdminPagedAccountsResult(
       accounts: <TenantAdminAccount>[],
       hasMore: false,
     );
@@ -111,8 +111,7 @@ class _FakeAccountsRepository
       id: 'acc-1',
       name: name,
       slug: 'acc-1',
-      document:
-          document ?? const TenantAdminDocument(type: 'cpf', number: '000'),
+      document: document ?? TenantAdminDocument(type: 'cpf', number: '000'),
       ownershipState: ownershipState,
     );
     _upsertAccount(account);
@@ -163,8 +162,7 @@ class _FakeAccountsRepository
       id: 'acc-1',
       name: name ?? 'Conta',
       slug: slug ?? accountSlug,
-      document:
-          document ?? const TenantAdminDocument(type: 'cpf', number: '000'),
+      document: document ?? TenantAdminDocument(type: 'cpf', number: '000'),
       ownershipState: ownershipState ?? TenantAdminOwnershipState.tenantOwned,
     );
     _upsertAccount(account);
@@ -243,7 +241,7 @@ class _FakeAccountProfilesRepository
     final types = await fetchProfileTypes();
     final start = (page - 1) * pageSize;
     if (page <= 0 || pageSize <= 0 || start >= types.length) {
-      return const TenantAdminPagedResult<TenantAdminProfileTypeDefinition>(
+      return TenantAdminPagedResult<TenantAdminProfileTypeDefinition>(
         items: <TenantAdminProfileTypeDefinition>[],
         hasMore: false,
       );
@@ -333,8 +331,7 @@ class _FakeTaxonomiesRepository
     with TenantAdminTaxonomiesPaginationMixin
     implements TenantAdminTaxonomiesRepositoryContract {
   @override
-  Future<List<TenantAdminTaxonomyDefinition>> fetchTaxonomies() async =>
-      const [];
+  Future<List<TenantAdminTaxonomyDefinition>> fetchTaxonomies() async => [];
 
   @override
   Future<TenantAdminPagedResult<TenantAdminTaxonomyDefinition>>
@@ -345,7 +342,7 @@ class _FakeTaxonomiesRepository
     final taxonomies = await fetchTaxonomies();
     final start = (page - 1) * pageSize;
     if (page <= 0 || pageSize <= 0 || start >= taxonomies.length) {
-      return const TenantAdminPagedResult<TenantAdminTaxonomyDefinition>(
+      return TenantAdminPagedResult<TenantAdminTaxonomyDefinition>(
         items: <TenantAdminTaxonomyDefinition>[],
         hasMore: false,
       );
@@ -390,7 +387,7 @@ class _FakeTaxonomiesRepository
       id: taxonomyId,
       slug: slug ?? 'taxonomy',
       name: name ?? 'Taxonomy',
-      appliesTo: appliesTo ?? const [],
+      appliesTo: appliesTo ?? [],
       icon: icon,
       color: color,
     );
@@ -403,7 +400,7 @@ class _FakeTaxonomiesRepository
   Future<List<TenantAdminTaxonomyTermDefinition>> fetchTerms({
     required String taxonomyId,
   }) async =>
-      const [];
+      [];
 
   @override
   Future<TenantAdminPagedResult<TenantAdminTaxonomyTermDefinition>>
@@ -415,7 +412,7 @@ class _FakeTaxonomiesRepository
     final terms = await fetchTerms(taxonomyId: taxonomyId);
     final start = (page - 1) * pageSize;
     if (page <= 0 || pageSize <= 0 || start >= terms.length) {
-      return const TenantAdminPagedResult<TenantAdminTaxonomyTermDefinition>(
+      return TenantAdminPagedResult<TenantAdminTaxonomyTermDefinition>(
         items: <TenantAdminTaxonomyTermDefinition>[],
         hasMore: false,
       );
@@ -468,14 +465,14 @@ void main() {
   test('loads profiles and profile types', () async {
     final profilesRepository = _FakeAccountProfilesRepository(
       [
-        const TenantAdminAccountProfile(
+        TenantAdminAccountProfile(
           id: 'profile-1',
           accountId: 'acc-1',
           profileType: 'venue',
           displayName: 'Perfil',
         ),
       ],
-      const [
+      [
         TenantAdminProfileTypeDefinition(
           type: 'venue',
           label: 'Venue',
@@ -514,8 +511,8 @@ void main() {
 
   test('createProfile refreshes list', () async {
     final profilesRepository = _FakeAccountProfilesRepository(
-      const [],
-      const [
+      [],
+      [
         TenantAdminProfileTypeDefinition(
           type: 'venue',
           label: 'Venue',
@@ -549,7 +546,7 @@ void main() {
       accountId: 'acc-1',
       profileType: 'venue',
       displayName: 'Perfil',
-      location: const TenantAdminLocation(latitude: -20, longitude: -40),
+      location: TenantAdminLocation(latitude: -20, longitude: -40),
     );
 
     expect(profilesRepository.createProfileCalls, 1);
@@ -559,7 +556,7 @@ void main() {
   test('submitUpdateProfile forwards slug to repository update', () async {
     final profilesRepository = _FakeAccountProfilesRepository(
       [
-        const TenantAdminAccountProfile(
+        TenantAdminAccountProfile(
           id: 'profile-1',
           accountId: 'acc-1',
           profileType: 'venue',
@@ -567,7 +564,7 @@ void main() {
           slug: 'perfil-original',
         ),
       ],
-      const [
+      [
         TenantAdminProfileTypeDefinition(
           type: 'venue',
           label: 'Venue',
@@ -605,7 +602,7 @@ void main() {
       location: null,
       bio: null,
       content: null,
-      taxonomyTerms: const [],
+      taxonomyTerms: [],
       avatarUpload: null,
       coverUpload: null,
     );
@@ -620,7 +617,7 @@ void main() {
       () async {
     final profilesRepository = _FakeAccountProfilesRepository(
       [
-        const TenantAdminAccountProfile(
+        TenantAdminAccountProfile(
           id: 'profile-1',
           accountId: 'acc-1',
           profileType: 'artist',
@@ -630,7 +627,7 @@ void main() {
           content: null,
         ),
       ],
-      const [
+      [
         TenantAdminProfileTypeDefinition(
           type: 'artist',
           label: 'Artist',
@@ -661,7 +658,7 @@ void main() {
     );
 
     controller.accountProfileStreamValue.addValue(
-      const TenantAdminAccountProfile(
+      TenantAdminAccountProfile(
         id: 'profile-1',
         accountId: 'acc-1',
         profileType: 'artist',
@@ -669,7 +666,7 @@ void main() {
       ),
     );
     controller.profileTypesStreamValue.addValue(
-      const [
+      [
         TenantAdminProfileTypeDefinition(
           type: 'artist',
           label: 'Artist',
@@ -691,7 +688,7 @@ void main() {
     final saved = await controller.submitTaxonomySelectionUpdate(
       accountProfileId: 'profile-1',
       profileType: null,
-      taxonomyTerms: const [
+      taxonomyTerms: [
         TenantAdminTaxonomyTerm(type: 'music-style', value: 'rock'),
       ],
       bio: null,
@@ -706,8 +703,8 @@ void main() {
 
   test('loadAccountForCreate stores resolved account slug in stream', () async {
     final profilesRepository = _FakeAccountProfilesRepository(
-      const [],
-      const [],
+      [],
+      [],
     );
     final accountsRepository = _FakeAccountsRepository();
     final TenantAdminLocationSelectionContract locationSelectionService =
@@ -731,8 +728,8 @@ void main() {
   test('updateAccount syncs canonical account stream without manual reload',
       () async {
     final profilesRepository = _FakeAccountProfilesRepository(
-      const [],
-      const [],
+      [],
+      [],
     );
     final accountsRepository = _FakeAccountsRepository();
     final TenantAdminLocationSelectionContract locationSelectionService =

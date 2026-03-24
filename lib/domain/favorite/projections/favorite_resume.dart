@@ -5,6 +5,10 @@ import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
 import 'package:belluga_now/domain/value_objects/title_value.dart';
 import 'package:flutter/material.dart';
 
+typedef FavoriteResumeSlug = String;
+typedef FavoriteResumePrimaryFlag = bool;
+typedef FavoriteResumeIconImageUrl = String;
+
 class FavoriteResume {
   FavoriteResume({
     required this.titleValue,
@@ -25,12 +29,12 @@ class FavoriteResume {
         );
 
   final TitleValue titleValue;
-  final String? slug;
+  final FavoriteResumeSlug? slug;
   final ThumbUriValue? imageUriValue;
   final AssetPathValue? assetPathValue;
   final FavoriteBadge? badge;
-  final bool isPrimary;
-  final String? iconImageUrl;
+  final FavoriteResumePrimaryFlag isPrimary;
+  final FavoriteResumeIconImageUrl? iconImageUrl;
   final Color? primaryColor;
 
   String get title => titleValue.value;
