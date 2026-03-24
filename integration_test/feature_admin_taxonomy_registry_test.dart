@@ -137,7 +137,7 @@ void main() {
 
     app.appRouter.replaceAll(
       [
-        const TenantAdminShellRoute(
+        TenantAdminShellRoute(
           children: [TenantAdminTaxonomyCreateRoute()],
         ),
       ],
@@ -147,7 +147,7 @@ void main() {
     await tester.pumpAndSettle(const Duration(seconds: 2));
     await _waitForFinder(tester, _tenantAdminShellRouterFinder());
     app.appRouter.navigate(
-      const TenantAdminShellRoute(
+      TenantAdminShellRoute(
         children: [TenantAdminTaxonomyCreateRoute()],
       ),
     );
@@ -225,12 +225,12 @@ void main() {
           id: 'tax-1',
           slug: 'music_genre',
           name: 'Genero',
-          appliesTo: const ['account_profile'],
+          appliesTo: ['account_profile'],
           icon: null,
           color: null,
         ),
         [
-          const TenantAdminTaxonomyTermDefinition(
+          TenantAdminTaxonomyTermDefinition(
             id: 'term-1',
             taxonomyId: 'tax-1',
             slug: 'samba',
@@ -243,11 +243,11 @@ void main() {
           id: 'tax-2',
           slug: 'cuisine',
           name: 'Cozinha',
-          appliesTo: const ['static_asset'],
+          appliesTo: ['static_asset'],
           icon: null,
           color: null,
         ),
-        const [],
+        [],
       );
 
     final accountsRepository = _FakeAccountsRepository();
@@ -263,14 +263,14 @@ void main() {
     await app.init();
 
     app.appRouter.replaceAll([
-      const TenantAdminShellRoute(children: [TenantAdminAccountCreateRoute()]),
+      TenantAdminShellRoute(children: [TenantAdminAccountCreateRoute()]),
     ]);
 
     await tester.pumpWidget(app);
     await tester.pumpAndSettle(const Duration(seconds: 2));
     await _waitForFinder(tester, _tenantAdminShellRouterFinder());
     app.appRouter.navigate(
-      const TenantAdminShellRoute(children: [TenantAdminAccountCreateRoute()]),
+      TenantAdminShellRoute(children: [TenantAdminAccountCreateRoute()]),
     );
     await tester.pumpAndSettle(const Duration(seconds: 1));
 
@@ -355,7 +355,7 @@ class _FakeAccountsRepository
   List<TenantAdminTaxonomyTerm> lastOnboardingTerms = const [];
 
   @override
-  Future<List<TenantAdminAccount>> fetchAccounts() async => const [];
+  Future<List<TenantAdminAccount>> fetchAccounts() async => [];
 
   @override
   Future<TenantAdminPagedAccountsResult> fetchAccountsPage({
@@ -364,7 +364,7 @@ class _FakeAccountsRepository
     TenantAdminOwnershipState? ownershipState,
     String? searchQuery,
   }) async {
-    return const TenantAdminPagedAccountsResult(
+    return TenantAdminPagedAccountsResult(
       accounts: <TenantAdminAccount>[],
       hasMore: false,
     );
@@ -376,7 +376,7 @@ class _FakeAccountsRepository
       id: 'account-1',
       name: 'Conta Teste',
       slug: accountSlug,
-      document: const TenantAdminDocument(type: 'cpf', number: '000'),
+      document: TenantAdminDocument(type: 'cpf', number: '000'),
       ownershipState: TenantAdminOwnershipState.tenantOwned,
     );
   }
@@ -392,8 +392,7 @@ class _FakeAccountsRepository
       id: 'account-1',
       name: name,
       slug: 'account-1',
-      document:
-          document ?? const TenantAdminDocument(type: 'cpf', number: '000'),
+      document: document ?? TenantAdminDocument(type: 'cpf', number: '000'),
       ownershipState: ownershipState,
       organizationId: organizationId,
     );
@@ -443,8 +442,7 @@ class _FakeAccountsRepository
       id: 'account-1',
       name: name ?? 'Conta',
       slug: accountSlug,
-      document:
-          document ?? const TenantAdminDocument(type: 'cpf', number: '000'),
+      document: document ?? TenantAdminDocument(type: 'cpf', number: '000'),
       ownershipState: TenantAdminOwnershipState.tenantOwned,
     );
   }
@@ -458,7 +456,7 @@ class _FakeAccountsRepository
       id: 'account-1',
       name: 'Conta',
       slug: accountSlug,
-      document: const TenantAdminDocument(type: 'cpf', number: '000'),
+      document: TenantAdminDocument(type: 'cpf', number: '000'),
       ownershipState: TenantAdminOwnershipState.tenantOwned,
     );
   }
@@ -471,7 +469,7 @@ class _FakeLandlordTenantsRepository
     implements LandlordTenantsRepositoryContract {
   @override
   Future<List<LandlordTenantOption>> fetchTenants() async {
-    return const [
+    return [
       LandlordTenantOption(
         id: 'tenant-guarappari',
         name: 'Guarappari',
@@ -488,7 +486,7 @@ class _FakeAccountProfilesRepository
 
   @override
   Future<List<TenantAdminProfileTypeDefinition>> fetchProfileTypes() async {
-    return const [
+    return [
       TenantAdminProfileTypeDefinition(
         type: 'artist',
         label: 'Artista',
@@ -516,7 +514,7 @@ class _FakeAccountProfilesRepository
     final types = await fetchProfileTypes();
     final start = (page - 1) * pageSize;
     if (page <= 0 || pageSize <= 0 || start >= types.length) {
-      return const TenantAdminPagedResult<TenantAdminProfileTypeDefinition>(
+      return TenantAdminPagedResult<TenantAdminProfileTypeDefinition>(
         items: <TenantAdminProfileTypeDefinition>[],
         hasMore: false,
       );
@@ -533,13 +531,13 @@ class _FakeAccountProfilesRepository
   Future<List<TenantAdminAccountProfile>> fetchAccountProfiles({
     String? accountId,
   }) async =>
-      const [];
+      [];
 
   @override
   Future<TenantAdminAccountProfile> fetchAccountProfile(
     String accountProfileId,
   ) async {
-    return const TenantAdminAccountProfile(
+    return TenantAdminAccountProfile(
       id: 'profile-1',
       accountId: 'account-1',
       profileType: 'artist',
@@ -595,7 +593,7 @@ class _FakeAccountProfilesRepository
       accountId: 'account-1',
       profileType: profileType ?? 'artist',
       displayName: displayName ?? 'Perfil',
-      taxonomyTerms: taxonomyTerms ?? const [],
+      taxonomyTerms: taxonomyTerms ?? [],
       location: location,
       bio: bio,
       avatarUrl: avatarUrl,
@@ -610,7 +608,7 @@ class _FakeAccountProfilesRepository
   Future<TenantAdminAccountProfile> restoreAccountProfile(
     String accountProfileId,
   ) async {
-    return const TenantAdminAccountProfile(
+    return TenantAdminAccountProfile(
       id: 'profile-1',
       accountId: 'account-1',
       profileType: 'artist',
@@ -647,9 +645,9 @@ class _FakeAccountProfilesRepository
     return TenantAdminProfileTypeDefinition(
       type: type,
       label: label ?? 'Artista',
-      allowedTaxonomies: allowedTaxonomies ?? const ['music_genre'],
+      allowedTaxonomies: allowedTaxonomies ?? ['music_genre'],
       capabilities: capabilities ??
-          const TenantAdminProfileTypeCapabilities(
+          TenantAdminProfileTypeCapabilities(
             isFavoritable: true,
             isPoiEnabled: false,
             hasBio: false,
@@ -669,8 +667,8 @@ class _FakeAccountProfilesRepository
 class _FakeTaxonomiesRepository
     with TenantAdminTaxonomiesPaginationMixin
     implements TenantAdminTaxonomiesRepositoryContract {
-  final List<TenantAdminTaxonomyDefinition> _taxonomies = [];
-  final Map<String, List<TenantAdminTaxonomyTermDefinition>> _terms = {};
+  final List<TenantAdminTaxonomyDefinition> _taxonomies = const [];
+  final Map<String, List<TenantAdminTaxonomyTermDefinition>> _terms = const {};
 
   void seedTaxonomy(
     TenantAdminTaxonomyDefinition taxonomy,
@@ -693,7 +691,7 @@ class _FakeTaxonomiesRepository
     final taxonomies = await fetchTaxonomies();
     final start = (page - 1) * pageSize;
     if (page <= 0 || pageSize <= 0 || start >= taxonomies.length) {
-      return const TenantAdminPagedResult<TenantAdminTaxonomyDefinition>(
+      return TenantAdminPagedResult<TenantAdminTaxonomyDefinition>(
         items: <TenantAdminTaxonomyDefinition>[],
         hasMore: false,
       );
@@ -764,7 +762,7 @@ class _FakeTaxonomiesRepository
   Future<List<TenantAdminTaxonomyTermDefinition>> fetchTerms({
     required String taxonomyId,
   }) async {
-    return List.of(_terms[taxonomyId] ?? const []);
+    return List.of(_terms[taxonomyId] ?? []);
   }
 
   @override
@@ -777,7 +775,7 @@ class _FakeTaxonomiesRepository
     final terms = await fetchTerms(taxonomyId: taxonomyId);
     final start = (page - 1) * pageSize;
     if (page <= 0 || pageSize <= 0 || start >= terms.length) {
-      return const TenantAdminPagedResult<TenantAdminTaxonomyTermDefinition>(
+      return TenantAdminPagedResult<TenantAdminTaxonomyTermDefinition>(
         items: <TenantAdminTaxonomyTermDefinition>[],
         hasMore: false,
       );

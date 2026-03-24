@@ -1,11 +1,20 @@
 import 'package:stream_value/core/stream_value.dart';
 
+typedef TenantAdminTenantScopeContractPrimString = String;
+typedef TenantAdminTenantScopeContractPrimInt = int;
+typedef TenantAdminTenantScopeContractPrimBool = bool;
+typedef TenantAdminTenantScopeContractPrimDouble = double;
+typedef TenantAdminTenantScopeContractPrimDateTime = DateTime;
+typedef TenantAdminTenantScopeContractPrimDynamic = dynamic;
+
 abstract class TenantAdminTenantScopeContract {
-  StreamValue<String?> get selectedTenantDomainStreamValue;
+  StreamValue<TenantAdminTenantScopeContractPrimString?>
+      get selectedTenantDomainStreamValue;
 
-  String? get selectedTenantDomain;
-  String get selectedTenantAdminBaseUrl;
+  TenantAdminTenantScopeContractPrimString? get selectedTenantDomain;
+  TenantAdminTenantScopeContractPrimString get selectedTenantAdminBaseUrl;
 
-  void selectTenantDomain(String tenantDomain);
+  void selectTenantDomain(
+      TenantAdminTenantScopeContractPrimString tenantDomain);
   void clearSelectedTenantDomain();
 }

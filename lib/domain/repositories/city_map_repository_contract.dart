@@ -6,12 +6,19 @@ import 'package:belluga_now/domain/map/map_region_definition.dart';
 import 'package:belluga_now/domain/map/queries/poi_query.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 
+typedef CityMapRepositoryContractPrimString = String;
+typedef CityMapRepositoryContractPrimInt = int;
+typedef CityMapRepositoryContractPrimBool = bool;
+typedef CityMapRepositoryContractPrimDouble = double;
+typedef CityMapRepositoryContractPrimDateTime = DateTime;
+typedef CityMapRepositoryContractPrimDynamic = dynamic;
+
 abstract class CityMapRepositoryContract {
   Future<List<CityPoiModel>> fetchPoints(PoiQuery query);
 
   Future<List<CityPoiModel>> fetchStackItems({
     required PoiQuery query,
-    required String stackKey,
+    required CityMapRepositoryContractPrimString stackKey,
   });
 
   Future<PoiFilterOptions> fetchFilters();
@@ -20,7 +27,7 @@ abstract class CityMapRepositoryContract {
 
   Future<List<MapRegionDefinition>> fetchRegions();
 
-  Future<String> fetchFallbackEventImage();
+  Future<CityMapRepositoryContractPrimString> fetchFallbackEventImage();
 
   Stream<PoiUpdateEvent?> get poiEvents;
 

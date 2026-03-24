@@ -22,8 +22,6 @@ class TenantAdminTaxonomyTermsController implements Disposable {
 
   final TenantAdminTaxonomiesRepositoryContract _repository;
   final TenantAdminTenantScopeContract? _tenantScope;
-  static const int _termsPageSize = 20;
-
   StreamValue<List<TenantAdminTaxonomyTermDefinition>?> get termsStreamValue =>
       _repository.termsStreamValue;
   StreamValue<bool> get hasMoreTermsStreamValue =>
@@ -91,7 +89,6 @@ class TenantAdminTaxonomyTermsController implements Disposable {
     _activeTaxonomyId = taxonomyId;
     await _repository.loadTerms(
       taxonomyId: taxonomyId,
-      pageSize: _termsPageSize,
     );
     errorStreamValue.addValue(_repository.termsErrorStreamValue.value);
   }
@@ -101,7 +98,7 @@ class TenantAdminTaxonomyTermsController implements Disposable {
     if (_isDisposed || taxonomyId == null || taxonomyId.isEmpty) {
       return;
     }
-    await _repository.loadNextTermsPage(pageSize: _termsPageSize);
+    await _repository.loadNextTermsPage();
     errorStreamValue.addValue(_repository.termsErrorStreamValue.value);
   }
 

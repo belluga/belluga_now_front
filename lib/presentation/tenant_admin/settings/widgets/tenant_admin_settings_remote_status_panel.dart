@@ -24,14 +24,16 @@ class TenantAdminSettingsRemoteStatusPanel extends StatelessWidget {
             return StreamValueBuilder<bool>(
               streamValue: controller.isRemoteLoadingStreamValue,
               builder: (context, isRemoteLoading) {
+                final hasErrorMessage = errorMessage?.isNotEmpty ?? false;
+                final hasSuccessMessage = successMessage?.isNotEmpty ?? false;
                 if (!isRemoteLoading &&
-                    (errorMessage == null || errorMessage.isEmpty) &&
-                    (successMessage == null || successMessage.isEmpty)) {
+                    !hasErrorMessage &&
+                    !hasSuccessMessage) {
                   return const SizedBox.shrink();
                 }
-                final hasError =
-                    errorMessage != null && errorMessage.isNotEmpty;
-                final message = hasError ? errorMessage : successMessage ?? '';
+                final hasError = hasErrorMessage;
+                final message =
+                    hasError ? (errorMessage ?? '') : (successMessage ?? '');
                 return Container(
                   width: double.infinity,
                   decoration: BoxDecoration(
@@ -70,7 +72,7 @@ class TenantAdminSettingsRemoteStatusPanel extends StatelessWidget {
                             onPressed: isRemoteLoading ? null : onReload,
                             child: const Text('Recarregar'),
                           ),
-                          if ((hasError || successMessage != null) &&
+                          if ((hasError || hasSuccessMessage) &&
                               !isRemoteLoading)
                             TextButton(
                               onPressed: controller.clearStatusMessages,

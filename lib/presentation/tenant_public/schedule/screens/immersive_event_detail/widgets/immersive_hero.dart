@@ -1,4 +1,5 @@
 import 'package:belluga_now/domain/schedule/event_model.dart';
+import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
 import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
 import 'package:belluga_now/presentation/shared/widgets/belluga_network_image.dart';
 import 'package:flutter/material.dart';
@@ -16,7 +17,11 @@ class ImmersiveHero extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final resume = VenueEventResume.fromScheduleEvent(event, fallbackImageUri);
+    final fallbackImageValue =
+        ThumbUriValue(defaultValue: fallbackImageUri, isRequired: true)
+          ..parse(fallbackImageUri.toString());
+    final resume =
+        VenueEventResume.fromScheduleEvent(event, fallbackImageValue);
 
     return Stack(
       fit: StackFit.expand,

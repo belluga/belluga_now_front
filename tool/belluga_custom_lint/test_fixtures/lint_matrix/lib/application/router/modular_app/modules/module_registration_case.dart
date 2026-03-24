@@ -14,6 +14,10 @@ class _AnyService {}
 
 class _AnyController {}
 
+abstract class _AnyRepositoryContract {}
+
+class _AnyRepository implements _AnyRepositoryContract {}
+
 class _ModuleRegistrationCase extends ModuleContract {
   void bad() {
     // expect_lint: module_direct_getit_registration_forbidden
@@ -27,6 +31,11 @@ class _ModuleRegistrationCase extends ModuleContract {
     registerLazySingleton<_AnyService>(() => _AnyService());
     registerFactory<_AnyController>(() => _AnyController());
     registerRouteResolver<String>(() => Object());
+  }
+
+  void repositoryScopeViolation() {
+    // expect_lint: repository_registration_scope_enforced
+    registerLazySingleton<_AnyRepositoryContract>(() => _AnyRepository());
   }
 }
 

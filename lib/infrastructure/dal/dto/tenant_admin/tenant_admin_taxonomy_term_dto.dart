@@ -1,3 +1,5 @@
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
+
 class TenantAdminTaxonomyTermDTO {
   const TenantAdminTaxonomyTermDTO({
     required this.type,
@@ -11,6 +13,13 @@ class TenantAdminTaxonomyTermDTO {
     return TenantAdminTaxonomyTermDTO(
       type: json['type']?.toString() ?? '',
       value: json['value']?.toString() ?? '',
+    );
+  }
+
+  TenantAdminTaxonomyTerm toDomain() {
+    return TenantAdminTaxonomyTerm(
+      type: type,
+      value: value,
     );
   }
 }

@@ -56,10 +56,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
         actions: [
           StreamValueBuilder<UserContract?>(
             streamValue: _controller.userStreamValue,
+            onNullWidget: const SizedBox.shrink(),
             builder: (context, user) {
-              if (user == null) {
-                return const SizedBox.shrink();
-              }
               return IconButton(
                 tooltip: 'Sair',
                 onPressed: _logout,
@@ -72,19 +70,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
       body: SafeArea(
         child: StreamValueBuilder<UserContract?>(
           streamValue: _controller.userStreamValue,
+          onNullWidget: ListView(
+            padding: const EdgeInsets.fromLTRB(16, 24, 16, 24),
+            children: [
+              AnonymousProfileCard(
+                onTapLogin: () => context.router.push(const AuthLoginRoute()),
+              ),
+            ],
+          ),
           builder: (context, user) {
-            if (user == null) {
-              return ListView(
-                padding: const EdgeInsets.fromLTRB(16, 24, 16, 24),
-                children: [
-                  AnonymousProfileCard(
-                    onTapLogin: () =>
-                        context.router.push(const AuthLoginRoute()),
-                  ),
-                ],
-              );
-            }
-            final avatarUrl = user.profile.pictureUrlValue?.value?.toString();
+            final avatarUrl = user!.profile.pictureUrlValue?.value?.toString();
 
             return StreamValueBuilder<int>(
               streamValue: _controller.formVersionStreamValue,

@@ -23,6 +23,7 @@ abstract class FormFieldBelluga extends StatelessWidget {
     return StreamValueBuilder<String?>(
       streamValue: formFieldController.errorStreamValue,
       builder: (context, errorText) {
+        final hasErrorText = errorText?.isNotEmpty ?? false;
         return TextFormField(
           controller: formFieldController.textController,
           enabled: isEnabled,
@@ -35,7 +36,7 @@ abstract class FormFieldBelluga extends StatelessWidget {
           onChanged: formFieldController.onChange,
           validator: formFieldController.validator,
           decoration: InputDecoration(
-            suffixIcon: errorText != null ? Icon(Icons.error_outline) : null,
+            suffixIcon: hasErrorText ? const Icon(Icons.error_outline) : null,
             errorText: errorText,
             filled: true,
             labelText: label,

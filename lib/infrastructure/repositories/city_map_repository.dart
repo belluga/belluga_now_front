@@ -8,10 +8,9 @@ import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
 import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
 import 'package:belluga_now/domain/repositories/city_map_repository_contract.dart';
-import 'package:belluga_now/infrastructure/dal/dto/mappers/map_dto_mapper.dart';
 import 'package:belluga_now/infrastructure/dal/dao/laravel_backend/map/laravel_map_poi_http_service.dart';
 
-class CityMapRepository extends CityMapRepositoryContract with MapDtoMapper {
+class CityMapRepository extends CityMapRepositoryContract {
   CityMapRepository({
     LaravelMapPoiHttpService? laravelHttpService,
   }) : _laravelHttpService = laravelHttpService ?? LaravelMapPoiHttpService();
@@ -22,7 +21,7 @@ class CityMapRepository extends CityMapRepositoryContract with MapDtoMapper {
   @override
   Future<List<CityPoiModel>> fetchPoints(PoiQuery query) async {
     final dtos = await _laravelHttpService.getPois(query);
-    return dtos.map(mapCityPoi).toList(growable: false);
+    return dtos.map((dto) => dto.toDomain()).toList(growable: false);
   }
 
   @override
@@ -37,9 +36,11 @@ class CityMapRepository extends CityMapRepositoryContract with MapDtoMapper {
     if (dtos.isEmpty) {
       return const <CityPoiModel>[];
     }
-    final stackItems = dtos.first.items.map(mapCityPoi).toList(growable: false);
+    final stackItems = dtos.first.items
+        .map((item) => item.toDomain())
+        .toList(growable: false);
     if (stackItems.isEmpty) {
-      return dtos.map(mapCityPoi).toList(growable: false);
+      return dtos.map((dto) => dto.toDomain()).toList(growable: false);
     }
     return _attachStackContext(
       stackItems,

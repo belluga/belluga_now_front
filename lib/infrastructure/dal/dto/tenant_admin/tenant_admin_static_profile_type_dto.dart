@@ -1,3 +1,5 @@
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_static_profile_type.dart';
+
 class TenantAdminStaticProfileTypeDTO {
   const TenantAdminStaticProfileTypeDTO({
     required this.type,
@@ -67,5 +69,21 @@ class TenantAdminStaticProfileTypeDTO {
       return normalized == 'true' || normalized == '1' || normalized == 'yes';
     }
     return false;
+  }
+
+  TenantAdminStaticProfileTypeDefinition toDomain() {
+    return TenantAdminStaticProfileTypeDefinition(
+      type: type,
+      label: label,
+      allowedTaxonomies: allowedTaxonomies,
+      capabilities: TenantAdminStaticProfileTypeCapabilities(
+        isPoiEnabled: isPoiEnabled,
+        hasBio: hasBio,
+        hasTaxonomies: hasTaxonomies,
+        hasAvatar: hasAvatar,
+        hasCover: hasCover,
+        hasContent: hasContent,
+      ),
+    );
   }
 }

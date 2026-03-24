@@ -1,16 +1,38 @@
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_token_value.dart';
+
+typedef OwnershipStatePrimString = String;
+typedef OwnershipStatePrimInt = int;
+typedef OwnershipStatePrimBool = bool;
+typedef OwnershipStatePrimDouble = double;
+typedef OwnershipStatePrimDateTime = DateTime;
+typedef OwnershipStatePrimDynamic = dynamic;
+
 enum TenantAdminOwnershipState {
-  tenantOwned('Do tenant', 'tenant_owned'),
-  unmanaged('Nao gerenciadas', 'unmanaged'),
-  userOwned('Do usuario', 'user_owned');
+  tenantOwned(
+    TenantAdminTokenValue('Do tenant'),
+    TenantAdminTokenValue('tenant_owned'),
+  ),
+  unmanaged(
+    TenantAdminTokenValue('Nao gerenciadas'),
+    TenantAdminTokenValue('unmanaged'),
+  ),
+  userOwned(
+    TenantAdminTokenValue('Do usuario'),
+    TenantAdminTokenValue('user_owned'),
+  );
 
-  const TenantAdminOwnershipState(this.label, this.apiValue);
+  const TenantAdminOwnershipState(this.labelValue, this.apiValueValue);
 
-  final String label;
-  final String apiValue;
+  final TenantAdminTokenValue labelValue;
+  final TenantAdminTokenValue apiValueValue;
 
-  String get subtitle => apiValue;
+  OwnershipStatePrimString get label => labelValue.value;
+  OwnershipStatePrimString get apiValue => apiValueValue.value;
 
-  static TenantAdminOwnershipState fromApiValue(String? value) {
+  OwnershipStatePrimString get subtitle => apiValue;
+
+  static TenantAdminOwnershipState fromApiValue(
+      OwnershipStatePrimString? value) {
     final parsed = tryFromApiValue(value);
     if (parsed != null) {
       return parsed;
@@ -18,7 +40,8 @@ enum TenantAdminOwnershipState {
     throw FormatException('Invalid ownership_state value: $value');
   }
 
-  static TenantAdminOwnershipState? tryFromApiValue(String? value) {
+  static TenantAdminOwnershipState? tryFromApiValue(
+      OwnershipStatePrimString? value) {
     switch (value) {
       case 'tenant_owned':
         return TenantAdminOwnershipState.tenantOwned;

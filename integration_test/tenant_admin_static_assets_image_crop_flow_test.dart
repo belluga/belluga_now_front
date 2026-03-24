@@ -355,17 +355,20 @@ class _FakeStaticAssetsRepository
     with TenantAdminStaticAssetsPaginationMixin
     implements TenantAdminStaticAssetsRepositoryContract {
   _FakeStaticAssetsRepository({
-    List<TenantAdminStaticAsset> seededAssets = const [
-      TenantAdminStaticAsset(
-        id: 'asset-1',
-        profileType: 'poi',
-        displayName: 'Praia',
-        slug: 'praia',
-        isActive: true,
-        taxonomyTerms: [],
-      ),
-    ],
-  }) : _assets = List<TenantAdminStaticAsset>.of(seededAssets);
+    List<TenantAdminStaticAsset>? seededAssets,
+  }) : _assets = List<TenantAdminStaticAsset>.of(
+          seededAssets ??
+              [
+                TenantAdminStaticAsset(
+                  id: 'asset-1',
+                  profileType: 'poi',
+                  displayName: 'Praia',
+                  slug: 'praia',
+                  isActive: true,
+                  taxonomyTerms: [],
+                ),
+              ],
+        );
 
   static const String generatedAvatarUploadUrl =
       'https://tenant-a.test/media/static-assets/avatar-uploaded.png';
@@ -385,14 +388,14 @@ class _FakeStaticAssetsRepository
   }) async {
     final items = await fetchStaticAssets();
     if (page <= 0 || pageSize <= 0) {
-      return const TenantAdminPagedResult<TenantAdminStaticAsset>(
+      return TenantAdminPagedResult<TenantAdminStaticAsset>(
         items: <TenantAdminStaticAsset>[],
         hasMore: false,
       );
     }
     final start = (page - 1) * pageSize;
     if (start >= items.length) {
-      return const TenantAdminPagedResult<TenantAdminStaticAsset>(
+      return TenantAdminPagedResult<TenantAdminStaticAsset>(
         items: <TenantAdminStaticAsset>[],
         hasMore: false,
       );
@@ -418,14 +421,14 @@ class _FakeStaticAssetsRepository
       displayName: 'Praia',
       slug: 'praia',
       isActive: true,
-      taxonomyTerms: const [],
+      taxonomyTerms: [],
     );
   }
 
   @override
   Future<List<TenantAdminStaticProfileTypeDefinition>>
       fetchStaticProfileTypes() async {
-    return const [
+    return [
       TenantAdminStaticProfileTypeDefinition(
         type: 'poi',
         label: 'POI',
@@ -450,16 +453,14 @@ class _FakeStaticAssetsRepository
   }) async {
     final items = await fetchStaticProfileTypes();
     if (page <= 0 || pageSize <= 0) {
-      return const TenantAdminPagedResult<
-          TenantAdminStaticProfileTypeDefinition>(
+      return TenantAdminPagedResult<TenantAdminStaticProfileTypeDefinition>(
         items: <TenantAdminStaticProfileTypeDefinition>[],
         hasMore: false,
       );
     }
     final start = (page - 1) * pageSize;
     if (start >= items.length) {
-      return const TenantAdminPagedResult<
-          TenantAdminStaticProfileTypeDefinition>(
+      return TenantAdminPagedResult<TenantAdminStaticProfileTypeDefinition>(
         items: <TenantAdminStaticProfileTypeDefinition>[],
         hasMore: false,
       );
@@ -543,7 +544,7 @@ class _FakeStaticAssetsRepository
       slug: slug ?? existing?.slug ?? 'praia',
       isActive: true,
       location: location ?? existing?.location,
-      taxonomyTerms: taxonomyTerms ?? existing?.taxonomyTerms ?? const [],
+      taxonomyTerms: taxonomyTerms ?? existing?.taxonomyTerms ?? [],
       bio: bio ?? existing?.bio,
       content: content ?? existing?.content,
       avatarUrl: resolvedAvatarUrl,
@@ -603,8 +604,7 @@ class _FakeStaticAssetsRepository
 class _FakeTaxonomiesRepository
     extends TenantAdminTaxonomiesRepositoryContract {
   @override
-  Future<List<TenantAdminTaxonomyDefinition>> fetchTaxonomies() async =>
-      const [];
+  Future<List<TenantAdminTaxonomyDefinition>> fetchTaxonomies() async => [];
 
   @override
   Future<TenantAdminTaxonomyDefinition> createTaxonomy({
@@ -665,5 +665,5 @@ class _FakeTaxonomiesRepository
   Future<List<TenantAdminTaxonomyTermDefinition>> fetchTerms({
     required String taxonomyId,
   }) async =>
-      const [];
+      [];
 }

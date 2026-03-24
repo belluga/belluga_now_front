@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:belluga_now/testing/domain_factories.dart';
 import 'dart:io';
 import 'package:belluga_now/testing/invite_accept_result_builder.dart';
 import 'package:belluga_now/testing/invite_materialize_result_builder.dart';
@@ -16,6 +17,8 @@ import 'package:belluga_now/domain/invites/invite_model.dart';
 import 'package:belluga_now/domain/invites/invite_next_step.dart';
 import 'package:belluga_now/domain/invites/invite_runtime_settings.dart';
 import 'package:belluga_now/domain/invites/invite_share_code_result.dart';
+import 'package:belluga_now/domain/invites/value_objects/invite_inviter_id_value.dart';
+import 'package:belluga_now/domain/invites/value_objects/invite_inviter_name_value.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/invites_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
@@ -32,6 +35,7 @@ import 'package:get_it/get_it.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:mockito/mockito.dart';
 import 'package:stream_value/core/stream_value.dart';
+import 'package:belluga_now/testing/invite_model_factory.dart';
 
 class _FakeInvitesRepository extends InvitesRepositoryContract {
   _FakeInvitesRepository({
@@ -53,7 +57,7 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
 
   @override
   Future<InviteRuntimeSettings> fetchSettings() async =>
-      const InviteRuntimeSettings(
+      buildInviteRuntimeSettings(
         tenantId: null,
         limits: {},
         cooldowns: {},
@@ -80,7 +84,7 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
         declinedInviteIds.add(inviteId);
         _removeInvite(inviteId);
         pendingInvitesStreamValue.addValue(List<InviteModel>.from(_invites));
-        return InviteDeclineResult(
+        return buildInviteDeclineResult(
           inviteId: inviteId,
           status: 'declined',
           groupHasOtherPending: false,
@@ -124,7 +128,7 @@ class _FakeInvitesRepository extends InvitesRepositoryContract {
     String? occurrenceId,
     String? accountProfileId,
   }) async =>
-      InviteShareCodeResult(
+      buildInviteShareCodeResult(
         code: 'CODE123',
         eventId: eventId,
         occurrenceId: occurrenceId,
@@ -712,7 +716,7 @@ void main() {
 }
 
 InviteModel _buildInvite(String id) {
-  return InviteModel.fromPrimitives(
+  return buildInviteModelFromPrimitives(
     id: id,
     eventId: 'event-$id',
     eventName: 'Event $id',
@@ -726,7 +730,7 @@ InviteModel _buildInvite(String id) {
 }
 
 InviteModel _buildInviteWithPrimaryInviter(String id) {
-  return InviteModel.fromPrimitives(
+  return buildInviteModelFromPrimitives(
     id: id,
     eventId: 'event-$id',
     eventName: 'Event $id',
@@ -741,7 +745,7 @@ InviteModel _buildInviteWithPrimaryInviter(String id) {
 }
 
 InviteModel _buildInviteWithEmptyCandidateIds(String id) {
-  return InviteModel.fromPrimitives(
+  return buildInviteModelFromPrimitives(
     id: id,
     eventId: 'event-$id',
     eventName: 'Event $id',
@@ -752,16 +756,18 @@ InviteModel _buildInviteWithEmptyCandidateIds(String id) {
     message: 'Invite $id',
     tags: const ['music'],
     inviterName: 'Convidador A',
-    inviters: const [
+    inviters: [
       InviteInviter(
-        inviteId: '',
+        inviteIdValue:
+            InviteInviterIdValue(defaultValue: '', isRequired: false),
         type: InviteInviterType.user,
-        name: 'Convidador A',
+        nameValue: InviteInviterNameValue()..parse('Convidador A'),
       ),
       InviteInviter(
-        inviteId: '',
+        inviteIdValue:
+            InviteInviterIdValue(defaultValue: '', isRequired: false),
         type: InviteInviterType.user,
-        name: 'Convidador B',
+        nameValue: InviteInviterNameValue()..parse('Convidador B'),
       ),
     ],
   );

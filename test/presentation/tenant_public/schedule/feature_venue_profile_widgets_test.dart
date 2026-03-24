@@ -1,12 +1,10 @@
-import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/domain/partners/services/partner_profile_config_builder.dart';
+import 'package:belluga_now/domain/invites/invite_partner_type.dart';
+import 'package:belluga_now/domain/partner/partner_resume.dart';
+import 'package:belluga_now/domain/partner/value_objects/invite_partner_name_value.dart';
+import 'package:belluga_now/domain/partner/value_objects/invite_partner_tagline_value.dart';
+import 'package:belluga_now/domain/value_objects/slug_value.dart';
 import '../../../support/mock_backend/mock_schedule_backend.dart';
-import 'package:belluga_now/infrastructure/dal/dto/mappers/artist_dto_mapper.dart';
-import 'package:belluga_now/infrastructure/dal/dto/mappers/invite_dto_mapper.dart';
-import 'package:belluga_now/infrastructure/dal/dto/mappers/invite_status_dto_mapper.dart';
-import 'package:belluga_now/infrastructure/dal/dto/mappers/partner_dto_mapper.dart';
-import 'package:belluga_now/infrastructure/dal/dto/mappers/schedule_dto_mapper.dart';
-import 'package:belluga_now/infrastructure/dal/dto/mappers/thumb_dto_mapper.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_artist_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/schedule/event_type_dto.dart';
@@ -14,14 +12,14 @@ import 'package:belluga_now/presentation/tenant_public/schedule/screens/immersiv
 import 'package:belluga_now/presentation/tenant_public/schedule/widgets/venue_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:belluga_now/testing/account_profile_model_factory.dart';
+import 'package:value_object_pattern/domain/value_objects/mongo_id_value.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
-  final scheduleDtoMapper = _TestScheduleDtoMapper();
-  final partnerDtoMapper = _TestPartnerDtoMapper();
 
   testWidgets('Venue profile config uses reduced tabs', (tester) async {
-    final partner = AccountProfileModel.fromPrimitives(
+    final partner = buildAccountProfileModelFromPrimitives(
       id: MockScheduleBackend.generateMongoId('venue-1'),
       name: 'Test Venue',
       slug: 'test-venue',
@@ -64,7 +62,7 @@ void main() {
       artists: <EventArtistDTO>[],
       tags: const [],
     );
-    final event = scheduleDtoMapper.mapEventDto(dto);
+    final event = dto.toDomain();
 
     await tester.pumpWidget(
       MaterialApp(
@@ -76,12 +74,14 @@ void main() {
   });
 
   testWidgets('Venue card shows profile button', (tester) async {
-    final venue = partnerDtoMapper.mapPartnerResume({
-      'id': MockScheduleBackend.generateMongoId('test-venue'),
-      'display_name': 'Test Venue',
-      'tagline': 'Address',
-      'slug': 'test-venue',
-    });
+    final venue = PartnerResume(
+      idValue:
+          MongoIDValue()..parse(MockScheduleBackend.generateMongoId('test-venue')),
+      nameValue: InvitePartnerNameValue()..parse('Test Venue'),
+      slugValue: SlugValue()..parse('test-venue'),
+      type: InviteAccountProfileType.mercadoProducer,
+      taglineValue: InvitePartnerTaglineValue()..parse('Address'),
+    );
 
     await tester.pumpWidget(
       MaterialApp(
@@ -94,14 +94,3 @@ void main() {
     expect(find.text('Ver perfil'), findsOneWidget);
   });
 }
-
-class _TestScheduleDtoMapper
-    with
-        InviteDtoMapper,
-        ThumbDtoMapper,
-        ArtistDtoMapper,
-        PartnerDtoMapper,
-        InviteStatusDtoMapper,
-        ScheduleDtoMapper {}
-
-class _TestPartnerDtoMapper with PartnerDtoMapper {}

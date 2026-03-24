@@ -22,8 +22,6 @@ class TenantAdminOrganizationsController implements Disposable {
 
   final TenantAdminOrganizationsRepositoryContract _organizationsRepository;
   final TenantAdminTenantScopeContract? _tenantScope;
-  static const int _organizationsPageSize = 20;
-
   StreamValue<List<TenantAdminOrganization>?> get organizationsStreamValue =>
       _organizationsRepository.organizationsStreamValue;
   StreamValue<bool> get hasMoreOrganizationsStreamValue =>
@@ -82,18 +80,14 @@ class TenantAdminOrganizationsController implements Disposable {
 
   Future<void> loadOrganizations() async {
     if (_isDisposed) return;
-    await _organizationsRepository.loadOrganizations(
-      pageSize: _organizationsPageSize,
-    );
+    await _organizationsRepository.loadOrganizations();
   }
 
   Future<void> loadNextOrganizationsPage() async {
     if (_isDisposed) {
       return;
     }
-    await _organizationsRepository.loadNextOrganizationsPage(
-      pageSize: _organizationsPageSize,
-    );
+    await _organizationsRepository.loadNextOrganizationsPage();
   }
 
   void bindOrganizationsListScrollPagination() {

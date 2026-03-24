@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:belluga_now/domain/app_data/app_data.dart';
+import 'package:belluga_now/testing/app_data_test_factory.dart';
 import 'package:belluga_now/domain/app_data/value_object/platform_type_value.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
@@ -189,6 +192,134 @@ void main() {
 
     expect(backend.fetchEventsCalls, 0);
   });
+
+  test('getEventsPage maps events when event type description is null',
+      () async {
+    final backend = _CapturingScheduleBackend(
+      pagedResponses: [
+        EventPageDTO(
+          events: [
+            _buildEventDto(
+              eventId: '507f1f77bcf86cd799439031',
+              occurrenceId: '507f1f77bcf86cd799439032',
+              typeDescription: null,
+            ),
+          ],
+          hasMore: false,
+        ),
+      ],
+    );
+    final repository = ScheduleRepository(
+      backend: backend,
+      userLocationRepository: _FakeUserLocationRepository(),
+      appDataRepository: _FakeAppDataRepository(_buildAppData()),
+    );
+
+    final result = await repository.getEventsPage(
+      page: 1,
+      pageSize: 25,
+      showPastOnly: false,
+    );
+
+    expect(result.events, hasLength(1));
+    expect(result.events.first.type.description.value, isEmpty);
+  });
+
+  test('getEventsPage maps events when event content is null', () async {
+    final backend = _CapturingScheduleBackend(
+      pagedResponses: [
+        EventPageDTO(
+          events: [
+            _buildEventDto(
+              eventId: '507f1f77bcf86cd799439041',
+              occurrenceId: '507f1f77bcf86cd799439042',
+              eventContent: null,
+            ),
+          ],
+          hasMore: false,
+        ),
+      ],
+    );
+    final repository = ScheduleRepository(
+      backend: backend,
+      userLocationRepository: _FakeUserLocationRepository(),
+      appDataRepository: _FakeAppDataRepository(_buildAppData()),
+    );
+
+    final result = await repository.getEventsPage(
+      page: 1,
+      pageSize: 25,
+      showPastOnly: false,
+    );
+
+    expect(result.events, hasLength(1));
+    expect(result.events.first.content.valueText, isEmpty);
+  });
+
+  test('getEventsPage maps events when type description and content are null',
+      () async {
+    final backend = _CapturingScheduleBackend(
+      pagedResponses: [
+        EventPageDTO(
+          events: [
+            _buildEventDto(
+              eventId: '507f1f77bcf86cd799439051',
+              occurrenceId: '507f1f77bcf86cd799439052',
+              typeDescription: null,
+              eventContent: null,
+            ),
+          ],
+          hasMore: false,
+        ),
+      ],
+    );
+    final repository = ScheduleRepository(
+      backend: backend,
+      userLocationRepository: _FakeUserLocationRepository(),
+      appDataRepository: _FakeAppDataRepository(_buildAppData()),
+    );
+
+    final result = await repository.getEventsPage(
+      page: 1,
+      pageSize: 25,
+      showPastOnly: false,
+    );
+
+    expect(result.events, hasLength(1));
+    expect(result.events.first.type.description.value, isEmpty);
+    expect(result.events.first.content.valueText, isEmpty);
+  });
+
+  test('loadEventsPage ignores second first-page request while one is in-flight',
+      () async {
+    final backend = _BlockingFirstPageScheduleBackend();
+    final repository = ScheduleRepository(
+      backend: backend,
+      userLocationRepository: _FakeUserLocationRepository(),
+      appDataRepository: _FakeAppDataRepository(_buildAppData()),
+    );
+
+    final firstLoadFuture = repository.loadEventsPage(
+      showPastOnly: false,
+    );
+
+    await backend.waitUntilFirstRequestStarts();
+
+    await repository.loadEventsPage(
+      showPastOnly: false,
+    );
+
+    expect(
+      backend.fetchEventsPageCalls,
+      1,
+      reason: 'A second first-page request must be ignored while in-flight.',
+    );
+
+    backend.releaseFirstRequest();
+    await firstLoadFuture;
+
+    expect(repository.currentPagedEventsPage, 1);
+  });
 }
 
 class _CapturingScheduleBackend implements ScheduleBackendContract {
@@ -268,6 +399,72 @@ class _CapturingScheduleBackend implements ScheduleBackendContract {
   }
 }
 
+class _BlockingFirstPageScheduleBackend implements ScheduleBackendContract {
+  final Completer<void> _firstRequestStarted = Completer<void>();
+  final Completer<void> _releaseFirstRequest = Completer<void>();
+  int fetchEventsPageCalls = 0;
+
+  Future<void> waitUntilFirstRequestStarts() => _firstRequestStarted.future;
+
+  void releaseFirstRequest() {
+    if (!_releaseFirstRequest.isCompleted) {
+      _releaseFirstRequest.complete();
+    }
+  }
+
+  @override
+  Future<EventSummaryDTO> fetchSummary() async =>
+      EventSummaryDTO(items: const []);
+
+  @override
+  Future<List<EventDTO>> fetchEvents() async => const [];
+
+  @override
+  Future<EventDTO?> fetchEventDetail({required String eventIdOrSlug}) async =>
+      null;
+
+  @override
+  Future<EventPageDTO> fetchEventsPage({
+    required int page,
+    required int pageSize,
+    required bool showPastOnly,
+    String? searchQuery,
+    List<String>? categories,
+    List<String>? tags,
+    List<Map<String, String>>? taxonomy,
+    bool confirmedOnly = false,
+    double? originLat,
+    double? originLng,
+    double? maxDistanceMeters,
+  }) async {
+    fetchEventsPageCalls += 1;
+    if (fetchEventsPageCalls == 1) {
+      if (!_firstRequestStarted.isCompleted) {
+        _firstRequestStarted.complete();
+      }
+      await _releaseFirstRequest.future;
+    }
+
+    return EventPageDTO(events: const [], hasMore: false);
+  }
+
+  @override
+  Stream<EventDeltaDTO> watchEventsStream({
+    String? searchQuery,
+    List<String>? categories,
+    List<String>? tags,
+    List<Map<String, String>>? taxonomy,
+    bool confirmedOnly = false,
+    double? originLat,
+    double? originLng,
+    double? maxDistanceMeters,
+    String? lastEventId,
+    bool showPastOnly = false,
+  }) {
+    return const Stream<EventDeltaDTO>.empty();
+  }
+}
+
 class _AgendaRequestSample {
   const _AgendaRequestSample({
     required this.page,
@@ -309,6 +506,13 @@ class _FakeUserLocationRepository implements UserLocationRepositoryContract {
   @override
   final StreamValue<String?> lastKnownAddressStreamValue =
       StreamValue<String?>(defaultValue: null);
+
+  @override
+  @override
+  final StreamValue<LocationResolutionPhase>
+      locationResolutionPhaseStreamValue = StreamValue<LocationResolutionPhase>(
+    defaultValue: LocationResolutionPhase.unknown,
+  );
 
   @override
   Future<void> ensureLoaded() async {}
@@ -441,7 +645,7 @@ AppData _buildAppData({
     'device': 'test-device',
   };
 
-  return AppData.fromInitialization(
+  return buildAppDataFromInitialization(
     remoteData: remoteData,
     localInfo: localInfo,
   );
@@ -463,18 +667,20 @@ EventDTO _buildEventDto({
   String eventId = '507f1f77bcf86cd799439011',
   String occurrenceId = '507f1f77bcf86cd799439012',
   String startsAtIso = '2099-01-01T20:00:00+00:00',
+  String? typeDescription = 'Show type description',
+  String? eventContent = 'Conteudo do evento completo',
 }) {
   return EventDTO.fromJson({
     'event_id': eventId,
     'occurrence_id': occurrenceId,
     'slug': 'evento-teste',
     'title': 'Evento Teste',
-    'content': 'Conteudo do evento completo',
+    'content': eventContent,
     'type': {
       'id': 'type-1',
       'name': 'Show',
       'slug': 'show',
-      'description': 'Show type description',
+      'description': typeDescription,
       'color': '#112233',
     },
     'location': {

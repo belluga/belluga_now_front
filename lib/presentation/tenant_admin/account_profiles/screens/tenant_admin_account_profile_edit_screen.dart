@@ -718,11 +718,11 @@ class _TenantAdminAccountProfileEditScreenState
                                           state.selectedProfileType,
                                         );
 
-                                if (loadError != null) {
+                                if (loadError?.isNotEmpty ?? false) {
                                   return TenantAdminFormScaffold(
                                     title: 'Editar Perfil',
                                     child: TenantAdminErrorBanner(
-                                      rawError: loadError,
+                                      rawError: loadError ?? '',
                                       fallbackMessage:
                                           'Não foi possível carregar os dados do perfil.',
                                       onRetry: () =>
@@ -733,7 +733,8 @@ class _TenantAdminAccountProfileEditScreenState
                                   );
                                 }
 
-                                if (profile == null && isLoading) {
+                                if (profile is! TenantAdminAccountProfile &&
+                                    isLoading) {
                                   return TenantAdminFormScaffold(
                                     title: 'Editar Perfil',
                                     child: const Center(

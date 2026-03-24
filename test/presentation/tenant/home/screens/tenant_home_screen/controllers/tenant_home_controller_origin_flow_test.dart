@@ -1,4 +1,5 @@
 import 'package:belluga_now/domain/app_data/app_data.dart';
+import 'package:belluga_now/testing/app_data_test_factory.dart';
 import 'package:belluga_now/domain/app_data/value_object/platform_type_value.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
@@ -284,6 +285,13 @@ class _FakeUserLocationRepository implements UserLocationRepositoryContract {
       StreamValue<String?>(defaultValue: null);
 
   @override
+  @override
+  final StreamValue<LocationResolutionPhase>
+      locationResolutionPhaseStreamValue = StreamValue<LocationResolutionPhase>(
+    defaultValue: LocationResolutionPhase.unknown,
+  );
+
+  @override
   Future<void> ensureLoaded() async {}
 
   @override
@@ -412,7 +420,7 @@ AppData _buildAppData({
     'device': 'test-device',
   };
 
-  return AppData.fromInitialization(
+  return buildAppDataFromInitialization(
     remoteData: remoteData,
     localInfo: localInfo,
   );

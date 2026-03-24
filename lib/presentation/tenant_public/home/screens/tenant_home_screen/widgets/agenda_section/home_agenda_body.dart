@@ -1,6 +1,7 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:belluga_now/application/router/app_router.gr.dart';
 import 'package:belluga_now/domain/schedule/event_model.dart';
+import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
 import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
 import 'package:belluga_now/presentation/tenant_public/home/screens/tenant_home_screen/widgets/agenda_section/controllers/tenant_home_agenda_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/event_search_screen/models/invite_filter.dart';
@@ -36,14 +37,22 @@ class _HomeAgendaBodyState extends State<HomeAgendaBody> {
         final hasActiveFilters =
             controller.inviteFilterStreamValue.value != InviteFilter.none ||
                 controller.showHistoryStreamValue.value;
-        return StreamValueBuilder<List<EventModel>>(
+        return StreamValueBuilder<List<EventModel>?>(
           streamValue: controller.displayedEventsStreamValue,
+          onNullWidget: _buildFirstFetchLoading(
+            theme: theme,
+            colorScheme: colorScheme,
+            controller: controller,
+          ),
           builder: (context, events) {
-            final resumes = events
+            final resumes = events!
                 .map(
                   (event) => VenueEventResume.fromScheduleEvent(
                     event,
-                    controller.defaultEventImageUri,
+                    ThumbUriValue(
+                      defaultValue: controller.defaultEventImageUri,
+                      isRequired: true,
+                    )..parse(controller.defaultEventImageUri.toString()),
                   ),
                 )
                 .toList();
@@ -51,12 +60,51 @@ class _HomeAgendaBodyState extends State<HomeAgendaBody> {
               streamValue: controller.isPageLoadingStreamValue,
               builder: (context, isPageLoading) {
                 if (isInitialLoading && resumes.isEmpty) {
-                  return const Center(
-                    child: CircularProgressIndicator(),
+                  return Center(
+                    child: StreamValueBuilder<String>(
+                      streamValue: controller.initialLoadingLabelStreamValue,
+                      builder: (context, loadingLabel) {
+                        return Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const CircularProgressIndicator(),
+                            const SizedBox(height: 16),
+                            Text(
+                              loadingLabel.isEmpty
+                                  ? 'Carregando agenda...'
+                                  : loadingLabel,
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                color: colorScheme.onSurfaceVariant,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ],
+                        );
+                      },
+                    ),
                   );
                 }
 
                 if (resumes.isEmpty) {
+                  if (isPageLoading) {
+                    return Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const CircularProgressIndicator(),
+                          const SizedBox(height: 16),
+                          Text(
+                            'Buscando eventos perto de você...',
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              color: colorScheme.onSurfaceVariant,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+
                   final emptyLabel = hasActiveFilters
                       ? 'Nenhum resultado encontrado'
                       : 'Nenhum evento disponível no momento';
@@ -157,5 +205,35 @@ class _HomeAgendaBodyState extends State<HomeAgendaBody> {
       });
     }
     return false;
+  }
+
+  Widget _buildFirstFetchLoading({
+    required ThemeData theme,
+    required ColorScheme colorScheme,
+    required TenantHomeAgendaController controller,
+  }) {
+    return Center(
+      child: StreamValueBuilder<String>(
+        streamValue: controller.initialLoadingLabelStreamValue,
+        builder: (context, loadingLabel) {
+          return Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const CircularProgressIndicator(),
+              const SizedBox(height: 16),
+              Text(
+                loadingLabel.isEmpty
+                    ? 'Buscando eventos perto de você...'
+                    : loadingLabel,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          );
+        },
+      ),
+    );
   }
 }

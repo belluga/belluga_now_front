@@ -1,4 +1,16 @@
 import 'package:belluga_now/domain/map/city_poi_category.dart';
+import 'package:belluga_now/domain/map/city_poi_model.dart';
+import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
+import 'package:belluga_now/domain/map/value_objects/city_poi_address_value.dart';
+import 'package:belluga_now/domain/map/value_objects/city_poi_description_value.dart';
+import 'package:belluga_now/domain/map/value_objects/city_poi_id_value.dart';
+import 'package:belluga_now/domain/map/value_objects/city_poi_name_value.dart';
+import 'package:belluga_now/domain/map/value_objects/distance_in_meters_value.dart';
+import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
+import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_priority_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_tag_value.dart';
+import 'package:belluga_now/domain/value_objects/asset_path_value.dart';
 
 class CityPoiDTO {
   const CityPoiDTO({
@@ -189,5 +201,62 @@ class CityPoiDTO {
       'updated_at': updatedAt?.toUtc().toIso8601String(),
       'distance_meters': distanceMeters,
     };
+  }
+
+  CityPoiModel toDomain() {
+    final idValue = CityPoiIdValue()..parse(id);
+    final nameValue = CityPoiNameValue()..parse(name);
+    final descriptionValue = CityPoiDescriptionValue()..parse(description);
+    final addressValue = CityPoiAddressValue()..parse(address);
+    final coordinate = CityCoordinate(
+      latitudeValue: LatitudeValue()..parse(latitude.toString()),
+      longitudeValue: LongitudeValue()..parse(longitude.toString()),
+    );
+    final priorityValue = PoiPriorityValue()..parse(priority.toString());
+
+    AssetPathValue? assetPathValue;
+    if (assetPath != null && assetPath!.isNotEmpty) {
+      assetPathValue = AssetPathValue(
+        defaultValue: assetPath!,
+        isRequired: true,
+      )..parse(assetPath);
+    }
+
+    DistanceInMetersValue? movementRadiusValue;
+    if (movementRadiusMeters != null) {
+      movementRadiusValue = DistanceInMetersValue()
+        ..parse(movementRadiusMeters!.toString());
+    }
+
+    final tagValues = tags
+        .map((tag) => PoiTagValue()..parse(tag))
+        .toList(growable: false);
+    final stackItems = items.map((item) => item.toDomain()).toList(growable: false);
+    final resolvedStackKey =
+        stackKey.trim().isNotEmpty ? stackKey.trim() : '$refType:$refId';
+
+    return CityPoiModel(
+      idValue: idValue,
+      nameValue: nameValue,
+      descriptionValue: descriptionValue,
+      addressValue: addressValue,
+      category: category,
+      coordinate: coordinate,
+      priorityValue: priorityValue,
+      assetPathValue: assetPathValue,
+      isDynamic: isDynamic,
+      movementRadiusValue: movementRadiusValue,
+      tagValues: tagValues,
+      refType: refType,
+      refId: refId,
+      refSlug: refSlug,
+      refPath: refPath,
+      stackKey: resolvedStackKey,
+      stackCount: stackCount,
+      stackItems: stackItems,
+      isHappeningNow: isHappeningNow,
+      updatedAt: updatedAt,
+      distanceMeters: distanceMeters,
+    );
   }
 }

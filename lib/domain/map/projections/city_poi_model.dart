@@ -18,6 +18,13 @@ import 'package:belluga_now/domain/map/value_objects/poi_tag_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_updated_at_value.dart';
 import 'package:belluga_now/domain/value_objects/asset_path_value.dart';
 
+typedef CityPoiModelRawString = String;
+typedef CityPoiModelRawBoolean = bool;
+typedef CityPoiModelRawCount = int;
+typedef CityPoiModelRawMeters = double;
+typedef CityPoiModelRawTimestamp = DateTime;
+typedef CityPoiModelDynamicValue = dynamic;
+
 class CityPoiModel implements MapPoi {
   CityPoiModel({
     required this.idValue,
@@ -28,19 +35,19 @@ class CityPoiModel implements MapPoi {
     required this.coordinate,
     required this.priorityValue,
     this.assetPathValue,
-    bool isDynamic = false,
+    CityPoiModelRawBoolean isDynamic = false,
     this.movementRadiusValue,
     List<PoiTagValue>? tagValues,
-    String refType = 'static',
-    String refId = '',
-    String? refSlug,
-    String? refPath,
-    String stackKey = '',
-    int stackCount = 1,
+    CityPoiModelRawString refType = 'static',
+    CityPoiModelRawString refId = '',
+    CityPoiModelRawString? refSlug,
+    CityPoiModelRawString? refPath,
+    CityPoiModelRawString stackKey = '',
+    CityPoiModelRawCount stackCount = 1,
     List<CityPoiModel>? stackItems,
-    bool isHappeningNow = false,
-    DateTime? updatedAt,
-    double? distanceMeters,
+    CityPoiModelRawBoolean isHappeningNow = false,
+    CityPoiModelRawTimestamp? updatedAt,
+    CityPoiModelRawMeters? distanceMeters,
   })  : tagValues = List.unmodifiable(tagValues ?? const <PoiTagValue>[]),
         stackItems = List.unmodifiable(stackItems ?? const <CityPoiModel>[]),
         isDynamicValue = _buildBooleanValue(isDynamic),
@@ -133,19 +140,19 @@ class CityPoiModel implements MapPoi {
     CityCoordinate? coordinate,
     PoiPriorityValue? priorityValue,
     AssetPathValue? assetPathValue,
-    bool? isDynamic,
+    CityPoiModelRawBoolean? isDynamic,
     DistanceInMetersValue? movementRadiusValue,
     List<PoiTagValue>? tagValues,
-    String? refType,
-    String? refId,
-    String? refSlug,
-    String? refPath,
-    String? stackKey,
-    int? stackCount,
+    CityPoiModelRawString? refType,
+    CityPoiModelRawString? refId,
+    CityPoiModelRawString? refSlug,
+    CityPoiModelRawString? refPath,
+    CityPoiModelRawString? stackKey,
+    CityPoiModelRawCount? stackCount,
     List<CityPoiModel>? stackItems,
-    bool? isHappeningNow,
-    DateTime? updatedAt,
-    double? distanceMeters,
+    CityPoiModelRawBoolean? isHappeningNow,
+    CityPoiModelRawTimestamp? updatedAt,
+    CityPoiModelRawMeters? distanceMeters,
   }) {
     return CityPoiModel(
       idValue: idValue ?? this.idValue,
@@ -172,22 +179,24 @@ class CityPoiModel implements MapPoi {
     );
   }
 
-  static PoiBooleanValue _buildBooleanValue(bool raw) {
+  static PoiBooleanValue _buildBooleanValue(CityPoiModelRawBoolean raw) {
     final value = PoiBooleanValue()..parse(raw.toString());
     return value;
   }
 
-  static PoiReferenceTypeValue _buildRefTypeValue(String raw) {
+  static PoiReferenceTypeValue _buildRefTypeValue(CityPoiModelRawString raw) {
     final value = PoiReferenceTypeValue()..parse(raw.trim());
     return value;
   }
 
-  static PoiReferenceIdValue _buildRefIdValue(String raw) {
+  static PoiReferenceIdValue _buildRefIdValue(CityPoiModelRawString raw) {
     final value = PoiReferenceIdValue()..parse(raw.trim());
     return value;
   }
 
-  static PoiReferenceSlugValue? _buildRefSlugValue(String? raw) {
+  static PoiReferenceSlugValue? _buildRefSlugValue(
+    CityPoiModelRawString? raw,
+  ) {
     final normalized = raw?.trim();
     if (normalized == null || normalized.isEmpty) {
       return null;
@@ -196,7 +205,9 @@ class CityPoiModel implements MapPoi {
     return value;
   }
 
-  static PoiReferencePathValue? _buildRefPathValue(String? raw) {
+  static PoiReferencePathValue? _buildRefPathValue(
+    CityPoiModelRawString? raw,
+  ) {
     final normalized = raw?.trim();
     if (normalized == null || normalized.isEmpty) {
       return null;
@@ -205,17 +216,19 @@ class CityPoiModel implements MapPoi {
     return value;
   }
 
-  static PoiStackKeyValue _buildStackKeyValue(String raw) {
+  static PoiStackKeyValue _buildStackKeyValue(CityPoiModelRawString raw) {
     final value = PoiStackKeyValue()..parse(raw.trim());
     return value;
   }
 
-  static PoiStackCountValue _buildStackCountValue(int raw) {
+  static PoiStackCountValue _buildStackCountValue(CityPoiModelRawCount raw) {
     final value = PoiStackCountValue()..parse(raw.toString());
     return value;
   }
 
-  static PoiUpdatedAtValue? _buildUpdatedAtValue(DateTime? raw) {
+  static PoiUpdatedAtValue? _buildUpdatedAtValue(
+    CityPoiModelRawTimestamp? raw,
+  ) {
     if (raw == null) {
       return null;
     }
@@ -223,7 +236,9 @@ class CityPoiModel implements MapPoi {
     return value;
   }
 
-  static DistanceInMetersValue? _buildDistanceValue(double? raw) {
+  static DistanceInMetersValue? _buildDistanceValue(
+    CityPoiModelRawMeters? raw,
+  ) {
     if (raw == null) {
       return null;
     }
@@ -231,7 +246,7 @@ class CityPoiModel implements MapPoi {
     return value;
   }
 
-  static String? _readNullableValue(dynamic valueObject) {
+  static String? _readNullableValue(CityPoiModelDynamicValue valueObject) {
     final raw = valueObject?.value as String?;
     if (raw == null || raw.trim().isEmpty) {
       return null;

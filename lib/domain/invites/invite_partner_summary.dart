@@ -4,6 +4,8 @@ import 'package:belluga_now/domain/partner/value_objects/invite_partner_logo_ima
 import 'package:belluga_now/domain/partner/value_objects/invite_partner_name_value.dart';
 import 'package:belluga_now/domain/partner/value_objects/invite_partner_tagline_value.dart';
 
+typedef InvitePartnerSummaryId = String;
+
 class InvitePartnerSummary {
   InvitePartnerSummary({
     required this.id,
@@ -16,7 +18,7 @@ class InvitePartnerSummary {
         heroImageValue = heroImageValue ?? InvitePartnerHeroImageValue(),
         logoImageValue = logoImageValue ?? InvitePartnerLogoImageValue();
 
-  final String id;
+  final InvitePartnerSummaryId id;
   final InvitePartnerNameValue nameValue;
   final InviteAccountProfileType type;
   final InvitePartnerTaglineValue taglineValue;

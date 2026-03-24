@@ -10,6 +10,13 @@ import 'package:belluga_now/domain/tenant/value_objects/subdomain_value.dart';
 import 'package:belluga_now/domain/tenant/value_objects/tenant_name_value.dart';
 import 'package:get_it/get_it.dart';
 
+typedef TenantPrimString = String;
+typedef TenantPrimInt = int;
+typedef TenantPrimBool = bool;
+typedef TenantPrimDouble = double;
+typedef TenantPrimDateTime = DateTime;
+typedef TenantPrimDynamic = dynamic;
+
 class Tenant {
   final TenantNameValue name;
   final SubdomainValue subdomain;
@@ -29,33 +36,13 @@ class Tenant {
     this.appDomains,
   });
 
-  factory Tenant.fromPrimitives({
-    required String name,
-    required String subdomain,
-    required String mainLogoUrl,
-    String? iconUrl,
-    String? mainColor,
-    List<String>? domains,
-    List<String>? appDomains,
-  }) {
-    return Tenant(
-      name: TenantNameValue()..parse(name),
-      subdomain: SubdomainValue()..parse(subdomain),
-      mainLogoUrl: MainLogoUrlValue()..parse(mainLogoUrl),
-      iconUrl: iconUrl != null ? (IconUrlValue()..parse(iconUrl)) : null,
-      mainColor: mainColor != null ? (MainColorValue()..parse(mainColor)) : null,
-      domains: domains?.map((d) => DomainValue()..parse(d)).toList(),
-      appDomains: appDomains?.map((d) => AppDomainValue()..parse(d)).toList(),
-    );
-  }
-
   AppData get appData => GetIt.I.get<AppData>();
 
-  String get landlordUrl => BellugaConstants.landlordDomain;
+  TenantPrimString get landlordUrl => BellugaConstants.landlordDomain;
 
-  String get subdomainFull => "${subdomain.value}.$landlordUrl";
+  TenantPrimString get subdomainFull => "${subdomain.value}.$landlordUrl";
 
-  bool hasDomain(String domainTry) {
+  TenantPrimBool hasDomain(TenantPrimString domainTry) {
     switch (appData.appType) {
       case AppType.web:
         return hasWebDomain(domainTry);
@@ -65,15 +52,15 @@ class Tenant {
     }
   }
 
-  bool hasAppDomain(String domainTry) {
+  TenantPrimBool hasAppDomain(TenantPrimString domainTry) {
     return appDomains?.any((appDomain) {
           return appDomain.value == domainTry;
         }) ??
         false;
   }
 
-  bool hasWebDomain(String domainTry) {
-    final List<String> _splitted = domainTry.split(".$landlordUrl");
+  TenantPrimBool hasWebDomain(TenantPrimString domainTry) {
+    final List<TenantPrimString> _splitted = domainTry.split(".$landlordUrl");
 
     if (_splitted.length == 1) {
       return domains?.any((domain) {

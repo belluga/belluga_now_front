@@ -7,6 +7,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_event.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_result.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_definition.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_value_parsers.dart';
 import 'package:belluga_now/presentation/tenant_admin/events/controllers/tenant_admin_events_controller.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:stream_value/core/stream_value.dart';
@@ -140,7 +141,7 @@ void main() {
       name: 'Show',
       slug: 'show',
       description: '   ',
-      existingType: const TenantAdminEventType(
+      existingType: TenantAdminEventType(
         id: '507f1f77bcf86cd799439011',
         name: 'Show',
         slug: 'show',
@@ -156,17 +157,17 @@ TenantAdminEventDraft _buildDraft() {
   return TenantAdminEventDraft(
     title: 'My event',
     content: 'Content',
-    type: const TenantAdminEventType(
+    type: TenantAdminEventType(
       name: 'Show',
       slug: 'show',
     ),
     occurrences: [
       TenantAdminEventOccurrence(
-        dateTimeStart: DateTime(2026, 3, 5, 20),
+        dateTimeStartValue: tenantAdminDateTime(DateTime(2026, 3, 5, 20)),
       ),
     ],
-    publication: const TenantAdminEventPublication(
-      status: 'draft',
+    publication: TenantAdminEventPublication(
+      statusValue: tenantAdminRequiredText('draft'),
     ),
   );
 }
@@ -205,7 +206,7 @@ class _FailingDeleteEventsRepository
     String? status,
     bool archived = false,
   }) async {
-    return const <TenantAdminEvent>[];
+    return <TenantAdminEvent>[];
   }
 
   @override
@@ -216,7 +217,7 @@ class _FailingDeleteEventsRepository
     String? status,
     bool archived = false,
   }) async {
-    return const TenantAdminPagedResult<TenantAdminEvent>(
+    return TenantAdminPagedResult<TenantAdminEvent>(
       items: <TenantAdminEvent>[],
       hasMore: false,
     );
@@ -227,7 +228,7 @@ class _FailingDeleteEventsRepository
     String? search,
     String? accountSlug,
   }) async {
-    return const TenantAdminEventPartyCandidates(
+    return TenantAdminEventPartyCandidates(
       venues: <TenantAdminAccountProfile>[],
       artists: <TenantAdminAccountProfile>[],
     );
@@ -276,7 +277,7 @@ class _NoopTaxonomiesRepository
 
   @override
   Future<List<TenantAdminTaxonomyDefinition>> fetchTaxonomies() async {
-    return const <TenantAdminTaxonomyDefinition>[];
+    return <TenantAdminTaxonomyDefinition>[];
   }
 
   @override
@@ -285,7 +286,7 @@ class _NoopTaxonomiesRepository
     required int page,
     required int pageSize,
   }) async {
-    return const TenantAdminPagedResult<TenantAdminTaxonomyDefinition>(
+    return TenantAdminPagedResult<TenantAdminTaxonomyDefinition>(
       items: <TenantAdminTaxonomyDefinition>[],
       hasMore: false,
     );
@@ -295,7 +296,7 @@ class _NoopTaxonomiesRepository
   Future<List<TenantAdminTaxonomyTermDefinition>> fetchTerms({
     required String taxonomyId,
   }) async {
-    return const <TenantAdminTaxonomyTermDefinition>[];
+    return <TenantAdminTaxonomyTermDefinition>[];
   }
 
   @override
@@ -305,7 +306,7 @@ class _NoopTaxonomiesRepository
     required int page,
     required int pageSize,
   }) async {
-    return const TenantAdminPagedResult<TenantAdminTaxonomyTermDefinition>(
+    return TenantAdminPagedResult<TenantAdminTaxonomyTermDefinition>(
       items: <TenantAdminTaxonomyTermDefinition>[],
       hasMore: false,
     );
@@ -372,7 +373,7 @@ class _TrackingEventsRepository
   }) async {
     fetchEventsCalls += 1;
     lastLoadArchived = archived;
-    return const <TenantAdminEvent>[];
+    return <TenantAdminEvent>[];
   }
 
   @override
@@ -385,7 +386,7 @@ class _TrackingEventsRepository
   }) async {
     fetchEventsPageCalls += 1;
     lastLoadArchived = archived;
-    return const TenantAdminPagedResult<TenantAdminEvent>(
+    return TenantAdminPagedResult<TenantAdminEvent>(
       items: <TenantAdminEvent>[],
       hasMore: false,
     );
@@ -396,7 +397,7 @@ class _TrackingEventsRepository
     String? search,
     String? accountSlug,
   }) async {
-    return const TenantAdminEventPartyCandidates(
+    return TenantAdminEventPartyCandidates(
       venues: <TenantAdminAccountProfile>[],
       artists: <TenantAdminAccountProfile>[],
     );
@@ -515,7 +516,7 @@ class _AccountScopedEventsRepository
   @override
   Future<List<TenantAdminEventType>> fetchEventTypes() async {
     fetchEventTypesCalls += 1;
-    return const [
+    return [
       TenantAdminEventType(
         id: '507f1f77bcf86cd799439099',
         name: 'Show',
@@ -532,7 +533,7 @@ class _AccountScopedEventsRepository
     bool archived = false,
   }) async {
     fetchEventsCalls += 1;
-    return const <TenantAdminEvent>[];
+    return <TenantAdminEvent>[];
   }
 
   @override
@@ -544,7 +545,7 @@ class _AccountScopedEventsRepository
     bool archived = false,
   }) async {
     fetchEventsPageCalls += 1;
-    return const TenantAdminPagedResult<TenantAdminEvent>(
+    return TenantAdminPagedResult<TenantAdminEvent>(
       items: <TenantAdminEvent>[],
       hasMore: false,
     );
@@ -557,7 +558,7 @@ class _AccountScopedEventsRepository
   }) async {
     partyCandidatesCalls += 1;
     lastPartyCandidatesAccountSlug = accountSlug;
-    return const TenantAdminEventPartyCandidates(
+    return TenantAdminEventPartyCandidates(
       venues: <TenantAdminAccountProfile>[],
       artists: <TenantAdminAccountProfile>[],
     );

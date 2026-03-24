@@ -44,7 +44,6 @@ class EventSearchScreenController
   final UserLocationRepositoryContract? _userLocationRepository;
   final AppDataRepositoryContract _appDataRepository;
 
-  static const int _pageSize = 10;
   static const double _fallbackRadiusMeters = 50000.0;
   static final Uri _localEventPlaceholderUri =
       Uri.parse('asset://event-placeholder');
@@ -55,7 +54,8 @@ class EventSearchScreenController
   late FocusNode focusNode;
   late ScrollController scrollController;
 
-  late StreamValue<List<EventModel>> displayedEventsStreamValue;
+  StreamValue<List<EventModel>> get displayedEventsStreamValue =>
+      _scheduleRepository.eventSearchDisplayedEventsStreamValue;
   late StreamValue<bool> isInitialLoadingStreamValue;
   late StreamValue<bool> isPageLoadingStreamValue;
   late StreamValue<bool> hasMoreStreamValue;
@@ -102,8 +102,6 @@ class EventSearchScreenController
     searchController = TextEditingController();
     focusNode = FocusNode();
     scrollController = ScrollController();
-    displayedEventsStreamValue =
-        StreamValue<List<EventModel>>(defaultValue: const []);
     isInitialLoadingStreamValue = StreamValue<bool>(defaultValue: true);
     isPageLoadingStreamValue = StreamValue<bool>(defaultValue: false);
     hasMoreStreamValue = StreamValue<bool>(defaultValue: true);
@@ -207,20 +205,41 @@ class EventSearchScreenController
     }
 
     try {
-      final result = await _scheduleRepository.getEventsPage(
-        page: page,
-        pageSize: _pageSize,
-        showPastOnly: showHistoryStreamValue.value,
-        searchQuery: searchController.text,
-        confirmedOnly:
-            inviteFilterStreamValue.value == InviteFilter.confirmedOnly,
-        originLat: _effectiveOriginLat,
-        originLng: _effectiveOriginLng,
-        maxDistanceMeters: radiusMetersStreamValue.value,
-      );
+      if (page <= 1) {
+        await _scheduleRepository.loadEventsPage(
+          showPastOnly: showHistoryStreamValue.value,
+          searchQuery: searchController.text,
+          confirmedOnly:
+              inviteFilterStreamValue.value == InviteFilter.confirmedOnly,
+          originLat: _effectiveOriginLat,
+          originLng: _effectiveOriginLng,
+          maxDistanceMeters: radiusMetersStreamValue.value,
+        );
+      } else {
+        await _scheduleRepository.loadNextEventsPage(
+          showPastOnly: showHistoryStreamValue.value,
+          searchQuery: searchController.text,
+          confirmedOnly:
+              inviteFilterStreamValue.value == InviteFilter.confirmedOnly,
+          originLat: _effectiveOriginLat,
+          originLng: _effectiveOriginLng,
+          maxDistanceMeters: radiusMetersStreamValue.value,
+        );
+      }
+      final result = _scheduleRepository.pagedEventsStreamValue.value;
+      if (result == null) {
+        _hasMore = false;
+        _setValue(hasMoreStreamValue, false);
+        return;
+      }
+
+      final loadedPage = _scheduleRepository.currentPagedEventsPage;
+      if (loadedPage <= 0) {
+        return;
+      }
 
       if (_isDisposed) return;
-      if (page == 1) {
+      if (loadedPage == 1) {
         _fetchedEvents
           ..clear()
           ..addAll(result.events);
@@ -230,7 +249,7 @@ class EventSearchScreenController
 
       _hasMore = result.hasMore;
       _setValue(hasMoreStreamValue, _hasMore);
-      _currentPage = page;
+      _currentPage = loadedPage;
       _applyFiltersAndPublish();
     } finally {
       _isFetching = false;
@@ -492,8 +511,36 @@ class EventSearchScreenController
       }
     }
 
-    return repository.userLocationStreamValue.value ??
+    return _resolveFreshLocationCoordinate(repository);
+  }
+
+  CityCoordinate? _resolveFreshLocationCoordinate(
+    UserLocationRepositoryContract repository,
+  ) {
+    final coordinate = repository.userLocationStreamValue.value ??
         repository.lastKnownLocationStreamValue.value;
+    if (coordinate == null) {
+      return null;
+    }
+
+    final capturedAt = repository.lastKnownCapturedAtStreamValue.value;
+    if (capturedAt == null) {
+      return coordinate;
+    }
+
+    Duration freshnessWindow;
+    try {
+      freshnessWindow =
+          _appDataRepository.appData.telemetryContextSettings.locationFreshness;
+    } on Object {
+      freshnessWindow = const Duration(minutes: 5);
+    }
+
+    if (DateTime.now().difference(capturedAt) > freshnessWindow) {
+      return null;
+    }
+
+    return coordinate;
   }
 
   CityCoordinate? _resolveTenantDefaultOriginCoordinate() {
@@ -555,7 +602,12 @@ class EventSearchScreenController
       return;
     }
     _eventsStreamSubscription = _scheduleRepository
-        .watchEventsStream(
+        .watchEventsSignal(
+      onDelta: (delta) {
+        if (delta.lastEventId != null && delta.lastEventId!.isNotEmpty) {
+          _lastEventStreamId = delta.lastEventId;
+        }
+      },
       searchQuery: searchController.text,
       confirmedOnly:
           inviteFilterStreamValue.value == InviteFilter.confirmedOnly,
@@ -566,10 +618,7 @@ class EventSearchScreenController
       showPastOnly: showHistoryStreamValue.value,
     )
         .listen(
-      (delta) {
-        if (delta.lastEventId != null && delta.lastEventId!.isNotEmpty) {
-          _lastEventStreamId = delta.lastEventId;
-        }
+      (_) {
         _refreshFromStream();
       },
       onError: (_) {
@@ -615,7 +664,6 @@ class EventSearchScreenController
     _userLocationSubscription?.cancel();
     _radiusSubscription?.cancel();
     _eventsStreamSubscription?.cancel();
-    displayedEventsStreamValue.dispose();
     isInitialLoadingStreamValue.dispose();
     isPageLoadingStreamValue.dispose();
     hasMoreStreamValue.dispose();

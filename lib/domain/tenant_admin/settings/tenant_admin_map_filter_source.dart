@@ -1,14 +1,36 @@
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_token_value.dart';
+
+typedef TenantAdminMapFilterSourcePrimString = String;
+typedef TenantAdminMapFilterSourcePrimInt = int;
+typedef TenantAdminMapFilterSourcePrimBool = bool;
+typedef TenantAdminMapFilterSourcePrimDouble = double;
+typedef TenantAdminMapFilterSourcePrimDateTime = DateTime;
+typedef TenantAdminMapFilterSourcePrimDynamic = dynamic;
+
 enum TenantAdminMapFilterSource {
-  accountProfile('account_profile', 'Conta'),
-  staticAsset('static_asset', 'Asset'),
-  event('event', 'Evento');
+  accountProfile(
+    TenantAdminTokenValue('account_profile'),
+    TenantAdminTokenValue('Conta'),
+  ),
+  staticAsset(
+    TenantAdminTokenValue('static_asset'),
+    TenantAdminTokenValue('Asset'),
+  ),
+  event(
+    TenantAdminTokenValue('event'),
+    TenantAdminTokenValue('Evento'),
+  );
 
-  const TenantAdminMapFilterSource(this.apiValue, this.label);
+  const TenantAdminMapFilterSource(this.apiValueValue, this.labelValue);
 
-  final String apiValue;
-  final String label;
+  final TenantAdminTokenValue apiValueValue;
+  final TenantAdminTokenValue labelValue;
 
-  static TenantAdminMapFilterSource? fromRaw(String? raw) {
+  TenantAdminMapFilterSourcePrimString get apiValue => apiValueValue.value;
+  TenantAdminMapFilterSourcePrimString get label => labelValue.value;
+
+  static TenantAdminMapFilterSource? fromRaw(
+      TenantAdminMapFilterSourcePrimString? raw) {
     final normalized = raw?.trim().toLowerCase();
     for (final candidate in TenantAdminMapFilterSource.values) {
       if (candidate.apiValue == normalized) {

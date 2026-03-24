@@ -8,6 +8,13 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
 import 'package:stream_value/core/stream_value.dart';
 
+typedef TenantAdminAccountProfilesRepoString = String;
+typedef TenantAdminAccountProfilesRepoInt = int;
+typedef TenantAdminAccountProfilesRepoBool = bool;
+typedef TenantAdminAccountProfilesRepoDouble = double;
+typedef TenantAdminAccountProfilesRepoDateTime = DateTime;
+typedef TenantAdminAccountProfilesRepoDynamic = dynamic;
+
 abstract class TenantAdminAccountProfilesRepositoryContract {
   static final Expando<_TenantAdminProfileTypesPaginationState>
       _profileTypesStateByRepository =
@@ -18,62 +25,69 @@ abstract class TenantAdminAccountProfilesRepositoryContract {
           _TenantAdminProfileTypesPaginationState();
 
   Future<List<TenantAdminAccountProfile>> fetchAccountProfiles({
-    String? accountId,
+    TenantAdminAccountProfilesRepoString? accountId,
   });
   Future<TenantAdminAccountProfile> fetchAccountProfile(
-      String accountProfileId);
+      TenantAdminAccountProfilesRepoString accountProfileId);
   Future<TenantAdminAccountProfile> createAccountProfile({
-    required String accountId,
-    required String profileType,
-    required String displayName,
+    required TenantAdminAccountProfilesRepoString accountId,
+    required TenantAdminAccountProfilesRepoString profileType,
+    required TenantAdminAccountProfilesRepoString displayName,
     TenantAdminLocation? location,
     List<TenantAdminTaxonomyTerm> taxonomyTerms = const [],
-    String? bio,
-    String? content,
-    String? avatarUrl,
-    String? coverUrl,
+    TenantAdminAccountProfilesRepoString? bio,
+    TenantAdminAccountProfilesRepoString? content,
+    TenantAdminAccountProfilesRepoString? avatarUrl,
+    TenantAdminAccountProfilesRepoString? coverUrl,
     TenantAdminMediaUpload? avatarUpload,
     TenantAdminMediaUpload? coverUpload,
   });
   Future<TenantAdminAccountProfile> updateAccountProfile({
-    required String accountProfileId,
-    String? profileType,
-    String? displayName,
-    String? slug,
+    required TenantAdminAccountProfilesRepoString accountProfileId,
+    TenantAdminAccountProfilesRepoString? profileType,
+    TenantAdminAccountProfilesRepoString? displayName,
+    TenantAdminAccountProfilesRepoString? slug,
     TenantAdminLocation? location,
     List<TenantAdminTaxonomyTerm>? taxonomyTerms,
-    String? bio,
-    String? content,
-    String? avatarUrl,
-    String? coverUrl,
+    TenantAdminAccountProfilesRepoString? bio,
+    TenantAdminAccountProfilesRepoString? content,
+    TenantAdminAccountProfilesRepoString? avatarUrl,
+    TenantAdminAccountProfilesRepoString? coverUrl,
     TenantAdminMediaUpload? avatarUpload,
     TenantAdminMediaUpload? coverUpload,
   });
-  Future<void> deleteAccountProfile(String accountProfileId);
+  Future<void> deleteAccountProfile(
+      TenantAdminAccountProfilesRepoString accountProfileId);
   Future<TenantAdminAccountProfile> restoreAccountProfile(
-      String accountProfileId);
-  Future<void> forceDeleteAccountProfile(String accountProfileId);
+      TenantAdminAccountProfilesRepoString accountProfileId);
+  Future<void> forceDeleteAccountProfile(
+      TenantAdminAccountProfilesRepoString accountProfileId);
   StreamValue<List<TenantAdminProfileTypeDefinition>?>
       get profileTypesStreamValue =>
           _profileTypesPaginationState.profileTypesStreamValue;
 
-  StreamValue<bool> get hasMoreProfileTypesStreamValue =>
-      _profileTypesPaginationState.hasMoreProfileTypesStreamValue;
+  StreamValue<TenantAdminAccountProfilesRepoBool>
+      get hasMoreProfileTypesStreamValue =>
+          _profileTypesPaginationState.hasMoreProfileTypesStreamValue;
 
-  StreamValue<bool> get isProfileTypesPageLoadingStreamValue =>
-      _profileTypesPaginationState.isProfileTypesPageLoadingStreamValue;
+  StreamValue<TenantAdminAccountProfilesRepoBool>
+      get isProfileTypesPageLoadingStreamValue =>
+          _profileTypesPaginationState.isProfileTypesPageLoadingStreamValue;
 
-  StreamValue<String?> get profileTypesErrorStreamValue =>
-      _profileTypesPaginationState.profileTypesErrorStreamValue;
+  StreamValue<TenantAdminAccountProfilesRepoString?>
+      get profileTypesErrorStreamValue =>
+          _profileTypesPaginationState.profileTypesErrorStreamValue;
 
-  Future<void> loadProfileTypes({int pageSize = 20}) async {
+  Future<void> loadProfileTypes(
+      {TenantAdminAccountProfilesRepoInt pageSize = 20}) async {
     await _waitForProfileTypesFetch();
     _resetProfileTypesPagination();
     profileTypesStreamValue.addValue(null);
     await _fetchProfileTypesPage(page: 1, pageSize: pageSize);
   }
 
-  Future<void> loadNextProfileTypesPage({int pageSize = 20}) async {
+  Future<void> loadNextProfileTypesPage(
+      {TenantAdminAccountProfilesRepoInt pageSize = 20}) async {
     if (_profileTypesPaginationState.isFetchingProfileTypesPage ||
         !_profileTypesPaginationState.hasMoreProfileTypes) {
       return;
@@ -82,6 +96,16 @@ abstract class TenantAdminAccountProfilesRepositoryContract {
       page: _profileTypesPaginationState.currentProfileTypesPage + 1,
       pageSize: pageSize,
     );
+  }
+
+  Future<void> loadAllProfileTypes(
+      {TenantAdminAccountProfilesRepoInt pageSize = 50}) async {
+    await loadProfileTypes(pageSize: pageSize);
+    var safetyCounter = 0;
+    while (hasMoreProfileTypesStreamValue.value && safetyCounter < 200) {
+      safetyCounter += 1;
+      await loadNextProfileTypesPage(pageSize: pageSize);
+    }
   }
 
   void resetProfileTypesState() {
@@ -93,19 +117,19 @@ abstract class TenantAdminAccountProfilesRepositoryContract {
   Future<List<TenantAdminProfileTypeDefinition>> fetchProfileTypes();
   Future<TenantAdminPagedResult<TenantAdminProfileTypeDefinition>>
       fetchProfileTypesPage({
-    required int page,
-    required int pageSize,
+    required TenantAdminAccountProfilesRepoInt page,
+    required TenantAdminAccountProfilesRepoInt pageSize,
   }) async {
     final profileTypes = await fetchProfileTypes();
     if (page <= 0 || pageSize <= 0) {
-      return const TenantAdminPagedResult<TenantAdminProfileTypeDefinition>(
+      return TenantAdminPagedResult<TenantAdminProfileTypeDefinition>(
         items: <TenantAdminProfileTypeDefinition>[],
         hasMore: false,
       );
     }
     final startIndex = (page - 1) * pageSize;
     if (startIndex >= profileTypes.length) {
-      return const TenantAdminPagedResult<TenantAdminProfileTypeDefinition>(
+      return TenantAdminPagedResult<TenantAdminProfileTypeDefinition>(
         items: <TenantAdminProfileTypeDefinition>[],
         hasMore: false,
       );
@@ -118,19 +142,19 @@ abstract class TenantAdminAccountProfilesRepositoryContract {
   }
 
   Future<TenantAdminProfileTypeDefinition> createProfileType({
-    required String type,
-    required String label,
-    List<String> allowedTaxonomies,
+    required TenantAdminAccountProfilesRepoString type,
+    required TenantAdminAccountProfilesRepoString label,
+    List<TenantAdminAccountProfilesRepoString> allowedTaxonomies,
     required TenantAdminProfileTypeCapabilities capabilities,
   });
   Future<TenantAdminProfileTypeDefinition> updateProfileType({
-    required String type,
-    String? newType,
-    String? label,
-    List<String>? allowedTaxonomies,
+    required TenantAdminAccountProfilesRepoString type,
+    TenantAdminAccountProfilesRepoString? newType,
+    TenantAdminAccountProfilesRepoString? label,
+    List<TenantAdminAccountProfilesRepoString>? allowedTaxonomies,
     TenantAdminProfileTypeCapabilities? capabilities,
   });
-  Future<void> deleteProfileType(String type);
+  Future<void> deleteProfileType(TenantAdminAccountProfilesRepoString type);
 
   Future<void> _waitForProfileTypesFetch() async {
     while (_profileTypesPaginationState.isFetchingProfileTypesPage) {
@@ -139,8 +163,8 @@ abstract class TenantAdminAccountProfilesRepositoryContract {
   }
 
   Future<void> _fetchProfileTypesPage({
-    required int page,
-    required int pageSize,
+    required TenantAdminAccountProfilesRepoInt page,
+    required TenantAdminAccountProfilesRepoInt pageSize,
   }) async {
     if (_profileTypesPaginationState.isFetchingProfileTypesPage) return;
     if (page > 1 && !_profileTypesPaginationState.hasMoreProfileTypes) return;
@@ -193,10 +217,10 @@ abstract class TenantAdminAccountProfilesRepositoryContract {
   }
 }
 
-extension TenantAdminAccountProfilesRepositoryLookup on
-    TenantAdminAccountProfilesRepositoryContract {
+extension TenantAdminAccountProfilesRepositoryLookup
+    on TenantAdminAccountProfilesRepositoryContract {
   Future<TenantAdminProfileTypeDefinition> fetchProfileType(
-    String profileType,
+    TenantAdminAccountProfilesRepoString profileType,
   ) async {
     final normalizedType = profileType.trim();
     if (normalizedType.isEmpty) {
@@ -234,19 +258,23 @@ mixin TenantAdminProfileTypesPaginationMixin
           _mixinProfileTypesState.profileTypesStreamValue;
 
   @override
-  StreamValue<bool> get hasMoreProfileTypesStreamValue =>
-      _mixinProfileTypesState.hasMoreProfileTypesStreamValue;
+  StreamValue<TenantAdminAccountProfilesRepoBool>
+      get hasMoreProfileTypesStreamValue =>
+          _mixinProfileTypesState.hasMoreProfileTypesStreamValue;
 
   @override
-  StreamValue<bool> get isProfileTypesPageLoadingStreamValue =>
-      _mixinProfileTypesState.isProfileTypesPageLoadingStreamValue;
+  StreamValue<TenantAdminAccountProfilesRepoBool>
+      get isProfileTypesPageLoadingStreamValue =>
+          _mixinProfileTypesState.isProfileTypesPageLoadingStreamValue;
 
   @override
-  StreamValue<String?> get profileTypesErrorStreamValue =>
-      _mixinProfileTypesState.profileTypesErrorStreamValue;
+  StreamValue<TenantAdminAccountProfilesRepoString?>
+      get profileTypesErrorStreamValue =>
+          _mixinProfileTypesState.profileTypesErrorStreamValue;
 
   @override
-  Future<void> loadProfileTypes({int pageSize = 20}) async {
+  Future<void> loadProfileTypes(
+      {TenantAdminAccountProfilesRepoInt pageSize = 20}) async {
     await _waitForProfileTypesFetchMixin();
     _resetProfileTypesPaginationMixin();
     profileTypesStreamValue.addValue(null);
@@ -254,7 +282,8 @@ mixin TenantAdminProfileTypesPaginationMixin
   }
 
   @override
-  Future<void> loadNextProfileTypesPage({int pageSize = 20}) async {
+  Future<void> loadNextProfileTypesPage(
+      {TenantAdminAccountProfilesRepoInt pageSize = 20}) async {
     if (_mixinProfileTypesState.isFetchingProfileTypesPage ||
         !_mixinProfileTypesState.hasMoreProfileTypes) {
       return;
@@ -263,6 +292,17 @@ mixin TenantAdminProfileTypesPaginationMixin
       page: _mixinProfileTypesState.currentProfileTypesPage + 1,
       pageSize: pageSize,
     );
+  }
+
+  @override
+  Future<void> loadAllProfileTypes(
+      {TenantAdminAccountProfilesRepoInt pageSize = 50}) async {
+    await loadProfileTypes(pageSize: pageSize);
+    var safetyCounter = 0;
+    while (hasMoreProfileTypesStreamValue.value && safetyCounter < 200) {
+      safetyCounter += 1;
+      await loadNextProfileTypesPage(pageSize: pageSize);
+    }
   }
 
   @override
@@ -279,8 +319,8 @@ mixin TenantAdminProfileTypesPaginationMixin
   }
 
   Future<void> _fetchProfileTypesPageMixin({
-    required int page,
-    required int pageSize,
+    required TenantAdminAccountProfilesRepoInt page,
+    required TenantAdminAccountProfilesRepoInt pageSize,
   }) async {
     if (_mixinProfileTypesState.isFetchingProfileTypesPage) return;
     if (page > 1 && !_mixinProfileTypesState.hasMoreProfileTypes) return;
@@ -339,13 +379,16 @@ class _TenantAdminProfileTypesPaginationState {
   final StreamValue<List<TenantAdminProfileTypeDefinition>?>
       profileTypesStreamValue =
       StreamValue<List<TenantAdminProfileTypeDefinition>?>();
-  final StreamValue<bool> hasMoreProfileTypesStreamValue =
-      StreamValue<bool>(defaultValue: true);
-  final StreamValue<bool> isProfileTypesPageLoadingStreamValue =
-      StreamValue<bool>(defaultValue: false);
-  final StreamValue<String?> profileTypesErrorStreamValue =
-      StreamValue<String?>();
-  bool isFetchingProfileTypesPage = false;
-  bool hasMoreProfileTypes = true;
-  int currentProfileTypesPage = 0;
+  final StreamValue<TenantAdminAccountProfilesRepoBool>
+      hasMoreProfileTypesStreamValue =
+      StreamValue<TenantAdminAccountProfilesRepoBool>(defaultValue: true);
+  final StreamValue<TenantAdminAccountProfilesRepoBool>
+      isProfileTypesPageLoadingStreamValue =
+      StreamValue<TenantAdminAccountProfilesRepoBool>(defaultValue: false);
+  final StreamValue<TenantAdminAccountProfilesRepoString?>
+      profileTypesErrorStreamValue =
+      StreamValue<TenantAdminAccountProfilesRepoString?>();
+  TenantAdminAccountProfilesRepoBool isFetchingProfileTypesPage = false;
+  TenantAdminAccountProfilesRepoBool hasMoreProfileTypes = true;
+  TenantAdminAccountProfilesRepoInt currentProfileTypesPage = 0;
 }

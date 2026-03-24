@@ -44,6 +44,7 @@ class TenantHomeController implements Disposable {
 
   StreamSubscription? _confirmedEventsSubscription;
   StreamSubscription? _userLocationSubscription;
+  StreamSubscription? _userLocationPhaseSubscription;
   bool _isDisposed = false;
   bool _initialized = false;
 
@@ -113,10 +114,27 @@ class TenantHomeController implements Disposable {
         unawaited(_updateUserAddress(coordinate));
       },
     );
+
+    _userLocationPhaseSubscription?.cancel();
+    _userLocationPhaseSubscription =
+        repo.locationResolutionPhaseStreamValue.stream.listen((phase) {
+      if (_isDisposed) return;
+      if (phase != LocationResolutionPhase.resolved) {
+        userAddressStreamValue.addValue(null);
+        return;
+      }
+      unawaited(_updateUserAddress(repo.userLocationStreamValue.value));
+    });
   }
 
   Future<void> _updateUserAddress(CityCoordinate? coordinate) async {
     if (_isDisposed) return;
+    final phase =
+        _userLocationRepository?.locationResolutionPhaseStreamValue.value;
+    if (phase != null && phase != LocationResolutionPhase.resolved) {
+      userAddressStreamValue.addValue(null);
+      return;
+    }
     if (coordinate == null) {
       if (_isDisposed) return;
       userAddressStreamValue.addValue(null);
@@ -228,6 +246,7 @@ class TenantHomeController implements Disposable {
     _isDisposed = true;
     _confirmedEventsSubscription?.cancel();
     _userLocationSubscription?.cancel();
+    _userLocationPhaseSubscription?.cancel();
     _scrollController.dispose();
     myEventsFilteredStreamValue.dispose();
     userAddressStreamValue.dispose();

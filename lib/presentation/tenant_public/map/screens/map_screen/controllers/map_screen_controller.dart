@@ -58,7 +58,7 @@ class MapScreenController implements Disposable {
   StreamValue<CityCoordinate?> get userLocationStreamValue =>
       _userLocationRepository.userLocationStreamValue;
 
-  StreamValue<List<CityPoiModel>> get filteredPoisStreamValue =>
+  StreamValue<List<CityPoiModel>?> get filteredPoisStreamValue =>
       _poiRepository.filteredPoisStreamValue;
 
   StreamValue<CityPoiModel?> get selectedPoiStreamValue =>
@@ -90,7 +90,7 @@ class MapScreenController implements Disposable {
   String? _activeSource;
   Set<String> _activeTypes = <String>{};
   StreamSubscription<MapEvent>? _mapEventSubscription;
-  StreamSubscription<List<CityPoiModel>>? _filteredPoisSubscription;
+  StreamSubscription<List<CityPoiModel>?>? _filteredPoisSubscription;
   int _poiRequestSequence = 0;
   bool _filterInteractionLocked = false;
 
@@ -117,7 +117,8 @@ class MapScreenController implements Disposable {
     _clampPoiDeckIndex(filteredPoisStreamValue.value);
   }
 
-  void _clampPoiDeckIndex(List<CityPoiModel> pois) {
+  void _clampPoiDeckIndex(List<CityPoiModel>? poisOrNull) {
+    final pois = poisOrNull ?? const <CityPoiModel>[];
     if (pois.isEmpty) {
       if (poiDeckIndexStreamValue.value != 0) {
         poiDeckIndexStreamValue.addValue(0);
@@ -266,7 +267,7 @@ class MapScreenController implements Disposable {
     _setLoadingState();
 
     try {
-      await _poiRepository.fetchPoints(resolvedQuery);
+      await _poiRepository.refreshPoints(resolvedQuery);
       if (!_isLatestPoiRequest(requestSequence)) {
         return;
       }
@@ -328,10 +329,12 @@ class MapScreenController implements Disposable {
     }
 
     try {
-      final stackItems = await _poiRepository.fetchStackItems(
+      await _poiRepository.loadStackItems(
         stackKey: poi.stackKey,
         query: _currentQuery,
       );
+      final stackItems =
+          _poiRepository.stackItemsStreamValue.value ?? const <CityPoiModel>[];
       if (stackItems.isEmpty) {
         selectPoi(poi);
         return;

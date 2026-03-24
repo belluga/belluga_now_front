@@ -1,5 +1,4 @@
 import 'package:belluga_now/domain/theme_data_settings/color_scheme_data.dart';
-import 'package:belluga_now/domain/theme_data_settings/value_objects/brightness_value.dart';
 import 'package:flutter/material.dart';
 
 class ThemeDataSettings {
@@ -116,38 +115,6 @@ class ThemeDataSettings {
           borderRadius: BorderRadius.circular(28),
         ),
       ),
-    );
-  }
-
-  factory ThemeDataSettings.fromPrimitives({
-    required String? brightnessDefault,
-    String? primarySeedColor,
-    String? secondarySeedColor,
-  }) {
-    final brightnessDefaultValue = BrightnessValue()
-      ..parse(brightnessDefault);
-
-    final resolvedPrimarySeedColor = primarySeedColor ?? '#4FA0E3';
-    final resolvedSecondarySeedColor = secondarySeedColor ?? '#E80D5D';
-
-    final darkSchemeData = ColorSchemeData.fromPrimitives(
-      brightness: 'dark',
-      primarySeedColor: resolvedPrimarySeedColor,
-      secondarySeedColor: resolvedSecondarySeedColor,
-    );
-
-    final lightSchemeData = ColorSchemeData.fromPrimitives(
-      brightness: 'light',
-      primarySeedColor: resolvedPrimarySeedColor,
-      secondarySeedColor: resolvedSecondarySeedColor,
-    );
-
-    return ThemeDataSettings(
-      darkSchemeData: darkSchemeData,
-      lightSchemeData: lightSchemeData,
-      brightnessDefault: brightnessDefaultValue.value == Brightness.dark
-          ? Brightness.dark
-          : Brightness.light,
     );
   }
 

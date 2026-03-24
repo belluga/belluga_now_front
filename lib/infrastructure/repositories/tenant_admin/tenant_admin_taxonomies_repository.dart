@@ -6,14 +6,13 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_definition.dart';
 import 'package:belluga_now/infrastructure/dal/dao/tenant_admin/tenant_admin_taxonomies_request_encoder.dart';
 import 'package:belluga_now/infrastructure/dal/dto/tenant_admin/tenant_admin_taxonomies_response_decoder.dart';
-import 'package:belluga_now/infrastructure/dal/dto/mappers/tenant_admin_dto_mapper.dart';
 import 'package:belluga_now/infrastructure/repositories/tenant_admin/tenant_admin_pagination_utils.dart';
 import 'package:belluga_now/infrastructure/repositories/tenant_admin/support/tenant_admin_validation_failure_resolver.dart';
 import 'package:dio/dio.dart';
 import 'package:get_it/get_it.dart';
 
 class TenantAdminTaxonomiesRepository
-    with TenantAdminTaxonomiesPaginationMixin, TenantAdminDtoMapper
+    with TenantAdminTaxonomiesPaginationMixin
     implements TenantAdminTaxonomiesRepositoryContract {
   TenantAdminTaxonomiesRepository({
     Dio? dio,
@@ -77,7 +76,7 @@ class TenantAdminTaxonomiesRepository
       );
       final dtos = _responseDecoder.decodeTaxonomyList(response.data);
       return TenantAdminPagedResult<TenantAdminTaxonomyDefinition>(
-        items: dtos.map(mapTenantAdminTaxonomyDto).toList(growable: false),
+        items: dtos.map((dto) => dto.toDomain()).toList(growable: false),
         hasMore: tenantAdminResolveHasMore(
           rawResponse: response.data,
           requestedPage: page,
@@ -109,7 +108,7 @@ class TenantAdminTaxonomiesRepository
         options: Options(headers: _buildHeaders()),
       );
       final dto = _responseDecoder.decodeTaxonomyItem(response.data);
-      return mapTenantAdminTaxonomyDto(dto);
+      return dto.toDomain();
     } on DioException catch (error) {
       throw _wrapError(error, 'create taxonomy');
     }
@@ -138,7 +137,7 @@ class TenantAdminTaxonomiesRepository
         options: Options(headers: _buildHeaders()),
       );
       final dto = _responseDecoder.decodeTaxonomyItem(response.data);
-      return mapTenantAdminTaxonomyDto(dto);
+      return dto.toDomain();
     } on DioException catch (error) {
       throw _wrapError(error, 'update taxonomy');
     }
@@ -197,9 +196,8 @@ class TenantAdminTaxonomiesRepository
       );
       final dtos = _responseDecoder.decodeTermList(response.data);
       return TenantAdminPagedResult<TenantAdminTaxonomyTermDefinition>(
-        items: dtos
-            .map(mapTenantAdminTaxonomyTermDefinitionDto)
-            .toList(growable: false),
+        items:
+            dtos.map((dto) => dto.toDomain()).toList(growable: false),
         hasMore: tenantAdminResolveHasMore(
           rawResponse: response.data,
           requestedPage: page,
@@ -226,7 +224,7 @@ class TenantAdminTaxonomiesRepository
         options: Options(headers: _buildHeaders()),
       );
       final dto = _responseDecoder.decodeTermItem(response.data);
-      return mapTenantAdminTaxonomyTermDefinitionDto(dto);
+      return dto.toDomain();
     } on DioException catch (error) {
       throw _wrapError(error, 'create taxonomy term');
     }
@@ -250,7 +248,7 @@ class TenantAdminTaxonomiesRepository
         options: Options(headers: _buildHeaders()),
       );
       final dto = _responseDecoder.decodeTermItem(response.data);
-      return mapTenantAdminTaxonomyTermDefinitionDto(dto);
+      return dto.toDomain();
     } on DioException catch (error) {
       throw _wrapError(error, 'update taxonomy term');
     }

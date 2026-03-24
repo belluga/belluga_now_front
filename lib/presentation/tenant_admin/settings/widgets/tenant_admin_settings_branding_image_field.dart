@@ -49,7 +49,7 @@ class TenantAdminSettingsBrandingImageField extends StatelessWidget {
         return StreamValueBuilder<String?>(
           streamValue: controller.brandingUrlStream(slot),
           builder: (context, remoteUrl) {
-            final hasRemote = remoteUrl != null && remoteUrl.trim().isNotEmpty;
+            final hasRemote = remoteUrl?.trim().isNotEmpty ?? false;
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -65,32 +65,33 @@ class TenantAdminSettingsBrandingImageField extends StatelessWidget {
                     height: previewHeight,
                     color:
                         Theme.of(context).colorScheme.surfaceContainerHighest,
-                    child: localFile != null
-                        ? TenantAdminXFilePreview(
-                            file: localFile,
-                            width: previewWidth,
-                            height: previewHeight,
-                            fit: BoxFit.cover,
-                          )
-                        : hasRemote
-                            ? Image.network(
-                                remoteUrl,
-                                width: previewWidth,
-                                height: previewHeight,
-                                fit: BoxFit.cover,
-                                errorBuilder: (_, __, ___) => Icon(
-                                  Icons.broken_image_outlined,
-                                  color: Theme.of(context)
-                                      .colorScheme
-                                      .onSurfaceVariant,
-                                ),
-                              )
-                            : Icon(
-                                Icons.image_outlined,
+                    child: switch (localFile) {
+                      final file? => TenantAdminXFilePreview(
+                          file: file,
+                          width: previewWidth,
+                          height: previewHeight,
+                          fit: BoxFit.cover,
+                        ),
+                      null => hasRemote
+                          ? Image.network(
+                              remoteUrl!,
+                              width: previewWidth,
+                              height: previewHeight,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => Icon(
+                                Icons.broken_image_outlined,
                                 color: Theme.of(context)
                                     .colorScheme
                                     .onSurfaceVariant,
                               ),
+                            )
+                          : Icon(
+                              Icons.image_outlined,
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurfaceVariant,
+                            ),
+                    },
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -103,7 +104,7 @@ class TenantAdminSettingsBrandingImageField extends StatelessWidget {
                       icon: const Icon(Icons.upload_outlined),
                       label: const Text('Selecionar'),
                     ),
-                    if (localFile != null)
+                    if (localFile case final _?)
                       TextButton.icon(
                         onPressed:
                             isBusy ? null : () => onClearLocalSelection(slot),

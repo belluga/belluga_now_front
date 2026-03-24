@@ -17,8 +17,8 @@ import 'package:stream_value/core/stream_value.dart';
 
 class _FakePoiRepository implements PoiRepositoryContract {
   @override
-  final StreamValue<List<CityPoiModel>> filteredPoisStreamValue =
-      StreamValue<List<CityPoiModel>>(defaultValue: const []);
+  final StreamValue<List<CityPoiModel>?> filteredPoisStreamValue =
+      StreamValue<List<CityPoiModel>?>(defaultValue: null);
 
   @override
   final StreamValue<PoiFilterMode> filterModeStreamValue =
@@ -35,6 +35,9 @@ class _FakePoiRepository implements PoiRepositoryContract {
   @override
   final StreamValue<CityPoiModel?> selectedPoiStreamValue =
       StreamValue<CityPoiModel?>();
+  @override
+  final StreamValue<List<CityPoiModel>?> stackItemsStreamValue =
+      StreamValue<List<CityPoiModel>?>(defaultValue: null);
 
   @override
   CityCoordinate get defaultCenter => throw UnimplementedError();
@@ -71,11 +74,29 @@ class _FakePoiRepository implements PoiRepositoryContract {
       const <CityPoiModel>[];
 
   @override
+  Future<void> refreshPoints(PoiQuery query) async {
+    final points = await fetchPoints(query);
+    filteredPoisStreamValue.addValue(points);
+  }
+
+  @override
   Future<List<CityPoiModel>> fetchStackItems({
     required String stackKey,
     required PoiQuery query,
   }) async =>
       const <CityPoiModel>[];
+
+  @override
+  Future<void> loadStackItems({
+    required String stackKey,
+    required PoiQuery query,
+  }) async {
+    final stackItems = await fetchStackItems(
+      stackKey: stackKey,
+      query: query,
+    );
+    stackItemsStreamValue.addValue(stackItems);
+  }
 
   @override
   void selectPoi(CityPoiModel? poi) {
@@ -88,6 +109,7 @@ class _FakePoiRepository implements PoiRepositoryContract {
     filterOptionsStreamValue.dispose();
     mainFilterOptionsStreamValue.dispose();
     selectedPoiStreamValue.dispose();
+    stackItemsStreamValue.dispose();
   }
 }
 
@@ -111,6 +133,13 @@ class _FakeUserLocationRepository implements UserLocationRepositoryContract {
   @override
   final StreamValue<String?> lastKnownAddressStreamValue =
       StreamValue<String?>();
+
+  @override
+  @override
+  final StreamValue<LocationResolutionPhase>
+      locationResolutionPhaseStreamValue = StreamValue<LocationResolutionPhase>(
+    defaultValue: LocationResolutionPhase.unknown,
+  );
 
   @override
   Future<void> ensureLoaded() async {}

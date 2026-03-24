@@ -1,15 +1,21 @@
 part of '../tenant_admin_event.dart';
 
 class TenantAdminEventParty {
-  const TenantAdminEventParty({
-    required this.partyType,
-    required this.partyRefId,
-    required this.canEdit,
-    this.metadata,
-  });
+  TenantAdminEventParty({
+    required this.partyTypeValue,
+    required this.partyRefIdValue,
+    required this.canEditValue,
+    TenantAdminDynamicMapValue? metadataValue,
+  }) : metadataValue = metadataValue ?? TenantAdminDynamicMapValue();
 
-  final String partyType;
-  final String partyRefId;
-  final bool canEdit;
-  final Map<String, dynamic>? metadata;
+  final TenantAdminRequiredTextValue partyTypeValue;
+  final TenantAdminRequiredTextValue partyRefIdValue;
+  final TenantAdminFlagValue canEditValue;
+  final TenantAdminDynamicMapValue metadataValue;
+
+  String get partyType => partyTypeValue.value;
+  String get partyRefId => partyRefIdValue.value;
+  bool get canEdit => canEditValue.value;
+  Map<String, dynamic>? get metadata =>
+      metadataValue.isEmpty ? null : metadataValue.value;
 }

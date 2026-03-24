@@ -1,3 +1,10 @@
+typedef LandlordTenantOptionPrimString = String;
+typedef LandlordTenantOptionPrimInt = int;
+typedef LandlordTenantOptionPrimBool = bool;
+typedef LandlordTenantOptionPrimDouble = double;
+typedef LandlordTenantOptionPrimDateTime = DateTime;
+typedef LandlordTenantOptionPrimDynamic = dynamic;
+
 class LandlordTenantOption {
   const LandlordTenantOption({
     required this.id,
@@ -5,12 +12,12 @@ class LandlordTenantOption {
     required this.mainDomain,
   });
 
-  final String id;
-  final String name;
-  final String mainDomain;
+  final LandlordTenantOptionPrimString id;
+  final LandlordTenantOptionPrimString name;
+  final LandlordTenantOptionPrimString mainDomain;
 
   @override
-  bool operator ==(Object other) {
+  LandlordTenantOptionPrimBool operator ==(Object other) {
     if (identical(this, other)) return true;
     return other is LandlordTenantOption &&
         other.id == id &&
@@ -19,5 +26,5 @@ class LandlordTenantOption {
   }
 
   @override
-  int get hashCode => Object.hash(id, name, mainDomain);
+  LandlordTenantOptionPrimInt get hashCode => Object.hash(id, name, mainDomain);
 }

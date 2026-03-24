@@ -1,12 +1,19 @@
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_required_text_value.dart';
 
+typedef TenantAdminFirebaseSettingsPrimString = String;
+typedef TenantAdminFirebaseSettingsPrimInt = int;
+typedef TenantAdminFirebaseSettingsPrimBool = bool;
+typedef TenantAdminFirebaseSettingsPrimDouble = double;
+typedef TenantAdminFirebaseSettingsPrimDateTime = DateTime;
+typedef TenantAdminFirebaseSettingsPrimDynamic = dynamic;
+
 class TenantAdminFirebaseSettings {
   TenantAdminFirebaseSettings({
-    required String apiKey,
-    required String appId,
-    required String projectId,
-    required String messagingSenderId,
-    required String storageBucket,
+    required TenantAdminFirebaseSettingsPrimString apiKey,
+    required TenantAdminFirebaseSettingsPrimString appId,
+    required TenantAdminFirebaseSettingsPrimString projectId,
+    required TenantAdminFirebaseSettingsPrimString messagingSenderId,
+    required TenantAdminFirebaseSettingsPrimString storageBucket,
   })  : apiKeyValue = _buildRequiredTextValue(apiKey),
         appIdValue = _buildRequiredTextValue(appId),
         projectIdValue = _buildRequiredTextValue(projectId),
@@ -19,13 +26,16 @@ class TenantAdminFirebaseSettings {
   final TenantAdminRequiredTextValue messagingSenderIdValue;
   final TenantAdminRequiredTextValue storageBucketValue;
 
-  String get apiKey => apiKeyValue.value;
-  String get appId => appIdValue.value;
-  String get projectId => projectIdValue.value;
-  String get messagingSenderId => messagingSenderIdValue.value;
-  String get storageBucket => storageBucketValue.value;
+  TenantAdminFirebaseSettingsPrimString get apiKey => apiKeyValue.value;
+  TenantAdminFirebaseSettingsPrimString get appId => appIdValue.value;
+  TenantAdminFirebaseSettingsPrimString get projectId => projectIdValue.value;
+  TenantAdminFirebaseSettingsPrimString get messagingSenderId =>
+      messagingSenderIdValue.value;
+  TenantAdminFirebaseSettingsPrimString get storageBucket =>
+      storageBucketValue.value;
 
-  Map<String, dynamic> toJson() {
+  Map<TenantAdminFirebaseSettingsPrimString,
+      TenantAdminFirebaseSettingsPrimDynamic> toJson() {
     return {
       'apiKey': apiKey,
       'appId': appId,
@@ -35,7 +45,8 @@ class TenantAdminFirebaseSettings {
     };
   }
 
-  static TenantAdminRequiredTextValue _buildRequiredTextValue(String raw) {
+  static TenantAdminRequiredTextValue _buildRequiredTextValue(
+      TenantAdminFirebaseSettingsPrimString raw) {
     final value = TenantAdminRequiredTextValue()..parse(raw);
     return value;
   }

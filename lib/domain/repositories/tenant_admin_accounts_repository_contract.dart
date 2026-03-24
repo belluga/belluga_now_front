@@ -14,6 +14,13 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart'
 import 'package:belluga_now/domain/repositories/tenant_admin_loaded_account_watch.dart';
 import 'package:stream_value/core/stream_value.dart';
 
+typedef TenantAdminAccountsRepositoryContractPrimString = String;
+typedef TenantAdminAccountsRepositoryContractPrimInt = int;
+typedef TenantAdminAccountsRepositoryContractPrimBool = bool;
+typedef TenantAdminAccountsRepositoryContractPrimDouble = double;
+typedef TenantAdminAccountsRepositoryContractPrimDateTime = DateTime;
+typedef TenantAdminAccountsRepositoryContractPrimDynamic = dynamic;
+
 abstract class TenantAdminAccountsRepositoryContract {
   static final Expando<_TenantAdminAccountsPaginationState>
       _paginationStateByRepository =
@@ -26,19 +33,21 @@ abstract class TenantAdminAccountsRepositoryContract {
   StreamValue<List<TenantAdminAccount>?> get accountsStreamValue =>
       _paginationState.accountsStreamValue;
 
-  StreamValue<bool> get hasMoreAccountsStreamValue =>
-      _paginationState.hasMoreAccountsStreamValue;
+  StreamValue<TenantAdminAccountsRepositoryContractPrimBool>
+      get hasMoreAccountsStreamValue =>
+          _paginationState.hasMoreAccountsStreamValue;
 
-  StreamValue<bool> get isAccountsPageLoadingStreamValue =>
-      _paginationState.isAccountsPageLoadingStreamValue;
+  StreamValue<TenantAdminAccountsRepositoryContractPrimBool>
+      get isAccountsPageLoadingStreamValue =>
+          _paginationState.isAccountsPageLoadingStreamValue;
 
-  StreamValue<String?> get accountsErrorStreamValue =>
-      _paginationState.accountsErrorStreamValue;
+  StreamValue<TenantAdminAccountsRepositoryContractPrimString?>
+      get accountsErrorStreamValue => _paginationState.accountsErrorStreamValue;
 
   Future<void> loadAccounts({
-    int pageSize = 20,
+    TenantAdminAccountsRepositoryContractPrimInt pageSize = 20,
     TenantAdminOwnershipState? ownershipState,
-    String? searchQuery,
+    TenantAdminAccountsRepositoryContractPrimString? searchQuery,
   }) async {
     await _waitForAccountsFetch();
     _resetAccountsPagination();
@@ -52,9 +61,9 @@ abstract class TenantAdminAccountsRepositoryContract {
   }
 
   Future<void> loadNextAccountsPage({
-    int pageSize = 20,
+    TenantAdminAccountsRepositoryContractPrimInt pageSize = 20,
     TenantAdminOwnershipState? ownershipState,
-    String? searchQuery,
+    TenantAdminAccountsRepositoryContractPrimString? searchQuery,
   }) async {
     if (_paginationState.isFetchingAccountsPage ||
         !_paginationState.hasMoreAccounts) {
@@ -76,10 +85,10 @@ abstract class TenantAdminAccountsRepositoryContract {
 
   Future<List<TenantAdminAccount>> fetchAccounts();
   Future<TenantAdminPagedAccountsResult> fetchAccountsPage({
-    required int page,
-    required int pageSize,
+    required TenantAdminAccountsRepositoryContractPrimInt page,
+    required TenantAdminAccountsRepositoryContractPrimInt pageSize,
     TenantAdminOwnershipState? ownershipState,
-    String? searchQuery,
+    TenantAdminAccountsRepositoryContractPrimString? searchQuery,
   }) async {
     final accounts = await fetchAccounts();
     final filteredByOwnership = ownershipState == null
@@ -98,14 +107,14 @@ abstract class TenantAdminAccountsRepositoryContract {
                     .contains(normalizedSearch);
           }).toList(growable: false);
     if (page <= 0 || pageSize <= 0) {
-      return const TenantAdminPagedAccountsResult(
+      return TenantAdminPagedAccountsResult(
         accounts: <TenantAdminAccount>[],
         hasMore: false,
       );
     }
     final startIndex = (page - 1) * pageSize;
     if (startIndex >= filteredAccounts.length) {
-      return const TenantAdminPagedAccountsResult(
+      return TenantAdminPagedAccountsResult(
         accounts: <TenantAdminAccount>[],
         hasMore: false,
       );
@@ -117,10 +126,11 @@ abstract class TenantAdminAccountsRepositoryContract {
     );
   }
 
-  Future<TenantAdminAccount> fetchAccountBySlug(String accountSlug);
+  Future<TenantAdminAccount> fetchAccountBySlug(
+      TenantAdminAccountsRepositoryContractPrimString accountSlug);
   TenantAdminAccount? findLoadedAccount({
-    String? accountId,
-    String? accountSlug,
+    TenantAdminAccountsRepositoryContractPrimString? accountId,
+    TenantAdminAccountsRepositoryContractPrimString? accountSlug,
   }) {
     final loadedAccounts = accountsStreamValue.value;
     if (loadedAccounts == null || loadedAccounts.isEmpty) {
@@ -146,8 +156,8 @@ abstract class TenantAdminAccountsRepositoryContract {
   }
 
   TenantAdminLoadedAccountWatch watchLoadedAccount({
-    String? accountId,
-    String? accountSlug,
+    TenantAdminAccountsRepositoryContractPrimString? accountId,
+    TenantAdminAccountsRepositoryContractPrimString? accountSlug,
   }) {
     final normalizedId = accountId?.trim();
     final normalizedSlug = accountSlug?.trim();
@@ -174,32 +184,35 @@ abstract class TenantAdminAccountsRepositoryContract {
   }
 
   Future<TenantAdminAccount> createAccount({
-    required String name,
+    required TenantAdminAccountsRepositoryContractPrimString name,
     TenantAdminDocument? document,
     required TenantAdminOwnershipState ownershipState,
-    String? organizationId,
+    TenantAdminAccountsRepositoryContractPrimString? organizationId,
   });
   Future<TenantAdminAccountOnboardingResult> createAccountOnboarding({
-    required String name,
+    required TenantAdminAccountsRepositoryContractPrimString name,
     required TenantAdminOwnershipState ownershipState,
-    required String profileType,
+    required TenantAdminAccountsRepositoryContractPrimString profileType,
     TenantAdminLocation? location,
     List<TenantAdminTaxonomyTerm> taxonomyTerms = const [],
-    String? bio,
-    String? content,
+    TenantAdminAccountsRepositoryContractPrimString? bio,
+    TenantAdminAccountsRepositoryContractPrimString? content,
     TenantAdminMediaUpload? avatarUpload,
     TenantAdminMediaUpload? coverUpload,
   });
   Future<TenantAdminAccount> updateAccount({
-    required String accountSlug,
-    String? name,
-    String? slug,
+    required TenantAdminAccountsRepositoryContractPrimString accountSlug,
+    TenantAdminAccountsRepositoryContractPrimString? name,
+    TenantAdminAccountsRepositoryContractPrimString? slug,
     TenantAdminDocument? document,
     TenantAdminOwnershipState? ownershipState,
   });
-  Future<void> deleteAccount(String accountSlug);
-  Future<TenantAdminAccount> restoreAccount(String accountSlug);
-  Future<void> forceDeleteAccount(String accountSlug);
+  Future<void> deleteAccount(
+      TenantAdminAccountsRepositoryContractPrimString accountSlug);
+  Future<TenantAdminAccount> restoreAccount(
+      TenantAdminAccountsRepositoryContractPrimString accountSlug);
+  Future<void> forceDeleteAccount(
+      TenantAdminAccountsRepositoryContractPrimString accountSlug);
 
   Future<void> _waitForAccountsFetch() async {
     while (_paginationState.isFetchingAccountsPage) {
@@ -208,10 +221,10 @@ abstract class TenantAdminAccountsRepositoryContract {
   }
 
   Future<void> _fetchAccountsPage({
-    required int page,
-    required int pageSize,
+    required TenantAdminAccountsRepositoryContractPrimInt page,
+    required TenantAdminAccountsRepositoryContractPrimInt pageSize,
     TenantAdminOwnershipState? ownershipState,
-    String? searchQuery,
+    TenantAdminAccountsRepositoryContractPrimString? searchQuery,
   }) async {
     if (_paginationState.isFetchingAccountsPage) return;
     if (page > 1 && !_paginationState.hasMoreAccounts) return;
@@ -277,22 +290,25 @@ mixin TenantAdminAccountsRepositoryPaginationMixin
       _mixinPaginationState.accountsStreamValue;
 
   @override
-  StreamValue<bool> get hasMoreAccountsStreamValue =>
-      _mixinPaginationState.hasMoreAccountsStreamValue;
+  StreamValue<TenantAdminAccountsRepositoryContractPrimBool>
+      get hasMoreAccountsStreamValue =>
+          _mixinPaginationState.hasMoreAccountsStreamValue;
 
   @override
-  StreamValue<bool> get isAccountsPageLoadingStreamValue =>
-      _mixinPaginationState.isAccountsPageLoadingStreamValue;
+  StreamValue<TenantAdminAccountsRepositoryContractPrimBool>
+      get isAccountsPageLoadingStreamValue =>
+          _mixinPaginationState.isAccountsPageLoadingStreamValue;
 
   @override
-  StreamValue<String?> get accountsErrorStreamValue =>
-      _mixinPaginationState.accountsErrorStreamValue;
+  StreamValue<TenantAdminAccountsRepositoryContractPrimString?>
+      get accountsErrorStreamValue =>
+          _mixinPaginationState.accountsErrorStreamValue;
 
   @override
   Future<void> loadAccounts({
-    int pageSize = 20,
+    TenantAdminAccountsRepositoryContractPrimInt pageSize = 20,
     TenantAdminOwnershipState? ownershipState,
-    String? searchQuery,
+    TenantAdminAccountsRepositoryContractPrimString? searchQuery,
   }) async {
     await _waitForAccountsFetchMixin();
     _resetAccountsPaginationMixin();
@@ -307,9 +323,9 @@ mixin TenantAdminAccountsRepositoryPaginationMixin
 
   @override
   Future<void> loadNextAccountsPage({
-    int pageSize = 20,
+    TenantAdminAccountsRepositoryContractPrimInt pageSize = 20,
     TenantAdminOwnershipState? ownershipState,
-    String? searchQuery,
+    TenantAdminAccountsRepositoryContractPrimString? searchQuery,
   }) async {
     if (_mixinPaginationState.isFetchingAccountsPage ||
         !_mixinPaginationState.hasMoreAccounts) {
@@ -332,8 +348,8 @@ mixin TenantAdminAccountsRepositoryPaginationMixin
 
   @override
   TenantAdminAccount? findLoadedAccount({
-    String? accountId,
-    String? accountSlug,
+    TenantAdminAccountsRepositoryContractPrimString? accountId,
+    TenantAdminAccountsRepositoryContractPrimString? accountSlug,
   }) {
     final loadedAccounts = accountsStreamValue.value;
     if (loadedAccounts == null || loadedAccounts.isEmpty) {
@@ -360,8 +376,8 @@ mixin TenantAdminAccountsRepositoryPaginationMixin
 
   @override
   TenantAdminLoadedAccountWatch watchLoadedAccount({
-    String? accountId,
-    String? accountSlug,
+    TenantAdminAccountsRepositoryContractPrimString? accountId,
+    TenantAdminAccountsRepositoryContractPrimString? accountSlug,
   }) {
     final normalizedId = accountId?.trim();
     final normalizedSlug = accountSlug?.trim();
@@ -394,10 +410,10 @@ mixin TenantAdminAccountsRepositoryPaginationMixin
   }
 
   Future<void> _fetchAccountsPageMixin({
-    required int page,
-    required int pageSize,
+    required TenantAdminAccountsRepositoryContractPrimInt page,
+    required TenantAdminAccountsRepositoryContractPrimInt pageSize,
     TenantAdminOwnershipState? ownershipState,
-    String? searchQuery,
+    TenantAdminAccountsRepositoryContractPrimString? searchQuery,
   }) async {
     if (_mixinPaginationState.isFetchingAccountsPage) return;
     if (page > 1 && !_mixinPaginationState.hasMoreAccounts) return;
@@ -455,12 +471,18 @@ class _TenantAdminAccountsPaginationState {
   final List<TenantAdminAccount> loadedAccounts = <TenantAdminAccount>[];
   final StreamValue<List<TenantAdminAccount>?> accountsStreamValue =
       StreamValue<List<TenantAdminAccount>?>();
-  final StreamValue<bool> hasMoreAccountsStreamValue =
-      StreamValue<bool>(defaultValue: true);
-  final StreamValue<bool> isAccountsPageLoadingStreamValue =
-      StreamValue<bool>(defaultValue: false);
-  final StreamValue<String?> accountsErrorStreamValue = StreamValue<String?>();
-  bool isFetchingAccountsPage = false;
-  bool hasMoreAccounts = true;
-  int currentAccountsPage = 0;
+  final StreamValue<TenantAdminAccountsRepositoryContractPrimBool>
+      hasMoreAccountsStreamValue =
+      StreamValue<TenantAdminAccountsRepositoryContractPrimBool>(
+          defaultValue: true);
+  final StreamValue<TenantAdminAccountsRepositoryContractPrimBool>
+      isAccountsPageLoadingStreamValue =
+      StreamValue<TenantAdminAccountsRepositoryContractPrimBool>(
+          defaultValue: false);
+  final StreamValue<TenantAdminAccountsRepositoryContractPrimString?>
+      accountsErrorStreamValue =
+      StreamValue<TenantAdminAccountsRepositoryContractPrimString?>();
+  TenantAdminAccountsRepositoryContractPrimBool isFetchingAccountsPage = false;
+  TenantAdminAccountsRepositoryContractPrimBool hasMoreAccounts = true;
+  TenantAdminAccountsRepositoryContractPrimInt currentAccountsPage = 0;
 }

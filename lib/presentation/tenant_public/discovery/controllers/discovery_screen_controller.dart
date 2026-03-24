@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:belluga_now/domain/partners/engagement_data.dart';
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
 import 'package:belluga_now/domain/partners/profile_type_registry.dart';
+import 'package:belluga_now/domain/partners/value_objects/profile_type_key_value.dart';
 import 'package:belluga_now/domain/repositories/account_profiles_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/app_data/app_data.dart';
@@ -30,7 +31,6 @@ class DiscoveryScreenController implements Disposable {
   final AccountProfilesRepositoryContract _accountProfilesRepository;
   final AuthRepositoryContract? _authRepository;
 
-  static const int _defaultPageSize = 20;
   static const Duration _searchDebounceDuration = Duration(milliseconds: 350);
 
   StreamSubscription<Set<String>>? _favoriteIdsSubscription;
@@ -51,8 +51,8 @@ class DiscoveryScreenController implements Disposable {
       StreamValue<List<String>>(defaultValue: const []);
   final favoriteIdsStreamValue =
       StreamValue<Set<String>>(defaultValue: const {});
-  final filteredPartnersStreamValue =
-      StreamValue<List<AccountProfileModel>>(defaultValue: const []);
+  StreamValue<List<AccountProfileModel>> get filteredPartnersStreamValue =>
+      _accountProfilesRepository.discoveryFilteredAccountProfilesStreamValue;
   final isLoadingStreamValue = StreamValue<bool>(defaultValue: false);
   final isPageLoadingStreamValue = StreamValue<bool>(defaultValue: false);
   final hasMoreStreamValue = StreamValue<bool>(defaultValue: true);
@@ -61,12 +61,12 @@ class DiscoveryScreenController implements Disposable {
   final TextEditingController searchController = TextEditingController();
 
   // Highlighted sections
-  final liveNowStreamValue =
-      StreamValue<List<AccountProfileModel>>(defaultValue: const []);
-  final nearbyStreamValue =
-      StreamValue<List<AccountProfileModel>>(defaultValue: const []);
-  final curatorStreamValue =
-      StreamValue<List<AccountProfileModel>>(defaultValue: const []);
+  StreamValue<List<AccountProfileModel>> get liveNowStreamValue =>
+      _accountProfilesRepository.discoveryLiveAccountProfilesStreamValue;
+  StreamValue<List<AccountProfileModel>> get nearbyStreamValue =>
+      _accountProfilesRepository.discoveryNearbyAccountProfilesStreamValue;
+  StreamValue<List<AccountProfileModel>> get curatorStreamValue =>
+      _accountProfilesRepository.discoveryCuratorAccountProfilesStreamValue;
   final curatorContentStreamValue =
       StreamValue<List<CuratorContent>>(defaultValue: const []);
 
@@ -82,10 +82,9 @@ class DiscoveryScreenController implements Disposable {
       debugPrint(
           'DiscoveryScreenController.init repository init failed: $error');
     }
-    _favoriteIdsSubscription ??=
-        _accountProfilesRepository
-            .favoriteAccountProfileIdsStreamValue.stream
-            .listen(
+    _favoriteIdsSubscription ??= _accountProfilesRepository
+        .favoriteAccountProfileIdsStreamValue.stream
+        .listen(
       (ids) {
         favoriteIdsStreamValue.addValue(Set<String>.from(ids));
       },
@@ -158,22 +157,38 @@ class DiscoveryScreenController implements Disposable {
     }
 
     try {
-      final nextPage = _currentPage + 1;
       final query = searchQueryStreamValue.value.trim();
       final selectedType = selectedTypeFilterStreamValue.value;
+      final shouldLoadFirstPage = isInitial || _currentPage <= 0;
+      if (shouldLoadFirstPage) {
+        await _accountProfilesRepository.loadAccountProfilesPage(
+          query: query.isEmpty ? null : query,
+          typeFilter: selectedType,
+        );
+      } else {
+        await _accountProfilesRepository.loadNextAccountProfilesPage(
+          query: query.isEmpty ? null : query,
+          typeFilter: selectedType,
+        );
+      }
+
       final pageResult =
-          await _accountProfilesRepository.fetchAccountProfilesPage(
-        page: nextPage,
-        pageSize: _defaultPageSize,
-        query: query.isEmpty ? null : query,
-        typeFilter: selectedType,
-      );
+          _accountProfilesRepository.pagedAccountProfilesStreamValue.value;
+      if (pageResult == null) {
+        return;
+      }
+
+      final loadedPage =
+          _accountProfilesRepository.currentPagedAccountProfilesPage;
+      if (loadedPage <= 0) {
+        return;
+      }
 
       if (requestToken != _reloadRequestToken) {
         return;
       }
 
-      if (nextPage == 1) {
+      if (loadedPage == 1) {
         _allAccountProfiles =
             List<AccountProfileModel>.from(pageResult.profiles);
       } else {
@@ -183,7 +198,7 @@ class DiscoveryScreenController implements Disposable {
         ];
       }
 
-      _currentPage = nextPage;
+      _currentPage = loadedPage;
       _hasMore = pageResult.hasMore;
       hasMoreStreamValue.addValue(_hasMore);
 
@@ -312,7 +327,9 @@ class DiscoveryScreenController implements Disposable {
     }
     final allowed = registry
         .enabledAccountProfileTypes()
-        .where((type) => registry.isFavoritableFor(type))
+        .where(
+          (type) => registry.isFavoritableFor(ProfileTypeKeyValue(type)),
+        )
         .toList(growable: false);
     availableTypesStreamValue.addValue(allowed);
   }
@@ -320,7 +337,9 @@ class DiscoveryScreenController implements Disposable {
   bool isFavoritable(AccountProfileModel accountProfile) {
     final registry = _resolveRegistry();
     if (registry == null || registry.isEmpty) return false;
-    return registry.isFavoritableFor(accountProfile.type);
+    return registry.isFavoritableFor(
+      ProfileTypeKeyValue(accountProfile.type),
+    );
   }
 
   String labelForAccountProfileType(String type) {
@@ -328,7 +347,7 @@ class DiscoveryScreenController implements Disposable {
     if (registry == null || registry.isEmpty) {
       return _fallbackLabelForType(type);
     }
-    return registry.labelForType(type);
+    return registry.labelForType(ProfileTypeKeyValue(type));
   }
 
   ProfileTypeRegistry? _resolveRegistry() {
@@ -372,14 +391,10 @@ class DiscoveryScreenController implements Disposable {
     selectedTypeFilterStreamValue.dispose();
     availableTypesStreamValue.dispose();
     favoriteIdsStreamValue.dispose();
-    filteredPartnersStreamValue.dispose();
     isPageLoadingStreamValue.dispose();
     hasMoreStreamValue.dispose();
     hasLoadedStreamValue.dispose();
     isSearchingStreamValue.dispose();
-    liveNowStreamValue.dispose();
-    nearbyStreamValue.dispose();
-    curatorStreamValue.dispose();
     curatorContentStreamValue.dispose();
     isLoadingStreamValue.dispose();
     searchController.dispose();

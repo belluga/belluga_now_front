@@ -6,6 +6,7 @@ import 'package:belluga_now/domain/repositories/landlord_auth_repository_contrac
 import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_settings.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_dynamic_map_value.dart';
 import 'package:belluga_now/infrastructure/repositories/tenant_admin/tenant_admin_settings_repository.dart';
 import 'package:belluga_now/infrastructure/services/tenant_admin/tenant_admin_base_url_resolver.dart';
 import 'package:dio/dio.dart';
@@ -90,10 +91,10 @@ void main() {
       settings.filters.first.query.source,
       TenantAdminMapFilterSource.event,
     );
-    expect(settings.filters.first.query.types, equals(const ['show']));
+    expect(settings.filters.first.query.types, equals(['show']));
     expect(
       settings.filters.first.query.taxonomy,
-      equals(const ['music_genre:rock']),
+      equals(['music_genre:rock']),
     );
     final radius = settings.rawMapUi['radius'] as Map<String, dynamic>;
     expect(radius['default_km'], 5);
@@ -104,7 +105,7 @@ void main() {
       'fetchMapUiSettings treats empty map_ui namespace payload as empty settings only',
       () async {
     final adapter = _RoutingAdapter(
-      settingsValuesPayload: const {
+      settingsValuesPayload: {
         'data': {
           'map_ui': [],
           'events': [],
@@ -145,14 +146,14 @@ void main() {
     expect(
       settings.androidSha256CertFingerprints,
       equals(
-        const [
+        [
           '3E:72:4C:54:E9:53:26:7D:E6:E1:9B:F8:DC:53:30:2A:08:01:8E:36:40:AA:23:11:22:33:44:55:66:77:88:99',
         ],
       ),
     );
     expect(settings.iosTeamId, 'TEAMID1234');
     expect(settings.iosBundleId, 'com.guarappari.app');
-    expect(settings.iosPaths, equals(const ['/invite*', '/convites*']));
+    expect(settings.iosPaths, equals(['/invite*', '/convites*']));
     expect(adapter.requests, hasLength(2));
     expect(adapter.requests.first.uri.path, '/admin/api/v1/settings/values');
     expect(adapter.requests.last.uri.path, '/admin/api/v1/appdomains');
@@ -167,7 +168,7 @@ void main() {
       tenantScope: scope,
     );
     final mapUi = TenantAdminMapUiSettings(
-      rawMapUi: {
+      rawMapUiValue: TenantAdminDynamicMapValue({
         'radius': {
           'min_km': 1,
           'default_km': 5,
@@ -191,7 +192,7 @@ void main() {
             },
           },
         ],
-      },
+      }),
       defaultOrigin: TenantAdminMapDefaultOrigin(
         lat: -20.611111,
         lng: -40.422222,
@@ -230,8 +231,8 @@ void main() {
       firstFilterPayload['query'] as Map,
     );
     expect(queryPayload['source'], 'event');
-    expect(queryPayload['types'], equals(const ['show']));
-    expect(queryPayload['taxonomy'], equals(const ['music_genre:rock']));
+    expect(queryPayload['types'], equals(['show']));
+    expect(queryPayload['taxonomy'], equals(['music_genre:rock']));
     expect(updated.defaultOrigin, isNotNull);
     expect(updated.defaultOrigin!.lat, closeTo(-20.611111, 0.000001));
     expect(updated.defaultOrigin!.lng, closeTo(-40.422222, 0.000001));
@@ -245,10 +246,10 @@ void main() {
     );
     expect(
         updated.filters.first.query.source, TenantAdminMapFilterSource.event);
-    expect(updated.filters.first.query.types, equals(const ['show']));
+    expect(updated.filters.first.query.types, equals(['show']));
     expect(
       updated.filters.first.query.taxonomy,
-      equals(const ['music_genre:rock']),
+      equals(['music_genre:rock']),
     );
   });
 
@@ -261,7 +262,7 @@ void main() {
       tenantScope: scope,
     );
     final appLinks = buildTenantAdminAppLinksSettings(
-      rawAppLinks: const {
+      rawAppLinks: {
         'android': {
           'sha256_cert_fingerprints': [
             '3E:72:4C:54:E9:53:26:7D:E6:E1:9B:F8:DC:53:30:2A:08:01:8E:36:40:AA:23:11:22:33:44:55:66:77:88:99',
@@ -273,12 +274,12 @@ void main() {
         },
       },
       androidAppIdentifier: 'com.guarappari.app',
-      androidSha256CertFingerprints: const [
+      androidSha256CertFingerprints: [
         '3E:72:4C:54:E9:53:26:7D:E6:E1:9B:F8:DC:53:30:2A:08:01:8E:36:40:AA:23:11:22:33:44:55:66:77:88:99',
       ],
       iosTeamId: 'TEAMID1234',
       iosBundleId: 'com.guarappari.app',
-      iosPaths: const ['/invite*', '/convites*'],
+      iosPaths: ['/invite*', '/convites*'],
     );
 
     final updated = await repository.updateAppLinksSettings(settings: appLinks);
@@ -294,17 +295,17 @@ void main() {
     final payload = request.data as Map<String, dynamic>;
     expect(payload['android.sha256_cert_fingerprints'], isA<List<dynamic>>());
     expect(payload['ios.team_id'], 'TEAMID1234');
-    expect(payload['ios.paths'], equals(const ['/invite*', '/convites*']));
+    expect(payload['ios.paths'], equals(['/invite*', '/convites*']));
     expect(updated.androidAppIdentifier, 'com.guarappari.app');
     expect(updated.iosTeamId, 'TEAMID1234');
     expect(updated.iosBundleId, 'com.guarappari.app');
-    expect(updated.iosPaths, equals(const ['/invite*', '/convites*']));
+    expect(updated.iosPaths, equals(['/invite*', '/convites*']));
   });
 
   test('updateAppLinksSettings upserts typed identifiers before patch',
       () async {
     final adapter = _RoutingAdapter(
-      appDomainsPayload: const {
+      appDomainsPayload: {
         'android': 'com.old.app',
         'ios': null,
       },
@@ -316,7 +317,7 @@ void main() {
       tenantScope: scope,
     );
     final appLinks = buildTenantAdminAppLinksSettings(
-      rawAppLinks: const {
+      rawAppLinks: {
         'android': {
           'sha256_cert_fingerprints': [
             '3E:72:4C:54:E9:53:26:7D:E6:E1:9B:F8:DC:53:30:2A:08:01:8E:36:40:4D:0C:CA:98:3B:46:84:53:E7:A9:A9',
@@ -328,12 +329,12 @@ void main() {
         },
       },
       androidAppIdentifier: 'com.guarappari.app',
-      androidSha256CertFingerprints: const [
+      androidSha256CertFingerprints: [
         '3E:72:4C:54:E9:53:26:7D:E6:E1:9B:F8:DC:53:30:2A:08:01:8E:36:40:4D:0C:CA:98:3B:46:84:53:E7:A9:A9',
       ],
       iosTeamId: 'ABCDE12345',
       iosBundleId: 'com.guarappari.app',
-      iosPaths: const ['/invite*', '/convites*'],
+      iosPaths: ['/invite*', '/convites*'],
     );
 
     final updated = await repository.updateAppLinksSettings(settings: appLinks);
@@ -352,11 +353,11 @@ void main() {
       'updateAppLinksSettings upserts Android typed identifier even when GET appdomains matches legacy fallback',
       () async {
     final adapter = _RoutingAdapter(
-      appDomainsPayload: const {
+      appDomainsPayload: {
         'android': 'com.guarappari.app',
         'ios': null,
       },
-      typedAppDomainPersistedByPlatform: const {
+      typedAppDomainPersistedByPlatform: {
         'android': false,
         'ios': false,
       },
@@ -368,7 +369,7 @@ void main() {
       tenantScope: scope,
     );
     final appLinks = buildTenantAdminAppLinksSettings(
-      rawAppLinks: const {
+      rawAppLinks: {
         'android': {
           'sha256_cert_fingerprints': [
             'ED:07:87:5E:89:8A:4B:26:41:5B:C7:A9:19:44:84:D3:0A:A4:AD:52:BA:66:47:56:8F:62:EF:71:F0:FD:1A:54',
@@ -380,12 +381,12 @@ void main() {
         },
       },
       androidAppIdentifier: 'com.guarappari.app',
-      androidSha256CertFingerprints: const [
+      androidSha256CertFingerprints: [
         'ED:07:87:5E:89:8A:4B:26:41:5B:C7:A9:19:44:84:D3:0A:A4:AD:52:BA:66:47:56:8F:62:EF:71:F0:FD:1A:54',
       ],
       iosTeamId: null,
       iosBundleId: null,
-      iosPaths: const ['/invite*', '/convites*'],
+      iosPaths: ['/invite*', '/convites*'],
     );
 
     final updated = await repository.updateAppLinksSettings(settings: appLinks);
@@ -403,7 +404,7 @@ void main() {
     expect(updated.androidAppIdentifier, 'com.guarappari.app');
     expect(
       updated.androidSha256CertFingerprints,
-      equals(const [
+      equals([
         'ED:07:87:5E:89:8A:4B:26:41:5B:C7:A9:19:44:84:D3:0A:A4:AD:52:BA:66:47:56:8F:62:EF:71:F0:FD:1A:54',
       ]),
     );
@@ -412,7 +413,7 @@ void main() {
   test('updateAppLinksSettings removes typed identifiers when cleared',
       () async {
     final adapter = _RoutingAdapter(
-      appDomainsPayload: const {
+      appDomainsPayload: {
         'android': 'com.guarappari.app',
         'ios': 'com.guarappari.app',
       },
@@ -424,7 +425,7 @@ void main() {
       tenantScope: scope,
     );
     final appLinks = buildTenantAdminAppLinksSettings(
-      rawAppLinks: const {
+      rawAppLinks: {
         'android': {
           'sha256_cert_fingerprints': [],
         },
@@ -434,10 +435,10 @@ void main() {
         },
       },
       androidAppIdentifier: null,
-      androidSha256CertFingerprints: const [],
+      androidSha256CertFingerprints: [],
       iosTeamId: null,
       iosBundleId: null,
-      iosPaths: const ['/invite*'],
+      iosPaths: ['/invite*'],
     );
 
     final updated = await repository.updateAppLinksSettings(settings: appLinks);
@@ -468,7 +469,7 @@ void main() {
     final imageUri = await repository.uploadMapFilterImage(
       key: 'events',
       upload: TenantAdminMediaUpload(
-        bytes: Uint8List.fromList(const [1, 2, 3, 4]),
+        bytes: Uint8List.fromList([1, 2, 3, 4]),
         fileName: 'events.png',
         mimeType: 'image/png',
       ),
@@ -498,7 +499,7 @@ void main() {
       'updateMapUiSettings after empty namespace fetch does not leak sibling namespaces',
       () async {
     final adapter = _RoutingAdapter(
-      settingsValuesPayload: const {
+      settingsValuesPayload: {
         'data': {
           'map_ui': [],
           'events': [],
@@ -533,7 +534,7 @@ void main() {
     final payload = Map<String, dynamic>.from(request.data as Map);
     expect(
         payload.keys,
-        unorderedEquals(const [
+        unorderedEquals([
           'default_origin.lat',
           'default_origin.lng',
           'default_origin.label',
@@ -574,7 +575,7 @@ void main() {
       'updateBranding sends multipart payload and reloads branding from tenant',
       () async {
     final adapter = _RoutingAdapter(
-      environmentPayload: const {
+      environmentPayload: {
         'type': 'tenant',
         'tenant_id': 'tenant-a',
         'name': 'Guarappari',
@@ -604,7 +605,7 @@ void main() {
         primarySeedColor: '#112233',
         secondarySeedColor: '#445566',
         lightLogoUpload: TenantAdminMediaUpload(
-          bytes: Uint8List.fromList(const [1, 2, 3]),
+          bytes: Uint8List.fromList([1, 2, 3]),
           fileName: 'light_logo.png',
           mimeType: 'image/png',
         ),
@@ -649,7 +650,7 @@ void main() {
       'updateBranding fails when refresh fails after POST (no optimistic fallback)',
       () async {
     final adapter = _RoutingAdapter(
-      environmentPayload: const {
+      environmentPayload: {
         'type': 'landlord',
       },
     );
@@ -668,12 +669,12 @@ void main() {
           primarySeedColor: '#112233',
           secondarySeedColor: '#445566',
           lightLogoUpload: TenantAdminMediaUpload(
-            bytes: Uint8List.fromList(const [1, 2, 3]),
+            bytes: Uint8List.fromList([1, 2, 3]),
             fileName: 'light_logo.png',
             mimeType: 'image/png',
           ),
           pwaIconUpload: TenantAdminMediaUpload(
-            bytes: Uint8List.fromList(const [4, 5, 6]),
+            bytes: Uint8List.fromList([4, 5, 6]),
             fileName: 'pwa_icon.png',
             mimeType: 'image/png',
           ),
@@ -739,7 +740,7 @@ void main() {
   test('fetchBrandingSettings maps pwa icon URL from environment payload',
       () async {
     final adapter = _RoutingAdapter(
-      environmentPayload: const {
+      environmentPayload: {
         'type': 'tenant',
         'tenant_id': 'tenant-a',
         'name': 'Guarappari Admin',
@@ -781,7 +782,7 @@ void main() {
       'fetchBrandingSettings ignores stale response from previous tenant scope',
       () async {
     final adapter = _RoutingAdapter(
-      environmentPayloadByHost: const {
+      environmentPayloadByHost: {
         'tenant-a.test': {
           'type': 'tenant',
           'tenant_id': 'tenant-a',
@@ -803,7 +804,7 @@ void main() {
           },
         },
       },
-      environmentDelayByHost: const {
+      environmentDelayByHost: {
         'tenant-a.test': Duration(milliseconds: 80),
         'tenant-b.test': Duration(milliseconds: 5),
       },
@@ -865,7 +866,7 @@ void main() {
   test('fetchBrandingSettings fails for non-tenant environment payload',
       () async {
     final adapter = _RoutingAdapter(
-      environmentPayload: const {
+      environmentPayload: {
         'type': 'landlord',
         'name': 'Belluga',
         'theme_data_settings': {
@@ -893,7 +894,7 @@ void main() {
 
   test('fetchBrandingSettings fails when theme settings are missing', () async {
     final adapter = _RoutingAdapter(
-      environmentPayload: const {
+      environmentPayload: {
         'type': 'tenant',
         'name': 'Guarappari Admin',
       },
@@ -1032,7 +1033,7 @@ class _RoutingAdapter implements HttpClientAdapter {
     Map<String, bool>? typedAppDomainPersistedByPlatform,
   })  : _appDomainsPayload = Map<String, dynamic>.from(
           appDomainsPayload ??
-              const {
+              {
                 'android': 'com.guarappari.app',
                 'ios': 'com.guarappari.app',
               },
@@ -1102,13 +1103,13 @@ class _RoutingAdapter implements HttpClientAdapter {
               'data': {
                 'app_links': {
                   'android': {
-                    'sha256_cert_fingerprints': const [
+                    'sha256_cert_fingerprints': [
                       '3E:72:4C:54:E9:53:26:7D:E6:E1:9B:F8:DC:53:30:2A:08:01:8E:36:40:AA:23:11:22:33:44:55:66:77:88:99',
                     ],
                   },
                   'ios': {
                     'team_id': 'TEAMID1234',
-                    'paths': const ['/invite*', '/convites*'],
+                    'paths': ['/invite*', '/convites*'],
                   },
                 },
                 'map_ui': {
@@ -1239,7 +1240,7 @@ class _RoutingAdapter implements HttpClientAdapter {
 
     if (path.endsWith('/settings/telemetry') && method == 'GET') {
       return _jsonResponse({
-        'data': const [
+        'data': [
           {
             'type': 'mixpanel',
             'track_all': false,
@@ -1247,7 +1248,7 @@ class _RoutingAdapter implements HttpClientAdapter {
             'token': 'token-a',
           },
         ],
-        'available_events': const ['app_opened', 'invite_sent'],
+        'available_events': ['app_opened', 'invite_sent'],
       });
     }
 
@@ -1255,14 +1256,14 @@ class _RoutingAdapter implements HttpClientAdapter {
       final request = options.data as Map<String, dynamic>;
       return _jsonResponse({
         'data': [request],
-        'available_events': const ['app_opened', 'invite_sent'],
+        'available_events': ['app_opened', 'invite_sent'],
       });
     }
 
     if (path.contains('/settings/telemetry/') && method == 'DELETE') {
       return _jsonResponse({
-        'data': const [],
-        'available_events': const ['app_opened', 'invite_sent'],
+        'data': [],
+        'available_events': ['app_opened', 'invite_sent'],
       });
     }
 
@@ -1313,7 +1314,7 @@ class _RoutingAdapter implements HttpClientAdapter {
       );
     }
 
-    return _jsonResponse(const {});
+    return _jsonResponse({});
   }
 
   ResponseBody _jsonResponse(

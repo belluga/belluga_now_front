@@ -9,7 +9,6 @@ import 'package:belluga_now/infrastructure/user/dtos/user_dto.dart';
 import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/auth_backend_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/backend_contract.dart';
-import 'package:belluga_now/infrastructure/dal/dto/mappers/user_dto_mapper.dart';
 import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -17,8 +16,7 @@ import 'package:get_it/get_it.dart';
 import 'package:stream_value/main.dart';
 import 'package:uuid/uuid.dart';
 
-final class AuthRepository extends AuthRepositoryContract<UserBelluga>
-    with UserDtoMapper {
+final class AuthRepository extends AuthRepositoryContract<UserBelluga> {
   AuthRepository() {
     _userTokenStreamValue.stream.listen(_onUpdateUserTokenOnLocalStorage);
   }
@@ -94,7 +92,7 @@ final class AuthRepository extends AuthRepositoryContract<UserBelluga>
 
     try {
       final user = await backend.auth.loginCheck();
-      final loggedUser = mapUserDto(user);
+      final loggedUser = user.toDomain();
       userStreamValue.addValue(loggedUser);
       await _setUserId(loggedUser.uuidValue.value);
     } catch (error) {
@@ -200,7 +198,7 @@ final class AuthRepository extends AuthRepositoryContract<UserBelluga>
   }
 
   @override
-  Future<void> updateUser(Map<String, Object?> data) {
+  Future<void> updateUser(Object data) {
     throw UnimplementedError();
   }
 
@@ -301,7 +299,7 @@ final class AuthRepository extends AuthRepositoryContract<UserBelluga>
     if (token.isNotEmpty) {
       _userTokenStreamValue.addValue(token);
     }
-    final user = mapUserDto(userDto);
+    final user = userDto.toDomain();
     userStreamValue.addValue(user);
     await _mergeTelemetryIdentity(previousUserId);
     await _setUserId(overrideUserId ?? user.uuidValue.value);

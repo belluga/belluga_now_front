@@ -33,6 +33,7 @@ import 'package:belluga_now/domain/repositories/tenant_admin_accounts_repository
 import 'package:belluga_now/domain/repositories/tenant_admin_events_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_organizations_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_settings_repository_contract.dart';
+import 'package:belluga_now/domain/repositories/tenant_admin_selected_tenant_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_static_assets_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/tenant_admin_taxonomies_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_events_repository_contract.dart';
@@ -59,6 +60,7 @@ import 'package:belluga_now/infrastructure/repositories/tenant_admin/tenant_admi
 import 'package:belluga_now/infrastructure/repositories/tenant_admin/tenant_admin_events_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/tenant_admin/tenant_admin_organizations_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/tenant_admin/tenant_admin_settings_repository.dart';
+import 'package:belluga_now/infrastructure/repositories/tenant_admin/tenant_admin_selected_tenant_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/tenant_admin/tenant_admin_static_assets_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/tenant_admin/tenant_admin_taxonomies_repository.dart';
 import 'package:belluga_now/infrastructure/repositories/user_events_repository.dart';
@@ -285,6 +287,9 @@ class ModuleSettings extends ModuleSettingsContract {
     );
     _registerIfAbsent<TenantAdminSettingsRepositoryContract>(
       () => TenantAdminSettingsRepository(),
+    );
+    _registerIfAbsent<TenantAdminSelectedTenantRepositoryContract>(
+      () => TenantAdminSelectedTenantRepository(),
     );
     _registerIfAbsent<TenantAdminStaticAssetsRepositoryContract>(
       () => TenantAdminStaticAssetsRepository(),

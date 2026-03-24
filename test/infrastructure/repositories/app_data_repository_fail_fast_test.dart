@@ -2,6 +2,7 @@ import 'package:belluga_now/domain/app_data/app_type.dart';
 import 'package:belluga_now/domain/app_data/value_object/platform_type_value.dart';
 import 'package:belluga_now/infrastructure/dal/dao/app_data_backend_contract.dart';
 import 'package:belluga_now/infrastructure/platform/app_data_local_info_source/app_data_local_info_source.dart';
+import 'package:belluga_now/infrastructure/platform/app_data_local_info_source/app_data_local_info_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/app_data_dto.dart';
 import 'package:belluga_now/infrastructure/repositories/app_data_repository.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -59,15 +60,15 @@ class _ThrowingAppDataBackend implements AppDataBackendContract {
 
 class _FakeAppDataLocalInfoSource extends AppDataLocalInfoSource {
   @override
-  Future<Map<String, dynamic>> getInfo() async {
+  Future<AppDataLocalInfoDTO> getInfo() async {
     final platformTypeValue = PlatformTypeValue(defaultValue: AppType.web)
       ..parse(AppType.web.name);
-    return {
-      'platformType': platformTypeValue,
-      'port': '',
-      'hostname': 'tenant.example.test',
-      'href': 'https://tenant.example.test',
-      'device': 'test',
-    };
+    return AppDataLocalInfoDTO(
+      platformTypeValue: platformTypeValue,
+      port: '',
+      hostname: 'tenant.example.test',
+      href: 'https://tenant.example.test',
+      device: 'test',
+    );
   }
 }

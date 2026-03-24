@@ -1,3 +1,23 @@
+import 'package:belluga_now/domain/invites/invite_inviter.dart';
+import 'package:belluga_now/domain/invites/invite_inviter_principal.dart';
+import 'package:belluga_now/domain/invites/invite_inviter_type.dart';
+import 'package:belluga_now/domain/invites/invite_model.dart';
+import 'package:belluga_now/domain/invites/value_objects/invite_acceptance_status_value.dart';
+import 'package:belluga_now/domain/invites/value_objects/invite_additional_inviter_name_value.dart';
+import 'package:belluga_now/domain/invites/value_objects/invite_attendance_policy_value.dart';
+import 'package:belluga_now/domain/invites/value_objects/invite_event_date_value.dart';
+import 'package:belluga_now/domain/invites/value_objects/invite_event_id_value.dart';
+import 'package:belluga_now/domain/invites/value_objects/invite_host_name_value.dart';
+import 'package:belluga_now/domain/invites/value_objects/invite_id_value.dart';
+import 'package:belluga_now/domain/invites/value_objects/invite_inviter_avatar_value.dart';
+import 'package:belluga_now/domain/invites/value_objects/invite_inviter_id_value.dart';
+import 'package:belluga_now/domain/invites/value_objects/invite_inviter_name_value.dart';
+import 'package:belluga_now/domain/invites/value_objects/invite_location_value.dart';
+import 'package:belluga_now/domain/invites/value_objects/invite_message_value.dart';
+import 'package:belluga_now/domain/invites/value_objects/invite_occurrence_id_value.dart';
+import 'package:belluga_now/domain/invites/value_objects/invite_tag_value.dart';
+import 'package:belluga_now/domain/value_objects/thumb_uri_value.dart';
+import 'package:belluga_now/domain/value_objects/title_value.dart';
 import 'package:belluga_now/infrastructure/dal/dto/invites/invite_inviter_candidate_dto.dart';
 
 class InviteDto {
@@ -144,7 +164,149 @@ class InviteDto {
     };
   }
 
+  InviteModel toDomain() {
+    final inviterPrincipal = _parseInviterPrincipal(
+      inviterKind: inviterPrincipalKind,
+      inviterId: inviterPrincipalId,
+    );
+    final inviters = inviterCandidates
+        .where((candidate) => candidate.inviteId.trim().isNotEmpty)
+        .map((candidate) {
+      final avatarValue = InviteInviterAvatarValue();
+      final normalizedAvatarUrl = candidate.avatarUrl?.trim();
+      if (normalizedAvatarUrl != null && normalizedAvatarUrl.isNotEmpty) {
+        avatarValue.parse(normalizedAvatarUrl);
+      }
+
+      final statusValue = InviteAcceptanceStatusValue(
+        defaultValue: 'pending',
+        isRequired: false,
+      )..parse(
+          candidate.status.trim().isEmpty ? 'pending' : candidate.status,
+        );
+
+      return InviteInviter(
+        inviteIdValue: InviteInviterIdValue()..parse(candidate.inviteId),
+        type: InviteInviterTypeApiMapper.tryParse(candidate.principalKind) ??
+            InviteInviterType.user,
+        nameValue: InviteInviterNameValue()..parse(candidate.displayName),
+        principal: _parseInviterPrincipal(
+          inviterKind: candidate.principalKind,
+          inviterId: candidate.principalId,
+        ),
+        avatarValue: avatarValue,
+        statusValue: statusValue,
+      );
+    }).toList(growable: false);
+
+    final parsedEventDate = DateTime.parse(eventDate);
+    final parsedTags = tags
+        .where((tag) => tag.trim().isNotEmpty)
+        .map((tag) => InviteTagValue()..parse(tag))
+        .toList(growable: false);
+    final resolvedInviterName =
+        inviterName ?? (inviters.isNotEmpty ? inviters.first.name : null);
+    final resolvedInviterAvatarUrl = inviterAvatarUrl ??
+        (inviters.isNotEmpty ? inviters.first.avatarUrl : null);
+    final resolvedInviterPrincipal = inviterPrincipal ??
+        (inviters.isNotEmpty ? inviters.first.principal : null);
+    final resolvedInviters = inviters.isNotEmpty
+        ? inviters
+        : (resolvedInviterName != null && resolvedInviterName.trim().isNotEmpty
+            ? <InviteInviter>[
+                (() {
+                  final avatarValue = InviteInviterAvatarValue();
+                  final normalizedAvatarUrl = resolvedInviterAvatarUrl?.trim();
+                  if (normalizedAvatarUrl != null &&
+                      normalizedAvatarUrl.isNotEmpty) {
+                    avatarValue.parse(normalizedAvatarUrl);
+                  }
+
+                  return InviteInviter(
+                    inviteIdValue: InviteInviterIdValue()..parse(id),
+                    type: resolvedInviterPrincipal?.type ??
+                        InviteInviterType.user,
+                    nameValue: InviteInviterNameValue()
+                      ..parse(resolvedInviterName),
+                    principal: resolvedInviterPrincipal,
+                    avatarValue: avatarValue,
+                  );
+                })(),
+              ]
+            : const <InviteInviter>[]);
+    final resolvedAdditionalInviters = additionalInviters.isNotEmpty
+        ? additionalInviters
+        : resolvedInviters
+            .skip(1)
+            .map((inviter) => inviter.name)
+            .toList(growable: false);
+
+    InviteInviterNameValue? inviterNameVo;
+    if (resolvedInviterName != null && resolvedInviterName.trim().isNotEmpty) {
+      inviterNameVo = InviteInviterNameValue()..parse(resolvedInviterName);
+    }
+
+    InviteInviterAvatarValue? inviterAvatarVo;
+    if (resolvedInviterAvatarUrl != null &&
+        resolvedInviterAvatarUrl.trim().isNotEmpty) {
+      inviterAvatarVo = InviteInviterAvatarValue()
+        ..parse(resolvedInviterAvatarUrl);
+    }
+
+    final occurrenceIdValue = InviteOccurrenceIdValue()..parse(occurrenceId);
+    final attendancePolicyValue = InviteAttendancePolicyValue(
+      defaultValue: 'free_confirmation_only',
+    )..parse(attendancePolicy.trim().isEmpty
+        ? 'free_confirmation_only'
+        : attendancePolicy.trim());
+    final eventImageUri = Uri.parse(eventImageUrl);
+
+    return InviteModel(
+      idValue: InviteIdValue()..parse(id),
+      eventIdValue: InviteEventIdValue()..parse(eventId),
+      eventNameValue: TitleValue()..parse(eventName),
+      eventDateValue: InviteEventDateValue(isRequired: true)
+        ..parse(parsedEventDate.toIso8601String()),
+      eventImageValue: ThumbUriValue(
+        defaultValue: eventImageUri,
+        isRequired: true,
+      )..parse(eventImageUrl),
+      locationValue: InviteLocationValue()..parse(location),
+      hostNameValue: InviteHostNameValue()..parse(hostName),
+      messageValue: InviteMessageValue()..parse(message),
+      tagValues: parsedTags,
+      occurrenceIdValue: occurrenceIdValue,
+      attendancePolicyValue: attendancePolicyValue,
+      inviterNameValue: inviterNameVo,
+      inviterAvatarValue: inviterAvatarVo,
+      inviterPrincipal: resolvedInviterPrincipal,
+      additionalInviterValues: resolvedAdditionalInviters
+          .where((inviter) => inviter.trim().isNotEmpty)
+          .map((inviter) => InviteAdditionalInviterNameValue()..parse(inviter))
+          .toList(growable: false),
+      inviters: resolvedInviters,
+    );
+  }
+
   static String _groupKey(String eventId, String? occurrenceId) {
     return '$eventId::${occurrenceId ?? 'event'}';
+  }
+
+  InviteInviterPrincipal? _parseInviterPrincipal({
+    required String? inviterKind,
+    required String? inviterId,
+  }) {
+    final normalizedKind = inviterKind?.trim().toLowerCase();
+    final normalizedId = inviterId?.trim();
+    if (normalizedKind == null || normalizedKind.isEmpty) return null;
+    if (normalizedId == null || normalizedId.isEmpty) return null;
+
+    final parsedType = InviteInviterTypeApiMapper.tryParse(normalizedKind);
+    if (parsedType == null) return null;
+
+    return InviteInviterPrincipal(
+      type: parsedType,
+      idValue: InviteInviterIdValue()..parse(normalizedId),
+    );
   }
 }

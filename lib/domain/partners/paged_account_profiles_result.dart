@@ -1,5 +1,7 @@
 import 'package:belluga_now/domain/partners/account_profile_model.dart';
 
+typedef HasMoreProfilesFlag = bool;
+
 class PagedAccountProfilesResult {
   const PagedAccountProfilesResult({
     required this.profiles,
@@ -7,5 +9,5 @@ class PagedAccountProfilesResult {
   });
 
   final List<AccountProfileModel> profiles;
-  final bool hasMore;
+  final HasMoreProfilesFlag hasMore;
 }

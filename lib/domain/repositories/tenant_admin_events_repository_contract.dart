@@ -4,6 +4,13 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_event.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_result.dart';
 import 'package:stream_value/core/stream_value.dart';
 
+typedef TenantAdminEventsRepoString = String;
+typedef TenantAdminEventsRepoInt = int;
+typedef TenantAdminEventsRepoBool = bool;
+typedef TenantAdminEventsRepoDouble = double;
+typedef TenantAdminEventsRepoDateTime = DateTime;
+typedef TenantAdminEventsRepoDynamic = dynamic;
+
 abstract class TenantAdminEventsRepositoryContract {
   static final Expando<_TenantAdminEventsPaginationState>
       _eventsStateByRepository = Expando<_TenantAdminEventsPaginationState>();
@@ -14,20 +21,20 @@ abstract class TenantAdminEventsRepositoryContract {
   StreamValue<List<TenantAdminEvent>?> get eventsStreamValue =>
       _eventsPaginationState.eventsStreamValue;
 
-  StreamValue<bool> get hasMoreEventsStreamValue =>
+  StreamValue<TenantAdminEventsRepoBool> get hasMoreEventsStreamValue =>
       _eventsPaginationState.hasMoreEventsStreamValue;
 
-  StreamValue<bool> get isEventsPageLoadingStreamValue =>
+  StreamValue<TenantAdminEventsRepoBool> get isEventsPageLoadingStreamValue =>
       _eventsPaginationState.isEventsPageLoadingStreamValue;
 
-  StreamValue<String?> get eventsErrorStreamValue =>
+  StreamValue<TenantAdminEventsRepoString?> get eventsErrorStreamValue =>
       _eventsPaginationState.eventsErrorStreamValue;
 
   Future<void> loadEvents({
-    int pageSize = 20,
-    String? search,
-    String? status,
-    bool archived = false,
+    TenantAdminEventsRepoInt pageSize = 20,
+    TenantAdminEventsRepoString? search,
+    TenantAdminEventsRepoString? status,
+    TenantAdminEventsRepoBool archived = false,
   }) async {
     await _waitForEventsFetch();
     _resetEventsPagination();
@@ -42,10 +49,10 @@ abstract class TenantAdminEventsRepositoryContract {
   }
 
   Future<void> loadNextEventsPage({
-    int pageSize = 20,
-    String? search,
-    String? status,
-    bool archived = false,
+    TenantAdminEventsRepoInt pageSize = 20,
+    TenantAdminEventsRepoString? search,
+    TenantAdminEventsRepoString? status,
+    TenantAdminEventsRepoBool archived = false,
   }) async {
     if (_eventsPaginationState.isFetchingEventsPage ||
         !_eventsPaginationState.hasMoreEvents) {
@@ -67,17 +74,17 @@ abstract class TenantAdminEventsRepositoryContract {
   }
 
   Future<List<TenantAdminEvent>> fetchEvents({
-    String? search,
-    String? status,
-    bool archived = false,
+    TenantAdminEventsRepoString? search,
+    TenantAdminEventsRepoString? status,
+    TenantAdminEventsRepoBool archived = false,
   });
 
   Future<TenantAdminPagedResult<TenantAdminEvent>> fetchEventsPage({
-    required int page,
-    required int pageSize,
-    String? search,
-    String? status,
-    bool archived = false,
+    required TenantAdminEventsRepoInt page,
+    required TenantAdminEventsRepoInt pageSize,
+    TenantAdminEventsRepoString? search,
+    TenantAdminEventsRepoString? status,
+    TenantAdminEventsRepoBool archived = false,
   }) async {
     final events = await fetchEvents(
       search: search,
@@ -86,7 +93,7 @@ abstract class TenantAdminEventsRepositoryContract {
     );
 
     if (page <= 0 || pageSize <= 0) {
-      return const TenantAdminPagedResult<TenantAdminEvent>(
+      return TenantAdminPagedResult<TenantAdminEvent>(
         items: <TenantAdminEvent>[],
         hasMore: false,
       );
@@ -94,7 +101,7 @@ abstract class TenantAdminEventsRepositoryContract {
 
     final startIndex = (page - 1) * pageSize;
     if (startIndex >= events.length) {
-      return const TenantAdminPagedResult<TenantAdminEvent>(
+      return TenantAdminPagedResult<TenantAdminEvent>(
         items: <TenantAdminEvent>[],
         hasMore: false,
       );
@@ -107,50 +114,51 @@ abstract class TenantAdminEventsRepositoryContract {
     );
   }
 
-  Future<TenantAdminEvent> fetchEvent(String eventIdOrSlug);
+  Future<TenantAdminEvent> fetchEvent(
+      TenantAdminEventsRepoString eventIdOrSlug);
 
   Future<TenantAdminEvent> createEvent({
     required TenantAdminEventDraft draft,
   });
 
   Future<TenantAdminEvent> createOwnEvent({
-    required String accountSlug,
+    required TenantAdminEventsRepoString accountSlug,
     required TenantAdminEventDraft draft,
   });
 
   Future<TenantAdminEvent> updateEvent({
-    required String eventId,
+    required TenantAdminEventsRepoString eventId,
     required TenantAdminEventDraft draft,
   });
 
-  Future<void> deleteEvent(String eventId);
+  Future<void> deleteEvent(TenantAdminEventsRepoString eventId);
 
   Future<List<TenantAdminEventType>> fetchEventTypes() async {
     return const <TenantAdminEventType>[];
   }
 
   Future<TenantAdminEventType> createEventType({
-    required String name,
-    required String slug,
-    String? description,
+    required TenantAdminEventsRepoString name,
+    required TenantAdminEventsRepoString slug,
+    TenantAdminEventsRepoString? description,
   }) {
     throw UnimplementedError();
   }
 
   Future<TenantAdminEventType> updateEventType({
-    required String eventTypeId,
-    String? name,
-    String? slug,
-    String? description,
+    required TenantAdminEventsRepoString eventTypeId,
+    TenantAdminEventsRepoString? name,
+    TenantAdminEventsRepoString? slug,
+    TenantAdminEventsRepoString? description,
   }) {
     throw UnimplementedError();
   }
 
-  Future<void> deleteEventType(String eventTypeId) async {}
+  Future<void> deleteEventType(TenantAdminEventsRepoString eventTypeId) async {}
 
   Future<TenantAdminEventPartyCandidates> fetchPartyCandidates({
-    String? search,
-    String? accountSlug,
+    TenantAdminEventsRepoString? search,
+    TenantAdminEventsRepoString? accountSlug,
   });
 
   Future<void> _waitForEventsFetch() async {
@@ -160,11 +168,11 @@ abstract class TenantAdminEventsRepositoryContract {
   }
 
   Future<void> _fetchEventsPage({
-    required int page,
-    required int pageSize,
-    String? search,
-    String? status,
-    required bool archived,
+    required TenantAdminEventsRepoInt page,
+    required TenantAdminEventsRepoInt pageSize,
+    TenantAdminEventsRepoString? search,
+    TenantAdminEventsRepoString? status,
+    required TenantAdminEventsRepoBool archived,
   }) async {
     if (_eventsPaginationState.isFetchingEventsPage) {
       return;
@@ -238,23 +246,23 @@ mixin TenantAdminEventsPaginationMixin
       _mixinEventsPaginationState.eventsStreamValue;
 
   @override
-  StreamValue<bool> get hasMoreEventsStreamValue =>
+  StreamValue<TenantAdminEventsRepoBool> get hasMoreEventsStreamValue =>
       _mixinEventsPaginationState.hasMoreEventsStreamValue;
 
   @override
-  StreamValue<bool> get isEventsPageLoadingStreamValue =>
+  StreamValue<TenantAdminEventsRepoBool> get isEventsPageLoadingStreamValue =>
       _mixinEventsPaginationState.isEventsPageLoadingStreamValue;
 
   @override
-  StreamValue<String?> get eventsErrorStreamValue =>
+  StreamValue<TenantAdminEventsRepoString?> get eventsErrorStreamValue =>
       _mixinEventsPaginationState.eventsErrorStreamValue;
 
   @override
   Future<void> loadEvents({
-    int pageSize = 20,
-    String? search,
-    String? status,
-    bool archived = false,
+    TenantAdminEventsRepoInt pageSize = 20,
+    TenantAdminEventsRepoString? search,
+    TenantAdminEventsRepoString? status,
+    TenantAdminEventsRepoBool archived = false,
   }) async {
     await _waitForEventsFetchMixin();
     _resetEventsPaginationMixin();
@@ -270,10 +278,10 @@ mixin TenantAdminEventsPaginationMixin
 
   @override
   Future<void> loadNextEventsPage({
-    int pageSize = 20,
-    String? search,
-    String? status,
-    bool archived = false,
+    TenantAdminEventsRepoInt pageSize = 20,
+    TenantAdminEventsRepoString? search,
+    TenantAdminEventsRepoString? status,
+    TenantAdminEventsRepoBool archived = false,
   }) async {
     if (_mixinEventsPaginationState.isFetchingEventsPage ||
         !_mixinEventsPaginationState.hasMoreEvents) {
@@ -302,25 +310,25 @@ mixin TenantAdminEventsPaginationMixin
 
   @override
   Future<TenantAdminEventType> createEventType({
-    required String name,
-    required String slug,
-    String? description,
+    required TenantAdminEventsRepoString name,
+    required TenantAdminEventsRepoString slug,
+    TenantAdminEventsRepoString? description,
   }) {
     throw UnimplementedError();
   }
 
   @override
   Future<TenantAdminEventType> updateEventType({
-    required String eventTypeId,
-    String? name,
-    String? slug,
-    String? description,
+    required TenantAdminEventsRepoString eventTypeId,
+    TenantAdminEventsRepoString? name,
+    TenantAdminEventsRepoString? slug,
+    TenantAdminEventsRepoString? description,
   }) {
     throw UnimplementedError();
   }
 
   @override
-  Future<void> deleteEventType(String eventTypeId) async {}
+  Future<void> deleteEventType(TenantAdminEventsRepoString eventTypeId) async {}
 
   Future<void> _waitForEventsFetchMixin() async {
     while (_mixinEventsPaginationState.isFetchingEventsPage) {
@@ -329,11 +337,11 @@ mixin TenantAdminEventsPaginationMixin
   }
 
   Future<void> _fetchEventsPageMixin({
-    required int page,
-    required int pageSize,
-    String? search,
-    String? status,
-    required bool archived,
+    required TenantAdminEventsRepoInt page,
+    required TenantAdminEventsRepoInt pageSize,
+    TenantAdminEventsRepoString? search,
+    TenantAdminEventsRepoString? status,
+    required TenantAdminEventsRepoBool archived,
   }) async {
     if (_mixinEventsPaginationState.isFetchingEventsPage) {
       return;
@@ -398,12 +406,13 @@ class _TenantAdminEventsPaginationState {
   final List<TenantAdminEvent> cachedEvents = <TenantAdminEvent>[];
   final StreamValue<List<TenantAdminEvent>?> eventsStreamValue =
       StreamValue<List<TenantAdminEvent>?>();
-  final StreamValue<bool> hasMoreEventsStreamValue =
-      StreamValue<bool>(defaultValue: true);
-  final StreamValue<bool> isEventsPageLoadingStreamValue =
-      StreamValue<bool>(defaultValue: false);
-  final StreamValue<String?> eventsErrorStreamValue = StreamValue<String?>();
-  bool isFetchingEventsPage = false;
-  bool hasMoreEvents = true;
-  int currentEventsPage = 0;
+  final StreamValue<TenantAdminEventsRepoBool> hasMoreEventsStreamValue =
+      StreamValue<TenantAdminEventsRepoBool>(defaultValue: true);
+  final StreamValue<TenantAdminEventsRepoBool> isEventsPageLoadingStreamValue =
+      StreamValue<TenantAdminEventsRepoBool>(defaultValue: false);
+  final StreamValue<TenantAdminEventsRepoString?> eventsErrorStreamValue =
+      StreamValue<TenantAdminEventsRepoString?>();
+  TenantAdminEventsRepoBool isFetchingEventsPage = false;
+  TenantAdminEventsRepoBool hasMoreEvents = true;
+  TenantAdminEventsRepoInt currentEventsPage = 0;
 }

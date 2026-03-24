@@ -3,6 +3,8 @@ import 'dart:developer' as developer;
 import 'dart:typed_data';
 
 import 'package:belluga_now/domain/app_data/app_data.dart';
+import 'package:belluga_now/testing/app_data_test_factory.dart';
+import 'package:belluga_now/domain/map/city_poi_model.dart';
 import 'package:belluga_now/domain/app_data/value_object/platform_type_value.dart';
 import 'package:belluga_now/domain/map/filters/poi_filter_mode.dart';
 import 'package:belluga_now/domain/map/queries/poi_query.dart';
@@ -53,7 +55,7 @@ import 'support/integration_test_bootstrap.dart';
 void main() {
   developer.postEvent(
     'seed_vm_golden_stream',
-    const <String, Object>{},
+    <String, Object>{},
     stream: 'integration_test.VmServiceProxyGoldenFileComparator',
   );
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
@@ -165,7 +167,7 @@ void main() {
         await staticAssetsRepository.createStaticProfileType(
           type: assetType,
           label: 'IT Asset Type $uniqueSeed',
-          capabilities: const TenantAdminStaticProfileTypeCapabilities(
+          capabilities: TenantAdminStaticProfileTypeCapabilities(
             isPoiEnabled: true,
             hasBio: false,
             hasTaxonomies: false,
@@ -179,7 +181,7 @@ void main() {
         final createdAsset = await staticAssetsRepository.createStaticAsset(
           profileType: assetType,
           displayName: assetDisplayName,
-          location: const TenantAdminLocation(
+          location: TenantAdminLocation(
             latitude: -20.611121,
             longitude: -40.498617,
           ),
@@ -446,7 +448,7 @@ void main() {
         );
         expect(mapController.filterModeStreamValue.value, PoiFilterMode.server);
         expect(
-          mapController.filteredPoisStreamValue.value
+          (mapController.filteredPoisStreamValue.value ?? <CityPoiModel>[])
               .map((poi) => poi.name)
               .toList(growable: false),
           equals(<String>[assetDisplayName]),
@@ -572,7 +574,7 @@ Future<List<int>> fetchImageBytes(String imageUri) async {
     imageUri,
     options: Options(
       responseType: ResponseType.bytes,
-      headers: const {
+      headers: {
         'Accept': 'image/*,*/*;q=0.8',
       },
     ),
@@ -668,7 +670,8 @@ Future<void> waitForCatalogAndPois({
           (category) => category.label == eventFilterLabel,
         ) ??
         false;
-    final hasAssetPoi = mapController.filteredPoisStreamValue.value.any(
+    final hasAssetPoi =
+        (mapController.filteredPoisStreamValue.value ?? <CityPoiModel>[]).any(
       (poi) => poi.name == assetDisplayName,
     );
 
@@ -703,7 +706,8 @@ Future<void> waitForFilterApplication(
       continue;
     }
     final isApplied = mapController.isCategoryFilterActive(assetFilter);
-    final pois = mapController.filteredPoisStreamValue.value;
+    final pois =
+        mapController.filteredPoisStreamValue.value ?? <CityPoiModel>[];
     if (!mapController.filterInteractionLockedStreamValue.value &&
         isApplied &&
         pois.length == 1 &&
@@ -736,10 +740,10 @@ AppData _buildAppData({
   final remoteData = {
     'name': 'Tenant Test',
     'type': 'tenant',
-    'profile_types': const [],
+    'profile_types': [],
     'domains': [mainDomain],
-    'app_domains': const ['com.guarappari.app'],
-    'theme_data_settings': const {
+    'app_domains': ['com.guarappari.app'],
+    'theme_data_settings': {
       'brightness_default': 'light',
       'primary_seed_color': '#009688',
       'secondary_seed_color': '#3F51B5',
@@ -747,18 +751,18 @@ AppData _buildAppData({
     'main_color': '#009688',
     'main_domain': mainDomain,
     'tenant_id': 'tenant-1',
-    'telemetry': const {
+    'telemetry': {
       'trackers': [],
     },
-    'telemetry_context': const {'location_freshness_minutes': 5},
-    'firebase': const {
+    'telemetry_context': {'location_freshness_minutes': 5},
+    'firebase': {
       'apiKey': 'apikey',
       'appId': 'appid',
       'projectId': 'project-test',
       'messagingSenderId': 'sender',
       'storageBucket': 'bucket',
     },
-    'push': const {
+    'push': {
       'enabled': true,
       'types': ['event'],
       'throttles': {'max_per_hour': 20},
@@ -773,7 +777,7 @@ AppData _buildAppData({
     'device': 'integration-test-device',
   };
 
-  return AppData.fromInitialization(
+  return buildAppDataFromInitialization(
     remoteData: remoteData,
     localInfo: localInfo,
   );
@@ -911,6 +915,13 @@ class _StaticUserLocationRepository implements UserLocationRepositoryContract {
   @override
   final StreamValue<String?> lastKnownAddressStreamValue =
       StreamValue<String?>();
+
+  @override
+  @override
+  final StreamValue<LocationResolutionPhase>
+      locationResolutionPhaseStreamValue = StreamValue<LocationResolutionPhase>(
+    defaultValue: LocationResolutionPhase.unknown,
+  );
 
   @override
   Future<void> ensureLoaded() async {}

@@ -1,4 +1,5 @@
 // ignore_for_file: deprecated_member_use
+import 'package:analyzer/dart/ast/ast.dart';
 import 'package:analyzer/error/error.dart' hide LintCode;
 import 'package:analyzer/error/listener.dart';
 import 'package:custom_lint_builder/custom_lint_builder.dart';
@@ -42,20 +43,49 @@ class DomainPrimitiveFieldForbiddenRule extends DartLintRule {
       }
 
       for (final variable in node.fields.variables) {
-        reporter.atNode(variable, code);
+        reporter.atOffset(
+          errorCode: code,
+          offset: variable.name.offset,
+          length: variable.name.length,
+        );
       }
     });
 
     context.registry.addConstructorDeclaration((node) {
-      final parameters = node.parameters.parameters;
-      for (final parameter in parameters) {
-        final parameterType = formalParameterType(parameter);
-        if (!containsForbiddenDomainPrimitiveType(parameterType)) {
-          continue;
-        }
-
-        reporter.atNode(parameter, code);
-      }
+      _reportForbiddenParameterTypes(node.parameters, reporter);
     });
+
+    context.registry.addMethodDeclaration((node) {
+      _reportForbiddenParameterTypes(node.parameters, reporter);
+    });
+
+    context.registry.addFunctionDeclaration((node) {
+      _reportForbiddenParameterTypes(
+        node.functionExpression.parameters,
+        reporter,
+      );
+    });
+  }
+
+  void _reportForbiddenParameterTypes(
+    FormalParameterList? parameters,
+    ErrorReporter reporter,
+  ) {
+    if (parameters == null) {
+      return;
+    }
+
+    for (final parameter in parameters.parameters) {
+      final type = formalParameterType(parameter);
+      if (!containsForbiddenDomainPrimitiveType(type) || type == null) {
+        continue;
+      }
+
+      reporter.atOffset(
+        errorCode: code,
+        offset: type.offset,
+        length: type.length,
+      );
+    }
   }
 }

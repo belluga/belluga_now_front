@@ -43,7 +43,7 @@ class _FakeAccountsRepository
   String? lastOnboardingBio;
   String? lastOnboardingContent;
   List<TenantAdminTaxonomyTerm> lastOnboardingTaxonomyTerms =
-      const <TenantAdminTaxonomyTerm>[];
+      <TenantAdminTaxonomyTerm>[];
   TenantAdminMediaUpload? lastOnboardingAvatarUpload;
   TenantAdminMediaUpload? lastOnboardingCoverUpload;
   final List<TenantAdminOwnershipState?> loadAccountsOwnershipCalls =
@@ -103,7 +103,7 @@ class _FakeAccountsRepository
     if (!hasMoreAccountsStreamValue.value) {
       return;
     }
-    final loaded = accountsStreamValue.value ?? const <TenantAdminAccount>[];
+    final loaded = accountsStreamValue.value ?? <TenantAdminAccount>[];
     final page = (loaded.length ~/ pageSize) + 1;
     final result = await fetchAccountsPage(
       page: page,
@@ -161,7 +161,7 @@ class _FakeAccountsRepository
           }).toList(growable: false);
     final startIndex = (page - 1) * pageSize;
     if (startIndex >= filtered.length || page <= 0 || pageSize <= 0) {
-      return const TenantAdminPagedAccountsResult(
+      return TenantAdminPagedAccountsResult(
         accounts: <TenantAdminAccount>[],
         hasMore: false,
       );
@@ -199,8 +199,7 @@ class _FakeAccountsRepository
       id: 'acc-$createCalls',
       name: name,
       slug: 'acc-$createCalls',
-      document:
-          document ?? const TenantAdminDocument(type: 'cpf', number: '000'),
+      document: document ?? TenantAdminDocument(type: 'cpf', number: '000'),
       ownershipState: ownershipState,
       organizationId: organizationId,
     );
@@ -241,7 +240,7 @@ class _FakeAccountsRepository
       id: 'acc-onboarding-$createOnboardingCalls',
       name: name,
       slug: 'acc-onboarding-$createOnboardingCalls',
-      document: const TenantAdminDocument(type: 'cpf', number: '000'),
+      document: TenantAdminDocument(type: 'cpf', number: '000'),
       ownershipState: ownershipState,
     );
     final profile = TenantAdminAccountProfile(
@@ -319,7 +318,7 @@ class _FakeAccountProfilesRepository
     final types = await fetchProfileTypes();
     final start = (page - 1) * pageSize;
     if (page <= 0 || pageSize <= 0 || start >= types.length) {
-      return const TenantAdminPagedResult<TenantAdminProfileTypeDefinition>(
+      return TenantAdminPagedResult<TenantAdminProfileTypeDefinition>(
         items: <TenantAdminProfileTypeDefinition>[],
         hasMore: false,
       );
@@ -372,13 +371,13 @@ class _FakeAccountProfilesRepository
   Future<List<TenantAdminAccountProfile>> fetchAccountProfiles({
     String? accountId,
   }) async =>
-      const [];
+      [];
 
   @override
   Future<TenantAdminAccountProfile> fetchAccountProfile(
     String accountProfileId,
   ) async {
-    return const TenantAdminAccountProfile(
+    return TenantAdminAccountProfile(
       id: 'profile-1',
       accountId: 'acc-1',
       profileType: 'venue',
@@ -401,7 +400,7 @@ class _FakeAccountProfilesRepository
     TenantAdminMediaUpload? avatarUpload,
     TenantAdminMediaUpload? coverUpload,
   }) async {
-    return const TenantAdminAccountProfile(
+    return TenantAdminAccountProfile(
       id: 'profile-1',
       accountId: 'acc-1',
       profileType: 'venue',
@@ -416,7 +415,7 @@ class _FakeAccountProfilesRepository
   Future<TenantAdminAccountProfile> restoreAccountProfile(
     String accountProfileId,
   ) async {
-    return const TenantAdminAccountProfile(
+    return TenantAdminAccountProfile(
       id: 'profile-1',
       accountId: 'acc-1',
       profileType: 'venue',
@@ -453,9 +452,9 @@ class _FakeAccountProfilesRepository
     return TenantAdminProfileTypeDefinition(
       type: type,
       label: label ?? 'Updated',
-      allowedTaxonomies: allowedTaxonomies ?? const [],
+      allowedTaxonomies: allowedTaxonomies ?? [],
       capabilities: capabilities ??
-          const TenantAdminProfileTypeCapabilities(
+          TenantAdminProfileTypeCapabilities(
             isFavoritable: true,
             isPoiEnabled: true,
             hasBio: false,
@@ -476,8 +475,7 @@ class _FakeTaxonomiesRepository
     with TenantAdminTaxonomiesPaginationMixin
     implements TenantAdminTaxonomiesRepositoryContract {
   @override
-  Future<List<TenantAdminTaxonomyDefinition>> fetchTaxonomies() async =>
-      const [];
+  Future<List<TenantAdminTaxonomyDefinition>> fetchTaxonomies() async => [];
 
   @override
   Future<TenantAdminPagedResult<TenantAdminTaxonomyDefinition>>
@@ -485,7 +483,7 @@ class _FakeTaxonomiesRepository
     required int page,
     required int pageSize,
   }) async {
-    return const TenantAdminPagedResult<TenantAdminTaxonomyDefinition>(
+    return TenantAdminPagedResult<TenantAdminTaxonomyDefinition>(
       items: <TenantAdminTaxonomyDefinition>[],
       hasMore: false,
     );
@@ -495,7 +493,7 @@ class _FakeTaxonomiesRepository
   Future<List<TenantAdminTaxonomyTermDefinition>> fetchTerms({
     required String taxonomyId,
   }) async =>
-      const [];
+      [];
 
   @override
   Future<TenantAdminPagedResult<TenantAdminTaxonomyTermDefinition>>
@@ -504,7 +502,7 @@ class _FakeTaxonomiesRepository
     required int page,
     required int pageSize,
   }) async {
-    return const TenantAdminPagedResult<TenantAdminTaxonomyTermDefinition>(
+    return TenantAdminPagedResult<TenantAdminTaxonomyTermDefinition>(
       items: <TenantAdminTaxonomyTermDefinition>[],
       hasMore: false,
     );
@@ -541,7 +539,7 @@ class _FakeTaxonomiesRepository
       id: taxonomyId,
       slug: slug ?? 'taxonomy',
       name: name ?? 'Taxonomy',
-      appliesTo: appliesTo ?? const [],
+      appliesTo: appliesTo ?? [],
       icon: icon,
       color: color,
     );
@@ -605,7 +603,7 @@ TenantAdminAccountCreateController _buildCreateController({
   return TenantAdminAccountCreateController(
     accountsRepository: accountsRepository ?? _FakeAccountsRepository([]),
     profilesRepository:
-        profilesRepository ?? _FakeAccountProfilesRepository(const []),
+        profilesRepository ?? _FakeAccountProfilesRepository([]),
     taxonomiesRepository: taxonomiesRepository ?? _FakeTaxonomiesRepository(),
     locationSelectionService:
         locationSelectionService ?? TenantAdminLocationSelectionService(),
@@ -620,7 +618,7 @@ void main() {
           id: 'acc-1',
           name: 'Conta',
           slug: 'conta',
-          document: const TenantAdminDocument(type: 'cpf', number: '000'),
+          document: TenantAdminDocument(type: 'cpf', number: '000'),
           ownershipState: TenantAdminOwnershipState.tenantOwned,
         ),
       ]);
@@ -643,14 +641,14 @@ void main() {
           id: 'acc-tenant',
           name: 'Conta tenant',
           slug: 'conta-tenant',
-          document: const TenantAdminDocument(type: 'cpf', number: '000'),
+          document: TenantAdminDocument(type: 'cpf', number: '000'),
           ownershipState: TenantAdminOwnershipState.tenantOwned,
         ),
         TenantAdminAccount(
           id: 'acc-unmanaged',
           name: 'Conta unmanaged',
           slug: 'conta-unmanaged',
-          document: const TenantAdminDocument(type: 'cpf', number: '111'),
+          document: TenantAdminDocument(type: 'cpf', number: '111'),
           ownershipState: TenantAdminOwnershipState.unmanaged,
         ),
       ]);
@@ -687,14 +685,14 @@ void main() {
           id: 'acc-tenant',
           name: 'Conta tenant',
           slug: 'conta-tenant',
-          document: const TenantAdminDocument(type: 'cpf', number: '000'),
+          document: TenantAdminDocument(type: 'cpf', number: '000'),
           ownershipState: TenantAdminOwnershipState.tenantOwned,
         ),
         TenantAdminAccount(
           id: 'acc-target',
           name: 'Conta alvo',
           slug: 'conta-alvo',
-          document: const TenantAdminDocument(type: 'cpf', number: '9911'),
+          document: TenantAdminDocument(type: 'cpf', number: '9911'),
           ownershipState: TenantAdminOwnershipState.tenantOwned,
         ),
       ]);
@@ -721,7 +719,7 @@ void main() {
           id: 'acc-1',
           name: 'Conta A',
           slug: 'conta-a',
-          document: const TenantAdminDocument(type: 'cpf', number: '000'),
+          document: TenantAdminDocument(type: 'cpf', number: '000'),
           ownershipState: TenantAdminOwnershipState.tenantOwned,
         ),
       ]);
@@ -739,7 +737,7 @@ void main() {
           id: 'acc-2',
           name: 'Conta B',
           slug: 'conta-b',
-          document: const TenantAdminDocument(type: 'cpf', number: '111'),
+          document: TenantAdminDocument(type: 'cpf', number: '111'),
           ownershipState: TenantAdminOwnershipState.tenantOwned,
         ),
       ];
@@ -755,7 +753,7 @@ void main() {
           id: 'acc-1',
           name: 'Conta',
           slug: 'conta',
-          document: const TenantAdminDocument(type: 'cpf', number: '000'),
+          document: TenantAdminDocument(type: 'cpf', number: '000'),
           ownershipState: TenantAdminOwnershipState.tenantOwned,
         ),
       ])
@@ -812,7 +810,7 @@ void main() {
           id: 'acc-1',
           name: 'Conta',
           slug: 'conta',
-          document: const TenantAdminDocument(type: 'cpf', number: '000'),
+          document: TenantAdminDocument(type: 'cpf', number: '000'),
           ownershipState: TenantAdminOwnershipState.tenantOwned,
         ),
       ]);
@@ -837,7 +835,7 @@ void main() {
   group('TenantAdminAccountCreateController', () {
     test('createAccountOnboarding creates account and profile', () async {
       final accountsRepository = _FakeAccountsRepository([]);
-      final profilesRepository = _FakeAccountProfilesRepository(const [
+      final profilesRepository = _FakeAccountProfilesRepository([
         TenantAdminProfileTypeDefinition(
           type: 'venue',
           label: 'Venue',
@@ -863,7 +861,7 @@ void main() {
         name: 'Nova Conta',
         ownershipState: TenantAdminOwnershipState.tenantOwned,
         profileType: 'venue',
-        location: const TenantAdminLocation(latitude: -20.0, longitude: -40.0),
+        location: TenantAdminLocation(latitude: -20.0, longitude: -40.0),
       );
 
       expect(onboarding.account.name, 'Nova Conta');
@@ -874,7 +872,7 @@ void main() {
 
     test('createAccountOnboarding forwards bio and taxonomy terms', () async {
       final accountsRepository = _FakeAccountsRepository([]);
-      final profilesRepository = _FakeAccountProfilesRepository(const [
+      final profilesRepository = _FakeAccountProfilesRepository([
         TenantAdminProfileTypeDefinition(
           type: 'venue',
           label: 'Venue',
@@ -902,7 +900,7 @@ void main() {
         profileType: 'venue',
         bio: '<p>Bio teste</p>',
         content: null,
-        taxonomyTerms: const [
+        taxonomyTerms: [
           TenantAdminTaxonomyTerm(type: 'genre', value: 'urbana'),
         ],
       );
@@ -921,7 +919,7 @@ void main() {
         'createAccountFromForm submits media as upload and never as direct URL',
         () async {
       final accountsRepository = _FakeAccountsRepository([]);
-      final profilesRepository = _FakeAccountProfilesRepository(const [
+      final profilesRepository = _FakeAccountProfilesRepository([
         TenantAdminProfileTypeDefinition(
           type: 'venue',
           label: 'Venue',
@@ -995,7 +993,7 @@ void main() {
             'location.lat': <String>['Latitude obrigatoria.'],
           },
         );
-      final profilesRepository = _FakeAccountProfilesRepository(const [
+      final profilesRepository = _FakeAccountProfilesRepository([
         TenantAdminProfileTypeDefinition(
           type: 'venue',
           label: 'Venue',
@@ -1038,7 +1036,7 @@ void main() {
         () async {
       final accountsRepository = _FakeAccountsRepository([])
         ..createAccountError = Exception('backend exploded');
-      final profilesRepository = _FakeAccountProfilesRepository(const [
+      final profilesRepository = _FakeAccountProfilesRepository([
         TenantAdminProfileTypeDefinition(
           type: 'venue',
           label: 'Venue',
@@ -1080,7 +1078,7 @@ void main() {
         () async {
       final controller = _buildCreateController(
         accountsRepository: _FakeAccountsRepository([]),
-        profilesRepository: _FakeAccountProfilesRepository(const [
+        profilesRepository: _FakeAccountProfilesRepository([
           TenantAdminProfileTypeDefinition(
             type: 'venue',
             label: 'Venue',
@@ -1124,7 +1122,7 @@ void main() {
 
 XFile _buildImageXFile(String name) {
   return XFile.fromData(
-    Uint8List.fromList(const <int>[1, 2, 3]),
+    Uint8List.fromList(<int>[1, 2, 3]),
     mimeType: 'image/jpeg',
     name: name,
   );
