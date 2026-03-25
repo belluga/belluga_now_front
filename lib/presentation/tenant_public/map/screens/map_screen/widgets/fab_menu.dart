@@ -100,10 +100,11 @@ class _FabMenuState extends State<FabMenu> {
                                 return StreamValueBuilder<CityCoordinate?>(
                                   streamValue:
                                       _mapController.userLocationStreamValue,
-                                  builder: (_, userLocation) {
+                                  builder: (_, __) {
                                     final navigateToUserEnabled =
                                         interactionsEnabled &&
-                                            userLocation != null;
+                                            _mapController
+                                                .hasResolvedUserLocation;
                                     return Column(
                                       mainAxisSize: MainAxisSize.min,
                                       crossAxisAlignment:
