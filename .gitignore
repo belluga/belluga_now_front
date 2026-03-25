@@ -66,8 +66,10 @@ foundation_documentation
 .agents/
 .codex
 .codex/
+.cline
 .cline/
 .clinerules
+.clinerules/
 CLINE.md
 
 # Compile-time lane define overrides (local only)
