@@ -378,8 +378,21 @@ class _FakeMapController implements MapController {
 }
 
 class _NotReadyMapController implements MapController {
+  _NotReadyMapController()
+      : _camera = MapCamera.initialCamera(
+          const MapOptions(
+            initialCenter: LatLng(-20.0, -40.0),
+            initialZoom: 16,
+          ),
+        );
+
   final StreamController<MapEvent> _events =
       StreamController<MapEvent>.broadcast();
+  MapCamera _camera;
+  bool isReady = false;
+  int moveCallCount = 0;
+  LatLng? lastMoveCenter;
+  double? lastMoveZoom;
 
   @override
   Stream<MapEvent> get mapEventStream => _events.stream;
@@ -391,7 +404,14 @@ class _NotReadyMapController implements MapController {
     Offset offset = Offset.zero,
     String? id,
   }) {
-    throw StateError('map not ready');
+    if (!isReady) {
+      throw StateError('map not ready');
+    }
+    moveCallCount += 1;
+    lastMoveCenter = center;
+    lastMoveZoom = zoom;
+    _camera = _camera.withPosition(center: center, zoom: zoom);
+    return true;
   }
 
   @override
@@ -420,7 +440,12 @@ class _NotReadyMapController implements MapController {
   bool fitCamera(CameraFit cameraFit) => false;
 
   @override
-  MapCamera get camera => throw StateError('map not ready');
+  MapCamera get camera {
+    if (!isReady) {
+      throw StateError('map not ready');
+    }
+    return _camera;
+  }
 
   @override
   void dispose() {
@@ -833,17 +858,16 @@ void main() {
       expect(userLocationRepository.resolveUserLocationCallCount, 0);
     });
 
-    test('keeps auto-centering on user when no initial poi query is provided',
+    test('does not auto-center on user when no initial poi query is provided',
         () async {
       await controller.init();
       await _flushMicrotasks();
 
       expect(userLocationRepository.refreshIfPermittedCallCount, 1);
-      expect(userLocationRepository.resolveUserLocationCallCount, 1);
+      expect(userLocationRepository.resolveUserLocationCallCount, 0);
     });
 
-    test('init does not throw when map readiness times out before centering',
-        () async {
+    test('centerOnUser shows status when map is not ready yet', () async {
       final notReadyMapController = _NotReadyMapController();
       final localController = MapScreenController(
         poiRepository: PoiRepository(dataSource: mapRepository),
@@ -859,7 +883,7 @@ void main() {
       userLocationRepository.userLocationStreamValue
           .addValue(_buildCoordinate('-20.1000', '-40.1000'));
 
-      await expectLater(localController.init(), completes);
+      await localController.centerOnUser();
       expect(
         localController.statusMessageStreamValue.value,
         'Mapa ainda está inicializando. Tente novamente.',

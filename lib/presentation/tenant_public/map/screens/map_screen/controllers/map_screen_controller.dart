@@ -132,8 +132,6 @@ class MapScreenController implements Disposable {
         initialPoiQuery: initialPoiQuery,
         initialPoiStackQuery: initialPoiStackQuery,
       );
-    } else {
-      await centerOnUser();
     }
 
     _tryApplyPendingInitialPoiFocus();
