@@ -50,6 +50,18 @@ class CityMapRepository extends CityMapRepositoryContract {
     );
   }
 
+  @override
+  Future<CityPoiModel?> fetchPoiByReference({
+    required String refType,
+    required String refId,
+  }) async {
+    final dto = await _laravelHttpService.lookupPoiByReference(
+      refType: refType,
+      refId: refId,
+    );
+    return dto?.toDomain();
+  }
+
   List<CityPoiModel> _attachStackContext(
     List<CityPoiModel> items, {
     required String stackKey,

@@ -25,17 +25,19 @@ class MapScreenController implements Disposable {
     PoiRepositoryContract? poiRepository,
     UserLocationRepositoryContract? userLocationRepository,
     TelemetryRepositoryContract? telemetryRepository,
+    MapController? mapController,
   })  : _poiRepository = poiRepository ?? GetIt.I.get<PoiRepositoryContract>(),
         _userLocationRepository = userLocationRepository ??
             GetIt.I.get<UserLocationRepositoryContract>(),
         _telemetryRepository =
-            telemetryRepository ?? GetIt.I.get<TelemetryRepositoryContract>();
+            telemetryRepository ?? GetIt.I.get<TelemetryRepositoryContract>(),
+        mapController = mapController ?? MapController();
 
   final PoiRepositoryContract _poiRepository;
   final UserLocationRepositoryContract _userLocationRepository;
   final TelemetryRepositoryContract _telemetryRepository;
 
-  final mapController = MapController();
+  final MapController mapController;
 
   final statusMessageStreamValue = StreamValue<String?>();
   final mapStatusStreamValue =
@@ -93,19 +95,48 @@ class MapScreenController implements Disposable {
   StreamSubscription<List<CityPoiModel>?>? _filteredPoisSubscription;
   int _poiRequestSequence = 0;
   bool _filterInteractionLocked = false;
+  CityPoiModel? _pendingInitialPoiFocus;
+  bool _initialPoiFocusApplied = false;
+  bool _initialPoiFocusInProgress = false;
+  bool _hasObservedMapEvent = false;
 
-  Future<void> init() async {
+  Future<void> init({
+    String? initialPoiQuery,
+    String? initialPoiStackQuery,
+  }) async {
+    _resetInitialPoiFocusState();
+    final hasInitialPoiQuery = _normalizePoiQuery(initialPoiQuery) != null;
     _bindFilteredPoisClamp();
+    _attachZoomListener();
+
+    final initialPoiHydrationFuture = hasInitialPoiQuery
+        ? _applyInitialPoiQuery(
+            initialPoiQuery: initialPoiQuery,
+            initialPoiStackQuery: initialPoiStackQuery,
+            emitNotFoundMessage: false,
+          )
+        : Future<void>.value();
+
     await Future.wait([
       loadMainFilters(),
       loadFilters(force: true),
       loadPois(PoiQuery()),
+      _userLocationRepository.refreshIfPermitted(
+        minInterval: Duration.zero,
+      ),
+      initialPoiHydrationFuture,
     ]);
-    await _userLocationRepository.refreshIfPermitted(
-      minInterval: Duration.zero,
-    );
-    await centerOnUser();
-    _attachZoomListener();
+
+    if (hasInitialPoiQuery) {
+      await _applyInitialPoiQuery(
+        initialPoiQuery: initialPoiQuery,
+        initialPoiStackQuery: initialPoiStackQuery,
+      );
+    } else {
+      await centerOnUser();
+    }
+
+    _tryApplyPendingInitialPoiFocus();
   }
 
   void _bindFilteredPoisClamp() {
@@ -211,13 +242,16 @@ class MapScreenController implements Disposable {
   }
 
   Future<void> ensureMapReady() async {
-    try {
-      mapController.camera;
+    if (_isMapCameraReady() || _hasObservedMapEvent) {
       return;
+    }
+    try {
+      await mapController.mapEventStream.first.timeout(
+        const Duration(milliseconds: 250),
+      );
+      _hasObservedMapEvent = true;
     } catch (_) {
-      try {
-        await mapController.mapEventStream.first;
-      } catch (_) {}
+      // map readiness can race against first frame; caller handles fallback
     }
   }
 
@@ -309,6 +343,171 @@ class MapScreenController implements Disposable {
     );
   }
 
+  Future<void> _applyInitialPoiQuery({
+    required String? initialPoiQuery,
+    required String? initialPoiStackQuery,
+    bool emitNotFoundMessage = true,
+  }) async {
+    final normalizedPoiQuery = _normalizePoiQuery(initialPoiQuery);
+    if (normalizedPoiQuery == null) {
+      return;
+    }
+
+    final normalizedStackQuery = _normalizeStackQuery(initialPoiStackQuery);
+
+    var resolvedPoi = _resolvePoiFromQuery(normalizedPoiQuery);
+    if (resolvedPoi == null && normalizedStackQuery != null) {
+      resolvedPoi = await _resolvePoiFromStackQuery(
+        normalizedPoiQuery: normalizedPoiQuery,
+        normalizedStackQuery: normalizedStackQuery,
+      );
+    }
+    resolvedPoi ??= await _resolvePoiFromLookupQuery(normalizedPoiQuery);
+
+    if (resolvedPoi == null) {
+      if (emitNotFoundMessage) {
+        statusMessageStreamValue.addValue('POI do link não foi encontrado.');
+      }
+      return;
+    }
+
+    if (selectedPoiStreamValue.value?.id != resolvedPoi.id) {
+      selectPoi(resolvedPoi);
+    }
+    _queueInitialPoiFocus(resolvedPoi);
+  }
+
+  String? _normalizePoiQuery(String? rawPoiQuery) {
+    final normalized = rawPoiQuery?.trim().toLowerCase();
+    if (normalized == null || normalized.isEmpty) {
+      return null;
+    }
+    return normalized;
+  }
+
+  String? _normalizeStackQuery(String? rawStackQuery) {
+    final normalized = rawStackQuery?.trim();
+    if (normalized == null || normalized.isEmpty) {
+      return null;
+    }
+    return normalized;
+  }
+
+  CityPoiModel? _resolvePoiFromQuery(String normalizedPoiQuery) {
+    final selectedPoi = selectedPoiStreamValue.value;
+    if (selectedPoi != null &&
+        _matchesPoiQuery(selectedPoi, normalizedPoiQuery)) {
+      return selectedPoi;
+    }
+
+    final filteredPois =
+        filteredPoisStreamValue.value ?? const <CityPoiModel>[];
+    for (final poi in filteredPois) {
+      if (_matchesPoiQuery(poi, normalizedPoiQuery)) {
+        return poi;
+      }
+      for (final stackItem in poi.stackItems) {
+        if (_matchesPoiQuery(stackItem, normalizedPoiQuery)) {
+          return stackItem;
+        }
+      }
+    }
+
+    return null;
+  }
+
+  Future<CityPoiModel?> _resolvePoiFromStackQuery({
+    required String normalizedPoiQuery,
+    required String normalizedStackQuery,
+  }) async {
+    try {
+      await _poiRepository.loadStackItems(
+        stackKey: normalizedStackQuery,
+        query: _currentQuery,
+      );
+    } catch (error) {
+      debugPrint(
+          'Failed to load stack for poi query $normalizedStackQuery: $error');
+      return null;
+    }
+
+    final stackItems =
+        _poiRepository.stackItemsStreamValue.value ?? const <CityPoiModel>[];
+    if (stackItems.isEmpty) {
+      return null;
+    }
+
+    final enrichedItems = _attachStackContext(
+      stackItems,
+      stackKey: normalizedStackQuery,
+      stackCount: stackItems.length,
+    );
+
+    for (final item in enrichedItems) {
+      if (_matchesPoiQuery(item, normalizedPoiQuery)) {
+        return item;
+      }
+    }
+
+    return null;
+  }
+
+  bool _matchesPoiQuery(CityPoiModel poi, String normalizedPoiQuery) {
+    final id = poi.id.trim().toLowerCase();
+    if (id.isNotEmpty && id == normalizedPoiQuery) {
+      return true;
+    }
+    final poiQueryKey = _buildPoiQueryKey(poi);
+    if (poiQueryKey.isEmpty) {
+      return false;
+    }
+    return poiQueryKey == normalizedPoiQuery;
+  }
+
+  String _buildPoiQueryKey(CityPoiModel poi) {
+    final refType = poi.refType.trim().toLowerCase();
+    final refId = poi.refId.trim().toLowerCase();
+    if (refType.isNotEmpty && refId.isNotEmpty) {
+      return '$refType:$refId';
+    }
+    return '';
+  }
+
+  Future<CityPoiModel?> _resolvePoiFromLookupQuery(
+    String normalizedPoiQuery,
+  ) async {
+    final typedReference = _parseTypedPoiReference(normalizedPoiQuery);
+    if (typedReference == null) {
+      return null;
+    }
+
+    try {
+      return await _poiRepository.fetchPoiByReference(
+        refType: typedReference.refType,
+        refId: typedReference.refId,
+      );
+    } catch (error) {
+      debugPrint('Failed to lookup poi ${typedReference.refType}:'
+          '${typedReference.refId}: $error');
+      return null;
+    }
+  }
+
+  ({String refType, String refId})? _parseTypedPoiReference(
+    String normalizedPoiQuery,
+  ) {
+    final segments = normalizedPoiQuery.split(':');
+    if (segments.length != 2) {
+      return null;
+    }
+    final refType = segments.first.trim().toLowerCase();
+    final refId = segments.last.trim();
+    if (refType.isEmpty || refId.isEmpty) {
+      return null;
+    }
+    return (refType: refType, refId: refId);
+  }
+
   void selectPoi(CityPoiModel? poi) {
     _poiRepository.selectPoi(poi);
     if (poi == null) {
@@ -319,6 +518,53 @@ class MapScreenController implements Disposable {
       _finishPoiTimedEvent();
     }
     unawaited(_startPoiTimedEvent(poi));
+  }
+
+  void _queueInitialPoiFocus(CityPoiModel poi) {
+    if (_initialPoiFocusApplied) {
+      return;
+    }
+    _pendingInitialPoiFocus = poi;
+    _tryApplyPendingInitialPoiFocus();
+  }
+
+  void _resetInitialPoiFocusState() {
+    _pendingInitialPoiFocus = null;
+    _initialPoiFocusApplied = false;
+    _initialPoiFocusInProgress = false;
+    _hasObservedMapEvent = false;
+  }
+
+  bool _isMapCameraReady() {
+    try {
+      final camera = mapController.camera;
+      return camera.nonRotatedSize != MapCamera.kImpossibleSize;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  void _tryApplyPendingInitialPoiFocus() {
+    if (_initialPoiFocusApplied || _initialPoiFocusInProgress) {
+      return;
+    }
+    final pendingPoi = _pendingInitialPoiFocus;
+    final isReadyByEvent = _hasObservedMapEvent;
+    final isReadyByCamera = _isMapCameraReady();
+    if (pendingPoi == null || (!isReadyByEvent && !isReadyByCamera)) {
+      return;
+    }
+    _initialPoiFocusInProgress = true;
+    unawaited(() async {
+      final didFocus = await _focusOnPoi(pendingPoi);
+      if (didFocus) {
+        _initialPoiFocusApplied = true;
+        if (_pendingInitialPoiFocus?.id == pendingPoi.id) {
+          _pendingInitialPoiFocus = null;
+        }
+      }
+      _initialPoiFocusInProgress = false;
+    }());
   }
 
   Future<void> handleMarkerTap(CityPoiModel poi) async {
@@ -647,6 +893,14 @@ class MapScreenController implements Disposable {
     );
   }
 
+  String buildPoiQueryKey(CityPoiModel poi) {
+    final queryKey = _buildPoiQueryKey(poi);
+    if (queryKey.isNotEmpty) {
+      return queryKey;
+    }
+    return poi.id.trim().toLowerCase();
+  }
+
   void logRideShareClicked({
     required RideShareProvider provider,
     String? poiId,
@@ -662,11 +916,20 @@ class MapScreenController implements Disposable {
   }
 
   Future<void> focusOnPoi(CityPoiModel poi, {double? zoom}) async {
+    await _focusOnPoi(poi, zoom: zoom);
+  }
+
+  Future<bool> _focusOnPoi(CityPoiModel poi, {double? zoom}) async {
     await ensureMapReady();
     final coordinate = poi.coordinate;
     final target = LatLng(coordinate.latitude, coordinate.longitude);
     final targetZoom = zoom ?? 16;
-    mapController.move(target, _clampZoom(targetZoom.toDouble()));
+    try {
+      return mapController.move(target, _clampZoom(targetZoom.toDouble()));
+    } catch (error) {
+      debugPrint('Failed to focus on poi ${poi.id}: $error');
+      return false;
+    }
   }
 
   PoiQuery _composeQuery({
@@ -899,8 +1162,10 @@ class MapScreenController implements Disposable {
     }
     _mapEventSubscription?.cancel();
     _mapEventSubscription = mapController.mapEventStream.listen((event) {
+      _hasObservedMapEvent = true;
       final nextZoom = _clampZoom(event.camera.zoom);
       _pushZoom(nextZoom);
+      _tryApplyPendingInitialPoiFocus();
     });
   }
 

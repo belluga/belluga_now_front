@@ -24,6 +24,9 @@ import 'package:belluga_now/infrastructure/repositories/poi_repository.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/controllers/map_screen_controller.dart';
 import 'package:event_tracker_handler/event_tracker_handler.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:flutter_map/src/misc/move_and_rotate_result.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:stream_value/core/stream_value.dart';
 
 class _LoggedEvent {
@@ -126,6 +129,11 @@ class _FakeTelemetryRepository implements TelemetryRepositoryContract {
 }
 
 class _FakeUserLocationRepository implements UserLocationRepositoryContract {
+  int refreshIfPermittedCallCount = 0;
+  int resolveUserLocationCallCount = 0;
+  int startTrackingCallCount = 0;
+  Completer<bool>? refreshIfPermittedCompleter;
+
   @override
   final StreamValue<CityCoordinate?> userLocationStreamValue =
       StreamValue<CityCoordinate?>();
@@ -165,15 +173,24 @@ class _FakeUserLocationRepository implements UserLocationRepositoryContract {
   @override
   Future<bool> refreshIfPermitted(
       {Duration minInterval = const Duration(seconds: 30)}) async {
+    refreshIfPermittedCallCount += 1;
+    final completer = refreshIfPermittedCompleter;
+    if (completer != null) {
+      return completer.future;
+    }
     return false;
   }
 
   @override
-  Future<String?> resolveUserLocation() async => null;
+  Future<String?> resolveUserLocation() async {
+    resolveUserLocationCallCount += 1;
+    return null;
+  }
 
   @override
   Future<bool> startTracking(
       {LocationTrackingMode mode = LocationTrackingMode.mapForeground}) async {
+    startTrackingCallCount += 1;
     return true;
   }
 
@@ -203,8 +220,16 @@ class _FakeCityMapRepository implements CityMapRepositoryContract {
   final StreamController<PoiUpdateEvent?> _poiEventsController =
       StreamController<PoiUpdateEvent?>.broadcast();
   PoiQuery? lastQuery;
+  PoiQuery? lastStackQuery;
+  String? lastStackKey;
+  String? lastLookupRefType;
+  String? lastLookupRefId;
   List<CityPoiModel> nextPois = const <CityPoiModel>[];
+  List<CityPoiModel> nextStackItems = const <CityPoiModel>[];
+  CityPoiModel? nextLookupPoi;
   bool throwOnFetchPoints = false;
+  bool throwOnFetchStackItems = false;
+  bool throwOnLookupPoi = false;
   int fetchPointsCallCount = 0;
   final List<Completer<List<CityPoiModel>>> queuedFetchCompleters =
       <Completer<List<CityPoiModel>>>[];
@@ -227,8 +252,27 @@ class _FakeCityMapRepository implements CityMapRepositoryContract {
   Future<List<CityPoiModel>> fetchStackItems({
     required PoiQuery query,
     required String stackKey,
-  }) async =>
-      const [];
+  }) async {
+    lastStackQuery = query;
+    lastStackKey = stackKey;
+    if (throwOnFetchStackItems) {
+      throw Exception('forced stack fetch failure');
+    }
+    return nextStackItems;
+  }
+
+  @override
+  Future<CityPoiModel?> fetchPoiByReference({
+    required String refType,
+    required String refId,
+  }) async {
+    lastLookupRefType = refType;
+    lastLookupRefId = refId;
+    if (throwOnLookupPoi) {
+      throw Exception('forced lookup failure');
+    }
+    return nextLookupPoi;
+  }
 
   @override
   Future<PoiFilterOptions> fetchFilters() async =>
@@ -255,7 +299,92 @@ class _FakeCityMapRepository implements CityMapRepositoryContract {
   }
 }
 
-CityPoiModel _buildPoi({String id = 'poi-1'}) {
+class _FakeMapController implements MapController {
+  _FakeMapController()
+      : _camera = MapCamera.initialCamera(
+          const MapOptions(
+            initialCenter: LatLng(-20.0, -40.0),
+            initialZoom: 16,
+          ),
+        );
+
+  final StreamController<MapEvent> _events =
+      StreamController<MapEvent>.broadcast();
+  MapCamera _camera;
+  int moveCallCount = 0;
+  LatLng? lastMoveCenter;
+  double? lastMoveZoom;
+
+  @override
+  Stream<MapEvent> get mapEventStream => _events.stream;
+
+  @override
+  bool move(
+    LatLng center,
+    double zoom, {
+    Offset offset = Offset.zero,
+    String? id,
+  }) {
+    moveCallCount += 1;
+    lastMoveCenter = center;
+    lastMoveZoom = zoom;
+    _camera = _camera.withPosition(center: center, zoom: zoom);
+    return true;
+  }
+
+  @override
+  bool rotate(double degree, {String? id}) => false;
+
+  @override
+  MoveAndRotateResult rotateAroundPoint(
+    double degree, {
+    Offset? offset,
+    String? id,
+  }) {
+    return const (moveSuccess: false, rotateSuccess: false);
+  }
+
+  @override
+  MoveAndRotateResult moveAndRotate(
+    LatLng center,
+    double zoom,
+    double degree, {
+    String? id,
+  }) {
+    return const (moveSuccess: false, rotateSuccess: false);
+  }
+
+  @override
+  bool fitCamera(CameraFit cameraFit) => false;
+
+  @override
+  MapCamera get camera => _camera;
+
+  @override
+  void dispose() {
+    _events.close();
+  }
+
+  void emitMapEvent() {
+    final current = _camera;
+    _events.add(
+      MapEventMove(
+        source: MapEventSource.nonRotatedSizeChange,
+        oldCamera: current,
+        camera: current,
+      ),
+    );
+  }
+}
+
+CityPoiModel _buildPoi({
+  String id = 'poi-1',
+  String refType = 'static',
+  String refId = 'poi-1',
+  String stackKey = '',
+  int stackCount = 1,
+  List<CityPoiModel>? stackItems,
+}) {
   final idValue = CityPoiIdValue()..parse(id);
   final nameValue = CityPoiNameValue()..parse('Beach Bar');
   final descriptionValue = CityPoiDescriptionValue()..parse('Nice place');
@@ -276,6 +405,11 @@ CityPoiModel _buildPoi({String id = 'poi-1'}) {
     category: CityPoiCategory.restaurant,
     coordinate: coordinate,
     priorityValue: priorityValue,
+    refType: refType,
+    refId: refId,
+    stackKey: stackKey,
+    stackCount: stackCount,
+    stackItems: stackItems,
   );
 }
 
@@ -609,6 +743,234 @@ void main() {
       expect(telemetry.events[1].eventName, 'map_ride_share_clicked');
       expect(telemetry.events[1].event, EventTrackerEvents.buttonClick);
       expect(telemetry.events[1].properties?['provider'], 'uber');
+    });
+
+    test(
+        'hydrates selected poi from initial query when top-level list has match',
+        () async {
+      final targetPoi = _buildPoi(
+        id: 'poi-target',
+        refType: 'event',
+        refId: 'evt-001',
+        stackKey: 'stack-target',
+      );
+      mapRepository.nextPois = <CityPoiModel>[targetPoi];
+
+      await controller.init(initialPoiQuery: 'event:evt-001');
+      await _flushMicrotasks();
+
+      expect(controller.selectedPoiStreamValue.value?.id, 'poi-target');
+      expect(
+        controller.statusMessageStreamValue.value,
+        isNot('POI do link não foi encontrado.'),
+      );
+    });
+
+    test('skips auto-centering on user when initial poi query is provided',
+        () async {
+      final targetPoi = _buildPoi(
+        id: 'poi-target',
+        refType: 'event',
+        refId: 'evt-001',
+      );
+      mapRepository.nextPois = <CityPoiModel>[targetPoi];
+
+      await controller.init(initialPoiQuery: 'event:evt-001');
+      await _flushMicrotasks();
+
+      expect(userLocationRepository.refreshIfPermittedCallCount, 1);
+      expect(userLocationRepository.resolveUserLocationCallCount, 0);
+    });
+
+    test('keeps auto-centering on user when no initial poi query is provided',
+        () async {
+      await controller.init();
+      await _flushMicrotasks();
+
+      expect(userLocationRepository.refreshIfPermittedCallCount, 1);
+      expect(userLocationRepository.resolveUserLocationCallCount, 1);
+    });
+
+    test(
+      'hydrates selected poi from stack query when poi is not in top-level list',
+      () async {
+        final topPoi = _buildPoi(
+          id: 'poi-top',
+          refType: 'event',
+          refId: 'evt-top',
+          stackKey: 'stack-abc',
+          stackCount: 2,
+        );
+        final stackedTarget = _buildPoi(
+          id: 'poi-stacked',
+          refType: 'event',
+          refId: 'evt-stacked',
+          stackKey: 'stack-abc',
+          stackCount: 2,
+        );
+        mapRepository.nextPois = <CityPoiModel>[topPoi];
+        mapRepository.nextStackItems = <CityPoiModel>[
+          topPoi,
+          stackedTarget,
+        ];
+
+        await controller.init(
+          initialPoiQuery: 'event:evt-stacked',
+          initialPoiStackQuery: 'stack-abc',
+        );
+        await _flushMicrotasks();
+
+        expect(mapRepository.lastStackKey, 'stack-abc');
+        expect(controller.selectedPoiStreamValue.value?.id, 'poi-stacked');
+        expect(
+          controller.statusMessageStreamValue.value,
+          isNot('POI do link não foi encontrado.'),
+        );
+      },
+    );
+
+    test(
+      'hydrates selected poi from backend lookup when typed query is outside loaded payload',
+      () async {
+        mapRepository.nextPois = <CityPoiModel>[
+          _buildPoi(
+            id: 'poi-other',
+            refType: 'event',
+            refId: 'evt-other',
+          ),
+        ];
+        mapRepository.nextLookupPoi = _buildPoi(
+          id: 'poi-lookup',
+          refType: 'event',
+          refId: 'evt-lookup',
+          stackKey: 'stack-lookup',
+          stackCount: 2,
+        );
+
+        await controller.init(initialPoiQuery: 'event:evt-lookup');
+        await _flushMicrotasks();
+
+        expect(mapRepository.lastLookupRefType, 'event');
+        expect(mapRepository.lastLookupRefId, 'evt-lookup');
+        expect(controller.selectedPoiStreamValue.value?.id, 'poi-lookup');
+        expect(
+          controller.statusMessageStreamValue.value,
+          isNot('POI do link não foi encontrado.'),
+        );
+      },
+    );
+
+    test(
+      'hydrates initial poi before refreshIfPermitted completes',
+      () async {
+        final refreshCompleter = Completer<bool>();
+        userLocationRepository.refreshIfPermittedCompleter = refreshCompleter;
+        mapRepository.nextLookupPoi = _buildPoi(
+          id: 'poi-lookup',
+          refType: 'event',
+          refId: 'evt-lookup',
+        );
+
+        var initCompleted = false;
+        final initFuture = controller.init(initialPoiQuery: 'event:evt-lookup')
+          ..then((_) => initCompleted = true);
+
+        await _flushMicrotasks();
+        await _flushMicrotasks();
+
+        expect(mapRepository.lastLookupRefType, 'event');
+        expect(mapRepository.lastLookupRefId, 'evt-lookup');
+        expect(controller.selectedPoiStreamValue.value?.id, 'poi-lookup');
+        expect(
+          initCompleted,
+          isFalse,
+          reason: 'location refresh can continue while poi hydration resolves',
+        );
+
+        refreshCompleter.complete(false);
+        await initFuture;
+      },
+    );
+
+    test('sets deterministic status when initial poi query cannot be resolved',
+        () async {
+      mapRepository.nextPois = <CityPoiModel>[
+        _buildPoi(
+          id: 'poi-other',
+          refType: 'event',
+          refId: 'evt-other',
+          stackKey: 'stack-other',
+        ),
+      ];
+
+      await controller.init(initialPoiQuery: 'event:evt-missing');
+      await _flushMicrotasks();
+
+      expect(controller.selectedPoiStreamValue.value, isNull);
+      expect(
+        controller.statusMessageStreamValue.value,
+        'POI do link não foi encontrado.',
+      );
+    });
+
+    test('buildPoiQueryKey normalizes ref_type:ref_id key', () {
+      final canonicalPoi = _buildPoi(
+        id: 'poi-canonical',
+        refType: 'EVENT',
+        refId: 'EVT-9000',
+      );
+
+      expect(controller.buildPoiQueryKey(canonicalPoi), 'event:evt-9000');
+    });
+
+    test(
+        'applies initial poi focus after first map event when deep link query is present',
+        () async {
+      final fakeMapController = _FakeMapController();
+      final targetPoi = _buildPoi(
+        id: 'poi-target',
+        refType: 'event',
+        refId: 'evt-001',
+      );
+      mapRepository.nextPois = <CityPoiModel>[targetPoi];
+
+      final localController = MapScreenController(
+        poiRepository: PoiRepository(dataSource: mapRepository),
+        userLocationRepository: userLocationRepository,
+        telemetryRepository: telemetry,
+        mapController: fakeMapController,
+      );
+      addTearDown(() async {
+        await localController.onDispose();
+        fakeMapController.dispose();
+      });
+
+      await localController.init(initialPoiQuery: 'event:evt-001');
+      await _flushMicrotasks();
+
+      expect(localController.selectedPoiStreamValue.value?.id, 'poi-target');
+      expect(fakeMapController.moveCallCount, 0);
+
+      fakeMapController.emitMapEvent();
+      await _flushMicrotasks();
+      await _flushMicrotasks();
+
+      expect(fakeMapController.moveCallCount, 1);
+      expect(fakeMapController.lastMoveCenter, isNotNull);
+      expect(fakeMapController.lastMoveCenter!.latitude, closeTo(-20.0, 1e-9));
+      expect(
+        fakeMapController.lastMoveCenter!.longitude,
+        closeTo(-40.0, 1e-9),
+      );
+
+      fakeMapController.emitMapEvent();
+      await _flushMicrotasks();
+
+      expect(
+        fakeMapController.moveCallCount,
+        1,
+        reason: 'initial focus must be applied exactly once',
+      );
     });
   });
 }

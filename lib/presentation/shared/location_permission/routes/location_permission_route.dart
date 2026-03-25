@@ -9,16 +9,17 @@ import 'package:get_it_modular_with_auto_route/get_it_modular_with_auto_route.da
 class LocationPermissionRoutePage extends StatelessWidget {
   const LocationPermissionRoutePage({
     super.key,
-    required this.initialState,
+    this.initialState,
   });
 
-  final LocationPermissionState initialState;
+  final LocationPermissionState? initialState;
 
   @override
   Widget build(BuildContext context) {
+    final resolvedInitialState = initialState ?? LocationPermissionState.denied;
     return ModuleScope<InitializationModule>(
       child: LocationPermissionScreen(
-        initialState: initialState,
+        initialState: resolvedInitialState,
       ),
     );
   }

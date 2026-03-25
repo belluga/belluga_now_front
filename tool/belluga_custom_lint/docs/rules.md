@@ -54,6 +54,7 @@
 - `ui_build_side_effects_forbidden` (`P1`): side effects in `build`/`didChangeDependencies` are forbidden.
 - `ui_route_param_hydration_forbidden` (`P1`): screens cannot hydrate feature data from `widget.<route_param>` inside lifecycle methods (`initState`/`didUpdateWidget`).
 - `route_path_param_requires_resolver_route` (`P1`): route pages using `@PathParam` must extend `ResolverRoute<,>` for model hydration through a route resolver.
+- `route_required_non_url_args_forbidden` (`P1`): route pages cannot require constructor args that are not URL-bound (`@PathParam`/`@QueryParam`); internal-only routes must keep such args optional and expose deterministic fallback.
 - `ui_future_stream_builder_forbidden` (`P1`): `FutureBuilder`/`StreamBuilder` are forbidden under `StreamValue` architecture.
 - `ui_streamvalue_builder_null_check_forbidden` (`P1`): UI must not null-check the builder value inside `StreamValueBuilder`; use `onNullWidget`.
 - `ui_controller_ownership_forbidden` (`P1`): Screen files cannot own UI controllers/keys; auxiliary widgets can own them only when isolated from feature controller interactions.
@@ -430,6 +431,26 @@ class AccountDetailRoute extends ResolverRoute<AccountModel, AccountsModule> {
 
   @override
   RouteResolverParams get resolverParams => {'slug': slug};
+}
+```
+
+### `route_required_non_url_args_forbidden`
+Violation:
+```dart
+@RoutePage()
+class InviteShareRoutePage extends StatelessWidget {
+  const InviteShareRoutePage({required this.invite});
+  final InviteModel invite;
+}
+```
+Fix:
+```dart
+@RoutePage()
+class InviteShareRoutePage extends StatelessWidget {
+  const InviteShareRoutePage({this.invite});
+  final InviteModel? invite;
+
+  // internal-only route: deterministic fallback when invite is absent
 }
 ```
 
