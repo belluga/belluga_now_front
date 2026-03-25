@@ -238,7 +238,20 @@ class _PoiDetailDeckState extends State<PoiDetailDeck>
       );
       return;
     }
-    context.router.push(PoiDetailsRoute(poi: poi));
+    final poiQueryKey = _controller.buildPoiQueryKey(poi);
+    if (poiQueryKey.isEmpty) {
+      _controller.statusMessageStreamValue.addValue(
+        'POI sem referência para abrir detalhes.',
+      );
+      return;
+    }
+    final stackQueryKey = poi.stackKey.trim();
+    context.router.replace(
+      CityMapRoute(
+        poi: poiQueryKey,
+        stack: stackQueryKey.isEmpty ? null : stackQueryKey,
+      ),
+    );
   }
 
   Future<void> _handleShare(CityPoiModel poi) async {

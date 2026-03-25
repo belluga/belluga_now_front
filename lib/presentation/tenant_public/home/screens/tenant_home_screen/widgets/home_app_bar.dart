@@ -34,7 +34,7 @@ class HomeAppBar extends StatelessWidget {
                     padding: const EdgeInsets.only(top: 2),
                     child: InkWell(
                       borderRadius: BorderRadius.circular(8),
-                      onTap: () => context.router.push(const CityMapRoute()),
+                      onTap: () => context.router.push(CityMapRoute()),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [

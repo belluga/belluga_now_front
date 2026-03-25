@@ -47,7 +47,7 @@ class _MenuScreenState extends State<MenuScreen> {
             icon: Icons.map_outlined,
             label: 'Mapa',
             helper: 'Explorar pontos e eventos no mapa',
-            onTap: () => context.router.push(const CityMapRoute()),
+            onTap: () => context.router.push(CityMapRoute()),
           ),
           MenuAction(
             icon: BooraIcons.invite_outlined,
@@ -87,8 +87,10 @@ class _MenuScreenState extends State<MenuScreen> {
                 return MenuProfileHero(
                   onTapViewProfile: () =>
                       context.router.push(const ProfileRoute()),
-                  invitesSent: 0, // TODO(Delphi): Bind to convites enviados (pending/total).
-                  invitesAccepted: 0, // TODO(Delphi): Bind to real social score metrics (convites aceitos).
+                  invitesSent:
+                      0, // TODO(Delphi): Bind to convites enviados (pending/total).
+                  invitesAccepted:
+                      0, // TODO(Delphi): Bind to real social score metrics (convites aceitos).
                 );
               }
               final section = sections[index - 1];
@@ -99,5 +101,4 @@ class _MenuScreenState extends State<MenuScreen> {
       ),
     );
   }
-
 }

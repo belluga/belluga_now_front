@@ -29,6 +29,10 @@ abstract class PoiRepositoryContract {
     required PoiRepositoryContractPrimString stackKey,
     required PoiQuery query,
   });
+  Future<CityPoiModel?> fetchPoiByReference({
+    required PoiRepositoryContractPrimString refType,
+    required PoiRepositoryContractPrimString refId,
+  });
   Future<void> loadStackItems({
     required PoiRepositoryContractPrimString stackKey,
     required PoiQuery query,

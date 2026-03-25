@@ -21,6 +21,11 @@ abstract class CityMapRepositoryContract {
     required CityMapRepositoryContractPrimString stackKey,
   });
 
+  Future<CityPoiModel?> fetchPoiByReference({
+    required CityMapRepositoryContractPrimString refType,
+    required CityMapRepositoryContractPrimString refId,
+  });
+
   Future<PoiFilterOptions> fetchFilters();
 
   Future<List<MainFilterOption>> fetchMainFilters();

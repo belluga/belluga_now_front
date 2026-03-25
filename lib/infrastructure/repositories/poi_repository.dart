@@ -74,6 +74,17 @@ class PoiRepository implements PoiRepositoryContract {
   }
 
   @override
+  Future<CityPoiModel?> fetchPoiByReference({
+    required String refType,
+    required String refId,
+  }) {
+    return _dataSource.fetchPoiByReference(
+      refType: refType,
+      refId: refId,
+    );
+  }
+
+  @override
   Future<void> loadStackItems({
     required String stackKey,
     required PoiQuery query,

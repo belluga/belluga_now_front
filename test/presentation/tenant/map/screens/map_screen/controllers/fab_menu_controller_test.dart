@@ -108,6 +108,13 @@ class _FakePoiRepository implements PoiRepositoryContract {
       const <CityPoiModel>[];
 
   @override
+  Future<CityPoiModel?> fetchPoiByReference({
+    required String refType,
+    required String refId,
+  }) async =>
+      null;
+
+  @override
   Future<void> loadStackItems({
     required String stackKey,
     required PoiQuery query,
