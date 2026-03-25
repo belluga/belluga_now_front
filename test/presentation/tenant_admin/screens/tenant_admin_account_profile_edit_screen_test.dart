@@ -156,6 +156,47 @@ void main() {
     expect(find.text('Gestao da conta'), findsOneWidget);
     expect(find.text('Do tenant'), findsOneWidget);
   });
+
+  testWidgets('sends explicit remove avatar flag when clearing persisted media',
+      (tester) async {
+    final profilesRepository =
+        GetIt.I.get<TenantAdminAccountProfilesRepositoryContract>()
+            as _FakeAccountProfilesRepository;
+    profilesRepository.profileToReturn = _profile(
+      id: 'route-profile',
+      avatarUrl: 'https://tenant-a.test/media/account-profiles/avatar.png',
+      coverUrl: 'https://tenant-a.test/media/account-profiles/cover.png',
+    );
+
+    await _pumpScreen(
+      tester,
+      TenantAdminAccountProfileEditScreen(
+        accountSlug: 'route-account',
+        accountProfileId: 'route-profile',
+      ),
+    );
+
+    final scrollable = find.byType(Scrollable).first;
+    await tester.scrollUntilVisible(
+      find.text('Remover').first,
+      200,
+      scrollable: scrollable,
+    );
+    await tester.tap(find.text('Remover').first);
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text('Salvar alteracoes'),
+      200,
+      scrollable: scrollable,
+    );
+    await tester.tap(find.text('Salvar alteracoes'));
+    await tester.pumpAndSettle();
+
+    expect(profilesRepository.lastRemoveAvatar, isTrue);
+    expect(profilesRepository.lastRemoveCover, isNot(true));
+    expect(profilesRepository.profileToReturn.avatarUrl, isNull);
+    expect(profilesRepository.profileToReturn.coverUrl, isNotNull);
+  });
 }
 
 Future<void> _pumpScreen(WidgetTester tester, Widget child) async {
@@ -254,6 +295,8 @@ class _FakeAccountProfilesRepository
   int fetchAccountProfileCalls = 0;
   String? lastFetchedProfileId;
   TenantAdminAccountProfile profileToReturn = _profile(id: 'default-profile');
+  bool? lastRemoveAvatar;
+  bool? lastRemoveCover;
 
   @override
   Future<List<TenantAdminAccountProfile>> fetchAccountProfiles({
@@ -325,10 +368,31 @@ class _FakeAccountProfilesRepository
     String? content,
     String? avatarUrl,
     String? coverUrl,
+    bool? removeAvatar,
+    bool? removeCover,
     TenantAdminMediaUpload? avatarUpload,
     TenantAdminMediaUpload? coverUpload,
-  }) {
-    throw UnimplementedError();
+  }) async {
+    lastRemoveAvatar = removeAvatar;
+    lastRemoveCover = removeCover;
+    profileToReturn = TenantAdminAccountProfile(
+      id: accountProfileId,
+      accountId: profileToReturn.accountId,
+      profileType: profileType ?? profileToReturn.profileType,
+      displayName: displayName ?? profileToReturn.displayName,
+      slug: slug ?? profileToReturn.slug,
+      avatarUrl: removeAvatar == true
+          ? null
+          : (avatarUrl ?? profileToReturn.avatarUrl),
+      coverUrl:
+          removeCover == true ? null : (coverUrl ?? profileToReturn.coverUrl),
+      bio: bio ?? profileToReturn.bio,
+      content: content ?? profileToReturn.content,
+      location: location ?? profileToReturn.location,
+      taxonomyTerms: taxonomyTerms ?? profileToReturn.taxonomyTerms,
+      ownershipState: profileToReturn.ownershipState,
+    );
+    return profileToReturn;
   }
 
   @override
@@ -462,6 +526,7 @@ TenantAdminAccountProfile _profile({
     accountId: 'acc-1',
     profileType: 'poi',
     displayName: id,
+    slug: 'slug-$id',
     avatarUrl: avatarUrl,
     coverUrl: coverUrl,
     ownershipState: TenantAdminOwnershipState.tenantOwned,

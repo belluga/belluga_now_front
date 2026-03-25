@@ -371,6 +371,8 @@ class _FakeAccountProfilesRepository
     String? content,
     String? avatarUrl,
     String? coverUrl,
+    bool? removeAvatar,
+    bool? removeCover,
     TenantAdminMediaUpload? avatarUpload,
     TenantAdminMediaUpload? coverUpload,
   }) async {

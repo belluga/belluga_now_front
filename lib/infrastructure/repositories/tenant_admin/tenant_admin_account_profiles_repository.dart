@@ -133,6 +133,8 @@ class TenantAdminAccountProfilesRepository
     String? content,
     String? avatarUrl,
     String? coverUrl,
+    bool? removeAvatar,
+    bool? removeCover,
     TenantAdminMediaUpload? avatarUpload,
     TenantAdminMediaUpload? coverUpload,
   }) async {
@@ -147,6 +149,8 @@ class TenantAdminAccountProfilesRepository
         content: content,
         avatarUrl: avatarUrl,
         coverUrl: coverUrl,
+        removeAvatar: removeAvatar,
+        removeCover: removeCover,
       );
       final uploadPayload = _mediaFormDataBuilder.buildAvatarCoverPayload(
         payload: payload,

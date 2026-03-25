@@ -119,6 +119,42 @@ void main() {
     expect(page.accounts.first.avatarUrl, 'https://cdn.test/avatars/acc-1.png');
   });
 
+  test('fetchAccountsPage tolerates missing document payload', () async {
+    final adapter = _AccountsMissingDocumentAdapter();
+    final dio = Dio()..httpClientAdapter = adapter;
+    final scope = _MutableTenantScope('https://tenant-a.test/admin/api');
+    final repository = TenantAdminAccountsRepository(
+      dio: dio,
+      tenantScope: scope,
+    );
+
+    final page = await repository.fetchAccountsPage(page: 1, pageSize: 2);
+
+    expect(page.accounts, hasLength(1));
+    expect(page.accounts.single.slug, 'acc-missing-document');
+    expect(page.accounts.single.document.type, '');
+    expect(page.accounts.single.document.number, '');
+  });
+
+  test('fetchAccountsPage normalizes relative avatar_url to tenant origin',
+      () async {
+    final adapter = _AccountsRelativeAvatarAdapter();
+    final dio = Dio()..httpClientAdapter = adapter;
+    final scope = _MutableTenantScope('https://tenant-a.test/admin/api');
+    final repository = TenantAdminAccountsRepository(
+      dio: dio,
+      tenantScope: scope,
+    );
+
+    final page = await repository.fetchAccountsPage(page: 1, pageSize: 2);
+
+    expect(page.accounts, hasLength(1));
+    expect(
+      page.accounts.single.avatarUrl,
+      'https://tenant-a.test/api/v1/media/account-profiles/acc-relative.png',
+    );
+  });
+
   test('fetchAccountsPage maps missing ownership_state to unmanaged', () async {
     final adapter = _AccountsRoutingAdapter(includeOwnershipState: false);
     final dio = Dio()..httpClientAdapter = adapter;
@@ -588,6 +624,74 @@ class _AccountsCreateRateLimitedAdapter implements HttpClientAdapter {
         'correlation_id': 'corr-rate-1',
       }),
       429,
+      headers: {
+        Headers.contentTypeHeader: ['application/json'],
+      },
+    );
+  }
+}
+
+class _AccountsMissingDocumentAdapter implements HttpClientAdapter {
+  @override
+  void close({bool force = false}) {}
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<List<int>>? requestStream,
+    Future<dynamic>? cancelFuture,
+  ) async {
+    return ResponseBody.fromString(
+      jsonEncode({
+        'data': [
+          {
+            'id': 'missing-document',
+            'name': 'Conta sem documento',
+            'slug': 'acc-missing-document',
+            'ownership_state': 'tenant_owned',
+            'avatar_url': 'https://cdn.test/avatars/acc-missing-document.png',
+          }
+        ],
+        'current_page': 1,
+        'last_page': 1,
+      }),
+      200,
+      headers: {
+        Headers.contentTypeHeader: ['application/json'],
+      },
+    );
+  }
+}
+
+class _AccountsRelativeAvatarAdapter implements HttpClientAdapter {
+  @override
+  void close({bool force = false}) {}
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<List<int>>? requestStream,
+    Future<dynamic>? cancelFuture,
+  ) async {
+    return ResponseBody.fromString(
+      jsonEncode({
+        'data': [
+          {
+            'id': 'relative-avatar',
+            'name': 'Conta avatar relativo',
+            'slug': 'acc-relative-avatar',
+            'document': {
+              'type': 'cpf',
+              'number': '0001',
+            },
+            'ownership_state': 'tenant_owned',
+            'avatar_url': '/api/v1/media/account-profiles/acc-relative.png',
+          }
+        ],
+        'current_page': 1,
+        'last_page': 1,
+      }),
+      200,
       headers: {
         Headers.contentTypeHeader: ['application/json'],
       },

@@ -46,6 +46,8 @@ class TenantAdminAccountProfilesRequestEncoder {
     String? content,
     String? avatarUrl,
     String? coverUrl,
+    bool? removeAvatar,
+    bool? removeCover,
   }) {
     final payload = <String, dynamic>{};
     if (profileType != null) payload['profile_type'] = profileType;
@@ -66,6 +68,8 @@ class TenantAdminAccountProfilesRequestEncoder {
     if (content != null) payload['content'] = content;
     if (avatarUrl != null) payload['avatar_url'] = avatarUrl;
     if (coverUrl != null) payload['cover_url'] = coverUrl;
+    if (removeAvatar == true) payload['remove_avatar'] = true;
+    if (removeCover == true) payload['remove_cover'] = true;
     return payload;
   }
 

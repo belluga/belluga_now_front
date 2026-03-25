@@ -126,6 +126,8 @@ class TenantAdminAccountProfilesController implements Disposable {
   TenantAdminLoadedAccountWatch? _accountWatch;
   String? _watchedAccountId;
   String? _watchedAccountSlug;
+  bool _removeAvatarOnSubmit = false;
+  bool _removeCoverOnSubmit = false;
 
   StreamValue<TenantAdminAccount?> get accountStreamValue =>
       _accountDetailStreamValue;
@@ -433,6 +435,8 @@ class TenantAdminAccountProfilesController implements Disposable {
             )
             .syncRemoteState(profile),
       );
+      _removeAvatarOnSubmit = false;
+      _removeCoverOnSubmit = false;
     } catch (error) {
       if (_isDisposed) return;
       editLoadErrorStreamValue.addValue(error.toString());
@@ -460,6 +464,8 @@ class TenantAdminAccountProfilesController implements Disposable {
     _updateEditState(
       editStateStreamValue.value.copyWith().syncRemoteState(profile),
     );
+    _removeAvatarOnSubmit = false;
+    _removeCoverOnSubmit = false;
   }
 
   void updateAvatarFile(XFile? file) {
@@ -473,6 +479,9 @@ class TenantAdminAccountProfilesController implements Disposable {
         avatarPreloadUrl: null,
       ),
     );
+    if (file != null) {
+      _removeAvatarOnSubmit = false;
+    }
   }
 
   void updateCoverFile(XFile? file) {
@@ -486,6 +495,9 @@ class TenantAdminAccountProfilesController implements Disposable {
         coverPreloadUrl: null,
       ),
     );
+    if (file != null) {
+      _removeCoverOnSubmit = false;
+    }
   }
 
   void updateEditAvatarBusy(bool isBusy) {
@@ -498,28 +510,60 @@ class TenantAdminAccountProfilesController implements Disposable {
 
   void updateAvatarRemoteUrl(String? url) {
     final trimmed = url?.trim();
+    final normalized = trimmed == null || trimmed.isEmpty ? null : trimmed;
     _updateEditState(
       editStateStreamValue.value.copyWith(
-        avatarRemoteUrl: trimmed == null || trimmed.isEmpty ? null : trimmed,
+        avatarRemoteUrl: normalized,
         avatarFile: null,
         avatarRemoteReady: false,
         avatarRemoteError: false,
         avatarPreloadUrl: null,
       ),
     );
+    if (normalized != null) {
+      _removeAvatarOnSubmit = false;
+    }
   }
 
   void updateCoverRemoteUrl(String? url) {
     final trimmed = url?.trim();
+    final normalized = trimmed == null || trimmed.isEmpty ? null : trimmed;
     _updateEditState(
       editStateStreamValue.value.copyWith(
-        coverRemoteUrl: trimmed == null || trimmed.isEmpty ? null : trimmed,
+        coverRemoteUrl: normalized,
         coverFile: null,
         coverRemoteReady: false,
         coverRemoteError: false,
         coverPreloadUrl: null,
       ),
     );
+    if (normalized != null) {
+      _removeCoverOnSubmit = false;
+    }
+  }
+
+  void clearAvatarSelection({bool markForRemoval = false}) {
+    updateAvatarFile(null);
+    updateAvatarRemoteUrl(null);
+    if (!markForRemoval) {
+      _removeAvatarOnSubmit = false;
+      return;
+    }
+    final hasPersistedAvatar =
+        accountProfileStreamValue.value?.avatarUrl?.trim().isNotEmpty ?? false;
+    _removeAvatarOnSubmit = hasPersistedAvatar;
+  }
+
+  void clearCoverSelection({bool markForRemoval = false}) {
+    updateCoverFile(null);
+    updateCoverRemoteUrl(null);
+    if (!markForRemoval) {
+      _removeCoverOnSubmit = false;
+      return;
+    }
+    final hasPersistedCover =
+        accountProfileStreamValue.value?.coverUrl?.trim().isNotEmpty ?? false;
+    _removeCoverOnSubmit = hasPersistedCover;
   }
 
   Future<void> submitCreateProfile({
@@ -628,6 +672,8 @@ class TenantAdminAccountProfilesController implements Disposable {
     required TenantAdminMediaUpload? coverUpload,
     String? avatarUrl,
     String? coverUrl,
+    bool? removeAvatar,
+    bool? removeCover,
   }) async {
     editSubmittingStreamValue.addValue(true);
     try {
@@ -644,6 +690,8 @@ class TenantAdminAccountProfilesController implements Disposable {
         coverUpload: coverUpload,
         avatarUrl: avatarUrl,
         coverUrl: coverUrl,
+        removeAvatar: removeAvatar ?? _removeAvatarOnSubmit,
+        removeCover: removeCover ?? _removeCoverOnSubmit,
       );
       if (_isDisposed) return;
       updateEditProfile(updated);
@@ -665,11 +713,15 @@ class TenantAdminAccountProfilesController implements Disposable {
     required TenantAdminMediaUpload? coverUpload,
     String? avatarUrl,
     String? coverUrl,
+    bool? removeAvatar,
+    bool? removeCover,
   }) async {
     if (avatarUpload == null &&
         coverUpload == null &&
         avatarUrl == null &&
-        coverUrl == null) {
+        coverUrl == null &&
+        removeAvatar != true &&
+        removeCover != true) {
       return;
     }
     updateEditLoading(true);
@@ -680,6 +732,8 @@ class TenantAdminAccountProfilesController implements Disposable {
         coverUpload: coverUpload,
         avatarUrl: avatarUrl,
         coverUrl: coverUrl,
+        removeAvatar: removeAvatar,
+        removeCover: removeCover,
       );
       if (_isDisposed) return;
       updateEditProfile(updated);
@@ -776,6 +830,8 @@ class TenantAdminAccountProfilesController implements Disposable {
     editLoadingStreamValue.addValue(false);
     editLoadErrorStreamValue.addValue(null);
     taxonomyAutosavingStreamValue.addValue(false);
+    _removeAvatarOnSubmit = false;
+    _removeCoverOnSubmit = false;
   }
 
   void updateCreateSelectedProfileType(String? profileType) {
@@ -1010,6 +1066,8 @@ class TenantAdminAccountProfilesController implements Disposable {
     String? content,
     String? avatarUrl,
     String? coverUrl,
+    bool? removeAvatar,
+    bool? removeCover,
     TenantAdminMediaUpload? avatarUpload,
     TenantAdminMediaUpload? coverUpload,
   }) async {
@@ -1046,6 +1104,8 @@ class TenantAdminAccountProfilesController implements Disposable {
       content: filtered.content,
       avatarUrl: filtered.avatarUrl,
       coverUrl: filtered.coverUrl,
+      removeAvatar: removeAvatar,
+      removeCover: removeCover,
       avatarUpload: filtered.avatarUpload,
       coverUpload: filtered.coverUpload,
     );

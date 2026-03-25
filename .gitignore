@@ -60,10 +60,16 @@ AGENTS.md
 scripts
 delphi-ai
 foundation_documentation
+.agent
 .agent/
+.agents
+.agents/
 .codex
+.codex/
+.cline
 .cline/
 .clinerules
+.clinerules/
 CLINE.md
 
 # Compile-time lane define overrides (local only)
