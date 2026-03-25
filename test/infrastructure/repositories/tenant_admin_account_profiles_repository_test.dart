@@ -93,6 +93,26 @@ void main() {
     expect((data as Map<String, dynamic>)['bio'], '');
   });
 
+  test('updateAccountProfile sends explicit remove avatar/cover flags',
+      () async {
+    final adapter = _CaptureAdapter();
+    final dio = Dio()..httpClientAdapter = adapter;
+    final repository = TenantAdminAccountProfilesRepository(dio: dio);
+
+    await repository.updateAccountProfile(
+      accountProfileId: 'profile-1',
+      removeAvatar: true,
+      removeCover: true,
+    );
+
+    expect(adapter.lastRequest?.method, 'PATCH');
+    final data = adapter.lastRequest?.data;
+    expect(data, isA<Map<String, dynamic>>());
+    final payload = data as Map<String, dynamic>;
+    expect(payload['remove_avatar'], isTrue);
+    expect(payload['remove_cover'], isTrue);
+  });
+
   test('updateAccountProfile omits bio when null', () async {
     final adapter = _CaptureAdapter();
     final dio = Dio()..httpClientAdapter = adapter;

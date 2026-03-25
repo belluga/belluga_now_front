@@ -53,6 +53,8 @@ abstract class TenantAdminAccountProfilesRepositoryContract {
     TenantAdminAccountProfilesRepoString? content,
     TenantAdminAccountProfilesRepoString? avatarUrl,
     TenantAdminAccountProfilesRepoString? coverUrl,
+    TenantAdminAccountProfilesRepoBool? removeAvatar,
+    TenantAdminAccountProfilesRepoBool? removeCover,
     TenantAdminMediaUpload? avatarUpload,
     TenantAdminMediaUpload? coverUpload,
   });

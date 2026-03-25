@@ -164,6 +164,8 @@ class TenantAdminStaticAssetsRepository
     String? content,
     String? avatarUrl,
     String? coverUrl,
+    bool? removeAvatar,
+    bool? removeCover,
     TenantAdminMediaUpload? avatarUpload,
     TenantAdminMediaUpload? coverUpload,
   }) async {
@@ -178,6 +180,8 @@ class TenantAdminStaticAssetsRepository
         content: content,
         avatarUrl: avatarUrl,
         coverUrl: coverUrl,
+        removeAvatar: removeAvatar,
+        removeCover: removeCover,
       );
       final uploadPayload = _mediaFormDataBuilder.buildAvatarCoverPayload(
         payload: payload,
@@ -282,9 +286,7 @@ class TenantAdminStaticAssetsRepository
       );
       final dtos = _responseDecoder.decodeStaticProfileTypeList(response.data);
       return TenantAdminPagedResult<TenantAdminStaticProfileTypeDefinition>(
-        items: dtos
-            .map((dto) => dto.toDomain())
-            .toList(growable: false),
+        items: dtos.map((dto) => dto.toDomain()).toList(growable: false),
         hasMore: tenantAdminResolveHasMore(
           rawResponse: response.data,
           requestedPage: page,

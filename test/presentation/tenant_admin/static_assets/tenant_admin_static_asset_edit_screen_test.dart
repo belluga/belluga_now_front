@@ -156,6 +156,50 @@ void main() {
     expect(coverImageFinder, findsOneWidget);
     expect(find.byType(TenantAdminImageUploadField), findsNWidgets(2));
   });
+
+  testWidgets('sends explicit remove avatar flag when clearing persisted media',
+      (tester) async {
+    final assetsRepository = _FakeStaticAssetsRepository(
+      asset: _sampleAsset(
+        avatarUrl: 'https://tenant-a.test/media/static-assets/avatar.png',
+        coverUrl: 'https://tenant-a.test/media/static-assets/cover.png',
+      ),
+      profileTypeCapabilities: TenantAdminStaticProfileTypeCapabilities(
+        isPoiEnabled: false,
+        hasBio: false,
+        hasTaxonomies: true,
+        hasAvatar: true,
+        hasCover: true,
+        hasContent: false,
+      ),
+    );
+    await _pumpScreen(
+      tester,
+      assetsRepository: assetsRepository,
+      taxonomiesRepository: _FakeTaxonomiesRepository(),
+    );
+
+    final scrollable = find.byType(Scrollable).first;
+    await tester.scrollUntilVisible(
+      find.text('Remover').first,
+      200,
+      scrollable: scrollable,
+    );
+    await tester.tap(find.text('Remover').first);
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text('Salvar ativo'),
+      200,
+      scrollable: scrollable,
+    );
+    await tester.tap(find.text('Salvar ativo'));
+    await tester.pumpAndSettle();
+
+    expect(assetsRepository.lastRemoveAvatar, isTrue);
+    expect(assetsRepository.lastRemoveCover, isNot(true));
+    expect(assetsRepository.asset.avatarUrl, isNull);
+    expect(assetsRepository.asset.coverUrl, isNotNull);
+  });
 }
 
 Future<void> _pumpScreen(
@@ -253,6 +297,8 @@ class _FakeStaticAssetsRepository
 
   String? lastUpdatedSlug;
   List<TenantAdminTaxonomyTerm>? lastUpdatedTaxonomyTerms;
+  bool? lastRemoveAvatar;
+  bool? lastRemoveCover;
 
   @override
   Future<TenantAdminStaticAsset> createStaticAsset({
@@ -379,9 +425,13 @@ class _FakeStaticAssetsRepository
     String? content,
     String? avatarUrl,
     String? coverUrl,
+    bool? removeAvatar,
+    bool? removeCover,
     TenantAdminMediaUpload? avatarUpload,
     TenantAdminMediaUpload? coverUpload,
   }) async {
+    lastRemoveAvatar = removeAvatar;
+    lastRemoveCover = removeCover;
     if (slug != null) {
       if (failSlugUpdate) {
         throw const FormatException('slug already exists');
@@ -402,8 +452,8 @@ class _FakeStaticAssetsRepository
       displayName: displayName ?? asset.displayName,
       slug: slug ?? asset.slug,
       isActive: asset.isActive,
-      avatarUrl: avatarUrl ?? asset.avatarUrl,
-      coverUrl: coverUrl ?? asset.coverUrl,
+      avatarUrl: removeAvatar == true ? null : (avatarUrl ?? asset.avatarUrl),
+      coverUrl: removeCover == true ? null : (coverUrl ?? asset.coverUrl),
       bio: bio ?? asset.bio,
       content: content ?? asset.content,
       taxonomyTerms: taxonomyTerms ?? asset.taxonomyTerms,

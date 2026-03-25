@@ -152,12 +152,10 @@ class _TenantAdminStaticAssetCreateScreenState
       _controller.selectedTaxonomyTermsStreamValue.addValue(const {});
     }
     if (!(definition?.capabilities.hasAvatar ?? false)) {
-      _controller.updateAvatarFile(null);
-      _controller.updateAvatarWebUrl(null);
+      _controller.clearAvatarSelection();
     }
     if (!(definition?.capabilities.hasCover ?? false)) {
-      _controller.updateCoverFile(null);
-      _controller.updateCoverWebUrl(null);
+      _controller.clearCoverSelection();
     }
     if (!(definition?.capabilities.isPoiEnabled ?? false)) {
       _controller.latitudeController.clear();
@@ -395,12 +393,10 @@ class _TenantAdminStaticAssetCreateScreenState
 
   void _clearImage({required bool isAvatar}) {
     if (isAvatar) {
-      _controller.updateAvatarFile(null);
-      _controller.updateAvatarWebUrl(null);
+      _controller.clearAvatarSelection();
       return;
     }
-    _controller.updateCoverFile(null);
-    _controller.updateCoverWebUrl(null);
+    _controller.clearCoverSelection();
   }
 
   Widget _buildBasicSection(BuildContext context, String? error) {

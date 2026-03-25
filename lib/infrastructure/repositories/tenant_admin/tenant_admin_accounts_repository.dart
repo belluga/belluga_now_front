@@ -12,6 +12,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart'
 import 'package:belluga_now/infrastructure/dal/dao/tenant_admin/tenant_admin_accounts_request_encoder.dart';
 import 'package:belluga_now/infrastructure/dal/dao/tenant_admin/tenant_admin_media_form_data_builder.dart';
 import 'package:belluga_now/infrastructure/dal/dao/tenant_admin/tenant_admin_pagination_decoder.dart';
+import 'package:belluga_now/infrastructure/dal/dto/tenant_admin/tenant_admin_account_dto.dart';
 import 'package:belluga_now/infrastructure/dal/dto/tenant_admin/tenant_admin_accounts_response_decoder.dart';
 import 'package:belluga_now/infrastructure/repositories/tenant_admin/support/tenant_admin_validation_failure_resolver.dart';
 import 'package:dio/dio.dart';
@@ -177,7 +178,10 @@ class TenantAdminAccountsRepository
           currentPage;
       final hasMore = currentPage < lastPage;
       return TenantAdminPagedAccountsResult(
-        accounts: dtos.map((dto) => dto.toDomain()).toList(growable: false),
+        accounts: dtos
+            .map(_normalizeAccountMediaUrls)
+            .map((dto) => dto.toDomain())
+            .toList(growable: false),
         hasMore: hasMore,
       );
     } on DioException catch (error) {
@@ -197,7 +201,7 @@ class TenantAdminAccountsRepository
         options: Options(headers: _buildHeaders()),
       );
       final dto = _responseDecoder.decodeAccountItem(response.data);
-      final account = dto.toDomain();
+      final account = _normalizeAccountMediaUrls(dto).toDomain();
       _upsertLoadedAccount(account);
       return account;
     } on DioException catch (error) {
@@ -225,7 +229,7 @@ class TenantAdminAccountsRepository
         options: Options(headers: _buildHeaders()),
       );
       final dto = _responseDecoder.decodeCreateAccountItem(response.data);
-      final created = dto.toDomain();
+      final created = _normalizeAccountMediaUrls(dto).toDomain();
       _appendLoadedAccount(created);
       return created;
     } on DioException catch (error) {
@@ -268,7 +272,8 @@ class TenantAdminAccountsRepository
         options: Options(headers: _buildHeaders()),
       );
       final onboardingData = _responseDecoder.decodeOnboarding(response.data);
-      final account = onboardingData.account.toDomain();
+      final account =
+          _normalizeAccountMediaUrls(onboardingData.account).toDomain();
       final accountProfile = onboardingData.accountProfile.toDomain();
       _appendLoadedAccount(account);
       return TenantAdminAccountOnboardingResult(
@@ -301,7 +306,7 @@ class TenantAdminAccountsRepository
         options: Options(headers: _buildHeaders()),
       );
       final dto = _responseDecoder.decodeAccountItem(response.data);
-      final updated = dto.toDomain();
+      final updated = _normalizeAccountMediaUrls(dto).toDomain();
       _upsertLoadedAccount(updated);
       return updated;
     } on DioException catch (error) {
@@ -330,7 +335,7 @@ class TenantAdminAccountsRepository
         options: Options(headers: _buildHeaders()),
       );
       final dto = _responseDecoder.decodeAccountItem(response.data);
-      final restored = dto.toDomain();
+      final restored = _normalizeAccountMediaUrls(dto).toDomain();
       _upsertLoadedAccount(restored);
       return restored;
     } on DioException catch (error) {
@@ -487,6 +492,58 @@ class TenantAdminAccountsRepository
           'last_page',
         ) ??
         fallback;
+  }
+
+  TenantAdminAccountDTO _normalizeAccountMediaUrls(TenantAdminAccountDTO dto) {
+    return TenantAdminAccountDTO(
+      id: dto.id,
+      name: dto.name,
+      slug: dto.slug,
+      documentType: dto.documentType,
+      documentNumber: dto.documentNumber,
+      organizationId: dto.organizationId,
+      ownershipState: dto.ownershipState,
+      avatarUrl: _normalizeAccountAvatarUrl(dto.avatarUrl),
+    );
+  }
+
+  String? _normalizeAccountAvatarUrl(String? rawUrl) {
+    final value = rawUrl?.trim();
+    if (value == null || value.isEmpty) {
+      return null;
+    }
+
+    final parsed = Uri.tryParse(value);
+    if (parsed == null) {
+      return value;
+    }
+
+    if (parsed.host.trim().isNotEmpty) {
+      return parsed.toString();
+    }
+
+    final path = parsed.path.trim();
+    final tenantOrigin = _resolveTenantOriginUri();
+
+    if (path.startsWith('/')) {
+      final canonical = tenantOrigin.resolve(path);
+      return canonical
+          .replace(
+            query: parsed.hasQuery ? parsed.query : null,
+            fragment: parsed.hasFragment ? parsed.fragment : null,
+          )
+          .toString();
+    }
+
+    return tenantOrigin.resolveUri(parsed).toString();
+  }
+
+  Uri _resolveTenantOriginUri() {
+    final parsed = Uri.tryParse(_apiBaseUrl);
+    if (parsed == null || parsed.host.trim().isEmpty) {
+      throw Exception('Invalid tenant admin base URL: $_apiBaseUrl');
+    }
+    return parsed.replace(path: '/', query: null, fragment: null);
   }
 
   Exception _wrapError(DioException error, String label) {

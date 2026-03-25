@@ -624,12 +624,10 @@ class _TenantAdminAccountProfileEditScreenState
 
   void _clearImage({required bool isAvatar}) {
     if (isAvatar) {
-      _controller.updateAvatarFile(null);
-      _controller.updateAvatarRemoteUrl(null);
+      _controller.clearAvatarSelection(markForRemoval: true);
       _controller.updateAvatarRemoteError(false);
     } else {
-      _controller.updateCoverFile(null);
-      _controller.updateCoverRemoteUrl(null);
+      _controller.clearCoverSelection(markForRemoval: true);
       _controller.updateCoverRemoteError(false);
     }
   }

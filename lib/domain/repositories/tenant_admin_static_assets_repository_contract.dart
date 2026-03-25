@@ -118,6 +118,8 @@ abstract class TenantAdminStaticAssetsRepositoryContract {
     TenantAdminStaticAssetsRepoString? content,
     TenantAdminStaticAssetsRepoString? avatarUrl,
     TenantAdminStaticAssetsRepoString? coverUrl,
+    TenantAdminStaticAssetsRepoBool? removeAvatar,
+    TenantAdminStaticAssetsRepoBool? removeCover,
     TenantAdminMediaUpload? avatarUpload,
     TenantAdminMediaUpload? coverUpload,
   });

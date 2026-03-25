@@ -109,6 +109,8 @@ class TenantAdminStaticAssetsController implements Disposable {
 
   bool _isDisposed = false;
   bool _assetsListScrollBound = false;
+  bool _removeAvatarOnSubmit = false;
+  bool _removeCoverOnSubmit = false;
   StreamSubscription<TenantAdminLocation?>? _locationSubscription;
   StreamSubscription<String?>? _tenantScopeSubscription;
   String? _lastTenantDomain;
@@ -293,12 +295,15 @@ class TenantAdminStaticAssetsController implements Disposable {
     }
     updateSelectedProfileType(asset.profileType);
     _applyTaxonomySelection(asset.taxonomyTerms);
+    _removeAvatarOnSubmit = false;
+    _removeCoverOnSubmit = false;
   }
 
   void updateAvatarFile(XFile? file) {
     avatarFileStreamValue.addValue(file);
     if (file != null) {
       avatarUrlController.clear();
+      _removeAvatarOnSubmit = false;
     }
   }
 
@@ -306,6 +311,7 @@ class TenantAdminStaticAssetsController implements Disposable {
     coverFileStreamValue.addValue(file);
     if (file != null) {
       coverUrlController.clear();
+      _removeCoverOnSubmit = false;
     }
   }
 
@@ -321,6 +327,7 @@ class TenantAdminStaticAssetsController implements Disposable {
     avatarUrlController.text = (url ?? '').trim();
     if (avatarUrlController.text.isNotEmpty) {
       avatarFileStreamValue.addValue(null);
+      _removeAvatarOnSubmit = false;
     }
   }
 
@@ -328,7 +335,32 @@ class TenantAdminStaticAssetsController implements Disposable {
     coverUrlController.text = (url ?? '').trim();
     if (coverUrlController.text.isNotEmpty) {
       coverFileStreamValue.addValue(null);
+      _removeCoverOnSubmit = false;
     }
+  }
+
+  void clearAvatarSelection({bool markForRemoval = false}) {
+    updateAvatarFile(null);
+    updateAvatarWebUrl(null);
+    if (!markForRemoval) {
+      _removeAvatarOnSubmit = false;
+      return;
+    }
+    final hasPersistedAvatar =
+        editingAssetStreamValue.value?.avatarUrl?.trim().isNotEmpty ?? false;
+    _removeAvatarOnSubmit = hasPersistedAvatar;
+  }
+
+  void clearCoverSelection({bool markForRemoval = false}) {
+    updateCoverFile(null);
+    updateCoverWebUrl(null);
+    if (!markForRemoval) {
+      _removeCoverOnSubmit = false;
+      return;
+    }
+    final hasPersistedCover =
+        editingAssetStreamValue.value?.coverUrl?.trim().isNotEmpty ?? false;
+    _removeCoverOnSubmit = hasPersistedCover;
   }
 
   void updateSelectedProfileType(String? profileType) {
@@ -535,6 +567,8 @@ class TenantAdminStaticAssetsController implements Disposable {
             : contentController.text.trim(),
         avatarUrl: null,
         coverUrl: null,
+        removeAvatar: _removeAvatarOnSubmit,
+        removeCover: _removeCoverOnSubmit,
         avatarUpload: avatarUpload,
         coverUpload: coverUpload,
       );
@@ -632,6 +666,8 @@ class TenantAdminStaticAssetsController implements Disposable {
     coverUrlController.clear();
     avatarFileStreamValue.addValue(null);
     coverFileStreamValue.addValue(null);
+    _removeAvatarOnSubmit = false;
+    _removeCoverOnSubmit = false;
     latitudeController.clear();
     longitudeController.clear();
     selectedProfileTypeStreamValue.addValue(null);

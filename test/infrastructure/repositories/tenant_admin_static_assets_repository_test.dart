@@ -262,6 +262,25 @@ void main() {
     expect(formData.files.any((entry) => entry.key == 'avatar'), isTrue);
   });
 
+  test('updateStaticAsset sends explicit remove avatar/cover flags', () async {
+    final adapter = _CaptureAdapter();
+    final dio = Dio()..httpClientAdapter = adapter;
+    final repository = TenantAdminStaticAssetsRepository(dio: dio);
+
+    await repository.updateStaticAsset(
+      assetId: 'asset-1',
+      removeAvatar: true,
+      removeCover: true,
+    );
+
+    expect(adapter.lastRequest?.method, 'PATCH');
+    final data = adapter.lastRequest?.data;
+    expect(data, isA<Map<String, dynamic>>());
+    final payload = data as Map<String, dynamic>;
+    expect(payload['remove_avatar'], isTrue);
+    expect(payload['remove_cover'], isTrue);
+  });
+
   test('load/reset/next follow paged stream contract for static assets',
       () async {
     final adapter = _CaptureAdapter(
