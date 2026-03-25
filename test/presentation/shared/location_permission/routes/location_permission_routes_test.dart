@@ -1,5 +1,6 @@
 import 'package:belluga_now/application/router/guards/location_permission_state.dart';
 import 'package:belluga_now/application/router/modular_app/modules/initialization_module.dart';
+import 'package:belluga_now/presentation/shared/location_permission/routes/location_not_live_route.dart';
 import 'package:belluga_now/presentation/shared/location_permission/routes/location_permission_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -35,6 +36,36 @@ void main() {
         GetIt.I.isRegistered<InitializationModule>(),
         isTrue,
       );
+    },
+  );
+
+  testWidgets(
+    'LocationPermissionRoutePage falls back to denied state when args are absent',
+    (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: LocationPermissionRoutePage(),
+        ),
+      );
+      await tester.pump();
+
+      expect(find.text('Permita a localização'), findsWidgets);
+      expect(find.text('Permitir localização'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'LocationNotLiveRoutePage falls back to denied state when args are absent',
+    (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: LocationNotLiveRoutePage(),
+        ),
+      );
+      await tester.pump();
+
+      expect(find.text('Ative a localização ao vivo'), findsOneWidget);
+      expect(find.text('Permitir localização'), findsOneWidget);
     },
   );
 }

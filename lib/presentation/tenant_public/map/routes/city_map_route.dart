@@ -6,12 +6,22 @@ import 'package:get_it_modular_with_auto_route/get_it_modular_with_auto_route.da
 
 @RoutePage(name: 'CityMapRoute')
 class CityMapRoutePage extends StatelessWidget {
-  const CityMapRoutePage({super.key});
+  const CityMapRoutePage({
+    super.key,
+    @QueryParam('poi') this.poi,
+    @QueryParam('stack') this.stack,
+  });
+
+  final String? poi;
+  final String? stack;
 
   @override
   Widget build(BuildContext context) {
     return ModuleScope<MapModule>(
-      child: const MapScreen(),
+      child: MapScreen(
+        initialPoiQuery: poi,
+        initialPoiStackQuery: stack,
+      ),
     );
   }
 }

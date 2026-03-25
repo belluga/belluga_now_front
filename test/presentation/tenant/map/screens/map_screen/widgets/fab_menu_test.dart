@@ -13,6 +13,7 @@ import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/wi
 import 'package:event_tracker_handler/event_tracker_handler.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:stream_value/core/stream_value.dart';
 
 class _FakePoiRepository implements PoiRepositoryContract {
@@ -85,6 +86,13 @@ class _FakePoiRepository implements PoiRepositoryContract {
     required PoiQuery query,
   }) async =>
       const <CityPoiModel>[];
+
+  @override
+  Future<CityPoiModel?> fetchPoiByReference({
+    required String refType,
+    required String refId,
+  }) async =>
+      null;
 
   @override
   Future<void> loadStackItems({
@@ -279,6 +287,7 @@ void main() {
         userLocationRepository: userLocationRepository,
         telemetryRepository: telemetryRepository,
       );
+      mapController.isLoading.addValue(false);
       final fabController = FabMenuController(poiRepository: poiRepository)
         ..setExpanded(true)
         ..setCondensed(false);
@@ -343,6 +352,75 @@ void main() {
         isTrue,
       );
       expect(selectedFab.backgroundColor, isNot(equals(initialBackground)));
+
+      fabController.dispose();
+      await mapController.onDispose();
+      poiRepository.dispose();
+      userLocationRepository.dispose();
+    },
+  );
+
+  testWidgets(
+    'navigate-to-user action stays disabled until user location is available',
+    (tester) async {
+      final poiRepository = _FakePoiRepository();
+      final userLocationRepository = _FakeUserLocationRepository();
+      final telemetryRepository = _FakeTelemetryRepository();
+      final mapController = MapScreenController(
+        poiRepository: poiRepository,
+        userLocationRepository: userLocationRepository,
+        telemetryRepository: telemetryRepository,
+      );
+      mapController.isLoading.addValue(false);
+      final fabController = FabMenuController(poiRepository: poiRepository)
+        ..setExpanded(true)
+        ..setCondensed(false);
+
+      var navigateTapCount = 0;
+      Widget buildUnderTest() {
+        return MaterialApp(
+          home: Scaffold(
+            body: FabMenu(
+              onNavigateToUser: () {
+                navigateTapCount += 1;
+              },
+              mapController: mapController,
+              controller: fabController,
+            ),
+          ),
+        );
+      }
+
+      await tester.pumpWidget(buildUnderTest());
+      await tester.pump();
+
+      Finder navigateFabFinder() {
+        return find.ancestor(
+          of: find.text('Ir para você'),
+          matching: find.byType(FloatingActionButton),
+        );
+      }
+
+      final disabledFab =
+          tester.widget<FloatingActionButton>(navigateFabFinder());
+      final disabledColor = disabledFab.backgroundColor!;
+      expect(disabledFab.onPressed, isNull);
+
+      userLocationRepository.userLocationStreamValue.addValue(
+        CityCoordinate.fromLatLng(const LatLng(-20.0, -40.0)),
+      );
+      await tester.pumpWidget(buildUnderTest());
+      await tester.pump();
+
+      final enabledFab =
+          tester.widget<FloatingActionButton>(navigateFabFinder());
+      final enabledColor = enabledFab.backgroundColor!;
+      expect(enabledFab.onPressed, isNotNull);
+      expect(disabledColor.a, lessThan(enabledColor.a));
+
+      await tester.tap(find.text('Ir para você'));
+      await tester.pump();
+      expect(navigateTapCount, 1);
 
       fabController.dispose();
       await mapController.onDispose();

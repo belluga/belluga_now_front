@@ -78,6 +78,48 @@ class LaravelMapPoiHttpService {
         .toList(growable: false);
   }
 
+  Future<CityPoiDTO?> lookupPoiByReference({
+    required String refType,
+    required String refId,
+  }) async {
+    final normalizedRefType = refType.trim().toLowerCase();
+    final normalizedRefId = refId.trim();
+    if (normalizedRefType.isEmpty || normalizedRefId.isEmpty) {
+      return null;
+    }
+
+    try {
+      final response = await _dio.get(
+        '/v1/map/pois/lookup',
+        queryParameters: <String, dynamic>{
+          'ref_type': normalizedRefType,
+          'ref_id': normalizedRefId,
+        },
+        options: Options(
+          headers: await _buildHeaders(),
+          listFormat: ListFormat.multiCompatible,
+        ),
+      );
+
+      final raw = response.data;
+      if (raw is! Map<String, dynamic>) {
+        throw Exception('Unexpected /v1/map/pois/lookup response envelope');
+      }
+
+      final poiPayload = raw['poi'];
+      if (poiPayload is Map<String, dynamic>) {
+        return CityPoiDTO.fromJson(poiPayload);
+      }
+
+      return CityPoiDTO.fromJson(raw);
+    } on DioException catch (error) {
+      if (error.response?.statusCode == 404) {
+        return null;
+      }
+      rethrow;
+    }
+  }
+
   Future<MapFiltersDTO> getFilters(PoiQuery query) async {
     final response = await _dio.get(
       '/v1/map/filters',

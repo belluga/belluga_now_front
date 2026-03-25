@@ -345,7 +345,7 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
   }
 
   void _navigateToMap(BuildContext context) {
-    context.router.push(const CityMapRoute());
+    context.router.push(CityMapRoute());
   }
 
   void _handleFavoriteTap(AccountProfileModel partner) {

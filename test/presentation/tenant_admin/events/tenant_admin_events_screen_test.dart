@@ -85,7 +85,7 @@ Future<void> _pumpEventsRouter(WidgetTester tester) async {
           final args = data.argsAs<TenantAdminEventEditRouteArgs>();
           return Scaffold(
             body: Center(
-              child: Text('EDIT-EVENT-ROUTE:${args.event.title}'),
+              child: Text('EDIT-EVENT-ROUTE:${args.event!.title}'),
             ),
           );
         },

@@ -9,20 +9,21 @@ import 'package:get_it_modular_with_auto_route/get_it_modular_with_auto_route.da
 class LocationNotLiveRoutePage extends StatelessWidget {
   const LocationNotLiveRoutePage({
     super.key,
-    required this.blockerState,
+    this.blockerState,
     this.addressLabel,
     this.capturedAt,
   });
 
-  final LocationPermissionState blockerState;
+  final LocationPermissionState? blockerState;
   final String? addressLabel;
   final DateTime? capturedAt;
 
   @override
   Widget build(BuildContext context) {
+    final resolvedBlockerState = blockerState ?? LocationPermissionState.denied;
     return ModuleScope<InitializationModule>(
       child: LocationNotLiveScreen(
-        blockerState: blockerState,
+        blockerState: resolvedBlockerState,
         addressLabel: addressLabel,
         capturedAt: capturedAt,
       ),
