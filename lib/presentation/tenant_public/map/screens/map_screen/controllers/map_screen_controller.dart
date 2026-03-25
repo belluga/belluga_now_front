@@ -224,8 +224,15 @@ class MapScreenController implements Disposable {
 
     final target = LatLng(coordinate.latitude, coordinate.longitude);
     await ensureMapReady();
-    final targetZoom = animate ? 16.0 : mapController.camera.zoom;
-    mapController.move(target, _clampZoom(targetZoom));
+    final targetZoom = animate ? 16.0 : _currentMapZoomOrDefault();
+    try {
+      mapController.move(target, _clampZoom(targetZoom));
+    } catch (error) {
+      debugPrint('Failed to center on user location: $error');
+      statusMessageStreamValue
+          .addValue('Mapa ainda está inicializando. Tente novamente.');
+      return;
+    }
     _logMapTelemetry(
       EventTrackerEvents.viewContent,
       eventName: 'map_location_resolved',
@@ -235,6 +242,14 @@ class MapScreenController implements Disposable {
     );
 
     statusMessageStreamValue.addValue(null);
+  }
+
+  double _currentMapZoomOrDefault() {
+    try {
+      return mapController.camera.zoom;
+    } catch (_) {
+      return 16.0;
+    }
   }
 
   void clearStatusMessage() {

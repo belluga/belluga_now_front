@@ -377,6 +377,57 @@ class _FakeMapController implements MapController {
   }
 }
 
+class _NotReadyMapController implements MapController {
+  final StreamController<MapEvent> _events =
+      StreamController<MapEvent>.broadcast();
+
+  @override
+  Stream<MapEvent> get mapEventStream => _events.stream;
+
+  @override
+  bool move(
+    LatLng center,
+    double zoom, {
+    Offset offset = Offset.zero,
+    String? id,
+  }) {
+    throw StateError('map not ready');
+  }
+
+  @override
+  bool rotate(double degree, {String? id}) => false;
+
+  @override
+  MoveAndRotateResult rotateAroundPoint(
+    double degree, {
+    Offset? offset,
+    String? id,
+  }) {
+    return const (moveSuccess: false, rotateSuccess: false);
+  }
+
+  @override
+  MoveAndRotateResult moveAndRotate(
+    LatLng center,
+    double zoom,
+    double degree, {
+    String? id,
+  }) {
+    return const (moveSuccess: false, rotateSuccess: false);
+  }
+
+  @override
+  bool fitCamera(CameraFit cameraFit) => false;
+
+  @override
+  MapCamera get camera => throw StateError('map not ready');
+
+  @override
+  void dispose() {
+    _events.close();
+  }
+}
+
 CityPoiModel _buildPoi({
   String id = 'poi-1',
   String refType = 'static',
@@ -789,6 +840,30 @@ void main() {
 
       expect(userLocationRepository.refreshIfPermittedCallCount, 1);
       expect(userLocationRepository.resolveUserLocationCallCount, 1);
+    });
+
+    test('init does not throw when map readiness times out before centering',
+        () async {
+      final notReadyMapController = _NotReadyMapController();
+      final localController = MapScreenController(
+        poiRepository: PoiRepository(dataSource: mapRepository),
+        userLocationRepository: userLocationRepository,
+        telemetryRepository: telemetry,
+        mapController: notReadyMapController,
+      );
+      addTearDown(() async {
+        await localController.onDispose();
+        notReadyMapController.dispose();
+      });
+
+      userLocationRepository.userLocationStreamValue
+          .addValue(_buildCoordinate('-20.1000', '-40.1000'));
+
+      await expectLater(localController.init(), completes);
+      expect(
+        localController.statusMessageStreamValue.value,
+        'Mapa ainda está inicializando. Tente novamente.',
+      );
     });
 
     test(
