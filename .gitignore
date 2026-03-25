@@ -65,6 +65,7 @@ foundation_documentation
 .agents
 .agents/
 .codex
+.codex/
 .cline/
 .clinerules
 CLINE.md
