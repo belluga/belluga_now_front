@@ -26,6 +26,7 @@ import 'rules/repository_raw_payload_map_forbidden_rule.dart';
 import 'rules/repository_raw_transport_typing_forbidden_rule.dart';
 import 'rules/route_page_must_live_in_routes_folder_rule.dart';
 import 'rules/route_path_param_requires_resolver_route_rule.dart';
+import 'rules/route_required_non_url_args_forbidden_rule.dart';
 import 'rules/screen_controller_resolution_pattern_required_rule.dart';
 import 'rules/service_json_parsing_forbidden_rule.dart';
 import 'rules/tenant_canonical_domain_required_rule.dart';
@@ -81,6 +82,7 @@ class BellugaCustomLintPlugin extends PluginBase {
       ControllerStreamValueModelOwnershipForbiddenRule(),
       RoutePageMustLiveInRoutesFolderRule(),
       RoutePathParamRequiresResolverRouteRule(),
+      RouteRequiredNonUrlArgsForbiddenRule(),
       ScreenControllerResolutionPatternRequiredRule(),
       UiRouteParamHydrationForbiddenRule(),
       MultiPublicClassFileWarningRule(),

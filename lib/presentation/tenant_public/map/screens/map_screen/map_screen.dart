@@ -12,7 +12,14 @@ import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 
 class MapScreen extends StatefulWidget {
-  const MapScreen({super.key});
+  const MapScreen({
+    super.key,
+    this.initialPoiQuery,
+    this.initialPoiStackQuery,
+  });
+
+  final String? initialPoiQuery;
+  final String? initialPoiStackQuery;
 
   @override
   State<MapScreen> createState() => _MapScreenState();
@@ -127,7 +134,10 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   Future<void> _initializeController() async {
-    await _controller.init();
+    await _controller.init(
+      initialPoiQuery: widget.initialPoiQuery,
+      initialPoiStackQuery: widget.initialPoiStackQuery,
+    );
   }
 
   void _centerOnUser() {
