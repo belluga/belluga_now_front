@@ -59,6 +59,7 @@ class MapScreenController implements Disposable {
 
   StreamValue<CityCoordinate?> get userLocationStreamValue =>
       _userLocationRepository.userLocationStreamValue;
+  bool get hasResolvedUserLocation => userLocationStreamValue.value != null;
 
   StreamValue<List<CityPoiModel>?> get filteredPoisStreamValue =>
       _poiRepository.filteredPoisStreamValue;
@@ -133,10 +134,17 @@ class MapScreenController implements Disposable {
         initialPoiStackQuery: initialPoiStackQuery,
       );
     } else {
-      await centerOnUser();
+      _requestLocationPermissionIfNeeded();
     }
 
     _tryApplyPendingInitialPoiFocus();
+  }
+
+  void _requestLocationPermissionIfNeeded() {
+    if (hasResolvedUserLocation) {
+      return;
+    }
+    unawaited(_userLocationRepository.resolveUserLocation());
   }
 
   void _bindFilteredPoisClamp() {
