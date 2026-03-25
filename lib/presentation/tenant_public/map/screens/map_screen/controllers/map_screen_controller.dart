@@ -133,9 +133,18 @@ class MapScreenController implements Disposable {
         initialPoiQuery: initialPoiQuery,
         initialPoiStackQuery: initialPoiStackQuery,
       );
+    } else {
+      _requestLocationPermissionIfNeeded();
     }
 
     _tryApplyPendingInitialPoiFocus();
+  }
+
+  void _requestLocationPermissionIfNeeded() {
+    if (hasResolvedUserLocation) {
+      return;
+    }
+    unawaited(_userLocationRepository.resolveUserLocation());
   }
 
   void _bindFilteredPoisClamp() {

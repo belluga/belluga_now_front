@@ -858,13 +858,14 @@ void main() {
       expect(userLocationRepository.resolveUserLocationCallCount, 0);
     });
 
-    test('does not auto-center on user when no initial poi query is provided',
+    test(
+        'does not auto-center on user but still triggers permission resolution on plain map load',
         () async {
       await controller.init();
       await _flushMicrotasks();
 
       expect(userLocationRepository.refreshIfPermittedCallCount, 1);
-      expect(userLocationRepository.resolveUserLocationCallCount, 0);
+      expect(userLocationRepository.resolveUserLocationCallCount, 1);
     });
 
     test('centerOnUser shows status when map is not ready yet', () async {
