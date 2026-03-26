@@ -5,6 +5,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dar
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_result.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_poi_visual.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
 import 'package:belluga_now/infrastructure/dal/dao/tenant_admin/tenant_admin_account_profiles_request_encoder.dart';
@@ -112,7 +113,12 @@ class TenantAdminAccountProfilesRepository
       final response = await _dio.post(
         '$_apiBaseUrl/v1/account_profiles',
         data: uploadPayload ?? payload,
-        options: Options(headers: _buildHeaders()),
+        options: uploadPayload == null
+            ? Options(headers: _buildHeaders())
+            : Options(
+                headers: _buildHeaders(),
+                contentType: 'multipart/form-data',
+              ),
       );
       final dto = _responseDecoder.decodeAccountProfileItem(response.data);
       return dto.toDomain();
@@ -293,6 +299,34 @@ class TenantAdminAccountProfilesRepository
   }
 
   @override
+  Future<TenantAdminProfileTypeDefinition> createProfileTypeWithPoiVisual({
+    required String type,
+    required String label,
+    List<String> allowedTaxonomies = const [],
+    required TenantAdminProfileTypeCapabilities capabilities,
+    TenantAdminPoiVisual? poiVisual,
+  }) async {
+    try {
+      final response = await _dio.post(
+        '$_apiBaseUrl/v1/account_profile_types',
+        data: _requestEncoder.encodeCreateProfileType(
+          type: type,
+          label: label,
+          allowedTaxonomies: allowedTaxonomies,
+          capabilities: capabilities,
+          poiVisual: poiVisual,
+          includePoiVisual: true,
+        ),
+        options: Options(headers: _buildHeaders()),
+      );
+      final dto = _responseDecoder.decodeProfileTypeItem(response.data);
+      return dto.toDomain();
+    } on DioException catch (error) {
+      throw _wrapError(error, 'create profile type');
+    }
+  }
+
+  @override
   Future<TenantAdminProfileTypeDefinition> updateProfileType({
     required String type,
     String? newType,
@@ -317,6 +351,53 @@ class TenantAdminAccountProfilesRepository
       return dto.toDomain();
     } on DioException catch (error) {
       throw _wrapError(error, 'update profile type');
+    }
+  }
+
+  @override
+  Future<TenantAdminProfileTypeDefinition> updateProfileTypeWithPoiVisual({
+    required String type,
+    String? newType,
+    String? label,
+    List<String>? allowedTaxonomies,
+    TenantAdminProfileTypeCapabilities? capabilities,
+    TenantAdminPoiVisual? poiVisual,
+  }) async {
+    try {
+      final encodedType = Uri.encodeComponent(type);
+      final payload = _requestEncoder.encodeUpdateProfileType(
+        newType: newType,
+        label: label,
+        allowedTaxonomies: allowedTaxonomies,
+        capabilities: capabilities,
+        poiVisual: poiVisual,
+        includePoiVisual: true,
+      );
+      final response = await _dio.patch(
+        '$_apiBaseUrl/v1/account_profile_types/$encodedType',
+        data: payload,
+        options: Options(headers: _buildHeaders()),
+      );
+      final dto = _responseDecoder.decodeProfileTypeItem(response.data);
+      return dto.toDomain();
+    } on DioException catch (error) {
+      throw _wrapError(error, 'update profile type');
+    }
+  }
+
+  @override
+  Future<int> fetchProfileTypeMapPoiProjectionImpact({
+    required String type,
+  }) async {
+    try {
+      final encodedType = Uri.encodeComponent(type);
+      final response = await _dio.get(
+        '$_apiBaseUrl/v1/account_profile_types/$encodedType/map_poi_projection_impact',
+        options: Options(headers: _buildHeaders()),
+      );
+      return _responseDecoder.decodeProjectionImpactCount(response.data);
+    } on DioException catch (error) {
+      throw _wrapError(error, 'load profile type projection impact');
     }
   }
 

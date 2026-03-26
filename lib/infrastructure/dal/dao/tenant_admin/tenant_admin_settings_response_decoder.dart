@@ -308,6 +308,12 @@ class TenantAdminSettingsResponseDecoder {
           rawImageUri: filterMap['image_uri'],
           tenantOrigin: tenantOrigin,
         );
+        final overrideMarker = _parseBool(filterMap['override_marker']);
+        final markerOverride = _mapMapFilterMarkerOverride(
+          overrideMarker: overrideMarker,
+          raw: filterMap['marker_override'],
+          fallbackImageUri: imageUri,
+        );
         final query = _mapMapFilterQuery(
           filterMap['query'] is Map
               ? Map<String, dynamic>.from(filterMap['query'] as Map)
@@ -321,6 +327,8 @@ class TenantAdminSettingsResponseDecoder {
             key: key,
             label: label,
             imageUri: imageUri == null || imageUri.isEmpty ? null : imageUri,
+            overrideMarker: overrideMarker,
+            markerOverride: markerOverride,
             query: query,
           ),
         );
@@ -356,6 +364,53 @@ class TenantAdminSettingsResponseDecoder {
       source: TenantAdminMapFilterSource.fromRaw(json['source']?.toString()),
       types: asStringList(json['types']),
       taxonomy: asStringList(json['taxonomy']),
+    );
+  }
+
+  TenantAdminMapFilterMarkerOverride? _mapMapFilterMarkerOverride({
+    required bool overrideMarker,
+    required Object? raw,
+    required String? fallbackImageUri,
+  }) {
+    if (!overrideMarker || raw is! Map) {
+      return null;
+    }
+
+    final marker = Map<String, dynamic>.from(raw);
+    final mode = TenantAdminMapFilterMarkerOverrideMode.fromRaw(
+        marker['mode']?.toString());
+    if (mode == null) {
+      return null;
+    }
+
+    if (mode == TenantAdminMapFilterMarkerOverrideMode.icon) {
+      final icon = marker['icon']?.toString().trim() ?? '';
+      final color = marker['color']?.toString().trim().toUpperCase() ?? '';
+      final iconColor =
+          (marker['icon_color'] ?? '#FFFFFF').toString().trim().toUpperCase();
+      if (icon.isEmpty ||
+          !RegExp(r'^#[0-9A-F]{6}$').hasMatch(color) ||
+          !RegExp(r'^#[0-9A-F]{6}$').hasMatch(iconColor)) {
+        return null;
+      }
+
+      return TenantAdminMapFilterMarkerOverride.icon(
+        icon: icon,
+        color: color,
+        iconColor: iconColor,
+      );
+    }
+
+    final imageUriRaw = marker['image_uri']?.toString().trim();
+    final imageUri = (imageUriRaw == null || imageUriRaw.isEmpty)
+        ? (fallbackImageUri?.trim() ?? '')
+        : imageUriRaw;
+    if (imageUri.isEmpty) {
+      return null;
+    }
+
+    return TenantAdminMapFilterMarkerOverride.image(
+      imageUri: imageUri,
     );
   }
 

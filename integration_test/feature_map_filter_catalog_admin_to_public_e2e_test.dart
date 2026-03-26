@@ -194,9 +194,11 @@ void main() {
         settingsController.updateMapFilterItemLabel(0, assetFilterLabel);
         settingsController.updateMapFilterItemRule(
           0,
-          TenantAdminMapFilterQuery(
-            source: TenantAdminMapFilterSource.staticAsset,
-            types: [assetType],
+          settingsController.mapUiSettingsStreamValue.value.filters[0].copyWith(
+            query: TenantAdminMapFilterQuery(
+              source: TenantAdminMapFilterSource.staticAsset,
+              types: [assetType],
+            ),
           ),
         );
         settingsController.addMapFilterItem();
@@ -204,8 +206,10 @@ void main() {
         settingsController.updateMapFilterItemLabel(1, eventFilterLabel);
         settingsController.updateMapFilterItemRule(
           1,
-          TenantAdminMapFilterQuery(
-            source: TenantAdminMapFilterSource.event,
+          settingsController.mapUiSettingsStreamValue.value.filters[1].copyWith(
+            query: TenantAdminMapFilterQuery(
+              source: TenantAdminMapFilterSource.event,
+            ),
           ),
         );
         await settingsController.saveMapFilters();
@@ -221,13 +225,10 @@ void main() {
                   onEditMapFilterKey: (_) async {},
                   onEditMapFilterLabel: (_) async {},
                   onEditMapFilterRule: (_) async {},
-                  onEditMapFilterImage: (_) async {},
+                  onEditMapFilterVisual: (_) async {},
                   onRemoveMapFilter: settingsController.removeMapFilterItem,
                   onMoveMapFilterUp: settingsController.moveMapFilterItemUp,
                   onMoveMapFilterDown: settingsController.moveMapFilterItemDown,
-                  onClearMapFilterImage:
-                      settingsController.clearMapFilterItemImage,
-                  isMapFilterImageBusy: (_) => false,
                 ),
               ),
             ),

@@ -228,10 +228,12 @@ class TenantAdminAccountCreateController implements Disposable {
 
   void updateCreateAvatarWebUrl(String? url) {
     final trimmed = url?.trim();
+    final normalized = trimmed == null || trimmed.isEmpty ? null : trimmed;
     _updateCreateState(
       createStateStreamValue.value.copyWith(
-        avatarWebUrl: trimmed == null || trimmed.isEmpty ? null : trimmed,
-        avatarFile: null,
+        avatarWebUrl: normalized,
+        avatarFile:
+            normalized == null ? createStateStreamValue.value.avatarFile : null,
       ),
     );
     clearCreateGroupValidation(TenantAdminAccountCreateValidationTargets.media);
@@ -239,10 +241,12 @@ class TenantAdminAccountCreateController implements Disposable {
 
   void updateCreateCoverWebUrl(String? url) {
     final trimmed = url?.trim();
+    final normalized = trimmed == null || trimmed.isEmpty ? null : trimmed;
     _updateCreateState(
       createStateStreamValue.value.copyWith(
-        coverWebUrl: trimmed == null || trimmed.isEmpty ? null : trimmed,
-        coverFile: null,
+        coverWebUrl: normalized,
+        coverFile:
+            normalized == null ? createStateStreamValue.value.coverFile : null,
       ),
     );
     clearCreateGroupValidation(TenantAdminAccountCreateValidationTargets.media);

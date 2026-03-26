@@ -64,6 +64,26 @@ if [[ $hit -eq 1 ]]; then
   exit 1
 fi
 
+mapfile -t changed_domain_files < <(
+  printf '%s\n' "${changed_files[@]}" |
+    rg '^lib/domain/.*\.dart$' || true
+)
+
+if [[ ${#changed_domain_files[@]} -gt 0 ]]; then
+  typedef_pattern='^\s*typedef\s+\w*(?:Raw|Prim)\w*\s*=|^\s*typedef\s+\w+\s*=\s*[^;]*\b(?:String|int|double|bool|num|DateTime|Duration|Uri|dynamic)\b'
+  typedef_hits="$(
+    rg -n --pcre2 "$typedef_pattern" "${changed_domain_files[@]}" || true
+  )"
+  if [[ -n "$typedef_hits" ]]; then
+    echo
+    echo "$typedef_hits"
+    echo
+    echo "[branch-delta] primitive typedef alias workaround detected in changed domain files."
+    echo "[branch-delta] Replace alias-based primitives with ValueObjects/domain-owned types."
+    exit 1
+  fi
+fi
+
 if [[ $lint_status -ne 0 ]]; then
   echo
   echo "[branch-delta] custom_lint reported non-zero status; inspect output."

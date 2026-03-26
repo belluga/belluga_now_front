@@ -17,6 +17,7 @@ import 'package:belluga_now/domain/map/value_objects/poi_stack_key_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_tag_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_updated_at_value.dart';
 import 'package:belluga_now/domain/value_objects/asset_path_value.dart';
+import 'package:belluga_now/domain/map/projections/city_poi_visual.dart';
 
 typedef CityPoiModelRawString = String;
 typedef CityPoiModelRawBoolean = bool;
@@ -48,6 +49,7 @@ class CityPoiModel implements MapPoi {
     CityPoiModelRawBoolean isHappeningNow = false,
     CityPoiModelRawTimestamp? updatedAt,
     CityPoiModelRawMeters? distanceMeters,
+    this.visual,
   })  : tagValues = List.unmodifiable(tagValues ?? const <PoiTagValue>[]),
         stackItems = List.unmodifiable(stackItems ?? const <CityPoiModel>[]),
         isDynamicValue = _buildBooleanValue(isDynamic),
@@ -85,6 +87,7 @@ class CityPoiModel implements MapPoi {
   final PoiBooleanValue isHappeningNowValue;
   final PoiUpdatedAtValue? updatedAtValue;
   final DistanceInMetersValue? distanceMetersValue;
+  final CityPoiVisual? visual;
 
   @override
   String get id => idValue.value;
@@ -153,6 +156,7 @@ class CityPoiModel implements MapPoi {
     CityPoiModelRawBoolean? isHappeningNow,
     CityPoiModelRawTimestamp? updatedAt,
     CityPoiModelRawMeters? distanceMeters,
+    CityPoiVisual? visual,
   }) {
     return CityPoiModel(
       idValue: idValue ?? this.idValue,
@@ -176,6 +180,7 @@ class CityPoiModel implements MapPoi {
       isHappeningNow: isHappeningNow ?? this.isHappeningNow,
       updatedAt: updatedAt ?? this.updatedAt,
       distanceMeters: distanceMeters ?? this.distanceMeters,
+      visual: visual ?? this.visual,
     );
   }
 

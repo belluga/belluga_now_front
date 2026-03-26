@@ -32,6 +32,18 @@ class TenantAdminStaticAssetsResponseDecoder {
         .toList(growable: false);
   }
 
+  int decodeProjectionImpactCount(Object? rawResponse) {
+    final item = _extractItem(
+      rawResponse,
+      label: 'static profile type projection impact',
+    );
+    final rawCount = item['projection_count'];
+    if (rawCount is num) {
+      return rawCount.toInt();
+    }
+    return 0;
+  }
+
   Map<String, dynamic> _extractItem(
     Object? rawResponse, {
     required String label,

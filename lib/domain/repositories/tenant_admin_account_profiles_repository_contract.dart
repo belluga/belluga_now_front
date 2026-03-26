@@ -4,6 +4,7 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_account_profile.dar
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_paged_result.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_poi_visual.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
 import 'package:stream_value/core/stream_value.dart';
@@ -149,6 +150,21 @@ abstract class TenantAdminAccountProfilesRepositoryContract {
     List<TenantAdminAccountProfilesRepoString> allowedTaxonomies,
     required TenantAdminProfileTypeCapabilities capabilities,
   });
+  Future<TenantAdminProfileTypeDefinition> createProfileTypeWithPoiVisual({
+    required TenantAdminAccountProfilesRepoString type,
+    required TenantAdminAccountProfilesRepoString label,
+    List<TenantAdminAccountProfilesRepoString> allowedTaxonomies = const [],
+    required TenantAdminProfileTypeCapabilities capabilities,
+    TenantAdminPoiVisual? poiVisual,
+  }) async {
+    return createProfileType(
+      type: type,
+      label: label,
+      allowedTaxonomies: allowedTaxonomies,
+      capabilities: capabilities,
+    );
+  }
+
   Future<TenantAdminProfileTypeDefinition> updateProfileType({
     required TenantAdminAccountProfilesRepoString type,
     TenantAdminAccountProfilesRepoString? newType,
@@ -156,6 +172,30 @@ abstract class TenantAdminAccountProfilesRepositoryContract {
     List<TenantAdminAccountProfilesRepoString>? allowedTaxonomies,
     TenantAdminProfileTypeCapabilities? capabilities,
   });
+  Future<TenantAdminProfileTypeDefinition> updateProfileTypeWithPoiVisual({
+    required TenantAdminAccountProfilesRepoString type,
+    TenantAdminAccountProfilesRepoString? newType,
+    TenantAdminAccountProfilesRepoString? label,
+    List<TenantAdminAccountProfilesRepoString>? allowedTaxonomies,
+    TenantAdminProfileTypeCapabilities? capabilities,
+    TenantAdminPoiVisual? poiVisual,
+  }) async {
+    return updateProfileType(
+      type: type,
+      newType: newType,
+      label: label,
+      allowedTaxonomies: allowedTaxonomies,
+      capabilities: capabilities,
+    );
+  }
+
+  Future<TenantAdminAccountProfilesRepoInt>
+      fetchProfileTypeMapPoiProjectionImpact({
+    required TenantAdminAccountProfilesRepoString type,
+  }) async {
+    return 0;
+  }
+
   Future<void> deleteProfileType(TenantAdminAccountProfilesRepoString type);
 
   Future<void> _waitForProfileTypesFetch() async {
@@ -312,6 +352,48 @@ mixin TenantAdminProfileTypesPaginationMixin
     _resetProfileTypesPaginationMixin();
     profileTypesStreamValue.addValue(null);
     profileTypesErrorStreamValue.addValue(null);
+  }
+
+  @override
+  Future<TenantAdminProfileTypeDefinition> createProfileTypeWithPoiVisual({
+    required TenantAdminAccountProfilesRepoString type,
+    required TenantAdminAccountProfilesRepoString label,
+    List<TenantAdminAccountProfilesRepoString> allowedTaxonomies = const [],
+    required TenantAdminProfileTypeCapabilities capabilities,
+    TenantAdminPoiVisual? poiVisual,
+  }) {
+    return createProfileType(
+      type: type,
+      label: label,
+      allowedTaxonomies: allowedTaxonomies,
+      capabilities: capabilities,
+    );
+  }
+
+  @override
+  Future<TenantAdminProfileTypeDefinition> updateProfileTypeWithPoiVisual({
+    required TenantAdminAccountProfilesRepoString type,
+    TenantAdminAccountProfilesRepoString? newType,
+    TenantAdminAccountProfilesRepoString? label,
+    List<TenantAdminAccountProfilesRepoString>? allowedTaxonomies,
+    TenantAdminProfileTypeCapabilities? capabilities,
+    TenantAdminPoiVisual? poiVisual,
+  }) {
+    return updateProfileType(
+      type: type,
+      newType: newType,
+      label: label,
+      allowedTaxonomies: allowedTaxonomies,
+      capabilities: capabilities,
+    );
+  }
+
+  @override
+  Future<TenantAdminAccountProfilesRepoInt>
+      fetchProfileTypeMapPoiProjectionImpact({
+    required TenantAdminAccountProfilesRepoString type,
+  }) async {
+    return 0;
   }
 
   Future<void> _waitForProfileTypesFetchMixin() async {

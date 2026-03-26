@@ -16,7 +16,7 @@ class DomainPrimitiveFieldForbiddenRule extends DartLintRule {
             problemMessage:
                 'Domain fields cannot use primitive transport-oriented types directly.',
             correctionMessage:
-                'Treatments: replace primitive domain fields with ValueObjects or domain-owned types; keep nullability and validation semantics explicit in those types.',
+                'Treatments: domain fields/constructors/methods must use ValueObjects or domain-owned types; typedef aliases do not remediate primitive usage; keep nullability and validation semantics explicit in those types.',
           ),
         );
 

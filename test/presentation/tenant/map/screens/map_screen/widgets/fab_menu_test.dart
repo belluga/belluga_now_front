@@ -220,6 +220,155 @@ class _FakeTelemetryRepository implements TelemetryRepositoryContract {
 }
 
 void main() {
+  testWidgets(
+    'category FAB prefers override icon+color over legacy image',
+    (tester) async {
+      final poiRepository = _FakePoiRepository();
+      final userLocationRepository = _FakeUserLocationRepository();
+      final telemetryRepository = _FakeTelemetryRepository();
+      final mapController = MapScreenController(
+        poiRepository: poiRepository,
+        userLocationRepository: userLocationRepository,
+        telemetryRepository: telemetryRepository,
+      );
+      final fabController = FabMenuController(poiRepository: poiRepository)
+        ..setExpanded(true)
+        ..setCondensed(false);
+
+      poiRepository.filterOptionsStreamValue.addValue(
+        PoiFilterOptions(
+          categories: [
+            PoiFilterCategory(
+              key: 'events',
+              label: 'Eventos',
+              tags: const <String>{},
+              imageUri: 'https://tenant.test/legacy-events.png',
+              overrideMarker: true,
+              markerOverride: const PoiFilterMarkerOverride.icon(
+                icon: 'music',
+                colorHex: '#C6141F',
+                iconColorHex: '#00DD88',
+              ),
+            ),
+          ],
+        ),
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: FabMenu(
+              onNavigateToUser: () {},
+              mapController: mapController,
+              controller: fabController,
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      final filterFabFinder = find.ancestor(
+        of: find.text('Eventos'),
+        matching: find.byType(FloatingActionButton),
+      );
+      expect(filterFabFinder, findsOneWidget);
+
+      final iconFinder = find.descendant(
+        of: filterFabFinder,
+        matching: find.byIcon(Icons.music_note),
+      );
+      expect(iconFinder, findsOneWidget);
+
+      final imageFinder = find.descendant(
+        of: filterFabFinder,
+        matching: find.byType(Image),
+      );
+      expect(imageFinder, findsNothing);
+
+      fabController.dispose();
+      await mapController.onDispose();
+      poiRepository.dispose();
+      userLocationRepository.dispose();
+    },
+  );
+
+  testWidgets(
+    'selected category FAB uses marker override color as background',
+    (tester) async {
+      final poiRepository = _FakePoiRepository();
+      final userLocationRepository = _FakeUserLocationRepository();
+      final telemetryRepository = _FakeTelemetryRepository();
+      final mapController = MapScreenController(
+        poiRepository: poiRepository,
+        userLocationRepository: userLocationRepository,
+        telemetryRepository: telemetryRepository,
+      );
+      mapController.isLoading.addValue(false);
+      final fabController = FabMenuController(poiRepository: poiRepository)
+        ..setExpanded(true)
+        ..setCondensed(false);
+
+      poiRepository.filterOptionsStreamValue.addValue(
+        PoiFilterOptions(
+          categories: [
+            PoiFilterCategory(
+              key: 'events',
+              label: 'Eventos',
+              tags: const <String>{},
+              overrideMarker: true,
+              markerOverride: const PoiFilterMarkerOverride.icon(
+                icon: 'music',
+                colorHex: '#C6141F',
+                iconColorHex: '#101010',
+              ),
+            ),
+          ],
+        ),
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: FabMenu(
+              onNavigateToUser: () {},
+              mapController: mapController,
+              controller: fabController,
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      await tester.tap(find.text('Eventos'));
+      await tester.pump();
+      await tester.pump();
+
+      final selectedFab = tester.widget<FloatingActionButton>(
+        find.ancestor(
+          of: find.text('Eventos'),
+          matching: find.byType(FloatingActionButton),
+        ),
+      );
+
+      expect(selectedFab.backgroundColor, const Color(0xFFC6141F));
+      final selectedIcon = tester.widget<Icon>(
+        find.descendant(
+          of: find.ancestor(
+            of: find.text('Eventos'),
+            matching: find.byType(FloatingActionButton),
+          ),
+          matching: find.byIcon(Icons.music_note),
+        ),
+      );
+      expect(selectedIcon.color, const Color(0xFF101010));
+
+      fabController.dispose();
+      await mapController.onDispose();
+      poiRepository.dispose();
+      userLocationRepository.dispose();
+    },
+  );
+
   testWidgets('filter image uses icon-sized contain envelope in fab', (
     tester,
   ) async {

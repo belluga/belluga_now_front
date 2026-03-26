@@ -80,6 +80,10 @@ class MapScreenController implements Disposable {
       StreamValue<Set<String>>(defaultValue: const <String>{});
   final StreamValue<Set<String>> activeTaxonomyTokensStreamValue =
       StreamValue<Set<String>>(defaultValue: const <String>{});
+  final StreamValue<String?> activeCatalogFilterKeyStreamValue =
+      StreamValue<String?>(defaultValue: null);
+  final StreamValue<String?> appliedCatalogFilterKeyStreamValue =
+      StreamValue<String?>(defaultValue: null);
   final StreamValue<String?> activeFilterLabelStreamValue =
       StreamValue<String?>();
 
@@ -92,6 +96,8 @@ class MapScreenController implements Disposable {
   Set<String> _activeTags = <String>{};
   String? _activeSource;
   Set<String> _activeTypes = <String>{};
+  String? _activeCatalogFilterKey;
+  String? _appliedCatalogFilterKey;
   StreamSubscription<MapEvent>? _mapEventSubscription;
   StreamSubscription<List<CityPoiModel>?>? _filteredPoisSubscription;
   int _poiRequestSequence = 0;
@@ -679,6 +685,7 @@ class MapScreenController implements Disposable {
     _activeTags = <String>{};
     _activeSource = null;
     _activeTypes = <String>{};
+    _activeCatalogFilterKey = null;
     _publishActiveFilters();
     activeFilterLabelStreamValue.addValue(_labelForMode(mode));
     _poiRepository.applyFilterMode(mode);
@@ -699,6 +706,7 @@ class MapScreenController implements Disposable {
           types: const <String>{},
         ),
         loadingMessage: 'Aplicando filtros...',
+        appliedCatalogFilterKeyOnSuccess: null,
       ),
     );
   }
@@ -718,6 +726,7 @@ class MapScreenController implements Disposable {
     _activeTags = <String>{};
     _activeSource = null;
     _activeTypes = <String>{};
+    _activeCatalogFilterKey = null;
     _publishActiveFilters();
     activeFilterLabelStreamValue.addValue(null);
     _poiRepository.clearFilters();
@@ -734,6 +743,7 @@ class MapScreenController implements Disposable {
           types: const <String>{},
         ),
         loadingMessage: 'Carregando pontos...',
+        appliedCatalogFilterKeyOnSuccess: null,
       ),
     );
     _logMapTelemetry(
@@ -780,6 +790,7 @@ class MapScreenController implements Disposable {
     _activeTypes = types;
     _activeTaxonomyTokens = taxonomyTokens;
     _activeTags = tags;
+    _activeCatalogFilterKey = category.key.trim().toLowerCase();
     _publishActiveFilters();
     activeFilterLabelStreamValue.addValue(category.label);
     _poiRepository.applyFilterMode(PoiFilterMode.server);
@@ -804,6 +815,7 @@ class MapScreenController implements Disposable {
           tags: _activeTags,
         ),
         loadingMessage: 'Aplicando filtros...',
+        appliedCatalogFilterKeyOnSuccess: _activeCatalogFilterKey,
       ),
     );
   }
@@ -817,21 +829,24 @@ class MapScreenController implements Disposable {
       return;
     }
 
-    final next = <String>{..._activeTaxonomyTokens};
-    final selected = !next.remove(token);
-    if (selected) {
-      next.add(token);
-    }
-    _activeTaxonomyTokens = next;
-
-    if (_activeTaxonomyTokens.isEmpty &&
+    final isSameSingleSelection = _activeTaxonomyTokens.length == 1 &&
+        _activeTaxonomyTokens.contains(token) &&
         _activeCategoryKeys.isEmpty &&
         _activeTags.isEmpty &&
         (_activeSource == null || _activeSource!.isEmpty) &&
-        _activeTypes.isEmpty) {
+        _activeTypes.isEmpty;
+
+    if (isSameSingleSelection) {
       clearFilters();
       return;
     }
+
+    _activeCategoryKeys = <String>{};
+    _activeSource = null;
+    _activeTypes = <String>{};
+    _activeTags = <String>{};
+    _activeCatalogFilterKey = null;
+    _activeTaxonomyTokens = <String>{token};
 
     _publishActiveFilters();
     activeFilterLabelStreamValue.addValue(
@@ -845,7 +860,7 @@ class MapScreenController implements Disposable {
       eventName: 'map_taxonomy_filter_toggled',
       properties: {
         'taxonomy_token': token,
-        'selected': selected,
+        'selected': true,
       },
     );
     unawaited(
@@ -858,6 +873,7 @@ class MapScreenController implements Disposable {
           taxonomy: _activeTaxonomyTokens,
         ),
         loadingMessage: 'Aplicando filtros...',
+        appliedCatalogFilterKeyOnSuccess: null,
       ),
     );
   }
@@ -865,6 +881,7 @@ class MapScreenController implements Disposable {
   Future<void> _runFilterReload(
     PoiQuery query, {
     required String loadingMessage,
+    required String? appliedCatalogFilterKeyOnSuccess,
   }) async {
     if (_filterInteractionLocked) {
       return;
@@ -873,6 +890,8 @@ class MapScreenController implements Disposable {
     filterInteractionLockedStreamValue.addValue(true);
     try {
       await loadPois(query, loadingMessage: loadingMessage);
+      _appliedCatalogFilterKey = appliedCatalogFilterKeyOnSuccess;
+      appliedCatalogFilterKeyStreamValue.addValue(_appliedCatalogFilterKey);
     } finally {
       _filterInteractionLocked = false;
       filterInteractionLockedStreamValue.addValue(false);
@@ -1101,6 +1120,7 @@ class MapScreenController implements Disposable {
     activeTaxonomyTokensStreamValue.addValue(
       Set<String>.unmodifiable(_activeTaxonomyTokens),
     );
+    activeCatalogFilterKeyStreamValue.addValue(_activeCatalogFilterKey);
   }
 
   String _resolveActiveFilterLabel({required String fallbackTaxonomyLabel}) {
@@ -1172,6 +1192,8 @@ class MapScreenController implements Disposable {
     await _filteredPoisSubscription?.cancel();
     activeCategoryKeysStreamValue.dispose();
     activeTaxonomyTokensStreamValue.dispose();
+    activeCatalogFilterKeyStreamValue.dispose();
+    appliedCatalogFilterKeyStreamValue.dispose();
     activeFilterLabelStreamValue.dispose();
     poiDeckIndexStreamValue.dispose();
     filterInteractionLockedStreamValue.dispose();

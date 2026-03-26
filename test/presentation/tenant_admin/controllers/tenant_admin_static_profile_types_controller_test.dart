@@ -178,6 +178,20 @@ void main() {
     expect(detail!.type, 'venue');
     expect(detail.label, 'Venue');
   });
+
+  test('previewDisableProjectionCount delegates to repository', () async {
+    final assetsRepository = _FakeStaticAssetsRepository(types: []);
+    assetsRepository.projectionImpactCount = 42;
+    final controller = TenantAdminStaticProfileTypesController(
+      repository: assetsRepository,
+      taxonomiesRepository: _FakeTaxonomiesRepository(taxonomies: []),
+    );
+
+    final count = await controller.previewDisableProjectionCount('beach');
+
+    expect(count, 42);
+    expect(assetsRepository.lastProjectionImpactType, 'beach');
+  });
 }
 
 class _FakeStaticAssetsRepository
@@ -188,6 +202,8 @@ class _FakeStaticAssetsRepository
   });
 
   List<TenantAdminStaticProfileTypeDefinition> types;
+  int projectionImpactCount = 0;
+  String? lastProjectionImpactType;
 
   @override
   Future<TenantAdminStaticAsset> createStaticAsset({
@@ -355,6 +371,14 @@ class _FakeStaticAssetsRepository
       return entry;
     }).toList(growable: false);
     return Future.value(updated);
+  }
+
+  @override
+  Future<int> fetchStaticProfileTypeMapPoiProjectionImpact({
+    required String type,
+  }) async {
+    lastProjectionImpactType = type;
+    return projectionImpactCount;
   }
 }
 

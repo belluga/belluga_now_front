@@ -1,7 +1,15 @@
 import 'package:belluga_now/domain/tenant_admin/settings/tenant_admin_map_default_origin.dart';
 import 'package:belluga_now/domain/tenant_admin/settings/tenant_admin_map_filter_catalog_item.dart';
+import 'package:belluga_now/domain/tenant_admin/settings/tenant_admin_map_filter_marker_override.dart';
 import 'package:belluga_now/domain/tenant_admin/settings/tenant_admin_map_filter_query.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_dynamic_map_value.dart';
+
+typedef TenantAdminMapUiSettingsPrimString = String;
+typedef TenantAdminMapUiSettingsPrimInt = int;
+typedef TenantAdminMapUiSettingsPrimBool = bool;
+typedef TenantAdminMapUiSettingsPrimDouble = double;
+typedef TenantAdminMapUiSettingsPrimDateTime = DateTime;
+typedef TenantAdminMapUiSettingsPrimDynamic = dynamic;
 
 class TenantAdminMapUiSettings {
   TenantAdminMapUiSettings({
@@ -51,6 +59,11 @@ class TenantAdminMapUiSettings {
             key: item.key,
             label: item.label,
             imageUri: item.imageUri,
+            overrideMarker: item.overrideMarker,
+            markerOverride: _sanitizeMarkerOverride(
+              item.markerOverride,
+              fallbackImageUri: item.imageUri,
+            ),
             query: TenantAdminMapFilterQuery(
               source: item.query.source,
               types: item.query.types,
@@ -68,6 +81,37 @@ class TenantAdminMapUiSettings {
           Map<String, dynamic>.unmodifiable(nextRaw)),
       defaultOrigin: defaultOrigin,
       filters: List<TenantAdminMapFilterCatalogItem>.unmodifiable(sanitized),
+    );
+  }
+
+  TenantAdminMapFilterMarkerOverride? _sanitizeMarkerOverride(
+    TenantAdminMapFilterMarkerOverride? markerOverride, {
+    required TenantAdminMapUiSettingsPrimString? fallbackImageUri,
+  }) {
+    if (markerOverride == null) {
+      return null;
+    }
+
+    if (markerOverride.mode == TenantAdminMapFilterMarkerOverrideMode.icon) {
+      if (!markerOverride.isValid) {
+        return null;
+      }
+      return TenantAdminMapFilterMarkerOverride.icon(
+        icon: markerOverride.icon!,
+        color: markerOverride.color!,
+        iconColor: markerOverride.iconColor!,
+      );
+    }
+
+    final resolvedImageUri = markerOverride.imageUri?.trim().isNotEmpty == true
+        ? markerOverride.imageUri!.trim()
+        : (fallbackImageUri?.trim() ?? '');
+    if (resolvedImageUri.isEmpty) {
+      return null;
+    }
+
+    return TenantAdminMapFilterMarkerOverride.image(
+      imageUri: resolvedImageUri,
     );
   }
 }

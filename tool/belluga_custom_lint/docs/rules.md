@@ -530,12 +530,36 @@ Execution note (2026-03-24):
 fvm dart run custom_lint
 ```
 `--no-watch` is forbidden in this lane. In the current toolchain the `custom_lint` CLI does not expose a negatable `watch` flag, which caused false-clean/silent runs when that argument was used.
+If local runs appear silent while analyzer is still warming up, use:
+```bash
+bash tool/belluga_custom_lint/bin/run_custom_lint_with_heartbeat.sh --no-fatal-infos --no-fatal-warnings
+```
+The wrapper prints heartbeat progress every 15 seconds and streams analyzer logs to `foundation_documentation/artifacts/tmp/`.
+Scope note:
+- Applies to non-generated files under `lib/domain/**` (excluding `value_objects/**`).
+- Flags primitive usage in instance fields and in constructor/method/function parameter types.
+- `typedef` aliases are not a valid remediation for primitive domain types.
+  - This includes aliases like `*Raw*` / `*Prim*` and aliases that still resolve to primitive transport types.
+Branch-delta guard note:
+```bash
+bash tool/belluga_custom_lint/bin/check_branch_delta_domain_primitive_field.sh
+```
+The branch-delta guard blocks primitive-typedef workaround patterns in changed `lib/domain/**` files.
 Violation:
 ```dart
 class EventModel {
   EventModel(String id) : id = id;
 
   final String id;
+}
+```
+Violation (workaround, forbidden):
+```dart
+typedef EventRawId = String;
+
+class EventModel {
+  EventModel(EventRawId id) : id = id;
+  final EventRawId id;
 }
 ```
 Fix:

@@ -269,7 +269,12 @@ class TenantAdminAccountsRepository
       final response = await _dio.post(
         '$_apiBaseUrl/v1/account_onboardings',
         data: uploadPayload ?? payload,
-        options: Options(headers: _buildHeaders()),
+        options: uploadPayload == null
+            ? Options(headers: _buildHeaders())
+            : Options(
+                headers: _buildHeaders(),
+                contentType: 'multipart/form-data',
+              ),
       );
       final onboardingData = _responseDecoder.decodeOnboarding(response.data);
       final account =

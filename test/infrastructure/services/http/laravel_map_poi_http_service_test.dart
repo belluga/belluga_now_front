@@ -118,6 +118,27 @@ void main() {
     expect(authRepository.initCallCount, 1);
     expect(request.headers['Authorization'], 'Bearer refreshed-token');
   });
+
+  test('getPois preserves icon visual contract from stacks payload', () async {
+    final adapter = _PoiStacksAdapter();
+    final dio = Dio()..httpClientAdapter = adapter;
+    final service = LaravelMapPoiHttpService(
+      context: BackendContext(
+        baseUrl: 'https://tenant.test/api',
+        adminUrl: 'https://tenant.test/admin/api',
+      ),
+      dio: dio,
+    );
+
+    final pois = await service.getPois(PoiQuery());
+
+    expect(pois, hasLength(1));
+    expect(pois.first.visual, isNotNull);
+    expect(pois.first.visual?.mode, 'icon');
+    expect(pois.first.visual?.icon, 'restaurant');
+    expect(pois.first.visual?.color, '#EB2528');
+    expect(pois.first.visual?.iconColor, '#101010');
+  });
 }
 
 class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {
@@ -216,6 +237,56 @@ class _RecordingAdapter implements HttpClientAdapter {
     };
     return ResponseBody.fromString(
       jsonEncode(body),
+      200,
+      headers: <String, List<String>>{
+        Headers.contentTypeHeader: <String>[Headers.jsonContentType],
+      },
+    );
+  }
+}
+
+class _PoiStacksAdapter implements HttpClientAdapter {
+  final List<RequestOptions> requests = [];
+
+  @override
+  void close({bool force = false}) {}
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<List<int>>? requestStream,
+    Future<void>? cancelFuture,
+  ) async {
+    requests.add(options);
+    return ResponseBody.fromString(
+      jsonEncode({
+        'stacks': [
+          {
+            'stack_key': 'account_profile:poi-1',
+            'stack_count': 1,
+            'top_poi': {
+              'id': 'poi-1',
+              'title': 'Restaurante',
+              'subtitle': 'Descricao',
+              'description': 'Descricao',
+              'address': 'Endereco',
+              'category_slug': 'restaurant',
+              'location': {
+                'lat': -20.0,
+                'lng': -40.0,
+              },
+              'visual': {
+                'mode': {'value': 'icon'},
+                'icon': {'value': 'restaurant'},
+                'color': {'value': '#EB2528'},
+                'icon_color': {'value': '#101010'},
+                'source': {'value': 'type_definition'},
+              },
+            },
+            'items': const <Object>[],
+          },
+        ],
+      }),
       200,
       headers: <String, List<String>>{
         Headers.contentTypeHeader: <String>[Headers.jsonContentType],

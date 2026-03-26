@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:belluga_now/domain/map/filters/poi_filter_options.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
+import 'package:belluga_now/presentation/shared/icons/map_marker_visual_resolver.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/controllers/fab_menu_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/controllers/map_screen_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/widgets/fab_action_button.dart';
@@ -137,8 +138,13 @@ class _FabMenuState extends State<FabMenu> {
                                             final isActive = _mapController
                                                 .isCategoryFilterActive(
                                                     category);
+                                            final activeBackgroundColor =
+                                                _resolveCategoryActiveBackgroundColor(
+                                              category,
+                                              fallback: scheme.primary,
+                                            );
                                             final backgroundColor = isActive
-                                                ? scheme.primary
+                                                ? activeBackgroundColor
                                                 : scheme.surfaceContainerHigh;
                                             final foregroundColor = isActive
                                                 ? scheme.onPrimary
@@ -155,8 +161,9 @@ class _FabMenuState extends State<FabMenu> {
                                                   category,
                                                 ),
                                                 icon: fallbackIcon,
-                                                iconWidget: _categoryImage(
+                                                iconWidget: _categoryVisual(
                                                   category,
+                                                  isActive: isActive,
                                                   fallbackIcon: fallbackIcon,
                                                   fallbackColor:
                                                       foregroundColor,
@@ -224,15 +231,54 @@ class _FabMenuState extends State<FabMenu> {
     );
   }
 
-  Widget? _categoryImage(
+  Widget? _categoryVisual(
     PoiFilterCategory category, {
+    required bool isActive,
     required IconData fallbackIcon,
     required Color fallbackColor,
   }) {
-    final imageUri = category.imageUri?.trim() ?? '';
-    if (imageUri.isEmpty) {
+    final overrideVisual = category.markerOverrideVisual;
+    if (overrideVisual != null && overrideVisual.isValid) {
+      if (overrideVisual.isIcon) {
+        final iconData =
+            MapMarkerVisualResolver.resolveIcon(overrideVisual.icon);
+        final configuredIconColor = MapMarkerVisualResolver.tryParseHexColor(
+          overrideVisual.iconColorHex,
+        );
+        final iconColor =
+            isActive ? (configuredIconColor ?? Colors.white) : fallbackColor;
+        return Icon(
+          iconData,
+          size: 18,
+          color: iconColor,
+        );
+      }
+      final overrideImageUri = overrideVisual.imageUri?.trim() ?? '';
+      if (overrideImageUri.isNotEmpty) {
+        return _buildImageWidget(
+          imageUri: overrideImageUri,
+          fallbackIcon: fallbackIcon,
+          fallbackColor: fallbackColor,
+        );
+      }
+    }
+
+    final legacyImageUri = category.imageUri?.trim() ?? '';
+    if (legacyImageUri.isEmpty) {
       return null;
     }
+    return _buildImageWidget(
+      imageUri: legacyImageUri,
+      fallbackIcon: fallbackIcon,
+      fallbackColor: fallbackColor,
+    );
+  }
+
+  Widget _buildImageWidget({
+    required String imageUri,
+    required IconData fallbackIcon,
+    required Color fallbackColor,
+  }) {
     return SizedBox.square(
       dimension: 20,
       child: Image.network(
@@ -246,6 +292,20 @@ class _FabMenuState extends State<FabMenu> {
         ),
       ),
     );
+  }
+
+  Color _resolveCategoryActiveBackgroundColor(
+    PoiFilterCategory category, {
+    required Color fallback,
+  }) {
+    final overrideVisual = category.markerOverrideVisual;
+    if (overrideVisual == null || !overrideVisual.isIcon) {
+      return fallback;
+    }
+    final color = MapMarkerVisualResolver.tryParseHexColor(
+      overrideVisual.colorHex,
+    );
+    return color ?? fallback;
   }
 
   String _resolveCategoryLabel(PoiFilterCategory category) {

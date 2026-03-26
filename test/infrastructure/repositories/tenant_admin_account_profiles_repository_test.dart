@@ -8,6 +8,8 @@ import 'package:belluga_now/domain/app_data/value_object/platform_type_value.dar
 import 'package:belluga_now/domain/repositories/landlord_auth_repository_contract.dart';
 import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_poi_visual.dart';
+import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
 import 'package:belluga_now/infrastructure/repositories/tenant_admin/tenant_admin_account_profiles_repository.dart';
 import 'package:belluga_now/infrastructure/services/tenant_admin/tenant_admin_base_url_resolver.dart';
 import 'package:dio/dio.dart';
@@ -56,6 +58,41 @@ void main() {
     expect(data, isA<FormData>());
     final formData = data as FormData;
     expect(formData.files.any((entry) => entry.key == 'avatar'), isTrue);
+    expect(
+      adapter.lastRequest?.contentType,
+      contains('multipart/form-data'),
+    );
+  });
+
+  test('createAccountProfile sends both avatar and cover files in multipart',
+      () async {
+    final adapter = _CaptureAdapter();
+    final dio = Dio()..httpClientAdapter = adapter;
+    final repository = TenantAdminAccountProfilesRepository(dio: dio);
+
+    await repository.createAccountProfile(
+      accountId: 'account-1',
+      profileType: 'personal',
+      displayName: 'Profile',
+      avatarUpload: TenantAdminMediaUpload(
+        bytes: Uint8List.fromList([1, 2, 3]),
+        fileName: 'avatar.png',
+      ),
+      coverUpload: TenantAdminMediaUpload(
+        bytes: Uint8List.fromList([4, 5, 6]),
+        fileName: 'cover.png',
+      ),
+    );
+
+    final data = adapter.lastRequest?.data;
+    expect(data, isA<FormData>());
+    final formData = data as FormData;
+    expect(formData.files.any((entry) => entry.key == 'avatar'), isTrue);
+    expect(formData.files.any((entry) => entry.key == 'cover'), isTrue);
+    expect(
+      adapter.lastRequest?.contentType,
+      contains('multipart/form-data'),
+    );
   });
 
   test('updateAccountProfile sends slug when provided', () async {
@@ -159,9 +196,93 @@ void main() {
 
     expect(page.items, hasLength(2));
     expect(page.hasMore, isTrue);
+    expect(page.items.first.poiVisual?.mode, TenantAdminPoiVisualMode.icon);
+    expect(page.items.first.poiVisual?.icon, 'place');
+    expect(page.items.first.poiVisual?.color, '#FF8800');
+    expect(page.items.first.poiVisual?.iconColor, '#FFFFFF');
     expect(adapter.requests, hasLength(1));
     expect(adapter.requests.single.queryParameters['page'], 1);
     expect(adapter.requests.single.queryParameters['page_size'], 2);
+  });
+
+  test('createProfileTypeWithPoiVisual sends poi_visual icon payload',
+      () async {
+    final adapter = _CaptureAdapter();
+    final dio = Dio()..httpClientAdapter = adapter;
+    final repository = TenantAdminAccountProfilesRepository(dio: dio);
+
+    await repository.createProfileTypeWithPoiVisual(
+      type: 'venue',
+      label: 'Venue',
+      allowedTaxonomies: const ['genre'],
+      capabilities: TenantAdminProfileTypeCapabilities(
+        isFavoritable: true,
+        isPoiEnabled: true,
+        hasBio: true,
+        hasContent: true,
+        hasTaxonomies: true,
+        hasAvatar: true,
+        hasCover: true,
+        hasEvents: true,
+      ),
+      poiVisual: TenantAdminPoiVisual.icon(
+        icon: 'place',
+        color: '#FF8800',
+      ),
+    );
+
+    final payload = adapter.lastRequest?.data as Map<String, dynamic>;
+    expect(payload['poi_visual'], <String, dynamic>{
+      'mode': 'icon',
+      'icon': 'place',
+      'color': '#FF8800',
+      'icon_color': '#FFFFFF',
+    });
+  });
+
+  test('updateProfileTypeWithPoiVisual sends nullable poi_visual payload',
+      () async {
+    final adapter = _CaptureAdapter();
+    final dio = Dio()..httpClientAdapter = adapter;
+    final repository = TenantAdminAccountProfilesRepository(dio: dio);
+
+    await repository.updateProfileTypeWithPoiVisual(
+      type: 'venue',
+      capabilities: TenantAdminProfileTypeCapabilities(
+        isFavoritable: true,
+        isPoiEnabled: false,
+        hasBio: true,
+        hasContent: true,
+        hasTaxonomies: true,
+        hasAvatar: true,
+        hasCover: true,
+        hasEvents: true,
+      ),
+      poiVisual: null,
+    );
+
+    final payload = adapter.lastRequest?.data as Map<String, dynamic>;
+    expect(payload.containsKey('poi_visual'), isTrue);
+    expect(payload['poi_visual'], isNull);
+  });
+
+  test('fetchProfileTypeMapPoiProjectionImpact returns projection count',
+      () async {
+    final adapter = _CaptureAdapter();
+    final dio = Dio()..httpClientAdapter = adapter;
+    final repository = TenantAdminAccountProfilesRepository(dio: dio);
+
+    final count = await repository.fetchProfileTypeMapPoiProjectionImpact(
+      type: 'venue',
+    );
+
+    expect(count, 67);
+    expect(
+      adapter.lastRequest?.path,
+      contains(
+        '/admin/api/v1/account_profile_types/venue/map_poi_projection_impact',
+      ),
+    );
   });
 
   test('load/reset/next follow paged stream contract for profile types',
@@ -290,6 +411,51 @@ class _CaptureAdapter implements HttpClientAdapter {
     Future? cancelFuture,
   ) async {
     lastRequest = options;
+    if (options.path.endsWith('/map_poi_projection_impact')) {
+      return ResponseBody.fromString(
+        jsonEncode({
+          'data': {
+            'profile_type': 'venue',
+            'projection_count': 67,
+          },
+        }),
+        200,
+        headers: {
+          Headers.contentTypeHeader: ['application/json'],
+        },
+      );
+    }
+    if (options.path.contains('/v1/account_profile_types')) {
+      return ResponseBody.fromString(
+        jsonEncode({
+          'data': {
+            'type': 'venue',
+            'label': 'Venue',
+            'poi_visual': {
+              'mode': 'icon',
+              'icon': 'place',
+              'color': '#FF8800',
+              'icon_color': '#FFFFFF',
+            },
+            'allowed_taxonomies': <String>[],
+            'capabilities': {
+              'is_favoritable': true,
+              'is_poi_enabled': true,
+              'has_bio': true,
+              'has_content': true,
+              'has_taxonomies': true,
+              'has_avatar': true,
+              'has_cover': true,
+              'has_events': true,
+            },
+          },
+        }),
+        200,
+        headers: {
+          Headers.contentTypeHeader: ['application/json'],
+        },
+      );
+    }
     final payload = jsonEncode({
       'data': {
         'id': 'profile-1',
@@ -361,6 +527,12 @@ class _ProfileTypesRoutingAdapter implements HttpClientAdapter {
       'id': id,
       'type': type,
       'label': label,
+      'poi_visual': {
+        'mode': 'icon',
+        'icon': 'place',
+        'color': '#FF8800',
+        'icon_color': '#FFFFFF',
+      },
       'allowed_taxonomies': const <String>[],
       'capabilities': const {
         'is_favoritable': true,
