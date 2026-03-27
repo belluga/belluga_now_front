@@ -9,6 +9,8 @@ import 'package:belluga_now/domain/repositories/app_data_repository_contract.dar
 import 'package:belluga_now/domain/schedule/event_model.dart';
 import 'package:belluga_now/domain/venue_event/projections/venue_event_resume.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
+import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
+import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/event_search_screen/models/agenda_app_bar_controller.dart';
 import 'package:belluga_now/presentation/tenant_public/schedule/screens/event_search_screen/models/invite_filter.dart';
 import 'package:flutter/material.dart';
@@ -495,12 +497,10 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
       return null;
     }
     final distanceMeters = haversineDistanceMeters(
-      lat1: userCoordinate.latitude,
-      lon1: userCoordinate.longitude,
-      lat2: eventCoordinate.latitude,
-      lon2: eventCoordinate.longitude,
+      coordinateA: userCoordinate,
+      coordinateB: eventCoordinate,
     );
-    return _formatDistanceLabel(distanceMeters);
+    return _formatDistanceLabel(distanceMeters.value);
   }
 
   String _formatDistanceLabel(double meters) {
@@ -586,13 +586,23 @@ class TenantHomeAgendaController implements Disposable, AgendaAppBarController {
     }
 
     final jumpMeters = haversineDistanceMeters(
-      lat1: previousOriginLat,
-      lon1: previousOriginLng,
-      lat2: nextOriginLat,
-      lon2: nextOriginLng,
+      coordinateA: CityCoordinate(
+        latitudeValue: _parseLatitude(previousOriginLat),
+        longitudeValue: _parseLongitude(previousOriginLng),
+      ),
+      coordinateB: CityCoordinate(
+        latitudeValue: _parseLatitude(nextOriginLat),
+        longitudeValue: _parseLongitude(nextOriginLng),
+      ),
     );
-    return jumpMeters >= _locationRefreshMinJumpMeters;
+    return jumpMeters.value >= _locationRefreshMinJumpMeters;
   }
+
+  LatitudeValue _parseLatitude(double raw) =>
+      LatitudeValue()..parse(raw.toString());
+
+  LongitudeValue _parseLongitude(double raw) =>
+      LongitudeValue()..parse(raw.toString());
 
   Future<bool> _resolveEffectiveOrigin({
     required bool warmUpIfPossible,

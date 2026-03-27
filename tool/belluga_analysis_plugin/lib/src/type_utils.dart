@@ -136,23 +136,29 @@ bool containsForbiddenDomainPrimitiveType(TypeAnnotation? type) {
     return true;
   }
 
+  if (typeName == 'Map') {
+    return true;
+  }
+
+  if (typeName == 'List' || typeName == 'Set' || typeName == 'Iterable') {
+    final args = typeArgumentListOf(type)?.arguments;
+    if (args == null || args.isEmpty) {
+      return true;
+    }
+
+    return args.any(containsForbiddenDomainPrimitiveType);
+  }
+
   if (primitiveTypeNames.contains(typeName)) {
     return true;
   }
 
   final args = typeArgumentListOf(type)?.arguments;
-  if (typeName == 'Map' && (args == null || args.isEmpty)) {
-    return true;
-  }
-
   if (args == null || args.isEmpty) {
     return false;
   }
 
-  if (typeName == 'List' ||
-      typeName == 'Set' ||
-      typeName == 'Iterable' ||
-      typeName == 'Map') {
+  if (typeName == 'List' || typeName == 'Set' || typeName == 'Iterable') {
     return args.any(containsForbiddenDomainPrimitiveType);
   }
 
@@ -204,14 +210,15 @@ bool containsForbiddenDomainPrimitiveDartType(
   }
 
   if (type is InterfaceType) {
-    if (typeName == 'Map' && type.typeArguments.isEmpty) {
+    if (typeName == 'Map') {
       return true;
     }
 
-    if (typeName == 'List' ||
-        typeName == 'Set' ||
-        typeName == 'Iterable' ||
-        typeName == 'Map') {
+    if (typeName == 'List' || typeName == 'Set' || typeName == 'Iterable') {
+      if (type.typeArguments.isEmpty) {
+        return true;
+      }
+
       for (final arg in type.typeArguments) {
         if (containsForbiddenDomainPrimitiveDartType(arg, visited)) {
           return true;

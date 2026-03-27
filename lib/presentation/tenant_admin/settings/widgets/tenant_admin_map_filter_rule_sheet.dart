@@ -4,6 +4,7 @@ import 'package:belluga_now/domain/tenant_admin/settings/tenant_admin_map_filter
 import 'package:belluga_now/domain/tenant_admin/settings/tenant_admin_map_filter_rule_catalog.dart';
 import 'package:belluga_now/domain/tenant_admin/settings/tenant_admin_map_filter_source.dart';
 import 'package:belluga_now/domain/tenant_admin/settings/tenant_admin_map_filter_taxonomy_term_option.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_lowercase_string_list_value.dart';
 import 'package:flutter/material.dart';
 
 Future<TenantAdminMapFilterCatalogItem?> showTenantAdminMapFilterRuleSheet({
@@ -71,8 +72,11 @@ class _TenantAdminMapFilterRuleSheetState
     return widget.filter.copyWith(
       query: TenantAdminMapFilterQuery(
         source: _source,
-        types: _selectedTypes.toList(growable: false),
-        taxonomy: _selectedTaxonomy.toList(growable: false),
+        typeValues: TenantAdminLowercaseStringListValue(
+            _selectedTypes.toList(growable: false)),
+        taxonomyValues: TenantAdminLowercaseStringListValue(
+          _selectedTaxonomy.toList(growable: false),
+        ),
       ),
     );
   }

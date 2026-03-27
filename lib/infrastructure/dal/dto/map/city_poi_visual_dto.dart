@@ -1,4 +1,8 @@
 import 'package:belluga_now/domain/map/projections/city_poi_visual.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_filter_image_uri_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_filter_source_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_hex_color_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_icon_symbol_value.dart';
 
 class CityPoiVisualDTO {
   const CityPoiVisualDTO.icon({
@@ -201,17 +205,32 @@ class CityPoiVisualDTO {
 
   CityPoiVisual toDomain() {
     if (mode == 'icon') {
+      final iconValue = PoiIconSymbolValue()..parse(icon!.trim());
+      final colorHexValue = PoiHexColorValue()..parse(color!.trim());
+      final iconColorHexValue = PoiHexColorValue()
+        ..parse((iconColor ?? '#FFFFFF').trim());
       return CityPoiVisual.icon(
-        icon: icon!,
-        colorHex: color!,
-        iconColorHex: iconColor!,
-        source: source,
+        iconValue: iconValue,
+        colorHexValue: colorHexValue,
+        iconColorHexValue: iconColorHexValue,
+        sourceValue: _parseSourceValue(source),
       );
     }
 
+    final imageUriValue = PoiFilterImageUriValue()..parse(imageUri!.trim());
     return CityPoiVisual.image(
-      imageUri: imageUri!,
-      source: source,
+      imageUriValue: imageUriValue,
+      sourceValue: _parseSourceValue(source),
     );
+  }
+
+  static PoiFilterSourceValue? _parseSourceValue(String? rawSource) {
+    final normalized = rawSource?.trim().toLowerCase();
+    if (normalized == null || normalized.isEmpty) {
+      return null;
+    }
+    final value = PoiFilterSourceValue();
+    value.parse(normalized);
+    return value;
   }
 }

@@ -1,8 +1,14 @@
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_settings.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_android_app_identifier_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_dynamic_map_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_flag_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_hex_color_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_ios_bundle_identifier_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_ios_team_id_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_lowercase_string_list_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_lowercase_token_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_url_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_required_text_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_sha256_fingerprint_list_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_trimmed_string_list_value.dart';
 import 'package:belluga_now/infrastructure/dal/dao/http/raw_json_envelope_decoder.dart';
@@ -322,12 +328,17 @@ class TenantAdminSettingsResponseDecoder {
         if (key.isEmpty || label.isEmpty) {
           continue;
         }
+        final keyValue = TenantAdminLowercaseTokenValue()..parse(key);
+        final labelValue = TenantAdminRequiredTextValue()..parse(label);
+        final imageUriValue = imageUri == null || imageUri.isEmpty
+            ? null
+            : (TenantAdminOptionalUrlValue()..parse(imageUri));
         filters.add(
           TenantAdminMapFilterCatalogItem(
-            key: key,
-            label: label,
-            imageUri: imageUri == null || imageUri.isEmpty ? null : imageUri,
-            overrideMarker: overrideMarker,
+            keyValue: keyValue,
+            labelValue: labelValue,
+            imageUriValue: imageUriValue,
+            overrideMarkerValue: TenantAdminFlagValue(overrideMarker),
             markerOverride: markerOverride,
             query: query,
           ),
@@ -362,8 +373,10 @@ class TenantAdminSettingsResponseDecoder {
 
     return TenantAdminMapFilterQuery(
       source: TenantAdminMapFilterSource.fromRaw(json['source']?.toString()),
-      types: asStringList(json['types']),
-      taxonomy: asStringList(json['taxonomy']),
+      typeValues:
+          TenantAdminLowercaseStringListValue(asStringList(json['types'])),
+      taxonomyValues:
+          TenantAdminLowercaseStringListValue(asStringList(json['taxonomy'])),
     );
   }
 
@@ -377,27 +390,34 @@ class TenantAdminSettingsResponseDecoder {
     }
 
     final marker = Map<String, dynamic>.from(raw);
-    final mode = TenantAdminMapFilterMarkerOverrideMode.fromRaw(
-        marker['mode']?.toString());
+    final modeTokenValue = TenantAdminLowercaseTokenValue();
+    try {
+      modeTokenValue.parse(marker['mode']?.toString());
+    } on Object {
+      return null;
+    }
+    final mode =
+        tenantAdminMapFilterMarkerOverrideModeFromValue(modeTokenValue);
     if (mode == null) {
       return null;
     }
 
     if (mode == TenantAdminMapFilterMarkerOverrideMode.icon) {
-      final icon = marker['icon']?.toString().trim() ?? '';
-      final color = marker['color']?.toString().trim().toUpperCase() ?? '';
-      final iconColor =
-          (marker['icon_color'] ?? '#FFFFFF').toString().trim().toUpperCase();
-      if (icon.isEmpty ||
-          !RegExp(r'^#[0-9A-F]{6}$').hasMatch(color) ||
-          !RegExp(r'^#[0-9A-F]{6}$').hasMatch(iconColor)) {
+      final iconValue = TenantAdminRequiredTextValue();
+      final colorValue = TenantAdminHexColorValue();
+      final iconColorValue = TenantAdminHexColorValue();
+      try {
+        iconValue.parse(marker['icon']?.toString());
+        colorValue.parse(marker['color']?.toString());
+        iconColorValue.parse((marker['icon_color'] ?? '#FFFFFF').toString());
+      } on Object {
         return null;
       }
 
       return TenantAdminMapFilterMarkerOverride.icon(
-        icon: icon,
-        color: color,
-        iconColor: iconColor,
+        iconValue: iconValue,
+        colorValue: colorValue,
+        iconColorValue: iconColorValue,
       );
     }
 
@@ -409,8 +429,15 @@ class TenantAdminSettingsResponseDecoder {
       return null;
     }
 
+    final imageUriValue = TenantAdminOptionalUrlValue();
+    try {
+      imageUriValue.parse(imageUri);
+    } on Object {
+      return null;
+    }
+
     return TenantAdminMapFilterMarkerOverride.image(
-      imageUri: imageUri,
+      imageUriValue: imageUriValue,
     );
   }
 

@@ -8,8 +8,16 @@ import 'package:belluga_now/domain/map/value_objects/city_poi_name_value.dart';
 import 'package:belluga_now/domain/map/value_objects/distance_in_meters_value.dart';
 import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
 import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_boolean_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_priority_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_reference_id_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_reference_path_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_reference_slug_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_reference_type_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_stack_count_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_stack_key_value.dart';
 import 'package:belluga_now/domain/map/value_objects/poi_tag_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_updated_at_value.dart';
 import 'package:belluga_now/domain/value_objects/asset_path_value.dart';
 import 'package:belluga_now/infrastructure/dal/dto/map/city_poi_visual_dto.dart';
 
@@ -236,6 +244,32 @@ class CityPoiDTO {
         items.map((item) => item.toDomain()).toList(growable: false);
     final resolvedStackKey =
         stackKey.trim().isNotEmpty ? stackKey.trim() : '$refType:$refId';
+    final isDynamicValue = PoiBooleanValue()..parse(isDynamic.toString());
+    final refTypeValue = PoiReferenceTypeValue()..parse(refType.trim());
+    final refIdValue = PoiReferenceIdValue()..parse(refId.trim());
+    PoiReferenceSlugValue? refSlugValue;
+    final normalizedRefSlug = refSlug?.trim();
+    if (normalizedRefSlug != null && normalizedRefSlug.isNotEmpty) {
+      refSlugValue = PoiReferenceSlugValue()..parse(normalizedRefSlug);
+    }
+    PoiReferencePathValue? refPathValue;
+    final normalizedRefPath = refPath?.trim();
+    if (normalizedRefPath != null && normalizedRefPath.isNotEmpty) {
+      refPathValue = PoiReferencePathValue()..parse(normalizedRefPath);
+    }
+    final stackKeyValue = PoiStackKeyValue()..parse(resolvedStackKey.trim());
+    final stackCountValue = PoiStackCountValue()..parse(stackCount.toString());
+    final isHappeningNowValue = PoiBooleanValue()
+      ..parse(isHappeningNow.toString());
+    PoiUpdatedAtValue? updatedAtValue;
+    if (updatedAt != null) {
+      updatedAtValue = PoiUpdatedAtValue()..parse(updatedAt!.toIso8601String());
+    }
+    DistanceInMetersValue? distanceMetersValue;
+    if (distanceMeters != null) {
+      distanceMetersValue = DistanceInMetersValue()
+        ..parse(distanceMeters!.toString());
+    }
 
     return CityPoiModel(
       idValue: idValue,
@@ -246,19 +280,19 @@ class CityPoiDTO {
       coordinate: coordinate,
       priorityValue: priorityValue,
       assetPathValue: assetPathValue,
-      isDynamic: isDynamic,
+      isDynamicValue: isDynamicValue,
       movementRadiusValue: movementRadiusValue,
       tagValues: tagValues,
-      refType: refType,
-      refId: refId,
-      refSlug: refSlug,
-      refPath: refPath,
-      stackKey: resolvedStackKey,
-      stackCount: stackCount,
+      refTypeValue: refTypeValue,
+      refIdValue: refIdValue,
+      refSlugValue: refSlugValue,
+      refPathValue: refPathValue,
+      stackKeyValue: stackKeyValue,
+      stackCountValue: stackCountValue,
       stackItems: stackItems,
-      isHappeningNow: isHappeningNow,
-      updatedAt: updatedAt,
-      distanceMeters: distanceMeters,
+      isHappeningNowValue: isHappeningNowValue,
+      updatedAtValue: updatedAtValue,
+      distanceMetersValue: distanceMetersValue,
       visual: visual?.toDomain(),
     );
   }

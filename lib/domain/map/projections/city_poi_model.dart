@@ -19,13 +19,6 @@ import 'package:belluga_now/domain/map/value_objects/poi_updated_at_value.dart';
 import 'package:belluga_now/domain/value_objects/asset_path_value.dart';
 import 'package:belluga_now/domain/map/projections/city_poi_visual.dart';
 
-typedef CityPoiModelRawString = String;
-typedef CityPoiModelRawBoolean = bool;
-typedef CityPoiModelRawCount = int;
-typedef CityPoiModelRawMeters = double;
-typedef CityPoiModelRawTimestamp = DateTime;
-typedef CityPoiModelDynamicValue = dynamic;
-
 class CityPoiModel implements MapPoi {
   CityPoiModel({
     required this.idValue,
@@ -36,32 +29,29 @@ class CityPoiModel implements MapPoi {
     required this.coordinate,
     required this.priorityValue,
     this.assetPathValue,
-    CityPoiModelRawBoolean isDynamic = false,
+    PoiBooleanValue? isDynamicValue,
     this.movementRadiusValue,
     List<PoiTagValue>? tagValues,
-    CityPoiModelRawString refType = 'static',
-    CityPoiModelRawString refId = '',
-    CityPoiModelRawString? refSlug,
-    CityPoiModelRawString? refPath,
-    CityPoiModelRawString stackKey = '',
-    CityPoiModelRawCount stackCount = 1,
+    PoiReferenceTypeValue? refTypeValue,
+    PoiReferenceIdValue? refIdValue,
+    this.refSlugValue,
+    this.refPathValue,
+    PoiStackKeyValue? stackKeyValue,
+    PoiStackCountValue? stackCountValue,
     List<CityPoiModel>? stackItems,
-    CityPoiModelRawBoolean isHappeningNow = false,
-    CityPoiModelRawTimestamp? updatedAt,
-    CityPoiModelRawMeters? distanceMeters,
+    PoiBooleanValue? isHappeningNowValue,
+    this.updatedAtValue,
+    this.distanceMetersValue,
     this.visual,
   })  : tagValues = List.unmodifiable(tagValues ?? const <PoiTagValue>[]),
         stackItems = List.unmodifiable(stackItems ?? const <CityPoiModel>[]),
-        isDynamicValue = _buildBooleanValue(isDynamic),
-        refTypeValue = _buildRefTypeValue(refType),
-        refIdValue = _buildRefIdValue(refId),
-        refSlugValue = _buildRefSlugValue(refSlug),
-        refPathValue = _buildRefPathValue(refPath),
-        stackKeyValue = _buildStackKeyValue(stackKey),
-        stackCountValue = _buildStackCountValue(stackCount),
-        isHappeningNowValue = _buildBooleanValue(isHappeningNow),
-        updatedAtValue = _buildUpdatedAtValue(updatedAt),
-        distanceMetersValue = _buildDistanceValue(distanceMeters);
+        isDynamicValue = isDynamicValue ?? _defaultFalseBooleanValue(),
+        refTypeValue = refTypeValue ?? _defaultRefTypeValue(),
+        refIdValue = refIdValue ?? _defaultRefIdValue(),
+        stackKeyValue = stackKeyValue ?? _defaultStackKeyValue(),
+        stackCountValue = stackCountValue ?? _defaultStackCountValue(),
+        isHappeningNowValue =
+            isHappeningNowValue ?? _defaultFalseBooleanValue();
 
   final CityPoiIdValue idValue;
   final CityPoiNameValue nameValue;
@@ -124,8 +114,22 @@ class CityPoiModel implements MapPoi {
 
   String get refType => refTypeValue.value;
   String get refId => refIdValue.value;
-  String? get refSlug => _readNullableValue(refSlugValue);
-  String? get refPath => _readNullableValue(refPathValue);
+  String? get refSlug {
+    final raw = refSlugValue?.value;
+    if (raw == null || raw.trim().isEmpty) {
+      return null;
+    }
+    return raw;
+  }
+
+  String? get refPath {
+    final raw = refPathValue?.value;
+    if (raw == null || raw.trim().isEmpty) {
+      return null;
+    }
+    return raw;
+  }
+
   String get stackKey => stackKeyValue.value;
   int get stackCount => stackCountValue.value;
   bool get isHappeningNow => isHappeningNowValue.value;
@@ -143,19 +147,19 @@ class CityPoiModel implements MapPoi {
     CityCoordinate? coordinate,
     PoiPriorityValue? priorityValue,
     AssetPathValue? assetPathValue,
-    CityPoiModelRawBoolean? isDynamic,
+    PoiBooleanValue? isDynamicValue,
     DistanceInMetersValue? movementRadiusValue,
     List<PoiTagValue>? tagValues,
-    CityPoiModelRawString? refType,
-    CityPoiModelRawString? refId,
-    CityPoiModelRawString? refSlug,
-    CityPoiModelRawString? refPath,
-    CityPoiModelRawString? stackKey,
-    CityPoiModelRawCount? stackCount,
+    PoiReferenceTypeValue? refTypeValue,
+    PoiReferenceIdValue? refIdValue,
+    PoiReferenceSlugValue? refSlugValue,
+    PoiReferencePathValue? refPathValue,
+    PoiStackKeyValue? stackKeyValue,
+    PoiStackCountValue? stackCountValue,
     List<CityPoiModel>? stackItems,
-    CityPoiModelRawBoolean? isHappeningNow,
-    CityPoiModelRawTimestamp? updatedAt,
-    CityPoiModelRawMeters? distanceMeters,
+    PoiBooleanValue? isHappeningNowValue,
+    PoiUpdatedAtValue? updatedAtValue,
+    DistanceInMetersValue? distanceMetersValue,
     CityPoiVisual? visual,
   }) {
     return CityPoiModel(
@@ -167,95 +171,45 @@ class CityPoiModel implements MapPoi {
       coordinate: coordinate ?? this.coordinate,
       priorityValue: priorityValue ?? this.priorityValue,
       assetPathValue: assetPathValue ?? this.assetPathValue,
-      isDynamic: isDynamic ?? this.isDynamic,
+      isDynamicValue: isDynamicValue ?? this.isDynamicValue,
       movementRadiusValue: movementRadiusValue ?? this.movementRadiusValue,
       tagValues: tagValues ?? this.tagValues,
-      refType: refType ?? this.refType,
-      refId: refId ?? this.refId,
-      refSlug: refSlug ?? this.refSlug,
-      refPath: refPath ?? this.refPath,
-      stackKey: stackKey ?? this.stackKey,
-      stackCount: stackCount ?? this.stackCount,
+      refTypeValue: refTypeValue ?? this.refTypeValue,
+      refIdValue: refIdValue ?? this.refIdValue,
+      refSlugValue: refSlugValue ?? this.refSlugValue,
+      refPathValue: refPathValue ?? this.refPathValue,
+      stackKeyValue: stackKeyValue ?? this.stackKeyValue,
+      stackCountValue: stackCountValue ?? this.stackCountValue,
       stackItems: stackItems ?? this.stackItems,
-      isHappeningNow: isHappeningNow ?? this.isHappeningNow,
-      updatedAt: updatedAt ?? this.updatedAt,
-      distanceMeters: distanceMeters ?? this.distanceMeters,
+      isHappeningNowValue: isHappeningNowValue ?? this.isHappeningNowValue,
+      updatedAtValue: updatedAtValue ?? this.updatedAtValue,
+      distanceMetersValue: distanceMetersValue ?? this.distanceMetersValue,
       visual: visual ?? this.visual,
     );
   }
 
-  static PoiBooleanValue _buildBooleanValue(CityPoiModelRawBoolean raw) {
-    final value = PoiBooleanValue()..parse(raw.toString());
+  static PoiBooleanValue _defaultFalseBooleanValue() {
+    final value = PoiBooleanValue()..parse('false');
     return value;
   }
 
-  static PoiReferenceTypeValue _buildRefTypeValue(CityPoiModelRawString raw) {
-    final value = PoiReferenceTypeValue()..parse(raw.trim());
+  static PoiReferenceTypeValue _defaultRefTypeValue() {
+    final value = PoiReferenceTypeValue()..parse('static');
     return value;
   }
 
-  static PoiReferenceIdValue _buildRefIdValue(CityPoiModelRawString raw) {
-    final value = PoiReferenceIdValue()..parse(raw.trim());
+  static PoiReferenceIdValue _defaultRefIdValue() {
+    final value = PoiReferenceIdValue()..parse('');
     return value;
   }
 
-  static PoiReferenceSlugValue? _buildRefSlugValue(
-    CityPoiModelRawString? raw,
-  ) {
-    final normalized = raw?.trim();
-    if (normalized == null || normalized.isEmpty) {
-      return null;
-    }
-    final value = PoiReferenceSlugValue()..parse(normalized);
+  static PoiStackKeyValue _defaultStackKeyValue() {
+    final value = PoiStackKeyValue()..parse('');
     return value;
   }
 
-  static PoiReferencePathValue? _buildRefPathValue(
-    CityPoiModelRawString? raw,
-  ) {
-    final normalized = raw?.trim();
-    if (normalized == null || normalized.isEmpty) {
-      return null;
-    }
-    final value = PoiReferencePathValue()..parse(normalized);
+  static PoiStackCountValue _defaultStackCountValue() {
+    final value = PoiStackCountValue()..parse('1');
     return value;
-  }
-
-  static PoiStackKeyValue _buildStackKeyValue(CityPoiModelRawString raw) {
-    final value = PoiStackKeyValue()..parse(raw.trim());
-    return value;
-  }
-
-  static PoiStackCountValue _buildStackCountValue(CityPoiModelRawCount raw) {
-    final value = PoiStackCountValue()..parse(raw.toString());
-    return value;
-  }
-
-  static PoiUpdatedAtValue? _buildUpdatedAtValue(
-    CityPoiModelRawTimestamp? raw,
-  ) {
-    if (raw == null) {
-      return null;
-    }
-    final value = PoiUpdatedAtValue()..parse(raw.toIso8601String());
-    return value;
-  }
-
-  static DistanceInMetersValue? _buildDistanceValue(
-    CityPoiModelRawMeters? raw,
-  ) {
-    if (raw == null) {
-      return null;
-    }
-    final value = DistanceInMetersValue()..parse(raw.toString());
-    return value;
-  }
-
-  static String? _readNullableValue(CityPoiModelDynamicValue valueObject) {
-    final raw = valueObject?.value as String?;
-    if (raw == null || raw.trim().isEmpty) {
-      return null;
-    }
-    return raw;
   }
 }

@@ -1,6 +1,11 @@
 import 'dart:convert';
 
 import 'package:belluga_now/domain/map/queries/poi_query.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_filter_key_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_filter_source_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_filter_taxonomy_token_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_filter_type_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_tag_value.dart';
 import 'package:belluga_now/domain/repositories/auth_repository_contract.dart';
 import 'package:belluga_now/domain/user/user_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/backend_context.dart';
@@ -35,7 +40,7 @@ void main() {
     );
 
     await service.getPois(
-      PoiQuery(
+      _buildPoiQuery(
         source: 'static_asset',
         categoryKeys: <String>{'beach'},
         types: <String>{'beach_spot'},
@@ -80,7 +85,7 @@ void main() {
     );
 
     await service.getFilters(
-      PoiQuery(
+      _buildPoiQuery(
         source: 'event',
         types: <String>{'showcase'},
       ),
@@ -139,6 +144,92 @@ void main() {
     expect(pois.first.visual?.color, '#EB2528');
     expect(pois.first.visual?.iconColor, '#101010');
   });
+}
+
+PoiQuery _buildPoiQuery({
+  String? source,
+  Set<String>? categoryKeys,
+  Set<String>? types,
+  Set<String>? tags,
+  Set<String>? taxonomy,
+}) {
+  return PoiQuery(
+    sourceValue: _buildSourceValue(source),
+    categoryKeyValues:
+        categoryKeys == null ? null : _buildFilterKeyValues(categoryKeys),
+    typeValues: types == null ? null : _buildFilterTypeValues(types),
+    tagValues: tags == null ? null : _buildTagValues(tags),
+    taxonomyTokenValues:
+        taxonomy == null ? null : _buildTaxonomyValues(taxonomy),
+  );
+}
+
+PoiFilterSourceValue? _buildSourceValue(String? raw) {
+  final normalized = raw?.trim().toLowerCase();
+  if (normalized == null || normalized.isEmpty) {
+    return null;
+  }
+  final value = PoiFilterSourceValue();
+  value.parse(normalized);
+  return value;
+}
+
+Set<PoiFilterKeyValue> _buildFilterKeyValues(Iterable<String> rawValues) {
+  final values = <PoiFilterKeyValue>{};
+  for (final entry in rawValues) {
+    final normalized = entry.trim().toLowerCase();
+    if (normalized.isEmpty) {
+      continue;
+    }
+    final value = PoiFilterKeyValue();
+    value.parse(normalized);
+    values.add(value);
+  }
+  return Set<PoiFilterKeyValue>.unmodifiable(values);
+}
+
+Set<PoiFilterTypeValue> _buildFilterTypeValues(Iterable<String> rawValues) {
+  final values = <PoiFilterTypeValue>{};
+  for (final entry in rawValues) {
+    final normalized = entry.trim().toLowerCase();
+    if (normalized.isEmpty) {
+      continue;
+    }
+    final value = PoiFilterTypeValue();
+    value.parse(normalized);
+    values.add(value);
+  }
+  return Set<PoiFilterTypeValue>.unmodifiable(values);
+}
+
+Set<PoiTagValue> _buildTagValues(Iterable<String> rawValues) {
+  final values = <PoiTagValue>{};
+  for (final entry in rawValues) {
+    final normalized = entry.trim().toLowerCase();
+    if (normalized.isEmpty) {
+      continue;
+    }
+    final value = PoiTagValue();
+    value.parse(normalized);
+    values.add(value);
+  }
+  return Set<PoiTagValue>.unmodifiable(values);
+}
+
+Set<PoiFilterTaxonomyTokenValue> _buildTaxonomyValues(
+  Iterable<String> rawValues,
+) {
+  final values = <PoiFilterTaxonomyTokenValue>{};
+  for (final entry in rawValues) {
+    final normalized = entry.trim().toLowerCase();
+    if (normalized.isEmpty) {
+      continue;
+    }
+    final value = PoiFilterTaxonomyTokenValue();
+    value.parse(normalized);
+    values.add(value);
+  }
+  return Set<PoiFilterTaxonomyTokenValue>.unmodifiable(values);
 }
 
 class _FakeAuthRepository extends AuthRepositoryContract<UserContract> {

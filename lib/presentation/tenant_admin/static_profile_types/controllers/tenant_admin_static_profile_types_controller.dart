@@ -6,6 +6,8 @@ import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.d
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_poi_visual.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_static_profile_type.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_hex_color_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_required_text_value.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/utils/tenant_admin_type_poi_visual_requests.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart' show Disposable, GetIt;
@@ -196,12 +198,22 @@ class TenantAdminStaticProfileTypesController implements Disposable {
 
   TenantAdminPoiVisual? buildCurrentPoiVisual() {
     if (currentPoiVisualMode == TenantAdminPoiVisualMode.icon) {
-      final candidate = TenantAdminPoiVisual.icon(
-        icon: poiVisualIconController.text,
-        color: poiVisualColorController.text,
-        iconColor: poiVisualIconColorController.text,
-      );
-      return candidate.isValid ? candidate : null;
+      try {
+        final iconValue = TenantAdminRequiredTextValue()
+          ..parse(poiVisualIconController.text);
+        final colorValue = TenantAdminHexColorValue()
+          ..parse(poiVisualColorController.text);
+        final iconColorValue = TenantAdminHexColorValue()
+          ..parse(poiVisualIconColorController.text);
+        final candidate = TenantAdminPoiVisual.icon(
+          iconValue: iconValue,
+          colorValue: colorValue,
+          iconColorValue: iconColorValue,
+        );
+        return candidate.isValid ? candidate : null;
+      } on Object {
+        return null;
+      }
     }
 
     return TenantAdminPoiVisual.image(

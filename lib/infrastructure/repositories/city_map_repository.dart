@@ -7,6 +7,19 @@ import 'package:belluga_now/domain/map/queries/poi_query.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/domain/map/value_objects/latitude_value.dart';
 import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_boolean_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_filter_count_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_filter_image_uri_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_filter_key_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_filter_label_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_filter_source_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_filter_taxonomy_term_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_filter_taxonomy_token_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_filter_taxonomy_type_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_filter_type_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_stack_count_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_stack_key_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_tag_value.dart';
 import 'package:belluga_now/domain/repositories/city_map_repository_contract.dart';
 import 'package:belluga_now/infrastructure/dal/dao/laravel_backend/map/laravel_map_poi_http_service.dart';
 
@@ -75,8 +88,8 @@ class CityMapRepository extends CityMapRepositoryContract {
     final seeded = items
         .map(
           (item) => item.copyWith(
-            stackKey: normalizedStackKey,
-            stackCount: normalizedCount,
+            stackKeyValue: _parseStackKeyValue(normalizedStackKey),
+            stackCountValue: _parseStackCountValue(normalizedCount),
           ),
         )
         .toList(growable: false);
@@ -122,23 +135,26 @@ class CityMapRepository extends CityMapRepositoryContract {
           .map((entry) => entry.trim().toLowerCase())
           .where((entry) => entry.isNotEmpty)
           .toSet();
+      final keyValue = _parseKeyValue(key);
+      final labelValue = _parseLabelValue(
+        category.label.trim().isEmpty ? key : category.label.trim(),
+      );
       categoryKeys.add(key);
       categories.add(
         PoiFilterCategory(
-          key: key,
-          label: category.label.trim().isEmpty ? key : category.label.trim(),
-          imageUri: category.imageUri,
-          count: category.count,
-          overrideMarker: category.overrideMarker,
+          keyValue: keyValue,
+          labelValue: labelValue,
+          imageUriValue: _parseImageUriValue(category.imageUri),
+          countValue: _parseCountValue(category.count),
+          overrideMarkerValue: _parseBooleanValue(category.overrideMarker),
           markerOverride: category.markerOverride?.toDomain(),
-          tags: tags,
+          tagValues: _parseTagValues(tags),
           serverQuery: PoiFilterServerQuery(
-            source:
-                querySource == null || querySource.isEmpty ? null : querySource,
-            types: queryTypes,
-            categoryKeys: queryCategoryKeys,
-            taxonomy: queryTaxonomy,
-            tags: queryTags,
+            sourceValue: _parseSourceValue(querySource),
+            typeValues: _parseTypeValues(queryTypes),
+            categoryKeyValues: _parseCategoryKeyValues(queryCategoryKeys),
+            taxonomyTokenValues: _parseTaxonomyValues(queryTaxonomy),
+            tagValues: _parseTagValues(queryTags),
           ),
         ),
       );
@@ -153,10 +169,12 @@ class CityMapRepository extends CityMapRepositoryContract {
       }
       groupedTaxonomy.putIfAbsent(type, () => <PoiFilterTaxonomyTerm>[]).add(
             PoiFilterTaxonomyTerm(
-              type: type,
-              value: value,
-              label: term.label.trim().isEmpty ? value : term.label.trim(),
-              count: term.count,
+              typeValue: _parseTaxonomyTypeValue(type),
+              valueValue: _parseTaxonomyTermValue(value),
+              labelValue: _parseLabelValue(
+                term.label.trim().isEmpty ? value : term.label.trim(),
+              ),
+              countValue: _parseCountValue(term.count),
             ),
           );
     }
@@ -165,8 +183,8 @@ class CityMapRepository extends CityMapRepositoryContract {
       final terms = List<PoiFilterTaxonomyTerm>.from(entry.value)
         ..sort((left, right) => left.label.compareTo(right.label));
       return PoiFilterTaxonomyGroup(
-        type: entry.key,
-        label: _humanizeTaxonomyType(entry.key),
+        typeValue: _parseTaxonomyTypeValue(entry.key),
+        labelValue: _parseLabelValue(_humanizeTaxonomyType(entry.key)),
         terms: terms,
       );
     }).toList(growable: false)
@@ -219,4 +237,129 @@ class CityMapRepository extends CityMapRepositoryContract {
 
   @override
   void dispose() {}
+
+  PoiFilterKeyValue _parseKeyValue(String raw) {
+    final value = PoiFilterKeyValue();
+    value.parse(raw.trim().toLowerCase());
+    return value;
+  }
+
+  PoiFilterLabelValue _parseLabelValue(String raw) {
+    final value = PoiFilterLabelValue();
+    value.parse(raw.trim());
+    return value;
+  }
+
+  PoiFilterImageUriValue? _parseImageUriValue(String? raw) {
+    final normalized = raw?.trim();
+    if (normalized == null || normalized.isEmpty) {
+      return null;
+    }
+    final value = PoiFilterImageUriValue();
+    value.parse(normalized);
+    return value;
+  }
+
+  PoiFilterCountValue _parseCountValue(int raw) {
+    final value = PoiFilterCountValue();
+    value.parse(raw.toString());
+    return value;
+  }
+
+  PoiBooleanValue _parseBooleanValue(bool raw) {
+    final value = PoiBooleanValue();
+    value.parse(raw.toString());
+    return value;
+  }
+
+  PoiFilterSourceValue? _parseSourceValue(String? raw) {
+    if (raw == null || raw.trim().isEmpty) {
+      return null;
+    }
+    final value = PoiFilterSourceValue();
+    value.parse(raw.trim().toLowerCase());
+    return value;
+  }
+
+  Set<PoiTagValue> _parseTagValues(Iterable<String> rawValues) {
+    final values = <PoiTagValue>{};
+    for (final entry in rawValues) {
+      final normalized = entry.trim().toLowerCase();
+      if (normalized.isEmpty) {
+        continue;
+      }
+      final value = PoiTagValue();
+      value.parse(normalized);
+      values.add(value);
+    }
+    return Set<PoiTagValue>.unmodifiable(values);
+  }
+
+  Set<PoiFilterTypeValue> _parseTypeValues(Iterable<String> rawValues) {
+    final values = <PoiFilterTypeValue>{};
+    for (final entry in rawValues) {
+      final normalized = entry.trim().toLowerCase();
+      if (normalized.isEmpty) {
+        continue;
+      }
+      final value = PoiFilterTypeValue();
+      value.parse(normalized);
+      values.add(value);
+    }
+    return Set<PoiFilterTypeValue>.unmodifiable(values);
+  }
+
+  Set<PoiFilterKeyValue> _parseCategoryKeyValues(Iterable<String> rawValues) {
+    final values = <PoiFilterKeyValue>{};
+    for (final entry in rawValues) {
+      final normalized = entry.trim().toLowerCase();
+      if (normalized.isEmpty) {
+        continue;
+      }
+      final value = PoiFilterKeyValue();
+      value.parse(normalized);
+      values.add(value);
+    }
+    return Set<PoiFilterKeyValue>.unmodifiable(values);
+  }
+
+  Set<PoiFilterTaxonomyTokenValue> _parseTaxonomyValues(
+    Iterable<String> rawValues,
+  ) {
+    final values = <PoiFilterTaxonomyTokenValue>{};
+    for (final entry in rawValues) {
+      final normalized = entry.trim().toLowerCase();
+      if (normalized.isEmpty) {
+        continue;
+      }
+      final value = PoiFilterTaxonomyTokenValue();
+      value.parse(normalized);
+      values.add(value);
+    }
+    return Set<PoiFilterTaxonomyTokenValue>.unmodifiable(values);
+  }
+
+  PoiFilterTaxonomyTypeValue _parseTaxonomyTypeValue(String raw) {
+    final value = PoiFilterTaxonomyTypeValue();
+    value.parse(raw.trim().toLowerCase());
+    return value;
+  }
+
+  PoiFilterTaxonomyTermValue _parseTaxonomyTermValue(String raw) {
+    final value = PoiFilterTaxonomyTermValue();
+    value.parse(raw.trim().toLowerCase());
+    return value;
+  }
+
+  PoiStackKeyValue _parseStackKeyValue(String raw) {
+    final value = PoiStackKeyValue();
+    value.parse(raw.trim());
+    return value;
+  }
+
+  PoiStackCountValue _parseStackCountValue(int raw) {
+    final value = PoiStackCountValue();
+    value.parse(raw.toString());
+    return value;
+  }
 }

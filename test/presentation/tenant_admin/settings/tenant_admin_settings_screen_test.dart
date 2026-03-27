@@ -15,6 +15,11 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_settings.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_dynamic_map_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_flag_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_hex_color_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_lowercase_token_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_url_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_required_text_value.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_trimmed_string_list_value.dart';
 import 'package:belluga_now/infrastructure/services/tenant_admin/tenant_admin_location_selection_service.dart';
 import 'package:belluga_now/presentation/tenant_admin/settings/controllers/tenant_admin_settings_controller.dart';
@@ -35,6 +40,30 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:stream_value/core/stream_value.dart';
+
+TenantAdminRequiredTextValue _requiredText(String raw) {
+  final value = TenantAdminRequiredTextValue();
+  value.parse(raw);
+  return value;
+}
+
+TenantAdminHexColorValue _hexColor(String raw) {
+  final value = TenantAdminHexColorValue();
+  value.parse(raw);
+  return value;
+}
+
+TenantAdminOptionalUrlValue _optionalUrl(String raw) {
+  final value = TenantAdminOptionalUrlValue();
+  value.parse(raw);
+  return value;
+}
+
+TenantAdminLowercaseTokenValue _token(String raw) {
+  final value = TenantAdminLowercaseTokenValue();
+  value.parse(raw);
+  return value;
+}
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -435,14 +464,15 @@ void main() {
           ),
           filters: [
             TenantAdminMapFilterCatalogItem(
-              key: 'events',
-              label: 'Eventos',
-              imageUri: 'https://tenant.test/legacy-events.png',
-              overrideMarker: true,
+              keyValue: _token('events'),
+              labelValue: _requiredText('Eventos'),
+              imageUriValue:
+                  _optionalUrl('https://tenant.test/legacy-events.png'),
+              overrideMarkerValue: const TenantAdminFlagValue(true),
               markerOverride: TenantAdminMapFilterMarkerOverride.icon(
-                icon: 'music',
-                color: '#C6141F',
-                iconColor: '#FFFFFF',
+                iconValue: _requiredText('music'),
+                colorValue: _hexColor('#C6141F'),
+                iconColorValue: _hexColor('#FFFFFF'),
               ),
             ),
           ],
@@ -495,8 +525,8 @@ void main() {
   testWidgets('map filter rule sheet is query-only (without visual fields)',
       (tester) async {
     final filter = TenantAdminMapFilterCatalogItem(
-      key: 'events',
-      label: 'Eventos',
+      keyValue: _token('events'),
+      labelValue: _requiredText('Eventos'),
       query:
           TenantAdminMapFilterQuery(source: TenantAdminMapFilterSource.event),
     );
@@ -504,18 +534,18 @@ void main() {
       typesBySource: {
         TenantAdminMapFilterSource.event: [
           TenantAdminMapFilterTypeOption(
-            slug: 'show',
-            label: 'Show',
+            slugValue: _token('show'),
+            labelValue: _requiredText('Show'),
           ),
         ],
       },
       taxonomyTermsBySource: {
         TenantAdminMapFilterSource.event: [
           TenantAdminMapFilterTaxonomyTermOption(
-            token: 'rock',
-            label: 'Rock',
-            taxonomySlug: 'genre',
-            taxonomyLabel: 'Gênero',
+            tokenValue: _token('rock'),
+            labelValue: _requiredText('Rock'),
+            taxonomySlugValue: _token('genre'),
+            taxonomyLabelValue: _requiredText('Gênero'),
           ),
         ],
       },
@@ -723,12 +753,12 @@ void main() {
   testWidgets('Visual sheet validates image url when override mode is image',
       (tester) async {
     final filter = TenantAdminMapFilterCatalogItem(
-      key: 'events',
-      label: 'Eventos',
-      imageUri: 'https://tenant.test/filter.png',
-      overrideMarker: true,
+      keyValue: _token('events'),
+      labelValue: _requiredText('Eventos'),
+      imageUriValue: _optionalUrl('https://tenant.test/filter.png'),
+      overrideMarkerValue: const TenantAdminFlagValue(true),
       markerOverride: TenantAdminMapFilterMarkerOverride.image(
-        imageUri: 'https://tenant.test/filter.png',
+        imageUriValue: _optionalUrl('https://tenant.test/filter.png'),
       ),
       query:
           TenantAdminMapFilterQuery(source: TenantAdminMapFilterSource.event),

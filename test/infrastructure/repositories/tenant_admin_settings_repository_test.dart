@@ -7,6 +7,10 @@ import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.d
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_settings.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_dynamic_map_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_lowercase_string_list_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_lowercase_token_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_url_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_required_text_value.dart';
 import 'package:belluga_now/infrastructure/repositories/tenant_admin/tenant_admin_settings_repository.dart';
 import 'package:belluga_now/infrastructure/services/tenant_admin/tenant_admin_base_url_resolver.dart';
 import 'package:dio/dio.dart';
@@ -200,14 +204,16 @@ void main() {
       ),
       filters: [
         TenantAdminMapFilterCatalogItem(
-          key: 'events',
-          label: 'Eventos',
-          imageUri:
-              'https://tenant-a.test/map-filters/events/image?v=1710000000',
+          keyValue: TenantAdminLowercaseTokenValue()..parse('events'),
+          labelValue: TenantAdminRequiredTextValue()..parse('Eventos'),
+          imageUriValue: TenantAdminOptionalUrlValue()
+            ..parse(
+                'https://tenant-a.test/map-filters/events/image?v=1710000000'),
           query: TenantAdminMapFilterQuery(
             source: TenantAdminMapFilterSource.event,
-            types: ['show'],
-            taxonomy: ['music_genre:rock'],
+            typeValues: TenantAdminLowercaseStringListValue(['show']),
+            taxonomyValues:
+                TenantAdminLowercaseStringListValue(['music_genre:rock']),
           ),
         ),
       ],

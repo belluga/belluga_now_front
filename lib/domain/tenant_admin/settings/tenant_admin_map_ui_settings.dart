@@ -3,6 +3,8 @@ import 'package:belluga_now/domain/tenant_admin/settings/tenant_admin_map_filter
 import 'package:belluga_now/domain/tenant_admin/settings/tenant_admin_map_filter_marker_override.dart';
 import 'package:belluga_now/domain/tenant_admin/settings/tenant_admin_map_filter_query.dart';
 import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_dynamic_map_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_flag_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_optional_url_value.dart';
 
 typedef TenantAdminMapUiSettingsPrimString = String;
 typedef TenantAdminMapUiSettingsPrimInt = int;
@@ -56,18 +58,18 @@ class TenantAdminMapUiSettings {
     final sanitized = nextFilters
         .map(
           (item) => TenantAdminMapFilterCatalogItem(
-            key: item.key,
-            label: item.label,
-            imageUri: item.imageUri,
-            overrideMarker: item.overrideMarker,
+            keyValue: item.keyValue,
+            labelValue: item.labelValue,
+            imageUriValue: item.imageUriValue,
+            overrideMarkerValue: TenantAdminFlagValue(item.overrideMarker),
             markerOverride: _sanitizeMarkerOverride(
               item.markerOverride,
               fallbackImageUri: item.imageUri,
             ),
             query: TenantAdminMapFilterQuery(
               source: item.query.source,
-              types: item.query.types,
-              taxonomy: item.query.taxonomy,
+              typeValues: item.query.typeValues,
+              taxonomyValues: item.query.taxonomyValues,
             ),
           ),
         )
@@ -97,21 +99,24 @@ class TenantAdminMapUiSettings {
         return null;
       }
       return TenantAdminMapFilterMarkerOverride.icon(
-        icon: markerOverride.icon!,
-        color: markerOverride.color!,
-        iconColor: markerOverride.iconColor!,
+        iconValue: markerOverride.iconValue!,
+        colorValue: markerOverride.colorValue!,
+        iconColorValue: markerOverride.iconColorValue!,
       );
     }
 
-    final resolvedImageUri = markerOverride.imageUri?.trim().isNotEmpty == true
-        ? markerOverride.imageUri!.trim()
-        : (fallbackImageUri?.trim() ?? '');
+    final resolvedImageUri =
+        markerOverride.imageUriValue?.nullableValue?.trim().isNotEmpty == true
+            ? markerOverride.imageUriValue!.nullableValue!.trim()
+            : (fallbackImageUri?.trim() ?? '');
     if (resolvedImageUri.isEmpty) {
       return null;
     }
 
+    final imageUriValue = TenantAdminOptionalUrlValue();
+    imageUriValue.parse(resolvedImageUri);
     return TenantAdminMapFilterMarkerOverride.image(
-      imageUri: resolvedImageUri,
+      imageUriValue: imageUriValue,
     );
   }
 }

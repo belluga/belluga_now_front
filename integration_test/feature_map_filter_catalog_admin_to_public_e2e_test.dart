@@ -20,6 +20,9 @@ import 'package:belluga_now/domain/repositories/user_location_repository_contrac
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_location.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_settings.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_static_profile_type.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_lowercase_string_list_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_lowercase_token_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_required_text_value.dart';
 import 'package:belluga_now/domain/user/user_belluga.dart';
 import 'package:belluga_now/infrastructure/dal/dao/backend_context.dart';
 import 'package:belluga_now/infrastructure/dal/dao/laravel_backend/auth_backend/auth_backend.dart';
@@ -197,7 +200,7 @@ void main() {
           settingsController.mapUiSettingsStreamValue.value.filters[0].copyWith(
             query: TenantAdminMapFilterQuery(
               source: TenantAdminMapFilterSource.staticAsset,
-              types: [assetType],
+              typeValues: TenantAdminLowercaseStringListValue([assetType]),
             ),
           ),
         );
@@ -305,15 +308,15 @@ void main() {
             final assetFilter = settings.filters.firstWhere(
               (item) => item.key == assetFilterKey,
               orElse: () => TenantAdminMapFilterCatalogItem(
-                key: '',
-                label: '',
+                keyValue: TenantAdminLowercaseTokenValue(),
+                labelValue: TenantAdminRequiredTextValue(),
               ),
             );
             final eventFilter = settings.filters.firstWhere(
               (item) => item.key == eventFilterKey,
               orElse: () => TenantAdminMapFilterCatalogItem(
-                key: '',
-                label: '',
+                keyValue: TenantAdminLowercaseTokenValue(),
+                labelValue: TenantAdminRequiredTextValue(),
               ),
             );
             return assetFilter.imageUri == secondImageUri &&

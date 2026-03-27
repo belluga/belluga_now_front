@@ -9,6 +9,8 @@ import 'package:belluga_now/domain/tenant_admin/tenant_admin_static_profile_type
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_definition.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_taxonomy_term_definition.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_hex_color_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_required_text_value.dart';
 import 'package:belluga_now/presentation/tenant_admin/static_profile_types/controllers/tenant_admin_static_profile_types_controller.dart';
 import 'package:belluga_now/presentation/tenant_admin/static_profile_types/screens/tenant_admin_static_profile_type_form_screen.dart';
 import 'package:belluga_now/presentation/tenant_admin/shared/widgets/tenant_admin_map_marker_icon_picker_field.dart';
@@ -110,8 +112,8 @@ void main() {
             label: 'Beach',
             allowedTaxonomies: const [],
             poiVisual: TenantAdminPoiVisual.icon(
-              icon: 'beach',
-              color: '#00AACC',
+              iconValue: TenantAdminRequiredTextValue()..parse('beach'),
+              colorValue: TenantAdminHexColorValue()..parse('#00AACC'),
             ),
             capabilities: TenantAdminStaticProfileTypeCapabilities(
               isPoiEnabled: true,

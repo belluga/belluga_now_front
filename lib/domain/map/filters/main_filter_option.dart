@@ -1,52 +1,59 @@
 export 'main_filter_behavior.dart';
 export 'main_filter_type.dart';
+export 'main_filter_option_metadata.dart';
 
 import 'package:belluga_now/domain/map/city_poi_category.dart';
 import 'package:belluga_now/domain/map/filters/main_filter_behavior.dart';
+import 'package:belluga_now/domain/map/filters/main_filter_option_metadata.dart';
 import 'package:belluga_now/domain/map/filters/main_filter_type.dart';
-
-typedef MainFilterOptionId = String;
-typedef MainFilterOptionLabel = String;
-typedef MainFilterOptionIconName = String;
-typedef MainFilterOptionTag = String;
-typedef MainFilterOptionTagSet = Set<MainFilterOptionTag>;
-typedef MainFilterOptionMetadata = Map<String, dynamic>;
+import 'package:belluga_now/domain/map/value_objects/poi_filter_key_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_filter_label_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_icon_symbol_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_tag_value.dart';
 
 class MainFilterOption {
-  const MainFilterOption({
-    required this.id,
-    required this.label,
-    required this.iconName,
+  MainFilterOption({
+    required this.idValue,
+    required this.labelValue,
+    required this.iconNameValue,
     required this.type,
     required this.behavior,
-    this.categories,
-    this.tags,
-    this.metadata = const <MainFilterOptionTag, dynamic>{},
-  });
+    Set<CityPoiCategory>? categories,
+    Set<PoiTagValue>? tagValues,
+    MainFilterOptionMetadata? metadataValue,
+  })  : categories = categories == null
+            ? null
+            : Set<CityPoiCategory>.unmodifiable(categories),
+        tagValues =
+            tagValues == null ? null : Set<PoiTagValue>.unmodifiable(tagValues),
+        metadataValue = metadataValue ?? MainFilterOptionMetadata();
 
-  /// Unique identifier for analytics/toggling.
-  final MainFilterOptionId id;
-
-  /// Display label shown alongside the FAB.
-  final MainFilterOptionLabel label;
-
-  /// Material icon name that represents this filter.
-  final MainFilterOptionIconName iconName;
-
+  final PoiFilterKeyValue idValue;
+  final PoiFilterLabelValue labelValue;
+  final PoiIconSymbolValue iconNameValue;
   final MainFilterType type;
-
   final MainFilterBehavior behavior;
-
-  /// Categories that should be applied when the filter is executed.
   final Set<CityPoiCategory>? categories;
+  final Set<PoiTagValue>? tagValues;
+  final MainFilterOptionMetadata metadataValue;
 
-  /// Tags that should be enforced when the filter is executed.
-  final MainFilterOptionTagSet? tags;
-
-  /// Additional metadata to support specialised panels (e.g., slug, region list key).
-  final MainFilterOptionMetadata metadata;
+  String get id => idValue.value;
+  String get label => labelValue.value;
+  String get iconName => iconNameValue.value;
+  Set<String>? get tags => _readTagValues(tagValues);
+  Map<String, Object?> get metadata => metadataValue.values;
 
   bool get opensPanel => behavior == MainFilterBehavior.opensPanel;
-
   bool get isQuickApply => behavior == MainFilterBehavior.quickApply;
+
+  static Set<String>? _readTagValues(Set<PoiTagValue>? values) {
+    if (values == null) {
+      return null;
+    }
+    final normalized = values
+        .map((value) => value.value.trim().toLowerCase())
+        .where((value) => value.isNotEmpty)
+        .toSet();
+    return Set<String>.unmodifiable(normalized);
+  }
 }

@@ -9,6 +9,15 @@ import 'package:belluga_now/domain/map/map_status.dart';
 import 'package:belluga_now/domain/map/queries/poi_query.dart';
 import 'package:belluga_now/domain/map/ride_share_provider.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
+import 'package:belluga_now/domain/map/value_objects/distance_in_meters_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_filter_key_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_filter_search_term_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_filter_source_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_filter_taxonomy_token_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_filter_type_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_stack_count_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_stack_key_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_tag_value.dart';
 import 'package:belluga_now/domain/repositories/poi_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
@@ -361,14 +370,14 @@ class MapScreenController implements Disposable {
       northEast: query.northEast,
       southWest: query.southWest,
       origin: origin,
-      maxDistanceMeters: query.maxDistanceMeters,
+      maxDistanceMetersValue: query.maxDistanceMetersValue,
       categories: query.categories,
-      categoryKeys: query.categoryKeys,
-      source: query.source,
-      types: query.types,
-      tags: query.tags,
-      taxonomy: query.taxonomy,
-      searchTerm: query.searchTerm,
+      categoryKeyValues: query.categoryKeyValues,
+      sourceValue: query.sourceValue,
+      typeValues: query.typeValues,
+      tagValues: query.tagValues,
+      taxonomyTokenValues: query.taxonomyTokenValues,
+      searchTermValue: query.searchTermValue,
     );
   }
 
@@ -643,8 +652,8 @@ class MapScreenController implements Disposable {
     final seeded = items
         .map(
           (item) => item.copyWith(
-            stackKey: normalizedStackKey,
-            stackCount: normalizedCount,
+            stackKeyValue: _parseStackKeyValue(normalizedStackKey),
+            stackCountValue: _parseStackCountValue(normalizedCount),
           ),
         )
         .toList(growable: false);
@@ -653,6 +662,18 @@ class MapScreenController implements Disposable {
           (item) => item.copyWith(stackItems: seeded),
         )
         .toList(growable: false);
+  }
+
+  PoiStackKeyValue _parseStackKeyValue(String raw) {
+    final value = PoiStackKeyValue();
+    value.parse(raw.trim());
+    return value;
+  }
+
+  PoiStackCountValue _parseStackCountValue(int raw) {
+    final value = PoiStackCountValue();
+    value.parse(raw.toString());
+    return value;
   }
 
   void clearSelectedPoi() {
@@ -987,20 +1008,126 @@ class MapScreenController implements Disposable {
     Iterable<String>? taxonomy,
     String? searchTerm,
   }) {
+    final resolvedSourceValue = source == null
+        ? _currentQuery.sourceValue
+        : _parseFilterSourceValue(source);
+    final resolvedSearchTermValue = searchTerm == null
+        ? _currentQuery.searchTermValue
+        : _parseSearchTermValue(searchTerm);
+
     return PoiQuery.compose(
       currentQuery: _currentQuery,
       northEast: northEast,
       southWest: southWest,
       origin: origin,
-      maxDistanceMeters: maxDistanceMeters,
+      maxDistanceMetersValue: _parseDistanceValue(maxDistanceMeters),
       categories: categories,
-      categoryKeys: categoryKeys,
-      source: source,
-      types: types,
-      tags: tags,
-      taxonomy: taxonomy,
-      searchTerm: searchTerm,
+      categoryKeyValues: _parseFilterKeyValues(categoryKeys),
+      sourceValue: resolvedSourceValue,
+      typeValues: _parseFilterTypeValues(types),
+      tagValues: _parseTagValues(tags),
+      taxonomyTokenValues: _parseTaxonomyTokenValues(taxonomy),
+      searchTermValue: resolvedSearchTermValue,
     );
+  }
+
+  DistanceInMetersValue? _parseDistanceValue(double? raw) {
+    if (raw == null) {
+      return null;
+    }
+    final value = DistanceInMetersValue();
+    value.parse(raw.toString());
+    return value;
+  }
+
+  Set<PoiFilterKeyValue>? _parseFilterKeyValues(Iterable<String>? rawValues) {
+    if (rawValues == null) {
+      return null;
+    }
+    final values = <PoiFilterKeyValue>{};
+    for (final entry in rawValues) {
+      final normalized = entry.trim().toLowerCase();
+      if (normalized.isEmpty) {
+        continue;
+      }
+      final value = PoiFilterKeyValue();
+      value.parse(normalized);
+      values.add(value);
+    }
+    return Set<PoiFilterKeyValue>.unmodifiable(values);
+  }
+
+  PoiFilterSourceValue? _parseFilterSourceValue(String raw) {
+    final normalized = raw.trim().toLowerCase();
+    if (normalized.isEmpty) {
+      return null;
+    }
+    final value = PoiFilterSourceValue();
+    value.parse(normalized);
+    return value;
+  }
+
+  Set<PoiFilterTypeValue>? _parseFilterTypeValues(Iterable<String>? rawValues) {
+    if (rawValues == null) {
+      return null;
+    }
+    final values = <PoiFilterTypeValue>{};
+    for (final entry in rawValues) {
+      final normalized = entry.trim().toLowerCase();
+      if (normalized.isEmpty) {
+        continue;
+      }
+      final value = PoiFilterTypeValue();
+      value.parse(normalized);
+      values.add(value);
+    }
+    return Set<PoiFilterTypeValue>.unmodifiable(values);
+  }
+
+  Set<PoiTagValue>? _parseTagValues(Iterable<String>? rawValues) {
+    if (rawValues == null) {
+      return null;
+    }
+    final values = <PoiTagValue>{};
+    for (final entry in rawValues) {
+      final normalized = entry.trim().toLowerCase();
+      if (normalized.isEmpty) {
+        continue;
+      }
+      final value = PoiTagValue();
+      value.parse(normalized);
+      values.add(value);
+    }
+    return Set<PoiTagValue>.unmodifiable(values);
+  }
+
+  Set<PoiFilterTaxonomyTokenValue>? _parseTaxonomyTokenValues(
+    Iterable<String>? rawValues,
+  ) {
+    if (rawValues == null) {
+      return null;
+    }
+    final values = <PoiFilterTaxonomyTokenValue>{};
+    for (final entry in rawValues) {
+      final normalized = entry.trim().toLowerCase();
+      if (normalized.isEmpty) {
+        continue;
+      }
+      final value = PoiFilterTaxonomyTokenValue();
+      value.parse(normalized);
+      values.add(value);
+    }
+    return Set<PoiFilterTaxonomyTokenValue>.unmodifiable(values);
+  }
+
+  PoiFilterSearchTermValue? _parseSearchTermValue(String raw) {
+    final normalized = raw.trim();
+    if (normalized.isEmpty) {
+      return null;
+    }
+    final value = PoiFilterSearchTermValue();
+    value.parse(normalized);
+    return value;
   }
 
   Set<String> _categoryKeysForMode(PoiFilterMode mode) {
@@ -1134,10 +1261,16 @@ class MapScreenController implements Disposable {
     if (_activeCategoryKeys.length == 1) {
       final key = _activeCategoryKeys.first;
       final options = filterOptionsStreamValue.value;
-      final category = options?.categories.firstWhere(
-        (item) => item.key.trim().toLowerCase() == key,
-        orElse: () => PoiFilterCategory(key: key, label: key, tags: const {}),
-      );
+      PoiFilterCategory? category;
+      final categories = options?.categories;
+      if (categories != null) {
+        for (final item in categories) {
+          if (item.key.trim().toLowerCase() == key) {
+            category = item;
+            break;
+          }
+        }
+      }
       return category?.label ?? key;
     }
 

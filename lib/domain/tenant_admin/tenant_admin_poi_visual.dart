@@ -1,107 +1,112 @@
-typedef TenantAdminPoiVisualPrimString = String;
-typedef TenantAdminPoiVisualPrimInt = int;
-typedef TenantAdminPoiVisualPrimBool = bool;
-typedef TenantAdminPoiVisualPrimDouble = double;
-typedef TenantAdminPoiVisualPrimDateTime = DateTime;
-typedef TenantAdminPoiVisualPrimDynamic = dynamic;
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_hex_color_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_lowercase_token_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_required_text_value.dart';
 
 enum TenantAdminPoiVisualMode {
-  icon(apiValue: 'icon', label: 'Ícone'),
-  image(apiValue: 'image', label: 'Imagem');
+  icon,
+  image,
+}
 
-  const TenantAdminPoiVisualMode({
-    required this.apiValue,
-    required this.label,
-  });
+extension TenantAdminPoiVisualModeX on TenantAdminPoiVisualMode {
+  String get apiValue => switch (this) {
+        TenantAdminPoiVisualMode.icon => 'icon',
+        TenantAdminPoiVisualMode.image => 'image',
+      };
 
-  final TenantAdminPoiVisualPrimString apiValue;
-  final TenantAdminPoiVisualPrimString label;
+  String get label => switch (this) {
+        TenantAdminPoiVisualMode.icon => 'Ícone',
+        TenantAdminPoiVisualMode.image => 'Imagem',
+      };
+}
 
-  static TenantAdminPoiVisualMode? fromRaw(
-      TenantAdminPoiVisualPrimString? raw) {
-    final normalized = raw?.trim().toLowerCase();
-    if (normalized == null || normalized.isEmpty) {
-      return null;
-    }
-
-    for (final candidate in values) {
-      if (candidate.apiValue == normalized) {
-        return candidate;
-      }
-    }
+TenantAdminPoiVisualMode? tenantAdminPoiVisualModeFromValue(
+  TenantAdminLowercaseTokenValue? rawValue,
+) {
+  final normalized = rawValue?.value.trim();
+  if (normalized == null || normalized.isEmpty) {
     return null;
   }
+
+  for (final candidate in TenantAdminPoiVisualMode.values) {
+    if (candidate.apiValue == normalized) {
+      return candidate;
+    }
+  }
+  return null;
 }
 
 enum TenantAdminPoiVisualImageSource {
-  avatar(apiValue: 'avatar', label: 'Avatar'),
-  cover(apiValue: 'cover', label: 'Capa');
+  avatar,
+  cover,
+}
 
-  const TenantAdminPoiVisualImageSource({
-    required this.apiValue,
-    required this.label,
-  });
+extension TenantAdminPoiVisualImageSourceX on TenantAdminPoiVisualImageSource {
+  String get apiValue => switch (this) {
+        TenantAdminPoiVisualImageSource.avatar => 'avatar',
+        TenantAdminPoiVisualImageSource.cover => 'cover',
+      };
 
-  final TenantAdminPoiVisualPrimString apiValue;
-  final TenantAdminPoiVisualPrimString label;
+  String get label => switch (this) {
+        TenantAdminPoiVisualImageSource.avatar => 'Avatar',
+        TenantAdminPoiVisualImageSource.cover => 'Capa',
+      };
+}
 
-  static TenantAdminPoiVisualImageSource? fromRaw(
-    TenantAdminPoiVisualPrimString? raw,
-  ) {
-    final normalized = raw?.trim().toLowerCase();
-    if (normalized == null || normalized.isEmpty) {
-      return null;
-    }
-
-    for (final candidate in values) {
-      if (candidate.apiValue == normalized) {
-        return candidate;
-      }
-    }
+TenantAdminPoiVisualImageSource? tenantAdminPoiVisualImageSourceFromValue(
+  TenantAdminLowercaseTokenValue? rawValue,
+) {
+  final normalized = rawValue?.value.trim();
+  if (normalized == null || normalized.isEmpty) {
     return null;
   }
+
+  for (final candidate in TenantAdminPoiVisualImageSource.values) {
+    if (candidate.apiValue == normalized) {
+      return candidate;
+    }
+  }
+  return null;
 }
 
 class TenantAdminPoiVisual {
   TenantAdminPoiVisual.icon({
-    required TenantAdminPoiVisualPrimString icon,
-    required TenantAdminPoiVisualPrimString color,
-    TenantAdminPoiVisualPrimString iconColor = '#FFFFFF',
+    required this.iconValue,
+    required this.colorValue,
+    TenantAdminHexColorValue? iconColorValue,
   })  : mode = TenantAdminPoiVisualMode.icon,
-        icon = icon.trim(),
-        color = color.trim().toUpperCase(),
-        iconColor = iconColor.trim().toUpperCase(),
+        iconColorValue = iconColorValue ?? _defaultIconColorValue(),
         imageSource = null;
 
   TenantAdminPoiVisual.image({
     required this.imageSource,
   })  : mode = TenantAdminPoiVisualMode.image,
-        icon = null,
-        color = null,
-        iconColor = null;
+        iconValue = null,
+        colorValue = null,
+        iconColorValue = null;
 
   final TenantAdminPoiVisualMode mode;
-  final TenantAdminPoiVisualPrimString? icon;
-  final TenantAdminPoiVisualPrimString? color;
-  final TenantAdminPoiVisualPrimString? iconColor;
+  final TenantAdminRequiredTextValue? iconValue;
+  final TenantAdminHexColorValue? colorValue;
+  final TenantAdminHexColorValue? iconColorValue;
   final TenantAdminPoiVisualImageSource? imageSource;
 
-  TenantAdminPoiVisualPrimBool get isValid {
+  String? get icon => iconValue?.value;
+  String? get color => colorValue?.value;
+  String? get iconColor => iconColorValue?.value;
+
+  bool get isValid {
     switch (mode) {
       case TenantAdminPoiVisualMode.icon:
-        final iconValue = icon?.trim() ?? '';
-        final colorValue = color?.trim().toUpperCase() ?? '';
-        final iconColorValue = iconColor?.trim().toUpperCase() ?? '';
-        return iconValue.isNotEmpty &&
-            RegExp(r'^#[0-9A-F]{6}$').hasMatch(colorValue) &&
-            RegExp(r'^#[0-9A-F]{6}$').hasMatch(iconColorValue);
+        final resolvedIcon = iconValue?.value.trim() ?? '';
+        return resolvedIcon.isNotEmpty &&
+            colorValue != null &&
+            iconColorValue != null;
       case TenantAdminPoiVisualMode.image:
         return imageSource != null;
     }
   }
 
-  Map<TenantAdminPoiVisualPrimString, TenantAdminPoiVisualPrimDynamic>
-      toJson() {
+  Map<String, dynamic> toJson() {
     if (mode == TenantAdminPoiVisualMode.icon) {
       return {
         'mode': mode.apiValue,
@@ -122,38 +127,55 @@ class TenantAdminPoiVisual {
       return null;
     }
     final json = Map<String, dynamic>.from(raw);
-    final mode = TenantAdminPoiVisualMode.fromRaw(
-      (json['mode'] ?? '').toString(),
-    );
+
+    final modeTokenValue = TenantAdminLowercaseTokenValue();
+    try {
+      modeTokenValue.parse((json['mode'] ?? '').toString());
+    } on Object {
+      return null;
+    }
+    final mode = tenantAdminPoiVisualModeFromValue(modeTokenValue);
     if (mode == null) {
       return null;
     }
 
     if (mode == TenantAdminPoiVisualMode.icon) {
-      final icon = (json['icon'] ?? '').toString().trim();
-      final color = (json['color'] ?? '').toString().trim().toUpperCase();
-      final iconColor =
-          (json['icon_color'] ?? '#FFFFFF').toString().trim().toUpperCase();
-      if (icon.isEmpty ||
-          !RegExp(r'^#[0-9A-F]{6}$').hasMatch(color) ||
-          !RegExp(r'^#[0-9A-F]{6}$').hasMatch(iconColor)) {
+      final iconValue = TenantAdminRequiredTextValue();
+      final colorValue = TenantAdminHexColorValue();
+      final iconColorValue = TenantAdminHexColorValue();
+      try {
+        iconValue.parse((json['icon'] ?? '').toString());
+        colorValue.parse((json['color'] ?? '').toString());
+        iconColorValue.parse((json['icon_color'] ?? '#FFFFFF').toString());
+      } on Object {
         return null;
       }
       return TenantAdminPoiVisual.icon(
-        icon: icon,
-        color: color,
-        iconColor: iconColor,
+        iconValue: iconValue,
+        colorValue: colorValue,
+        iconColorValue: iconColorValue,
       );
     }
 
-    final imageSource = TenantAdminPoiVisualImageSource.fromRaw(
-      (json['image_source'] ?? '').toString(),
-    );
+    final imageSourceTokenValue = TenantAdminLowercaseTokenValue();
+    try {
+      imageSourceTokenValue.parse((json['image_source'] ?? '').toString());
+    } on Object {
+      return null;
+    }
+    final imageSource =
+        tenantAdminPoiVisualImageSourceFromValue(imageSourceTokenValue);
     if (imageSource == null) {
       return null;
     }
     return TenantAdminPoiVisual.image(
       imageSource: imageSource,
     );
+  }
+
+  static TenantAdminHexColorValue _defaultIconColorValue() {
+    final value = TenantAdminHexColorValue();
+    value.parse('#FFFFFF');
+    return value;
   }
 }

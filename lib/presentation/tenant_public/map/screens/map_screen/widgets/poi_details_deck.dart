@@ -10,6 +10,8 @@ import 'package:belluga_now/domain/map/ride_share_provider.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
 import 'package:belluga_now/domain/map/value_objects/directions_destination_name_value.dart';
 import 'package:belluga_now/domain/map/value_objects/directions_fallback_url_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_stack_count_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_stack_key_value.dart';
 import 'package:belluga_now/domain/map/value_objects/ride_share_label_value.dart';
 import 'package:belluga_now/domain/map/value_objects/ride_share_uri_value.dart';
 import 'package:belluga_now/presentation/tenant_public/map/screens/map_screen/controllers/map_screen_controller.dart';
@@ -629,14 +631,26 @@ class _PoiDetailDeckState extends State<PoiDetailDeck>
     final seeded = ordered
         .map(
           (item) => item.copyWith(
-            stackKey: normalizedStackKey,
-            stackCount: normalizedStackCount,
+            stackKeyValue: _parseStackKeyValue(normalizedStackKey),
+            stackCountValue: _parseStackCountValue(normalizedStackCount),
           ),
         )
         .toList(growable: false);
     return seeded
         .map((item) => item.copyWith(stackItems: seeded))
         .toList(growable: false);
+  }
+
+  PoiStackKeyValue _parseStackKeyValue(String raw) {
+    final value = PoiStackKeyValue();
+    value.parse(raw.trim());
+    return value;
+  }
+
+  PoiStackCountValue _parseStackCountValue(int raw) {
+    final value = PoiStackCountValue();
+    value.parse(raw.toString());
+    return value;
   }
 
   _SharePayload _buildSharePayload(CityPoiModel poi) {

@@ -10,6 +10,8 @@ import 'package:belluga_now/domain/services/tenant_admin_tenant_scope_contract.d
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_media_upload.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_poi_visual.dart';
 import 'package:belluga_now/domain/tenant_admin/tenant_admin_profile_type.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_hex_color_value.dart';
+import 'package:belluga_now/domain/tenant_admin/value_objects/tenant_admin_required_text_value.dart';
 import 'package:belluga_now/infrastructure/repositories/tenant_admin/tenant_admin_account_profiles_repository.dart';
 import 'package:belluga_now/infrastructure/services/tenant_admin/tenant_admin_base_url_resolver.dart';
 import 'package:dio/dio.dart';
@@ -226,8 +228,8 @@ void main() {
         hasEvents: true,
       ),
       poiVisual: TenantAdminPoiVisual.icon(
-        icon: 'place',
-        color: '#FF8800',
+        iconValue: TenantAdminRequiredTextValue()..parse('place'),
+        colorValue: TenantAdminHexColorValue()..parse('#FF8800'),
       ),
     );
 

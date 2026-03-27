@@ -4,6 +4,17 @@ import 'package:belluga_now/domain/map/filters/poi_filter_mode.dart';
 import 'package:belluga_now/domain/map/filters/poi_filter_options.dart';
 import 'package:belluga_now/domain/map/queries/poi_query.dart';
 import 'package:belluga_now/domain/map/value_objects/city_coordinate.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_boolean_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_filter_count_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_filter_image_uri_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_filter_key_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_filter_label_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_filter_source_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_filter_taxonomy_token_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_filter_type_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_hex_color_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_icon_symbol_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_tag_value.dart';
 import 'package:belluga_now/domain/repositories/poi_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/telemetry_repository_contract.dart';
 import 'package:belluga_now/domain/repositories/user_location_repository_contract.dart';
@@ -219,6 +230,170 @@ class _FakeTelemetryRepository implements TelemetryRepositoryContract {
       null;
 }
 
+PoiFilterCategory _buildCategory({
+  required String key,
+  required String label,
+  Set<String> tags = const <String>{},
+  String? imageUri,
+  bool overrideMarker = false,
+  PoiFilterMarkerOverride? markerOverride,
+  PoiFilterServerQuery? serverQuery,
+}) {
+  return PoiFilterCategory(
+    keyValue: _buildFilterKeyValue(key),
+    labelValue: _buildFilterLabelValue(label),
+    countValue: _buildFilterCountValue(tags.length),
+    tagValues: _buildTagValues(tags),
+    imageUriValue: _buildFilterImageUriValue(imageUri),
+    overrideMarkerValue: _buildBooleanValue(overrideMarker),
+    markerOverride: markerOverride,
+    serverQuery: serverQuery,
+  );
+}
+
+PoiFilterServerQuery _buildServerQuery({
+  String? source,
+  Set<String> types = const <String>{},
+  Set<String> categoryKeys = const <String>{},
+  Set<String> taxonomy = const <String>{},
+  Set<String> tags = const <String>{},
+}) {
+  return PoiFilterServerQuery(
+    sourceValue: _buildFilterSourceValue(source),
+    typeValues: _buildFilterTypeValues(types),
+    categoryKeyValues: _buildFilterKeyValues(categoryKeys),
+    taxonomyTokenValues: _buildFilterTaxonomyValues(taxonomy),
+    tagValues: _buildTagValues(tags),
+  );
+}
+
+PoiFilterMarkerOverride _buildIconMarkerOverride({
+  required String icon,
+  required String colorHex,
+  String? iconColorHex,
+}) {
+  return PoiFilterMarkerOverride.icon(
+    iconValue: _buildIconSymbolValue(icon),
+    colorHexValue: _buildHexColorValue(colorHex),
+    iconColorHexValue:
+        iconColorHex == null ? null : _buildHexColorValue(iconColorHex),
+  );
+}
+
+PoiFilterKeyValue _buildFilterKeyValue(String raw) {
+  final value = PoiFilterKeyValue();
+  value.parse(raw.trim().toLowerCase());
+  return value;
+}
+
+PoiFilterLabelValue _buildFilterLabelValue(String raw) {
+  final value = PoiFilterLabelValue();
+  value.parse(raw.trim());
+  return value;
+}
+
+PoiFilterCountValue _buildFilterCountValue(int raw) {
+  final value = PoiFilterCountValue();
+  value.parse(raw.toString());
+  return value;
+}
+
+PoiFilterImageUriValue? _buildFilterImageUriValue(String? raw) {
+  final normalized = raw?.trim();
+  if (normalized == null || normalized.isEmpty) {
+    return null;
+  }
+  final value = PoiFilterImageUriValue();
+  value.parse(normalized);
+  return value;
+}
+
+PoiBooleanValue _buildBooleanValue(bool raw) {
+  final value = PoiBooleanValue();
+  value.parse(raw.toString());
+  return value;
+}
+
+PoiFilterSourceValue? _buildFilterSourceValue(String? raw) {
+  final normalized = raw?.trim().toLowerCase();
+  if (normalized == null || normalized.isEmpty) {
+    return null;
+  }
+  final value = PoiFilterSourceValue();
+  value.parse(normalized);
+  return value;
+}
+
+Set<PoiFilterTypeValue> _buildFilterTypeValues(Iterable<String> rawValues) {
+  final values = <PoiFilterTypeValue>{};
+  for (final entry in rawValues) {
+    final normalized = entry.trim().toLowerCase();
+    if (normalized.isEmpty) {
+      continue;
+    }
+    final value = PoiFilterTypeValue();
+    value.parse(normalized);
+    values.add(value);
+  }
+  return Set<PoiFilterTypeValue>.unmodifiable(values);
+}
+
+Set<PoiFilterKeyValue> _buildFilterKeyValues(Iterable<String> rawValues) {
+  final values = <PoiFilterKeyValue>{};
+  for (final entry in rawValues) {
+    final normalized = entry.trim().toLowerCase();
+    if (normalized.isEmpty) {
+      continue;
+    }
+    final value = PoiFilterKeyValue();
+    value.parse(normalized);
+    values.add(value);
+  }
+  return Set<PoiFilterKeyValue>.unmodifiable(values);
+}
+
+Set<PoiFilterTaxonomyTokenValue> _buildFilterTaxonomyValues(
+  Iterable<String> rawValues,
+) {
+  final values = <PoiFilterTaxonomyTokenValue>{};
+  for (final entry in rawValues) {
+    final normalized = entry.trim().toLowerCase();
+    if (normalized.isEmpty) {
+      continue;
+    }
+    final value = PoiFilterTaxonomyTokenValue();
+    value.parse(normalized);
+    values.add(value);
+  }
+  return Set<PoiFilterTaxonomyTokenValue>.unmodifiable(values);
+}
+
+Set<PoiTagValue> _buildTagValues(Iterable<String> rawValues) {
+  final values = <PoiTagValue>{};
+  for (final entry in rawValues) {
+    final normalized = entry.trim().toLowerCase();
+    if (normalized.isEmpty) {
+      continue;
+    }
+    final value = PoiTagValue();
+    value.parse(normalized);
+    values.add(value);
+  }
+  return Set<PoiTagValue>.unmodifiable(values);
+}
+
+PoiIconSymbolValue _buildIconSymbolValue(String raw) {
+  final value = PoiIconSymbolValue();
+  value.parse(raw.trim());
+  return value;
+}
+
+PoiHexColorValue _buildHexColorValue(String raw) {
+  final value = PoiHexColorValue();
+  value.parse(raw.trim());
+  return value;
+}
+
 void main() {
   testWidgets(
     'category FAB prefers override icon+color over legacy image',
@@ -238,13 +413,13 @@ void main() {
       poiRepository.filterOptionsStreamValue.addValue(
         PoiFilterOptions(
           categories: [
-            PoiFilterCategory(
+            _buildCategory(
               key: 'events',
               label: 'Eventos',
               tags: const <String>{},
               imageUri: 'https://tenant.test/legacy-events.png',
               overrideMarker: true,
-              markerOverride: const PoiFilterMarkerOverride.icon(
+              markerOverride: _buildIconMarkerOverride(
                 icon: 'music',
                 colorHex: '#C6141F',
                 iconColorHex: '#00DD88',
@@ -311,12 +486,12 @@ void main() {
       poiRepository.filterOptionsStreamValue.addValue(
         PoiFilterOptions(
           categories: [
-            PoiFilterCategory(
+            _buildCategory(
               key: 'events',
               label: 'Eventos',
               tags: const <String>{},
               overrideMarker: true,
-              markerOverride: const PoiFilterMarkerOverride.icon(
+              markerOverride: _buildIconMarkerOverride(
                 icon: 'music',
                 colorHex: '#C6141F',
                 iconColorHex: '#101010',
@@ -387,7 +562,7 @@ void main() {
     poiRepository.filterOptionsStreamValue.addValue(
       PoiFilterOptions(
         categories: [
-          PoiFilterCategory(
+          _buildCategory(
             key: 'events',
             label: 'Eventos',
             tags: const <String>{},
@@ -444,11 +619,11 @@ void main() {
       poiRepository.filterOptionsStreamValue.addValue(
         PoiFilterOptions(
           categories: [
-            PoiFilterCategory(
+            _buildCategory(
               key: 'praia_filtro',
               label: 'Praia',
               tags: const <String>{},
-              serverQuery: PoiFilterServerQuery(
+              serverQuery: _buildServerQuery(
                 source: 'static_asset',
                 types: {'beach_spot'},
               ),
@@ -488,11 +663,11 @@ void main() {
 
       expect(
         mapController.isCategoryFilterActive(
-          PoiFilterCategory(
+          _buildCategory(
             key: 'praia_filtro',
             label: 'Praia',
             tags: const <String>{},
-            serverQuery: PoiFilterServerQuery(
+            serverQuery: _buildServerQuery(
               source: 'static_asset',
               types: {'beach_spot'},
             ),
@@ -596,12 +771,12 @@ void main() {
       poiRepository.filterOptionsStreamValue.addValue(
         PoiFilterOptions(
           categories: [
-            PoiFilterCategory(
+            _buildCategory(
               key: 'praia-a',
               label: 'Praia',
               tags: const <String>{},
             ),
-            PoiFilterCategory(
+            _buildCategory(
               key: 'praia-b',
               label: 'Praia',
               tags: const <String>{},

@@ -8,6 +8,11 @@ import 'package:belluga_now/domain/map/value_objects/longitude_value.dart';
 import 'package:belluga_now/domain/map/value_objects/map_region_id_value.dart';
 import 'package:belluga_now/domain/map/value_objects/map_region_label_value.dart';
 import 'package:belluga_now/domain/map/value_objects/map_zoom_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_filter_count_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_filter_key_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_filter_label_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_icon_symbol_value.dart';
+import 'package:belluga_now/domain/map/value_objects/poi_tag_value.dart';
 import 'package:belluga_now/domain/map/queries/poi_query.dart';
 import 'package:belluga_now/infrastructure/dal/datasources/pois_google_data.dart';
 import 'package:belluga_now/infrastructure/dal/dto/map/city_poi_dto.dart';
@@ -1842,7 +1847,8 @@ class MockPoiDatabase {
     CityPoiDTO(
       id: 'poi-culture-casa-do-artesao',
       name: 'Casa do Artesão',
-      description: 'Espaço de valorização da cultura local e economia criativa.',
+      description:
+          'Espaço de valorização da cultura local e economia criativa.',
       address: 'Praça Colombo Guardia, Centro, Alfredo Chaves - ES',
       category: CityPoiCategory.culture,
       latitude: -20.6356507,
@@ -1942,7 +1948,8 @@ class MockPoiDatabase {
     ),
     MapRegionDefinition(
       idValue: MapRegionIdValue()..parse('alfredo_chaves_cachoeira_alta'),
-      labelValue: MapRegionLabelValue()..parse('Alfredo Chaves (Cachoeira Alta)'),
+      labelValue: MapRegionLabelValue()
+        ..parse('Alfredo Chaves (Cachoeira Alta)'),
       center: CityCoordinate(
         latitudeValue: LatitudeValue()..parse('-20.668'),
         longitudeValue: LongitudeValue()..parse('-40.785'),
@@ -2001,7 +2008,7 @@ class MockPoiDatabase {
       if (!resolvedQuery.matchesCategory(poi.category)) {
         return false;
       }
-      if (!resolvedQuery.matchesTags(poi.tags)) {
+      if (!resolvedQuery.matchesTags(_buildTagValues(poi.tags))) {
         return false;
       }
       if (resolvedQuery.hasBounds) {
@@ -2031,7 +2038,10 @@ class MockPoiDatabase {
         .map(
           (entry) => PoiFilterCategory(
             category: entry.key,
-            tags: entry.value,
+            keyValue: _buildFilterKeyValue(entry.key),
+            labelValue: _buildFilterLabelValue(entry.key),
+            countValue: _buildFilterCountValue(entry.value.length),
+            tagValues: _buildTagValues(entry.value),
           ),
         )
         .toList(growable: false);
@@ -2040,48 +2050,113 @@ class MockPoiDatabase {
   }
 
   List<MainFilterOption> availableMainFilters() {
-    return const <MainFilterOption>[
+    return <MainFilterOption>[
       MainFilterOption(
-        id: 'main_filter_promotions',
-        label: 'Promocoes',
-        iconName: 'local_offer',
+        idValue: _buildMainFilterIdValue('main_filter_promotions'),
+        labelValue: _buildMainFilterLabelValue('Promocoes'),
+        iconNameValue: _buildMainFilterIconValue('local_offer'),
         type: MainFilterType.promotions,
         behavior: MainFilterBehavior.quickApply,
         categories: <CityPoiCategory>{CityPoiCategory.sponsor},
       ),
       MainFilterOption(
-        id: 'main_filter_events',
-        label: 'Eventos',
-        iconName: 'event',
+        idValue: _buildMainFilterIdValue('main_filter_events'),
+        labelValue: _buildMainFilterLabelValue('Eventos'),
+        iconNameValue: _buildMainFilterIconValue('event'),
         type: MainFilterType.events,
         behavior: MainFilterBehavior.opensPanel,
       ),
       MainFilterOption(
-        id: 'main_filter_music',
-        label: 'Musica',
-        iconName: 'music_note',
+        idValue: _buildMainFilterIdValue('main_filter_music'),
+        labelValue: _buildMainFilterLabelValue('Musica'),
+        iconNameValue: _buildMainFilterIconValue('music_note'),
         type: MainFilterType.music,
         behavior: MainFilterBehavior.opensPanel,
-        metadata: <String, dynamic>{'eventSlug': 'show'},
+        metadataValue: MainFilterOptionMetadata(
+          records: <MainFilterOptionMetadataRecord>[
+            (keyValue: _buildMetadataKeyValue('eventSlug'), value: 'show'),
+          ],
+        ),
       ),
       MainFilterOption(
-        id: 'main_filter_regions',
-        label: 'Regioes',
-        iconName: 'map',
+        idValue: _buildMainFilterIdValue('main_filter_regions'),
+        labelValue: _buildMainFilterLabelValue('Regioes'),
+        iconNameValue: _buildMainFilterIconValue('map'),
         type: MainFilterType.regions,
         behavior: MainFilterBehavior.opensPanel,
       ),
       MainFilterOption(
-        id: 'main_filter_cuisines',
-        label: 'Gastronomia',
-        iconName: 'restaurant',
+        idValue: _buildMainFilterIdValue('main_filter_cuisines'),
+        labelValue: _buildMainFilterLabelValue('Gastronomia'),
+        iconNameValue: _buildMainFilterIconValue('restaurant'),
         type: MainFilterType.cuisines,
         behavior: MainFilterBehavior.opensPanel,
-        metadata: <String, dynamic>{
-          'highlightCategory': CityPoiCategory.restaurant,
-        },
+        metadataValue: MainFilterOptionMetadata(
+          records: <MainFilterOptionMetadataRecord>[
+            (
+              keyValue: _buildMetadataKeyValue('highlightCategory'),
+              value: CityPoiCategory.restaurant,
+            ),
+          ],
+        ),
       ),
     ];
+  }
+
+  static PoiFilterKeyValue _buildFilterKeyValue(CityPoiCategory category) {
+    final value = PoiFilterKeyValue();
+    value.parse(category.name.trim().toLowerCase());
+    return value;
+  }
+
+  static PoiFilterLabelValue _buildFilterLabelValue(CityPoiCategory category) {
+    final value = PoiFilterLabelValue();
+    value.parse(category.name.trim());
+    return value;
+  }
+
+  static PoiFilterCountValue _buildFilterCountValue(int count) {
+    final value = PoiFilterCountValue();
+    value.parse(count.toString());
+    return value;
+  }
+
+  static Set<PoiTagValue> _buildTagValues(Iterable<String> tags) {
+    final values = <PoiTagValue>{};
+    for (final tag in tags) {
+      final normalized = tag.trim().toLowerCase();
+      if (normalized.isEmpty) {
+        continue;
+      }
+      final value = PoiTagValue();
+      value.parse(normalized);
+      values.add(value);
+    }
+    return Set<PoiTagValue>.unmodifiable(values);
+  }
+
+  static PoiFilterKeyValue _buildMainFilterIdValue(String raw) {
+    final value = PoiFilterKeyValue();
+    value.parse(raw.trim().toLowerCase());
+    return value;
+  }
+
+  static PoiFilterLabelValue _buildMainFilterLabelValue(String raw) {
+    final value = PoiFilterLabelValue();
+    value.parse(raw.trim());
+    return value;
+  }
+
+  static PoiIconSymbolValue _buildMainFilterIconValue(String raw) {
+    final value = PoiIconSymbolValue();
+    value.parse(raw.trim());
+    return value;
+  }
+
+  static PoiFilterKeyValue _buildMetadataKeyValue(String raw) {
+    final value = PoiFilterKeyValue();
+    value.parse(raw.trim());
+    return value;
   }
 
   static List<CityPoiDTO> _buildGooglePoiDtos({

@@ -226,12 +226,10 @@ class TenantHomeController implements Disposable {
       return null;
     }
     final distanceMeters = haversineDistanceMeters(
-      lat1: userCoordinate.latitude,
-      lon1: userCoordinate.longitude,
-      lat2: eventCoordinate.latitude,
-      lon2: eventCoordinate.longitude,
+      coordinateA: userCoordinate,
+      coordinateB: eventCoordinate,
     );
-    return _formatDistanceLabel(distanceMeters);
+    return _formatDistanceLabel(distanceMeters.value);
   }
 
   String _formatDistanceLabel(double meters) {
